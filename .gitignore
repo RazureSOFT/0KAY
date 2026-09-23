@@ -1,0 +1,12 @@
+# Local buf binary
+buf.exe
+
+# Component repos are published as separate 0KAY-* repositories.
+/core/
+/mocr/
+/life/
+/agent/
+/webui/
+/searxng/
+/proto/
+/gen/

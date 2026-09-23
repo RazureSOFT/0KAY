@@ -1,0 +1,22 @@
+version: v2
+plugins:
+  # Go code generation
+  - remote: buf.build/protocolbuffers/go
+    out: gen/go
+    opt: paths=source_relative
+
+  - remote: buf.build/grpc/go
+    out: gen/go
+    opt: paths=source_relative
+
+  # Python code generation
+  - remote: buf.build/protocolbuffers/python
+    out: gen/python
+
+  - remote: buf.build/grpc/python
+    out: gen/python
+
+  # TypeScript code generation (using Connect protocol)
+  - remote: buf.build/bufbuild/es
+    out: gen/typescript
+    opt: target=ts

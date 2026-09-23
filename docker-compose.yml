@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  # WebUI - Frontend
+  webui:
+    build:
+      context: .
+      dockerfile: webui/Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - core
+
+  # Core - API Gateway & Plugin Registry
+  core:
+    build:
+      context: .
+      dockerfile: core/Dockerfile
+    ports:
+      - "50051:50051"  # gRPC
+      - "8080:8080"    # HTTP
+    environment:
+      - CORE_GRPC_PORT=50051
+      - CORE_HTTP_PORT=8080
+    volumes:
+      - core-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # mocr - Model Selector
+  mocr:
+    build:
+      context: .
+      dockerfile: mocr/Dockerfile
+    ports:
+      - "50052:50052"
+    environment:
+      - MOCR_GRPC_PORT=50052
+
+  # L.I.F.E - Persona Plugin
+  life:
+    build:
+      context: .
+      dockerfile: life/Dockerfile
+    ports:
+      - "50053:50053"
+    environment:
+      - LIFE_GRPC_PORT=50053
+      - MOCR_ADDRESS=mocr:50052
+    volumes:
+      - life-data:/app/data/life
+    depends_on:
+      - core
+      - mocr
+
+  # Agent - Task Execution Engine
+  agent:
+    build:
+      context: .
+      dockerfile: agent/Dockerfile
+    ports:
+      - "50054:50054"
+    environment:
+      - AGENT_GRPC_PORT=50054
+    depends_on:
+      - core
+
+  # SearXNG - meta-search (JSON API for life SearchTool)
+  searxng:
+    image: searxng/searxng:latest
+    container_name: 0kay-searxng
+    ports:
+      - "8888:8080"
+    environment:
+      - SEARXNG_BASE_URL=http://searxng:8080/
+      - SEARXNG_SECRET=0kay-searxng-secret
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    volumes:
+      - searxng-data:/etc/searxng
+    restart: unless-stopped
+
+volumes:
+  core-data:
+  life-data:
+  searxng-data:
