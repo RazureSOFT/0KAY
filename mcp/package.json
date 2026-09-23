@@ -1,0 +1,16 @@
+{
+  "name": "@0kay/mcp",
+  "version": "0.1.0",
+  "description": "0kay MCP client gateway",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}
