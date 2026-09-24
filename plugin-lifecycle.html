@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>plugin-lifecycle</title><style>body{max-width:980px;margin:0 auto;padding:32px;font:16px/1.7 system-ui,sans-serif;color:#202124}a{color:#0758a8}pre{padding:16px;overflow:auto;background:#f1f3f4;border-radius:8px}code{background:#f1f3f4;padding:2px 4px;border-radius:4px}h1,h2,h3{line-height:1.25;border-bottom:1px solid #ddd;padding-bottom:6px}</style></head><body><h1>Plugin Lifecycle</h1><p>Plugins connect to Core through <code>core.v1.PluginService</code>.</p><h2>Registration</h2><p>Call <code>Register</code> with:</p><pre><code>{
+  &quot;plugin_info&quot;: {
+    &quot;name&quot;: &quot;example&quot;,
+    &quot;version&quot;: &quot;0.1.0&quot;,
+    &quot;description&quot;: &quot;Example plugin&quot;,
+    &quot;author&quot;: &quot;your-name&quot;,
+    &quot;plugin_type&quot;: &quot;PLUGIN_TYPE_SERVICE&quot;
+  },
+  &quot;capabilities&quot;: [&quot;example&quot;],
+  &quot;address&quot;: &quot;127.0.0.1:50100&quot;,
+  &quot;settings_sections&quot;: []
+}
+</code></pre><p><code>address</code> is the gRPC address Core uses for callbacks. Bind plugin services</p><p>before registering. Core returns a stable runtime <code>plugin_id</code> for the current</p><p>registration.</p><h2>Heartbeat</h2><p>Send <code>Heartbeat</code> periodically, normally every 10 seconds:</p><pre><code>{
+  &quot;plugin_id&quot;: &quot;plugin_7&quot;,
+  &quot;status&quot;: &quot;PLUGIN_STATUS_HEALTHY&quot;,
+  &quot;active_tasks&quot;: 0,
+  &quot;host&quot;: {
+    &quot;hostname&quot;: &quot;host&quot;,
+    &quot;os&quot;: &quot;Windows_NT&quot;,
+    &quot;arch&quot;: &quot;x64&quot;,
+    &quot;workdir&quot;: &quot;C:\\plugins\\example&quot;
+  }
+}
+</code></pre><p>Core considers a plugin unhealthy after the heartbeat timeout. A plugin should</p><p>re-register after <code>UNAVAILABLE</code> or <code>NOT_FOUND</code> errors.</p><h2>Plugin Types</h2><ul><li><code>PLUGIN_TYPE_ADAPTER</code>: input/output transport such as WebUI or OneBot.</li><li><code>PLUGIN_TYPE_PERSONA</code>: persona/runtime layer such as L.I.F.E.</li><li><code>PLUGIN_TYPE_TOOL</code>: search, mail, MCP, or other tool provider.</li><li><code>PLUGIN_TYPE_SERVICE</code>: generic service such as mocr or Agent.</li></ul></body></html>

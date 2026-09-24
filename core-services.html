@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>core-services</title><style>body{max-width:980px;margin:0 auto;padding:32px;font:16px/1.7 system-ui,sans-serif;color:#202124}a{color:#0758a8}pre{padding:16px;overflow:auto;background:#f1f3f4;border-radius:8px}code{background:#f1f3f4;padding:2px 4px;border-radius:4px}h1,h2,h3{line-height:1.25;border-bottom:1px solid #ddd;padding-bottom:6px}</style></head><body><h1>Core Services</h1><p>Plugins use <code>core.v1.CoreService</code> for platform orchestration.</p><h2><code>CallMocr</code></h2><p>Calls the model gateway and returns a server stream. Use <code>model_id</code> to pin a</p><p>model; leave it empty only when the caller intentionally wants Core/mocr model</p><p>selection.</p><p>Important fields:</p><ul><li><code>request_id</code>: caller correlation ID.</li><li><code>caller_id</code>: plugin or session owner.</li><li><code>prompt</code>: current user/task prompt.</li><li><code>session_id</code>: conversation/session key.</li><li><code>messages</code>: optional full history.</li><li><code>model_id</code>: optional pinned model.</li><li><code>system_prompt</code>: domain instructions.</li><li><code>context</code>: difficulty, token, temperature, and task metadata.</li></ul><h2><code>UseAgent</code></h2><p>Dispatches asynchronous work to an independent Agent:</p><pre><code>{
+  &quot;task_id&quot;: &quot;task_123&quot;,
+  &quot;caller_id&quot;: &quot;life&quot;,
+  &quot;prompt&quot;: &quot;Create and run a Python connectivity check.&quot;,
+  &quot;agent_type&quot;: &quot;code&quot;,
+  &quot;metadata&quot;: {
+    &quot;thinking_intensity&quot;: &quot;medium&quot;,
+    &quot;difficulty_hint&quot;: &quot;0.5&quot;,
+    &quot;require_thinking&quot;: &quot;false&quot;
+  }
+}
+</code></pre><p><code>metadata</code> is <code>map&lt;string,string&gt;</code>. Always stringify numbers, booleans, and</p><p>objects before constructing the protobuf request.</p><p>The response only confirms acceptance. Read <code>/api/tasks</code>, use Agent task status,</p><p>or consume the L.I.F.E completion callback for the result.</p><h2><code>CancelAgent</code></h2><p>Cancels a task by <code>task_id</code> and <code>caller_id</code>. Cancellation is best effort and</p><p>must be treated as a state transition, not proof that the underlying process</p><p>has already stopped.</p><h2><code>ListAgents</code></h2><p>Returns registered Agent instances, health, callback address, active task count,</p><p>heartbeat age, and host information.</p><h2><code>RunDirect</code></h2><p>Runs one Agent-host tool without an LLM loop:</p><pre><code>{
+  &quot;tool&quot;: &quot;computeruse&quot;,
+  &quot;args&quot;: &quot;{\&quot;action\&quot;:\&quot;screenshot\&quot;}&quot;,
+  &quot;session_id&quot;: &quot;life-computeruse&quot;
+}
+</code></pre><p>Sensitive tools require the relevant LIFE/Core permission. Treat returned tool</p><p>data as untrusted external output.</p></body></html>

@@ -1,0 +1,50 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>settings-ui</title><style>body{max-width:980px;margin:0 auto;padding:32px;font:16px/1.7 system-ui,sans-serif;color:#202124}a{color:#0758a8}pre{padding:16px;overflow:auto;background:#f1f3f4;border-radius:8px}code{background:#f1f3f4;padding:2px 4px;border-radius:4px}h1,h2,h3{line-height:1.25;border-bottom:1px solid #ddd;padding-bottom:6px}</style></head><body><h1>Settings and UI Patches</h1><h2>Settings Sections</h2><p>Plugins contribute a <code>SettingsSection</code> during registration:</p><pre><code>{
+  &quot;id&quot;: &quot;example&quot;,
+  &quot;label&quot;: &quot;Example&quot;,
+  &quot;icon&quot;: &quot;chip&quot;,
+  &quot;order&quot;: 70,
+  &quot;description&quot;: &quot;Example plugin settings&quot;,
+  &quot;fields&quot;: [
+    {
+      &quot;key&quot;: &quot;enabled&quot;,
+      &quot;type&quot;: &quot;bool&quot;,
+      &quot;label&quot;: &quot;Enabled&quot;,
+      &quot;default_value&quot;: &quot;true&quot;,
+      &quot;help&quot;: &quot;Enable the feature&quot;
+    }
+  ]
+}
+</code></pre><p>Field types are <code>bool</code>, <code>number</code>, <code>text</code>, and <code>select</code>. Values are persisted by</p><p>Core under its local settings store and exposed at:</p><pre><code>GET  /api/settings/sections
+GET  /api/settings/{section_id}
+POST /api/settings/{section_id}
+</code></pre><p>Secrets must remain local and must never be committed to a repository.</p><h2>UI Patches</h2><p>UI patch files are JSON despite the <code>.patch</code> suffix:</p><pre><code>{
+  &quot;id&quot;: &quot;example-ui&quot;,
+  &quot;plugin&quot;: &quot;example&quot;,
+  &quot;enabled&quot;: true,
+  &quot;patches&quot;: [
+    {
+      &quot;target&quot;: &quot;nav&quot;,
+      &quot;op&quot;: &quot;insert&quot;,
+      &quot;id&quot;: &quot;example&quot;,
+      &quot;item&quot;: {
+        &quot;id&quot;: &quot;example&quot;,
+        &quot;to&quot;: &quot;/example&quot;,
+        &quot;label&quot;: &quot;Example&quot;,
+        &quot;icon&quot;: &quot;chip&quot;,
+        &quot;order&quot;: 25
+      }
+    },
+    {
+      &quot;target&quot;: &quot;router&quot;,
+      &quot;op&quot;: &quot;insert&quot;,
+      &quot;id&quot;: &quot;example&quot;,
+      &quot;item&quot;: {
+        &quot;id&quot;: &quot;example&quot;,
+        &quot;path&quot;: &quot;/example&quot;,
+        &quot;name&quot;: &quot;example&quot;,
+        &quot;component&quot;: &quot;example&quot;
+      }
+    }
+  ]
+}
+</code></pre><p>Supported targets include <code>nav</code>, <code>router</code>, <code>settings</code>, <code>status</code>, and <code>chat</code>.</p><p>Supported operations are <code>insert</code>, <code>remove</code>, and <code>replace</code>.</p><p>The <code>plugin</code> field is important: disabling that plugin removes its patch</p><p>operations, settings visibility, navigation, and dynamic routes.</p></body></html>
