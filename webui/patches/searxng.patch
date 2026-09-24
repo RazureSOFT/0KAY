@@ -1,0 +1,38 @@
+{
+  "id": "searxng-nav",
+  "name": "SearXNG search entry (mirrors core/data/ui)",
+  "version": "0.1.0",
+  "plugin": "searxng",
+  "enabled": true,
+  "patches": [
+    {
+      "target": "nav",
+      "op": "insert",
+      "anchor": "plugins",
+      "position": "after",
+      "id": "search",
+      "item": {
+        "id": "search",
+        "to": "/search",
+        "label": "搜索",
+        "labelKey": "nav.search",
+        "icon": "search",
+        "order": 35
+      }
+    },
+    {
+      "target": "router",
+      "op": "insert",
+      "id": "search",
+      "item": {
+        "id": "search",
+        "path": "/search",
+        "name": "search",
+        "component": "iframe",
+        "src": "http://127.0.0.1:8888/",
+        "titleKey": "nav.search",
+        "title": "搜索"
+      }
+    }
+  ]
+}

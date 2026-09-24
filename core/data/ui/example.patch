@@ -1,0 +1,21 @@
+{
+  "id": "platform-state-note",
+  "name": "Example: extra settings tab (disabled by default)",
+  "version": "0.1.0",
+  "plugin": "example",
+  "enabled": false,
+  "patches": [
+    {
+      "target": "settings",
+      "op": "insert",
+      "anchor": "danger",
+      "position": "before",
+      "id": "example-tab",
+      "item": {
+        "id": "example",
+        "icon": "chip",
+        "order": 90
+      }
+    }
+  ]
+}

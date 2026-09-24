@@ -1,0 +1,8 @@
+# Go build artifacts
+*.exe
+*.exe~
+/bin/
+*.test
+
+# Logs
+*.log

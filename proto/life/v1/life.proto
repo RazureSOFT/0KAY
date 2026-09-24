@@ -1,0 +1,260 @@
+syntax = "proto3";
+
+package life.v1;
+
+option go_package = "0kay/gen/life/v1;lifev1";
+option java_package = "ai.zero.kay.life.v1";
+option java_multiple_files = true;
+option csharp_namespace = "Zero.Kay.Life.V1";
+option objc_class_prefix = "ZKLife";
+
+import "plugin/v1/plugin.proto";
+
+// LifeService is the service that the L.I.F.E plugin exposes to Core.
+service LifeService {
+  // OnTaskCompleted is called when an Agent task completes.
+  rpc OnTaskCompleted(OnTaskCompletedRequest) returns (OnTaskCompletedResponse);
+
+  // OnUserMessage is called when a user sends a message to L.I.F.E.
+  rpc OnUserMessage(OnUserMessageRequest) returns (stream OnUserMessageResponse);
+
+  // OnScheduledEvent is called for periodic events (e.g., circadian updates).
+  rpc OnScheduledEvent(OnScheduledEventRequest) returns (OnScheduledEventResponse);
+
+  // GetMemories returns short/long term memories and stats for the WebUI.
+  rpc GetMemories(GetMemoriesRequest) returns (GetMemoriesResponse);
+
+  // GetState returns emotion/energy/host permissions for the WebUI.
+  rpc GetState(GetStateRequest) returns (GetStateResponse);
+
+  // SetPermissions updates screen_watch / computer_use / host config.
+  rpc SetPermissions(SetPermissionsRequest) returns (SetPermissionsResponse);
+
+  // GetCompanion returns LIFE-owned companion state for its registered dashboard.
+  rpc GetCompanion(GetCompanionRequest) returns (GetCompanionResponse);
+
+  // ManageCompanion performs an auditable LIFE companion operation.
+  rpc ManageCompanion(ManageCompanionRequest) returns (ManageCompanionResponse);
+
+  // CompactConversation summarizes a session with LIFE's configured THINK/OUTPUT models.
+  rpc CompactConversation(CompactConversationRequest) returns (CompactConversationResponse);
+
+  rpc GetNotifications(GetNotificationsRequest) returns (GetNotificationsResponse);
+}
+
+// OnTaskCompletedRequest is the request for LifeService.OnTaskCompleted.
+message OnTaskCompletedRequest {
+  // task_id is the unique identifier of the completed task.
+  string task_id = 1;
+
+  // state is the final state of the task.
+  plugin.v1.TaskState state = 2;
+
+  // result contains the task output (if successful).
+  string result = 3;
+
+  // error contains the error message (if failed).
+  string error = 4;
+
+  // metadata contains additional task context.
+  map<string, string> metadata = 5;
+}
+
+// OnTaskCompletedResponse is the response for LifeService.OnTaskCompleted.
+message OnTaskCompletedResponse {
+  // acknowledged indicates the callback was processed.
+  bool acknowledged = 1;
+
+  // response_text is an optional message to send to the user.
+  string response_text = 2;
+}
+
+// OnUserMessageRequest is the request for LifeService.OnUserMessage.
+message OnUserMessageRequest {
+  // session_id identifies the conversation session.
+  string session_id = 1;
+
+  // user_id identifies the user.
+  string user_id = 2;
+
+  // message is the user's message text.
+  string message = 3;
+
+  // adapter_type identifies the input adapter (e.g., "webui", "onebot").
+  string adapter_type = 4;
+
+  // active_tasks contains IDs of currently running Agent tasks.
+  repeated string active_tasks = 5;
+
+  // persona_json is the WebUI-selected persona for this turn. It is passed
+  // through Core to LIFE rather than being treated as an untrusted prompt.
+  string persona_json = 6;
+
+  // history_json is a client-restored WebUI session projection for this turn.
+  string history_json = 7;
+}
+
+// OnUserMessageResponse is a streaming response for LifeService.OnUserMessage.
+message OnUserMessageResponse {
+  // chunk is a piece of the response text.
+  string chunk = 1;
+
+  // done indicates the response is complete.
+  bool done = 2;
+
+  // emotion_state is the current emotion state (sent once at start).
+  EmotionState emotion_state = 3;
+
+  // mental_energy is the current mental energy level (0.0 to 1.0).
+  double mental_energy = 4;
+
+  // task_started contains a task ID if useagent was called (sent once).
+  string task_started = 5;
+
+  // think_summary is a safe structured decision summary for the collapsed
+  // WebUI THINK panel. It is not raw model chain-of-thought.
+  string think_summary = 6;
+}
+
+// OnScheduledEventRequest is the request for LifeService.OnScheduledEvent.
+message OnScheduledEventRequest {
+  // event_type identifies the type of event.
+  ScheduledEventType event_type = 1;
+
+  // data contains event-specific payload.
+  map<string, string> data = 2;
+}
+
+// OnScheduledEventResponse is the response for LifeService.OnScheduledEvent.
+message OnScheduledEventResponse {
+  // acknowledged indicates the event was processed.
+  bool acknowledged = 1;
+}
+
+// EmotionState represents the multi-dimensional emotional state.
+message EmotionState {
+  // valence is the pleasure level (-1.0 to 1.0).
+  double valence = 1;
+
+  // arousal is the activation level (0.0 to 1.0).
+  double arousal = 2;
+
+  // connection is the social bonding level (0.0 to 1.0).
+  double connection = 3;
+
+  // irritation is the annoyance level (0.0 to 1.0).
+  double irritation = 4;
+}
+
+// ScheduledEventType identifies the type of scheduled event.
+enum ScheduledEventType {
+  // SCHEDULED_EVENT_TYPE_UNSPECIFIED is the default value.
+  SCHEDULED_EVENT_TYPE_UNSPECIFIED = 0;
+
+  // SCHEDULED_EVENT_TYPE_CIRCADIAN_TICK is a periodic circadian update.
+  SCHEDULED_EVENT_TYPE_CIRCADIAN_TICK = 1;
+
+  // SCHEDULED_EVENT_TYPE_MEMORY_CONSOLIDATION is a memory maintenance event.
+  SCHEDULED_EVENT_TYPE_MEMORY_CONSOLIDATION = 2;
+
+  // SCHEDULED_EVENT_TYPE_IDLE_CHECK is an idle state check.
+  SCHEDULED_EVENT_TYPE_IDLE_CHECK = 3;
+}
+
+// MemoryItem is a single memory entry exposed to WebUI.
+message MemoryItem {
+  string id = 1;
+  string content = 2;
+  double importance = 3;
+  double strength = 4;
+  string created_at = 5;
+  repeated string tags = 6;
+  string tier = 7; // "working" | "short_term" | "long_term"
+}
+
+// GetMemoriesRequest is the request for LifeService.GetMemories.
+message GetMemoriesRequest {
+  int32 limit = 1;
+  string query = 2;
+}
+
+// GetMemoriesResponse is the response for LifeService.GetMemories.
+message GetMemoriesResponse {
+  repeated MemoryItem memories = 1;
+  int32 working_count = 2;
+  int32 short_term_count = 3;
+  int32 long_term_count = 4;
+  double avg_strength = 5;
+}
+
+// GetStateRequest is the request for LifeService.GetState.
+message GetStateRequest {}
+
+// GetStateResponse is the response for LifeService.GetState.
+message GetStateResponse {
+  EmotionState emotion = 1;
+  double mental_energy = 2;
+  bool is_sleeping = 3;
+  repeated string active_tasks = 4;
+  bool screen_watch = 5;
+  bool computer_use = 6;
+  string report_agent_host = 7;
+}
+
+// SetPermissionsRequest is the request for LifeService.SetPermissions.
+message SetPermissionsRequest {
+  bool screen_watch = 1;
+  bool computer_use = 2;
+  string report_agent_host = 3;
+}
+
+// SetPermissionsResponse is the response for LifeService.SetPermissions.
+message SetPermissionsResponse {
+  bool ok = 1;
+}
+
+message GetCompanionRequest {}
+
+message GetCompanionResponse {
+  string json = 1;
+}
+
+message ManageCompanionRequest {
+  // action: add_agenda | complete_agenda | journal | dream | maintenance.
+  string action = 1;
+  // JSON object for the action's data.
+  string payload_json = 2;
+}
+
+message ManageCompanionResponse {
+  bool ok = 1;
+  string json = 2;
+  string error = 3;
+}
+
+message CompactConversationRequest {
+  string session_id = 1;
+  string history_json = 2;
+  string persona_json = 3;
+}
+
+message CompactConversationResponse {
+  bool ok = 1;
+  string summary = 2;
+  string error = 3;
+}
+
+message GetNotificationsRequest {
+  string session_id = 1;
+}
+
+message LifeNotification {
+  string id = 1;
+  string session_id = 2;
+  string text = 3;
+  string created_at = 4;
+}
+
+message GetNotificationsResponse {
+  repeated LifeNotification notifications = 1;
+}

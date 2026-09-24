@@ -1,0 +1,54 @@
+{
+  "id": "searxng-nav",
+  "name": "SearXNG search entry",
+  "version": "0.1.0",
+  "plugin": "searxng",
+  "enabled": true,
+  "patches": [
+    {
+      "target": "nav",
+      "op": "insert",
+      "anchor": "plugins",
+      "position": "after",
+      "id": "search",
+      "item": {
+        "id": "search",
+        "to": "/search",
+        "label": "搜索",
+        "labelKey": "nav.search",
+        "icon": "search",
+        "order": 35,
+        "badge": null
+      }
+    },
+    {
+      "target": "router",
+      "op": "insert",
+      "id": "search",
+      "item": {
+        "id": "search",
+        "path": "/search",
+        "name": "search",
+        "component": "iframe",
+        "src": "http://127.0.0.1:8888/",
+        "titleKey": "nav.search",
+        "title": "搜索"
+      }
+    },
+    {
+      "target": "status",
+      "op": "insert",
+      "anchor": "connection",
+      "position": "before",
+      "id": "search-status",
+      "item": {
+        "id": "search-status",
+        "titleKey": "status.searchEngine",
+        "title": "搜索引擎",
+        "kind": "kv",
+        "order": 80,
+        "value": "SearXNG :8888"
+      }
+    }
+  ]
+}

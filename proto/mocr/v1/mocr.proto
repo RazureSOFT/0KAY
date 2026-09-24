@@ -1,0 +1,226 @@
+syntax = "proto3";
+
+package mocr.v1;
+
+option go_package = "0kay/gen/mocr/v1;mocrv1";
+option java_package = "ai.zero.kay.mocr.v1";
+option java_multiple_files = true;
+option csharp_namespace = "Zero.Kay.Mocr.V1";
+option objc_class_prefix = "ZKMocr";
+
+// MocrService is the model selection and generation service.
+service MocrService {
+  // ChooseModels selects the best think_model and output_model for a request.
+  rpc ChooseModels(ChooseModelsRequest) returns (ChooseModelsResponse);
+
+  // Generate streams text generation from the selected model.
+  rpc Generate(GenerateRequest) returns (stream GenerateResponse);
+}
+
+// ChooseModelsRequest is the request for MocrService.ChooseModels.
+message ChooseModelsRequest {
+  // prompt is the input prompt for analysis.
+  string prompt = 1;
+
+  // context provides selection criteria.
+  SelectionContext context = 2;
+}
+
+// ChooseModelsResponse is the response for MocrService.ChooseModels.
+message ChooseModelsResponse {
+  // think_model is the strong model for reasoning with chain-of-thought enabled.
+  ModelSpec think_model = 1;
+
+  // output_model is the lightweight model for expression without chain-of-thought.
+  ModelSpec output_model = 2;
+
+  // reasoning contains the selection rationale (for debugging).
+  string reasoning = 3;
+}
+
+// GenerateRequest is the request for MocrService.Generate.
+message GenerateRequest {
+  // model_id specifies which model to use for generation.
+  string model_id = 1;
+
+  // messages contains the conversation history.
+  repeated Message messages = 2;
+
+  // system_prompt is an optional system instruction.
+  string system_prompt = 3;
+
+  // max_tokens is the maximum tokens to generate.
+  int32 max_tokens = 4;
+
+  // temperature controls randomness (0.0 to 2.0).
+  double temperature = 5;
+
+  // stream indicates whether to stream the response.
+  bool stream = 6;
+
+  // thinking enables chain-of-thought reasoning for this generation.
+  bool thinking = 7;
+
+  // provider identifies the target provider (e.g. "openai", "anthropic").
+  string provider = 8;
+
+  // base_url is the provider API base URL.
+  string base_url = 9;
+
+  // api_key is the provider credential (passed by Core from stored config).
+  string api_key = 10;
+
+  // tools declares callable functions (native tool/function calling).
+  repeated Tool tools = 11;
+
+  // tool_choice controls tool use: "auto" | "none" | "required" (default "auto").
+  string tool_choice = 12;
+}
+
+// GenerateResponse is the response for MocrService.Generate.
+message GenerateResponse {
+  // chunk is a piece of the generated text (when streaming).
+  string chunk = 1;
+
+  // done indicates the generation is complete.
+  bool done = 2;
+
+  // finish_reason explains why generation stopped.
+  FinishReason finish_reason = 3;
+
+  // usage contains token usage information.
+  TokenUsage usage = 4;
+
+  // thinking_content contains the chain-of-thought reasoning (when thinking=true).
+  string thinking_content = 5;
+
+  // role is the assistant message role ("assistant") when tool calls are emitted.
+  string role = 6;
+
+  // tool_calls contains native tool/function calls requested by the model.
+  repeated ToolCall tool_calls = 7;
+
+  // text is the full accumulated assistant text (sent once with done=true when
+  // any tool calls were requested, so callers can persist the turn).
+  string text = 8;
+}
+
+// Tool declares a callable function for native tool calling.
+message Tool {
+  // type is the tool kind, normally "function".
+  string type = 1;
+
+  // function holds the function definition.
+  FunctionDef function = 2;
+}
+
+// FunctionDef describes a callable function.
+message FunctionDef {
+  // name is the function name the model must call.
+  string name = 1;
+
+  // description helps the model decide when to call it.
+  string description = 2;
+
+  // parameters_json is a JSON Schema object (string) for the arguments.
+  string parameters_json = 3;
+}
+
+// ToolCall is a model-requested function invocation.
+message ToolCall {
+  // id is the provider-assigned call id (used to return the result).
+  string id = 1;
+
+  // type is normally "function".
+  string type = 2;
+
+  // function_name is the requested function.
+  string function_name = 3;
+
+  // arguments is a JSON object string of arguments.
+  string arguments = 4;
+}
+
+// ModelSpec describes a model selection.
+message ModelSpec {
+  // model_id is the unique identifier for the model (e.g., "gpt-4", "claude-3-opus").
+  string model_id = 1;
+
+  // provider identifies the model provider (e.g., "openai", "anthropic").
+  string provider = 2;
+
+  // estimated_cost_per_token is the cost estimate for budgeting.
+  double estimated_cost_per_token = 3;
+
+  // supports_thinking indicates if the model supports chain-of-thought.
+  bool supports_thinking = 4;
+
+  // max_context_length is the maximum context window size.
+  int32 max_context_length = 5;
+}
+
+// SelectionContext provides criteria for model selection.
+message SelectionContext {
+  // task_type describes the type of task (e.g., "chat", "code", "analysis").
+  string task_type = 1;
+
+  // difficulty_hint suggests the difficulty level (0.0 to 1.0).
+  double difficulty_hint = 2;
+
+  // max_tokens is the desired output length.
+  int32 max_tokens = 3;
+
+  // cost_budget is the maximum cost in arbitrary units.
+  double cost_budget = 4;
+
+  // require_thinking forces chain-of-thought reasoning.
+  bool require_thinking = 5;
+
+  // available_models limits selection to specific model IDs.
+  repeated string available_models = 6;
+}
+
+// Message represents a conversation message.
+message Message {
+  // role is the message role (e.g., "system", "user", "assistant", "tool").
+  string role = 1;
+
+  // content is the message text.
+  string content = 2;
+
+  // tool_call_id links a "tool" result message back to its ToolCall.
+  string tool_call_id = 3;
+
+  // tool_calls carries assistant tool calls when replaying history.
+  repeated ToolCall tool_calls = 4;
+}
+
+// TokenUsage contains token usage information.
+message TokenUsage {
+  // prompt_tokens is the number of tokens in the prompt.
+  int32 prompt_tokens = 1;
+
+  // completion_tokens is the number of tokens generated.
+  int32 completion_tokens = 2;
+
+  // total_tokens is the total token count.
+  int32 total_tokens = 3;
+}
+
+// FinishReason explains why generation stopped.
+enum FinishReason {
+  // FINISH_REASON_UNSPECIFIED is the default value.
+  FINISH_REASON_UNSPECIFIED = 0;
+
+  // FINISH_REASON_STOP indicates natural completion.
+  FINISH_REASON_STOP = 1;
+
+  // FINISH_REASON_LENGTH indicates max_tokens was reached.
+  FINISH_REASON_LENGTH = 2;
+
+  // FINISH_REASON_CONTENT_FILTER indicates content was filtered.
+  FINISH_REASON_CONTENT_FILTER = 3;
+
+  // FINISH_REASON_ERROR indicates an error occurred.
+  FINISH_REASON_ERROR = 4;
+}

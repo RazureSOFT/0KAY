@@ -1,0 +1,15 @@
+# Go build artifacts
+*.exe
+*.exe~
+/bin/
+*.test
+
+# Runtime secrets & state (NEVER commit API keys)
+data/providers.json
+data/settings.json
+data/usage.json
+data/disabled_plugins.json
+data/uploads/
+
+# Logs
+*.log

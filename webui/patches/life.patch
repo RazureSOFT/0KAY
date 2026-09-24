@@ -1,0 +1,285 @@
+{
+  "id": "life-ui",
+  "name": "L.I.F.E WebUI surfaces (mirrors core/data/ui)",
+  "version": "0.1.0",
+  "plugin": "life",
+  "enabled": true,
+  "patches": [
+    {
+      "target": "status",
+      "op": "insert",
+      "anchor": "connection",
+      "position": "before",
+      "id": "mood",
+      "item": {
+        "id": "mood",
+        "kind": "mood",
+        "title": "心情",
+        "titleKey": "status.mood",
+        "order": 10
+      }
+    },
+    {
+      "target": "status",
+      "op": "insert",
+      "anchor": "mood",
+      "position": "after",
+      "id": "energy",
+      "item": {
+        "id": "energy",
+        "kind": "bar",
+        "title": "精神能量",
+        "titleKey": "status.mentalEnergy",
+        "bind": "life.energyPercent",
+        "order": 20
+      }
+    },
+    {
+      "target": "status",
+      "op": "insert",
+      "anchor": "energy",
+      "position": "after",
+      "id": "emotions",
+      "item": {
+        "id": "emotions",
+        "kind": "bars",
+        "title": "情绪",
+        "titleKey": "status.emotions",
+        "order": 30,
+        "axes": [
+          { "key": "valence", "labelKey": "emotion.valence", "color": "#0078d4", "scale": "remap01" },
+          { "key": "arousal", "labelKey": "emotion.arousal", "color": "#ffb900", "scale": "unit" },
+          { "key": "connection", "labelKey": "emotion.connection", "color": "#107c10", "scale": "unit" },
+          { "key": "irritation", "labelKey": "emotion.irritation", "color": "#d13438", "scale": "unit" }
+        ]
+      }
+    },
+    {
+      "target": "status",
+      "op": "insert",
+      "anchor": "emotions",
+      "position": "after",
+      "id": "agents",
+      "item": {
+        "id": "agents",
+        "kind": "count",
+        "title": "Agent",
+        "titleKey": "status.onlineAgents",
+        "countBind": "life.onlineAgents",
+        "totalBind": "life.totalAgents",
+        "order": 40
+      }
+    },
+    {
+      "target": "status",
+      "op": "insert",
+      "anchor": "agents",
+      "position": "after",
+      "id": "tasks",
+      "item": {
+        "id": "tasks",
+        "kind": "tasks",
+        "title": "活跃任务",
+        "titleKey": "status.activeTasks",
+        "listBind": "life.activeTasks",
+        "empty": "暂无活跃任务",
+        "emptyKey": "status.noActiveTasks",
+        "order": 50
+      }
+    },
+    {
+      "target": "status",
+      "op": "insert",
+      "anchor": "tasks",
+      "position": "after",
+      "id": "memory",
+      "item": {
+        "id": "memory",
+        "kind": "memory",
+        "title": "记忆",
+        "titleKey": "memory.title",
+        "endpoint": "/api/life/memories",
+        "pollMs": 15000,
+        "order": 60
+      }
+    },
+    {
+      "target": "settings",
+      "op": "remove",
+      "id": "life",
+      "item": null
+    },
+    {
+      "target": "settings",
+      "op": "insert",
+      "anchor": "permissions",
+      "position": "after",
+      "id": "life_settings",
+      "item": {
+        "id": "life_settings",
+        "icon": "lock",
+        "order": 65,
+        "label": "L.I.F.E 设置",
+        "description": "邮件、MCP、OneBot 和 Agent 主机权限由 L.I.F.E 插件管理",
+        "component": "life_settings"
+      }
+    },
+    {
+      "target": "router",
+      "op": "insert",
+      "id": "memory",
+      "item": {
+        "id": "memory",
+        "path": "/memory",
+        "name": "memory",
+        "component": "memory",
+        "title": "记忆管理台"
+      }
+    },
+    {
+      "target": "router",
+      "op": "insert",
+      "id": "companion",
+      "item": { "id": "companion", "path": "/companion", "name": "companion", "component": "companion", "title": "陪伴面板" }
+    },
+    {
+      "target": "nav",
+      "op": "insert",
+      "anchor": "memory",
+      "position": "after",
+      "id": "companion",
+      "item": { "id": "companion", "to": "/companion", "label": "陪伴", "icon": "life", "order": 25 }
+    },
+    {
+      "target": "nav",
+      "op": "insert",
+      "anchor": "plugins",
+      "position": "before",
+      "id": "memory",
+      "item": {
+        "id": "memory",
+        "to": "/memory",
+        "label": "记忆",
+        "icon": "memory",
+        "order": 20
+      }
+    },
+    {
+      "target": "settings",
+      "op": "replace",
+      "id": "permissions",
+      "item": {
+        "id": "permissions",
+        "icon": "lock",
+        "order": 60,
+        "label": "权限",
+        "labelKey": "settings.permissions",
+        "description": "控制 L.I.F.E 的屏幕监听与计算机操作权限（默认全部关闭）",
+        "descriptionKey": "settings.permissionsDesc",
+        "component": "permissions",
+        "loadApi": "/api/life/permissions",
+        "saveApi": "/api/life/permissions",
+        "fields": [
+          {
+            "key": "screen_watch",
+            "type": "bool",
+            "label": "屏幕监听",
+            "labelKey": "settings.screenWatch",
+            "help": "允许 L.I.F.E 观察屏幕内容（默认关闭）",
+            "helpKey": "settings.screenWatchDesc"
+          },
+          {
+            "key": "computer_use",
+            "type": "bool",
+            "label": "计算机操作",
+            "labelKey": "settings.computerUse",
+            "help": "允许执行 shell / 计算机操作（默认关闭）",
+            "helpKey": "settings.computerUseDesc"
+          },
+          {
+            "key": "report_agent_host",
+            "type": "text",
+            "label": "上报 Agent 主机信息",
+            "labelKey": "settings.reportAgentHost",
+            "help": "心跳中附带主机名、CPU、内存等信息",
+            "helpKey": "settings.reportAgentHostDesc"
+          }
+        ]
+      }
+    },
+    {
+      "target": "settings",
+      "op": "replace",
+      "id": "persona",
+      "item": {
+        "id": "persona",
+        "icon": "person",
+        "order": 40,
+        "label": "人设",
+        "labelKey": "settings.persona",
+        "descriptionKey": "settings.personaDesc",
+        "component": "persona"
+      }
+    },
+    {
+      "target": "settings",
+      "op": "replace",
+      "id": "live2d",
+      "item": {
+        "id": "live2d",
+        "icon": "avatar",
+        "order": 50,
+        "label": "Live2D",
+        "labelKey": "settings.live2d",
+        "descriptionKey": "settings.live2dDesc",
+        "component": "live2d"
+      }
+    },
+    {
+      "target": "chat",
+      "op": "insert",
+      "id": "live2d",
+      "item": {
+        "id": "live2d",
+        "region": "stage",
+        "component": "live2d",
+        "order": 10
+      }
+    },
+    {
+      "target": "chat",
+      "op": "insert",
+      "id": "status",
+      "item": {
+        "id": "status",
+        "region": "stage",
+        "component": "status",
+        "order": 20
+      }
+    },
+    {
+      "target": "chat",
+      "op": "insert",
+      "id": "chat",
+      "item": {
+        "id": "chat",
+        "region": "chat",
+        "component": "chat",
+        "order": 30
+      }
+    },
+    {
+      "target": "nav",
+      "op": "insert",
+      "id": "chat",
+      "item": {
+        "id": "chat",
+        "to": "/",
+        "label": "对话",
+        "labelKey": "nav.chat",
+        "icon": "chat",
+        "order": 10
+      }
+    }
+  ]
+}

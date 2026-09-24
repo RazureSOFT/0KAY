@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package agent.v1;
+
+option go_package = "0kay/gen/agent/v1;agentv1";
+option java_package = "ai.zero.kay.agent.v1";
+option java_multiple_files = true;
+option csharp_namespace = "Zero.Kay.Agent.V1";
+option objc_class_prefix = "ZKAgent";
+
+import "plugin/v1/plugin.proto";
+
+// AgentService is the service exposed by the Agent plugin.
+// Core calls this to dispatch, cancel, and inspect tasks.
+service AgentService {
+  // ExecuteTask runs a task to completion (unary, blocking from Core's view;
+  // Core invokes it in a goroutine).
+  rpc ExecuteTask(ExecuteTaskRequest) returns (ExecuteTaskResponse);
+
+  // CancelTask requests cancellation of a running task.
+  rpc CancelTask(CancelTaskRequest) returns (CancelTaskResponse);
+
+  // GetTaskStatus returns the current status of a task.
+  rpc GetTaskStatus(GetTaskStatusRequest) returns (GetTaskStatusResponse);
+
+  // RunDirect executes a tool immediately (no LLM loop).
+  rpc RunDirect(RunDirectRequest) returns (RunDirectResponse);
+}
+
+// ExecuteTaskRequest is the request for AgentService.ExecuteTask.
+message ExecuteTaskRequest {
+  // task_id is the unique identifier for this task.
+  string task_id = 1;
+
+  // prompt is the task description.
+  string prompt = 2;
+
+  // agent_type specifies the agent persona/strategy (e.g., "build", "plan").
+  string agent_type = 3;
+
+  // metadata contains optional key-value pairs for task context.
+  map<string, string> metadata = 4;
+}
+
+// ExecuteTaskResponse is the response for AgentService.ExecuteTask.
+message ExecuteTaskResponse {
+  // task_id matches the request.
+  string task_id = 1;
+
+  // state is the final state of the task.
+  plugin.v1.TaskState state = 2;
+
+  // result contains the task output (if successful).
+  string result = 3;
+
+  // error contains the error message (if failed).
+  string error = 4;
+
+  // metadata contains additional task context.
+  map<string, string> metadata = 5;
+}
+
+// CancelTaskRequest is the request for AgentService.CancelTask.
+message CancelTaskRequest {
+  // task_id is the task to cancel.
+  string task_id = 1;
+}
+
+// CancelTaskResponse is the response for AgentService.CancelTask.
+message CancelTaskResponse {
+  // success indicates whether cancellation was accepted.
+  bool success = 1;
+
+  // message contains optional human-readable status.
+  string message = 2;
+}
+
+// GetTaskStatusRequest is the request for AgentService.GetTaskStatus.
+message GetTaskStatusRequest {
+  // task_id is the task to query.
+  string task_id = 1;
+}
+
+// GetTaskStatusResponse is the response for AgentService.GetTaskStatus.
+message GetTaskStatusResponse {
+  // task_id matches the request.
+  string task_id = 1;
+
+  // state is the current state of the task.
+  plugin.v1.TaskState state = 2;
+
+  // result contains the task output (if completed).
+  string result = 3;
+
+  // error contains the error message (if failed).
+  string error = 4;
+}
+
+// RunDirectRequest is the request for AgentService.RunDirect.
+message RunDirectRequest {
+  // tool is the tool name (shell, filesystem, computeruse, ...).
+  string tool = 1;
+
+  // args is tool arguments as JSON object string.
+  string args = 2;
+
+  // session_id is optional correlation id.
+  string session_id = 3;
+}
+
+// RunDirectResponse is the response for AgentService.RunDirect.
+message RunDirectResponse {
+  bool success = 1;
+  string result = 2;
+  string error = 3;
+}

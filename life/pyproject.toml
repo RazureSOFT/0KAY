@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "life"
+version = "0.1.0"
+description = "L.I.F.E - Persona plugin for 0kay AI Agent platform"
+requires-python = ">=3.10"
+dependencies = [
+    "grpcio>=1.60.0",
+    "grpcio-tools>=1.60.0",
+    "protobuf>=4.25.0",
+    "pydantic>=2.0.0",
+    "numpy>=1.24.0",
+    "chromadb>=0.4.0",
+    "aiosmtplib>=3.0.0",
+    "httpx>=0.25.0",
+    "websockets>=12.0",
+    "tantivy>=0.26.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/life"]

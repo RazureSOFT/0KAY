@@ -1,0 +1,380 @@
+"""gRPC server for L.I.F.E plugin - Complete implementation."""
+
+import asyncio
+import json
+import os
+import sys
+
+import grpc
+from grpc import aio
+
+# Add gen/python to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'gen', 'python'))
+
+from life.v1 import life_pb2
+from life.v1 import life_pb2_grpc
+from plugin.v1 import plugin_pb2
+
+from ..engine import LifeEngine
+from ..core_client import get_core_client
+
+
+class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
+    """Implementation of LifeService gRPC service."""
+
+    def __init__(self, mocr_address: str = "localhost:50052"):
+        self.engine = LifeEngine(mocr_address=mocr_address)
+        self._sessions: dict[str, asyncio.Task] = {}
+        self._sync_task: asyncio.Task | None = None
+        self._onebot_task: asyncio.Task | None = None
+        self._onebot_started = False
+
+    async def start_background_tasks(self):
+        """Start background loops (heartbeat + agent sync + optional OneBot)."""
+        self._sync_task = asyncio.create_task(self._background_loop())
+
+    async def _start_onebot(self):
+        """Start OneBot adapter if configured (Phase 4)."""
+        try:
+            from ..adapters.onebot import OneBotConfig, OneBotManager
+
+            values = await self._life_settings()
+            ws_url = values.get("onebot_ws_url") or os.environ.get("ONEBOT_WS_URL", "ws://localhost:6700")
+            http_url = values.get("onebot_http_url") or os.environ.get("ONEBOT_HTTP_URL", "http://localhost:6700")
+            token = values.get("onebot_access_token") or os.environ.get("ONEBOT_ACCESS_TOKEN", "")
+            keywords = tuple(k.strip() for k in str(values.get("onebot_trigger_keywords") or "").split(",") if k.strip())
+
+            async def message_handler(session_id: str, user_id: str, message: str, adapter_type: str = "onebot"):
+                async for event in self.engine.process_message(
+                    session_id=session_id,
+                    user_id=user_id,
+                    message=message,
+                    adapter_type=adapter_type,
+                ):
+                    yield event
+
+            manager = OneBotManager(message_handler)
+            manager.add_adapter(
+                "primary",
+                OneBotConfig(
+                    websocket_url=ws_url,
+                    http_url=http_url,
+                    access_token=token,
+                    trigger_keywords=keywords,
+                    observe_group=values.get("onebot_observe_group") is not False,
+                    observer=lambda group_id, user_id, message: asyncio.to_thread(self.engine.companion.observe_group, group_id, user_id, message),
+                ),
+            )
+            self.engine.tool_config.onebot_sender = manager.send_message
+            print(f"[LIFE] OneBot adapter starting → {ws_url}")
+            await manager.start_all()
+        except Exception as e:
+            print(f"[LIFE] OneBot adapter failed: {e}")
+
+    async def _life_settings(self) -> dict:
+        import urllib.request
+        try:
+            with urllib.request.urlopen("http://127.0.0.1:8080/api/settings/life", timeout=2) as response:
+                return (json.loads(response.read().decode("utf-8")).get("values") or {})
+        except Exception:
+            return {}
+
+    async def _background_loop(self):
+        """Heartbeat to Core + sync online agents every 10s."""
+        core = self.engine.core
+
+        # Initial register (retry a few times)
+        for attempt in range(10):
+            if core.register():
+                break
+            await asyncio.sleep(2)
+
+        # Initial agent sync
+        count = await asyncio.to_thread(self.engine.sync_agents)
+        print(f"[LIFE] Online agents: {count}")
+        await self._refresh_settings()
+        if self.engine.tool_config.onebot_enabled:
+            self._onebot_started = True
+            self._onebot_task = asyncio.create_task(self._start_onebot())
+
+        while True:
+            await asyncio.sleep(10)
+            try:
+                # Heartbeat
+                active = len(self.engine.active_tasks)
+                ok = core.heartbeat(active_tasks=active)
+                if not ok and core.plugin_id is None:
+                    # Lost registration, try again
+                    core.register()
+
+                # Sync agents
+                count = await asyncio.to_thread(self.engine.sync_agents)
+                await self._refresh_settings()
+                # Daily maintenance is intentionally local and bounded: compact
+                # memories, rebuild indexes, and retain seven JSON snapshots.
+                today = __import__("datetime").date.today().isoformat()
+                if getattr(self, "_maintenance_day", "") != today:
+                    result = await asyncio.to_thread(self.engine.memory.maintenance)
+                    self.engine.companion.audit("daily_memory_maintenance", json.dumps(result, ensure_ascii=False))
+                    self._maintenance_day = today
+                await asyncio.to_thread(self.engine.memory.process_reflection_queue)
+                if not self._onebot_started and self.engine.tool_config.onebot_enabled:
+                    self._onebot_started = True
+                    self._onebot_task = asyncio.create_task(self._start_onebot())
+            except Exception as e:
+                print(f"[LIFE] background loop error: {e}")
+
+    async def _refresh_settings(self):
+        """Poll the Core-owned settings document; Core remains the secret store."""
+        values = await self._life_settings()
+        if values:
+            self.engine.apply_tool_settings(values)
+
+    async def OnTaskCompleted(self, request, context):
+        """Handle task completion callback from Core."""
+        state_name = plugin_pb2.TaskState.Name(request.state)
+
+        response_text = await self.engine.on_task_completed(
+            task_id=request.task_id,
+            state=state_name,
+            result=request.result,
+        )
+
+        return life_pb2.OnTaskCompletedResponse(
+            acknowledged=True,
+            response_text=response_text,
+        )
+
+    async def OnUserMessage(self, request, context):
+        """Handle user message with streaming response."""
+        try:
+            async for event in self.engine.process_message(
+                session_id=request.session_id,
+                user_id=request.user_id,
+                message=request.message,
+                adapter_type=request.adapter_type,
+                persona=json.loads(request.persona_json) if request.persona_json else None,
+            ):
+                # grpc.aio ServicerContext versions differ: some expose
+                # is_active(), others only cancelled(). Keep streaming until
+                # the client explicitly cancels in either case.
+                active = context.is_active() if hasattr(context, "is_active") else not context.cancelled()
+                if not active:
+                    break
+
+                # raw_chunk is internal model streaming. WebUI receives only
+                # the final OUTPUT chunks, otherwise each reply is duplicated.
+                if event.get("type") == "raw_chunk":
+                    continue
+
+                # Build emotion state
+                emotion_data = event.get("emotion_state", {})
+                emotion_state = life_pb2.EmotionState(
+                    valence=emotion_data.get("valence", 0.0),
+                    arousal=emotion_data.get("arousal", 0.5),
+                    connection=emotion_data.get("connection", 0.5),
+                    irritation=emotion_data.get("irritation", 0.0),
+                )
+
+                yield life_pb2.OnUserMessageResponse(
+                    chunk=event.get("chunk", ""),
+                    done=event.get("done", False),
+                    emotion_state=emotion_state,
+                    mental_energy=event.get("mental_energy", 100.0),
+                    task_started=event.get("task_id", ""),
+                    think_summary=event.get("think_summary", ""),
+                )
+
+        except Exception as e:
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"Error processing message: {str(e)}")
+
+    async def OnScheduledEvent(self, request, context):
+        """Handle scheduled events."""
+        event_type = request.event_type
+
+        if event_type == life_pb2.SCHEDULED_EVENT_TYPE_CIRCADIAN_TICK:
+            self.engine.circadian.tick(3600)
+            # Active memory reinforcement on circadian cadence
+            try:
+                reinforced = await asyncio.to_thread(self.engine.memory.periodic_reinforce)
+                if reinforced:
+                    print(f"[LIFE] reinforced {reinforced} weak memories")
+            except Exception as e:
+                print(f"[LIFE] memory reinforce error: {e}")
+        elif event_type == life_pb2.SCHEDULED_EVENT_TYPE_MEMORY_CONSOLIDATION:
+            self.engine.memory.consolidate()
+            try:
+                await asyncio.to_thread(self.engine.memory.periodic_reinforce)
+            except Exception as e:
+                print(f"[LIFE] memory reinforce error: {e}")
+        elif event_type == life_pb2.SCHEDULED_EVENT_TYPE_IDLE_CHECK:
+            if self.engine.circadian.should_auto_sleep():
+                self.engine.circadian.start_sleep()
+
+        # Save state after events
+        self.engine._save_state()
+
+        return life_pb2.OnScheduledEventResponse(acknowledged=True)
+
+    async def GetMemories(self, request, context):
+        """Return memory items + stats for the WebUI sidebar."""
+        try:
+            limit = request.limit if request.limit and request.limit > 0 else 50
+            items = await asyncio.to_thread(self.engine.list_memories, limit, request.query or "")
+            stats = await asyncio.to_thread(self.engine.get_memory_stats)
+
+            memories = [
+                life_pb2.MemoryItem(
+                    id=m["id"],
+                    content=m["content"],
+                    importance=float(m["importance"]),
+                    strength=float(m["strength"]),
+                    created_at=m["created_at"],
+                    tags=list(m.get("tags") or []),
+                    tier=m.get("tier", ""),
+                )
+                for m in items
+            ]
+
+            return life_pb2.GetMemoriesResponse(
+                memories=memories,
+                working_count=int(stats.get("working", 0)),
+                short_term_count=int(stats.get("short_term", {}).get("total", 0)),
+                long_term_count=int(stats.get("long_term", 0)),
+                avg_strength=float(stats.get("short_term", {}).get("avg_strength", 0.0)),
+            )
+        except Exception as e:
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"GetMemories failed: {e}")
+            raise
+
+    async def GetState(self, request, context):
+        """Return emotion/energy/permissions for the WebUI."""
+        try:
+            state = await asyncio.to_thread(self.engine.get_state)
+            emotion = state.get("emotion", {})
+            circadian = state.get("circadian", {})
+            perms = await asyncio.to_thread(self.engine.get_permissions)
+
+            return life_pb2.GetStateResponse(
+                emotion=life_pb2.EmotionState(
+                    valence=float(emotion.get("valence", 0.0)),
+                    arousal=float(emotion.get("arousal", 0.5)),
+                    connection=float(emotion.get("connection", 0.5)),
+                    irritation=float(emotion.get("irritation", 0.0)),
+                ),
+                mental_energy=float(circadian.get("mental_energy", state.get("mental_energy", 100.0))),
+                is_sleeping=bool(circadian.get("is_sleeping", False)),
+                active_tasks=list(state.get("active_tasks") or []),
+                screen_watch=bool(perms.get("screen_watch", False)),
+                computer_use=bool(perms.get("computer_use", False)),
+                report_agent_host=str(perms.get("report_agent_host", "")),
+            )
+        except Exception as e:
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"GetState failed: {e}")
+            raise
+
+    async def SetPermissions(self, request, context):
+        """Update screen_watch / computer_use / host report (default OFF)."""
+        try:
+            await asyncio.to_thread(
+                self.engine.set_permissions,
+                request.screen_watch,
+                request.computer_use,
+                request.report_agent_host,
+            )
+            return life_pb2.SetPermissionsResponse(ok=True)
+        except Exception as e:
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"SetPermissions failed: {e}")
+            raise
+
+    async def GetCompanion(self, request, context):
+        try:
+            snapshot = await asyncio.to_thread(self.engine.companion.snapshot)
+            return life_pb2.GetCompanionResponse(json=json.dumps(snapshot, ensure_ascii=False))
+        except Exception as e:
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"GetCompanion failed: {e}")
+            raise
+
+    async def ManageCompanion(self, request, context):
+        try:
+            payload = json.loads(request.payload_json or "{}")
+            action = request.action
+            if action == "add_agenda":
+                result = await asyncio.to_thread(self.engine.companion.add_agenda, payload.get("title", ""), payload.get("when", ""), payload.get("detail", ""))
+            elif action in ("confirm_agenda", "reject_agenda"):
+                result = await asyncio.to_thread(self.engine.companion.confirm_agenda, payload.get("id", ""), action == "confirm_agenda")
+            elif action == "complete_agenda":
+                result = await asyncio.to_thread(self.engine.companion.complete_agenda, payload.get("id", ""))
+            elif action in ("journal", "dream"):
+                result = await asyncio.to_thread(self.engine.companion.journal, payload.get("content", ""), "dream" if action == "dream" else "journal")
+            elif action == "memory_maintenance":
+                result = await asyncio.to_thread(self.engine.memory.maintenance)
+                self.engine.companion.audit("memory_maintenance", json.dumps(result, ensure_ascii=False))
+            elif action == "delete_memory":
+                memory_id = payload.get("id", "")
+                deleted = await asyncio.to_thread(self.engine.memory.delete_fact, memory_id, "dashboard_delete")
+                result = {"deleted": deleted, "id": memory_id}
+                self.engine.companion.audit("memory_delete", memory_id, memory_id, "ok" if deleted else "not_found")
+            elif action == "clear_all_memory":
+                result = await asyncio.to_thread(self.engine.memory.clear_all)
+                self.engine.companion.audit("memory_clear_all", json.dumps(result, ensure_ascii=False), outcome="ok")
+            else:
+                return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
+            return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))
+        except Exception as e:
+            return life_pb2.ManageCompanionResponse(ok=False, error=str(e))
+
+    async def CompactConversation(self, request, context):
+        try:
+            history = json.loads(request.history_json or "[]")
+            if not isinstance(history, list):
+                raise ValueError("history_json must be an array")
+            persona = json.loads(request.persona_json) if request.persona_json else None
+            summary = await self.engine.compact_conversation(history, persona)
+            return life_pb2.CompactConversationResponse(ok=True, summary=summary)
+        except Exception as e:
+            return life_pb2.CompactConversationResponse(ok=False, error=str(e))
+
+    async def GetNotifications(self, request, context):
+        items = await asyncio.to_thread(self.engine.get_notifications, request.session_id or "")
+        return life_pb2.GetNotificationsResponse(notifications=[life_pb2.LifeNotification(**item) for item in items])
+
+
+async def serve(mocr_address: str = "localhost:50052"):
+    """Start the L.I.F.E gRPC server."""
+    port = os.environ.get("LIFE_GRPC_PORT", "50053")
+
+    server = aio.server()
+
+    servicer = LifeServiceServicer(mocr_address=mocr_address)
+    life_pb2_grpc.add_LifeServiceServicer_to_server(servicer, server)
+
+    # Set life address on core client so Core can call us back
+    core = get_core_client()
+    core.life_address = f"localhost:{port}"
+
+    server.add_insecure_port(f"[::]:{port}")
+    await server.start()
+
+    # Start background tasks (register with Core, heartbeat, sync agents)
+    await servicer.start_background_tasks()
+
+    print(f"L.I.F.E gRPC server starting on :{port}")
+    print(f"Connected to mocr at: {mocr_address}")
+    print(f"Core at: {core.address}")
+
+    try:
+        await server.wait_for_termination()
+    except KeyboardInterrupt:
+        print("Shutting down L.I.F.E...")
+        await server.stop(grace=5)
+
+
+if __name__ == "__main__":
+    mocr_addr = os.environ.get("MOCR_ADDRESS", "localhost:50052")
+    asyncio.run(serve(mocr_addr))

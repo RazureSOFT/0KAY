@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package plugin.v1;
+
+option go_package = "0kay/gen/plugin/v1;pluginv1";
+option java_package = "ai.zero.kay.plugin.v1";
+option java_multiple_files = true;
+option csharp_namespace = "Zero.Kay.Plugin.V1";
+option objc_class_prefix = "ZKPlugin";
+
+// PluginInfo contains metadata about a plugin.
+message PluginInfo {
+  // name is the human-readable name of the plugin.
+  string name = 1;
+
+  // version is the semantic version (e.g., "1.0.0").
+  string version = 2;
+
+  // description is a brief description of the plugin's functionality.
+  string description = 3;
+
+  // author is the plugin author's name or identifier.
+  string author = 4;
+
+  // plugin_type categorizes the plugin.
+  PluginType plugin_type = 5;
+}
+
+// PluginType categorizes the plugin's role in the system.
+enum PluginType {
+  // PLUGIN_TYPE_UNSPECIFIED is the default value.
+  PLUGIN_TYPE_UNSPECIFIED = 0;
+
+  // PLUGIN_TYPE_ADAPTER is an input/output adapter (e.g., OneBot, WebUI).
+  PLUGIN_TYPE_ADAPTER = 1;
+
+  // PLUGIN_TYPE_PERSONA is a persona plugin (e.g., L.I.F.E).
+  PLUGIN_TYPE_PERSONA = 2;
+
+  // PLUGIN_TYPE_TOOL is a tool plugin (e.g., getmail, search).
+  PLUGIN_TYPE_TOOL = 3;
+
+  // PLUGIN_TYPE_SERVICE is a generic service plugin.
+  PLUGIN_TYPE_SERVICE = 4;
+}
+
+// SettingsField is one declarative form field inside a settings section.
+message SettingsField {
+  // key is the stable field identifier within the section.
+  string key = 1;
+
+  // type is the field kind: "text" | "number" | "bool" | "select".
+  string type = 2;
+
+  // label is the human-readable field label.
+  string label = 3;
+
+  // default_value is the initial value as a string ("true"/"false" for bool).
+  string default_value = 4;
+
+  // options is the allowed values when type == "select".
+  repeated string options = 5;
+
+  // help is optional helper text shown under the field.
+  string help = 6;
+}
+
+// SettingsSection is a settings tab contributed by a plugin.
+message SettingsSection {
+  // id is the unique section id (also used as the Settings tab id).
+  string id = 1;
+
+  // label is the human-readable tab label.
+  string label = 2;
+
+  // icon is an icon name for the Settings nav (optional).
+  string icon = 3;
+
+  // order controls nav sorting (lower first). Built-ins use 0-100.
+  int32 order = 4;
+
+  // description is optional section helper text.
+  string description = 5;
+
+  // fields are the declarative form fields for this section.
+  repeated SettingsField fields = 6;
+}
+
+// TaskState represents the state of an Agent task.
+enum TaskState {
+  // TASK_STATE_UNSPECIFIED is the default value.
+  TASK_STATE_UNSPECIFIED = 0;
+
+  // TASK_STATE_PENDING indicates the task is queued.
+  TASK_STATE_PENDING = 1;
+
+  // TASK_STATE_RUNNING indicates the task is being processed.
+  TASK_STATE_RUNNING = 2;
+
+  // TASK_STATE_DONE indicates the task completed successfully.
+  TASK_STATE_DONE = 3;
+
+  // TASK_STATE_FAILED indicates the task failed.
+  TASK_STATE_FAILED = 4;
+
+  // TASK_STATE_CANCELLED indicates the task was cancelled.
+  TASK_STATE_CANCELLED = 5;
+}

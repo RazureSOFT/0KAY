@@ -1,0 +1,1000 @@
+package server
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+
+	"0kay/core/internal/registry"
+	agentv1 "0kay/gen/agent/v1"
+	corev1 "0kay/gen/core/v1"
+	lifev1 "0kay/gen/life/v1"
+	mocrv1 "0kay/gen/mocr/v1"
+	pluginv1 "0kay/gen/plugin/v1"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
+)
+
+// CoreServiceServer implements the CoreService gRPC service.
+type CoreServiceServer struct {
+	corev1.UnimplementedCoreServiceServer
+	registry *registry.Registry
+
+	mu              sync.Mutex
+	tasks           map[string]*TaskInfo
+	completed       []string
+	taskHistoryPath string
+
+	// sessions: session_id -> conversation history
+	sessionMu sync.RWMutex
+	sessions  map[string][]*corev1.ChatMessage
+
+	// usage tracker
+	usageMu sync.Mutex
+	usage   *UsageStore
+
+	// mocr address for direct generation
+	mocrAddr string
+
+	// life permissions (screen_watch / computer_use / host report)
+	permMu      sync.RWMutex
+	permissions Permissions
+
+	// providerStore resolves model credentials for real generation (nil = offline).
+	providerStore ProviderStore
+}
+
+// ProviderStore is the subset of providers.Store CallMocr needs.
+type ProviderStore interface {
+	ResolveModel(modelID string) (provider, baseURL, apiKey, resolved string, ok bool)
+}
+
+// Permissions holds Life capability switches.
+type Permissions struct {
+	ScreenWatch     bool   `json:"screen_watch"`
+	ComputerUse     bool   `json:"computer_use"`
+	ReportAgentHost string `json:"report_agent_host"`
+}
+
+// TaskInfo holds information about an active task.
+type TaskInfo struct {
+	TaskID    string
+	CallerID  string
+	Prompt    string
+	AgentID   string
+	State     string // pending | running | done | failed | cancelled
+	Result    string
+	Error     string
+	StartedAt time.Time
+	EndedAt   time.Time
+	CancelFn  context.CancelFunc
+}
+
+type persistedTask struct {
+	TaskID    string    `json:"task_id"`
+	CallerID  string    `json:"caller_id"`
+	Prompt    string    `json:"prompt"`
+	AgentID   string    `json:"agent_id"`
+	State     string    `json:"state"`
+	Result    string    `json:"result,omitempty"`
+	Error     string    `json:"error,omitempty"`
+	StartedAt time.Time `json:"started_at"`
+	EndedAt   time.Time `json:"ended_at,omitempty"`
+}
+
+// UsageRecord is one token-usage sample.
+type UsageRecord struct {
+	Timestamp        time.Time `json:"timestamp"`
+	RequestID        string    `json:"request_id"`
+	SessionID        string    `json:"session_id"`
+	Model            string    `json:"model"`
+	PromptTokens     int32     `json:"prompt_tokens"`
+	CompletionTokens int32     `json:"completion_tokens"`
+	TotalTokens      int32     `json:"total_tokens"`
+}
+
+// UsageStore accumulates usage totals (in-memory + optional JSONL).
+type UsageStore struct {
+	records []UsageRecord
+	file    string
+}
+
+// NewUsageStore creates a usage store, optionally restoring from disk.
+func NewUsageStore(path string) *UsageStore {
+	u := &UsageStore{file: path, records: nil}
+	if path != "" {
+		if data, err := os.ReadFile(path); err == nil {
+			_ = json.Unmarshal(data, &u.records)
+		}
+	}
+	return u
+}
+
+// Add records a usage sample and persists (debounced by caller simplicity: always save).
+func (u *UsageStore) Add(rec UsageRecord) {
+	u.records = append(u.records, rec)
+	if u.file == "" {
+		return
+	}
+	// keep last 10000
+	if len(u.records) > 10000 {
+		u.records = u.records[len(u.records)-10000:]
+	}
+	if data, err := json.Marshal(u.records); err == nil {
+		_ = os.MkdirAll(filepath.Dir(u.file), 0o755)
+		_ = os.WriteFile(u.file, data, 0o644)
+	}
+}
+
+// Snapshot returns aggregate totals for /api/usage.
+func (u *UsageStore) Snapshot() map[string]interface{} {
+	type byKey struct {
+		Prompt     int32 `json:"prompt"`
+		Completion int32 `json:"completion"`
+		Total      int32 `json:"total"`
+		Count      int32 `json:"count"`
+	}
+	byModel := map[string]*byKey{}
+	byDay := map[string]*byKey{}
+	var totalPrompt, totalCompletion, total int32
+	sessions := map[string]struct{}{}
+
+	for _, r := range u.records {
+		totalPrompt += r.PromptTokens
+		totalCompletion += r.CompletionTokens
+		total += r.TotalTokens
+		if r.SessionID != "" {
+			sessions[r.SessionID] = struct{}{}
+		}
+		m := r.Model
+		if m == "" {
+			m = "unknown"
+		}
+		if byModel[m] == nil {
+			byModel[m] = &byKey{}
+		}
+		byModel[m].Prompt += r.PromptTokens
+		byModel[m].Completion += r.CompletionTokens
+		byModel[m].Total += r.TotalTokens
+		byModel[m].Count++
+
+		day := r.Timestamp.UTC().Format("2006-01-02")
+		if byDay[day] == nil {
+			byDay[day] = &byKey{}
+		}
+		byDay[day].Prompt += r.PromptTokens
+		byDay[day].Completion += r.CompletionTokens
+		byDay[day].Total += r.TotalTokens
+		byDay[day].Count++
+	}
+
+	return map[string]interface{}{
+		"total_prompt_tokens":     totalPrompt,
+		"total_completion_tokens": totalCompletion,
+		"total_tokens":            total,
+		"request_count":           len(u.records),
+		"session_count":           len(sessions),
+		"by_model":                byModel,
+		"by_day":                  byDay,
+		"recent":                  lastN(u.records, 20),
+	}
+}
+
+// Clear removes all usage records and deletes the on-disk file.
+func (u *UsageStore) Clear() {
+	u.records = nil
+	if u.file != "" {
+		_ = os.Remove(u.file)
+	}
+}
+
+func lastN(in []UsageRecord, n int) []UsageRecord {
+	if len(in) <= n {
+		return in
+	}
+	return in[len(in)-n:]
+}
+
+// NewCoreServiceServer creates a new CoreServiceServer.
+func NewCoreServiceServer(reg *registry.Registry) *CoreServiceServer {
+	mocrAddr := os.Getenv("MOCR_ADDRESS")
+	if mocrAddr == "" {
+		mocrAddr = "localhost:50052"
+	}
+	usagePath := os.Getenv("USAGE_PATH")
+	if usagePath == "" {
+		usagePath = "data/usage.json"
+	}
+	taskPath := os.Getenv("TASKS_PATH")
+	if taskPath == "" {
+		taskPath = "data/tasks.json"
+	}
+	tasks := make(map[string]*TaskInfo)
+	if data, err := os.ReadFile(taskPath); err == nil {
+		var saved []persistedTask
+		if json.Unmarshal(data, &saved) == nil {
+			for _, item := range saved {
+				copy := item
+				tasks[item.TaskID] = &TaskInfo{TaskID: copy.TaskID, CallerID: copy.CallerID, Prompt: copy.Prompt, AgentID: copy.AgentID, State: copy.State, Result: copy.Result, Error: copy.Error, StartedAt: copy.StartedAt, EndedAt: copy.EndedAt}
+			}
+		}
+	}
+	return &CoreServiceServer{
+		registry:        reg,
+		tasks:           tasks,
+		taskHistoryPath: taskPath,
+		sessions:        make(map[string][]*corev1.ChatMessage),
+		usage:           NewUsageStore(usagePath),
+		mocrAddr:        mocrAddr,
+		permissions: Permissions{
+			ScreenWatch: false,
+			ComputerUse: false,
+		},
+	}
+}
+
+func (s *CoreServiceServer) persistTasksLocked() {
+	if s.taskHistoryPath == "" {
+		return
+	}
+	items := make([]persistedTask, 0, len(s.tasks))
+	for _, t := range s.tasks {
+		items = append(items, persistedTask{t.TaskID, t.CallerID, t.Prompt, t.AgentID, t.State, t.Result, t.Error, t.StartedAt, t.EndedAt})
+	}
+	if data, err := json.MarshalIndent(items, "", "  "); err == nil {
+		_ = os.MkdirAll(filepath.Dir(s.taskHistoryPath), 0o755)
+		_ = os.WriteFile(s.taskHistoryPath, data, 0o644)
+	}
+}
+
+// SetProviderStore wires multi-provider credential resolution.
+func (s *CoreServiceServer) SetProviderStore(st ProviderStore) {
+	s.providerStore = st
+}
+
+// GetUsage returns the usage snapshot for the HTTP gateway.
+func (s *CoreServiceServer) GetUsage() map[string]interface{} {
+	s.usageMu.Lock()
+	defer s.usageMu.Unlock()
+	return s.usage.Snapshot()
+}
+
+// ClearUsage wipes all recorded usage (in-memory + disk).
+func (s *CoreServiceServer) ClearUsage() {
+	s.usageMu.Lock()
+	defer s.usageMu.Unlock()
+	s.usage.Clear()
+}
+
+// GetPermissions returns current Life permissions.
+func (s *CoreServiceServer) GetPermissions() Permissions {
+	s.permMu.RLock()
+	defer s.permMu.RUnlock()
+	return s.permissions
+}
+
+// SetPermissions updates Life permissions.
+func (s *CoreServiceServer) SetPermissions(p Permissions) {
+	s.permMu.Lock()
+	s.permissions = p
+	s.permMu.Unlock()
+}
+
+// SessionMessages returns history for a session.
+func (s *CoreServiceServer) SessionMessages(sessionID string) []*corev1.ChatMessage {
+	if sessionID == "" {
+		return nil
+	}
+	s.sessionMu.RLock()
+	defer s.sessionMu.RUnlock()
+	return append([]*corev1.ChatMessage{}, s.sessions[sessionID]...)
+}
+
+func (s *CoreServiceServer) appendSession(sessionID string, msgs ...*corev1.ChatMessage) {
+	if sessionID == "" {
+		return
+	}
+	s.sessionMu.Lock()
+	defer s.sessionMu.Unlock()
+	s.sessions[sessionID] = append(s.sessions[sessionID], msgs...)
+	if len(s.sessions[sessionID]) > 200 {
+		s.sessions[sessionID] = s.sessions[sessionID][len(s.sessions[sessionID])-200:]
+	}
+}
+
+// estimateTokens approximates tokens as ~4 chars/token.
+func estimateTokens(text string) int32 {
+	n := len(text)
+	if n == 0 {
+		return 0
+	}
+	return int32((n + 3) / 4)
+}
+
+// maybeCompress trims history when estimated context approaches a soft limit.
+// Uses a simple head-summary approach: drop oldest half when over threshold.
+func (s *CoreServiceServer) maybeCompress(sessionID string, maxContext int) []*corev1.ChatMessage {
+	history := s.SessionMessages(sessionID)
+	if maxContext <= 0 {
+		maxContext = 8000
+	}
+	threshold := int32(float64(maxContext) * 0.7)
+
+	total := int32(0)
+	for _, m := range history {
+		total += estimateTokens(m.Content)
+	}
+	if total <= threshold {
+		return history
+	}
+
+	// Keep a system summary marker + recent turns (last 12 messages)
+	keepFrom := len(history) - 12
+	if keepFrom < 1 {
+		keepFrom = 1
+	}
+	summary := &corev1.ChatMessage{
+		Role:    "system",
+		Content: fmt.Sprintf("[conversation summarized: earlier %d messages compressed to save context]", keepFrom),
+	}
+	compressed := append([]*corev1.ChatMessage{summary}, history[keepFrom:]...)
+
+	// Persist compressed history
+	s.sessionMu.Lock()
+	if sessionID != "" {
+		s.sessions[sessionID] = compressed
+	}
+	s.sessionMu.Unlock()
+	return compressed
+}
+
+func (s *CoreServiceServer) dialMocr(ctx context.Context) (mocrv1.MocrServiceClient, func(), error) {
+	conn, err := grpc.NewClient(s.mocrAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, nil, err
+	}
+	return mocrv1.NewMocrServiceClient(conn), func() { conn.Close() }, nil
+}
+
+// CallMocr proxies a request to the mocr service (real gRPC when available).
+func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.CoreService_CallMocrServer) error {
+	if req.RequestId == "" {
+		return status.Error(codes.InvalidArgument, "request_id is required")
+	}
+
+	sessionID := req.SessionId
+	if sessionID == "" {
+		sessionID = "default"
+	}
+
+	// Build history: prefer client-provided messages, else session store
+	var history []*corev1.ChatMessage
+	if len(req.Messages) > 0 {
+		history = req.Messages
+	} else {
+		history = s.SessionMessages(sessionID)
+	}
+
+	// Append current user prompt if not already last
+	if req.Prompt != "" {
+		lastIsUser := len(history) > 0 && history[len(history)-1].Role == "user" && history[len(history)-1].Content == req.Prompt
+		if !lastIsUser {
+			history = append(append([]*corev1.ChatMessage{}, history...), &corev1.ChatMessage{
+				Role:    "user",
+				Content: req.Prompt,
+			})
+		}
+	}
+
+	// Context compression based on soft limit
+	history = s.maybeCompressFrom(sessionID, history, 8000)
+
+	if req.SystemPrompt != "" {
+		history = append([]*corev1.ChatMessage{{Role: "system", Content: req.SystemPrompt}}, history...)
+	}
+
+	ctx, cancel := context.WithTimeout(stream.Context(), 120*time.Second)
+	defer cancel()
+
+	client, closeFn, err := s.dialMocr(ctx)
+	if err != nil {
+		// Fallback: echo so UI still works without mocr
+		log.Printf("[CallMocr] dial mocr failed: %v", err)
+		return s.fallbackStream(req, history, stream, err.Error())
+	}
+	defer closeFn()
+
+	// Resolve model: pin to configured default (ChooseModels is agent-only).
+	// Chat never auto-selects via mocr selector.
+	modelID := req.ModelId
+	var prov, baseURL, apiKey string
+	if s.providerStore != nil {
+		p, u, k, resolved, ok := s.providerStore.ResolveModel(modelID)
+		if ok {
+			prov, baseURL, apiKey, modelID = p, u, k, resolved
+		} else if modelID == "" {
+			modelID = "default-model"
+		}
+	} else if modelID == "" {
+		modelID = "default-model"
+	}
+
+	// Map history to mocr messages
+	mocrMsgs := make([]*mocrv1.Message, 0, len(history))
+	for _, m := range history {
+		mocrMsgs = append(mocrMsgs, &mocrv1.Message{Role: m.Role, Content: m.Content})
+	}
+
+	// Forward optional generation params (temperature/max_tokens/system_prompt already in history).
+	genReq := &mocrv1.GenerateRequest{
+		ModelId:  modelID,
+		Messages: mocrMsgs,
+		Stream:   true,
+		Provider: prov,
+		BaseUrl:  baseURL,
+		ApiKey:   apiKey,
+	}
+	if req.SystemPrompt != "" {
+		// System prompt is already prepended to history; also pass for providers that prefer the field.
+		genReq.SystemPrompt = req.SystemPrompt
+	}
+	if req.Context != nil {
+		if req.Context.Temperature > 0 {
+			genReq.Temperature = req.Context.Temperature
+		}
+		if req.Context.MaxTokens > 0 {
+			genReq.MaxTokens = req.Context.MaxTokens
+		}
+	}
+
+	genStream, err := client.Generate(ctx, genReq)
+	if err != nil {
+		log.Printf("[CallMocr] generate failed: %v", err)
+		return s.fallbackStream(req, history, stream, err.Error())
+	}
+
+	var full strings.Builder
+	for {
+		resp, err := genStream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Printf("[CallMocr] stream recv: %v", err)
+			break
+		}
+		if resp.Chunk != "" {
+			full.WriteString(resp.Chunk)
+			if err := stream.Send(&corev1.CallMocrResponse{
+				RequestId: req.RequestId,
+				Chunk:     resp.Chunk,
+				Done:      false,
+			}); err != nil {
+				return err
+			}
+		}
+		if resp.Done {
+			usage := resp.Usage
+			if usage == nil {
+				pt := estimateTokens(req.Prompt)
+				ct := estimateTokens(full.String())
+				usage = &mocrv1.TokenUsage{
+					PromptTokens:     pt,
+					CompletionTokens: ct,
+					TotalTokens:      pt + ct,
+				}
+			}
+			// Record usage
+			s.usageMu.Lock()
+			s.usage.Add(UsageRecord{
+				Timestamp:        time.Now(),
+				RequestID:        req.RequestId,
+				SessionID:        sessionID,
+				Model:            modelID,
+				PromptTokens:     usage.PromptTokens,
+				CompletionTokens: usage.CompletionTokens,
+				TotalTokens:      usage.TotalTokens,
+			})
+			s.usageMu.Unlock()
+
+			// Persist session turns
+			if req.Prompt != "" {
+				s.appendSession(sessionID, &corev1.ChatMessage{Role: "user", Content: req.Prompt})
+			}
+			if full.Len() > 0 {
+				s.appendSession(sessionID, &corev1.ChatMessage{Role: "assistant", Content: full.String()})
+			}
+
+			return stream.Send(&corev1.CallMocrResponse{
+				RequestId: req.RequestId,
+				Done:      true,
+				Usage: &corev1.TokenUsage{
+					PromptTokens:     usage.PromptTokens,
+					CompletionTokens: usage.CompletionTokens,
+					TotalTokens:      usage.TotalTokens,
+				},
+			})
+		}
+	}
+
+	// EOF without explicit done
+	pt := estimateTokens(req.Prompt)
+	ct := estimateTokens(full.String())
+	if req.Prompt != "" {
+		s.appendSession(sessionID, &corev1.ChatMessage{Role: "user", Content: req.Prompt})
+	}
+	if full.Len() > 0 {
+		s.appendSession(sessionID, &corev1.ChatMessage{Role: "assistant", Content: full.String()})
+	}
+	return stream.Send(&corev1.CallMocrResponse{
+		RequestId: req.RequestId,
+		Done:      true,
+		Usage: &corev1.TokenUsage{
+			PromptTokens:     pt,
+			CompletionTokens: ct,
+			TotalTokens:      pt + ct,
+		},
+	})
+}
+
+func (s *CoreServiceServer) maybeCompressFrom(sessionID string, history []*corev1.ChatMessage, maxContext int) []*corev1.ChatMessage {
+	if maxContext <= 0 {
+		maxContext = 8000
+	}
+	threshold := int32(float64(maxContext) * 0.7)
+	total := int32(0)
+	for _, m := range history {
+		total += estimateTokens(m.Content)
+	}
+	if total <= threshold || len(history) <= 6 {
+		return history
+	}
+	keepFrom := len(history) - 12
+	if keepFrom < 1 {
+		keepFrom = 1
+	}
+	summary := &corev1.ChatMessage{
+		Role:    "system",
+		Content: fmt.Sprintf("[context compressed: dropped %d older messages]", keepFrom),
+	}
+	compressed := append([]*corev1.ChatMessage{summary}, history[keepFrom:]...)
+	if sessionID != "" {
+		s.sessionMu.Lock()
+		s.sessions[sessionID] = compressed
+		s.sessionMu.Unlock()
+	}
+	return compressed
+}
+
+func (s *CoreServiceServer) fallbackStream(req *corev1.CallMocrRequest, history []*corev1.ChatMessage, stream corev1.CoreService_CallMocrServer, reason string) error {
+	// Build a deterministic offline reply so the UI keeps working.
+	lastUser := req.Prompt
+	for i := len(history) - 1; i >= 0; i-- {
+		if history[i].Role == "user" {
+			lastUser = history[i].Content
+			break
+		}
+	}
+	if lastUser == "" {
+		lastUser = "(empty)"
+	}
+	reply := "0kay offline reply (mocr unreachable): " + truncateRunes(lastUser, 120)
+	chunks := splitRunes(reply, 40)
+	for _, c := range chunks {
+		if err := stream.Send(&corev1.CallMocrResponse{
+			RequestId: req.RequestId,
+			Chunk:     c,
+		}); err != nil {
+			return err
+		}
+	}
+	pt := estimateTokens(req.Prompt)
+	ct := estimateTokens(reply)
+	sessionID := req.SessionId
+	if sessionID == "" {
+		sessionID = "default"
+	}
+	if req.Prompt != "" {
+		s.appendSession(sessionID, &corev1.ChatMessage{Role: "user", Content: req.Prompt})
+	}
+	s.appendSession(sessionID, &corev1.ChatMessage{Role: "assistant", Content: reply})
+	s.usageMu.Lock()
+	s.usage.Add(UsageRecord{
+		Timestamp:        time.Now(),
+		RequestID:        req.RequestId,
+		SessionID:        sessionID,
+		Model:            "offline-fallback",
+		PromptTokens:     pt,
+		CompletionTokens: ct,
+		TotalTokens:      pt + ct,
+	})
+	s.usageMu.Unlock()
+
+	return stream.Send(&corev1.CallMocrResponse{
+		RequestId: req.RequestId,
+		Error:     reason,
+		Done:      true,
+		Usage: &corev1.TokenUsage{
+			PromptTokens:     pt,
+			CompletionTokens: ct,
+			TotalTokens:      pt + ct,
+		},
+	})
+}
+
+func truncateRunes(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n]) + "…"
+}
+
+func splitRunes(s string, n int) []string {
+	r := []rune(s)
+	var out []string
+	for i := 0; i < len(r); i += n {
+		end := i + n
+		if end > len(r) {
+			end = len(r)
+		}
+		out = append(out, string(r[i:end]))
+	}
+	return out
+}
+
+// ListAgents returns all registered Agent plugins.
+func (s *CoreServiceServer) ListAgents(ctx context.Context, req *corev1.ListAgentsRequest) (*corev1.ListAgentsResponse, error) {
+	onlineOnly := !req.IncludeUnhealthy
+	agents := s.registry.GetAgents(onlineOnly)
+
+	onlineCount := int32(s.registry.CountOnlineAgents())
+
+	result := make([]*corev1.AgentInfo, 0, len(agents))
+	for _, a := range agents {
+		age := time.Since(a.LastHeartbeat).Seconds()
+		result = append(result, &corev1.AgentInfo{
+			PluginId:                a.PluginID,
+			Name:                    a.Info.GetName(),
+			Version:                 a.Info.GetVersion(),
+			Address:                 a.Address,
+			Status:                  a.Status,
+			ActiveTasks:             a.ActiveTasks,
+			LastHeartbeatAgeSeconds: int64(age),
+			Host:                    a.Host,
+		})
+	}
+
+	return &corev1.ListAgentsResponse{
+		Agents:      result,
+		OnlineCount: onlineCount,
+	}, nil
+}
+
+// RunDirect dispatches a direct tool call to the first healthy agent (no LLM).
+func (s *CoreServiceServer) RunDirect(ctx context.Context, req *corev1.RunDirectRequest) (*corev1.RunDirectResponse, error) {
+	if req.Tool == "" {
+		return nil, status.Error(codes.InvalidArgument, "tool is required")
+	}
+
+	// Permission gates for dangerous tools
+	perm := s.GetPermissions()
+	if req.Tool == "computeruse" || req.Tool == "shell" {
+		if !perm.ComputerUse {
+			return &corev1.RunDirectResponse{
+				Success: false,
+				Error:   "computer_use permission is disabled",
+			}, nil
+		}
+	}
+
+	agents := s.registry.GetAgents(true)
+	if len(agents) == 0 || agents[0].Address == "" {
+		return &corev1.RunDirectResponse{
+			Success: false,
+			Error:   "no healthy agents available",
+		}, nil
+	}
+
+	conn, err := grpc.NewClient(agents[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, status.Errorf(codes.Unavailable, "connect agent: %v", err)
+	}
+	defer conn.Close()
+
+	client := agentv1.NewAgentServiceClient(conn)
+	resp, err := client.RunDirect(ctx, &agentv1.RunDirectRequest{
+		Tool:      req.Tool,
+		Args:      req.Args,
+		SessionId: req.SessionId,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "agent run: %v", err)
+	}
+	return &corev1.RunDirectResponse{
+		Success: resp.Success,
+		Result:  resp.Result,
+		Error:   resp.Error,
+	}, nil
+}
+
+// UseAgent dispatches a task to a healthy Agent asynchronously.
+func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRequest) (*corev1.UseAgentResponse, error) {
+	if req.TaskId == "" {
+		return nil, status.Error(codes.InvalidArgument, "task_id is required")
+	}
+	if req.Prompt == "" {
+		return nil, status.Error(codes.InvalidArgument, "prompt is required")
+	}
+
+	// Find a healthy agent
+	agents := s.registry.GetAgents(true)
+	if len(agents) == 0 {
+		return &corev1.UseAgentResponse{
+			Accepted: false,
+			TaskId:   req.TaskId,
+			Message:  "no healthy agents available",
+		}, nil
+	}
+
+	// Simple round-robin: pick first agent (could be improved)
+	agent := agents[0]
+
+	s.mu.Lock()
+	s.tasks[req.TaskId] = &TaskInfo{
+		TaskID:    req.TaskId,
+		CallerID:  req.CallerId,
+		Prompt:    req.Prompt,
+		AgentID:   agent.PluginID,
+		State:     "running",
+		StartedAt: time.Now(),
+	}
+	s.mu.Unlock()
+	s.mu.Lock()
+	s.persistTasksLocked()
+	s.mu.Unlock()
+
+	log.Printf("[UseAgent] Task %s dispatched to agent %s (addr=%s)",
+		req.TaskId, agent.PluginID, agent.Address)
+
+	// Dispatch asynchronously
+	go s.dispatchToAgent(req, agent)
+
+	return &corev1.UseAgentResponse{
+		Accepted: true,
+		TaskId:   req.TaskId,
+		Message:  "task accepted for processing",
+	}, nil
+}
+
+// dispatchToAgent calls AgentService.ExecuteTask and notifies L.I.F.E on completion.
+func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *registry.PluginInstance) {
+	agentAddr := agent.Address
+	if agentAddr == "" {
+		log.Printf("[UseAgent] Agent %s has no address, failing task %s", agent.PluginID, req.TaskId)
+		s.failTask(req.TaskId, "agent has no address")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	conn, err := grpc.NewClient(agentAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Printf("[UseAgent] Failed to connect to agent %s: %v", agentAddr, err)
+		s.failTask(req.TaskId, fmt.Sprintf("failed to connect to agent: %v", err))
+		return
+	}
+	defer conn.Close()
+
+	client := agentv1.NewAgentServiceClient(conn)
+
+	agentType := req.AgentType
+	if agentType == "" {
+		agentType = "general"
+	}
+
+	resp, err := client.ExecuteTask(ctx, &agentv1.ExecuteTaskRequest{
+		TaskId:    req.TaskId,
+		Prompt:    req.Prompt,
+		AgentType: agentType,
+		Metadata:  req.Metadata,
+	})
+
+	if err != nil {
+		log.Printf("[UseAgent] Task %s failed: %v", req.TaskId, err)
+		s.finishTask(req.TaskId, "failed", "", err.Error())
+		s.notifyLifeTaskCompleted(req.TaskId, pluginv1.TaskState_TASK_STATE_FAILED, "", err.Error())
+		return
+	}
+
+	log.Printf("[UseAgent] Task %s completed with state %s", req.TaskId, resp.State.String())
+	stateName := "done"
+	switch resp.State {
+	case pluginv1.TaskState_TASK_STATE_FAILED:
+		stateName = "failed"
+	case pluginv1.TaskState_TASK_STATE_CANCELLED:
+		stateName = "cancelled"
+	case pluginv1.TaskState_TASK_STATE_RUNNING, pluginv1.TaskState_TASK_STATE_PENDING:
+		stateName = "running"
+	}
+	s.finishTask(req.TaskId, stateName, resp.Result, resp.Error)
+	s.notifyLifeTaskCompleted(req.TaskId, resp.State, resp.Result, resp.Error)
+}
+
+// finishTask records terminal state on TaskInfo (kept for ListTasks history).
+func (s *CoreServiceServer) finishTask(taskID, state, result, errMsg string) {
+	s.mu.Lock()
+	if t, ok := s.tasks[taskID]; ok {
+		t.State = state
+		t.Result = result
+		t.Error = errMsg
+		t.EndedAt = time.Now()
+	}
+	// Keep a short history ring of completed tasks
+	s.completed = append(s.completed, taskID)
+	if len(s.completed) > 50 {
+		old := s.completed[0]
+		s.completed = s.completed[1:]
+		if old != taskID {
+			delete(s.tasks, old)
+		}
+	}
+	s.mu.Unlock()
+	s.mu.Lock()
+	s.persistTasksLocked()
+	s.mu.Unlock()
+}
+
+// failTask marks a task as failed and notifies L.I.F.E.
+func (s *CoreServiceServer) failTask(taskID, errMsg string) {
+	s.finishTask(taskID, "failed", "", errMsg)
+	s.notifyLifeTaskCompleted(taskID, pluginv1.TaskState_TASK_STATE_FAILED, "", errMsg)
+}
+
+// notifyLifeTaskCompleted calls LifeService.OnTaskCompleted on the registered L.I.F.E plugin.
+func (s *CoreServiceServer) notifyLifeTaskCompleted(taskID string, state pluginv1.TaskState, result, errMsg string) {
+	lifes := s.registry.GetPluginsByCapability("life")
+	if len(lifes) == 0 {
+		log.Printf("[TaskCompleted] No L.I.F.E plugin registered, skipping notification for task %s", taskID)
+		return
+	}
+
+	life := lifes[0]
+	if life.Address == "" {
+		log.Printf("[TaskCompleted] L.I.F.E has no address, skipping")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	conn, err := grpc.NewClient(life.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Printf("[TaskCompleted] Failed to connect to L.I.F.E at %s: %v", life.Address, err)
+		return
+	}
+	defer conn.Close()
+
+	client := lifev1.NewLifeServiceClient(conn)
+
+	resp, err := client.OnTaskCompleted(ctx, &lifev1.OnTaskCompletedRequest{
+		TaskId: taskID,
+		State:  state,
+		Result: result,
+		Error:  errMsg,
+	})
+	if err != nil {
+		log.Printf("[TaskCompleted] Failed to notify L.I.F.E for task %s: %v", taskID, err)
+		return
+	}
+
+	log.Printf("[TaskCompleted] L.I.F.E acknowledged task %s: %s", taskID, resp.ResponseText)
+}
+
+// CancelAgent cancels a running Agent task.
+func (s *CoreServiceServer) CancelAgent(ctx context.Context, req *corev1.CancelAgentRequest) (*corev1.CancelAgentResponse, error) {
+	if req.TaskId == "" {
+		return nil, status.Error(codes.InvalidArgument, "task_id is required")
+	}
+
+	s.mu.Lock()
+	task, ok := s.tasks[req.TaskId]
+	if !ok {
+		s.mu.Unlock()
+		return &corev1.CancelAgentResponse{
+			Success: false,
+			Message: fmt.Sprintf("task %s not found", req.TaskId),
+		}, nil
+	}
+	agentID := task.AgentID
+	s.mu.Unlock()
+
+	// Find agent and call CancelTask
+	agents := s.registry.GetAgents(false)
+	for _, a := range agents {
+		if a.PluginID == agentID && a.Address != "" {
+			conn, err := grpc.NewClient(a.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if err != nil {
+				continue
+			}
+			agentClient := agentv1.NewAgentServiceClient(conn)
+			agentClient.CancelTask(ctx, &agentv1.CancelTaskRequest{TaskId: req.TaskId})
+			conn.Close()
+			break
+		}
+	}
+
+	s.mu.Lock()
+	if t, ok := s.tasks[req.TaskId]; ok {
+		t.State = "cancelled"
+		t.EndedAt = time.Now()
+	}
+	s.mu.Unlock()
+
+	return &corev1.CancelAgentResponse{
+		Success: true,
+		Message: "task cancelled",
+	}, nil
+}
+
+// GetTask returns task info (internal helper).
+func (s *CoreServiceServer) GetTask(taskID string) (*TaskInfo, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	task, ok := s.tasks[taskID]
+	return task, ok
+}
+
+// ListTasks returns JSON-friendly task state-machine entries for the gateway.
+func (s *CoreServiceServer) ListTasks() []map[string]interface{} {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]map[string]interface{}, 0, len(s.tasks))
+	for _, t := range s.tasks {
+		state := t.State
+		if state == "" {
+			state = "running"
+		}
+		item := map[string]interface{}{
+			"task_id":    t.TaskID,
+			"caller_id":  t.CallerID,
+			"prompt":     t.Prompt,
+			"agent_id":   t.AgentID,
+			"state":      state,
+			"started_at": t.StartedAt.Format(time.RFC3339),
+		}
+		if !t.EndedAt.IsZero() {
+			item["ended_at"] = t.EndedAt.Format(time.RFC3339)
+		}
+		if t.Result != "" {
+			item["result"] = t.Result
+		}
+		if t.Error != "" {
+			item["error"] = t.Error
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
+// RemoveTask removes a task (internal helper).
+func (s *CoreServiceServer) RemoveTask(taskID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.tasks, taskID)
+}
+
+// unused import guard
+var _ = io.EOF
+var _ = mocrv1.UnimplementedMocrServiceServer{}

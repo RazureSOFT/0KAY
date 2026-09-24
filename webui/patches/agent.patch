@@ -1,0 +1,38 @@
+{
+  "id": "agent-nav",
+  "name": "Agent navigation",
+  "version": "0.1.0",
+  "plugin": "agent",
+  "enabled": true,
+  "patches": [
+    {
+      "target": "nav",
+      "op": "insert",
+      "id": "agents",
+      "anchor": "plugins",
+      "position": "before",
+      "item": {
+        "id": "agents",
+        "to": "/agents",
+        "labelKey": "nav.agents",
+        "label": "Agent",
+        "icon": "agents",
+        "order": 20,
+        "badgeFrom": "life.onlineAgents"
+      }
+    },
+    {
+      "target": "router",
+      "op": "insert",
+      "id": "agents",
+      "item": {
+        "id": "agents",
+        "path": "/agents",
+        "name": "agents",
+        "component": "agents",
+        "titleKey": "nav.agents",
+        "title": "Agent"
+      }
+    }
+  ]
+}

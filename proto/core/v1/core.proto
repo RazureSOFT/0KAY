@@ -1,0 +1,315 @@
+syntax = "proto3";
+
+package core.v1;
+
+option go_package = "0kay/gen/core/v1;corev1";
+option java_package = "ai.zero.kay.core.v1";
+option java_multiple_files = true;
+option csharp_namespace = "Zero.Kay.Core.V1";
+option objc_class_prefix = "ZKCore";
+
+import "plugin/v1/plugin.proto";
+
+// PluginService is the service that plugins use to register with the Core.
+service PluginService {
+  // Register registers a plugin with the Core.
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+
+  // Heartbeat sends periodic heartbeats to indicate plugin health.
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+}
+
+// CoreService is the internal service that Core provides to plugins.
+service CoreService {
+  // CallMocr invokes the mocr service for model selection and generation.
+  rpc CallMocr(CallMocrRequest) returns (stream CallMocrResponse);
+
+  // UseAgent asynchronously dispatches a task to an Agent.
+  rpc UseAgent(UseAgentRequest) returns (UseAgentResponse);
+
+  // CancelAgent cancels a running Agent task.
+  rpc CancelAgent(CancelAgentRequest) returns (CancelAgentResponse);
+
+  // ListAgents returns all healthy online Agent plugins.
+  rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
+
+  // RunDirect executes a tool command on an Agent without an LLM loop.
+  rpc RunDirect(RunDirectRequest) returns (RunDirectResponse);
+}
+
+// RegisterRequest is the request for PluginService.Register.
+message RegisterRequest {
+  // plugin_info contains metadata about the plugin being registered.
+  plugin.v1.PluginInfo plugin_info = 1;
+
+  // capabilities lists the service names this plugin provides.
+  repeated string capabilities = 2;
+
+  // address is the gRPC service address where Core can call this plugin
+  // back (e.g., "localhost:50054" for Agent, "localhost:50053" for L.I.F.E).
+  string address = 3;
+
+  // settings_sections declares UI settings this plugin contributes to the
+  // WebUI Settings page (optional).
+  repeated plugin.v1.SettingsSection settings_sections = 4;
+}
+
+// RegisterResponse is the response for PluginService.Register.
+message RegisterResponse {
+  // success indicates whether registration was accepted.
+  bool success = 1;
+
+  // plugin_id is the unique identifier assigned to this plugin.
+  string plugin_id = 2;
+
+  // message contains optional human-readable status.
+  string message = 3;
+}
+
+// HeartbeatRequest is the request for PluginService.Heartbeat.
+message HeartbeatRequest {
+  // plugin_id is the unique identifier of the sending plugin.
+  string plugin_id = 1;
+
+  // status is the current health status.
+  PluginStatus status = 2;
+
+  // active_tasks is the number of tasks currently being processed.
+  int32 active_tasks = 3;
+
+  // host_info describes the host machine running this plugin.
+  HostInfo host = 4;
+}
+
+// HostInfo describes the machine hosting a plugin.
+message HostInfo {
+  string hostname = 1;
+  string os = 2;
+  string arch = 3;
+  string cpu_model = 4;
+  int32 cpu_cores = 5;
+  int64 memory_total_bytes = 6;
+  int64 memory_available_bytes = 7;
+  string workdir = 8;
+}
+
+// HeartbeatResponse is the response for PluginService.Heartbeat.
+message HeartbeatResponse {
+  // ok indicates the Core received the heartbeat.
+  bool ok = 1;
+
+  // shutdown_signal indicates the plugin should gracefully shut down.
+  bool shutdown_signal = 2;
+}
+
+// CallMocrRequest is the request for CoreService.CallMocr.
+message CallMocrRequest {
+  // request_id is a unique identifier for this call.
+  string request_id = 1;
+
+  // caller_id is the plugin ID making the request.
+  string caller_id = 2;
+
+  // prompt is the input prompt for the model.
+  string prompt = 3;
+
+  // context provides additional context for model selection.
+  MocrContext context = 4;
+
+  // stream indicates whether to stream the response.
+  bool stream = 5;
+
+  // session_id groups messages into a conversation session.
+  string session_id = 6;
+
+  // messages is the full conversation history (oldest first).
+  // When empty, Core synthesizes history from its session store.
+  repeated ChatMessage messages = 7;
+
+  // model_id optionally pins a specific model (default: mocr selection).
+  string model_id = 8;
+
+  // system_prompt is an optional system instruction.
+  string system_prompt = 9;
+}
+
+// ChatMessage is a single conversation turn.
+message ChatMessage {
+  // role is "system" | "user" | "assistant".
+  string role = 1;
+
+  // content is the message text.
+  string content = 2;
+}
+
+// CallMocrResponse is the response for CoreService.CallMocr.
+message CallMocrResponse {
+  // request_id matches the request.
+  string request_id = 1;
+
+  // chunk is a piece of the generated text (when streaming).
+  string chunk = 2;
+
+  // done indicates the generation is complete.
+  bool done = 3;
+
+  // error contains any error that occurred.
+  string error = 4;
+
+  // usage contains token usage information.
+  TokenUsage usage = 5;
+}
+
+// UseAgentRequest is the request for CoreService.UseAgent.
+message UseAgentRequest {
+  // task_id is the unique identifier for this task.
+  string task_id = 1;
+
+  // caller_id is the plugin ID making the request.
+  string caller_id = 2;
+
+  // prompt is the task description for the Agent.
+  string prompt = 3;
+
+  // agent_type specifies which Agent type to use.
+  string agent_type = 4;
+
+  // metadata contains optional key-value pairs for task context.
+  map<string, string> metadata = 5;
+}
+
+// UseAgentResponse is the response for CoreService.UseAgent.
+message UseAgentResponse {
+  // accepted indicates the task was accepted for processing.
+  bool accepted = 1;
+
+  // task_id is the unique identifier for tracking this task.
+  string task_id = 2;
+
+  // message contains optional human-readable status.
+  string message = 3;
+}
+
+// CancelAgentRequest is the request for CoreService.CancelAgent.
+message CancelAgentRequest {
+  // task_id is the task to cancel.
+  string task_id = 1;
+
+  // caller_id is the plugin ID requesting cancellation.
+  string caller_id = 2;
+}
+
+// CancelAgentResponse is the response for CoreService.CancelAgent.
+message CancelAgentResponse {
+  // success indicates whether cancellation was accepted.
+  bool success = 1;
+
+  // message contains optional human-readable status.
+  string message = 2;
+}
+
+// ListAgentsRequest is the request for CoreService.ListAgents.
+message ListAgentsRequest {
+  // include_unhealthy includes unhealthy agents if true.
+  bool include_unhealthy = 1;
+}
+
+// ListAgentsResponse is the response for CoreService.ListAgents.
+message ListAgentsResponse {
+  // agents is the list of registered Agent plugins.
+  repeated AgentInfo agents = 1;
+
+  // online_count is the number of healthy (online) agents.
+  int32 online_count = 2;
+}
+
+// AgentInfo describes a registered Agent plugin.
+message AgentInfo {
+  // plugin_id is the unique identifier assigned during registration.
+  string plugin_id = 1;
+
+  // name is the human-readable plugin name.
+  string name = 2;
+
+  // version is the plugin version.
+  string version = 3;
+
+  // address is the gRPC callback address of the agent.
+  string address = 4;
+
+  // status is the health status.
+  PluginStatus status = 5;
+
+  // active_tasks is the number of tasks currently being processed.
+  int32 active_tasks = 6;
+
+  // last_heartbeat_age_seconds is how long ago the last heartbeat was received.
+  int64 last_heartbeat_age_seconds = 7;
+
+  // host is the host configuration reported by the plugin.
+  HostInfo host = 8;
+}
+
+// RunDirectRequest is the request for CoreService.RunDirect.
+message RunDirectRequest {
+  // tool is the tool name (e.g., "shell", "filesystem", "computeruse").
+  string tool = 1;
+
+  // args is the tool arguments as JSON.
+  string args = 2;
+
+  // session_id is optional correlation id.
+  string session_id = 3;
+}
+
+// RunDirectResponse is the response for CoreService.RunDirect.
+message RunDirectResponse {
+  bool success = 1;
+  string result = 2;
+  string error = 3;
+}
+
+// MocrContext provides additional context for model selection.
+message MocrContext {
+  // difficulty_hint suggests the difficulty level (0.0 to 1.0).
+  double difficulty_hint = 1;
+
+  // max_tokens is the maximum number of tokens to generate.
+  int32 max_tokens = 2;
+
+  // temperature controls randomness (0.0 to 2.0).
+  double temperature = 3;
+
+  // cost_budget is the maximum cost in arbitrary units.
+  double cost_budget = 4;
+
+  // task_type describes the type of task (e.g., "chat", "code", "analysis").
+  string task_type = 5;
+}
+
+// TokenUsage contains token usage information.
+message TokenUsage {
+  // prompt_tokens is the number of tokens in the prompt.
+  int32 prompt_tokens = 1;
+
+  // completion_tokens is the number of tokens generated.
+  int32 completion_tokens = 2;
+
+  // total_tokens is the total token count.
+  int32 total_tokens = 3;
+}
+
+// PluginStatus represents the health status of a plugin.
+enum PluginStatus {
+  // PLUGIN_STATUS_UNSPECIFIED is the default value.
+  PLUGIN_STATUS_UNSPECIFIED = 0;
+
+  // PLUGIN_STATUS_HEALTHY indicates the plugin is operating normally.
+  PLUGIN_STATUS_HEALTHY = 1;
+
+  // PLUGIN_STATUS_DEGRADED indicates the plugin is partially operational.
+  PLUGIN_STATUS_DEGRADED = 2;
+
+  // PLUGIN_STATUS_UNHEALTHY indicates the plugin is not operational.
+  PLUGIN_STATUS_UNHEALTHY = 3;
+}
