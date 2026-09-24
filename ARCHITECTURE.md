@@ -1,5 +1,7 @@
 # 0kay 架构说明
 
+> 执行状态、会话隔离、记忆存储与部署的最新实现约定见 [RUNTIME_CONTRACTS.md](RUNTIME_CONTRACTS.md)。旧有聊天镜像和技能预取描述以该文档及当前代码为准。
+
 > 本文描述 0kay 平台的组件划分、通信边界、数据流与扩展机制。  
 > 对应仓库布局：`core/` · `mocr/` · `life/` · `agent/` · `webui/` · `searxng/` · `proto/` · `gen/`
 

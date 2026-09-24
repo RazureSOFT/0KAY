@@ -95,8 +95,6 @@
   --shadow-4: 0 6px 10px 4px rgba(0,0,0,0.15), 0 2px 3px rgba(0,0,0,0.3);
   --shadow-8: 0 8px 12px 6px rgba(0,0,0,0.15), 0 4px 4px rgba(0,0,0,0.3);
   --shadow-16: 0 12px 17px 8px rgba(0,0,0,0.15), 0 6px 6px rgba(0,0,0,0.3);
-  --shadow-2: var(--shadow-2);
-  --shadow-4: var(--shadow-3);
 
   /* Motion - Expressive emphasized easing */
   --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
@@ -296,5 +294,5 @@ textarea.input, .textarea {
 }
 
 .animate-fadeIn { animation: fadeIn var(--transition-normal); }
-.animate-slideUp { animation: slideUp var(--transition-normal) var(--ease-emphasized-decel); }
+.animate-slideUp { animation: slideUp var(--duration-medium) var(--ease-emphasized-decel); }
 .animate-pulse { animation: pulse 2s infinite; }

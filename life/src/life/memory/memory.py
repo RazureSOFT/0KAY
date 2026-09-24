@@ -9,6 +9,9 @@ import hashlib
 import shutil
 import re
 import sqlite3
+import threading
+from functools import wraps
+from contextlib import contextmanager
 try:
     import tantivy
 except ImportError:
@@ -270,10 +273,19 @@ class LongTermMemory:
         return [(r[0], r[1], r[2]) for r in self.relations if memory_id in (r[0], r[2])]
 
 
+def synchronized(method):
+    @wraps(method)
+    def locked(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+    return locked
+
+
 class MemorySystem:
     """Unified memory system with three tiers."""
 
     def __init__(self, data_dir: str = "./data/memory"):
+        self._lock = threading.RLock()
         self.data_dir = str(Path(data_dir).resolve())
         self.working = WorkingMemory()
         self.short_term = ShortTermMemory(f"{self.data_dir}/short_term")
@@ -284,17 +296,44 @@ class MemorySystem:
         self.backup_dir = Path(self.data_dir) / "backups"
         self.backup_dir.mkdir(parents=True, exist_ok=True)
         self._index: dict = {"documents": {}, "avgdl": 0.0, "df": {}, "updated_at": ""}
-        self._load_index()
         self.db_path = Path(self.data_dir) / "memory_center.db"
         self.tantivy_dir = Path(self.data_dir) / "tantivy_memory"
         self._init_fact_store()
         self._migrate_json_projection()
+        self._reload_facts()
+        with self._connect() as db:
+            # Old notes lacked ownership. Keep them available to the dashboard,
+            # but do not expose them to arbitrary conversation sessions.
+            if not db.execute("SELECT 1 FROM memory_migrations WHERE name='note_scope_v1'").fetchone():
+                for memory in self.short_term.memories+self.long_term.memories:
+                    if memory.metadata.get('memory_type')=='note' and memory.metadata.get('scope','public')=='public':
+                        memory.metadata['scope']='legacy:unassigned'
+                        self._upsert_fact_tx(db,memory,'long_term' if memory in self.long_term.memories else 'short_term')
+                db.execute("INSERT INTO memory_migrations VALUES('note_scope_v1')")
+        self.rebuild_index()
 
+    def _reload_facts(self):
+        """SQLite is authoritative; JSON files are legacy projections."""
+        self.short_term.memories = []
+        self.long_term.memories = []
+        with self._connect() as db:
+            for row in db.execute("SELECT * FROM memory_facts WHERE status='active' ORDER BY created_at"):
+                value = dict(row)
+                value["metadata"] = json.loads(row["metadata_json"])
+                value["tags"] = [tag[0] for tag in db.execute("SELECT tag FROM memory_tags WHERE fact_id=?", (row["id"],))]
+                memory = Memory.from_dict(value)
+                (self.long_term if row["tier"] == "long_term" else self.short_term).memories.append(memory)
+
+    @contextmanager
     def _connect(self):
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
-        return conn
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def _init_fact_store(self) -> None:
         with self._connect() as db:
@@ -306,15 +345,19 @@ class MemorySystem:
             CREATE TABLE IF NOT EXISTS memory_projection_state (name TEXT PRIMARY KEY, version INTEGER NOT NULL, updated_at TEXT NOT NULL, detail_json TEXT NOT NULL DEFAULT '{}');
             CREATE TABLE IF NOT EXISTS reflection_queue (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, user_text TEXT NOT NULL, assistant_text TEXT NOT NULL, status TEXT NOT NULL, proposal_json TEXT, created_at TEXT NOT NULL, processed_at TEXT);
             CREATE TABLE IF NOT EXISTS memory_audit (id TEXT PRIMARY KEY, fact_id TEXT, kind TEXT NOT NULL, detail TEXT, created_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS memory_migrations (name TEXT PRIMARY KEY);
+            CREATE TABLE IF NOT EXISTS note_scopes (note_id TEXT PRIMARY KEY, scope TEXT NOT NULL);
             """)
 
     def _migrate_json_projection(self) -> None:
         with self._connect() as db:
-            if db.execute("SELECT COUNT(*) FROM memory_facts").fetchone()[0]:
+            if db.execute("SELECT 1 FROM memory_migrations WHERE name='json_import'").fetchone():
                 return
-            for tier, records in (("short_term", self.short_term.memories), ("long_term", self.long_term.memories)):
-                for record in records:
-                    self._upsert_fact_tx(db, record, tier)
+            if not db.execute("SELECT COUNT(*) FROM memory_facts").fetchone()[0]:
+                for tier, records in (("short_term", self.short_term.memories), ("long_term", self.long_term.memories)):
+                    for record in records:
+                        self._upsert_fact_tx(db, record, tier)
+            db.execute("INSERT INTO memory_migrations VALUES('json_import')")
 
     def _upsert_fact_tx(self, db, memory: Memory, tier: str) -> None:
         scope = str(memory.metadata.get("scope") or "public")
@@ -327,30 +370,40 @@ class MemorySystem:
             self._upsert_fact_tx(db,memory,tier)
             db.execute("INSERT INTO memory_audit VALUES(?,?,?,?,?)",(f"audit_{datetime.now().timestamp()}",memory.id,"upsert",tier,datetime.now().isoformat()))
 
+    @synchronized
     def add_working(self, role: str, content: str) -> None:
         self.working.add(role, content)
 
+    @synchronized
     def store(self, content: str, importance: float = 0.5, tags: list[str] = None, metadata: dict = None) -> Memory:
-        memory = self.short_term.store(content, importance, tags, metadata)
+        now = datetime.now()
+        memory = Memory(id=f"stm_{__import__('uuid').uuid4().hex}", content=content, importance=importance,
+                        created_at=now, last_recalled=now, tags=tags or [], metadata=metadata or {})
         self._sync_fact(memory, "short_term")
-        self.rebuild_index()
+        self.short_term.memories.append(memory)
+        self._index_dirty = True
         return memory
 
-    def recall(self, query: str, top_k: int = 5) -> list[Memory]:
-        ranked = self.search(query, top_k=top_k)
+    @synchronized
+    def recall(self, query: str, top_k: int = 5, scope: str = "") -> list[Memory]:
+        ranked = self.search(query, top_k=top_k, scope=scope)
         lookup = {m.id: m for m in self.short_term.memories + self.long_term.memories}
         return [lookup[item["id"]] for item in ranked if item["id"] in lookup]
 
+    @synchronized
     def consolidate(self) -> None:
-        to_move = self.short_term.consolidate()
-        for m in to_move:
-            self.long_term.store(m)
-            self._sync_fact(m, "long_term")
+        with self._connect() as db:
+            for m in self.short_term.memories:
+                if m.strength > 0.7:
+                    self._upsert_fact_tx(db, m, "long_term")
+                elif m.strength <= 0.2:
+                    db.execute("UPDATE memory_facts SET status='archived' WHERE id=?", (m.id,))
+        self._reload_facts()
         self.rebuild_index()
         self.daily_backup()
 
-    def get_memory_context(self, query: str) -> str:
-        memories = self.recall(query, top_k=3)
+    def get_memory_context(self, query: str, scope: str = "") -> str:
+        memories = self.recall(query, top_k=3, scope=scope)
         if not memories:
             return "No relevant memories found."
 
@@ -359,6 +412,7 @@ class MemorySystem:
             lines.append(f"- {m.content}")
         return "\n".join(lines)
 
+    @synchronized
     def get_stats(self) -> dict:
         return {
             "working": len(self.working.messages),
@@ -366,9 +420,10 @@ class MemorySystem:
             "long_term": len(self.long_term.memories),
         }
 
-    def reinforce(self, query: str, max_items: int = 5) -> list[Memory]:
+    @synchronized
+    def reinforce(self, query: str, max_items: int = 5, scope: str = "") -> list[Memory]:
         """Actively strengthen memories related to query (forgetting-curve reinforcement)."""
-        candidates = self.recall(query, top_k=max_items)
+        candidates = self.recall(query, top_k=max_items, scope=scope)
         for m in candidates:
             # Active recall bumps strength beyond normal recall path
             m.strength = min(1.0, m.strength + 0.15)
@@ -376,17 +431,18 @@ class MemorySystem:
             m.last_recalled = datetime.now()
             # Persist back into owning tier
             if any(x.id == m.id for x in self.short_term.memories):
-                self.short_term._save()
+                self._sync_fact(m, "short_term")
             elif any(x.id == m.id for x in self.long_term.memories):
-                self.long_term._save()
+                self._sync_fact(m, "long_term")
         return candidates
 
     def low_strength_memories(self, threshold: float = 0.35, limit: int = 10) -> list[Memory]:
         """Memories at risk of being forgotten (need reinforcement)."""
-        pool = list(self.short_term.memories) + list(self.long_term.memories)
+        pool = [m for m in self.short_term.memories + self.long_term.memories if m.strength < threshold]
         pool.sort(key=lambda m: m.strength)
         return pool[:limit]
 
+    @synchronized
     def periodic_reinforce(self) -> int:
         """Background pass: reinforce weak but important memories."""
         reinforced = 0
@@ -396,9 +452,9 @@ class MemorySystem:
                 m.recall_count += 1
                 reinforced += 1
                 if any(x.id == m.id for x in self.short_term.memories):
-                    self.short_term._save()
+                    self._sync_fact(m, "short_term")
                 elif any(x.id == m.id for x in self.long_term.memories):
-                    self.long_term._save()
+                    self._sync_fact(m, "long_term")
         return reinforced
 
     # Angel-Memory-inspired active memory API. These operations are deliberately
@@ -413,14 +469,13 @@ class MemorySystem:
         return self.store(text, importance=max(0.0, min(1.0, float(strength))), tags=normalized_tags, metadata=metadata)
 
     def active_recall(self, query: str = "", limit: int = 5, scope: str = "") -> list[Memory]:
-        records = self.recall(query or " ", top_k=max(1, min(int(limit), 20)))
-        if scope:
-            records = [record for record in records if record.metadata.get("scope", "public") == scope]
+        records = self.recall(query or " ", top_k=max(1, min(int(limit), 20)), scope=scope)
         return records
 
-    def create_note(self, title: str, content: str, tags: list[str] | None = None) -> dict:
+    @synchronized
+    def create_note(self, title: str, content: str, tags: list[str] | None = None, scope: str = "public") -> dict:
         title = re.sub(r"[^\w\-\u4e00-\u9fff]+", "-", (title or "note").strip()).strip("-") or "note"
-        note_id = f"{datetime.now().strftime('%Y%m%d%H%M%S')}-{title[:48]}"
+        note_id = f"{__import__('uuid').uuid4().hex}-{title[:48]}"
         path = self.notes_dir / f"{note_id}.md"
         path.write_text(content.strip() + "\n", encoding="utf-8")
         note_id = path.stem
@@ -429,11 +484,13 @@ class MemorySystem:
             db.execute("INSERT OR REPLACE INTO note_files VALUES(?,?,?,?,?,?,?)",(note_id,str(path),title,hashlib.sha256(content.encode("utf-8")).hexdigest(),"active",datetime.now().isoformat(),datetime.now().isoformat()))
             db.execute("DELETE FROM note_chunks WHERE note_id=?",(note_id,))
             db.executemany("INSERT INTO note_chunks VALUES(?,?,?,?,?,?,?)",[(f"{note_id}:{index}",note_id,index,start,end,text,max(1,len(text)//4)) for index,start,end,text in chunks])
+            db.execute("INSERT INTO note_scopes(note_id,scope) VALUES(?,?)",(note_id,scope))
         self.remember(
             content=f"Note {note_id}: {(content or '').strip()[:240]}",
             tags=["note", *(tags or [])],
             strength=0.9,
             memory_type="note",
+            scope=scope,
         )
         return {"note_id": note_id, "path": str(path), "title": title, "bytes": path.stat().st_size}
 
@@ -442,6 +499,7 @@ class MemorySystem:
         lines = content.splitlines()
         return [(index // lines_per_chunk, index + 1, min(len(lines), index + lines_per_chunk), "\n".join(lines[index:index + lines_per_chunk])) for index in range(0,len(lines),lines_per_chunk)]
 
+    @synchronized
     def delete_fact(self, fact_id: str, reason: str = "user_delete") -> bool:
         with self._connect() as db:
             exists = db.execute("SELECT 1 FROM memory_facts WHERE id=? AND status='active'",(fact_id,)).fetchone()
@@ -452,6 +510,7 @@ class MemorySystem:
         self.short_term._save(); self.long_term._save(); self.rebuild_index()
         return True
 
+    @synchronized
     def clear_all(self) -> dict:
         """Purge all LIFE memory facts, notes, proposals, and projections."""
         with self._connect() as db:
@@ -460,7 +519,7 @@ class MemorySystem:
                 "notes": db.execute("SELECT COUNT(*) FROM note_files WHERE status='active'").fetchone()[0],
                 "proposals": db.execute("SELECT COUNT(*) FROM reflection_queue").fetchone()[0],
             }
-            for table in ("memory_tags", "memory_facts", "note_chunks", "note_files", "reflection_queue", "memory_audit", "memory_projection_state"):
+            for table in ("memory_tags", "memory_facts", "note_chunks", "note_files", "note_scopes", "reflection_queue", "memory_audit", "memory_projection_state"):
                 db.execute(f"DELETE FROM {table}")
             db.execute("INSERT INTO memory_audit VALUES(?,?,?,?,?)", (f"audit_{datetime.now().timestamp()}", None, "clear_all", "dashboard_full_clear", datetime.now().isoformat()))
         self.working.clear()
@@ -468,6 +527,8 @@ class MemorySystem:
         self.short_term._save(); self.long_term._save()
         for note in self.notes_dir.glob("*.md"):
             note.unlink(missing_ok=True)
+        for backup in self.backup_dir.glob('memory-*.json'):
+            backup.unlink(missing_ok=True)
         try:
             if tantivy and self.tantivy_dir.exists():
                 index = tantivy.Index.open(str(self.tantivy_dir))
@@ -496,7 +557,8 @@ class MemorySystem:
                 count+=1
         return count
 
-    def read_note(self, note_id: str, offset: int = 1, limit: int = 200) -> dict:
+    def read_note(self, note_id: str, offset: int = 1, limit: int = 200, scope: str = "") -> dict:
+        self._check_note_scope(note_id,scope)
         candidate = self.notes_dir / f"{Path(note_id).name}.md"
         if not candidate.is_file():
             raise FileNotFoundError(f"note '{note_id}' not found")
@@ -513,10 +575,22 @@ class MemorySystem:
             "content": "\n".join(f"{start + index}: {line}" for index, line in enumerate(selected)),
         }
 
-    def list_notes(self, query: str = "", limit: int = 20) -> list[dict]:
+    def _check_note_scope(self, note_id, scope):
+        if not scope:
+            return
+        with self._connect() as db:
+            row=db.execute('SELECT scope FROM note_scopes WHERE note_id=?',(note_id,)).fetchone()
+        if not row or row[0] not in ('public',scope):
+            raise PermissionError('Note is not accessible in this session')
+
+    def list_notes(self, query: str = "", limit: int = 20, scope: str = "") -> list[dict]:
         needle = (query or "").lower()
         notes = []
         for path in sorted(self.notes_dir.glob("*.md"), reverse=True):
+            try:
+                self._check_note_scope(path.stem,scope)
+            except PermissionError:
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
             if needle and needle not in path.stem.lower() and needle not in text.lower():
                 continue
@@ -552,6 +626,7 @@ class MemorySystem:
     def _cosine(a: list[float], b: list[float]) -> float:
         return sum(x * y for x, y in zip(a, b))
 
+    @synchronized
     def rebuild_index(self) -> dict:
         documents = {}
         df: dict[str, int] = {}
@@ -567,6 +642,7 @@ class MemorySystem:
         self._index = {"documents": documents, "avgdl": sum(doc["length"] for doc in documents.values()) / max(1, len(documents)), "df": df, "updated_at": datetime.now().isoformat()}
         self.index_path.write_text(json.dumps(self._index, ensure_ascii=False), encoding="utf-8")
         tantivy_detail = self._rebuild_tantivy_projection()
+        self._index_dirty = False
         with self._connect() as db:
             db.execute("INSERT INTO memory_projection_state(name,version,updated_at,detail_json) VALUES('bm25_tantivy',1,?,?) ON CONFLICT(name) DO UPDATE SET version=version+1,updated_at=excluded.updated_at,detail_json=excluded.detail_json", (self._index["updated_at"], json.dumps(tantivy_detail, ensure_ascii=False)))
             db.execute("INSERT INTO memory_projection_state(name,version,updated_at,detail_json) VALUES('vector_hash',1,?,?) ON CONFLICT(name) DO UPDATE SET version=version+1,updated_at=excluded.updated_at,detail_json=excluded.detail_json", (self._index["updated_at"], json.dumps({"dimensions":256,"documents":len(documents)}, ensure_ascii=False)))
@@ -594,8 +670,9 @@ class MemorySystem:
         writer.commit(); writer.wait_merging_threads(); index.reload()
         return {"available": True, "documents": len(rows), "path": str(self.tantivy_dir)}
 
-    def search(self, query: str, top_k: int = 5, rerank: bool = True) -> list[dict]:
-        if not self._index.get("documents"):
+    @synchronized
+    def search(self, query: str, top_k: int = 5, rerank: bool = True, scope: str = "") -> list[dict]:
+        if getattr(self, "_index_dirty", False):
             self.rebuild_index()
         docs = self._index.get("documents", {})
         qtokens = self._tokens(query)
@@ -604,7 +681,11 @@ class MemorySystem:
         bm25: list[tuple[str, float]] = []
         qvector = self._vector(query)
         vector: list[tuple[str, float]] = []
+        allowed = {m.id for m in self.short_term.memories + self.long_term.memories
+                   if not scope or m.metadata.get("scope", "public") in ("public", scope)}
         for memory_id, doc in docs.items():
+            if memory_id not in allowed:
+                continue
             score = 0.0
             for token in qtokens:
                 freq = doc["tokens"].get(token, 0)
@@ -612,13 +693,14 @@ class MemorySystem:
                     continue
                 idf = math.log(1 + (n - self._index["df"].get(token, 0) + .5) / (self._index["df"].get(token, 0) + .5))
                 score += idf * (freq * 2.0) / (freq + 1.2 * (1 - .75 + .75 * doc["length"] / avgdl))
-            bm25.append((memory_id, score))
-            vector.append((memory_id, self._cosine(qvector, doc["vector"])))
+            if score > 0:
+                bm25.append((memory_id, score))
+                vector.append((memory_id, self._cosine(qvector, doc["vector"])))
         # Tantivy is the lexical/BM25 projection when available. The local
         # scorer remains a recovery fallback if an index is rebuilding.
         tantivy_hits = self._tantivy_search(query, max(top_k * 8, 40))
         if tantivy_hits:
-            bm25 = tantivy_hits
+            bm25 = [(mid, score) for mid, score in tantivy_hits if mid in allowed]
         else:
             bm25.sort(key=lambda item: item[1], reverse=True)
         vector.sort(key=lambda item: item[1], reverse=True)
@@ -645,8 +727,8 @@ class MemorySystem:
             memory.recall_count += 1
             memory.last_recalled = datetime.now()
             memory.strength = min(1.0, memory.strength + .03)
+            self._sync_fact(memory, self._index["documents"][memory_id]["tier"])
             result.append({"id": memory.id, "content": memory.content, "score": round(score, 5), "tier": self._index["documents"][memory_id]["tier"], "tags": memory.tags})
-        self.short_term._save(); self.long_term._save()
         return result
 
     def _tantivy_search(self, query: str, limit: int) -> list[tuple[str, float]]:
@@ -683,6 +765,7 @@ class MemorySystem:
         for stale in sorted(self.backup_dir.glob("memory-*.json"))[:-7]: stale.unlink(missing_ok=True)
         return str(target)
 
+    @synchronized
     def maintenance(self) -> dict:
         consolidated_before = len(self.long_term.memories)
         self.consolidate()

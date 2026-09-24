@@ -2,6 +2,10 @@ package registry
 
 import (
 	"fmt"
+	"sort"
+	"strings"
+	"crypto/sha256"
+	"google.golang.org/protobuf/proto"
 	"sync"
 	"time"
 
@@ -124,14 +128,19 @@ func (r *Registry) Register(info *pluginv1.PluginInfo, capabilities []string, ad
 	defer r.mu.Unlock()
 
 	// Replace any existing instance with the same name (keep its plugin_id).
+	identity := info.Name
+	for _, capability := range capabilities {if strings.HasPrefix(capability,"executor:") {identity=capability;break}}
+	if identity==info.Name {for _,capability:=range capabilities {if capability=="agent" {identity="agent@"+address;break}}}
+	hash:=sha256.Sum256([]byte(identity))
+	stableID:=fmt.Sprintf("plugin_%x",hash[:12])
 	for id, p := range r.plugins {
-		if p.Info.GetName() != info.Name {
+		if id != stableID {
 			continue
 		}
 		now := time.Now()
 		wasUnhealthy := p.Status == corev1.PluginStatus_PLUGIN_STATUS_UNHEALTHY
-		p.Info = info
-		p.Capabilities = capabilities
+		p.Info = proto.Clone(info).(*pluginv1.PluginInfo)
+		p.Capabilities = append([]string(nil),capabilities...)
 		p.Address = address
 		p.Status = corev1.PluginStatus_PLUGIN_STATUS_HEALTHY
 		p.ActiveTasks = 0
@@ -143,13 +152,13 @@ func (r *Registry) Register(info *pluginv1.PluginInfo, capabilities []string, ad
 	}
 
 	r.counter++
-	pluginID := fmt.Sprintf("plugin_%d", r.counter)
+	pluginID := stableID
 
 	now := time.Now()
 	instance := &PluginInstance{
-		Info:          info,
+		Info:          proto.Clone(info).(*pluginv1.PluginInfo),
 		PluginID:      pluginID,
-		Capabilities:  capabilities,
+		Capabilities:  append([]string(nil),capabilities...),
 		Address:       address,
 		Status:        corev1.PluginStatus_PLUGIN_STATUS_HEALTHY,
 		RegisteredAt:  now,
@@ -202,7 +211,7 @@ func (r *Registry) Heartbeat(pluginID string, status_ corev1.PluginStatus, activ
 	plugin.Status = status_
 	plugin.ActiveTasks = activeTasks
 	if host != nil {
-		plugin.Host = host
+		plugin.Host = proto.Clone(host).(*corev1.HostInfo)
 	}
 
 	return true, false, nil
@@ -214,7 +223,7 @@ func (r *Registry) GetPlugin(pluginID string) (*PluginInstance, bool) {
 	defer r.mu.RUnlock()
 
 	plugin, ok := r.plugins[pluginID]
-	return plugin, ok
+	return snapshot(plugin), ok
 }
 
 // GetPluginsByCapability returns all healthy plugins with a given capability.
@@ -230,12 +239,13 @@ func (r *Registry) GetPluginsByCapability(capability string) []*PluginInstance {
 		if p.Status == corev1.PluginStatus_PLUGIN_STATUS_HEALTHY {
 			for _, c := range p.Capabilities {
 				if c == capability {
-					result = append(result, p)
+					result = append(result, snapshot(p))
 					break
 				}
 			}
 		}
 	}
+	sortPlugins(result)
 	return result
 }
 
@@ -263,8 +273,9 @@ func (r *Registry) GetAgents(onlineOnly bool) []*PluginInstance {
 		if onlineOnly && p.Status != corev1.PluginStatus_PLUGIN_STATUS_HEALTHY {
 			continue
 		}
-		result = append(result, p)
+		result = append(result, snapshot(p))
 	}
+	sortPlugins(result)
 	return result
 }
 
@@ -283,9 +294,25 @@ func (r *Registry) GetAllPlugins() []*PluginInstance {
 		if p.Info != nil && r.isLockedDisabledLocked(p.Info.Name) {
 			continue
 		}
-		result = append(result, p)
+		result = append(result, snapshot(p))
 	}
+	sortPlugins(result)
 	return result
+}
+
+func sortPlugins(items []*PluginInstance) {
+	sort.Slice(items, func(i,j int) bool {
+		if items[i].Info.GetName() != items[j].Info.GetName() { return items[i].Info.GetName() < items[j].Info.GetName() }
+		return items[i].PluginID < items[j].PluginID
+	})
+}
+
+func snapshot(p *PluginInstance) *PluginInstance {
+ if p==nil {return nil};copy:=*p
+ copy.Capabilities=append([]string(nil),p.Capabilities...)
+ if p.Info!=nil {copy.Info=proto.Clone(p.Info).(*pluginv1.PluginInfo)}
+ if p.Host!=nil {copy.Host=proto.Clone(p.Host).(*corev1.HostInfo)}
+ return &copy
 }
 
 // RemovePlugin removes a plugin from the registry.

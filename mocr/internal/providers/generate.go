@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"os"
 )
 
 // ToolDef is a provider-agnostic callable function definition.
@@ -75,9 +76,6 @@ func Generate(ctx context.Context, opts GenerateOptions, onChunk StreamFunc) (*F
 	}
 	if opts.MaxTokens <= 0 {
 		opts.MaxTokens = 1024
-	}
-	if opts.Temperature == 0 {
-		opts.Temperature = 0.7
 	}
 
 	prov := strings.ToLower(strings.TrimSpace(opts.Provider))
@@ -181,6 +179,12 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 		"temperature": opts.Temperature,
 		"stream":      opts.Stream,
 	}
+	model:=strings.ToLower(opts.ModelID)
+	if strings.Contains(strings.ToLower(opts.Provider),"deepseek") || strings.Contains(model,"deepseek") {
+		mode:="disabled";if opts.Thinking {mode="enabled"};body["thinking"]=map[string]string{"type":mode}
+	} else if strings.HasPrefix(model,"o1") || strings.HasPrefix(model,"o3") || strings.HasPrefix(model,"o4") || strings.HasPrefix(model,"gpt-5") {
+		effort:="low";if opts.Thinking {effort="high"};body["reasoning_effort"]=effort;delete(body,"temperature");delete(body,"max_tokens");body["max_completion_tokens"]=opts.MaxTokens
+	}
 	if len(opts.Tools) > 0 {
 		body["tools"] = openAITools(opts.Tools)
 		switch opts.ToolChoice {
@@ -278,29 +282,23 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 	}
 
 	// SSE stream with idle timeout (context has no deadline for streaming)
-	idleCtx, cancelIdle := context.WithTimeout(ctx, 60*time.Second)
-	defer cancelIdle()
-	go func() {
-		select {
-		case <-idleCtx.Done():
-			if resp.Body != nil {
-				resp.Body.Close()
-			}
-		}
-	}()
+	idle:=time.AfterFunc(streamIdleTimeout(),func(){resp.Body.Close()});defer idle.Stop()
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	var finish string
+	completed:=false
 	var pt, ot int32
 	toolAcc := map[int]*ToolCall{}
 
 	for scanner.Scan() {
+		idle.Reset(streamIdleTimeout())
 		line := scanner.Text()
 		if !strings.HasPrefix(line, "data:") {
 			continue
 		}
 		data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
 		if data == "[DONE]" {
+			completed=true
 			break
 		}
 		var chunk struct {
@@ -365,6 +363,7 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
+	if !completed && finish=="" {return nil,fmt.Errorf("provider stream ended without a completion marker")}
 	if finish == "" {
 		finish = "stop"
 	}
@@ -499,6 +498,10 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 		"max_tokens": opts.MaxTokens,
 		"stream":     opts.Stream,
 	}
+	if opts.Thinking {
+		budget:=opts.MaxTokens/2;if budget<1024 {budget=1024};if opts.MaxTokens<=budget {body["max_tokens"]=budget+1024}
+		body["thinking"]=map[string]interface{}{"type":"enabled","budget_tokens":budget}
+	}
 	if system != "" {
 		body["system"] = system
 	}
@@ -584,12 +587,7 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 	}
 
 	// SSE stream
-	idleCtx, cancelIdle := context.WithTimeout(ctx, 60*time.Second)
-	defer cancelIdle()
-	go func() {
-		<-idleCtx.Done()
-		_ = resp.Body.Close()
-	}()
+	idle:=time.AfterFunc(streamIdleTimeout(),func(){resp.Body.Close()});defer idle.Stop()
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	var finish string
@@ -599,6 +597,7 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 	var calls []ToolCall
 
 	for scanner.Scan() {
+		idle.Reset(streamIdleTimeout())
 		line := scanner.Text()
 		if !strings.HasPrefix(line, "data:") {
 			continue
@@ -634,6 +633,7 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 			ot = evt.Usage.OutputTokens
 		}
 		switch evt.Type {
+		case "error": return nil,fmt.Errorf("provider stream error: %s",data)
 		case "content_block_start":
 			if evt.ContentBlock.Type == "tool_use" {
 				curCall = &ToolCall{ID: evt.ContentBlock.ID, Name: evt.ContentBlock.Name}
@@ -661,7 +661,7 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 		return nil, err
 	}
 	if finish == "" {
-		finish = "end_turn"
+		return nil,fmt.Errorf("provider stream ended without stop_reason")
 	}
 	emitTools(opts, calls)
 	return &FinishInfo{FinishReason: finish, PromptTokens: pt, OutputTokens: ot, ToolCalls: calls}, nil
@@ -669,3 +669,5 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 
 // Ensure time is referenced if needed later.
 var _ = time.Second
+
+func streamIdleTimeout() time.Duration {if value,err:=time.ParseDuration(os.Getenv("MOCR_STREAM_IDLE_TIMEOUT"));err==nil && value>0 {return value};return 60*time.Second}

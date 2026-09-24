@@ -245,6 +245,8 @@ class CoreClient:
                 active_tasks=active_tasks,
             )
             resp = self._plugin_stub.Heartbeat(request, timeout=3)
+            if not resp.ok:
+                self.plugin_id = None
             return resp.ok
         except Exception as e:
             print(f"[LIFE-Core] Heartbeat failed: {e}")
@@ -318,6 +320,16 @@ class CoreClient:
         except Exception as e:
             print(f"[LIFE-Core] UseAgent failed: {e}")
             return {"accepted": False, "task_id": task_id, "message": str(e)}
+
+    def run_agent_tool(self, tool: str, args: dict, session_id: str = "") -> dict:
+        if not self._connected and not self.connect():
+            return {"success": False, "error": "Core unavailable"}
+        try:
+            response = self._core_stub.RunDirect(core_pb2.RunDirectRequest(
+                tool=tool, args=json.dumps(args, ensure_ascii=False), session_id=session_id), timeout=120)
+            return {"success": response.success, "result": response.result, "error": response.error}
+        except Exception as error:
+            return {"success": False, "error": str(error)}
 
     def cancel_agent(self, task_id: str, caller_id: str = "") -> dict:
         """Cancel a running agent task."""

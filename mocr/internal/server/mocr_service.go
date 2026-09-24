@@ -14,6 +14,8 @@ import (
 	mocrv1 "0kay/gen/mocr/v1"
 	"0kay/mocr/internal/selector"
 	prov "0kay/mocr/internal/providers"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // isFakeKey reports placeholder keys that must not hit the network.
@@ -179,7 +181,7 @@ func (s *MocrServiceServer) Generate(req *mocrv1.GenerateRequest, stream mocrv1.
 
 	// No credentials configured — surface an explicit offline marker (not a silent echo).
 	log.Printf("[mocr] no credentials for model=%s, offline fallback", req.ModelId)
-	return s.generateOffline(req, stream, "no provider credentials configured")
+	return status.Error(codes.FailedPrecondition, "no provider credentials configured")
 }
 
 func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream mocrv1.MocrService_GenerateServer) error {
@@ -227,11 +229,13 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 	// Fake/test keys hang or 401 on the wire; fail fast offline (explicit, not echo)
 	if isFakeKey(req.ApiKey) {
 		log.Printf("[mocr] fake key, offline fallback model=%s", req.ModelId)
-		return s.generateOffline(req, stream, "placeholder API key (offline)")
+		return status.Error(codes.FailedPrecondition, "placeholder API key")
 	}
 
 	// Overall deadline so a hung provider cannot block the SSE forever
-	ctx, cancel := context.WithTimeout(stream.Context(), 30*time.Second)
+	timeout:=5*time.Minute
+	if configured,err:=time.ParseDuration(os.Getenv("MOCR_GENERATION_TIMEOUT"));err==nil && configured>0 {timeout=configured}
+	ctx, cancel := context.WithTimeout(stream.Context(), timeout)
 	defer cancel()
 
 	var fullText strings.Builder
@@ -246,7 +250,7 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 		// Real credentials were present but the provider failed — surface the error
 		// instead of silently echoing so callers can distinguish offline/failure.
 		log.Printf("[mocr] real generate failed model=%s: %v", req.ModelId, err)
-		return s.generateOffline(req, stream, "provider error: "+err.Error())
+		return status.Error(codes.Unavailable, "provider error: "+err.Error())
 	}
 
 	if info == nil {

@@ -123,6 +123,21 @@ class ThinkStage:
                 response = response.split("```")[1].split("```")[0]
 
             data = json.loads(response.strip())
+            if not isinstance(data, dict):
+                raise ValueError("THINK response must be an object")
+            if not isinstance(data.get("emotion_delta", {}), dict):
+                raise ValueError("emotion_delta must be an object")
+            for key in ("memory_query", "output_guidance", "intent", "strategy"):
+                if not isinstance(data.get(key, ""), str):
+                    raise ValueError(f"{key} must be a string")
+            if not isinstance(data.get("tool_calls", []), list):
+                raise ValueError("tool_calls must be an array")
+            for key in ("tool_call", "skill_call"):
+                if data.get(key) is not None and not isinstance(data[key], dict):
+                    raise ValueError(f"{key} must be an object")
+            for key, value in data.get("emotion_delta", {}).items():
+                if key not in ("valence", "arousal", "connection", "irritation") or not isinstance(value, (float, int)):
+                    raise ValueError("Invalid emotion delta")
 
             return ThinkResult(
                 emotion_delta=data.get("emotion_delta", {}),
@@ -135,26 +150,5 @@ class ThinkStage:
                 output_guidance=data.get("output_guidance", ""),
                 linear_steps=[str(item)[:120] for item in (data.get("linear_steps") or []) if str(item).strip()][:6],
             )
-        except (json.JSONDecodeError, IndexError):
-            lowered = (response or "").lower()
-            if any(word in lowered for word in ("python", "脚本", "github", "连通性", "ping")):
-                return ThinkResult(
-                    emotion_delta={"connection": 0.03},
-                    memory_query="",
-                    intent="用户希望 Agent 编写并运行 Python 连通性测试脚本",
-                    strategy="交给 Agent 编写、运行并回传结果",
-                    tool_calls=[{
-                        "name": "useagent",
-                        "agent_prompt": "创建 hello_github.py，只修改这个文件：打印 Hello, World!，使用 socket.create_connection 测试 github.com:443，timeout=5，运行并返回代码和完整输出。",
-                        "agent_type": "code",
-                    }],
-                    output_guidance="告诉用户任务已经交给 Agent，默认 medium 思考强度。",
-                )
-            # Fallback for invalid JSON
-            return ThinkResult(
-                emotion_delta={},
-                memory_query="",
-                intent="unknown",
-                strategy="respond_normally",
-                output_guidance="Respond naturally to the user.",
-            )
+        except (ValueError, IndexError, TypeError, AttributeError) as error:
+            raise ValueError("Invalid THINK response") from error

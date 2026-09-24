@@ -18,6 +18,7 @@ export const i18n = createI18n({
 })
 
 export function setLanguage(lang: string) {
+  if (lang !== 'en' && lang !== 'zh') return
   i18n.global.locale.value = lang
   localStorage.setItem('0kay_lang', lang)
   document.documentElement.lang = lang

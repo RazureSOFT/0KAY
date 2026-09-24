@@ -59,10 +59,15 @@ func LoadConfig() *Config {
 
 // GRPCAddr returns the gRPC listen address.
 func (c *Config) GRPCAddr() string {
-	return fmt.Sprintf(":%d", c.GRPCPort)
+	return fmt.Sprintf("%s:%d", bindHost(), c.GRPCPort)
 }
 
 // HTTPAddr returns the HTTP listen address.
 func (c *Config) HTTPAddr() string {
-	return fmt.Sprintf(":%d", c.HTTPPort)
+	return fmt.Sprintf("%s:%d", bindHost(), c.HTTPPort)
+}
+
+func bindHost() string {
+ if host:=os.Getenv("CORE_BIND_HOST");host!="" {return host}
+ return "127.0.0.1"
 }

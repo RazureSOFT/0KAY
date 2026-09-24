@@ -47,6 +47,38 @@ QQ/OneBot ──WebSocket───────┤
 
 ## Quick Start
 
+### Agent permissions
+
+The composer defaults to **Normal (approve every tool call)**. Tool requests are
+held by the executor until the user allows or denies that exact call. Child
+agents inherit the mode. **Full access** is an explicit per-turn setting and
+automatically executes enabled tools. Direct LIFE/MCP/computer tool calls also
+require approval. Read-only workspace browsing and explicit GUI folder creation
+are user operations. Approval expires after ten minutes or on task cancellation.
+
+Services bind to loopback by default. Docker exposes backend ports on host
+loopback only. `CORE_BIND_HOST`, `AGENT_BIND_HOST`, `MOCR_BIND_HOST`, and
+`LIFE_BIND_HOST` explicitly override this for trusted service networks. For an
+externally exposed HTTP deployment use an authenticated reverse proxy; optional
+`CORE_API_TOKEN` enforces a bearer token on Core HTTP requests. Foreign browser
+origins are denied unless included in `CORE_ALLOWED_ORIGINS`.
+
+`agent/` is maintained in an independent repository. On a fresh clone, run
+`powershell -File bootstrap.ps1` to check out the revision recorded in
+`dependencies.json`. Existing Agent worktrees are never overwritten.
+When releasing coordinated changes, commit/publish Agent first and update its
+revision in `dependencies.json` in the platform release. The manifest currently
+records the baseline commit; uncommitted Agent fixes must be published before
+that revision can represent a release containing them.
+
+Local validation:
+
+```powershell
+python -B -m unittest discover -s life/tests -v
+# In agent/: npm test; npx tsc --noEmit
+# In core/ and mocr/: go test ./...
+```
+
 ### Using Docker Compose
 
 ```bash
@@ -96,9 +128,9 @@ make dev-agent   # Agent on :50054
 
 ### Prerequisites
 
-- Go 1.21+
+- Go 1.27+
 - Python 3.10+
-- Node.js 18+
+- Node.js 22+
 - Docker & Docker Compose
 
 ### Project Structure

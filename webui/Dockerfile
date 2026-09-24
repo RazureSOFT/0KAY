@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY webui/package.json webui/package-lock.json* ./
 
-RUN npm install
+RUN npm ci
 
 COPY webui/ .
 

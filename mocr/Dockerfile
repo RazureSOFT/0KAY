@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine AS builder
+FROM golang:1.27-alpine AS builder
 
 WORKDIR /app
 
@@ -11,8 +11,8 @@ RUN go mod download
 WORKDIR /app/mocr
 RUN go mod download
 
-COPY gen/go/ ./gen/go/
-COPY mocr/ ./mocr/
+COPY gen/go/ /app/gen/go/
+COPY mocr/ /app/mocr/
 
 WORKDIR /app/mocr
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/mocr-server ./cmd/mocr

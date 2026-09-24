@@ -286,7 +286,6 @@ class UseAgentTool(Tool):
 
     def __init__(self, core_client=None):
         self.core_client = core_client
-        self._pending_tasks: dict[str, dict] = {}
 
     @property
     def name(self) -> str:
@@ -324,7 +323,7 @@ class UseAgentTool(Tool):
 
         # Dispatch via Core.UseAgent (real gRPC call when core_client is set)
         if self.core_client is not None:
-            resp = self.core_client.use_agent(
+            resp = await asyncio.to_thread(self.core_client.use_agent,
                 task_id=task_id,
                 prompt=agent_prompt,
                 agent_type=agent_type,
@@ -336,12 +335,6 @@ class UseAgentTool(Tool):
                     data=None,
                     error=resp.get("message", "no agents available"),
                 )
-            self._pending_tasks[task_id] = {
-                "prompt": agent_prompt,
-                "agent_type": agent_type,
-                "thinking_intensity": thinking_intensity,
-                "status": "pending",
-            }
             return ToolResult(
                 success=True,
                 data={
@@ -352,31 +345,7 @@ class UseAgentTool(Tool):
                 },
             )
 
-        # Fallback: simulate task creation (Core unavailable)
-        self._pending_tasks[task_id] = {
-            "prompt": agent_prompt,
-            "agent_type": agent_type,
-            "thinking_intensity": thinking_intensity,
-            "status": "pending",
-        }
-
-        return ToolResult(
-            success=True,
-            data={
-                "task_id": task_id,
-                "status": "pending",
-                "message": f"Task dispatched to agent: {agent_prompt[:80]}...",
-            },
-        )
-
-    def get_pending_tasks(self) -> dict:
-        return self._pending_tasks.copy()
-
-    def complete_task(self, task_id: str, result: str) -> None:
-        if task_id in self._pending_tasks:
-            self._pending_tasks[task_id]["status"] = "done"
-            self._pending_tasks[task_id]["result"] = result
-
+        return ToolResult(False, None, "Core is unavailable; task was not dispatched")
 
 class WebBrowseTool(Tool):
     """Tool to fetch and parse web pages."""
@@ -577,7 +546,7 @@ class RememberTool(Tool):
     async def execute(self, content: str = "", judgment: str = "", tags: list | None = None,
                       strength: float = 0.8, memory_type: str = "knowledge", scope: str = "public", **kwargs) -> ToolResult:
         try:
-            memory = self.memory.remember(content, judgment, tags, strength, memory_type, scope)
+            memory = await asyncio.to_thread(self.memory.remember, content, judgment, tags, strength, memory_type, scope)
             return ToolResult(True, memory.to_dict())
         except Exception as e:
             return ToolResult(False, None, str(e))
@@ -602,8 +571,8 @@ class RecallTool(Tool):
 
     async def execute(self, query: str = "", limit: int = 5, scope: str = "", **kwargs) -> ToolResult:
         try:
-            records = self.memory.active_recall(query, limit, scope)
-            return ToolResult(True, {"memories": [record.to_dict() for record in records], "notes": self.memory.list_notes(query, limit)})
+            records = await asyncio.to_thread(self.memory.active_recall, query, limit, scope)
+            return ToolResult(True, {"memories": [record.to_dict() for record in records], "notes": await asyncio.to_thread(self.memory.list_notes, query, limit, scope)})
         except Exception as e:
             return ToolResult(False, None, str(e))
 
@@ -625,9 +594,9 @@ class NoteCreateTool(Tool):
             "title": {"type": "string"}, "content": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}},
         }}
 
-    async def execute(self, title: str = "", content: str = "", tags: list | None = None, **kwargs) -> ToolResult:
+    async def execute(self, title: str = "", content: str = "", tags: list | None = None, scope: str = "public", **kwargs) -> ToolResult:
         try:
-            return ToolResult(True, self.memory.create_note(title, content, tags))
+            return ToolResult(True, await asyncio.to_thread(self.memory.create_note, title, content, tags, scope))
         except Exception as e:
             return ToolResult(False, None, str(e))
 
@@ -649,9 +618,9 @@ class NoteReadTool(Tool):
             "note_id": {"type": "string"}, "offset": {"type": "integer", "minimum": 1}, "limit": {"type": "integer", "minimum": 1, "maximum": 1000},
         }}
 
-    async def execute(self, note_id: str = "", offset: int = 1, limit: int = 200, **kwargs) -> ToolResult:
+    async def execute(self, note_id: str = "", offset: int = 1, limit: int = 200, scope: str = "", **kwargs) -> ToolResult:
         try:
-            return ToolResult(True, self.memory.read_note(note_id, offset, limit))
+            return ToolResult(True, await asyncio.to_thread(self.memory.read_note, note_id, offset, limit, scope))
         except Exception as e:
             return ToolResult(False, None, str(e))
 
@@ -661,6 +630,7 @@ class ToolRegistry:
 
     def __init__(self):
         self.tools: dict[str, Tool] = {}
+        self.recorder = None
 
     def register(self, tool: Tool) -> None:
         self.tools[tool.name] = tool
@@ -669,10 +639,22 @@ class ToolRegistry:
         return self.tools.get(name)
 
     async def call(self, name: str, **kwargs) -> ToolResult:
+        record = await self.recorder.start("tool", name) if self.recorder else None
         tool = self.get(name)
         if not tool:
-            return ToolResult(success=False, data=None, error=f"Tool '{name}' not found")
-        return await tool.execute(**kwargs)
+            result = ToolResult(success=False, data=None, error=f"Tool '{name}' not found")
+        else:
+            try:
+                result = await tool.execute(**kwargs)
+            except asyncio.CancelledError:
+                if record:
+                    await self.recorder.finish(record, cancelled=True)
+                raise
+            except Exception as error:
+                result = ToolResult(False, None, str(error))
+        if record:
+            await self.recorder.finish(record, json.dumps(result.data, ensure_ascii=False), result.error or ("tool failed" if not result.success else ""))
+        return result
 
     def list_tools(self) -> list[dict]:
         return [tool.to_schema() for tool in self.tools.values()]

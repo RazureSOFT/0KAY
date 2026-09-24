@@ -139,6 +139,7 @@ function onWizardComplete() {
           :to="item.to && !item.external && !item.href ? item.to : undefined"
           :class="['nav-item', { active: isActive(item) }]"
           :title="navLabel(item)"
+          :aria-current="isActive(item) ? 'page' : undefined"
           @click="!(item.to && !item.external && !item.href) && onNav(item)"
         >
           <span class="nav-icon">
@@ -183,7 +184,11 @@ function onWizardComplete() {
       </nav>
 
       <main class="app-main">
-        <RouterView />
+        <RouterView v-slot="{ Component }">
+          <Transition name="route" mode="out-in">
+            <div :key="route.path" class="route-view"><component :is="Component" /></div>
+          </Transition>
+        </RouterView>
       </main>
     </div>
   </div>

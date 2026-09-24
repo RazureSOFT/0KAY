@@ -27,7 +27,8 @@
   },
   "chat": {
     "empty": "开始对话",
-    "emptyHint": "发送消息开始与 AI 聊天",
+    "emptyHint": "发送消息开始与{name}对话",
+    "defaultCharacter": "角色",
     "inputPlaceholder": "输入消息...",
     "send": "发送",
     "connected": "已连接",

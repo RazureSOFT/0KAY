@@ -3,3 +3,6 @@ buf.exe
 
 # Agent remains an independent repository.
 /agent/
+core/data/tasks.json
+core/data/tasks.json.journal
+core/data/task_callbacks.json

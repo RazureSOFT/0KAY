@@ -8,7 +8,6 @@ const { t, locale } = useI18n()
 const wizard = useWizardStore()
 const emit = defineEmits<{ complete: [] }>()
 
-const customUrl = ref('')
 const customModels = ref('')
 const isLoading = ref(false)
 const error = ref('')

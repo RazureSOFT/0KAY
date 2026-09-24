@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { ProviderConfig, PersonaConfig, Live2DConfig } from '../composables/wizard'
+import type { PersonaConfig, Live2DConfig } from '../composables/wizard'
 import { DEFAULT_LIVE2D_MODEL_URL } from '../composables/wizard'
 
 export const useWizardStore = defineStore('wizard', () => {
@@ -173,7 +173,7 @@ export const useWizardStore = defineStore('wizard', () => {
     selectedModels.value = []
     defaultModel.value = ''
     fetchedModels.value = []
-    persona.value = { name: '', avatar: '', description: '', personality: '', greeting: '' }
+    persona.value = { name: '', avatar: '', birthDate: '', description: '', personality: '', greeting: '' }
     live2d.value = { enabled: true, modelUrl: DEFAULT_LIVE2D_MODEL_URL, modelData: null }
     localStorage.removeItem('0kay_wizard_complete')
     localStorage.removeItem('0kay_config')

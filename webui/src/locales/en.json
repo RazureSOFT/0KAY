@@ -27,7 +27,8 @@
   },
   "chat": {
     "empty": "Start a conversation",
-    "emptyHint": "Send a message to begin chatting with your AI",
+    "emptyHint": "Send a message to start a conversation with {name}",
+    "defaultCharacter": "your character",
     "inputPlaceholder": "Type a message...",
     "send": "Send",
     "connected": "Connected",

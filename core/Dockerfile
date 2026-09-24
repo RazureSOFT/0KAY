@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine AS builder
+FROM golang:1.27-alpine AS builder
 
 WORKDIR /app
 
@@ -14,8 +14,8 @@ WORKDIR /app/core
 RUN go mod download
 
 # Copy source code
-COPY gen/go/ ./gen/go/
-COPY core/ ./core/
+COPY gen/go/ /app/gen/go/
+COPY core/ /app/core/
 
 # Build
 WORKDIR /app/core
@@ -26,7 +26,7 @@ FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates
 
-WORKDIR /root/
+WORKDIR /app
 
 COPY --from=builder /app/core-server .
 

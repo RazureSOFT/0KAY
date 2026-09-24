@@ -52,6 +52,11 @@ type LocalCore interface {
 	GetPermissions() server.Permissions
 	SetPermissions(p server.Permissions)
 	ListTasks() []map[string]interface{}
+	TaskDelta(string) map[string]interface{}
+	RecordTask(server.TaskEvent) error
+	CreateAgentSession(string) (string, error)
+	HasAgentSession(string) bool
+	ManageAgentSession(string,string) error
 }
 
 // Config holds gateway configuration.
@@ -84,7 +89,7 @@ func NewGateway(cfg *Config, reg *registry.Registry) (*Gateway, error) {
 		coreSvc:  coreSvc,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
-				return true
+				return allowedOrigin(r)
 			},
 		},
 		sessions: make(map[string]*Session),
@@ -127,6 +132,13 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/plugins/enable", g.handlePluginEnable)
 	mux.HandleFunc("/api/plugins/disable", g.handlePluginDisable)
 	mux.HandleFunc("/api/agents", g.handleAgents)
+	mux.HandleFunc("/api/agent/sessions", g.handleAgentSessions)
+	mux.HandleFunc("/api/agent/messages", g.handleAgentMessage)
+	mux.HandleFunc("/api/agent/workspace", g.handleAgentWorkspace)
+	mux.HandleFunc("/api/agent/approvals", g.handleAgentApprovals)
+	mux.HandleFunc("/api/agent/host", g.handleAgentWorkspace)
+	mux.HandleFunc("/api/agent/compact", g.handleAgentCompact)
+	mux.HandleFunc("/api/tasks/cancel", g.handleTaskCancel)
 	mux.HandleFunc("/api/chat", g.handleChat)
 	mux.HandleFunc("/api/life/chat", g.handleLifeChat)
 	mux.HandleFunc("/api/life/compact", g.handleLifeCompact)
@@ -144,7 +156,8 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/models", g.handleModelsList)
 	mux.HandleFunc("/api/run", g.handleRunDirect)
 	mux.HandleFunc("/api/live2d", g.handleLive2D)
-		mux.HandleFunc("/api/images", g.handleImages)
+	mux.HandleFunc("/api/images", g.handleImages)
+	mux.Handle("/live2d/models/",http.StripPrefix("/live2d/models/",http.FileServer(http.Dir(live2DRoot()))))
 		mux.HandleFunc("/api/tasks", g.handleTasks)
 		mux.HandleFunc("/api/providers", g.handleProviders)
 	mux.HandleFunc("/api/providers/delete", g.handleProviderDelete)
@@ -552,10 +565,19 @@ func (g *Gateway) handleLifeCompact(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g *Gateway) handleLifeNotifications(w http.ResponseWriter, r *http.Request) {
+ if r.Method!="GET" && r.Method!="POST" {http.Error(w,"method not allowed",405);return}
 	lifes := g.registry.GetPluginsByCapability("life")
 	if len(lifes) == 0 || lifes[0].Address == "" { http.Error(w, "LIFE is unavailable", http.StatusServiceUnavailable); return }
 	conn, err := grpc.NewClient(lifes[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials())); if err != nil { http.Error(w, err.Error(), http.StatusBadGateway); return }; defer conn.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second); defer cancel()
+ if r.Method=="POST" {
+  var body struct{SessionID string `json:"session_id"`;IDs []string `json:"ids"`}
+  if json.NewDecoder(http.MaxBytesReader(w,r.Body,65536)).Decode(&body)!=nil || body.SessionID=="" {http.Error(w,"invalid acknowledgement",400);return}
+  payload,_:=json.Marshal(body)
+  response,err:=lifev1.NewLifeServiceClient(conn).ManageCompanion(ctx,&lifev1.ManageCompanionRequest{Action:"ack_notifications",PayloadJson:string(payload)})
+  if err!=nil || !response.GetOk() {http.Error(w,"notification acknowledgement failed",502);return}
+  w.Header().Set("Content-Type","application/json");fmt.Fprint(w,`{"ok":true}`);return
+ }
 	resp, err := lifev1.NewLifeServiceClient(conn).GetNotifications(ctx, &lifev1.GetNotificationsRequest{SessionId: r.URL.Query().Get("session_id")})
 	if err != nil { http.Error(w, err.Error(), http.StatusBadGateway); return }
 	w.Header().Set("Content-Type", "application/json"); json.NewEncoder(w).Encode(map[string]interface{}{"notifications": resp.Notifications})
@@ -925,7 +947,8 @@ func live2DRoot() string {
 	if p := os.Getenv("LIVE2D_DIR"); p != "" {
 		return p
 	}
-	return filepath.Join("..", "webui", "public", "live2d", "models")
+	if _,err:=os.Stat(filepath.Join("..","webui","public"));err==nil {return filepath.Join("..","webui","public","live2d","models")}
+	return filepath.Join("data", "live2d", "models")
 }
 
 // imagesRoot stores chat image uploads.
@@ -1022,7 +1045,17 @@ func (g *Gateway) handleTasks(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]interface{}{"tasks": []interface{}{}})
 		return
 	}
+	if r.Method == http.MethodPost {
+		var event server.TaskEvent
+		if err := json.NewDecoder(http.MaxBytesReader(w,r.Body,2<<20)).Decode(&event); err != nil { http.Error(w,"invalid task event",400); return }
+		if err := g.localCore.RecordTask(event); err != nil { http.Error(w,err.Error(),409); return }
+		w.Header().Set("Content-Type","application/json")
+		json.NewEncoder(w).Encode(map[string]bool{"ok":true})
+		return
+	}
+	if r.Method != http.MethodGet { http.Error(w,"method not allowed",405); return }
 	w.Header().Set("Content-Type", "application/json")
+ if r.URL.Query().Get("incremental")=="1" {json.NewEncoder(w).Encode(g.localCore.TaskDelta(r.URL.Query().Get("cursor")));return}
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"tasks": g.localCore.ListTasks(),
 	})
@@ -1261,14 +1294,16 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		if !allowedOrigin(r) {http.Error(w,"origin not allowed",http.StatusForbidden);return}
+		if origin:=r.Header.Get("Origin");origin!="" {w.Header().Set("Access-Control-Allow-Origin",origin);w.Header().Add("Vary","Origin")}
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
+		if token:=os.Getenv("CORE_API_TOKEN");token!="" && r.URL.Path!="/health" && r.Header.Get("Authorization")!="Bearer "+token {http.Error(w,"authentication required",http.StatusUnauthorized);return}
 
 		next.ServeHTTP(w, r)
 	})

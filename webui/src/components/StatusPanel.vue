@@ -2,18 +2,38 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLifeStore } from '../stores/life'
+import { useWizardStore } from '../stores/wizard'
 import { useUIPatchesStore, type StatusSection, type StatusAxis } from '../stores/uiPatches'
 
 const { t } = useI18n()
 const lifeStore = useLifeStore()
 const ui = useUIPatchesStore()
+const wizard = useWizardStore()
+const now = ref(new Date())
+const rhythm = ref<{ sleep_hour: number; wake_hour: number; observed_days: number } | null>(null)
+const age = computed(() => {
+  const raw = wizard.persona.birthDate
+  if (!raw) return null
+  const birth = new Date(`${raw}T00:00:00`)
+  if (Number.isNaN(birth.getTime()) || birth > now.value) return null
+  const today = now.value
+  return today.getFullYear() - birth.getFullYear() - Number(today.getMonth() < birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate()))
+})
+let clockTimer: ReturnType<typeof setInterval> | null = null
+let rhythmTimer: ReturnType<typeof setInterval> | null = null
+async function fetchRhythm() {
+  try {
+    const response = await fetch('/api/life/companion')
+    if (response.ok) rhythm.value = (await response.json()).circadian || null
+  } catch { /* keep last known schedule */ }
+}
+const hour = (value: number) => `${String(value).padStart(2, '0')}:00`
 
 /** Resolve dotted path against life store fields. */
 function resolve(path?: string): any {
   if (!path) return undefined
   if (!path.startsWith('life.')) return undefined
-  const key = path.slice(5) as keyof typeof lifeStore
-  const v = (lifeStore as any)[key]
+  const v = path.slice(5).split('.').reduce((value: any, key) => value?.[key], lifeStore)
   return typeof v === 'function' ? undefined : v
 }
 
@@ -106,9 +126,14 @@ watch(
 
 onMounted(() => {
   if (!memorySection.value) scheduleMemoryPoll()
+  clockTimer = setInterval(() => { now.value = new Date() }, 1000)
+  fetchRhythm()
+  rhythmTimer = setInterval(fetchRhythm, 30000)
 })
 onUnmounted(() => {
   if (memTimer) clearInterval(memTimer)
+  if (clockTimer) clearInterval(clockTimer)
+  if (rhythmTimer) clearInterval(rhythmTimer)
 })
 
 const moodColor = computed(() => lifeStore.emotionColor)
@@ -130,6 +155,20 @@ const activeTasks = computed(() => lifeStore.activeTasks)
     </div>
 
     <div class="panel-content">
+      <section class="section character-profile">
+        <div class="section-header"><span class="section-title">{{ wizard.persona.name || t('chat.defaultCharacter') }}</span></div>
+        <dl>
+          <div><dt>年龄</dt><dd>{{ age === null ? '未设置生日' : `${age} 岁` }}</dd></div>
+          <div><dt>生日</dt><dd>{{ wizard.persona.birthDate || '未设置' }}</dd></div>
+          <div><dt>当前时间</dt><dd><time :datetime="now.toISOString()">{{ now.toLocaleString() }}</time></dd></div>
+          <div><dt>时区</dt><dd>{{ Intl.DateTimeFormat().resolvedOptions().timeZone }}</dd></div>
+          <div v-if="wizard.persona.personality"><dt>性格</dt><dd>{{ wizard.persona.personality }}</dd></div>
+          <template v-if="rhythm">
+            <div><dt>习惯作息</dt><dd>{{ hour(rhythm.sleep_hour) }} 入睡 · {{ hour(rhythm.wake_hour) }} 起床</dd></div>
+            <div><dt>作息学习</dt><dd>{{ rhythm.observed_days < 3 ? `观察中（${rhythm.observed_days}/3 天）` : `已观察 ${rhythm.observed_days} 天` }}</dd></div>
+          </template>
+        </dl>
+      </section>
       <div
         v-for="section in ui.statusSections"
         :key="section.id"
@@ -258,7 +297,7 @@ const activeTasks = computed(() => lifeStore.activeTasks)
             </div>
             <div class="memory-stat">
               <span class="memory-stat-label">{{ t('memory.shortTerm') }}</span>
-              <span class="memory-stat-value">{{ memoryStats.shortTerm?.total ?? memoryStats.shortTerm }}</span>
+              <span class="memory-stat-value">{{ memoryStats.shortTerm }}</span>
             </div>
             <div class="memory-stat">
               <span class="memory-stat-label">{{ t('memory.longTerm') }}</span>
@@ -295,6 +334,9 @@ const activeTasks = computed(() => lifeStore.activeTasks)
 </template>
 
 <style scoped>
+.character-profile dl > div { display: flex; justify-content: space-between; gap: 12px; margin: 10px 0; font-size: 12px; }
+.character-profile dt { color: var(--md-on-surface-variant); flex-shrink: 0; }
+.character-profile dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
 .status-panel {
   display: flex;
   flex-direction: column;

@@ -17,6 +17,7 @@ import json
 import os
 import re
 import sys
+import concurrent.futures
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -194,16 +195,15 @@ def search(q: str, limit: int = 10) -> dict[str, Any]:
     errors: list[str] = []
     seen: set[str] = set()
 
+    def run(name):
+        if name == 'duckduckgo': return _search_ddg(q, limit)
+        if name == 'marginalia': return _search_marginalia(q, limit)
+        return _search_bing(q, limit, cn=name == 'cnbing')
+    pool=concurrent.futures.ThreadPoolExecutor(max_workers=4)
+    futures={name:pool.submit(run,name) for name in engines}
     for name in engines:
         try:
-            if name == "duckduckgo":
-                rows = _search_ddg(q, limit)
-            elif name == "marginalia":
-                rows = _search_marginalia(q, limit)
-            elif name == "cnbing":
-                rows = _search_bing(q, limit, cn=True)
-            else:
-                rows = _search_bing(q, limit, cn=False)
+            rows=futures[name].result(timeout=13)
             for r in rows:
                 u = (r.get("url") or "").rstrip("/")
                 if not u or u in seen:
@@ -216,6 +216,7 @@ def search(q: str, limit: int = 10) -> dict[str, Any]:
             errors.append(f"{name}: {e}")
         if len(results) >= limit:
             break
+    pool.shutdown(wait=False,cancel_futures=True)
 
     return {
         "query": q,

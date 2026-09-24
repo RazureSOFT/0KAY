@@ -78,7 +78,7 @@ class OneBotAdapter:
 
         async with websockets.connect(
             self.config.websocket_url,
-            extra_headers=headers,
+            additional_headers=headers,
         ) as ws:
             self._ws = ws
             print(f"Connected to OneBot at {self.config.websocket_url}")
@@ -112,9 +112,18 @@ class OneBotAdapter:
         )
 
         # Send response with delay — QQ 分条发送 via OutputResult chunks
+        buffered = ""
         if hasattr(response_iterator, "__aiter__"):
             async for event in response_iterator:
-                await self._emit_event(msg, event)
+                if event.get("type") == "chunk":
+                    buffered += event.get("chunk", "")
+                    if event.get("done") and buffered:
+                        await self._send_message(msg.user_id, msg.group_id, buffered)
+                        buffered = ""
+                else:
+                    await self._emit_event(msg, event)
+            if buffered:
+                await self._send_message(msg.user_id, msg.group_id, buffered)
         else:
             for event in response_iterator:
                 await self._emit_event(msg, event)
@@ -149,7 +158,7 @@ class OneBotAdapter:
     ):
         """Send message via OneBot HTTP API."""
         if not self._http_client:
-            return
+            raise RuntimeError("OneBot is not connected")
 
         endpoint = "send_group_msg" if group_id else "send_private_msg"
         payload = {"message": message}
@@ -161,8 +170,11 @@ class OneBotAdapter:
         try:
             resp = await self._http_client.post(f"/{endpoint}", json=payload)
             resp.raise_for_status()
+            if resp.json().get("retcode", 0) != 0:
+                raise RuntimeError(f"OneBot rejected message: {resp.text}")
         except Exception as e:
             print(f"Failed to send message: {e}")
+            raise
 
     async def send_group_notice(self, group_id: int, content: str):
         """Send group notice."""

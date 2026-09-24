@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 
 const form = reactive<Record<string, any>>({
   screen_watch: false, computer_use: false, report_agent_host: '',
@@ -12,7 +12,6 @@ const state = ref('')
 const saving = ref(false)
 const models = ref<string[]>([])
 const modelSource = ref('')
-const modelOptions = computed(() => [...new Set([form.think_model, form.output_model, ...models.value].filter(Boolean))])
 const modelCards = ref<Array<{ id: string; provider: string; supports_thinking?: boolean }>>([])
 async function load() {
   try {

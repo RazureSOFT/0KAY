@@ -5,7 +5,7 @@ import sys
 
 # Ensure gen/python is on sys.path for life.v1 / mocr.v1 / core.v1 / plugin.v1
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_GEN = os.path.abspath(os.path.join(_HERE, "..", "..", "..", "gen", "python"))
+_GEN = os.getenv("PROTO_PYTHON_DIR", os.path.abspath(os.path.join(_HERE, "..", "..", "..", "gen", "python")))
 if os.path.isdir(_GEN) and _GEN not in sys.path:
     sys.path.insert(0, _GEN)
 

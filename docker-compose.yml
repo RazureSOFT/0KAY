@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: webui/Dockerfile
     ports:
-      - "3000:80"
+      - "127.0.0.1:3000:80"
     depends_on:
       - core
 
@@ -17,11 +17,14 @@ services:
       context: .
       dockerfile: core/Dockerfile
     ports:
-      - "50051:50051"  # gRPC
-      - "8080:8080"    # HTTP
+      - "127.0.0.1:50051:50051"  # gRPC
+      - "127.0.0.1:8080:8080"    # HTTP
     environment:
       - CORE_GRPC_PORT=50051
       - CORE_HTTP_PORT=8080
+      - CORE_BIND_HOST=0.0.0.0
+      - MOCR_ADDRESS=mocr:50052
+      - SEARXNG_URL=http://searxng:8080
     volumes:
       - core-data:/app/data
     healthcheck:
@@ -36,9 +39,13 @@ services:
       context: .
       dockerfile: mocr/Dockerfile
     ports:
-      - "50052:50052"
+      - "127.0.0.1:50052:50052"
     environment:
       - MOCR_GRPC_PORT=50052
+      - MOCR_BIND_HOST=0.0.0.0
+      - CORE_ADDRESS=core:50051
+      - CORE_HTTP_ADDR=http://core:8080
+      - MOCR_ADDRESS=mocr:50052
 
   # L.I.F.E - Persona Plugin
   life:
@@ -46,10 +53,16 @@ services:
       context: .
       dockerfile: life/Dockerfile
     ports:
-      - "50053:50053"
+      - "127.0.0.1:50053:50053"
     environment:
       - LIFE_GRPC_PORT=50053
+      - LIFE_BIND_HOST=0.0.0.0
       - MOCR_ADDRESS=mocr:50052
+      - CORE_ADDRESS=core:50051
+      - CORE_HTTP_ADDR=http://core:8080
+      - LIFE_ADDRESS=life:50053
+      - LIFE_DATA_DIR=/app/data/life
+      - SEARXNG_URL=http://searxng:8080
     volumes:
       - life-data:/app/data/life
     depends_on:
@@ -62,18 +75,27 @@ services:
       context: .
       dockerfile: agent/Dockerfile
     ports:
-      - "50054:50054"
+      - "127.0.0.1:50054:50054"
     environment:
       - AGENT_GRPC_PORT=50054
+      - AGENT_BIND_HOST=0.0.0.0
+      - CORE_ADDRESS=core:50051
+      - CORE_HTTP_ADDR=http://core:8080
+      - AGENT_ADDRESS=agent:50054
+      - AGENT_DATA_DIR=/app/data/agent
+      - MOCR_ADDRESS=mocr:50052
+      - SEARXNG_URL=http://searxng:8080
     depends_on:
       - core
+    volumes:
+      - agent-data:/app/data/agent
 
   # SearXNG - meta-search (JSON API for life SearchTool)
   searxng:
     image: searxng/searxng:latest
     container_name: 0kay-searxng
     ports:
-      - "8888:8080"
+      - "127.0.0.1:8888:8080"
     environment:
       - SEARXNG_BASE_URL=http://searxng:8080/
       - SEARXNG_SECRET=0kay-searxng-secret
@@ -90,4 +112,5 @@ services:
 volumes:
   core-data:
   life-data:
+  agent-data:
   searxng-data:

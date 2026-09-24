@@ -34,6 +34,33 @@ class CircadianSystem:
 
     def __init__(self, state: CircadianState | None = None):
         self.state = state or CircadianState()
+        self.activity_days = {}
+        self.sleep_hour = 23
+        self.wake_hour = 7
+        self.last_interaction = None
+        self._wake_day = datetime.now().date().isoformat()
+
+    def observe_interaction(self, now=None):
+        """Learn a quiet eight-hour window; one hourly sample per day, bounded drift."""
+        now = now or datetime.now()
+        day = now.date().isoformat()
+        hours = self.activity_days.setdefault(day, [])
+        if now.hour not in hours:
+            hours.append(now.hour)
+        cutoff = (now - timedelta(days=28)).date().isoformat()
+        self.activity_days = {key: value for key, value in self.activity_days.items() if key >= cutoff}
+        self.last_interaction = now
+        if len(self.activity_days) >= 3 and getattr(self, '_learned_day', '') != day:
+            counts = [sum(hour in values for values in self.activity_days.values()) for hour in range(24)]
+            target = min(range(20, 28), key=lambda start: (sum(counts[(start+i)%24] for i in range(8)), abs(start-23))) % 24
+            delta = (target-self.sleep_hour+12)%24-12
+            self.sleep_hour = (self.sleep_hour + max(-1, min(1, delta))) % 24
+            self.wake_hour = (self.sleep_hour+8)%24
+            self._learned_day = day
+
+    def in_sleep_window(self, now=None):
+        now = now or datetime.now()
+        return (now.hour-self.sleep_hour)%24 < 8
 
     def tick(self, seconds: float) -> None:
         """Update mental energy based on time elapsed."""
@@ -42,8 +69,11 @@ class CircadianSystem:
             return
 
         now = datetime.now()
-        elapsed = (now - self.state.last_tick).total_seconds()
+        elapsed = max(0, (now - self.state.last_tick).total_seconds())
         self.state.last_tick = now
+        if self._wake_day != now.date().isoformat():
+            self.state.wake_count_today = 0
+            self._wake_day = now.date().isoformat()
 
         if self.state.is_sleeping:
             # Recover energy while sleeping
@@ -51,7 +81,7 @@ class CircadianSystem:
             self.state.mental_energy = min(self.MAX_ENERGY, self.state.mental_energy + recovery)
 
             # Check if fully rested
-            if self.state.mental_energy >= self.MAX_ENERGY:
+            if not self.in_sleep_window(now) and self.state.mental_energy >= self.DROWSY_THRESHOLD:
                 self.state.is_sleeping = False
                 self.state.sleep_start = None
         else:
@@ -60,7 +90,8 @@ class CircadianSystem:
             self.state.mental_energy = max(0, self.state.mental_energy - drain)
 
             # Check if should sleep
-            if self.state.mental_energy <= self.SLEEP_THRESHOLD:
+            idle = self.last_interaction is None or (now-self.last_interaction).total_seconds() > 1800
+            if self.state.mental_energy <= self.SLEEP_THRESHOLD or (self.in_sleep_window(now) and idle):
                 self.start_sleep()
 
     def start_sleep(self) -> None:
@@ -109,7 +140,8 @@ class CircadianSystem:
 
     def should_auto_sleep(self) -> bool:
         """Check if should automatically sleep."""
-        return self.state.mental_energy <= self.SLEEP_THRESHOLD and not self.state.is_sleeping
+        idle = self.last_interaction is None or (datetime.now()-self.last_interaction).total_seconds() > 1800
+        return not self.state.is_sleeping and (self.state.mental_energy <= self.SLEEP_THRESHOLD or (self.in_sleep_window() and idle))
 
     def get_response_delay(self) -> float:
         """Get response delay multiplier based on energy."""
@@ -135,7 +167,29 @@ class CircadianSystem:
             "mental_energy": round(self.state.mental_energy, 1),
             "is_sleeping": self.state.is_sleeping,
             "wake_count_today": self.state.wake_count_today,
+            "sleep_hour": self.sleep_hour,
+            "wake_hour": self.wake_hour,
+            "observed_days": len(self.activity_days),
+            "activity_days": self.activity_days,
+            "learned_day": getattr(self, '_learned_day', ''),
+            "last_tick": self.state.last_tick.isoformat(),
+            "last_interaction": self.last_interaction.isoformat() if self.last_interaction else None,
+            "sleep_start": self.state.sleep_start.isoformat() if self.state.sleep_start else None,
+            "wake_day": self._wake_day,
         }
+
+    def restore(self, data):
+        self.state.mental_energy = float(data.get('mental_energy', 100))
+        self.state.is_sleeping = bool(data.get('is_sleeping', False))
+        self.state.wake_count_today = int(data.get('wake_count_today', 0))
+        self.sleep_hour = int(data.get('sleep_hour', 23)) % 24
+        self.wake_hour = (self.sleep_hour+8)%24
+        self.activity_days = data.get('activity_days', {})
+        self._learned_day = data.get('learned_day', '')
+        self._wake_day = data.get('wake_day', datetime.now().date().isoformat())
+        for key in ('last_tick', 'sleep_start'):
+            if data.get(key): setattr(self.state, key, datetime.fromisoformat(data[key]))
+        if data.get('last_interaction'): self.last_interaction = datetime.fromisoformat(data['last_interaction'])
 
     def save(self, path: str) -> None:
         """Save state to file."""
@@ -148,8 +202,6 @@ class CircadianSystem:
         try:
             with open(path, "r") as f:
                 data = json.load(f)
-            self.state.mental_energy = data.get("mental_energy", 100.0)
-            self.state.is_sleeping = data.get("is_sleeping", False)
-            self.state.wake_count_today = data.get("wake_count_today", 0)
+            self.restore(data)
         except FileNotFoundError:
             pass

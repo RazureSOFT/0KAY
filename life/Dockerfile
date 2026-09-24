@@ -34,5 +34,6 @@ COPY --from=builder /app/life/ ./life/
 RUN mkdir -p /app/data/life/memory
 
 EXPOSE 50053
+ENV PROTO_PYTHON_DIR=/app/gen/python
 
 CMD ["python", "-m", "life.main"]

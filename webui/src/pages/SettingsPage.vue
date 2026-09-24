@@ -20,10 +20,9 @@ const uiPatches = useUIPatchesStore()
 const route = useRoute()
 const router = useRouter()
 
-type TabId = 'general' | 'provider' | 'persona' | 'live2d' | 'permissions' | 'danger' | string
 
 // Tabs come from uiPatches (BUILTIN_SETTINGS + life.patch replace/insert/remove).
-const tabs = computed<{ id: string; icon: string }>(() => uiPatches.settingsTabs.map(t => ({
+const tabs = computed<Array<{ id: string; icon: string }>>(() => uiPatches.settingsTabs.map(t => ({
   id: t.id,
   icon: t.icon || 'chip',
 })))
@@ -534,11 +533,6 @@ function selectTab(id: string) {
   activeTab.value = id
   if (!isBuiltinTab(id)) loadSectionDraft(id)
   router.replace({ query: { tab: id } })
-}
-
-function selectProvider(id: string) {
-  const p = PROVIDERS.find(x => x.id === id)
-  if (p) wizard.setProvider(p.id, p.baseUrl)
 }
 
 function save() {

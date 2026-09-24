@@ -21,6 +21,9 @@ export interface Message {
 
 export const useChatStore = defineStore('chat', () => {
   const HISTORY_KEY = '0kay.life.chat.webui.default.v1'
+  const SESSION_KEY = '0kay.life.session.v1'
+  const sessionId = ref(sessionStorage.getItem(SESSION_KEY) || `webui:${crypto.randomUUID()}`)
+  sessionStorage.setItem(SESSION_KEY, sessionId.value)
   const messages = ref<Message[]>([])
   const isConnected = ref(false)
   const isTyping = ref(false)
@@ -77,13 +80,15 @@ export const useChatStore = defineStore('chat', () => {
     if (!notificationTimer) {
       notificationTimer = setInterval(async () => {
         try {
-          const response = await fetch('/api/life/notifications?session_id=webui:default')
+          const response = await fetch(`/api/life/notifications?session_id=${encodeURIComponent(sessionId.value)}`)
           if (!response.ok) return
           const body = await response.json()
           for (const notification of body.notifications || []) {
+            if(messages.value.some(message=>message.id===`notification_${notification.id}`))continue
             messages.value.push({ id: `notification_${notification.id}`, role: 'assistant', content: notification.text, timestamp: new Date(notification.created_at || Date.now()) })
           }
           if ((body.notifications || []).length) persistHistory()
+          if ((body.notifications || []).length) await fetch('/api/life/notifications',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sessionId.value,ids:body.notifications.map((item:any)=>item.id)})})
         } catch { /* LIFE may be restarting */ }
       }, 4000)
     }
@@ -301,7 +306,7 @@ export const useChatStore = defineStore('chat', () => {
         request_id: requestId,
         prompt,
         stream: true,
-        session_id: 'default',
+        session_id: sessionId.value,
         // Conversation history stays in LIFE memory; persona is an explicit
         // typed field so the base model cannot overwrite the selected identity.
         user_id: 'webui',
@@ -361,9 +366,8 @@ export const useChatStore = defineStore('chat', () => {
               sawDone = true
               break
             }
-            // LIFE OUTPUT chunks intentionally represent separate platform
-            // messages, so preserve the segment boundary in the chat UI.
-            appendChunk(requestId, payload.chunk || '', true, payload)
+            appendChunk(requestId, payload.chunk || '', false, payload)
+            if (payload.task_id) currentTaskId.value = payload.task_id
             if (payload.done) {
               sawDone = true
             }
@@ -406,6 +410,8 @@ export const useChatStore = defineStore('chat', () => {
     messages.value = []
     lastUsage.value = null
     contextSummary.value = ''
+    sessionId.value = `webui:${crypto.randomUUID()}`
+    sessionStorage.setItem(SESSION_KEY, sessionId.value)
     try { localStorage.removeItem(HISTORY_KEY) } catch { /* ignore */ }
   }
 
@@ -416,7 +422,7 @@ export const useChatStore = defineStore('chat', () => {
       const history = [{ role: 'system', content: contextSummary.value }, ...messages.value.map((message) => ({ role: message.role, content: message.content }))]
       const response = await fetch('/api/life/compact', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: 'webui:default', history, persona: useWizardStore().persona }),
+        body: JSON.stringify({ session_id: sessionId.value, history, persona: useWizardStore().persona }),
       })
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const body = await response.json()

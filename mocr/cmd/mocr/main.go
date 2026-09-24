@@ -44,7 +44,8 @@ func main() {
 	reflection.Register(grpcServer)
 
 	// Start listener
-	listener, err := net.Listen("tcp", ":"+port)
+	bindHost:=os.Getenv("MOCR_BIND_HOST");if bindHost=="" {bindHost="127.0.0.1"}
+	listener, err := net.Listen("tcp", bindHost+":"+port)
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
@@ -60,10 +61,14 @@ func main() {
 	}()
 
 	// Register mocr as a Core plugin (capability: mocr) + heartbeat.
+	mocrAddr := os.Getenv("MOCR_ADDRESS")
+	if mocrAddr == "" {
+		mocrAddr = "localhost:" + port
+	}
 	// mocr owns the Provider settings section (credentials + model catalog + runtime knobs).
 	register.Start(ctx, register.Options{
 		CoreAddress:  coreAddr,
-		MocrAddress:  "localhost:" + port,
+		MocrAddress:  mocrAddr,
 		PluginName:   "mocr",
 		Version:      "0.1.0",
 		Capabilities: []string{"mocr"},

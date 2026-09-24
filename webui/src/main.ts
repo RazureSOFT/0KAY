@@ -6,6 +6,8 @@ import { i18n } from './i18n'
 import { useWizardStore } from './stores/wizard'
 import { useUIPatchesStore } from './stores/uiPatches'
 import './styles/main.css'
+import './styles/expressive.css'
+import { installInteractionMotion } from './composables/motion'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -42,3 +44,5 @@ ui.$subscribe(() => {
 }, { detached: true })
 
 app.mount('#app')
+const disposeMotion = installInteractionMotion()
+if (import.meta.hot) import.meta.hot.dispose(disposeMotion)

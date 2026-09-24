@@ -32,6 +32,8 @@ interface Connection {
   pending: Map<string, { resolve: (value: any) => void; reject: (error: Error) => void }>
   buffer: string
   initialized: boolean
+  sessionId?: string
+  initializing?: Promise<void>
 }
 
 export class McpManager {
@@ -95,6 +97,11 @@ export class McpManager {
 
   private async initialize(conn: Connection): Promise<void> {
     if (conn.initialized) return
+    if(conn.initializing) return conn.initializing
+    conn.initializing=this.initializeConnection(conn).finally(()=>{conn.initializing=undefined})
+    return conn.initializing
+  }
+  private async initializeConnection(conn: Connection): Promise<void> {
     if (conn.config.transport === 'stdio') this.ensureProcess(conn)
     await this.request(conn, 'initialize', {
       protocolVersion: '2024-11-05',
@@ -113,6 +120,11 @@ export class McpManager {
     child.stdout.setEncoding('utf8')
     child.stdout.on('data', (data: string) => this.consumeStdio(conn, data))
     child.stderr.on('data', (data: Buffer) => console.warn(`[0kay-mcp:${conn.config.id}] ${data.toString().trim()}`))
+    child.on('error', error => {
+      conn.process=undefined;conn.initialized=false
+      for(const pending of conn.pending.values()) pending.reject(error)
+      conn.pending.clear()
+    })
     child.on('exit', () => {
       conn.process = undefined
       conn.initialized = false
@@ -175,13 +187,38 @@ export class McpManager {
     if (!conn.config.url) throw new Error(`MCP HTTP server '${conn.config.id}' needs url`)
     const response = await fetch(conn.config.url, {
       method: 'POST',
-      headers: { Accept: 'application/json, text/event-stream', 'Content-Type': 'application/json', ...(conn.config.headers || {}) },
+      headers: { Accept: 'application/json, text/event-stream', 'Content-Type': 'application/json', 'MCP-Protocol-Version':'2024-11-05', ...(conn.sessionId ? {'Mcp-Session-Id':conn.sessionId}:{}), ...(conn.config.headers || {}) },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30000),
     })
     if (!response.ok) throw new Error(`MCP server '${conn.config.id}' returned ${response.status}`)
+    const session=response.headers.get('mcp-session-id');if(session)conn.sessionId=session
+    if(body.id===undefined) {await response.body?.cancel();return undefined}
+    if(response.headers.get('content-type')?.includes('text/event-stream')) {
+      const reader=response.body?.getReader();if(!reader)throw new Error('Empty MCP stream')
+      const decoder=new TextDecoder();let buffer=''
+      try {
+        for (;;) {
+          const {value,done}=await reader.read();if(done)break
+          buffer+=decoder.decode(value,{stream:true}).replace(/\r\n/g,'\n')
+          let boundary:number
+          while((boundary=buffer.indexOf('\n\n'))>=0) {
+            const frame=buffer.slice(0,boundary);buffer=buffer.slice(boundary+2)
+            const data=frame.split('\n').filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart()).join('\n')
+            if(!data)continue
+            const parsed=JSON.parse(data) as JsonRpcResponse
+            if(String(parsed.id)!==String(body.id))continue
+            if(parsed.error)throw new Error(parsed.error.message || 'MCP error')
+            return parsed.result
+          }
+        }
+        throw new Error('MCP stream ended without matching response')
+      } finally {await reader.cancel().catch(()=>{});reader.releaseLock()}
+    }
     const text = await response.text()
     const jsonLine = text.split(/\r?\n/).find((line) => line.startsWith('data:'))?.replace(/^data:\s*/, '') || text
     const parsed = JSON.parse(jsonLine) as JsonRpcResponse
+    if(String(parsed.id)!==String(body.id))throw new Error('Mismatched MCP response ID')
     if (parsed.error) throw new Error(parsed.error.message || `MCP error ${parsed.error.code ?? ''}`)
     return parsed.result
   }

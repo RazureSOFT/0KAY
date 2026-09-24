@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-type Agenda = { id:string; title:string; when:string; detail:string; done:boolean }
-type Entry = { id:string; at:string; content:string }
 const data = ref<any>({ relationships:[], agenda:[], journal:[], dreams:[], audit:[], groups:{}, proactive:{} })
 const loading = ref(false); const error = ref(''); const agendaTitle = ref(''); const agendaWhen = ref(''); const agendaDetail = ref(''); const journal = ref(''); const dream = ref('')
 const groups = computed(() => Object.entries(data.value.groups || {}))

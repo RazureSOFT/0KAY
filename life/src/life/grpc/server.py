@@ -22,12 +22,13 @@ from ..core_client import get_core_client
 class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
     """Implementation of LifeService gRPC service."""
 
-    def __init__(self, mocr_address: str = "localhost:50052"):
+    def __init__(self, mocr_address: str = None):
         self.engine = LifeEngine(mocr_address=mocr_address)
         self._sessions: dict[str, asyncio.Task] = {}
         self._sync_task: asyncio.Task | None = None
         self._onebot_task: asyncio.Task | None = None
         self._onebot_started = False
+        self._onebot_manager = None
 
     async def start_background_tasks(self):
         """Start background loops (heartbeat + agent sync + optional OneBot)."""
@@ -54,6 +55,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                     yield event
 
             manager = OneBotManager(message_handler)
+            self._onebot_manager = manager
             manager.add_adapter(
                 "primary",
                 OneBotConfig(
@@ -70,12 +72,20 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             await manager.start_all()
         except Exception as e:
             print(f"[LIFE] OneBot adapter failed: {e}")
+        finally:
+            if self._onebot_manager:
+                await self._onebot_manager.stop_all()
+            self.engine.tool_config.onebot_sender = None
+            self._onebot_started = False
 
     async def _life_settings(self) -> dict:
-        import urllib.request
+        import httpx
         try:
-            with urllib.request.urlopen("http://127.0.0.1:8080/api/settings/life", timeout=2) as response:
-                return (json.loads(response.read().decode("utf-8")).get("values") or {})
+            base = os.getenv("CORE_HTTP_ADDR") or os.getenv("CORE_HTTP") or "http://127.0.0.1:8080"
+            async with httpx.AsyncClient(timeout=5) as client:
+                response = await client.get(f"{base}/api/settings/life")
+                response.raise_for_status()
+                return response.json().get("values") or {}
         except Exception:
             return {}
 
@@ -85,7 +95,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
 
         # Initial register (retry a few times)
         for attempt in range(10):
-            if core.register():
+            if await asyncio.to_thread(core.register):
                 break
             await asyncio.sleep(2)
 
@@ -102,14 +112,17 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             try:
                 # Heartbeat
                 active = len(self.engine.active_tasks)
-                ok = core.heartbeat(active_tasks=active)
+                ok = await asyncio.to_thread(core.heartbeat, active_tasks=active)
                 if not ok and core.plugin_id is None:
                     # Lost registration, try again
-                    core.register()
+                    await asyncio.to_thread(core.register)
 
                 # Sync agents
                 count = await asyncio.to_thread(self.engine.sync_agents)
                 await self._refresh_settings()
+                await self.engine.task_records.flush()
+                self.engine.circadian.tick(0)
+                self.engine._save_state()
                 # Daily maintenance is intentionally local and bounded: compact
                 # memories, rebuild indexes, and retain seven JSON snapshots.
                 today = __import__("datetime").date.today().isoformat()
@@ -129,6 +142,10 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
         values = await self._life_settings()
         if values:
             self.engine.apply_tool_settings(values)
+            if not self.engine.tool_config.onebot_enabled and self._onebot_task:
+                self._onebot_task.cancel()
+                await asyncio.gather(self._onebot_task, return_exceptions=True)
+                self._onebot_task = None
 
     async def OnTaskCompleted(self, request, context):
         """Handle task completion callback from Core."""
@@ -138,6 +155,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             task_id=request.task_id,
             state=state_name,
             result=request.result,
+            error=request.error,
         )
 
         return life_pb2.OnTaskCompletedResponse(
@@ -154,6 +172,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 message=request.message,
                 adapter_type=request.adapter_type,
                 persona=json.loads(request.persona_json) if request.persona_json else None,
+                history=json.loads(request.history_json) if request.history_json else None,
             ):
                 # grpc.aio ServicerContext versions differ: some expose
                 # is_active(), others only cancelled(). Keep streaming until
@@ -203,7 +222,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             except Exception as e:
                 print(f"[LIFE] memory reinforce error: {e}")
         elif event_type == life_pb2.SCHEDULED_EVENT_TYPE_MEMORY_CONSOLIDATION:
-            self.engine.memory.consolidate()
+            await asyncio.to_thread(self.engine.memory.consolidate)
             try:
                 await asyncio.to_thread(self.engine.memory.periodic_reinforce)
             except Exception as e:
@@ -294,6 +313,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
     async def GetCompanion(self, request, context):
         try:
             snapshot = await asyncio.to_thread(self.engine.companion.snapshot)
+            rhythm = self.engine.circadian.to_dict()
+            snapshot["circadian"] = {key: rhythm[key] for key in ("sleep_hour", "wake_hour", "observed_days", "is_sleeping", "mental_energy")}
             return life_pb2.GetCompanionResponse(json=json.dumps(snapshot, ensure_ascii=False))
         except Exception as e:
             context.set_code(grpc.StatusCode.INTERNAL)
@@ -321,8 +342,11 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = {"deleted": deleted, "id": memory_id}
                 self.engine.companion.audit("memory_delete", memory_id, memory_id, "ok" if deleted else "not_found")
             elif action == "clear_all_memory":
-                result = await asyncio.to_thread(self.engine.memory.clear_all)
+                result = await self.engine.clear_memory()
                 self.engine.companion.audit("memory_clear_all", json.dumps(result, ensure_ascii=False), outcome="ok")
+            elif action == "ack_notifications":
+                self.engine.acknowledge_notifications(str(payload.get('session_id') or ''),payload.get('ids') or [])
+                result={'ok':True}
             else:
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))
@@ -341,11 +365,11 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             return life_pb2.CompactConversationResponse(ok=False, error=str(e))
 
     async def GetNotifications(self, request, context):
-        items = await asyncio.to_thread(self.engine.get_notifications, request.session_id or "")
+        items = self.engine.get_notifications(request.session_id or "")
         return life_pb2.GetNotificationsResponse(notifications=[life_pb2.LifeNotification(**item) for item in items])
 
 
-async def serve(mocr_address: str = "localhost:50052"):
+async def serve(mocr_address: str = None):
     """Start the L.I.F.E gRPC server."""
     port = os.environ.get("LIFE_GRPC_PORT", "50053")
 
@@ -356,9 +380,9 @@ async def serve(mocr_address: str = "localhost:50052"):
 
     # Set life address on core client so Core can call us back
     core = get_core_client()
-    core.life_address = f"localhost:{port}"
+    core.life_address = os.getenv("LIFE_ADDRESS", f"localhost:{port}")
 
-    server.add_insecure_port(f"[::]:{port}")
+    server.add_insecure_port(f"{os.getenv('LIFE_BIND_HOST', '127.0.0.1')}:{port}")
     await server.start()
 
     # Start background tasks (register with Core, heartbeat, sync agents)
@@ -370,8 +394,13 @@ async def serve(mocr_address: str = "localhost:50052"):
 
     try:
         await server.wait_for_termination()
-    except KeyboardInterrupt:
-        print("Shutting down L.I.F.E...")
+    finally:
+        for task in (servicer._sync_task, servicer._onebot_task):
+            if task:
+                task.cancel()
+        await asyncio.gather(*(t for t in (servicer._sync_task, servicer._onebot_task) if t), return_exceptions=True)
+        await servicer.engine.close()
+        core.close()
         await server.stop(grace=5)
 
 

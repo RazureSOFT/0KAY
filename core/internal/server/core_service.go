@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -34,6 +35,12 @@ type CoreServiceServer struct {
 	tasks           map[string]*TaskInfo
 	completed       []string
 	taskHistoryPath string
+ callbackMu sync.Mutex
+ callbacks map[string]taskCallback
+ taskFingerprints map[string]string
+ taskRevision uint64
+ taskChanges map[string]uint64
+ taskRemoved map[string]uint64
 
 	// sessions: session_id -> conversation history
 	sessionMu sync.RWMutex
@@ -78,6 +85,9 @@ type TaskInfo struct {
 	StartedAt time.Time
 	EndedAt   time.Time
 	CancelFn  context.CancelFunc
+	SessionID string
+	Kind string
+	ParentID string
 }
 
 type persistedTask struct {
@@ -90,6 +100,9 @@ type persistedTask struct {
 	Error     string    `json:"error,omitempty"`
 	StartedAt time.Time `json:"started_at"`
 	EndedAt   time.Time `json:"ended_at,omitempty"`
+	SessionID string `json:"session_id,omitempty"`
+	Kind string `json:"kind,omitempty"`
+	ParentID string `json:"parent_id,omitempty"`
 }
 
 // UsageRecord is one token-usage sample.
@@ -226,10 +239,18 @@ func NewCoreServiceServer(reg *registry.Registry) *CoreServiceServer {
 			for _, item := range saved {
 				copy := item
 				tasks[item.TaskID] = &TaskInfo{TaskID: copy.TaskID, CallerID: copy.CallerID, Prompt: copy.Prompt, AgentID: copy.AgentID, State: copy.State, Result: copy.Result, Error: copy.Error, StartedAt: copy.StartedAt, EndedAt: copy.EndedAt}
+				tasks[item.TaskID].SessionID = copy.SessionID
+				tasks[item.TaskID].Kind = copy.Kind
+				tasks[item.TaskID].ParentID = copy.ParentID
+				if copy.State == "running" || copy.State == "pending" {
+					tasks[item.TaskID].State = "failed"
+					tasks[item.TaskID].Error = "Core restarted before execution was acknowledged"
+					tasks[item.TaskID].EndedAt = time.Now()
+				}
 			}
 		}
 	}
-	return &CoreServiceServer{
+	instance := &CoreServiceServer{
 		registry:        reg,
 		tasks:           tasks,
 		taskHistoryPath: taskPath,
@@ -241,6 +262,19 @@ func NewCoreServiceServer(reg *registry.Registry) *CoreServiceServer {
 			ComputerUse: false,
 		},
 	}
+ instance.replayTaskJournal()
+ instance.loadCallbacks()
+ for _,task:=range tasks {if task.Kind=="agent" && task.State=="failed" && task.Error=="Core restarted before execution was acknowledged" {instance.callbacks[task.TaskID]=taskCallback{TaskID:task.TaskID,State:pluginv1.TaskState_TASK_STATE_FAILED,Error:task.Error}}}
+ instance.saveCallbacksLocked()
+ go instance.retryCallbacks()
+	// Upgrade existing LIFE-dispatched task history into browsable sessions.
+	for _, task := range tasks {
+		if (task.Kind == "agent" || task.Kind == "") && !strings.HasPrefix(task.SessionID,"agent-session:") {
+			task.SessionID = instance.EnsureAgentSession(task.SessionID, task.CallerID, task.Prompt)
+			task.Kind = "agent"
+		}
+	}
+	return instance
 }
 
 func (s *CoreServiceServer) persistTasksLocked() {
@@ -249,11 +283,33 @@ func (s *CoreServiceServer) persistTasksLocked() {
 	}
 	items := make([]persistedTask, 0, len(s.tasks))
 	for _, t := range s.tasks {
-		items = append(items, persistedTask{t.TaskID, t.CallerID, t.Prompt, t.AgentID, t.State, t.Result, t.Error, t.StartedAt, t.EndedAt})
+		items = append(items, persistedTask{TaskID:t.TaskID, CallerID:t.CallerID, Prompt:t.Prompt, AgentID:t.AgentID, State:t.State, Result:t.Result, Error:t.Error, StartedAt:t.StartedAt, EndedAt:t.EndedAt, SessionID:t.SessionID, Kind:t.Kind, ParentID:t.ParentID})
 	}
+ if s.taskFingerprints==nil {s.taskFingerprints=map[string]string{}}
+ changes:=[]persistedTask{}
+ for _,item:=range items {raw,_:=json.Marshal(item);if s.taskFingerprints[item.TaskID]!=string(raw) {changes=append(changes,item)}}
+ removed:=[]string{};for id:=range s.taskFingerprints {if s.tasks[id]==nil {removed=append(removed,id)}}
+ if len(changes)==0 && len(removed)==0 {return}
+ if s.taskChanges==nil {s.taskChanges=map[string]uint64{};s.taskRemoved=map[string]uint64{}}
+ s.taskRevision++
+ for _,item:=range changes {s.taskChanges[item.TaskID]=s.taskRevision;if item.Kind=="agent_session" && item.State=="deleted" {removed=append(removed,item.TaskID)}}
+ for _,id:=range removed {s.taskRemoved[id]=s.taskRevision;delete(s.taskChanges,id)}
+ _=os.MkdirAll(filepath.Dir(s.taskHistoryPath),0700)
+ journal,err:=os.OpenFile(s.taskHistoryPath+".journal",os.O_CREATE|os.O_APPEND|os.O_WRONLY,0600)
+ if err!=nil {log.Printf("task journal: %v",err);return}
+ raw,_:=json.Marshal(struct{Tasks []persistedTask `json:"tasks"`;Removed []string `json:"removed"`}{changes,removed})
+ _,err=journal.Write(append(raw,'\n'));if err==nil {err=journal.Sync()};journal.Close()
+ if err!=nil {log.Printf("task journal write: %v",err);return}
+ for _,item:=range changes {raw,_:=json.Marshal(item);s.taskFingerprints[item.TaskID]=string(raw)}
+ for _,id:=range removed {if s.tasks[id]==nil {delete(s.taskFingerprints,id)}}
+ info,_:=os.Stat(s.taskHistoryPath+".journal");_,snapshotErr:=os.Stat(s.taskHistoryPath)
+ if snapshotErr==nil && info!=nil && info.Size()<8<<20 {return}
 	if data, err := json.MarshalIndent(items, "", "  "); err == nil {
 		_ = os.MkdirAll(filepath.Dir(s.taskHistoryPath), 0o755)
-		_ = os.WriteFile(s.taskHistoryPath, data, 0o644)
+		temporary := s.taskHistoryPath + ".tmp"
+		if err := os.WriteFile(temporary, data, 0o600); err == nil {
+			if err = os.Rename(temporary, s.taskHistoryPath); err != nil { log.Printf("persist tasks: %v", err) } else {_=os.WriteFile(s.taskHistoryPath+".journal",nil,0600)}
+		} else { log.Printf("persist tasks: %v", err) }
 	}
 }
 
@@ -367,7 +423,12 @@ func (s *CoreServiceServer) dialMocr(ctx context.Context) (mocrv1.MocrServiceCli
 }
 
 // CallMocr proxies a request to the mocr service (real gRPC when available).
-func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.CoreService_CallMocrServer) error {
+func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.CoreService_CallMocrServer) (callErr error) {
+	id := fmt.Sprintf("core-model:%d", time.Now().UnixNano())
+	_ = s.RecordTask(TaskEvent{TaskID:id, CallerID:req.CallerId, SessionID:req.SessionId, Kind:"output", Prompt:req.Prompt, State:"running"})
+	defer func() {
+		if callErr != nil { s.finishTask(id,"failed","",callErr.Error()) } else { s.finishTask(id,"done","Generation completed","") }
+	}()
 	if req.RequestId == "" {
 		return status.Error(codes.InvalidArgument, "request_id is required")
 	}
@@ -682,7 +743,14 @@ func (s *CoreServiceServer) ListAgents(ctx context.Context, req *corev1.ListAgen
 }
 
 // RunDirect dispatches a direct tool call to the first healthy agent (no LLM).
-func (s *CoreServiceServer) RunDirect(ctx context.Context, req *corev1.RunDirectRequest) (*corev1.RunDirectResponse, error) {
+func (s *CoreServiceServer) RunDirect(ctx context.Context, req *corev1.RunDirectRequest) (response *corev1.RunDirectResponse, callErr error) {
+	id := fmt.Sprintf("direct-tool:%d", time.Now().UnixNano())
+	_ = s.RecordTask(TaskEvent{TaskID:id, CallerID:"core", SessionID:req.SessionId, Kind:"tool", Prompt:req.Tool, State:"running"})
+	defer func() {
+		if callErr != nil { s.finishTask(id,"failed","",callErr.Error())
+		} else if response != nil && response.Success { s.finishTask(id,"done",response.Result,"")
+		} else if response != nil { s.finishTask(id,"failed",response.Result,response.Error) }
+	}()
 	if req.Tool == "" {
 		return nil, status.Error(codes.InvalidArgument, "tool is required")
 	}
@@ -738,8 +806,16 @@ func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRe
 	}
 
 	// Find a healthy agent
+	if req.Metadata == nil { req.Metadata = map[string]string{} }
+	originSession := req.Metadata["session_id"]
+	req.Metadata["origin_session_id"] = originSession
+	req.Metadata["session_id"] = s.EnsureAgentSession(originSession, req.CallerId, req.Prompt)
+	if err := s.RecordTask(TaskEvent{TaskID:req.TaskId, CallerID:req.CallerId, Prompt:req.Prompt, State:"pending", Kind:"agent", SessionID:req.Metadata["session_id"], ParentID:req.Metadata["parent_id"]}); err != nil {
+		return nil, status.Error(codes.AlreadyExists, err.Error())
+	}
 	agents := s.registry.GetAgents(true)
 	if len(agents) == 0 {
+		s.finishTask(req.TaskId, "failed", "", "no healthy agents available")
 		return &corev1.UseAgentResponse{
 			Accepted: false,
 			TaskId:   req.TaskId,
@@ -749,16 +825,15 @@ func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRe
 
 	// Simple round-robin: pick first agent (could be improved)
 	agent := agents[0]
+ if requested:=req.Metadata["executor_id"];requested!="" {
+  found:=false
+  for _,candidate:=range agents {if candidate.PluginID==requested {agent=candidate;found=true;break}}
+  if !found {s.finishTask(req.TaskId,"failed","","selected executor is offline or unavailable");return &corev1.UseAgentResponse{Accepted:false,TaskId:req.TaskId,Message:"selected executor is offline or unavailable"},nil}
+ }
 
 	s.mu.Lock()
-	s.tasks[req.TaskId] = &TaskInfo{
-		TaskID:    req.TaskId,
-		CallerID:  req.CallerId,
-		Prompt:    req.Prompt,
-		AgentID:   agent.PluginID,
-		State:     "running",
-		StartedAt: time.Now(),
-	}
+	s.tasks[req.TaskId].AgentID = agent.PluginID
+	s.tasks[req.TaskId].State = "running"
 	s.mu.Unlock()
 	s.mu.Lock()
 	s.persistTasksLocked()
@@ -786,7 +861,7 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
 
 	conn, err := grpc.NewClient(agentAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -804,9 +879,13 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 		agentType = "general"
 	}
 
+	executionPrompt := req.Prompt
+	if strings.HasPrefix(req.Metadata["session_id"], "agent-session:") {
+		executionPrompt = s.AgentSessionPrompt(req.Metadata["session_id"], req.TaskId, req.Prompt)
+	}
 	resp, err := client.ExecuteTask(ctx, &agentv1.ExecuteTaskRequest{
 		TaskId:    req.TaskId,
-		Prompt:    req.Prompt,
+		Prompt:    executionPrompt,
 		AgentType: agentType,
 		Metadata:  req.Metadata,
 	})
@@ -836,19 +915,14 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 func (s *CoreServiceServer) finishTask(taskID, state, result, errMsg string) {
 	s.mu.Lock()
 	if t, ok := s.tasks[taskID]; ok {
+		if t.State == "cancelled" && state != "cancelled" {
+			s.mu.Unlock()
+			return
+		}
 		t.State = state
 		t.Result = result
 		t.Error = errMsg
 		t.EndedAt = time.Now()
-	}
-	// Keep a short history ring of completed tasks
-	s.completed = append(s.completed, taskID)
-	if len(s.completed) > 50 {
-		old := s.completed[0]
-		s.completed = s.completed[1:]
-		if old != taskID {
-			delete(s.tasks, old)
-		}
 	}
 	s.mu.Unlock()
 	s.mu.Lock()
@@ -864,6 +938,15 @@ func (s *CoreServiceServer) failTask(taskID, errMsg string) {
 
 // notifyLifeTaskCompleted calls LifeService.OnTaskCompleted on the registered L.I.F.E plugin.
 func (s *CoreServiceServer) notifyLifeTaskCompleted(taskID string, state pluginv1.TaskState, result, errMsg string) {
+ s.callbackMu.Lock()
+ if s.callbacks==nil {s.callbacks=map[string]taskCallback{}}
+ s.callbacks[taskID]=taskCallback{TaskID:taskID,State:state,Result:result,Error:errMsg}
+ s.saveCallbacksLocked()
+ s.callbackMu.Unlock()
+ s.deliverTaskCallback(taskID,state,result,errMsg)
+}
+
+func (s *CoreServiceServer) deliverTaskCallback(taskID string, state pluginv1.TaskState, result, errMsg string) {
 	lifes := s.registry.GetPluginsByCapability("life")
 	if len(lifes) == 0 {
 		log.Printf("[TaskCompleted] No L.I.F.E plugin registered, skipping notification for task %s", taskID)
@@ -900,6 +983,7 @@ func (s *CoreServiceServer) notifyLifeTaskCompleted(taskID string, state pluginv
 	}
 
 	log.Printf("[TaskCompleted] L.I.F.E acknowledged task %s: %s", taskID, resp.ResponseText)
+ if resp.Acknowledged {s.callbackMu.Lock();delete(s.callbacks,taskID);s.saveCallbacksLocked();s.callbackMu.Unlock()}
 }
 
 // CancelAgent cancels a running Agent task.
@@ -918,10 +1002,15 @@ func (s *CoreServiceServer) CancelAgent(ctx context.Context, req *corev1.CancelA
 		}, nil
 	}
 	agentID := task.AgentID
+	if task.State != "running" && task.State != "pending" {
+		s.mu.Unlock()
+		return &corev1.CancelAgentResponse{Success: false, Message: "task is already terminal"}, nil
+	}
 	s.mu.Unlock()
 
 	// Find agent and call CancelTask
 	agents := s.registry.GetAgents(false)
+	cancelled := false
 	for _, a := range agents {
 		if a.PluginID == agentID && a.Address != "" {
 			conn, err := grpc.NewClient(a.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -929,17 +1018,25 @@ func (s *CoreServiceServer) CancelAgent(ctx context.Context, req *corev1.CancelA
 				continue
 			}
 			agentClient := agentv1.NewAgentServiceClient(conn)
-			agentClient.CancelTask(ctx, &agentv1.CancelTaskRequest{TaskId: req.TaskId})
+			response, callErr := agentClient.CancelTask(ctx, &agentv1.CancelTaskRequest{TaskId: req.TaskId})
 			conn.Close()
+			if callErr != nil {
+				return nil, callErr
+			}
+			cancelled = response.Success
 			break
 		}
 	}
 
+	if !cancelled {
+		return &corev1.CancelAgentResponse{Success: false, Message: "agent did not cancel the task"}, nil
+	}
 	s.mu.Lock()
 	if t, ok := s.tasks[req.TaskId]; ok {
 		t.State = "cancelled"
 		t.EndedAt = time.Now()
 	}
+	s.persistTasksLocked()
 	s.mu.Unlock()
 
 	return &corev1.CancelAgentResponse{
@@ -962,6 +1059,7 @@ func (s *CoreServiceServer) ListTasks() []map[string]interface{} {
 	defer s.mu.Unlock()
 	out := make([]map[string]interface{}, 0, len(s.tasks))
 	for _, t := range s.tasks {
+		if session := s.tasks[t.SessionID]; session != nil && session.Kind == "agent_session" && session.State == "deleted" { continue }
 		state := t.State
 		if state == "" {
 			state = "running"
@@ -972,7 +1070,10 @@ func (s *CoreServiceServer) ListTasks() []map[string]interface{} {
 			"prompt":     t.Prompt,
 			"agent_id":   t.AgentID,
 			"state":      state,
-			"started_at": t.StartedAt.Format(time.RFC3339),
+			"started_at": t.StartedAt.Format("2006-01-02T15:04:05.000000000Z07:00"),
+			"session_id": t.SessionID,
+			"kind": t.Kind,
+			"parent_id": t.ParentID,
 		}
 		if !t.EndedAt.IsZero() {
 			item["ended_at"] = t.EndedAt.Format(time.RFC3339)
@@ -985,6 +1086,11 @@ func (s *CoreServiceServer) ListTasks() []map[string]interface{} {
 		}
 		out = append(out, item)
 	}
+	sort.Slice(out, func(i,j int) bool {
+		a,b:=out[i]["started_at"].(string),out[j]["started_at"].(string)
+		if a==b { return out[i]["task_id"].(string) < out[j]["task_id"].(string) }
+		return a>b
+	})
 	return out
 }
 

@@ -2,13 +2,11 @@
 import { ref, nextTick, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useChatStore } from '../stores/chat'
-import { useLifeStore } from '../stores/life'
 import { useWizardStore } from '../stores/wizard'
 import MessageBubble from './MessageBubble.vue'
 
 const { t } = useI18n()
 const chatStore = useChatStore()
-const lifeStore = useLifeStore()
 const wizard = useWizardStore()
 
 const inputText = ref('')
@@ -89,7 +87,7 @@ watch(
             </svg>
           </div>
           <h3>{{ t('chat.empty') }}</h3>
-          <p>{{ t('chat.emptyHint') }}</p>
+          <p>{{ t('chat.emptyHint', { name: wizard.persona.name || t('chat.defaultCharacter') }) }}</p>
         </div>
 
         <MessageBubble
