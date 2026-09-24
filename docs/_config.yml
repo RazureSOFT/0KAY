@@ -2,7 +2,4 @@ title: 0KAY Plugin API
 description: Plugin contracts and extension guide for the 0KAY platform.
 theme: minima
 markdown: kramdown
-github:
-  metadata: false
-plugins:
-  - jekyll-seo-tag
+plugins: []
