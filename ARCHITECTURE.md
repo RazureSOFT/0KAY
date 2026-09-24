@@ -1,9 +1,18 @@
-# 0kay 架构说明
+# 0KAY 架构说明
 
 > 执行状态、会话隔离、记忆存储与部署的最新实现约定见 [RUNTIME_CONTRACTS.md](RUNTIME_CONTRACTS.md)。旧有聊天镜像和技能预取描述以该文档及当前代码为准。
 
-> 本文描述 0kay 平台的组件划分、通信边界、数据流与扩展机制。  
-> 对应仓库布局：`core/` · `mocr/` · `life/` · `agent/` · `webui/` · `searxng/` · `proto/` · `gen/`
+> 本文描述 0KAY 平台的组件划分、通信边界、数据流与扩展机制。
+> `core/`、`mocr/`、`life/`、`webui/`、`searxng/`、`proto/`、`gen/` 和 `mcp/` 位于 umbrella 仓库；`agent/` 保持在独立的 `0KAY-agent` 仓库。
+
+## 文档约定
+
+本仓库的架构、运行约定、模型目录和插件说明统一使用 Markdown。
+
+- 代码行为以当前实现和 `RUNTIME_CONTRACTS.md` 为准。
+- 模型名称以实时供应商目录为准，`MODEL_CATALOG.md` 只提供 fallback 快照。
+- 插件 UI 必须通过 `*.patch` 注册；插件禁用后对应页面、路由和导航必须撤销。
+- Agent 是独立仓库，通过 `dependencies.json` 记录平台所需版本。
 
 ---
 

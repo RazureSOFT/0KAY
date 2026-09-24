@@ -1,6 +1,15 @@
-# 0kay - Modular AI Agent Platform
+# 0KAY - Modular AI Agent Platform
 
-A distributed AI Agent platform with persona-driven responses, intelligent model selection, and modular architecture.
+A local-first AI platform with Core orchestration, a persona plugin, a model gateway, a WebUI, and an independent Agent repository.
+
+## Documentation
+
+- [Architecture](ARCHITECTURE.md) - component boundaries, communication, data flow, and UI patches.
+- [Runtime Contracts](RUNTIME_CONTRACTS.md) - task identity, session scope, approvals, callbacks, and persistence rules.
+- [Model Catalog](MODEL_CATALOG.md) - official model references and fallback model IDs.
+
+Repository documentation uses Markdown. Runtime chat output remains ordinary
+persona text unless the user explicitly requests formatted code or technical output.
 
 ## Architecture
 
@@ -40,7 +49,7 @@ QQ/OneBot ──WebSocket───────┤
 - Circadian rhythm (mental energy, sleep/wake)
 - Tools (getmail, useagent, search)
 
-### Agent (TypeScript)
+### Agent (TypeScript, independent repository)
 - Task execution engine
 - Tool usage (filesystem, shell)
 - Core-scheduled via gRPC
