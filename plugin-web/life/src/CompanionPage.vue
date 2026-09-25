@@ -152,7 +152,9 @@ onMounted(load)
       <button class="btn btn-tonal btn-sm" @click="eat">吃饭</button>
     </section>
 
-  <section class="grid">
+  <section class="group">
+    <h2 class="group-title">生活</h2>
+    <div class="grid">
       <article class="card">
         <div class="card-head"><h2 class="card-title">日程</h2><button class="btn btn-tonal btn-sm" @click="arrangeAgenda">由 LIFE 安排今天</button></div>
         <form class="agenda-form" @submit.prevent="addAgenda">
@@ -180,6 +182,50 @@ onMounted(load)
       </article>
 
       <article class="card">
+        <div class="card-head"><h2 class="card-title">重要日期</h2><span class="chip muted">{{ (data.important_dates || []).length }}</span></div>
+        <form class="stack-form" @submit.prevent="addDate">
+          <input v-model="dateForm.title" class="input" placeholder="名称，如 生日 / 纪念日" aria-label="重要日期名称" />
+          <input v-model="dateForm.date" class="input" placeholder="日期：YYYY-MM-DD 或 MM-DD" aria-label="重要日期" />
+          <input v-model="dateForm.note" class="input" placeholder="备注（可选）" aria-label="备注" />
+          <label class="check-line"><input type="checkbox" v-model="dateForm.repeat_yearly" /> 每年重复</label>
+          <button class="btn btn-primary" type="submit" :disabled="!dateForm.title.trim() || !dateForm.date.trim()">添加</button>
+        </form>
+        <ul class="item-list">
+          <li v-for="item in data.important_dates" :key="item.id" class="item">
+            <div class="item-main">
+              <strong>{{ item.title }}</strong>
+              <span class="item-meta">{{ item.date_text }}<template v-if="daysUntil(item.date_text) !== null"> · {{ daysUntil(item.date_text) === 0 ? '就是今天' : daysUntil(item.date_text) + ' 天后' }}</template><template v-if="item.note"> · {{ item.note }}</template></span>
+            </div>
+            <div class="item-actions"><button class="btn btn-danger btn-sm" @click="removeDate(item.id)">删除</button></div>
+          </li>
+          <li v-if="!data.important_dates?.length" class="list-empty">还没有重要日期，LIFE 会据此规划提醒。</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2 class="card-title">日记</h2><div class="head-actions"><button class="btn btn-danger btn-sm" @click="clearJournal('journal')">清除</button><button class="btn btn-tonal btn-sm" :disabled="generating === 'journal'" @click="generate('journal')">{{ generating === 'journal' ? '生成中…' : '由 LIFE 生成' }}</button></div></div>
+        <form class="stack-form" @submit.prevent="addEntry('journal', journal)"><textarea v-model="journal" class="input area" placeholder="记录 LIFE 的日记…"></textarea><button class="btn btn-tonal" type="submit">写入日记</button></form>
+        <ol class="feed">
+          <li v-for="item in data.journal" :key="item.id"><time>{{ item.at }}</time><p>{{ item.content }}</p></li>
+          <li v-if="!data.journal?.length" class="list-empty plain">还没有日记</li>
+        </ol>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2 class="card-title">梦境</h2><div class="head-actions"><button class="btn btn-danger btn-sm" @click="clearJournal('dream')">清除</button><button class="btn btn-tonal btn-sm" :disabled="generating === 'dream'" @click="generate('dream')">{{ generating === 'dream' ? '生成中…' : '由 LIFE 生成' }}</button></div></div>
+        <form class="stack-form" @submit.prevent="addEntry('dream', dream)"><textarea v-model="dream" class="input area" placeholder="记录一个梦境或睡眠反思…"></textarea><button class="btn btn-tonal" type="submit">记录梦境</button></form>
+        <ol class="feed">
+          <li v-for="item in data.dreams" :key="item.id"><time>{{ item.at }}</time><p>{{ item.content }}</p></li>
+          <li v-if="!data.dreams?.length" class="list-empty plain">还没有梦境记录</li>
+        </ol>
+      </article>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2 class="group-title">关系</h2>
+    <div class="grid">
+      <article class="card">
         <div class="card-head"><h2 class="card-title">关系账本</h2><button class="btn btn-tonal btn-sm" @click="openLedger = !openLedger">{{ openLedger ? '隐藏事件' : '查看事件账本' }}</button></div>
         <ul class="rel-list">
           <li v-for="rel in data.relationships" :key="rel.user_id" class="rel">
@@ -202,6 +248,22 @@ onMounted(load)
         </div>
       </article>
 
+      <article class="card">
+        <div class="card-head"><h2 class="card-title">成长中的性格</h2></div>
+        <ul class="item-list">
+          <li v-for="trait in data.persona_evolution" :key="trait.id" class="item trait-item">
+            <div class="item-main"><strong>{{ trait.trait }}</strong><span class="item-meta">支持 {{ trait.support_count }} 次 · 置信度 {{ Math.round((trait.confidence || 0) * 100) }}%</span></div>
+            <span class="chip">{{ trait.value }}</span>
+          </li>
+          <li v-if="!data.persona_evolution?.length" class="list-empty">LIFE 还在观察，重复出现的稳定倾向才会被确认。</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2 class="group-title">主动行为</h2>
+    <div class="grid">
       <article class="card">
         <div class="card-head"><h2 class="card-title">主动行为</h2><span class="chip muted">待投递 {{ activeCandidates.length }}</span></div>
         <div class="toolbar-inline"><button class="btn btn-tonal btn-sm" @click="suggestProactive">让 LIFE 建议一条</button><button class="btn btn-tonal btn-sm" :disabled="ticking" @click="tickNow">{{ ticking ? '检查中…' : '立即检查投递' }}</button></div>
@@ -232,39 +294,12 @@ onMounted(load)
           <li v-if="!receipts.length" class="list-empty plain">还没有主动投递记录</li>
         </ol>
       </article>
+    </div>
+  </section>
 
-      <article class="card">
-        <div class="card-head"><h2 class="card-title">重要日期</h2><span class="chip muted">{{ (data.important_dates || []).length }}</span></div>
-        <form class="stack-form" @submit.prevent="addDate">
-          <input v-model="dateForm.title" class="input" placeholder="名称，如 生日 / 纪念日" aria-label="重要日期名称" />
-          <input v-model="dateForm.date" class="input" placeholder="日期：YYYY-MM-DD 或 MM-DD" aria-label="重要日期" />
-          <input v-model="dateForm.note" class="input" placeholder="备注（可选）" aria-label="备注" />
-          <label class="check-line"><input type="checkbox" v-model="dateForm.repeat_yearly" /> 每年重复</label>
-          <button class="btn btn-primary" type="submit" :disabled="!dateForm.title.trim() || !dateForm.date.trim()">添加</button>
-        </form>
-        <ul class="item-list">
-          <li v-for="item in data.important_dates" :key="item.id" class="item">
-            <div class="item-main">
-              <strong>{{ item.title }}</strong>
-              <span class="item-meta">{{ item.date_text }}<template v-if="daysUntil(item.date_text) !== null"> · {{ daysUntil(item.date_text) === 0 ? '就是今天' : daysUntil(item.date_text) + ' 天后' }}</template><template v-if="item.note"> · {{ item.note }}</template></span>
-            </div>
-            <div class="item-actions"><button class="btn btn-danger btn-sm" @click="removeDate(item.id)">删除</button></div>
-          </li>
-          <li v-if="!data.important_dates?.length" class="list-empty">还没有重要日期，LIFE 会据此规划提醒。</li>
-        </ul>
-      </article>
-
-      <article class="card">
-        <div class="card-head"><h2 class="card-title">成长中的性格</h2></div>
-        <ul class="item-list">
-          <li v-for="trait in data.persona_evolution" :key="trait.id" class="item trait-item">
-            <div class="item-main"><strong>{{ trait.trait }}</strong><span class="item-meta">支持 {{ trait.support_count }} 次 · 置信度 {{ Math.round((trait.confidence || 0) * 100) }}%</span></div>
-            <span class="chip">{{ trait.value }}</span>
-          </li>
-          <li v-if="!data.persona_evolution?.length" class="list-empty">LIFE 还在观察，重复出现的稳定倾向才会被确认。</li>
-        </ul>
-      </article>
-
+  <section class="group">
+    <h2 class="group-title">群聊观察</h2>
+    <div class="grid">
       <article class="card">
         <div class="card-head"><h2 class="card-title">群聊观察</h2><span class="chip muted">{{ groups.length }}</span></div>
         <ul class="item-list">
@@ -284,26 +319,12 @@ onMounted(load)
           <li v-if="!groups.length" class="list-empty">群聊观察尚未启用或没有消息。</li>
         </ul>
       </article>
+    </div>
+  </section>
 
-      <article class="card">
-        <div class="card-head"><h2 class="card-title">日记</h2><div class="head-actions"><button class="btn btn-danger btn-sm" @click="clearJournal('journal')">清除</button><button class="btn btn-tonal btn-sm" :disabled="generating === 'journal'" @click="generate('journal')">{{ generating === 'journal' ? '生成中…' : '由 LIFE 生成' }}</button></div></div>
-        <form class="stack-form" @submit.prevent="addEntry('journal', journal)"><textarea v-model="journal" class="input area" placeholder="记录 LIFE 的日记…"></textarea><button class="btn btn-tonal" type="submit">写入日记</button></form>
-        <ol class="feed">
-          <li v-for="item in data.journal" :key="item.id"><time>{{ item.at }}</time><p>{{ item.content }}</p></li>
-          <li v-if="!data.journal?.length" class="list-empty plain">还没有日记</li>
-        </ol>
-      </article>
-
-      <article class="card">
-        <div class="card-head"><h2 class="card-title">梦境</h2><div class="head-actions"><button class="btn btn-danger btn-sm" @click="clearJournal('dream')">清除</button><button class="btn btn-tonal btn-sm" :disabled="generating === 'dream'" @click="generate('dream')">{{ generating === 'dream' ? '生成中…' : '由 LIFE 生成' }}</button></div></div>
-        <form class="stack-form" @submit.prevent="addEntry('dream', dream)"><textarea v-model="dream" class="input area" placeholder="记录一个梦境或睡眠反思…"></textarea><button class="btn btn-tonal" type="submit">记录梦境</button></form>
-        <ol class="feed">
-          <li v-for="item in data.dreams" :key="item.id"><time>{{ item.at }}</time><p>{{ item.content }}</p></li>
-          <li v-if="!data.dreams?.length" class="list-empty plain">还没有梦境记录</li>
-        </ol>
-      </article>
-    </section>
-
+    <section class="group">
+      <h2 class="group-title">诊断</h2>
+      <div class="grid">
     <article class="card audit-card">
       <div class="card-head"><h2 class="card-title">模型用量</h2><span class="chip muted">{{ usage?.request_count || 0 }} 次请求</span></div>
       <div class="usage-grid">
@@ -329,7 +350,10 @@ onMounted(load)
         <li v-if="!data.audit?.length" class="list-empty plain">暂无审计记录</li>
       </ol>
     </article>
-  </div><ConfirmDialog /></main>
+      </div>
+    </section>
+  </div>
+  </main>
 </template>
 
 <style scoped>
@@ -364,6 +388,9 @@ onMounted(load)
 .tone-4{background:var(--md-success-container);color:#0D3B1E}
 
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-lg);margin-bottom:var(--space-lg)}
+.group{margin-bottom:var(--space-lg)}
+.group-title{margin:0 0 12px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--md-on-surface-variant)}
+.group .grid{margin-bottom:0}
 .card{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--radius-lg);padding:var(--space-xl);box-shadow:var(--shadow-1)}
 .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:var(--space-lg)}
 .card-title{margin:0;font-size:16px;font-weight:650}
