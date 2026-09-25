@@ -343,7 +343,7 @@ class LifeEngine:
             snapshot = await asyncio.to_thread(self.companion.snapshot)
         except Exception:
             snapshot = {}
-        agenda_titles = [item.get("title") for item in (snapshot.get("agenda") or [])][:6]
+        agenda_items = [{"title": item.get("title"), "at": item.get("start_at")} for item in (snapshot.get("agenda") or [])][:6]
         recent: list[str] = []
         for session_id in list(self._histories.keys())[-2:]:
             for item in self._histories[session_id][-3:]:
@@ -356,7 +356,7 @@ class LifeEngine:
             "time": now.isoformat(timespec="minutes"),
             "sleeping": rhythm.get("is_sleeping"),
             "energy": rhythm.get("mental_energy"),
-            "agenda": agenda_titles,
+            "agenda": agenda_items,
             "important_dates": [{"title": item.get("title"), "in_days": item.get("days_until")} for item in upcoming],
             "recent": recent[-6:],
         }, ensure_ascii=False)

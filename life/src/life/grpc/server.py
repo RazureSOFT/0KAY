@@ -382,6 +382,12 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             elif action == "memory_reflection_review":
                 result = await asyncio.to_thread(self.engine.memory.review_reflection, payload.get("id",""), bool(payload.get("accept", True)))
                 self.engine.companion.audit("memory_reflection_review", json.dumps(result, ensure_ascii=False), str(payload.get("id","")), "ok")
+            elif action == "memory_importance":
+                result = await asyncio.to_thread(self.engine.memory.adjust_importance, payload.get("id",""), float(payload.get("delta",0.1)))
+            elif action == "memory_export":
+                result = await asyncio.to_thread(self.engine.memory.export_snapshot)
+            elif action == "memory_import":
+                result = await asyncio.to_thread(self.engine.memory.import_snapshot, payload.get("snapshot") or {})
             elif action == "proactive_create":
                 result = await asyncio.to_thread(self.engine.companion.create_proactive_candidate, payload.get("target",""), payload.get("motive",""), payload.get("content",""), payload.get("preferred_at",""))
             elif action == "proactive_cancel":

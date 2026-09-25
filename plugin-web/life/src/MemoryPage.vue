@@ -125,6 +125,36 @@ async function reinforce(memory: Memory) {
   try { await call('memory_reinforce', { ids: [memory.id] }); flash('已再巩固'); await loadMemories() }
   catch (cause: any) { error.value = cause?.message || '强化失败' }
 }
+async function bumpImportance(memory: Memory, delta: number) {
+  try { await call('memory_importance', { id: memory.id, delta }); await loadMemories() }
+  catch (cause: any) { error.value = cause?.message || '调整失败' }
+}
+async function exportMemories() {
+  try {
+    const body = await call('memory_export', {})
+    const blob = new Blob([JSON.stringify(body, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `0kay-memory-${new Date().toISOString().slice(0, 10)}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    flash('已导出记忆快照')
+  } catch (cause: any) { error.value = cause?.message || '导出失败' }
+}
+const importInput = ref<HTMLInputElement | null>(null)
+async function onImportFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  try {
+    const snapshot = JSON.parse(await file.text())
+    const result = await call('memory_import', { snapshot })
+    flash(`导入完成：新增 ${result.imported || 0} · 跳过 ${result.skipped || 0}`)
+    await loadMemories(); await loadStats()
+  } catch (cause: any) { error.value = cause?.message || '导入失败' }
+  finally { input.value = '' }
+}
 
 async function removeMemory(memory: Memory) {
   const ok = await confirm({ title: '删除记忆', message: '删除会撤销该记忆并重建检索投影，继续吗？', confirmLabel: '删除', danger: true })
@@ -241,6 +271,9 @@ onMounted(async () => { await loadMemories(); await loadStats() })
             <select v-model="sort"><option value="recent">最近</option><option value="strength">强度</option><option value="importance">重要性</option><option value="recall">召回次数</option></select>
           </label>
           <span class="chip muted">{{ total }} 条 · 第 {{ page }}/{{ pages }} 页</span>
+          <button class="btn btn-tonal btn-sm" @click="exportMemories">导出</button>
+          <button class="btn btn-tonal btn-sm" @click="importInput?.click()">导入</button>
+          <input ref="importInput" type="file" accept="application/json,.json" class="hidden-input" @change="onImportFile" />
         </section>
 
         <section class="memory-list">
@@ -268,6 +301,8 @@ onMounted(async () => { await loadMemories(); await loadStats() })
             </div>
             <div class="card-actions">
               <button class="btn btn-sm btn-tonal" @click="expanded = expanded === memory.id ? '' : memory.id">{{ expanded === memory.id ? '收起' : '详情' }}</button>
+              <button class="btn btn-sm btn-tonal" @click="bumpImportance(memory, 0.1)">重要 +</button>
+              <button class="btn btn-sm btn-tonal" @click="bumpImportance(memory, -0.1)">重要 −</button>
               <button class="btn btn-sm btn-tonal" @click="reinforce(memory)">再巩固</button>
             </div>
           </article>
@@ -436,6 +471,7 @@ onMounted(async () => { await loadMemories(); await loadStats() })
 .detail dd{margin:3px 0 0;overflow-wrap:anywhere}
 .detail code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
 .card-actions{display:flex;gap:8px;justify-content:flex-end}
+.hidden-input{display:none}
 
 .empty-state{padding:56px 24px;text-align:center;background:var(--md-surface-container);border:1px dashed var(--md-outline-variant);border-radius:var(--radius-lg);color:var(--md-on-surface-variant)}
 .empty-state p{margin:0;font-size:15px;font-weight:600;color:var(--md-on-surface)}

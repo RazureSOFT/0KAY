@@ -859,6 +859,50 @@ class MemorySystem:
         return [self._fact_dict(m) for m in targets]
 
     @synchronized
+    def adjust_importance(self, fact_id: str, delta: float) -> dict:
+        """Nudge a memory's importance (manual curation)."""
+        for memory in self.short_term.memories + self.long_term.memories:
+            if memory.id == fact_id:
+                memory.importance = max(0.0, min(1.0, memory.importance + float(delta)))
+                self._sync_fact(memory, self._tier_of(memory))
+                return self._fact_dict(memory)
+        raise FileNotFoundError(f"memory '{fact_id}' not found")
+
+    @synchronized
+    def export_snapshot(self) -> dict:
+        """Export active facts, tags and note registry as a portable JSON snapshot."""
+        with self._connect() as db:
+            facts = [dict(row) for row in db.execute("SELECT * FROM memory_facts WHERE status='active'").fetchall()]
+            tags = [dict(row) for row in db.execute("SELECT * FROM memory_tags").fetchall()]
+            notes = [dict(row) for row in db.execute("SELECT * FROM note_files WHERE status='active'").fetchall()]
+        return {"version": 1, "exported_at": datetime.now().isoformat(), "facts": facts, "tags": tags, "notes": notes}
+
+    @synchronized
+    def import_snapshot(self, snapshot: dict) -> dict:
+        """Import a snapshot, skipping facts that already exist by id."""
+        imported = 0
+        skipped = 0
+        with self._connect() as db:
+            for row in snapshot.get("facts") or []:
+                fact_id = str(row.get("id") or "")
+                if not fact_id:
+                    continue
+                if db.execute("SELECT 1 FROM memory_facts WHERE id=?", (fact_id,)).fetchone():
+                    skipped += 1
+                    continue
+                db.execute(
+                    "INSERT INTO memory_facts(id,content,importance,strength,tier,status,scope,metadata_json,created_at,last_recalled,recall_count,source_kind,source_ref,supersedes_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (fact_id, str(row.get("content") or ""), float(row.get("importance") or 0.5), float(row.get("strength") or 0.5),
+                     str(row.get("tier") or "short_term"), "active", str(row.get("scope") or "public"),
+                     str(row.get("metadata_json") or "{}"), str(row.get("created_at") or datetime.now().isoformat()),
+                     str(row.get("last_recalled") or datetime.now().isoformat()), int(row.get("recall_count") or 0),
+                     str(row.get("source_kind") or "conversation"), row.get("source_ref"), row.get("supersedes_id")))
+                imported += 1
+        self._reload_facts()
+        self.rebuild_index()
+        return {"imported": imported, "skipped": skipped}
+
+    @synchronized
     def delete_note(self, note_id: str) -> bool:
         safe = Path(note_id).name
         path = self.notes_dir / f"{safe}.md"
