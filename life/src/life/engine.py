@@ -325,7 +325,7 @@ class LifeEngine:
         return text
 
     def get_notifications(self, session_id=""):
-        selected = [item for item in self._notifications if session_id and item["session_id"] == session_id]
+        selected = [item for item in self._notifications if not session_id or item["session_id"] == session_id]
         return selected
 
     def acknowledge_notifications(self, session_id, ids):

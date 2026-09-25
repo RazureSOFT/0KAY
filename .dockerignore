@@ -3,6 +3,10 @@
 **/__pycache__
 **/dist
 **/data
+# Runtime plugin UI bundles and UI patches are tracked and required inside the image.
+!core/data
+!core/data/plugin-ui
+!core/data/ui
 **/*.log
 **/*.exe
 agent/opencode

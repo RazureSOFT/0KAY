@@ -6,6 +6,8 @@ import httpx
 import asyncio
 from mocr.v1 import mocr_pb2, mocr_pb2_grpc
 
+from .http_auth import auth_headers
+
 
 class MocrClient:
     def __init__(self, address=None, core_http=None):
@@ -45,7 +47,7 @@ class MocrClient:
         if not self._stub:
             await self.connect()
         async with httpx.AsyncClient(timeout=5) as client:
-            response = await client.get(f"{self.core_http}/api/providers")
+            response = await client.get(f"{self.core_http}/api/providers", headers=auth_headers())
             response.raise_for_status()
             data = response.json()
         providers = data if isinstance(data, list) else data.get("providers", [])

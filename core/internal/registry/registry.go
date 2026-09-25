@@ -1,11 +1,11 @@
 package registry
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"google.golang.org/protobuf/proto"
 	"sort"
 	"strings"
-	"crypto/sha256"
-	"google.golang.org/protobuf/proto"
 	"sync"
 	"time"
 
@@ -129,10 +129,22 @@ func (r *Registry) Register(info *pluginv1.PluginInfo, capabilities []string, ad
 
 	// Replace any existing instance with the same name (keep its plugin_id).
 	identity := info.Name
-	for _, capability := range capabilities {if strings.HasPrefix(capability,"executor:") {identity=capability;break}}
-	if identity==info.Name {for _,capability:=range capabilities {if capability=="agent" {identity="agent@"+address;break}}}
-	hash:=sha256.Sum256([]byte(identity))
-	stableID:=fmt.Sprintf("plugin_%x",hash[:12])
+	for _, capability := range capabilities {
+		if strings.HasPrefix(capability, "executor:") {
+			identity = capability
+			break
+		}
+	}
+	if identity == info.Name {
+		for _, capability := range capabilities {
+			if capability == "agent" {
+				identity = "agent@" + address
+				break
+			}
+		}
+	}
+	hash := sha256.Sum256([]byte(identity))
+	stableID := fmt.Sprintf("plugin_%x", hash[:12])
 	for id, p := range r.plugins {
 		if id != stableID {
 			continue
@@ -140,7 +152,7 @@ func (r *Registry) Register(info *pluginv1.PluginInfo, capabilities []string, ad
 		now := time.Now()
 		wasUnhealthy := p.Status == corev1.PluginStatus_PLUGIN_STATUS_UNHEALTHY
 		p.Info = proto.Clone(info).(*pluginv1.PluginInfo)
-		p.Capabilities = append([]string(nil),capabilities...)
+		p.Capabilities = append([]string(nil), capabilities...)
 		p.Address = address
 		p.Status = corev1.PluginStatus_PLUGIN_STATUS_HEALTHY
 		p.ActiveTasks = 0
@@ -158,7 +170,7 @@ func (r *Registry) Register(info *pluginv1.PluginInfo, capabilities []string, ad
 	instance := &PluginInstance{
 		Info:          proto.Clone(info).(*pluginv1.PluginInfo),
 		PluginID:      pluginID,
-		Capabilities:  append([]string(nil),capabilities...),
+		Capabilities:  append([]string(nil), capabilities...),
 		Address:       address,
 		Status:        corev1.PluginStatus_PLUGIN_STATUS_HEALTHY,
 		RegisteredAt:  now,
@@ -236,7 +248,7 @@ func (r *Registry) GetPluginsByCapability(capability string) []*PluginInstance {
 		if p.Info != nil && r.isLockedDisabledLocked(p.Info.Name) {
 			continue
 		}
-		if p.Status == corev1.PluginStatus_PLUGIN_STATUS_HEALTHY && r.dependenciesReadyLocked(p,map[string]bool{}) {
+		if p.Status == corev1.PluginStatus_PLUGIN_STATUS_HEALTHY && r.dependenciesReadyLocked(p, map[string]bool{}) {
 			for _, c := range p.Capabilities {
 				if c == capability {
 					result = append(result, snapshot(p))
@@ -273,7 +285,9 @@ func (r *Registry) GetAgents(onlineOnly bool) []*PluginInstance {
 		if onlineOnly && p.Status != corev1.PluginStatus_PLUGIN_STATUS_HEALTHY {
 			continue
 		}
-		if onlineOnly && !r.dependenciesReadyLocked(p,map[string]bool{}) {continue}
+		if onlineOnly && !r.dependenciesReadyLocked(p, map[string]bool{}) {
+			continue
+		}
 		result = append(result, snapshot(p))
 	}
 	sortPlugins(result)
@@ -302,18 +316,27 @@ func (r *Registry) GetAllPlugins() []*PluginInstance {
 }
 
 func sortPlugins(items []*PluginInstance) {
-	sort.Slice(items, func(i,j int) bool {
-		if items[i].Info.GetName() != items[j].Info.GetName() { return items[i].Info.GetName() < items[j].Info.GetName() }
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Info.GetName() != items[j].Info.GetName() {
+			return items[i].Info.GetName() < items[j].Info.GetName()
+		}
 		return items[i].PluginID < items[j].PluginID
 	})
 }
 
 func snapshot(p *PluginInstance) *PluginInstance {
- if p==nil {return nil};copy:=*p
- copy.Capabilities=append([]string(nil),p.Capabilities...)
- if p.Info!=nil {copy.Info=proto.Clone(p.Info).(*pluginv1.PluginInfo)}
- if p.Host!=nil {copy.Host=proto.Clone(p.Host).(*corev1.HostInfo)}
- return &copy
+	if p == nil {
+		return nil
+	}
+	copy := *p
+	copy.Capabilities = append([]string(nil), p.Capabilities...)
+	if p.Info != nil {
+		copy.Info = proto.Clone(p.Info).(*pluginv1.PluginInfo)
+	}
+	if p.Host != nil {
+		copy.Host = proto.Clone(p.Host).(*corev1.HostInfo)
+	}
+	return &copy
 }
 
 // RemovePlugin removes a plugin from the registry.

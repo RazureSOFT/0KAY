@@ -68,6 +68,8 @@ func (c *Config) HTTPAddr() string {
 }
 
 func bindHost() string {
- if host:=os.Getenv("CORE_BIND_HOST");host!="" {return host}
- return "127.0.0.1"
+	if host := os.Getenv("CORE_BIND_HOST"); host != "" {
+		return host
+	}
+	return "127.0.0.1"
 }

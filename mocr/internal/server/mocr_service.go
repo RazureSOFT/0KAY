@@ -422,26 +422,6 @@ func firstMeta(ctx context.Context, key string) string {
 	return ""
 }
 
-// generateOffline streams an explicit offline/error notice (never pretends to be a real reply).
-func (s *MocrServiceServer) generateOffline(req *mocrv1.GenerateRequest, stream mocrv1.MocrService_GenerateServer, reason string) error {
-	response := fmt.Sprintf("[mocr offline] model=%s reason=%s", req.ModelId, reason)
-	for _, chunk := range splitIntoChunks(response, 40) {
-		if err := stream.Send(&mocrv1.GenerateResponse{Chunk: chunk}); err != nil {
-			return err
-		}
-	}
-	completionTokens := int32(len(response) / 4)
-	return stream.Send(&mocrv1.GenerateResponse{
-		Done:         true,
-		FinishReason: mocrv1.FinishReason_FINISH_REASON_ERROR,
-		Usage: &mocrv1.TokenUsage{
-			PromptTokens:     0,
-			CompletionTokens: completionTokens,
-			TotalTokens:      completionTokens,
-		},
-	})
-}
-
 // splitIntoChunks splits text into chunks of approximately size n.
 func splitIntoChunks(text string, n int) []string {
 	var chunks []string

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
+	"time"
 )
 
 // ModelsRequest is the request for fetching models.
@@ -31,7 +33,7 @@ func (g *Gateway) handleFetchModels(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req ModelsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&req); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
@@ -55,6 +57,41 @@ func (g *Gateway) handleFetchModels(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+// modelClient bounds provider model-list requests so a slow provider cannot hang
+// the gateway. The base URL is user supplied, so it is validated and responses
+// are size limited.
+var modelClient = &http.Client{Timeout: 15 * time.Second}
+
+const maxModelsResponseBytes = 1 << 20
+
+// blockedModelHosts are link-local cloud metadata endpoints that must never be
+// reachable through a user-supplied base URL.
+var blockedModelHosts = map[string]bool{
+	"169.254.169.254":          true,
+	"metadata.google.internal": true,
+	"metadata":                 true,
+	"fd00:ec2::254":            true,
+}
+
+// validateModelsURL rejects non-HTTP(S) schemes, hosts without a name, and
+// cloud metadata endpoints.
+func validateModelsURL(raw string) error {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("invalid base url")
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return fmt.Errorf("base url must use http or https")
+	}
+	if parsed.Hostname() == "" {
+		return fmt.Errorf("base url has no host")
+	}
+	if blockedModelHosts[strings.ToLower(parsed.Hostname())] {
+		return fmt.Errorf("base url host is not allowed")
+	}
+	return nil
+}
+
 // fetchModelsFromProvider fetches models from the provider's API.
 func fetchModelsFromProvider(provider, baseURL, apiKey string) ([]string, error) {
 	// Normalize base URL
@@ -67,6 +104,10 @@ func fetchModelsFromProvider(provider, baseURL, apiKey string) ([]string, error)
 	default:
 		// OpenAI-compatible API
 		modelsURL = baseURL + "/models"
+	}
+
+	if err := validateModelsURL(modelsURL); err != nil {
+		return nil, err
 	}
 
 	req, err := http.NewRequest("GET", modelsURL, nil)
@@ -84,20 +125,19 @@ func fetchModelsFromProvider(provider, baseURL, apiKey string) ([]string, error)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := modelClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return nil, fmt.Errorf("API error %d: %s", resp.StatusCode, string(body))
 	}
 
 	// Parse response
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxModelsResponseBytes))
 	if err != nil {
 		return nil, err
 	}

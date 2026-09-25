@@ -14,12 +14,12 @@ import (
 	"sync"
 	"time"
 
-	corev1 "0kay/gen/core/v1"
-	lifev1 "0kay/gen/life/v1"
 	"0kay/core/internal/providers"
 	"0kay/core/internal/registry"
 	"0kay/core/internal/server"
 	"0kay/core/internal/settings"
+	corev1 "0kay/gen/core/v1"
+	lifev1 "0kay/gen/life/v1"
 
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
@@ -33,9 +33,9 @@ type Gateway struct {
 	coreSvc  corev1.CoreServiceClient
 	// localCore is the in-process CoreServiceServer for usage/permissions/session access.
 	localCore LocalCore
-	upgrader websocket.Upgrader
-	sessions map[string]*Session
-	mu       sync.RWMutex
+	upgrader  websocket.Upgrader
+	sessions  map[string]*Session
+	mu        sync.RWMutex
 
 	// providerStore holds multi-provider API configs (data/providers.json).
 	providerStore *providers.Store
@@ -49,7 +49,7 @@ type Gateway struct {
 type LocalCore interface {
 	GetUsage() map[string]interface{}
 	ClearUsage()
- RecordUsage(server.UsageRecord)
+	RecordUsage(server.UsageRecord)
 	GetPermissions() server.Permissions
 	SetPermissions(p server.Permissions)
 	ListTasks() []map[string]interface{}
@@ -57,8 +57,8 @@ type LocalCore interface {
 	RecordTask(server.TaskEvent) error
 	CreateAgentSession(string) (string, error)
 	HasAgentSession(string) bool
-	ManageAgentSession(string,string) error
-	RenameAgentSession(string,string) error
+	ManageAgentSession(string, string) error
+	RenameAgentSession(string, string) error
 }
 
 // Config holds gateway configuration.
@@ -160,16 +160,16 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/life/memories", g.handleLifeMemories)
 	mux.HandleFunc("/api/life/companion", g.handleLifeCompanion)
 	mux.HandleFunc("/api/usage", g.handleUsage)
- mux.HandleFunc("/api/usage/record",g.handleUsageRecord)
+	mux.HandleFunc("/api/usage/record", g.handleUsageRecord)
 	mux.HandleFunc("/api/usage/clear", g.handleUsageClear)
 	mux.HandleFunc("/api/models", g.handleModelsList)
 	mux.HandleFunc("/api/run", g.handleRunDirect)
 	mux.HandleFunc("/api/live2d", g.handleLive2D)
 	mux.HandleFunc("/api/images", g.handleImages)
-	mux.Handle("/live2d/models/",http.StripPrefix("/live2d/models/",http.FileServer(http.Dir(live2DRoot()))))
-		mux.HandleFunc("/api/tasks", g.handleTasks)
-		mux.HandleFunc("/api/tasks/events",g.handleTaskEvents)
-		mux.HandleFunc("/api/providers", g.handleProviders)
+	mux.Handle("/live2d/models/", http.StripPrefix("/live2d/models/", http.FileServer(http.Dir(live2DRoot()))))
+	mux.HandleFunc("/api/tasks", g.handleTasks)
+	mux.HandleFunc("/api/tasks/events", g.handleTaskEvents)
+	mux.HandleFunc("/api/providers", g.handleProviders)
 	mux.HandleFunc("/api/providers/delete", g.handleProviderDelete)
 	mux.HandleFunc("/api/providers/defaults", g.handleProviderDefaults)
 	mux.HandleFunc("/api/settings/sections", g.handleSettingsSections)
@@ -328,12 +328,12 @@ func (g *Gateway) handleChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		RequestID    string `json:"request_id"`
-		Prompt       string `json:"prompt"`
-		Stream       bool   `json:"stream"`
-		SessionID    string `json:"session_id"`
-		ModelID      string `json:"model_id"`
-		SystemPrompt string `json:"system_prompt"`
+		RequestID    string  `json:"request_id"`
+		Prompt       string  `json:"prompt"`
+		Stream       bool    `json:"stream"`
+		SessionID    string  `json:"session_id"`
+		ModelID      string  `json:"model_id"`
+		SystemPrompt string  `json:"system_prompt"`
 		Temperature  float64 `json:"temperature"`
 		MaxTokens    int32   `json:"max_tokens"`
 		Messages     []struct {
@@ -521,7 +521,10 @@ func (g *Gateway) handleMocrGenerate(w http.ResponseWriter, r *http.Request) {
 // handleLifeChat is the WebUI chat path. LIFE owns persona expression, memory,
 // emotions, tools, and companion behavior; Core only proxies its gRPC stream.
 func (g *Gateway) handleLifeChat(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost { http.Error(w, "method not allowed", http.StatusMethodNotAllowed); return }
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	var req struct {
 		RequestID string          `json:"request_id"`
 		SessionID string          `json:"session_id"`
@@ -530,67 +533,161 @@ func (g *Gateway) handleLifeChat(w http.ResponseWriter, r *http.Request) {
 		Persona   json.RawMessage `json:"persona"`
 		History   json.RawMessage `json:"history"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil { http.Error(w, "invalid request", http.StatusBadRequest); return }
-	if req.Prompt == "" { http.Error(w, "prompt required", http.StatusBadRequest); return }
-	if req.RequestID == "" { req.RequestID = fmt.Sprintf("life_%d", time.Now().UnixNano()) }
-	if req.SessionID == "" { req.SessionID = "webui:default" }
-	if req.UserID == "" { req.UserID = "webui" }
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if req.Prompt == "" {
+		http.Error(w, "prompt required", http.StatusBadRequest)
+		return
+	}
+	if req.RequestID == "" {
+		req.RequestID = fmt.Sprintf("life_%d", time.Now().UnixNano())
+	}
+	if req.SessionID == "" {
+		req.SessionID = "webui:default"
+	}
+	if req.UserID == "" {
+		req.UserID = "webui"
+	}
 	lifes := g.registry.GetPluginsByCapability("life")
-	if len(lifes) == 0 || lifes[0].Address == "" { http.Error(w, "LIFE is unavailable", http.StatusServiceUnavailable); return }
+	if len(lifes) == 0 || lifes[0].Address == "" {
+		http.Error(w, "LIFE is unavailable", http.StatusServiceUnavailable)
+		return
+	}
 	conn, err := grpc.NewClient(lifes[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil { http.Error(w, err.Error(), http.StatusBadGateway); return }
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
 	defer conn.Close()
 	stream, err := lifev1.NewLifeServiceClient(conn).OnUserMessage(r.Context(), &lifev1.OnUserMessageRequest{
 		SessionId: req.SessionID, UserId: req.UserID, Message: req.Prompt, AdapterType: "webui", PersonaJson: string(req.Persona), HistoryJson: string(req.History),
 	})
-	if err != nil { http.Error(w, err.Error(), http.StatusBadGateway); return }
-	flusher, ok := w.(http.Flusher); if !ok { http.Error(w, "streaming unavailable", http.StatusInternalServerError); return }
-	w.Header().Set("Content-Type", "text/event-stream"); w.Header().Set("Cache-Control", "no-cache"); w.Header().Set("Connection", "keep-alive")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unavailable", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
 	for {
 		resp, err := stream.Recv()
-		if err == io.EOF { fmt.Fprint(w, "event: done\ndata: {}\n\n"); flusher.Flush(); return }
-		if err != nil { data, _ := json.Marshal(map[string]string{"request_id": req.RequestID, "error": err.Error()}); fmt.Fprintf(w, "event: error\ndata: %s\n\n", data); flusher.Flush(); return }
+		if err == io.EOF {
+			fmt.Fprint(w, "event: done\ndata: {}\n\n")
+			flusher.Flush()
+			return
+		}
+		if err != nil {
+			data, _ := json.Marshal(map[string]string{"request_id": req.RequestID, "error": err.Error()})
+			fmt.Fprintf(w, "event: error\ndata: %s\n\n", data)
+			flusher.Flush()
+			return
+		}
 		data, _ := json.Marshal(map[string]interface{}{
 			"request_id": req.RequestID, "chunk": resp.Chunk, "done": resp.Done, "task_id": resp.TaskStarted,
 			"think_summary": resp.ThinkSummary,
-			"emotion": map[string]float64{"valence": resp.EmotionState.Valence, "arousal": resp.EmotionState.Arousal, "connection": resp.EmotionState.Connection, "irritation": resp.EmotionState.Irritation}, "mental_energy": resp.MentalEnergy,
+			"emotion":       map[string]float64{"valence": resp.EmotionState.Valence, "arousal": resp.EmotionState.Arousal, "connection": resp.EmotionState.Connection, "irritation": resp.EmotionState.Irritation}, "mental_energy": resp.MentalEnergy,
 		})
-		fmt.Fprintf(w, "event: chunk\ndata: %s\n\n", data); flusher.Flush()
-		if resp.Done { fmt.Fprint(w, "event: done\ndata: {}\n\n"); flusher.Flush(); return }
+		fmt.Fprintf(w, "event: chunk\ndata: %s\n\n", data)
+		flusher.Flush()
+		if resp.Done {
+			fmt.Fprint(w, "event: done\ndata: {}\n\n")
+			flusher.Flush()
+			return
+		}
 	}
 }
 
 func (g *Gateway) handleLifeCompact(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost { http.Error(w, "method not allowed", http.StatusMethodNotAllowed); return }
-	var req struct { SessionID string `json:"session_id"`; History json.RawMessage `json:"history"`; Persona json.RawMessage `json:"persona"` }
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil { http.Error(w, "invalid request", http.StatusBadRequest); return }
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		SessionID string          `json:"session_id"`
+		History   json.RawMessage `json:"history"`
+		Persona   json.RawMessage `json:"persona"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
 	lifes := g.registry.GetPluginsByCapability("life")
-	if len(lifes) == 0 || lifes[0].Address == "" { http.Error(w, "LIFE is unavailable", http.StatusServiceUnavailable); return }
-	conn, err := grpc.NewClient(lifes[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials())); if err != nil { http.Error(w, err.Error(), http.StatusBadGateway); return }; defer conn.Close()
-	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second); defer cancel()
+	if len(lifes) == 0 || lifes[0].Address == "" {
+		http.Error(w, "LIFE is unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	conn, err := grpc.NewClient(lifes[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	defer conn.Close()
+	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
+	defer cancel()
 	resp, err := lifev1.NewLifeServiceClient(conn).CompactConversation(ctx, &lifev1.CompactConversationRequest{SessionId: req.SessionID, HistoryJson: string(req.History), PersonaJson: string(req.Persona)})
-	if err != nil { http.Error(w, err.Error(), http.StatusBadGateway); return }
-	if !resp.Ok { http.Error(w, resp.Error, http.StatusBadRequest); return }
-	w.Header().Set("Content-Type", "application/json"); json.NewEncoder(w).Encode(map[string]string{"summary": resp.Summary})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	if !resp.Ok {
+		http.Error(w, resp.Error, http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"summary": resp.Summary})
 }
 
 func (g *Gateway) handleLifeNotifications(w http.ResponseWriter, r *http.Request) {
- if r.Method!="GET" && r.Method!="POST" {http.Error(w,"method not allowed",405);return}
+	if r.Method != "GET" && r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
 	lifes := g.registry.GetPluginsByCapability("life")
-	if len(lifes) == 0 || lifes[0].Address == "" { http.Error(w, "LIFE is unavailable", http.StatusServiceUnavailable); return }
-	conn, err := grpc.NewClient(lifes[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials())); if err != nil { http.Error(w, err.Error(), http.StatusBadGateway); return }; defer conn.Close()
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second); defer cancel()
- if r.Method=="POST" {
-  var body struct{SessionID string `json:"session_id"`;IDs []string `json:"ids"`}
-  if json.NewDecoder(http.MaxBytesReader(w,r.Body,65536)).Decode(&body)!=nil || body.SessionID=="" {http.Error(w,"invalid acknowledgement",400);return}
-  payload,_:=json.Marshal(body)
-  response,err:=lifev1.NewLifeServiceClient(conn).ManageCompanion(ctx,&lifev1.ManageCompanionRequest{Action:"ack_notifications",PayloadJson:string(payload)})
-  if err!=nil || !response.GetOk() {http.Error(w,"notification acknowledgement failed",502);return}
-  w.Header().Set("Content-Type","application/json");fmt.Fprint(w,`{"ok":true}`);return
- }
+	if len(lifes) == 0 || lifes[0].Address == "" {
+		http.Error(w, "LIFE is unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	conn, err := grpc.NewClient(lifes[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	defer conn.Close()
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	if r.Method == "POST" {
+		var body struct {
+			SessionID string   `json:"session_id"`
+			IDs       []string `json:"ids"`
+		}
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 65536)).Decode(&body) != nil || body.SessionID == "" {
+			http.Error(w, "invalid acknowledgement", 400)
+			return
+		}
+		payload, _ := json.Marshal(body)
+		response, err := lifev1.NewLifeServiceClient(conn).ManageCompanion(ctx, &lifev1.ManageCompanionRequest{Action: "ack_notifications", PayloadJson: string(payload)})
+		if err != nil || !response.GetOk() {
+			http.Error(w, "notification acknowledgement failed", 502)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"ok":true}`)
+		return
+	}
 	resp, err := lifev1.NewLifeServiceClient(conn).GetNotifications(ctx, &lifev1.GetNotificationsRequest{SessionId: r.URL.Query().Get("session_id")})
-	if err != nil { http.Error(w, err.Error(), http.StatusBadGateway); return }
-	w.Header().Set("Content-Type", "application/json"); json.NewEncoder(w).Encode(map[string]interface{}{"notifications": resp.Notifications})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"notifications": resp.Notifications})
 }
 
 func (g *Gateway) handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -830,7 +927,7 @@ func (g *Gateway) handleLifeMemories(w http.ResponseWriter, r *http.Request) {
 	if len(lifes) == 0 || lifes[0].Address == "" {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"memories":        []interface{}{},
+			"memories": []interface{}{},
 			"stats": map[string]interface{}{
 				"working": 0, "shortTerm": map[string]int{"total": 0}, "longTerm": 0, "avgStrength": 0,
 			},
@@ -898,25 +995,53 @@ func (g *Gateway) handleLifeMemories(w http.ResponseWriter, r *http.Request) {
 // handleLifeCompanion proxies LIFE-owned companion dashboards and actions.
 func (g *Gateway) handleLifeCompanion(w http.ResponseWriter, r *http.Request) {
 	lifes := g.registry.GetPluginsByCapability("life")
-	if len(lifes) == 0 || lifes[0].Address == "" { http.Error(w, "life unavailable", http.StatusServiceUnavailable); return }
+	if len(lifes) == 0 || lifes[0].Address == "" {
+		http.Error(w, "life unavailable", http.StatusServiceUnavailable)
+		return
+	}
 	conn, err := grpc.NewClient(lifes[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil { http.Error(w, err.Error(), http.StatusBadGateway); return }
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
 	defer conn.Close()
 	client := lifev1.NewLifeServiceClient(conn)
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second); defer cancel()
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
 	if r.Method == http.MethodGet {
 		resp, err := client.GetCompanion(ctx, &lifev1.GetCompanionRequest{})
-		if err != nil { http.Error(w, err.Error(), http.StatusBadGateway); return }
-		w.Header().Set("Content-Type", "application/json"); _, _ = w.Write([]byte(resp.Json)); return
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(resp.Json))
+		return
 	}
-	if r.Method != http.MethodPost { http.Error(w, "method not allowed", http.StatusMethodNotAllowed); return }
-	var body struct { Action string `json:"action"`; Payload map[string]interface{} `json:"payload"` }
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil { http.Error(w, "invalid request", http.StatusBadRequest); return }
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Action  string                 `json:"action"`
+		Payload map[string]interface{} `json:"payload"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
 	payload, _ := json.Marshal(body.Payload)
 	resp, err := client.ManageCompanion(ctx, &lifev1.ManageCompanionRequest{Action: body.Action, PayloadJson: string(payload)})
-	if err != nil { http.Error(w, err.Error(), http.StatusBadGateway); return }
-	if !resp.Ok { http.Error(w, resp.Error, http.StatusBadRequest); return }
-	w.Header().Set("Content-Type", "application/json"); _, _ = w.Write([]byte(resp.Json))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	if !resp.Ok {
+		http.Error(w, resp.Error, http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write([]byte(resp.Json))
 }
 
 func (g *Gateway) handleRunDirect(w http.ResponseWriter, r *http.Request) {
@@ -957,7 +1082,9 @@ func live2DRoot() string {
 	if p := os.Getenv("LIVE2D_DIR"); p != "" {
 		return p
 	}
-	if _,err:=os.Stat(filepath.Join("..","webui","public"));err==nil {return filepath.Join("..","webui","public","live2d","models")}
+	if _, err := os.Stat(filepath.Join("..", "webui", "public")); err == nil {
+		return filepath.Join("..", "webui", "public", "live2d", "models")
+	}
 	return filepath.Join("data", "live2d", "models")
 }
 
@@ -981,6 +1108,7 @@ var allowedImageExt = map[string]bool{
 func (g *Gateway) handleImages(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
+		r.Body = http.MaxBytesReader(w, r.Body, 32<<20)
 		if err := r.ParseMultipartForm(16 << 20); err != nil {
 			http.Error(w, "invalid multipart form: "+err.Error(), http.StatusBadRequest)
 			return
@@ -1057,15 +1185,27 @@ func (g *Gateway) handleTasks(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method == http.MethodPost {
 		var event server.TaskEvent
-		if err := json.NewDecoder(http.MaxBytesReader(w,r.Body,2<<20)).Decode(&event); err != nil { http.Error(w,"invalid task event",400); return }
-		if err := g.localCore.RecordTask(event); err != nil { http.Error(w,err.Error(),409); return }
-		w.Header().Set("Content-Type","application/json")
-		json.NewEncoder(w).Encode(map[string]bool{"ok":true})
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2<<20)).Decode(&event); err != nil {
+			http.Error(w, "invalid task event", 400)
+			return
+		}
+		if err := g.localCore.RecordTask(event); err != nil {
+			http.Error(w, err.Error(), 409)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 		return
 	}
-	if r.Method != http.MethodGet { http.Error(w,"method not allowed",405); return }
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
- if r.URL.Query().Get("incremental")=="1" {json.NewEncoder(w).Encode(g.localCore.TaskDelta(r.URL.Query().Get("cursor")));return}
+	if r.URL.Query().Get("incremental") == "1" {
+		json.NewEncoder(w).Encode(g.localCore.TaskDelta(r.URL.Query().Get("cursor")))
+		return
+	}
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"tasks": g.localCore.ListTasks(),
 	})
@@ -1111,7 +1251,7 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 			"models": listLive2DModels(),
 		})
 	case http.MethodPost:
-		r.Body=http.MaxBytesReader(w,r.Body,512<<20)
+		r.Body = http.MaxBytesReader(w, r.Body, 512<<20)
 		if err := r.ParseMultipartForm(32 << 20); err != nil {
 			http.Error(w, "invalid multipart form: "+err.Error(), http.StatusBadRequest)
 			return
@@ -1288,13 +1428,17 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 				firstModelURL = "/live2d/models/" + filepath.ToSlash(filepath.Join(finalRootName, remainder))
 			}
 		}
-		if saved == 0 || firstModelURL=="" {
+		if saved == 0 || firstModelURL == "" {
 			os.RemoveAll(targetDir)
 			http.Error(w, "No Live2D manifest found. Upload the complete folder containing .model.json or .model3.json and its textures/model files.", http.StatusBadRequest)
 			return
 		}
-        manifest:=filepath.Join(root,filepath.FromSlash(strings.TrimPrefix(firstModelURL,"/live2d/models/")))
-        if err:=validateLive2DManifest(manifest);err!=nil {os.RemoveAll(targetDir);http.Error(w,err.Error(),400);return}
+		manifest := filepath.Join(root, filepath.FromSlash(strings.TrimPrefix(firstModelURL, "/live2d/models/")))
+		if err := validateLive2DManifest(manifest); err != nil {
+			os.RemoveAll(targetDir)
+			http.Error(w, err.Error(), 400)
+			return
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -1303,10 +1447,21 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 			"model_url": firstModelURL,
 		})
 	case http.MethodDelete:
-		id:=r.URL.Query().Get("id")
-		if err:=deleteLive2DModel(id);err!=nil {http.Error(w,err.Error(),http.StatusBadRequest);return}
-        if g.settingsStore!=nil {values:=g.settingsStore.GetValues("live2d");current,_:=values["model_url"].(string);folder:=strings.Split(id,"/")[0];if strings.HasPrefix(current,"/live2d/models/"+folder+"/"){_ = g.settingsStore.SetValues("live2d",map[string]interface{}{"enabled":false,"model_url":""})}}
-		w.Header().Set("Content-Type","application/json");json.NewEncoder(w).Encode(map[string]interface{}{"ok":true,"models":listLive2DModels()})
+		id := r.URL.Query().Get("id")
+		if err := deleteLive2DModel(id); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if g.settingsStore != nil {
+			values := g.settingsStore.GetValues("live2d")
+			current, _ := values["model_url"].(string)
+			folder := strings.Split(id, "/")[0]
+			if strings.HasPrefix(current, "/live2d/models/"+folder+"/") {
+				_ = g.settingsStore.SetValues("live2d", map[string]interface{}{"enabled": false, "model_url": ""})
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "models": listLive2DModels()})
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -1314,8 +1469,14 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !allowedOrigin(r) {http.Error(w,"origin not allowed",http.StatusForbidden);return}
-		if origin:=r.Header.Get("Origin");origin!="" {w.Header().Set("Access-Control-Allow-Origin",origin);w.Header().Add("Vary","Origin")}
+		if !allowedOrigin(r) {
+			http.Error(w, "origin not allowed", http.StatusForbidden)
+			return
+		}
+		if origin := r.Header.Get("Origin"); origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Add("Vary", "Origin")
+		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
@@ -1323,7 +1484,10 @@ func corsMiddleware(next http.Handler) http.Handler {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		if token:=os.Getenv("CORE_API_TOKEN");token!="" && r.URL.Path!="/health" && r.Header.Get("Authorization")!="Bearer "+token {http.Error(w,"authentication required",http.StatusUnauthorized);return}
+		if token := os.Getenv("CORE_API_TOKEN"); token != "" && r.URL.Path != "/health" && r.Header.Get("Authorization") != "Bearer "+token {
+			http.Error(w, "authentication required", http.StatusUnauthorized)
+			return
+		}
 
 		next.ServeHTTP(w, r)
 	})

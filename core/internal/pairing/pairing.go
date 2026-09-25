@@ -2,130 +2,405 @@
 package pairing
 
 import (
- "context"
- "crypto/rand"
- "crypto/rsa"
- "crypto/sha256"
- "crypto/subtle"
- "crypto/tls"
- "crypto/x509"
- "crypto/x509/pkix"
- "encoding/hex"
- "encoding/json"
- "encoding/pem"
- "fmt"
- "math/big"
- "net"
- "net/http"
- "os"
- "path/filepath"
- "strings"
- "net/url"
- "sync"
- "time"
- "google.golang.org/grpc"
- "google.golang.org/grpc/codes"
- "google.golang.org/grpc/metadata"
- "google.golang.org/grpc/peer"
- "google.golang.org/grpc/status"
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/subtle"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/hex"
+	"encoding/json"
+	"encoding/pem"
+	"fmt"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/status"
+	"math/big"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
 )
 
-type Device struct { ID string `json:"id"`; Name string `json:"name"`; Token string `json:"token"` }
-type Request struct {ID string `json:"id"`;Name string `json:"name"`;Code string `json:"code"`;Secret string `json:"-"`;Expires time.Time `json:"expires"`;Approved bool `json:"approved"`;Token string `json:"-"`}
-type Store struct {mu sync.Mutex;ID string;Name string;Certificate []byte;Fingerprint string;path string;Devices map[string]Device;requests map[string]*Request;addresses map[string]string;TLS *tls.Config
- // enforce requires a paired token for non-trusted callers. It is only enabled
- // with LAN mode; a loopback-only deployment keeps using CORE_API_TOKEN.
- enforce bool
- // trusted holds networks whose callers are treated like loopback: reverse
- // proxies and container networks that terminate the local UI.
- trusted []*net.IPNet}
+type Device struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Token string `json:"token"`
+}
+type Request struct {
+	ID       string    `json:"id"`
+	Name     string    `json:"name"`
+	Code     string    `json:"code"`
+	Secret   string    `json:"-"`
+	Expires  time.Time `json:"expires"`
+	Approved bool      `json:"approved"`
+	Token    string    `json:"-"`
+}
+type Store struct {
+	mu          sync.Mutex
+	ID          string
+	Name        string
+	Certificate []byte
+	Fingerprint string
+	path        string
+	Devices     map[string]Device
+	requests    map[string]*Request
+	addresses   map[string]string
+	TLS         *tls.Config
+	// enforce requires a paired token for non-trusted callers. It is only enabled
+	// with LAN mode; a loopback-only deployment keeps using CORE_API_TOKEN.
+	enforce bool
+	// trusted holds networks whose callers are treated like loopback: reverse
+	// proxies and container networks that terminate the local UI.
+	trusted []*net.IPNet
+}
+
 var Default *Store
-func randomID()string {value:=make([]byte,24);if _,err:=rand.Read(value);err!=nil{panic(err)};return hex.EncodeToString(value)}
-func trustedNetworks(value string)[]*net.IPNet{
- networks:=[]*net.IPNet{}
- for _,entry:=range strings.Split(value,","){
-  entry=strings.TrimSpace(entry);if entry==""{continue}
-  if _,network,err:=net.ParseCIDR(entry);err==nil{networks=append(networks,network);continue}
-  if ip:=net.ParseIP(entry);ip!=nil{bits:=32;if ip.To4()==nil{bits=128};networks=append(networks,&net.IPNet{IP:ip,Mask:net.CIDRMask(bits,bits)})}
- }
- return networks
+
+func randomID() string {
+	value := make([]byte, 24)
+	if _, err := rand.Read(value); err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(value)
 }
-func New(directory string)(*Store,error){
- if err:=os.MkdirAll(directory,0700);err!=nil{return nil,err}
- name,_:=os.Hostname();s:=&Store{Name:name,path:filepath.Join(directory,"paired_devices.json"),Devices:map[string]Device{},requests:map[string]*Request{},addresses:map[string]string{},enforce:os.Getenv("CORE_LAN_ENABLED")=="1",trusted:trustedNetworks(os.Getenv("CORE_TRUSTED_NETWORKS"))}
- if data,err:=os.ReadFile(s.path);err==nil {var saved struct{ID string;Devices map[string]Device};if err=json.Unmarshal(data,&saved);err!=nil{return nil,err};s.ID=saved.ID;if saved.Devices!=nil{s.Devices=saved.Devices}}
- if s.ID=="" {s.ID=randomID();if err:=s.save();err!=nil{return nil,err}}
- certPath,keyPath:=filepath.Join(directory,"core.crt"),filepath.Join(directory,"core.key")
- if _,err:=os.Stat(certPath);os.IsNotExist(err){
-  key,err:=rsa.GenerateKey(rand.Reader,2048);if err!=nil{return nil,err}
-  serial,_:=rand.Int(rand.Reader,new(big.Int).Lsh(big.NewInt(1),128))
-  cert:=&x509.Certificate{SerialNumber:serial,Subject:pkix.Name{CommonName:s.ID},NotBefore:time.Now().Add(-time.Hour),NotAfter:time.Now().AddDate(5,0,0),KeyUsage:x509.KeyUsageDigitalSignature|x509.KeyUsageKeyEncipherment,ExtKeyUsage:[]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},DNSNames:[]string{s.ID,"localhost"},IPAddresses:[]net.IP{net.ParseIP("127.0.0.1")}}
-  raw,err:=x509.CreateCertificate(rand.Reader,cert,cert,&key.PublicKey,key);if err!=nil{return nil,err}
-  if err=os.WriteFile(certPath,pem.EncodeToMemory(&pem.Block{Type:"CERTIFICATE",Bytes:raw}),0600);err!=nil{return nil,err}
-  if err=os.WriteFile(keyPath,pem.EncodeToMemory(&pem.Block{Type:"RSA PRIVATE KEY",Bytes:x509.MarshalPKCS1PrivateKey(key)}),0600);err!=nil{return nil,err}
- }
- pair,err:=tls.LoadX509KeyPair(certPath,keyPath);if err!=nil{return nil,err};s.Certificate,_=os.ReadFile(certPath)
- fingerprint:=sha256.Sum256(pair.Certificate[0]);s.Fingerprint=hex.EncodeToString(fingerprint[:]);s.TLS=&tls.Config{Certificates:[]tls.Certificate{pair},MinVersion:tls.VersionTLS12}
- return s,nil
+func trustedNetworks(value string) []*net.IPNet {
+	networks := []*net.IPNet{}
+	for _, entry := range strings.Split(value, ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		if _, network, err := net.ParseCIDR(entry); err == nil {
+			networks = append(networks, network)
+			continue
+		}
+		if ip := net.ParseIP(entry); ip != nil {
+			bits := 32
+			if ip.To4() == nil {
+				bits = 128
+			}
+			networks = append(networks, &net.IPNet{IP: ip, Mask: net.CIDRMask(bits, bits)})
+		}
+	}
+	return networks
 }
-func(s *Store)save()error {raw,err:=json.Marshal(struct{ID string;Devices map[string]Device}{s.ID,s.Devices});if err!=nil{return err};if err=os.WriteFile(s.path+".tmp",raw,0600);err!=nil{return err};return os.Rename(s.path+".tmp",s.path)}
-func local(address string)bool{host,_,err:=net.SplitHostPort(address);if err!=nil{return false};ip:=net.ParseIP(host);return ip!=nil&&ip.IsLoopback()}
+func New(directory string) (*Store, error) {
+	if err := os.MkdirAll(directory, 0700); err != nil {
+		return nil, err
+	}
+	name, _ := os.Hostname()
+	s := &Store{Name: name, path: filepath.Join(directory, "paired_devices.json"), Devices: map[string]Device{}, requests: map[string]*Request{}, addresses: map[string]string{}, enforce: os.Getenv("CORE_LAN_ENABLED") == "1", trusted: trustedNetworks(os.Getenv("CORE_TRUSTED_NETWORKS"))}
+	if data, err := os.ReadFile(s.path); err == nil {
+		var saved struct {
+			ID      string
+			Devices map[string]Device
+		}
+		if err = json.Unmarshal(data, &saved); err != nil {
+			return nil, err
+		}
+		s.ID = saved.ID
+		if saved.Devices != nil {
+			s.Devices = saved.Devices
+		}
+	}
+	if s.ID == "" {
+		s.ID = randomID()
+		if err := s.save(); err != nil {
+			return nil, err
+		}
+	}
+	certPath, keyPath := filepath.Join(directory, "core.crt"), filepath.Join(directory, "core.key")
+	if _, err := os.Stat(certPath); os.IsNotExist(err) {
+		key, err := rsa.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			return nil, err
+		}
+		serial, _ := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+		cert := &x509.Certificate{SerialNumber: serial, Subject: pkix.Name{CommonName: s.ID}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().AddDate(5, 0, 0), KeyUsage: x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, DNSNames: []string{s.ID, "localhost"}, IPAddresses: []net.IP{net.ParseIP("127.0.0.1")}}
+		raw, err := x509.CreateCertificate(rand.Reader, cert, cert, &key.PublicKey, key)
+		if err != nil {
+			return nil, err
+		}
+		if err = os.WriteFile(certPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: raw}), 0600); err != nil {
+			return nil, err
+		}
+		if err = os.WriteFile(keyPath, pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)}), 0600); err != nil {
+			return nil, err
+		}
+	}
+	pair, err := tls.LoadX509KeyPair(certPath, keyPath)
+	if err != nil {
+		return nil, err
+	}
+	s.Certificate, _ = os.ReadFile(certPath)
+	fingerprint := sha256.Sum256(pair.Certificate[0])
+	s.Fingerprint = hex.EncodeToString(fingerprint[:])
+	s.TLS = &tls.Config{Certificates: []tls.Certificate{pair}, MinVersion: tls.VersionTLS12}
+	return s, nil
+}
+func (s *Store) save() error {
+	raw, err := json.Marshal(struct {
+		ID      string
+		Devices map[string]Device
+	}{s.ID, s.Devices})
+	if err != nil {
+		return err
+	}
+	if err = os.WriteFile(s.path+".tmp", raw, 0600); err != nil {
+		return err
+	}
+	return os.Rename(s.path+".tmp", s.path)
+}
+func local(address string) bool {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return false
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
 // Approval and device listing stay loopback-only; proxies only gain API access.
-func(s *Store)trustedPeer(address string)bool{
- if local(address){return true}
- host,_,err:=net.SplitHostPort(address);if err!=nil{host=address}
- ip:=net.ParseIP(host);if ip==nil{return false}
- for _,network:=range s.trusted{if network.Contains(ip){return true}}
- return false
+func (s *Store) trustedPeer(address string) bool {
+	if local(address) {
+		return true
+	}
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		host = address
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	for _, network := range s.trusted {
+		if network.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
-func(s *Store)valid(token string)bool{s.mu.Lock();defer s.mu.Unlock();for _,device:=range s.Devices {if subtle.ConstantTimeCompare([]byte(token),[]byte(device.Token))==1{return true}};return false}
-func apiToken(token string)bool{expected:=os.Getenv("CORE_API_TOKEN");return expected!=""&&token!=""&&subtle.ConstantTimeCompare([]byte(token),[]byte(expected))==1}
-func(s *Store) HTTP(next http.Handler)http.Handler{return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
- if strings.HasPrefix(r.URL.Path,"/api/pairing/"){s.handle(w,r);return}
- if s.enforce && !s.trustedPeer(r.RemoteAddr) {
-  token:=strings.TrimPrefix(r.Header.Get("Authorization"),"Bearer ")
-  if !s.valid(token)&&!apiToken(token){http.Error(w,"paired device required",401);return}
- }
- next.ServeHTTP(w,r)
-})}
-func(s *Store)handle(w http.ResponseWriter,r *http.Request){
- if origin:=r.Header.Get("Origin");origin!="" {parsed,err:=url.Parse(origin);if err!=nil||!local(r.RemoteAddr)||(parsed.Scheme!="http"&&parsed.Scheme!="https")||(parsed.Hostname()!="localhost"&&parsed.Hostname()!="127.0.0.1"){http.Error(w,"local pairing UI required",403);return}}
- w.Header().Set("Content-Type","application/json")
- s.mu.Lock();defer s.mu.Unlock()
- for id,request:=range s.requests {if time.Now().After(request.Expires){delete(s.requests,id)}}
- switch r.URL.Path {
- case "/api/pairing/request":
-  if r.Method!="POST"{http.Error(w,"method not allowed",405);return};if len(s.requests)>=32{http.Error(w,"too many pairing requests",429);return}
-  var body struct{Name string `json:"name"`};if json.NewDecoder(http.MaxBytesReader(w,r.Body,4096)).Decode(&body)!=nil{http.Error(w,"invalid request",400);return}
-  number,_:=rand.Int(rand.Reader,big.NewInt(1000000));request:=&Request{ID:randomID(),Name:body.Name,Code:fmt.Sprintf("%06d",number),Secret:randomID(),Expires:time.Now().Add(5*time.Minute)};s.requests[request.ID]=request
-  json.NewEncoder(w).Encode(map[string]interface{}{"id":request.ID,"code":request.Code,"secret":request.Secret,"expires":request.Expires})
- case "/api/pairing/pending":
-  if !local(r.RemoteAddr)||r.Method!="GET"{http.Error(w,"local access only",403);return};requests:=[]*Request{};for _,request:=range s.requests{requests=append(requests,request)};json.NewEncoder(w).Encode(map[string]interface{}{"requests":requests})
- case "/api/pairing/approve":
-  if !local(r.RemoteAddr)||r.Method!="POST"{http.Error(w,"local access only",403);return};var body struct{ID string `json:"id"`;Code string `json:"code"`;Allow bool `json:"allow"`};if json.NewDecoder(r.Body).Decode(&body)!=nil{http.Error(w,"invalid request",400);return};request:=s.requests[body.ID];if request==nil||request.Code!=body.Code{http.Error(w,"pairing code mismatch",400);return};if !body.Allow{delete(s.requests,body.ID);json.NewEncoder(w).Encode(map[string]bool{"ok":true});return};request.Token=randomID();request.Approved=true;s.Devices[request.ID]=Device{ID:request.ID,Name:request.Name,Token:request.Token};if err:=s.save();err!=nil{http.Error(w,err.Error(),500);return};json.NewEncoder(w).Encode(map[string]bool{"ok":true})
- case "/api/pairing/status":
-  if r.Method!="POST"{http.Error(w,"method not allowed",405);return};var body struct{ID string `json:"id"`;Secret string `json:"secret"`};if json.NewDecoder(r.Body).Decode(&body)!=nil{http.Error(w,"invalid request",400);return};request:=s.requests[body.ID];if request==nil||subtle.ConstantTimeCompare([]byte(request.Secret),[]byte(body.Secret))!=1{http.Error(w,"pairing expired",404);return};if !request.Approved{json.NewEncoder(w).Encode(map[string]bool{"approved":false});return};json.NewEncoder(w).Encode(map[string]interface{}{"approved":true,"core_id":s.ID,"token":request.Token,"certificate":string(s.Certificate),"server_name":s.ID});delete(s.requests,body.ID)
- default:http.NotFound(w,r)
- }
+func (s *Store) valid(token string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, device := range s.Devices {
+		if subtle.ConstantTimeCompare([]byte(token), []byte(device.Token)) == 1 {
+			return true
+		}
+	}
+	return false
 }
-func(s *Store)authorize(ctx context.Context)error{
- // Enforcement is opt-in (CORE_LAN_ENABLED=1); loopback-only deployments keep using CORE_API_TOKEN.
- if !s.enforce{return nil}
- p,_:=peer.FromContext(ctx)
- if p!=nil&&s.trustedPeer(p.Addr.String()){return nil}
- md,_:=metadata.FromIncomingContext(ctx)
- values:=md.Get("authorization")
- if len(values)>0{
-  token:=strings.TrimPrefix(values[0],"Bearer ")
-  if s.valid(token)||apiToken(token){return nil}
- }
- return status.Error(codes.Unauthenticated,"paired device required")
+func apiToken(token string) bool {
+	expected := os.Getenv("CORE_API_TOKEN")
+	return expected != "" && token != "" && subtle.ConstantTimeCompare([]byte(token), []byte(expected)) == 1
 }
-func(s *Store)Unary(ctx context.Context,req interface{},info *grpc.UnaryServerInfo,next grpc.UnaryHandler)(interface{},error){if err:=s.authorize(ctx);err!=nil{return nil,err};return next(ctx,req)}
-func(s *Store)Stream(srv interface{},stream grpc.ServerStream,info *grpc.StreamServerInfo,next grpc.StreamHandler)error{if err:=s.authorize(stream.Context());err!=nil{return err};return next(srv,stream)}
-func(s *Store)Bind(ctx context.Context,address string){md,_:=metadata.FromIncomingContext(ctx);values:=md.Get("authorization");if len(values)>0{s.mu.Lock();s.addresses[address]=values[0];s.mu.Unlock()}}
-func CallbackContext(ctx context.Context,address string)context.Context{if Default==nil{return ctx};Default.mu.Lock();token:=Default.addresses[address];Default.mu.Unlock();if token!=""{return metadata.AppendToOutgoingContext(ctx,"authorization",token)};return ctx}
-func(s *Store)Discover(ctx context.Context,httpPort,grpcPort int)error{
- conn,err:=net.ListenUDP("udp4",&net.UDPAddr{Port:50050});if err!=nil{return err};go func(){<-ctx.Done();conn.Close()}()
- go func(){buffer:=make([]byte,2048);for{n,source,err:=conn.ReadFromUDP(buffer);if err!=nil{return};var request struct{Protocol string `json:"protocol"`;Nonce string `json:"nonce"`};if json.Unmarshal(buffer[:n],&request)!=nil||request.Protocol!="0kay-discover-v1"{continue};raw,_:=json.Marshal(map[string]interface{}{"protocol":"0kay-core-v1","nonce":request.Nonce,"id":s.ID,"name":s.Name,"http_port":httpPort,"grpc_port":grpcPort,"fingerprint":s.Fingerprint});conn.WriteToUDP(raw,source)}}();return nil
+func (s *Store) HTTP(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/pairing/") {
+			s.handle(w, r)
+			return
+		}
+		// Any non-loopback caller (LAN or container network) must present a paired-device
+		// or API token. Loopback and CORE_TRUSTED_NETWORKS callers stay exempt.
+		if !s.trustedPeer(r.RemoteAddr) {
+			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			if !s.valid(token) && !apiToken(token) {
+				http.Error(w, "paired device or API token required", 401)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+func (s *Store) handle(w http.ResponseWriter, r *http.Request) {
+	if origin := r.Header.Get("Origin"); origin != "" {
+		parsed, err := url.Parse(origin)
+		if err != nil || !local(r.RemoteAddr) || (parsed.Scheme != "http" && parsed.Scheme != "https") || (parsed.Hostname() != "localhost" && parsed.Hostname() != "127.0.0.1") {
+			http.Error(w, "local pairing UI required", 403)
+			return
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id, request := range s.requests {
+		if time.Now().After(request.Expires) {
+			delete(s.requests, id)
+		}
+	}
+	switch r.URL.Path {
+	case "/api/pairing/request":
+		if r.Method != "POST" {
+			http.Error(w, "method not allowed", 405)
+			return
+		}
+		if len(s.requests) >= 32 {
+			http.Error(w, "too many pairing requests", 429)
+			return
+		}
+		var body struct {
+			Name string `json:"name"`
+		}
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body) != nil {
+			http.Error(w, "invalid request", 400)
+			return
+		}
+		number, _ := rand.Int(rand.Reader, big.NewInt(1000000))
+		request := &Request{ID: randomID(), Name: body.Name, Code: fmt.Sprintf("%06d", number), Secret: randomID(), Expires: time.Now().Add(5 * time.Minute)}
+		s.requests[request.ID] = request
+		json.NewEncoder(w).Encode(map[string]interface{}{"id": request.ID, "code": request.Code, "secret": request.Secret, "expires": request.Expires})
+	case "/api/pairing/pending":
+		if !local(r.RemoteAddr) || r.Method != "GET" {
+			http.Error(w, "local access only", 403)
+			return
+		}
+		requests := []*Request{}
+		for _, request := range s.requests {
+			requests = append(requests, request)
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{"requests": requests})
+	case "/api/pairing/approve":
+		if !local(r.RemoteAddr) || r.Method != "POST" {
+			http.Error(w, "local access only", 403)
+			return
+		}
+		var body struct {
+			ID    string `json:"id"`
+			Code  string `json:"code"`
+			Allow bool   `json:"allow"`
+		}
+		if json.NewDecoder(r.Body).Decode(&body) != nil {
+			http.Error(w, "invalid request", 400)
+			return
+		}
+		request := s.requests[body.ID]
+		if request == nil || request.Code != body.Code {
+			http.Error(w, "pairing code mismatch", 400)
+			return
+		}
+		if !body.Allow {
+			delete(s.requests, body.ID)
+			json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+			return
+		}
+		request.Token = randomID()
+		request.Approved = true
+		s.Devices[request.ID] = Device{ID: request.ID, Name: request.Name, Token: request.Token}
+		if err := s.save(); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+	case "/api/pairing/status":
+		if r.Method != "POST" {
+			http.Error(w, "method not allowed", 405)
+			return
+		}
+		var body struct {
+			ID     string `json:"id"`
+			Secret string `json:"secret"`
+		}
+		if json.NewDecoder(r.Body).Decode(&body) != nil {
+			http.Error(w, "invalid request", 400)
+			return
+		}
+		request := s.requests[body.ID]
+		if request == nil || subtle.ConstantTimeCompare([]byte(request.Secret), []byte(body.Secret)) != 1 {
+			http.Error(w, "pairing expired", 404)
+			return
+		}
+		if !request.Approved {
+			json.NewEncoder(w).Encode(map[string]bool{"approved": false})
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{"approved": true, "core_id": s.ID, "token": request.Token, "certificate": string(s.Certificate), "server_name": s.ID})
+		delete(s.requests, body.ID)
+	default:
+		http.NotFound(w, r)
+	}
+}
+func (s *Store) authorize(ctx context.Context) error {
+	// Loopback and explicitly trusted networks pass; every other caller must present
+	// a paired-device or API token, regardless of LAN mode.
+	p, _ := peer.FromContext(ctx)
+	if p != nil && s.trustedPeer(p.Addr.String()) {
+		return nil
+	}
+	md, _ := metadata.FromIncomingContext(ctx)
+	values := md.Get("authorization")
+	if len(values) > 0 {
+		token := strings.TrimPrefix(values[0], "Bearer ")
+		if s.valid(token) || apiToken(token) {
+			return nil
+		}
+	}
+	return status.Error(codes.Unauthenticated, "paired device or API token required")
+}
+func (s *Store) Unary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, next grpc.UnaryHandler) (interface{}, error) {
+	if err := s.authorize(ctx); err != nil {
+		return nil, err
+	}
+	return next(ctx, req)
+}
+func (s *Store) Stream(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, next grpc.StreamHandler) error {
+	if err := s.authorize(stream.Context()); err != nil {
+		return err
+	}
+	return next(srv, stream)
+}
+func (s *Store) Bind(ctx context.Context, address string) {
+	md, _ := metadata.FromIncomingContext(ctx)
+	values := md.Get("authorization")
+	if len(values) > 0 {
+		s.mu.Lock()
+		s.addresses[address] = values[0]
+		s.mu.Unlock()
+	}
+}
+func CallbackContext(ctx context.Context, address string) context.Context {
+	if Default == nil {
+		return ctx
+	}
+	Default.mu.Lock()
+	token := Default.addresses[address]
+	Default.mu.Unlock()
+	if token != "" {
+		return metadata.AppendToOutgoingContext(ctx, "authorization", token)
+	}
+	return ctx
+}
+func (s *Store) Discover(ctx context.Context, httpPort, grpcPort int) error {
+	conn, err := net.ListenUDP("udp4", &net.UDPAddr{Port: 50050})
+	if err != nil {
+		return err
+	}
+	go func() { <-ctx.Done(); conn.Close() }()
+	go func() {
+		buffer := make([]byte, 2048)
+		for {
+			n, source, err := conn.ReadFromUDP(buffer)
+			if err != nil {
+				return
+			}
+			var request struct {
+				Protocol string `json:"protocol"`
+				Nonce    string `json:"nonce"`
+			}
+			if json.Unmarshal(buffer[:n], &request) != nil || request.Protocol != "0kay-discover-v1" {
+				continue
+			}
+			raw, _ := json.Marshal(map[string]interface{}{"protocol": "0kay-core-v1", "nonce": request.Nonce, "id": s.ID, "name": s.Name, "http_port": httpPort, "grpc_port": grpcPort, "fingerprint": s.Fingerprint})
+			conn.WriteToUDP(raw, source)
+		}
+	}()
+	return nil
 }

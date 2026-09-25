@@ -104,7 +104,7 @@ func (g *Gateway) handleProviderDefaults(w http.ResponseWriter, r *http.Request)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
 			"default_provider_id": snap.DefaultProviderID,
-			"default_model":      snap.DefaultModel,
+			"default_model":       snap.DefaultModel,
 		})
 	case http.MethodPost, http.MethodPut:
 		var body struct {
@@ -122,7 +122,7 @@ func (g *Gateway) handleProviderDefaults(w http.ResponseWriter, r *http.Request)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
 			"default_provider_id": body.DefaultProviderID,
-			"default_model":      body.DefaultModel,
+			"default_model":       body.DefaultModel,
 		})
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

@@ -6,20 +6,19 @@ import (
 	"time"
 
 	corev1 "0kay/gen/core/v1"
-	"0kay/core/internal/registry"
 )
 
 // AgentInfo is the JSON shape for an agent in API responses.
 type AgentInfo struct {
-	PluginID            string            `json:"plugin_id"`
-	Name                string            `json:"name"`
-	Version             string            `json:"version"`
-	Address             string            `json:"address"`
-	Status              string            `json:"status"`
-	ActiveTasks         int32             `json:"active_tasks"`
-	LastHeartbeatAgeSec int64             `json:"last_heartbeat_age_seconds"`
-	Host                map[string]any    `json:"host,omitempty"`
- MissingDependencies []string `json:"missing_dependencies"`
+	PluginID            string         `json:"plugin_id"`
+	Name                string         `json:"name"`
+	Version             string         `json:"version"`
+	Address             string         `json:"address"`
+	Status              string         `json:"status"`
+	ActiveTasks         int32          `json:"active_tasks"`
+	LastHeartbeatAgeSec int64          `json:"last_heartbeat_age_seconds"`
+	Host                map[string]any `json:"host,omitempty"`
+	MissingDependencies []string       `json:"missing_dependencies"`
 }
 
 // AgentsResponse is the response for /api/agents.
@@ -58,7 +57,7 @@ func (g *Gateway) handleAgents(w http.ResponseWriter, r *http.Request) {
 			ActiveTasks:         a.ActiveTasks,
 			LastHeartbeatAgeSec: int64(age),
 			Host:                host,
-            MissingDependencies:g.registry.MissingDependencies(a.PluginID),
+			MissingDependencies: g.registry.MissingDependencies(a.PluginID),
 		})
 	}
 
@@ -70,5 +69,4 @@ func (g *Gateway) handleAgents(w http.ResponseWriter, r *http.Request) {
 }
 
 // ensure registry import is used
-var _ = registry.NewRegistry
 var _ = corev1.PluginStatus_PLUGIN_STATUS_HEALTHY

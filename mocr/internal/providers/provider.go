@@ -19,13 +19,13 @@ type ModelProvider interface {
 
 // GenerateRequest is the request for model generation.
 type GenerateRequest struct {
-	ModelID       string
-	Messages      []Message
-	SystemPrompt  string
-	MaxTokens     int
-	Temperature   float64
-	Stream        bool
-	Thinking      bool
+	ModelID      string
+	Messages     []Message
+	SystemPrompt string
+	MaxTokens    int
+	Temperature  float64
+	Stream       bool
+	Thinking     bool
 }
 
 // Message represents a conversation message.
@@ -36,10 +36,10 @@ type Message struct {
 
 // ModelInfo contains metadata about a model.
 type ModelInfo struct {
-	ID                   string
-	Provider             string
-	SupportsThinking     bool
-	MaxContextLength     int
+	ID                    string
+	Provider              string
+	SupportsThinking      bool
+	MaxContextLength      int
 	EstimatedCostPerToken float64
 }
 

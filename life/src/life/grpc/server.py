@@ -80,10 +80,11 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
 
     async def _life_settings(self) -> dict:
         import httpx
+        from ..http_auth import auth_headers
         try:
             base = os.getenv("CORE_HTTP_ADDR") or os.getenv("CORE_HTTP") or "http://127.0.0.1:8080"
             async with httpx.AsyncClient(timeout=5) as client:
-                response = await client.get(f"{base}/api/settings/life")
+                response = await client.get(f"{base}/api/settings/life", headers=auth_headers())
                 response.raise_for_status()
                 return response.json().get("values") or {}
         except Exception:

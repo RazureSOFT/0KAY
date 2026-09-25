@@ -1,5 +1,53 @@
 package pairing
-import("context";"io";mocrv1 "0kay/gen/mocr/v1";"google.golang.org/grpc";"google.golang.org/grpc/credentials/insecure";"google.golang.org/grpc/metadata")
-type MocrProxy struct{mocrv1.UnimplementedMocrServiceServer;Address string}
-func(p *MocrProxy)ChooseModels(ctx context.Context,request *mocrv1.ChooseModelsRequest)(*mocrv1.ChooseModelsResponse,error){conn,err:=grpc.NewClient(p.Address,grpc.WithTransportCredentials(insecure.NewCredentials()));if err!=nil{return nil,err};defer conn.Close();return mocrv1.NewMocrServiceClient(conn).ChooseModels(ctx,request)}
-func(p *MocrProxy)Generate(request *mocrv1.GenerateRequest,stream mocrv1.MocrService_GenerateServer)error{conn,err:=grpc.NewClient(p.Address,grpc.WithTransportCredentials(insecure.NewCredentials()));if err!=nil{return err};defer conn.Close();ctx:=stream.Context();if headers,ok:=metadata.FromIncomingContext(ctx);ok{if values:=headers.Get("x-0kay-thinking-level");len(values)>0{ctx=metadata.AppendToOutgoingContext(ctx,"x-0kay-thinking-level",values[0])}};upstream,err:=mocrv1.NewMocrServiceClient(conn).Generate(ctx,request);if err!=nil{return err};for{chunk,err:=upstream.Recv();if err==io.EOF{return nil};if err!=nil{return err};if err=stream.Send(chunk);err!=nil{return err}}}
+
+import (
+	mocrv1 "0kay/gen/mocr/v1"
+	"context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
+	"io"
+)
+
+type MocrProxy struct {
+	mocrv1.UnimplementedMocrServiceServer
+	Address string
+}
+
+func (p *MocrProxy) ChooseModels(ctx context.Context, request *mocrv1.ChooseModelsRequest) (*mocrv1.ChooseModelsResponse, error) {
+	conn, err := grpc.NewClient(p.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	return mocrv1.NewMocrServiceClient(conn).ChooseModels(ctx, request)
+}
+func (p *MocrProxy) Generate(request *mocrv1.GenerateRequest, stream mocrv1.MocrService_GenerateServer) error {
+	conn, err := grpc.NewClient(p.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	ctx := stream.Context()
+	if headers, ok := metadata.FromIncomingContext(ctx); ok {
+		if values := headers.Get("x-0kay-thinking-level"); len(values) > 0 {
+			ctx = metadata.AppendToOutgoingContext(ctx, "x-0kay-thinking-level", values[0])
+		}
+	}
+	upstream, err := mocrv1.NewMocrServiceClient(conn).Generate(ctx, request)
+	if err != nil {
+		return err
+	}
+	for {
+		chunk, err := upstream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if err = stream.Send(chunk); err != nil {
+			return err
+		}
+	}
+}

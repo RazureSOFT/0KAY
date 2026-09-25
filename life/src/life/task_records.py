@@ -7,6 +7,8 @@ from pathlib import Path
 import uuid
 import httpx
 
+from .http_auth import auth_headers
+
 task_context = ContextVar("life_task_context", default={})
 
 
@@ -37,8 +39,7 @@ class TaskRecorder:
         await self.flush()
 
     def _headers(self):
-        token = os.getenv("CORE_API_TOKEN", "")
-        return {"Authorization": f"Bearer {token}"} if token else {}
+        return auth_headers()
 
     async def flush(self):
         async with self.lock:

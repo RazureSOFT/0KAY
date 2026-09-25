@@ -53,10 +53,10 @@ type UIPatchOp struct {
 }
 
 type uiPatchStore struct {
-	mu       sync.RWMutex
-	dirs     []string
-	patches  []UIPatchFile
-	loaded   time.Time
+	mu      sync.RWMutex
+	dirs    []string
+	patches []UIPatchFile
+	loaded  time.Time
 	// isPluginDisabled reports whether an owning plugin is admin-disabled.
 	// When true, that plugin's patches are excluded from List/FlattenOps.
 	isPluginDisabled func(plugin string) bool
@@ -154,15 +154,15 @@ func (s *uiPatchStore) FlattenOps() []map[string]any {
 	for _, p := range patches {
 		for _, op := range p.Patches {
 			m := map[string]any{
-				"patchId":  p.ID,
-				"plugin":   p.Plugin,
+				"patchId":    p.ID,
+				"plugin":     p.Plugin,
 				"capability": p.Capability,
-				"target":   op.Target,
-				"op":       op.Op,
-				"anchor":   op.Anchor,
-				"position": op.Position,
-				"id":       op.ID,
-				"item":     op.Item,
+				"target":     op.Target,
+				"op":         op.Op,
+				"anchor":     op.Anchor,
+				"position":   op.Position,
+				"id":         op.ID,
+				"item":       op.Item,
 			}
 			ops = append(ops, m)
 		}

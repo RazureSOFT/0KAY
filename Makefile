@@ -10,6 +10,8 @@ build:
 
 # Lint all Go modules
 lint:
+	@test -z "$$(cd core && gofmt -l .)" || (cd core && gofmt -l . && exit 1)
+	@test -z "$$(cd mocr && gofmt -l .)" || (cd mocr && gofmt -l . && exit 1)
 	cd core && go vet ./...
 	cd mocr && go vet ./...
 

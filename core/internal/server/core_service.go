@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"0kay/core/internal/registry"
 	"0kay/core/internal/pairing"
+	"0kay/core/internal/registry"
 	agentv1 "0kay/gen/agent/v1"
 	corev1 "0kay/gen/core/v1"
 	lifev1 "0kay/gen/life/v1"
@@ -34,16 +34,16 @@ type CoreServiceServer struct {
 	corev1.UnimplementedCoreServiceServer
 	registry *registry.Registry
 
-	mu              sync.Mutex
-	tasks           map[string]*TaskInfo
-	completed       []string
-	taskHistoryPath string
- callbackMu sync.Mutex
- callbacks map[string]taskCallback
- taskFingerprints map[string]string
- taskRevision uint64
- taskChanges map[string]uint64
- taskRemoved map[string]uint64
+	mu               sync.RWMutex
+	tasks            map[string]*TaskInfo
+	completed        []string
+	taskHistoryPath  string
+	callbackMu       sync.Mutex
+	callbacks        map[string]taskCallback
+	taskFingerprints map[string]string
+	taskRevision     uint64
+	taskChanges      map[string]uint64
+	taskRemoved      map[string]uint64
 
 	// sessions: session_id -> conversation history
 	sessionMu sync.RWMutex
@@ -58,7 +58,7 @@ type CoreServiceServer struct {
 
 	// dispatchActivity tracks last ledger progress per dispatched task for the
 	// inactivity watchdog (dead/hung executor detection).
-	dispatchMu     sync.Mutex
+	dispatchMu       sync.Mutex
 	dispatchActivity map[string]time.Time
 	dispatchLastSeen map[string]time.Time
 
@@ -95,9 +95,9 @@ type TaskInfo struct {
 	EndedAt   time.Time
 	CancelFn  context.CancelFunc
 	SessionID string
-	Kind string
-	ParentID string
-	Args string
+	Kind      string
+	ParentID  string
+	Args      string
 }
 
 type persistedTask struct {
@@ -110,10 +110,10 @@ type persistedTask struct {
 	Error     string    `json:"error,omitempty"`
 	StartedAt time.Time `json:"started_at"`
 	EndedAt   time.Time `json:"ended_at,omitempty"`
-	SessionID string `json:"session_id,omitempty"`
-	Kind string `json:"kind,omitempty"`
-	ParentID string `json:"parent_id,omitempty"`
-	Args string `json:"args,omitempty"`
+	SessionID string    `json:"session_id,omitempty"`
+	Kind      string    `json:"kind,omitempty"`
+	ParentID  string    `json:"parent_id,omitempty"`
+	Args      string    `json:"args,omitempty"`
 }
 
 // UsageRecord is one token-usage sample.
@@ -263,12 +263,12 @@ func NewCoreServiceServer(reg *registry.Registry) *CoreServiceServer {
 		}
 	}
 	instance := &CoreServiceServer{
-		registry:        reg,
-		tasks:           tasks,
-		taskHistoryPath: taskPath,
-		sessions:        make(map[string][]*corev1.ChatMessage),
-		usage:           NewUsageStore(usagePath),
-		mocrAddr:        mocrAddr,
+		registry:         reg,
+		tasks:            tasks,
+		taskHistoryPath:  taskPath,
+		sessions:         make(map[string][]*corev1.ChatMessage),
+		usage:            NewUsageStore(usagePath),
+		mocrAddr:         mocrAddr,
 		dispatchActivity: make(map[string]time.Time),
 		dispatchLastSeen: make(map[string]time.Time),
 		permissions: Permissions{
@@ -276,14 +276,18 @@ func NewCoreServiceServer(reg *registry.Registry) *CoreServiceServer {
 			ComputerUse: false,
 		},
 	}
- instance.replayTaskJournal()
- instance.loadCallbacks()
- for _,task:=range tasks {if task.Kind=="agent" && task.State=="failed" && task.Error=="Core restarted before execution was acknowledged" {instance.callbacks[task.TaskID]=taskCallback{TaskID:task.TaskID,State:pluginv1.TaskState_TASK_STATE_FAILED,Error:task.Error}}}
- instance.saveCallbacksLocked()
- go instance.retryCallbacks()
+	instance.replayTaskJournal()
+	instance.loadCallbacks()
+	for _, task := range tasks {
+		if task.Kind == "agent" && task.State == "failed" && task.Error == "Core restarted before execution was acknowledged" {
+			instance.callbacks[task.TaskID] = taskCallback{TaskID: task.TaskID, State: pluginv1.TaskState_TASK_STATE_FAILED, Error: task.Error}
+		}
+	}
+	instance.saveCallbacksLocked()
+	go instance.retryCallbacks()
 	// Upgrade existing LIFE-dispatched task history into browsable sessions.
 	for _, task := range tasks {
-		if (task.Kind == "agent" || task.Kind == "") && !strings.HasPrefix(task.SessionID,"agent-session:") {
+		if (task.Kind == "agent" || task.Kind == "") && !strings.HasPrefix(task.SessionID, "agent-session:") {
 			task.SessionID = instance.EnsureAgentSession(task.SessionID, task.CallerID, task.Prompt)
 			task.Kind = "agent"
 		}
@@ -297,33 +301,87 @@ func (s *CoreServiceServer) persistTasksLocked() {
 	}
 	items := make([]persistedTask, 0, len(s.tasks))
 	for _, t := range s.tasks {
-		items = append(items, persistedTask{TaskID:t.TaskID, CallerID:t.CallerID, Prompt:t.Prompt, AgentID:t.AgentID, State:t.State, Result:t.Result, Error:t.Error, StartedAt:t.StartedAt, EndedAt:t.EndedAt, SessionID:t.SessionID, Kind:t.Kind, ParentID:t.ParentID, Args:t.Args})
+		items = append(items, persistedTask{TaskID: t.TaskID, CallerID: t.CallerID, Prompt: t.Prompt, AgentID: t.AgentID, State: t.State, Result: t.Result, Error: t.Error, StartedAt: t.StartedAt, EndedAt: t.EndedAt, SessionID: t.SessionID, Kind: t.Kind, ParentID: t.ParentID, Args: t.Args})
 	}
- if s.taskFingerprints==nil {s.taskFingerprints=map[string]string{}}
- changes:=[]persistedTask{}
- for _,item:=range items {raw,_:=json.Marshal(item);if s.taskFingerprints[item.TaskID]!=string(raw) {changes=append(changes,item)}}
- removed:=[]string{};for id:=range s.taskFingerprints {if s.tasks[id]==nil {removed=append(removed,id)}}
- if len(changes)==0 && len(removed)==0 {return}
- if s.taskChanges==nil {s.taskChanges=map[string]uint64{};s.taskRemoved=map[string]uint64{}}
- s.taskRevision++
- for _,item:=range changes {s.taskChanges[item.TaskID]=s.taskRevision;if item.Kind=="agent_session" && item.State=="deleted" {removed=append(removed,item.TaskID)}}
- for _,id:=range removed {s.taskRemoved[id]=s.taskRevision;delete(s.taskChanges,id)}
- _=os.MkdirAll(filepath.Dir(s.taskHistoryPath),0700)
- journal,err:=os.OpenFile(s.taskHistoryPath+".journal",os.O_CREATE|os.O_APPEND|os.O_WRONLY,0600)
- if err!=nil {log.Printf("task journal: %v",err);return}
- raw,_:=json.Marshal(struct{Tasks []persistedTask `json:"tasks"`;Removed []string `json:"removed"`}{changes,removed})
- _,err=journal.Write(append(raw,'\n'));if err==nil {err=journal.Sync()};journal.Close()
- if err!=nil {log.Printf("task journal write: %v",err);return}
- for _,item:=range changes {raw,_:=json.Marshal(item);s.taskFingerprints[item.TaskID]=string(raw)}
- for _,id:=range removed {if s.tasks[id]==nil {delete(s.taskFingerprints,id)}}
- info,_:=os.Stat(s.taskHistoryPath+".journal");_,snapshotErr:=os.Stat(s.taskHistoryPath)
- if snapshotErr==nil && info!=nil && info.Size()<8<<20 {return}
+	if s.taskFingerprints == nil {
+		s.taskFingerprints = map[string]string{}
+	}
+	changes := []persistedTask{}
+	for _, item := range items {
+		raw, _ := json.Marshal(item)
+		if s.taskFingerprints[item.TaskID] != string(raw) {
+			changes = append(changes, item)
+		}
+	}
+	removed := []string{}
+	for id := range s.taskFingerprints {
+		if s.tasks[id] == nil {
+			removed = append(removed, id)
+		}
+	}
+	if len(changes) == 0 && len(removed) == 0 {
+		return
+	}
+	if s.taskChanges == nil {
+		s.taskChanges = map[string]uint64{}
+		s.taskRemoved = map[string]uint64{}
+	}
+	s.taskRevision++
+	for _, item := range changes {
+		s.taskChanges[item.TaskID] = s.taskRevision
+		if item.Kind == "agent_session" && item.State == "deleted" {
+			removed = append(removed, item.TaskID)
+		}
+	}
+	for _, id := range removed {
+		s.taskRemoved[id] = s.taskRevision
+		delete(s.taskChanges, id)
+	}
+	_ = os.MkdirAll(filepath.Dir(s.taskHistoryPath), 0700)
+	journal, err := os.OpenFile(s.taskHistoryPath+".journal", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		log.Printf("task journal: %v", err)
+		return
+	}
+	raw, _ := json.Marshal(struct {
+		Tasks   []persistedTask `json:"tasks"`
+		Removed []string        `json:"removed"`
+	}{changes, removed})
+	_, err = journal.Write(append(raw, '\n'))
+	if err == nil {
+		err = journal.Sync()
+	}
+	journal.Close()
+	if err != nil {
+		log.Printf("task journal write: %v", err)
+		return
+	}
+	for _, item := range changes {
+		raw, _ := json.Marshal(item)
+		s.taskFingerprints[item.TaskID] = string(raw)
+	}
+	for _, id := range removed {
+		if s.tasks[id] == nil {
+			delete(s.taskFingerprints, id)
+		}
+	}
+	info, _ := os.Stat(s.taskHistoryPath + ".journal")
+	_, snapshotErr := os.Stat(s.taskHistoryPath)
+	if snapshotErr == nil && info != nil && info.Size() < 8<<20 {
+		return
+	}
 	if data, err := json.MarshalIndent(items, "", "  "); err == nil {
 		_ = os.MkdirAll(filepath.Dir(s.taskHistoryPath), 0o755)
 		temporary := s.taskHistoryPath + ".tmp"
 		if err := os.WriteFile(temporary, data, 0o600); err == nil {
-			if err = os.Rename(temporary, s.taskHistoryPath); err != nil { log.Printf("persist tasks: %v", err) } else {_=os.WriteFile(s.taskHistoryPath+".journal",nil,0600)}
-		} else { log.Printf("persist tasks: %v", err) }
+			if err = os.Rename(temporary, s.taskHistoryPath); err != nil {
+				log.Printf("persist tasks: %v", err)
+			} else {
+				_ = os.WriteFile(s.taskHistoryPath+".journal", nil, 0600)
+			}
+		} else {
+			log.Printf("persist tasks: %v", err)
+		}
 	}
 }
 
@@ -346,26 +404,37 @@ func (s *CoreServiceServer) ClearUsage() {
 	s.usage.Clear()
 }
 
-func(s *CoreServiceServer) RecordUsage(record UsageRecord) {
- s.usageMu.Lock();defer s.usageMu.Unlock()
- if record.RequestID!=""{
-  for _,existing:=range s.usage.records {if existing.RequestID==record.RequestID{return}}
- }
- s.usage.Add(record)
+func (s *CoreServiceServer) RecordUsage(record UsageRecord) {
+	s.usageMu.Lock()
+	defer s.usageMu.Unlock()
+	if record.RequestID != "" {
+		for _, existing := range s.usage.records {
+			if existing.RequestID == record.RequestID {
+				return
+			}
+		}
+	}
+	s.usage.Add(record)
 }
 
 // touchDispatch records ledger activity for a dispatched root task tree.
 func (s *CoreServiceServer) touchDispatch(root string) {
-	if root == "" { return }
+	if root == "" {
+		return
+	}
 	s.dispatchMu.Lock()
-	if _, ok := s.dispatchActivity[root]; ok { s.dispatchActivity[root] = time.Now() }
+	if _, ok := s.dispatchActivity[root]; ok {
+		s.dispatchActivity[root] = time.Now()
+	}
 	s.dispatchMu.Unlock()
 }
 
 // beginDispatch registers an in-flight dispatch; returns a stop function.
 func (s *CoreServiceServer) beginDispatch(taskID string) func() {
 	s.dispatchMu.Lock()
-	if s.dispatchActivity == nil { s.dispatchActivity = map[string]time.Time{} }
+	if s.dispatchActivity == nil {
+		s.dispatchActivity = map[string]time.Time{}
+	}
 	s.dispatchActivity[taskID] = time.Now()
 	s.dispatchMu.Unlock()
 	return func() {
@@ -469,9 +538,13 @@ func (s *CoreServiceServer) dialMocr(ctx context.Context) (mocrv1.MocrServiceCli
 // CallMocr proxies a request to the mocr service (real gRPC when available).
 func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.CoreService_CallMocrServer) (callErr error) {
 	id := fmt.Sprintf("core-model:%d", time.Now().UnixNano())
-	_ = s.RecordTask(TaskEvent{TaskID:id, CallerID:req.CallerId, SessionID:req.SessionId, Kind:"output", Prompt:req.Prompt, State:"running"})
+	_ = s.RecordTask(TaskEvent{TaskID: id, CallerID: req.CallerId, SessionID: req.SessionId, Kind: "output", Prompt: req.Prompt, State: "running"})
 	defer func() {
-		if callErr != nil { s.finishTask(id,"failed","",callErr.Error()) } else { s.finishTask(id,"done","Generation completed","") }
+		if callErr != nil {
+			s.finishTask(id, "failed", "", callErr.Error())
+		} else {
+			s.finishTask(id, "done", "Generation completed", "")
+		}
 	}()
 	if req.RequestId == "" {
 		return status.Error(codes.InvalidArgument, "request_id is required")
@@ -551,8 +624,12 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 	}
 	// Propagate correlation ids so mocr can attribute usage to session/request.
 	pairs := []string{}
-	if req.RequestId != "" { pairs = append(pairs, "x-0kay-request-id", req.RequestId) }
-	if sessionID != "" { pairs = append(pairs, "x-0kay-session-id", sessionID) }
+	if req.RequestId != "" {
+		pairs = append(pairs, "x-0kay-request-id", req.RequestId)
+	}
+	if sessionID != "" {
+		pairs = append(pairs, "x-0kay-session-id", sessionID)
+	}
 	if len(pairs) > 0 {
 		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(pairs...))
 	}
@@ -775,11 +852,15 @@ func (s *CoreServiceServer) ListAgents(ctx context.Context, req *corev1.ListAgen
 // RunDirect dispatches a direct tool call to the first healthy agent (no LLM).
 func (s *CoreServiceServer) RunDirect(ctx context.Context, req *corev1.RunDirectRequest) (response *corev1.RunDirectResponse, callErr error) {
 	id := fmt.Sprintf("direct-tool:%d", time.Now().UnixNano())
-	_ = s.RecordTask(TaskEvent{TaskID:id, CallerID:"core", SessionID:req.SessionId, Kind:"tool", Prompt:req.Tool, State:"running"})
+	_ = s.RecordTask(TaskEvent{TaskID: id, CallerID: "core", SessionID: req.SessionId, Kind: "tool", Prompt: req.Tool, State: "running"})
 	defer func() {
-		if callErr != nil { s.finishTask(id,"failed","",callErr.Error())
-		} else if response != nil && response.Success { s.finishTask(id,"done",response.Result,"")
-		} else if response != nil { s.finishTask(id,"failed",response.Result,response.Error) }
+		if callErr != nil {
+			s.finishTask(id, "failed", "", callErr.Error())
+		} else if response != nil && response.Success {
+			s.finishTask(id, "done", response.Result, "")
+		} else if response != nil {
+			s.finishTask(id, "failed", response.Result, response.Error)
+		}
 	}()
 	if req.Tool == "" {
 		return nil, status.Error(codes.InvalidArgument, "tool is required")
@@ -811,7 +892,7 @@ func (s *CoreServiceServer) RunDirect(ctx context.Context, req *corev1.RunDirect
 	defer conn.Close()
 
 	client := agentv1.NewAgentServiceClient(conn)
-	resp, err := client.RunDirect(pairing.CallbackContext(ctx,agents[0].Address), &agentv1.RunDirectRequest{
+	resp, err := client.RunDirect(pairing.CallbackContext(ctx, agents[0].Address), &agentv1.RunDirectRequest{
 		Tool:      req.Tool,
 		Args:      req.Args,
 		SessionId: req.SessionId,
@@ -836,11 +917,13 @@ func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRe
 	}
 
 	// Find a healthy agent
-	if req.Metadata == nil { req.Metadata = map[string]string{} }
+	if req.Metadata == nil {
+		req.Metadata = map[string]string{}
+	}
 	originSession := req.Metadata["session_id"]
 	req.Metadata["origin_session_id"] = originSession
 	req.Metadata["session_id"] = s.EnsureAgentSession(originSession, req.CallerId, req.Prompt)
-	if err := s.RecordTask(TaskEvent{TaskID:req.TaskId, CallerID:req.CallerId, Prompt:req.Prompt, State:"pending", Kind:"agent", SessionID:req.Metadata["session_id"], ParentID:req.Metadata["parent_id"]}); err != nil {
+	if err := s.RecordTask(TaskEvent{TaskID: req.TaskId, CallerID: req.CallerId, Prompt: req.Prompt, State: "pending", Kind: "agent", SessionID: req.Metadata["session_id"], ParentID: req.Metadata["parent_id"]}); err != nil {
 		return nil, status.Error(codes.AlreadyExists, err.Error())
 	}
 	agents := s.registry.GetAgents(true)
@@ -855,11 +938,20 @@ func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRe
 
 	// Simple round-robin: pick first agent (could be improved)
 	agent := agents[0]
- if requested:=req.Metadata["executor_id"];requested!="" {
-  found:=false
-  for _,candidate:=range agents {if candidate.PluginID==requested {agent=candidate;found=true;break}}
-  if !found {s.finishTask(req.TaskId,"failed","","selected executor is offline or unavailable");return &corev1.UseAgentResponse{Accepted:false,TaskId:req.TaskId,Message:"selected executor is offline or unavailable"},nil}
- }
+	if requested := req.Metadata["executor_id"]; requested != "" {
+		found := false
+		for _, candidate := range agents {
+			if candidate.PluginID == requested {
+				agent = candidate
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.finishTask(req.TaskId, "failed", "", "selected executor is offline or unavailable")
+			return &corev1.UseAgentResponse{Accepted: false, TaskId: req.TaskId, Message: "selected executor is offline or unavailable"}, nil
+		}
+	}
 
 	s.mu.Lock()
 	s.tasks[req.TaskId].AgentID = agent.PluginID
@@ -901,7 +993,9 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 	// watchdog catches a hung-but-connected agent (no ledger progress).
 	idleTimeout := 60 * time.Minute
 	if v := os.Getenv("CORE_AGENT_INACTIVITY_TIMEOUT"); v != "" {
-		if d, err := time.ParseDuration(v); err == nil && d > 0 { idleTimeout = d }
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			idleTimeout = d
+		}
 	}
 	go func() {
 		ticker := time.NewTicker(time.Minute)
@@ -915,7 +1009,9 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 			s.dispatchMu.Lock()
 			last, active := s.dispatchActivity[req.TaskId]
 			s.dispatchMu.Unlock()
-			if !active { return }
+			if !active {
+				return
+			}
 			if time.Since(last) > idleTimeout {
 				log.Printf("[UseAgent] Task %s inactivity timeout after %s", req.TaskId, idleTimeout)
 				cancel()
@@ -951,12 +1047,18 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 		executionPrompt = s.AgentSessionPrompt(req.Metadata["session_id"], req.TaskId, req.Prompt)
 	}
 	metadata := map[string]string{}
-	for k, v := range req.Metadata { metadata[k] = v }
-	if req.CallerId != "" && metadata["caller_id"] == "" { metadata["caller_id"] = req.CallerId }
-	if _, ok := metadata["language"]; !ok {
-		if req.CallerId == "webui" || metadata["caller_id"] == "webui" { metadata["language"] = "zh" }
+	for k, v := range req.Metadata {
+		metadata[k] = v
 	}
-	resp, err := client.ExecuteTask(pairing.CallbackContext(ctx,agentAddr), &agentv1.ExecuteTaskRequest{
+	if req.CallerId != "" && metadata["caller_id"] == "" {
+		metadata["caller_id"] = req.CallerId
+	}
+	if _, ok := metadata["language"]; !ok {
+		if req.CallerId == "webui" || metadata["caller_id"] == "webui" {
+			metadata["language"] = "zh"
+		}
+	}
+	resp, err := client.ExecuteTask(pairing.CallbackContext(ctx, agentAddr), &agentv1.ExecuteTaskRequest{
 		TaskId:    req.TaskId,
 		Prompt:    executionPrompt,
 		AgentType: agentType,
@@ -986,13 +1088,17 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 	}
 	// Handoff summary JSON is only meaningful to LIFE; keep Core's fallback
 	// localized for LIFE-dispatched tasks when the agent returned none.
-	handoff:=resp.Metadata["handoff"]
+	handoff := resp.Metadata["handoff"]
 	if isLifeCaller(req.CallerId) {
-		if handoff=="" {
-			if metadata["language"]=="en" { handoff=`{"artifacts":[],"outcome":"Agent did not provide an artifact list; review the Agent session."}` } else { handoff=`{"artifacts":[],"outcome":"Agent 未提供产物清单，请查看 Agent 会话。"}` }
+		if handoff == "" {
+			if metadata["language"] == "en" {
+				handoff = `{"artifacts":[],"outcome":"Agent did not provide an artifact list; review the Agent session."}`
+			} else {
+				handoff = `{"artifacts":[],"outcome":"Agent 未提供产物清单，请查看 Agent 会话。"}`
+			}
 		}
 	} else {
-		handoff=""
+		handoff = ""
 	}
 	s.notifyLifeTaskCompleted(req.TaskId, resp.State, handoff, resp.Error)
 }
@@ -1015,8 +1121,6 @@ func (s *CoreServiceServer) finishTask(taskID, state, result, errMsg string) {
 		t.Error = errMsg
 		t.EndedAt = time.Now()
 	}
-	s.mu.Unlock()
-	s.mu.Lock()
 	s.persistTasksLocked()
 	s.mu.Unlock()
 }
@@ -1029,12 +1133,14 @@ func (s *CoreServiceServer) failTask(taskID, errMsg string) {
 
 // notifyLifeTaskCompleted calls LifeService.OnTaskCompleted on the registered L.I.F.E plugin.
 func (s *CoreServiceServer) notifyLifeTaskCompleted(taskID string, state pluginv1.TaskState, result, errMsg string) {
- s.callbackMu.Lock()
- if s.callbacks==nil {s.callbacks=map[string]taskCallback{}}
- s.callbacks[taskID]=taskCallback{TaskID:taskID,State:state,Result:result,Error:errMsg}
- s.saveCallbacksLocked()
- s.callbackMu.Unlock()
- s.deliverTaskCallback(taskID,state,result,errMsg)
+	s.callbackMu.Lock()
+	if s.callbacks == nil {
+		s.callbacks = map[string]taskCallback{}
+	}
+	s.callbacks[taskID] = taskCallback{TaskID: taskID, State: state, Result: result, Error: errMsg}
+	s.saveCallbacksLocked()
+	s.callbackMu.Unlock()
+	s.deliverTaskCallback(taskID, state, result, errMsg)
 }
 
 func (s *CoreServiceServer) deliverTaskCallback(taskID string, state pluginv1.TaskState, result, errMsg string) {
@@ -1074,7 +1180,12 @@ func (s *CoreServiceServer) deliverTaskCallback(taskID string, state pluginv1.Ta
 	}
 
 	log.Printf("[TaskCompleted] L.I.F.E acknowledged task %s: %s", taskID, resp.ResponseText)
- if resp.Acknowledged {s.callbackMu.Lock();delete(s.callbacks,taskID);s.saveCallbacksLocked();s.callbackMu.Unlock()}
+	if resp.Acknowledged {
+		s.callbackMu.Lock()
+		delete(s.callbacks, taskID)
+		s.saveCallbacksLocked()
+		s.callbackMu.Unlock()
+	}
 }
 
 // CancelAgent cancels a running Agent task.
@@ -1109,7 +1220,7 @@ func (s *CoreServiceServer) CancelAgent(ctx context.Context, req *corev1.CancelA
 				continue
 			}
 			agentClient := agentv1.NewAgentServiceClient(conn)
-			response, callErr := agentClient.CancelTask(pairing.CallbackContext(ctx,a.Address), &agentv1.CancelTaskRequest{TaskId: req.TaskId})
+			response, callErr := agentClient.CancelTask(pairing.CallbackContext(ctx, a.Address), &agentv1.CancelTaskRequest{TaskId: req.TaskId})
 			conn.Close()
 			if callErr != nil {
 				return nil, callErr
@@ -1146,11 +1257,13 @@ func (s *CoreServiceServer) GetTask(taskID string) (*TaskInfo, bool) {
 
 // ListTasks returns JSON-friendly task state-machine entries for the gateway.
 func (s *CoreServiceServer) ListTasks() []map[string]interface{} {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	out := make([]map[string]interface{}, 0, len(s.tasks))
 	for _, t := range s.tasks {
-		if session := s.tasks[t.SessionID]; session != nil && session.Kind == "agent_session" && session.State == "deleted" { continue }
+		if session := s.tasks[t.SessionID]; session != nil && session.Kind == "agent_session" && session.State == "deleted" {
+			continue
+		}
 		state := t.State
 		if state == "" {
 			state = "running"
@@ -1163,8 +1276,8 @@ func (s *CoreServiceServer) ListTasks() []map[string]interface{} {
 			"state":      state,
 			"started_at": t.StartedAt.Format("2006-01-02T15:04:05.000000000Z07:00"),
 			"session_id": t.SessionID,
-			"kind": t.Kind,
-			"parent_id": t.ParentID,
+			"kind":       t.Kind,
+			"parent_id":  t.ParentID,
 		}
 		if !t.EndedAt.IsZero() {
 			item["ended_at"] = t.EndedAt.Format(time.RFC3339)
@@ -1180,10 +1293,12 @@ func (s *CoreServiceServer) ListTasks() []map[string]interface{} {
 		}
 		out = append(out, item)
 	}
-	sort.Slice(out, func(i,j int) bool {
-		a,b:=out[i]["started_at"].(string),out[j]["started_at"].(string)
-		if a==b { return out[i]["task_id"].(string) < out[j]["task_id"].(string) }
-		return a>b
+	sort.Slice(out, func(i, j int) bool {
+		a, b := out[i]["started_at"].(string), out[j]["started_at"].(string)
+		if a == b {
+			return out[i]["task_id"].(string) < out[j]["task_id"].(string)
+		}
+		return a > b
 	})
 	return out
 }
@@ -1194,7 +1309,3 @@ func (s *CoreServiceServer) RemoveTask(taskID string) {
 	defer s.mu.Unlock()
 	delete(s.tasks, taskID)
 }
-
-// unused import guard
-var _ = io.EOF
-var _ = mocrv1.UnimplementedMocrServiceServer{}

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, onScopeDispose } from 'vue'
 import { useWizardStore } from './wizard'
 import { uid } from '../uid'
 
@@ -41,6 +41,7 @@ export const useChatStore = defineStore('chat', () => {
   let messageIdCounter = 0
   let activeSseController: AbortController | null = null
   let notificationTimer: ReturnType<typeof setInterval> | null = null
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
   const lastMessage = computed(() =>
     messages.value.length > 0 ? messages.value[messages.value.length - 1] : null
@@ -102,7 +103,8 @@ export const useChatStore = defineStore('chat', () => {
     ws.onclose = () => {
       isConnected.value = false
       console.log('WebSocket disconnected')
-      setTimeout(connect, 3000)
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      reconnectTimer = setTimeout(connect, 3000)
     }
 
     ws.onmessage = (event) => {
@@ -114,6 +116,15 @@ export const useChatStore = defineStore('chat', () => {
       }
     }
   }
+
+  /** Stop background timers and sockets when the store scope is disposed. */
+  function dispose() {
+    if (notificationTimer) { clearInterval(notificationTimer); notificationTimer = null }
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
+    if (ws) { ws.onclose = null; ws.close(); ws = null }
+    activeSseController?.abort()
+  }
+  onScopeDispose(dispose)
 
   function handleWebSocketMessage(data: any) {
     switch (data.type) {

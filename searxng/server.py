@@ -285,7 +285,10 @@ def _preferred_engine() -> str:
     """Read engine preference from Core settings (default: cnbing)."""
     try:
         base = os.environ.get("CORE_HTTP_ADDR", "http://127.0.0.1:8080").rstrip("/")
-        with urllib.request.urlopen(base + "/api/settings/searxng", timeout=1.5) as resp:
+        token = os.environ.get("CORE_PAIR_TOKEN") or os.environ.get("CORE_API_TOKEN")
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        request = urllib.request.Request(base + "/api/settings/searxng", headers=headers)
+        with urllib.request.urlopen(request, timeout=1.5) as resp:
             data = json.loads(resp.read().decode("utf-8", errors="replace"))
             eng = str(((data or {}).get("values") or {}).get("engine") or "").strip().lower()
             if eng in _ENGINE_CHOICES:

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	lifev1 "0kay/gen/life/v1"
 	"0kay/core/internal/server"
+	lifev1 "0kay/gen/life/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

@@ -78,7 +78,12 @@ func (s *Store) saveLocked() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.path, b, 0o600)
+	// Write to a temporary file and rename so a crash never leaves half a JSON file.
+	temporary := s.path + ".tmp"
+	if err := os.WriteFile(temporary, b, 0o600); err != nil {
+		return err
+	}
+	return os.Rename(temporary, s.path)
 }
 
 // RegisterSection adds/replaces a section contributed by a plugin.
