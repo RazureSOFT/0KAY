@@ -14,6 +14,7 @@ import LifeSettingsPanel from '../components/LifeSettingsPanel.vue'
 import PairingPanel from '../components/PairingPanel.vue'
 import AppSelect from '../components/AppSelect.vue'
 import { useConfirm } from '../composables/confirm'
+import { apiGet, ApiError } from '../api'
 
 const { t, locale } = useI18n()
 const { confirm } = useConfirm()
@@ -80,29 +81,15 @@ const pluginsLoading = ref(false)
 const pluginResults = ref<Array<{ name: string; version: string; latest?: string; has_update: boolean; repository?: string; error?: string }> | null>(null)
 const pluginsError = ref('')
 
-/** Parse an API response defensively: non-JSON bodies (404/HTML) become readable errors. */
-async function readApiResponse(res: Response): Promise<any> {
-  const text = await res.text()
-  let data: any = null
-  if (text) {
-    try {
-      data = JSON.parse(text)
-    } catch {
-      if (res.status === 404) throw new Error(t('settings.about.unsupported'))
-      throw new Error(text.trim().slice(0, 200) || `HTTP ${res.status}`)
-    }
-  }
-  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`)
-  return data
-}
-
 async function checkUpdates() {
   aboutLoading.value = true
   updateError.value = ''
   try {
-    updateResult.value = await readApiResponse(await fetch('/api/update/check'))
+    updateResult.value = await apiGet('/api/update/check')
   } catch (error: unknown) {
-    updateError.value = error instanceof Error ? error.message : String(error)
+    updateError.value = error instanceof ApiError && error.status === 404
+      ? t('settings.about.unsupported')
+      : error instanceof Error ? error.message : String(error)
   } finally {
     aboutLoading.value = false
   }
@@ -112,10 +99,12 @@ async function checkPluginUpdates() {
   pluginsLoading.value = true
   pluginsError.value = ''
   try {
-    const data = await readApiResponse(await fetch('/api/update/check-plugins'))
+    const data = await apiGet('/api/update/check-plugins')
     pluginResults.value = data.plugins || []
   } catch (error: unknown) {
-    pluginsError.value = error instanceof Error ? error.message : String(error)
+    pluginsError.value = error instanceof ApiError && error.status === 404
+      ? t('settings.about.unsupported')
+      : error instanceof Error ? error.message : String(error)
   } finally {
     pluginsLoading.value = false
   }
