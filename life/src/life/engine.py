@@ -242,8 +242,7 @@ class LifeEngine:
             yield {"type": "chunk", "chunk": response, "done": False}
         turn.history.append({"role": "assistant", "content": response})
         self._histories[turn.session_id] = turn.history[-20:]
-        for text in (message, response):
-            await asyncio.to_thread(self.memory.store, text, importance=0.3, metadata={"scope": scope})
+        # Durable memory comes from extracted key points in _reflect, not the raw turn.
         await asyncio.to_thread(self.memory.enqueue_reflection, turn.session_id, message, response)
         self._save_state()
         if len(self._background_tasks) < 8:
@@ -256,13 +255,20 @@ class LifeEngine:
     async def _reflect(self, turn, message, response):
         async with self._reflection_limit:
             try:
-                prompt = ('Choose an optional companion action after this conversation. Most turns need none. '
-                          'Return JSON: {"action":"none|journal|dream|proactive_candidate|persona_evolution",'
-                          '"content":"","trait":"","value":"","motive":""}. Never send messages directly.\n'
+                prompt = ('Review this conversation. Return JSON: '
+                          '{"action":"none|journal|dream|proactive_candidate|persona_evolution",'
+                          '"content":"","trait":"","value":"","motive":"",'
+                          '"memories":["lasting first-person facts/preferences/commitments about the user, each <= 80 chars"]}. '
+                          'Only extract durable, useful facts; never store small talk, questions, or the assistant reply; '
+                          'use an empty list when nothing lasting was said.\n'
                           f'user: {message[:1200]}\nassistant: {response[:1200]}')
                 raw = "".join([chunk async for chunk in self.mocr.generate(self.think_model or self.default_model,
-                    [{"role": "user", "content": prompt}], "Private companion planner. JSON only.", thinking=True, max_tokens=300)])
+                    [{"role": "user", "content": prompt}], "Private companion planner. JSON only.", thinking=True, max_tokens=600)])
                 decision = json.loads(raw)
+                for item in (decision.get("memories") or [])[:3]:
+                    text = str(item).strip()
+                    if 4 <= len(text) <= 160:
+                        await asyncio.to_thread(self.memory.remember, text, "", ["extracted"], 0.6, "fact", "public")
                 action = decision.get("action")
                 content = str(decision.get("content") or "")
                 if action in ("journal", "dream") and content:
@@ -276,6 +282,25 @@ class LifeEngine:
                     await asyncio.to_thread(self.companion.propose_persona_evolution, decision["trait"], decision["value"], message[:500])
             except Exception as error:
                 await asyncio.to_thread(self.companion.audit, "companion_reflection", str(error), turn.session_id, "failed")
+
+    async def generate_companion_text(self, kind: str, hint: str = "") -> str:
+        """Ask the model to write a short companion entry (journal / dream / proactive note)."""
+        recent: list[str] = []
+        for session_id in list(self._histories.keys())[-3:]:
+            for item in self._histories[session_id][-4:]:
+                recent.append(f'{item["role"]}: {str(item.get("content",""))[:200]}')
+        context = "\n".join(recent)[-1500:]
+        instructions = {
+            "journal": "以第一人称写一段今天的日记，简短、真诚，不超过 120 字，结合最近的对话与心情。只输出正文。",
+            "dream": "以第一人称写一个简短的梦或睡眠反思，不超过 120 字，带一点意象与情绪。只输出正文。",
+            "proactive": "写一条想主动对用户说的话，不超过 80 字，自然、不说教，只输出这句话本身。",
+        }
+        instruction = instructions.get(kind, instructions["journal"])
+        prompt = f"{instruction}\n附加提示：{hint[:400]}\n最近对话：\n{context}" if hint else f"{instruction}\n最近对话：\n{context}"
+        model = self.think_model or self.default_model
+        text = "".join([chunk async for chunk in self.mocr.generate(
+            model, [{"role": "user", "content": prompt}], "你是 L.I.F.E 的内心独白作者。", thinking=False, max_tokens=512)])
+        return text.strip()
 
     async def close(self):
         tasks = list(self._background_tasks)

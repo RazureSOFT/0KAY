@@ -380,6 +380,14 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = {"ok": True, "daily_limit": daily, "per_target_limit": per_target}
             elif action == "relationship_adjust":
                 result = await asyncio.to_thread(self.engine.companion.apply_relationship_event, payload.get("user_id",""), payload.get("event_key",""), payload.get("reason","dashboard"), payload.get("channel","webui"), float(payload.get("delta",0)))
+            elif action in ("journal_generate", "dream_generate"):
+                kind = "journal" if action == "journal_generate" else "dream"
+                text = await self.engine.generate_companion_text(kind, str(payload.get("hint","")))
+                result = await asyncio.to_thread(self.engine.companion.journal, text, kind) if text else {"status":"empty"}
+            elif action == "proactive_suggest":
+                content = await self.engine.generate_companion_text("proactive", str(payload.get("hint","")))
+                target = str(payload.get("target") or "user:owner")
+                result = await asyncio.to_thread(self.engine.companion.create_proactive_candidate, target, "ai_suggestion", content) if content else {"status":"empty"}
             else:
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))

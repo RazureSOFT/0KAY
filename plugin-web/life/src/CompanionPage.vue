@@ -46,6 +46,21 @@ async function createProactive() {
 }
 async function cancelProactive(id: string) { await act('proactive_cancel', { id, reason: 'dashboard_cancel' }); flash('已取消候选') }
 async function savePolicy() { await act('proactive_policy', { daily_limit: Number(policy.value.daily_limit), per_target_limit: Number(policy.value.per_target_limit) }); flash('策略已保存') }
+const generating = ref('')
+async function generate(kind: 'journal' | 'dream') {
+  generating.value = kind
+  try {
+    const r = await fetch('/api/life/companion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: kind === 'journal' ? 'journal_generate' : 'dream_generate', payload: {} }) })
+    if (!r.ok) throw Error(await r.text())
+    await load(); flash('已由 LIFE 生成')
+  } catch (e: any) { error.value = e?.message || '生成失败' }
+  finally { generating.value = '' }
+}
+async function suggestProactive() {
+  const target = proactiveForm.value.target.trim() || 'user:owner'
+  const result = await act('proactive_suggest', { target, hint: proactiveForm.value.motive })
+  if (result) { proactiveForm.value = { target: '', motive: '', content: '', preferred_at: '' }; flash('已生成建议候选') }
+}
 function fmtTime(value?: string) { if (!value) return ''; const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString() }
 onMounted(load)
 </script>
@@ -118,6 +133,7 @@ onMounted(load)
 
       <article class="card">
         <div class="card-head"><h2 class="card-title">主动行为</h2><span class="chip muted">待投递 {{ activeCandidates.length }}</span></div>
+        <div class="toolbar-inline"><button class="btn btn-tonal btn-sm" @click="suggestProactive">让 LIFE 建议一条</button></div>
         <form class="stack-form" @submit.prevent="createProactive">
           <input v-model="proactiveForm.target" class="input" placeholder="对象（user_id / 会话）" aria-label="主动对象" />
           <input v-model="proactiveForm.motive" class="input" placeholder="动机，如 care / reminder" aria-label="动机" />
@@ -178,7 +194,7 @@ onMounted(load)
       </article>
 
       <article class="card">
-        <div class="card-head"><h2 class="card-title">日记</h2></div>
+        <div class="card-head"><h2 class="card-title">日记</h2><button class="btn btn-tonal btn-sm" :disabled="generating === 'journal'" @click="generate('journal')">{{ generating === 'journal' ? '生成中…' : '由 LIFE 生成' }}</button></div>
         <form class="stack-form" @submit.prevent="addEntry('journal', journal)"><textarea v-model="journal" class="input area" placeholder="记录 LIFE 的日记…"></textarea><button class="btn btn-tonal" type="submit">写入日记</button></form>
         <ol class="feed">
           <li v-for="item in data.journal" :key="item.id"><time>{{ item.at }}</time><p>{{ item.content }}</p></li>
@@ -187,7 +203,7 @@ onMounted(load)
       </article>
 
       <article class="card">
-        <div class="card-head"><h2 class="card-title">梦境</h2></div>
+        <div class="card-head"><h2 class="card-title">梦境</h2><button class="btn btn-tonal btn-sm" :disabled="generating === 'dream'" @click="generate('dream')">{{ generating === 'dream' ? '生成中…' : '由 LIFE 生成' }}</button></div>
         <form class="stack-form" @submit.prevent="addEntry('dream', dream)"><textarea v-model="dream" class="input area" placeholder="记录一个梦境或睡眠反思…"></textarea><button class="btn btn-tonal" type="submit">记录梦境</button></form>
         <ol class="feed">
           <li v-for="item in data.dreams" :key="item.id"><time>{{ item.at }}</time><p>{{ item.content }}</p></li>
@@ -258,6 +274,7 @@ onMounted(load)
 .agenda-form{display:grid;grid-template-columns:1fr 220px auto;gap:10px}
 .agenda-form .area{grid-column:1/-1}
 .stack-form{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.toolbar-inline{display:flex;gap:8px;margin-bottom:12px}
 .stack-form .btn{align-self:flex-start}
 
 .item-list,.rel-list,.feed,.timeline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
