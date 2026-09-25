@@ -509,12 +509,13 @@ button.subagent-card-head>strong{font-weight:700}
 /* ---- composer ---- */
 .composer{flex-shrink:0;margin:0 20px 18px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-lowest);overflow:hidden;box-shadow:var(--shadow-1)}
 .composer-input{position:relative}
-.composer-input textarea{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 58px 15px 18px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}
+.composer-input textarea{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 64px 15px 18px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}
 .composer-input textarea:focus{box-shadow:none;border:0}
-.send-fly{position:absolute;right:12px;bottom:12px;width:38px;height:38px;display:grid;place-items:center;border:0;border-radius:50%;padding:0;background:var(--md-primary);color:var(--md-on-primary,#fff)}
+.send-fly{position:absolute !important;right:10px !important;bottom:10px !important;z-index:2;width:42px !important;height:42px !important;aspect-ratio:1/1;display:grid !important;place-items:center;border:0 !important;border-radius:50% !important;padding:0 !important;margin:0 !important;background:var(--md-primary);color:var(--md-on-primary,#fff);box-shadow:0 2px 10px color-mix(in srgb,var(--md-primary) 38%,transparent)}
+.send-fly svg{width:20px;height:20px}
 .send-fly:hover:not(:disabled){filter:brightness(1.08)}
-.send-fly:disabled{background:var(--md-surface-container);color:var(--md-on-surface-variant);opacity:.7}
-.send-fly.stop{background:var(--md-error);color:#fff}
+.send-fly:disabled{background:var(--md-surface-container);color:var(--md-on-surface-variant);opacity:.7;box-shadow:none}
+.send-fly.stop{background:var(--md-error);color:#fff;box-shadow:0 2px 10px color-mix(in srgb,var(--md-error) 40%,transparent)}
 .compact-notice{font-size:12px;padding:10px 16px;color:var(--md-primary);background:var(--md-primary-container);border-radius:10px;margin:10px 16px 0}
 .execution-options{display:flex;gap:10px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid var(--md-outline-variant);align-items:end}
 .execution-options label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--md-on-surface-variant);flex:1;min-width:130px}
