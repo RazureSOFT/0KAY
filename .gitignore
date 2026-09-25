@@ -22,3 +22,6 @@ buf-win.exe
 /data/
 webui/scripts/shots/
 webui/scripts/skills-ui.png
+
+# Live2D models are large binary assets; they are not tracked or pushed.
+webui/public/live2d/models/
