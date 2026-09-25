@@ -6,7 +6,7 @@ import AppSelect from './AppSelect.vue'
 import { setLanguage, getLanguage, LOCALES } from '../i18n'
 import { PROVIDERS, WIZARD_STEPS } from '../composables/wizard'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const wizard = useWizardStore()
 const emit = defineEmits<{ complete: [] }>()
 
@@ -14,6 +14,10 @@ const customModels = ref('')
 const isLoading = ref(false)
 const error = ref('')
 const currentLang = ref(getLanguage())
+const pendingLang = ref(getLanguage())
+// The language gate is the wizard's first screen; returning users who already
+// picked a language skip straight to the steps.
+const languageChosen = ref(!!localStorage.getItem('0kay_lang'))
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploadedFileName = ref('')
 const folderInput = ref<HTMLInputElement | null>(null)
@@ -64,7 +68,8 @@ async function onFolderSelected(e: Event) {
 
 onMounted(() => {
   wizard.loadFromStorage()
-  currentLang.value = locale.value
+  currentLang.value = getLanguage()
+  pendingLang.value = getLanguage()
 })
 
 const progress = computed(() => {
@@ -142,15 +147,49 @@ function useCustomModels() {
   }
 }
 
-function changeLanguage(code: string) {
-  currentLang.value = code
-  setLanguage(code)
+function confirmLanguage() {
+  currentLang.value = pendingLang.value
+  setLanguage(pendingLang.value)
+  languageChosen.value = true
+}
+
+function reopenLanguage() {
+  pendingLang.value = currentLang.value
+  languageChosen.value = false
 }
 </script>
 
 <template>
   <div class="wizard-overlay">
     <div class="wizard-container">
+      <!-- First screen: independent language selection -->
+      <div v-if="!languageChosen" class="lang-gate">
+        <div class="wizard-logo lang-gate-logo">
+          <svg width="42" height="42" viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="2"/>
+            <path d="M10 16L14 20L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h2>{{ t('wizard.chooseLanguage') }}</h2>
+        <p class="lang-hint">{{ t('wizard.languageHint') }}</p>
+        <div class="lang-grid">
+          <button
+            v-for="option in LOCALES"
+            :key="option.code"
+            class="lang-card"
+            :class="{ selected: pendingLang === option.code }"
+            @click="pendingLang = option.code"
+          >
+            <span class="lang-label">{{ option.label }}</span>
+            <span class="lang-en">{{ option.english }}</span>
+          </button>
+        </div>
+        <button class="btn btn-primary lang-continue" @click="confirmLanguage">
+          {{ t('wizard.continue') }}
+        </button>
+      </div>
+
+      <template v-else>
       <!-- Header -->
       <div class="wizard-header">
         <div class="wizard-top">
@@ -160,16 +199,17 @@ function changeLanguage(code: string) {
               <path d="M10 16L14 20L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
-          <select
-            class="lang-select"
-            v-model="currentLang"
-            @change="changeLanguage(currentLang)"
+          <button
+            class="lang-btn"
+            :title="t('settings.language')"
             :aria-label="t('settings.language')"
+            @click="reopenLanguage"
           >
-            <option v-for="option in LOCALES" :key="option.code" :value="option.code">
-              {{ option.label }}
-            </option>
-          </select>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+              <path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
         </div>
         <div class="wizard-title">{{ t('wizard.title') }}</div>
         <div class="wizard-subtitle">{{ t('wizard.subtitle') }}</div>
@@ -478,6 +518,7 @@ function changeLanguage(code: string) {
           {{ t('wizard.startChatting') }}
         </button>
       </div>
+      </template>
     </div>
   </div>
 </template>
@@ -523,11 +564,15 @@ function changeLanguage(code: string) {
   color: var(--brand-primary);
 }
 
-.lang-select {
+.lang-btn {
   position: absolute;
   right: 0;
-  padding: var(--space-xs) var(--space-sm);
-  font-size: var(--font-size-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--neutral-gray-50);
   background: var(--neutral-gray-4);
   border: none;
   border-radius: var(--radius-sm);
@@ -535,8 +580,77 @@ function changeLanguage(code: string) {
   transition: background var(--transition-fast);
 }
 
-.lang-select:hover {
+.lang-btn:hover {
   background: var(--neutral-gray-6);
+}
+
+/* First screen: independent language selection */
+.lang-gate {
+  padding: var(--space-xl) var(--space-xl) var(--space-lg);
+  text-align: center;
+}
+
+.lang-gate-logo {
+  display: flex;
+  justify-content: center;
+  color: var(--brand-primary);
+  margin-bottom: var(--space-md);
+}
+
+.lang-gate h2 {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--neutral-gray-70);
+  margin-bottom: var(--space-xs);
+}
+
+.lang-hint {
+  font-size: var(--font-size-sm);
+  color: var(--neutral-gray-30);
+  margin-bottom: var(--space-xl);
+}
+
+.lang-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.lang-card {
+  padding: var(--space-lg);
+  background: var(--neutral-white);
+  border: 2px solid var(--neutral-gray-6);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: center;
+  transition: all var(--transition-fast);
+}
+
+.lang-card:hover {
+  border-color: var(--neutral-gray-8);
+}
+
+.lang-card.selected {
+  border-color: var(--brand-primary);
+  background: var(--brand-light);
+}
+
+.lang-label {
+  display: block;
+  font-weight: 600;
+  color: var(--neutral-gray-70);
+}
+
+.lang-en {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--neutral-gray-30);
+  margin-top: 2px;
+}
+
+.lang-continue {
+  width: 100%;
 }
 
 .wizard-title {

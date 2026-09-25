@@ -6,10 +6,10 @@ import zhHant from './locales/zh-Hant.json'
 
 /** Languages offered in the UI. `zh` is Simplified, `zh-Hant` Traditional. */
 export const LOCALES = [
-  { code: 'en', label: 'English' },
-  { code: 'ja', label: '日本語' },
-  { code: 'zh', label: '简体中文' },
-  { code: 'zh-Hant', label: '繁體中文' },
+  { code: 'en', label: 'English', english: 'English' },
+  { code: 'ja', label: '日本語', english: 'Japanese' },
+  { code: 'zh', label: '简体中文', english: 'Simplified Chinese' },
+  { code: 'zh-Hant', label: '繁體中文', english: 'Traditional Chinese' },
 ] as const
 
 const CODES: string[] = LOCALES.map((locale) => locale.code)

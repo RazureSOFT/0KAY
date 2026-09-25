@@ -138,6 +138,9 @@
   "wizard": {
     "title": "Welcome to 0kay",
     "subtitle": "Let's set up your AI assistant",
+    "chooseLanguage": "Choose your language",
+    "languageHint": "Pick the app language. You can change it later in Settings.",
+    "continue": "Continue",
     "welcome": "Welcome to 0kay!",
     "welcomeDesc": "Let's get you set up in just a few steps.",
     "featureProvider": "Connect to your favorite AI provider",

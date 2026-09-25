@@ -138,6 +138,9 @@
   "wizard": {
     "title": "歡迎使用 0kay",
     "subtitle": "讓我們來設定你的 AI 助理",
+    "chooseLanguage": "選擇語言",
+    "languageHint": "選擇介面語言，之後可在設定中更改。",
+    "continue": "繼續",
     "welcome": "歡迎使用 0kay！",
     "welcomeDesc": "只需幾步即可完成設定。",
     "featureProvider": "連接你喜歡的 AI 供應商",
