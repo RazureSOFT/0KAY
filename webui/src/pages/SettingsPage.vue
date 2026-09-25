@@ -72,12 +72,50 @@ const fetchingProviderId = ref('')
 const sectionDrafts = ref<Record<string, Record<string, unknown>>>({})
 const sectionMsg = ref('')
 
+/** About tab — platform version and update checks against GitHub releases. */
+const aboutLoading = ref(false)
+const updateResult = ref<{ current: string; latest?: string; has_update: boolean; url?: string } | null>(null)
+const updateError = ref('')
+const pluginsLoading = ref(false)
+const pluginResults = ref<Array<{ name: string; version: string; latest?: string; has_update: boolean; repository?: string; error?: string }> | null>(null)
+const pluginsError = ref('')
+
+async function checkUpdates() {
+  aboutLoading.value = true
+  updateError.value = ''
+  try {
+    const res = await fetch('/api/update/check')
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || res.statusText)
+    updateResult.value = data
+  } catch (error: unknown) {
+    updateError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    aboutLoading.value = false
+  }
+}
+
+async function checkPluginUpdates() {
+  pluginsLoading.value = true
+  pluginsError.value = ''
+  try {
+    const res = await fetch('/api/update/check-plugins')
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || res.statusText)
+    pluginResults.value = data.plugins || []
+  } catch (error: unknown) {
+    pluginsError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    pluginsLoading.value = false
+  }
+}
+
 function tabMeta(id: string) {
   return uiPatches.settingsTab(id)
 }
 
 function isBuiltinTab(id: string): boolean {
-  return ['general', 'provider', 'persona', 'live2d', 'permissions', 'danger'].includes(id)
+  return ['general', 'provider', 'persona', 'live2d', 'permissions', 'danger', 'about'].includes(id)
 }
 
 function isPluginSection(id: string): boolean {
@@ -548,6 +586,10 @@ onMounted(async () => {
   currentLang.value = locale.value
   const q = route.query.tab as string | undefined
   if (q) activeTab.value = q
+  if (q === 'about') {
+    void checkUpdates()
+    void checkPluginUpdates()
+  }
   loadPermissions()
   loadUploadedModels()
   await provStore.fetchAll()
@@ -560,6 +602,10 @@ onMounted(async () => {
 
 function selectTab(id: string) {
   activeTab.value = id
+  if (id === 'about' && !updateResult.value && !aboutLoading.value) {
+    void checkUpdates()
+    void checkPluginUpdates()
+  }
   if (!isBuiltinTab(id)) loadSectionDraft(id)
   router.replace({ query: { tab: id } })
 }
@@ -619,7 +665,9 @@ function toggleLanguage() {
             <!-- avatar / live2d -->
             <svg v-else-if="tab.icon === 'avatar'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="10" r="6" stroke="currentColor" stroke-width="2"/><path d="M5 21c1.5-3 4-4.5 7-4.5S17.5 18 19 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="10" r="1" fill="currentColor"/><circle cx="14" cy="10" r="1" fill="currentColor"/></svg>
             <!-- warn -->
-            <svg v-else-if="tab.icon === 'warn'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 4l9 16H3L12 4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <svg v-else-if="tab.icon === 'warn'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 4l9 16H3L12 4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <!-- info / about -->
+            <svg v-else-if="tab.icon === 'info'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 11v5M12 7.5v.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             <!-- lock / permissions -->
             <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </span>
@@ -1176,6 +1224,32 @@ function toggleLanguage() {
           </div>
         </div>
 
+        <div v-else-if="activeTab === 'about'" class="content-card">
+          <h2>{{ t('settings.tabs.about') }}</h2>
+          <p class="card-desc">{{ t('settings.about.description') }}</p>
+          <h3>0KAY <small>v{{ updateResult?.current || '0.1.0' }}</small></h3>
+          <div class="actions-row">
+            <button class="btn btn-tonal" :disabled="aboutLoading" @click="checkUpdates">{{ t(aboutLoading ? 'settings.about.checking' : 'settings.about.check') }}</button>
+            <button class="btn btn-tonal" :disabled="pluginsLoading" @click="checkPluginUpdates">{{ t(pluginsLoading ? 'settings.about.checking' : 'settings.about.plugins') }}</button>
+          </div>
+          <p v-if="updateError" role="alert">{{ updateError }}</p>
+          <p v-else-if="updateResult" role="status">
+            {{ t(updateResult.has_update ? 'settings.about.available' : (updateResult.latest ? 'settings.about.latest' : 'settings.about.noRelease')) }}
+            <a v-if="updateResult.url" :href="updateResult.url" target="_blank" rel="noopener noreferrer">{{ updateResult.latest }}</a>
+          </p>
+          <p v-if="pluginsError" role="alert">{{ pluginsError }}</p>
+          <div v-if="pluginResults" class="about-plugins">
+            <div v-for="plugin in pluginResults" :key="plugin.name" class="about-plugin">
+              <strong>{{ plugin.name }}</strong>
+              <span>{{ plugin.version || '—' }} → {{ plugin.latest || '—' }}</span>
+              <span>{{ plugin.error || t(plugin.has_update ? 'settings.about.available' : (plugin.latest ? 'settings.about.latest' : 'settings.about.noRelease')) }}</span>
+            </div>
+            <p v-if="!pluginResults.length">{{ t('settings.about.noPlugins') }}</p>
+          </div>
+          <p class="helper-text">{{ t('settings.about.updateHint') }}</p>
+          <code>0kay-pm update &lt;package&gt;@&lt;version&gt;</code>
+        </div>
+
         <!-- Danger -->
         <div v-else class="content-card danger">
           <h2>{{ t('settings.tabs.danger') }}</h2>
@@ -1197,6 +1271,9 @@ function toggleLanguage() {
 </template>
 
 <style scoped>
+.about-plugins { margin-top: 20px; }
+.about-plugin { display: flex; flex-wrap: wrap; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border-color, #ddd); }
+.about-plugin strong { min-width: 100px; }
 .settings-page {
   height: 100%;
   overflow-y: auto;

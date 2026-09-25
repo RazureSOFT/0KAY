@@ -139,6 +139,7 @@ export const BUILTIN_SETTINGS: SettingsTabItem[] = [
   { id: 'persona', icon: 'person', order: 40, component: 'persona' },
   { id: 'permissions', icon: 'lock', order: 60, component: 'permissions' },
   { id: 'danger', icon: 'warn', order: 100 },
+  { id: 'about', icon: 'info', order: 110 },
 ]
 
 /**

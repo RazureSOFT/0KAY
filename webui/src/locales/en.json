@@ -221,7 +221,19 @@
       "persona": "Persona",
       "live2d": "Live2D",
       "permissions": "Permissions",
-      "danger": "Danger"
+      "danger": "Danger",
+      "about": "About"
+    },
+    "about": {
+      "description": "Platform version and GitHub release updates",
+      "check": "Check for updates",
+      "plugins": "Check plugin updates",
+      "checking": "Checking…",
+      "available": "Update available",
+      "latest": "Up to date",
+      "noRelease": "No published release",
+      "noPlugins": "No registered plugins",
+      "updateHint": "Stop the component before updating it with 0kay-pm, then restart it."
     },
     "generalDesc": "UI language and basic preferences",
     "providerDesc": "Choose an AI provider and configure API credentials",

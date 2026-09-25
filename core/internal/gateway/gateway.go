@@ -131,6 +131,8 @@ func (g *Gateway) Handler() http.Handler {
 
 	mux.HandleFunc("/health", g.handleHealth)
 	mux.HandleFunc("/api/plugins", g.handlePlugins)
+	mux.HandleFunc("/api/update/check", g.handleUpdateCheck)
+	mux.HandleFunc("/api/update/check-plugins", g.handleUpdateCheckPlugins)
 	mux.HandleFunc("/api/plugins/enable", g.handlePluginEnable)
 	mux.HandleFunc("/api/plugins/disable", g.handlePluginDisable)
 	// Plugin front-end ESM bundles (scheme C): CORE_DATA_DIR/plugin-ui/{name}/

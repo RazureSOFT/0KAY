@@ -18,6 +18,7 @@ import (
 	"0kay/core/internal/server"
 	"0kay/core/internal/settings"
 	"0kay/core/internal/pairing"
+	"0kay/core/internal/version"
 	"crypto/tls"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
@@ -155,7 +156,7 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 	}
 	if _, err := reg.RegisterBuiltin(&pluginv1.PluginInfo{
 		Name:        "webui",
-		Version:     "0.1.0",
+		Version:     version.Version,
 		Description: "0kay WebUI - Vue3 frontend adapter",
 		Author:      "0kay",
 		PluginType:  pluginv1.PluginType_PLUGIN_TYPE_ADAPTER,
@@ -171,7 +172,7 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 		}
 		if _, err := reg.RegisterBuiltin(&pluginv1.PluginInfo{
 			Name:        "searxng",
-			Version:     "0.1.0",
+			Version:     version.Version,
 			Description: "SearXNG meta-search engine (local)",
 			Author:      "0kay",
 			PluginType:  pluginv1.PluginType_PLUGIN_TYPE_TOOL,

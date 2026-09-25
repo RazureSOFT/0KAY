@@ -15,6 +15,16 @@ from core.v1 import core_pb2, core_pb2_grpc
 from plugin.v1 import plugin_pb2
 
 
+def _manifest_version(fallback: str = "0.1.0") -> str:
+    """Read the plugin version from manifest.json in the working directory."""
+    try:
+        manifest = os.path.join(os.path.dirname(__file__), '..', '..', 'manifest.json')
+        with open(manifest, encoding="utf-8") as handle:
+            return json.load(handle).get("version") or fallback
+    except (OSError, ValueError):
+        return fallback
+
+
 class CoreClient:
     """gRPC client for talking to 0kay Core (PluginService + CoreService)."""
 
@@ -69,7 +79,7 @@ class CoreClient:
             request = core_pb2.RegisterRequest(
                 plugin_info=plugin_pb2.PluginInfo(
                     name="life",
-                    version="0.1.0",
+                    version=_manifest_version(),
                     description="L.I.F.E - Persona engine (THINK/OUTPUT)",
                     author="0kay",
                     plugin_type=plugin_pb2.PLUGIN_TYPE_PERSONA,

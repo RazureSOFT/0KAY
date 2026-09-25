@@ -221,7 +221,19 @@
       "persona": "人设",
       "live2d": "Live2D",
       "permissions": "权限",
-      "danger": "危险区"
+      "danger": "危险区",
+      "about": "关于"
+    },
+    "about": {
+      "description": "平台版本与 GitHub 发行版更新",
+      "check": "检查更新",
+      "plugins": "检查插件更新",
+      "checking": "检查中…",
+      "available": "有新版本可更新",
+      "latest": "已是最新版本",
+      "noRelease": "暂无发行版",
+      "noPlugins": "暂无已注册插件",
+      "updateHint": "停止要更新的组件后，使用 0kay-pm 更新并重新启动。"
     },
     "generalDesc": "界面语言与基础偏好",
     "providerDesc": "选择 AI 供应商并配置 API 凭证",

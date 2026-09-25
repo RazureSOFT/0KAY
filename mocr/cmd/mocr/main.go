@@ -73,7 +73,6 @@ func main() {
 		CoreAddress:  coreAddr,
 		MocrAddress:  mocrAddr,
 		PluginName:   "mocr",
-		Version:      "0.1.0",
 		Capabilities: []string{"mocr"},
 		SettingsSections: []*pluginv1.SettingsSection{
 			{Id: "usage", Label: "用量", Icon: "usage", Order: 90, Description: "由 mocr 提供的模型用量统计"},

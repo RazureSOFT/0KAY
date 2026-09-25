@@ -2,7 +2,9 @@ package register
 
 import (
 	"context"
+	"encoding/json"
 	"log"
+	"os"
 	"time"
 
 	corev1 "0kay/gen/core/v1"
@@ -23,6 +25,22 @@ type Options struct {
 	HeartbeatEvery   time.Duration
 }
 
+// ManifestVersion reads the plugin version from manifest.json in the working
+// directory, falling back when the manifest is missing (dev builds, tests).
+func ManifestVersion(fallback string) string {
+	data, err := os.ReadFile("manifest.json")
+	if err != nil {
+		return fallback
+	}
+	var manifest struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil || manifest.Version == "" {
+		return fallback
+	}
+	return manifest.Version
+}
+
 // Start registers mocr as a plugin and keeps heartbeating until ctx is done.
 // Non-blocking; runs in background goroutines.
 func Start(ctx context.Context, opts Options) {
@@ -36,7 +54,7 @@ func Start(ctx context.Context, opts Options) {
 		opts.PluginName = "mocr"
 	}
 	if opts.Version == "" {
-		opts.Version = "0.1.0"
+		opts.Version = ManifestVersion("0.1.0")
 	}
 	if len(opts.Capabilities) == 0 {
 		opts.Capabilities = []string{"mocr"}
