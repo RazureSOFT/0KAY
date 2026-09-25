@@ -6,10 +6,8 @@ import router, { registerPatchRoutes } from './router'
 import { i18n } from './i18n'
 import { useWizardStore } from './stores/wizard'
 import { useUIPatchesStore } from './stores/uiPatches'
-import './styles/main.css'
-import './styles/expressive.css'
-import './styles/refined.css'
-import './styles/expressive-interactions.css'
+import './styles/theme.css'
+import './styles/settings.css'
 import { installInteractionMotion } from './composables/motion'
 
 const app = createApp(App)
