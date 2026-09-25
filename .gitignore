@@ -3,6 +3,8 @@ buf.exe
 
 # Agent remains an independent repository.
 /agent/
+# 0kay-pm remains an independent repository.
+/pm/
 node_modules
 core/data/tasks.json
 core/data/tasks.json.journal
