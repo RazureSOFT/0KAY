@@ -115,6 +115,12 @@ async function addDate() {
 }
 async function removeDate(id: string) { await act('date_delete', { id }); flash('已删除') }
 async function eat() { await act('circadian_eat', { amount: 45 }); flash('已用餐') }
+async function clearJournal(kind: 'journal' | 'dream') {
+  const ok = await confirm({ title: kind === 'dream' ? '清除梦境' : '清除日记', message: '将删除全部该类型记录，无法恢复。', confirmLabel: '清除', danger: true })
+  if (!ok) return
+  await act('journal_clear', { kind })
+  flash('已清除')
+}
 function fmtTime(value?: string) { if (!value) return ''; const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString() }
 onMounted(load)
 </script>
@@ -277,7 +283,7 @@ onMounted(load)
       </article>
 
       <article class="card">
-        <div class="card-head"><h2 class="card-title">日记</h2><button class="btn btn-tonal btn-sm" :disabled="generating === 'journal'" @click="generate('journal')">{{ generating === 'journal' ? '生成中…' : '由 LIFE 生成' }}</button></div>
+        <div class="card-head"><h2 class="card-title">日记</h2><div class="head-actions"><button class="btn btn-danger btn-sm" @click="clearJournal('journal')">清除</button><button class="btn btn-tonal btn-sm" :disabled="generating === 'journal'" @click="generate('journal')">{{ generating === 'journal' ? '生成中…' : '由 LIFE 生成' }}</button></div></div>
         <form class="stack-form" @submit.prevent="addEntry('journal', journal)"><textarea v-model="journal" class="input area" placeholder="记录 LIFE 的日记…"></textarea><button class="btn btn-tonal" type="submit">写入日记</button></form>
         <ol class="feed">
           <li v-for="item in data.journal" :key="item.id"><time>{{ item.at }}</time><p>{{ item.content }}</p></li>
@@ -286,7 +292,7 @@ onMounted(load)
       </article>
 
       <article class="card">
-        <div class="card-head"><h2 class="card-title">梦境</h2><button class="btn btn-tonal btn-sm" :disabled="generating === 'dream'" @click="generate('dream')">{{ generating === 'dream' ? '生成中…' : '由 LIFE 生成' }}</button></div>
+        <div class="card-head"><h2 class="card-title">梦境</h2><div class="head-actions"><button class="btn btn-danger btn-sm" @click="clearJournal('dream')">清除</button><button class="btn btn-tonal btn-sm" :disabled="generating === 'dream'" @click="generate('dream')">{{ generating === 'dream' ? '生成中…' : '由 LIFE 生成' }}</button></div></div>
         <form class="stack-form" @submit.prevent="addEntry('dream', dream)"><textarea v-model="dream" class="input area" placeholder="记录一个梦境或睡眠反思…"></textarea><button class="btn btn-tonal" type="submit">记录梦境</button></form>
         <ol class="feed">
           <li v-for="item in data.dreams" :key="item.id"><time>{{ item.at }}</time><p>{{ item.content }}</p></li>
@@ -391,6 +397,7 @@ onMounted(load)
 .life-state{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 var(--space-lg)}
 .state-pill{padding:6px 14px;border-radius:999px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:12.5px;font-weight:600}
 .state-pill.warn{background:#FFF1DC;color:#7A4400}
+.head-actions{display:flex;gap:8px}
 .check-label input{width:17px;height:17px;accent-color:var(--md-primary);cursor:pointer}
 .trait-item .chip{max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 

@@ -274,6 +274,17 @@ class CompanionSystem:
         self.audit(kind,entry["content"],entry["id"])
         return entry
 
+    def clear_journal(self, kind: str = "") -> dict[str,Any]:
+        """Remove journal/dream entries (kind filter optional)."""
+        with self.db() as db:
+            if kind in ("journal", "dream"):
+                cursor = db.execute("DELETE FROM journal_entries WHERE kind=?", (kind,))
+            else:
+                cursor = db.execute("DELETE FROM journal_entries WHERE kind IN ('journal','dream')")
+            count = cursor.rowcount
+            self._audit_tx(db, "journal_clear", f"kind={kind or 'all'} removed={count}", "")
+        return {"cleared": count, "kind": kind or "all"}
+
     def snapshot(self) -> dict[str,Any]:
         with self.db() as db:
             rows=lambda q,args=():[dict(row) for row in db.execute(q,args).fetchall()]

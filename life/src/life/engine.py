@@ -62,6 +62,8 @@ class LifeEngine:
         self._background_tasks = set()
         self._reflection_limit = asyncio.Semaphore(2)
         self._last_plan = datetime.min
+        self._last_diary_date = ""
+        self._last_dream_date = ""
         self._state_path = Path(self.data_dir) / "state.json"
         self._load_state()
 
@@ -314,23 +316,85 @@ class LifeEngine:
                 await asyncio.to_thread(self.companion.audit, "companion_reflection", str(error), turn.session_id, "failed")
 
     async def generate_companion_text(self, kind: str, hint: str = "") -> str:
-        """Ask the model to write a short companion entry (journal / dream / proactive note)."""
-        recent: list[str] = []
-        for session_id in list(self._histories.keys())[-3:]:
-            for item in self._histories[session_id][-4:]:
-                recent.append(f'{item["role"]}: {str(item.get("content",""))[:200]}')
-        context = "\n".join(recent)[-1500:]
+        """Write a journal/dream/outreach entry grounded in the day's real context."""
+        context = json.dumps(await self._daily_context(), ensure_ascii=False)
         instructions = {
-            "journal": "以第一人称写一段今天的日记，简短、真诚，不超过 120 字，结合最近的对话与心情。只输出正文。",
-            "dream": "以第一人称写一个简短的梦或睡眠反思，不超过 120 字，带一点意象与情绪。只输出正文。",
-            "proactive": "写一条想主动对用户说的话，不超过 80 字，自然、不说教，只输出这句话本身。",
+            "journal": ("以第一人称写今天的日记（120~200 字）。必须基于下面「今天的事实」：至少提到今天真实的日程、互动、群聊话题、"
+                        "心情或身体状态中的两项；具体、有时间感、口语化，不要空泛抒情，不要编造未发生的事。只输出正文。"),
+            "dream": ("以第一人称写一个梦（80~160 字）。基于今天的情绪、记忆与未了心事，用意象化、跳跃、模糊的语言，"
+                      "不要照抄事实、不要解释，像真正的梦一样。只输出正文。"),
+            "proactive": ("写一条此刻想主动对用户说的话（不超过 80 字），自然、真诚、结合当下状态，只输出这句话本身。"),
         }
         instruction = instructions.get(kind, instructions["journal"])
-        prompt = f"{instruction}\n附加提示：{hint[:400]}\n最近对话：\n{context}" if hint else f"{instruction}\n最近对话：\n{context}"
+        prompt = f"{instruction}\n附加提示：{hint[:200]}\n今天的事实（JSON）：\n{context}" if hint else f"{instruction}\n今天的事实（JSON）：\n{context}"
         model = self.think_model or self.default_model
-        text = "".join([chunk async for chunk in self.mocr.generate(
-            model, [{"role": "user", "content": prompt}], "你是 L.I.F.E 的内心独白作者。", thinking=False, max_tokens=512)])
-        return text.strip()
+        try:
+            text = "".join([chunk async for chunk in self.mocr.generate(
+                model, [{"role": "user", "content": prompt}], "你是 L.I.F.E 的内心独白作者。", thinking=False, max_tokens=600)])
+        except Exception:
+            return ""
+        return text.strip().strip('"')
+
+    async def _daily_context(self) -> dict:
+        """Gather the day's real life context (agenda, interactions, groups, mood, body, memories)."""
+        now = datetime.now()
+        today = now.date().isoformat()
+        try:
+            snapshot = await asyncio.to_thread(self.companion.snapshot)
+        except Exception:
+            snapshot = {}
+        agenda = [item for item in (snapshot.get("agenda") or []) if str(item.get("start_at") or "").startswith(today)]
+        ledger = [event for event in (snapshot.get("relationship_ledger") or []) if str(event.get("created_at") or "").startswith(today)]
+        topics: list[str] = []
+        for group in (snapshot.get("groups") or {}).values():
+            topics.extend([str(topic.get("topic")) for topic in (group.get("topics") or [])[:4]])
+        recent: list[str] = []
+        for session_id in list(self._histories.keys())[-3:]:
+            for item in self._histories[session_id][-5:]:
+                recent.append(f'{item["role"]}: {str(item.get("content",""))[:140]}')
+        try:
+            memories = (await asyncio.to_thread(self.memory.page_facts, "", "", 6, 0, "recent")).get("items", [])
+        except Exception:
+            memories = []
+        try:
+            upcoming = await asyncio.to_thread(self.companion.upcoming_important_dates, 7)
+        except Exception:
+            upcoming = []
+        return {
+            "date": today,
+            "time": now.strftime("%H:%M"),
+            "sleeping": getattr(self.circadian.state, "is_sleeping", False),
+            "energy": round(getattr(self.circadian.state, "mental_energy", 0.0), 1),
+            "hunger": round(getattr(self.circadian.state, "hunger", 0.0), 1),
+            "health": round(getattr(self.circadian.state, "health", 100.0), 1),
+            "emotion": self.emotion.state.to_dict() if hasattr(self.emotion.state, "to_dict") else {},
+            "agenda": [{"title": item.get("title"), "at": item.get("start_at"), "status": item.get("status")} for item in agenda],
+            "interactions": [{"who": event.get("user_id"), "event": event.get("event_key"), "delta": event.get("delta")} for event in ledger[:10]],
+            "group_topics": topics[:8],
+            "important_dates": [{"title": item.get("title"), "in_days": item.get("days_until")} for item in upcoming],
+            "memories": [m.get("content", "")[:80] for m in memories],
+            "recent_chat": recent[-6:],
+        }
+
+    async def maybe_daily_entries(self) -> dict:
+        """Auto-write the diary (evening/before sleep) and a dream (during sleep) once per day."""
+        now = datetime.now()
+        today = now.date().isoformat()
+        result: dict = {}
+        evening = now.hour >= 21 or getattr(self.circadian.state, "is_sleeping", False)
+        if evening and self._last_diary_date != today:
+            text = await self.generate_companion_text("journal")
+            if text:
+                await asyncio.to_thread(self.companion.journal, text, "journal")
+                self._last_diary_date = today
+                result["journal"] = text[:40]
+        if getattr(self.circadian.state, "is_sleeping", False) and self._last_dream_date != today:
+            text = await self.generate_companion_text("dream")
+            if text:
+                await asyncio.to_thread(self.companion.journal, text, "dream")
+                self._last_dream_date = today
+                result["dream"] = text[:40]
+        return result
 
     async def autonomous_plan(self, force: bool = False) -> dict:
         """Let LIFE decide what to do next and persist the plan as agenda/proactive candidates."""
