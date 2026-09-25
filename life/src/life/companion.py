@@ -256,6 +256,34 @@ class CompanionSystem:
             self._audit_tx(db, "calendar_complete",after["title"],event_id)
             return {"updated":True,"item":after}
 
+    def advance_agenda(self, now_dt: datetime | None = None) -> dict[str,Any]:
+        """LIFE's own reading of its day: activities whose time has passed count as done.
+
+        Mirrors private_companion's reconciliation idea - a soft activity does not
+        need a human to tick it off; once its start time is behind us LIFE treats
+        it as something it has lived through.
+        """
+        current = now_dt or datetime.now()
+        completed = 0
+        with self.db() as db:
+            rows = db.execute("SELECT id, title, start_at FROM calendar_events WHERE status='active'").fetchall()
+            for row in rows:
+                start = str(row["start_at"] or "").strip()
+                if not start:
+                    continue
+                try:
+                    start_dt = datetime.fromisoformat(start.replace(" ", "T"))
+                except ValueError:
+                    continue
+                if start_dt.tzinfo is not None:
+                    start_dt = start_dt.replace(tzinfo=None)
+                if start_dt <= current:
+                    db.execute("UPDATE calendar_events SET status='completed', version=version+1, updated_at=? WHERE id=?", (now(), row["id"]))
+                    completed += 1
+            if completed:
+                self._audit_tx(db, "agenda_advance", f"completed={completed}", "", "ok")
+        return {"completed": completed}
+
     # Group scene domain --------------------------------------------------
     def observe_group(self, group_id: str, user_id: str, message: str) -> None:
         with self.db() as db:

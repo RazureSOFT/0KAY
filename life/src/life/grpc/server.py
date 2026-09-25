@@ -235,6 +235,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             # Autonomy cycle: deliver due proactive candidates, then plan new ones.
             async def autonomy_cycle():
                 try:
+                    await asyncio.to_thread(self.engine.companion.advance_agenda)
                     await self.engine.proactive_tick()
                     await self.engine.maybe_daily_agenda()
                     await self.engine.autonomous_plan()
@@ -426,6 +427,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await asyncio.to_thread(self.engine.companion.clear_journal, str(payload.get("kind","")))
             elif action == "daily_agenda":
                 result = await self.engine.maybe_daily_agenda(True)
+            elif action == "agenda_advance":
+                result = await asyncio.to_thread(self.engine.companion.advance_agenda)
             else:
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))

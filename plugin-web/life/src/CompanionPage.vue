@@ -43,6 +43,12 @@ async function act(action: string, payload: any) {
 async function addAgenda() { if (!agendaTitle.value.trim()) return; await act('add_agenda', { title: agendaTitle.value, when: agendaWhen.value, detail: agendaDetail.value }); agendaTitle.value = ''; agendaWhen.value = ''; agendaDetail.value = '' }
 async function addEntry(kind: 'journal' | 'dream', content: string) { if (!content.trim()) return; await act(kind, { content }); if (kind === 'journal') journal.value = ''; else dream.value = '' }
 function relPct(v: number) { return `${Math.round(Math.max(0, Math.min(1, v || 0)) * 100)}%` }
+function agendaState(item: any): { label: string; cls: string } {
+  if (item.status === 'completed') return { label: '已完成', cls: 'chip-ok' }
+  const start = new Date(String(item.start_at || '').replace(' ', 'T'))
+  if (!Number.isNaN(start.getTime()) && start.getTime() <= Date.now()) return { label: '进行中', cls: 'chip-warn' }
+  return { label: '待开始', cls: 'muted' }
+}
 async function adjustRelationship(userId: string, delta: number) {
   const result = await act('relationship_adjust', { user_id: userId, event_key: `manual:${Date.now()}`, reason: 'dashboard_adjust', channel: 'webui', delta })
   if (result) flash(`已调整 ${userId}`)
@@ -171,13 +177,15 @@ onMounted(load)
           </li>
           <li v-if="!data.calendar_candidates?.filter((x: any) => x.status === 'pending_confirmation').length" class="list-empty">没有待确认的日程候选</li>
         </ul>
-        <h3 class="section-label">已确认日程</h3>
+        <h3 class="section-label">今天的日程 <small class="hint-inline">LIFE 按时间自动推进</small></h3>
         <ul class="item-list">
           <li v-for="item in data.agenda" :key="item.id" class="item">
-            <label class="check-label"><input :checked="item.status === 'completed'" type="checkbox" @change="act('complete_agenda', { id: item.id })" /></label>
-            <div class="item-main"><strong :class="{ done: item.status === 'completed' }">{{ item.title }}</strong><span class="item-meta">{{ item.start_at }}<template v-if="item.detail"> · {{ item.detail }}</template></span></div>
+            <div class="item-main">
+              <div class="item-row"><strong :class="{ done: item.status === 'completed' }">{{ item.title }}</strong><span class="chip" :class="agendaState(item).cls">{{ agendaState(item).label }}</span></div>
+              <span class="item-meta">{{ item.start_at }}<template v-if="item.detail"> · {{ item.detail }}</template></span>
+            </div>
           </li>
-          <li v-if="!data.agenda?.length" class="list-empty">暂无已确认日程</li>
+          <li v-if="!data.agenda?.length" class="list-empty">今天还没有安排，点右上角让 LIFE 安排。</li>
         </ul>
       </article>
 
@@ -428,6 +436,8 @@ onMounted(load)
 .state-pill{padding:6px 14px;border-radius:999px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:12.5px;font-weight:600}
 .state-pill.warn{background:#FFF1DC;color:#7A4400}
 .head-actions{display:flex;gap:8px}
+.item-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hint-inline{font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;opacity:.8}
 .check-label input{width:17px;height:17px;accent-color:var(--md-primary);cursor:pointer}
 .trait-item .chip{max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
