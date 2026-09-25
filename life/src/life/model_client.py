@@ -61,12 +61,23 @@ class MocrClient:
         data = response.json()
         providers = data if isinstance(data, list) else data.get("providers", [])
         default_id = data.get("default_provider_id", "") if isinstance(data, dict) else ""
-        matches = [p for p in providers if p.get("enabled", True)
-                   and model_id not in (p.get("disabled_models") or [])
-                   and any((m if isinstance(m, str) else m.get("id", m.get("model_id"))) == model_id for m in p.get("models", []))]
-        chosen = next((p for p in matches if p.get("id") == default_id), matches[0] if matches else None)
-        if not chosen:
-            raise RuntimeError(f"No enabled provider configured for model {model_id}")
+        auto = (not model_id) or str(model_id).lower() in ("auto", "mocr")
+        if auto:
+            enabled = [p for p in providers if p.get("enabled", True)]
+            chosen = next((p for p in enabled if p.get("id") == default_id), enabled[0] if enabled else None)
+            if not chosen:
+                raise RuntimeError("No enabled provider configured for automatic selection")
+            model_id = chosen.get("default_model") or next(
+                (m if isinstance(m, str) else m.get("id", m.get("model_id")) for m in chosen.get("models", []) if m), "")
+            if not model_id:
+                raise RuntimeError("Automatic selection found no model on the default provider")
+        else:
+            matches = [p for p in providers if p.get("enabled", True)
+                       and model_id not in (p.get("disabled_models") or [])
+                       and any((m if isinstance(m, str) else m.get("id", m.get("model_id"))) == model_id for m in p.get("models", []))]
+            chosen = next((p for p in matches if p.get("id") == default_id), matches[0] if matches else None)
+            if not chosen:
+                raise RuntimeError(f"No enabled provider configured for model {model_id}")
         request = mocr_pb2.GenerateRequest(
             model_id=model_id, messages=[mocr_pb2.Message(role=m["role"], content=m["content"]) for m in messages],
             system_prompt=system_prompt, max_tokens=max_tokens, stream=True, thinking=thinking,

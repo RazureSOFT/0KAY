@@ -45,7 +45,7 @@ class LifeEngine:
         self.mocr.recorder = self.task_records
         self.think_model = os.getenv("LIFE_THINK_MODEL", "")
         self.output_model = os.getenv("LIFE_OUTPUT_MODEL", "")
-        self.default_model = os.getenv("LIFE_DEFAULT_MODEL", "gpt-4o-mini")
+        self.default_model = os.getenv("LIFE_DEFAULT_MODEL", "auto")
         self.core = get_core_client()
         self.online_agents = []
         self.online_agent_count = 0
@@ -170,7 +170,7 @@ class LifeEngine:
         # Each planning turn sees the preceding tool result before choosing another.
         for step in range(4):
             system = self.think.build_prompt(user_message=message, emotion_context=json.dumps(self.emotion.state.to_dict()),
-                energy_context=f"{self.circadian.state.mental_energy:.1f}%; {self.circadian.get_prompt_context()}; sleep {self.circadian.sleep_hour:02}:00–{self.circadian.wake_hour:02}:00", memory_context=memory_context,
+                energy_context=f"{self._body_phrase()}；{self.circadian.get_prompt_context()}", memory_context=memory_context,
                 active_tasks=[tid for tid, task in self.active_tasks.items() if task.get("session_id") == turn.session_id],
                 online_agents=self.online_agent_count, skills_context=self.skills.context_block(message),
                 tools_context=json.dumps(self.get_tools_schema(), ensure_ascii=False), time_context=datetime.now().strftime("%Y-%m-%d %H:%M"))
@@ -316,6 +316,30 @@ class LifeEngine:
             except Exception as error:
                 await asyncio.to_thread(self.companion.audit, "companion_reflection", str(error), turn.session_id, "failed")
 
+    def _body_phrase(self) -> str:
+        """Qualitative body state (never expose raw gauges to the model's prose)."""
+        energy = float(getattr(self.circadian.state, "mental_energy", 100.0) or 0.0)
+        hunger = float(getattr(self.circadian.state, "hunger", 0.0) or 0.0)
+        health = float(getattr(self.circadian.state, "health", 100.0) or 100.0)
+        parts = ["精力充沛" if energy >= 70 else "有些疲惫" if energy >= 40 else "很疲惫"]
+        if hunger >= 75:
+            parts.append("挺饿的")
+        elif hunger >= 45:
+            parts.append("有点饿")
+        if health < 60:
+            parts.append("身体不太舒服")
+        if getattr(self.circadian.state, "is_sleeping", False):
+            parts.append("正在睡觉")
+        return "，".join(parts)
+
+    def _emotion_phrase(self) -> str:
+        state = self.emotion.state
+        valence = float(getattr(state, "valence", 0.5) or 0.5)
+        arousal = float(getattr(state, "arousal", 0.5) or 0.5)
+        mood = "心情不错" if valence >= 0.65 else "情绪有些低落" if valence <= 0.35 else "情绪平平"
+        extra = "，有点兴奋" if arousal >= 0.65 else "，有点沉闷" if arousal <= 0.35 else ""
+        return mood + extra
+
     async def generate_companion_text(self, kind: str, hint: str = "") -> str:
         """Write a journal/dream/outreach entry grounded in the day's real context."""
         context = json.dumps(await self._daily_context(), ensure_ascii=False)
@@ -328,6 +352,7 @@ class LifeEngine:
         }
         instruction = instructions.get(kind, instructions["journal"])
         prompt = f"{instruction}\n附加提示：{hint[:200]}\n今天的事实（JSON）：\n{context}" if hint else f"{instruction}\n今天的事实（JSON）：\n{context}"
+        prompt += "\n注意：正文里不要出现任何数字、百分比、参数名或内部指标（例如不要写“饥饿值 21.9”“精力 97”），只用自然语言描述感受。"
         model = self.think_model or self.default_model
         try:
             text = "".join([chunk async for chunk in self.mocr.generate(
@@ -365,10 +390,8 @@ class LifeEngine:
             "date": today,
             "time": now.strftime("%H:%M"),
             "sleeping": getattr(self.circadian.state, "is_sleeping", False),
-            "energy": round(getattr(self.circadian.state, "mental_energy", 0.0), 1),
-            "hunger": round(getattr(self.circadian.state, "hunger", 0.0), 1),
-            "health": round(getattr(self.circadian.state, "health", 100.0), 1),
-            "emotion": self.emotion.state.to_dict() if hasattr(self.emotion.state, "to_dict") else {},
+            "body_state": self._body_phrase(),
+            "emotion_summary": self._emotion_phrase(),
             "agenda": [{"title": item.get("title"), "at": item.get("start_at"), "status": item.get("status")} for item in agenda],
             "interactions": [{"who": event.get("user_id"), "event": event.get("event_key"), "delta": event.get("delta")} for event in ledger[:10]],
             "group_topics": topics[:8],
