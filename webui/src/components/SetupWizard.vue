@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useWizardStore } from '../stores/wizard'
 import AppSelect from './AppSelect.vue'
+import { setLanguage, getLanguage, LOCALES } from '../i18n'
 import { PROVIDERS, WIZARD_STEPS } from '../composables/wizard'
 
 const { t, locale } = useI18n()
@@ -12,7 +13,7 @@ const emit = defineEmits<{ complete: [] }>()
 const customModels = ref('')
 const isLoading = ref(false)
 const error = ref('')
-const currentLang = ref(locale.value)
+const currentLang = ref(getLanguage())
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploadedFileName = ref('')
 const folderInput = ref<HTMLInputElement | null>(null)
@@ -55,9 +56,9 @@ async function onFolderSelected(e: Event) {
     const body = await response.json()
     if (body.model_url) wizard.live2d.modelUrl = body.model_url
     wizard.live2d.enabled = true
-    folderMessage.value = `已上传 ${files.length} 个文件`
+    folderMessage.value = t('wizard.uploadedCount', { count: files.length })
   } catch (error: any) {
-    folderMessage.value = error?.message || '文件夹上传失败'
+    folderMessage.value = error?.message || t('wizard.uploadFailed')
   } finally { uploadingFolder.value = false }
 }
 
@@ -109,7 +110,7 @@ async function fetchModels() {
     const data = await response.json()
     wizard.setFetchedModels(data.models || [])
   } catch (e: any) {
-    error.value = e.message || 'Failed to fetch models'
+    error.value = e.message || t('wizard.fetchFailed')
 
     const selectedProvider = PROVIDERS.find(p => p.id === wizard.provider)
     if (selectedProvider) {
@@ -141,11 +142,9 @@ function useCustomModels() {
   }
 }
 
-function toggleLanguage() {
-  const newLang = currentLang.value === 'en' ? 'zh' : 'en'
-  currentLang.value = newLang
-  locale.value = newLang
-  localStorage.setItem('0kay_lang', newLang)
+function changeLanguage(code: string) {
+  currentLang.value = code
+  setLanguage(code)
 }
 </script>
 
@@ -161,9 +160,16 @@ function toggleLanguage() {
               <path d="M10 16L14 20L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
-          <button class="lang-toggle" @click="toggleLanguage">
-            {{ currentLang === 'en' ? '中文' : 'EN' }}
-          </button>
+          <select
+            class="lang-select"
+            v-model="currentLang"
+            @change="changeLanguage(currentLang)"
+            :aria-label="t('settings.language')"
+          >
+            <option v-for="option in LOCALES" :key="option.code" :value="option.code">
+              {{ option.label }}
+            </option>
+          </select>
         </div>
         <div class="wizard-title">{{ t('wizard.title') }}</div>
         <div class="wizard-subtitle">{{ t('wizard.subtitle') }}</div>
@@ -328,7 +334,7 @@ function toggleLanguage() {
                 />
               </div>
               <div class="form-group">
-                <label>出生日期</label>
+                <label>{{ t('wizard.birthDate') }}</label>
                 <input v-model="wizard.persona.birthDate" type="date" class="input" />
               </div>
             </div>
@@ -409,10 +415,10 @@ function toggleLanguage() {
               </div>
 
               <div class="form-group">
-                <label>上传 Live2D 模型文件夹</label>
+                <label>{{ t('wizard.uploadFolder') }}</label>
                 <div class="upload-area" @click="openFolderPicker">
                   <input ref="folderInput" type="file" webkitdirectory directory multiple hidden @change="onFolderSelected" />
-                  <span>{{ uploadingFolder ? '上传中…' : '选择包含 .model3.json、.moc3 和纹理文件的文件夹' }}</span>
+                  <span>{{ uploadingFolder ? t('wizard.uploading') : t('wizard.uploadFolderHint') }}</span>
                 </div>
                 <p v-if="folderMessage" class="helper-text">{{ folderMessage }}</p>
               </div>
@@ -517,10 +523,10 @@ function toggleLanguage() {
   color: var(--brand-primary);
 }
 
-.lang-toggle {
+.lang-select {
   position: absolute;
   right: 0;
-  padding: var(--space-xs) var(--space-md);
+  padding: var(--space-xs) var(--space-sm);
   font-size: var(--font-size-sm);
   background: var(--neutral-gray-4);
   border: none;
@@ -529,7 +535,7 @@ function toggleLanguage() {
   transition: background var(--transition-fast);
 }
 
-.lang-toggle:hover {
+.lang-select:hover {
   background: var(--neutral-gray-6);
 }
 

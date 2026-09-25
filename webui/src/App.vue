@@ -9,9 +9,9 @@ import { useUIPatchesStore } from './stores/uiPatches'
 import SetupWizard from './components/SetupWizard.vue'
 import GlobalAgentInbox from './components/GlobalAgentInbox.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
-import { setLanguage, getLanguage } from './i18n'
+import { setLanguage, getLanguage, LOCALES } from './i18n'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const wizard = useWizardStore()
 const life = useLifeStore()
 const chat = useChatStore()
@@ -84,10 +84,8 @@ onUnmounted(() => {
   life.disconnect()
 })
 
-function toggleLang() {
-  const next = lang.value === 'en' ? 'zh' : 'en'
-  locale.value = next
-  setLanguage(next)
+function changeLang(code: string) {
+  setLanguage(code)
 }
 
 function onWizardComplete() {
@@ -116,9 +114,15 @@ function onWizardComplete() {
           :class="{ on: life.isConnected }"
           :title="life.isConnected ? t('status.connected') : t('status.disconnected')"
         ></span>
-        <button class="icon-btn" :title="t('app.switchLang')" @click="toggleLang">
-          {{ lang === 'en' ? '中' : 'EN' }}
-        </button>
+        <select
+          class="icon-btn lang-select"
+          :value="lang"
+          :title="t('app.switchLang')"
+          :aria-label="t('app.switchLang')"
+          @change="changeLang(($event.target as HTMLSelectElement).value)"
+        >
+          <option v-for="option in LOCALES" :key="option.code" :value="option.code">{{ option.label }}</option>
+        </select>
         <button
           class="icon-btn settings-btn"
           :class="{ active: route.name === 'settings' }"
@@ -283,6 +287,18 @@ function onWizardComplete() {
 .icon-btn.active {
   background: var(--md-secondary-container);
   color: var(--md-on-secondary-container);
+}
+
+.lang-select {
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: center;
+  cursor: pointer;
+  padding: 0 8px;
+}
+.lang-select option {
+  color: var(--md-on-surface);
+  background: var(--md-surface-container);
 }
 
 .app-body {
