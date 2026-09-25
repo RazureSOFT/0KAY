@@ -348,6 +348,38 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             elif action == "ack_notifications":
                 self.engine.acknowledge_notifications(str(payload.get('session_id') or ''),payload.get('ids') or [])
                 result={'ok':True}
+            elif action == "memory_page":
+                result = await asyncio.to_thread(self.engine.memory.page_facts, payload.get("tier",""), payload.get("query",""), int(payload.get("limit",50)), int(payload.get("offset",0)), payload.get("sort","recent"))
+            elif action == "memory_detail":
+                result = await asyncio.to_thread(self.engine.memory.get_fact, payload.get("id",""))
+            elif action == "memory_reinforce":
+                items = await asyncio.to_thread(self.engine.memory.reinforce_facts, payload.get("query",""), payload.get("ids") or None, int(payload.get("limit",5)))
+                result = {"items": items, "reinforced": len(items)}
+            elif action == "memory_note_create":
+                result = await asyncio.to_thread(self.engine.memory.create_note, payload.get("title",""), payload.get("content",""), payload.get("tags") or [], payload.get("scope","public"))
+            elif action == "memory_note_list":
+                result = {"notes": await asyncio.to_thread(self.engine.memory.list_notes, payload.get("query",""), int(payload.get("limit",20)), payload.get("scope",""))}
+            elif action == "memory_note_read":
+                result = await asyncio.to_thread(self.engine.memory.read_note, payload.get("note_id",""), int(payload.get("offset",1)), int(payload.get("limit",200)), payload.get("scope",""))
+            elif action == "memory_note_delete":
+                note_id = payload.get("note_id","")
+                deleted = await asyncio.to_thread(self.engine.memory.delete_note, note_id)
+                result = {"deleted": deleted, "note_id": note_id}
+            elif action == "memory_reflection_list":
+                result = {"reflections": await asyncio.to_thread(self.engine.memory.list_reflections, payload.get("status",""), int(payload.get("limit",50)))}
+            elif action == "memory_reflection_review":
+                result = await asyncio.to_thread(self.engine.memory.review_reflection, payload.get("id",""), bool(payload.get("accept", True)))
+                self.engine.companion.audit("memory_reflection_review", json.dumps(result, ensure_ascii=False), str(payload.get("id","")), "ok")
+            elif action == "proactive_create":
+                result = await asyncio.to_thread(self.engine.companion.create_proactive_candidate, payload.get("target",""), payload.get("motive",""), payload.get("content",""), payload.get("preferred_at",""))
+            elif action == "proactive_cancel":
+                result = await asyncio.to_thread(self.engine.companion.cancel_proactive, payload.get("id",""), payload.get("reason","dashboard_cancel"))
+            elif action == "proactive_policy":
+                daily = int(payload.get("daily_limit",6)); per_target = int(payload.get("per_target_limit",2))
+                await asyncio.to_thread(self.engine.companion.set_runtime_policy, daily, per_target)
+                result = {"ok": True, "daily_limit": daily, "per_target_limit": per_target}
+            elif action == "relationship_adjust":
+                result = await asyncio.to_thread(self.engine.companion.apply_relationship_event, payload.get("user_id",""), payload.get("event_key",""), payload.get("reason","dashboard"), payload.get("channel","webui"), float(payload.get("delta",0)))
             else:
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))

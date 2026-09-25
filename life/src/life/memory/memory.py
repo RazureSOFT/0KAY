@@ -465,8 +465,29 @@ class MemorySystem:
         if not text:
             raise ValueError("content or judgment is required")
         normalized_tags = [str(tag).strip() for tag in (tags or []) if str(tag).strip()]
+        # Deduplicate: reinforce an identical existing memory instead of storing a copy.
+        duplicate = self._find_duplicate(text)
+        if duplicate is not None:
+            duplicate.strength = min(1.0, max(duplicate.strength, float(strength)) + 0.05)
+            duplicate.importance = max(duplicate.importance, min(1.0, float(strength)))
+            duplicate.recall_count += 1
+            duplicate.last_recalled = datetime.now()
+            for tag in normalized_tags:
+                if tag not in duplicate.tags:
+                    duplicate.tags.append(tag)
+            self._sync_fact(duplicate, self._tier_of(duplicate))
+            return duplicate
         metadata = {"memory_type": memory_type or "knowledge", "scope": scope or "public", "judgment": judgment}
         return self.store(text, importance=max(0.0, min(1.0, float(strength))), tags=normalized_tags, metadata=metadata)
+
+    def _find_duplicate(self, text: str) -> Memory | None:
+        normalized = re.sub(r"\s+", "", text).lower()
+        if not normalized:
+            return None
+        for memory in self.short_term.memories + self.long_term.memories:
+            if re.sub(r"\s+", "", memory.content).lower() == normalized:
+                return memory
+        return None
 
     def active_recall(self, query: str = "", limit: int = 5, scope: str = "") -> list[Memory]:
         records = self.recall(query or " ", top_k=max(1, min(int(limit), 20)), scope=scope)
@@ -771,3 +792,142 @@ class MemorySystem:
         self.consolidate()
         index = self.rebuild_index()
         return {"consolidated": len(self.long_term.memories) - consolidated_before, "index": index, "backup": self.daily_backup()}
+
+    # --- Memory console API (dashboard browse / inspect / curate) ---
+    def _tier_of(self, memory: Memory) -> str:
+        return "long_term" if any(m.id == memory.id for m in self.long_term.memories) else "short_term"
+
+    def _fact_dict(self, memory: Memory) -> dict:
+        return {
+            "id": memory.id,
+            "content": memory.content,
+            "importance": round(float(memory.importance), 4),
+            "strength": round(float(memory.strength), 4),
+            "created_at": memory.created_at.isoformat(),
+            "last_recalled": memory.last_recalled.isoformat(),
+            "recall_count": int(memory.recall_count),
+            "tags": list(memory.tags),
+            "tier": self._tier_of(memory),
+            "scope": memory.metadata.get("scope", "public"),
+            "memory_type": memory.metadata.get("memory_type", "knowledge"),
+            "source_kind": memory.metadata.get("source_kind", "conversation"),
+        }
+
+    @synchronized
+    def page_facts(self, tier: str = "", query: str = "", limit: int = 50, offset: int = 0, sort: str = "recent") -> dict:
+        """Paged memory browse with full metadata for the dashboard."""
+        pool = self.short_term.memories + self.long_term.memories
+        if tier in ("short_term", "long_term"):
+            pool = [m for m in pool if self._tier_of(m) == tier]
+        needle = (query or "").strip().lower()
+        if needle:
+            pool = [m for m in pool
+                    if needle in m.content.lower() or any(needle in str(tag).lower() for tag in m.tags)]
+        keys = {
+            "recent": lambda m: m.created_at,
+            "strength": lambda m: m.strength,
+            "importance": lambda m: m.importance,
+            "recall": lambda m: m.recall_count,
+        }
+        pool = sorted(pool, key=keys.get(sort, keys["recent"]), reverse=True)
+        total = len(pool)
+        size = max(1, min(int(limit), 200))
+        start = max(0, int(offset))
+        return {"items": [self._fact_dict(m) for m in pool[start:start + size]], "total": total, "offset": start, "limit": size}
+
+    @synchronized
+    def get_fact(self, fact_id: str) -> dict:
+        for memory in self.short_term.memories + self.long_term.memories:
+            if memory.id == fact_id:
+                return self._fact_dict(memory)
+        raise FileNotFoundError(f"memory '{fact_id}' not found")
+
+    @synchronized
+    def reinforce_facts(self, query: str = "", fact_ids: list[str] | None = None, limit: int = 5) -> list[dict]:
+        """Reinforce memories by query or explicit ids (bump strength/recall)."""
+        targets: list[Memory] = []
+        if fact_ids:
+            wanted = set(fact_ids)
+            targets = [m for m in self.short_term.memories + self.long_term.memories if m.id in wanted]
+        elif (query or "").strip():
+            targets = self.recall(query, top_k=max(1, min(int(limit), 20)))
+        for memory in targets:
+            memory.strength = min(1.0, memory.strength + 0.15)
+            memory.recall_count += 1
+            memory.last_recalled = datetime.now()
+            self._sync_fact(memory, self._tier_of(memory))
+        return [self._fact_dict(m) for m in targets]
+
+    @synchronized
+    def delete_note(self, note_id: str) -> bool:
+        safe = Path(note_id).name
+        path = self.notes_dir / f"{safe}.md"
+        with self._connect() as db:
+            row = db.execute("SELECT 1 FROM note_files WHERE id=?", (safe,)).fetchone()
+            if not row and not path.is_file():
+                return False
+            db.execute("DELETE FROM note_chunks WHERE note_id=?", (safe,))
+            db.execute("DELETE FROM note_scopes WHERE note_id=?", (safe,))
+            db.execute("UPDATE note_files SET status='deleted', updated_at=? WHERE id=?", (datetime.now().isoformat(), safe))
+            db.execute("UPDATE memory_facts SET status='retracted' WHERE content LIKE ?", (f"Note {safe}:%",))
+        path.unlink(missing_ok=True)
+        self.short_term.memories = [m for m in self.short_term.memories if not m.content.startswith(f"Note {safe}:")]
+        self.long_term.memories = [m for m in self.long_term.memories if not m.content.startswith(f"Note {safe}:")]
+        self.rebuild_index()
+        return True
+
+    @synchronized
+    def list_reflections(self, status: str = "", limit: int = 50) -> list[dict]:
+        with self._connect() as db:
+            query = "SELECT * FROM reflection_queue"
+            args: tuple = ()
+            if status in ("pending", "proposed", "applied", "rejected"):
+                query += " WHERE status=?"
+                args = (status,)
+            query += " ORDER BY created_at DESC LIMIT ?"
+            rows = db.execute(query, (*args, max(1, min(int(limit), 200)))).fetchall()
+        items = []
+        for row in rows:
+            proposal = {}
+            if row["proposal_json"]:
+                try:
+                    proposal = json.loads(row["proposal_json"])
+                except json.JSONDecodeError:
+                    proposal = {}
+            items.append({
+                "id": row["id"],
+                "session_id": row["session_id"],
+                "status": row["status"],
+                "statement": proposal.get("statement", ""),
+                "risk": proposal.get("risk", "low"),
+                "created_at": row["created_at"],
+                "processed_at": row["processed_at"],
+                "user_text": (row["user_text"] or "")[:280],
+                "assistant_text": (row["assistant_text"] or "")[:280],
+            })
+        return items
+
+    @synchronized
+    def review_reflection(self, reflection_id: str, accept: bool) -> dict:
+        with self._connect() as db:
+            row = db.execute("SELECT * FROM reflection_queue WHERE id=?", (reflection_id,)).fetchone()
+            if not row:
+                raise FileNotFoundError(f"reflection '{reflection_id}' not found")
+            proposal = {}
+            if row["proposal_json"]:
+                try:
+                    proposal = json.loads(row["proposal_json"])
+                except json.JSONDecodeError:
+                    proposal = {}
+            if not accept:
+                db.execute("UPDATE reflection_queue SET status='rejected', processed_at=? WHERE id=?",
+                           (datetime.now().isoformat(), reflection_id))
+                return {"id": reflection_id, "status": "rejected"}
+            statement = (proposal.get("statement") or row["user_text"] or "").strip()
+            db.execute("UPDATE reflection_queue SET status='applied', processed_at=? WHERE id=?",
+                       (datetime.now().isoformat(), reflection_id))
+        memory = None
+        if statement:
+            memory = self.remember(statement[:400], tags=["reflection"], strength=0.7,
+                                   memory_type="reflection", scope="public")
+        return {"id": reflection_id, "status": "applied", "memory_id": memory.id if memory else ""}

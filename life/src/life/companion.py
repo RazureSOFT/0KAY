@@ -159,6 +159,17 @@ class CompanionSystem:
             db.execute("INSERT INTO settings(key,value) VALUES('proactive_daily_limit',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(max(0,daily_limit)),))
             db.execute("INSERT INTO settings(key,value) VALUES('proactive_target_limit',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(max(0,per_target_limit)),))
 
+    def cancel_proactive(self, candidate_id: str, reason: str = "dashboard_cancel") -> dict[str,Any]:
+        with self.db() as db:
+            row = db.execute("SELECT * FROM proactive_candidates WHERE id=?", (candidate_id,)).fetchone()
+            if not row:
+                return {"cancelled": False, "id": candidate_id, "reason": "not_found"}
+            if row["status"] == "delivered":
+                return {"cancelled": False, "id": candidate_id, "reason": "already_delivered"}
+            db.execute("UPDATE proactive_candidates SET status='cancelled', updated_at=? WHERE id=?", (now(), candidate_id))
+            self._audit_tx(db, "proactive_cancel", reason, candidate_id)
+        return {"cancelled": True, "id": candidate_id}
+
     def complete_agenda(self, event_id: str) -> dict[str,Any]:
         with self.db() as db:
             row = db.execute("SELECT * FROM calendar_events WHERE id=?", (event_id,)).fetchone()
