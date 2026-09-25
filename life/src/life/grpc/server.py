@@ -403,6 +403,14 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await self.engine.autonomous_plan(True)
             elif action == "proactive_tick":
                 result = await self.engine.proactive_tick()
+            elif action == "date_add":
+                result = await asyncio.to_thread(self.engine.companion.add_important_date, payload.get("title",""), payload.get("date",""), bool(payload.get("repeat_yearly", True)), payload.get("note",""))
+            elif action == "date_list":
+                result = {"dates": await asyncio.to_thread(self.engine.companion.list_important_dates),
+                          "upcoming": await asyncio.to_thread(self.engine.companion.upcoming_important_dates, int(payload.get("days",30)))}
+            elif action == "date_delete":
+                deleted = await asyncio.to_thread(self.engine.companion.delete_important_date, payload.get("id",""))
+                result = {"deleted": deleted, "id": payload.get("id","")}
             else:
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))

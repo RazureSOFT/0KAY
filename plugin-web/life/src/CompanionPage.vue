@@ -62,8 +62,7 @@ async function suggestProactive() {
   if (result) { proactiveForm.value = { target: '', motive: '', content: '', preferred_at: '' }; flash('已生成建议候选') }
 }
 const ticking = ref(false)
-async function tickNow() {
-  ticking.value = true
+async function tickNow() {  ticking.value = true
   try {
     const r = await fetch('/api/life/companion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'proactive_tick', payload: {} }) })
     if (!r.ok) throw Error(await r.text())
@@ -85,6 +84,28 @@ async function planNow() {  planning.value = true
   } catch (e: any) { error.value = e?.message || '规划失败' }
   finally { planning.value = false }
 }
+function daysUntil(text: string): number | null {
+  const value = (text || '').trim()
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  let target: Date | null = null
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    target = new Date(value); target.setHours(0, 0, 0, 0)
+    if (target < today) target.setFullYear(today.getFullYear() + 1)
+  } else if (/^\d{2}-\d{2}$/.test(value)) {
+    target = new Date(today.getFullYear(), Number(value.slice(0, 2)) - 1, Number(value.slice(3, 5)))
+    if (target < today) target.setFullYear(today.getFullYear() + 1)
+  }
+  if (!target || Number.isNaN(target.getTime())) return null
+  return Math.round((target.getTime() - today.getTime()) / 86400000)
+}
+const dateForm = ref({ title: '', date: '', repeat_yearly: true, note: '' })
+async function addDate() {
+  if (!dateForm.value.title.trim() || !dateForm.value.date.trim()) return
+  await act('date_add', { ...dateForm.value })
+  dateForm.value = { title: '', date: '', repeat_yearly: true, note: '' }
+  flash('已添加重要日期')
+}
+async function removeDate(id: string) { await act('date_delete', { id }); flash('已删除') }
 function fmtTime(value?: string) { if (!value) return ''; const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString() }
 onMounted(load)
 </script>
@@ -184,6 +205,27 @@ onMounted(load)
           <li v-for="r in receipts" :key="r.id"><time>{{ fmtTime(r.created_at) }}</time><p>{{ r.phase }} · {{ r.content }}</p></li>
           <li v-if="!receipts.length" class="list-empty plain">还没有主动投递记录</li>
         </ol>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2 class="card-title">重要日期</h2><span class="chip muted">{{ (data.important_dates || []).length }}</span></div>
+        <form class="stack-form" @submit.prevent="addDate">
+          <input v-model="dateForm.title" class="input" placeholder="名称，如 生日 / 纪念日" aria-label="重要日期名称" />
+          <input v-model="dateForm.date" class="input" placeholder="日期：YYYY-MM-DD 或 MM-DD" aria-label="重要日期" />
+          <input v-model="dateForm.note" class="input" placeholder="备注（可选）" aria-label="备注" />
+          <label class="check-line"><input type="checkbox" v-model="dateForm.repeat_yearly" /> 每年重复</label>
+          <button class="btn btn-primary" type="submit" :disabled="!dateForm.title.trim() || !dateForm.date.trim()">添加</button>
+        </form>
+        <ul class="item-list">
+          <li v-for="item in data.important_dates" :key="item.id" class="item">
+            <div class="item-main">
+              <strong>{{ item.title }}</strong>
+              <span class="item-meta">{{ item.date_text }}<template v-if="daysUntil(item.date_text) !== null"> · {{ daysUntil(item.date_text) === 0 ? '就是今天' : daysUntil(item.date_text) + ' 天后' }}</template><template v-if="item.note"> · {{ item.note }}</template></span>
+            </div>
+            <div class="item-actions"><button class="btn btn-danger btn-sm" @click="removeDate(item.id)">删除</button></div>
+          </li>
+          <li v-if="!data.important_dates?.length" class="list-empty">还没有重要日期，LIFE 会据此规划提醒。</li>
+        </ul>
       </article>
 
       <article class="card">
@@ -313,6 +355,7 @@ onMounted(load)
 .list-empty{padding:14px;text-align:center;font-size:13px;color:var(--md-on-surface-variant);background:var(--md-surface-container);border-radius:12px;border:1px dashed var(--md-outline-variant)}
 .list-empty.plain{background:transparent;border:0}
 .check-label{display:flex;align-items:center}
+.check-line{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--md-on-surface-variant)}
 .check-label input{width:17px;height:17px;accent-color:var(--md-primary);cursor:pointer}
 .trait-item .chip{max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 

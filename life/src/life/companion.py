@@ -56,6 +56,7 @@ class CompanionSystem:
             CREATE TABLE IF NOT EXISTS audit_events (id TEXT PRIMARY KEY, trace_id TEXT, kind TEXT NOT NULL, target TEXT, outcome TEXT NOT NULL, detail TEXT, created_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS persona_evolution (id TEXT PRIMARY KEY, trait TEXT NOT NULL, value TEXT NOT NULL, evidence TEXT NOT NULL, support_count INTEGER NOT NULL DEFAULT 1, confidence REAL NOT NULL DEFAULT 0.35, status TEXT NOT NULL DEFAULT 'proposed', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(trait,value));
+            CREATE TABLE IF NOT EXISTS important_dates (id TEXT PRIMARY KEY, title TEXT NOT NULL, date_text TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'date', repeat_yearly INTEGER NOT NULL DEFAULT 1, note TEXT DEFAULT '', created_at TEXT NOT NULL);
             """)
             for key, value in {"proactive_daily_limit":"3", "proactive_target_limit":"1", "quiet_start":"23", "quiet_end":"8"}.items():
                 db.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", (key,value))
@@ -188,6 +189,62 @@ class CompanionSystem:
         self.audit("proactive_delivery", content[:200], candidate_id)
         return {"delivered": True, "id": candidate_id}
 
+    # Important dates (life continuity) ----------------------------------
+    def add_important_date(self, title: str, date_text: str, repeat_yearly: bool = True, note: str = "") -> dict[str,Any]:
+        title = (title or "").strip()[:120]
+        date_text = (date_text or "").strip()[:32]
+        if not title or not date_text:
+            return {"status": "ignored"}
+        item = {"id": new_id("date"), "title": title, "date_text": date_text, "kind": "date",
+                "repeat_yearly": 1 if repeat_yearly else 0, "note": (note or "")[:500], "created_at": now()}
+        with self.db() as db:
+            db.execute("INSERT INTO important_dates VALUES(?,?,?,?,?,?,?)",
+                       (item["id"], item["title"], item["date_text"], item["kind"], item["repeat_yearly"], item["note"], item["created_at"]))
+            self._audit_tx(db, "important_date_add", title, item["id"])
+        return item
+
+    def list_important_dates(self) -> list[dict[str,Any]]:
+        with self.db() as db:
+            return [dict(row) for row in db.execute("SELECT * FROM important_dates ORDER BY date_text").fetchall()]
+
+    def delete_important_date(self, date_id: str) -> bool:
+        with self.db() as db:
+            row = db.execute("SELECT 1 FROM important_dates WHERE id=?", (date_id,)).fetchone()
+            if not row:
+                return False
+            db.execute("DELETE FROM important_dates WHERE id=?", (date_id,))
+        return True
+
+    def upcoming_important_dates(self, days: int = 7) -> list[dict[str,Any]]:
+        today = date.today()
+        out: list[dict[str,Any]] = []
+        for row in self.list_important_dates():
+            raw = str(row.get("date_text") or "")
+            target = None
+            try:
+                if len(raw) == 10:
+                    target = date.fromisoformat(raw)
+                    if row.get("repeat_yearly"):
+                        target = target.replace(year=today.year)
+                        if target < today:
+                            target = target.replace(year=today.year + 1)
+                elif len(raw) == 5 and raw[2] == "-":
+                    target = date(today.year, int(raw[:2]), int(raw[3:]))
+                    if target < today:
+                        target = target.replace(year=today.year + 1)
+            except ValueError:
+                continue
+            if target is None:
+                continue
+            delta = (target - today).days
+            if 0 <= delta <= max(0, int(days)):
+                item = dict(row)
+                item["days_until"] = delta
+                item["occurs_on"] = target.isoformat()
+                out.append(item)
+        out.sort(key=lambda item: item["days_until"])
+        return out
+
     def complete_agenda(self, event_id: str) -> dict[str,Any]:
         with self.db() as db:
             row = db.execute("SELECT * FROM calendar_events WHERE id=?", (event_id,)).fetchone()
@@ -221,7 +278,7 @@ class CompanionSystem:
         with self.db() as db:
             rows=lambda q,args=():[dict(row) for row in db.execute(q,args).fetchall()]
             groups={row["group_id"]:{"mood":row["mood"],"topics":rows("SELECT topic,score FROM group_topics WHERE group_id=? ORDER BY score DESC LIMIT 12",(row["group_id"],)),"messages":rows("SELECT user_id,content,created_at FROM group_observations WHERE group_id=? ORDER BY created_at DESC LIMIT 20",(row["group_id"],))} for row in db.execute("SELECT * FROM group_scenes").fetchall()}
-            return {"relationships":rows("SELECT * FROM relationship_accounts ORDER BY last_seen DESC"),"relationship_ledger":rows("SELECT * FROM relationship_ledger ORDER BY created_at DESC LIMIT 200"),"agenda":rows("SELECT * FROM calendar_events ORDER BY updated_at DESC"),"calendar_candidates":rows("SELECT * FROM calendar_candidates ORDER BY created_at DESC"),"journal":rows("SELECT * FROM journal_entries WHERE kind='journal' ORDER BY created_at DESC LIMIT 50"),"dreams":rows("SELECT * FROM journal_entries WHERE kind='dream' ORDER BY created_at DESC LIMIT 50"),"audit":rows("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT 200"),"groups":groups,"persona_evolution":rows("SELECT * FROM persona_evolution WHERE status='confirmed' ORDER BY updated_at DESC"),"proactive":{"candidates":rows("SELECT * FROM proactive_candidates ORDER BY updated_at DESC LIMIT 100"),"receipts":rows("SELECT * FROM proactive_receipts ORDER BY created_at DESC LIMIT 100")}}
+            return {"relationships":rows("SELECT * FROM relationship_accounts ORDER BY last_seen DESC"),"relationship_ledger":rows("SELECT * FROM relationship_ledger ORDER BY created_at DESC LIMIT 200"),"agenda":rows("SELECT * FROM calendar_events ORDER BY updated_at DESC"),"calendar_candidates":rows("SELECT * FROM calendar_candidates ORDER BY created_at DESC"),"journal":rows("SELECT * FROM journal_entries WHERE kind='journal' ORDER BY created_at DESC LIMIT 50"),"dreams":rows("SELECT * FROM journal_entries WHERE kind='dream' ORDER BY created_at DESC LIMIT 50"),"audit":rows("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT 200"),"groups":groups,"persona_evolution":rows("SELECT * FROM persona_evolution WHERE status='confirmed' ORDER BY updated_at DESC"),"proactive":{"candidates":rows("SELECT * FROM proactive_candidates ORDER BY updated_at DESC LIMIT 100"),"receipts":rows("SELECT * FROM proactive_receipts ORDER BY created_at DESC LIMIT 100")},"important_dates":rows("SELECT * FROM important_dates ORDER BY date_text")}
 
     def propose_persona_evolution(self, trait: str, value: str, evidence: str) -> dict[str,Any]:
         trait, value, evidence = trait.strip()[:80], value.strip()[:240], evidence.strip()[:1000]

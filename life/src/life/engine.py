@@ -348,11 +348,16 @@ class LifeEngine:
         for session_id in list(self._histories.keys())[-2:]:
             for item in self._histories[session_id][-3:]:
                 recent.append(f'{item["role"]}: {str(item.get("content",""))[:160]}')
+        try:
+            upcoming = await asyncio.to_thread(self.companion.upcoming_important_dates, 7)
+        except Exception:
+            upcoming = []
         context = json.dumps({
             "time": now.isoformat(timespec="minutes"),
             "sleeping": rhythm.get("is_sleeping"),
             "energy": rhythm.get("mental_energy"),
             "agenda": agenda_titles,
+            "important_dates": [{"title": item.get("title"), "in_days": item.get("days_until")} for item in upcoming],
             "recent": recent[-6:],
         }, ensure_ascii=False)
         prompt = (
