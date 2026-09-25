@@ -1,16 +1,34 @@
 # Releases and updates
 
+## Repositories
+
+The platform is split across independent repositories, each with its own
+`v0.1.0` release:
+
+| Repository | Contents |
+|---|---|
+| `RazureSOFT/0KAY` | Core, MOCR, LIFE, WebUI, plugin web UIs, local search, umbrella manifest and docs |
+| `RazureSOFT/0KAY-agent` | Agent task execution plugin |
+| `RazureSOFT/0KAY-mcp` | MCP client gateway (`@0kay/mcp`) and the shared `proto/` contracts |
+| `RazureSOFT/0KAY-pm` | Package manager CLI |
+
 ## 0.1.0
 
-0KAY and 0KAY-agent use the release tag `v0.1.0`. Each installable module
+0KAY and its modules use the release tag `v0.1.0`. Each installable module
 declares its identity, version, build commands and optional start command in
-`manifest.json`. Plugin web bundles are built by the umbrella manifest and
-served by Core; they do not need a separate server process.
+`manifest.json`. The umbrella manifest declares the agent and mcp repositories
+as sub-repositories, so a single install assembles the full platform. Plugin web
+bundles are built by the umbrella manifest and served by Core; they do not need
+a separate server process.
 
 ```sh
 0kay-pm install @razuresoft/0kay@0.1.0
 0kay-pm install @razuresoft/0kay-agent@0.1.0
 ```
+
+Installing the agent also fetches `@razuresoft/0kay-mcp` (the `KAY-mcp`
+repository, which supplies `mcp/` and the shared `proto/`) and arranges the
+sibling layout it expects.
 
 Interactive installation asks for Core HTTP, Core gRPC and WebUI ports as
 applicable. Press Enter to use the displayed default. Source release archives
