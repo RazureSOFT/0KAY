@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "dompurify": "^3.4.16",
@@ -22,6 +23,7 @@
     "@vitejs/plugin-vue": "^5.0.0",
     "typescript": "5.3.3",
     "vite": "^5.0.0",
+    "vitest": "^2.1.9",
     "vue-tsc": "^1.8.0"
   }
 }

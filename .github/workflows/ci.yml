@@ -45,6 +45,9 @@ jobs:
       - name: Type-check and build
         working-directory: webui
         run: npm run build
+      - name: Unit tests
+        working-directory: webui
+        run: npm test
 
   python:
     runs-on: ubuntu-latest
