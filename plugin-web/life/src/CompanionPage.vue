@@ -106,6 +106,7 @@ async function addDate() {
   flash('已添加重要日期')
 }
 async function removeDate(id: string) { await act('date_delete', { id }); flash('已删除') }
+async function eat() { await act('circadian_eat', { amount: 45 }); flash('已用餐') }
 function fmtTime(value?: string) { if (!value) return ''; const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString() }
 onMounted(load)
 </script>
@@ -124,9 +125,17 @@ onMounted(load)
       <article class="stat-card"><div class="stat-head"><span class="icon-badge tone-2" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><rect x="4" y="5.5" width="16" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M8 3.5v4M16 3.5v4M4 10h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><span class="stat-label">活动日程</span></div><strong class="stat-value">{{ data.agenda?.filter((x: any) => x.status === 'active').length || 0 }}</strong><span class="stat-hint">待确认 + 已确认</span></article>
       <article class="stat-card"><div class="stat-head"><span class="icon-badge tone-3" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M12 4l1.7 4.6L18 10l-4.3 1.4L12 16l-1.7-4.6L6 10l4.3-1.4L12 4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span><span class="stat-label">待投递主动行为</span></div><strong class="stat-value">{{ activeCandidates.length }}</strong><span class="stat-hint">已投递 {{ receipts.length }} 次</span></article>
       <article class="stat-card"><div class="stat-head"><span class="icon-badge tone-4" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 6.5h14A1.5 1.5 0 0120.5 8v8a1.5 1.5 0 01-1.5 1.5H9l-4 3v-3H5A1.5 1.5 0 013.5 16V8A1.5 1.5 0 015 6.5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></span><span class="stat-label">已观察群聊</span></div><strong class="stat-value">{{ groups.length }}</strong><span class="stat-hint">群消息学习</span></article>
+  </section>
+
+    <section class="life-state">
+      <span class="state-pill">精力 {{ Math.round(data.circadian?.mental_energy ?? 0) }}</span>
+      <span class="state-pill" :class="{ warn: (data.circadian?.hunger ?? 0) >= 75 }">饥饿 {{ Math.round(data.circadian?.hunger ?? 0) }}</span>
+      <span class="state-pill" :class="{ warn: (data.circadian?.health ?? 100) < 60 }">健康 {{ Math.round(data.circadian?.health ?? 100) }}</span>
+      <span class="state-pill" v-if="data.circadian?.is_sleeping">睡眠中</span>
+      <button class="btn btn-tonal btn-sm" @click="eat">吃饭</button>
     </section>
 
-    <section class="grid">
+  <section class="grid">
       <article class="card">
         <div class="card-head"><h2 class="card-title">日程</h2></div>
         <form class="agenda-form" @submit.prevent="addAgenda">
@@ -356,6 +365,9 @@ onMounted(load)
 .list-empty.plain{background:transparent;border:0}
 .check-label{display:flex;align-items:center}
 .check-line{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--md-on-surface-variant)}
+.life-state{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 var(--space-lg)}
+.state-pill{padding:6px 14px;border-radius:999px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:12.5px;font-weight:600}
+.state-pill.warn{background:#FFF1DC;color:#7A4400}
 .check-label input{width:17px;height:17px;accent-color:var(--md-primary);cursor:pointer}
 .trait-item .chip{max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 

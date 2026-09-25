@@ -9,6 +9,8 @@ import json
 class CircadianState:
     """Mental energy and circadian state."""
     mental_energy: float = 100.0  # 0-100
+    hunger: float = 20.0  # 0 full .. 100 starving
+    health: float = 100.0  # 0-100
     is_sleeping: bool = False
     sleep_start: datetime | None = None
     last_tick: datetime = None
@@ -75,6 +77,14 @@ class CircadianSystem:
             self.state.wake_count_today = 0
             self._wake_day = now.date().isoformat()
 
+        # Life continuity: hunger rises with time; health follows hunger and rest.
+        hunger_rate = 0.6 if self.state.is_sleeping else 4.0
+        self.state.hunger = min(100.0, self.state.hunger + (elapsed / 3600) * hunger_rate)
+        if self.state.hunger >= 80:
+            self.state.health = max(0.0, self.state.health - (elapsed / 3600) * 2.0)
+        elif self.state.hunger <= 50:
+            self.state.health = min(100.0, self.state.health + (elapsed / 3600) * (1.0 if self.state.is_sleeping else 0.4))
+
         if self.state.is_sleeping:
             # Recover energy while sleeping
             recovery = (elapsed / 3600) * self.SLEEP_RECOVERY_PER_HOUR
@@ -98,6 +108,11 @@ class CircadianSystem:
         """Enter sleep state."""
         self.state.is_sleeping = True
         self.state.sleep_start = datetime.now()
+
+    def eat(self, amount: float = 40.0) -> dict:
+        """Reduce hunger (a meal/rest activity)."""
+        self.state.hunger = max(0.0, self.state.hunger - max(0.0, float(amount)))
+        return {"hunger": round(self.state.hunger, 1), "health": round(self.state.health, 1)}
 
     def force_wake(self) -> bool:
         """Force wake from sleep. Returns True if was sleeping."""
@@ -153,18 +168,27 @@ class CircadianSystem:
 
     def get_prompt_context(self) -> str:
         """Get circadian state as prompt context."""
+        notes = []
+        if self.state.hunger >= 75:
+            notes.append("你有点饿了，可能会提到想吃东西。")
+        if self.state.health < 60:
+            notes.append("你状态不佳（健康偏低），语气可以略显疲惫。")
+        base = ""
         if self.state.is_sleeping:
-            return "You are currently sleeping. If woken forcibly, express irritation."
+            base = "You are currently sleeping. If woken forcibly, express irritation."
         elif self.state.mental_energy < 20:
-            return "You are exhausted. Your responses are very brief and slow."
+            base = "You are exhausted. Your responses are very brief and slow."
         elif self.state.mental_energy < 50:
-            return "You are drowsy. Your responses are shorter than usual."
+            base = "You are drowsy. Your responses are shorter than usual."
         else:
-            return "You are alert and awake."
+            base = "You are alert and awake."
+        return " ".join([base, *notes]).strip()
 
     def to_dict(self) -> dict:
         return {
             "mental_energy": round(self.state.mental_energy, 1),
+            "hunger": round(getattr(self.state, "hunger", 0.0), 1),
+            "health": round(getattr(self.state, "health", 100.0), 1),
             "is_sleeping": self.state.is_sleeping,
             "wake_count_today": self.state.wake_count_today,
             "sleep_hour": self.sleep_hour,
@@ -180,6 +204,8 @@ class CircadianSystem:
 
     def restore(self, data):
         self.state.mental_energy = float(data.get('mental_energy', 100))
+        self.state.hunger = float(data.get('hunger', 20))
+        self.state.health = float(data.get('health', 100))
         self.state.is_sleeping = bool(data.get('is_sleeping', False))
         self.state.wake_count_today = int(data.get('wake_count_today', 0))
         self.sleep_hour = int(data.get('sleep_hour', 23)) % 24

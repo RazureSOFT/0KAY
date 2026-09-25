@@ -63,6 +63,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                     http_url=http_url,
                     access_token=token,
                     trigger_keywords=keywords,
+                    bot_names=tuple(n.strip() for n in str(values.get("onebot_bot_names") or "").split(",") if n.strip()),
                     observe_group=values.get("onebot_observe_group") is not False,
                     observer=lambda group_id, user_id, message: asyncio.to_thread(self.engine.companion.observe_group, group_id, user_id, message),
                 ),
@@ -326,7 +327,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
         try:
             snapshot = await asyncio.to_thread(self.engine.companion.snapshot)
             rhythm = self.engine.circadian.to_dict()
-            snapshot["circadian"] = {key: rhythm[key] for key in ("sleep_hour", "wake_hour", "observed_days", "is_sleeping", "mental_energy")}
+            snapshot["circadian"] = {key: rhythm[key] for key in ("sleep_hour", "wake_hour", "observed_days", "is_sleeping", "mental_energy", "hunger", "health")}
             return life_pb2.GetCompanionResponse(json=json.dumps(snapshot, ensure_ascii=False))
         except Exception as e:
             context.set_code(grpc.StatusCode.INTERNAL)
@@ -411,6 +412,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             elif action == "date_delete":
                 deleted = await asyncio.to_thread(self.engine.companion.delete_important_date, payload.get("id",""))
                 result = {"deleted": deleted, "id": payload.get("id","")}
+            elif action == "circadian_eat":
+                result = await asyncio.to_thread(self.engine.circadian.eat, float(payload.get("amount", 40)))
             else:
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))

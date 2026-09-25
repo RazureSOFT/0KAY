@@ -19,6 +19,7 @@ class OneBotConfig:
     message_delay: float = 0.5  # Delay between messages (simulates typing)
     chunk_delay: float = 0.3    # Delay between message chunks
     trigger_keywords: tuple[str, ...] = ()
+    bot_names: tuple[str, ...] = ()
     observe_group: bool = True
     observer: Callable | None = None
 
@@ -90,6 +91,16 @@ class OneBotAdapter:
                 except json.JSONDecodeError:
                     continue
 
+    def _is_mentioned(self, data: dict, msg: "OneBotMessage") -> bool:
+        text = str(msg.message or "")
+        self_id = str(data.get("self_id") or "")
+        if self_id and f"[CQ:at,qq={self_id}]" in text:
+            return True
+        for name in (self.config.bot_names or ()):
+            if name and name in text:
+                return True
+        return False
+
     async def _handle_event(self, data: dict):
         """Handle OneBot event."""
         post_type = data.get("post_type")
@@ -100,7 +111,12 @@ class OneBotAdapter:
         if msg.is_group and self.config.observe_group and self.config.observer:
             await self.config.observer(str(msg.group_id), str(msg.user_id), msg.message)
         keywords = tuple(k.lower() for k in self.config.trigger_keywords if k.strip())
-        if keywords and not any(keyword in str(msg.message).lower() for keyword in keywords):
+        if msg.is_group:
+            # Group chats: speak only when mentioned or a trigger keyword hits; observe otherwise.
+            mentioned = self._is_mentioned(data, msg)
+            if not mentioned and not (keywords and any(keyword in str(msg.message).lower() for keyword in keywords)):
+                return
+        elif keywords and not any(keyword in str(msg.message).lower() for keyword in keywords):
             return
 
         # Process message and get response (supports sync/async iterators)
