@@ -15,13 +15,22 @@ class MocrClient:
         self.core_http = (core_http or os.getenv("CORE_HTTP_ADDR") or os.getenv("CORE_HTTP") or "http://127.0.0.1:8080").rstrip("/")
         self._channel = None
         self._stub = None
+        self._http = None
         self.recorder = None
 
     async def connect(self):
         self._channel = grpc.aio.insecure_channel(self.address)
         self._stub = mocr_pb2_grpc.MocrServiceStub(self._channel)
 
+    async def _http_client(self):
+        if self._http is None:
+            self._http = httpx.AsyncClient(timeout=5)
+        return self._http
+
     async def close(self):
+        if self._http:
+            await self._http.aclose()
+            self._http = None
         if self._channel:
             await self._channel.close()
 
@@ -46,10 +55,10 @@ class MocrClient:
     async def _generate(self, model_id, messages, system_prompt="", thinking=False, max_tokens=1024):
         if not self._stub:
             await self.connect()
-        async with httpx.AsyncClient(timeout=5) as client:
-            response = await client.get(f"{self.core_http}/api/providers", headers=auth_headers())
-            response.raise_for_status()
-            data = response.json()
+        client = await self._http_client()
+        response = await client.get(f"{self.core_http}/api/providers", headers=auth_headers())
+        response.raise_for_status()
+        data = response.json()
         providers = data if isinstance(data, list) else data.get("providers", [])
         default_id = data.get("default_provider_id", "") if isinstance(data, dict) else ""
         matches = [p for p in providers if p.get("enabled", True)

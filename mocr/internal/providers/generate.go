@@ -15,6 +15,19 @@ import (
 	"time"
 )
 
+// providerHTTPClient pools connections across provider requests. Timeout stays 0
+// because streaming bodies are bounded by the request context.
+var providerHTTPClient = &http.Client{
+	Timeout: 0,
+	Transport: &http.Transport{
+		DialContext:           (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 45 * time.Second,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+	},
+}
+
 // ToolDef is a provider-agnostic callable function definition.
 type ToolDef struct {
 	Name           string
@@ -251,17 +264,8 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 		}
 	}
 
-	// Dial + header timeout; full body relies on ctx
-	client := &http.Client{
-		Timeout: 0,
-		Transport: &http.Transport{
-			DialContext:           (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ResponseHeaderTimeout: 45 * time.Second,
-		},
-	}
-	defer client.CloseIdleConnections()
-	resp, err := compatibleRequest(ctx, client, url, opts.APIKey, opts.ModelID, body)
+	// Shared client keeps a connection pool; the body is bounded by ctx.
+	resp, err := compatibleRequest(ctx, providerHTTPClient, url, opts.APIKey, opts.ModelID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -590,15 +594,7 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 	req.Header.Set("x-api-key", opts.APIKey)
 	req.Header.Set("anthropic-version", "2023-06-01")
 
-	client := &http.Client{
-		Timeout: 0,
-		Transport: &http.Transport{
-			DialContext:           (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ResponseHeaderTimeout: 45 * time.Second,
-		},
-	}
-	resp, err := client.Do(req)
+	resp, err := providerHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
