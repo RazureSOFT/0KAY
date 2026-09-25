@@ -2,6 +2,121 @@
 
 协议源文件：`proto/{core,plugin,agent,life,mocr}/v1/*.proto`。字段类型、枚举编号和流式方向以这些文件为准；TS 使用 proto-loader，Go/Python 使用 `gen/`。
 
+## 0. 插件包 manifest（schema 1）
+
+每个可安装的插件或模块应提供 `manifest.json`，声明包身份、版本、构建与运行方式。
+此文件由 **0kay-pm** 使用；Core 的 gRPC 注册、设置声明和 WebUI `.patch` 是独立接口，不能以 manifest 代替。
+
+### 0.1 服务插件示例
+
+```json
+{
+  "schema": 1,
+  "name": "@razuresoft/0kay-agent",
+  "version": "0.1.0",
+  "dependencies": ["@razuresoft/0kay-mcp"],
+  "requires": ["core", "mocr"],
+  "install": [["npm", "ci"], ["npm", "run", "build"]],
+  "start": ["node", "dist/index.js"]
+}
+```
+
+| 字段 | 类型 / 必填 | 含义 |
+|---|---|---|
+| `schema` | number / 是 | 当前固定为 `1` |
+| `name` | string / 是 | 包名；当前校验格式为 `@razuresoft/` 加小写字母、数字或连字符 |
+| `version` | string / 是 | 包版本；发行版使用 SemVer，例如 `0.1.0` |
+| `description` | string / 否 | 可读说明，不影响执行 |
+| `install` | string[][] / 否 | 按顺序执行的安装、构建命令；每一项是一组 argv |
+| `start` | string[] / 否 | 单个启动命令 argv；省略表示没有独立进程 |
+| `dependencies` | string[] / 否 | 安装依赖包名，由 pm 递归安装；目前不支持版本范围表达式 |
+| `requires` | string[] / 否 | 运行时依赖说明；pm 不会据此自动安装、等待服务就绪或发送注册能力 |
+| `modules` | string[] / 否 | 相对仓库根目录的子 manifest 路径，用于组合包 |
+| `repositories` | object[] / 否 | 外部子仓库声明，每项为 `{path, package, url}` |
+| `ui` | object / 否 | 可选的插件 WebUI 构建、发布配置，见下文 |
+| `ports` | object / 否 | 端口元信息，例如 Core 清单中的 `http`、`grpc`；不是通用端口配置执行器 |
+
+命令必须是非空 argv 数组，例如 `["python", "-m", "life.main"]`，不能写成整条 shell 字符串。
+各参数必须是字符串，不能包含换行或 NUL；不要依赖 `&&`、管道或 shell 变量展开。
+服务包命令通常以 manifest 所在目录为工作目录执行；独立 Agent 包由 pm 整理为 `agent/`、`mcp/`、`proto/` 布局后，在 `agent/` 内构建和启动。
+
+### 0.2 组合包与子仓库
+
+```json
+{
+  "schema": 1,
+  "name": "@razuresoft/0kay",
+  "version": "0.1.0",
+  "modules": ["core/manifest.json", "agent/manifest.json", "webui/manifest.json"],
+  "repositories": [{
+    "path": "agent",
+    "package": "@razuresoft/0kay-agent",
+    "url": "https://github.com/RazureSOFT/0KAY-agent.git"
+  }]
+}
+```
+
+这是结构示例，完整模块列表以仓库根清单为准。子仓库以源码归档下载，不执行 git clone。
+当前 pm 使用内置包名到仓库的映射；仅添加一个 manifest 并不会让任意第三方仓库自动成为可安装包。
+`repositories` 中的包名与 URL 也必须匹配该映射。
+
+pm 按 `modules` 顺序执行各子清单的 `install`，并处理子清单的 `ui`。
+当前子清单处理不会递归遍历嵌套 `modules` 或安装其 `dependencies`；组合包需要列全构建顺序。
+启动组合包时，并行执行直接子清单中存在的 `start`，跳过库和纯 UI 模块；使用 `modules` 时不会额外执行组合包自身的 `start`。
+插件应自行处理依赖尚未就绪、注册重试和断线重连。
+
+### 0.3 插件 WebUI 清单
+
+独立构建产物可通过 `ui` 发布：
+
+```json
+{
+  "schema": 1,
+  "name": "@razuresoft/0kay-web-example",
+  "version": "0.1.0",
+  "install": [["npm", "ci"]],
+  "ui": {
+    "dir": ".",
+    "plugin": "example",
+    "dist": "dist",
+    "build": [["npm", "run", "build"]]
+  }
+}
+```
+
+- `dir`：相对 manifest 目录的构建目录，默认 `.`。
+- `build`：在 `dir` 中顺序执行的 argv 数组列表，在 `install` 之后执行。
+- `dist`：相对构建目录的产物路径，默认 `dist`。
+- `plugin`：发布目录名，仅允许字母、数字、下划线、连字符，长度 1–64；默认取包名的短名称。应与 UI URL 使用的插件名一致。
+- 产物内容复制到 Core 数据目录的 `plugin-ui/<plugin>/`。pm CLI 当前选择已安装完整平台的 `core/data`，否则使用 `<OKAY_PM_HOME>/packages/0kay/core/data`；直接调用发布函数时可指定 `coreData`，未指定则使用 `CORE_DATA_DIR` 或当前目录下的 `data`。
+
+本仓库 `plugin-web/life`、`plugin-web/agent`、`plugin-web/skillsguishow` 的 Vite 配置已直接输出到仓库内 `core/data/plugin-ui/<name>`，因此这些清单只需 `install`，没有 `start` 或 `ui`。
+构建清单不会代替页面路由 `.patch`；插件原生 Vue 模块的加载协议见 [插件开发指南](writing-a-plugin.md) 的第 5a 节。
+
+### 0.4 安装、自动启动与更新
+
+```powershell
+0kay-pm install @razuresoft/0kay@0.1.0
+0kay-pm install @razuresoft/0kay-agent@0.1.0
+0kay-pm update @razuresoft/0kay-agent@0.1.0
+0kay-pm start @razuresoft/0kay-agent
+```
+
+- `@0.1.0`（或 `--version 0.1.0`）选择 `v0.1.0` tag 的源码归档，不是预编译二进制；仍需相应构建工具链。不指定版本时下载 `main`。
+- 同次安装的依赖包和外部子仓库目前沿用该 tag，所以相关仓库也必须存在对应 tag。
+- 交互安装完整平台或相关组件时询问 Core HTTP、Core gRPC、WebUI 端口；默认分别为 `8080`、`50051`、`3000`。可用 `--core-port`、`--core-grpc-port`、`--webui-port` 指定，非交互终端不会询问。
+- 配置保存为安装根目录的 `runtime-env.json`，启动时传给子进程；配对远端 Core 时，连接地址以配对结果为准。
+- **安装成功后自动执行启动命令**，服务日志显示在当前终端，不打开浏览器；没有 `start` 的模块不创建进程。按 `Ctrl+C` 停止后，可用 `start` 再次运行。
+- `update` 前应停止对应组件。更新保留运行配置以及标准组件 `data` 目录，并留下 `.old-<id>` 旧安装副本；更新成功后需要手动执行 `start`。
+
+### 0.5 版本与注册的关系
+
+manifest 的 `name` 是包名（如 `@razuresoft/0kay-agent`），gRPC `plugin_info.name` 是服务名（如 `agent`）。
+插件启动时必须自行读取版本并设置 `plugin_info.version`，pm 不会代替插件发送 gRPC 注册。
+Agent、LIFE、MOCR 已从各自 manifest 读取版本；发行时应同步更新 manifest 与发行 tag。
+`requires` 也不会自动转成注册字段：运行时仍需按下节发送 `requires:<插件名>` 能力。
+Core 在 `/api/plugins` 返回注册版本；设置中的插件更新检查以此版本与已知仓库的最新 GitHub Release 比较。
+
 ## 1. 注册、身份与依赖
 
 插件连接 Core 的 `core.v1.PluginService`：

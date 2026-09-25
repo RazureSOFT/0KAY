@@ -1,5 +1,18 @@
 # Writing a Plugin
 
+## Package manifest
+
+Every installable plugin or module must include a `manifest.json` describing
+its package name, release version, build commands and optional start command.
+See section 0 of the [plugin API reference](PLUGIN_API.md) for fields,
+service/UI examples, versioned installation and update behavior.
+
+After a successful install, 0kay-pm runs the manifest start command automatically
+in the current terminal without opening a browser. Library and UI-only modules
+omit `start`. The plugin must still register itself with Core and send its
+manifest version as `plugin_info.version`; runtime dependency capabilities and
+UI patches are separate from the package manifest.
+
 ## 1. Define the Contract
 
 Add or extend protobuf APIs under `proto/<package>/v1/`. Regenerate bindings:
