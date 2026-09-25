@@ -1,15 +1,20 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
+// WEBUI_PORT and CORE_HTTP_ADDR come from runtime-env.json when installed via 0kay-pm.
+const webuiPort = Number(process.env.WEBUI_PORT) || 3000
+const coreHttp = process.env.CORE_HTTP_ADDR || process.env.CORE_HTTP || 'http://127.0.0.1:8080'
+const coreWs = coreHttp.replace(/^http/, 'ws')
+
 export default defineConfig({
   plugins: [vue()],
   server: {
     host: '127.0.0.1',
-    port: 3000,
+    port: webuiPort,
     proxy: {
-      '/live2d/models': {target:'http://127.0.0.1:8080'},
+      '/live2d/models': { target: coreHttp },
       '/api': {
-        target: 'http://localhost:8080',
+        target: coreHttp,
         changeOrigin: true,
         // Ensure SSE (text/event-stream) is not buffered by the dev proxy
         configure: (proxy) => {
@@ -22,7 +27,7 @@ export default defineConfig({
         },
       },
       '/ws': {
-        target: 'ws://localhost:8080',
+        target: coreWs,
         ws: true,
       },
     },
