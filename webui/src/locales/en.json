@@ -247,6 +247,8 @@
     "uploadOk": "Model uploaded",
     "uploadFail": "Model upload failed",
     "addProvider": "Add provider",
+    "providerName": "Provider name",
+    "providerNamePlaceholder": "Optional, e.g. Team gateway, Work account",
     "edit": "Edit",
     "remove": "Remove",
     "makeDefault": "Set default",

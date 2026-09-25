@@ -13,6 +13,7 @@ import (
 type ProviderConfig struct {
 	ID             string   `json:"id"`
 	Provider       string   `json:"provider"`
+	Name           string   `json:"name,omitempty"`
 	BaseURL        string   `json:"base_url"`
 	APIKey         string   `json:"api_key"`
 	Models         []string `json:"models"`

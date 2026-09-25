@@ -82,4 +82,21 @@ onUnmounted(()=>{clearTimeout(timer);document.removeEventListener('pointerdown',
 .thinking-popover.full .thinking-fill {background:linear-gradient(90deg,#7255c8,#ad50d6)}
 .thinking-popover.full .energy-wave{inset:18px 5px;border-radius:999px;z-index:-1}
 .thinking-popover p{margin-top:12px}
+
+/* Max effort: abstract "thunder" treatment (glow, arc flow, flicker). */
+.thinking-popover.full{box-shadow:0 8px 28px #24345d24,0 0 34px #a050db33;border-color:#a050db77}
+.thinking-popover.full .energy-wave{
+ position:absolute;inset:-3px 4px;border-radius:999px;z-index:-1;
+ background:
+  radial-gradient(70% 120% at 100% 50%, #c56bffbb, transparent 68%),
+  radial-gradient(50% 120% at 0% 50%, #6b8cffaa, transparent 70%);
+ filter:blur(7px);animation:thunder-glow 1.7s ease-in-out infinite;
+}
+@keyframes thunder-glow{0%,100%{opacity:.5;transform:scale(1)}45%{opacity:1;transform:scale(1.03)}}
+.thinking-popover.full .thinking-capsule{box-shadow:0 0 0 1px #a050db66,0 0 26px #a050db55}
+.thinking-popover.full .thinking-fill{background:linear-gradient(90deg,#6b8cff,#a050db,#e0a3ff,#a050db);background-size:280% 100%;animation:thunder-flow 2.6s linear infinite}
+@keyframes thunder-flow{to{background-position:280% 0}}
+.thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}
+.thinking-control.full .thinking-trigger span:first-child{animation:thunder-flicker 2s steps(1,end) infinite}
+@keyframes thunder-flicker{0%,90%,100%{opacity:1}92%{opacity:.35}94%{opacity:1}96%{opacity:.5}}
 </style>

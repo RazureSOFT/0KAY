@@ -655,6 +655,10 @@ function save() {
               <AppSelect v-model="editingProvider.provider" class="input" :aria-label="t('wizard.provider')" :options="PROVIDERS.map(p=>({value:p.id,label:t(`providers.${p.id}.name`,p.name)}))" @change="onEditProviderType" />
             </div>
             <div class="field">
+              <label>{{ t('settings.providerName') }}</label>
+              <input v-model="editingProvider.name" :placeholder="t('settings.providerNamePlaceholder')" class="input" />
+            </div>
+            <div class="field">
               <label>{{ t('wizard.apiKey') }}</label>
               <input
                 type="password"

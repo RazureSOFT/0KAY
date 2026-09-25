@@ -111,12 +111,25 @@ function loadOptions() {
     draft.value=saved.draft || '';mode.value=saved.mode || 'general'
   } catch { executorId.value='';workdir.value='';intensity.value=50;modelId.value='MOCR';draft.value='';mode.value='general' }
 }
+const providerNames = ref<Record<string, string>>({})
+function modelLabel(model: { id: string; provider: string }) {
+  return `${providerNames.value[model.provider] || model.provider}/${model.id}`
+}
 async function fetchModels() {
   try {
     const response = await fetch('/api/models')
     if (!response.ok) throw new Error(`模型目录 HTTP ${response.status}`)
     models.value = (await response.json()).models || []
   } catch (e: any) { error.value = e.message }
+  try {
+    const response = await fetch('/api/providers')
+    if (response.ok) {
+      const providers: any[] = (await response.json()).providers || []
+      const names: Record<string, string> = {}
+      for (const provider of providers) if (provider.name) names[provider.provider] = provider.name
+      providerNames.value = names
+    }
+  } catch { /* provider names are optional */ }
 }
 function options() { const level=intensity.value===0?'off':intensity.value<35?'low':intensity.value<62.5?'medium':intensity.value<87.5?'high':'max';return { executor_id: executorId.value, workdir: workdir.value.trim(), thinking_intensity: level, model_id: modelId.value, permission_mode:permissionMode.value, language:locale.value } }
 const busy = ref(false)
@@ -253,8 +266,8 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
 <template>
   <main class="workspace">
     <aside class="sessions">
-      <header><h1>Agent</h1><button @click="create" :disabled="busy" :title="tr('新建会话','New session')">＋ {{ tr('新对话','New chat') }}</button></header>
-      <div class="connection"><i :class="{online:store.onlineCount>0}" />{{ store.onlineCount }} {{ tr('个执行器在线','executors online') }} <button @click="store.fetchAgents()" :title="tr('刷新','Refresh')">↻</button></div>
+      <header><h1>Agent</h1><button @click="create" :disabled="busy" :title="tr('新建会话','New session')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> {{ tr('新对话','New chat') }}</button></header>
+      <div class="connection"><i :class="{online:store.onlineCount>0}" />{{ store.onlineCount }} {{ tr('个执行器在线','executors online') }} <button @click="store.fetchAgents()" :title="tr('刷新','Refresh')" aria-label="refresh"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
       <input v-model="search" :placeholder="tr('搜索会话…','Search sessions…')" :aria-label="tr('搜索会话','Search sessions')" />
       <nav class="filter-bar"><button v-for="filter in [{id:'all',label:tr('全部','All')},{id:'life',label:tr('LIFE 发起','From LIFE')},{id:'user',label:tr('我的对话','My chats')}]" :key="filter.id" :class="{chosen:source===filter.id}" @click="source=filter.id">{{ filter.label }}</button></nav>
       <label class="muted"><input v-model="showArchived" type="checkbox" /> {{ tr('显示已归档会话','Show archived sessions') }}</label>
@@ -342,18 +355,26 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
       </div>
       <form v-if="!activeSub" class="composer" @submit.prevent="send">
         <div v-if="compactNotice" class="compact-notice">{{ compactNotice }}</div>
-        <textarea v-model="draft" :disabled="busy || session?.state === 'archived'" :placeholder="session?.state === 'archived' ? '恢复会话后可以继续对话' : '给 Agent 发消息…（Enter 发送，Shift+Enter 换行）'" aria-label="给 Agent 发消息" @keydown="onComposerKey" />
         <div class="execution-options">
           <label>{{ tr('权限','Permissions') }}<AppSelect v-model="permissionMode" :aria-label="tr('权限','Permissions')" :disabled="!!active || busy" :options="[{value:'normal',label:tr('Normal · 全部审批','Normal · Ask every time')},{value:'full_access',label:tr('Full access · 自动执行','Full access · Auto execute')}]" /></label>
           <label>{{ tr('执行器','Executor') }}<AppSelect v-model="executorId" :aria-label="tr('执行器','Executor')" :disabled="!!active || busy" :options="[{value:'',label:tr('自动选择在线执行器','Automatic executor')},...store.agents.map(agent=>({value:agent.plugin_id,label:`${agent.host?.hostname || agent.name} · ${agent.plugin_id}`,disabled:!store.isHealthy(agent)}))]" /></label>
-          <label>{{ tr('工作区','Workspace') }}<button type="button" class="workspace-select" :disabled="!!active || busy || !executor" :title="workdir || executor?.host?.workdir" @click="browse(workdir || executor?.host?.workdir || '')">📁 {{ workdir || tr('选择目录…','Select folder…') }}</button></label>
+          <label>{{ tr('工作区','Workspace') }}<button type="button" class="workspace-select" :disabled="!!active || busy || !executor" :title="workdir || executor?.host?.workdir" @click="browse(workdir || executor?.host?.workdir || '')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ workdir || tr('选择目录…','Select folder…') }}</button></label>
           <ThinkingSlider v-model="intensity" :disabled="!!active || busy" />
-          <label>{{ tr('模型','Model') }}<AppSelect v-model="modelId" :aria-label="tr('模型','Model')" :disabled="!!active || busy" @open="fetchModels" :options="[{value:'MOCR',label:tr('MOCR · 自动选型','MOCR · Automatic')},...models.map(model=>({value:model.id,label:`${model.id} · ${model.provider}`}))]" /></label>
+          <label>{{ tr('模型','Model') }}<AppSelect v-model="modelId" searchable :aria-label="tr('模型','Model')" :disabled="!!active || busy" @open="fetchModels" :options="[{value:'MOCR',label:tr('MOCR · 自动选型','MOCR · Automatic')},...models.map(model=>({value:model.id,label:modelLabel(model)}))]" /></label>
         </div>
-        <footer><AppSelect v-model="mode" :disabled="busy" :aria-label="tr('Agent 模式','Agent mode')" :options="[{value:'general',label:tr('通用 Agent','General Agent')},{value:'code',label:tr('编程 Agent','Coding Agent')},{value:'research',label:tr('调研 Agent','Research Agent')}]" /><button type="button" @click="hostOpen=!hostOpen">{{ tr('宿主机','Host') }}</button><button type="button" :disabled="!session || !!active || busy || session.state === 'archived'" @click="compact">/compact</button><span class="muted">{{ active?.kind === 'compact' ? tr('上下文压缩中…','Compacting…') : store.onlineCount ? tr('在当前会话中继续','Continue this session') : tr('执行器离线','Executor offline') }}</span><button v-if="active?.kind === 'agent'" type="button" @click="stop">{{ tr('停止','Stop') }}</button><button v-else type="submit" :disabled="busy || !!active || !draft.trim() || session?.state === 'archived'">{{ busy ? tr('处理中…','Processing…') : tr('发送 ↑','Send ↑') }}</button></footer>
+        <div class="composer-input">
+          <textarea v-model="draft" :disabled="busy || session?.state === 'archived'" :placeholder="session?.state === 'archived' ? '恢复会话后可以继续对话' : '给 Agent 发消息…（Enter 发送，Shift+Enter 换行）'" aria-label="给 Agent 发消息" @keydown="onComposerKey" />
+          <button v-if="active?.kind !== 'agent'" type="submit" class="send-fly" :disabled="busy || !!active || !draft.trim() || session?.state === 'archived'" :aria-label="tr('发送','Send')" :title="tr('发送','Send')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.6 11.2 20.4 4l-7.1 16.4-2.5-6.8-7.2-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m10.8 13.6 3.4-3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </button>
+          <button v-else type="button" class="send-fly stop" @click="stop" :aria-label="tr('停止','Stop')" :title="tr('停止','Stop')">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>
+          </button>
+        </div>
+        <footer><AppSelect v-model="mode" :disabled="busy" :aria-label="tr('Agent 模式','Agent mode')" :options="[{value:'general',label:tr('通用 Agent','General Agent')},{value:'code',label:tr('编程 Agent','Coding Agent')},{value:'research',label:tr('调研 Agent','Research Agent')}]" /><button type="button" @click="hostOpen=!hostOpen">{{ tr('宿主机','Host') }}</button><button type="button" :disabled="!session || !!active || busy || session.state === 'archived'" @click="compact">/compact</button><span class="muted">{{ active?.kind === 'compact' ? tr('上下文压缩中…','Compacting…') : store.onlineCount ? tr('在当前会话中继续','Continue this session') : tr('执行器离线','Executor offline') }}</span></footer>
       </form>
     </section>
-    <div v-if="browserOpen" class="directory-backdrop" @click.self="closeBrowser"><section class="directory-dialog" role="dialog" aria-modal="true" aria-label="选择工作区目录"><header><h2>选择 {{ executor?.host?.hostname || '执行器' }} 的工作区</h2><button @click="closeBrowser">关闭</button></header><div class="directory-roots"><button v-for="root in directory.roots" :key="root" :disabled="browserBusy" @click="browse(root)">{{ root }}</button><button :disabled="browserBusy" @click="browse(executor?.host?.workdir || '')">默认目录</button></div><code>{{ directory.path }}</code><form class="new-folder" @submit.prevent="createFolder"><input v-model="folderName" placeholder="新文件夹名称" aria-label="新文件夹名称" :disabled="browserBusy"/><button :disabled="browserBusy || !folderName.trim() || !directory.path">新建文件夹</button></form><p v-if="browserError" class="error">{{ browserError }}</p><p v-if="browserBusy">正在读取目录…</p><div v-else class="directory-list"><button v-if="directory.parent!==directory.path" @click="browse(directory.parent)">↰ 上一级</button><button v-for="folder in directory.directories" :key="folder.path" @click="browse(folder.path)">📁 {{ folder.name }}</button><p v-if="!directory.directories.length" class="muted">没有子目录</p></div><footer><button :disabled="browserBusy || !!browserError || !directory.path" @click="selectDirectory">选择当前目录</button></footer></section></div>
+    <div v-if="browserOpen" class="directory-backdrop" @click.self="closeBrowser"><section class="directory-dialog" role="dialog" aria-modal="true" aria-label="选择工作区目录"><header><h2>选择 {{ executor?.host?.hostname || '执行器' }} 的工作区</h2><button @click="closeBrowser">关闭</button></header><div class="directory-roots"><button v-for="root in directory.roots" :key="root" :disabled="browserBusy" @click="browse(root)">{{ root }}</button><button :disabled="browserBusy" @click="browse(executor?.host?.workdir || '')">默认目录</button></div><code>{{ directory.path }}</code><form class="new-folder" @submit.prevent="createFolder"><input v-model="folderName" placeholder="新文件夹名称" aria-label="新文件夹名称" :disabled="browserBusy"/><button :disabled="browserBusy || !folderName.trim() || !directory.path">新建文件夹</button></form><p v-if="browserError" class="error">{{ browserError }}</p><p v-if="browserBusy">正在读取目录…</p><div v-else class="directory-list"><button v-if="directory.parent!==directory.path" @click="browse(directory.parent)">上一级</button><button v-for="folder in directory.directories" :key="folder.path" @click="browse(folder.path)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ folder.name }}</button><p v-if="!directory.directories.length" class="muted">没有子目录</p></div><footer><button :disabled="browserBusy || !!browserError || !directory.path" @click="selectDirectory">选择当前目录</button></footer></section></div>
   </main>
   <ConfirmDialog />
 </template>
@@ -486,20 +507,23 @@ button.subagent-card-head>strong{font-weight:700}
 .sub-view-body{min-height:120px}
 
 /* ---- composer ---- */
-.composer{flex-shrink:0;margin:0 20px 18px}
-.composer textarea{font-size:14px;width:100%;display:block;min-height:104px;padding:15px 18px;line-height:1.6;resize:vertical}
+.composer{flex-shrink:0;margin:0 20px 18px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-lowest);overflow:hidden;box-shadow:var(--shadow-1)}
+.composer-input{position:relative}
+.composer-input textarea{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 58px 15px 18px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}
+.composer-input textarea:focus{box-shadow:none;border:0}
+.send-fly{position:absolute;right:12px;bottom:12px;width:38px;height:38px;display:grid;place-items:center;border:0;border-radius:50%;padding:0;background:var(--md-primary);color:var(--md-on-primary,#fff)}
+.send-fly:hover:not(:disabled){filter:brightness(1.08)}
+.send-fly:disabled{background:var(--md-surface-container);color:var(--md-on-surface-variant);opacity:.7}
+.send-fly.stop{background:var(--md-error);color:#fff}
 .compact-notice{font-size:12px;padding:10px 16px;color:var(--md-primary);background:var(--md-primary-container);border-radius:10px;margin:10px 16px 0}
-.execution-options{display:flex;gap:10px;padding:12px 20px;flex-wrap:wrap;border-bottom:1px solid var(--md-outline-variant);align-items:end}
+.execution-options{display:flex;gap:10px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid var(--md-outline-variant);align-items:end}
 .execution-options label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--md-on-surface-variant);flex:1;min-width:130px}
 .execution-options :deep(.app-select-trigger),.execution-options .workspace-select{width:100%;font-size:12.5px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--md-on-surface);min-height:36px;border-radius:10px;background:var(--md-surface-container);border-color:transparent;text-align:left}
 .workspace-select{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block}
-.composer footer{display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap}
+.composer footer{display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap;border-top:1px solid var(--md-outline-variant)}
 .composer footer>select,.composer footer>.app-select{font-size:12.5px;border-radius:10px;min-height:34px}
 .composer footer .muted{flex:1;min-width:120px}
 .composer footer>button{font-size:12.5px;font-weight:600;border-radius:9px;min-height:34px}
-.composer footer>button[type="submit"]:not(:disabled){background:var(--md-primary);color:var(--md-on-primary,#fff);border-color:transparent;padding:0 18px}
-.composer footer>button[type="submit"]:not(:disabled):hover{background:var(--md-primary);filter:brightness(1.08);box-shadow:var(--shadow-1)}
-.composer footer>button:last-child:not([type="submit"]){background:var(--md-error);color:#fff;border-color:transparent}
 
 /* ---- host panel / rings ---- */
 .host-panel>strong{font-size:14px}

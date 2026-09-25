@@ -247,6 +247,8 @@
     "uploadOk": "模型已上传",
     "uploadFail": "模型上传失败",
     "addProvider": "添加供应商",
+    "providerName": "供应商名称",
+    "providerNamePlaceholder": "可选，如：团队网关、内网主账号",
     "edit": "编辑",
     "remove": "删除",
     "makeDefault": "设为默认",

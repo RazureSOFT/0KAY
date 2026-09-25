@@ -12,6 +12,7 @@ export interface Provider {
 export interface ProviderConfig {
   id: string
   provider: string
+  name?: string
   api_key: string
   base_url: string
   models: string[]
