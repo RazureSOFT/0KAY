@@ -156,7 +156,8 @@ class CompanionSystem:
             hour = datetime.now().hour
             if sent >= daily: return False,"daily quota exhausted"
             if per >= per_target: return False,"target quota exhausted"
-            if hour >= int(self._setting(db,"quiet_start","23")) or hour < int(self._setting(db,"quiet_end","8")): return False,"quiet hours"
+            quiet_start = int(self._setting(db,"quiet_start","23")); quiet_end = int(self._setting(db,"quiet_end","8"))
+            if quiet_start != quiet_end and (hour >= quiet_start or hour < quiet_end): return False,"quiet hours"
             return True,"ok"
 
     def record_proactive_send(self, target: str, content: str) -> None:
@@ -166,10 +167,23 @@ class CompanionSystem:
             db.execute("INSERT INTO proactive_receipts VALUES(?,?,?,?,?,?)",(new_id("receipt"),candidate["id"],"delivered","ok",content[:1000],now()))
         self.audit("proactive_delivery",content,target)
 
-    def set_runtime_policy(self, daily_limit: int, per_target_limit: int) -> None:
+    def set_runtime_policy(self, daily_limit: int, per_target_limit: int, quiet_start: int | None = None, quiet_end: int | None = None) -> None:
         with self.db() as db:
             db.execute("INSERT INTO settings(key,value) VALUES('proactive_daily_limit',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(max(0,daily_limit)),))
             db.execute("INSERT INTO settings(key,value) VALUES('proactive_target_limit',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(max(0,per_target_limit)),))
+            if quiet_start is not None:
+                db.execute("INSERT INTO settings(key,value) VALUES('quiet_start',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(max(0, min(23, int(quiet_start)))),))
+            if quiet_end is not None:
+                db.execute("INSERT INTO settings(key,value) VALUES('quiet_end',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(max(0, min(23, int(quiet_end)))),))
+
+    def get_policy(self) -> dict:
+        with self.db() as db:
+            return {
+                "daily_limit": int(self._setting(db, "proactive_daily_limit", "3")),
+                "per_target_limit": int(self._setting(db, "proactive_target_limit", "1")),
+                "quiet_start": int(self._setting(db, "quiet_start", "23")),
+                "quiet_end": int(self._setting(db, "quiet_end", "8")),
+            }
 
     def cancel_proactive(self, candidate_id: str, reason: str = "dashboard_cancel") -> dict[str,Any]:
         with self.db() as db:

@@ -10,7 +10,7 @@ const agendaTitle = ref(''); const agendaWhen = ref(''); const agendaDetail = re
 const journal = ref(''); const dream = ref('')
 const openLedger = ref(false); const openGroup = ref<string>('')
 const proactiveForm = ref({ target: '', motive: '', content: '', preferred_at: '' })
-const policy = ref({ daily_limit: 6, per_target_limit: 2 })
+const policy = ref({ daily_limit: 6, per_target_limit: 2, quiet_start: 23, quiet_end: 8 })
 const groups = computed(() => Object.entries(data.value.groups || {}))
 const activeCandidates = computed(() => (data.value.proactive?.candidates || []).filter((x: any) => !['delivered', 'cancelled'].includes(x.status)))
 const receipts = computed(() => data.value.proactive?.receipts || [])
@@ -29,6 +29,7 @@ async function load() {
     const r = await fetch('/api/life/companion')
     if (!r.ok) throw Error(String(r.status))
     data.value = await r.json()
+    if (data.value?.policy) policy.value = { ...policy.value, ...data.value.policy }
   } catch (e: any) { error.value = e?.message || '无法读取 LIFE 陪伴状态' }
   finally { loading.value = false }
   void loadUsage()
@@ -59,7 +60,7 @@ async function createProactive() {
   if (result) { proactiveForm.value = { target: '', motive: '', content: '', preferred_at: '' }; flash('已创建主动候选') }
 }
 async function cancelProactive(id: string) { await act('proactive_cancel', { id, reason: 'dashboard_cancel' }); flash('已取消候选') }
-async function savePolicy() { await act('proactive_policy', { daily_limit: Number(policy.value.daily_limit), per_target_limit: Number(policy.value.per_target_limit) }); flash('策略已保存') }
+async function savePolicy() { await act('proactive_policy', { daily_limit: Number(policy.value.daily_limit), per_target_limit: Number(policy.value.per_target_limit), quiet_start: Number(policy.value.quiet_start), quiet_end: Number(policy.value.quiet_end) }); flash('策略已保存') }
 const generating = ref('')
 async function generate(kind: 'journal' | 'dream') {
   generating.value = kind
@@ -276,7 +277,7 @@ onMounted(load)
         <div class="card-head"><h2 class="card-title">主动行为</h2><span class="chip muted">待投递 {{ activeCandidates.length }}</span></div>
         <div class="toolbar-inline"><button class="btn btn-tonal btn-sm" @click="suggestProactive">让 LIFE 建议一条</button><button class="btn btn-tonal btn-sm" :disabled="ticking" @click="tickNow">{{ ticking ? '检查中…' : '立即检查投递' }}</button></div>
         <form class="stack-form" @submit.prevent="createProactive">
-          <input v-model="proactiveForm.target" class="input" placeholder="对象（user_id / 会话）" aria-label="主动对象" />
+          <input v-model="proactiveForm.target" class="input" placeholder="目标：session:<会话ID> / user:<QQ> / group:<群号>" aria-label="主动对象" />
           <input v-model="proactiveForm.motive" class="input" placeholder="动机，如 care / reminder" aria-label="动机" />
           <input v-model="proactiveForm.preferred_at" class="input" placeholder="期望时间（可选，ISO）" aria-label="期望时间" />
           <textarea v-model="proactiveForm.content" class="input area" placeholder="想说的内容…"></textarea>
@@ -294,8 +295,11 @@ onMounted(load)
         <div class="policy">
           <label class="select"><span>每日上限</span><input v-model.number="policy.daily_limit" type="number" min="0" class="input tiny" /></label>
           <label class="select"><span>单人上限</span><input v-model.number="policy.per_target_limit" type="number" min="0" class="input tiny" /></label>
+          <label class="select"><span>免打扰起</span><input v-model.number="policy.quiet_start" type="number" min="0" max="23" class="input tiny" /></label>
+          <label class="select"><span>免打扰止</span><input v-model.number="policy.quiet_end" type="number" min="0" max="23" class="input tiny" /></label>
           <button class="btn btn-tonal btn-sm" @click="savePolicy">保存策略</button>
         </div>
+        <p class="helper-inline">免打扰起止相同即关闭；target 用 <code>session:&lt;会话ID&gt;</code> 可直接发到对话。</p>
         <h3 class="section-label">投递记录</h3>
         <ol class="feed">
           <li v-for="r in receipts" :key="r.id"><time>{{ fmtTime(r.created_at) }}</time><p>{{ r.phase }} · {{ r.content }}</p></li>
@@ -438,6 +442,8 @@ onMounted(load)
 .head-actions{display:flex;gap:8px}
 .item-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .hint-inline{font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;opacity:.8}
+.helper-inline{margin:8px 0 0;font-size:12px;color:var(--md-on-surface-variant)}
+.helper-inline code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--md-surface-container);padding:2px 6px;border-radius:6px}
 .check-label input{width:17px;height:17px;accent-color:var(--md-primary);cursor:pointer}
 .trait-item .chip{max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 

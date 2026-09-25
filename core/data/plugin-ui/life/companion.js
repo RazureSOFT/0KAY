@@ -1,144 +1,144 @@
-import { defineComponent as pt, ref as u, computed as H, onMounted as vt, openBlock as n, createElementBlock as i, createElementVNode as t, toDisplayString as s, createCommentVNode as d, createStaticVNode as B, normalizeClass as C, withModifiers as N, withDirectives as _, vModelText as g, Fragment as c, renderList as m, createTextVNode as y, vModelCheckbox as _t, normalizeStyle as mt } from "vue";
-import { u as ht, _ as gt } from "./assets/_plugin-vue_export-helper-O99hOdpN.js";
-const bt = { class: "page" }, yt = { class: "page-inner" }, ft = { class: "page-header" }, kt = { class: "header-actions" }, wt = ["disabled"], Ct = ["disabled"], jt = {
+import { defineComponent as pt, ref as u, computed as z, onMounted as vt, openBlock as n, createElementBlock as i, createElementVNode as t, toDisplayString as a, createCommentVNode as d, createStaticVNode as A, normalizeClass as j, withModifiers as M, withDirectives as v, vModelText as _, Fragment as c, renderList as h, createTextVNode as f, vModelCheckbox as _t, normalizeStyle as mt } from "vue";
+import { u as ht, _ as bt } from "./assets/_plugin-vue_export-helper-O99hOdpN.js";
+const gt = { class: "page" }, yt = { class: "page-inner" }, ft = { class: "page-header" }, kt = { class: "header-actions" }, wt = ["disabled"], Ct = ["disabled"], jt = {
   key: 0,
   class: "error-banner"
 }, xt = {
   key: 1,
   class: "notice"
-}, Lt = { class: "stat-grid" }, $t = { class: "stat-card" }, Mt = { class: "stat-value" }, Nt = { class: "stat-card" }, St = { class: "stat-value" }, Et = { class: "stat-card" }, Ft = { class: "stat-value" }, Tt = { class: "stat-hint" }, Vt = { class: "stat-card" }, It = { class: "stat-value" }, Ut = { class: "life-state" }, Dt = { class: "state-pill" }, Ot = {
+}, Lt = { class: "stat-grid" }, Nt = { class: "stat-card" }, $t = { class: "stat-value" }, Mt = { class: "stat-card" }, St = { class: "stat-value" }, Et = { class: "stat-card" }, Ft = { class: "stat-value" }, Vt = { class: "stat-hint" }, Tt = { class: "stat-card" }, It = { class: "stat-value" }, Ut = { class: "life-state" }, Dt = { class: "state-pill" }, Ot = {
   key: 0,
   class: "state-pill"
-}, Pt = { class: "group" }, Yt = { class: "grid" }, At = { class: "card" }, Bt = { class: "item-list" }, Jt = { class: "item-main" }, zt = { class: "item-meta" }, Ht = { class: "item-actions" }, qt = ["onClick"], Gt = ["onClick"], Rt = {
+}, Pt = { class: "group" }, qt = { class: "grid" }, Yt = { class: "card" }, At = { class: "item-list" }, Bt = { class: "item-main" }, Jt = { class: "item-meta" }, zt = { class: "item-actions" }, Ht = ["onClick"], Qt = ["onClick"], Gt = {
   key: 0,
   class: "list-empty"
-}, Wt = { class: "item-list" }, Kt = { class: "item-main" }, Qt = { class: "item-row" }, Xt = { class: "item-meta" }, Zt = {
+}, Rt = { class: "item-list" }, Wt = { class: "item-main" }, Kt = { class: "item-row" }, Xt = { class: "item-meta" }, Zt = {
   key: 0,
   class: "list-empty"
-}, te = { class: "card" }, ee = { class: "card-head" }, ae = { class: "chip muted" }, se = { class: "check-line" }, le = ["disabled"], ne = { class: "item-list" }, ie = { class: "item-main" }, oe = { class: "item-meta" }, re = { class: "item-actions" }, de = ["onClick"], ue = {
+}, te = { class: "card" }, ee = { class: "card-head" }, se = { class: "chip muted" }, ae = { class: "check-line" }, le = ["disabled"], ne = { class: "item-list" }, ie = { class: "item-main" }, oe = { class: "item-meta" }, re = { class: "item-actions" }, de = ["onClick"], ue = {
   key: 0,
   class: "list-empty"
 }, ce = { class: "card" }, pe = { class: "card-head" }, ve = { class: "head-actions" }, _e = ["disabled"], me = { class: "feed" }, he = {
   key: 0,
   class: "list-empty plain"
-}, ge = { class: "card" }, be = { class: "card-head" }, ye = { class: "head-actions" }, fe = ["disabled"], ke = { class: "feed" }, we = {
+}, be = { class: "card" }, ge = { class: "card-head" }, ye = { class: "head-actions" }, fe = ["disabled"], ke = { class: "feed" }, we = {
   key: 0,
   class: "list-empty plain"
-}, Ce = { class: "group" }, je = { class: "grid" }, xe = { class: "card" }, Le = { class: "card-head" }, $e = { class: "rel-list" }, Me = { class: "avatar" }, Ne = { class: "rel-main" }, Se = { class: "rel-top" }, Ee = { class: "chip" }, Fe = { class: "rel-meter" }, Te = { class: "meter-bar" }, Ve = { class: "item-meta" }, Ie = { class: "rel-actions" }, Ue = ["onClick"], De = ["onClick"], Oe = {
+}, Ce = { class: "group" }, je = { class: "grid" }, xe = { class: "card" }, Le = { class: "card-head" }, Ne = { class: "rel-list" }, $e = { class: "avatar" }, Me = { class: "rel-main" }, Se = { class: "rel-top" }, Ee = { class: "chip" }, Fe = { class: "rel-meter" }, Ve = { class: "meter-bar" }, Te = { class: "item-meta" }, Ie = { class: "rel-actions" }, Ue = ["onClick"], De = ["onClick"], Oe = {
   key: 0,
   class: "list-empty"
 }, Pe = {
   key: 0,
   class: "ledger"
-}, Ye = { class: "section-label" }, Ae = { class: "feed" }, Be = {
+}, qe = { class: "section-label" }, Ye = { class: "feed" }, Ae = {
   key: 0,
   class: "list-empty plain"
-}, Je = { class: "card" }, ze = { class: "item-list" }, He = { class: "item-main" }, qe = { class: "item-meta" }, Ge = { class: "chip" }, Re = {
+}, Be = { class: "card" }, Je = { class: "item-list" }, ze = { class: "item-main" }, He = { class: "item-meta" }, Qe = { class: "chip" }, Ge = {
   key: 0,
   class: "list-empty"
-}, We = { class: "group" }, Ke = { class: "grid" }, Qe = { class: "card" }, Xe = { class: "card-head" }, Ze = { class: "chip muted" }, ta = { class: "toolbar-inline" }, ea = ["disabled"], aa = ["disabled"], sa = { class: "item-list" }, la = { class: "item-main" }, na = { class: "item-meta" }, ia = { class: "item-meta" }, oa = { class: "item-actions" }, ra = ["onClick"], da = {
+}, Re = { class: "group" }, We = { class: "grid" }, Ke = { class: "card" }, Xe = { class: "card-head" }, Ze = { class: "chip muted" }, ts = { class: "toolbar-inline" }, es = ["disabled"], ss = ["disabled"], as = { class: "item-list" }, ls = { class: "item-main" }, ns = { class: "item-meta" }, is = { class: "item-meta" }, os = { class: "item-actions" }, rs = ["onClick"], ds = {
   key: 0,
   class: "list-empty"
-}, ua = { class: "policy" }, ca = { class: "select" }, pa = { class: "select" }, va = { class: "feed" }, _a = {
+}, us = { class: "policy" }, cs = { class: "select" }, ps = { class: "select" }, vs = { class: "select" }, _s = { class: "select" }, ms = { class: "feed" }, hs = {
   key: 0,
   class: "list-empty plain"
-}, ma = { class: "group" }, ha = { class: "grid" }, ga = { class: "card" }, ba = { class: "card-head" }, ya = { class: "chip muted" }, fa = { class: "item-list" }, ka = { class: "item-main" }, wa = { class: "item-meta" }, Ca = {
+}, bs = { class: "group" }, gs = { class: "grid" }, ys = { class: "card" }, fs = { class: "card-head" }, ks = { class: "chip muted" }, ws = { class: "item-list" }, Cs = { class: "item-main" }, js = { class: "item-meta" }, xs = {
   key: 0,
   class: "group-detail"
-}, ja = {
+}, Ls = {
   key: 0,
   class: "topics"
-}, xa = { class: "feed compact" }, La = { class: "item-actions" }, $a = ["onClick"], Ma = {
+}, Ns = { class: "feed compact" }, $s = { class: "item-actions" }, Ms = ["onClick"], Ss = {
   key: 0,
   class: "list-empty"
-}, Na = { class: "group" }, Sa = { class: "grid" }, Ea = { class: "card audit-card" }, Fa = { class: "card-head" }, Ta = { class: "chip muted" }, Va = { class: "usage-grid" }, Ia = { class: "usage-item" }, Ua = { class: "usage-item" }, Da = { class: "usage-item" }, Oa = { class: "item-list" }, Pa = { class: "item-main" }, Ya = { class: "item-meta" }, Aa = {
+}, Es = { class: "group" }, Fs = { class: "grid" }, Vs = { class: "card audit-card" }, Ts = { class: "card-head" }, Is = { class: "chip muted" }, Us = { class: "usage-grid" }, Ds = { class: "usage-item" }, Os = { class: "usage-item" }, Ps = { class: "usage-item" }, qs = { class: "item-list" }, Ys = { class: "item-main" }, As = { class: "item-meta" }, Bs = {
   key: 0,
   class: "list-empty"
-}, Ba = { class: "card audit-card" }, Ja = { class: "card-head" }, za = { class: "timeline" }, Ha = { class: "tl-body" }, qa = { class: "tl-head" }, Ga = { class: "item-meta" }, Ra = { class: "tl-detail" }, Wa = {
+}, Js = { class: "card audit-card" }, zs = { class: "card-head" }, Hs = { class: "timeline" }, Qs = { class: "tl-body" }, Gs = { class: "tl-head" }, Rs = { class: "item-meta" }, Ws = { class: "tl-detail" }, Ks = {
   key: 0,
   class: "list-empty plain"
-}, Ka = /* @__PURE__ */ pt({
+}, Xs = /* @__PURE__ */ pt({
   __name: "CompanionPage",
-  setup(Qa) {
-    const { confirm: Q } = ht(), o = u({ relationships: [], relationship_ledger: [], agenda: [], calendar_candidates: [], journal: [], dreams: [], audit: [], groups: {}, proactive: { candidates: [], receipts: [] }, persona_evolution: [] }), S = u(!1), f = u(""), $ = u(""), M = u(""), E = u(""), F = u(""), T = u(""), V = u(""), I = u(!1), U = u(""), p = u({ target: "", motive: "", content: "", preferred_at: "" }), j = u({ daily_limit: 6, per_target_limit: 2 }), D = H(() => Object.entries(o.value.groups || {})), O = H(() => (o.value.proactive?.candidates || []).filter((l) => !["delivered", "cancelled"].includes(l.status))), J = H(() => o.value.proactive?.receipts || []);
-    function b(l) {
-      $.value = l, setTimeout(() => {
-        $.value === l && ($.value = "");
+  setup(Zs) {
+    const { confirm: K } = ht(), o = u({ relationships: [], relationship_ledger: [], agenda: [], calendar_candidates: [], journal: [], dreams: [], audit: [], groups: {}, proactive: { candidates: [], receipts: [] }, persona_evolution: [] }), S = u(!1), k = u(""), N = u(""), $ = u(""), E = u(""), F = u(""), V = u(""), T = u(""), I = u(!1), U = u(""), p = u({ target: "", motive: "", content: "", preferred_at: "" }), b = u({ daily_limit: 6, per_target_limit: 2, quiet_start: 23, quiet_end: 8 }), D = z(() => Object.entries(o.value.groups || {})), O = z(() => (o.value.proactive?.candidates || []).filter((l) => !["delivered", "cancelled"].includes(l.status))), B = z(() => o.value.proactive?.receipts || []);
+    function y(l) {
+      N.value = l, setTimeout(() => {
+        N.value === l && (N.value = "");
       }, 2e3);
     }
-    const k = u(null);
+    const w = u(null);
     async function X() {
       try {
         const l = await fetch("/api/usage");
-        l.ok && (k.value = await l.json());
+        l.ok && (w.value = await l.json());
       } catch {
       }
     }
     async function x() {
-      S.value = !0, f.value = "";
+      S.value = !0, k.value = "";
       try {
         const l = await fetch("/api/life/companion");
         if (!l.ok) throw Error(String(l.status));
-        o.value = await l.json();
+        o.value = await l.json(), o.value?.policy && (b.value = { ...b.value, ...o.value.policy });
       } catch (l) {
-        f.value = l?.message || "无法读取 LIFE 陪伴状态";
+        k.value = l?.message || "无法读取 LIFE 陪伴状态";
       } finally {
         S.value = !1;
       }
       X();
     }
-    async function v(l, a) {
+    async function m(l, e) {
       try {
-        const e = await fetch("/api/life/companion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: l, payload: a }) });
-        if (!e.ok) throw Error(await e.text());
-        return await x(), await e.json().catch(() => ({}));
-      } catch (e) {
-        return f.value = e?.message || "操作失败", null;
+        const s = await fetch("/api/life/companion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: l, payload: e }) });
+        if (!s.ok) throw Error(await s.text());
+        return await x(), await s.json().catch(() => ({}));
+      } catch (s) {
+        return k.value = s?.message || "操作失败", null;
       }
     }
     async function Z() {
-      M.value.trim() && (await v("add_agenda", { title: M.value, when: E.value, detail: F.value }), M.value = "", E.value = "", F.value = "");
+      $.value.trim() && (await m("add_agenda", { title: $.value, when: E.value, detail: F.value }), $.value = "", E.value = "", F.value = "");
     }
-    async function q(l, a) {
-      a.trim() && (await v(l, { content: a }), l === "journal" ? T.value = "" : V.value = "");
+    async function H(l, e) {
+      e.trim() && (await m(l, { content: e }), l === "journal" ? V.value = "" : T.value = "");
     }
     function tt(l) {
       return `${Math.round(Math.max(0, Math.min(1, l || 0)) * 100)}%`;
     }
-    function G(l) {
+    function Q(l) {
       if (l.status === "completed") return { label: "已完成", cls: "chip-ok" };
-      const a = new Date(String(l.start_at || "").replace(" ", "T"));
-      return !Number.isNaN(a.getTime()) && a.getTime() <= Date.now() ? { label: "进行中", cls: "chip-warn" } : { label: "待开始", cls: "muted" };
+      const e = new Date(String(l.start_at || "").replace(" ", "T"));
+      return !Number.isNaN(e.getTime()) && e.getTime() <= Date.now() ? { label: "进行中", cls: "chip-warn" } : { label: "待开始", cls: "muted" };
     }
-    async function R(l, a) {
-      await v("relationship_adjust", { user_id: l, event_key: `manual:${Date.now()}`, reason: "dashboard_adjust", channel: "webui", delta: a }) && b(`已调整 ${l}`);
+    async function G(l, e) {
+      await m("relationship_adjust", { user_id: l, event_key: `manual:${Date.now()}`, reason: "dashboard_adjust", channel: "webui", delta: e }) && y(`已调整 ${l}`);
     }
     async function et() {
       if (!p.value.target.trim() || !p.value.content.trim()) return;
-      await v("proactive_create", { ...p.value }) && (p.value = { target: "", motive: "", content: "", preferred_at: "" }, b("已创建主动候选"));
+      await m("proactive_create", { ...p.value }) && (p.value = { target: "", motive: "", content: "", preferred_at: "" }, y("已创建主动候选"));
     }
-    async function at(l) {
-      await v("proactive_cancel", { id: l, reason: "dashboard_cancel" }), b("已取消候选");
+    async function st(l) {
+      await m("proactive_cancel", { id: l, reason: "dashboard_cancel" }), y("已取消候选");
     }
-    async function st() {
-      await v("proactive_policy", { daily_limit: Number(j.value.daily_limit), per_target_limit: Number(j.value.per_target_limit) }), b("策略已保存");
+    async function at() {
+      await m("proactive_policy", { daily_limit: Number(b.value.daily_limit), per_target_limit: Number(b.value.per_target_limit), quiet_start: Number(b.value.quiet_start), quiet_end: Number(b.value.quiet_end) }), y("策略已保存");
     }
     const L = u("");
-    async function W(l) {
+    async function R(l) {
       L.value = l;
       try {
-        const a = await fetch("/api/life/companion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: l === "journal" ? "journal_generate" : "dream_generate", payload: {} }) });
-        if (!a.ok) throw Error(await a.text());
-        await x(), b("已由 LIFE 生成");
-      } catch (a) {
-        f.value = a?.message || "生成失败";
+        const e = await fetch("/api/life/companion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: l === "journal" ? "journal_generate" : "dream_generate", payload: {} }) });
+        if (!e.ok) throw Error(await e.text());
+        await x(), y("已由 LIFE 生成");
+      } catch (e) {
+        k.value = e?.message || "生成失败";
       } finally {
         L.value = "";
       }
     }
     async function lt() {
       const l = p.value.target.trim() || "user:owner";
-      await v("proactive_suggest", { target: l, hint: p.value.motive }) && (p.value = { target: "", motive: "", content: "", preferred_at: "" }, b("已生成建议候选"));
+      await m("proactive_suggest", { target: l, hint: p.value.motive }) && (p.value = { target: "", motive: "", content: "", preferred_at: "" }, y("已生成建议候选"));
     }
     const P = u(!1);
     async function nt() {
@@ -146,62 +146,62 @@ const bt = { class: "page" }, yt = { class: "page-inner" }, ft = { class: "page-
       try {
         const l = await fetch("/api/life/companion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "proactive_tick", payload: {} }) });
         if (!l.ok) throw Error(await l.text());
-        const a = await l.json();
-        await x(), b(a?.skipped ? `本次跳过：${a.skipped}` : `已投递 ${a.delivered || 0} 条 · 拦截 ${a.blocked || 0} 条`);
+        const e = await l.json();
+        await x(), y(e?.skipped ? `本次跳过：${e.skipped}` : `已投递 ${e.delivered || 0} 条 · 拦截 ${e.blocked || 0} 条`);
       } catch (l) {
-        f.value = l?.message || "投递失败";
+        k.value = l?.message || "投递失败";
       } finally {
         P.value = !1;
       }
     }
-    const Y = u(!1);
+    const q = u(!1);
     async function it() {
-      Y.value = !0;
+      q.value = !0;
       try {
         const l = await fetch("/api/life/companion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "autonomy_plan", payload: {} }) });
         if (!l.ok) throw Error(await l.text());
-        const a = await l.json();
+        const e = await l.json();
         await x();
-        const e = a?.applied;
-        b(e ? `已自主规划：日程 ${e.agenda} · 主动 ${e.proactive} · 日记 ${e.journal}` : "本次没有新的规划");
+        const s = e?.applied;
+        y(s ? `已自主规划：日程 ${s.agenda} · 主动 ${s.proactive} · 日记 ${s.journal}` : "本次没有新的规划");
       } catch (l) {
-        f.value = l?.message || "规划失败";
+        k.value = l?.message || "规划失败";
       } finally {
-        Y.value = !1;
+        q.value = !1;
       }
     }
-    function z(l) {
-      const a = (l || "").trim(), e = /* @__PURE__ */ new Date();
-      e.setHours(0, 0, 0, 0);
+    function J(l) {
+      const e = (l || "").trim(), s = /* @__PURE__ */ new Date();
+      s.setHours(0, 0, 0, 0);
       let r = null;
-      return /^\d{4}-\d{2}-\d{2}$/.test(a) ? (r = new Date(a), r.setHours(0, 0, 0, 0), r < e && r.setFullYear(e.getFullYear() + 1)) : /^\d{2}-\d{2}$/.test(a) && (r = new Date(e.getFullYear(), Number(a.slice(0, 2)) - 1, Number(a.slice(3, 5))), r < e && r.setFullYear(e.getFullYear() + 1)), !r || Number.isNaN(r.getTime()) ? null : Math.round((r.getTime() - e.getTime()) / 864e5);
+      return /^\d{4}-\d{2}-\d{2}$/.test(e) ? (r = new Date(e), r.setHours(0, 0, 0, 0), r < s && r.setFullYear(s.getFullYear() + 1)) : /^\d{2}-\d{2}$/.test(e) && (r = new Date(s.getFullYear(), Number(e.slice(0, 2)) - 1, Number(e.slice(3, 5))), r < s && r.setFullYear(s.getFullYear() + 1)), !r || Number.isNaN(r.getTime()) ? null : Math.round((r.getTime() - s.getTime()) / 864e5);
     }
-    const h = u({ title: "", date: "", repeat_yearly: !0, note: "" });
+    const g = u({ title: "", date: "", repeat_yearly: !0, note: "" });
     async function ot() {
-      !h.value.title.trim() || !h.value.date.trim() || (await v("date_add", { ...h.value }), h.value = { title: "", date: "", repeat_yearly: !0, note: "" }, b("已添加重要日期"));
+      !g.value.title.trim() || !g.value.date.trim() || (await m("date_add", { ...g.value }), g.value = { title: "", date: "", repeat_yearly: !0, note: "" }, y("已添加重要日期"));
     }
     async function rt(l) {
-      await v("date_delete", { id: l }), b("已删除");
+      await m("date_delete", { id: l }), y("已删除");
     }
     async function dt() {
-      await v("circadian_eat", { amount: 45 }), b("已用餐");
+      await m("circadian_eat", { amount: 45 }), y("已用餐");
     }
     async function ut() {
-      const l = await v("daily_agenda", {});
-      b(l?.created ? `LIFE 已安排 ${l.created} 项活动` : "今天已有安排");
+      const l = await m("daily_agenda", {});
+      y(l?.created ? `LIFE 已安排 ${l.created} 项活动` : "今天已有安排");
     }
-    async function K(l) {
-      await Q({ title: l === "dream" ? "清除梦境" : "清除日记", message: "将删除全部该类型记录，无法恢复。", confirmLabel: "清除", danger: !0 }) && (await v("journal_clear", { kind: l }), b("已清除"));
+    async function W(l) {
+      await K({ title: l === "dream" ? "清除梦境" : "清除日记", message: "将删除全部该类型记录，无法恢复。", confirmLabel: "清除", danger: !0 }) && (await m("journal_clear", { kind: l }), y("已清除"));
     }
-    function A(l) {
+    function Y(l) {
       if (!l) return "";
-      const a = new Date(l);
-      return Number.isNaN(a.getTime()) ? l : a.toLocaleString();
+      const e = new Date(l);
+      return Number.isNaN(e.getTime()) ? l : e.toLocaleString();
     }
-    return vt(x), (l, a) => (n(), i("main", bt, [
+    return vt(x), (l, e) => (n(), i("main", gt, [
       t("div", yt, [
         t("header", ft, [
-          a[23] || (a[23] = t("div", null, [
+          e[25] || (e[25] = t("div", null, [
             t("p", { class: "eyebrow" }, "L.I.F.E / COMPANION"),
             t("h1", null, "陪伴面板"),
             t("p", { class: "subtitle" }, "日程、关系账本、主动行为、群聊观察、性格演化与审计均由 LIFE 插件维护。这里可以审阅并手动干预。")
@@ -209,48 +209,48 @@ const bt = { class: "page" }, yt = { class: "page-inner" }, ft = { class: "page-
           t("div", kt, [
             t("button", {
               class: "btn btn-primary",
-              disabled: Y.value,
+              disabled: q.value,
               onClick: it
-            }, s(Y.value ? "规划中…" : "让 LIFE 规划"), 9, wt),
+            }, a(q.value ? "规划中…" : "让 LIFE 规划"), 9, wt),
             t("button", {
               class: "btn btn-tonal",
               disabled: S.value,
               onClick: x
-            }, s(S.value ? "刷新中…" : "刷新"), 9, Ct)
+            }, a(S.value ? "刷新中…" : "刷新"), 9, Ct)
           ])
         ]),
-        f.value ? (n(), i("p", jt, s(f.value), 1)) : d("", !0),
-        $.value ? (n(), i("p", xt, s($.value), 1)) : d("", !0),
+        k.value ? (n(), i("p", jt, a(k.value), 1)) : d("", !0),
+        N.value ? (n(), i("p", xt, a(N.value), 1)) : d("", !0),
         t("section", Lt, [
-          t("article", $t, [
-            a[24] || (a[24] = B('<div class="stat-head" data-v-fa15a072><span class="icon-badge tone-1" aria-hidden="true" data-v-fa15a072><svg width="19" height="19" viewBox="0 0 24 24" fill="none" data-v-fa15a072><circle cx="9" cy="8.5" r="3.2" stroke="currentColor" stroke-width="1.7" data-v-fa15a072></circle><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M16 6.2a3.2 3.2 0 010 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" data-v-fa15a072></path></svg></span><span class="stat-label" data-v-fa15a072>关系对象</span></div>', 1)),
-            t("strong", Mt, s(o.value.relationships?.length || 0), 1),
-            a[25] || (a[25] = t("span", { class: "stat-hint" }, "被 LIFE 记住的人", -1))
-          ]),
           t("article", Nt, [
-            a[26] || (a[26] = B('<div class="stat-head" data-v-fa15a072><span class="icon-badge tone-2" aria-hidden="true" data-v-fa15a072><svg width="19" height="19" viewBox="0 0 24 24" fill="none" data-v-fa15a072><rect x="4" y="5.5" width="16" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7" data-v-fa15a072></rect><path d="M8 3.5v4M16 3.5v4M4 10h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" data-v-fa15a072></path></svg></span><span class="stat-label" data-v-fa15a072>活动日程</span></div>', 1)),
-            t("strong", St, s(o.value.agenda?.filter((e) => e.status === "active").length || 0), 1),
-            a[27] || (a[27] = t("span", { class: "stat-hint" }, "待确认 + 已确认", -1))
+            e[26] || (e[26] = A('<div class="stat-head" data-v-e179c1ac><span class="icon-badge tone-1" aria-hidden="true" data-v-e179c1ac><svg width="19" height="19" viewBox="0 0 24 24" fill="none" data-v-e179c1ac><circle cx="9" cy="8.5" r="3.2" stroke="currentColor" stroke-width="1.7" data-v-e179c1ac></circle><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M16 6.2a3.2 3.2 0 010 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" data-v-e179c1ac></path></svg></span><span class="stat-label" data-v-e179c1ac>关系对象</span></div>', 1)),
+            t("strong", $t, a(o.value.relationships?.length || 0), 1),
+            e[27] || (e[27] = t("span", { class: "stat-hint" }, "被 LIFE 记住的人", -1))
+          ]),
+          t("article", Mt, [
+            e[28] || (e[28] = A('<div class="stat-head" data-v-e179c1ac><span class="icon-badge tone-2" aria-hidden="true" data-v-e179c1ac><svg width="19" height="19" viewBox="0 0 24 24" fill="none" data-v-e179c1ac><rect x="4" y="5.5" width="16" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7" data-v-e179c1ac></rect><path d="M8 3.5v4M16 3.5v4M4 10h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" data-v-e179c1ac></path></svg></span><span class="stat-label" data-v-e179c1ac>活动日程</span></div>', 1)),
+            t("strong", St, a(o.value.agenda?.filter((s) => s.status === "active").length || 0), 1),
+            e[29] || (e[29] = t("span", { class: "stat-hint" }, "待确认 + 已确认", -1))
           ]),
           t("article", Et, [
-            a[28] || (a[28] = B('<div class="stat-head" data-v-fa15a072><span class="icon-badge tone-3" aria-hidden="true" data-v-fa15a072><svg width="19" height="19" viewBox="0 0 24 24" fill="none" data-v-fa15a072><path d="M12 4l1.7 4.6L18 10l-4.3 1.4L12 16l-1.7-4.6L6 10l4.3-1.4L12 4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" data-v-fa15a072></path></svg></span><span class="stat-label" data-v-fa15a072>待投递主动行为</span></div>', 1)),
-            t("strong", Ft, s(O.value.length), 1),
-            t("span", Tt, "已投递 " + s(J.value.length) + " 次", 1)
+            e[30] || (e[30] = A('<div class="stat-head" data-v-e179c1ac><span class="icon-badge tone-3" aria-hidden="true" data-v-e179c1ac><svg width="19" height="19" viewBox="0 0 24 24" fill="none" data-v-e179c1ac><path d="M12 4l1.7 4.6L18 10l-4.3 1.4L12 16l-1.7-4.6L6 10l4.3-1.4L12 4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" data-v-e179c1ac></path></svg></span><span class="stat-label" data-v-e179c1ac>待投递主动行为</span></div>', 1)),
+            t("strong", Ft, a(O.value.length), 1),
+            t("span", Vt, "已投递 " + a(B.value.length) + " 次", 1)
           ]),
-          t("article", Vt, [
-            a[29] || (a[29] = B('<div class="stat-head" data-v-fa15a072><span class="icon-badge tone-4" aria-hidden="true" data-v-fa15a072><svg width="19" height="19" viewBox="0 0 24 24" fill="none" data-v-fa15a072><path d="M5 6.5h14A1.5 1.5 0 0120.5 8v8a1.5 1.5 0 01-1.5 1.5H9l-4 3v-3H5A1.5 1.5 0 013.5 16V8A1.5 1.5 0 015 6.5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" data-v-fa15a072></path></svg></span><span class="stat-label" data-v-fa15a072>已观察群聊</span></div>', 1)),
-            t("strong", It, s(D.value.length), 1),
-            a[30] || (a[30] = t("span", { class: "stat-hint" }, "群消息学习", -1))
+          t("article", Tt, [
+            e[31] || (e[31] = A('<div class="stat-head" data-v-e179c1ac><span class="icon-badge tone-4" aria-hidden="true" data-v-e179c1ac><svg width="19" height="19" viewBox="0 0 24 24" fill="none" data-v-e179c1ac><path d="M5 6.5h14A1.5 1.5 0 0120.5 8v8a1.5 1.5 0 01-1.5 1.5H9l-4 3v-3H5A1.5 1.5 0 013.5 16V8A1.5 1.5 0 015 6.5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" data-v-e179c1ac></path></svg></span><span class="stat-label" data-v-e179c1ac>已观察群聊</span></div>', 1)),
+            t("strong", It, a(D.value.length), 1),
+            e[32] || (e[32] = t("span", { class: "stat-hint" }, "群消息学习", -1))
           ])
         ]),
         t("section", Ut, [
-          t("span", Dt, "精力 " + s(Math.round(o.value.circadian?.mental_energy ?? 0)), 1),
+          t("span", Dt, "精力 " + a(Math.round(o.value.circadian?.mental_energy ?? 0)), 1),
           t("span", {
-            class: C(["state-pill", { warn: (o.value.circadian?.hunger ?? 0) >= 75 }])
-          }, "饥饿 " + s(Math.round(o.value.circadian?.hunger ?? 0)), 3),
+            class: j(["state-pill", { warn: (o.value.circadian?.hunger ?? 0) >= 75 }])
+          }, "饥饿 " + a(Math.round(o.value.circadian?.hunger ?? 0)), 3),
           t("span", {
-            class: C(["state-pill", { warn: (o.value.circadian?.health ?? 100) < 60 }])
-          }, "健康 " + s(Math.round(o.value.circadian?.health ?? 100)), 3),
+            class: j(["state-pill", { warn: (o.value.circadian?.health ?? 100) < 60 }])
+          }, "健康 " + a(Math.round(o.value.circadian?.health ?? 100)), 3),
           o.value.circadian?.is_sleeping ? (n(), i("span", Ot, "睡眠中")) : d("", !0),
           t("button", {
             class: "btn btn-tonal btn-sm",
@@ -258,11 +258,11 @@ const bt = { class: "page" }, yt = { class: "page-inner" }, ft = { class: "page-
           }, "吃饭")
         ]),
         t("section", Pt, [
-          a[41] || (a[41] = t("h2", { class: "group-title" }, "生活", -1)),
-          t("div", Yt, [
-            t("article", At, [
+          e[43] || (e[43] = t("h2", { class: "group-title" }, "生活", -1)),
+          t("div", qt, [
+            t("article", Yt, [
               t("div", { class: "card-head" }, [
-                a[31] || (a[31] = t("h2", { class: "card-title" }, "日程", -1)),
+                e[33] || (e[33] = t("h2", { class: "card-title" }, "日程", -1)),
                 t("button", {
                   class: "btn btn-tonal btn-sm",
                   onClick: ut
@@ -270,81 +270,81 @@ const bt = { class: "page" }, yt = { class: "page-inner" }, ft = { class: "page-
               ]),
               t("form", {
                 class: "agenda-form",
-                onSubmit: N(Z, ["prevent"])
+                onSubmit: M(Z, ["prevent"])
               }, [
-                _(t("input", {
-                  "onUpdate:modelValue": a[0] || (a[0] = (e) => M.value = e),
+                v(t("input", {
+                  "onUpdate:modelValue": e[0] || (e[0] = (s) => $.value = s),
                   class: "input",
                   placeholder: "日程标题",
                   "aria-label": "日程标题"
                 }, null, 512), [
-                  [g, M.value]
+                  [_, $.value]
                 ]),
-                _(t("input", {
-                  "onUpdate:modelValue": a[1] || (a[1] = (e) => E.value = e),
+                v(t("input", {
+                  "onUpdate:modelValue": e[1] || (e[1] = (s) => E.value = s),
                   class: "input",
                   placeholder: "时间，例如 2026-09-25 20:00",
                   "aria-label": "时间"
                 }, null, 512), [
-                  [g, E.value]
+                  [_, E.value]
                 ]),
-                a[32] || (a[32] = t("button", {
+                e[34] || (e[34] = t("button", {
                   class: "btn btn-primary",
                   type: "submit"
                 }, "创建候选", -1)),
-                _(t("textarea", {
-                  "onUpdate:modelValue": a[2] || (a[2] = (e) => F.value = e),
+                v(t("textarea", {
+                  "onUpdate:modelValue": e[2] || (e[2] = (s) => F.value = s),
                   class: "input area",
                   placeholder: "说明（可选）"
                 }, null, 512), [
-                  [g, F.value]
+                  [_, F.value]
                 ])
               ], 32),
-              a[33] || (a[33] = t("h3", { class: "section-label" }, "待确认候选", -1)),
-              t("ul", Bt, [
-                (n(!0), i(c, null, m(o.value.calendar_candidates?.filter((e) => e.status === "pending_confirmation"), (e) => (n(), i("li", {
-                  key: e.id,
+              e[35] || (e[35] = t("h3", { class: "section-label" }, "待确认候选", -1)),
+              t("ul", At, [
+                (n(!0), i(c, null, h(o.value.calendar_candidates?.filter((s) => s.status === "pending_confirmation"), (s) => (n(), i("li", {
+                  key: s.id,
                   class: "item"
                 }, [
-                  t("div", Jt, [
-                    t("strong", null, s(e.title), 1),
-                    t("span", zt, s(e.when_text) + " · " + s(e.detail || "等待你确认"), 1)
+                  t("div", Bt, [
+                    t("strong", null, a(s.title), 1),
+                    t("span", Jt, a(s.when_text) + " · " + a(s.detail || "等待你确认"), 1)
                   ]),
-                  t("div", Ht, [
+                  t("div", zt, [
                     t("button", {
                       class: "btn btn-primary btn-sm",
-                      onClick: (r) => v("confirm_agenda", { id: e.id })
-                    }, "确认", 8, qt),
+                      onClick: (r) => m("confirm_agenda", { id: s.id })
+                    }, "确认", 8, Ht),
                     t("button", {
                       class: "btn btn-danger btn-sm",
-                      onClick: (r) => v("reject_agenda", { id: e.id })
-                    }, "拒绝", 8, Gt)
+                      onClick: (r) => m("reject_agenda", { id: s.id })
+                    }, "拒绝", 8, Qt)
                   ])
                 ]))), 128)),
-                o.value.calendar_candidates?.filter((e) => e.status === "pending_confirmation").length ? d("", !0) : (n(), i("li", Rt, "没有待确认的日程候选"))
+                o.value.calendar_candidates?.filter((s) => s.status === "pending_confirmation").length ? d("", !0) : (n(), i("li", Gt, "没有待确认的日程候选"))
               ]),
-              a[34] || (a[34] = t("h3", { class: "section-label" }, [
-                y("今天的日程 "),
+              e[36] || (e[36] = t("h3", { class: "section-label" }, [
+                f("今天的日程 "),
                 t("small", { class: "hint-inline" }, "LIFE 按时间自动推进")
               ], -1)),
-              t("ul", Wt, [
-                (n(!0), i(c, null, m(o.value.agenda, (e) => (n(), i("li", {
-                  key: e.id,
+              t("ul", Rt, [
+                (n(!0), i(c, null, h(o.value.agenda, (s) => (n(), i("li", {
+                  key: s.id,
                   class: "item"
                 }, [
-                  t("div", Kt, [
-                    t("div", Qt, [
+                  t("div", Wt, [
+                    t("div", Kt, [
                       t("strong", {
-                        class: C({ done: e.status === "completed" })
-                      }, s(e.title), 3),
+                        class: j({ done: s.status === "completed" })
+                      }, a(s.title), 3),
                       t("span", {
-                        class: C(["chip", G(e).cls])
-                      }, s(G(e).label), 3)
+                        class: j(["chip", Q(s).cls])
+                      }, a(Q(s).label), 3)
                     ]),
                     t("span", Xt, [
-                      y(s(e.start_at), 1),
-                      e.detail ? (n(), i(c, { key: 0 }, [
-                        y(" · " + s(e.detail), 1)
+                      f(a(s.start_at), 1),
+                      s.detail ? (n(), i(c, { key: 0 }, [
+                        f(" · " + a(s.detail), 1)
                       ], 64)) : d("", !0)
                     ])
                   ])
@@ -354,73 +354,73 @@ const bt = { class: "page" }, yt = { class: "page-inner" }, ft = { class: "page-
             ]),
             t("article", te, [
               t("div", ee, [
-                a[35] || (a[35] = t("h2", { class: "card-title" }, "重要日期", -1)),
-                t("span", ae, s((o.value.important_dates || []).length), 1)
+                e[37] || (e[37] = t("h2", { class: "card-title" }, "重要日期", -1)),
+                t("span", se, a((o.value.important_dates || []).length), 1)
               ]),
               t("form", {
                 class: "stack-form",
-                onSubmit: N(ot, ["prevent"])
+                onSubmit: M(ot, ["prevent"])
               }, [
-                _(t("input", {
-                  "onUpdate:modelValue": a[3] || (a[3] = (e) => h.value.title = e),
+                v(t("input", {
+                  "onUpdate:modelValue": e[3] || (e[3] = (s) => g.value.title = s),
                   class: "input",
                   placeholder: "名称，如 生日 / 纪念日",
                   "aria-label": "重要日期名称"
                 }, null, 512), [
-                  [g, h.value.title]
+                  [_, g.value.title]
                 ]),
-                _(t("input", {
-                  "onUpdate:modelValue": a[4] || (a[4] = (e) => h.value.date = e),
+                v(t("input", {
+                  "onUpdate:modelValue": e[4] || (e[4] = (s) => g.value.date = s),
                   class: "input",
                   placeholder: "日期：YYYY-MM-DD 或 MM-DD",
                   "aria-label": "重要日期"
                 }, null, 512), [
-                  [g, h.value.date]
+                  [_, g.value.date]
                 ]),
-                _(t("input", {
-                  "onUpdate:modelValue": a[5] || (a[5] = (e) => h.value.note = e),
+                v(t("input", {
+                  "onUpdate:modelValue": e[5] || (e[5] = (s) => g.value.note = s),
                   class: "input",
                   placeholder: "备注（可选）",
                   "aria-label": "备注"
                 }, null, 512), [
-                  [g, h.value.note]
+                  [_, g.value.note]
                 ]),
-                t("label", se, [
-                  _(t("input", {
+                t("label", ae, [
+                  v(t("input", {
                     type: "checkbox",
-                    "onUpdate:modelValue": a[6] || (a[6] = (e) => h.value.repeat_yearly = e)
+                    "onUpdate:modelValue": e[6] || (e[6] = (s) => g.value.repeat_yearly = s)
                   }, null, 512), [
-                    [_t, h.value.repeat_yearly]
+                    [_t, g.value.repeat_yearly]
                   ]),
-                  a[36] || (a[36] = y(" 每年重复", -1))
+                  e[38] || (e[38] = f(" 每年重复", -1))
                 ]),
                 t("button", {
                   class: "btn btn-primary",
                   type: "submit",
-                  disabled: !h.value.title.trim() || !h.value.date.trim()
+                  disabled: !g.value.title.trim() || !g.value.date.trim()
                 }, "添加", 8, le)
               ], 32),
               t("ul", ne, [
-                (n(!0), i(c, null, m(o.value.important_dates, (e) => (n(), i("li", {
-                  key: e.id,
+                (n(!0), i(c, null, h(o.value.important_dates, (s) => (n(), i("li", {
+                  key: s.id,
                   class: "item"
                 }, [
                   t("div", ie, [
-                    t("strong", null, s(e.title), 1),
+                    t("strong", null, a(s.title), 1),
                     t("span", oe, [
-                      y(s(e.date_text), 1),
-                      z(e.date_text) !== null ? (n(), i(c, { key: 0 }, [
-                        y(" · " + s(z(e.date_text) === 0 ? "就是今天" : z(e.date_text) + " 天后"), 1)
+                      f(a(s.date_text), 1),
+                      J(s.date_text) !== null ? (n(), i(c, { key: 0 }, [
+                        f(" · " + a(J(s.date_text) === 0 ? "就是今天" : J(s.date_text) + " 天后"), 1)
                       ], 64)) : d("", !0),
-                      e.note ? (n(), i(c, { key: 1 }, [
-                        y(" · " + s(e.note), 1)
+                      s.note ? (n(), i(c, { key: 1 }, [
+                        f(" · " + a(s.note), 1)
                       ], 64)) : d("", !0)
                     ])
                   ]),
                   t("div", re, [
                     t("button", {
                       class: "btn btn-danger btn-sm",
-                      onClick: (r) => rt(e.id)
+                      onClick: (r) => rt(s.id)
                     }, "删除", 8, de)
                   ])
                 ]))), 128)),
@@ -429,82 +429,82 @@ const bt = { class: "page" }, yt = { class: "page-inner" }, ft = { class: "page-
             ]),
             t("article", ce, [
               t("div", pe, [
-                a[37] || (a[37] = t("h2", { class: "card-title" }, "日记", -1)),
+                e[39] || (e[39] = t("h2", { class: "card-title" }, "日记", -1)),
                 t("div", ve, [
                   t("button", {
                     class: "btn btn-danger btn-sm",
-                    onClick: a[7] || (a[7] = (e) => K("journal"))
+                    onClick: e[7] || (e[7] = (s) => W("journal"))
                   }, "清除"),
                   t("button", {
                     class: "btn btn-tonal btn-sm",
                     disabled: L.value === "journal",
-                    onClick: a[8] || (a[8] = (e) => W("journal"))
-                  }, s(L.value === "journal" ? "生成中…" : "由 LIFE 生成"), 9, _e)
+                    onClick: e[8] || (e[8] = (s) => R("journal"))
+                  }, a(L.value === "journal" ? "生成中…" : "由 LIFE 生成"), 9, _e)
                 ])
               ]),
               t("form", {
                 class: "stack-form",
-                onSubmit: a[10] || (a[10] = N((e) => q("journal", T.value), ["prevent"]))
+                onSubmit: e[10] || (e[10] = M((s) => H("journal", V.value), ["prevent"]))
               }, [
-                _(t("textarea", {
-                  "onUpdate:modelValue": a[9] || (a[9] = (e) => T.value = e),
+                v(t("textarea", {
+                  "onUpdate:modelValue": e[9] || (e[9] = (s) => V.value = s),
                   class: "input area",
                   placeholder: "记录 LIFE 的日记…"
                 }, null, 512), [
-                  [g, T.value]
+                  [_, V.value]
                 ]),
-                a[38] || (a[38] = t("button", {
+                e[40] || (e[40] = t("button", {
                   class: "btn btn-tonal",
                   type: "submit"
                 }, "写入日记", -1))
               ], 32),
               t("ol", me, [
-                (n(!0), i(c, null, m(o.value.journal, (e) => (n(), i("li", {
-                  key: e.id
+                (n(!0), i(c, null, h(o.value.journal, (s) => (n(), i("li", {
+                  key: s.id
                 }, [
-                  t("time", null, s(e.at), 1),
-                  t("p", null, s(e.content), 1)
+                  t("time", null, a(s.at), 1),
+                  t("p", null, a(s.content), 1)
                 ]))), 128)),
                 o.value.journal?.length ? d("", !0) : (n(), i("li", he, "还没有日记"))
               ])
             ]),
-            t("article", ge, [
-              t("div", be, [
-                a[39] || (a[39] = t("h2", { class: "card-title" }, "梦境", -1)),
+            t("article", be, [
+              t("div", ge, [
+                e[41] || (e[41] = t("h2", { class: "card-title" }, "梦境", -1)),
                 t("div", ye, [
                   t("button", {
                     class: "btn btn-danger btn-sm",
-                    onClick: a[11] || (a[11] = (e) => K("dream"))
+                    onClick: e[11] || (e[11] = (s) => W("dream"))
                   }, "清除"),
                   t("button", {
                     class: "btn btn-tonal btn-sm",
                     disabled: L.value === "dream",
-                    onClick: a[12] || (a[12] = (e) => W("dream"))
-                  }, s(L.value === "dream" ? "生成中…" : "由 LIFE 生成"), 9, fe)
+                    onClick: e[12] || (e[12] = (s) => R("dream"))
+                  }, a(L.value === "dream" ? "生成中…" : "由 LIFE 生成"), 9, fe)
                 ])
               ]),
               t("form", {
                 class: "stack-form",
-                onSubmit: a[14] || (a[14] = N((e) => q("dream", V.value), ["prevent"]))
+                onSubmit: e[14] || (e[14] = M((s) => H("dream", T.value), ["prevent"]))
               }, [
-                _(t("textarea", {
-                  "onUpdate:modelValue": a[13] || (a[13] = (e) => V.value = e),
+                v(t("textarea", {
+                  "onUpdate:modelValue": e[13] || (e[13] = (s) => T.value = s),
                   class: "input area",
                   placeholder: "记录一个梦境或睡眠反思…"
                 }, null, 512), [
-                  [g, V.value]
+                  [_, T.value]
                 ]),
-                a[40] || (a[40] = t("button", {
+                e[42] || (e[42] = t("button", {
                   class: "btn btn-tonal",
                   type: "submit"
                 }, "记录梦境", -1))
               ], 32),
               t("ol", ke, [
-                (n(!0), i(c, null, m(o.value.dreams, (e) => (n(), i("li", {
-                  key: e.id
+                (n(!0), i(c, null, h(o.value.dreams, (s) => (n(), i("li", {
+                  key: s.id
                 }, [
-                  t("time", null, s(e.at), 1),
-                  t("p", null, s(e.content), 1)
+                  t("time", null, a(s.at), 1),
+                  t("p", null, a(s.content), 1)
                 ]))), 128)),
                 o.value.dreams?.length ? d("", !0) : (n(), i("li", we, "还没有梦境记录"))
               ])
@@ -512,101 +512,101 @@ const bt = { class: "page" }, yt = { class: "page-inner" }, ft = { class: "page-
           ])
         ]),
         t("section", Ce, [
-          a[44] || (a[44] = t("h2", { class: "group-title" }, "关系", -1)),
+          e[46] || (e[46] = t("h2", { class: "group-title" }, "关系", -1)),
           t("div", je, [
             t("article", xe, [
               t("div", Le, [
-                a[42] || (a[42] = t("h2", { class: "card-title" }, "关系账本", -1)),
+                e[44] || (e[44] = t("h2", { class: "card-title" }, "关系账本", -1)),
                 t("button", {
                   class: "btn btn-tonal btn-sm",
-                  onClick: a[15] || (a[15] = (e) => I.value = !I.value)
-                }, s(I.value ? "隐藏事件" : "查看事件账本"), 1)
+                  onClick: e[15] || (e[15] = (s) => I.value = !I.value)
+                }, a(I.value ? "隐藏事件" : "查看事件账本"), 1)
               ]),
-              t("ul", $e, [
-                (n(!0), i(c, null, m(o.value.relationships, (e) => (n(), i("li", {
-                  key: e.user_id,
+              t("ul", Ne, [
+                (n(!0), i(c, null, h(o.value.relationships, (s) => (n(), i("li", {
+                  key: s.user_id,
                   class: "rel"
                 }, [
-                  t("span", Me, s((e.user_id || "?").slice(0, 1).toUpperCase()), 1),
-                  t("div", Ne, [
+                  t("span", $e, a((s.user_id || "?").slice(0, 1).toUpperCase()), 1),
+                  t("div", Me, [
                     t("div", Se, [
-                      t("strong", null, s(e.user_id), 1),
-                      t("span", Ee, s(e.stage), 1)
+                      t("strong", null, a(s.user_id), 1),
+                      t("span", Ee, a(s.stage), 1)
                     ]),
                     t("div", Fe, [
-                      t("div", Te, [
+                      t("div", Ve, [
                         t("i", {
-                          style: mt({ width: tt(e.affinity) })
+                          style: mt({ width: tt(s.affinity) })
                         }, null, 4)
                       ]),
-                      t("b", null, s(Math.round((e.affinity || 0) * 100)) + "%", 1)
+                      t("b", null, a(Math.round((s.affinity || 0) * 100)) + "%", 1)
                     ]),
-                    t("span", Ve, "最近互动：" + s(e.last_seen || "暂无"), 1)
+                    t("span", Te, "最近互动：" + a(s.last_seen || "暂无"), 1)
                   ]),
                   t("div", Ie, [
                     t("button", {
                       class: "btn btn-sm btn-tonal",
                       title: "更亲近",
-                      onClick: (r) => R(e.user_id, 0.05)
+                      onClick: (r) => G(s.user_id, 0.05)
                     }, "+", 8, Ue),
                     t("button", {
                       class: "btn btn-sm btn-tonal",
                       title: "更疏远",
-                      onClick: (r) => R(e.user_id, -0.05)
+                      onClick: (r) => G(s.user_id, -0.05)
                     }, "−", 8, De)
                   ])
                 ]))), 128)),
                 o.value.relationships?.length ? d("", !0) : (n(), i("li", Oe, "暂无关系记录"))
               ]),
               I.value ? (n(), i("div", Pe, [
-                t("h3", Ye, "事件账本（最近 " + s(o.value.relationship_ledger?.length || 0) + " 条）", 1),
-                t("ol", Ae, [
-                  (n(!0), i(c, null, m(o.value.relationship_ledger, (e) => (n(), i("li", {
-                    key: e.id
+                t("h3", qe, "事件账本（最近 " + a(o.value.relationship_ledger?.length || 0) + " 条）", 1),
+                t("ol", Ye, [
+                  (n(!0), i(c, null, h(o.value.relationship_ledger, (s) => (n(), i("li", {
+                    key: s.id
                   }, [
-                    t("time", null, s(A(e.created_at)), 1),
+                    t("time", null, a(Y(s.created_at)), 1),
                     t("p", null, [
-                      t("strong", null, s(e.user_id), 1),
-                      y(" · " + s(e.event_key) + " ", 1),
+                      t("strong", null, a(s.user_id), 1),
+                      f(" · " + a(s.event_key) + " ", 1),
                       t("span", {
-                        class: C(e.delta >= 0 ? "pos" : "neg")
-                      }, s(e.delta >= 0 ? "+" : "") + s(e.delta), 3),
-                      y(" · " + s(e.reason) + " (" + s(e.channel) + ")", 1)
+                        class: j(s.delta >= 0 ? "pos" : "neg")
+                      }, a(s.delta >= 0 ? "+" : "") + a(s.delta), 3),
+                      f(" · " + a(s.reason) + " (" + a(s.channel) + ")", 1)
                     ])
                   ]))), 128)),
-                  o.value.relationship_ledger?.length ? d("", !0) : (n(), i("li", Be, "暂无关系事件"))
+                  o.value.relationship_ledger?.length ? d("", !0) : (n(), i("li", Ae, "暂无关系事件"))
                 ])
               ])) : d("", !0)
             ]),
-            t("article", Je, [
-              a[43] || (a[43] = t("div", { class: "card-head" }, [
+            t("article", Be, [
+              e[45] || (e[45] = t("div", { class: "card-head" }, [
                 t("h2", { class: "card-title" }, "成长中的性格")
               ], -1)),
-              t("ul", ze, [
-                (n(!0), i(c, null, m(o.value.persona_evolution, (e) => (n(), i("li", {
-                  key: e.id,
+              t("ul", Je, [
+                (n(!0), i(c, null, h(o.value.persona_evolution, (s) => (n(), i("li", {
+                  key: s.id,
                   class: "item trait-item"
                 }, [
-                  t("div", He, [
-                    t("strong", null, s(e.trait), 1),
-                    t("span", qe, "支持 " + s(e.support_count) + " 次 · 置信度 " + s(Math.round((e.confidence || 0) * 100)) + "%", 1)
+                  t("div", ze, [
+                    t("strong", null, a(s.trait), 1),
+                    t("span", He, "支持 " + a(s.support_count) + " 次 · 置信度 " + a(Math.round((s.confidence || 0) * 100)) + "%", 1)
                   ]),
-                  t("span", Ge, s(e.value), 1)
+                  t("span", Qe, a(s.value), 1)
                 ]))), 128)),
-                o.value.persona_evolution?.length ? d("", !0) : (n(), i("li", Re, "LIFE 还在观察，重复出现的稳定倾向才会被确认。"))
+                o.value.persona_evolution?.length ? d("", !0) : (n(), i("li", Ge, "LIFE 还在观察，重复出现的稳定倾向才会被确认。"))
               ])
             ])
           ])
         ]),
-        t("section", We, [
-          a[51] || (a[51] = t("h2", { class: "group-title" }, "主动行为", -1)),
-          t("div", Ke, [
-            t("article", Qe, [
+        t("section", Re, [
+          e[56] || (e[56] = t("h2", { class: "group-title" }, "主动行为", -1)),
+          t("div", We, [
+            t("article", Ke, [
               t("div", Xe, [
-                a[45] || (a[45] = t("h2", { class: "card-title" }, "主动行为", -1)),
-                t("span", Ze, "待投递 " + s(O.value.length), 1)
+                e[47] || (e[47] = t("h2", { class: "card-title" }, "主动行为", -1)),
+                t("span", Ze, "待投递 " + a(O.value.length), 1)
               ]),
-              t("div", ta, [
+              t("div", ts, [
                 t("button", {
                   class: "btn btn-tonal btn-sm",
                   onClick: lt
@@ -615,98 +615,132 @@ const bt = { class: "page" }, yt = { class: "page-inner" }, ft = { class: "page-
                   class: "btn btn-tonal btn-sm",
                   disabled: P.value,
                   onClick: nt
-                }, s(P.value ? "检查中…" : "立即检查投递"), 9, ea)
+                }, a(P.value ? "检查中…" : "立即检查投递"), 9, es)
               ]),
               t("form", {
                 class: "stack-form",
-                onSubmit: N(et, ["prevent"])
+                onSubmit: M(et, ["prevent"])
               }, [
-                _(t("input", {
-                  "onUpdate:modelValue": a[16] || (a[16] = (e) => p.value.target = e),
+                v(t("input", {
+                  "onUpdate:modelValue": e[16] || (e[16] = (s) => p.value.target = s),
                   class: "input",
-                  placeholder: "对象（user_id / 会话）",
+                  placeholder: "目标：session:<会话ID> / user:<QQ> / group:<群号>",
                   "aria-label": "主动对象"
                 }, null, 512), [
-                  [g, p.value.target]
+                  [_, p.value.target]
                 ]),
-                _(t("input", {
-                  "onUpdate:modelValue": a[17] || (a[17] = (e) => p.value.motive = e),
+                v(t("input", {
+                  "onUpdate:modelValue": e[17] || (e[17] = (s) => p.value.motive = s),
                   class: "input",
                   placeholder: "动机，如 care / reminder",
                   "aria-label": "动机"
                 }, null, 512), [
-                  [g, p.value.motive]
+                  [_, p.value.motive]
                 ]),
-                _(t("input", {
-                  "onUpdate:modelValue": a[18] || (a[18] = (e) => p.value.preferred_at = e),
+                v(t("input", {
+                  "onUpdate:modelValue": e[18] || (e[18] = (s) => p.value.preferred_at = s),
                   class: "input",
                   placeholder: "期望时间（可选，ISO）",
                   "aria-label": "期望时间"
                 }, null, 512), [
-                  [g, p.value.preferred_at]
+                  [_, p.value.preferred_at]
                 ]),
-                _(t("textarea", {
-                  "onUpdate:modelValue": a[19] || (a[19] = (e) => p.value.content = e),
+                v(t("textarea", {
+                  "onUpdate:modelValue": e[19] || (e[19] = (s) => p.value.content = s),
                   class: "input area",
                   placeholder: "想说的内容…"
                 }, null, 512), [
-                  [g, p.value.content]
+                  [_, p.value.content]
                 ]),
                 t("button", {
                   class: "btn btn-primary",
                   type: "submit",
                   disabled: !p.value.target.trim() || !p.value.content.trim()
-                }, "创建候选", 8, aa)
+                }, "创建候选", 8, ss)
               ], 32),
-              a[48] || (a[48] = t("h3", { class: "section-label" }, "候选队列", -1)),
-              t("ul", sa, [
-                (n(!0), i(c, null, m(O.value, (e) => (n(), i("li", {
-                  key: e.id,
+              e[52] || (e[52] = t("h3", { class: "section-label" }, "候选队列", -1)),
+              t("ul", as, [
+                (n(!0), i(c, null, h(O.value, (s) => (n(), i("li", {
+                  key: s.id,
                   class: "item"
                 }, [
-                  t("div", la, [
-                    t("strong", null, s(e.target) + " · " + s(e.motive), 1),
-                    t("span", na, s(e.content), 1),
-                    t("span", ia, "状态 " + s(e.status) + " · " + s(A(e.created_at)), 1)
+                  t("div", ls, [
+                    t("strong", null, a(s.target) + " · " + a(s.motive), 1),
+                    t("span", ns, a(s.content), 1),
+                    t("span", is, "状态 " + a(s.status) + " · " + a(Y(s.created_at)), 1)
                   ]),
-                  t("div", oa, [
+                  t("div", os, [
                     t("button", {
                       class: "btn btn-danger btn-sm",
-                      onClick: (r) => at(e.id)
-                    }, "取消", 8, ra)
+                      onClick: (r) => st(s.id)
+                    }, "取消", 8, rs)
                   ])
                 ]))), 128)),
-                O.value.length ? d("", !0) : (n(), i("li", da, "没有待投递候选"))
+                O.value.length ? d("", !0) : (n(), i("li", ds, "没有待投递候选"))
               ]),
-              a[49] || (a[49] = t("h3", { class: "section-label" }, "配额策略", -1)),
-              t("div", ua, [
-                t("label", ca, [
-                  a[46] || (a[46] = t("span", null, "每日上限", -1)),
-                  _(t("input", {
-                    "onUpdate:modelValue": a[20] || (a[20] = (e) => j.value.daily_limit = e),
+              e[53] || (e[53] = t("h3", { class: "section-label" }, "配额策略", -1)),
+              t("div", us, [
+                t("label", cs, [
+                  e[48] || (e[48] = t("span", null, "每日上限", -1)),
+                  v(t("input", {
+                    "onUpdate:modelValue": e[20] || (e[20] = (s) => b.value.daily_limit = s),
                     type: "number",
                     min: "0",
                     class: "input tiny"
                   }, null, 512), [
                     [
-                      g,
-                      j.value.daily_limit,
+                      _,
+                      b.value.daily_limit,
                       void 0,
                       { number: !0 }
                     ]
                   ])
                 ]),
-                t("label", pa, [
-                  a[47] || (a[47] = t("span", null, "单人上限", -1)),
-                  _(t("input", {
-                    "onUpdate:modelValue": a[21] || (a[21] = (e) => j.value.per_target_limit = e),
+                t("label", ps, [
+                  e[49] || (e[49] = t("span", null, "单人上限", -1)),
+                  v(t("input", {
+                    "onUpdate:modelValue": e[21] || (e[21] = (s) => b.value.per_target_limit = s),
                     type: "number",
                     min: "0",
                     class: "input tiny"
                   }, null, 512), [
                     [
-                      g,
-                      j.value.per_target_limit,
+                      _,
+                      b.value.per_target_limit,
+                      void 0,
+                      { number: !0 }
+                    ]
+                  ])
+                ]),
+                t("label", vs, [
+                  e[50] || (e[50] = t("span", null, "免打扰起", -1)),
+                  v(t("input", {
+                    "onUpdate:modelValue": e[22] || (e[22] = (s) => b.value.quiet_start = s),
+                    type: "number",
+                    min: "0",
+                    max: "23",
+                    class: "input tiny"
+                  }, null, 512), [
+                    [
+                      _,
+                      b.value.quiet_start,
+                      void 0,
+                      { number: !0 }
+                    ]
+                  ])
+                ]),
+                t("label", _s, [
+                  e[51] || (e[51] = t("span", null, "免打扰止", -1)),
+                  v(t("input", {
+                    "onUpdate:modelValue": e[23] || (e[23] = (s) => b.value.quiet_end = s),
+                    type: "number",
+                    min: "0",
+                    max: "23",
+                    class: "input tiny"
+                  }, null, 512), [
+                    [
+                      _,
+                      b.value.quiet_end,
                       void 0,
                       { number: !0 }
                     ]
@@ -714,132 +748,137 @@ const bt = { class: "page" }, yt = { class: "page-inner" }, ft = { class: "page-
                 ]),
                 t("button", {
                   class: "btn btn-tonal btn-sm",
-                  onClick: st
+                  onClick: at
                 }, "保存策略")
               ]),
-              a[50] || (a[50] = t("h3", { class: "section-label" }, "投递记录", -1)),
-              t("ol", va, [
-                (n(!0), i(c, null, m(J.value, (e) => (n(), i("li", {
-                  key: e.id
+              e[54] || (e[54] = t("p", { class: "helper-inline" }, [
+                f("免打扰起止相同即关闭；target 用 "),
+                t("code", null, "session:<会话ID>"),
+                f(" 可直接发到对话。")
+              ], -1)),
+              e[55] || (e[55] = t("h3", { class: "section-label" }, "投递记录", -1)),
+              t("ol", ms, [
+                (n(!0), i(c, null, h(B.value, (s) => (n(), i("li", {
+                  key: s.id
                 }, [
-                  t("time", null, s(A(e.created_at)), 1),
-                  t("p", null, s(e.phase) + " · " + s(e.content), 1)
+                  t("time", null, a(Y(s.created_at)), 1),
+                  t("p", null, a(s.phase) + " · " + a(s.content), 1)
                 ]))), 128)),
-                J.value.length ? d("", !0) : (n(), i("li", _a, "还没有主动投递记录"))
+                B.value.length ? d("", !0) : (n(), i("li", hs, "还没有主动投递记录"))
               ])
             ])
           ])
         ]),
-        t("section", ma, [
-          a[53] || (a[53] = t("h2", { class: "group-title" }, "群聊观察", -1)),
-          t("div", ha, [
-            t("article", ga, [
-              t("div", ba, [
-                a[52] || (a[52] = t("h2", { class: "card-title" }, "群聊观察", -1)),
-                t("span", ya, s(D.value.length), 1)
+        t("section", bs, [
+          e[58] || (e[58] = t("h2", { class: "group-title" }, "群聊观察", -1)),
+          t("div", gs, [
+            t("article", ys, [
+              t("div", fs, [
+                e[57] || (e[57] = t("h2", { class: "card-title" }, "群聊观察", -1)),
+                t("span", ks, a(D.value.length), 1)
               ]),
-              t("ul", fa, [
-                (n(!0), i(c, null, m(D.value, ([e, r]) => (n(), i("li", {
-                  key: e,
+              t("ul", ws, [
+                (n(!0), i(c, null, h(D.value, ([s, r]) => (n(), i("li", {
+                  key: s,
                   class: "item group-item"
                 }, [
-                  t("div", ka, [
-                    t("strong", null, s(e), 1),
-                    t("span", wa, "情绪 " + s(r.mood || "—") + " · " + s(r.messages?.length || 0) + " 条观察 · " + s(r.topics?.length || 0) + " 个话题", 1),
-                    U.value === e ? (n(), i("div", Ca, [
-                      r.topics?.length ? (n(), i("div", ja, [
-                        (n(!0), i(c, null, m(r.topics, (w) => (n(), i("span", {
-                          key: w.topic,
+                  t("div", Cs, [
+                    t("strong", null, a(s), 1),
+                    t("span", js, "情绪 " + a(r.mood || "—") + " · " + a(r.messages?.length || 0) + " 条观察 · " + a(r.topics?.length || 0) + " 个话题", 1),
+                    U.value === s ? (n(), i("div", xs, [
+                      r.topics?.length ? (n(), i("div", Ls, [
+                        (n(!0), i(c, null, h(r.topics, (C) => (n(), i("span", {
+                          key: C.topic,
                           class: "chip muted"
-                        }, s(w.topic) + " · " + s(Math.round(w.score)), 1))), 128))
+                        }, a(C.topic) + " · " + a(Math.round(C.score)), 1))), 128))
                       ])) : d("", !0),
-                      t("ol", xa, [
-                        (n(!0), i(c, null, m(r.messages, (w, ct) => (n(), i("li", { key: ct }, [
-                          t("time", null, s(A(w.created_at)), 1),
+                      t("ol", Ns, [
+                        (n(!0), i(c, null, h(r.messages, (C, ct) => (n(), i("li", { key: ct }, [
+                          t("time", null, a(Y(C.created_at)), 1),
                           t("p", null, [
-                            t("strong", null, s(w.user_id), 1),
-                            y("：" + s(w.content), 1)
+                            t("strong", null, a(C.user_id), 1),
+                            f("：" + a(C.content), 1)
                           ])
                         ]))), 128))
                       ])
                     ])) : d("", !0)
                   ]),
-                  t("div", La, [
+                  t("div", $s, [
                     t("button", {
                       class: "btn btn-tonal btn-sm",
-                      onClick: (w) => U.value = U.value === e ? "" : e
-                    }, s(U.value === e ? "收起" : "展开"), 9, $a)
+                      onClick: (C) => U.value = U.value === s ? "" : s
+                    }, a(U.value === s ? "收起" : "展开"), 9, Ms)
                   ])
                 ]))), 128)),
-                D.value.length ? d("", !0) : (n(), i("li", Ma, "群聊观察尚未启用或没有消息。"))
+                D.value.length ? d("", !0) : (n(), i("li", Ss, "群聊观察尚未启用或没有消息。"))
               ])
             ])
           ])
         ]),
-        t("section", Na, [
-          a[59] || (a[59] = t("h2", { class: "group-title" }, "诊断", -1)),
-          t("div", Sa, [
-            t("article", Ea, [
-              t("div", Fa, [
-                a[54] || (a[54] = t("h2", { class: "card-title" }, "模型用量", -1)),
-                t("span", Ta, s(k.value?.request_count || 0) + " 次请求", 1)
+        t("section", Es, [
+          e[64] || (e[64] = t("h2", { class: "group-title" }, "诊断", -1)),
+          t("div", Fs, [
+            t("article", Vs, [
+              t("div", Ts, [
+                e[59] || (e[59] = t("h2", { class: "card-title" }, "模型用量", -1)),
+                t("span", Is, a(w.value?.request_count || 0) + " 次请求", 1)
               ]),
-              t("div", Va, [
-                t("div", Ia, [
-                  t("strong", null, s((k.value?.total_tokens || 0).toLocaleString()), 1),
-                  a[55] || (a[55] = t("span", null, "总 Token", -1))
+              t("div", Us, [
+                t("div", Ds, [
+                  t("strong", null, a((w.value?.total_tokens || 0).toLocaleString()), 1),
+                  e[60] || (e[60] = t("span", null, "总 Token", -1))
                 ]),
-                t("div", Ua, [
-                  t("strong", null, s((k.value?.total_prompt_tokens || 0).toLocaleString()), 1),
-                  a[56] || (a[56] = t("span", null, "输入", -1))
+                t("div", Os, [
+                  t("strong", null, a((w.value?.total_prompt_tokens || 0).toLocaleString()), 1),
+                  e[61] || (e[61] = t("span", null, "输入", -1))
                 ]),
-                t("div", Da, [
-                  t("strong", null, s((k.value?.total_completion_tokens || 0).toLocaleString()), 1),
-                  a[57] || (a[57] = t("span", null, "输出", -1))
+                t("div", Ps, [
+                  t("strong", null, a((w.value?.total_completion_tokens || 0).toLocaleString()), 1),
+                  e[62] || (e[62] = t("span", null, "输出", -1))
                 ])
               ]),
-              t("ul", Oa, [
-                (n(!0), i(c, null, m(k.value?.by_model || {}, (e, r) => (n(), i("li", {
+              t("ul", qs, [
+                (n(!0), i(c, null, h(w.value?.by_model || {}, (s, r) => (n(), i("li", {
                   key: r,
                   class: "item"
                 }, [
-                  t("div", Pa, [
-                    t("strong", null, s(r), 1),
-                    t("span", Ya, s((e.total || 0).toLocaleString()) + " tokens · " + s(e.count) + " 次", 1)
+                  t("div", Ys, [
+                    t("strong", null, a(r), 1),
+                    t("span", As, a((s.total || 0).toLocaleString()) + " tokens · " + a(s.count) + " 次", 1)
                   ])
                 ]))), 128)),
-                !k.value || !Object.keys(k.value.by_model || {}).length ? (n(), i("li", Aa, "暂无用量记录")) : d("", !0)
+                !w.value || !Object.keys(w.value.by_model || {}).length ? (n(), i("li", Bs, "暂无用量记录")) : d("", !0)
               ])
             ]),
-            t("article", Ba, [
-              t("div", Ja, [
-                a[58] || (a[58] = t("h2", { class: "card-title" }, "主动行为审计", -1)),
+            t("article", Js, [
+              t("div", zs, [
+                e[63] || (e[63] = t("h2", { class: "card-title" }, "主动行为审计", -1)),
                 t("button", {
                   class: "btn btn-tonal btn-sm",
-                  onClick: a[22] || (a[22] = (e) => v("memory_maintenance", {}))
+                  onClick: e[24] || (e[24] = (s) => m("memory_maintenance", {}))
                 }, "执行记忆维护与备份")
               ]),
-              t("ol", za, [
-                (n(!0), i(c, null, m(o.value.audit, (e) => (n(), i("li", {
-                  key: e.at + e.kind
+              t("ol", Hs, [
+                (n(!0), i(c, null, h(o.value.audit, (s) => (n(), i("li", {
+                  key: s.at + s.kind
                 }, [
                   t("span", {
-                    class: C(["dot", e.outcome === "ok" ? "ok" : "warn"]),
+                    class: j(["dot", s.outcome === "ok" ? "ok" : "warn"]),
                     "aria-hidden": "true"
                   }, null, 2),
-                  t("div", Ha, [
-                    t("div", qa, [
-                      t("strong", null, s(e.kind), 1),
+                  t("div", Qs, [
+                    t("div", Gs, [
+                      t("strong", null, a(s.kind), 1),
                       t("span", {
-                        class: C(["chip", e.outcome === "ok" ? "chip-ok" : "chip-warn"])
-                      }, s(e.outcome), 3),
-                      t("time", null, s(e.at), 1)
+                        class: j(["chip", s.outcome === "ok" ? "chip-ok" : "chip-warn"])
+                      }, a(s.outcome), 3),
+                      t("time", null, a(s.at), 1)
                     ]),
-                    t("p", Ga, s(e.target), 1),
-                    t("p", Ra, s(e.detail), 1)
+                    t("p", Rs, a(s.target), 1),
+                    t("p", Ws, a(s.detail), 1)
                   ])
                 ]))), 128)),
-                o.value.audit?.length ? d("", !0) : (n(), i("li", Wa, "暂无审计记录"))
+                o.value.audit?.length ? d("", !0) : (n(), i("li", Ks, "暂无审计记录"))
               ])
             ])
           ])
@@ -847,9 +886,9 @@ const bt = { class: "page" }, yt = { class: "page-inner" }, ft = { class: "page-
       ])
     ]));
   }
-}), ts = /* @__PURE__ */ gt(Ka, [["__scopeId", "data-v-fa15a072"]]);
+}), sa = /* @__PURE__ */ bt(Xs, [["__scopeId", "data-v-e179c1ac"]]);
 export {
-  ts as default
+  sa as default
 };
 
-;(()=>{if(typeof document!=='undefined'&&!document.getElementById('life-plugin-style')){const s=document.createElement('style');s.id='life-plugin-style';s.textContent=".page[data-v-fa15a072]{height:100%;overflow-y:auto;padding:var(--space-xl);background:var(--md-surface);color:var(--md-on-surface)}.page-inner[data-v-fa15a072]{max-width:1180px;margin:0 auto}.page-header[data-v-fa15a072]{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);margin-bottom:var(--space-xl);flex-wrap:wrap}.eyebrow[data-v-fa15a072]{margin:0 0 6px;color:var(--md-primary);font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em}.page-header h1[data-v-fa15a072]{margin:0;font-size:var(--font-size-lg);font-weight:650}.subtitle[data-v-fa15a072]{margin:6px 0 0;max-width:640px;color:var(--md-on-surface-variant);font-size:14px;line-height:1.55}.header-actions[data-v-fa15a072]{display:flex;gap:var(--space-sm);padding-top:20px;flex-shrink:0}.btn[data-v-fa15a072]{height:36px;padding:0 15px;border:1px solid transparent;border-radius:9px;font:500 13px/1 inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:filter .15s,box-shadow .15s}.btn[data-v-fa15a072]:disabled{opacity:.55;cursor:not-allowed}.btn[data-v-fa15a072]:hover:not(:disabled){box-shadow:var(--shadow-1);filter:brightness(.98)}.btn-sm[data-v-fa15a072]{height:30px;padding:0 12px;font-size:12px}.btn-primary[data-v-fa15a072]{background:var(--md-primary);color:var(--md-on-primary,#fff)}.btn-tonal[data-v-fa15a072]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.btn-danger[data-v-fa15a072]{background:var(--md-error-container);color:#410e0b}.error-banner[data-v-fa15a072]{padding:12px 16px;border-radius:12px;background:var(--md-error-container);color:#410e0b;font-size:13px;margin:0 0 var(--space-lg)}.notice[data-v-fa15a072]{padding:10px 16px;border-radius:12px;background:var(--md-primary-container);color:var(--md-on-primary-container);font-size:13px;margin:0 0 var(--space-lg)}.stat-grid[data-v-fa15a072]{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-lg);margin-bottom:var(--space-lg)}.stat-card[data-v-fa15a072]{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--radius-lg);padding:var(--space-lg);box-shadow:var(--shadow-1);display:flex;flex-direction:column;gap:8px}.stat-head[data-v-fa15a072]{display:flex;align-items:center;gap:10px}.stat-label[data-v-fa15a072]{font-size:13px;font-weight:600;color:var(--md-on-surface-variant)}.stat-value[data-v-fa15a072]{font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.1}.stat-hint[data-v-fa15a072]{font-size:12px;color:var(--md-on-surface-variant);opacity:.85}.icon-badge[data-v-fa15a072]{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex-shrink:0}.tone-1[data-v-fa15a072]{background:var(--md-primary-container);color:var(--md-on-primary-container)}.tone-2[data-v-fa15a072]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.tone-3[data-v-fa15a072]{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#4a2230)}.tone-4[data-v-fa15a072]{background:var(--md-success-container);color:#0d3b1e}.grid[data-v-fa15a072]{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-lg);margin-bottom:var(--space-lg)}.group[data-v-fa15a072]{margin-bottom:var(--space-lg)}.group-title[data-v-fa15a072]{margin:0 0 12px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--md-on-surface-variant)}.group .grid[data-v-fa15a072]{margin-bottom:0}.card[data-v-fa15a072]{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--radius-lg);padding:var(--space-xl);box-shadow:var(--shadow-1)}.card-head[data-v-fa15a072]{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:var(--space-lg)}.card-title[data-v-fa15a072]{margin:0;font-size:16px;font-weight:650}.section-label[data-v-fa15a072]{margin:20px 0 10px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--md-on-surface-variant)}.chip[data-v-fa15a072]{height:24px;padding:0 10px;border-radius:999px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;background:var(--md-secondary-container);color:var(--md-on-secondary-container);flex-shrink:0;text-transform:capitalize}.chip.muted[data-v-fa15a072]{background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-weight:500;text-transform:none}.chip-ok[data-v-fa15a072]{background:var(--md-success-container);color:#0d3b1e}.chip-warn[data-v-fa15a072]{background:#fff1dc;color:#7a4400}.input[data-v-fa15a072]{width:100%;height:40px;padding:0 14px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);font:400 14px/1.4 inherit;outline:none}.input[data-v-fa15a072]:focus{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent)}.input.area[data-v-fa15a072]{height:auto;padding:10px 14px;line-height:1.6;resize:vertical;min-height:64px}.input.tiny[data-v-fa15a072]{width:80px;height:34px;padding:0 10px;font-size:13px}.agenda-form[data-v-fa15a072]{display:grid;grid-template-columns:1fr 220px auto;gap:10px}.agenda-form .area[data-v-fa15a072]{grid-column:1/-1}.stack-form[data-v-fa15a072]{display:flex;flex-direction:column;gap:10px;align-items:stretch}.toolbar-inline[data-v-fa15a072]{display:flex;gap:8px;margin-bottom:12px}.stack-form .btn[data-v-fa15a072]{align-self:flex-start}.item-list[data-v-fa15a072],.rel-list[data-v-fa15a072],.feed[data-v-fa15a072],.timeline[data-v-fa15a072]{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.item[data-v-fa15a072]{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-low)}.item.group-item[data-v-fa15a072]{align-items:flex-start}.item[data-v-fa15a072]:hover{border-color:color-mix(in srgb,var(--md-primary) 35%,var(--md-outline-variant));background:var(--md-surface-container-lowest)}.item-main[data-v-fa15a072]{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.item-main strong[data-v-fa15a072]{font-size:14px;font-weight:600}.item-main strong.done[data-v-fa15a072]{text-decoration:line-through;color:var(--md-on-surface-variant)}.item-meta[data-v-fa15a072]{font-size:12px;color:var(--md-on-surface-variant);line-height:1.5;overflow-wrap:anywhere}.item-actions[data-v-fa15a072]{display:flex;gap:6px;flex-shrink:0}.list-empty[data-v-fa15a072]{padding:14px;text-align:center;font-size:13px;color:var(--md-on-surface-variant);background:var(--md-surface-container);border-radius:12px;border:1px dashed var(--md-outline-variant)}.list-empty.plain[data-v-fa15a072]{background:transparent;border:0}.check-label[data-v-fa15a072]{display:flex;align-items:center}.check-line[data-v-fa15a072]{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--md-on-surface-variant)}.life-state[data-v-fa15a072]{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 var(--space-lg)}.state-pill[data-v-fa15a072]{padding:6px 14px;border-radius:999px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:12.5px;font-weight:600}.state-pill.warn[data-v-fa15a072]{background:#fff1dc;color:#7a4400}.head-actions[data-v-fa15a072]{display:flex;gap:8px}.item-row[data-v-fa15a072]{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.hint-inline[data-v-fa15a072]{font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;opacity:.8}.check-label input[data-v-fa15a072]{width:17px;height:17px;accent-color:var(--md-primary);cursor:pointer}.trait-item .chip[data-v-fa15a072]{max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rel[data-v-fa15a072]{display:flex;gap:12px;padding:14px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-low);align-items:center}.avatar[data-v-fa15a072]{width:38px;height:38px;border-radius:999px;background:var(--md-primary-container);color:var(--md-on-primary-container);display:grid;place-items:center;font-weight:700;font-size:15px;flex-shrink:0}.rel-main[data-v-fa15a072]{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}.rel-top[data-v-fa15a072],.rel-meter[data-v-fa15a072]{display:flex;align-items:center;gap:8px}.meter-bar[data-v-fa15a072]{flex:1;height:6px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}.meter-bar i[data-v-fa15a072]{display:block;height:100%;border-radius:999px;background:var(--md-primary);transition:width .3s}.rel-meter b[data-v-fa15a072]{font-size:12px}.rel-actions[data-v-fa15a072]{display:flex;gap:4px}.ledger[data-v-fa15a072]{margin-top:16px;border-top:1px solid var(--md-outline-variant);padding-top:12px}.feed li[data-v-fa15a072]{padding:12px 14px;border-left:3px solid var(--md-primary);background:var(--md-surface-container-low);border-radius:0 12px 12px 0}.feed.compact li[data-v-fa15a072]{padding:8px 12px}.feed time[data-v-fa15a072],.timeline time[data-v-fa15a072]{font-size:11px;color:var(--md-on-surface-variant);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.feed p[data-v-fa15a072]{margin:5px 0 0;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.pos[data-v-fa15a072]{color:var(--md-success);font-weight:700}.neg[data-v-fa15a072]{color:var(--md-error);font-weight:700}.policy[data-v-fa15a072]{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.select[data-v-fa15a072]{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--md-on-surface-variant);font-weight:600}.topics[data-v-fa15a072]{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}.group-detail[data-v-fa15a072]{margin-top:6px}.audit-card[data-v-fa15a072]{margin-bottom:var(--space-lg)}.usage-grid[data-v-fa15a072]{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}.usage-item[data-v-fa15a072]{background:var(--md-surface-container-low);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:4px;align-items:center}.usage-item strong[data-v-fa15a072]{font-size:20px;font-weight:700}.usage-item span[data-v-fa15a072]{font-size:12px;color:var(--md-on-surface-variant)}.timeline[data-v-fa15a072]{position:relative}.timeline li[data-v-fa15a072]{display:flex;gap:14px;position:relative;padding-bottom:4px}.timeline li[data-v-fa15a072]:not(:last-child):before{content:\"\";position:absolute;left:5px;top:16px;bottom:-8px;width:1.5px;background:var(--md-outline-variant)}.dot[data-v-fa15a072]{width:11px;height:11px;border-radius:50%;margin-top:5px;flex-shrink:0;background:var(--md-outline)}.dot.ok[data-v-fa15a072]{background:var(--md-success);box-shadow:0 0 0 3px var(--md-success-container)}.dot.warn[data-v-fa15a072]{background:#e08700;box-shadow:0 0 0 3px #fff1dc}.tl-body[data-v-fa15a072]{flex:1;min-width:0;padding-bottom:14px}.tl-head[data-v-fa15a072]{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.tl-head strong[data-v-fa15a072]{font-size:13.5px;font-weight:650}.tl-detail[data-v-fa15a072]{margin:4px 0 0;font-size:12.5px;background:var(--md-surface-container);padding:7px 10px;border-radius:8px;overflow-wrap:anywhere;white-space:pre-wrap;max-height:120px;overflow:auto}@media (max-width:900px){.stat-grid[data-v-fa15a072]{grid-template-columns:repeat(2,1fr)}.grid[data-v-fa15a072],.agenda-form[data-v-fa15a072]{grid-template-columns:1fr}}@media (max-width:640px){.page[data-v-fa15a072]{padding:var(--space-lg)}.header-actions[data-v-fa15a072]{padding-top:0}}.confirm-scrim{position:fixed;inset:0;z-index:13000;background:#21173566;backdrop-filter:blur(6px);display:grid;place-items:center;padding:20px}.confirm-dialog{width:min(440px,100%);background:var(--md-surface-container-high, var(--md-surface, #fff));color:var(--md-on-surface);border:1px solid var(--md-outline-variant, transparent);border-radius:28px;padding:28px;box-shadow:0 24px 70px #18132d33;outline:none}.confirm-dialog h2{margin:0 0 10px;font-size:22px;font-weight:650}.confirm-dialog p{margin:0;font-size:14px;line-height:1.65;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.confirm-dialog footer{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}.confirm-dialog footer button{border:0;border-radius:999px;padding:12px 22px;font:inherit;font-weight:600;cursor:pointer;background:var(--md-secondary-container, #e7e0ec);color:var(--md-on-secondary-container, #1d1b20)}.confirm-dialog footer .confirm-primary{background:var(--md-primary, #6750a4);color:var(--md-on-primary, #fff)}.confirm-dialog footer .confirm-primary.danger{background:var(--md-error, #b3261e);color:var(--md-on-error, #fff)}.confirm-dialog footer button:focus-visible{outline:3px solid var(--md-primary);outline-offset:3px}.page[data-v-d1a7766c]{height:100%;overflow-y:auto;padding:var(--space-xl);background:var(--md-surface);color:var(--md-on-surface)}.page-inner[data-v-d1a7766c]{max-width:1180px;margin:0 auto}.page-header[data-v-d1a7766c]{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);margin-bottom:var(--space-xl);flex-wrap:wrap}.eyebrow[data-v-d1a7766c]{margin:0 0 6px;color:var(--md-primary);font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em}.page-header h1[data-v-d1a7766c]{margin:0;font-size:var(--font-size-lg);font-weight:650;letter-spacing:-.01em}.subtitle[data-v-d1a7766c]{margin:6px 0 0;max-width:640px;color:var(--md-on-surface-variant);font-size:14px;line-height:1.55}.header-actions[data-v-d1a7766c]{display:flex;gap:var(--space-sm);padding-top:20px;flex-shrink:0;flex-wrap:wrap}.btn[data-v-d1a7766c]{height:36px;padding:0 15px;border:1px solid transparent;border-radius:9px;font:500 13px/1 inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:filter .15s,box-shadow .15s,background .15s}.btn[data-v-d1a7766c]:disabled{opacity:.55;cursor:not-allowed}.btn[data-v-d1a7766c]:hover:not(:disabled){box-shadow:var(--shadow-1);filter:brightness(.98)}.btn-sm[data-v-d1a7766c]{height:30px;padding:0 12px;font-size:12px}.btn-primary[data-v-d1a7766c]{background:var(--md-primary);color:var(--md-on-primary,#fff)}.btn-tonal[data-v-d1a7766c]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.btn-danger[data-v-d1a7766c]{background:var(--md-error-container);color:#410e0b}.stat-grid[data-v-d1a7766c]{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-lg);margin-bottom:var(--space-lg)}.stat-card[data-v-d1a7766c]{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--radius-lg);padding:var(--space-lg);box-shadow:var(--shadow-1);display:flex;flex-direction:column;gap:8px}.stat-head[data-v-d1a7766c]{display:flex;align-items:center;gap:10px}.stat-label[data-v-d1a7766c]{font-size:13px;font-weight:600;color:var(--md-on-surface-variant)}.stat-value[data-v-d1a7766c]{font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.1}.stat-hint[data-v-d1a7766c]{font-size:12px;color:var(--md-on-surface-variant);opacity:.85}.icon-badge[data-v-d1a7766c]{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex-shrink:0}.tone-1[data-v-d1a7766c]{background:var(--md-primary-container);color:var(--md-on-primary-container)}.tone-2[data-v-d1a7766c]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.tone-3[data-v-d1a7766c]{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#4a2230)}.tone-4[data-v-d1a7766c]{background:var(--md-success-container);color:#0d3b1e}.card[data-v-d1a7766c]{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--radius-lg);box-shadow:var(--shadow-1);padding:var(--space-lg)}.card-head[data-v-d1a7766c]{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.card-title[data-v-d1a7766c]{margin:0;font-size:16px;font-weight:650}.tabs[data-v-d1a7766c]{display:inline-flex;gap:4px;padding:4px;border-radius:999px;background:var(--md-surface-container-high);margin-bottom:var(--space-lg)}.tabs button[data-v-d1a7766c]{border:0;background:transparent;border-radius:999px;padding:8px 18px;font-size:13px;font-weight:600;color:var(--md-on-surface-variant);cursor:pointer}.tabs button.active[data-v-d1a7766c]{background:var(--md-surface-container-lowest);color:var(--md-primary);box-shadow:var(--shadow-1)}.toolbar[data-v-d1a7766c]{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:var(--space-lg);padding:var(--space-md)}.search-field[data-v-d1a7766c]{display:flex;align-items:center;gap:10px;flex:1;min-width:220px}.search-icon[data-v-d1a7766c]{color:var(--md-on-surface-variant);flex-shrink:0}.search-field input[data-v-d1a7766c]{flex:1;min-width:0;height:38px;border:0;background:transparent;outline:none;color:var(--md-on-surface);font-size:14px}.search-field.mini[data-v-d1a7766c]{padding:8px 12px;border:1px solid var(--md-outline-variant);border-radius:10px;margin-bottom:12px}.select[data-v-d1a7766c]{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--md-on-surface-variant);font-weight:600}.select select[data-v-d1a7766c]{height:34px;border:1px solid var(--md-outline-variant);border-radius:9px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);padding:0 10px;font:inherit;font-size:13px}.chip[data-v-d1a7766c]{height:26px;padding:0 11px;border-radius:999px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);flex-shrink:0}.chip.muted[data-v-d1a7766c]{background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-weight:500}.tier-short[data-v-d1a7766c]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.tier-long[data-v-d1a7766c]{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#4a2230)}.chip-ok[data-v-d1a7766c]{background:var(--md-success-container);color:#0d3b1e}.chip-warn[data-v-d1a7766c]{background:#fff1dc;color:#7a4400}.error-banner[data-v-d1a7766c]{padding:12px 16px;border-radius:12px;background:var(--md-error-container);color:#410e0b;font-size:13px;margin:var(--space-lg) 0}.notice[data-v-d1a7766c]{padding:10px 16px;border-radius:12px;background:var(--md-primary-container);color:var(--md-on-primary-container);font-size:13px;margin-top:var(--space-md)}.memory-list[data-v-d1a7766c]{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:var(--space-lg)}.memory-card[data-v-d1a7766c]{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--radius-lg);padding:var(--space-lg);box-shadow:var(--shadow-1);display:flex;flex-direction:column;gap:12px;transition:border-color .15s,box-shadow .15s}.memory-card[data-v-d1a7766c]:hover{border-color:color-mix(in srgb,var(--md-primary) 45%,var(--md-outline-variant));box-shadow:var(--shadow-2)}.card-top[data-v-d1a7766c]{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.btn-icon[data-v-d1a7766c]{width:30px;height:30px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--md-on-surface-variant);display:grid;place-items:center;cursor:pointer;margin-left:auto}.btn-icon.danger[data-v-d1a7766c]:hover{background:var(--md-error-container);color:var(--md-error)}.memory-content[data-v-d1a7766c]{margin:0;line-height:1.65;font-size:14px;white-space:pre-wrap}.tags[data-v-d1a7766c]{display:flex;gap:6px;flex-wrap:wrap}.tags span[data-v-d1a7766c]{font-size:12px;font-weight:500;color:var(--md-on-primary-container);background:var(--md-primary-container);padding:3px 8px;border-radius:999px}.memory-foot[data-v-d1a7766c]{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--md-outline-variant)}.meter[data-v-d1a7766c]{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--md-on-surface-variant)}.meter-bar[data-v-d1a7766c]{width:56px;height:5px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}.meter-bar i[data-v-d1a7766c]{display:block;height:100%;border-radius:999px;transition:width .3s}.fill-primary[data-v-d1a7766c]{background:var(--md-primary)}.fill-secondary[data-v-d1a7766c]{background:var(--md-secondary,#536255)}.meter-text[data-v-d1a7766c]{margin-left:auto;font-size:11px;color:var(--md-on-surface-variant)}.detail[data-v-d1a7766c]{border-top:1px solid var(--md-outline-variant);padding-top:10px}.detail dl[data-v-d1a7766c]{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0;font-size:12px}.detail dt[data-v-d1a7766c]{color:var(--md-on-surface-variant);font-weight:600}.detail dd[data-v-d1a7766c]{margin:3px 0 0;overflow-wrap:anywhere}.detail code[data-v-d1a7766c]{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}.card-actions[data-v-d1a7766c]{display:flex;gap:8px;justify-content:flex-end}.hidden-input[data-v-d1a7766c]{display:none}.empty-state[data-v-d1a7766c]{padding:56px 24px;text-align:center;background:var(--md-surface-container);border:1px dashed var(--md-outline-variant);border-radius:var(--radius-lg);color:var(--md-on-surface-variant)}.empty-state p[data-v-d1a7766c]{margin:0;font-size:15px;font-weight:600;color:var(--md-on-surface)}.empty-state .hint[data-v-d1a7766c]{margin-top:8px;font-size:13px;font-weight:400;opacity:.85}.pager[data-v-d1a7766c]{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:var(--space-lg)}.grid-notes[data-v-d1a7766c]{display:grid;grid-template-columns:minmax(0,340px) 1fr;gap:var(--space-lg)}.stack-form[data-v-d1a7766c]{display:flex;flex-direction:column;gap:10px}.input[data-v-d1a7766c]{width:100%;height:40px;padding:0 14px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);font:400 14px/1.4 inherit;outline:none}.input[data-v-d1a7766c]:focus{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent)}.input.area[data-v-d1a7766c]{height:auto;padding:10px 14px;min-height:120px;resize:vertical;line-height:1.6}.note-list[data-v-d1a7766c],.reflection-list[data-v-d1a7766c]{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}.note-item[data-v-d1a7766c]{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-low)}.note-main[data-v-d1a7766c]{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.note-main strong[data-v-d1a7766c]{font-size:13.5px;font-weight:600;overflow-wrap:anywhere}.item-meta[data-v-d1a7766c]{font-size:12px;color:var(--md-on-surface-variant);line-height:1.5;overflow-wrap:anywhere}.note-actions[data-v-d1a7766c]{display:flex;gap:6px;flex-shrink:0}.list-empty[data-v-d1a7766c]{padding:14px;text-align:center;font-size:13px;color:var(--md-on-surface-variant);background:var(--md-surface-container);border-radius:12px;border:1px dashed var(--md-outline-variant)}.reader[data-v-d1a7766c]{margin-top:var(--space-lg)}.reader pre[data-v-d1a7766c]{margin:0;max-height:460px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.7;white-space:pre-wrap;background:var(--md-surface-container);padding:14px 16px;border-radius:12px}.reflection .card-title[data-v-d1a7766c]{font-size:14px;font-weight:600}.reflection details[data-v-d1a7766c]{margin-top:6px}.reflection summary[data-v-d1a7766c]{cursor:pointer;font-size:12px;color:var(--md-on-surface-variant)}.quote[data-v-d1a7766c]{margin:8px 0 0;font-size:12.5px;line-height:1.6;background:var(--md-surface-container);padding:8px 12px;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere}@media (max-width:900px){.stat-grid[data-v-d1a7766c]{grid-template-columns:repeat(2,1fr)}.grid-notes[data-v-d1a7766c]{grid-template-columns:1fr}}@media (max-width:640px){.page[data-v-d1a7766c]{padding:var(--space-lg)}.header-actions[data-v-d1a7766c]{padding-top:0}.memory-list[data-v-d1a7766c]{grid-template-columns:1fr}}\n";document.head.appendChild(s)}})();
+;(()=>{if(typeof document!=='undefined'&&!document.getElementById('life-plugin-style')){const s=document.createElement('style');s.id='life-plugin-style';s.textContent=".page[data-v-e179c1ac]{height:100%;overflow-y:auto;padding:var(--space-xl);background:var(--md-surface);color:var(--md-on-surface)}.page-inner[data-v-e179c1ac]{max-width:1180px;margin:0 auto}.page-header[data-v-e179c1ac]{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);margin-bottom:var(--space-xl);flex-wrap:wrap}.eyebrow[data-v-e179c1ac]{margin:0 0 6px;color:var(--md-primary);font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em}.page-header h1[data-v-e179c1ac]{margin:0;font-size:var(--font-size-lg);font-weight:650}.subtitle[data-v-e179c1ac]{margin:6px 0 0;max-width:640px;color:var(--md-on-surface-variant);font-size:14px;line-height:1.55}.header-actions[data-v-e179c1ac]{display:flex;gap:var(--space-sm);padding-top:20px;flex-shrink:0}.btn[data-v-e179c1ac]{height:36px;padding:0 15px;border:1px solid transparent;border-radius:9px;font:500 13px/1 inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:filter .15s,box-shadow .15s}.btn[data-v-e179c1ac]:disabled{opacity:.55;cursor:not-allowed}.btn[data-v-e179c1ac]:hover:not(:disabled){box-shadow:var(--shadow-1);filter:brightness(.98)}.btn-sm[data-v-e179c1ac]{height:30px;padding:0 12px;font-size:12px}.btn-primary[data-v-e179c1ac]{background:var(--md-primary);color:var(--md-on-primary,#fff)}.btn-tonal[data-v-e179c1ac]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.btn-danger[data-v-e179c1ac]{background:var(--md-error-container);color:#410e0b}.error-banner[data-v-e179c1ac]{padding:12px 16px;border-radius:12px;background:var(--md-error-container);color:#410e0b;font-size:13px;margin:0 0 var(--space-lg)}.notice[data-v-e179c1ac]{padding:10px 16px;border-radius:12px;background:var(--md-primary-container);color:var(--md-on-primary-container);font-size:13px;margin:0 0 var(--space-lg)}.stat-grid[data-v-e179c1ac]{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-lg);margin-bottom:var(--space-lg)}.stat-card[data-v-e179c1ac]{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--radius-lg);padding:var(--space-lg);box-shadow:var(--shadow-1);display:flex;flex-direction:column;gap:8px}.stat-head[data-v-e179c1ac]{display:flex;align-items:center;gap:10px}.stat-label[data-v-e179c1ac]{font-size:13px;font-weight:600;color:var(--md-on-surface-variant)}.stat-value[data-v-e179c1ac]{font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.1}.stat-hint[data-v-e179c1ac]{font-size:12px;color:var(--md-on-surface-variant);opacity:.85}.icon-badge[data-v-e179c1ac]{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex-shrink:0}.tone-1[data-v-e179c1ac]{background:var(--md-primary-container);color:var(--md-on-primary-container)}.tone-2[data-v-e179c1ac]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.tone-3[data-v-e179c1ac]{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#4a2230)}.tone-4[data-v-e179c1ac]{background:var(--md-success-container);color:#0d3b1e}.grid[data-v-e179c1ac]{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-lg);margin-bottom:var(--space-lg)}.group[data-v-e179c1ac]{margin-bottom:var(--space-lg)}.group-title[data-v-e179c1ac]{margin:0 0 12px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--md-on-surface-variant)}.group .grid[data-v-e179c1ac]{margin-bottom:0}.card[data-v-e179c1ac]{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--radius-lg);padding:var(--space-xl);box-shadow:var(--shadow-1)}.card-head[data-v-e179c1ac]{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:var(--space-lg)}.card-title[data-v-e179c1ac]{margin:0;font-size:16px;font-weight:650}.section-label[data-v-e179c1ac]{margin:20px 0 10px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--md-on-surface-variant)}.chip[data-v-e179c1ac]{height:24px;padding:0 10px;border-radius:999px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;background:var(--md-secondary-container);color:var(--md-on-secondary-container);flex-shrink:0;text-transform:capitalize}.chip.muted[data-v-e179c1ac]{background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-weight:500;text-transform:none}.chip-ok[data-v-e179c1ac]{background:var(--md-success-container);color:#0d3b1e}.chip-warn[data-v-e179c1ac]{background:#fff1dc;color:#7a4400}.input[data-v-e179c1ac]{width:100%;height:40px;padding:0 14px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);font:400 14px/1.4 inherit;outline:none}.input[data-v-e179c1ac]:focus{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent)}.input.area[data-v-e179c1ac]{height:auto;padding:10px 14px;line-height:1.6;resize:vertical;min-height:64px}.input.tiny[data-v-e179c1ac]{width:80px;height:34px;padding:0 10px;font-size:13px}.agenda-form[data-v-e179c1ac]{display:grid;grid-template-columns:1fr 220px auto;gap:10px}.agenda-form .area[data-v-e179c1ac]{grid-column:1/-1}.stack-form[data-v-e179c1ac]{display:flex;flex-direction:column;gap:10px;align-items:stretch}.toolbar-inline[data-v-e179c1ac]{display:flex;gap:8px;margin-bottom:12px}.stack-form .btn[data-v-e179c1ac]{align-self:flex-start}.item-list[data-v-e179c1ac],.rel-list[data-v-e179c1ac],.feed[data-v-e179c1ac],.timeline[data-v-e179c1ac]{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.item[data-v-e179c1ac]{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-low)}.item.group-item[data-v-e179c1ac]{align-items:flex-start}.item[data-v-e179c1ac]:hover{border-color:color-mix(in srgb,var(--md-primary) 35%,var(--md-outline-variant));background:var(--md-surface-container-lowest)}.item-main[data-v-e179c1ac]{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.item-main strong[data-v-e179c1ac]{font-size:14px;font-weight:600}.item-main strong.done[data-v-e179c1ac]{text-decoration:line-through;color:var(--md-on-surface-variant)}.item-meta[data-v-e179c1ac]{font-size:12px;color:var(--md-on-surface-variant);line-height:1.5;overflow-wrap:anywhere}.item-actions[data-v-e179c1ac]{display:flex;gap:6px;flex-shrink:0}.list-empty[data-v-e179c1ac]{padding:14px;text-align:center;font-size:13px;color:var(--md-on-surface-variant);background:var(--md-surface-container);border-radius:12px;border:1px dashed var(--md-outline-variant)}.list-empty.plain[data-v-e179c1ac]{background:transparent;border:0}.check-label[data-v-e179c1ac]{display:flex;align-items:center}.check-line[data-v-e179c1ac]{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--md-on-surface-variant)}.life-state[data-v-e179c1ac]{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 var(--space-lg)}.state-pill[data-v-e179c1ac]{padding:6px 14px;border-radius:999px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:12.5px;font-weight:600}.state-pill.warn[data-v-e179c1ac]{background:#fff1dc;color:#7a4400}.head-actions[data-v-e179c1ac]{display:flex;gap:8px}.item-row[data-v-e179c1ac]{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.hint-inline[data-v-e179c1ac]{font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;opacity:.8}.helper-inline[data-v-e179c1ac]{margin:8px 0 0;font-size:12px;color:var(--md-on-surface-variant)}.helper-inline code[data-v-e179c1ac]{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--md-surface-container);padding:2px 6px;border-radius:6px}.check-label input[data-v-e179c1ac]{width:17px;height:17px;accent-color:var(--md-primary);cursor:pointer}.trait-item .chip[data-v-e179c1ac]{max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rel[data-v-e179c1ac]{display:flex;gap:12px;padding:14px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-low);align-items:center}.avatar[data-v-e179c1ac]{width:38px;height:38px;border-radius:999px;background:var(--md-primary-container);color:var(--md-on-primary-container);display:grid;place-items:center;font-weight:700;font-size:15px;flex-shrink:0}.rel-main[data-v-e179c1ac]{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}.rel-top[data-v-e179c1ac],.rel-meter[data-v-e179c1ac]{display:flex;align-items:center;gap:8px}.meter-bar[data-v-e179c1ac]{flex:1;height:6px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}.meter-bar i[data-v-e179c1ac]{display:block;height:100%;border-radius:999px;background:var(--md-primary);transition:width .3s}.rel-meter b[data-v-e179c1ac]{font-size:12px}.rel-actions[data-v-e179c1ac]{display:flex;gap:4px}.ledger[data-v-e179c1ac]{margin-top:16px;border-top:1px solid var(--md-outline-variant);padding-top:12px}.feed li[data-v-e179c1ac]{padding:12px 14px;border-left:3px solid var(--md-primary);background:var(--md-surface-container-low);border-radius:0 12px 12px 0}.feed.compact li[data-v-e179c1ac]{padding:8px 12px}.feed time[data-v-e179c1ac],.timeline time[data-v-e179c1ac]{font-size:11px;color:var(--md-on-surface-variant);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.feed p[data-v-e179c1ac]{margin:5px 0 0;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.pos[data-v-e179c1ac]{color:var(--md-success);font-weight:700}.neg[data-v-e179c1ac]{color:var(--md-error);font-weight:700}.policy[data-v-e179c1ac]{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.select[data-v-e179c1ac]{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--md-on-surface-variant);font-weight:600}.topics[data-v-e179c1ac]{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}.group-detail[data-v-e179c1ac]{margin-top:6px}.audit-card[data-v-e179c1ac]{margin-bottom:var(--space-lg)}.usage-grid[data-v-e179c1ac]{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}.usage-item[data-v-e179c1ac]{background:var(--md-surface-container-low);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:4px;align-items:center}.usage-item strong[data-v-e179c1ac]{font-size:20px;font-weight:700}.usage-item span[data-v-e179c1ac]{font-size:12px;color:var(--md-on-surface-variant)}.timeline[data-v-e179c1ac]{position:relative}.timeline li[data-v-e179c1ac]{display:flex;gap:14px;position:relative;padding-bottom:4px}.timeline li[data-v-e179c1ac]:not(:last-child):before{content:\"\";position:absolute;left:5px;top:16px;bottom:-8px;width:1.5px;background:var(--md-outline-variant)}.dot[data-v-e179c1ac]{width:11px;height:11px;border-radius:50%;margin-top:5px;flex-shrink:0;background:var(--md-outline)}.dot.ok[data-v-e179c1ac]{background:var(--md-success);box-shadow:0 0 0 3px var(--md-success-container)}.dot.warn[data-v-e179c1ac]{background:#e08700;box-shadow:0 0 0 3px #fff1dc}.tl-body[data-v-e179c1ac]{flex:1;min-width:0;padding-bottom:14px}.tl-head[data-v-e179c1ac]{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.tl-head strong[data-v-e179c1ac]{font-size:13.5px;font-weight:650}.tl-detail[data-v-e179c1ac]{margin:4px 0 0;font-size:12.5px;background:var(--md-surface-container);padding:7px 10px;border-radius:8px;overflow-wrap:anywhere;white-space:pre-wrap;max-height:120px;overflow:auto}@media (max-width:900px){.stat-grid[data-v-e179c1ac]{grid-template-columns:repeat(2,1fr)}.grid[data-v-e179c1ac],.agenda-form[data-v-e179c1ac]{grid-template-columns:1fr}}@media (max-width:640px){.page[data-v-e179c1ac]{padding:var(--space-lg)}.header-actions[data-v-e179c1ac]{padding-top:0}}.confirm-scrim{position:fixed;inset:0;z-index:13000;background:#21173566;backdrop-filter:blur(6px);display:grid;place-items:center;padding:20px}.confirm-dialog{width:min(440px,100%);background:var(--md-surface-container-high, var(--md-surface, #fff));color:var(--md-on-surface);border:1px solid var(--md-outline-variant, transparent);border-radius:28px;padding:28px;box-shadow:0 24px 70px #18132d33;outline:none}.confirm-dialog h2{margin:0 0 10px;font-size:22px;font-weight:650}.confirm-dialog p{margin:0;font-size:14px;line-height:1.65;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.confirm-dialog footer{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}.confirm-dialog footer button{border:0;border-radius:999px;padding:12px 22px;font:inherit;font-weight:600;cursor:pointer;background:var(--md-secondary-container, #e7e0ec);color:var(--md-on-secondary-container, #1d1b20)}.confirm-dialog footer .confirm-primary{background:var(--md-primary, #6750a4);color:var(--md-on-primary, #fff)}.confirm-dialog footer .confirm-primary.danger{background:var(--md-error, #b3261e);color:var(--md-on-error, #fff)}.confirm-dialog footer button:focus-visible{outline:3px solid var(--md-primary);outline-offset:3px}.page[data-v-d1a7766c]{height:100%;overflow-y:auto;padding:var(--space-xl);background:var(--md-surface);color:var(--md-on-surface)}.page-inner[data-v-d1a7766c]{max-width:1180px;margin:0 auto}.page-header[data-v-d1a7766c]{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);margin-bottom:var(--space-xl);flex-wrap:wrap}.eyebrow[data-v-d1a7766c]{margin:0 0 6px;color:var(--md-primary);font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em}.page-header h1[data-v-d1a7766c]{margin:0;font-size:var(--font-size-lg);font-weight:650;letter-spacing:-.01em}.subtitle[data-v-d1a7766c]{margin:6px 0 0;max-width:640px;color:var(--md-on-surface-variant);font-size:14px;line-height:1.55}.header-actions[data-v-d1a7766c]{display:flex;gap:var(--space-sm);padding-top:20px;flex-shrink:0;flex-wrap:wrap}.btn[data-v-d1a7766c]{height:36px;padding:0 15px;border:1px solid transparent;border-radius:9px;font:500 13px/1 inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:filter .15s,box-shadow .15s,background .15s}.btn[data-v-d1a7766c]:disabled{opacity:.55;cursor:not-allowed}.btn[data-v-d1a7766c]:hover:not(:disabled){box-shadow:var(--shadow-1);filter:brightness(.98)}.btn-sm[data-v-d1a7766c]{height:30px;padding:0 12px;font-size:12px}.btn-primary[data-v-d1a7766c]{background:var(--md-primary);color:var(--md-on-primary,#fff)}.btn-tonal[data-v-d1a7766c]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.btn-danger[data-v-d1a7766c]{background:var(--md-error-container);color:#410e0b}.stat-grid[data-v-d1a7766c]{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-lg);margin-bottom:var(--space-lg)}.stat-card[data-v-d1a7766c]{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--radius-lg);padding:var(--space-lg);box-shadow:var(--shadow-1);display:flex;flex-direction:column;gap:8px}.stat-head[data-v-d1a7766c]{display:flex;align-items:center;gap:10px}.stat-label[data-v-d1a7766c]{font-size:13px;font-weight:600;color:var(--md-on-surface-variant)}.stat-value[data-v-d1a7766c]{font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.1}.stat-hint[data-v-d1a7766c]{font-size:12px;color:var(--md-on-surface-variant);opacity:.85}.icon-badge[data-v-d1a7766c]{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex-shrink:0}.tone-1[data-v-d1a7766c]{background:var(--md-primary-container);color:var(--md-on-primary-container)}.tone-2[data-v-d1a7766c]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.tone-3[data-v-d1a7766c]{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#4a2230)}.tone-4[data-v-d1a7766c]{background:var(--md-success-container);color:#0d3b1e}.card[data-v-d1a7766c]{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--radius-lg);box-shadow:var(--shadow-1);padding:var(--space-lg)}.card-head[data-v-d1a7766c]{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.card-title[data-v-d1a7766c]{margin:0;font-size:16px;font-weight:650}.tabs[data-v-d1a7766c]{display:inline-flex;gap:4px;padding:4px;border-radius:999px;background:var(--md-surface-container-high);margin-bottom:var(--space-lg)}.tabs button[data-v-d1a7766c]{border:0;background:transparent;border-radius:999px;padding:8px 18px;font-size:13px;font-weight:600;color:var(--md-on-surface-variant);cursor:pointer}.tabs button.active[data-v-d1a7766c]{background:var(--md-surface-container-lowest);color:var(--md-primary);box-shadow:var(--shadow-1)}.toolbar[data-v-d1a7766c]{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:var(--space-lg);padding:var(--space-md)}.search-field[data-v-d1a7766c]{display:flex;align-items:center;gap:10px;flex:1;min-width:220px}.search-icon[data-v-d1a7766c]{color:var(--md-on-surface-variant);flex-shrink:0}.search-field input[data-v-d1a7766c]{flex:1;min-width:0;height:38px;border:0;background:transparent;outline:none;color:var(--md-on-surface);font-size:14px}.search-field.mini[data-v-d1a7766c]{padding:8px 12px;border:1px solid var(--md-outline-variant);border-radius:10px;margin-bottom:12px}.select[data-v-d1a7766c]{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--md-on-surface-variant);font-weight:600}.select select[data-v-d1a7766c]{height:34px;border:1px solid var(--md-outline-variant);border-radius:9px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);padding:0 10px;font:inherit;font-size:13px}.chip[data-v-d1a7766c]{height:26px;padding:0 11px;border-radius:999px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);flex-shrink:0}.chip.muted[data-v-d1a7766c]{background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-weight:500}.tier-short[data-v-d1a7766c]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.tier-long[data-v-d1a7766c]{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#4a2230)}.chip-ok[data-v-d1a7766c]{background:var(--md-success-container);color:#0d3b1e}.chip-warn[data-v-d1a7766c]{background:#fff1dc;color:#7a4400}.error-banner[data-v-d1a7766c]{padding:12px 16px;border-radius:12px;background:var(--md-error-container);color:#410e0b;font-size:13px;margin:var(--space-lg) 0}.notice[data-v-d1a7766c]{padding:10px 16px;border-radius:12px;background:var(--md-primary-container);color:var(--md-on-primary-container);font-size:13px;margin-top:var(--space-md)}.memory-list[data-v-d1a7766c]{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:var(--space-lg)}.memory-card[data-v-d1a7766c]{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--radius-lg);padding:var(--space-lg);box-shadow:var(--shadow-1);display:flex;flex-direction:column;gap:12px;transition:border-color .15s,box-shadow .15s}.memory-card[data-v-d1a7766c]:hover{border-color:color-mix(in srgb,var(--md-primary) 45%,var(--md-outline-variant));box-shadow:var(--shadow-2)}.card-top[data-v-d1a7766c]{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.btn-icon[data-v-d1a7766c]{width:30px;height:30px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--md-on-surface-variant);display:grid;place-items:center;cursor:pointer;margin-left:auto}.btn-icon.danger[data-v-d1a7766c]:hover{background:var(--md-error-container);color:var(--md-error)}.memory-content[data-v-d1a7766c]{margin:0;line-height:1.65;font-size:14px;white-space:pre-wrap}.tags[data-v-d1a7766c]{display:flex;gap:6px;flex-wrap:wrap}.tags span[data-v-d1a7766c]{font-size:12px;font-weight:500;color:var(--md-on-primary-container);background:var(--md-primary-container);padding:3px 8px;border-radius:999px}.memory-foot[data-v-d1a7766c]{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--md-outline-variant)}.meter[data-v-d1a7766c]{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--md-on-surface-variant)}.meter-bar[data-v-d1a7766c]{width:56px;height:5px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}.meter-bar i[data-v-d1a7766c]{display:block;height:100%;border-radius:999px;transition:width .3s}.fill-primary[data-v-d1a7766c]{background:var(--md-primary)}.fill-secondary[data-v-d1a7766c]{background:var(--md-secondary,#536255)}.meter-text[data-v-d1a7766c]{margin-left:auto;font-size:11px;color:var(--md-on-surface-variant)}.detail[data-v-d1a7766c]{border-top:1px solid var(--md-outline-variant);padding-top:10px}.detail dl[data-v-d1a7766c]{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0;font-size:12px}.detail dt[data-v-d1a7766c]{color:var(--md-on-surface-variant);font-weight:600}.detail dd[data-v-d1a7766c]{margin:3px 0 0;overflow-wrap:anywhere}.detail code[data-v-d1a7766c]{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}.card-actions[data-v-d1a7766c]{display:flex;gap:8px;justify-content:flex-end}.hidden-input[data-v-d1a7766c]{display:none}.empty-state[data-v-d1a7766c]{padding:56px 24px;text-align:center;background:var(--md-surface-container);border:1px dashed var(--md-outline-variant);border-radius:var(--radius-lg);color:var(--md-on-surface-variant)}.empty-state p[data-v-d1a7766c]{margin:0;font-size:15px;font-weight:600;color:var(--md-on-surface)}.empty-state .hint[data-v-d1a7766c]{margin-top:8px;font-size:13px;font-weight:400;opacity:.85}.pager[data-v-d1a7766c]{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:var(--space-lg)}.grid-notes[data-v-d1a7766c]{display:grid;grid-template-columns:minmax(0,340px) 1fr;gap:var(--space-lg)}.stack-form[data-v-d1a7766c]{display:flex;flex-direction:column;gap:10px}.input[data-v-d1a7766c]{width:100%;height:40px;padding:0 14px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);font:400 14px/1.4 inherit;outline:none}.input[data-v-d1a7766c]:focus{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent)}.input.area[data-v-d1a7766c]{height:auto;padding:10px 14px;min-height:120px;resize:vertical;line-height:1.6}.note-list[data-v-d1a7766c],.reflection-list[data-v-d1a7766c]{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}.note-item[data-v-d1a7766c]{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-low)}.note-main[data-v-d1a7766c]{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.note-main strong[data-v-d1a7766c]{font-size:13.5px;font-weight:600;overflow-wrap:anywhere}.item-meta[data-v-d1a7766c]{font-size:12px;color:var(--md-on-surface-variant);line-height:1.5;overflow-wrap:anywhere}.note-actions[data-v-d1a7766c]{display:flex;gap:6px;flex-shrink:0}.list-empty[data-v-d1a7766c]{padding:14px;text-align:center;font-size:13px;color:var(--md-on-surface-variant);background:var(--md-surface-container);border-radius:12px;border:1px dashed var(--md-outline-variant)}.reader[data-v-d1a7766c]{margin-top:var(--space-lg)}.reader pre[data-v-d1a7766c]{margin:0;max-height:460px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.7;white-space:pre-wrap;background:var(--md-surface-container);padding:14px 16px;border-radius:12px}.reflection .card-title[data-v-d1a7766c]{font-size:14px;font-weight:600}.reflection details[data-v-d1a7766c]{margin-top:6px}.reflection summary[data-v-d1a7766c]{cursor:pointer;font-size:12px;color:var(--md-on-surface-variant)}.quote[data-v-d1a7766c]{margin:8px 0 0;font-size:12.5px;line-height:1.6;background:var(--md-surface-container);padding:8px 12px;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere}@media (max-width:900px){.stat-grid[data-v-d1a7766c]{grid-template-columns:repeat(2,1fr)}.grid-notes[data-v-d1a7766c]{grid-template-columns:1fr}}@media (max-width:640px){.page[data-v-d1a7766c]{padding:var(--space-lg)}.header-actions[data-v-d1a7766c]{padding-top:0}.memory-list[data-v-d1a7766c]{grid-template-columns:1fr}}\n";document.head.appendChild(s)}})();

@@ -398,6 +398,7 @@ class LifeEngine:
             "important_dates": [{"title": item.get("title"), "in_days": item.get("days_until")} for item in upcoming],
             "memories": [m.get("content", "")[:80] for m in memories],
             "recent_chat": recent[-6:],
+            "conversations": list(self._histories.keys())[-3:],
         }
 
     async def maybe_daily_entries(self) -> dict:
@@ -493,7 +494,8 @@ class LifeEngine:
             '只返回 JSON：{"agenda":[{"title":"","when":"","detail":""}],'
             '"proactive":[{"target":"","motive":"","content":""}],"journal":"","note":""}。'
             "规则：agenda 最多 2 条，仅在确有值得安排的事时给出；proactive 最多 1 条，自然真诚、不打扰；"
-            "journal/note 可为空；没有想法就用空数组/空字符串；不要重复已有日程。\n"
+            "proactive 的 target 用 \"session:<会话ID>\"（给某个对话发消息，推荐，会话ID 见 conversations）、"
+            "\"user:<QQ号>\" 或 \"group:<群号>\"；journal/note 可为空；没有想法就用空数组/空字符串；不要重复已有日程。\n"
             f"当前状态：{context}"
         )
         model = self.think_model or self.default_model
@@ -514,7 +516,9 @@ class LifeEngine:
             content = str(item.get("content") or "").strip()
             if not content:
                 continue
-            target = str(item.get("target") or "user:owner")
+            target = str(item.get("target") or "").strip()
+            if not target.startswith(("user:", "group:", "session:", "webui:")):
+                target = f"session:{list(self._histories.keys())[-1]}" if self._histories else "session:"
             try:
                 allowed, _ = await asyncio.to_thread(self.companion.can_proactively_send, target)
             except Exception:
@@ -533,9 +537,14 @@ class LifeEngine:
         return {"applied": applied, "plan": plan}
 
     async def proactive_tick(self) -> dict:
-        """Deliver due proactive candidates within quotas, quiet hours and state gates."""
-        if not self.tool_config.onebot_enabled or self.tool_config.onebot_sender is None:
-            return {"skipped": "onebot_unavailable"}
+        """Deliver due proactive candidates: to OneBot targets or into a conversation.
+
+        Targets:
+          ``user:<id>`` / ``group:<id>``  -> send through the OneBot adapter
+          ``session:<id>`` / ``webui:<id>`` -> inject into that WebUI conversation
+          anything else -> the conversation channel (notifications), so LIFE can
+          speak into an open chat without a QQ transport.
+        """
         if getattr(self.circadian.state, "is_sleeping", False):
             return {"skipped": "sleeping"}
         if getattr(self.emotion.state, "irritation", 0) >= 0.7:
@@ -558,11 +567,6 @@ class LifeEngine:
                 blocked += 1
                 await asyncio.to_thread(self.companion.audit, "proactive_blocked", reason, candidate_id, "blocked")
                 continue
-            user_id = self._target_user_id(target)
-            group_id = self._target_group_id(target)
-            if user_id is None and group_id is None:
-                await asyncio.to_thread(self.companion.audit, "proactive_blocked", "unknown_target", candidate_id, "blocked")
-                continue
             content = str(candidate.get("content") or "").strip()
             if not content:
                 continue
@@ -571,14 +575,35 @@ class LifeEngine:
                 await asyncio.to_thread(self.companion.audit, "proactive_blocked", "review_declined", candidate_id, "blocked")
                 blocked += 1
                 continue
-            try:
-                await self.tool_config.onebot_sender(message=reviewed, user_id=user_id, group_id=group_id)
-            except Exception as error:
-                await asyncio.to_thread(self.companion.audit, "proactive_send", str(error), candidate_id, "failed")
-                continue
+            user_id = self._target_user_id(target)
+            group_id = self._target_group_id(target)
+            if target.startswith("session:") or target.startswith("webui:"):
+                session_id = target.split(":", 1)[1].strip()
+                await asyncio.to_thread(self.push_notification, session_id, reviewed)
+            elif user_id is not None or group_id is not None:
+                if not self.tool_config.onebot_enabled or self.tool_config.onebot_sender is None:
+                    blocked += 1
+                    await asyncio.to_thread(self.companion.audit, "proactive_blocked", "onebot_unavailable", candidate_id, "blocked")
+                    continue
+                try:
+                    await self.tool_config.onebot_sender(message=reviewed, user_id=user_id, group_id=group_id)
+                except Exception as error:
+                    await asyncio.to_thread(self.companion.audit, "proactive_send", str(error), candidate_id, "failed")
+                    continue
+            else:
+                # No transport target: surface it in the conversation channel.
+                await asyncio.to_thread(self.push_notification, "", reviewed)
             await asyncio.to_thread(self.companion.mark_proactive_delivered, candidate_id, reviewed)
             delivered += 1
         return {"delivered": delivered, "blocked": blocked, "candidates": len(candidates)}
+
+    def push_notification(self, session_id: str, text: str) -> dict:
+        """Deliver a proactive message into a conversation (WebUI polls these)."""
+        notification = {"id": uuid.uuid4().hex, "session_id": session_id or "", "text": text, "created_at": datetime.now().isoformat()}
+        self._notifications.append(notification)
+        self._notifications = self._notifications[-100:]
+        self._save_state()
+        return notification
 
     async def _review_outgoing(self, content: str, target: str) -> str:
         """Pre-send review/rewrite via the model; empty string declines sending."""

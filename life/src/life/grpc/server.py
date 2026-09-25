@@ -331,6 +331,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             snapshot = await asyncio.to_thread(self.engine.companion.snapshot)
             rhythm = self.engine.circadian.to_dict()
             snapshot["circadian"] = {key: rhythm[key] for key in ("sleep_hour", "wake_hour", "observed_days", "is_sleeping", "mental_energy", "hunger", "health")}
+            snapshot["policy"] = await asyncio.to_thread(self.engine.companion.get_policy)
             return life_pb2.GetCompanionResponse(json=json.dumps(snapshot, ensure_ascii=False))
         except Exception as e:
             context.set_code(grpc.StatusCode.INTERNAL)
@@ -397,7 +398,10 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await asyncio.to_thread(self.engine.companion.cancel_proactive, payload.get("id",""), payload.get("reason","dashboard_cancel"))
             elif action == "proactive_policy":
                 daily = int(payload.get("daily_limit",6)); per_target = int(payload.get("per_target_limit",2))
-                await asyncio.to_thread(self.engine.companion.set_runtime_policy, daily, per_target)
+                quiet_start = payload.get("quiet_start"); quiet_end = payload.get("quiet_end")
+                await asyncio.to_thread(self.engine.companion.set_runtime_policy, daily, per_target,
+                                        None if quiet_start in (None,"") else int(quiet_start),
+                                        None if quiet_end in (None,"") else int(quiet_end))
                 result = {"ok": True, "daily_limit": daily, "per_target_limit": per_target}
             elif action == "relationship_adjust":
                 result = await asyncio.to_thread(self.engine.companion.apply_relationship_event, payload.get("user_id",""), payload.get("event_key",""), payload.get("reason","dashboard"), payload.get("channel","webui"), float(payload.get("delta",0)))
@@ -423,6 +427,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = {"deleted": deleted, "id": payload.get("id","")}
             elif action == "circadian_eat":
                 result = await asyncio.to_thread(self.engine.circadian.eat, float(payload.get("amount", 40)))
+            elif action == "circadian_wake":
+                result = {"woke": await asyncio.to_thread(self.engine.circadian.force_wake)}
             elif action == "journal_clear":
                 result = await asyncio.to_thread(self.engine.companion.clear_journal, str(payload.get("kind","")))
             elif action == "daily_agenda":
