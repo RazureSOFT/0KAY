@@ -36,12 +36,16 @@ class TaskRecorder:
             self._save()
         await self.flush()
 
+    def _headers(self):
+        token = os.getenv("CORE_API_TOKEN", "")
+        return {"Authorization": f"Bearer {token}"} if token else {}
+
     async def flush(self):
         async with self.lock:
             async with httpx.AsyncClient(timeout=2) as client:
                 while self.pending:
                     try:
-                        response = await client.post(f"{self.base}/api/tasks", json=self.pending[0])
+                        response = await client.post(f"{self.base}/api/tasks", json=self.pending[0], headers=self._headers())
                         if response.status_code in (400, 413, 422):
                             with self.path.with_suffix('.rejected.jsonl').open('a', encoding='utf-8') as rejected:
                                 rejected.write(json.dumps({'event': self.pending[0], 'status': response.status_code}, ensure_ascii=False)+'\n')

@@ -74,6 +74,7 @@
     "byDay": "By day",
     "empty": "No usage recorded yet",
     "sessions": "Sessions",
+    "requests": "Requests",
     "clear": "Clear usage",
     "clearConfirm": "Clear all usage records?",
     "cleared": "Usage cleared"
@@ -97,7 +98,14 @@
     "host": "Host",
     "memory": "Memory",
     "resources": "Resources",
-    "noHost": "No host info reported yet"
+    "noHost": "No host info reported yet",
+    "subagent": "Subagent",
+    "openSubagent": "Open sub-agent session",
+    "backToChat": "Back to chat",
+    "subagentRunning": "Subagent is running…",
+    "subagentDrafting": "Subagent is drafting a reply…",
+    "noChildSteps": "No child steps recorded",
+    "deniedSubagent": "You denied this sub-agent call"
   },
   "live2d": {
     "on": "On",
@@ -222,7 +230,7 @@
     "live2dDesc": "Configure the Live2D avatar display",
     "permissionsDesc": "Control L.I.F.E screen watch and computer use (both off by default)",
     "uploadFolder": "Upload model folder",
-    "uploadFolderHint": "Select the whole model directory containing .model3.json",
+    "uploadFolderHint": "Select the complete folder containing .model.json or .model3.json",
     "uploadOk": "Model uploaded",
     "uploadFail": "Model upload failed",
     "addProvider": "Add provider",

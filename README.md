@@ -56,6 +56,12 @@ QQ/OneBot ──WebSocket───────┤
 
 ## Quick Start
 
+Plugin API reference: [docs/PLUGIN_API.md](docs/PLUGIN_API.md).
+Modular installation and LAN pairing: [pm/README.md](pm/README.md).
+Install the local CLI with `npm install -g ./pm`; package manifests live at the
+repository root and in each module. GitHub/npm distribution requires publishing
+the current manifests and package first.
+
 ### Agent permissions
 
 The composer defaults to **Normal (approve every tool call)**. Tool requests are

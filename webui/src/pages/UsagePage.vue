@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useConfirm } from '../composables/confirm'
 
 const { t } = useI18n()
+const { confirm } = useConfirm()
 
 interface UsageBucket {
   prompt: number
@@ -43,7 +45,13 @@ async function fetchUsage() {
 }
 
 async function clearUsage() {
-  if (!window.confirm(t('usage.clearConfirm'))) return
+  const ok = await confirm({
+    title: t('usage.clear'),
+    message: t('usage.clearConfirm'),
+    confirmLabel: t('usage.clear'),
+    danger: true,
+  })
+  if (!ok) return
   error.value = ''
   clearMsg.value = ''
   try {
@@ -121,6 +129,10 @@ onUnmounted(() => {
       <div class="stat-card">
         <span class="stat-label">{{ t('usage.sessions') }}</span>
         <span class="stat-value">{{ n(usage?.session_count) }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">{{ t('usage.requests') }}</span>
+        <span class="stat-value">{{ n(usage?.request_count) }}</span>
       </div>
     </div>
 

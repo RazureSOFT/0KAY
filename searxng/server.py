@@ -7,7 +7,8 @@ SEARXNG_URL=http://127.0.0.1:8888 without a full SearXNG deployment.
   GET /healthz
   GET /           (HTML form)
 
-Engines: DuckDuckGo HTML + Bing HTML (best-effort, no API keys).
+Engines: Bing (intl + cn), 360 Search, DuckDuckGo HTML, Marginalia
+(best-effort, no API keys; probed for reachability from this host).
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ import json
 import os
 import re
 import sys
+import time
 import concurrent.futures
 import urllib.parse
 import urllib.request
@@ -24,23 +26,33 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
 PORT = int(os.environ.get("SEARXNG_PORT", "8888"))
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) 0kay-searxng/0.1"
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
 
 def _http_get(url: str, data: bytes | None = None, timeout: float = 12.0) -> str:
-    req = urllib.request.Request(
-        url,
-        data=data,
-        headers={
-            "User-Agent": UA,
-            "Accept": "text/html,application/json;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-        },
-        method="POST" if data else "GET",
-    )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        charset = resp.headers.get_content_charset() or "utf-8"
-        return resp.read().decode(charset, errors="replace")
+    # One retry: TLS handshakes to some engines flake intermittently on this
+    # network, and a second attempt usually lands.
+    last: Exception | None = None
+    for attempt in range(2):
+        req = urllib.request.Request(
+            url,
+            data=data,
+            headers={
+                "User-Agent": UA,
+                "Accept": "text/html,application/json;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+            },
+            method="POST" if data else "GET",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                charset = resp.headers.get_content_charset() or "utf-8"
+                return resp.read().decode(charset, errors="replace")
+        except Exception as e:  # noqa: BLE001
+            last = e
+            if attempt == 0:
+                time.sleep(0.2)
+    raise last  # type: ignore[misc]
 
 
 def _strip_tags(s: str) -> str:
@@ -48,9 +60,75 @@ def _strip_tags(s: str) -> str:
     return html.unescape(s).strip()
 
 
+# Query terms that carry no discriminating value for relevance matching.
+_STOPWORDS = frozenset({
+    "a", "an", "and", "are", "as", "at", "be", "been", "but", "by", "for", "from",
+    "has", "have", "how", "i", "if", "in", "into", "is", "it", "its", "of", "on",
+    "or", "our", "that", "the", "their", "then", "there", "these", "they", "this",
+    "to", "was", "we", "were", "what", "when", "where", "which", "who", "why",
+    "will", "with", "you", "your",
+})
+
+
+def _query_groups(q: str) -> list[list[str]]:
+    """Group query terms in original order.
+
+    Quoted phrases and OR-chains form one group (any variant matches); every
+    other non-stopword term is its own group. The first group is the anchor
+    that a result must match, so no-result queries cannot surface unrelated
+    fallback/spam pages the engines love to return.
+    """
+    groups: list[list[str]] = []
+    seen: set[str] = set()
+    join_next = False
+    for m in re.finditer(r'"([^"]+)"|\S+', q):
+        if m.group(1) is not None:
+            phrase = " ".join(m.group(1).lower().split())
+            if phrase and phrase not in seen:
+                seen.add(phrase)
+                if join_next and groups:
+                    groups[-1].append(phrase)
+                else:
+                    groups.append([phrase])
+                join_next = False
+            continue
+        tok = m.group(0)
+        if tok.upper() == "OR":
+            join_next = bool(groups)
+            continue
+        word = tok.lower().strip(".,;:!?()[]{}<>/\\|@#$%^&*+=~`'\u2014\u2013")
+        if not word or word in _STOPWORDS or word in seen:
+            continue
+        seen.add(word)
+        if join_next and groups:
+            groups[-1].append(word)
+        else:
+            groups.append([word])
+        join_next = False
+    return groups
+
+
+def _relevance(haystack: str, groups: list[list[str]]) -> tuple[int, bool]:
+    """Return (matched groups, anchor matched).
+
+    Empty groups means there is nothing to match (stopword-only query) and
+    results pass through unfiltered.
+    """
+    if not groups:
+        return 0, True
+    matched = 0
+    anchor = False
+    for i, variants in enumerate(groups):
+        if any(v in haystack for v in variants):
+            matched += 1
+            if i == 0:
+                anchor = True
+    return matched, anchor
+
+
 def _search_ddg(q: str, limit: int) -> list[dict[str, Any]]:
     body = urllib.parse.urlencode({"q": q}).encode()
-    text = _http_get("https://html.duckduckgo.com/html/", data=body, timeout=8.0)
+    text = _http_get("https://html.duckduckgo.com/html/", data=body, timeout=7.0)
     out: list[dict[str, Any]] = []
     blocks = re.findall(
         r'<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>.*?'
@@ -90,7 +168,7 @@ def _search_bing(q: str, limit: int, cn: bool = False) -> list[dict[str, Any]]:
             "Accept-Language": accept_lang,
         },
     )
-    with urllib.request.urlopen(req, timeout=12.0) as resp:
+    with urllib.request.urlopen(req, timeout=6.0) as resp:
         charset = resp.headers.get_content_charset() or "utf-8"
         text = resp.read().decode(charset, errors="replace")
     engine_name = "cnbing" if cn else "bing"
@@ -169,7 +247,38 @@ def _search_marginalia(q: str, limit: int) -> list[dict[str, Any]]:
     return out
 
 
-_ENGINE_CHOICES = ("cnbing", "bing", "duckduckgo", "marginalia")
+def _search_so360(q: str, limit: int) -> list[dict[str, Any]]:
+    url = "https://www.so.com/s?" + urllib.parse.urlencode({"q": q})
+    text = _http_get(url, timeout=3.5)
+    out: list[dict[str, Any]] = []
+    for chunk in re.split(r'(?=<li[^>]+class="res-list)', text):
+        m = re.search(
+            r'<h3[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>', chunk, flags=re.S | re.I
+        )
+        if not m:
+            continue
+        mu = re.search(r'\bdata-mdurl="([^"]+)"', chunk)
+        href = html.unescape(mu.group(1) if mu else m.group(1))
+        title = _strip_tags(m.group(2))
+        if not title or len(title) < 2 or not href.startswith("http"):
+            continue
+        snippet = re.search(
+            r'class="res-desc[^"]*"[^>]*>(.*?)</(?:p|span|div)>', chunk, flags=re.S | re.I
+        )
+        out.append(
+            {
+                "title": title,
+                "url": href,
+                "content": _strip_tags(snippet.group(1)) if snippet else "",
+                "engine": "so360",
+            }
+        )
+        if len(out) >= limit:
+            break
+    return out
+
+
+_ENGINE_CHOICES = ("cnbing", "bing", "so360", "duckduckgo", "marginalia")
 
 
 def _preferred_engine() -> str:
@@ -187,40 +296,91 @@ def _preferred_engine() -> str:
 
 
 def search(q: str, limit: int = 10) -> dict[str, Any]:
-    # Preferred engine first (settings/env, default cnbing), then the rest as fallbacks.
+    # Preferred engine first (settings/env, default cnbing), then distinct
+    # hosts early so one provider cannot crowd out the rest.
     preferred = _preferred_engine()
-    order = ["cnbing", "bing", "marginalia", "duckduckgo"]
+    order = ["so360", "cnbing", "bing", "duckduckgo", "marginalia"]
     engines = [preferred] + [e for e in order if e != preferred]
-    results: list[dict[str, Any]] = []
     errors: list[str] = []
-    seen: set[str] = set()
 
     def run(name):
         if name == 'duckduckgo': return _search_ddg(q, limit)
         if name == 'marginalia': return _search_marginalia(q, limit)
+        if name == 'so360': return _search_so360(q, limit)
         return _search_bing(q, limit, cn=name == 'cnbing')
-    pool=concurrent.futures.ThreadPoolExecutor(max_workers=4)
-    futures={name:pool.submit(run,name) for name in engines}
-    for name in engines:
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=5)
+    futures = {name: pool.submit(run, name) for name in engines}
+
+    # Overall deadline with early exit: return as soon as finished engines
+    # yielded enough raw rows to rank, or when every engine settled — never
+    # let one slow/flaky engine hold the whole response hostage.
+    deadline = time.monotonic() + 9.0
+    lead_pool = engines[:3]
+    while time.monotonic() < deadline and not all(f.done() for f in futures.values()):
+        # Stop once two of the three lead engines settled with enough rows to
+        # rank: one flaky source cannot monopolize the wait, and one fast
+        # source cannot monopolize the list.
+        lead_done = sum(1 for name in lead_pool if futures[name].done()) >= 2
+        raw = sum(
+            len(f.result())
+            for f in futures.values()
+            if f.done() and not f.exception()
+        )
+        if lead_done and raw >= limit:
+            break
+        time.sleep(0.15)
+
+    # Rank by relevance after gathering — letting the first engine fill the
+    # quota lets junk results crowd out better ones.
+    groups = _query_groups(q)
+    seen: set[str] = set()
+    merged: list[tuple[int, int, int, dict[str, Any]]] = []
+    for idx, name in enumerate(engines):
+        future = futures[name]
+        if not future.done():
+            future.cancel()
+            errors.append(f"{name}: timed out")
+            continue
         try:
-            rows=futures[name].result(timeout=13)
-            for r in rows:
-                u = (r.get("url") or "").rstrip("/")
-                if not u or u in seen:
-                    continue
-                seen.add(u)
-                results.append(r)
-                if len(results) >= limit:
-                    break
+            rows = future.result()
         except Exception as e:  # noqa: BLE001
             errors.append(f"{name}: {e}")
+            continue
+        for pos, r in enumerate(rows):
+            u = (r.get("url") or "").rstrip("/")
+            if not u or u in seen:
+                continue
+            seen.add(u)
+            hay = f"{r.get('title') or ''} {u} {r.get('content') or ''}".lower()
+            score, anchor_ok = _relevance(hay, groups)
+            if not anchor_ok:
+                continue
+            merged.append((-score, idx, pos, r))
+    pool.shutdown(wait=False, cancel_futures=True)
+
+    # Interleave engines inside each score tier: on ties the preferred engine
+    # would otherwise fill every slot and crowd the other hosts out.
+    by_score: dict[int, dict[int, list[dict[str, Any]]]] = {}
+    for neg_score, engine_idx, _pos, row in merged:
+        by_score.setdefault(neg_score, {}).setdefault(engine_idx, []).append(row)
+    results: list[dict[str, Any]] = []
+    for neg_score in sorted(by_score):
+        per_engine = by_score[neg_score]
+        while any(per_engine.values()):
+            for engine_idx in sorted(per_engine):
+                bucket = per_engine[engine_idx]
+                if bucket:
+                    results.append(bucket.pop(0))
+                    if len(results) >= limit:
+                        break
+            if len(results) >= limit:
+                break
         if len(results) >= limit:
             break
-    pool.shutdown(wait=False,cancel_futures=True)
 
     return {
         "query": q,
-        "results": results[:limit],
+        "results": results,
         "engines": engines,
         "preferred_engine": preferred,
         "errors": errors,
@@ -236,13 +396,16 @@ class Handler(BaseHTTPRequestHandler):
 
     def _json(self, code: int, obj: Any) -> None:
         payload = json.dumps(obj, ensure_ascii=False).encode("utf-8")
-        self.send_response(code)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(payload)))
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(payload)
+        try:
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(payload)
+        except OSError:
+            pass  # client disconnected mid-response
 
     def do_GET(self) -> None:  # noqa: N802
         parsed = urllib.parse.urlparse(self.path)

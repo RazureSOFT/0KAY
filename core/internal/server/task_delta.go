@@ -7,6 +7,7 @@ func(s *CoreServiceServer) TaskDelta(cursor string) map[string]interface{} {
  valid:=len(cursor)>len(prefix) && cursor[:len(prefix)]==prefix
  if valid {_,err:=fmt.Sscanf(cursor[len(prefix):],"%d",&previous);valid=err==nil}
  revision:=s.taskRevision
+ if valid && previous==revision {s.mu.Unlock();return map[string]interface{}{"tasks":[]map[string]interface{}{},"removed":[]string{},"reset":false,"cursor":cursor}}
  ids:=map[string]bool{};removed:=[]string{}
  if valid {for id,version:=range s.taskChanges {if version>previous {ids[id]=true}};for id,version:=range s.taskRemoved {if version>previous {removed=append(removed,id)}}}
  s.mu.Unlock()

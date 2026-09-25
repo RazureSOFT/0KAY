@@ -1,0 +1,10 @@
+{
+  "id":"mocr-ui",
+  "name":"mocr usage surfaces",
+  "plugin":"mocr",
+  "enabled":true,
+  "patches":[
+    {"target":"nav","op":"insert","id":"usage","item":{"id":"usage","to":"/usage","labelKey":"nav.usage","icon":"usage","order":40}},
+    {"target":"router","op":"insert","id":"usage","item":{"id":"usage","name":"usage","path":"/usage","component":"usage","titleKey":"nav.usage"}}
+  ]
+}

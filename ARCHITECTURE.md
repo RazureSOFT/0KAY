@@ -76,7 +76,7 @@
 - **Plugin Registry** — 插件注册与生命周期；`disabled_plugins.json` 控制启停
 - **Providers Store** — `core/data/providers.json`：多供应商、模型目录、`disabled_models`、默认模型
 - **Settings Store** — `core/data/settings.json` + 插件贡献的 section（agent / life / mocr / searxng…）
-- **UI Patch Store** — 扫描 `CORE_DATA_DIR/ui/*.patch` 与 `webui/patches/*.patch`，展平后下发给 WebUI
+- **UI Patch Store** — 扫描 `CORE_DATA_DIR/ui/*.patch` 与 `webui/patches/*.patch`，展平后下发给 WebUI；原生页静态资源在 `CORE_DATA_DIR/plugin-ui/{name}/`
 - **State / Health** — `/health` 聚合插件心跳；`/api/state` 合并 Core + L.I.F.E 情绪状态
 
 **内置插件注册**（`registerBuiltins`）：
@@ -225,10 +225,16 @@ POST /api/plugins/disable {plugin}
 | `op` | `insert` \| `remove` \| `replace` |
 | `anchor` / `position` | 相对兄弟项定位：`before` / `after` |
 | `plugin` | 所属插件；插件停用时整文件被过滤 |
+| `item.module` | 插件原生 ESM 入口（如 `/api/plugins/{name}/ui/index.js`），优先于 `component` / iframe |
 
-**查找顺序**：`CORE_DATA_DIR/ui/` →（cwd）`ui/` → `../webui/patches/` → `data/ui/`；同 id 先加载者胜。
+**查找顺序（patch）**：`CORE_DATA_DIR/ui/` →（cwd）`ui/` → `../webui/patches/` → `data/ui/`；同 id 先加载者胜。
 
 **热更新**：`GET /api/ui/patches` 每请求最多 3s 重扫磁盘；WebUI 15s 轮询。
+
+**原生插件页（Scheme C）**：构建产物在 `CORE_DATA_DIR/plugin-ui/{name}/`，由
+`GET /api/plugins/{name}/ui/{path…}` 托管；WebUI importmap 将 `vue` 指到
+`/vendor/vue-bridge.js`（宿主 `window.__0KAY_VUE__`）。构建约定见
+`plugin-web/README.md`。
 
 ---
 

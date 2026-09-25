@@ -19,6 +19,7 @@ type AgentInfo struct {
 	ActiveTasks         int32             `json:"active_tasks"`
 	LastHeartbeatAgeSec int64             `json:"last_heartbeat_age_seconds"`
 	Host                map[string]any    `json:"host,omitempty"`
+ MissingDependencies []string `json:"missing_dependencies"`
 }
 
 // AgentsResponse is the response for /api/agents.
@@ -57,6 +58,7 @@ func (g *Gateway) handleAgents(w http.ResponseWriter, r *http.Request) {
 			ActiveTasks:         a.ActiveTasks,
 			LastHeartbeatAgeSec: int64(age),
 			Host:                host,
+            MissingDependencies:g.registry.MissingDependencies(a.PluginID),
 		})
 	}
 

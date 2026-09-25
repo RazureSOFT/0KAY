@@ -3,6 +3,7 @@
   "name": "SearXNG search entry (mirrors core/data/ui)",
   "version": "0.1.0",
   "plugin": "searxng",
+  "capability": "search",
   "enabled": true,
   "patches": [
     {

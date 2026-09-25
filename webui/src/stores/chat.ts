@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useWizardStore } from './wizard'
+import { uid } from '../uid'
 
 export interface Message {
   id: string
@@ -22,7 +23,7 @@ export interface Message {
 export const useChatStore = defineStore('chat', () => {
   const HISTORY_KEY = '0kay.life.chat.webui.default.v1'
   const SESSION_KEY = '0kay.life.session.v1'
-  const sessionId = ref(sessionStorage.getItem(SESSION_KEY) || `webui:${crypto.randomUUID()}`)
+  const sessionId = ref(sessionStorage.getItem(SESSION_KEY) || `webui:${uid()}`)
   sessionStorage.setItem(SESSION_KEY, sessionId.value)
   const messages = ref<Message[]>([])
   const isConnected = ref(false)
@@ -410,7 +411,7 @@ export const useChatStore = defineStore('chat', () => {
     messages.value = []
     lastUsage.value = null
     contextSummary.value = ''
-    sessionId.value = `webui:${crypto.randomUUID()}`
+    sessionId.value = `webui:${uid()}`
     sessionStorage.setItem(SESSION_KEY, sessionId.value)
     try { localStorage.removeItem(HISTORY_KEY) } catch { /* ignore */ }
   }

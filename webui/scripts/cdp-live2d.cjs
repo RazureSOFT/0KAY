@@ -108,7 +108,6 @@ localStorage.setItem('0kay_config', JSON.stringify({
 
   // fetch model assets status
   const checks = [
-    '/vendor/pixi.min.js',
     '/vendor/live2dcubismcore.min.js',
     '/vendor/cubism4.min.js',
     '/api/live2d',

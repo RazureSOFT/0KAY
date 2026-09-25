@@ -49,6 +49,7 @@ type Gateway struct {
 type LocalCore interface {
 	GetUsage() map[string]interface{}
 	ClearUsage()
+ RecordUsage(server.UsageRecord)
 	GetPermissions() server.Permissions
 	SetPermissions(p server.Permissions)
 	ListTasks() []map[string]interface{}
@@ -57,6 +58,7 @@ type LocalCore interface {
 	CreateAgentSession(string) (string, error)
 	HasAgentSession(string) bool
 	ManageAgentSession(string,string) error
+	RenameAgentSession(string,string) error
 }
 
 // Config holds gateway configuration.
@@ -131,13 +133,17 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/plugins", g.handlePlugins)
 	mux.HandleFunc("/api/plugins/enable", g.handlePluginEnable)
 	mux.HandleFunc("/api/plugins/disable", g.handlePluginDisable)
+	// Plugin front-end ESM bundles (scheme C): CORE_DATA_DIR/plugin-ui/{name}/
+	mux.HandleFunc("/api/plugins/{name}/ui/{path...}", g.handlePluginUI)
 	mux.HandleFunc("/api/agents", g.handleAgents)
 	mux.HandleFunc("/api/agent/sessions", g.handleAgentSessions)
 	mux.HandleFunc("/api/agent/messages", g.handleAgentMessage)
 	mux.HandleFunc("/api/agent/workspace", g.handleAgentWorkspace)
 	mux.HandleFunc("/api/agent/approvals", g.handleAgentApprovals)
+	mux.HandleFunc("/api/agent/questions", g.handleAgentApprovals)
 	mux.HandleFunc("/api/agent/host", g.handleAgentWorkspace)
 	mux.HandleFunc("/api/agent/compact", g.handleAgentCompact)
+	mux.HandleFunc("/api/skills", g.handleSkills)
 	mux.HandleFunc("/api/tasks/cancel", g.handleTaskCancel)
 	mux.HandleFunc("/api/chat", g.handleChat)
 	mux.HandleFunc("/api/life/chat", g.handleLifeChat)
@@ -152,6 +158,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/life/memories", g.handleLifeMemories)
 	mux.HandleFunc("/api/life/companion", g.handleLifeCompanion)
 	mux.HandleFunc("/api/usage", g.handleUsage)
+ mux.HandleFunc("/api/usage/record",g.handleUsageRecord)
 	mux.HandleFunc("/api/usage/clear", g.handleUsageClear)
 	mux.HandleFunc("/api/models", g.handleModelsList)
 	mux.HandleFunc("/api/run", g.handleRunDirect)
@@ -159,6 +166,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/images", g.handleImages)
 	mux.Handle("/live2d/models/",http.StripPrefix("/live2d/models/",http.FileServer(http.Dir(live2DRoot()))))
 		mux.HandleFunc("/api/tasks", g.handleTasks)
+		mux.HandleFunc("/api/tasks/events",g.handleTaskEvents)
 		mux.HandleFunc("/api/providers", g.handleProviders)
 	mux.HandleFunc("/api/providers/delete", g.handleProviderDelete)
 	mux.HandleFunc("/api/providers/defaults", g.handleProviderDefaults)
@@ -1069,7 +1077,7 @@ func listLive2DModels() []map[string]string {
 		if err != nil || d.IsDir() {
 			return nil
 		}
-		if !strings.HasSuffix(strings.ToLower(d.Name()), ".model3.json") {
+		if !isLive2DManifest(d.Name()) {
 			return nil
 		}
 		rel, relErr := filepath.Rel(root, path)
@@ -1077,7 +1085,7 @@ func listLive2DModels() []map[string]string {
 			return nil
 		}
 		rel = filepath.ToSlash(rel)
-		id := strings.TrimSuffix(rel, ".model3.json")
+		id := strings.TrimSuffix(strings.TrimSuffix(rel, ".model3.json"), ".model.json")
 		label := filepath.Base(id)
 		out = append(out, map[string]string{
 			"id":    id,
@@ -1101,10 +1109,12 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 			"models": listLive2DModels(),
 		})
 	case http.MethodPost:
-		if err := r.ParseMultipartForm(512 << 20); err != nil {
+		r.Body=http.MaxBytesReader(w,r.Body,512<<20)
+		if err := r.ParseMultipartForm(32 << 20); err != nil {
 			http.Error(w, "invalid multipart form: "+err.Error(), http.StatusBadRequest)
 			return
 		}
+		defer r.MultipartForm.RemoveAll()
 		root := live2DRoot()
 		if err := os.MkdirAll(root, 0o755); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1272,14 +1282,17 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			saved++
-			if strings.HasSuffix(strings.ToLower(remainder), ".model3.json") && firstModelURL == "" {
+			if isLive2DManifest(remainder) && firstModelURL == "" {
 				firstModelURL = "/live2d/models/" + filepath.ToSlash(filepath.Join(finalRootName, remainder))
 			}
 		}
-		if saved == 0 {
-			http.Error(w, "no files saved", http.StatusBadRequest)
+		if saved == 0 || firstModelURL=="" {
+			os.RemoveAll(targetDir)
+			http.Error(w, "No Live2D manifest found. Upload the complete folder containing .model.json or .model3.json and its textures/model files.", http.StatusBadRequest)
 			return
 		}
+        manifest:=filepath.Join(root,filepath.FromSlash(strings.TrimPrefix(firstModelURL,"/live2d/models/")))
+        if err:=validateLive2DManifest(manifest);err!=nil {os.RemoveAll(targetDir);http.Error(w,err.Error(),400);return}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -1287,6 +1300,11 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 			"models":    listLive2DModels(),
 			"model_url": firstModelURL,
 		})
+	case http.MethodDelete:
+		id:=r.URL.Query().Get("id")
+		if err:=deleteLive2DModel(id);err!=nil {http.Error(w,err.Error(),http.StatusBadRequest);return}
+        if g.settingsStore!=nil {values:=g.settingsStore.GetValues("live2d");current,_:=values["model_url"].(string);folder:=strings.Split(id,"/")[0];if strings.HasPrefix(current,"/live2d/models/"+folder+"/"){_ = g.settingsStore.SetValues("live2d",map[string]interface{}{"enabled":false,"model_url":""})}}
+		w.Header().Set("Content-Type","application/json");json.NewEncoder(w).Encode(map[string]interface{}{"ok":true,"models":listLive2DModels()})
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}

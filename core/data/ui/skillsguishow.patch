@@ -1,0 +1,35 @@
+{
+  "id": "skillsguishow-ui",
+  "name": "Skills GUI (list/upload/delete)",
+  "version": "0.1.0",
+  "plugin": "",
+  "enabled": true,
+  "patches": [
+    {
+      "target": "nav",
+      "op": "insert",
+      "anchor": "plugins",
+      "position": "before",
+      "id": "skillsguishow",
+      "item": {
+        "id": "skillsguishow",
+        "to": "/skills",
+        "label": "技能",
+        "icon": "plugins",
+        "order": 26
+      }
+    },
+    {
+      "target": "router",
+      "op": "insert",
+      "id": "skillsguishow",
+      "item": {
+        "id": "skillsguishow",
+        "path": "/skills",
+        "name": "skillsguishow",
+        "module": "/api/plugins/skillsguishow/ui/index.js",
+        "title": "技能"
+      }
+    }
+  ]
+}

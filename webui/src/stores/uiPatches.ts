@@ -30,6 +30,10 @@ export interface RouterPatchItem {
   path: string
   name: string
   component?: string
+  /** ESM entry served by Core, e.g. /api/plugins/{name}/ui/index.js */
+  module?: string
+  /** Owning plugin name (optional; useful for module URL building). */
+  plugin?: string
   src?: string
   title?: string
   titleKey?: string
@@ -116,7 +120,6 @@ export interface ChatSlotItem {
 /** Built-in sidebar items. Chat/对话 is registered by life.patch; Agent by agent.patch. */
 export const BUILTIN_NAV: NavItem[] = [
   { id: 'plugins', to: '/plugins', labelKey: 'nav.plugins', icon: 'plugins', order: 30 },
-  { id: 'usage', to: '/usage', labelKey: 'nav.usage', icon: 'usage', order: 40 },
   { id: 'settings', to: '/settings', labelKey: 'nav.settings', icon: 'settings', order: 100 },
 ]
 
@@ -134,7 +137,6 @@ export const BUILTIN_SETTINGS: SettingsTabItem[] = [
   { id: 'general', icon: 'globe', order: 10 },
   { id: 'provider', icon: 'cloud', order: 20, component: 'provider' },
   { id: 'persona', icon: 'person', order: 40, component: 'persona' },
-  { id: 'live2d', icon: 'avatar', order: 50, component: 'live2d' },
   { id: 'permissions', icon: 'lock', order: 60, component: 'permissions' },
   { id: 'danger', icon: 'warn', order: 100 },
 ]

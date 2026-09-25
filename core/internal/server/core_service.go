@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"0kay/core/internal/registry"
+	"0kay/core/internal/pairing"
 	agentv1 "0kay/gen/agent/v1"
 	corev1 "0kay/gen/core/v1"
 	lifev1 "0kay/gen/life/v1"
@@ -23,6 +24,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -52,6 +55,12 @@ type CoreServiceServer struct {
 
 	// mocr address for direct generation
 	mocrAddr string
+
+	// dispatchActivity tracks last ledger progress per dispatched task for the
+	// inactivity watchdog (dead/hung executor detection).
+	dispatchMu     sync.Mutex
+	dispatchActivity map[string]time.Time
+	dispatchLastSeen map[string]time.Time
 
 	// life permissions (screen_watch / computer_use / host report)
 	permMu      sync.RWMutex
@@ -88,6 +97,7 @@ type TaskInfo struct {
 	SessionID string
 	Kind string
 	ParentID string
+	Args string
 }
 
 type persistedTask struct {
@@ -103,6 +113,7 @@ type persistedTask struct {
 	SessionID string `json:"session_id,omitempty"`
 	Kind string `json:"kind,omitempty"`
 	ParentID string `json:"parent_id,omitempty"`
+	Args string `json:"args,omitempty"`
 }
 
 // UsageRecord is one token-usage sample.
@@ -181,7 +192,7 @@ func (u *UsageStore) Snapshot() map[string]interface{} {
 		byModel[m].Total += r.TotalTokens
 		byModel[m].Count++
 
-		day := r.Timestamp.UTC().Format("2006-01-02")
+		day := r.Timestamp.Format("2006-01-02")
 		if byDay[day] == nil {
 			byDay[day] = &byKey{}
 		}
@@ -242,6 +253,7 @@ func NewCoreServiceServer(reg *registry.Registry) *CoreServiceServer {
 				tasks[item.TaskID].SessionID = copy.SessionID
 				tasks[item.TaskID].Kind = copy.Kind
 				tasks[item.TaskID].ParentID = copy.ParentID
+				tasks[item.TaskID].Args = copy.Args
 				if copy.State == "running" || copy.State == "pending" {
 					tasks[item.TaskID].State = "failed"
 					tasks[item.TaskID].Error = "Core restarted before execution was acknowledged"
@@ -257,6 +269,8 @@ func NewCoreServiceServer(reg *registry.Registry) *CoreServiceServer {
 		sessions:        make(map[string][]*corev1.ChatMessage),
 		usage:           NewUsageStore(usagePath),
 		mocrAddr:        mocrAddr,
+		dispatchActivity: make(map[string]time.Time),
+		dispatchLastSeen: make(map[string]time.Time),
 		permissions: Permissions{
 			ScreenWatch: false,
 			ComputerUse: false,
@@ -283,7 +297,7 @@ func (s *CoreServiceServer) persistTasksLocked() {
 	}
 	items := make([]persistedTask, 0, len(s.tasks))
 	for _, t := range s.tasks {
-		items = append(items, persistedTask{TaskID:t.TaskID, CallerID:t.CallerID, Prompt:t.Prompt, AgentID:t.AgentID, State:t.State, Result:t.Result, Error:t.Error, StartedAt:t.StartedAt, EndedAt:t.EndedAt, SessionID:t.SessionID, Kind:t.Kind, ParentID:t.ParentID})
+		items = append(items, persistedTask{TaskID:t.TaskID, CallerID:t.CallerID, Prompt:t.Prompt, AgentID:t.AgentID, State:t.State, Result:t.Result, Error:t.Error, StartedAt:t.StartedAt, EndedAt:t.EndedAt, SessionID:t.SessionID, Kind:t.Kind, ParentID:t.ParentID, Args:t.Args})
 	}
  if s.taskFingerprints==nil {s.taskFingerprints=map[string]string{}}
  changes:=[]persistedTask{}
@@ -330,6 +344,36 @@ func (s *CoreServiceServer) ClearUsage() {
 	s.usageMu.Lock()
 	defer s.usageMu.Unlock()
 	s.usage.Clear()
+}
+
+func(s *CoreServiceServer) RecordUsage(record UsageRecord) {
+ s.usageMu.Lock();defer s.usageMu.Unlock()
+ if record.RequestID!=""{
+  for _,existing:=range s.usage.records {if existing.RequestID==record.RequestID{return}}
+ }
+ s.usage.Add(record)
+}
+
+// touchDispatch records ledger activity for a dispatched root task tree.
+func (s *CoreServiceServer) touchDispatch(root string) {
+	if root == "" { return }
+	s.dispatchMu.Lock()
+	if _, ok := s.dispatchActivity[root]; ok { s.dispatchActivity[root] = time.Now() }
+	s.dispatchMu.Unlock()
+}
+
+// beginDispatch registers an in-flight dispatch; returns a stop function.
+func (s *CoreServiceServer) beginDispatch(taskID string) func() {
+	s.dispatchMu.Lock()
+	if s.dispatchActivity == nil { s.dispatchActivity = map[string]time.Time{} }
+	s.dispatchActivity[taskID] = time.Now()
+	s.dispatchMu.Unlock()
+	return func() {
+		s.dispatchMu.Lock()
+		delete(s.dispatchActivity, taskID)
+		delete(s.dispatchLastSeen, taskID)
+		s.dispatchMu.Unlock()
+	}
 }
 
 // GetPermissions returns current Life permissions.
@@ -505,6 +549,13 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 		BaseUrl:  baseURL,
 		ApiKey:   apiKey,
 	}
+	// Propagate correlation ids so mocr can attribute usage to session/request.
+	pairs := []string{}
+	if req.RequestId != "" { pairs = append(pairs, "x-0kay-request-id", req.RequestId) }
+	if sessionID != "" { pairs = append(pairs, "x-0kay-session-id", sessionID) }
+	if len(pairs) > 0 {
+		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(pairs...))
+	}
 	if req.SystemPrompt != "" {
 		// System prompt is already prepended to history; also pass for providers that prefer the field.
 		genReq.SystemPrompt = req.SystemPrompt
@@ -555,18 +606,7 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 					TotalTokens:      pt + ct,
 				}
 			}
-			// Record usage
-			s.usageMu.Lock()
-			s.usage.Add(UsageRecord{
-				Timestamp:        time.Now(),
-				RequestID:        req.RequestId,
-				SessionID:        sessionID,
-				Model:            modelID,
-				PromptTokens:     usage.PromptTokens,
-				CompletionTokens: usage.CompletionTokens,
-				TotalTokens:      usage.TotalTokens,
-			})
-			s.usageMu.Unlock()
+			// mocr reports all provider calls centrally; do not double-count here.
 
 			// Persist session turns
 			if req.Prompt != "" {
@@ -669,17 +709,7 @@ func (s *CoreServiceServer) fallbackStream(req *corev1.CallMocrRequest, history 
 		s.appendSession(sessionID, &corev1.ChatMessage{Role: "user", Content: req.Prompt})
 	}
 	s.appendSession(sessionID, &corev1.ChatMessage{Role: "assistant", Content: reply})
-	s.usageMu.Lock()
-	s.usage.Add(UsageRecord{
-		Timestamp:        time.Now(),
-		RequestID:        req.RequestId,
-		SessionID:        sessionID,
-		Model:            "offline-fallback",
-		PromptTokens:     pt,
-		CompletionTokens: ct,
-		TotalTokens:      pt + ct,
-	})
-	s.usageMu.Unlock()
+	// Offline text is not provider token usage and must not enter billed totals.
 
 	return stream.Send(&corev1.CallMocrResponse{
 		RequestId: req.RequestId,
@@ -781,7 +811,7 @@ func (s *CoreServiceServer) RunDirect(ctx context.Context, req *corev1.RunDirect
 	defer conn.Close()
 
 	client := agentv1.NewAgentServiceClient(conn)
-	resp, err := client.RunDirect(ctx, &agentv1.RunDirectRequest{
+	resp, err := client.RunDirect(pairing.CallbackContext(ctx,agents[0].Address), &agentv1.RunDirectRequest{
 		Tool:      req.Tool,
 		Args:      req.Args,
 		SessionId: req.SessionId,
@@ -861,10 +891,47 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
+	stopDispatch := s.beginDispatch(req.TaskId)
+	defer stopDispatch()
+
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conn, err := grpc.NewClient(agentAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// Keepalive detects half-open TCP to a dead executor; the inactivity
+	// watchdog catches a hung-but-connected agent (no ledger progress).
+	idleTimeout := 60 * time.Minute
+	if v := os.Getenv("CORE_AGENT_INACTIVITY_TIMEOUT"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 { idleTimeout = d }
+	}
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+			s.dispatchMu.Lock()
+			last, active := s.dispatchActivity[req.TaskId]
+			s.dispatchMu.Unlock()
+			if !active { return }
+			if time.Since(last) > idleTimeout {
+				log.Printf("[UseAgent] Task %s inactivity timeout after %s", req.TaskId, idleTimeout)
+				cancel()
+				return
+			}
+		}
+	}()
+
+	conn, err := grpc.NewClient(agentAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                30 * time.Second,
+			Timeout:             10 * time.Second,
+			PermitWithoutStream: true,
+		}),
+	)
 	if err != nil {
 		log.Printf("[UseAgent] Failed to connect to agent %s: %v", agentAddr, err)
 		s.failTask(req.TaskId, fmt.Sprintf("failed to connect to agent: %v", err))
@@ -883,11 +950,17 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 	if strings.HasPrefix(req.Metadata["session_id"], "agent-session:") {
 		executionPrompt = s.AgentSessionPrompt(req.Metadata["session_id"], req.TaskId, req.Prompt)
 	}
-	resp, err := client.ExecuteTask(ctx, &agentv1.ExecuteTaskRequest{
+	metadata := map[string]string{}
+	for k, v := range req.Metadata { metadata[k] = v }
+	if req.CallerId != "" && metadata["caller_id"] == "" { metadata["caller_id"] = req.CallerId }
+	if _, ok := metadata["language"]; !ok {
+		if req.CallerId == "webui" || metadata["caller_id"] == "webui" { metadata["language"] = "zh" }
+	}
+	resp, err := client.ExecuteTask(pairing.CallbackContext(ctx,agentAddr), &agentv1.ExecuteTaskRequest{
 		TaskId:    req.TaskId,
 		Prompt:    executionPrompt,
 		AgentType: agentType,
-		Metadata:  req.Metadata,
+		Metadata:  metadata,
 	})
 
 	if err != nil {
@@ -908,7 +981,25 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 		stateName = "running"
 	}
 	s.finishTask(req.TaskId, stateName, resp.Result, resp.Error)
-	s.notifyLifeTaskCompleted(req.TaskId, resp.State, resp.Result, resp.Error)
+	if stateName == "done" {
+		s.maybeAutoTitleSession(req.Metadata["session_id"])
+	}
+	// Handoff summary JSON is only meaningful to LIFE; keep Core's fallback
+	// localized for LIFE-dispatched tasks when the agent returned none.
+	handoff:=resp.Metadata["handoff"]
+	if isLifeCaller(req.CallerId) {
+		if handoff=="" {
+			if metadata["language"]=="en" { handoff=`{"artifacts":[],"outcome":"Agent did not provide an artifact list; review the Agent session."}` } else { handoff=`{"artifacts":[],"outcome":"Agent 未提供产物清单，请查看 Agent 会话。"}` }
+		}
+	} else {
+		handoff=""
+	}
+	s.notifyLifeTaskCompleted(req.TaskId, resp.State, handoff, resp.Error)
+}
+
+func isLifeCaller(caller string) bool {
+	c := strings.ToLower(strings.TrimSpace(caller))
+	return c == "life" || strings.HasPrefix(c, "life:") || strings.HasPrefix(c, "plugin:life")
 }
 
 // finishTask records terminal state on TaskInfo (kept for ListTasks history).
@@ -1018,7 +1109,7 @@ func (s *CoreServiceServer) CancelAgent(ctx context.Context, req *corev1.CancelA
 				continue
 			}
 			agentClient := agentv1.NewAgentServiceClient(conn)
-			response, callErr := agentClient.CancelTask(ctx, &agentv1.CancelTaskRequest{TaskId: req.TaskId})
+			response, callErr := agentClient.CancelTask(pairing.CallbackContext(ctx,a.Address), &agentv1.CancelTaskRequest{TaskId: req.TaskId})
 			conn.Close()
 			if callErr != nil {
 				return nil, callErr
@@ -1077,6 +1168,9 @@ func (s *CoreServiceServer) ListTasks() []map[string]interface{} {
 		}
 		if !t.EndedAt.IsZero() {
 			item["ended_at"] = t.EndedAt.Format(time.RFC3339)
+		}
+		if t.Args != "" {
+			item["args"] = t.Args
 		}
 		if t.Result != "" {
 			item["result"] = t.Result

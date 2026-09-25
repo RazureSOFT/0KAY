@@ -7,6 +7,8 @@ import { useLifeStore } from './stores/life'
 import { useChatStore } from './stores/chat'
 import { useUIPatchesStore } from './stores/uiPatches'
 import SetupWizard from './components/SetupWizard.vue'
+import GlobalAgentInbox from './components/GlobalAgentInbox.vue'
+import ConfirmDialog from './components/ConfirmDialog.vue'
 import { setLanguage, getLanguage } from './i18n'
 
 const { t, locale } = useI18n()
@@ -100,6 +102,8 @@ function onWizardComplete() {
   <SetupWizard v-if="!wizard.isCompleted" @complete="onWizardComplete" />
 
   <div v-else class="app-shell">
+    <GlobalAgentInbox />
+    <ConfirmDialog />
     <header class="app-header">
       <div class="brand">
         <span class="brand-mark">0kay</span>

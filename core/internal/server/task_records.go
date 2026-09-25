@@ -15,6 +15,7 @@ type TaskEvent struct {
  ParentID string `json:"parent_id"`
  Kind string `json:"kind"`
  Prompt string `json:"prompt"`
+ Args string `json:"args"`
  State string `json:"state"`
  Result string `json:"result"`
  Error string `json:"error"`
@@ -35,17 +36,21 @@ func (s *CoreServiceServer) RecordTask(event TaskEvent) error {
     if existing.SessionID == event.SessionID && (existing.Kind == "agent" || existing.Kind == "compact") && (existing.State == "running" || existing.State == "pending") { return fmt.Errorf("session already has an active task") }
    }
   }
-  task = &TaskInfo{TaskID:event.TaskID, CallerID:event.CallerID, SessionID:event.SessionID, ParentID:event.ParentID, Kind:event.Kind, Prompt:event.Prompt, StartedAt:time.Now()}
+  task = &TaskInfo{TaskID:event.TaskID, CallerID:event.CallerID, SessionID:event.SessionID, ParentID:event.ParentID, Kind:event.Kind, Prompt:event.Prompt, Args:event.Args, StartedAt:time.Now()}
   for _, existing := range s.tasks {if !task.StartedAt.After(existing.StartedAt) {task.StartedAt=existing.StartedAt.Add(time.Nanosecond)}}
   s.tasks[event.TaskID] = task
  } else if task.State == "done" || task.State == "failed" || task.State == "cancelled" {
   if task.State == event.State { return nil }
   return fmt.Errorf("task is already terminal")
  }
- task.State, task.Result, task.Error = event.State, event.Result, event.Error
- if event.State == "done" || event.State == "failed" || event.State == "cancelled" { task.EndedAt = time.Now() }
- s.persistTasksLocked()
- return nil
+   task.State, task.Result, task.Error = event.State, event.Result, event.Error
+   if event.Args != "" { task.Args = event.Args }
+  if event.State == "done" || event.State == "failed" || event.State == "cancelled" { task.EndedAt = time.Now() }
+  s.persistTasksLocked()
+  // Activity for inactivity watchdog: match root and nested (task:sub:…) ids.
+  if event.ParentID != "" { s.touchDispatch(event.ParentID) }
+  s.touchDispatch(event.TaskID)
+  return nil
 }
 
 // Sessions are durable ledger entries, including sessions with no messages yet.
@@ -53,6 +58,18 @@ func (s *CoreServiceServer) CreateAgentSession(title string) (string, error) {
  id := fmt.Sprintf("agent-session:%d", time.Now().UnixNano())
  if strings.TrimSpace(title) == "" { title = "Agent session" }
  return id, s.RecordTask(TaskEvent{TaskID:id, SessionID:id, Kind:"agent_session", Prompt:title, CallerID:"webui", State:"done"})
+}
+
+// RenameAgentSession updates a session's display title (used for auto-generated summaries).
+func (s *CoreServiceServer) RenameAgentSession(id, title string) error {
+ s.mu.Lock(); defer s.mu.Unlock()
+ session:=s.tasks[id]
+ if session==nil || session.Kind!="agent_session" || session.State=="deleted" {return fmt.Errorf("session not found")}
+ title=strings.TrimSpace(title)
+ if title=="" {return fmt.Errorf("title required")}
+ session.Prompt=truncateRunes(title,80)
+ s.persistTasksLocked()
+ return nil
 }
 
 func (s *CoreServiceServer) HasAgentSession(id string) bool {

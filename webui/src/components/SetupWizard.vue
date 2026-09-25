@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useWizardStore } from '../stores/wizard'
+import AppSelect from './AppSelect.vue'
 import { PROVIDERS, WIZARD_STEPS } from '../composables/wizard'
 
 const { t, locale } = useI18n()
@@ -298,9 +299,7 @@ function toggleLanguage() {
 
           <div v-if="wizard.selectedModels.length > 0" class="form-group">
             <label>{{ t('wizard.defaultModel') }}</label>
-            <select v-model="wizard.defaultModel" class="input">
-              <option v-for="m in wizard.selectedModels" :key="m" :value="m">{{ m }}</option>
-            </select>
+            <AppSelect v-model="wizard.defaultModel" class="input" :aria-label="t('wizard.defaultModel')" :options="wizard.selectedModels" />
           </div>
         </div>
 

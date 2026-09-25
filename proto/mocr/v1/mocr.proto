@@ -193,6 +193,11 @@ message Message {
 
   // tool_calls carries assistant tool calls when replaying history.
   repeated ToolCall tool_calls = 4;
+
+  // reasoning_content carries prior-turn assistant chain-of-thought when
+  // replaying history (DeepSeek thinking mode requires it on every assistant
+  // message whenever tools are present).
+  string reasoning_content = 5;
 }
 
 // TokenUsage contains token usage information.

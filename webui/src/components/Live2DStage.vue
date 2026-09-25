@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLifeStore } from '../stores/life'
 import { useWizardStore } from '../stores/wizard'
+import { live2dRuntimeReady } from '../live2d-runtime'
 
 const { t } = useI18n()
 const life = useLifeStore()
@@ -92,7 +93,8 @@ function saveTransform(immediate = false) {
 }
 
 function disposeModel() {
-  unbindStageInteraction()
+  endDrag()
+  if(transformSaveTimer) {clearTimeout(transformSaveTimer);transformSaveTimer=0}
   if (live2dModel) {
     try {
       if (pixiApp?.stage) pixiApp.stage.removeChild(live2dModel)
@@ -103,6 +105,7 @@ function disposeModel() {
 }
 
 function disposeApp() {
+  unbindStageInteraction()
   disposeModel()
   if (resizeObserver) {
     resizeObserver.disconnect()
@@ -322,6 +325,7 @@ function resetView() {
 }
 
 function bindStageInteraction() {
+  unbindStageInteraction()
   const el = stageEl.value
   if (!el) return
   el.style.cursor = 'grab'
@@ -383,6 +387,7 @@ function initPixi() {
 }
 
 async function loadModel() {
+  try { await live2dRuntimeReady } catch (error: any) {loadState.value='error';errorMsg.value=`Live2D runtime: ${error.message}`;return}
   const token = ++loadToken
   disposeModel()
 
@@ -422,6 +427,7 @@ async function loadModel() {
       return
     }
     live2dModel = model
+    bindStageInteraction()
     model.anchor?.set?.(0.5, 0.5)
     pixiApp.stage.addChild(model)
     fitModel()
@@ -454,12 +460,18 @@ function scheduleReload() {
 }
 
 onMounted(async () => {
+  window.addEventListener('live2d-models-changed',loadModelList)
+  try {
+    const response=await fetch('/api/settings/live2d')
+    if(response.ok) {const {values}=await response.json();if(values && typeof values.enabled==='boolean')wizard.live2d.enabled=values.enabled;if(values && typeof values.model_url==='string')wizard.live2d.modelUrl=values.model_url}
+  } catch { /* retain local configuration when LIFE is unavailable */ }
   await loadModelList()
   if (enabled.value) loadModel()
   else loadState.value = 'disabled'
 })
 
 onUnmounted(() => {
+  window.removeEventListener('live2d-models-changed',loadModelList)
   loadToken++
   cancelAnimationFrame(rafId)
   disposeApp()

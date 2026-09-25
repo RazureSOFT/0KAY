@@ -77,6 +77,16 @@ func (g *Gateway) handleUIPatches(w http.ResponseWriter, r *http.Request) {
 	g.maybeReloadUIPatches()
 
 	ops := g.uiPatches.FlattenOps()
+	// Surface ops only when their owning plugin capability is registered
+	// (capability defaults to plugin name; overrides live in patch data).
+	filtered:=make([]map[string]any,0,len(ops))
+	for _,op:=range ops {
+		capability,_:=op["capability"].(string)
+		if capability=="" { capability,_=op["plugin"].(string) }
+		if capability!="" && len(g.registry.GetPluginsByCapability(capability))==0 {continue}
+		filtered=append(filtered,op)
+	}
+	ops=filtered
 	if ops == nil {
 		ops = []map[string]any{}
 	}

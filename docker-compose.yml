@@ -25,6 +25,7 @@ services:
       - CORE_BIND_HOST=0.0.0.0
       - MOCR_ADDRESS=mocr:50052
       - SEARXNG_URL=http://searxng:8080
+      - CORE_TRUSTED_NETWORKS=172.16.0.0/12,192.168.0.0/16,10.0.0.0/8
     volumes:
       - core-data:/app/data
     healthcheck:
@@ -46,6 +47,7 @@ services:
       - CORE_ADDRESS=core:50051
       - CORE_HTTP_ADDR=http://core:8080
       - MOCR_ADDRESS=mocr:50052
+      - CORE_API_TOKEN=${CORE_API_TOKEN:-}
 
   # L.I.F.E - Persona Plugin
   life:

@@ -44,7 +44,10 @@ func main() {
 	reflection.Register(grpcServer)
 
 	// Start listener
-	bindHost:=os.Getenv("MOCR_BIND_HOST");if bindHost=="" {bindHost="127.0.0.1"}
+	bindHost := os.Getenv("MOCR_BIND_HOST")
+	if bindHost == "" {
+		bindHost = "127.0.0.1"
+	}
 	listener, err := net.Listen("tcp", bindHost+":"+port)
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
@@ -73,6 +76,7 @@ func main() {
 		Version:      "0.1.0",
 		Capabilities: []string{"mocr"},
 		SettingsSections: []*pluginv1.SettingsSection{
+			{Id: "usage", Label: "用量", Icon: "usage", Order: 90, Description: "由 mocr 提供的模型用量统计"},
 			{
 				Id:          "provider",
 				Label:       "供应商",
@@ -100,6 +104,27 @@ func main() {
 						Label:        "SSE 空闲超时（秒）",
 						DefaultValue: "60",
 						Help:         "超过 N 秒无数据则关闭流",
+					},
+					{
+						Key:          "auto_switch_model",
+						Type:         "bool",
+						Label:        "失败/不回复时自动切换模型",
+						DefaultValue: "true",
+						Help:         "供应商报错或返回空回复时自动换一个模型重试（已发出内容则不重试）",
+					},
+					{
+						Key:          "switch_max_attempts",
+						Type:         "number",
+						Label:        "最大切换次数",
+						DefaultValue: "2",
+						Help:         "单次生成最多允许切换几个候选模型（0-5）",
+					},
+					{
+						Key:          "fallback_models",
+						Type:         "text",
+						Label:        "备选模型",
+						DefaultValue: "",
+						Help:         "逗号分隔的模型 ID，如 gpt-4o-mini,claude-haiku；留空 = 按供应商目录顺序依次尝试",
 					},
 				},
 			},

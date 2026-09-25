@@ -11,8 +11,12 @@ import type { ProviderConfig } from '../composables/wizard'
 import { setLanguage, getLanguage } from '../i18n'
 import Live2DStage from '../components/Live2DStage.vue'
 import LifeSettingsPanel from '../components/LifeSettingsPanel.vue'
+import PairingPanel from '../components/PairingPanel.vue'
+import AppSelect from '../components/AppSelect.vue'
+import { useConfirm } from '../composables/confirm'
 
 const { t, locale } = useI18n()
+const { confirm } = useConfirm()
 const wizard = useWizardStore()
 const provStore = useProvidersStore()
 const sectionsStore = useSettingsSectionsStore()
@@ -477,6 +481,29 @@ async function loadUploadedModels() {
     uploadedModels.value = []
   }
 }
+async function deleteModel(model: {id:string;url:string;label:string}) {
+  const ok = await confirm({
+    title: t('settings.live2d'),
+    message: `删除模型 ${model.label} 及所在模型文件夹中的全部资源？`,
+    confirmLabel: locale.value === 'en' ? 'Delete' : '删除',
+    danger: true,
+  })
+  if (!ok) return
+  try {
+    const response=await fetch(`/api/live2d?id=${encodeURIComponent(model.id)}`,{method:'DELETE'})
+    if(!response.ok)throw new Error(await response.text())
+    const body=await response.json();uploadedModels.value=body.models || []
+    const folder=model.url.slice(0,model.url.indexOf('/', '/live2d/models/'.length)+1)
+    if(wizard.live2d.modelUrl.startsWith(folder)) {wizard.live2d.modelUrl='';wizard.live2d.enabled=false;wizard.saveToStorage()}
+    await saveLive2D();uploadMsg.value='模型已删除'
+    window.dispatchEvent(new Event('live2d-models-changed'))
+  }catch(error:any){uploadMsg.value=error.message}
+}
+async function saveLive2D() {
+  wizard.saveToStorage()
+  const response=await fetch('/api/settings/live2d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({values:{enabled:wizard.live2d.enabled,model_url:wizard.live2d.modelUrl}})})
+  if(!response.ok)throw new Error(await response.text())
+}
 
 function openFolderPicker() {
   folderInput.value?.click()
@@ -497,7 +524,7 @@ async function onFolderSelected(e: Event) {
     }
     fd.append('paths', JSON.stringify(paths))
     const res = await fetch('/api/live2d', { method: 'POST', body: fd })
-    if (!res.ok) throw new Error(String(res.status))
+    if (!res.ok) throw new Error(await res.text())
     const data = await res.json()
     uploadMsg.value = t('settings.uploadOk')
     if (data?.models) uploadedModels.value = data.models
@@ -506,9 +533,11 @@ async function onFolderSelected(e: Event) {
       wizard.live2d.modelUrl = data.model_url
       wizard.live2d.enabled = true
       wizard.saveToStorage()
+      await saveLive2D()
+      window.dispatchEvent(new Event('live2d-models-changed'))
     }
-  } catch {
-    uploadMsg.value = t('settings.uploadFail')
+  } catch (error:any) {
+    uploadMsg.value = `${t('settings.uploadFail')}：${error.message}`
   } finally {
     input.value = ''
   }
@@ -537,6 +566,7 @@ function selectTab(id: string) {
 
 function save() {
   wizard.saveToStorage()
+  if(activeTab.value==='live2d') void saveLive2D().catch(error=>{uploadMsg.value=error.message})
   saved.value = true
   setTimeout(() => { saved.value = false }, 1500)
 }
@@ -600,6 +630,7 @@ function toggleLanguage() {
       <section class="settings-content">
         <!-- General -->
         <div v-if="activeTab === 'general'" class="content-card">
+          <PairingPanel />
           <h2>{{ t('settings.tabs.general') }}</h2>
           <p class="card-desc">{{ t('settings.generalDesc') }}</p>
 
@@ -736,11 +767,7 @@ function toggleLanguage() {
           <div v-if="editingProvider" class="provider-edit card-inner">
             <div class="field">
               <label>{{ t('wizard.provider') }}</label>
-              <select v-model="editingProvider.provider" class="input" @change="onEditProviderType">
-                <option v-for="p in PROVIDERS" :key="p.id" :value="p.id">
-                  {{ t(`providers.${p.id}.name`, p.name) }}
-                </option>
-              </select>
+              <AppSelect v-model="editingProvider.provider" class="input" :aria-label="t('wizard.provider')" :options="PROVIDERS.map(p=>({value:p.id,label:t(`providers.${p.id}.name`,p.name)}))" @change="onEditProviderType" />
             </div>
             <div class="field">
               <label>{{ t('wizard.apiKey') }}</label>
@@ -801,9 +828,7 @@ function toggleLanguage() {
             </div>
             <div class="field">
               <label>{{ t('wizard.defaultModel') }}</label>
-              <select v-model="editingProvider.default_model" class="input">
-                <option v-for="m in editingProvider.models" :key="m" :value="m">{{ m }}</option>
-              </select>
+              <AppSelect v-model="editingProvider.default_model" class="input" :aria-label="t('wizard.defaultModel')" :options="editingProvider.models" />
             </div>
           <div class="actions-row">
             <button class="btn btn-primary" type="button" @click="saveProviderEdit">
@@ -846,13 +871,7 @@ function toggleLanguage() {
               </template>
               <template v-else-if="f.type === 'select'">
                 <label>{{ f.label }}</label>
-                <select
-                  class="input"
-                  :value="sectionDrafts.provider?.[f.key]"
-                  @change="sectionDrafts = { ...sectionDrafts, provider: { ...sectionDrafts.provider, [f.key]: ($event.target as HTMLSelectElement).value } }"
-                >
-                  <option v-for="o in f.options || []" :key="o" :value="o">{{ o }}</option>
-                </select>
+                <AppSelect class="input" :aria-label="f.label" :model-value="String(sectionDrafts.provider?.[f.key] ?? '')" :options="f.options || []" @update:model-value="sectionDrafts = { ...sectionDrafts, provider: { ...sectionDrafts.provider, [f.key]: $event } }" />
                 <p v-if="f.help" class="helper-text">{{ f.help }}</p>
               </template>
               <template v-else>
@@ -959,18 +978,8 @@ function toggleLanguage() {
             </p>
           </div>
 
-          <div class="field">
-            <label>{{ t('wizard.orUpload') }}</label>
-            <label class="upload-area">
-              <input
-                type="file"
-                accept=".moc3,.model3.json"
-                class="file-input"
-                @change="(e: any) => { const f = e.target.files?.[0]; if (f) wizard.live2d.modelData = f }"
-              />
-              <span>{{ wizard.live2d.modelData?.name || t('wizard.uploadHint') }}</span>
-            </label>
-          </div>
+          <p class="helper-text">支持 Cubism 2（.model.json + .moc）与 Cubism 3/4（.model3.json + .moc3）。请选择完整模型文件夹，包含纹理、动作等资源。</p>
+          <button class="btn btn-tonal" @click="saveLive2D().catch(error => uploadMsg = error.message)">保存 LIFE 的 Live2D 设置</button>
 
           <div class="field">
             <label>{{ t('settings.uploadFolder') }}</label>
@@ -999,10 +1008,11 @@ function toggleLanguage() {
                   name="live2d-uploaded"
                   :value="m.url"
                   :checked="wizard.live2d.modelUrl === m.url"
-                  @change="wizard.live2d.modelUrl = m.url; wizard.live2d.enabled = true; wizard.saveToStorage()"
+                  @change="wizard.live2d.modelUrl = m.url; wizard.live2d.enabled = true; saveLive2D().catch(error => uploadMsg = error.message)"
                 />
                 <span>{{ m.label }}</span>
                 <code>{{ m.url }}</code>
+                <button type="button" class="btn btn-danger" @click.prevent="deleteModel(m)">删除模型</button>
               </label>
             </div>
           </div>
@@ -1083,13 +1093,7 @@ function toggleLanguage() {
             </template>
             <template v-else-if="f.type === 'select'">
               <label>{{ f.label }}</label>
-              <select
-                class="input"
-                :value="sectionDrafts[activeTab]?.[f.key]"
-                @change="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: ($event.target as HTMLSelectElement).value }"
-              >
-                <option v-for="o in f.options || []" :key="o" :value="o">{{ o }}</option>
-              </select>
+              <AppSelect class="input" :aria-label="f.label" :model-value="String(sectionDrafts[activeTab]?.[f.key] ?? '')" :options="f.options || []" @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }" />
               <p v-if="f.help" class="helper-text">{{ f.help }}</p>
             </template>
             <template v-else>
@@ -1145,13 +1149,7 @@ function toggleLanguage() {
             </template>
             <template v-else-if="f.type === 'select'">
               <label>{{ fieldLabel(tabMeta(activeTab), f.key, `settings.${f.key}`) }}</label>
-              <select
-                class="input"
-                :value="sectionDrafts[activeTab]?.[f.key]"
-                @change="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: ($event.target as HTMLSelectElement).value }"
-              >
-                <option v-for="o in f.options || []" :key="o" :value="o">{{ o }}</option>
-              </select>
+              <AppSelect class="input" :aria-label="fieldLabel(tabMeta(activeTab), f.key, `settings.${f.key}`)" :model-value="String(sectionDrafts[activeTab]?.[f.key] ?? '')" :options="f.options || []" @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }" />
               <p v-if="f.help || f.helpKey" class="helper-text">
                 {{ fieldHelp(tabMeta(activeTab), f.key, `settings.${f.key}Desc`) }}
               </p>

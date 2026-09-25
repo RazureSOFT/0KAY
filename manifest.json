@@ -1,0 +1,5 @@
+{
+  "schema":1,"name":"@razuresoft/0kay","version":"0.1.0",
+  "modules":["mcp/manifest.json","core/manifest.json","mocr/manifest.json","life/manifest.json","agent/manifest.json","webui/manifest.json"],
+  "repositories":[{"path":"agent","package":"@razuresoft/0kay-agent","url":"https://github.com/RazureSOFT/0KAY-agent.git"}]
+}

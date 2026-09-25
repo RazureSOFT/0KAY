@@ -172,6 +172,11 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("github", captured["prompt"])
         task_id = next(e["task_id"] for e in events if e["type"] == "task_started")
         self.assertEqual(self.engine.active_tasks[task_id]["session_id"], "session-one")
+        class FailingModel:
+            async def generate(self, *args, **kwargs):
+                raise RuntimeError("mocr down")
+                yield ""
+        self.engine.mocr = FailingModel()
         await self.engine.on_task_completed(task_id, "TASK_STATE_FAILED", "", "compiler error")
         self.assertIn("compiler error", self.engine.get_notifications("session-one")[0]["text"])
         records = self.engine.task_records.pending

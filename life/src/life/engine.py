@@ -296,9 +296,19 @@ class LifeEngine:
             self._completed_tasks = (self._completed_tasks + [task_id])[-200:]
             self.emotion.state.apply_delta(self.emotion.on_task_completed(state == "done"))
             self.circadian.task_completed(60)
-            label = {"done": "已完成", "failed": "失败", "cancelled": "已取消"}.get(state, state)
-            text = f"Agent 任务 {task_id} {label}：\n{result or error or label}"
-            notification = {"id": uuid.uuid4().hex, "session_id": task.get("session_id", ""), "text": text, "created_at": datetime.now().isoformat()}
+        label = {"done": "已完成", "failed": "失败", "cancelled": "已取消"}.get(state, state)
+        facts = result[:2400] if state == 'done' else (error or label)[:800]
+        text = f"任务{label}。产物与使用信息：{facts}"
+        try:
+            prompt = self.output.build_prompt(user_message='请把任务结果简短告诉用户。',
+                think_guidance=f'任务状态：{label}。只说明以下产物路径、使用方法、真实限制；不要贴工具日志或长报告，不追问无关扩展。最多三句话。事实：{facts}',
+                emotion_context=json.dumps(self.emotion.state.to_dict()),persona_context=task.get('persona_context',''))
+            rendered=''.join([chunk async for chunk in self.mocr.generate(self.output_model or self.default_model,[{'role':'user','content':'任务结束，请告知产物和使用方法。'}],prompt,max_tokens=500)])
+            if rendered.strip(): text=rendered.strip()
+        except Exception:
+            pass
+        notification = {"id": uuid.uuid4().hex, "session_id": task.get("session_id", ""), "text": text, "created_at": datetime.now().isoformat()}
+        async with self._dispatch_lock:
             self._notifications.append(notification)
             self._notifications = self._notifications[-100:]
             self._save_state()

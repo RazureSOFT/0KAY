@@ -831,9 +831,13 @@ type Message struct {
 	// tool_call_id links a "tool" result message back to its ToolCall.
 	ToolCallId string `protobuf:"bytes,3,opt,name=tool_call_id,json=toolCallId,proto3" json:"tool_call_id,omitempty"`
 	// tool_calls carries assistant tool calls when replaying history.
-	ToolCalls     []*ToolCall `protobuf:"bytes,4,rep,name=tool_calls,json=toolCalls,proto3" json:"tool_calls,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ToolCalls []*ToolCall `protobuf:"bytes,4,rep,name=tool_calls,json=toolCalls,proto3" json:"tool_calls,omitempty"`
+	// reasoning_content carries prior-turn assistant chain-of-thought when
+	// replaying history (DeepSeek thinking mode requires it on every assistant
+	// message whenever tools are present).
+	ReasoningContent string `protobuf:"bytes,5,opt,name=reasoning_content,json=reasoningContent,proto3" json:"reasoning_content,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Message) Reset() {
@@ -892,6 +896,13 @@ func (x *Message) GetToolCalls() []*ToolCall {
 		return x.ToolCalls
 	}
 	return nil
+}
+
+func (x *Message) GetReasoningContent() string {
+	if x != nil {
+		return x.ReasoningContent
+	}
+	return ""
 }
 
 // TokenUsage contains token usage information.
@@ -1023,14 +1034,15 @@ const file_mocr_v1_mocr_proto_rawDesc = "" +
 	"\vcost_budget\x18\x04 \x01(\x01R\n" +
 	"costBudget\x12)\n" +
 	"\x10require_thinking\x18\x05 \x01(\bR\x0frequireThinking\x12)\n" +
-	"\x10available_models\x18\x06 \x03(\tR\x0favailableModels\"\x8b\x01\n" +
+	"\x10available_models\x18\x06 \x03(\tR\x0favailableModels\"\xb8\x01\n" +
 	"\aMessage\x12\x12\n" +
 	"\x04role\x18\x01 \x01(\tR\x04role\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12 \n" +
 	"\ftool_call_id\x18\x03 \x01(\tR\n" +
 	"toolCallId\x120\n" +
 	"\n" +
-	"tool_calls\x18\x04 \x03(\v2\x11.mocr.v1.ToolCallR\ttoolCalls\"\x81\x01\n" +
+	"tool_calls\x18\x04 \x03(\v2\x11.mocr.v1.ToolCallR\ttoolCalls\x12+\n" +
+	"\x11reasoning_content\x18\x05 \x01(\tR\x10reasoningContent\"\x81\x01\n" +
 	"\n" +
 	"TokenUsage\x12#\n" +
 	"\rprompt_tokens\x18\x01 \x01(\x05R\fpromptTokens\x12+\n" +

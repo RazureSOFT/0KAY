@@ -21,6 +21,9 @@ type UIPatchFile struct {
 	Version string `json:"version,omitempty"`
 	// Plugin is the owning plugin name (optional).
 	Plugin string `json:"plugin,omitempty"`
+	// Capability is the registry capability required for this patch to show
+	// (defaults to Plugin when empty; kept in data rather than hardcoded ids).
+	Capability string `json:"capability,omitempty"`
 	// Enabled toggles the patch without deleting the file.
 	Enabled *bool `json:"enabled,omitempty"`
 	// Patches is the ordered list of operations.
@@ -152,6 +155,8 @@ func (s *uiPatchStore) FlattenOps() []map[string]any {
 		for _, op := range p.Patches {
 			m := map[string]any{
 				"patchId":  p.ID,
+				"plugin":   p.Plugin,
+				"capability": p.Capability,
 				"target":   op.Target,
 				"op":       op.Op,
 				"anchor":   op.Anchor,

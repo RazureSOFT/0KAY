@@ -3,6 +3,18 @@ buf.exe
 
 # Agent remains an independent repository.
 /agent/
+node_modules
 core/data/tasks.json
 core/data/tasks.json.journal
 core/data/task_callbacks.json
+core/data/paired_devices.json
+core/data/core.crt
+core/data/core.key
+**/runtime-env.json
+
+# Local tooling & runtime artifacts
+buf-win.exe
+/_site/
+/data/
+webui/scripts/shots/
+webui/scripts/skills-ui.png

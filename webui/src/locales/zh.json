@@ -74,6 +74,7 @@
     "byDay": "按日",
     "empty": "暂无用量记录",
     "sessions": "会话数",
+    "requests": "请求数",
     "clear": "清除用量",
     "clearConfirm": "确认清除全部用量记录？",
     "cleared": "用量已清除"
@@ -97,7 +98,14 @@
     "host": "主机",
     "memory": "内存",
     "resources": "资源占用",
-    "noHost": "暂未上报主机信息"
+    "noHost": "暂未上报主机信息",
+    "subagent": "子 Agent",
+    "openSubagent": "打开子 Agent 会话",
+    "backToChat": "返回会话",
+    "subagentRunning": "子 Agent 正在执行…",
+    "subagentDrafting": "子 Agent 正在生成回复…",
+    "noChildSteps": "没有子步骤记录",
+    "deniedSubagent": "你拒绝了这次子 Agent 调用"
   },
   "live2d": {
     "on": "已启用",
@@ -222,7 +230,7 @@
     "live2dDesc": "配置 Live2D 形象展示",
     "permissionsDesc": "控制 L.I.F.E 的屏幕监听与计算机操作权限（默认全部关闭）",
     "uploadFolder": "上传模型文件夹",
-    "uploadFolderHint": "选择包含 .model3.json 的整个模型目录",
+    "uploadFolderHint": "选择包含 .model.json 或 .model3.json 的完整模型目录",
     "uploadOk": "模型已上传",
     "uploadFail": "模型上传失败",
     "addProvider": "添加供应商",

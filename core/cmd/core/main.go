@@ -17,8 +17,13 @@ import (
 	"0kay/core/internal/registry"
 	"0kay/core/internal/server"
 	"0kay/core/internal/settings"
+	"0kay/core/internal/pairing"
+	"crypto/tls"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 	corev1 "0kay/gen/core/v1"
 	pluginv1 "0kay/gen/plugin/v1"
+	mocrv1 "0kay/gen/mocr/v1"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -39,7 +44,13 @@ func main() {
 	setStore := settings.NewStore(dataDir + "/settings.json")
 
 	// Create gRPC server
-	grpcServer := grpc.NewServer()
+	pairs,err:=pairing.New(dataDir);if err!=nil{log.Fatalf("pairing state: %v",err)};pairing.Default=pairs
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(pairs.Unary),
+		grpc.StreamInterceptor(pairs.Stream),
+		grpc.KeepaliveParams(keepalive.ServerParameters{Time:30*time.Second,Timeout:10*time.Second}),
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{MinTime:10*time.Second,PermitWithoutStream:true}),
+	)
 
 	// Register services
 	pluginSvc := server.NewPluginServiceServer(reg, setStore)
@@ -58,7 +69,7 @@ func main() {
 		log.Fatalf("Failed to listen gRPC: %v", err)
 	}
 
-	// Create HTTP gateway
+	// Create HTTP gateway (built once for loopback + optional LAN servers)
 	gw, err := gateway.NewGateway(&gateway.Config{
 		GRPCAddr: cfg.GRPCAddr(),
 		HTTPAddr: cfg.HTTPAddr(),
@@ -69,11 +80,12 @@ func main() {
 	gw.SetCoreService(coreSvc)
 	gw.SetProviderStore(provStore)
 	gw.SetSettingsStore(setStore)
+	handler := pairs.HTTP(gw.Handler())
 
 	// Create HTTP server
 	httpServer := &http.Server{
 		Addr:    cfg.HTTPAddr(),
-		Handler: gw.Handler(),
+		Handler: handler,
 	}
 
 	// Built-in plugins managed by Core (WebUI + local SearXNG when present)
@@ -85,6 +97,23 @@ func main() {
 	// Graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+ if os.Getenv("CORE_LAN_ENABLED")=="1" {
+  lanHTTP:=&http.Server{Addr:":8443",Handler:handler,TLSConfig:pairs.TLS,ReadHeaderTimeout:10*time.Second}
+  listener,err:=tls.Listen("tcp",lanHTTP.Addr,pairs.TLS);if err!=nil{log.Fatal(err)}
+  go func(){if err:=lanHTTP.Serve(listener);err!=nil&&err!=http.ErrServerClosed{log.Printf("LAN HTTP: %v",err)}}()
+  lanGRPC:=grpc.NewServer(
+    grpc.Creds(credentials.NewTLS(pairs.TLS)),
+    grpc.UnaryInterceptor(pairs.Unary),
+    grpc.StreamInterceptor(pairs.Stream),
+    grpc.KeepaliveParams(keepalive.ServerParameters{Time:30*time.Second,Timeout:10*time.Second}),
+    grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{MinTime:10*time.Second,PermitWithoutStream:true}),
+  )
+  corev1.RegisterPluginServiceServer(lanGRPC,pluginSvc);corev1.RegisterCoreServiceServer(lanGRPC,coreSvc)
+  mocrAddress:=os.Getenv("MOCR_ADDRESS");if mocrAddress==""{mocrAddress="127.0.0.1:50052"};mocrv1.RegisterMocrServiceServer(lanGRPC,&pairing.MocrProxy{Address:mocrAddress})
+  lanListener,err:=net.Listen("tcp",":5443");if err!=nil{log.Fatal(err)};go lanGRPC.Serve(lanListener)
+  if err:=pairs.Discover(ctx,8443,5443);err!=nil{log.Printf("LAN discovery: %v",err)}
+  go func(){<-ctx.Done();lanHTTP.Close();lanGRPC.Stop()}()
+ }
 
 	go func() {
 		sigCh := make(chan os.Signal, 1)
@@ -168,8 +197,8 @@ func registerSearxngSettings(setStore *settings.Store) {
 				Type:         "select",
 				Label:        "搜索引擎",
 				DefaultValue: "cnbing",
-				Options:      []string{"cnbing", "bing", "duckduckgo", "marginalia"},
-				Help:         "默认 cnbing（中国区 Bing）；可切换 bing / duckduckgo / marginalia",
+				Options:      []string{"cnbing", "bing", "so360", "duckduckgo", "marginalia"},
+				Help:         "默认 cnbing（中国区 Bing）；可切换 bing / 360 搜索 / duckduckgo / marginalia",
 			},
 		},
 	})

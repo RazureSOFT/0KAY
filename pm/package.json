@@ -1,0 +1,10 @@
+{
+  "name":"@razuresoft/0kay-pm",
+  "version":"0.1.0",
+  "description":"0KAY modular package installer and LAN Core pairing client",
+  "type":"module",
+  "bin":{"0kay-pm":"bin/0kay-pm.mjs"},
+  "engines":{"node":">=22"},
+  "scripts":{"test":"node --test test/*.test.mjs"},
+  "license":"MIT"
+}

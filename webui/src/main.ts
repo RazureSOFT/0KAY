@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import * as VueRuntime from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router, { registerPatchRoutes } from './router'
@@ -7,6 +8,8 @@ import { useWizardStore } from './stores/wizard'
 import { useUIPatchesStore } from './stores/uiPatches'
 import './styles/main.css'
 import './styles/expressive.css'
+import './styles/refined.css'
+import './styles/expressive-interactions.css'
 import { installInteractionMotion } from './composables/motion'
 
 const app = createApp(App)
@@ -17,6 +20,12 @@ app.use(i18n)
 
 const wizard = useWizardStore(pinia)
 wizard.loadFromStorage()
+
+// Shared Vue runtime for plugin ESM modules (self-contained plugins that
+// avoid a second vue copy). Contract: plugin pages may use bare `import from
+// 'vue'` (importmap → public/vendor/vue-bridge.js) or window.__0KAY_VUE__;
+// host router/pinia/i18n stay private.
+window.__0KAY_VUE__ = VueRuntime
 
 const ui = useUIPatchesStore(pinia)
 

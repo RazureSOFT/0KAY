@@ -1,0 +1,1 @@
+{"schema":1,"name":"@razuresoft/0kay-webui","version":"0.1.0","requires":["core"],"install":[["npm","ci"],["npm","run","build"]],"start":["npm","run","dev"]}

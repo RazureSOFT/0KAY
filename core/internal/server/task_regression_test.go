@@ -71,8 +71,18 @@ func TestCompactionReplacesContextButKeepsTranscript(t *testing.T) {
  id,_:=s.CreateAgentSession("compact")
  _=s.RecordTask(TaskEvent{TaskID:"before",SessionID:id,Kind:"agent",Prompt:"old verbose text",State:"done",Result:"old result"})
  _=s.RecordTask(TaskEvent{TaskID:"summary",SessionID:id,Kind:"compact",State:"done",Result:"important retained facts"})
- _=s.RecordTask(TaskEvent{TaskID:"after",SessionID:id,Kind:"agent",State:"done",Prompt:"new question",Result:"new answer"})
+ _=s.RecordTask(TaskEvent{TaskID:"after",SessionID:id,Kind:"agent",Prompt:"new question",State:"done",Result:"new answer"})
  prompt:=s.AgentSessionPrompt(id,"next","continue")
  if strings.Contains(prompt,"old verbose text") || !strings.Contains(prompt,"important retained facts") || !strings.Contains(prompt,"new answer") {t.Fatal(prompt)}
  if s.tasks["before"]==nil {t.Fatal("compaction deleted transcript")}
+}
+
+func TestRenameSessionAndUsageDedup(t *testing.T) {
+ s:= &CoreServiceServer{tasks:map[string]*TaskInfo{}, usage:NewUsageStore("")}
+ id,_:=s.CreateAgentSession("Agent session")
+ if err:=s.RenameAgentSession(id,"修复登录");err!=nil{t.Fatal(err)}
+ if s.tasks[id].Prompt!="修复登录"{t.Fatalf("title=%q",s.tasks[id].Prompt)}
+ s.RecordUsage(UsageRecord{RequestID:"dup",Model:"m",PromptTokens:1,CompletionTokens:1})
+ s.RecordUsage(UsageRecord{RequestID:"dup",Model:"m",PromptTokens:1,CompletionTokens:1})
+ if len(s.usage.records)!=1{t.Fatalf("duplicate request recorded: %d",len(s.usage.records))}
 }

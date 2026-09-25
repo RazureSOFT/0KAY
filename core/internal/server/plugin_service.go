@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"log"
+	"strings"
+	"0kay/core/internal/pairing"
 
 	corev1 "0kay/gen/core/v1"
 	"0kay/core/internal/registry"
@@ -40,6 +42,7 @@ func (s *PluginServiceServer) Register(ctx context.Context, req *corev1.Register
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to register plugin: %v", err)
 	}
+ if pairing.Default!=nil {pairing.Default.Bind(ctx,req.Address)}
 
 	// Register contributed settings sections
 	if s.settings != nil {
@@ -77,10 +80,12 @@ func (s *PluginServiceServer) Register(ctx context.Context, req *corev1.Register
 	log.Printf("[Registry] Plugin registered: %s (id=%s, addr=%s, caps=%v, settings=%d)",
 		req.PluginInfo.Name, pluginID, req.Address, req.Capabilities, len(req.SettingsSections))
 
+	message:="registered successfully"
+	if missing:=s.registry.MissingDependencies(pluginID);len(missing)>0 {message="registered; waiting for dependencies: "+strings.Join(missing,", ")}
 	return &corev1.RegisterResponse{
 		Success:  true,
 		PluginId: pluginID,
-		Message:  "registered successfully",
+		Message:  message,
 	}, nil
 }
 

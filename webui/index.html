@@ -5,9 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>0kay</title>
-    <script src="/vendor/pixi.min.js"></script>
     <script src="/vendor/live2dcubismcore.min.js"></script>
-    <script src="/vendor/cubism4.min.js"></script>
+    <!-- Plugin ESM: bare `vue` imports resolve to the host bridge (one runtime). -->
+    <script type="importmap">
+      {
+        "imports": {
+          "vue": "/vendor/vue-bridge.js"
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>

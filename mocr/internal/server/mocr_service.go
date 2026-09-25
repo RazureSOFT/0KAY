@@ -12,9 +12,10 @@ import (
 	"time"
 
 	mocrv1 "0kay/gen/mocr/v1"
-	"0kay/mocr/internal/selector"
 	prov "0kay/mocr/internal/providers"
+	"0kay/mocr/internal/selector"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -62,6 +63,7 @@ func refreshCatalog() []prov.ModelInfo {
 	if err != nil {
 		return cachedCatalog()
 	}
+	coreAuth(req)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return cachedCatalog()
@@ -91,10 +93,10 @@ func refreshCatalog() []prov.ModelInfo {
 			cost = 0.0000002
 		}
 		entries = append(entries, prov.ModelInfo{
-			ID:                   m.ID,
-			Provider:             m.Provider,
-			SupportsThinking:     m.SupportsThinking,
-			MaxContextLength:     128000,
+			ID:                    m.ID,
+			Provider:              m.Provider,
+			SupportsThinking:      m.SupportsThinking,
+			MaxContextLength:      128000,
 			EstimatedCostPerToken: cost,
 		})
 	}
@@ -123,6 +125,7 @@ type MocrServiceServer struct {
 
 // NewMocrServiceServer creates a new MocrServiceServer.
 func NewMocrServiceServer(sel *selector.Selector) *MocrServiceServer {
+	startRuntimePoll()
 	return &MocrServiceServer{
 		selector: sel,
 	}
@@ -133,6 +136,27 @@ func NewMocrServiceServer(sel *selector.Selector) *MocrServiceServer {
 func (s *MocrServiceServer) ChooseModels(ctx context.Context, req *mocrv1.ChooseModelsRequest) (*mocrv1.ChooseModelsResponse, error) {
 	if req.Prompt == "" {
 		return nil, fmt.Errorf("prompt is required")
+	}
+
+	// Pinned default model (provider settings) overrides intelligent selection.
+	if dm := strings.TrimSpace(currentRuntime().DefaultModel); dm != "" {
+		for _, e := range refreshCatalog() {
+			if strings.EqualFold(e.ID, dm) {
+				spec := &mocrv1.ModelSpec{
+					ModelId:               e.ID,
+					Provider:              e.Provider,
+					EstimatedCostPerToken: e.EstimatedCostPerToken,
+					SupportsThinking:      e.SupportsThinking,
+					MaxContextLength:      int32(e.MaxContextLength),
+				}
+				return &mocrv1.ChooseModelsResponse{
+					ThinkModel:  spec,
+					OutputModel: spec,
+					Reasoning:   "default_model pinned in provider settings",
+				}, nil
+			}
+		}
+		log.Printf("[mocr] default_model %q not found in catalog; falling back to selector", dm)
 	}
 
 	difficulty := 0.5
@@ -151,18 +175,18 @@ func (s *MocrServiceServer) ChooseModels(ctx context.Context, req *mocrv1.Choose
 
 	return &mocrv1.ChooseModelsResponse{
 		ThinkModel: &mocrv1.ModelSpec{
-			ModelId:                result.ThinkModel.ID,
-			Provider:               result.ThinkModel.Provider,
+			ModelId:               result.ThinkModel.ID,
+			Provider:              result.ThinkModel.Provider,
 			EstimatedCostPerToken: result.ThinkModel.EstimatedCostPerToken,
-			SupportsThinking:       result.ThinkModel.SupportsThinking,
-			MaxContextLength:       int32(result.ThinkModel.MaxContextLength),
+			SupportsThinking:      result.ThinkModel.SupportsThinking,
+			MaxContextLength:      int32(result.ThinkModel.MaxContextLength),
 		},
 		OutputModel: &mocrv1.ModelSpec{
-			ModelId:                result.OutputModel.ID,
-			Provider:               result.OutputModel.Provider,
+			ModelId:               result.OutputModel.ID,
+			Provider:              result.OutputModel.Provider,
 			EstimatedCostPerToken: result.OutputModel.EstimatedCostPerToken,
-			SupportsThinking:       result.OutputModel.SupportsThinking,
-			MaxContextLength:       int32(result.OutputModel.MaxContextLength),
+			SupportsThinking:      result.OutputModel.SupportsThinking,
+			MaxContextLength:      int32(result.OutputModel.MaxContextLength),
 		},
 		Reasoning: result.Reasoning,
 	}, nil
@@ -187,7 +211,13 @@ func (s *MocrServiceServer) Generate(req *mocrv1.GenerateRequest, stream mocrv1.
 func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream mocrv1.MocrService_GenerateServer) error {
 	msgs := make([]prov.ChatMessage, 0, len(req.Messages))
 	for _, m := range req.Messages {
-		cm := prov.ChatMessage{Role: m.Role, Content: m.Content, ToolCallID: m.ToolCallId}
+		cm := prov.ChatMessage{Role: m.Role, Content: m.Content, ToolCallID: m.ToolCallId, ReasoningContent: m.ReasoningContent}
+		// Legacy agents carried prior thinking through tool_call_id (unused
+		// for role=assistant); keep decoding it during the transition.
+		if m.Role == "assistant" && cm.ReasoningContent == "" && cm.ToolCallID != "" {
+			cm.ReasoningContent = cm.ToolCallID
+			cm.ToolCallID = ""
+		}
 		for _, tc := range m.ToolCalls {
 			cm.ToolCalls = append(cm.ToolCalls, prov.ToolCall{
 				ID:        tc.Id,
@@ -198,34 +228,6 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 		msgs = append(msgs, cm)
 	}
 
-	opts := prov.GenerateOptions{
-		Provider:     req.Provider,
-		BaseURL:      req.BaseUrl,
-		APIKey:       req.ApiKey,
-		ModelID:      req.ModelId,
-		Messages:     msgs,
-		SystemPrompt: req.SystemPrompt,
-		MaxTokens:    int(req.MaxTokens),
-		Temperature:  req.Temperature,
-		Stream:       true,
-		Thinking:     req.Thinking,
-		ToolChoice:   req.ToolChoice,
-	}
-	for _, t := range req.Tools {
-		fn := t.GetFunction()
-		if fn == nil || fn.GetName() == "" {
-			continue
-		}
-		opts.Tools = append(opts.Tools, prov.ToolDef{
-			Name:           fn.GetName(),
-			Description:    fn.GetDescription(),
-			ParametersJSON: fn.GetParametersJson(),
-		})
-	}
-	if opts.MaxTokens <= 0 {
-		opts.MaxTokens = 1024
-	}
-
 	// Fake/test keys hang or 401 on the wire; fail fast offline (explicit, not echo)
 	if isFakeKey(req.ApiKey) {
 		log.Printf("[mocr] fake key, offline fallback model=%s", req.ModelId)
@@ -233,42 +235,150 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 	}
 
 	// Overall deadline so a hung provider cannot block the SSE forever
-	timeout:=5*time.Minute
-	if configured,err:=time.ParseDuration(os.Getenv("MOCR_GENERATION_TIMEOUT"));err==nil && configured>0 {timeout=configured}
+	// (shared across auto-switch attempts).
+	timeout := 5 * time.Minute
+	if configured, err := time.ParseDuration(os.Getenv("MOCR_GENERATION_TIMEOUT")); err == nil && configured > 0 {
+		timeout = configured
+	}
 	ctx, cancel := context.WithTimeout(stream.Context(), timeout)
 	defer cancel()
 
-	var fullText strings.Builder
-	info, err := prov.Generate(ctx, opts, func(chunk string) bool {
-		fullText.WriteString(chunk)
-		if err := stream.Send(&mocrv1.GenerateResponse{Chunk: chunk}); err != nil {
-			return false
+	thinkingLevel := ""
+	if headers, ok := metadata.FromIncomingContext(stream.Context()); ok {
+		if values := headers.Get("x-0kay-thinking-level"); len(values) > 0 {
+			thinkingLevel = values[0]
 		}
-		return true
-	})
-	if err != nil {
-		// Real credentials were present but the provider failed — surface the error
-		// instead of silently echoing so callers can distinguish offline/failure.
-		log.Printf("[mocr] real generate failed model=%s: %v", req.ModelId, err)
-		return status.Error(codes.Unavailable, "provider error: "+err.Error())
 	}
+	requestID := firstMeta(stream.Context(), "x-0kay-request-id")
+	sessionID := firstMeta(stream.Context(), "x-0kay-session-id")
+
+	// Model/credentials actually in use (swapped on auto-switch).
+	curModel, curProvider, curBaseURL, curKey := req.ModelId, req.Provider, req.BaseUrl, req.ApiKey
+
+	buildOpts := func(r *mocrv1.GenerateRequest) prov.GenerateOptions {
+		opts := prov.GenerateOptions{
+			Provider:      curProvider,
+			BaseURL:       curBaseURL,
+			APIKey:        curKey,
+			ModelID:       curModel,
+			Messages:      msgs,
+			SystemPrompt:  r.SystemPrompt,
+			MaxTokens:     int(r.MaxTokens),
+			Temperature:   r.Temperature,
+			Stream:        true,
+			Thinking:      r.Thinking,
+			ToolChoice:    r.ToolChoice,
+			ThinkingLevel: thinkingLevel,
+		}
+		for _, t := range r.Tools {
+			fn := t.GetFunction()
+			if fn == nil || fn.GetName() == "" {
+				continue
+			}
+			opts.Tools = append(opts.Tools, prov.ToolDef{
+				Name:           fn.GetName(),
+				Description:    fn.GetDescription(),
+				ParametersJSON: fn.GetParametersJson(),
+			})
+		}
+		if opts.MaxTokens <= 0 {
+			opts.MaxTokens = 1024
+		}
+		return opts
+	}
+
+	rt := currentRuntime()
+	attempts := 1
+	if rt.AutoSwitch {
+		attempts += rt.SwitchMaxAttempts
+	}
+
+	var targets []swapTarget
+	var targetsReady bool
+	var lastErr error
+	sawEmpty := false
+
+	for attempt := 0; attempt < attempts; attempt++ {
+		if attempt > 0 {
+			if !targetsReady {
+				targetsReady = true
+				if snap, ok := fetchProviderSnapshot(); ok {
+					targets = swapTargets(req.ModelId, rt.FallbackModels, snap)
+				}
+			}
+			if attempt-1 >= len(targets) {
+				break
+			}
+			t := targets[attempt-1]
+			log.Printf("[mocr] auto-switch %d/%d: model %s -> %s", attempt, attempts-1, curModel, t.model)
+			curModel, curProvider, curBaseURL, curKey = t.model, t.cred.Provider, t.cred.BaseURL, t.cred.APIKey
+		}
+
+		var fullText strings.Builder
+		chunks := 0
+		info, err := prov.Generate(ctx, buildOpts(req), func(chunk string) bool {
+			chunks++
+			fullText.WriteString(chunk)
+			if sendErr := stream.Send(&mocrv1.GenerateResponse{Chunk: chunk}); sendErr != nil {
+				return false
+			}
+			return true
+		})
+
+		if err == nil {
+			hasPayload := chunks > 0 || (info != nil && (len(info.ToolCalls) > 0 || info.ReasoningContent != ""))
+			if hasPayload {
+				return finishGenerate(req, curModel, info, &fullText, requestID, sessionID, stream)
+			}
+			// Empty response (no text / tool calls / reasoning) → switch model.
+			log.Printf("[mocr] empty response model=%s; trying next model", curModel)
+			sawEmpty = true
+			continue
+		}
+		if chunks > 0 {
+			// Content was already streamed — retrying would duplicate output.
+			log.Printf("[mocr] provider failed mid-stream model=%s: %v", curModel, err)
+			return status.Error(codes.Unavailable, "provider error: "+err.Error())
+		}
+		log.Printf("[mocr] real generate failed model=%s: %v", curModel, err)
+		lastErr = err
+		sawEmpty = false
+	}
+
+	if lastErr != nil {
+		return status.Error(codes.Unavailable, "provider error: "+lastErr.Error())
+	}
+	if sawEmpty {
+		return status.Error(codes.Unavailable, "empty response from all candidate models")
+	}
+	return status.Error(codes.Unavailable, "provider error")
+}
+
+// finishGenerate reports usage (on the model actually used) and sends the final Done response.
+func finishGenerate(req *mocrv1.GenerateRequest, modelID string, info *prov.FinishInfo, fullText *strings.Builder, requestID, sessionID string, stream mocrv1.MocrService_GenerateServer) error {
 
 	if info == nil {
 		info = &prov.FinishInfo{FinishReason: "stop"}
 	}
 
 	promptTokens := info.PromptTokens
-	if promptTokens == 0 {
-		promptTokens = 10
-	}
 	completionTokens := info.OutputTokens
-	if completionTokens == 0 {
-		completionTokens = 1
+	if promptTokens == 0 {
+		n := len(req.SystemPrompt)
+		for _, m := range req.Messages {
+			n += len(m.Content)
+		}
+		promptTokens = int32((n + 3) / 4)
 	}
+	if completionTokens == 0 {
+		completionTokens = int32((len(fullText.String()) + 3) / 4)
+	}
+	reportUsage(requestID, sessionID, modelID, promptTokens, completionTokens)
 
 	final := &mocrv1.GenerateResponse{
-		Done:         true,
-		FinishReason: mapFinish(info.FinishReason),
+		Done:            true,
+		FinishReason:    mapFinish(info.FinishReason),
+		ThinkingContent: info.ReasoningContent,
 		Usage: &mocrv1.TokenUsage{
 			PromptTokens:     promptTokens,
 			CompletionTokens: completionTokens,
@@ -301,6 +411,15 @@ func mapFinish(reason string) mocrv1.FinishReason {
 	default:
 		return mocrv1.FinishReason_FINISH_REASON_STOP
 	}
+}
+
+func firstMeta(ctx context.Context, key string) string {
+	if headers, ok := metadata.FromIncomingContext(ctx); ok {
+		if values := headers.Get(key); len(values) > 0 {
+			return values[0]
+		}
+	}
+	return ""
 }
 
 // generateOffline streams an explicit offline/error notice (never pretends to be a real reply).

@@ -22,7 +22,8 @@ const title = computed(() => {
   return patch.value.title || patch.value.name
 })
 
-const src = computed(() => patch.value?.src || '')
+const src = computed(() => String(route.meta.src || patch.value?.src || ''))
+const moduleUrl = computed(() => String(route.meta.module || patch.value?.module || ''))
 </script>
 
 <template>
@@ -31,8 +32,9 @@ const src = computed(() => patch.value?.src || '')
       <h1>{{ title }}</h1>
       <a v-if="src" :href="src" target="_blank" rel="noopener" class="open-link">↗</a>
     </header>
-    <iframe v-if="src" class="patch-frame" :src="src" :title="title" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
-    <div v-else class="patch-empty">No embed URL for this route.</div>
+    <iframe v-if="src && !moduleUrl" class="patch-frame" :src="src" :title="title" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+    <div v-else-if="!src && !moduleUrl" class="patch-empty">No embed URL for this route.</div>
+    <div v-else-if="!src && moduleUrl" class="patch-empty">Plugin module failed to load: {{ moduleUrl }}</div>
   </div>
 </template>
 

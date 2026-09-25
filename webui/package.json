@@ -9,8 +9,11 @@
   },
   "dependencies": {
     "dompurify": "^3.4.16",
+    "live2d-widget": "3.1.4",
     "marked": "^18.0.14",
     "pinia": "^2.1.0",
+    "pixi-live2d-display": "^0.4.0",
+    "pixi.js": "6.5.10",
     "vue": "^3.4.0",
     "vue-i18n": "^9.14.5",
     "vue-router": "^4.2.0"

@@ -236,7 +236,7 @@ func (r *Registry) GetPluginsByCapability(capability string) []*PluginInstance {
 		if p.Info != nil && r.isLockedDisabledLocked(p.Info.Name) {
 			continue
 		}
-		if p.Status == corev1.PluginStatus_PLUGIN_STATUS_HEALTHY {
+		if p.Status == corev1.PluginStatus_PLUGIN_STATUS_HEALTHY && r.dependenciesReadyLocked(p,map[string]bool{}) {
 			for _, c := range p.Capabilities {
 				if c == capability {
 					result = append(result, snapshot(p))
@@ -273,6 +273,7 @@ func (r *Registry) GetAgents(onlineOnly bool) []*PluginInstance {
 		if onlineOnly && p.Status != corev1.PluginStatus_PLUGIN_STATUS_HEALTHY {
 			continue
 		}
+		if onlineOnly && !r.dependenciesReadyLocked(p,map[string]bool{}) {continue}
 		result = append(result, snapshot(p))
 	}
 	sortPlugins(result)

@@ -7,6 +7,7 @@ import (
  "net/http"
  "time"
  "0kay/core/internal/server"
+ "0kay/core/internal/pairing"
  agentv1 "0kay/gen/agent/v1"
  lifev1 "0kay/gen/life/v1"
  "google.golang.org/grpc"
@@ -29,7 +30,7 @@ func (g *Gateway) handleAgentWorkspace(w http.ResponseWriter,r *http.Request) {
    tool="workspace_mkdir";args,_=json.Marshal(body)
   }
   ctx,cancel:=context.WithTimeout(r.Context(),10*time.Second);defer cancel()
-  result,err:=agentv1.NewAgentServiceClient(conn).RunDirect(ctx,&agentv1.RunDirectRequest{Tool:tool,Args:string(args)})
+  result,err:=agentv1.NewAgentServiceClient(conn).RunDirect(pairing.CallbackContext(ctx,agent.Address),&agentv1.RunDirectRequest{Tool:tool,Args:string(args)})
   if err!=nil {http.Error(w,err.Error(),502);return};if !result.Success {http.Error(w,result.Error,400);return}
   w.Header().Set("Content-Type","application/json");fmt.Fprint(w,result.Result);return
  }

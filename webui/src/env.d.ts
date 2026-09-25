@@ -8,4 +8,6 @@ declare module '*.vue' {
 
 interface Window {
   PIXI?: any
+  /** Host Vue runtime shared with plugin ESM pages (see public/vendor/vue-bridge.js). */
+  __0KAY_VUE__?: typeof import('vue')
 }

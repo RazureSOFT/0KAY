@@ -71,6 +71,27 @@ UI patch files are JSON despite the `.patch` suffix:
 }
 ```
 
+Router items resolve in this order:
+
+1. **`module`** — plugin ESM URL under `/api/plugins/{name}/ui/…` (native page; see [Writing a Plugin](writing-a-plugin.md) §5a).
+2. **`component`** — built-in page name (`agents`, `plugins`, `usage`, `settings`, `chat`, `memory`, `companion`).
+3. **`src`** — iframe embed URL.
+
+```json
+{
+  "target": "router",
+  "op": "insert",
+  "id": "my-plugin",
+  "item": {
+    "id": "my-plugin",
+    "path": "/my-plugin",
+    "name": "my-plugin",
+    "module": "/api/plugins/my-plugin/ui/index.js",
+    "title": "My Plugin"
+  }
+}
+```
+
 Supported targets include `nav`, `router`, `settings`, `status`, and `chat`.
 Supported operations are `insert`, `remove`, and `replace`.
 

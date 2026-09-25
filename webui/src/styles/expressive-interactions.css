@@ -1,0 +1,12 @@
+/* Functional Expressive emphasis: input, decisions and selected destinations. */
+#app .composer{border-radius:24px;background:var(--md-surface-container-lowest);box-shadow:0 4px 20px #24345d0c}
+#app .composer textarea{border-radius:24px 24px 0 0;min-height:104px}
+#app .composer footer button[type=submit]{border-radius:999px;min-height:44px;padding-inline:24px;font-weight:650}
+#app .composer footer button[type=submit]:active{transform:scale(.96)}
+#app .session-item.selected{border-radius:18px 18px 18px 6px;background:var(--md-primary-container);color:var(--md-on-primary-container)}
+#app .nav-item.active::before{border-radius:999px;background:var(--md-secondary-container)}
+#app .message.request{border-radius:22px 22px 6px 22px;background:var(--md-primary-container)}
+#app .execution-options .app-select-trigger{border-radius:12px;background:var(--md-surface-container);border-color:transparent}
+.inbox-dialog button{transition:transform 180ms var(--ease-spring),background-color 180ms}.inbox-dialog button:active{transform:scale(.95)}
+.inbox-dialog button:focus-visible{outline:3px solid var(--md-primary);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.inbox-dialog button:active,#app .composer footer button[type=submit]:active{transform:none}}

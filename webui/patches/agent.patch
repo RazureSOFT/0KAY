@@ -29,7 +29,7 @@
         "id": "agents",
         "path": "/agents",
         "name": "agents",
-        "component": "agents",
+        "module": "/api/plugins/agent/ui/index.js",
         "titleKey": "nav.agents",
         "title": "Agent"
       }

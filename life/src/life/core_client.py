@@ -74,7 +74,7 @@ class CoreClient:
                     author="0kay",
                     plugin_type=plugin_pb2.PLUGIN_TYPE_PERSONA,
                 ),
-                capabilities=["life"],
+                capabilities=["life", "requires:mocr"],
                 address=self.life_address,
             )
             if hasattr(request, "settings_sections"):
@@ -221,6 +221,11 @@ class CoreClient:
                     ],
                 )
                 request.settings_sections.append(sec)
+                request.settings_sections.append(_pb.SettingsSection(
+                    id='live2d',label='Live2D 模型',icon='avatar',order=50,
+                    description='由 LIFE 管理的 Live2D 显示、模型选择、上传与删除',
+                    fields=[_pb.SettingsField(key='enabled',type='bool',label='启用 Live2D',default_value='true'),
+                            _pb.SettingsField(key='model_url',type='text',label='当前模型 URL',default_value='')]))
             resp = self._plugin_stub.Register(request, timeout=5)
             if resp.success:
                 self.plugin_id = resp.plugin_id

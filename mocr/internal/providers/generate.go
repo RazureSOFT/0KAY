@@ -9,10 +9,10 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"time"
-	"os"
 )
 
 // ToolDef is a provider-agnostic callable function definition.
@@ -35,22 +35,26 @@ type ChatMessage struct {
 	Content    string     `json:"content"`
 	ToolCallID string     `json:"tool_call_id,omitempty"`
 	ToolCalls  []ToolCall `json:"-"`
+	// ReasoningContent is prior-turn chain-of-thought (DeepSeek thinking mode
+	// requires it to be passed back on assistant messages).
+	ReasoningContent string `json:"-"`
 }
 
 // GenerateOptions configures a real provider call.
 type GenerateOptions struct {
-	Provider     string
-	BaseURL      string
-	APIKey       string
-	ModelID      string
-	Messages     []ChatMessage
-	SystemPrompt string
-	MaxTokens    int
-	Temperature  float64
-	Stream       bool
-	Thinking     bool
-	Tools        []ToolDef
-	ToolChoice   string
+	Provider      string
+	BaseURL       string
+	APIKey        string
+	ModelID       string
+	Messages      []ChatMessage
+	SystemPrompt  string
+	MaxTokens     int
+	Temperature   float64
+	Stream        bool
+	Thinking      bool
+	ThinkingLevel string
+	Tools         []ToolDef
+	ToolChoice    string
 	// OnToolCall is invoked for each tool call the model requests.
 	OnToolCall func(ToolCall) bool
 }
@@ -60,10 +64,11 @@ type StreamFunc func(chunk string) bool
 
 // FinishInfo is reported after a successful generate.
 type FinishInfo struct {
-	FinishReason string
-	PromptTokens int32
-	OutputTokens int32
-	ToolCalls    []ToolCall
+	FinishReason     string
+	PromptTokens     int32
+	OutputTokens     int32
+	ToolCalls        []ToolCall
+	ReasoningContent string
 }
 
 // Generate streams from a real provider (OpenAI-compatible or Anthropic).
@@ -130,13 +135,17 @@ func openAITools(tools []ToolDef) []map[string]interface{} {
 }
 
 // openAIMessages converts normalized messages to OpenAI request JSON.
-func openAIMessages(msgs []ChatMessage) []map[string]interface{} {
+// thinking enables assistant.reasoning_content; deepseek forces the key even
+// when empty (DeepSeek thinking mode rejects requests missing it on any
+// assistant message once tools are present).
+func openAIMessages(msgs []ChatMessage, thinking, deepseek bool) []map[string]interface{} {
 	out := make([]map[string]interface{}, 0, len(msgs))
 	for _, m := range msgs {
 		role := m.Role
 		if role == "" {
 			role = "user"
 		}
+		reasoning := thinking && (m.ReasoningContent != "" || deepseek)
 		switch {
 		case role == "assistant" && len(m.ToolCalls) > 0:
 			calls := make([]map[string]interface{}, 0, len(m.ToolCalls))
@@ -154,11 +163,20 @@ func openAIMessages(msgs []ChatMessage) []map[string]interface{} {
 			if m.Content != "" {
 				entry["content"] = m.Content
 			}
+			if reasoning {
+				entry["reasoning_content"] = m.ReasoningContent
+			}
 			out = append(out, entry)
 		case role == "tool":
 			entry := map[string]interface{}{"role": "tool", "content": m.Content}
 			if m.ToolCallID != "" {
 				entry["tool_call_id"] = m.ToolCallID
+			}
+			out = append(out, entry)
+		case role == "assistant":
+			entry := map[string]interface{}{"role": "assistant", "content": m.Content}
+			if reasoning {
+				entry["reasoning_content"] = m.ReasoningContent
 			}
 			out = append(out, entry)
 		default:
@@ -168,22 +186,54 @@ func openAIMessages(msgs []ChatMessage) []map[string]interface{} {
 	return out
 }
 
+// isDeepseek reports whether the request targets a DeepSeek-compatible API
+// (thinking mode field and reasoning_content pass-back rules apply).
+func isDeepseek(provider, model string) bool {
+	return strings.Contains(strings.ToLower(provider), "deepseek") || strings.Contains(strings.ToLower(model), "deepseek")
+}
+
 func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []ChatMessage, onChunk StreamFunc) (*FinishInfo, error) {
 	base := strings.TrimSuffix(opts.BaseURL, "/")
 	url := base + "/chat/completions"
 
 	body := map[string]interface{}{
 		"model":       opts.ModelID,
-		"messages":    openAIMessages(msgs),
+		"messages":    openAIMessages(msgs, opts.Thinking, isDeepseek(opts.Provider, opts.ModelID)),
 		"max_tokens":  opts.MaxTokens,
 		"temperature": opts.Temperature,
 		"stream":      opts.Stream,
 	}
-	model:=strings.ToLower(opts.ModelID)
-	if strings.Contains(strings.ToLower(opts.Provider),"deepseek") || strings.Contains(model,"deepseek") {
-		mode:="disabled";if opts.Thinking {mode="enabled"};body["thinking"]=map[string]string{"type":mode}
-	} else if strings.HasPrefix(model,"o1") || strings.HasPrefix(model,"o3") || strings.HasPrefix(model,"o4") || strings.HasPrefix(model,"gpt-5") {
-		effort:="low";if opts.Thinking {effort="high"};body["reasoning_effort"]=effort;delete(body,"temperature");delete(body,"max_tokens");body["max_completion_tokens"]=opts.MaxTokens
+	if opts.Stream {
+		body["stream_options"] = map[string]bool{"include_usage": true}
+	}
+	model := strings.ToLower(opts.ModelID)
+	if isDeepseek(opts.Provider, opts.ModelID) {
+		mode := "disabled"
+		if opts.Thinking {
+			mode = "enabled"
+		}
+		body["thinking"] = map[string]string{"type": mode}
+	} else if strings.HasPrefix(model, "o1") || strings.HasPrefix(model, "o3") || strings.HasPrefix(model, "o4") || strings.HasPrefix(model, "gpt-5") {
+		effort := "low"
+		if opts.Thinking {
+			effort = "high"
+		}
+		switch opts.ThinkingLevel {
+		case "low", "medium", "high":
+			effort = opts.ThinkingLevel
+		case "max":
+			effort = "high"
+		case "off":
+			if strings.HasPrefix(model, "gpt-5.1") || strings.HasPrefix(model, "gpt-5.2") {
+				effort = "none"
+			} else {
+				return nil, fmt.Errorf("model %s cannot disable reasoning; choose a non-reasoning model", opts.ModelID)
+			}
+		}
+		body["reasoning_effort"] = effort
+		delete(body, "temperature")
+		delete(body, "max_tokens")
+		body["max_completion_tokens"] = opts.MaxTokens
 	}
 	if len(opts.Tools) > 0 {
 		body["tools"] = openAITools(opts.Tools)
@@ -201,18 +251,6 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 		}
 	}
 
-	payload, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(payload))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+opts.APIKey)
-
 	// Dial + header timeout; full body relies on ctx
 	client := &http.Client{
 		Timeout: 0,
@@ -222,7 +260,8 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 			ResponseHeaderTimeout: 45 * time.Second,
 		},
 	}
-	resp, err := client.Do(req)
+	defer client.CloseIdleConnections()
+	resp, err := compatibleRequest(ctx, client, url, opts.APIKey, opts.ModelID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -237,8 +276,9 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 		var parsed struct {
 			Choices []struct {
 				Message struct {
-					Content   string `json:"content"`
-					ToolCalls []struct {
+					Content          string `json:"content"`
+					ReasoningContent string `json:"reasoning_content"`
+					ToolCalls        []struct {
 						ID       string `json:"id"`
 						Type     string `json:"type"`
 						Function struct {
@@ -260,6 +300,7 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 		info := &FinishInfo{FinishReason: "stop"}
 		if len(parsed.Choices) > 0 {
 			text := parsed.Choices[0].Message.Content
+			info.ReasoningContent = parsed.Choices[0].Message.ReasoningContent
 			info.FinishReason = parsed.Choices[0].FinishReason
 			if info.FinishReason == "" {
 				info.FinishReason = "stop"
@@ -282,13 +323,15 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 	}
 
 	// SSE stream with idle timeout (context has no deadline for streaming)
-	idle:=time.AfterFunc(streamIdleTimeout(),func(){resp.Body.Close()});defer idle.Stop()
+	idle := time.AfterFunc(streamIdleTimeout(), func() { resp.Body.Close() })
+	defer idle.Stop()
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	var finish string
-	completed:=false
+	completed := false
 	var pt, ot int32
 	toolAcc := map[int]*ToolCall{}
+	var reasoningAcc strings.Builder
 
 	for scanner.Scan() {
 		idle.Reset(streamIdleTimeout())
@@ -298,14 +341,15 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 		}
 		data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
 		if data == "[DONE]" {
-			completed=true
+			completed = true
 			break
 		}
 		var chunk struct {
 			Choices []struct {
 				Delta struct {
-					Content   string `json:"content"`
-					ToolCalls []struct {
+					Content          string `json:"content"`
+					ReasoningContent string `json:"reasoning_content"`
+					ToolCalls        []struct {
 						Index    *int   `json:"index"`
 						ID       string `json:"id"`
 						Type     string `json:"type"`
@@ -330,9 +374,12 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 			ot = chunk.Usage.CompletionTokens
 		}
 		for _, c := range chunk.Choices {
+			if c.Delta.ReasoningContent != "" {
+				reasoningAcc.WriteString(c.Delta.ReasoningContent)
+			}
 			if c.Delta.Content != "" {
 				if !onChunk(c.Delta.Content) {
-					return &FinishInfo{FinishReason: "stop", PromptTokens: pt, OutputTokens: ot, ToolCalls: sortedToolCalls(toolAcc)}, nil
+					return &FinishInfo{FinishReason: "stop", PromptTokens: pt, OutputTokens: ot, ToolCalls: sortedToolCalls(toolAcc), ReasoningContent: reasoningAcc.String()}, nil
 				}
 			}
 			for _, tc := range c.Delta.ToolCalls {
@@ -363,13 +410,15 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
-	if !completed && finish=="" {return nil,fmt.Errorf("provider stream ended without a completion marker")}
+	if !completed && finish == "" {
+		return nil, fmt.Errorf("provider stream ended without a completion marker")
+	}
 	if finish == "" {
 		finish = "stop"
 	}
 	calls := sortedToolCalls(toolAcc)
 	emitTools(opts, calls)
-	return &FinishInfo{FinishReason: finish, PromptTokens: pt, OutputTokens: ot, ToolCalls: calls}, nil
+	return &FinishInfo{FinishReason: finish, PromptTokens: pt, OutputTokens: ot, ToolCalls: calls, ReasoningContent: reasoningAcc.String()}, nil
 }
 
 // sortedToolCalls flattens the index-keyed accumulator in stable order.
@@ -499,8 +548,24 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 		"stream":     opts.Stream,
 	}
 	if opts.Thinking {
-		budget:=opts.MaxTokens/2;if budget<1024 {budget=1024};if opts.MaxTokens<=budget {body["max_tokens"]=budget+1024}
-		body["thinking"]=map[string]interface{}{"type":"enabled","budget_tokens":budget}
+		budget := opts.MaxTokens / 2
+		switch opts.ThinkingLevel {
+		case "low":
+			budget = 1024
+		case "medium":
+			budget = 2048
+		case "high":
+			budget = 4096
+		case "max":
+			budget = 8192
+		}
+		if budget < 1024 {
+			budget = 1024
+		}
+		if opts.MaxTokens <= budget {
+			body["max_tokens"] = budget + 1024
+		}
+		body["thinking"] = map[string]interface{}{"type": "enabled", "budget_tokens": budget}
 	}
 	if system != "" {
 		body["system"] = system
@@ -587,7 +652,8 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 	}
 
 	// SSE stream
-	idle:=time.AfterFunc(streamIdleTimeout(),func(){resp.Body.Close()});defer idle.Stop()
+	idle := time.AfterFunc(streamIdleTimeout(), func() { resp.Body.Close() })
+	defer idle.Stop()
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	var finish string
@@ -607,12 +673,18 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 			continue
 		}
 		var evt struct {
-			Type         string `json:"type"`
-			Index        int    `json:"index"`
+			Type    string `json:"type"`
+			Message struct {
+				Usage struct {
+					InputTokens  int32 `json:"input_tokens"`
+					OutputTokens int32 `json:"output_tokens"`
+				} `json:"usage"`
+			} `json:"message"`
+			Index        int `json:"index"`
 			ContentBlock struct {
-				Type  string `json:"type"`
-				ID    string `json:"id"`
-				Name  string `json:"name"`
+				Type string `json:"type"`
+				ID   string `json:"id"`
+				Name string `json:"name"`
 			} `json:"content_block"`
 			Delta struct {
 				Type        string `json:"type"`
@@ -628,12 +700,19 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 		if err := json.Unmarshal([]byte(data), &evt); err != nil {
 			continue
 		}
+		if evt.Type == "message_start" {
+			pt = evt.Message.Usage.InputTokens
+			ot = evt.Message.Usage.OutputTokens
+		}
 		if evt.Usage != nil {
-			pt = evt.Usage.InputTokens
+			if evt.Usage.InputTokens > 0 {
+				pt = evt.Usage.InputTokens
+			}
 			ot = evt.Usage.OutputTokens
 		}
 		switch evt.Type {
-		case "error": return nil,fmt.Errorf("provider stream error: %s",data)
+		case "error":
+			return nil, fmt.Errorf("provider stream error: %s", data)
 		case "content_block_start":
 			if evt.ContentBlock.Type == "tool_use" {
 				curCall = &ToolCall{ID: evt.ContentBlock.ID, Name: evt.ContentBlock.Name}
@@ -661,7 +740,7 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 		return nil, err
 	}
 	if finish == "" {
-		return nil,fmt.Errorf("provider stream ended without stop_reason")
+		return nil, fmt.Errorf("provider stream ended without stop_reason")
 	}
 	emitTools(opts, calls)
 	return &FinishInfo{FinishReason: finish, PromptTokens: pt, OutputTokens: ot, ToolCalls: calls}, nil
@@ -670,4 +749,9 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 // Ensure time is referenced if needed later.
 var _ = time.Second
 
-func streamIdleTimeout() time.Duration {if value,err:=time.ParseDuration(os.Getenv("MOCR_STREAM_IDLE_TIMEOUT"));err==nil && value>0 {return value};return 60*time.Second}
+func streamIdleTimeout() time.Duration {
+	if value, err := time.ParseDuration(os.Getenv("MOCR_STREAM_IDLE_TIMEOUT")); err == nil && value > 0 {
+		return value
+	}
+	return 60 * time.Second
+}
