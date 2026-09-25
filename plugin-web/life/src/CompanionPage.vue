@@ -16,6 +16,13 @@ const activeCandidates = computed(() => (data.value.proactive?.candidates || [])
 const receipts = computed(() => data.value.proactive?.receipts || [])
 
 function flash(message: string) { notice.value = message; setTimeout(() => { if (notice.value === message) notice.value = '' }, 2000) }
+const usage = ref<any>(null)
+async function loadUsage() {
+  try {
+    const r = await fetch('/api/usage')
+    if (r.ok) usage.value = await r.json()
+  } catch { /* usage is optional */ }
+}
 async function load() {
   loading.value = true; error.value = ''
   try {
@@ -24,6 +31,7 @@ async function load() {
     data.value = await r.json()
   } catch (e: any) { error.value = e?.message || '无法读取 LIFE 陪伴状态' }
   finally { loading.value = false }
+  void loadUsage()
 }
 async function act(action: string, payload: any) {
   try {
@@ -288,6 +296,21 @@ onMounted(load)
     </section>
 
     <article class="card audit-card">
+      <div class="card-head"><h2 class="card-title">模型用量</h2><span class="chip muted">{{ usage?.request_count || 0 }} 次请求</span></div>
+      <div class="usage-grid">
+        <div class="usage-item"><strong>{{ (usage?.total_tokens || 0).toLocaleString() }}</strong><span>总 Token</span></div>
+        <div class="usage-item"><strong>{{ (usage?.total_prompt_tokens || 0).toLocaleString() }}</strong><span>输入</span></div>
+        <div class="usage-item"><strong>{{ (usage?.total_completion_tokens || 0).toLocaleString() }}</strong><span>输出</span></div>
+      </div>
+      <ul class="item-list">
+        <li v-for="(value, name) in (usage?.by_model || {})" :key="name" class="item">
+          <div class="item-main"><strong>{{ name }}</strong><span class="item-meta">{{ (value.total || 0).toLocaleString() }} tokens · {{ value.count }} 次</span></div>
+        </li>
+        <li v-if="!usage || !Object.keys(usage.by_model || {}).length" class="list-empty">暂无用量记录</li>
+      </ul>
+    </article>
+
+    <article class="card audit-card">
       <div class="card-head"><h2 class="card-title">主动行为审计</h2><button class="btn btn-tonal btn-sm" @click="act('memory_maintenance', {})">执行记忆维护与备份</button></div>
       <ol class="timeline">
         <li v-for="item in data.audit" :key="item.at + item.kind">
@@ -392,6 +415,10 @@ onMounted(load)
 .topics{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
 .group-detail{margin-top:6px}
 .audit-card{margin-bottom:var(--space-lg)}
+.usage-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.usage-item{background:var(--md-surface-container-low);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:4px;align-items:center}
+.usage-item strong{font-size:20px;font-weight:700}
+.usage-item span{font-size:12px;color:var(--md-on-surface-variant)}
 .timeline{position:relative}
 .timeline li{display:flex;gap:14px;position:relative;padding-bottom:4px}
 .timeline li:not(:last-child)::before{content:'';position:absolute;left:5px;top:16px;bottom:-8px;width:1.5px;background:var(--md-outline-variant)}
