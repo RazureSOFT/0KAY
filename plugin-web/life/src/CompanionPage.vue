@@ -115,8 +115,11 @@ async function addDate() {
 }
 async function removeDate(id: string) { await act('date_delete', { id }); flash('已删除') }
 async function eat() { await act('circadian_eat', { amount: 45 }); flash('已用餐') }
-async function clearJournal(kind: 'journal' | 'dream') {
-  const ok = await confirm({ title: kind === 'dream' ? '清除梦境' : '清除日记', message: '将删除全部该类型记录，无法恢复。', confirmLabel: '清除', danger: true })
+async function arrangeAgenda() {
+  const result = await act('daily_agenda', {})
+  flash(result?.created ? `LIFE 已安排 ${result.created} 项活动` : '今天已有安排')
+}
+async function clearJournal(kind: 'journal' | 'dream') {  const ok = await confirm({ title: kind === 'dream' ? '清除梦境' : '清除日记', message: '将删除全部该类型记录，无法恢复。', confirmLabel: '清除', danger: true })
   if (!ok) return
   await act('journal_clear', { kind })
   flash('已清除')
@@ -151,7 +154,7 @@ onMounted(load)
 
   <section class="grid">
       <article class="card">
-        <div class="card-head"><h2 class="card-title">日程</h2></div>
+        <div class="card-head"><h2 class="card-title">日程</h2><button class="btn btn-tonal btn-sm" @click="arrangeAgenda">由 LIFE 安排今天</button></div>
         <form class="agenda-form" @submit.prevent="addAgenda">
           <input v-model="agendaTitle" class="input" placeholder="日程标题" aria-label="日程标题" />
           <input v-model="agendaWhen" class="input" placeholder="时间，例如 2026-09-25 20:00" aria-label="时间" />

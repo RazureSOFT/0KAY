@@ -64,6 +64,7 @@ class LifeEngine:
         self._last_plan = datetime.min
         self._last_diary_date = ""
         self._last_dream_date = ""
+        self._last_agenda_date = ""
         self._state_path = Path(self.data_dir) / "state.json"
         self._load_state()
 
@@ -295,7 +296,7 @@ class LifeEngine:
                           'use an empty list when nothing lasting was said.\n'
                           f'user: {message[:1200]}\nassistant: {response[:1200]}')
                 raw = "".join([chunk async for chunk in self.mocr.generate(self.think_model or self.default_model,
-                    [{"role": "user", "content": prompt}], "Private companion planner. JSON only.", thinking=True, max_tokens=600)])
+                    [{"role": "user", "content": prompt}], "Private companion planner. JSON only.", thinking=False, max_tokens=600)])
                 decision = json.loads(raw)
                 for item in (decision.get("memories") or [])[:self.soul.impression_limit()]:
                     text = str(item).strip()
@@ -396,6 +397,46 @@ class LifeEngine:
                 result["dream"] = text[:40]
         return result
 
+    async def maybe_daily_agenda(self, force: bool = False) -> dict:
+        """Let LIFE plan its own day: auto-create today's soft-activity agenda (once per day)."""
+        today = datetime.now().date().isoformat()
+        if not force and self._last_agenda_date == today:
+            return {"skipped": "done"}
+        try:
+            snapshot = await asyncio.to_thread(self.companion.snapshot)
+        except Exception:
+            snapshot = {}
+        existing = [item for item in (snapshot.get("agenda") or []) if str(item.get("start_at") or "").startswith(today)]
+        if existing and not force:
+            self._last_agenda_date = today
+            return {"skipped": "has_agenda", "count": len(existing)}
+        context = json.dumps(await self._daily_context(), ensure_ascii=False)
+        prompt = (
+            "你是 L.I.F.E。为今天安排 3~5 项属于你自己的生活活动（例如整理房间、看书、出门散步、打游戏、写点东西、听歌），"
+            f"结合你的作息与最近关心的事；现在是 {today} {datetime.now().strftime('%H:%M')}，时间要合理且不要重复已有日程。"
+            '只返回 JSON：{"agenda":[{"title":"","when":"YYYY-MM-DD HH:MM","detail":""}]}。'
+            f"\n当前状态与已有日程：\n{context}"
+        )
+        model = self.think_model or self.default_model
+        try:
+            raw = "".join([chunk async for chunk in self.mocr.generate(model, [{"role": "user", "content": prompt}], "为今天安排生活活动。仅输出 JSON。", thinking=False, max_tokens=800)])
+            plan = json.loads(raw)
+        except Exception as error:
+            await asyncio.to_thread(self.companion.audit, "daily_agenda", str(error), "", "failed")
+            return {"error": str(error)}
+        created = 0
+        for item in (plan.get("agenda") or [])[:5]:
+            title = str(item.get("title") or "").strip()
+            if not title:
+                continue
+            candidate = await asyncio.to_thread(self.companion.add_agenda, title[:120], str(item.get("when") or ""), str(item.get("detail") or "")[:300], "persona_soft_activity")
+            if candidate and candidate.get("id"):
+                await asyncio.to_thread(self.companion.confirm_agenda, candidate["id"], True)
+                created += 1
+        self._last_agenda_date = today
+        await asyncio.to_thread(self.companion.audit, "daily_agenda", f"created={created}", "", "ok")
+        return {"created": created}
+
     async def autonomous_plan(self, force: bool = False) -> dict:
         """Let LIFE decide what to do next and persist the plan as agenda/proactive candidates."""
         now = datetime.now()
@@ -435,7 +476,7 @@ class LifeEngine:
         model = self.think_model or self.default_model
         try:
             raw = "".join([chunk async for chunk in self.mocr.generate(
-                model, [{"role": "user", "content": prompt}], "自主规划。仅输出 JSON。", thinking=True, max_tokens=800)])
+                model, [{"role": "user", "content": prompt}], "自主规划。仅输出 JSON。", thinking=False, max_tokens=800)])
             plan = json.loads(raw)
         except Exception as error:
             await asyncio.to_thread(self.companion.audit, "autonomy_plan", str(error), "", "failed")

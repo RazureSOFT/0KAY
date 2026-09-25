@@ -236,6 +236,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             async def autonomy_cycle():
                 try:
                     await self.engine.proactive_tick()
+                    await self.engine.maybe_daily_agenda()
                     await self.engine.autonomous_plan()
                     await self.engine.maybe_daily_entries()
                 except Exception as e:
@@ -423,6 +424,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await asyncio.to_thread(self.engine.circadian.eat, float(payload.get("amount", 40)))
             elif action == "journal_clear":
                 result = await asyncio.to_thread(self.engine.companion.clear_journal, str(payload.get("kind","")))
+            elif action == "daily_agenda":
+                result = await self.engine.maybe_daily_agenda(True)
             else:
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))
