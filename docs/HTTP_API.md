@@ -55,6 +55,8 @@ There is no single error envelope. Expect one of:
 |---|---|---|
 | GET | `/health` | Health summary (exempt from `CORE_API_TOKEN`) |
 | GET | `/api/plugins` | All plugins, including disabled rows |
+| GET | `/api/update/check` | Latest 0KAY GitHub release vs. the running version |
+| GET | `/api/update/check-plugins` | Latest release vs. each registered plugin version |
 | POST | `/api/plugins/enable` | Enable a plugin, body `{plugin\|name}` |
 | POST | `/api/plugins/disable` | Disable a plugin (persisted to `data/disabled_plugins.json`) |
 | GET, HEAD | `/api/plugins/{name}/ui/{path…}` | Plugin frontend ESM/static assets |
@@ -83,6 +85,31 @@ Served from `$CORE_DATA_DIR/plugin-ui/{name}` (default `data/plugin-ui/{name}`).
   `no-cache`.
 - Files are referenced by patch modules, e.g.
   `import("/api/plugins/agent/ui/index.js")`.
+
+### Update checks
+
+Both endpoints accept `GET` only, use the normal Core API authentication, and
+contact the public GitHub Releases API with a 10-second timeout.
+
+```json
+// GET /api/update/check
+{"current": "0.1.0", "latest": "0.1.0", "has_update": false,
+ "url": "https://github.com/RazureSOFT/0KAY/releases/tag/v0.1.0"}
+
+// GET /api/update/check-plugins
+{"plugins": [{"name": "agent", "version": "0.1.0", "latest": "0.1.0",
+  "has_update": false, "repository": "https://github.com/RazureSOFT/0KAY-agent"}]}
+```
+
+- Version comparison is semver-aware: a leading `v` and prerelease/build
+  suffixes are handled, so `0.1.0-rc.1 < 0.1.0`.
+- `latest` is omitted when the repository has no published release. The
+  platform check returns `502` with an `error` field when GitHub is
+  unreachable; the plugin check reports a per-plugin `error` (including
+  `unknown repository` for plugins with no known repository).
+- Plugin versions are the `PluginInfo.version` values sent during registration
+  (`/api/plugins`).
+- Settings → About drives these checks; see [Releases](RELEASES.md).
 
 ## 3. Agent sessions
 
