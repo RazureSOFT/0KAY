@@ -17,6 +17,7 @@ from .skills import get_skill_registry
 from .core_client import get_core_client
 from .companion import CompanionSystem
 from .model_client import MocrClient
+from .soul import SoulState
 from .task_records import TaskRecorder, task_context
 
 
@@ -34,6 +35,7 @@ class LifeEngine:
         self.data_dir = data_dir or os.getenv("LIFE_DATA_DIR", "./data/life")
         self.emotion = EmotionEngine()
         self.circadian = CircadianSystem()
+        self.soul = SoulState()
         self.memory = MemorySystem(f"{self.data_dir}/memory")
         self.companion = CompanionSystem(self.data_dir)
         self.think = ThinkStage()
@@ -158,7 +160,7 @@ class LifeEngine:
         self.circadian.observe_interaction()
         self.emotion.state.apply_delta(self.emotion.on_user_message(message))
         scope = f"session:{turn.session_id}"
-        memory_context = await asyncio.to_thread(self.memory.get_memory_context, message, scope)
+        memory_context = await asyncio.to_thread(self.memory.get_memory_context, message, scope, self.soul.recall_limit())
         await asyncio.to_thread(self.sync_agents)
         summaries = []
         guidance = "Respond naturally."
@@ -223,11 +225,15 @@ class LifeEngine:
                 guidance = "Report the dispatch result accurately. Accepted means pending, not completed."
                 break
         guidance += "\nRelevant memory:\n" + memory_context + "\nTool results:\n" + "\n".join(summaries)
+        relationship_style = await self._relationship_style(getattr(turn, "user_id", ""))
+        if relationship_style:
+            guidance = relationship_style + "\n" + guidance
         system = self.output.build_prompt(user_message=message, think_guidance=guidance,
             emotion_context=json.dumps(self.emotion.state.to_dict()), persona_context=turn.persona_context)
         response = ""
         try:
-            async for chunk in self.mocr.generate(self.output_model or self.default_model, turn.history, system):
+            async for chunk in self.mocr.generate(self.output_model or self.default_model, turn.history, system,
+                    max_tokens=self.soul.output_tokens(), temperature=self.soul.temperature()):
                 response += chunk
                 yield {"type": "chunk", "chunk": chunk, "done": False}
         except Exception:
@@ -243,6 +249,11 @@ class LifeEngine:
             yield {"type": "chunk", "chunk": response, "done": False}
         turn.history.append({"role": "assistant", "content": response})
         self._histories[turn.session_id] = turn.history[-20:]
+        try:
+            state = self.emotion.state
+            self.soul.resonate(float(getattr(state, "valence", 0.5) or 0.5), float(getattr(state, "arousal", 0.5) or 0.5))
+        except Exception:
+            pass
         # Durable memory comes from extracted key points in _reflect, not the raw turn.
         await asyncio.to_thread(self.memory.enqueue_reflection, turn.session_id, message, response)
         self._save_state()
@@ -252,6 +263,24 @@ class LifeEngine:
             task.add_done_callback(self._background_tasks.discard)
         yield {"type": "chunk", "chunk": "", "done": True, "emotion_state": self.emotion.state.to_dict(),
                "mental_energy": self.circadian.state.mental_energy}
+
+    async def _relationship_style(self, user_id: str) -> str:
+        """Tone guidance derived from the long-term relationship stage (expression decision)."""
+        if not user_id:
+            return ""
+        try:
+            relationship = await asyncio.to_thread(self.companion.relationship, user_id)
+        except Exception:
+            return ""
+        stage = str(relationship.get("stage") or "") if isinstance(relationship, dict) else ""
+        styles = {
+            "亲近": "与对方关系亲近：语气亲密放松，可用昵称和玩笑，主动关心对方。",
+            "温暖": "与对方关系温暖：语气温和体贴，适度关心。",
+            "熟悉": "与对方关系熟悉：语气自然友好。",
+            "疏离": "与对方关系疏离：语气克制礼貌，保持距离，不主动示好。",
+            "受伤": "与对方关系紧张：语气简短克制，避免热情与玩笑。",
+        }
+        return styles.get(stage, "")
 
     async def _reflect(self, turn, message, response):
         async with self._reflection_limit:
@@ -266,7 +295,7 @@ class LifeEngine:
                 raw = "".join([chunk async for chunk in self.mocr.generate(self.think_model or self.default_model,
                     [{"role": "user", "content": prompt}], "Private companion planner. JSON only.", thinking=True, max_tokens=600)])
                 decision = json.loads(raw)
-                for item in (decision.get("memories") or [])[:3]:
+                for item in (decision.get("memories") or [])[:self.soul.impression_limit()]:
                     text = str(item).strip()
                     if 4 <= len(text) <= 160:
                         await asyncio.to_thread(self.memory.remember, text, "", ["extracted"], 0.6, "fact", "public")
@@ -376,6 +405,8 @@ class LifeEngine:
             return {"skipped": "onebot_unavailable"}
         if getattr(self.circadian.state, "is_sleeping", False):
             return {"skipped": "sleeping"}
+        if getattr(self.emotion.state, "irritation", 0) >= 0.7:
+            return {"skipped": "irritated"}
         try:
             snapshot = await asyncio.to_thread(self.companion.snapshot)
         except Exception:
@@ -402,14 +433,32 @@ class LifeEngine:
             content = str(candidate.get("content") or "").strip()
             if not content:
                 continue
+            reviewed = await self._review_outgoing(content, target)
+            if not reviewed:
+                await asyncio.to_thread(self.companion.audit, "proactive_blocked", "review_declined", candidate_id, "blocked")
+                blocked += 1
+                continue
             try:
-                await self.tool_config.onebot_sender(message=content, user_id=user_id, group_id=group_id)
+                await self.tool_config.onebot_sender(message=reviewed, user_id=user_id, group_id=group_id)
             except Exception as error:
                 await asyncio.to_thread(self.companion.audit, "proactive_send", str(error), candidate_id, "failed")
                 continue
-            await asyncio.to_thread(self.companion.mark_proactive_delivered, candidate_id, content)
+            await asyncio.to_thread(self.companion.mark_proactive_delivered, candidate_id, reviewed)
             delivered += 1
         return {"delivered": delivered, "blocked": blocked, "candidates": len(candidates)}
+
+    async def _review_outgoing(self, content: str, target: str) -> str:
+        """Pre-send review/rewrite via the model; empty string declines sending."""
+        prompt = ("以 L.I.F.E 的口吻在发送前复核这条主动消息，使其自然、真诚、不打扰、不超过 80 字。"
+                  "只输出最终要发送的文本；若此刻不适合发送，输出空字符串。\n原草稿：" + content)
+        try:
+            text = "".join([chunk async for chunk in self.mocr.generate(
+                self.output_model or self.default_model,
+                [{"role": "user", "content": prompt}],
+                "主动消息发送前复核。仅输出文本。", thinking=False, max_tokens=200)])
+            return text.strip().strip('"')
+        except Exception:
+            return content
 
     @staticmethod
     def _target_user_id(target: str):

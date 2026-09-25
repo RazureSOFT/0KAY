@@ -402,8 +402,8 @@ class MemorySystem:
         self.rebuild_index()
         self.daily_backup()
 
-    def get_memory_context(self, query: str, scope: str = "") -> str:
-        memories = self.recall(query, top_k=3, scope=scope)
+    def get_memory_context(self, query: str, scope: str = "", top_k: int = 3) -> str:
+        memories = self.recall(query, top_k=max(1, min(int(top_k), 20)), scope=scope)
         if not memories:
             return "No relevant memories found."
 

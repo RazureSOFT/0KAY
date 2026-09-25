@@ -34,11 +34,11 @@ class MocrClient:
         if self._channel:
             await self._channel.close()
 
-    async def generate(self, model_id, messages, system_prompt="", thinking=False, max_tokens=1024):
+    async def generate(self, model_id, messages, system_prompt="", thinking=False, max_tokens=1024, temperature=None):
         record = await self.recorder.start("think" if thinking else "output", messages[-1]["content"] if messages else model_id) if self.recorder else None
         result = ""
         try:
-            async for chunk in self._generate(model_id, messages, system_prompt, thinking, max_tokens):
+            async for chunk in self._generate(model_id, messages, system_prompt, thinking, max_tokens, temperature):
                 result += chunk
                 yield chunk
             if record:
@@ -52,7 +52,7 @@ class MocrClient:
                 await self.recorder.finish(record, result, str(error))
             raise
 
-    async def _generate(self, model_id, messages, system_prompt="", thinking=False, max_tokens=1024):
+    async def _generate(self, model_id, messages, system_prompt="", thinking=False, max_tokens=1024, temperature=None):
         if not self._stub:
             await self.connect()
         client = await self._http_client()
@@ -71,6 +71,11 @@ class MocrClient:
             model_id=model_id, messages=[mocr_pb2.Message(role=m["role"], content=m["content"]) for m in messages],
             system_prompt=system_prompt, max_tokens=max_tokens, stream=True, thinking=thinking,
             provider=chosen.get("provider", ""), base_url=chosen.get("base_url", ""), api_key=chosen.get("api_key", ""))
+        if temperature is not None:
+            try:
+                request.temperature = float(temperature)
+            except Exception:
+                pass
         call = self._stub.Generate(request, timeout=300)
         try:
             async for response in call:

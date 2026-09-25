@@ -135,9 +135,20 @@ class CompanionSystem:
         self.audit("proactive_candidate", motive, candidate["id"])
         return candidate
 
+    # Per-stage daily outreach caps for private targets (min with the configured limit).
+    STAGE_TARGET_LIMITS = {"亲近": 3, "温暖": 2, "熟悉": 1, "疏离": 1, "受伤": 0}
+
     def can_proactively_send(self, target: str) -> tuple[bool,str]:
         with self.db() as db:
             daily = int(self._setting(db,"proactive_daily_limit","3")); per_target = int(self._setting(db,"proactive_target_limit","1"))
+            if target.startswith("user:"):
+                row = db.execute("SELECT stage FROM relationship_accounts WHERE user_id=?", (target.split(":",1)[1],)).fetchone()
+                stage = (row["stage"] if row else "") or ""
+                if stage == "受伤":
+                    return False, "relationship wounded"
+                cap = self.STAGE_TARGET_LIMITS.get(stage)
+                if cap is not None:
+                    per_target = min(per_target, cap) if per_target > 0 else cap
             today = date.today().isoformat()
             sent = db.execute("SELECT COUNT(*) FROM proactive_receipts WHERE phase='delivered' AND created_at LIKE ?", (f"{today}%",)).fetchone()[0]
             per = db.execute("SELECT COUNT(*) FROM proactive_receipts r JOIN proactive_candidates c ON c.id=r.candidate_id WHERE r.phase='delivered' AND c.target=? AND r.created_at LIKE ?", (target,f"{today}%")).fetchone()[0]
