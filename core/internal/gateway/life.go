@@ -8,8 +8,6 @@ import (
 
 	"0kay/core/internal/server"
 	lifev1 "0kay/gen/life/v1"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 // overlayLifeState fills emotion/energy/permissions from Life when available.
@@ -19,12 +17,10 @@ func (g *Gateway) overlayLifeState(r *http.Request, state map[string]interface{}
 	if len(lifes) == 0 || lifes[0].Address == "" {
 		return
 	}
-	conn, err := grpc.NewClient(lifes[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := g.dial(lifes[0].Address)
 	if err != nil {
 		return
 	}
-	defer conn.Close()
-
 	client := lifev1.NewLifeServiceClient(conn)
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
@@ -73,11 +69,10 @@ func (g *Gateway) forwardLifePermissions(p server.Permissions) {
 	if len(lifes) == 0 || lifes[0].Address == "" {
 		return
 	}
-	conn, err := grpc.NewClient(lifes[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := g.dial(lifes[0].Address)
 	if err != nil {
 		return
 	}
-	defer conn.Close()
 	client := lifev1.NewLifeServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()

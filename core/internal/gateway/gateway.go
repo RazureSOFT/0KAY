@@ -37,6 +37,10 @@ type Gateway struct {
 	sessions  map[string]*Session
 	mu        sync.RWMutex
 
+	// Cached outbound gRPC connections, keyed by plugin address.
+	connMu sync.Mutex
+	conns  map[string]*grpc.ClientConn
+
 	// providerStore holds multi-provider API configs (data/providers.json).
 	providerStore *providers.Store
 	// settingsStore holds plugin-contributed settings sections/values.
@@ -74,6 +78,24 @@ type Session struct {
 	Send     chan []byte
 	Done     chan struct{}
 	Registry *registry.Registry
+}
+
+// dial returns a cached gRPC client connection for a plugin address.
+func (g *Gateway) dial(address string) (*grpc.ClientConn, error) {
+	g.connMu.Lock()
+	defer g.connMu.Unlock()
+	if g.conns == nil {
+		g.conns = map[string]*grpc.ClientConn{}
+	}
+	if connection, ok := g.conns[address]; ok {
+		return connection, nil
+	}
+	connection, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	g.conns[address] = connection
+	return connection, nil
 }
 
 // NewGateway creates a new HTTP gateway.
@@ -555,12 +577,11 @@ func (g *Gateway) handleLifeChat(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "LIFE is unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	conn, err := grpc.NewClient(lifes[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := g.dial(lifes[0].Address)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	defer conn.Close()
 	stream, err := lifev1.NewLifeServiceClient(conn).OnUserMessage(r.Context(), &lifev1.OnUserMessageRequest{
 		SessionId: req.SessionID, UserId: req.UserID, Message: req.Prompt, AdapterType: "webui", PersonaJson: string(req.Persona), HistoryJson: string(req.History),
 	})
@@ -623,12 +644,11 @@ func (g *Gateway) handleLifeCompact(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "LIFE is unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	conn, err := grpc.NewClient(lifes[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := g.dial(lifes[0].Address)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	defer conn.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
 	defer cancel()
 	resp, err := lifev1.NewLifeServiceClient(conn).CompactConversation(ctx, &lifev1.CompactConversationRequest{SessionId: req.SessionID, HistoryJson: string(req.History), PersonaJson: string(req.Persona)})
@@ -654,12 +674,11 @@ func (g *Gateway) handleLifeNotifications(w http.ResponseWriter, r *http.Request
 		http.Error(w, "LIFE is unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	conn, err := grpc.NewClient(lifes[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := g.dial(lifes[0].Address)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	defer conn.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 	if r.Method == "POST" {
@@ -935,13 +954,11 @@ func (g *Gateway) handleLifeMemories(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := grpc.NewClient(lifes[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := g.dial(lifes[0].Address)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	defer conn.Close()
-
 	client := lifev1.NewLifeServiceClient(conn)
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
@@ -999,12 +1016,11 @@ func (g *Gateway) handleLifeCompanion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "life unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	conn, err := grpc.NewClient(lifes[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := g.dial(lifes[0].Address)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	defer conn.Close()
 	client := lifev1.NewLifeServiceClient(conn)
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()

@@ -8,8 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"net/http"
 	"time"
 )
@@ -25,12 +23,11 @@ func (g *Gateway) handleAgentWorkspace(w http.ResponseWriter, r *http.Request) {
 		if id != "" && agent.PluginID != id {
 			continue
 		}
-		conn, err := grpc.NewClient(agent.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		conn, err := g.dial(agent.Address)
 		if err != nil {
 			http.Error(w, err.Error(), 502)
 			return
 		}
-		defer conn.Close()
 		tool := "workspace_browse"
 		if r.URL.Path == "/api/agent/host" {
 			tool = "host_status"
@@ -114,7 +111,7 @@ func (g *Gateway) handleAgentCompact(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 409)
 		return
 	}
-	conn, err := grpc.NewClient(lifes[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := g.dial(lifes[0].Address)
 	if err != nil {
 		event.State = "failed"
 		event.Error = err.Error()
@@ -122,7 +119,6 @@ func (g *Gateway) handleAgentCompact(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 502)
 		return
 	}
-	defer conn.Close()
 	data, _ := json.Marshal(history)
 	ctx, cancel := context.WithTimeout(r.Context(), 120*time.Second)
 	defer cancel()

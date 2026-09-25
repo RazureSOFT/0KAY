@@ -5,8 +5,6 @@ import (
 	agentv1 "0kay/gen/agent/v1"
 	"context"
 	"encoding/json"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"net/http"
 	"time"
 )
@@ -32,7 +30,7 @@ func (g *Gateway) handleAgentApprovals(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" && agent.PluginID != body.ExecutorID {
 			continue
 		}
-		conn, err := grpc.NewClient(agent.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		conn, err := g.dial(agent.Address)
 		if err != nil {
 			continue
 		}

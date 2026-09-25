@@ -56,6 +56,11 @@ type CoreServiceServer struct {
 	// mocr address for direct generation
 	mocrAddr string
 
+	// Cached gRPC connection to mocr (dialed once, reused across calls).
+	mocrOnce sync.Once
+	mocrConn *grpc.ClientConn
+	mocrErr  error
+
 	// dispatchActivity tracks last ledger progress per dispatched task for the
 	// inactivity watchdog (dead/hung executor detection).
 	dispatchMu       sync.Mutex
@@ -129,8 +134,10 @@ type UsageRecord struct {
 
 // UsageStore accumulates usage totals (in-memory + optional JSONL).
 type UsageStore struct {
-	records []UsageRecord
-	file    string
+	records  []UsageRecord
+	file     string
+	lastSave time.Time
+	unsaved  int
 }
 
 // NewUsageStore creates a usage store, optionally restoring from disk.
@@ -144,20 +151,39 @@ func NewUsageStore(path string) *UsageStore {
 	return u
 }
 
-// Add records a usage sample and persists (debounced by caller simplicity: always save).
+// Add records a usage sample. Disk writes are throttled to at most one per
+// three seconds, or sooner once a burst accumulates.
 func (u *UsageStore) Add(rec UsageRecord) {
 	u.records = append(u.records, rec)
-	if u.file == "" {
-		return
-	}
-	// keep last 10000
 	if len(u.records) > 10000 {
 		u.records = u.records[len(u.records)-10000:]
 	}
-	if data, err := json.Marshal(u.records); err == nil {
-		_ = os.MkdirAll(filepath.Dir(u.file), 0o755)
-		_ = os.WriteFile(u.file, data, 0o644)
+	u.unsaved++
+	if u.file == "" {
+		return
 	}
+	if u.unsaved < 50 && time.Since(u.lastSave) < 3*time.Second {
+		return
+	}
+	u.saveLocked()
+}
+
+// saveLocked writes the ledger atomically so a crash never truncates it.
+func (u *UsageStore) saveLocked() {
+	data, err := json.Marshal(u.records)
+	if err != nil {
+		return
+	}
+	_ = os.MkdirAll(filepath.Dir(u.file), 0o755)
+	temporary := u.file + ".tmp"
+	if err := os.WriteFile(temporary, data, 0o644); err != nil {
+		return
+	}
+	if err := os.Rename(temporary, u.file); err != nil {
+		return
+	}
+	u.lastSave = time.Now()
+	u.unsaved = 0
 }
 
 // Snapshot returns aggregate totals for /api/usage.
@@ -217,6 +243,8 @@ func (u *UsageStore) Snapshot() map[string]interface{} {
 // Clear removes all usage records and deletes the on-disk file.
 func (u *UsageStore) Clear() {
 	u.records = nil
+	u.unsaved = 0
+	u.lastSave = time.Time{}
 	if u.file != "" {
 		_ = os.Remove(u.file)
 	}
@@ -490,12 +518,25 @@ func estimateTokens(text string) int32 {
 	return int32((n + 3) / 4)
 }
 
+// mocrClient dials mocr once and reuses the connection (gRPC reconnects lazily).
+func (s *CoreServiceServer) mocrClient() (mocrv1.MocrServiceClient, error) {
+	s.mocrOnce.Do(func() {
+		s.mocrConn, s.mocrErr = grpc.NewClient(s.mocrAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	})
+	if s.mocrErr != nil {
+		return nil, s.mocrErr
+	}
+	return mocrv1.NewMocrServiceClient(s.mocrConn), nil
+}
+
+// dialMocr returns the cached client; the closer is a no-op because the
+// connection lives for the lifetime of the server.
 func (s *CoreServiceServer) dialMocr(ctx context.Context) (mocrv1.MocrServiceClient, func(), error) {
-	conn, err := grpc.NewClient(s.mocrAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	client, err := s.mocrClient()
 	if err != nil {
 		return nil, nil, err
 	}
-	return mocrv1.NewMocrServiceClient(conn), func() { conn.Close() }, nil
+	return client, func() {}, nil
 }
 
 // CallMocr proxies a request to the mocr service (real gRPC when available).
