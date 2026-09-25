@@ -12,9 +12,12 @@ import Live2DStage from '../components/Live2DStage.vue'
 import LifeSettingsPanel from '../components/LifeSettingsPanel.vue'
 import AboutPanel from '../components/AboutPanel.vue'
 import GeneralPanel from '../components/GeneralPanel.vue'
+import PersonaPanel from '../components/PersonaPanel.vue'
+import PermissionsPanel from '../components/PermissionsPanel.vue'
 import DangerPanel from '../components/DangerPanel.vue'
 import AppSelect from '../components/AppSelect.vue'
 import { useConfirm } from '../composables/confirm'
+import { useSettingsMeta } from '../composables/settingsMeta'
 
 const { t, locale } = useI18n()
 const { confirm } = useConfirm()
@@ -51,9 +54,6 @@ const isLoading = ref(false)
 const error = ref('')
 const saved = ref(false)
 
-// Life permissions (default OFF) — pane content, metadata from life.patch fields
-const perms = ref({ screen_watch: false, computer_use: false, report_agent_host: '' })
-const permMsg = ref('')
 const uploadedModels = ref<{ id: string; label: string; url: string }[]>([])
 const folderInput = ref<HTMLInputElement | null>(null)
 const uploadMsg = ref('')
@@ -72,57 +72,7 @@ const fetchingProviderId = ref('')
 const sectionDrafts = ref<Record<string, Record<string, unknown>>>({})
 const sectionMsg = ref('')
 
-function tabMeta(id: string) {
-  return uiPatches.settingsTab(id)
-}
-
-function isBuiltinTab(id: string): boolean {
-  return ['general', 'provider', 'persona', 'live2d', 'permissions', 'danger', 'about'].includes(id)
-}
-
-function isPluginSection(id: string): boolean {
-  if (isBuiltinTab(id)) return false
-  if (uiPatches.removedSettingsIds.includes(id)) return false
-  if (tabMeta(id)) return false
-  return !!pluginSection(id)
-}
-
-function tabLabel(id: string): string {
-  const meta = tabMeta(id)
-  if (meta?.labelKey) {
-    const s = t(meta.labelKey)
-    if (s && s !== meta.labelKey) return s
-  }
-  if (meta?.label) return meta.label
-  if (isBuiltinTab(id)) return t(`settings.tabs.${id}`)
-  const sec = pluginSection(id)
-  if (sec?.label) return sec.label
-  return id
-}
-
-function fieldLabel(meta: ReturnType<typeof tabMeta>, key: string, fallbackKey: string): string {
-  const f = meta?.fields?.find(x => x.key === key)
-  if (f?.labelKey) {
-    const s = t(f.labelKey)
-    if (s && s !== f.labelKey) return s
-  }
-  if (f?.label) return f.label
-  return t(fallbackKey)
-}
-
-function fieldHelp(meta: ReturnType<typeof tabMeta>, key: string, fallbackKey: string): string {
-  const f = meta?.fields?.find(x => x.key === key)
-  if (f?.helpKey) {
-    const s = t(f.helpKey)
-    if (s && s !== f.helpKey) return s
-  }
-  if (f?.help) return f.help
-  return t(fallbackKey)
-}
-
-function pluginSection(id: string) {
-  return sectionsStore.sections.find(s => s.id === id)
-}
+const { tabMeta, isBuiltinTab, isPluginSection, tabLabel, fieldLabel, fieldHelp, pluginSection } = useSettingsMeta()
 
 /** Coerce section draft values — API may send bool, "true"/"false", 0/1. */
 function sectionBool(id: string, key: string): boolean {
@@ -440,41 +390,6 @@ function parseModelsInput(v: string): string[] {
   return v.split(',').map(m => m.trim()).filter(Boolean)
 }
 
-async function loadPermissions() {
-  try {
-    const res = await fetch('/api/life/permissions')
-    if (res.ok) {
-      const data = await res.json()
-      perms.value = {
-        screen_watch: !!data.screen_watch,
-        computer_use: !!data.computer_use,
-        report_agent_host: data.report_agent_host || '',
-      }
-    }
-  } catch { /* offline */ }
-}
-
-async function savePermissions() {
-  permMsg.value = ''
-  try {
-    const res = await fetch('/api/life/permissions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(perms.value),
-    })
-    if (!res.ok) throw new Error(String(res.status))
-    const data = await res.json()
-    perms.value = {
-      screen_watch: !!data.screen_watch,
-      computer_use: !!data.computer_use,
-      report_agent_host: data.report_agent_host || '',
-    }
-    permMsg.value = t('settings.permSaved')
-  } catch {
-    permMsg.value = t('settings.permFailed')
-  }
-}
-
 async function loadUploadedModels() {
   try {
     const res = await fetch('/api/live2d')
@@ -552,7 +467,6 @@ onMounted(async () => {
   wizard.loadFromStorage()
   const q = route.query.tab as string | undefined
   if (q) activeTab.value = q
-  loadPermissions()
   loadUploadedModels()
   await provStore.fetchAll()
   draftProviders.value = [...provStore.providers]
@@ -868,40 +782,7 @@ function save() {
         </div>
 
         <!-- Persona (component pane — metadata may come from life.patch) -->
-        <div v-else-if="activeTab === 'persona'" class="content-card">
-          <h2>{{ tabLabel('persona') }}</h2>
-          <p class="card-desc">{{ tabMeta('persona')?.descriptionKey ? t(tabMeta('persona')!.descriptionKey!) : t('settings.personaDesc') }}</p>
-
-          <div class="field-row">
-            <div class="field">
-              <label>{{ t('wizard.name') }}</label>
-              <input v-model="wizard.persona.name" :placeholder="t('wizard.namePlaceholder')" class="input" />
-            </div>
-            <div class="field">
-              <label>{{ t('wizard.avatarUrl') }}</label>
-              <input v-model="wizard.persona.avatar" :placeholder="t('wizard.avatarPlaceholder')" class="input" />
-            </div>
-            <div class="field">
-              <label>出生日期</label>
-              <input v-model="wizard.persona.birthDate" type="date" class="input" />
-            </div>
-          </div>
-
-          <div class="field">
-            <label>{{ t('wizard.description') }}</label>
-            <textarea v-model="wizard.persona.description" :placeholder="t('wizard.descriptionPlaceholder')" class="input" rows="3"></textarea>
-          </div>
-
-          <div class="field">
-            <label>{{ t('wizard.personality') }}</label>
-            <textarea v-model="wizard.persona.personality" :placeholder="t('wizard.personalityPlaceholder')" class="input" rows="3"></textarea>
-          </div>
-
-          <div class="field">
-            <label>{{ t('wizard.greeting') }}</label>
-            <textarea v-model="wizard.persona.greeting" :placeholder="t('wizard.greetingPlaceholder')" class="input" rows="2"></textarea>
-          </div>
-        </div>
+        <PersonaPanel v-else-if="activeTab === 'persona'" />
 
         <!-- Live2D (component pane — metadata may come from life.patch) -->
         <div v-else-if="activeTab === 'live2d'" class="content-card">
@@ -990,41 +871,7 @@ function save() {
         </div>
 
         <!-- Permissions — shell pane; fields/labels from life.patch when present -->
-        <div v-else-if="activeTab === 'permissions'" class="content-card">
-          <h2>{{ tabLabel('permissions') }}</h2>
-          <p class="card-desc">{{ tabMeta('permissions')?.descriptionKey ? t(tabMeta('permissions')!.descriptionKey!) : t('settings.permissionsDesc') }}</p>
-
-          <label class="toggle-label">
-            <input type="checkbox" v-model="perms.screen_watch" @change="savePermissions" />
-            <span class="toggle-slider"></span>
-            <span>
-              <strong>{{ fieldLabel(tabMeta('permissions'), 'screen_watch', 'settings.screenWatch') }}</strong>
-              <br />
-              <small class="helper-text">{{ fieldHelp(tabMeta('permissions'), 'screen_watch', 'settings.screenWatchDesc') }}</small>
-            </span>
-          </label>
-
-          <label class="toggle-label">
-            <input type="checkbox" v-model="perms.computer_use" @change="savePermissions" />
-            <span class="toggle-slider"></span>
-            <span>
-              <strong>{{ fieldLabel(tabMeta('permissions'), 'computer_use', 'settings.computerUse') }}</strong>
-              <br />
-              <small class="helper-text">{{ fieldHelp(tabMeta('permissions'), 'computer_use', 'settings.computerUseDesc') }}</small>
-            </span>
-          </label>
-
-          <div class="field">
-            <label>{{ fieldLabel(tabMeta('permissions'), 'report_agent_host', 'settings.reportAgentHost') }}</label>
-            <input v-model="perms.report_agent_host" class="input" :placeholder="fieldHelp(tabMeta('permissions'), 'report_agent_host', 'settings.reportAgentHostDesc')" @change="savePermissions" />
-            <p class="helper-text">{{ fieldHelp(tabMeta('permissions'), 'report_agent_host', 'settings.reportAgentHostDesc') }}</p>
-          </div>
-
-          <div v-if="permMsg" class="helper-text">{{ permMsg }}</div>
-          <div class="actions-row">
-            <button class="btn btn-primary" type="button" @click="savePermissions">{{ t('settings.save') }}</button>
-          </div>
-        </div>
+        <PermissionsPanel v-else-if="activeTab === 'permissions'" />
 
         <!-- Plugin-registered settings sections (declarative fields) -->
         <LifeSettingsPanel v-else-if="activeTab === 'life_settings'" />
