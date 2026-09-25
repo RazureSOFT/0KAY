@@ -105,6 +105,7 @@ func main() {
 	// Graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	go startLifeScheduler(ctx, reg)
 	if os.Getenv("CORE_LAN_ENABLED") == "1" {
 		lanHTTP := &http.Server{Addr: ":8443", Handler: handler, TLSConfig: pairs.TLS, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 120 * time.Second}
 		listener, err := tls.Listen("tcp", lanHTTP.Addr, pairs.TLS)

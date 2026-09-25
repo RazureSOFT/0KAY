@@ -59,6 +59,7 @@ class LifeEngine:
         self._dispatch_lock = asyncio.Lock()
         self._background_tasks = set()
         self._reflection_limit = asyncio.Semaphore(2)
+        self._last_plan = datetime.min
         self._state_path = Path(self.data_dir) / "state.json"
         self._load_state()
 
@@ -301,6 +302,132 @@ class LifeEngine:
         text = "".join([chunk async for chunk in self.mocr.generate(
             model, [{"role": "user", "content": prompt}], "你是 L.I.F.E 的内心独白作者。", thinking=False, max_tokens=512)])
         return text.strip()
+
+    async def autonomous_plan(self, force: bool = False) -> dict:
+        """Let LIFE decide what to do next and persist the plan as agenda/proactive candidates."""
+        now = datetime.now()
+        if not force and (now - self._last_plan).total_seconds() < 5400:
+            return {"skipped": "recent", "minutes_since": int((now - self._last_plan).total_seconds() // 60)}
+        self._last_plan = now
+        rhythm = self.circadian.to_dict() if hasattr(self.circadian, "to_dict") else {}
+        try:
+            snapshot = await asyncio.to_thread(self.companion.snapshot)
+        except Exception:
+            snapshot = {}
+        agenda_titles = [item.get("title") for item in (snapshot.get("agenda") or [])][:6]
+        recent: list[str] = []
+        for session_id in list(self._histories.keys())[-2:]:
+            for item in self._histories[session_id][-3:]:
+                recent.append(f'{item["role"]}: {str(item.get("content",""))[:160]}')
+        context = json.dumps({
+            "time": now.isoformat(timespec="minutes"),
+            "sleeping": rhythm.get("is_sleeping"),
+            "energy": rhythm.get("mental_energy"),
+            "agenda": agenda_titles,
+            "recent": recent[-6:],
+        }, ensure_ascii=False)
+        prompt = (
+            "你是 L.I.F.E，一个有自主性的陪伴体。基于当前状态，独立规划你接下来最想做的事。"
+            '只返回 JSON：{"agenda":[{"title":"","when":"","detail":""}],'
+            '"proactive":[{"target":"","motive":"","content":""}],"journal":"","note":""}。'
+            "规则：agenda 最多 2 条，仅在确有值得安排的事时给出；proactive 最多 1 条，自然真诚、不打扰；"
+            "journal/note 可为空；没有想法就用空数组/空字符串；不要重复已有日程。\n"
+            f"当前状态：{context}"
+        )
+        model = self.think_model or self.default_model
+        try:
+            raw = "".join([chunk async for chunk in self.mocr.generate(
+                model, [{"role": "user", "content": prompt}], "自主规划。仅输出 JSON。", thinking=True, max_tokens=800)])
+            plan = json.loads(raw)
+        except Exception as error:
+            await asyncio.to_thread(self.companion.audit, "autonomy_plan", str(error), "", "failed")
+            return {"error": str(error)}
+        applied = {"agenda": 0, "proactive": 0, "journal": 0}
+        for item in (plan.get("agenda") or [])[:2]:
+            title = str(item.get("title") or "").strip()
+            if title:
+                await asyncio.to_thread(self.companion.add_agenda, title[:120], str(item.get("when") or ""), str(item.get("detail") or "")[:500])
+                applied["agenda"] += 1
+        for item in (plan.get("proactive") or [])[:1]:
+            content = str(item.get("content") or "").strip()
+            if not content:
+                continue
+            target = str(item.get("target") or "user:owner")
+            try:
+                allowed, _ = await asyncio.to_thread(self.companion.can_proactively_send, target)
+            except Exception:
+                allowed = False
+            if allowed:
+                await asyncio.to_thread(self.companion.create_proactive_candidate, target, str(item.get("motive") or "autonomy"), content)
+                applied["proactive"] += 1
+        journal_text = str(plan.get("journal") or "").strip()
+        if journal_text:
+            await asyncio.to_thread(self.companion.journal, journal_text, "journal")
+            applied["journal"] += 1
+        note = str(plan.get("note") or "").strip()
+        if note:
+            await asyncio.to_thread(self.memory.remember, note[:400], "", ["autonomy"], 0.6, "note", "public")
+        await asyncio.to_thread(self.companion.audit, "autonomy_plan", json.dumps(applied, ensure_ascii=False), "", "ok")
+        return {"applied": applied, "plan": plan}
+
+    async def proactive_tick(self) -> dict:
+        """Deliver due proactive candidates within quotas, quiet hours and state gates."""
+        if not self.tool_config.onebot_enabled or self.tool_config.onebot_sender is None:
+            return {"skipped": "onebot_unavailable"}
+        if getattr(self.circadian.state, "is_sleeping", False):
+            return {"skipped": "sleeping"}
+        try:
+            snapshot = await asyncio.to_thread(self.companion.snapshot)
+        except Exception:
+            return {"skipped": "snapshot"}
+        candidates = [c for c in (snapshot.get("proactive", {}).get("candidates") or []) if c.get("status") == "candidate"]
+        delivered = 0
+        blocked = 0
+        for candidate in candidates[:5]:
+            target = str(candidate.get("target") or "")
+            try:
+                allowed, reason = await asyncio.to_thread(self.companion.can_proactively_send, target)
+            except Exception:
+                allowed, reason = False, "error"
+            candidate_id = str(candidate.get("id") or "")
+            if not allowed:
+                blocked += 1
+                await asyncio.to_thread(self.companion.audit, "proactive_blocked", reason, candidate_id, "blocked")
+                continue
+            user_id = self._target_user_id(target)
+            group_id = self._target_group_id(target)
+            if user_id is None and group_id is None:
+                await asyncio.to_thread(self.companion.audit, "proactive_blocked", "unknown_target", candidate_id, "blocked")
+                continue
+            content = str(candidate.get("content") or "").strip()
+            if not content:
+                continue
+            try:
+                await self.tool_config.onebot_sender(message=content, user_id=user_id, group_id=group_id)
+            except Exception as error:
+                await asyncio.to_thread(self.companion.audit, "proactive_send", str(error), candidate_id, "failed")
+                continue
+            await asyncio.to_thread(self.companion.mark_proactive_delivered, candidate_id, content)
+            delivered += 1
+        return {"delivered": delivered, "blocked": blocked, "candidates": len(candidates)}
+
+    @staticmethod
+    def _target_user_id(target: str):
+        if target.startswith("user:"):
+            try:
+                return int(target.split(":", 1)[1])
+            except (ValueError, IndexError):
+                return None
+        return None
+
+    @staticmethod
+    def _target_group_id(target: str):
+        if target.startswith("group:"):
+            try:
+                return int(target.split(":", 1)[1])
+            except (ValueError, IndexError):
+                return None
+        return None
 
     async def close(self):
         tasks = list(self._background_tasks)

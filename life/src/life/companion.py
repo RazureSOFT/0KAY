@@ -170,6 +170,13 @@ class CompanionSystem:
             self._audit_tx(db, "proactive_cancel", reason, candidate_id)
         return {"cancelled": True, "id": candidate_id}
 
+    def mark_proactive_delivered(self, candidate_id: str, content: str, outcome: str = "ok") -> dict[str,Any]:
+        with self.db() as db:
+            db.execute("UPDATE proactive_candidates SET status='delivered', updated_at=? WHERE id=?", (now(), candidate_id))
+            db.execute("INSERT INTO proactive_receipts VALUES(?,?,?,?,?,?)", (new_id("receipt"), candidate_id, "delivered", outcome, content[:1000], now()))
+        self.audit("proactive_delivery", content[:200], candidate_id)
+        return {"delivered": True, "id": candidate_id}
+
     def complete_agenda(self, event_id: str) -> dict[str,Any]:
         with self.db() as db:
             row = db.execute("SELECT * FROM calendar_events WHERE id=?", (event_id,)).fetchone()

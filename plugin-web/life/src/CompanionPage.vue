@@ -61,6 +61,30 @@ async function suggestProactive() {
   const result = await act('proactive_suggest', { target, hint: proactiveForm.value.motive })
   if (result) { proactiveForm.value = { target: '', motive: '', content: '', preferred_at: '' }; flash('已生成建议候选') }
 }
+const ticking = ref(false)
+async function tickNow() {
+  ticking.value = true
+  try {
+    const r = await fetch('/api/life/companion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'proactive_tick', payload: {} }) })
+    if (!r.ok) throw Error(await r.text())
+    const body = await r.json()
+    await load()
+    flash(body?.skipped ? `本次跳过：${body.skipped}` : `已投递 ${body.delivered || 0} 条 · 拦截 ${body.blocked || 0} 条`)
+  } catch (e: any) { error.value = e?.message || '投递失败' }
+  finally { ticking.value = false }
+}
+const planning = ref(false)
+async function planNow() {  planning.value = true
+  try {
+    const r = await fetch('/api/life/companion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'autonomy_plan', payload: {} }) })
+    if (!r.ok) throw Error(await r.text())
+    const body = await r.json()
+    await load()
+    const applied = body?.applied
+    flash(applied ? `已自主规划：日程 ${applied.agenda} · 主动 ${applied.proactive} · 日记 ${applied.journal}` : '本次没有新的规划')
+  } catch (e: any) { error.value = e?.message || '规划失败' }
+  finally { planning.value = false }
+}
 function fmtTime(value?: string) { if (!value) return ''; const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString() }
 onMounted(load)
 </script>
@@ -70,7 +94,7 @@ onMounted(load)
     <header class="page-header"><div>
       <p class="eyebrow">L.I.F.E / COMPANION</p><h1>陪伴面板</h1>
       <p class="subtitle">日程、关系账本、主动行为、群聊观察、性格演化与审计均由 LIFE 插件维护。这里可以审阅并手动干预。</p>
-    </div><div class="header-actions"><button class="btn btn-tonal" :disabled="loading" @click="load">{{ loading ? '刷新中…' : '刷新' }}</button></div></header>
+    </div><div class="header-actions"><button class="btn btn-primary" :disabled="planning" @click="planNow">{{ planning ? '规划中…' : '让 LIFE 规划' }}</button><button class="btn btn-tonal" :disabled="loading" @click="load">{{ loading ? '刷新中…' : '刷新' }}</button></div></header>
     <p v-if="error" class="error-banner">{{ error }}</p>
     <p v-if="notice" class="notice">{{ notice }}</p>
 
@@ -133,7 +157,7 @@ onMounted(load)
 
       <article class="card">
         <div class="card-head"><h2 class="card-title">主动行为</h2><span class="chip muted">待投递 {{ activeCandidates.length }}</span></div>
-        <div class="toolbar-inline"><button class="btn btn-tonal btn-sm" @click="suggestProactive">让 LIFE 建议一条</button></div>
+        <div class="toolbar-inline"><button class="btn btn-tonal btn-sm" @click="suggestProactive">让 LIFE 建议一条</button><button class="btn btn-tonal btn-sm" :disabled="ticking" @click="tickNow">{{ ticking ? '检查中…' : '立即检查投递' }}</button></div>
         <form class="stack-form" @submit.prevent="createProactive">
           <input v-model="proactiveForm.target" class="input" placeholder="对象（user_id / 会话）" aria-label="主动对象" />
           <input v-model="proactiveForm.motive" class="input" placeholder="动机，如 care / reminder" aria-label="动机" />

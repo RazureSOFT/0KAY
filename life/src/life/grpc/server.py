@@ -231,6 +231,17 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
         elif event_type == life_pb2.SCHEDULED_EVENT_TYPE_IDLE_CHECK:
             if self.engine.circadian.should_auto_sleep():
                 self.engine.circadian.start_sleep()
+            # Autonomy cycle: deliver due proactive candidates, then plan new ones.
+            async def autonomy_cycle():
+                try:
+                    await self.engine.proactive_tick()
+                    await self.engine.autonomous_plan()
+                except Exception as e:
+                    print(f"[LIFE] autonomy cycle error: {e}")
+            try:
+                asyncio.create_task(autonomy_cycle())
+            except Exception as e:
+                print(f"[LIFE] autonomy error: {e}")
 
         # Save state after events
         self.engine._save_state()
@@ -388,6 +399,10 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 content = await self.engine.generate_companion_text("proactive", str(payload.get("hint","")))
                 target = str(payload.get("target") or "user:owner")
                 result = await asyncio.to_thread(self.engine.companion.create_proactive_candidate, target, "ai_suggestion", content) if content else {"status":"empty"}
+            elif action == "autonomy_plan":
+                result = await self.engine.autonomous_plan(True)
+            elif action == "proactive_tick":
+                result = await self.engine.proactive_tick()
             else:
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))
