@@ -490,43 +490,6 @@ func estimateTokens(text string) int32 {
 	return int32((n + 3) / 4)
 }
 
-// maybeCompress trims history when estimated context approaches a soft limit.
-// Uses a simple head-summary approach: drop oldest half when over threshold.
-func (s *CoreServiceServer) maybeCompress(sessionID string, maxContext int) []*corev1.ChatMessage {
-	history := s.SessionMessages(sessionID)
-	if maxContext <= 0 {
-		maxContext = 8000
-	}
-	threshold := int32(float64(maxContext) * 0.7)
-
-	total := int32(0)
-	for _, m := range history {
-		total += estimateTokens(m.Content)
-	}
-	if total <= threshold {
-		return history
-	}
-
-	// Keep a system summary marker + recent turns (last 12 messages)
-	keepFrom := len(history) - 12
-	if keepFrom < 1 {
-		keepFrom = 1
-	}
-	summary := &corev1.ChatMessage{
-		Role:    "system",
-		Content: fmt.Sprintf("[conversation summarized: earlier %d messages compressed to save context]", keepFrom),
-	}
-	compressed := append([]*corev1.ChatMessage{summary}, history[keepFrom:]...)
-
-	// Persist compressed history
-	s.sessionMu.Lock()
-	if sessionID != "" {
-		s.sessions[sessionID] = compressed
-	}
-	s.sessionMu.Unlock()
-	return compressed
-}
-
 func (s *CoreServiceServer) dialMocr(ctx context.Context) (mocrv1.MocrServiceClient, func(), error) {
 	conn, err := grpc.NewClient(s.mocrAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -998,6 +961,11 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 		}
 	}
 	go func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				log.Printf("[UseAgent] inactivity watcher recovered from panic: %v", recovered)
+			}
+		}()
 		ticker := time.NewTicker(time.Minute)
 		defer ticker.Stop()
 		for {

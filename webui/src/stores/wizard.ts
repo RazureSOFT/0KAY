@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { PersonaConfig, Live2DConfig } from '../composables/wizard'
+import type { PersonaConfig, Live2DConfig, ProviderConfig } from '../composables/wizard'
 import { DEFAULT_LIVE2D_MODEL_URL } from '../composables/wizard'
 
 export const useWizardStore = defineStore('wizard', () => {
@@ -92,6 +92,7 @@ export const useWizardStore = defineStore('wizard', () => {
   function completeWizard() {
     isCompleted.value = true
     saveToStorage()
+    void pushProvidersToCore()
   }
 
   function saveToStorage() {
@@ -106,26 +107,49 @@ export const useWizardStore = defineStore('wizard', () => {
     }
     localStorage.setItem('0kay_config', JSON.stringify(config))
     localStorage.setItem('0kay_wizard_complete', 'true')
-    // Push provider config to Core so chat/agent can use real credentials
-    void pushProvidersToCore()
+    // NOTE: provider push happens only on wizard completion. Pushing here made
+    // every unrelated settings save re-upsert the wizard config under a fixed id
+    // and spawn duplicate provider rows next to the timestamped settings rows.
   }
 
   async function pushProvidersToCore() {
     if (!provider.value || !apiKey.value || !baseUrl.value) return
     try {
-      const id = provider.value
+      const models = selectedModels.value.length ? selectedModels.value : (defaultModel.value ? [defaultModel.value] : [])
+      const norm = (u: string) => String(u || '').trim().replace(/\/+$/, '')
+      let existing: ProviderConfig[] = []
+      try {
+        const res = await fetch('/api/providers')
+        if (res.ok) existing = ((await res.json()).providers || []) as ProviderConfig[]
+      } catch { /* core offline — upsert below creates the row */ }
+      // Reuse an existing row instead of appending a second one for the same endpoint.
+      const match = existing.find(p => p.id === provider.value)
+        || existing.find(p => p.provider === provider.value && norm(p.base_url) === norm(baseUrl.value))
+      if (match && match.provider === provider.value && norm(match.base_url) === norm(baseUrl.value)
+          && match.api_key === apiKey.value && (match.models || []).join('\n') === models.join('\n')) {
+        // Identical config already stored — only refresh the defaults.
+        await fetch('/api/providers/defaults', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ default_provider_id: match.id, default_model: defaultModel.value || match.default_model }),
+        })
+        return
+      }
+      const id = match?.id || provider.value
+      const merged = match ? Array.from(new Set([...(match.models || []), ...models])) : models
       const body = {
         provider: {
           id,
           provider: provider.value,
           api_key: apiKey.value,
           base_url: baseUrl.value,
-          models: selectedModels.value.length ? selectedModels.value : (defaultModel.value ? [defaultModel.value] : []),
-          default_model: defaultModel.value,
+          models: merged,
+          disabled_models: (match?.disabled_models || []).filter(m => merged.includes(m)),
+          default_model: defaultModel.value || (merged.includes(match?.default_model || '') ? match!.default_model : merged[0] || ''),
           enabled: true,
         },
         default_provider_id: id,
-        default_model: defaultModel.value,
+        default_model: defaultModel.value || (merged.includes(match?.default_model || '') ? match!.default_model : merged[0] || ''),
       }
       await fetch('/api/providers', {
         method: 'POST',

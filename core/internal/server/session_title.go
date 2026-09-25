@@ -76,6 +76,11 @@ func (s *CoreServiceServer) maybeAutoTitleSession(sessionID string) {
 	prompt := "Summarize this conversation into a short session title (max 40 characters, no quotes, no newline).\nLanguage: " + lang + "\nUser: " + truncateRunes(firstPrompt, 400) + "\nAssistant: " + truncateRunes(firstResult, 600) + "\nTitle:"
 
 	go func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				log.Printf("[session-title] recovered from panic: %v", recovered)
+			}
+		}()
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		client, closeFn, err := s.dialMocr(ctx)

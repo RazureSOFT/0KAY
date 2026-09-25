@@ -233,6 +233,7 @@
       "latest": "Up to date",
       "noRelease": "No published release",
       "noPlugins": "No registered plugins",
+      "unsupported": "This Core build does not expose update checks; update and restart Core.",
       "updateHint": "Stop the component before updating it with 0kay-pm, then restart it."
     },
     "generalDesc": "UI language and basic preferences",

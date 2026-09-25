@@ -80,14 +80,27 @@ const pluginsLoading = ref(false)
 const pluginResults = ref<Array<{ name: string; version: string; latest?: string; has_update: boolean; repository?: string; error?: string }> | null>(null)
 const pluginsError = ref('')
 
+/** Parse an API response defensively: non-JSON bodies (404/HTML) become readable errors. */
+async function readApiResponse(res: Response): Promise<any> {
+  const text = await res.text()
+  let data: any = null
+  if (text) {
+    try {
+      data = JSON.parse(text)
+    } catch {
+      if (res.status === 404) throw new Error(t('settings.about.unsupported'))
+      throw new Error(text.trim().slice(0, 200) || `HTTP ${res.status}`)
+    }
+  }
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`)
+  return data
+}
+
 async function checkUpdates() {
   aboutLoading.value = true
   updateError.value = ''
   try {
-    const res = await fetch('/api/update/check')
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || res.statusText)
-    updateResult.value = data
+    updateResult.value = await readApiResponse(await fetch('/api/update/check'))
   } catch (error: unknown) {
     updateError.value = error instanceof Error ? error.message : String(error)
   } finally {
@@ -99,9 +112,7 @@ async function checkPluginUpdates() {
   pluginsLoading.value = true
   pluginsError.value = ''
   try {
-    const res = await fetch('/api/update/check-plugins')
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || res.statusText)
+    const data = await readApiResponse(await fetch('/api/update/check-plugins'))
     pluginResults.value = data.plugins || []
   } catch (error: unknown) {
     pluginsError.value = error instanceof Error ? error.message : String(error)
@@ -424,7 +435,12 @@ async function toggleModelOnCard(p: ProviderConfig, m: string) {
 async function saveProviderEdit() {
   const p = editingProvider.value
   if (!p) return
-  if (!p.id) p.id = p.provider + '_' + Date.now().toString(36)
+  if (!p.id) {
+    const norm = (u: string) => String(u || '').trim().replace(/\/+$/, '')
+    const dup = draftProviders.value.find(x =>
+      x.provider === p.provider && norm(x.base_url) === norm(p.base_url) && x.api_key === p.api_key)
+    p.id = dup ? dup.id : p.provider + '_' + Date.now().toString(36)
+  }
   if (!p.default_model && p.models.length) p.default_model = p.models[0]
   // Keep disabled_models aligned with current model list
   p.disabled_models = (p.disabled_models || []).filter(m => p.models.includes(m))
