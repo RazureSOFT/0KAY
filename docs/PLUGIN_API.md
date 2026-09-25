@@ -67,19 +67,24 @@ RunDirect 管理操作：workspace_browse(path)、workspace_mkdir(path/name)、h
 
 ## 4. HTTP 网关接口全集
 
+逐端点的请求/响应结构、认证、错误与查询参数见 [HTTP API Reference](HTTP_API.md)。
+
 | 路径 | 方法/用途 |
 |---|---|
 | /health | GET 健康与插件计数 |
 | /api/plugins | GET 插件列表 |
 | /api/plugins/enable、/disable | POST 启停插件 |
 | /api/agents | GET 执行器、宿主机、缺失依赖 |
-| /api/agent/sessions | GET/POST 会话；PATCH archive/restore；DELETE 删除 |
+| /api/agent/sessions | GET/POST 会话；PATCH archive/restore/rename；DELETE 删除 |
 | /api/agent/messages | POST session_id/prompt/agent_type 与 metadata 对应执行选项 |
 | /api/agent/workspace | GET executor_id/path 浏览；POST path/name 新目录 |
 | /api/agent/host | GET executor_id，实时 CPU/内存采样 |
 | /api/agent/approvals | GET 待审批；POST executor_id/id/allow |
+| /api/agent/questions | GET 待回答问题；POST executor_id/id/answer |
 | /api/agent/compact | POST session_id，生成并保存上下文摘要 |
+| /api/skills | GET 列表；POST name/content 保存；DELETE ?name= 删除 |
 | /api/tasks | GET 全量；incremental=1&cursor=... 增量；POST TaskEvent |
+| /api/tasks/events | GET SSE 任务增量流（200ms tick，15s 心跳） |
 | /api/tasks/cancel | POST task_id |
 | /api/chat、/api/mocr/generate | POST 基础模型生成，支持 SSE |
 | /api/life/chat | POST prompt/session_id/user_id/persona/history，SSE |
@@ -97,7 +102,9 @@ RunDirect 管理操作：workspace_browse(path)、workspace_mkdir(path/name)、h
 | /api/providers/defaults | GET/POST 默认供应商与模型 |
 | /api/settings/sections | GET 设置段 |
 | /api/settings/{id} | GET/POST/PUT values |
-| /api/usage、/api/usage/clear | GET 用量；POST 清除 |
+| /api/usage | GET 用量 |
+| /api/usage/record | POST 上报单条用量（mocr 调用），204 |
+| /api/usage/clear | POST 清除 |
 | /api/live2d | GET 列表；POST multipart files + paths；DELETE id |
 | /live2d/models/* | GET 模型资源 |
 | /api/images | POST file；GET file=... 图片 |

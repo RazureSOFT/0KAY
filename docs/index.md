@@ -11,6 +11,8 @@ domain behavior and expose gRPC services over the shared protobuf contracts.
 
 ## API Sections
 
+- [HTTP API Reference](HTTP_API.md)
+- [Plugin API Overview](PLUGIN_API.md)
 - [Plugin Lifecycle](plugin-lifecycle.md)
 - [Core Services](core-services.md)
 - [Agent Service](agent-service.md)
