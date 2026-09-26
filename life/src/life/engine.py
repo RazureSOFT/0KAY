@@ -71,6 +71,8 @@ class LifeEngine:
         self.tools.recorder = self.task_records
         self.skills = get_skill_registry()
         self.active_tasks = {}
+        self.minecraft_cursor = 0
+        self.minecraft_host = ""
         self._notifications = []
         self._completed_tasks = []
         self._histories = {}
@@ -1106,3 +1108,67 @@ class LifeEngine:
         if values.get("model_routes") is not None:
             self.apply_model_routes(values.get("model_routes"))
         self.companion.set_runtime_policy(int(values.get("proactive_daily_limit", 3)), int(values.get("proactive_target_limit", 1)))
+
+    async def poll_minecraft(self):
+        """Ingest new 0kay-minecraft events into durable memory.
+
+        Chat from real players and notable connection/auth/server events become
+        episodic memories tagged with the server and speaker, so L.I.F.E can
+        remember what happened while playing with people.
+        """
+        if not self.tool_config.minecraft_enabled:
+            return
+        tool = self.tools.get("minecraft")
+        if tool is None:
+            return
+        try:
+            result = await tool.execute(action="events", since=self.minecraft_cursor)
+        except Exception:
+            return
+        if not result.success or not isinstance(result.data, dict):
+            return
+        events = result.data.get("events") or []
+        for event in events[:100]:
+            if not isinstance(event, dict):
+                continue
+            kind = str(event.get("type") or "")
+            data = event.get("data")
+            if kind == "state" and isinstance(data, dict) and data.get("host"):
+                self.minecraft_host = f"{data.get('host')}:{data.get('port', '')}".rstrip(":")
+                continue
+            if kind == "chat" and isinstance(data, dict):
+                if data.get("raw"):
+                    continue
+                username = str(data.get("username") or "").strip()
+                message = str(data.get("message") or "").strip()
+                if not username or not message:
+                    continue
+                try:
+                    await asyncio.to_thread(
+                        self.memory.remember,
+                        f"在 Minecraft「{self.minecraft_host or '服务器'}」里，{username} 说：{message}",
+                        f"{username} 在游戏里对我说的话",
+                        ["minecraft", self.minecraft_host, username, "chat"],
+                        0.45,
+                        "episodic",
+                    )
+                except Exception:
+                    pass
+                continue
+            if kind == "log":
+                text = str(data or "")
+                if any(marker in text for marker in ("authenticated", "spawned", "kicked", "joined", "left", "sent /register", "sent /login")):
+                    try:
+                        await asyncio.to_thread(
+                            self.memory.remember,
+                            f"Minecraft 事件：{text}",
+                            "",
+                            ["minecraft", self.minecraft_host, "event"],
+                            0.4,
+                            "episodic",
+                        )
+                    except Exception:
+                        pass
+        cursor = result.data.get("cursor")
+        if isinstance(cursor, int):
+            self.minecraft_cursor = cursor

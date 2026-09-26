@@ -526,7 +526,7 @@ class MinecraftTool(Tool):
             "action": {"type": "string", "enum": [
                 "connect", "disconnect", "status", "chat", "players", "follow", "goto",
                 "stop", "look", "dig", "place", "attack", "inventory", "use",
-                "autopilot_start", "autopilot_stop"]},
+                "autopilot_start", "autopilot_stop", "events"]},
             "edition": {"type": "string", "enum": ["java", "bedrock"]},
             "host": {"type": "string"}, "port": {"type": "integer"},
             "username": {"type": "string"}, "version": {"type": "string"},
@@ -536,6 +536,7 @@ class MinecraftTool(Tool):
             "x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"},
             "item": {"type": "string"}, "goal": {"type": "string"},
             "interval_ms": {"type": "integer"}, "model_id": {"type": "string"},
+            "since": {"type": "integer"},
         }}
 
     async def execute(self, action: str = "", **kwargs) -> ToolResult:

@@ -19,6 +19,8 @@ export class BotController {
     this.listeners = new Set();
     this.autopilot = null;
     this.lastAction = null;
+    this.events = [];
+    this.eventSeq = 0;
   }
 
   on(listener) {
@@ -35,9 +37,17 @@ export class BotController {
       this.logs.push({ time: new Date().toISOString(), message: data });
       if (this.logs.length > CHAT_LIMIT) this.logs.splice(0, this.logs.length - CHAT_LIMIT);
     }
+    const event = { seq: ++this.eventSeq, time: new Date().toISOString(), type, data };
+    this.events.push(event);
+    if (this.events.length > 1000) this.events.splice(0, this.events.length - 1000);
     for (const listener of this.listeners) {
       try { listener(type, data); } catch { /* listener errors must not break the bot */ }
     }
+  }
+
+  eventsSince(since = 0) {
+    const cursor = Number(since) || 0;
+    return this.events.filter((event) => event.seq > cursor);
   }
 
   async connect(args = {}) {
@@ -94,6 +104,7 @@ export class BotController {
       case 'inventory': return this.requireBot().inventory();
       case 'use': return this.requireBot().use(args.item);
       case 'players': return { players: this.bot ? this.bot.playerList?.() ?? this.bot.describe().players : [] };
+      case 'events': return { cursor: this.eventSeq, events: this.eventsSince(args.since) };
       case 'status': return this.status();
       default: throw new Error(`unknown action: ${name}`);
     }

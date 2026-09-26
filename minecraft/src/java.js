@@ -37,6 +37,8 @@ export class JavaBot {
     this.options = {};
     this.authHandled = false;
     this.authGenerated = false;
+    this.authAttempts = 0;
+    this.authenticated = false;
     this.credentialsPath = process.env.MINECRAFT_CREDENTIALS
       || path.join(process.env.MINECRAFT_DATA_DIR || './data', 'credentials.json');
     this.credentials = {};
@@ -75,6 +77,8 @@ export class JavaBot {
     };
     this.authHandled = false;
     this.authGenerated = false;
+    this.authAttempts = 0;
+    this.authenticated = false;
     this.lastError = '';
     this.state = 'connecting';
     this.credentials = await this.#loadCredentials();
@@ -135,30 +139,61 @@ export class JavaBot {
   }
 
   #handleAuthPrompt(text) {
-    if (this.authHandled || !this.bot) return;
+    if (!this.bot) return;
     const lower = text.toLowerCase();
+    if (this.authenticated && !/密码错误|密码不正确|wrong password|incorrect password|invalid password/.test(lower)) return;
+
+    if (/注册成功|登录成功|successfully (logged in|registered)|logged in|欢迎回来|加入了游戏|welcome back|欢迎/.test(lower)) {
+      this.authenticated = true;
+      this.authAttempts = 0;
+      this.authHandled = true;
+      this.emit('log', 'java: authenticated with the server');
+      return;
+    }
+    if (/已注册|已被注册|already registered/.test(lower)) {
+      this.#sendLogin('already registered');
+      return;
+    }
+    if (/密码错误|密码不正确|wrong password|incorrect password|invalid password/.test(lower)) {
+      this.authAttempts += 1;
+      this.emit('log', `java: server rejected the password (attempt ${this.authAttempts})`);
+      return;
+    }
+
     const wantsRegister = /\/register\b|\bregister\b|注册/.test(lower);
     const wantsLogin = /\/login\b|\blogin\b|登录|登陆/.test(lower);
+
+    if (wantsLogin && this.options.password) { this.#sendLogin('login prompt'); return; }
     if (wantsRegister) {
       if (!this.options.password) {
         this.options.password = randomPassword();
         this.authGenerated = true;
+        void this.#saveCredentials();
       }
+      if (this.authAttempts >= 4) return;
+      this.authAttempts += 1;
       this.authHandled = true;
       this.bot.chat(`/register ${this.options.password} ${this.options.password}`);
-      this.emit('log', `java: sent /register (password ${this.authGenerated ? 'generated' : 'configured'})`);
+      this.emit('log', `java: sent /register (${this.authGenerated ? 'generated' : 'configured'} password, attempt ${this.authAttempts})`);
       void this.#saveCredentials();
       return;
     }
-    if (wantsLogin) {
-      if (!this.options.password) {
-        this.emit('log', 'java: server requires /login but no password is configured');
-        return;
-      }
-      this.authHandled = true;
-      this.bot.chat(`/login ${this.options.password}`);
-      this.emit('log', 'java: sent /login');
+    if (wantsLogin && !this.options.password) {
+      this.emit('log', 'java: server requires /login but no password is configured');
     }
+  }
+
+  #sendLogin(reason) {
+    if (!this.bot) return;
+    if (!this.options.password) {
+      this.emit('log', `java: /login required (${reason}) but no password is configured`);
+      return;
+    }
+    if (this.authAttempts >= 4) return;
+    this.authAttempts += 1;
+    this.authHandled = true;
+    this.bot.chat(`/login ${this.options.password}`);
+    this.emit('log', `java: sent /login (${reason}, attempt ${this.authAttempts})`);
   }
 
   async #loadCredentials() {
