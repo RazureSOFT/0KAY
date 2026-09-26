@@ -3,10 +3,13 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useSettingsSectionsStore } from '../stores/settingsSections'
+import { useConfirm } from '../composables/confirm'
+import MarkdownContent from '../components/MarkdownContent.vue'
 
 const { t } = useI18n()
 const router = useRouter()
 const sections = useSettingsSectionsStore()
+const { confirm } = useConfirm()
 
 interface RuntimePlugin {
   plugin_id: string
@@ -49,6 +52,12 @@ const toggling = ref<string>('')
 const uninstalling = ref<string>('')
 let timer: ReturnType<typeof setInterval> | null = null
 
+const detail = ref<PluginRow | null>(null)
+const readme = ref('')
+const readmeLoading = ref(false)
+const readmeError = ref('')
+const readmeCache = new Map<string, string>()
+
 const healthyCount = computed(() => plugins.value.filter((p) => p.runtime && isHealthy(p)).length)
 const disabledCount = computed(() => plugins.value.filter((p) => p.runtime && p.disabled).length)
 const removableCount = computed(() => plugins.value.filter((p) => p.installedSource === 'pm').length)
@@ -60,6 +69,69 @@ function shortName(pkg: string) {
 
 function repoUrl(p: PluginRow) {
   return p.repository ? p.repository.replace(/\.git$/, '') : ''
+}
+
+function repoSlug(p: PluginRow) {
+  const m = /github\.com\/([^/]+)\/([^/#?]+?)(?:\.git)?$/.exec(p.repository || '')
+  return m ? `${m[1]}/${m[2]}` : ''
+}
+
+const README_FILES = [
+  'README.md',
+  'readme.md',
+  'README.MD',
+  'Readme.md',
+  'README.markdown',
+  'README.rst',
+  'README.txt',
+  'README',
+]
+
+async function loadReadme(p: PluginRow) {
+  const slug = repoSlug(p)
+  if (!slug) {
+    readmeError.value = '该插件未提供仓库地址'
+    return
+  }
+  const cached = readmeCache.get(slug)
+  if (cached !== undefined) {
+    readme.value = cached
+    return
+  }
+  readmeLoading.value = true
+  readmeError.value = ''
+  readme.value = ''
+  try {
+    let text = ''
+    // raw.githubusercontent.com is not API rate limited; HEAD follows the
+    // repository's default branch.
+    for (const file of README_FILES) {
+      const res = await fetch(`https://raw.githubusercontent.com/${slug}/HEAD/${file}`)
+      if (res.ok) {
+        text = await res.text()
+        break
+      }
+      if (res.status !== 404) throw new Error(`README HTTP ${res.status}`)
+    }
+    if (!text.trim()) throw new Error('未找到 README')
+    readmeCache.set(slug, text)
+    readme.value = text
+  } catch (e: any) {
+    readmeError.value = e?.message || String(e)
+  } finally {
+    readmeLoading.value = false
+  }
+}
+
+function openDetail(p: PluginRow) {
+  detail.value = p
+  void loadReadme(p)
+}
+
+function closeDetail() {
+  detail.value = null
+  readme.value = ''
+  readmeError.value = ''
 }
 
 function isHealthy(p: PluginRow) {
@@ -122,6 +194,14 @@ async function fetchPlugins() {
     }
     rows.sort((a, b) => Number(b.runtime) - Number(a.runtime) || a.name.localeCompare(b.name))
     plugins.value = rows
+    if (detail.value) {
+      const next = rows.find((r) => r.key === detail.value?.key) || null
+      detail.value = next
+      if (!next) {
+        readme.value = ''
+        readmeError.value = ''
+      }
+    }
   } catch (e: any) {
     error.value = e.message || 'failed'
   } finally {
@@ -161,7 +241,13 @@ async function waitForOp() {
 
 async function uninstall(p: PluginRow) {
   const pkg = p.packageName
-  if (!window.confirm(`确定卸载 ${pkg}？`)) return
+  const ok = await confirm({
+    title: '卸载插件',
+    message: `确定卸载 ${pkg}？该操作会移除插件文件与已应用的界面补丁。`,
+    confirmLabel: '卸载',
+    danger: true,
+  })
+  if (!ok) return
   notice.value = ''
   uninstalling.value = pkg
   try {
@@ -206,16 +292,22 @@ function sourceLabel(p: PluginRow) {
   return p.installedSource === 'pm' ? '第三方' : '平台'
 }
 
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && detail.value) closeDetail()
+}
+
 onMounted(() => {
   fetchPlugins()
   sections.fetchSections()
+  window.addEventListener('keydown', onKeydown)
   timer = setInterval(() => {
-    if (!uninstalling.value && !toggling.value) fetchPlugins()
+    if (!uninstalling.value && !toggling.value && !detail.value) fetchPlugins()
   }, 5000)
 })
 
 onUnmounted(() => {
   if (timer) clearInterval(timer)
+  window.removeEventListener('keydown', onKeydown)
 })
 </script>
 
@@ -249,6 +341,11 @@ onUnmounted(() => {
         class="plugin-card"
         :class="{ healthy: isHealthy(p), disabled: p.runtime && p.disabled }"
         :style="{ animationDelay: `${Math.min(i, 12) * 40}ms` }"
+        role="button"
+        tabindex="0"
+        :title="`查看 ${p.name} 详情`"
+        @click="openDetail(p)"
+        @keydown.enter.prevent="openDetail(p)"
       >
         <div class="plugin-top">
           <div class="plugin-icon">
@@ -285,7 +382,7 @@ onUnmounted(() => {
           <span v-if="!p.capabilities?.length" class="cap-chip muted">—</span>
         </div>
 
-        <div class="card-actions">
+        <div class="card-actions" @click.stop>
           <label
             v-if="p.runtime"
             class="plugin-switch"
@@ -340,6 +437,68 @@ onUnmounted(() => {
         <p class="hint">{{ t('plugins.emptyHint') }}</p>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div v-if="detail" class="pd-scrim" @click.self="closeDetail">
+        <section class="pd-dialog" role="dialog" aria-modal="true" :aria-label="`${detail.name} 详情`">
+          <header class="pd-head">
+            <div class="pd-titles">
+              <h2>
+                {{ detail.name }}
+                <span class="source-badge" :class="detail.runtime ? 'rt' : detail.installedSource">{{ sourceLabel(detail) }}</span>
+              </h2>
+              <span class="pd-pkg">{{ detail.packageName }}</span>
+            </div>
+            <button class="pd-close" type="button" aria-label="关闭" @click="closeDetail">×</button>
+          </header>
+
+          <div class="pd-meta">
+            <span v-if="detail.version" class="pd-chip">v{{ detail.version }}</span>
+            <span v-if="detail.type" class="pd-chip">{{ detail.type }}</span>
+            <span class="pd-chip" :class="{ ok: isHealthy(detail) }">{{ statusLabel(detail) }}</span>
+            <a
+              v-if="repoUrl(detail)"
+              class="pd-repo"
+              :href="repoUrl(detail)"
+              target="_blank"
+              rel="noopener noreferrer"
+            >{{ repoSlug(detail) }}</a>
+          </div>
+
+          <div class="pd-body">
+            <p v-if="readmeLoading" class="pd-hint">正在加载 README…</p>
+            <p v-else-if="readmeError" class="pd-hint err">{{ readmeError }}</p>
+            <MarkdownContent v-else-if="readme" :content="readme" />
+            <p v-else class="pd-hint">暂无 README</p>
+          </div>
+
+          <footer class="pd-foot">
+            <a
+              v-if="repoUrl(detail)"
+              class="btn btn-tonal"
+              :href="repoUrl(detail)"
+              target="_blank"
+              rel="noopener noreferrer"
+            >打开原仓库</a>
+            <button
+              v-if="detail.runtime"
+              class="btn btn-tonal"
+              type="button"
+              :disabled="toggling === detail.name"
+              @click="togglePlugin(detail)"
+            >{{ detail.disabled ? t('plugins.enable') : t('plugins.disable') }}</button>
+            <button
+              v-if="detail.installedSource === 'pm'"
+              class="btn btn-danger"
+              type="button"
+              :disabled="uninstalling === detail.packageName"
+              @click="uninstall(detail)"
+            >{{ uninstalling === detail.packageName ? '卸载中…' : '卸载' }}</button>
+            <button class="btn btn-tonal" type="button" @click="closeDetail">{{ t('settings.close') }}</button>
+          </footer>
+        </section>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -391,6 +550,7 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 16px;
   animation: pp-card-in 520ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)) both;
+  cursor: pointer;
   transition: transform 300ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)), box-shadow 300ms, border-color 300ms;
 }
 @keyframes pp-card-in { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
@@ -467,4 +627,43 @@ onUnmounted(() => {
 .empty-state { grid-column: 1 / -1; padding: var(--space-xxl); text-align: center; background: var(--md-surface-container); border-radius: 32px; color: var(--md-on-surface-variant); }
 .empty-state p { margin: 0; font-size: 15px; font-weight: 600; color: var(--md-on-surface); }
 .empty-state .hint { font-size: 13px; margin-top: 8px; font-weight: 400; opacity: .8; }
+
+/* Plugin detail dialog (teleported to body). */
+.pd-scrim {
+  position: fixed; inset: 0; z-index: 13000;
+  background: #21173566; backdrop-filter: blur(6px);
+  display: grid; place-items: center; padding: 20px;
+  animation: fadeIn 180ms ease-out;
+}
+.pd-dialog {
+  width: min(760px, 100%); max-height: min(86vh, 900px);
+  display: flex; flex-direction: column;
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 28px; padding: 26px;
+  box-shadow: 0 24px 70px #18132d33;
+  animation: dialog-arrive 320ms var(--ease-emphasized, ease-out) both;
+}
+.pd-head { display: flex; align-items: flex-start; gap: 16px; }
+.pd-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.pd-titles h2 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pd-pkg { font-size: 13px; color: var(--md-on-surface-variant); font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+.pd-close { border: 0; background: transparent; color: var(--md-on-surface-variant); font-size: 26px; line-height: 1; width: 40px; height: 40px; border-radius: 999px; cursor: pointer; flex-shrink: 0; }
+.pd-close:hover { background: var(--md-surface-container-highest); }
+.pd-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0; }
+.pd-chip { height: 28px; padding: 0 12px; border-radius: 999px; display: inline-flex; align-items: center; font-size: 12px; font-weight: 650; background: var(--md-surface-container-highest); color: var(--md-on-surface-variant); }
+.pd-chip.ok { background: var(--md-success-container); color: #0d3b1e; }
+.pd-repo { font-size: 13px; font-weight: 650; color: var(--md-primary); text-decoration: underline; overflow-wrap: anywhere; }
+.pd-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px; margin: 0 -4px; border-radius: 16px; background: var(--md-surface-container-low); }
+.pd-hint { margin: 0; padding: 24px; text-align: center; color: var(--md-on-surface-variant); font-size: 14px; }
+.pd-hint.err { color: var(--md-error); }
+.pd-foot { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+.pd-foot .btn { height: 46px; padding: 0 22px; border: 1px solid transparent; border-radius: 999px; font-weight: 700; font-size: 14px; color: var(--md-on-surface); background: var(--md-surface-container-high); display: inline-flex; align-items: center; text-decoration: none; cursor: pointer; }
+.pd-foot .btn-tonal { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.pd-foot .btn-danger { background: var(--md-error-container); color: #410e0b; }
+.pd-foot .btn:disabled { opacity: .6; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) {
+  .pd-scrim, .pd-dialog { animation: none; }
+}
 </style>

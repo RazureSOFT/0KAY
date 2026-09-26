@@ -9,6 +9,7 @@ import { useUIPatchesStore } from './stores/uiPatches'
 import './styles/theme.css'
 import './styles/settings.css'
 import { installInteractionMotion } from './composables/motion'
+import { useConfirm } from './composables/confirm'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -24,6 +25,12 @@ wizard.loadFromStorage()
 // 'vue'` (importmap → public/vendor/vue-bridge.js) or window.__0KAY_VUE__;
 // host router/pinia/i18n stay private.
 window.__0KAY_VUE__ = VueRuntime
+
+// Shared UI helpers so plugin ESM bundles use the platform's Material dialogs
+// instead of the browser's native window.confirm / window.alert.
+window.__0KAY_UI__ = {
+  confirm: (options) => useConfirm().confirm(options),
+}
 
 const ui = useUIPatchesStore(pinia)
 
