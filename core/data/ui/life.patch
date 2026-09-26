@@ -75,23 +75,6 @@
       "op": "insert",
       "anchor": "agents",
       "position": "after",
-      "id": "tasks",
-      "item": {
-        "id": "tasks",
-        "kind": "tasks",
-        "title": "活跃任务",
-        "titleKey": "status.activeTasks",
-        "listBind": "life.activeTasks",
-        "empty": "暂无活跃任务",
-        "emptyKey": "status.noActiveTasks",
-        "order": 50
-      }
-    },
-    {
-      "target": "status",
-      "op": "insert",
-      "anchor": "tasks",
-      "position": "after",
       "id": "memory",
       "item": {
         "id": "memory",
