@@ -26,9 +26,12 @@ from .tools.tools import RuntimeToolConfig, create_default_registry
 from .skills import get_skill_registry
 from .core_client import get_core_client
 from .companion import CompanionSystem
+from .logging_setup import get_logger
 from .model_client import MocrClient
 from .soul import SoulState
 from .task_records import TaskRecorder, task_context
+
+logger = get_logger("engine")
 
 
 @dataclass
@@ -81,6 +84,7 @@ class LifeEngine:
         self._notifications = []
         self._completed_tasks = []
         self._histories = {}
+        self._last_persona_context = ""
         self._session_locks = {}
         self._dispatch_lock = asyncio.Lock()
         self._background_tasks = set()
@@ -229,6 +233,8 @@ class LifeEngine:
         scope = f"session:{turn.session_id}"
         memory_context = await asyncio.to_thread(self.memory.get_memory_context, message, scope, self.soul.recall_limit())
         await asyncio.to_thread(self.sync_agents)
+        # Remember the last persona so proactive observation can think in character.
+        self._last_persona_context = turn.persona_context
         summaries = []
         guidance = "Respond naturally."
         # Each planning turn sees the preceding tool result before choosing another.
@@ -249,6 +255,8 @@ class LifeEngine:
                 break
             self.emotion.state.apply_delta(plan.emotion_delta)
             guidance = plan.output_guidance
+            if plan.character_intent:
+                guidance = f"以角色立场（必须符合人设）：{plan.character_intent}\n" + guidance
             if plan.memory_query:
                 memory_context += "\n" + await asyncio.to_thread(self.memory.get_memory_context, plan.memory_query, scope)
             if plan.skill_call:
@@ -317,8 +325,11 @@ class LifeEngine:
                     max_tokens=self.soul.output_tokens(), temperature=self.soul.temperature()):
                 response += chunk
                 yield {"type": "chunk", "chunk": chunk, "done": False}
-        except Exception:
-            text = "\n回复生成服务暂时不可用。"
+        except Exception as error:
+            # Never fail silently: a bad provider key or transport used to leave
+            # only a vague fallback in chat with nothing in the log.
+            logger.exception("output generation failed for session %s: %s", turn.session_id, error)
+            text = f"\n回复生成服务暂时不可用（{error}）。"
             if summaries:
                 text += "已执行的工具结果：" + "\n".join(summaries)
             else:
@@ -1001,6 +1012,136 @@ class LifeEngine:
                 await asyncio.to_thread(self.companion.note_group_bot_spoke, group_id, matches[0])
                 proposed += 1
         return {"proposed": proposed}
+
+    def _observation_target(self) -> str:
+        """Where a proactive observation would be delivered (last active session)."""
+        if self._histories:
+            return f"session:{list(self._histories.keys())[-1]}"
+        return "session:"
+
+    async def _call_tool_direct(self, name: str, timeout: float = 20.0, **kwargs):
+        """Run a tool for internal observation without the user-approval gate."""
+        tool = self.tools.get(name)
+        if tool is None:
+            return None
+        try:
+            return await asyncio.wait_for(tool.execute(**kwargs), timeout=timeout)
+        except Exception:
+            return None
+
+    async def _collect_observations(self) -> tuple[str, list[str]]:
+        """Gather external signals (mail / QQ / screen) for the proactive THINK pass."""
+        parts: list[str] = []
+        signals: list[str] = []
+        # Email — only when configured and not gated behind per-call approval.
+        if not getattr(self.tool_config, "mail_require_approval", False):
+            result = await self._call_tool_direct("getmail", limit=5, unread_only=True)
+            data = result.data if (result and result.success) else None
+            emails = (data or {}).get("emails") or []
+            if emails:
+                lines = []
+                for item in emails[:5]:
+                    sender = str(item.get("from") or "?")[:60]
+                    subject = str(item.get("subject") or "(无主题)")[:80]
+                    preview = str(item.get("preview") or "").replace("\n", " ")[:80]
+                    lines.append(f"- 来自 {sender}｜{subject}｜{preview}")
+                unread = int((data or {}).get("unread_count") or len(emails))
+                parts.append(f"邮件（未读约 {unread} 封）:\n" + "\n".join(lines))
+                signals.append("mail")
+        # QQ / group messages LIFE has already observed.
+        try:
+            snapshot = await asyncio.to_thread(self.companion.snapshot)
+            lines = []
+            for group_id, info in list((snapshot.get("groups") or {}).items())[:5]:
+                for msg in (info.get("messages") or [])[:4]:
+                    content = str(msg.get("content") or "").strip().replace("\n", " ")
+                    if content:
+                        lines.append(f"- [群{group_id}] {msg.get('user_id', '?')}: {content[:80]}")
+            if lines:
+                parts.append("QQ / 群消息（你最近观察到的）:\n" + "\n".join(lines[:12]))
+                signals.append("qq")
+        except Exception:
+            pass
+        # Screen — only when the user granted screen watch / computer use.
+        if getattr(self, "_screen_watch", False) or getattr(self.tool_config, "computer_use", False):
+            result = await self._call_tool_direct("computeruse", timeout=30.0, action="screenshot")
+            if result and result.success:
+                data = result.data or {}
+                detail = str(data.get("description") or data.get("text") or "").strip()
+                ref = str(data.get("path") or data.get("file") or "").strip()
+                if not detail:
+                    detail = f"已截取屏幕画面（{ref}）" if ref else "已截取屏幕画面"
+                parts.append("电脑屏幕:\n- " + detail[:200])
+                signals.append("screen")
+        return "\n\n".join(parts), signals
+
+    async def _think_observation(self, observations: str) -> str:
+        """Let THINK decide, in character, what (if anything) to say."""
+        try:
+            memory_context = await asyncio.to_thread(
+                self.memory.get_memory_context, "主动关心用户近况", f"session:{self._observation_target()}", self.soul.recall_limit())
+        except Exception:
+            memory_context = ""
+        system = self.think.build_prompt(
+            user_message=("[内部主动巡视] 你刚检查了邮件、QQ 消息和电脑屏幕（见 External Observations）。"
+                          "请以你的人设判断：此刻你是否想主动联系用户？想的话，就用你自己会说的口吻说一句自然的话。"),
+            emotion_context=json.dumps(self.emotion.state.to_dict()),
+            energy_context=f"{self._body_phrase()}；{self.circadian.get_prompt_context()}",
+            memory_context=memory_context,
+            online_agents=self.online_agent_count,
+            skills_context="",
+            tools_context=json.dumps(self.get_tools_schema(), ensure_ascii=False),
+            time_context=datetime.now().strftime("%Y-%m-%d %H:%M"),
+            observations_context=observations,
+        )
+        if self._last_persona_context:
+            system += "\nPersona:\n" + self._last_persona_context
+        system += ("\n\nProactive outreach decision:\n"
+                   "- 如果你（以角色身份）此刻想主动跟用户说话，把要说的话放进 \"proactive_message\""
+                   "（第一人称、≤80 字、自然、不要加引号）。\n"
+                   "- 如果没有什么值得打扰用户的，把 \"proactive_message\" 设为空字符串。")
+        try:
+            raw = "".join([chunk async for chunk in self.mocr.generate(
+                self._model_for("think"), [{"role": "user", "content": "主动巡视"}], system, thinking=True)])
+            plan = self.think.parse_response(raw)
+        except Exception as error:
+            await asyncio.to_thread(self.companion.audit, "observation_think", str(error), "", "failed")
+            return ""
+        self.emotion.state.apply_delta(plan.emotion_delta)
+        return str(plan.proactive_message or "").strip().strip('"')
+
+    async def observation_tick(self) -> dict:
+        """Active mode: gather mail / QQ / screen, let THINK decide in character
+        whether to reach out and what to say, then queue it as a proactive
+        candidate (quota, review and delivery stay handled by proactive_tick)."""
+        if getattr(self.circadian.state, "is_sleeping", False):
+            return {"skipped": "sleeping"}
+        if getattr(self.emotion.state, "irritation", 0) >= 0.7:
+            return {"skipped": "irritated"}
+        try:
+            settings = await asyncio.to_thread(self.companion.get_settings)
+        except Exception:
+            settings = {}
+        if str(settings.get("enable_proactive", "1")) != "1":
+            return {"skipped": "proactive_off"}
+        observations, signals = await self._collect_observations()
+        if not signals:
+            return {"skipped": "no_signals"}
+        target = self._observation_target()
+        try:
+            allowed, reason = await asyncio.to_thread(self.companion.can_proactively_send, target)
+        except Exception:
+            allowed, reason = False, "error"
+        if not allowed:
+            await asyncio.to_thread(self.companion.audit, "observation_blocked", reason, "", "blocked")
+            return {"skipped": "quota", "reason": reason}
+        message = await self._think_observation(observations)
+        if not message:
+            await asyncio.to_thread(self.companion.timeline_add, "观察", "巡视后决定不打扰", ", ".join(signals)[:60])
+            return {"consulted": True, "spoke": False, "signals": signals}
+        await asyncio.to_thread(self.companion.create_proactive_candidate, target, "observation", message)
+        await asyncio.to_thread(self.companion.timeline_add, "观察", "巡视后决定主动联系", message[:80])
+        return {"consulted": True, "spoke": True, "target": target, "signals": signals}
 
     @staticmethod
     def _proactive_due(candidate: dict, now: datetime) -> bool:

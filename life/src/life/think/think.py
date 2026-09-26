@@ -17,6 +17,11 @@ class ThinkResult:
     skill_call: Optional[dict] = None
     output_guidance: str = ""
     linear_steps: list[str] = field(default_factory=list)
+    # In-character intention chosen first (persona-consistent): what this
+    # character would feel/want to do before any task planning.
+    character_intent: str = ""
+    # Proactive-mode only: the exact words to send the user, or empty to stay silent.
+    proactive_message: str = ""
 
     def to_json(self) -> str:
         return json.dumps({
@@ -29,6 +34,8 @@ class ThinkResult:
             "skill_call": self.skill_call,
             "output_guidance": self.output_guidance,
             "linear_steps": self.linear_steps,
+            "character_intent": self.character_intent,
+            "proactive_message": self.proactive_message,
         }, indent=2)
 
 
@@ -64,30 +71,40 @@ Memory Context:
 Skills:
 {skills_context}
 
+External Observations:
+{observations_context}
+
 Available Tools:
 {tools_context}
 
 User Message:
 {user_message}
 
-Think in a human-like linear order. Do not branch into many unrelated actions:
-1. Observe the user's wording and current state.
-2. Recall only the one or two memories needed.
-3. Decide the user's intent and your emotional stance.
-4. Make one short plan.
-5. Take at most one tool action now. Wait for its result before choosing another.
-6. Decide how to express the answer naturally.
+Always think in character first, then plan. Stay true to the persona you are given
+(see Persona below); every decision must be believable for that specific person.
+Do not branch into many unrelated actions:
+1. Character first (persona-locked): as the person in Persona, what would I feel,
+   think, and naturally want to do or say right now? Decide the in-character
+   stance before anything else.
+2. Observe the user's wording, current state, and any External Observations.
+3. Recall only the one or two memories needed.
+4. Decide the user's intent and your emotional stance — still as that character.
+5. Make one short plan consistent with the character's intent.
+6. Take at most one tool action now. Wait for its result before choosing another.
+7. Decide how to express the answer naturally, in that character's voice.
 
 Output a JSON object with:
-1. linear_steps: 3-6 short, factual labels describing the above sequence. Do not expose private reasoning or hidden chain-of-thought.
-2. emotion_delta: How your emotions should change (valence, arousal, connection, irritation)
-3. memory_query: What to search in memory
-4. intent: What the user wants
-5. strategy: How to respond
-6. tool_calls: Zero or one tool call only. Code-related tasks MUST use useagent. Use [] when no tool is needed otherwise.
-7. tool_call: Legacy single-tool form, only when tool_calls is omitted.
-8. skill_call: If a LIFE skill applies (e.g., {{"name": "research"}}) — optional
-9. output_guidance: How the OUTPUT stage should format the response
+1. character_intent: One short first-person sentence: what this character feels and
+   wants to do/say right now, in line with the persona.
+2. linear_steps: 3-7 short, factual labels describing the above sequence. Do not expose private reasoning or hidden chain-of-thought.
+3. emotion_delta: How your emotions should change (valence, arousal, connection, irritation)
+4. memory_query: What to search in memory
+5. intent: What the user wants
+6. strategy: How to respond, in character
+7. tool_calls: Zero or one tool call only. Code-related tasks MUST use useagent. Use [] when no tool is needed otherwise.
+8. tool_call: Legacy single-tool form, only when tool_calls is omitted.
+9. skill_call: If a LIFE skill applies (e.g., {{"name": "research"}}) — optional
+10. output_guidance: How the OUTPUT stage should format the response, in character
 
 Output ONLY the JSON object, no other text."""
 
@@ -109,6 +126,7 @@ class ThinkStage:
         skills_context: str = "",
         tools_context: str = "",
         time_context: str = "",
+        observations_context: str = "",
     ) -> str:
         """Build the THINK prompt."""
         return self.prompt_template.format(
@@ -121,6 +139,7 @@ class ThinkStage:
             online_agents=online_agents,
             tools_context=tools_context or "No tools are available.",
             time_context=time_context or "unknown",
+            observations_context=observations_context or "None",
         )
 
     def parse_response(self, response: str) -> ThinkResult:
@@ -137,7 +156,7 @@ class ThinkStage:
                 raise ValueError("THINK response must be an object")
             if not isinstance(data.get("emotion_delta", {}), dict):
                 raise ValueError("emotion_delta must be an object")
-            for key in ("memory_query", "output_guidance", "intent", "strategy"):
+            for key in ("memory_query", "output_guidance", "intent", "strategy", "character_intent", "proactive_message"):
                 if not isinstance(data.get(key, ""), str):
                     raise ValueError(f"{key} must be a string")
             if not isinstance(data.get("tool_calls", []), list):
@@ -158,7 +177,9 @@ class ThinkStage:
                 tool_calls=[item for item in (data.get("tool_calls") or []) if isinstance(item, dict)],
                 skill_call=data.get("skill_call"),
                 output_guidance=data.get("output_guidance", ""),
-                linear_steps=[str(item)[:120] for item in (data.get("linear_steps") or []) if str(item).strip()][:6],
+                linear_steps=[str(item)[:120] for item in (data.get("linear_steps") or []) if str(item).strip()][:7],
+                character_intent=str(data.get("character_intent") or "")[:400],
+                proactive_message=str(data.get("proactive_message") or "")[:400],
             )
         except (ValueError, IndexError, TypeError, AttributeError) as error:
             raise ValueError("Invalid THINK response") from error

@@ -246,6 +246,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                     await self.engine.proactive_tick()
                     await self.engine.maybe_daily_agenda()
                     await self.engine.autonomous_plan()
+                    await self.engine.observation_tick()
                     await self.engine.group_wake_tick()
                     await self.engine.content_tick()
                     await self.engine.outfit_tick()
