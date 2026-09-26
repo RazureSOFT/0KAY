@@ -575,6 +575,10 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = {"extensions": self.engine.extension_status()}
             elif action == "mail_test":
                 result = await asyncio.to_thread(self.engine.mail_test, str(payload.get("to", "")), payload.get("config") or None)
+            elif action == "approval_list":
+                result = {"approvals": self.engine.list_approvals()}
+            elif action == "approval_resolve":
+                result = {"resolved": await asyncio.to_thread(self.engine.resolve_approval, str(payload.get("id", "")), bool(payload.get("allow", False)))}
             elif action == "media_status":
                 result = {"tts": self.engine.media.has_tts()}
             elif action == "send_media":

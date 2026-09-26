@@ -201,6 +201,13 @@ class CoreClient:
                             help="留空则使用 SMTP 用户名作为发件人",
                         ),
                         _pb.SettingsField(
+                            key="mail_require_approval",
+                            type="bool",
+                            label="邮件操作需弹窗确认",
+                            default_value="true",
+                            help="L.I.F.E 读取或发送邮件前，先在 WebUI 弹窗询问是否允许",
+                        ),
+                        _pb.SettingsField(
                             key="mcp_enabled",
                             type="bool",
                             label="MCP 调用",

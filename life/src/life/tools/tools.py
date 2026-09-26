@@ -33,6 +33,7 @@ class RuntimeToolConfig:
     mail_smtp_user: str = ""
     mail_smtp_password: str = ""
     mail_from: str = ""
+    mail_require_approval: bool = True
     mcp_enabled: bool = True
     onebot_enabled: bool = False
     onebot_sender: Any = None
@@ -866,6 +867,8 @@ class ToolRegistry:
     def __init__(self):
         self.tools: dict[str, Tool] = {}
         self.recorder = None
+        self.approver = None
+        self.approval_tools: set[str] = set()
 
     def register(self, tool: Tool) -> None:
         self.tools[tool.name] = tool
@@ -879,6 +882,13 @@ class ToolRegistry:
         if not tool:
             result = ToolResult(success=False, data=None, error=f"Tool '{name}' not found")
         else:
+            if self.approver is not None and name in self.approval_tools:
+                allowed, reason = await self.approver(name, kwargs)
+                if not allowed:
+                    result = ToolResult(success=False, data=None, error=f"用户未授权「{name}」：{reason}")
+                    if record:
+                        await self.recorder.finish(record, "", result.error)
+                    return result
             try:
                 result = await tool.execute(**kwargs)
             except asyncio.CancelledError:

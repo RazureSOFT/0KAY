@@ -70,6 +70,9 @@ class LifeEngine:
         self.tool_config = RuntimeToolConfig()
         self.tools = create_default_registry(core_client=self.core, config=self.tool_config, memory=self.memory, companion=self.companion)
         self.tools.recorder = self.task_records
+        self.tools.approver = self._approve_tool
+        self.tools.approval_tools = {"getmail", "sendmail"}
+        self._approvals: dict[str, dict] = {}
         self.skills = get_skill_registry()
         self.active_tasks = {}
         self.minecraft_cursor = 0
@@ -1272,6 +1275,7 @@ class LifeEngine:
         self.tool_config.mail_imap_port = int(values.get("mail_imap_port") or 993)
         self.tool_config.mail_smtp_port = int(values.get("mail_smtp_port") or 465)
         self.tool_config.mail_imap_ssl = bool(values.get("mail_imap_ssl", True))
+        self.tool_config.mail_require_approval = values.get("mail_require_approval") is not False
         self.tool_config.computer_use = bool(values.get("computer_use", False))
         self.tool_config.mcp_enabled = values.get("mcp_enabled") is not False
         self.tool_config.onebot_enabled = bool(values.get("onebot_enabled", False))
@@ -1284,6 +1288,50 @@ class LifeEngine:
         if values.get("model_routes") is not None:
             self.apply_model_routes(values.get("model_routes"))
         self.companion.set_runtime_policy(int(values.get("proactive_daily_limit", 3)), int(values.get("proactive_target_limit", 1)))
+
+    async def _approve_tool(self, tool: str, args: dict):
+        """Block a mail tool call until the user approves it in the WebUI."""
+        if not getattr(self.tool_config, "mail_require_approval", True):
+            return True, "无需确认"
+        import uuid
+        approval_id = uuid.uuid4().hex[:12]
+        detail = json.dumps(args, ensure_ascii=False)[:500] if args else ""
+        event = asyncio.Event()
+        entry = {"id": approval_id, "tool": tool, "detail": detail,
+                 "created_at": datetime.now().isoformat(), "event": event, "allowed": None}
+        self._approvals[approval_id] = entry
+        try:
+            await asyncio.to_thread(self.companion.audit, "mail_approval", f"{tool} {detail}", "", "pending")
+        except Exception:
+            pass
+        try:
+            await asyncio.wait_for(event.wait(), timeout=300)
+        except asyncio.TimeoutError:
+            self._approvals.pop(approval_id, None)
+            try:
+                await asyncio.to_thread(self.companion.audit, "mail_approval", tool, "", "expired")
+            except Exception:
+                pass
+            return False, "超时未确认"
+        self._approvals.pop(approval_id, None)
+        allowed = bool(entry.get("allowed"))
+        try:
+            await asyncio.to_thread(self.companion.audit, "mail_approval", tool, "", "allowed" if allowed else "denied")
+        except Exception:
+            pass
+        return allowed, ("已允许" if allowed else "已拒绝")
+
+    def list_approvals(self) -> list[dict]:
+        return [{"id": a["id"], "tool": a["tool"], "detail": a["detail"], "created_at": a["created_at"]}
+                for a in self._approvals.values()]
+
+    def resolve_approval(self, approval_id: str, allowed: bool) -> bool:
+        entry = self._approvals.get(str(approval_id))
+        if not entry:
+            return False
+        entry["allowed"] = bool(allowed)
+        entry["event"].set()
+        return True
 
     def mail_test(self, test_to: str = "", overrides: dict | None = None) -> dict:
         """Check mail credentials (IMAP + SMTP), optionally sending a test email.
