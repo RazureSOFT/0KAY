@@ -10,13 +10,25 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 import json
 from pathlib import Path
+import re
 import sqlite3
 from typing import Any
 from uuid import uuid4
 
+from .i18n import translate
+
 
 def now() -> str: return datetime.now().isoformat()
 def new_id(prefix: str) -> str: return f"{prefix}_{uuid4().hex}"
+
+
+GROUP_POSITIVE = ("哈哈", "笑死", "赞", "好耶", "开心", "可爱", "谢谢", "厉害", "喜欢", "冲", "加油", "牛")
+GROUP_NEGATIVE = ("烦", "气人", "恶心", "难过", "无语", "滚", "傻", "崩", "吵", "骂", "吐了")
+GROUP_STOPWORDS = frozenset((
+    "这个", "那个", "就是", "什么", "怎么", "可以", "不是", "没有", "我们", "你们", "他们",
+    "现在", "今天", "真的", "感觉", "因为", "所以", "但是", "如果", "然后", "还是", "已经",
+    "一下", "这样", "那样", "知道", "觉得", "一个", "自己", "时候", "东西", "这里", "那里",
+))
 
 
 class CompanionSystem:
@@ -52,6 +64,7 @@ class CompanionSystem:
             CREATE TABLE IF NOT EXISTS group_scenes (group_id TEXT PRIMARY KEY, wake_policy TEXT NOT NULL DEFAULT 'keyword_or_mention', mood REAL NOT NULL DEFAULT 0, updated_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS group_observations (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, user_id TEXT NOT NULL, kind TEXT NOT NULL, content TEXT, audience TEXT NOT NULL DEFAULT 'group', created_at TEXT NOT NULL, expires_at TEXT);
             CREATE TABLE IF NOT EXISTS group_topics (group_id TEXT NOT NULL, topic TEXT NOT NULL, score REAL NOT NULL DEFAULT 0, updated_at TEXT NOT NULL, PRIMARY KEY(group_id,topic));
+            CREATE TABLE IF NOT EXISTS group_threads (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, topic TEXT NOT NULL, score REAL NOT NULL DEFAULT 1, status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(group_id,topic));
             CREATE TABLE IF NOT EXISTS journal_entries (id TEXT PRIMARY KEY, kind TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS audit_events (id TEXT PRIMARY KEY, trace_id TEXT, kind TEXT NOT NULL, target TEXT, outcome TEXT NOT NULL, detail TEXT, created_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -66,6 +79,12 @@ class CompanionSystem:
             CREATE TABLE IF NOT EXISTS social_nodes (user_id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', tags TEXT NOT NULL DEFAULT '', note TEXT DEFAULT '', updated_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS social_edges (id TEXT PRIMARY KEY, source_id TEXT NOT NULL, target_id TEXT NOT NULL, relation TEXT NOT NULL DEFAULT 'contact', note TEXT DEFAULT '', created_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS world_knowledge (id TEXT PRIMARY KEY, kind TEXT NOT NULL DEFAULT 'worldview', title TEXT NOT NULL, content TEXT NOT NULL, tags TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS unfinished_topics (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, topic TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(user_id,topic));
+            CREATE TABLE IF NOT EXISTS user_portraits (user_id TEXT PRIMARY KEY, summary TEXT NOT NULL DEFAULT '', traits TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS outreach_state (target TEXT PRIMARY KEY, consecutive_unanswered INTEGER NOT NULL DEFAULT 0, last_sent TEXT, paused_until TEXT);
+            CREATE TABLE IF NOT EXISTS bot_timeline (id TEXT PRIMARY KEY, topic TEXT NOT NULL, summary TEXT NOT NULL, detail TEXT DEFAULT '', created_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS goal_logs (id TEXT PRIMARY KEY, goal_id TEXT NOT NULL, evidence TEXT NOT NULL, progress REAL, created_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS content_digests (id TEXT PRIMARY KEY, kind TEXT NOT NULL DEFAULT 'news', source TEXT DEFAULT '', title TEXT NOT NULL, summary TEXT DEFAULT '', url TEXT DEFAULT '', created_at TEXT NOT NULL);
             """)
             for key, value in {"proactive_daily_limit":"3", "proactive_target_limit":"1", "quiet_start":"23", "quiet_end":"8"}.items():
                 db.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", (key,value))
@@ -98,10 +117,8 @@ class CompanionSystem:
             account = dict(db.execute("SELECT * FROM relationship_accounts WHERE user_id=?", (user_id,)).fetchone())
             score = max(-1.0,min(1.0,float(account["affinity"])+delta))
             old = account["stage"]
-            stage = "亲近" if score >= .55 else "温暖" if score >= .20 else "受伤" if score <= -.50 else "疏离" if score <= -.20 else "熟悉"
-            # Hysteresis avoids stage flicker around thresholds.
-            if old == "亲近" and score >= .45: stage = old
-            if old == "温暖" and .12 <= score < .55: stage = old
+            # Eight-stage climb; hysteresis avoids flicker when grazing a threshold.
+            stage = self._hysteresis(old, score)
             db.execute("UPDATE relationship_accounts SET affinity=?, stage=?, last_seen=?, revision=revision+1 WHERE user_id=?", (score,stage,now(),user_id))
             db.execute("INSERT INTO relationship_ledger VALUES(?,?,?,?,?,?,?)", (new_id("rel"),user_id,event_key,delta,reason,channel,now()))
             return dict(db.execute("SELECT * FROM relationship_accounts WHERE user_id=?", (user_id,)).fetchone())
@@ -109,6 +126,7 @@ class CompanionSystem:
     def observe_user(self, user_id: str, message: str, is_group: bool = False) -> dict[str,Any]:
         lower = message.lower()
         delta = .03 if any(x in lower for x in ("谢谢","喜欢","好棒","thanks","love")) else -.04 if any(x in lower for x in ("讨厌","滚","hate","stupid")) else .003
+        self.note_outreach_reply(user_id)
         return self.apply_relationship_event(user_id, f"message:{hash((user_id,message,datetime.now().strftime('%Y%m%d%H%M')))}", "message_sentiment", "group" if is_group else "private", delta)
 
     # Calendar / continuity domain ---------------------------------------
@@ -149,19 +167,373 @@ class CompanionSystem:
     STAGE_TARGET_LIMITS = {"亲近": 3, "温暖": 2, "熟悉": 1, "疏离": 1, "受伤": 0}
     SETTING_DEFAULTS = {"proactive_daily_limit": "3", "proactive_target_limit": "1", "quiet_start": "23", "quiet_end": "8",
                         "idle_minutes": "30", "min_interval_minutes": "5", "check_interval_seconds": "600", "burst_max": "2",
-                        "daily_token_limit": "0", "enable_proactive": "1", "enable_group_observe": "1", "enable_dream": "1"}
+                        "daily_token_limit": "0", "enable_proactive": "1", "enable_group_observe": "1", "enable_dream": "1",
+                        "owner_user_ids": "", "secondary_user_ids": "", "other_stage_cap": "熟悉",
+                        "secondary_stage_cap": "友好", "enable_exclusive_bond": "1",
+                        "affinity_decay_per_day": "0.02", "affinity_decay_after_days": "3",
+                        "reply_deceleration": "1",
+                        "env_timezone": "Asia/Shanghai", "env_city": "", "env_latitude": "", "env_longitude": "",
+                        "enable_environment_fetch": "0", "weather_cache_minutes": "60",
+                        "enable_content_fetch": "0", "news_feeds": "", "content_items_per_feed": "3",
+                        "tts_endpoint": ""}
+
+    SCHEMA_VERSION = 2
+    # key -> (kind, spec). kind: int/float/bool/choice/json/text
+    CONFIG_SCHEMA = {
+        "proactive_daily_limit": ("int", (0, 50)), "proactive_target_limit": ("int", (0, 20)),
+        "quiet_start": ("int", (0, 23)), "quiet_end": ("int", (0, 23)),
+        "idle_minutes": ("int", (1, 1440)), "min_interval_minutes": ("int", (0, 1440)),
+        "check_interval_seconds": ("int", (30, 86400)), "burst_max": ("int", (1, 20)),
+        "daily_token_limit": ("int", (0, 10 ** 9)),
+        "enable_proactive": ("bool", None), "enable_group_observe": ("bool", None), "enable_dream": ("bool", None),
+        "enable_exclusive_bond": ("bool", None), "enable_environment_fetch": ("bool", None),
+        "reply_deceleration": ("bool", None),
+        "affinity_decay_per_day": ("float", (0.0, 1.0)), "affinity_decay_after_days": ("int", (0, 365)),
+        "weather_cache_minutes": ("int", (5, 1440)),
+        "other_stage_cap": ("choice", None), "secondary_stage_cap": ("choice", None),
+        "locale": ("choice", None), "model_routes": ("json", None),
+        "owner_user_ids": ("text", None), "secondary_user_ids": ("text", None),
+        "env_timezone": ("text", None), "env_city": ("text", None),
+        "env_latitude": ("float", (-90.0, 90.0)), "env_longitude": ("float", (-180.0, 180.0)),
+        "enable_content_fetch": ("bool", None), "content_items_per_feed": ("int", (1, 20)),
+        "news_feeds": ("text", None), "tts_endpoint": ("text", None),
+    }
+    LOCALE_CHOICES = ("zh-CN", "en-US")
+    BOOL_VALUES = {"1", "0", "true", "false", "yes", "no", "on", "off"}
+
+    @classmethod
+    def validate_setting(cls, key: str, value: Any) -> str | None:
+        """Coerce a setting to its canonical string, or None if invalid/unknown."""
+        if key not in cls.SETTING_DEFAULTS:
+            return None
+        kind, spec = cls.CONFIG_SCHEMA.get(key, ("text", None))
+        try:
+            if kind == "int":
+                number = int(float(value))
+                low, high = spec
+                return str(max(low, min(high, number)))
+            if kind == "float":
+                number = float(value)
+                if spec:
+                    low, high = spec
+                    number = max(low, min(high, number))
+                return f"{number:g}"
+            if kind == "bool":
+                text = str(value).strip().lower()
+                if text not in cls.BOOL_VALUES:
+                    return None
+                return "1" if text in ("1", "true", "yes", "on") else "0"
+            if kind == "choice":
+                choices = cls.STAGE_ORDER if key.endswith("stage_cap") else cls.LOCALE_CHOICES
+                return str(value).strip() if str(value).strip() in choices else None
+            if kind == "json":
+                json.loads(str(value))
+                return str(value)
+            return str(value)[:2000]
+        except (TypeError, ValueError):
+            return None
+
+    # Relationship: eight ordinary stages (index order = monotonic climb) plus
+    # an exclusive bond reserved for the owner. Interaction is decided separately.
+    RELATIONSHIP_STAGES = (
+        ("警惕", -0.5), ("疏离", -0.2), ("陌生", 0.1), ("认识", 0.3),
+        ("熟悉", 0.5), ("友好", 0.68), ("亲近", 0.85), ("亲密", 1.01),
+    )
+    STAGE_ORDER = [name for name, _ in RELATIONSHIP_STAGES]
+    INTERACTION_LIMITS = {"回避": 0, "受伤": 0, "放松": 1, "活泼": 1, "温暖": 2, "亲近": 2, "爱意": 3}
+
+    @classmethod
+    def stage_for_score(cls, score: float) -> str:
+        for name, ceiling in cls.RELATIONSHIP_STAGES:
+            if score < ceiling:
+                return name
+        return cls.RELATIONSHIP_STAGES[-1][0]
+
+    @classmethod
+    def _hysteresis(cls, old: str, score: float) -> str:
+        target = cls.stage_for_score(score)
+        if old in cls.STAGE_ORDER and target in cls.STAGE_ORDER:
+            old_index, target_index = cls.STAGE_ORDER.index(old), cls.STAGE_ORDER.index(target)
+            if target_index < old_index and score > cls.RELATIONSHIP_STAGES[old_index][1] - 0.06:
+                return old  # dropping requires clearing the band, not grazing it
+        return target
+
+    def _id_set(self, key: str) -> set[str]:
+        raw = str((self.get_settings() or {}).get(key) or "")
+        return {part.strip() for part in raw.replace("，", ",").split(",") if part.strip()}
+
+    def user_role(self, user_id: str) -> str:
+        value = str(user_id or "").strip()
+        if not value:
+            return "other"
+        if value in self._id_set("owner_user_ids"):
+            return "owner"
+        if value in self._id_set("secondary_user_ids"):
+            return "secondary"
+        return "other"
+
+    def is_owner(self, user_id: str) -> bool:
+        return self.user_role(user_id) == "owner"
+
+    def _cap_stage(self, stage: str, role: str, settings: dict | None = None) -> str:
+        settings = settings or self.get_settings()
+        cap = {"owner": "亲密", "secondary": settings.get("secondary_stage_cap", "友好"),
+               "other": settings.get("other_stage_cap", "熟悉")}.get(role, "熟悉")
+        if cap in self.STAGE_ORDER and stage in self.STAGE_ORDER:
+            return stage if self.STAGE_ORDER.index(stage) <= self.STAGE_ORDER.index(cap) else cap
+        return stage
+
+    @staticmethod
+    def _tone(stage: str, interaction: str) -> str:
+        tones = {
+            "回避": "此刻想安静一下，语气简短克制，不主动展开话题。",
+            "受伤": "对方或近期的事让你有些受伤，语气收敛、话少，但不失礼。",
+            "放松": "相处放松自然，像平常聊天。",
+            "活泼": "心情轻快，语气活泼，可以有玩笑和更多表情。",
+            "温暖": "语气温和体贴，适度关心对方。",
+            "亲近": "关系亲近，可用昵称与玩笑，主动关心对方在做什么。",
+            "爱意": "与对方有专属的亲密联结，语气亲昵真情，但保持日常尺度。",
+        }
+        return tones.get(interaction, "语气自然友好。")
+
+    def relationship_expression(self, user_id: str, valence: float = 0.5, arousal: float = 0.5, irritation: float = 0.0) -> dict[str, Any]:
+        """Unified expression decision: stage (capped by role) + interaction + outreach cap."""
+        account = self.relationship(user_id)
+        role = self.user_role(user_id)
+        settings = self.get_settings()
+        affinity = float(account.get("affinity") or 0.0)
+        stage = self._cap_stage(str(account.get("stage") or "陌生"), role, settings)
+        bond = (role == "owner" and str(settings.get("enable_exclusive_bond", "1")) == "1"
+                and affinity >= self.RELATIONSHIP_STAGES[-2][1])
+        if irritation >= 0.7 or stage in ("警惕",) or affinity <= -0.35:
+            interaction = "回避"
+        elif valence <= 0.32:
+            interaction = "受伤"
+        elif stage == "疏离":
+            interaction = "回避"
+        elif bond and valence >= 0.6:
+            interaction = "爱意"
+        elif stage in ("亲近", "亲密") and valence >= 0.55:
+            interaction = "亲近"
+        elif valence >= 0.62 and arousal >= 0.6:
+            interaction = "活泼"
+        elif valence >= 0.58:
+            interaction = "温暖"
+        else:
+            interaction = "放松"
+        if interaction in ("亲近", "爱意") and role != "owner":
+            interaction = "温暖" if valence >= 0.5 else "放松"
+        return {
+            "user_id": str(user_id or ""), "role": role, "stage": stage, "affinity": round(affinity, 3),
+            "interaction": interaction, "bond": bond, "tone": self._tone(stage, interaction),
+            "proactive_limit": self.INTERACTION_LIMITS.get(interaction, 1),
+        }
+
+    def decay_relationships(self) -> dict[str, Any]:
+        """Natural cooling: positive affinity drifts toward 0 for quiet accounts, once per day."""
+        today = date.today().isoformat()
+        with self.db() as db:
+            if self._setting(db, "affinity_decay_date", "") == today:
+                return {"decayed": 0, "skipped": "done"}
+            rate = float(self._setting(db, "affinity_decay_per_day", "0.02"))
+            after = float(self._setting(db, "affinity_decay_after_days", "3"))
+            decayed = 0
+            for row in db.execute("SELECT user_id, affinity, last_seen FROM relationship_accounts").fetchall():
+                if float(row["affinity"]) <= 0:
+                    continue
+                last = str(row["last_seen"] or "")
+                quiet = True
+                if last:
+                    try:
+                        quiet = (datetime.now() - datetime.fromisoformat(last)).total_seconds() >= after * 86400
+                    except ValueError:
+                        quiet = True
+                if not quiet:
+                    continue
+                new_score = max(0.0, float(row["affinity"]) - rate)
+                db.execute("UPDATE relationship_accounts SET affinity=?, stage=?, revision=revision+1 WHERE user_id=?",
+                           (new_score, self.stage_for_score(new_score), row["user_id"]))
+                decayed += 1
+            db.execute("INSERT INTO settings(key,value) VALUES('affinity_decay_date',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (today,))
+            self._audit_tx(db, "relationship_decay", f"decayed={decayed}", "", "ok")
+        return {"decayed": decayed}
+
+    # Unfinished topics / light portrait / outreach deceleration -----------
+    def record_open_topics(self, user_id: str, topics: list[str]) -> int:
+        user_id = str(user_id or "").strip()
+        if not user_id:
+            return 0
+        added = 0
+        with self.db() as db:
+            for raw in topics or []:
+                topic = str(raw or "").strip()[:120]
+                if not topic:
+                    continue
+                existing = db.execute("SELECT 1 FROM unfinished_topics WHERE user_id=? AND topic=?", (user_id, topic)).fetchone()
+                if existing:
+                    db.execute("UPDATE unfinished_topics SET status='open', updated_at=? WHERE user_id=? AND topic=?", (now(), user_id, topic))
+                    continue
+                db.execute("INSERT INTO unfinished_topics VALUES(?,?,?,?,?,?)",
+                           (new_id("topic"), user_id, topic, "open", now(), now()))
+                added += 1
+        return added
+
+    def resolve_open_topics(self, user_id: str, topics: list[str] | None = None) -> int:
+        user_id = str(user_id or "").strip()
+        if not user_id:
+            return 0
+        with self.db() as db:
+            if topics:
+                count = 0
+                for raw in topics:
+                    topic = str(raw or "").strip()[:120]
+                    if topic:
+                        count += db.execute("UPDATE unfinished_topics SET status='closed', updated_at=? WHERE user_id=? AND topic=?",
+                                            (now(), user_id, topic)).rowcount
+                return count
+            return db.execute("UPDATE unfinished_topics SET status='closed', updated_at=? WHERE user_id=? AND status='open'",
+                              (now(), user_id)).rowcount
+
+    def list_open_topics(self, user_id: str, limit: int = 5) -> list[str]:
+        with self.db() as db:
+            return [row["topic"] for row in db.execute(
+                "SELECT topic FROM unfinished_topics WHERE user_id=? AND status='open' ORDER BY updated_at DESC LIMIT ?",
+                (str(user_id or ""), max(1, min(int(limit), 20)))).fetchall()]
+
+    def set_user_portrait(self, user_id: str, summary: str, traits: str = "") -> dict[str,Any]:
+        user_id = str(user_id or "").strip()
+        if not user_id:
+            return {"updated": False}
+        with self.db() as db:
+            db.execute("INSERT INTO user_portraits(user_id,summary,traits,updated_at) VALUES(?,?,?,?) "
+                       "ON CONFLICT(user_id) DO UPDATE SET summary=excluded.summary, traits=excluded.traits, updated_at=excluded.updated_at",
+                       (user_id, str(summary or "")[:600], str(traits or "")[:300], now()))
+            return dict(db.execute("SELECT * FROM user_portraits WHERE user_id=?", (user_id,)).fetchone())
+
+    def get_user_portrait(self, user_id: str) -> dict[str,Any]:
+        with self.db() as db:
+            row = db.execute("SELECT * FROM user_portraits WHERE user_id=?", (str(user_id or ""),)).fetchone()
+        return dict(row) if row else {"user_id": str(user_id or ""), "summary": "", "traits": "", "updated_at": ""}
+
+    # Self timeline / goal logs / skill growth -----------------------------
+    def timeline_add(self, topic: str, summary: str, detail: str = "") -> dict[str,Any]:
+        topic, summary = str(topic or "").strip()[:40], str(summary or "").strip()[:200]
+        if not topic or not summary:
+            return {"status": "ignored"}
+        item = {"id": new_id("tl"), "topic": topic, "summary": summary, "detail": str(detail or "")[:1000], "created_at": now()}
+        with self.db() as db:
+            db.execute("INSERT INTO bot_timeline VALUES(?,?,?,?,?)", (item["id"], item["topic"], item["summary"], item["detail"], item["created_at"]))
+        return item
+
+    def add_digest(self, kind: str, source: str, title: str, summary: str = "", url: str = "") -> dict[str,Any]:
+        title = str(title or "").strip()[:200]
+        if not title:
+            return {"status": "ignored"}
+        item = {"id": new_id("digest"), "kind": str(kind or "news")[:40], "source": str(source or "")[:120],
+                "title": title, "summary": str(summary or "")[:800], "url": str(url or "")[:500], "created_at": now()}
+        with self.db() as db:
+            db.execute("INSERT INTO content_digests VALUES(?,?,?,?,?,?,?)",
+                       (item["id"], item["kind"], item["source"], item["title"], item["summary"], item["url"], item["created_at"]))
+        return item
+
+    def list_digests(self, kind: str = "", limit: int = 30) -> list[dict[str,Any]]:
+        with self.db() as db:
+            size = max(1, min(int(limit), 200))
+            if kind:
+                return [dict(r) for r in db.execute("SELECT * FROM content_digests WHERE kind=? ORDER BY created_at DESC LIMIT ?", (kind, size)).fetchall()]
+            return [dict(r) for r in db.execute("SELECT * FROM content_digests ORDER BY created_at DESC LIMIT ?", (size,)).fetchall()]
+
+    def recent_digest_context(self, limit: int = 6) -> str:
+        rows = self.list_digests("", limit)
+        return "\n".join(f"- [{row['kind']}] {row['title']}：{row['summary'][:80]}" for row in rows)
+
+    def has_digest_today(self) -> bool:
+        with self.db() as db:
+            row = db.execute("SELECT 1 FROM content_digests WHERE substr(created_at,1,10)=? LIMIT 1", (date.today().isoformat(),)).fetchone()
+        return bool(row)
+
+    def timeline_list(self, limit: int = 50, topic: str = "") -> list[dict[str,Any]]:
+        with self.db() as db:
+            size = max(1, min(int(limit), 300))
+            if topic:
+                return [dict(r) for r in db.execute("SELECT * FROM bot_timeline WHERE topic=? ORDER BY created_at DESC LIMIT ?", (topic, size)).fetchall()]
+            return [dict(r) for r in db.execute("SELECT * FROM bot_timeline ORDER BY created_at DESC LIMIT ?", (size,)).fetchall()]
+
+    def add_goal_log(self, goal_id: str, evidence: str, progress: float | None = None) -> dict[str,Any]:
+        evidence = str(evidence or "").strip()[:400]
+        if not evidence:
+            return {"updated": False}
+        with self.db() as db:
+            row = db.execute("SELECT * FROM personal_goals WHERE id=?", (goal_id,)).fetchone()
+            if not row:
+                return {"updated": False}
+            pct = row["progress"] if progress is None else max(0.0, min(1.0, float(progress)))
+            db.execute("INSERT INTO goal_logs VALUES(?,?,?,?,?)", (new_id("glog"), goal_id, evidence, pct, now()))
+            db.execute("UPDATE personal_goals SET progress=?, updated_at=? WHERE id=?", (pct, now(), goal_id))
+            self._audit_tx(db, "goal_log", evidence[:60], goal_id)
+        return {"updated": True, "goal_id": goal_id, "progress": pct}
+
+    def goal_logs(self, goal_id: str, limit: int = 20) -> list[dict[str,Any]]:
+        with self.db() as db:
+            return [dict(r) for r in db.execute(
+                "SELECT * FROM goal_logs WHERE goal_id=? ORDER BY created_at DESC LIMIT ?",
+                (goal_id, max(1, min(int(limit), 100)))).fetchall()]
+
+    def grow_skill(self, name: str, delta: int = 1) -> dict[str,Any]:
+        name = str(name or "").strip()[:80]
+        if not name:
+            return {"updated": False}
+        with self.db() as db:
+            row = db.execute("SELECT * FROM skills WHERE name=? ORDER BY updated_at DESC LIMIT 1", (name,)).fetchone()
+            if not row:
+                return {"updated": False, "reason": "not_found"}
+            level = max(1, min(10, int(row["level"]) + int(delta)))
+            db.execute("UPDATE skills SET level=?, updated_at=? WHERE id=?", (level, now(), row["id"]))
+            self._audit_tx(db, "skill_grow", f"{name}={level}", row["id"])
+        return {"updated": True, "name": name, "level": level}
+
+    def note_outreach_reply(self, user_id: str) -> None:
+        """A reply resets the unanswered streak for that user target."""
+        target = f"user:{str(user_id or '').strip()}"
+        if target == "user:":
+            return
+        with self.db() as db:
+            db.execute("INSERT INTO outreach_state(target,consecutive_unanswered) VALUES(?,0) "
+                       "ON CONFLICT(target) DO UPDATE SET consecutive_unanswered=0, paused_until=NULL", (target,))
+
+    def _note_outreach_sent(self, db, target: str) -> None:
+        row = db.execute("SELECT consecutive_unanswered FROM outreach_state WHERE target=?", (target,)).fetchone()
+        unanswered = (int(row["consecutive_unanswered"]) if row else 0) + 1
+        paused = None
+        if unanswered >= 3:
+            paused = (datetime.now() + timedelta(days=3)).isoformat()
+        elif unanswered == 2:
+            paused = (datetime.now() + timedelta(hours=24)).isoformat()
+        db.execute("INSERT INTO outreach_state(target,consecutive_unanswered,last_sent,paused_until) VALUES(?,?,?,?) "
+                   "ON CONFLICT(target) DO UPDATE SET consecutive_unanswered=excluded.consecutive_unanswered, last_sent=excluded.last_sent, paused_until=excluded.paused_until",
+                   (target, unanswered, now(), paused))
+
+    def _outreach_paused(self, target: str) -> bool:
+        with self.db() as db:
+            row = db.execute("SELECT paused_until FROM outreach_state WHERE target=?", (target,)).fetchone()
+        if not row or not row["paused_until"]:
+            return False
+        try:
+            return datetime.fromisoformat(row["paused_until"]) > datetime.now()
+        except ValueError:
+            return False
 
     def can_proactively_send(self, target: str) -> tuple[bool,str]:
+        expression = self.relationship_expression(target.split(":",1)[1]) if target.startswith("user:") else None
+        if self._outreach_paused(target):
+            return False, "outreach paused (no reply)"
         with self.db() as db:
             daily = int(self._setting(db,"proactive_daily_limit","3")); per_target = int(self._setting(db,"proactive_target_limit","1"))
-            if target.startswith("user:"):
-                row = db.execute("SELECT stage FROM relationship_accounts WHERE user_id=?", (target.split(":",1)[1],)).fetchone()
-                stage = (row["stage"] if row else "") or ""
-                if stage == "受伤":
-                    return False, "relationship wounded"
-                cap = self.STAGE_TARGET_LIMITS.get(stage)
-                if cap is not None:
-                    per_target = min(per_target, cap) if per_target > 0 else cap
+            if expression is not None:
+                cap = int(expression.get("proactive_limit", 1))
+                if cap <= 0:
+                    return False, f"interaction {expression['interaction']} blocks outreach"
+                per_target = min(per_target, cap) if per_target > 0 else cap
             today = date.today().isoformat()
             sent = db.execute("SELECT COUNT(*) FROM proactive_receipts WHERE phase='delivered' AND created_at LIKE ?", (f"{today}%",)).fetchone()[0]
             per = db.execute("SELECT COUNT(*) FROM proactive_receipts r JOIN proactive_candidates c ON c.id=r.candidate_id WHERE r.phase='delivered' AND c.target=? AND r.created_at LIKE ?", (target,f"{today}%")).fetchone()[0]
@@ -172,11 +544,23 @@ class CompanionSystem:
             if quiet_start != quiet_end and (hour >= quiet_start or hour < quiet_end): return False,"quiet hours"
             return True,"ok"
 
+    def last_delivery_at(self) -> datetime | None:
+        with self.db() as db:
+            row = db.execute("SELECT created_at FROM proactive_receipts WHERE phase='delivered' ORDER BY created_at DESC LIMIT 1").fetchone()
+        if not row or not row["created_at"]:
+            return None
+        try:
+            return datetime.fromisoformat(row["created_at"])
+        except ValueError:
+            return None
+
     def record_proactive_send(self, target: str, content: str) -> None:
         candidate = self.create_proactive_candidate(target,"manual_tool",content)
         with self.db() as db:
             db.execute("UPDATE proactive_candidates SET status='delivered',updated_at=? WHERE id=?",(now(),candidate["id"]))
             db.execute("INSERT INTO proactive_receipts VALUES(?,?,?,?,?,?)",(new_id("receipt"),candidate["id"],"delivered","ok",content[:1000],now()))
+            if target.startswith("user:"):
+                self._note_outreach_sent(db, target)
         self.audit("proactive_delivery",content,target)
 
     def set_runtime_policy(self, daily_limit: int, per_target_limit: int, quiet_start: int | None = None, quiet_end: int | None = None) -> None:
@@ -210,8 +594,11 @@ class CompanionSystem:
 
     def mark_proactive_delivered(self, candidate_id: str, content: str, outcome: str = "ok") -> dict[str,Any]:
         with self.db() as db:
+            row = db.execute("SELECT target FROM proactive_candidates WHERE id=?", (candidate_id,)).fetchone()
             db.execute("UPDATE proactive_candidates SET status='delivered', updated_at=? WHERE id=?", (now(), candidate_id))
             db.execute("INSERT INTO proactive_receipts VALUES(?,?,?,?,?,?)", (new_id("receipt"), candidate_id, "delivered", outcome, content[:1000], now()))
+            if row and str(row["target"] or "").startswith("user:"):
+                self._note_outreach_sent(db, row["target"])
         self.audit("proactive_delivery", content[:200], candidate_id)
         return {"delivered": True, "id": candidate_id}
 
@@ -392,14 +779,74 @@ class CompanionSystem:
             return [dict(r) for r in db.execute("SELECT topic, SUM(score) AS score FROM group_topics GROUP BY topic ORDER BY score DESC LIMIT ?", (max(1, min(int(limit), 200)),)).fetchall()]
 
     # Group scene domain --------------------------------------------------
+    @staticmethod
+    def group_terms(message: str) -> list[str]:
+        """CJK n-grams + alnum words for slang/thread tracking (no segmenter available)."""
+        text = str(message or "")
+        terms: list[str] = []
+        for run in re.findall(r"[\u4e00-\u9fff]+", text):
+            for size in (2, 3):
+                for index in range(len(run) - size + 1):
+                    term = run[index:index + size]
+                    if term not in GROUP_STOPWORDS:
+                        terms.append(term)
+        terms.extend(word.lower() for word in re.findall(r"[A-Za-z0-9_]{2,20}", text))
+        return list(dict.fromkeys(terms))[:16]
+
+    @staticmethod
+    def group_sentiment(message: str) -> float:
+        text = str(message or "")
+        positive = sum(1 for word in GROUP_POSITIVE if word in text)
+        negative = sum(1 for word in GROUP_NEGATIVE if word in text)
+        if not positive and not negative:
+            return 0.0
+        return max(-1.0, min(1.0, (positive - negative) / (positive + negative)))
+
     def observe_group(self, group_id: str, user_id: str, message: str) -> None:
         if self.group_policy(group_id) == "blacklist":
             return
+        sentiment = self.group_sentiment(message)
         with self.db() as db:
             db.execute("INSERT OR IGNORE INTO group_scenes(group_id,updated_at) VALUES(?,?)",(group_id,now()))
+            row = db.execute("SELECT mood FROM group_scenes WHERE group_id=?", (group_id,)).fetchone()
+            mood = max(-1.0, min(1.0, float(row["mood"] if row else 0.0) * 0.8 + sentiment))
+            db.execute("UPDATE group_scenes SET mood=?, updated_at=? WHERE group_id=?", (mood, now(), group_id))
             db.execute("INSERT INTO group_observations VALUES(?,?,?,?,?,?,?,?)",(new_id("group_obs"),group_id,user_id,"message",message[:800],"group",now(),(datetime.now()+timedelta(days=14)).isoformat()))
-            for token in {part.strip("，。！？,.!? ").lower() for part in message.split() if len(part.strip()) >= 2}:
+            for token in self.group_terms(message):
                 db.execute("INSERT INTO group_topics(group_id,topic,score,updated_at) VALUES(?,?,1,?) ON CONFLICT(group_id,topic) DO UPDATE SET score=score+1,updated_at=excluded.updated_at",(group_id,token,now()))
+                db.execute("INSERT INTO group_threads VALUES(?,?,?,1,'active',?,?) ON CONFLICT(group_id,topic) DO UPDATE SET score=score+1,status='active',updated_at=excluded.updated_at",
+                           (new_id("thread"), group_id, token, now(), now()))
+            # Social graph: consecutive speakers are linked as talking to each other.
+            previous = db.execute("SELECT user_id FROM group_observations WHERE group_id=? ORDER BY created_at DESC LIMIT 1 OFFSET 1", (group_id,)).fetchone()
+            if previous and str(previous["user_id"]) != str(user_id) and user_id:
+                exists = db.execute(
+                    "SELECT 1 FROM social_edges WHERE (source_id=? AND target_id=?) OR (source_id=? AND target_id=?)",
+                    (previous["user_id"], user_id, user_id, previous["user_id"])).fetchone()
+                if not exists:
+                    db.execute("INSERT INTO social_edges VALUES(?,?,?,?,?,?)",
+                               (new_id("edge"), previous["user_id"], user_id, "group_interaction", "auto", now()))
+
+    def group_atmosphere(self, group_id: str) -> dict[str,Any]:
+        with self.db() as db:
+            scene = db.execute("SELECT mood FROM group_scenes WHERE group_id=?", (group_id,)).fetchone()
+            threads = [dict(r) for r in db.execute(
+                "SELECT topic, score FROM group_threads WHERE group_id=? AND status='active' ORDER BY score DESC, updated_at DESC LIMIT 8",
+                (group_id,)).fetchall()]
+            recent = [dict(r) for r in db.execute(
+                "SELECT user_id, content FROM group_observations WHERE group_id=? ORDER BY created_at DESC LIMIT 5", (group_id,)).fetchall()]
+        mood = float(scene["mood"]) if scene else 0.0
+        label = "热闹" if mood >= 0.3 else "有点低沉" if mood <= -0.3 else "平稳"
+        return {"group_id": group_id, "mood": round(mood, 3), "label": label, "threads": threads, "recent": recent}
+
+    def group_interest_match(self, group_id: str, interests: list[str]) -> list[str]:
+        """Active threads matching LIFE's own interests (world/skills keywords)."""
+        wanted = [str(item).strip().lower() for item in (interests or []) if str(item).strip()]
+        if not wanted:
+            return []
+        with self.db() as db:
+            threads = [dict(r) for r in db.execute(
+                "SELECT topic FROM group_threads WHERE group_id=? AND status='active' ORDER BY score DESC LIMIT 30", (group_id,)).fetchall()]
+        return [t["topic"] for t in threads if any(word in t["topic"].lower() or t["topic"].lower() in word for word in wanted)]
 
     def group_should_wake(self, group_id: str, message: str, mentioned: bool = False, keywords: tuple[str,...] = ()) -> bool:
         if mentioned: return True
@@ -446,6 +893,7 @@ class CompanionSystem:
             db.execute("DELETE FROM group_scenes WHERE group_id=?", (group_id,))
             db.execute("DELETE FROM group_observations WHERE group_id=?", (group_id,))
             db.execute("DELETE FROM group_topics WHERE group_id=?", (group_id,))
+            db.execute("DELETE FROM group_threads WHERE group_id=?", (group_id,))
             self._audit_tx(db, "group_delete", group_id, group_id)
         return {"deleted": True, "group_id": group_id}
 
@@ -592,34 +1040,62 @@ class CompanionSystem:
             stored = {r["key"]: r["value"] for r in db.execute("SELECT key,value FROM settings").fetchall()}
         return {**self.SETTING_DEFAULTS, **stored}
 
-    def set_settings(self, payload: dict[str,Any]) -> dict[str,str]:
-        allowed = set(self.SETTING_DEFAULTS)
-        cleaned = {key: str(value) for key, value in (payload or {}).items() if key in allowed}
+    def set_settings(self, payload: dict[str,Any]) -> dict[str,Any]:
+        cleaned: dict[str, str] = {}
+        rejected: list[str] = []
+        for key, value in (payload or {}).items():
+            key = str(key)
+            validated = self.validate_setting(key, value)
+            if validated is None:
+                if key in self.SETTING_DEFAULTS:
+                    rejected.append(key)
+                continue
+            cleaned[key] = validated
         with self.db() as db:
             for key, value in cleaned.items():
                 db.execute("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
-            self._audit_tx(db, "settings_update", ",".join(sorted(cleaned)), "", "ok")
-        return self.get_settings()
+            self._audit_tx(db, "settings_update", ",".join(sorted(cleaned)) or "(none)", ",".join(rejected), "ok")
+        return {**self.get_settings(), "rejected": rejected}
+
+    def audit_query(self, kind: str = "", outcome: str = "", target: str = "", limit: int = 100, offset: int = 0) -> dict[str,Any]:
+        clauses, params = [], []
+        if kind:
+            clauses.append("kind LIKE ?"); params.append(f"%{kind}%")
+        if outcome:
+            clauses.append("outcome=?"); params.append(outcome)
+        if target:
+            clauses.append("target LIKE ?"); params.append(f"%{target}%")
+        where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+        size = max(1, min(int(limit), 500))
+        with self.db() as db:
+            total = db.execute(f"SELECT COUNT(*) FROM audit_events {where}", params).fetchone()[0]
+            rows = [dict(r) for r in db.execute(f"SELECT * FROM audit_events {where} ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                                                (*params, size, max(0, int(offset)))).fetchall()]
+        return {"total": total, "items": rows}
+
+    def audit_kinds(self) -> list[str]:
+        with self.db() as db:
+            return [row["kind"] for row in db.execute("SELECT DISTINCT kind FROM audit_events ORDER BY kind").fetchall()]
 
     def export_config(self) -> dict[str,Any]:
         with self.db() as db:
             def rows(query: str) -> list[dict]:
                 return [dict(r) for r in db.execute(query).fetchall()]
             settings = {**self.SETTING_DEFAULTS, **{r["key"]: r["value"] for r in db.execute("SELECT key,value FROM settings").fetchall()}}
-            return {"version": 1, "exported_at": now(), "settings": settings,
+            return {"version": self.SCHEMA_VERSION, "schema_version": self.SCHEMA_VERSION, "exported_at": now(), "settings": settings,
                     "important_dates": rows("SELECT * FROM important_dates"), "goals": rows("SELECT * FROM personal_goals"),
                     "food": rows("SELECT * FROM food_menu"), "skills": rows("SELECT * FROM skills"),
                     "expressions": rows("SELECT * FROM expressions"), "social_nodes": rows("SELECT * FROM social_nodes"),
                     "social_edges": rows("SELECT * FROM social_edges")}
 
     def import_config(self, snapshot: dict[str,Any]) -> dict[str,Any]:
-        if not isinstance(snapshot, dict):
-            raise ValueError("config snapshot must be an object")
+        snapshot = self.migrate_config(snapshot)
         applied: dict[str, int] = {}
         with self.db() as db:
             for key, value in (snapshot.get("settings") or {}).items():
-                if key in self.SETTING_DEFAULTS:
-                    db.execute("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, str(value)))
+                validated = self.validate_setting(str(key), value)
+                if validated is not None:
+                    db.execute("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, validated))
             applied["settings"] = len(snapshot.get("settings") or {})
             for item in snapshot.get("goals") or []:
                 if item.get("title"):
@@ -644,7 +1120,30 @@ class CompanionSystem:
             self._audit_tx(db, "config_import", json.dumps(applied, ensure_ascii=False), "", "ok")
         return {"applied": applied}
 
+    SETTING_MIGRATIONS = {"daily_limit": "proactive_daily_limit", "per_target_limit": "proactive_target_limit",
+                          "quiet_from": "quiet_start", "quiet_to": "quiet_end"}
+
+    def migrate_config(self, snapshot: dict[str,Any]) -> dict[str,Any]:
+        """Normalize an imported snapshot to the current schema (idempotent)."""
+        if not isinstance(snapshot, dict):
+            raise ValueError("config snapshot must be an object")
+        snapshot = dict(snapshot)
+        version = int(snapshot.get("schema_version") or snapshot.get("version") or 1)
+        settings = dict(snapshot.get("settings") or {})
+        for old, new in self.SETTING_MIGRATIONS.items():
+            if old in settings and new not in settings:
+                settings[new] = settings.pop(old)
+            elif old in settings:
+                settings.pop(old, None)
+        if version < 2:
+            settings.setdefault("locale", "zh-CN")
+        snapshot["settings"] = settings
+        snapshot["schema_version"] = self.SCHEMA_VERSION
+        snapshot["version"] = self.SCHEMA_VERSION
+        return snapshot
+
     def diagnostics(self) -> dict[str,Any]:
+        locale = self.get_settings().get("locale", "zh-CN")
         with self.db() as db:
             def count(query: str) -> int:
                 return db.execute(query).fetchone()[0]
@@ -662,11 +1161,11 @@ class CompanionSystem:
             integrity = db.execute("PRAGMA integrity_check").fetchone()[0]
             last_audit = db.execute("SELECT created_at FROM audit_events ORDER BY created_at DESC LIMIT 1").fetchone()
         checks = [
-            {"name": "数据库完整性", "status": "ok" if integrity == "ok" else "error", "detail": integrity},
-            {"name": "待确认日程", "status": "warn" if counts["candidates_pending"] else "ok", "detail": f"{counts['candidates_pending']} 条"},
-            {"name": "待审表达", "status": "warn" if counts["expressions_pending"] else "ok", "detail": f"{counts['expressions_pending']} 条"},
-            {"name": "待投递主动", "status": "warn" if counts["proactive_pending"] else "ok", "detail": f"{counts['proactive_pending']} 条"},
-            {"name": "最近审计", "status": "ok" if last_audit else "info", "detail": last_audit[0] if last_audit else "暂无"},
+            {"name": translate("diag.integrity", locale), "status": "ok" if integrity == "ok" else "error", "detail": integrity},
+            {"name": translate("diag.pending_candidates", locale), "status": "warn" if counts["candidates_pending"] else "ok", "detail": translate("diag.detail_count", locale, count=counts["candidates_pending"])},
+            {"name": translate("diag.pending_expressions", locale), "status": "warn" if counts["expressions_pending"] else "ok", "detail": translate("diag.detail_count", locale, count=counts["expressions_pending"])},
+            {"name": translate("diag.pending_proactive", locale), "status": "warn" if counts["proactive_pending"] else "ok", "detail": translate("diag.detail_count", locale, count=counts["proactive_pending"])},
+            {"name": translate("diag.recent_audit", locale), "status": "ok" if last_audit else "info", "detail": last_audit[0] if last_audit else translate("diag.none", locale)},
         ]
         return {"checks": checks, "counts": counts, "generated_at": now()}
 
@@ -721,11 +1220,32 @@ class CompanionSystem:
             ).fetchone()[0]
         return {"date": day, "content": "\n\n".join(row["content"] for row in entries), "previous": previous, "next": following}
 
-    def journal(self, content: str, kind: str = "journal") -> dict[str,Any]:
-        entry = {"id":new_id(kind),"at":now(),"content":content[:4000]}
+    def journal(self, content: str, kind: str = "journal", at: str = "") -> dict[str,Any]:
+        entry = {"id":new_id(kind),"at":at or now(),"content":content[:4000]}
         with self.db() as db: db.execute("INSERT INTO journal_entries VALUES(?,?,?,?)",(entry["id"],kind,entry["content"],entry["at"]))
         self.audit(kind,entry["content"],entry["id"])
         return entry
+
+    def has_journal_for(self, day: str, kind: str = "journal") -> bool:
+        """True if a journal of this kind already exists for the calendar day."""
+        if not day:
+            return False
+        with self.db() as db:
+            row = db.execute("SELECT 1 FROM journal_entries WHERE kind=? AND substr(created_at,1,10)=? LIMIT 1", (kind, day)).fetchone()
+        return bool(row)
+
+    def recent_journals(self, kind: str = "journal", limit: int = 3) -> list[dict[str,Any]]:
+        with self.db() as db:
+            return [dict(r) for r in db.execute(
+                "SELECT content, created_at FROM journal_entries WHERE kind=? ORDER BY created_at DESC LIMIT ?", (kind, max(1, int(limit)))).fetchall()]
+
+    def agenda_for_day(self, day: str) -> list[dict[str,Any]]:
+        """All agenda events that started on a given YYYY-MM-DD (including past days)."""
+        if not day:
+            return []
+        with self.db() as db:
+            return [dict(r) for r in db.execute(
+                "SELECT * FROM calendar_events WHERE substr(replace(start_at,'T',' '),1,10)=? ORDER BY start_at", (day,)).fetchall()]
 
     def clear_journal(self, kind: str = "") -> dict[str,Any]:
         """Remove journal/dream entries (kind filter optional)."""
@@ -742,10 +1262,10 @@ class CompanionSystem:
         today = date.today().isoformat()
         with self.db() as db:
             rows=lambda q,args=():[dict(row) for row in db.execute(q,args).fetchall()]
-            groups={row["group_id"]:{"mood":row["mood"],"topics":rows("SELECT topic,score FROM group_topics WHERE group_id=? ORDER BY score DESC LIMIT 12",(row["group_id"],)),"messages":rows("SELECT user_id,content,created_at FROM group_observations WHERE group_id=? ORDER BY created_at DESC LIMIT 20",(row["group_id"],))} for row in db.execute("SELECT * FROM group_scenes").fetchall()}
+            groups={row["group_id"]:{"mood":row["mood"],"topics":rows("SELECT topic,score FROM group_topics WHERE group_id=? ORDER BY score DESC LIMIT 12",(row["group_id"],)),"threads":rows("SELECT topic,score,status FROM group_threads WHERE group_id=? AND status='active' ORDER BY score DESC LIMIT 12",(row["group_id"],)),"messages":rows("SELECT user_id,content,created_at FROM group_observations WHERE group_id=? ORDER BY created_at DESC LIMIT 20",(row["group_id"],))} for row in db.execute("SELECT * FROM group_scenes").fetchall()}
             # Only today and upcoming events: yesterday's schedule is not shown or reused.
             agenda=rows("SELECT * FROM calendar_events WHERE start_at='' OR substr(replace(start_at,'T',' '),1,10)>=? ORDER BY start_at='' DESC, start_at ASC",(today,))
-            return {"relationships":rows("SELECT * FROM relationship_accounts ORDER BY last_seen DESC"),"relationship_ledger":rows("SELECT * FROM relationship_ledger ORDER BY created_at DESC LIMIT 200"),"agenda":agenda,"calendar_candidates":rows("SELECT * FROM calendar_candidates ORDER BY created_at DESC"),"journal":rows("SELECT * FROM journal_entries WHERE kind='journal' ORDER BY created_at DESC LIMIT 50"),"dreams":rows("SELECT * FROM journal_entries WHERE kind='dream' ORDER BY created_at DESC LIMIT 50"),"audit":rows("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT 200"),"groups":groups,"persona_evolution":rows("SELECT * FROM persona_evolution WHERE status='confirmed' ORDER BY updated_at DESC"),"proactive":{"candidates":rows("SELECT * FROM proactive_candidates ORDER BY updated_at DESC LIMIT 100"),"receipts":rows("SELECT * FROM proactive_receipts ORDER BY created_at DESC LIMIT 100")},"important_dates":rows("SELECT * FROM important_dates ORDER BY date_text"),"goals":rows("SELECT * FROM personal_goals ORDER BY updated_at DESC"),"food":rows("SELECT * FROM food_menu ORDER BY created_at DESC"),"word_cloud":rows("SELECT topic, SUM(score) AS score FROM group_topics GROUP BY topic ORDER BY score DESC LIMIT 60"),"skills":rows("SELECT * FROM skills ORDER BY level DESC, updated_at DESC"),"expressions":rows("SELECT * FROM expressions ORDER BY created_at DESC LIMIT 300"),"social_nodes":rows("SELECT * FROM social_nodes ORDER BY updated_at DESC"),"social_edges":rows("SELECT * FROM social_edges ORDER BY created_at DESC"),"settings":{r["key"]: r["value"] for r in db.execute("SELECT key,value FROM settings").fetchall()},"world":rows("SELECT * FROM world_knowledge ORDER BY kind, updated_at DESC")}
+            return {"relationships":rows("SELECT * FROM relationship_accounts ORDER BY last_seen DESC"),"relationship_ledger":rows("SELECT * FROM relationship_ledger ORDER BY created_at DESC LIMIT 200"),"agenda":agenda,"calendar_candidates":rows("SELECT * FROM calendar_candidates ORDER BY created_at DESC"),"journal":rows("SELECT * FROM journal_entries WHERE kind='journal' ORDER BY created_at DESC LIMIT 50"),"dreams":rows("SELECT * FROM journal_entries WHERE kind='dream' ORDER BY created_at DESC LIMIT 50"),"audit":rows("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT 200"),"groups":groups,"persona_evolution":rows("SELECT * FROM persona_evolution WHERE status='confirmed' ORDER BY updated_at DESC"),"proactive":{"candidates":rows("SELECT * FROM proactive_candidates ORDER BY updated_at DESC LIMIT 100"),"receipts":rows("SELECT * FROM proactive_receipts ORDER BY created_at DESC LIMIT 100")},"important_dates":rows("SELECT * FROM important_dates ORDER BY date_text"),"goals":rows("SELECT * FROM personal_goals ORDER BY updated_at DESC"),"food":rows("SELECT * FROM food_menu ORDER BY created_at DESC"),"word_cloud":rows("SELECT topic, SUM(score) AS score FROM group_topics GROUP BY topic ORDER BY score DESC LIMIT 60"),"skills":rows("SELECT * FROM skills ORDER BY level DESC, updated_at DESC"),"expressions":rows("SELECT * FROM expressions ORDER BY created_at DESC LIMIT 300"),"social_nodes":rows("SELECT * FROM social_nodes ORDER BY updated_at DESC"),"social_edges":rows("SELECT * FROM social_edges ORDER BY created_at DESC"),"settings":{r["key"]: r["value"] for r in db.execute("SELECT key,value FROM settings").fetchall()},"world":rows("SELECT * FROM world_knowledge ORDER BY kind, updated_at DESC"),"timeline":rows("SELECT * FROM bot_timeline ORDER BY created_at DESC LIMIT 100"),"open_topics":rows("SELECT * FROM unfinished_topics WHERE status='open' ORDER BY updated_at DESC LIMIT 100"),"portraits":rows("SELECT * FROM user_portraits ORDER BY updated_at DESC")}
 
     def user_detail(self, user_id: str, limit: int = 100) -> dict[str,Any]:
         """One user's whole companionship record: relationship, proactive, audit."""
@@ -769,6 +1289,8 @@ class CompanionSystem:
         return {
             "user_id": user_id,
             "relationship": dict(rel) if rel else None,
+            "role": self.user_role(user_id),
+            "expression": self.relationship_expression(user_id),
             "stage_limit": self.STAGE_TARGET_LIMITS.get(stage),
             "ledger": ledger,
             "counts": counts,

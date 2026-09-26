@@ -239,6 +239,9 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                     await self.engine.proactive_tick()
                     await self.engine.maybe_daily_agenda()
                     await self.engine.autonomous_plan()
+                    await self.engine.group_wake_tick()
+                    await self.engine.content_tick()
+                    await self.engine.outfit_tick()
                     await self.engine.maybe_daily_entries()
                 except Exception as e:
                     print(f"[LIFE] autonomy cycle error: {e}")
@@ -452,6 +455,22 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await asyncio.to_thread(self.engine.companion.delete_goal, payload.get("id",""))
             elif action == "goal_list":
                 result = {"goals": await asyncio.to_thread(self.engine.companion.list_goals, payload.get("status",""))}
+            elif action == "goal_log_add":
+                result = await asyncio.to_thread(self.engine.companion.add_goal_log, payload.get("id",""), payload.get("evidence",""), payload.get("progress"))
+            elif action == "goal_logs":
+                result = {"logs": await asyncio.to_thread(self.engine.companion.goal_logs, payload.get("id",""), int(payload.get("limit",20)))}
+            elif action == "timeline_list":
+                result = {"timeline": await asyncio.to_thread(self.engine.companion.timeline_list, int(payload.get("limit",50)), payload.get("topic",""))}
+            elif action == "open_topic_list":
+                result = {"topics": await asyncio.to_thread(self.engine.companion.list_open_topics, payload.get("user_id",""), int(payload.get("limit",10)))}
+            elif action == "open_topic_resolve":
+                result = {"resolved": await asyncio.to_thread(self.engine.companion.resolve_open_topics, payload.get("user_id",""), payload.get("topics") or None)}
+            elif action == "portrait_get":
+                result = await asyncio.to_thread(self.engine.companion.get_user_portrait, payload.get("user_id",""))
+            elif action == "relationship_expression":
+                result = await asyncio.to_thread(self.engine.companion.relationship_expression, payload.get("user_id",""))
+            elif action == "relationship_decay":
+                result = await asyncio.to_thread(self.engine.companion.decay_relationships)
             elif action == "food_add":
                 result = await asyncio.to_thread(self.engine.companion.add_food, payload.get("name",""), payload.get("kind","meal"), payload.get("tags",""), payload.get("note",""))
             elif action == "food_delete":
@@ -476,6 +495,18 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = {"members": await asyncio.to_thread(self.engine.companion.group_members, payload.get("group_id",""), int(payload.get("limit",50)))}
             elif action == "group_member_flag":
                 result = await asyncio.to_thread(self.engine.companion.group_member_flag, payload.get("group_id",""), payload.get("user_id",""), payload.get("flag","watch"))
+            elif action == "group_atmosphere":
+                result = await asyncio.to_thread(self.engine.companion.group_atmosphere, payload.get("group_id",""))
+            elif action == "group_wake_tick":
+                result = await self.engine.group_wake_tick()
+            elif action == "content_tick":
+                result = await self.engine.content_tick(True)
+            elif action == "outfit_tick":
+                result = await self.engine.outfit_tick(True)
+            elif action == "image_generate":
+                result = await self.engine.generate_image(str(payload.get("prompt","")))
+            elif action == "content_list":
+                result = {"digests": await asyncio.to_thread(self.engine.companion.list_digests, payload.get("kind",""), int(payload.get("limit",30)))}
             elif action == "skill_add":
                 result = await asyncio.to_thread(self.engine.companion.add_skill, payload.get("name",""), payload.get("category","general"), int(payload.get("level",1)), payload.get("keywords",""), payload.get("aliases",""), payload.get("note",""))
             elif action == "skill_update":
@@ -512,6 +543,26 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await asyncio.to_thread(self.engine.companion.import_config, payload.get("snapshot") or {})
             elif action == "diagnostics":
                 result = await asyncio.to_thread(self.engine.companion.diagnostics)
+            elif action == "audit_query":
+                result = await asyncio.to_thread(self.engine.companion.audit_query, payload.get("kind",""), payload.get("outcome",""),
+                                                 payload.get("target",""), int(payload.get("limit",100)), int(payload.get("offset",0)))
+            elif action == "audit_kinds":
+                result = {"kinds": await asyncio.to_thread(self.engine.companion.audit_kinds)}
+            elif action == "extension_status":
+                result = {"extensions": self.engine.extension_status()}
+            elif action == "media_status":
+                result = {"tts": self.engine.media.has_tts()}
+            elif action == "usage_summary":
+                result = self.engine.get_usage()
+            elif action == "usage_record":
+                self.engine.usage.record(payload.get("model",""), int(payload.get("input",0)), int(payload.get("output",0)), payload.get("task",""))
+                result = self.engine.get_usage()
+            elif action == "balance_set":
+                result = self.engine.usage.set_balance(payload.get("provider",""), payload.get("amount"), payload.get("currency",""))
+            elif action == "model_routes_set":
+                result = {"routes": self.engine.apply_model_routes(payload.get("routes") if "routes" in payload else payload)}
+            elif action == "config_migrate":
+                result = await asyncio.to_thread(self.engine.companion.migrate_config, payload.get("snapshot") or {})
             elif action == "world_list":
                 result = {"world": await asyncio.to_thread(self.engine.companion.list_world_knowledge, payload.get("kind",""))}
             elif action == "world_upsert":

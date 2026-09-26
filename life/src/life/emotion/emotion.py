@@ -53,13 +53,30 @@ class EmotionEngine:
     def __init__(self, initial_state: EmotionState | None = None):
         self.state = initial_state or EmotionState()
 
+    # Lightweight intent routing shared by emotion and the unfinished-topic tracker.
+    INTENT_RULES = (
+        ("请求", ("帮我", "能不能", "可以吗", "麻烦", "替我", "请帮", "帮忙")),
+        ("情绪", ("难过", "开心", "生气", "很累", "好累", "烦", "害怕", "焦虑", "孤独", "想你", "喜欢你", "讨厌", "郁闷", "崩溃", "委屈")),
+        ("分享", ("我今天", "刚刚", "我去了", "给你看", "你看", "分享", "我发现", "我买了")),
+        ("抱怨", ("总是", "烦死", "受不了", "气死", "无语", "又这样")),
+        ("提问", ("怎么", "为什么", "什么", "哪里", "是不是", "如何", "吗?", "吗？", "?", "？")),
+    )
+
+    def classify_intent(self, message: str) -> str:
+        text = str(message or "")
+        for intent, words in self.INTENT_RULES:
+            if any(word in text for word in words):
+                return intent
+        return "闲聊"
+
     def on_user_message(self, message: str) -> dict:
-        """Calculate emotion delta from user message."""
+        """Calculate emotion delta from user message (English + Chinese cues)."""
         delta = {"valence": 0.0, "arousal": 0.0, "connection": 0.0, "irritation": 0.0}
 
-        # Simple sentiment analysis
-        positive_words = ["thanks", "good", "great", "love", "happy", "nice", "awesome"]
-        negative_words = ["bad", "hate", "stupid", "annoying", "terrible", "angry"]
+        positive_words = ["thanks", "good", "great", "love", "happy", "nice", "awesome",
+                          "谢谢", "喜欢", "好棒", "开心", "哈哈", "可爱", "厉害", "抱抱", "想你"]
+        negative_words = ["bad", "hate", "stupid", "annoying", "terrible", "angry",
+                          "讨厌", "滚开", "生气", "难过", "无语", "委屈"]
 
         msg_lower = message.lower()
         for word in positive_words:

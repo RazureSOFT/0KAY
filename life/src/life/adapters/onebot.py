@@ -9,6 +9,8 @@ from dataclasses import dataclass
 import websockets
 import httpx
 
+from .. import media
+
 
 @dataclass
 class OneBotConfig:
@@ -22,6 +24,7 @@ class OneBotConfig:
     bot_names: tuple[str, ...] = ()
     observe_group: bool = True
     observer: Callable | None = None
+    recall_handler: Callable | None = None
 
 
 class OneBotMessage:
@@ -34,10 +37,17 @@ class OneBotMessage:
         self.group_id = data.get("group_id")
         self.message = data.get("message", "")
         self.sender = data.get("sender", {})
+        self.segments = media.parse_segments(self.message)
+        self.text = media.plain_text(self.message)
+        self.description = media.describe_segments(self.message)
 
     @property
     def is_group(self) -> bool:
         return self.group_id is not None
+
+    @property
+    def has_media(self) -> bool:
+        return any(seg["type"] != "text" for seg in self.segments)
 
     @property
     def sender_name(self) -> str:
@@ -92,38 +102,60 @@ class OneBotAdapter:
                     continue
 
     def _is_mentioned(self, data: dict, msg: "OneBotMessage") -> bool:
-        text = str(msg.message or "")
         self_id = str(data.get("self_id") or "")
-        if self_id and f"[CQ:at,qq={self_id}]" in text:
-            return True
+        for seg in msg.segments:
+            if seg["type"] == "at" and self_id and str(seg["data"].get("qq")) == self_id:
+                return True
+        text = msg.description or str(msg.message or "")
         for name in (self.config.bot_names or ()):
             if name and name in text:
                 return True
         return False
 
+    async def _handle_notice(self, data: dict):
+        """Handle recall and other notices; only records an honest short note."""
+        notice_type = str(data.get("notice_type") or "")
+        if notice_type not in ("group_recall", "friend_recall"):
+            return
+        if self.config.recall_handler:
+            note = media.recall_note(notice_type, data.get("user_id"), data.get("operator_id"), data.get("message_id"))
+            try:
+                await self.config.recall_handler(
+                    session_id=f"qq_group_{data.get('group_id')}" if data.get("group_id") else f"qq_{data.get('user_id')}",
+                    user_id=str(data.get("user_id") or ""),
+                    note=note,
+                    adapter_type="onebot_group" if data.get("group_id") else "onebot",
+                )
+            except Exception as error:
+                print(f"recall handler error: {error}")
+
     async def _handle_event(self, data: dict):
         """Handle OneBot event."""
         post_type = data.get("post_type")
+        if post_type == "notice":
+            await self._handle_notice(data)
+            return
         if post_type != "message":
             return
 
         msg = OneBotMessage(data)
+        content = msg.description or msg.text
         if msg.is_group and self.config.observe_group and self.config.observer:
-            await self.config.observer(str(msg.group_id), str(msg.user_id), msg.message)
+            await self.config.observer(str(msg.group_id), str(msg.user_id), content)
         keywords = tuple(k.lower() for k in self.config.trigger_keywords if k.strip())
         if msg.is_group:
             # Group chats: speak only when mentioned or a trigger keyword hits; observe otherwise.
             mentioned = self._is_mentioned(data, msg)
-            if not mentioned and not (keywords and any(keyword in str(msg.message).lower() for keyword in keywords)):
+            if not mentioned and not (keywords and any(keyword in content.lower() for keyword in keywords)):
                 return
-        elif keywords and not any(keyword in str(msg.message).lower() for keyword in keywords):
+        elif keywords and not any(keyword in content.lower() for keyword in keywords):
             return
 
         # Process message and get response (supports sync/async iterators)
         response_iterator = self.message_handler(
             session_id=f"qq_group_{msg.group_id}" if msg.is_group else f"qq_{msg.user_id}",
             user_id=str(msg.user_id),
-            message=msg.message,
+            message=content,
             adapter_type="onebot_group" if msg.is_group else "onebot",
         )
 
@@ -204,6 +236,47 @@ class OneBotAdapter:
             )
         except Exception as e:
             print(f"Failed to send notice: {e}")
+
+    async def _call(self, action: str, payload: dict):
+        if not self._http_client:
+            raise RuntimeError("OneBot is not connected")
+        response = await self._http_client.post(f"/{action}", json=payload)
+        response.raise_for_status()
+        data = response.json()
+        if data.get("retcode", 0) != 0:
+            raise RuntimeError(f"OneBot rejected {action}: {response.text}")
+        return data.get("data") or {}
+
+    async def send_poke(self, user_id: int, group_id: int | None = None):
+        """戳一戳 (poke)."""
+        payload = {"user_id": int(user_id)}
+        if group_id:
+            payload["group_id"] = int(group_id)
+        return await self._call("group_poke" if group_id else "friend_poke", payload)
+
+    async def set_status(self, status: int = 0, battery: int = 100):
+        """Sync the bot's QQ online status/battery."""
+        return await self._call("set_online_status", {"status": int(status), "ext_status": 0, "battery_status": int(battery)})
+
+    async def send_tts(self, text: str, user_id: int | None = None, group_id: int | None = None):
+        """Send a voice message via CQ TTS."""
+        if not str(text or "").strip():
+            raise ValueError("text is required")
+        payload = {"message": f"[CQ:tts,text={str(text)[:300]}]"}
+        if group_id:
+            payload["group_id"] = int(group_id)
+            return await self._call("send_group_msg", payload)
+        payload["user_id"] = int(user_id or 0)
+        return await self._call("send_private_msg", payload)
+
+    async def send_image(self, file: str, user_id: int | None = None, group_id: int | None = None):
+        """Send an image by file path/URL via CQ code."""
+        payload = {"message": f"[CQ:image,file={file}]"}
+        if group_id:
+            payload["group_id"] = int(group_id)
+            return await self._call("send_group_msg", payload)
+        payload["user_id"] = int(user_id or 0)
+        return await self._call("send_private_msg", payload)
 
     async def send_message(self, message: str, user_id: int | None = None, group_id: int | None = None):
         """Send a proactive private or group message through OneBot HTTP."""
