@@ -142,6 +142,7 @@
     "title": "欢迎使用 0kay",
     "subtitle": "让我们来设置你的 AI 助手",
     "chooseLanguage": "选择语言",
+    "chooseLanguageDesc": "选择你的界面语言",
     "languageHint": "选择界面语言，之后可在设置中更改。",
     "continue": "继续",
     "welcome": "欢迎使用 0kay！",

@@ -142,6 +142,7 @@
     "title": "Welcome to 0kay",
     "subtitle": "Let's set up your AI assistant",
     "chooseLanguage": "Choose your language",
+    "chooseLanguageDesc": "Choose your interface language",
     "languageHint": "Pick the app language. You can change it later in Settings.",
     "continue": "Continue",
     "welcome": "Welcome to 0kay!",

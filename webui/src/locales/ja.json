@@ -142,6 +142,7 @@
     "title": "0kay へようこそ",
     "subtitle": "AI アシスタントを設定しましょう",
     "chooseLanguage": "言語を選択",
+    "chooseLanguageDesc": "表示言語を選択してください",
     "languageHint": "アプリの言語を選択してください。後で設定から変更できます。",
     "continue": "続ける",
     "welcome": "0kay へようこそ！",
