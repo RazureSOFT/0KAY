@@ -146,6 +146,9 @@ class CompanionSystem:
 
     # Per-stage daily outreach caps for private targets (min with the configured limit).
     STAGE_TARGET_LIMITS = {"亲近": 3, "温暖": 2, "熟悉": 1, "疏离": 1, "受伤": 0}
+    SETTING_DEFAULTS = {"proactive_daily_limit": "3", "proactive_target_limit": "1", "quiet_start": "23", "quiet_end": "8",
+                        "idle_minutes": "30", "min_interval_minutes": "5", "check_interval_seconds": "600", "burst_max": "2",
+                        "daily_token_limit": "0", "enable_proactive": "1", "enable_group_observe": "1", "enable_dream": "1"}
 
     def can_proactively_send(self, target: str) -> tuple[bool,str]:
         with self.db() as db:
@@ -582,6 +585,90 @@ class CompanionSystem:
             cursor = db.execute("DELETE FROM social_edges WHERE id=?", (edge_id,))
             return {"deleted": bool(cursor.rowcount), "id": edge_id}
 
+    # Configuration / diagnostics ------------------------------------------
+    def get_settings(self) -> dict[str,str]:
+        with self.db() as db:
+            stored = {r["key"]: r["value"] for r in db.execute("SELECT key,value FROM settings").fetchall()}
+        return {**self.SETTING_DEFAULTS, **stored}
+
+    def set_settings(self, payload: dict[str,Any]) -> dict[str,str]:
+        allowed = set(self.SETTING_DEFAULTS)
+        cleaned = {key: str(value) for key, value in (payload or {}).items() if key in allowed}
+        with self.db() as db:
+            for key, value in cleaned.items():
+                db.execute("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+            self._audit_tx(db, "settings_update", ",".join(sorted(cleaned)), "", "ok")
+        return self.get_settings()
+
+    def export_config(self) -> dict[str,Any]:
+        with self.db() as db:
+            def rows(query: str) -> list[dict]:
+                return [dict(r) for r in db.execute(query).fetchall()]
+            settings = {**self.SETTING_DEFAULTS, **{r["key"]: r["value"] for r in db.execute("SELECT key,value FROM settings").fetchall()}}
+            return {"version": 1, "exported_at": now(), "settings": settings,
+                    "important_dates": rows("SELECT * FROM important_dates"), "goals": rows("SELECT * FROM personal_goals"),
+                    "food": rows("SELECT * FROM food_menu"), "skills": rows("SELECT * FROM skills"),
+                    "expressions": rows("SELECT * FROM expressions"), "social_nodes": rows("SELECT * FROM social_nodes"),
+                    "social_edges": rows("SELECT * FROM social_edges")}
+
+    def import_config(self, snapshot: dict[str,Any]) -> dict[str,Any]:
+        if not isinstance(snapshot, dict):
+            raise ValueError("config snapshot must be an object")
+        applied: dict[str, int] = {}
+        with self.db() as db:
+            for key, value in (snapshot.get("settings") or {}).items():
+                if key in self.SETTING_DEFAULTS:
+                    db.execute("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, str(value)))
+            applied["settings"] = len(snapshot.get("settings") or {})
+            for item in snapshot.get("goals") or []:
+                if item.get("title"):
+                    db.execute("INSERT INTO personal_goals VALUES(?,?,?,?,?,?,?,?)", (item.get("id") or new_id("goal"), item["title"], item.get("detail", ""), item.get("kind", "growth"), item.get("status", "active"), item.get("progress", 0), item.get("created_at") or now(), item.get("updated_at") or now()))
+            applied["goals"] = len(snapshot.get("goals") or [])
+            for item in snapshot.get("food") or []:
+                if item.get("name"):
+                    db.execute("INSERT INTO food_menu VALUES(?,?,?,?,?,?)", (item.get("id") or new_id("food"), item["name"], item.get("kind", "meal"), item.get("tags", ""), item.get("note", ""), item.get("created_at") or now()))
+            applied["food"] = len(snapshot.get("food") or [])
+            for item in snapshot.get("skills") or []:
+                if item.get("name"):
+                    db.execute("INSERT INTO skills VALUES(?,?,?,?,?,?,?,?,?)", (item.get("id") or new_id("skill"), item["name"], item.get("category", "general"), int(item.get("level", 1)), item.get("keywords", ""), item.get("aliases", ""), item.get("note", ""), item.get("created_at") or now(), item.get("updated_at") or now()))
+            applied["skills"] = len(snapshot.get("skills") or [])
+            for item in snapshot.get("expressions") or []:
+                if item.get("text"):
+                    db.execute("INSERT OR IGNORE INTO expressions VALUES(?,?,?,?,?,?,?,?)", (item.get("id") or new_id("expr"), item["text"], item.get("scene", ""), item.get("scope", "public"), item.get("status", "pending"), item.get("source", "import"), item.get("created_at") or now(), item.get("reviewed_at")))
+            applied["expressions"] = len(snapshot.get("expressions") or [])
+            for item in snapshot.get("important_dates") or []:
+                if item.get("title") and item.get("date_text"):
+                    db.execute("INSERT OR IGNORE INTO important_dates VALUES(?,?,?,?,?,?,?)", (item.get("id") or new_id("date"), item["title"], item["date_text"], item.get("kind", "date"), int(item.get("repeat_yearly", 1)), item.get("note", ""), item.get("created_at") or now()))
+            applied["important_dates"] = len(snapshot.get("important_dates") or [])
+            self._audit_tx(db, "config_import", json.dumps(applied, ensure_ascii=False), "", "ok")
+        return {"applied": applied}
+
+    def diagnostics(self) -> dict[str,Any]:
+        with self.db() as db:
+            def count(query: str) -> int:
+                return db.execute(query).fetchone()[0]
+            counts = {
+                "relationships": count("SELECT COUNT(*) FROM relationship_accounts"),
+                "agenda_active": count("SELECT COUNT(*) FROM calendar_events WHERE status='active'"),
+                "candidates_pending": count("SELECT COUNT(*) FROM calendar_candidates WHERE status='pending_confirmation'"),
+                "proactive_pending": count("SELECT COUNT(*) FROM proactive_candidates WHERE status='candidate'"),
+                "groups": count("SELECT COUNT(*) FROM group_registry"),
+                "journal": count("SELECT COUNT(*) FROM journal_entries WHERE kind='journal'"),
+                "dreams": count("SELECT COUNT(*) FROM journal_entries WHERE kind='dream'"),
+                "skills": count("SELECT COUNT(*) FROM skills"),
+                "expressions_pending": count("SELECT COUNT(*) FROM expressions WHERE status='pending'"),
+            }
+            integrity = db.execute("PRAGMA integrity_check").fetchone()[0]
+            last_audit = db.execute("SELECT created_at FROM audit_events ORDER BY created_at DESC LIMIT 1").fetchone()
+        checks = [
+            {"name": "数据库完整性", "status": "ok" if integrity == "ok" else "error", "detail": integrity},
+            {"name": "待确认日程", "status": "warn" if counts["candidates_pending"] else "ok", "detail": f"{counts['candidates_pending']} 条"},
+            {"name": "待审表达", "status": "warn" if counts["expressions_pending"] else "ok", "detail": f"{counts['expressions_pending']} 条"},
+            {"name": "待投递主动", "status": "warn" if counts["proactive_pending"] else "ok", "detail": f"{counts['proactive_pending']} 条"},
+            {"name": "最近审计", "status": "ok" if last_audit else "info", "detail": last_audit[0] if last_audit else "暂无"},
+        ]
+        return {"checks": checks, "counts": counts, "generated_at": now()}
+
     def journal_page(self, day: str = "") -> dict[str,Any]:
         """Read a day as one diary page, including entries outside snapshot limits."""
         day = date.fromisoformat(day).isoformat() if day else date.today().isoformat()
@@ -621,7 +708,7 @@ class CompanionSystem:
             groups={row["group_id"]:{"mood":row["mood"],"topics":rows("SELECT topic,score FROM group_topics WHERE group_id=? ORDER BY score DESC LIMIT 12",(row["group_id"],)),"messages":rows("SELECT user_id,content,created_at FROM group_observations WHERE group_id=? ORDER BY created_at DESC LIMIT 20",(row["group_id"],))} for row in db.execute("SELECT * FROM group_scenes").fetchall()}
             # Only today and upcoming events: yesterday's schedule is not shown or reused.
             agenda=rows("SELECT * FROM calendar_events WHERE start_at='' OR substr(replace(start_at,'T',' '),1,10)>=? ORDER BY start_at='' DESC, start_at ASC",(today,))
-            return {"relationships":rows("SELECT * FROM relationship_accounts ORDER BY last_seen DESC"),"relationship_ledger":rows("SELECT * FROM relationship_ledger ORDER BY created_at DESC LIMIT 200"),"agenda":agenda,"calendar_candidates":rows("SELECT * FROM calendar_candidates ORDER BY created_at DESC"),"journal":rows("SELECT * FROM journal_entries WHERE kind='journal' ORDER BY created_at DESC LIMIT 50"),"dreams":rows("SELECT * FROM journal_entries WHERE kind='dream' ORDER BY created_at DESC LIMIT 50"),"audit":rows("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT 200"),"groups":groups,"persona_evolution":rows("SELECT * FROM persona_evolution WHERE status='confirmed' ORDER BY updated_at DESC"),"proactive":{"candidates":rows("SELECT * FROM proactive_candidates ORDER BY updated_at DESC LIMIT 100"),"receipts":rows("SELECT * FROM proactive_receipts ORDER BY created_at DESC LIMIT 100")},"important_dates":rows("SELECT * FROM important_dates ORDER BY date_text"),"goals":rows("SELECT * FROM personal_goals ORDER BY updated_at DESC"),"food":rows("SELECT * FROM food_menu ORDER BY created_at DESC"),"word_cloud":rows("SELECT topic, SUM(score) AS score FROM group_topics GROUP BY topic ORDER BY score DESC LIMIT 60"),"skills":rows("SELECT * FROM skills ORDER BY level DESC, updated_at DESC"),"expressions":rows("SELECT * FROM expressions ORDER BY created_at DESC LIMIT 300"),"social_nodes":rows("SELECT * FROM social_nodes ORDER BY updated_at DESC"),"social_edges":rows("SELECT * FROM social_edges ORDER BY created_at DESC")}
+            return {"relationships":rows("SELECT * FROM relationship_accounts ORDER BY last_seen DESC"),"relationship_ledger":rows("SELECT * FROM relationship_ledger ORDER BY created_at DESC LIMIT 200"),"agenda":agenda,"calendar_candidates":rows("SELECT * FROM calendar_candidates ORDER BY created_at DESC"),"journal":rows("SELECT * FROM journal_entries WHERE kind='journal' ORDER BY created_at DESC LIMIT 50"),"dreams":rows("SELECT * FROM journal_entries WHERE kind='dream' ORDER BY created_at DESC LIMIT 50"),"audit":rows("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT 200"),"groups":groups,"persona_evolution":rows("SELECT * FROM persona_evolution WHERE status='confirmed' ORDER BY updated_at DESC"),"proactive":{"candidates":rows("SELECT * FROM proactive_candidates ORDER BY updated_at DESC LIMIT 100"),"receipts":rows("SELECT * FROM proactive_receipts ORDER BY created_at DESC LIMIT 100")},"important_dates":rows("SELECT * FROM important_dates ORDER BY date_text"),"goals":rows("SELECT * FROM personal_goals ORDER BY updated_at DESC"),"food":rows("SELECT * FROM food_menu ORDER BY created_at DESC"),"word_cloud":rows("SELECT topic, SUM(score) AS score FROM group_topics GROUP BY topic ORDER BY score DESC LIMIT 60"),"skills":rows("SELECT * FROM skills ORDER BY level DESC, updated_at DESC"),"expressions":rows("SELECT * FROM expressions ORDER BY created_at DESC LIMIT 300"),"social_nodes":rows("SELECT * FROM social_nodes ORDER BY updated_at DESC"),"social_edges":rows("SELECT * FROM social_edges ORDER BY created_at DESC"),"settings":{r["key"]: r["value"] for r in db.execute("SELECT key,value FROM settings").fetchall()}}
 
     def user_detail(self, user_id: str, limit: int = 100) -> dict[str,Any]:
         """One user's whole companionship record: relationship, proactive, audit."""

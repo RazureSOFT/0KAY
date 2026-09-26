@@ -502,6 +502,16 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = {"edges": await asyncio.to_thread(self.engine.companion.list_social_edges)}
             elif action == "social_edge_delete":
                 result = await asyncio.to_thread(self.engine.companion.delete_social_edge, payload.get("id",""))
+            elif action == "settings_get":
+                result = await asyncio.to_thread(self.engine.companion.get_settings)
+            elif action == "settings_set":
+                result = await asyncio.to_thread(self.engine.companion.set_settings, payload.get("settings") or payload)
+            elif action == "config_export":
+                result = await asyncio.to_thread(self.engine.companion.export_config)
+            elif action == "config_import":
+                result = await asyncio.to_thread(self.engine.companion.import_config, payload.get("snapshot") or {})
+            elif action == "diagnostics":
+                result = await asyncio.to_thread(self.engine.companion.diagnostics)
             else:
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))

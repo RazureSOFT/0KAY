@@ -49,6 +49,7 @@ async function load() {
     if (!r.ok) throw Error(String(r.status))
     data.value = await r.json()
     if (data.value?.policy) policy.value = { ...policy.value, ...data.value.policy }
+    syncSettings()
   } catch (e: any) { error.value = e?.message || '无法读取 LIFE 陪伴状态' }
   finally { loading.value = false }
   void loadUsage()
@@ -246,6 +247,47 @@ async function removeExpression(id: string) { await act('expression_delete', { i
 async function addNode() { if (!nodeForm.value.user_id.trim()) return; await act('social_node_upsert', { ...nodeForm.value }); nodeForm.value = { user_id: '', name: '', tags: '' } }
 async function addEdge() { if (!edgeForm.value.source_id.trim() || !edgeForm.value.target_id.trim()) return; await act('social_edge_add', { ...edgeForm.value }); edgeForm.value = { source_id: '', target_id: '', relation: '' } }
 async function removeEdge(id: string) { await act('social_edge_delete', { id }) }
+
+const settingsForm = ref<Record<string, any>>({})
+const diagnostics = ref<any>(null)
+const importText = ref('')
+function syncSettings() {
+  const s = data.value.settings || {}
+  const pick = (k: string, d: string) => String(s[k] ?? d)
+  settingsForm.value = {
+    proactive_daily_limit: Number(pick('proactive_daily_limit', '3')), proactive_target_limit: Number(pick('proactive_target_limit', '1')),
+    quiet_start: Number(pick('quiet_start', '23')), quiet_end: Number(pick('quiet_end', '8')),
+    idle_minutes: Number(pick('idle_minutes', '30')), min_interval_minutes: Number(pick('min_interval_minutes', '5')),
+    check_interval_seconds: Number(pick('check_interval_seconds', '600')), burst_max: Number(pick('burst_max', '2')),
+    daily_token_limit: Number(pick('daily_token_limit', '0')),
+    enable_proactive: pick('enable_proactive', '1') === '1', enable_group_observe: pick('enable_group_observe', '1') === '1', enable_dream: pick('enable_dream', '1') === '1',
+  }
+}
+async function saveSettings() {
+  const s = settingsForm.value
+  const payload: Record<string, string> = {
+    proactive_daily_limit: String(s.proactive_daily_limit), proactive_target_limit: String(s.proactive_target_limit),
+    quiet_start: String(s.quiet_start), quiet_end: String(s.quiet_end), idle_minutes: String(s.idle_minutes),
+    min_interval_minutes: String(s.min_interval_minutes), check_interval_seconds: String(s.check_interval_seconds),
+    burst_max: String(s.burst_max), daily_token_limit: String(s.daily_token_limit),
+    enable_proactive: s.enable_proactive ? '1' : '0', enable_group_observe: s.enable_group_observe ? '1' : '0', enable_dream: s.enable_dream ? '1' : '0',
+  }
+  await act('settings_set', { settings: payload }); flash('设置已保存')
+}
+async function exportConfig() {
+  const r = await fetch('/api/life/companion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'config_export', payload: {} }) })
+  if (!r.ok) { error.value = await r.text(); return }
+  const blob = new Blob([JSON.stringify(await r.json(), null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `life-companion-${localToday()}.json`; a.click(); URL.revokeObjectURL(url)
+}
+async function importConfig() {
+  if (!importText.value.trim()) return
+  let snapshot: any
+  try { snapshot = JSON.parse(importText.value) } catch { error.value = '导入内容不是合法 JSON'; return }
+  const result = await act('config_import', { snapshot })
+  if (result) { importText.value = ''; flash(`已导入：${Object.entries(result.applied || {}).map(([k, v]) => `${k} ${v}`).join(' · ')}`) }
+}
+async function runDiagnostics() { const result = await act('diagnostics', {}); if (result) diagnostics.value = result }
 onMounted(load)
 </script>
 
@@ -693,6 +735,38 @@ onMounted(load)
   </section>
 
     <section class="group">
+      <h2 class="group-title">配置</h2>
+      <div class="grid">
+        <article class="card">
+          <div class="card-head"><h2 class="card-title">运行设置</h2><button class="btn btn-primary btn-sm" @click="saveSettings">保存</button></div>
+          <div class="settings-grid">
+            <label class="select"><span>每日主动上限</span><input v-model.number="settingsForm.proactive_daily_limit" type="number" min="0" class="input tiny" /></label>
+            <label class="select"><span>单人上限</span><input v-model.number="settingsForm.proactive_target_limit" type="number" min="0" class="input tiny" /></label>
+            <label class="select"><span>免打扰起</span><input v-model.number="settingsForm.quiet_start" type="number" min="0" max="23" class="input tiny" /></label>
+            <label class="select"><span>免打扰止</span><input v-model.number="settingsForm.quiet_end" type="number" min="0" max="23" class="input tiny" /></label>
+            <label class="select"><span>空闲分钟</span><input v-model.number="settingsForm.idle_minutes" type="number" min="0" class="input tiny" /></label>
+            <label class="select"><span>最小间隔(分)</span><input v-model.number="settingsForm.min_interval_minutes" type="number" min="0" class="input tiny" /></label>
+            <label class="select"><span>检查间隔(秒)</span><input v-model.number="settingsForm.check_interval_seconds" type="number" min="60" class="input tiny" /></label>
+            <label class="select"><span>连发上限</span><input v-model.number="settingsForm.burst_max" type="number" min="1" class="input tiny" /></label>
+            <label class="select"><span>每日 Token</span><input v-model.number="settingsForm.daily_token_limit" type="number" min="0" class="input tiny" /></label>
+          </div>
+          <div class="toggle-row">
+            <label class="check-line"><input type="checkbox" v-model="settingsForm.enable_proactive" /> 启用主动消息</label>
+            <label class="check-line"><input type="checkbox" v-model="settingsForm.enable_group_observe" /> 群聊观察</label>
+            <label class="check-line"><input type="checkbox" v-model="settingsForm.enable_dream" /> 梦境生成</label>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-head"><h2 class="card-title">数据导入导出</h2><button class="btn btn-tonal btn-sm" @click="exportConfig">导出 JSON</button></div>
+          <textarea v-model="importText" class="input area" placeholder="粘贴导出的配置 JSON 后点导入…"></textarea>
+          <button class="btn btn-primary btn-sm" @click="importConfig" :disabled="!importText.trim()">导入</button>
+          <p class="helper-inline">合并设置、目标、菜单、技能、表达、重要日期等，不会删除已有数据。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="group">
       <h2 class="group-title">诊断</h2>
       <div class="grid">
     <article class="card audit-card">
@@ -708,6 +782,20 @@ onMounted(load)
         </li>
         <li v-if="!usage || !Object.keys(usage.by_model || {}).length" class="list-empty">暂无用量记录</li>
       </ul>
+    </article>
+
+    <article class="card audit-card">
+      <div class="card-head"><h2 class="card-title">排障检查</h2><button class="btn btn-tonal btn-sm" @click="runDiagnostics">运行诊断</button></div>
+      <ul class="item-list">
+        <li v-for="c in (diagnostics?.checks || [])" :key="c.name" class="item">
+          <div class="item-main"><strong>{{ c.name }}</strong><span class="item-meta">{{ c.detail }}</span></div>
+          <span class="chip" :class="c.status === 'ok' ? 'chip-ok' : c.status === 'warn' ? 'chip-warn' : 'muted'">{{ c.status }}</span>
+        </li>
+        <li v-if="!diagnostics" class="list-empty">点击“运行诊断”查看检查项</li>
+      </ul>
+      <div v-if="diagnostics" class="kv-grid">
+        <div v-for="(v, k) in diagnostics.counts" :key="k" class="kv"><span>{{ k }}</span><strong>{{ v }}</strong></div>
+      </div>
     </article>
 
     <article class="card audit-card">
@@ -860,6 +948,9 @@ onMounted(load)
 .form-row{display:flex;gap:10px}
 .form-row .input{flex:1}
 .scene-input{width:120px;flex:0 0 auto}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.toggle-row{display:flex;gap:16px;flex-wrap:wrap}
+.select span{white-space:nowrap}
 .book{border:1px solid var(--md-outline-variant);border-radius:14px;background:linear-gradient(180deg,var(--md-surface-container-lowest),var(--md-surface-container-low));padding:16px 18px}
 .book-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .book-date{width:auto;height:34px;flex:0 0 auto}

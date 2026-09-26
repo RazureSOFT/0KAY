@@ -30,6 +30,24 @@ class MemoryTests(unittest.TestCase):
             self.assertIn("future", ids)
             self.assertIn("none", ids)
 
+    def test_settings_export_import_and_diagnostics(self):
+        with tempfile.TemporaryDirectory() as directory:
+            companion = CompanionSystem(directory)
+            self.assertEqual(companion.get_settings()["quiet_start"], "23")
+            updated = companion.set_settings({"quiet_start": 22, "bogus": 1})
+            self.assertEqual(updated["quiet_start"], "22")
+            self.assertNotIn("bogus", updated)
+            companion.add_goal("write a song")
+            snapshot = companion.export_config()
+            self.assertTrue(any(g["title"] == "write a song" for g in snapshot["goals"]))
+            other = CompanionSystem(tempfile.mkdtemp())
+            other.import_config(snapshot)
+            self.assertEqual(other.get_settings()["quiet_start"], "22")
+            self.assertTrue(any(g["title"] == "write a song" for g in other.list_goals()))
+            report = companion.diagnostics()
+            self.assertEqual(report["checks"][0]["status"], "ok")
+            self.assertIn("relationships", report["counts"])
+
     def test_learning_skills_expressions_and_social_graph(self):
         with tempfile.TemporaryDirectory() as directory:
             companion = CompanionSystem(directory)
