@@ -310,6 +310,21 @@ class CompanionSystem:
         if mentioned: return True
         return any(word.lower() in message.lower() for word in keywords if word)
 
+    def journal_page(self, day: str = "") -> dict[str,Any]:
+        """Read a day as one diary page, including entries outside snapshot limits."""
+        day = date.fromisoformat(day).isoformat() if day else date.today().isoformat()
+        with self.db() as db:
+            entries = db.execute(
+                "SELECT content FROM journal_entries WHERE kind='journal' AND substr(created_at,1,10)=? ORDER BY created_at, id", (day,)
+            ).fetchall()
+            previous = db.execute(
+                "SELECT MAX(substr(created_at,1,10)) FROM journal_entries WHERE kind='journal' AND substr(created_at,1,10)<?", (day,)
+            ).fetchone()[0]
+            following = db.execute(
+                "SELECT MIN(substr(created_at,1,10)) FROM journal_entries WHERE kind='journal' AND substr(created_at,1,10)>?", (day,)
+            ).fetchone()[0]
+        return {"date": day, "content": "\n\n".join(row["content"] for row in entries), "previous": previous, "next": following}
+
     def journal(self, content: str, kind: str = "journal") -> dict[str,Any]:
         entry = {"id":new_id(kind),"at":now(),"content":content[:4000]}
         with self.db() as db: db.execute("INSERT INTO journal_entries VALUES(?,?,?,?)",(entry["id"],kind,entry["content"],entry["at"]))

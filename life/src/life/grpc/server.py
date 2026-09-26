@@ -348,6 +348,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await asyncio.to_thread(self.engine.companion.confirm_agenda, payload.get("id", ""), action == "confirm_agenda")
             elif action == "complete_agenda":
                 result = await asyncio.to_thread(self.engine.companion.complete_agenda, payload.get("id", ""))
+            elif action == "journal_page":
+                result = await asyncio.to_thread(self.engine.companion.journal_page, str(payload.get("date") or ""))
             elif action in ("journal", "dream"):
                 result = await asyncio.to_thread(self.engine.companion.journal, payload.get("content", ""), "dream" if action == "dream" else "journal")
             elif action == "memory_maintenance":

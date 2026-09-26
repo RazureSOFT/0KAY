@@ -504,11 +504,13 @@ class AgendaTool(Tool):
     @property
     def name(self) -> str: return "agenda_add"
     @property
-    def description(self) -> str: return "Add a LIFE schedule item with an optional time and detail."
+    def description(self) -> str: return "Create a schedule candidate in the LIFE companion dashboard, pending confirmation. Use for scheduling requests; when is local YYYY-MM-DD HH:MM."
     def parameters(self) -> dict:
         return {"type": "object", "required": ["title"], "properties": {"title": {"type": "string"}, "when": {"type": "string"}, "detail": {"type": "string"}}}
     async def execute(self, title="", when="", detail="", **kwargs) -> ToolResult:
-        try: return ToolResult(True, self.companion.add_agenda(title, when, detail))
+        if not isinstance(title, str) or not title.strip():
+            return ToolResult(False, None, "A non-empty schedule title is required")
+        try: return ToolResult(True, await asyncio.to_thread(self.companion.add_agenda, title.strip(), when, detail))
         except Exception as e: return ToolResult(False, None, str(e))
 
 

@@ -12,10 +12,30 @@ from life.memory.memory import MemorySystem
 from life.engine import LifeEngine
 from life.think.think import ThinkStage
 from life.tools.tools import UseAgentTool
+from life.companion import CompanionSystem
 from life.model_client import MocrClient
 
 
 class MemoryTests(unittest.TestCase):
+    def test_diary_date_lookup_includes_old_entries_and_orders_paragraphs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            companion = CompanionSystem(directory)
+            with companion.db() as db:
+                db.executemany("INSERT INTO journal_entries VALUES(?,?,?,?)", [
+                    ("old-evening", "journal", "晚上的感受", "2020-01-01T20:00:00"),
+                    ("old-morning", "journal", "早上的经历", "2020-01-01T08:00:00"),
+                    ("dream", "dream", "梦境不混入日记", "2020-01-01T09:00:00"),
+                    *[(f"new-{i}", "journal", "新记录", "2026-09-26T10:00:00") for i in range(60)],
+                ])
+            page = companion.journal_page("2020-01-01")
+            self.assertEqual(page["content"], "早上的经历\n\n晚上的感受")
+            self.assertIsNone(page["previous"])
+            self.assertEqual(page["next"], "2026-09-26")
+            empty = companion.journal_page("2024-01-01")
+            self.assertEqual(empty["content"], "")
+            self.assertEqual(empty["previous"], "2020-01-01")
+            with self.assertRaises(ValueError): companion.journal_page("invalid")
+
     def test_private_notes_are_scoped(self):
         with tempfile.TemporaryDirectory() as directory:
             memory=MemorySystem(directory)
@@ -49,6 +69,25 @@ class MemoryTests(unittest.TestCase):
 
 
 class EngineTests(unittest.IsolatedAsyncioTestCase):
+    async def test_autonomy_status_is_not_stored_as_memory(self):
+        class Model:
+            async def generate(self, *args, **kwargs):
+                yield json.dumps({"note": "已进入睡眠状态，现有日程已覆盖睡前活动，不再新增安排。"})
+        self.engine.mocr = Model()
+        with patch.object(self.engine.memory, "remember") as remember:
+            await self.engine.autonomous_plan(True)
+            remember.assert_not_called()
+        self.assertTrue(any(row["kind"] == "autonomy_note" for row in self.engine.companion.snapshot()["audit"]))
+
+    async def test_think_schedule_tool_creates_companion_candidate(self):
+        plan = self.engine.think.parse_response(json.dumps({"tool_calls": [{"name": "agenda_add", "arguments": {"title": "散步", "when": "2026-09-27 18:00"}}]}))
+        call = plan.tool_calls[0]
+        result = await self.engine.tools.call(call["name"], **call["arguments"])
+        self.assertTrue(result.success)
+        candidates = self.engine.companion.snapshot()["calendar_candidates"]
+        self.assertEqual(candidates[0]["title"], "散步")
+        self.assertEqual(candidates[0]["status"], "pending_confirmation")
+
     async def asyncSetUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.engine = LifeEngine(self.directory.name)
@@ -91,6 +130,11 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([m["content"] for m in history], ["one", "firstsecond", "followup"])
 
     async def test_completion_is_session_addressed_idempotent_and_keeps_error(self):
+        class Offline:
+            async def generate(self, *args, **kwargs):
+                raise RuntimeError("offline")
+                yield ""
+        self.engine.mocr = Offline()
         self.engine.active_tasks["t"] = {"session_id": "a", "user_id": "u", "adapter_type": "webui"}
         text = await self.engine.on_task_completed("t", "TASK_STATE_DONE", "actual result")
         self.assertIn("已完成", text)
@@ -196,7 +240,7 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
             def __init__(self, **kwargs): pass
             async def __aenter__(self): return self
             async def __aexit__(self, *args): pass
-            async def get(self, url): return Response()
+            async def get(self, url, **kwargs): return Response()
         class Call:
             def __aiter__(self): return self
             async def __anext__(self):

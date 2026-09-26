@@ -423,6 +423,8 @@ class LifeEngine:
 
     async def maybe_daily_agenda(self, force: bool = False) -> dict:
         """Let LIFE plan its own day: auto-create today's soft-activity agenda (once per day)."""
+        if getattr(self.circadian.state, "is_sleeping", False) and not force:
+            return {"skipped": "sleeping"}
         today = datetime.now().date().isoformat()
         if not force and self._last_agenda_date == today:
             return {"skipped": "done"}
@@ -463,6 +465,8 @@ class LifeEngine:
 
     async def autonomous_plan(self, force: bool = False) -> dict:
         """Let LIFE decide what to do next and persist the plan as agenda/proactive candidates."""
+        if getattr(self.circadian.state, "is_sleeping", False) and not force:
+            return {"skipped": "sleeping"}
         now = datetime.now()
         if not force and (now - self._last_plan).total_seconds() < 5400:
             return {"skipped": "recent", "minutes_since": int((now - self._last_plan).total_seconds() // 60)}
@@ -488,6 +492,7 @@ class LifeEngine:
             "agenda": agenda_items,
             "important_dates": [{"title": item.get("title"), "in_days": item.get("days_until")} for item in upcoming],
             "recent": recent[-6:],
+            "conversations": list(self._histories.keys())[-3:],
         }, ensure_ascii=False)
         prompt = (
             "你是 L.I.F.E，一个有自主性的陪伴体。基于当前状态，独立规划你接下来最想做的事。"
@@ -495,7 +500,9 @@ class LifeEngine:
             '"proactive":[{"target":"","motive":"","content":""}],"journal":"","note":""}。'
             "规则：agenda 最多 2 条，仅在确有值得安排的事时给出；proactive 最多 1 条，自然真诚、不打扰；"
             "proactive 的 target 用 \"session:<会话ID>\"（给某个对话发消息，推荐，会话ID 见 conversations）、"
-            "\"user:<QQ号>\" 或 \"group:<群号>\"；journal/note 可为空；没有想法就用空数组/空字符串；不要重复已有日程。\n"
+            "\"user:<QQ号>\" 或 \"group:<群号>\"；journal/note 可为空；没有想法就用空数组/空字符串；不要重复已有日程。"
+            "note 仅用于解释本次规划，不是长期记忆。journal 只写值得回看的真实经历与感受，"
+            "不要写调度结果、睡眠状态报告或没有新增安排等运行说明，也不要虚构经历。\n"
             f"当前状态：{context}"
         )
         model = self.think_model or self.default_model
@@ -530,9 +537,10 @@ class LifeEngine:
         if journal_text:
             await asyncio.to_thread(self.companion.journal, journal_text, "journal")
             applied["journal"] += 1
+        # NOTE: a plan's `note` is private reasoning, not a memory; keep it in the audit trail only.
         note = str(plan.get("note") or "").strip()
         if note:
-            await asyncio.to_thread(self.memory.remember, note[:400], "", ["autonomy"], 0.6, "note", "public")
+            await asyncio.to_thread(self.companion.audit, "autonomy_note", note[:400], "", "ok")
         await asyncio.to_thread(self.companion.audit, "autonomy_plan", json.dumps(applied, ensure_ascii=False), "", "ok")
         return {"applied": applied, "plan": plan}
 
