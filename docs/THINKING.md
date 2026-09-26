@@ -1,8 +1,11 @@
-# Agent 思考强度与执行
+# Thinking Intensity and Execution
 
-思考强度共五档：off / low / medium / high / max。胶囊滑块拖动时连续、松开吸附到档位，只表示“想多深”，不保证供应商支持更强推理。
+Thinking intensity has five levels: off / low / medium / high / max. The pill
+slider is continuous while dragging and snaps to a level on release; it expresses
+how deeply the model should reason, and does not guarantee the provider supports a
+stronger parameter.
 
-| 档位 | 选型 difficulty_hint | thinking |
+| Level | Selection difficulty_hint | thinking |
 |---|---:|---|
 | off | 0 | false |
 | low | 0.2 | true |
@@ -10,27 +13,43 @@
 | high | 0.75 | true |
 | max | 1 | true |
 
-Agent 通过 gRPC metadata `x-0kay-thinking-level` 把档位传给 mocr。自动选型使用难度与 require_thinking；固定模型不换模型。
+The Agent forwards the level to mocr as gRPC metadata `x-0kay-thinking-level`.
+Automatic selection uses difficulty and require_thinking; a pinned model is never
+swapped.
 
-## 供应商映射
+## Provider mapping
 
-- **DeepSeek**：使用 thinking enabled/disabled，不支持五种独立预算。
-- **OpenAI 推理模型**：`reasoning_effort` 为 low/medium/high，max 保守映射为 high。
-- **GPT-5.1/5.2 等可关闭推理的模型**：使用 `none`。
-- **不能关闭推理的固定推理模型**：明确报错，不静默降级。
-- **Anthropic**：reasoning budget 为 1024/2048/4096/8192，必要时提高 max_tokens。
+- **DeepSeek** uses thinking enabled/disabled; it does not support five distinct
+  budgets.
+- **OpenAI reasoning models** use `reasoning_effort` low/medium/high, with max
+  mapped conservatively to high.
+- **GPT-5.1/5.2 and other models that can disable reasoning** use `none`.
+- **Fixed reasoning models that cannot disable reasoning** raise an explicit
+  error rather than silently degrade.
+- **Anthropic** uses a reasoning budget of 1024/2048/4096/8192, raising
+  max_tokens when needed.
 
-因此最高档的特效不代表供应商支持“比 high 更强”的参数。
+The top level's visual effects therefore do not imply a provider supports a
+parameter stronger than high.
 
-## 执行循环
+## Execution loop
 
-工具轮数不再设置固定上限：一直执行到最终回复、失败或用户取消。单次网络/工具调用仍有超时。
+There is no fixed tool-round limit: the loop runs until a final reply, a failure
+or a user cancellation. A single network/tool call still has a timeout.
 
-- `normal` 权限：每次特权工具调用等待全站审批；`question` 工具等待选项或自由文本。
-- `full_access` 权限：自动执行，子 Agent 继承该模式。
+- `normal` permission: every privileged tool call waits for a whole-site
+  approval; the `question` tool waits for a choice or free text.
+- `full_access` permission: calls run without prompting, inherited by sub-agents.
 
-任务结束后 Agent 另行生成简短 handoff（artifacts/path/usage/outcome/limitations）；Core 给 LIFE 的回调仅携带该产物信息，完整执行上下文留在 Agent 会话。
+After a task ends the Agent produces a short handoff
+(artifacts/path/usage/outcome/limitations); the callback Core sends to LIFE
+carries only that artifact summary, and the full execution context stays in the
+Agent session.
 
-## 用量
+## Usage
 
-mocr 统一记录所有经过网关的生成 usage：请求 OpenAI `stream_options.include_usage`，按 Anthropic `message_start`/`message_delta` 合并。供应商未提供 usage 时为 0，不能当作免费或精确估算；中断且没有 usage 的调用仍无法得知实际账单。
+mocr records the usage of every generation that passes through the gateway. It
+requests OpenAI `stream_options.include_usage` and merges Anthropic
+`message_start`/`message_delta`. When a provider omits usage the value is `0` —
+not a free call and not an accurate estimate; interrupted calls without usage
+cannot be billed accurately.

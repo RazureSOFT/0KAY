@@ -1,13 +1,18 @@
-# 0KAY 插件 API（v1）
+# 0KAY Plugin API (v1)
 
-协议源文件：`proto/{core,plugin,agent,life,mocr}/v1/*.proto`。字段类型、枚举编号和流式方向以这些文件为准；TS 使用 proto-loader，Go/Python 使用 `gen/`。
+Protocol sources live in `proto/{core,plugin,agent,life,mocr}/v1/*.proto`. Field
+types, enum numbers and stream directions are defined there; TypeScript uses
+proto-loader, Go/Python use `gen/`. Per-endpoint HTTP details are in the
+[HTTP API Reference](HTTP_API.md).
 
-## 0. 插件包 manifest（schema 1）
+## 0. Package manifest (schema 1)
 
-每个可安装的插件或模块应提供 `manifest.json`，声明包身份、版本、构建与运行方式。
-此文件由 **0kay-pm** 使用；Core 的 gRPC 注册、设置声明和 WebUI `.patch` 是独立接口，不能以 manifest 代替。
+Every installable plugin or module ships a `manifest.json` declaring its
+package identity, version, build and run commands. The file is consumed by
+**0kay-pm**; Core's gRPC registration, settings declarations and WebUI
+`.patch` files are separate interfaces and cannot be replaced by the manifest.
 
-### 0.1 服务插件示例
+### 0.1 Service plugin example
 
 ```json
 {
@@ -21,26 +26,29 @@
 }
 ```
 
-| 字段 | 类型 / 必填 | 含义 |
+| Field | Type / required | Meaning |
 |---|---|---|
-| `schema` | number / 是 | 当前固定为 `1` |
-| `name` | string / 是 | 包名；当前校验格式为 `@razuresoft/` 加小写字母、数字或连字符 |
-| `version` | string / 是 | 包版本；发行版使用 SemVer，例如 `0.1.0` |
-| `description` | string / 否 | 可读说明，不影响执行 |
-| `install` | string[][] / 否 | 按顺序执行的安装、构建命令；每一项是一组 argv |
-| `start` | string[] / 否 | 单个启动命令 argv；省略表示没有独立进程 |
-| `dependencies` | string[] / 否 | 安装依赖包名，由 pm 递归安装；目前不支持版本范围表达式 |
-| `requires` | string[] / 否 | 运行时依赖说明；pm 不会据此自动安装、等待服务就绪或发送注册能力 |
-| `modules` | string[] / 否 | 相对仓库根目录的子 manifest 路径，用于组合包 |
-| `repositories` | object[] / 否 | 外部子仓库声明，每项为 `{path, package, url}` |
-| `ui` | object / 否 | 可选的插件 WebUI 构建、发布配置，见下文 |
-| `ports` | object / 否 | 端口元信息，例如 Core 清单中的 `http`、`grpc` |
+| `schema` | number / yes | Fixed at `1` |
+| `name` | string / yes | Package name; validated as `@razuresoft/` plus lowercase letters, digits or hyphens |
+| `version` | string / yes | Package version; releases use SemVer, e.g. `0.1.0` |
+| `description` | string / no | Human-readable note; does not affect execution |
+| `install` | string[][] / no | Ordered build/install commands; each entry is an argv array |
+| `start` | string[] / no | Single start command argv; omitted when there is no standalone process |
+| `dependencies` | string[] / no | Packages pm installs recursively; version ranges are not supported yet |
+| `requires` | string[] / no | Runtime dependency hints; pm does not install, wait for readiness or register capabilities from these |
+| `modules` | string[] / no | Sub-manifest paths (relative to the repo root) used by an umbrella package |
+| `repositories` | object[] / no | External sub-repository declarations, each `{path, package, url}` |
+| `ui` | object / no | Optional plugin WebUI build/publish config (below) |
+| `ports` | object / no | Port metadata such as Core's `http`/`grpc`; not a generic port executor |
 
-命令必须是非空 argv 数组，例如 `["python", "-m", "life.main"]`，不能写成整条 shell 字符串。
-各参数必须是字符串，不能包含换行或 NUL；不要依赖 `&&`、管道或 shell 变量展开。
-服务包命令通常以 manifest 所在目录为工作目录执行；独立 Agent 包由 pm 整理为 `agent/`、`mcp/`、`proto/` 布局后，在 `agent/` 内构建和启动。
+Commands must be non-empty argv arrays such as `["python", "-m", "life.main"]`,
+never a single shell string. Every argument must be a string with no newline or
+NUL; do not rely on `&&`, pipes or shell variable expansion. Service commands
+run with the manifest directory as the working directory; the standalone agent
+package is arranged by pm into an `agent/`, `mcp/`, `proto/` layout and built and
+started inside `agent/`.
 
-### 0.2 组合包与子仓库
+### 0.2 Umbrella packages and sub-repositories
 
 ```json
 {
@@ -57,15 +65,19 @@
 }
 ```
 
-这是结构示例，完整模块列表以仓库根清单为准。子仓库以源码归档下载，不执行 git clone。
-当前 pm 使用内置包名到仓库的映射；仅添加一个 manifest 并不会让任意第三方仓库自动成为可安装包。
+This is a structural example; the full module list is the repository root
+manifest. Sub-repositories download as source archives, not `git clone`. pm uses
+a built-in package-name → repository map; adding a manifest alone does not make
+an arbitrary third-party repository installable.
 
-pm 按 `modules` 顺序执行各子清单的 `install`，并处理子清单的 `ui`。启动组合包时并行执行直接子清单中存在的 `start`，跳过库和纯 UI 模块。
-插件应自行处理依赖尚未就绪、注册重试和断线重连。
+pm runs each sub-manifest `install` in `modules` order and handles sub-manifest
+`ui`. Starting an umbrella package runs the direct sub-manifests' `start`
+commands in parallel, skipping library and UI-only modules. Plugins handle
+dependency-not-ready, registration retry and reconnection themselves.
 
-### 0.3 插件 WebUI 清单
+### 0.3 Plugin WebUI manifest
 
-独立构建产物可通过 `ui` 发布：
+A standalone build can be published through `ui`:
 
 ```json
 {
@@ -77,16 +89,19 @@ pm 按 `modules` 顺序执行各子清单的 `install`，并处理子清单的 `
 }
 ```
 
-- `dir`：相对 manifest 目录的构建目录，默认 `.`。
-- `build`：在 `dir` 中顺序执行的 argv 数组列表，在 `install` 之后执行。
-- `dist`：相对构建目录的产物路径，默认 `dist`。
-- `plugin`：发布目录名，仅允许字母、数字、下划线、连字符，长度 1–64；应与 UI URL 使用的插件名一致。
-- 产物复制到 Core 数据目录的 `plugin-ui/<plugin>/`。
+- `dir`: build directory relative to the manifest, default `.`.
+- `build`: ordered argv arrays run in `dir`, after `install`.
+- `dist`: artifact path relative to the build directory, default `dist`.
+- `plugin`: publish directory name, `[A-Za-z0-9_-]{1,64}`; must match the plugin
+  name used in the UI URL.
+- Output is copied to Core's `plugin-ui/<plugin>/` data directory.
 
-本仓库 `plugin-web/{life,agent,minecraft,skillsguishow}` 的 Vite 配置已直接输出到 `core/data/plugin-ui/<name>`，因此这些清单只需 `install`。
-构建清单不代替页面路由 `.patch`；原生 Vue 模块的加载协议见 [插件开发指南](writing-a-plugin.md) 第 5a 节。
+This repository's `plugin-web/{life,agent,minecraft,skillsguishow}` Vite configs
+already emit to `core/data/plugin-ui/<name>`, so their manifests only need
+`install`. A build manifest does not replace a route `.patch`; the native Vue
+module loading protocol is in [Writing a Plugin](writing-a-plugin.md) §5a.
 
-### 0.4 安装、自动启动与更新
+### 0.4 Install, autostart and update
 
 ```powershell
 0kay-pm install @razuresoft/0kay@0.1.0
@@ -95,151 +110,201 @@ pm 按 `modules` 顺序执行各子清单的 `install`，并处理子清单的 `
 0kay-pm start @razuresoft/0kay-agent
 ```
 
-- `@0.1.0`（或 `--version 0.1.0`）选择 `v0.1.0` tag 的源码归档，不是预编译二进制；仍需相应构建工具链。不指定版本时下载 `main`。
-- 交互安装完整平台或相关组件时询问 Core HTTP、Core gRPC、WebUI 端口；默认 `8080`、`50051`、`3000`。可用 `--core-port`、`--core-grpc-port`、`--webui-port` 指定。
-- 配置保存为安装根目录的 `runtime-env.json`，启动时传给子进程。
-- 安装成功后自动执行启动命令；没有 `start` 的模块不创建进程。
-- `update` 前应停止对应组件。更新保留运行配置与标准组件 `data` 目录，并留下 `.old-<id>` 旧安装副本。
+- `@0.1.0` (or `--version 0.1.0`) selects the `v0.1.0` tag source archive, not a
+  prebuilt binary; the matching toolchain is still required. Omitting the version
+  downloads `main`.
+- Interactive installs of the platform or related components ask for the Core
+  HTTP, Core gRPC and WebUI ports; defaults are `8080`, `50051`, `3000`. Use
+  `--core-port`, `--core-grpc-port`, `--webui-port` for scripts.
+- Configuration is stored as `runtime-env.json` in the install root and passed
+  to child processes at start.
+- A successful install runs the start command automatically; modules without
+  `start` create no process.
+- Stop a component before updating it. Update keeps `runtime-env.json` and the
+  standard component `data` directories, and keeps a `.old-<id>` recovery copy of
+  the previous install.
 
-### 0.5 一键更新（Settings → About）
+### 0.5 One-click updates (Settings → About)
 
-Core 提供组件更新接口，About 页面据此显示“立即更新”（发布版）与“测试版（同步仓库）”（main 分支）：
+Core exposes component-update endpoints; the About panel renders **Update now**
+(published release) and **Beta (sync repo)** (main branch) from them:
 
-| 方法 | 路径 | 用途 |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/api/update/check` | 平台最新发行版与当前版本 |
-| GET | `/api/update/check-plugins` | 各插件最新发行版与注册版本 |
-| POST | `/api/update/apply` | 启动某个组件的更新 |
-| GET | `/api/update/status` | 最近一次更新的进度 |
+| GET | `/api/update/check` | Latest platform release vs the running version |
+| GET | `/api/update/check-plugins` | Latest release vs each registered plugin |
+| POST | `/api/update/apply` | Start an update for one component |
+| GET | `/api/update/status` | Progress of the most recent update |
 
-`POST /api/update/apply` 的 `{plugin, version?}`：`version` 省略即同步 `main`（测试版）。更新路径自动选择：
+`POST /api/update/apply` takes `{plugin, version?}`; omitting `version` syncs
+`main` (beta). The update path is chosen automatically:
 
-- **pm 模式**：`~/.0kay/state.json` 有该包记录时，执行分离进程的 `0kay-pm stop → update → start`。
-- **源码模式**：没有 pm 记录时，对组件所在 git 仓库 `git pull --ff-only`，按 `manifest.json` 重建（跳过装依赖步骤），再按监听端口重启组件。没有 pm 包名的组件（如 minecraft）也走源码模式。
+- **pm mode**: when `~/.0kay/state.json` records the package, Core runs a
+  detached `0kay-pm stop → update → start` script.
+- **source mode**: with no pm record, Core `git pull --ff-only` the component's
+  git repository, rebuilds it from `manifest.json` (dependency installs
+  skipped), then restarts the component on its listen port. Components without a
+  pm package (e.g. Minecraft) also use source mode.
 
-两条路径都以分离进程运行，脚本把输出写入 `$CORE_DATA_DIR/updates/apply.log` 并打印完成标记；`GET /api/update/status` 依据该文件得出 `running`/`done`/`failed`，Core 重启后状态仍可读。Windows 下更新器不弹窗。
+Both paths run as a detached script that writes to
+`$CORE_DATA_DIR/updates/apply.log` and prints a completion marker;
+`GET /api/update/status` derives `running`/`done`/`failed` from that file so
+status survives a Core restart. The Windows updater runs with no console window.
 
-### 0.6 版本与注册的关系
+### 0.6 Version and registration
 
-manifest 的 `name` 是包名（如 `@razuresoft/0kay-agent`），gRPC `plugin_info.name` 是服务名（如 `agent`）。
-插件启动时必须自行读取版本并设置 `plugin_info.version`。Agent、LIFE、MOCR 已从各自 manifest 读取版本。
-`requires` 不会自动转成注册字段：运行时仍需发送 `requires:<插件名>` 能力。
-Core 在 `/api/plugins` 返回注册版本；更新检查以此版本与已知仓库的最新 GitHub Release 比较。
+The manifest `name` is the package name (`@razuresoft/0kay-agent`); gRPC
+`plugin_info.name` is the service name (`agent`). A plugin reads its own version
+and sets `plugin_info.version`; Agent, LIFE and MOCR read it from their
+manifests. `requires` is not converted automatically: the plugin still sends
+`requires:<plugin>` capabilities at runtime. Core reports the registered version
+at `/api/plugins`, and the update check compares it with the known repository's
+latest GitHub Release.
 
-## 1. 注册、身份与依赖
+## 1. Registration, identity and dependencies
 
-插件连接 Core 的 `core.v1.PluginService`：
+Plugins connect to Core's `core.v1.PluginService`:
 
-| RPC | 输入 | 输出 |
+| RPC | Input | Output |
 |---|---|---|
-| Register | plugin_info、capabilities、address、settings_sections | success、plugin_id、message |
-| Heartbeat | plugin_id、status、active_tasks、host | ok、shutdown_signal |
+| Register | plugin_info, capabilities, address, settings_sections | success, plugin_id, message |
+| Heartbeat | plugin_id, status, active_tasks, host | ok, shutdown_signal |
 
-`plugin_info`：name、version、description、author、plugin_type（PERSONA/TOOL/SERVICE/ADAPTER）。
-`address` 是 Core 可回连的地址，远端插件不能填写 localhost。
-执行器能力使用 `executor:<持久化 UUID>`；依赖声明采用 `requires:<插件名>`，例如 `['agent','executor:uuid','requires:mocr']`。
-注册成功不代表可被调度：缺失、不健康、被禁用或循环依赖时暂停服务发现，依赖恢复后自动可用。
-建议每 10 秒心跳，30 秒未心跳标记不健康。注册 ID 稳定，不依赖启动顺序。
+`plugin_info`: name, version, description, author, plugin_type
+(PERSONA/TOOL/SERVICE/ADAPTER). `address` is the address Core calls back; remote
+plugins must not send localhost. Executors use `executor:<persistent UUID>`;
+runtime dependencies use `requires:<plugin>`, e.g.
+`['agent','executor:uuid','requires:mocr']`. Registration does not imply
+schedulable: missing, unhealthy, disabled or circularly-dependent plugins are
+withheld and become available once the dependency recovers. Heartbeat every
+~10 seconds; 30 seconds without a heartbeat marks the plugin unhealthy. The
+registration id is stable and independent of start order.
 
-设置注册结构：`SettingsSection{id,label,icon,order,description,fields}`；`SettingsField{key,type,label,default_value,options,help}`，type 为 bool/number/text/select，default_value 为字符串。
+Settings registration uses
+`SettingsSection{id,label,icon,order,description,fields}` and
+`SettingsField{key,type,label,default_value,options,help}` where `type` is
+bool/number/text/select and `default_value` is a string.
 
-## 2. Core 提供的 gRPC（core.v1.CoreService）
+## 2. Core gRPC (core.v1.CoreService)
 
-| RPC | 功能 |
+| RPC | Function |
 |---|---|
-| CallMocr | 模型调用；输入 request_id、caller_id、prompt、context、stream、session_id、messages、model_id、system_prompt；返回文本与用量流 |
-| UseAgent | 异步派发；task_id、caller_id、prompt、agent_type、metadata；返回 accepted/task_id/message |
-| CancelAgent | task_id/caller_id；取消执行，返回 success/message |
-| ListAgents | include_unhealthy；返回 agents/online_count |
-| RunDirect | tool、args(JSON 字符串)、session_id；返回 success/result/error |
+| CallMocr | Model call; request_id, caller_id, prompt, context, stream, session_id, messages, model_id, system_prompt; returns text and usage stream |
+| UseAgent | Async dispatch; task_id, caller_id, prompt, agent_type, metadata; returns accepted/task_id/message |
+| CancelAgent | task_id/caller_id; cancels execution, returns success/message |
+| ListAgents | include_unhealthy; returns agents/online_count |
+| RunDirect | tool, args (JSON string), session_id; returns success/result/error |
 
-UseAgent metadata：`session_id`、`parent_id`、`executor_id`、`workdir`、`model_id`（MOCR=自动）、`thinking_intensity`（off/low/medium/high/max 或 0–100）、`permission_mode`（normal/full_access）。
-Normal 每次工具调用等待用户决定；Full access 自动执行；子 Agent 继承模式。
+UseAgent metadata: `session_id`, `parent_id`, `executor_id`, `workdir`,
+`model_id` (MOCR = automatic), `thinking_intensity`
+(off/low/medium/high/max or 0–100), `permission_mode` (normal/full_access).
+Normal waits for a user decision on every privileged tool call; Full access runs
+without prompts; sub-agents inherit the mode.
 
-## 3. 插件回调服务
+## 3. Plugin callback services
 
 ### agent.v1.AgentService
-- ExecuteTask：task_id/prompt/agent_type/metadata → task_id/state/result/error/metadata。
-- CancelTask：task_id → success/message。
-- GetTaskStatus：task_id → task_id/state/result/error。
-- RunDirect：tool/args/session_id → success/result/error。
+- ExecuteTask: task_id/prompt/agent_type/metadata → task_id/state/result/error/metadata.
+- CancelTask: task_id → success/message.
+- GetTaskStatus: task_id → task_id/state/result/error.
+- RunDirect: tool/args/session_id → success/result/error.
 
-任务状态：PENDING、RUNNING、DONE、FAILED、CANCELLED；不能将取消或截断当作 DONE。
-RunDirect 管理操作：workspace_browse(path)、workspace_mkdir(path/name)、host_status、approval_list(session_id)、approval_decide(id/allow)，不放进模型工具列表。
-`edit`/`apply_patch` 返回统一 diff（`--- a/…`、`+++ b/…`、`@@ -old +new @@`），WebUI 据此显示源文件、行号，新增绿、删除红。
+Task states: PENDING, RUNNING, DONE, FAILED, CANCELLED; a cancelled or truncated
+run is never DONE. RunDirect management operations — workspace_browse(path),
+workspace_mkdir(path/name), host_status, approval_list(session_id),
+approval_decide(id/allow) — are never exposed to the model as tools.
+`edit`/`apply_patch` return a unified diff (`--- a/…`, `+++ b/…`,
+`@@ -old +new @@`) so the WebUI can show the source file and line numbers, with
+added lines green and deleted lines red.
 
 ### mocr.v1.MocrService
-- ChooseModels：prompt/SelectionContext → think_model/output_model/reasoning。
-- Generate：model_id/messages/system_prompt/max_tokens/temperature/stream/thinking/provider/base_url/api_key/tools/tool_choice → chunk/done/finish_reason/usage/thinking_content/role/tool_calls/text。
-- Message：role/content/tool_call_id/tool_calls/reasoning_content。thinking 模式下每条 assistant 历史都必须带回 reasoning_content（DeepSeek 带 tools 调用时缺字段会 400）。
-- 流必须带正常完成标志；网络 EOF 不表示成功。
+- ChooseModels: prompt/SelectionContext → think_model/output_model/reasoning.
+- Generate: model_id/messages/system_prompt/max_tokens/temperature/stream/thinking/provider/base_url/api_key/tools/tool_choice → chunk/done/finish_reason/usage/thinking_content/role/tool_calls/text.
+- Message: role/content/tool_call_id/tool_calls/reasoning_content. In thinking
+  mode every assistant history item must carry `reasoning_content` back
+  (DeepSeek returns 400 when tools are used and the field is missing).
+- Streams must carry a normal completion flag; a network EOF is not success.
 
 ### life.v1.LifeService
-- OnUserMessage：session_id/user_id/message/adapter_type/persona_json/history_json → 回复、任务 ID、情绪、精力流。`persona_json.customPrompt` 会作为模型 system prompt 发送。
-- OnTaskCompleted：task_id/state/result/error → acknowledged/response_text（幂等）。
-- OnScheduledEvent：event_type → acknowledged（节律、记忆整合、空闲检查）。
-- GetState：情绪、精力、睡眠、任务、权限。
-- GetMemories：limit/query → memories 与分层统计。
-- SetPermissions：screen_watch/computer_use/report_agent_host → ok。
-- GetCompanion → JSON 快照；ManageCompanion：add_agenda、confirm_agenda、reject_agenda、complete_agenda、journal、dream、memory_maintenance、delete_memory、clear_all_memory、ack_notifications。
-- CompactConversation：session_id/history_json/persona_json → ok/summary/error。
-- GetNotifications：session_id → notifications；读取不删除，使用 ack_notifications 确认 IDs。
+- OnUserMessage: session_id/user_id/message/adapter_type/persona_json/history_json → reply, task id, emotion and energy stream. `persona_json.customPrompt` is sent to the model as the system prompt.
+- OnTaskCompleted: task_id/state/result/error → acknowledged/response_text (idempotent).
+- OnScheduledEvent: event_type → acknowledged (circadian, memory consolidation, idle check).
+- GetState: emotion, energy, sleep, tasks, permissions.
+- GetMemories: limit/query → memories and tier stats.
+- SetPermissions: screen_watch/computer_use/report_agent_host → ok.
+- GetCompanion → JSON snapshot; ManageCompanion: add_agenda, confirm_agenda, reject_agenda, complete_agenda, journal, dream, memory_maintenance, delete_memory, clear_all_memory, ack_notifications.
+- CompactConversation: session_id/history_json/persona_json → ok/summary/error.
+- GetNotifications: session_id → notifications; reads do not delete — confirm with ack_notifications.
 
-### 工具插件（minecraft 等）
-`minecraft` 以 `PLUGIN_TYPE_TOOL` 注册，`capabilities=["minecraft"]`，并注册设置段（默认版本、服务器、昵称、密码、自动挂机等）。它在本地暴露 HTTP 工具 API（默认 `127.0.0.1:8765`），LIFE 通过 Core 网关调用。
+### Tool plugins (minecraft, …)
+`minecraft` registers as `PLUGIN_TYPE_TOOL` with `capabilities=["minecraft"]` and
+a settings section (edition, server, username, password, autopilot, …). It
+exposes a local HTTP tool API (default `127.0.0.1:8765`) that LIFE reaches
+through Core.
 
-## 4. HTTP 网关接口全集
+## 4. HTTP gateway surface
 
-逐端点的请求/响应结构、认证、错误与查询参数见 [HTTP API Reference](HTTP_API.md)。
+The full per-endpoint request/response, auth and query details are in the
+[HTTP API Reference](HTTP_API.md). Summary:
 
-| 路径 | 方法/用途 |
+| Path | Method / purpose |
 |---|---|
-| /health | GET 健康与插件计数 |
-| /api/plugins | GET 插件列表 |
-| /api/plugins/enable、/disable | POST 启停插件 |
-| /api/update/check、/check-plugins | GET 更新检查 |
-| /api/update/apply | POST 启动组件更新 |
-| /api/update/status | GET 最近更新进度 |
-| /api/agents | GET 执行器、宿主机、缺失依赖 |
-| /api/agent/sessions | GET/POST 会话；PATCH archive/restore/rename；DELETE 删除 |
-| /api/agent/messages | POST session_id/prompt/agent_type 与执行选项 |
-| /api/agent/workspace | GET 浏览；POST 新目录 |
-| /api/agent/host | GET 实时 CPU/内存采样 |
-| /api/agent/approvals、/questions | GET 待处理；POST 决策 |
-| /api/agent/compact | POST session_id，生成并保存上下文摘要 |
-| /api/skills | GET 列表；POST 保存；DELETE ?name= 删除 |
-| /api/tasks | GET 全量/增量；POST TaskEvent |
-| /api/tasks/events | GET SSE 任务增量流 |
+| /health | GET health and plugin counts |
+| /api/plugins | GET plugin list |
+| /api/plugins/enable, /disable | POST enable/disable |
+| /api/update/check, /check-plugins | GET update checks |
+| /api/update/apply | POST start a component update |
+| /api/update/status | GET latest update progress |
+| /api/agents | GET executors, hosts, missing dependencies |
+| /api/agent/sessions | GET/POST sessions; PATCH archive/restore/rename; DELETE remove |
+| /api/agent/messages | POST session_id/prompt/agent_type and execution options |
+| /api/agent/workspace | GET browse; POST mkdir |
+| /api/agent/host | GET live CPU/memory sample |
+| /api/agent/approvals, /questions | GET pending; POST decision |
+| /api/agent/compact | POST session_id, build and store a summary |
+| /api/skills | GET list; POST save; DELETE ?name= remove |
+| /api/tasks | GET full/incremental; POST TaskEvent |
+| /api/tasks/events | GET SSE task delta stream |
 | /api/tasks/cancel | POST task_id |
-| /api/chat、/api/mocr/generate | POST 基础模型生成，支持 SSE |
-| /api/life/chat | POST prompt/session_id/user_id/persona/history，SSE |
-| /api/life/compact、/notifications、/state、/permissions、/memories、/companion | LIFE 功能 |
-| /api/run | POST 直接工具调用 |
-| /api/models、/models/fetch | 模型目录 |
-| /api/providers、/delete、/defaults | 供应商配置 |
-| /api/settings/sections、/settings/{id} | 设置段与取值 |
-| /api/usage、/record、/clear | 用量 |
-| /api/live2d、/live2d/models/* | Live2D 模型 |
-| /api/images | 图片上传/读取 |
-| /api/ui/patches | GET UI ops；POST 重载 |
-| /api/plugins/{name}/ui/{path…} | GET 插件原生 ESM/静态资源（停用 404） |
-| /ws | WebSocket 通知与传统聊天通道 |
+| /api/chat, /api/mocr/generate | POST base model generation, SSE capable |
+| /api/life/chat | POST prompt/session_id/user_id/persona/history, SSE |
+| /api/life/compact, /notifications, /state, /permissions, /memories, /companion | LIFE features |
+| /api/run | POST direct tool call |
+| /api/models, /models/fetch | model catalog |
+| /api/providers, /delete, /defaults | provider config |
+| /api/settings/sections, /settings/{id} | settings sections and values |
+| /api/usage, /record, /clear | usage |
+| /api/live2d, /live2d/models/* | Live2D models |
+| /api/images | image upload/read |
+| /api/ui/patches | GET UI ops; POST reload |
+| /api/plugins/{name}/ui/{path…} | GET plugin ESM/static assets (404 when disabled) |
+| /ws | WebSocket notifications and legacy chat |
 
-TaskEvent：task_id/caller_id/session_id/parent_id/kind/prompt/state/result/error。结果建议 <200k 字符。
-UI patch：plugin/id/enabled/patches；每个 op 指定 target、op、id、item、anchor、position。target 支持 nav/router/settings/status/chat。停用插件会过滤其 patch。
+TaskEvent: task_id/caller_id/session_id/parent_id/kind/prompt/state/result/error.
+Keep results under ~200k characters. UI patch files carry
+plugin/id/enabled/patches; each op sets target, op, id, item, anchor, position.
+Targets are nav/router/settings/status/chat; disabling a plugin filters its
+patches.
 
-## 5. 局域网发现与配对
+## 5. LAN discovery and pairing
 
-默认本机 HTTP 8080、gRPC 50051。`CORE_LAN_ENABLED=1` 另开 UDP 50050、HTTPS 8443、TLS gRPC 5443。
-发现请求：`{"protocol":"0kay-discover-v1","nonce":"随机值"}`；响应含相同 nonce、id/name/http_port/grpc_port/fingerprint。
-发现信息不等于信任。PM 固定证书指纹并要求用户确认、在 Core 本机核对配对码。
+Default local HTTP 8080 and gRPC 50051. `CORE_LAN_ENABLED=1` additionally opens
+UDP 50050, HTTPS 8443 and TLS gRPC 5443.
 
-- POST /api/pairing/request {name} → id/code/secret/expires。
-- GET /api/pairing/pending（仅本机）→ requests。
-- POST /api/pairing/approve {id,code,allow}（仅本机）。
-- POST /api/pairing/status {id,secret} → approved；允许后一次领取 token/certificate/server_name。
-- 远端 HTTP 与 TLS gRPC 使用 `Authorization: Bearer <token>`。
-- Agent 注册时 Core 绑定回调凭证；Agent 校验 Core 的回调 token。
-- TLS gRPC 端口同时代理 mocr 服务，不必开放 mocr 到局域网。
+- Discovery request: `{"protocol":"0kay-discover-v1","nonce":"<random>"}`; the
+  response echoes the nonce and carries id/name/http_port/grpc_port/fingerprint.
+- Discovery is not trust. pm pins the certificate fingerprint, requires user
+  confirmation, and matches the pairing code on the Core host.
+- POST /api/pairing/request {name} → id/code/secret/expires.
+- GET /api/pairing/pending (loopback only) → requests.
+- POST /api/pairing/approve {id,code,allow} (loopback only).
+- POST /api/pairing/status {id,secret} → approved; on approval it issues
+  token/certificate/server_name once.
+- Remote HTTP and TLS gRPC use `Authorization: Bearer <token>`.
+- Core binds callback credentials on Agent registration; the Agent verifies the
+  Core callback token.
+- The TLS gRPC port also proxies mocr, so mocr need not be exposed to the LAN.
 
-当前 Agent 回调端口仍是带 token 的 gRPC，尚未实现回调 TLS；仅用于可信局域网，不能暴露公网。证书、token、pairing state 不提交 Git。
+The Agent callback port is still token-authenticated gRPC without callback TLS;
+use it only on a trusted LAN, never the public internet. Never commit
+certificates, tokens or pairing state.
