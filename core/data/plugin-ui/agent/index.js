@@ -16,11 +16,11 @@ function Rs() {
   let u = null, o = !1;
   function m(C) {
     C.reset && a.clear();
-    for (const D of C.removed || []) a.delete(D);
-    for (const D of C.tasks || []) a.set(D.task_id, D);
+    for (const M of C.removed || []) a.delete(M);
+    for (const M of C.tasks || []) a.set(M.task_id, M);
     s = C.cursor || "";
-    const N = [...a.values()].sort((D, G) => (G.started_at || "").localeCompare(D.started_at || "") || D.task_id.localeCompare(G.task_id));
-    n.tasks = N.filter((D) => D.kind !== "agent_session"), n.sessions = N.filter((D) => D.kind === "agent_session");
+    const D = [...a.values()].sort((M, G) => (G.started_at || "").localeCompare(M.started_at || "") || M.task_id.localeCompare(G.task_id));
+    n.tasks = D.filter((M) => M.kind !== "agent_session"), n.sessions = D.filter((M) => M.kind === "agent_session");
   }
   function k() {
     u?.close(), o = !1, u = new EventSource(`/api/tasks/events?cursor=${encodeURIComponent(s)}`), u.onopen = () => {
@@ -45,8 +45,8 @@ function Rs() {
     try {
       const C = await fetch("/api/agents", { signal: AbortSignal.timeout(8e3) });
       if (!C.ok) throw new Error(`HTTP ${C.status}`);
-      const N = await C.json();
-      n.agents = N.agents || [], n.onlineCount = N.online_count ?? n.agents.length;
+      const D = await C.json();
+      n.agents = D.agents || [], n.onlineCount = D.online_count ?? n.agents.length;
     } catch (C) {
       n.error = C.message || "failed";
     }
@@ -54,14 +54,14 @@ function Rs() {
       try {
         const C = await fetch(`/api/tasks?incremental=1&cursor=${encodeURIComponent(s)}`, { signal: AbortSignal.timeout(8e3) });
         if (!C.ok) throw new Error(`任务记录 HTTP ${C.status}`);
-        const N = await C.json();
-        m(N);
+        const D = await C.json();
+        m(D);
       } catch (C) {
         n.error = C.message || "无法刷新任务记录";
       }
     n.loading = !1;
   }
-  function P() {
+  function N() {
     A().then(() => {
       e && k();
     }), e && clearInterval(e), e = setInterval(() => {
@@ -75,18 +75,18 @@ function Rs() {
     return !C.missing_dependencies?.length && (C.status === "PLUGIN_STATUS_HEALTHY" || C.status === "HEALTHY");
   }
   async function q(C) {
-    const N = await fetch("/api/agent/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: C }) });
-    if (!N.ok) throw new Error(await N.text());
-    const D = await N.json();
-    return await A(), D.session_id;
+    const D = await fetch("/api/agent/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: C }) });
+    if (!D.ok) throw new Error(await D.text());
+    const M = await D.json();
+    return await A(), M.session_id;
   }
-  async function B(C, N, D) {
-    const G = await fetch("/api/agent/sessions", { method: N === "delete" ? "DELETE" : "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: C, action: N, title: D }) });
+  async function B(C, D, M) {
+    const G = await fetch("/api/agent/sessions", { method: D === "delete" ? "DELETE" : "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: C, action: D, title: M }) });
     if (!G.ok) throw new Error(await G.text());
     await A();
   }
-  async function Q(C, N, D, G = {}) {
-    const X = await fetch("/api/agent/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: C, prompt: N, agent_type: D, ...G }) }), x = await X.text();
+  async function Q(C, D, M, G = {}) {
+    const X = await fetch("/api/agent/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: C, prompt: D, agent_type: M, ...G }) }), x = await X.text();
     if (await A(), !X.ok) {
       let v = x;
       try {
@@ -97,15 +97,15 @@ function Rs() {
     }
   }
   async function se(C) {
-    const N = await fetch("/api/tasks/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ task_id: C }) });
-    if (!N.ok) throw new Error(await N.text());
-    const D = await N.json();
-    if (!D.success) throw new Error(D.message);
+    const D = await fetch("/api/tasks/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ task_id: C }) });
+    if (!D.ok) throw new Error(await D.text());
+    const M = await D.json();
+    if (!M.success) throw new Error(M.message);
     await A();
   }
   return Object.assign(n, {
     fetchAgents: A,
-    connect: P,
+    connect: N,
     disconnect: z,
     isHealthy: $,
     createSession: q,
@@ -218,9 +218,9 @@ function Tr(n, e, t, r, s) {
   r.state.inLink = !0;
   let k = r.state.linkEmitted, A = r.state.inRawBlock;
   r.state.linkEmitted = !1;
-  let T = r.inlineTokens(o), P = r.state.linkEmitted;
+  let T = r.inlineTokens(o), N = r.state.linkEmitted;
   if (r.state.linkEmitted = k, r.state.inLink = !1, !m) {
-    if (P) {
+    if (N) {
       r.state.inRawBlock = A;
       return;
     }
@@ -326,10 +326,10 @@ ${k}` : k, s = s ? `${s}
 ${A}` : A;
         let T = this.lexer.state.top;
         if (this.lexer.state.top = !0, this.lexer.blockTokens(A, a, !0), this.lexer.state.top = T, t.length === 0) break;
-        let P = a.at(-1);
-        if (P?.type === "code") break;
-        if (P?.type === "blockquote") {
-          let z = P, $ = t.join(`
+        let N = a.at(-1);
+        if (N?.type === "code") break;
+        if (N?.type === "blockquote") {
+          let z = N, $ = t.join(`
 `), q = z.raw + `
 ` + $.replace(this.rules.other.blockquoteSetextReplace2, ""), B = this.blockquote(q);
           a[a.length - 1] = B;
@@ -339,11 +339,11 @@ ${A}` : A;
 ${C.join(`
 `)}`), s = s.substring(0, s.length - z.text.length) + B.text;
           break;
-        } else if (P?.type === "list") {
-          let z = P, $ = z.raw + `
+        } else if (N?.type === "list") {
+          let z = N, $ = z.raw + `
 ` + t.join(`
 `), q = this.list($);
-          a[a.length - 1] = q, r = r.substring(0, r.length - P.raw.length) + q.raw, s = s.substring(0, s.length - z.raw.length) + q.raw, t = $.substring(a.at(-1).raw.length).split(`
+          a[a.length - 1] = q, r = r.substring(0, r.length - N.raw.length) + q.raw, s = s.substring(0, s.length - z.raw.length) + q.raw, t = $.substring(a.at(-1).raw.length).split(`
 `);
           continue;
         }
@@ -362,19 +362,19 @@ ${C.join(`
         if (!(e = a.exec(n)) || this.rules.block.hr.test(n)) break;
         k = e[0], n = n.substring(k.length);
         let T = e[2].split(`
-`, 1)[0], P = e[1].length, z = this.options.pedantic ? Sr(T, P) : T.replace(this.rules.other.leadingSpaceTab, (Q) => Sr(Q, P)), $ = n.split(`
+`, 1)[0], N = e[1].length, z = this.options.pedantic ? Sr(T, N) : T.replace(this.rules.other.leadingSpaceTab, (Q) => Sr(Q, N)), $ = n.split(`
 `, 1)[0], q = !z.trim(), B = 0;
-        if (this.options.pedantic ? (B = 2, A = z.trimStart()) : q ? B = P + 1 : (B = z.search(this.rules.other.nonSpaceChar), B = B > 4 ? 1 : B, A = z.slice(B), B += P), q && this.rules.other.blankLine.test($) && (k += $ + `
+        if (this.options.pedantic ? (B = 2, A = z.trimStart()) : q ? B = N + 1 : (B = z.search(this.rules.other.nonSpaceChar), B = B > 4 ? 1 : B, A = z.slice(B), B += N), q && this.rules.other.blankLine.test($) && (k += $ + `
 `, n = n.substring($.length + 1), m = !0), !m) {
-          let Q = this.rules.other.nextBulletRegex(B), se = this.rules.other.hrRegex(B), C = this.rules.other.fencesBeginRegex(B), N = this.rules.other.headingBeginRegex(B), D = this.rules.other.htmlBeginRegex(B), G = this.rules.other.blockquoteBeginRegex(B);
+          let Q = this.rules.other.nextBulletRegex(B), se = this.rules.other.hrRegex(B), C = this.rules.other.fencesBeginRegex(B), D = this.rules.other.headingBeginRegex(B), M = this.rules.other.htmlBeginRegex(B), G = this.rules.other.blockquoteBeginRegex(B);
           for (; n; ) {
             let X = n.split(`
 `, 1)[0], x;
-            if ($ = X, this.options.pedantic ? ($ = $.replace(this.rules.other.listReplaceNesting, "  "), x = $) : x = $.replace(this.rules.other.leadingSpaceTab, (v) => v.replace(this.rules.other.tabCharGlobal, "    ")), C.test($) || N.test($) || D.test($) || G.test($) || Q.test($) || se.test($)) break;
+            if ($ = X, this.options.pedantic ? ($ = $.replace(this.rules.other.listReplaceNesting, "  "), x = $) : x = $.replace(this.rules.other.leadingSpaceTab, (v) => v.replace(this.rules.other.tabCharGlobal, "    ")), C.test($) || D.test($) || M.test($) || G.test($) || Q.test($) || se.test($)) break;
             if (x.search(this.rules.other.nonSpaceChar) >= B || !$.trim()) A += `
 ` + x.slice(B);
             else {
-              if (q || z.replace(this.rules.other.tabCharGlobal, "    ").search(this.rules.other.nonSpaceChar) >= 4 || C.test(z) || N.test(z) || se.test(z)) break;
+              if (q || z.replace(this.rules.other.tabCharGlobal, "    ").search(this.rules.other.nonSpaceChar) >= 4 || C.test(z) || D.test(z) || se.test(z)) break;
               A += `
 ` + $;
             }
@@ -527,7 +527,7 @@ ${C.join(`
         }
         if (o -= u, o > 0) continue;
         u = Math.min(u, u + o + m);
-        let P = [...r[0]][0].length, z = n.slice(0, s + r.index + P + u);
+        let N = [...r[0]][0].length, z = n.slice(0, s + r.index + N + u);
         if (Math.min(s, u) % 2) {
           let q = z.slice(1, -1);
           return { type: "em", raw: z, text: q, tokens: this.lexer.inlineTokens(q) };
@@ -809,8 +809,8 @@ ${C.join(`
       let m = e;
       if (this.options.extensions?.startInline) {
         let k = 1 / 0, A = e.slice(1), T;
-        this.options.extensions.startInline.forEach((P) => {
-          T = P.call({ lexer: this }, A), typeof T == "number" && T >= 0 && (k = Math.min(k, T));
+        this.options.extensions.startInline.forEach((N) => {
+          T = N.call({ lexer: this }, A), typeof T == "number" && T >= 0 && (k = Math.min(k, T));
         }), k < 1 / 0 && k >= 0 && (m = e.substring(0, k + 1));
       }
       if (o = this.tokenizer.inlineText(m)) {
@@ -2206,10 +2206,10 @@ function rs() {
   n.DocumentFragment;
   const a = n.HTMLTemplateElement, u = n.Node, o = n.Element, m = n.NodeFilter;
   n.NamedNodeMap === void 0 && (n.NamedNodeMap || n.MozNamedAttrMap), n.HTMLFormElement;
-  const k = n.DOMParser, A = n.trustedTypes, T = o.prototype, P = Le(T, "cloneNode"), z = Le(T, "remove"), $ = Le(T, "removeAttributeNode"), q = Le(T, "nextSibling"), B = Le(T, "childNodes"), Q = Le(T, "parentNode"), se = Le(T, "shadowRoot"), C = Le(T, "attributes"), N = u && u.prototype ? Le(u.prototype, "nodeType") : null, D = u && u.prototype ? Le(u.prototype, "nodeName") : null, G = u && u.prototype ? Le(u.prototype, "ownerDocument") : null, X = function(l) {
-    return N ? N(l) : l.nodeType;
+  const k = n.DOMParser, A = n.trustedTypes, T = o.prototype, N = Le(T, "cloneNode"), z = Le(T, "remove"), $ = Le(T, "removeAttributeNode"), q = Le(T, "nextSibling"), B = Le(T, "childNodes"), Q = Le(T, "parentNode"), se = Le(T, "shadowRoot"), C = Le(T, "attributes"), D = u && u.prototype ? Le(u.prototype, "nodeType") : null, M = u && u.prototype ? Le(u.prototype, "nodeName") : null, G = u && u.prototype ? Le(u.prototype, "ownerDocument") : null, X = function(l) {
+    return D ? D(l) : l.nodeType;
   }, x = function(l) {
-    return D ? D(l) : l.nodeName;
+    return M ? M(l) : l.nodeName;
   };
   if (typeof a == "function") {
     const S = t.createElement("template");
@@ -2319,7 +2319,7 @@ function rs() {
     "xmp"
   ]);
   let p = null;
-  const M = Z({}, [
+  const O = Z({}, [
     "audio",
     "video",
     "img",
@@ -2377,9 +2377,9 @@ function rs() {
     (!l || typeof l != "object") && (l = {}), l = Ee(l), Pt = us.indexOf(l.PARSER_MEDIA_TYPE) === -1 ? cs : l.PARSER_MEDIA_TYPE, ce = Pt === "application/xhtml+xml" ? Pn : Ht, K = nt(l, "ALLOWED_TAGS", $e, { transform: ce }), j = nt(l, "ALLOWED_ATTR", Ke, { transform: ce }), En = nt(l, "ALLOWED_NAMESPACES", os, { transform: Pn }), Tn = nt(l, "ADD_URI_SAFE_ATTR", tr, {
       transform: ce,
       base: tr
-    }), p = nt(l, "ADD_DATA_URI_TAGS", M, {
+    }), p = nt(l, "ADD_DATA_URI_TAGS", O, {
       transform: ce,
-      base: M
+      base: O
     }), d = nt(l, "FORBID_CONTENTS", f, { transform: ce }), Oe = nt(l, "FORBID_TAGS", Ee({}), { transform: ce }), $t = nt(l, "FORBID_ATTR", Ee({}), { transform: ce }), We = _e(l, "USE_PROFILES") ? l.USE_PROFILES && typeof l.USE_PROFILES == "object" ? Ee(l.USE_PROFILES) : l.USE_PROFILES : !1, de = l.ALLOW_ARIA_ATTR !== !1, Ne = l.ALLOW_DATA_ATTR !== !1, Xe = l.ALLOW_UNKNOWN_PROTOCOLS || !1, dt = l.ALLOW_SELF_CLOSE_IN_ATTR !== !1, we = l.SAFE_FOR_TEMPLATES || !1, He = l.SAFE_FOR_XML !== !1, je = l.WHOLE_DOCUMENT || !1, Ge = l.RETURN_DOM || !1, st = l.RETURN_DOM_FRAGMENT || !1, ht = l.RETURN_TRUSTED_TYPE || !1, De = l.FORCE_BODY || !1, Lt = l.SANITIZE_DOM !== !1, It = l.SANITIZE_NAMED_PROPS || !1, ft = l.KEEP_CONTENT !== !1, Ot = l.IN_PLACE || !1, Be = Zl(l.ALLOWED_URI_REGEXP) ? l.ALLOWED_URI_REGEXP : zr, gt = typeof l.NAMESPACE == "string" ? l.NAMESPACE : Ve, Rn = Un(l, "MATHML_TEXT_INTEGRATION_POINTS", () => Z({}, nr)), $n = Un(l, "HTML_INTEGRATION_POINTS", () => Z({}, rr));
     const c = Un(l, "CUSTOM_ELEMENT_HANDLING", () => xt(null));
     if (te = xt(null), _e(c, "tagNameCheck") && sr(c.tagNameCheck) && (te.tagNameCheck = c.tagNameCheck), _e(c, "attributeNameCheck") && sr(c.attributeNameCheck) && (te.attributeNameCheck = c.attributeNameCheck), _e(c, "allowCustomizedBuiltInElements") && typeof c.allowCustomizedBuiltInElements == "boolean" && (te.allowCustomizedBuiltInElements = c.allowCustomizedBuiltInElements), ge(te), we && (Ne = !1), st && (Ge = !0), We && (K = Z({}, Nr), j = xt(null), We.html === !0 && (Z(K, Pr), Z(j, Dr)), We.svg === !0 && (Z(K, Nn), Z(j, zn), Z(j, dn)), We.svgFilters === !0 && (Z(K, Dn), Z(j, zn), Z(j, dn)), We.mathMl === !0 && (Z(K, Mn), Z(j, Mr), Z(j, dn))), Pe.tagCheck = null, Pe.attributeCheck = null, _e(l, "ADD_TAGS") && (typeof l.ADD_TAGS == "function" ? Pe.tagCheck = l.ADD_TAGS : Tt(l.ADD_TAGS) && (K === $e && (K = Ee(K)), Z(K, l.ADD_TAGS, ce))), _e(l, "ADD_ATTR") && (typeof l.ADD_ATTR == "function" ? Pe.attributeCheck = l.ADD_ATTR : Tt(l.ADD_ATTR) && (j === Ke && (j = Ee(j)), Z(j, l.ADD_ATTR, ce))), _e(l, "ADD_FORBID_CONTENTS") && Tt(l.ADD_FORBID_CONTENTS) && (d === f && (d = Ee(d)), Z(d, l.ADD_FORBID_CONTENTS, ce)), ft && (K["#text"] = !0), je && Z(K, [
@@ -2437,19 +2437,19 @@ function rs() {
     const c = B(l);
     if (c) {
       const E = [];
-      at(c, (O) => {
-        Mt(E, O);
-      }), at(E, (O) => {
+      at(c, (P) => {
+        Mt(E, P);
+      }), at(E, (P) => {
         try {
-          z(O);
+          z(P);
         } catch {
         }
       });
     }
     const w = C(l);
     if (w) for (let E = w.length - 1; E >= 0; --E) {
-      const O = w[E], V = O && O.name;
-      typeof V == "string" && or(l, O, V);
+      const P = w[E], V = P && P.name;
+      typeof V == "string" && or(l, P, V);
     }
   }, lt = function(l, c, w) {
     if (!w) try {
@@ -2482,8 +2482,8 @@ function rs() {
     const c = C(l);
     if (c)
       for (let w = c.length - 1; w >= 0; --w) {
-        const E = c[w], O = E && E.name;
-        typeof O != "string" || j[ce(O)] || or(l, E, O);
+        const E = c[w], P = E && E.name;
+        typeof P != "string" || j[ce(P)] || or(l, E, P);
       }
   }, sn = function(l) {
     const c = [l];
@@ -2491,7 +2491,7 @@ function rs() {
       const w = c.pop();
       X(w) === Te.element && ms(w);
       const E = B(w);
-      if (E) for (let O = E.length - 1; O >= 0; --O) c.push(E[O]);
+      if (E) for (let P = E.length - 1; P >= 0; --P) c.push(E[P]);
     }
   }, ir = function(l, c) {
     return He ? l === "patchsrc" ? !0 : l === "for" && c !== "label" && c !== "output" : !1;
@@ -2514,8 +2514,8 @@ function rs() {
         } catch {
         }
       }
-      const O = B(w);
-      if (O) for (let V = O.length - 1; V >= 0; --V) c.push(O[V]);
+      const P = B(w);
+      if (P) for (let V = P.length - 1; V >= 0; --V) c.push(P[V]);
     }
   }, ur = function(l) {
     let c = null, w = null;
@@ -2537,8 +2537,8 @@ function rs() {
       } catch {
       }
     }
-    const O = c.body || c.documentElement;
-    return l && w && O.insertBefore(t.createTextNode(w), O.childNodes[0] || null), gt === Ve ? Yt.call(c, je ? "html" : "body")[0] : je ? c.documentElement : O;
+    const P = c.body || c.documentElement;
+    return l && w && P.insertBefore(t.createTextNode(w), P.childNodes[0] || null), gt === Ve ? Yt.call(c, je ? "html" : "body")[0] : je ? c.documentElement : P;
   }, cr = function(l) {
     const c = G ? G(l) : l.ownerDocument;
     return Gt.call(c || l, l, m.SHOW_ELEMENT | m.SHOW_COMMENT | m.SHOW_TEXT | m.SHOW_PROCESSING_INSTRUCTION | m.SHOW_CDATA_SECTION, null);
@@ -2548,27 +2548,27 @@ function rs() {
     var c;
     l.normalize();
     const w = G ? G(l) : l.ownerDocument, E = Gt.call(w || l, l, m.SHOW_TEXT | m.SHOW_COMMENT | m.SHOW_CDATA_SECTION | m.SHOW_PROCESSING_INSTRUCTION, null);
-    let O = E.nextNode();
-    for (; O; )
-      O.data = ln(O.data), O = E.nextNode();
+    let P = E.nextNode();
+    for (; P; )
+      P.data = ln(P.data), P = E.nextNode();
     const V = (c = l.querySelectorAll) === null || c === void 0 ? void 0 : c.call(l, "template");
     V && at(V, (Y) => {
       kt(Y.content) && Ln(Y.content);
     });
   }, an = function(l) {
-    const c = D ? D(l) : null;
-    return typeof c != "string" || ce(c) !== "form" ? !1 : typeof l.nodeName != "string" || typeof l.textContent != "string" || typeof l.removeChild != "function" || l.attributes !== C(l) || typeof l.removeAttribute != "function" || typeof l.removeAttributeNode != "function" || typeof l.getAttributeNode != "function" || typeof l.setAttribute != "function" || typeof l.namespaceURI != "string" || typeof l.insertBefore != "function" || typeof l.hasChildNodes != "function" || l.nodeType !== N(l) || l.childNodes !== B(l);
+    const c = M ? M(l) : null;
+    return typeof c != "string" || ce(c) !== "form" ? !1 : typeof l.nodeName != "string" || typeof l.textContent != "string" || typeof l.removeChild != "function" || l.attributes !== C(l) || typeof l.removeAttribute != "function" || typeof l.removeAttributeNode != "function" || typeof l.getAttributeNode != "function" || typeof l.setAttribute != "function" || typeof l.namespaceURI != "string" || typeof l.insertBefore != "function" || typeof l.hasChildNodes != "function" || l.nodeType !== D(l) || l.childNodes !== B(l);
   }, kt = function(l) {
-    if (!N || typeof l != "object" || l === null) return !1;
+    if (!D || typeof l != "object" || l === null) return !1;
     try {
-      return N(l) === Te.documentFragment;
+      return D(l) === Te.documentFragment;
     } catch {
       return !1;
     }
   }, Nt = function(l) {
-    if (!N || typeof l != "object" || l === null) return !1;
+    if (!D || typeof l != "object" || l === null) return !1;
     try {
-      return typeof N(l) == "number";
+      return typeof D(l) == "number";
     } catch {
       return !1;
     }
@@ -2583,18 +2583,18 @@ function rs() {
   }, on = function(l, c) {
     if (l instanceof RegExp) return ke(l, c);
     if (l instanceof Function) {
-      for (var w = arguments.length, E = new Array(w > 2 ? w - 2 : 0), O = 2; O < w; O++) E[O - 2] = arguments[O];
+      for (var w = arguments.length, E = new Array(w > 2 ? w - 2 : 0), P = 2; P < w; P++) E[P - 2] = arguments[P];
       return !!l(c, ...E);
     }
     return !1;
   }, bs = function(l, c, w) {
     if (!Oe[c] && fr(c) && on(te.tagNameCheck, c)) return !1;
     if (ft && !d[c]) {
-      const E = Q(l), O = B(l);
-      if (O && E) {
-        const V = O.length;
+      const E = Q(l), P = B(l);
+      if (P && E) {
+        const V = P.length;
         for (let Y = V - 1; Y >= 0; --Y) {
-          const ue = l === w ? P(O[Y], !0) : O[Y];
+          const ue = l === w ? N(P[Y], !0) : P[Y];
           E.insertBefore(ue, q(l));
         }
       }
@@ -2667,10 +2667,10 @@ function rs() {
       allowedAttributes: j,
       forceKeepAttr: void 0
     };
-    let O = w.length;
+    let P = w.length;
     const V = ce(l.nodeName);
-    for (; O--; ) {
-      const Y = w[O], ue = Y.name, Ce = Y.namespaceURI, xe = Y.value, bt = ce(ue), On = xe;
+    for (; P--; ) {
+      const Y = w[P], ue = Y.name, Ce = Y.namespaceURI, xe = Y.value, bt = ce(ue), On = xe;
       let ye = ue === "value" ? On : jl(On), mr = !1;
       if (E.attrName = bt, E.attrValue = ye, E.keepAttr = !0, E.forceKeepAttr = void 0, qe(I.uponSanitizeAttribute, l, E), ye = E.attrValue, It && (bt === "id" || bt === "name") && Lr(ye, en) !== 0 && (lt(ue, l, Y), ye = en + ye, mr = !0), He && ke(/((--!?|])>)|<\/(style|script|title|xmp|textarea|noscript|iframe|noembed|noframes)/i, ye)) {
         lt(ue, l, Y);
@@ -2717,13 +2717,13 @@ function rs() {
         un(w.shadow);
         continue;
       }
-      const E = w.node, O = X(E) === Te.element, V = B(E);
+      const E = w.node, P = X(E) === Te.element, V = B(E);
       if (V) for (let Y = V.length - 1; Y >= 0; --Y) c.push({
         node: V[Y],
         shadow: null
       });
-      if (O) {
-        const Y = D ? D(E) : null;
+      if (P) {
+        const Y = M ? M(E) : null;
         if (typeof Y == "string" && ce(Y) === "template") {
           const ue = E.content;
           kt(ue) && c.push({
@@ -2732,7 +2732,7 @@ function rs() {
           });
         }
       }
-      if (O) {
+      if (P) {
         const Y = se(E);
         kt(Y) && c.push({
           node: null,
@@ -2745,7 +2745,7 @@ function rs() {
     }
   };
   return e.sanitize = function(S) {
-    let l = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {}, c = null, w = null, E = null, O = null;
+    let l = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {}, c = null, w = null, E = null, P = null;
     if (An = !S, An && (S = "<!-->"), typeof S != "string" && !Nt(S) && (S = Yl(S), typeof S != "string"))
       throw tt("dirty is not a string, aborting");
     if (!e.isSupported) return S;
@@ -2792,9 +2792,9 @@ function rs() {
     }
     if (Ge) {
       if (we && Ln(c), st)
-        for (O = Rt.call(c.ownerDocument); c.firstChild; ) O.appendChild(c.firstChild);
-      else O = c;
-      return (j.shadowroot || j.shadowrootmode) && (O = xn.call(r, O, !0)), O;
+        for (P = Rt.call(c.ownerDocument); c.firstChild; ) P.appendChild(c.firstChild);
+      else P = c;
+      return (j.shadowroot || j.shadowrootmode) && (P = xn.call(r, P, !0)), P;
     }
     let ue = je ? c.outerHTML : c.innerHTML;
     return je && K["!doctype"] && c.ownerDocument && c.ownerDocument.doctype && c.ownerDocument.doctype.name && ke(la, c.ownerDocument.doctype.name) && (ue = "<!DOCTYPE " + c.ownerDocument.doctype.name + `>
@@ -2943,7 +2943,7 @@ const ka = { class: "tool-kind" }, va = { class: "tool-summary" }, ba = {
           return t("工具", "Tool");
       }
     }), T = (x) => (Ye.value === "en" ? { pending: "Queued", running: "Running", done: "Completed", failed: "Failed", cancelled: "Stopped" } : { pending: "等待执行", running: "执行中", done: "完成", failed: "失败", cancelled: "已停止" })[x] || x;
-    function P(x) {
+    function N(x) {
       let v = 0, h = 0;
       for (const y of String(x || "").split(`
 `))
@@ -2955,13 +2955,13 @@ const ka = { class: "tool-kind" }, va = { class: "tool-summary" }, ba = {
       if (!v) return "";
       if (x === "write") return typeof v.lines == "number" ? `+${v.lines} ${t("行", "lines")}` : "";
       if (x === "edit") {
-        const { added: h, removed: y } = P(v.diff);
+        const { added: h, removed: y } = N(v.diff);
         return h || y ? `+${h} −${y}` : "";
       }
       if (x === "apply_patch" && Array.isArray(v.files)) {
         let h = 0, y = 0;
         for (const R of v.files) {
-          const L = P(R?.diff);
+          const L = N(R?.diff);
           h += L.added, y += L.removed;
         }
         return h || y ? `+${h} −${y}` : "";
@@ -3067,7 +3067,7 @@ const ka = { class: "tool-kind" }, va = { class: "tool-summary" }, ba = {
         } catch {
         }
       return y(String(e.step.args || ""));
-    }), se = ne(() => String(k.value?.query ?? o.value?.query ?? e.step.args ?? "")), C = ne(() => Array.isArray(k.value?.results) ? k.value.results : []), N = ne(() => typeof m.value == "string" ? m.value : m.value === null && e.step.result ? e.step.result : ""), D = ne(() => {
+    }), se = ne(() => String(k.value?.query ?? o.value?.query ?? e.step.args ?? "")), C = ne(() => Array.isArray(k.value?.results) ? k.value.results : []), D = ne(() => typeof m.value == "string" ? m.value : m.value === null && e.step.result ? e.step.result : ""), M = ne(() => {
       const x = a.value, v = k.value;
       if (x === "bash" && v) {
         const y = [{ label: t("工作目录", "cwd"), text: String(v.cwd || "") }];
@@ -3126,7 +3126,7 @@ const ka = { class: "tool-kind" }, va = { class: "tool-summary" }, ba = {
         }, "▸", -1))
       ]),
       r.value && !u.value ? (b(), _("div", _a, [
-        n.step.state === "running" && !D.value.length && !q.value.length ? (b(), _("p", wa, g(t("执行中…", "Running…")), 1)) : U("", !0),
+        n.step.state === "running" && !M.value.length && !q.value.length ? (b(), _("p", wa, g(t("执行中…", "Running…")), 1)) : U("", !0),
         q.value.length ? (b(), _("div", xa, [
           (b(!0), _(oe, null, ve(q.value, (h, y) => (b(), _("div", {
             key: y,
@@ -3151,11 +3151,11 @@ const ka = { class: "tool-kind" }, va = { class: "tool-summary" }, ba = {
               ], 2))), 128))
             ])
           ]))), 128))
-        ])) : (b(!0), _(oe, { key: 2 }, ve(D.value, (h, y) => (b(), _(oe, { key: y }, [
+        ])) : (b(!0), _(oe, { key: 2 }, ve(M.value, (h, y) => (b(), _(oe, { key: y }, [
           h.label ? (b(), _("small", Ia, g(h.label), 1)) : U("", !0),
           h.mono ? (b(), _("pre", Oa, g(h.text), 1)) : (b(), _("p", Pa, g(h.text), 1))
         ], 64))), 128)),
-        !D.value.length && !q.value.length && n.step.state !== "running" && !n.step.error ? (b(), _("p", Na, g(t("执行完成，无输出", "Completed with no output")), 1)) : U("", !0),
+        !M.value.length && !q.value.length && n.step.state !== "running" && !n.step.error ? (b(), _("p", Na, g(t("执行完成，无输出", "Completed with no output")), 1)) : U("", !0),
         n.step.error ? (b(), _("p", Da, g(n.formatError?.(n.step.error) || n.step.error), 1)) : U("", !0)
       ])) : U("", !0),
       s.value ? (b(), _("div", {
@@ -3204,7 +3204,7 @@ const ka = { class: "tool-kind" }, va = { class: "tool-summary" }, ba = {
               h.snippet ? (b(), _("p", Ha, g(h.snippet), 1)) : U("", !0),
               h.title && h.url ? (b(), _("small", ja, g(h.url), 1)) : U("", !0)
             ]))), 128))
-          ])) : (b(), _("p", Wa, g(N.value || t("没有找到相关结果。", "No relevant results found.")), 1)),
+          ])) : (b(), _("p", Wa, g(D.value || t("没有找到相关结果。", "No relevant results found.")), 1)),
           n.step.error ? (b(), _("p", Va, g(n.formatError?.(n.step.error) || n.step.error), 1)) : U("", !0)
         ], 8, Ma)
       ])) : U("", !0)
@@ -3241,7 +3241,7 @@ const Ga = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
   },
   emits: ["update:modelValue", "change", "focus", "open"],
   setup(n, { emit: e }) {
-    const t = n, r = e, s = F(null), a = F(null), u = F(null), o = F(!1), m = F(-1), k = F({}), A = F(!1), T = F(""), P = ls("select"), z = ne(() => t.options.map((h) => typeof h == "string" ? { value: h, label: h } : h)), $ = ne(() => {
+    const t = n, r = e, s = F(null), a = F(null), u = F(null), o = F(!1), m = F(-1), k = F({}), A = F(!1), T = F(""), N = ls("select"), z = ne(() => t.options.map((h) => typeof h == "string" ? { value: h, label: h } : h)), $ = ne(() => {
       if (!t.searchable || !T.value.trim()) return z.value;
       const h = T.value.trim().toLocaleLowerCase();
       return z.value.filter((y) => y.label.toLocaleLowerCase().includes(h) || y.value.toLocaleLowerCase().includes(h));
@@ -3258,10 +3258,10 @@ const Ga = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
     function C(h = !1) {
       o.value = !1, T.value = "", B = "", h && s.value?.focus();
     }
-    async function N() {
-      t.disabled || o.value || (o.value = !0, T.value = "", m.value = $.value.findIndex((h) => h.value === t.modelValue && !h.disabled), m.value < 0 && (m.value = $.value.findIndex((h) => !h.disabled)), se(), r("open"), await rt(), t.searchable && u.value?.focus(), D());
+    async function D() {
+      t.disabled || o.value || (o.value = !0, T.value = "", m.value = $.value.findIndex((h) => h.value === t.modelValue && !h.disabled), m.value < 0 && (m.value = $.value.findIndex((h) => !h.disabled)), se(), r("open"), await rt(), t.searchable && u.value?.focus(), M());
     }
-    function D() {
+    function M() {
       a.value?.querySelector(`[data-index="${m.value}"]`)?.scrollIntoView({ block: "nearest" });
     }
     function G(h) {
@@ -3281,7 +3281,7 @@ const Ga = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
         if (["ArrowDown", "ArrowUp", "Home", "End", "Enter", " "].includes(h.key)) {
           if (t.searchable && h.key === " ") return;
           if (h.preventDefault(), !o.value) {
-            await N();
+            await D();
             return;
           }
           if (h.key === "Enter") {
@@ -3291,15 +3291,15 @@ const Ga = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
           const y = $.value.map((L, ae) => L.disabled ? -1 : ae).filter((L) => L >= 0);
           if (!y.length) return;
           const R = y.indexOf(m.value);
-          m.value = h.key === "Home" ? y[0] : h.key === "End" ? y[y.length - 1] : y[(R + (h.key === "ArrowDown" ? 1 : -1) + y.length) % y.length], await rt(), D();
+          m.value = h.key === "Home" ? y[0] : h.key === "End" ? y[y.length - 1] : y[(R + (h.key === "ArrowDown" ? 1 : -1) + y.length) % y.length], await rt(), M();
           return;
         }
         if (!t.searchable && h.key.length === 1 && !h.ctrlKey && !h.metaKey && !h.altKey) {
-          await N();
+          await D();
           const y = Date.now();
           B = y - Q > 700 ? h.key : B + h.key, Q = y;
           const R = $.value.findIndex((L) => !L.disabled && L.label.toLocaleLowerCase().startsWith(B.toLocaleLowerCase()));
-          R >= 0 && (m.value = R, await rt(), D());
+          R >= 0 && (m.value = R, await rt(), M());
         }
       }
     }
@@ -3315,7 +3315,7 @@ const Ga = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
     }), Re($, () => {
       o.value && (m.value >= $.value.length && (m.value = $.value.findIndex((h) => !h.disabled)), rt(se));
     }), Re(T, () => {
-      o.value && (m.value = $.value.findIndex((h) => !h.disabled), rt(D));
+      o.value && (m.value = $.value.findIndex((h) => !h.disabled), rt(M));
     }), yn(() => {
       document.addEventListener("pointerdown", x, !0), window.addEventListener("resize", se), window.addEventListener("scroll", v, !0);
     }), _n(() => {
@@ -3331,11 +3331,11 @@ const Ga = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
         role: "combobox",
         "aria-haspopup": "listbox",
         "aria-expanded": o.value,
-        "aria-controls": o.value ? re(P) : void 0,
-        "aria-activedescendant": o.value && m.value >= 0 ? `${re(P)}-${m.value}` : void 0,
+        "aria-controls": o.value ? re(N) : void 0,
+        "aria-activedescendant": o.value && m.value >= 0 ? `${re(N)}-${m.value}` : void 0,
         "aria-label": n.ariaLabel,
         disabled: n.disabled,
-        onClick: y[0] || (y[0] = (R) => o.value ? C() : N()),
+        onClick: y[0] || (y[0] = (R) => o.value ? C() : D()),
         onKeydown: X,
         onFocus: y[1] || (y[1] = (R) => r("focus", R))
       }, [
@@ -3363,7 +3363,7 @@ const Ga = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
           default: Wr(() => [
             o.value ? (b(), _("div", {
               key: 0,
-              id: re(P),
+              id: re(N),
               ref_key: "menu",
               ref: a,
               class: ie(["app-select-menu", { "opens-up": A.value }]),
@@ -3407,7 +3407,7 @@ const Ga = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
                 ])
               ])) : U("", !0),
               (b(!0), _(oe, null, ve($.value, (R, L) => (b(), _("div", {
-                id: `${re(P)}-${L}`,
+                id: `${re(N)}-${L}`,
                 key: `${R.value}:${L}`,
                 role: "option",
                 "aria-selected": R.value === n.modelValue,
@@ -3458,10 +3458,10 @@ const Ga = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
   },
   emits: ["update:modelValue"],
   setup(n, { emit: e }) {
-    const t = ne(() => Ye.value === "en"), r = n, s = e, a = ne(() => [{ value: 0, label: t.value ? "Off" : "关闭思考" }, { value: 20, label: t.value ? "Low" : "低" }, { value: 50, label: t.value ? "Medium" : "中" }, { value: 75, label: t.value ? "High" : "高" }, { value: 100, label: t.value ? "Max" : "最高" }]), u = ne(() => r.modelValue === 0 ? 0 : r.modelValue < 35 ? 1 : r.modelValue < 62.5 ? 2 : r.modelValue < 87.5 ? 3 : 4), o = F(!1), m = F({}), k = F(null), A = F(null), T = F(null), P = F(u.value * 25), z = F(!1), $ = ne(() => u.value === 4), q = ls("thinking");
+    const t = ne(() => Ye.value === "en"), r = n, s = e, a = ne(() => [{ value: 0, label: t.value ? "Off" : "关闭思考" }, { value: 20, label: t.value ? "Low" : "低" }, { value: 50, label: t.value ? "Medium" : "中" }, { value: 75, label: t.value ? "High" : "高" }, { value: 100, label: t.value ? "Max" : "最高" }]), u = ne(() => r.modelValue === 0 ? 0 : r.modelValue < 35 ? 1 : r.modelValue < 62.5 ? 2 : r.modelValue < 87.5 ? 3 : 4), o = F(!1), m = F({}), k = F(null), A = F(null), T = F(null), N = F(u.value * 25), z = F(!1), $ = ne(() => u.value === 4), q = ls("thinking");
     let B;
     Re(() => r.modelValue, () => {
-      o.value || (P.value = u.value * 25);
+      o.value || (N.value = u.value * 25);
     }), Re($, (x, v) => {
       x && !v && (z.value = !0, clearTimeout(B), B = setTimeout(() => z.value = !1, 900));
     }), Re(() => r.disabled, (x) => {
@@ -3474,16 +3474,16 @@ const Ga = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
       m.value = { left: `${Math.max(8, Math.min(x.left, innerWidth - v - 8))}px`, width: `${v}px`, ...y ? { bottom: `${innerHeight - x.top + 8}px` } : { top: `${x.bottom + 8}px` } };
     }
     async function se() {
-      r.disabled || (o.value = !o.value, o.value && (P.value = u.value * 25, Q(), await rt(), T.value?.focus()));
+      r.disabled || (o.value = !o.value, o.value && (N.value = u.value * 25, Q(), await rt(), T.value?.focus()));
     }
     function C() {
       o.value = !1, k.value?.focus();
     }
-    function N(x) {
-      P.value = Number(x.target.value), s("update:modelValue", a.value[Math.round(P.value / 25)].value);
-    }
     function D(x) {
-      P.value = x * 25, s("update:modelValue", a.value[x].value);
+      N.value = Number(x.target.value), s("update:modelValue", a.value[Math.round(N.value / 25)].value);
+    }
+    function M(x) {
+      N.value = x * 25, s("update:modelValue", a.value[x].value);
     }
     function G(x) {
       const v = x.target;
@@ -3536,13 +3536,13 @@ const Ga = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
               ]),
               i("div", {
                 class: "thinking-track",
-                style: jt({ "--intensity": `${P.value}%` })
+                style: jt({ "--intensity": `${N.value}%` })
               }, [
                 i("div", lo, [
                   v[6] || (v[6] = i("div", { class: "thinking-fill" }, null, -1)),
                   (b(!0), _(oe, null, ve(a.value, (h, y) => (b(), _("span", {
                     key: y,
-                    class: ie(["thinking-tick", { passed: P.value >= y * 25 }]),
+                    class: ie(["thinking-tick", { passed: N.value >= y * 25 }]),
                     style: jt({ left: `${y * 25}%` })
                   }, null, 6))), 128))
                 ]),
@@ -3553,16 +3553,16 @@ const Ga = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
                   min: "0",
                   max: "100",
                   step: "0.1",
-                  value: P.value,
+                  value: N.value,
                   "aria-label": "思考强度滑块",
                   "aria-valuetext": a.value[u.value].label,
-                  onInput: N,
-                  onChange: v[0] || (v[0] = (h) => P.value = u.value * 25),
+                  onInput: D,
+                  onChange: v[0] || (v[0] = (h) => N.value = u.value * 25),
                   onKeydown: [
-                    v[1] || (v[1] = yt(Ie((h) => D(0), ["prevent"]), ["home"])),
-                    v[2] || (v[2] = yt(Ie((h) => D(4), ["prevent"]), ["end"])),
-                    v[3] || (v[3] = yt(Ie((h) => D(Math.min(4, u.value + 1)), ["prevent"]), ["arrow-right"])),
-                    v[4] || (v[4] = yt(Ie((h) => D(Math.max(0, u.value - 1)), ["prevent"]), ["arrow-left"]))
+                    v[1] || (v[1] = yt(Ie((h) => M(0), ["prevent"]), ["home"])),
+                    v[2] || (v[2] = yt(Ie((h) => M(4), ["prevent"]), ["end"])),
+                    v[3] || (v[3] = yt(Ie((h) => M(Math.min(4, u.value + 1)), ["prevent"]), ["arrow-right"])),
+                    v[4] || (v[4] = yt(Ie((h) => M(Math.max(0, u.value - 1)), ["prevent"]), ["arrow-left"]))
                   ]
                 }, null, 40, ao),
                 $.value ? (b(), _("span", oo)) : U("", !0)
@@ -3573,7 +3573,7 @@ const Ga = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
                   type: "button",
                   class: ie({ selected: u.value === y }),
                   "aria-pressed": u.value === y,
-                  onClick: (R) => D(y)
+                  onClick: (R) => M(y)
                 }, g(h.label), 11, uo))), 128))
               ]),
               i("p", null, g(t.value ? u.value === 0 ? "Disable model reasoning" : $.value ? "Maximum effort" : "Drag to adjust; release to snap to a level" : u.value === 0 ? "不启用模型思考模式" : $.value ? "全力思考 · 已达到最高档" : "拖动滑块调整，松开后定位到对应档位"), 1),
@@ -3615,17 +3615,17 @@ const ho = /* @__PURE__ */ At({
         return;
       }
       if (T.key !== "Tab" || !r.value) return;
-      const P = [...r.value.querySelectorAll("button:not(:disabled)")];
-      if (!P.length) return;
-      const z = P[0], $ = P[P.length - 1];
+      const N = [...r.value.querySelectorAll("button:not(:disabled)")];
+      if (!N.length) return;
+      const z = N[0], $ = N[N.length - 1];
       T.shiftKey && document.activeElement === z ? (T.preventDefault(), $.focus()) : !T.shiftKey && document.activeElement === $ && (T.preventDefault(), z.focus());
     }
-    return (T, P) => (b(), St(Vn, { to: "body" }, [
+    return (T, N) => (b(), St(Vn, { to: "body" }, [
       re(e) ? (b(), _("div", {
         key: 0,
         class: "confirm-scrim",
         role: "presentation",
-        onClick: P[2] || (P[2] = Ie((z) => re(t)(!1), ["self"])),
+        onClick: N[2] || (N[2] = Ie((z) => re(t)(!1), ["self"])),
         onKeydown: A
       }, [
         i("section", {
@@ -3643,12 +3643,12 @@ const ho = /* @__PURE__ */ At({
               ref_key: "cancelBtn",
               ref: s,
               type: "button",
-              onClick: P[0] || (P[0] = (z) => re(t)(!1))
+              onClick: N[0] || (N[0] = (z) => re(t)(!1))
             }, g(k()), 513),
             i("button", {
               type: "button",
               class: ie(["confirm-primary", { danger: re(e).options.danger !== !1 }]),
-              onClick: P[1] || (P[1] = (z) => re(t)(!0))
+              onClick: N[1] || (N[1] = (z) => re(t)(!0))
             }, g(m()), 3)
           ])
         ], 512)
@@ -3764,7 +3764,7 @@ const ho = /* @__PURE__ */ At({
   __name: "AgentsPage",
   setup(n) {
     const e = (d, f) => Ye.value === "en" ? f : d, { confirm: t } = as(), r = Cs(), s = F(localStorage.getItem("0kay.agent.selected") || ""), a = F(""), u = F(""), o = F("all"), m = F("general"), k = F(""), A = F(""), T = F(50);
-    function P(d) {
+    function N(d) {
       const f = { off: 0, low: 20, medium: 50, high: 75, max: 100 };
       if (typeof d == "string" && d in f) return f[d];
       const p = Number(d ?? 50);
@@ -3772,21 +3772,21 @@ const ho = /* @__PURE__ */ At({
     }
     const z = F("MOCR"), $ = F("normal"), q = F("");
     async function B() {
-      if (!(!q.value.trim() || !I.value || N.value)) {
-        N.value = !0, D.value = "";
+      if (!(!q.value.trim() || !I.value || D.value)) {
+        D.value = !0, M.value = "";
         try {
           const d = await fetch(`/api/agent/workspace?executor_id=${encodeURIComponent(I.value.plugin_id)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: G.value.path, name: q.value.trim() }) });
           if (!d.ok) throw new Error(await d.text());
           const f = await d.json();
           q.value = "", await Fe(f.path);
         } catch (d) {
-          D.value = d.message;
+          M.value = d.message;
         } finally {
-          N.value = !1;
+          D.value = !1;
         }
       }
     }
-    const Q = F([]), se = F(!1), C = F(!1), N = F(!1), D = F(""), G = F({ path: "", parent: "", roots: [], directories: [] }), X = F(null), x = F("");
+    const Q = F([]), se = F(!1), C = F(!1), D = F(!1), M = F(""), G = F({ path: "", parent: "", roots: [], directories: [] }), X = F(null), x = F("");
     let v = null, h = 0, y = "", R = !1;
     const L = F(!0);
     function ae(d = s.value) {
@@ -3796,7 +3796,7 @@ const ho = /* @__PURE__ */ At({
       }
     }
     function W() {
-      h++, C.value = !1, N.value = !1;
+      h++, C.value = !1, D.value = !1;
     }
     function fe(d) {
       d.key === "Escape" && C.value && W();
@@ -3814,20 +3814,20 @@ const ho = /* @__PURE__ */ At({
         return;
       }
       const f = ++h;
-      y = I.value.plugin_id, C.value = !0, N.value = !0, D.value = "";
+      y = I.value.plugin_id, C.value = !0, D.value = !0, M.value = "";
       try {
         const p = await fetch(`/api/agent/workspace?${new URLSearchParams({ executor_id: I.value.plugin_id, path: d })}`);
         if (!p.ok) throw new Error(await p.text());
-        const M = await p.json();
-        f === h && (G.value = M);
+        const O = await p.json();
+        f === h && (G.value = O);
       } catch (p) {
-        f === h && (D.value = p.message);
+        f === h && (M.value = p.message);
       } finally {
-        f === h && (N.value = !1);
+        f === h && (D.value = !1);
       }
     }
     function Gt() {
-      !I.value || I.value.plugin_id !== y || N.value || D.value || (k.value = I.value.plugin_id, A.value = G.value.path, C.value = !1);
+      !I.value || I.value.plugin_id !== y || D.value || M.value || (k.value = I.value.plugin_id, A.value = G.value.path, C.value = !1);
     }
     async function Rt() {
       if (!se.value || !I.value || R || document.hidden) return;
@@ -3862,14 +3862,14 @@ const ho = /* @__PURE__ */ At({
     function Kt() {
       try {
         const d = JSON.parse(localStorage.getItem(`0kay.agent.editor:${s.value}`) || localStorage.getItem(`0kay.agent.options:${s.value}`) || "{}");
-        k.value = d.executor_id || "", A.value = d.workdir || "", T.value = P(d.thinking_intensity), z.value = d.model_id || "MOCR", $.value = d.permission_mode === "full_access" ? "full_access" : "normal", a.value = d.draft || "", m.value = d.mode || "general";
+        k.value = d.executor_id || "", A.value = d.workdir || "", T.value = N(d.thinking_intensity), z.value = d.model_id || "MOCR", $.value = d.permission_mode === "full_access" ? "full_access" : "normal", a.value = d.draft || "", m.value = d.mode || "general";
       } catch {
         k.value = "", A.value = "", T.value = 50, z.value = "MOCR", a.value = "", m.value = "general";
       }
     }
     const Xt = F({});
     function Sn(d) {
-      return `${Xt.value[d.provider] || d.provider}/${d.id}`;
+      return `${d.provider_name || (d.provider_id ? Xt.value[d.provider_id] : "") || d.provider_id || d.provider}/${d.id}`;
     }
     async function Qt() {
       try {
@@ -3883,7 +3883,7 @@ const ho = /* @__PURE__ */ At({
         const d = await fetch("/api/providers");
         if (d.ok) {
           const f = (await d.json()).providers || [], p = {};
-          for (const M of f) M.name && (p[M.provider] = M.name);
+          for (const O of f) O.name && O.id && (p[O.id] = O.name);
           Xt.value = p;
         }
       } catch {
@@ -3979,8 +3979,8 @@ const ho = /* @__PURE__ */ At({
         try {
           const d = Jt(), f = a.value.trim(), p = m.value;
           if (!te.value) {
-            const M = await r.createSession(f.slice(0, 60));
-            localStorage.setItem(`0kay.agent.editor:${M}`, JSON.stringify({ ...d, draft: f, mode: p })), s.value = M, localStorage.setItem("0kay.agent.selected", M);
+            const O = await r.createSession(f.slice(0, 60));
+            localStorage.setItem(`0kay.agent.editor:${O}`, JSON.stringify({ ...d, draft: f, mode: p })), s.value = O, localStorage.setItem("0kay.agent.selected", O);
           }
           ae(), await r.sendTask(s.value, f, p, d), a.value = "", ae(), L.value = !0, await We();
         } catch (d) {
@@ -4076,7 +4076,7 @@ const ho = /* @__PURE__ */ At({
             (b(!0), _(oe, null, ve([{ id: "all", label: e("全部", "All") }, { id: "life", label: e("LIFE 发起", "From LIFE") }, { id: "user", label: e("我的对话", "My chats") }], (p) => (b(), _("button", {
               key: p.id,
               class: ie({ chosen: o.value === p.id }),
-              onClick: (M) => o.value = p.id
+              onClick: (O) => o.value = p.id
             }, g(p.label), 11, _o))), 128))
           ]),
           i("label", wo, [
@@ -4093,7 +4093,7 @@ const ho = /* @__PURE__ */ At({
               key: p.task_id,
               class: ie(["session-card", { selected: s.value === p.session_id && !Be.value }]),
               disabled: le.value,
-              onClick: (M) => It(p.session_id)
+              onClick: (O) => It(p.session_id)
             }, [
               i("span", To, g(Oe(p) ? "LIFE → Agent" : e("你 ↔ Agent", "You ↔ Agent")), 1),
               i("strong", null, g(p.prompt || "未命名会话"), 1),
@@ -4126,9 +4126,9 @@ const ho = /* @__PURE__ */ At({
               i("small", null, g(Xe(p.started_at)), 1)
             ]),
             i("p", null, g(p.prompt), 1),
-            re(r).sessions.some((M) => M.session_id === p.session_id) ? (b(), _("button", {
+            re(r).sessions.some((O) => O.session_id === p.session_id) ? (b(), _("button", {
               key: 0,
-              onClick: (M) => It(p.session_id)
+              onClick: (O) => It(p.session_id)
             }, "打开所属会话", 8, $o)) : U("", !0),
             i("details", null, [
               f[21] || (f[21] = i("summary", null, "详情", -1)),
@@ -4252,7 +4252,7 @@ const ho = /* @__PURE__ */ At({
                     i("button", {
                       type: "button",
                       class: "subagent-card-head",
-                      onClick: (M) => je(p)
+                      onClick: (O) => je(p)
                     }, [
                       i("span", {
                         class: ie(p.state)
@@ -4313,33 +4313,33 @@ const ho = /* @__PURE__ */ At({
                     }, g(Ne(p.state)), 3)
                   ]),
                   dt(p).length ? (b(), _("div", di, [
-                    (b(!0), _(oe, null, ve(dt(p), (M) => (b(), _(oe, {
-                      key: M.task_id
+                    (b(!0), _(oe, null, ve(dt(p), (O) => (b(), _(oe, {
+                      key: O.task_id
                     }, [
-                      M.kind === "think" && (M.result || M.state === "running" || M.error) ? (b(), _("div", pi, [
-                        M.prompt ? (b(), _("small", hi, g(M.prompt), 1)) : U("", !0),
-                        M.result ? (b(), _(oe, { key: 1 }, [
+                      O.kind === "think" && (O.result || O.state === "running" || O.error) ? (b(), _("div", pi, [
+                        O.prompt ? (b(), _("small", hi, g(O.prompt), 1)) : U("", !0),
+                        O.result ? (b(), _(oe, { key: 1 }, [
                           Me(pn, {
-                            content: M.result
+                            content: O.result
                           }, null, 8, ["content"]),
-                          M.state === "running" ? (b(), _("span", fi, " ▍")) : U("", !0)
-                        ], 64)) : M.state === "running" ? (b(), _("small", gi, "Agent 正在生成回复…")) : U("", !0),
-                        M.error ? (b(), _("p", mi, g(De(M.error)), 1)) : U("", !0)
-                      ])) : M.kind === "subagent" ? (b(), _("div", ki, [
+                          O.state === "running" ? (b(), _("span", fi, " ▍")) : U("", !0)
+                        ], 64)) : O.state === "running" ? (b(), _("small", gi, "Agent 正在生成回复…")) : U("", !0),
+                        O.error ? (b(), _("p", mi, g(De(O.error)), 1)) : U("", !0)
+                      ])) : O.kind === "subagent" ? (b(), _("div", ki, [
                         i("button", {
                           type: "button",
                           class: "subagent-card-head",
-                          onClick: (Tn) => je(M)
+                          onClick: (Tn) => je(O)
                         }, [
                           i("span", {
-                            class: ie(M.state)
+                            class: ie(O.state)
                           }, "●", 2),
                           i("strong", null, g(e("子 Agent", "Subagent")), 1),
-                          i("span", bi, g(M.prompt), 1),
+                          i("span", bi, g(O.prompt), 1),
                           i("small", null, [
-                            Se(g(Ne(M.state)), 1),
-                            st(M) ? (b(), _(oe, { key: 0 }, [
-                              Se(" · " + g(st(M)) + " " + g(e("步", "steps")), 1)
+                            Se(g(Ne(O.state)), 1),
+                            st(O) ? (b(), _(oe, { key: 0 }, [
+                              Se(" · " + g(st(O)) + " " + g(e("步", "steps")), 1)
                             ], 64)) : U("", !0)
                           ]),
                           f[32] || (f[32] = i("span", {
@@ -4347,20 +4347,20 @@ const ho = /* @__PURE__ */ At({
                             "aria-hidden": "true"
                           }, "▸", -1))
                         ], 8, vi),
-                        M.error ? (b(), _("p", yi, g(De(M.error)), 1)) : U("", !0)
-                      ])) : M.kind === "tool" ? (b(), St(Hr, {
+                        O.error ? (b(), _("p", yi, g(De(O.error)), 1)) : U("", !0)
+                      ])) : O.kind === "tool" ? (b(), St(Hr, {
                         key: 2,
-                        step: M,
+                        step: O,
                         "format-error": De
-                      }, null, 8, ["step"])) : M.kind !== "think" ? (b(), _("details", _i, [
+                      }, null, 8, ["step"])) : O.kind !== "think" ? (b(), _("details", _i, [
                         i("summary", null, [
                           i("span", {
-                            class: ie(M.state)
+                            class: ie(O.state)
                           }, "●", 2),
-                          Se(" " + g(Ge(M)) + " · " + g(M.prompt) + " ", 1),
-                          i("small", null, g(Ne(M.state)), 1)
+                          Se(" " + g(Ge(O)) + " · " + g(O.prompt) + " ", 1),
+                          i("small", null, g(Ne(O.state)), 1)
                         ]),
-                        i("pre", null, g(M.result || M.error || (M.state === "running" ? "执行中…" : "执行完成，无输出")), 1)
+                        i("pre", null, g(O.result || O.error || (O.state === "running" ? "执行中…" : "执行完成，无输出")), 1)
                       ])) : U("", !0)
                     ], 64))), 128))
                   ])) : U("", !0),
@@ -4543,11 +4543,11 @@ const ho = /* @__PURE__ */ At({
             i("div", Pi, [
               (b(!0), _(oe, null, ve(G.value.roots, (p) => (b(), _("button", {
                 key: p,
-                disabled: N.value,
-                onClick: (M) => Fe(p)
+                disabled: D.value,
+                onClick: (O) => Fe(p)
               }, g(p), 9, Ni))), 128)),
               i("button", {
-                disabled: N.value,
+                disabled: D.value,
                 onClick: f[15] || (f[15] = (p) => Fe(I.value?.host?.workdir || ""))
               }, "默认目录", 8, Di)
             ]),
@@ -4560,23 +4560,23 @@ const ho = /* @__PURE__ */ At({
                 "onUpdate:modelValue": f[16] || (f[16] = (p) => q.value = p),
                 placeholder: "新文件夹名称",
                 "aria-label": "新文件夹名称",
-                disabled: N.value
+                disabled: D.value
               }, null, 8, Mi), [
                 [gn, q.value]
               ]),
               i("button", {
-                disabled: N.value || !q.value.trim() || !G.value.path
+                disabled: D.value || !q.value.trim() || !G.value.path
               }, "新建文件夹", 8, zi)
             ], 32),
-            D.value ? (b(), _("p", Ui, g(D.value), 1)) : U("", !0),
-            N.value ? (b(), _("p", Fi, "正在读取目录…")) : (b(), _("div", Bi, [
+            M.value ? (b(), _("p", Ui, g(M.value), 1)) : U("", !0),
+            D.value ? (b(), _("p", Fi, "正在读取目录…")) : (b(), _("div", Bi, [
               G.value.parent !== G.value.path ? (b(), _("button", {
                 key: 0,
                 onClick: f[17] || (f[17] = (p) => Fe(G.value.parent))
               }, "上一级")) : U("", !0),
               (b(!0), _(oe, null, ve(G.value.directories, (p) => (b(), _("button", {
                 key: p.path,
-                onClick: (M) => Fe(p.path)
+                onClick: (O) => Fe(p.path)
               }, [
                 f[36] || (f[36] = i("svg", {
                   width: "14",
@@ -4598,7 +4598,7 @@ const ho = /* @__PURE__ */ At({
             ])),
             i("footer", null, [
               i("button", {
-                disabled: N.value || !!D.value || !G.value.path,
+                disabled: D.value || !!M.value || !G.value.path,
                 onClick: Gt
               }, "选择当前目录", 8, Wi)
             ])
@@ -4608,9 +4608,9 @@ const ho = /* @__PURE__ */ At({
       Me(ho)
     ], 64));
   }
-}), Yi = /* @__PURE__ */ er(Vi, [["__scopeId", "data-v-bd31ecb2"]]);
+}), Yi = /* @__PURE__ */ er(Vi, [["__scopeId", "data-v-f473c0ee"]]);
 export {
   Yi as default
 };
 
-;(()=>{if(typeof document!=='undefined'&&!document.getElementById('agent-plugin-style')){const s=document.createElement('style');s.id='agent-plugin-style';s.textContent=".markdown-content[data-v-ef377647]{line-height:1.75;overflow-wrap:anywhere;font-size:14px}.markdown-content[data-v-ef377647] pre{padding:16px;background:var(--md-surface-container);border-radius:8px;overflow:auto;white-space:pre;line-height:1.5}.markdown-content[data-v-ef377647] code{font-family:monospace;background:var(--md-surface-container);padding:2px 4px;border-radius:4px}.markdown-content[data-v-ef377647] pre code{padding:0;background:none}.markdown-content[data-v-ef377647] table{display:block;overflow:auto;border-collapse:collapse;margin:12px 0}.markdown-content[data-v-ef377647] th,.markdown-content[data-v-ef377647] td{border:1px solid var(--md-outline-variant);padding:8px 12px}.markdown-content[data-v-ef377647] blockquote{border-left:3px solid var(--md-outline);margin:12px 0;padding-left:14px;color:var(--md-on-surface-variant)}.markdown-content[data-v-ef377647] ul,.markdown-content[data-v-ef377647] ol{padding-left:24px}.markdown-content[data-v-ef377647] a{color:var(--md-primary);text-decoration:underline}.markdown-content[data-v-ef377647] img{max-width:100%}.markdown-content[data-v-ef377647] h1,.markdown-content[data-v-ef377647] h2,.markdown-content[data-v-ef377647] h3{margin:16px 0 8px}.tool-card[data-v-c097ee74]{--code-font:ui-monospace,\"Cascadia Code\",\"JetBrains Mono\",Consolas,\"SFMono-Regular\",Menlo,monospace;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container);margin:8px 0;overflow:hidden}button.tool-card-head[data-v-c097ee74]{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;border-radius:0;background:transparent;padding:10px 12px;cursor:pointer;font-size:13px}.tool-kind[data-v-c097ee74]{flex-shrink:0;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--md-on-surface)}.tool-summary[data-v-c097ee74]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--code-font);font-size:13px;color:var(--md-on-surface)}.tool-stat[data-v-c097ee74]{flex-shrink:0;font-size:12px;font-weight:600;color:var(--md-primary);border:1px solid var(--md-outline-variant);border-radius:999px;padding:1px 8px}.tool-state[data-v-c097ee74]{flex-shrink:0;font-size:13px;color:var(--md-on-surface-variant)}.tool-chevron[data-v-c097ee74]{flex-shrink:0;color:var(--md-on-surface-variant);font-size:12px;transition:transform .15s}.tool-card.expanded .tool-chevron[data-v-c097ee74]{transform:rotate(90deg)}.tool-dot[data-v-c097ee74]{font-size:9px}.tool-dot.running[data-v-c097ee74],.tool-dot.pending[data-v-c097ee74]{color:#b88412}.tool-dot.failed[data-v-c097ee74]{color:var(--md-error,#c44)}.tool-dot.done[data-v-c097ee74]{color:#3a6}.tool-dot.cancelled[data-v-c097ee74]{color:var(--md-on-surface-variant)}.tool-card-body[data-v-c097ee74]{padding:4px 12px 12px;border-top:1px solid var(--md-outline-variant);display:flex;flex-direction:column;gap:6px}.tool-section-label[data-v-c097ee74]{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--md-on-surface-variant);margin-top:4px}.tool-card-body pre[data-v-c097ee74]{margin:0;max-height:340px;overflow:auto;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:8px;padding:8px 10px;font-family:var(--code-font);font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.tool-section-text[data-v-c097ee74]{margin:0;font-size:13px;overflow-wrap:anywhere}.tool-error[data-v-c097ee74]{background:var(--md-error-container);padding:8px 12px;border-radius:8px;margin:0;font-size:12px;overflow-wrap:anywhere}.muted[data-v-c097ee74]{font-size:12px;color:var(--md-on-surface-variant);margin:0}.tool-dialog-backdrop[data-v-c097ee74]{position:fixed;inset:0;background:#0008;z-index:1050;display:grid;place-items:center;padding:20px}.tool-dialog[data-v-c097ee74]{background:var(--md-surface);color:var(--md-on-surface);border:1px solid var(--md-outline-variant);border-radius:16px;padding:18px 20px;width:min(680px,100%);max-height:82vh;overflow:auto;display:flex;flex-direction:column;gap:12px}.tool-dialog header[data-v-c097ee74]{display:flex;align-items:center;justify-content:space-between;gap:12px}.tool-dialog h4[data-v-c097ee74]{margin:0;font-size:15px;overflow-wrap:anywhere;flex:1;min-width:0}#app .tool-dialog-close[data-v-c097ee74],.tool-dialog-close[data-v-c097ee74]{flex-shrink:0;width:40px;height:40px;min-height:0;padding:0;border:none;border-radius:50%;background:transparent;color:var(--md-on-surface-variant);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background var(--transition-fast),color var(--transition-fast)}#app .tool-dialog-close[data-v-c097ee74]:hover,.tool-dialog-close[data-v-c097ee74]:hover{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent);box-shadow:none;filter:none;color:var(--md-on-surface)}#app .tool-dialog-close[data-v-c097ee74]:active,.tool-dialog-close[data-v-c097ee74]:active{background:color-mix(in srgb,var(--md-on-surface) 12%,transparent);border-radius:50%}.tool-search-results[data-v-c097ee74]{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:14px}.tool-search-results a[data-v-c097ee74]{color:var(--md-primary);font-size:14px;font-weight:500;text-decoration:none}.tool-search-results a[data-v-c097ee74]:hover{text-decoration:underline}.tool-search-results p[data-v-c097ee74]{margin:4px 0 0;font-size:13px;line-height:1.65;color:var(--md-on-surface)}.tool-search-results small[data-v-c097ee74]{display:block;margin-top:2px;font-size:12px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.tool-card[data-v-c097ee74]{border-radius:16px;border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent);background:var(--md-surface-container);transition:box-shadow .22s,background-color .2s}.tool-card[data-v-c097ee74]:hover{box-shadow:var(--shadow-1)}button.tool-card-head[data-v-c097ee74]{padding:12px 15px;gap:10px;min-height:46px;border-radius:0}button.tool-card-head[data-v-c097ee74]:hover{background:var(--md-secondary-container)}.tool-kind[data-v-c097ee74]{font-weight:700;letter-spacing:.06em}.tool-stat[data-v-c097ee74]{border-color:color-mix(in srgb,var(--md-primary) 30%,transparent);background:color-mix(in srgb,var(--md-primary) 10%,transparent)}.tool-chevron[data-v-c097ee74]{width:22px;height:22px;display:inline-grid;place-items:center;border-radius:50%;background:var(--md-surface-container-high);transition:transform .3s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .16s}.tool-card-body[data-v-c097ee74]{padding:8px 15px 15px;gap:8px;border-top-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}.tool-card-body pre[data-v-c097ee74]{border-radius:14px;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}.tool-section-label[data-v-c097ee74]{font-weight:700}.diff-wrap[data-v-c097ee74]{display:flex;flex-direction:column;gap:10px}.diff-file[data-v-c097ee74]{border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);border-radius:14px;overflow:hidden;background:var(--md-surface-container-lowest)}.diff-file-head[data-v-c097ee74]{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--md-surface-container);font-size:11.5px;font-weight:650}.diff-file-path[data-v-c097ee74]{font-family:var(--code-font);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.diff-file-stat[data-v-c097ee74]{flex:none;font-family:var(--code-font);color:var(--md-on-surface-variant)}.diff-body[data-v-c097ee74]{max-height:360px;overflow:auto;font-family:var(--code-font);font-size:12px;line-height:1.55;padding:4px 0}.diff-line[data-v-c097ee74]{display:grid;grid-template-columns:40px 40px 18px 1fr;white-space:pre;min-width:max-content}.diff-no[data-v-c097ee74]{text-align:right;padding:0 6px;color:var(--md-on-surface-variant);opacity:.6;user-select:none;font-variant-numeric:tabular-nums}.diff-sign[data-v-c097ee74]{text-align:center;user-select:none;opacity:.9}.diff-text[data-v-c097ee74]{padding-right:12px}.diff-line.add[data-v-c097ee74]{background:color-mix(in srgb,#2ea043 20%,transparent);color:#116329}.diff-line.del[data-v-c097ee74]{background:color-mix(in srgb,#cf222e 18%,transparent);color:#82071e}.diff-line.add .diff-sign[data-v-c097ee74]{color:#116329;font-weight:700}.diff-line.del .diff-sign[data-v-c097ee74]{color:#cf222e;font-weight:700}.diff-line.hunk[data-v-c097ee74]{background:var(--md-surface-container);color:var(--md-on-surface-variant)}.diff-line.meta[data-v-c097ee74]{color:var(--md-on-surface-variant);opacity:.75}@media (prefers-color-scheme: dark){.diff-line.add[data-v-c097ee74],.diff-line.add .diff-sign[data-v-c097ee74]{color:#7ee787}.diff-line.del[data-v-c097ee74],.diff-line.del .diff-sign[data-v-c097ee74]{color:#ffa198}}#app .app-select{min-width:0;position:relative;font-size:inherit}#app .app-select.input{padding:0;border:0;min-height:0;background:transparent}#app .app-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:0 14px 0 16px;border:1px solid transparent;border-radius:16px;background-color:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;font-size:15px;text-align:left;cursor:pointer;box-shadow:none;transition:background-color .18s,border-color .18s,box-shadow .2s,border-radius .34s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .app-select-trigger:hover:not(:disabled){background-color:var(--md-surface-container-highest)}#app .app-select-trigger[aria-expanded=true],#app .app-select-trigger:focus-visible{border-color:var(--md-primary);background-color:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent);outline:none}#app .app-select-trigger:disabled{opacity:.5;cursor:not-allowed}.app-select-value{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.app-select-chevron{flex-shrink:0;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;color:var(--md-on-surface-variant);transition:transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .16s}#app .app-select-trigger:hover .app-select-chevron{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent)}.app-select-chevron svg{transition:transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}.app-select-chevron svg.is-open{transform:rotate(180deg)}.app-select-menu{position:fixed;z-index:10000;overflow-y:auto;overscroll-behavior:contain;padding:8px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:24px;background:var(--md-surface-container-low);color:var(--md-on-surface);box-shadow:0 18px 50px -12px color-mix(in srgb,var(--md-scrim,#000) 45%,transparent),0 4px 14px -4px #16244026;font-family:var(--font-family);font-size:14px;transform-origin:top}.app-select-menu.opens-up{transform-origin:bottom}.app-select-option{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:46px;padding:0 14px;border-radius:14px;cursor:pointer;overflow-wrap:anywhere;line-height:1.4;color:var(--md-on-surface);transition:background-color .14s,border-radius .3s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),color .14s}.app-select-option>span{min-width:0}.app-select-check{flex-shrink:0;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;color:var(--md-primary)}.app-select-option.highlighted{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent)}.app-select-option.selected{background:var(--md-primary-container);color:var(--md-on-primary-container);font-weight:650}.app-select-option.selected .app-select-check{background:var(--md-primary);color:var(--md-on-primary)}.app-select-option.selected.highlighted{background:color-mix(in srgb,var(--md-primary-container) 88%,var(--md-primary) 12%)}.app-select-option.disabled{opacity:.4;cursor:not-allowed}.app-select-search{position:sticky;top:-8px;z-index:1;display:flex;align-items:center;gap:10px;margin:-8px -8px 8px;padding:13px 16px;background:var(--md-surface-container-low);border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:24px 24px 0 0;color:var(--md-on-surface-variant)}.app-select-search input{flex:1;min-width:0;border:0;background:transparent;padding:0;font:inherit;color:var(--md-on-surface);outline:none}.app-select-empty{padding:18px;color:var(--md-on-surface-variant);text-align:center;font-size:13px}.select-menu-enter-active{transition:opacity .18s var(--ease-emphasized,cubic-bezier(.2,0,0,1)),transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}.select-menu-leave-active{transition:opacity .13s,transform .13s}.select-menu-enter-from,.select-menu-leave-to{opacity:0;transform:translateY(-6px) scale(.97)}.thinking-control{min-width:110px;flex:1;display:flex;flex-direction:column;gap:5px}.thinking-caption{font-size:12px}#app .thinking-trigger{display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:9px 12px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);font-size:12px;border-radius:9px}.thinking-popover{position:fixed;z-index:10000;padding:16px;border-radius:14px;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);box-shadow:0 10px 32px #16244026;color:var(--md-on-surface);font-family:var(--font-family)}.thinking-popover header{display:flex;justify-content:space-between;gap:12px;font-size:13px}.thinking-popover output{color:var(--md-primary);font-weight:600}.thinking-track{position:relative;padding:22px 4px 16px;display:flex;align-items:center}.thinking-track input{appearance:none;-webkit-appearance:none;width:100%;height:5px;padding:0;margin:0;border:0;border-radius:5px;background:linear-gradient(to right,var(--md-primary) var(--intensity),var(--md-outline-variant) var(--intensity));cursor:pointer;z-index:1}.thinking-track input::-webkit-slider-thumb{appearance:none;width:17px;height:17px;border-radius:50%;background:var(--md-primary);border:2px solid var(--md-surface);box-shadow:0 1px 4px #24345d40}.thinking-track input::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--md-primary);border:2px solid var(--md-surface)}.thinking-track input:focus-visible{outline:2px solid var(--md-primary);outline-offset:7px}.thinking-stops{display:flex;justify-content:space-between;gap:3px}.thinking-stops button{font:inherit;font-size:12px;border:0;background:transparent;color:var(--md-on-surface-variant);padding:6px 5px;border-radius:6px;cursor:pointer}.thinking-stops button.selected{background:var(--md-primary-container);color:var(--md-primary);font-weight:700}.thinking-popover p{font-size:12px;line-height:1.5;color:var(--md-on-surface-variant);margin:12px 0 0}.thinking-control.full .thinking-trigger,.thinking-popover.full{--md-primary:#a050db;border-color:#a050db88;box-shadow:0 0 16px #a050db25}.thinking-popover.full .energy-wave{position:absolute;inset:14px 0 8px;pointer-events:none;border-radius:20px;box-shadow:0 0 12px #a050db66}.thinking-popover.pulse,.thinking-control.pulse .thinking-trigger{animation:thinking-boost .85s ease-out}.thinking-popover.pulse .energy-wave{animation:thinking-wave .85s ease-out}@keyframes thinking-boost{0%{box-shadow:0 0 #a050db66}45%{box-shadow:0 0 0 5px #a050db20,0 0 30px #a050db40}to{box-shadow:0 0 16px #a050db25}}@keyframes thinking-wave{0%{transform:scale(.95);opacity:1}to{transform:scale(1.15,2);opacity:0}}.thinking-menu-enter-active,.thinking-menu-leave-active{transition:opacity .13s,transform .13s}.thinking-menu-enter-from,.thinking-menu-leave-to{opacity:0;transform:translateY(4px)}@media (prefers-reduced-motion:reduce){.thinking-popover.pulse,.thinking-control.pulse .thinking-trigger,.thinking-popover.pulse .energy-wave{animation:none}}.thinking-popover{padding:20px;border-radius:28px;background:var(--md-surface-container-low);border-color:transparent;box-shadow:0 8px 28px #24345d24}.thinking-popover header{align-items:center;font-size:14px;min-height:30px}.thinking-popover output{padding:6px 12px;border-radius:999px;background:var(--md-primary-container);font-size:12px}.thinking-track{height:68px;padding:0;margin:12px 0 0;isolation:isolate}.thinking-capsule{position:absolute;left:5px;right:5px;height:28px;border-radius:999px;background:var(--md-primary-container);overflow:hidden;pointer-events:none}.thinking-fill{height:100%;width:var(--intensity);background:var(--md-primary);border-radius:999px}.thinking-tick{position:absolute;top:50%;width:4px;height:4px;border-radius:50%;background:var(--md-primary);transform:translate(-50%,-50%)}.thinking-tick:first-of-type{left:8px!important}.thinking-tick:last-of-type{left:calc(100% - 8px)!important}.thinking-tick.passed{background:var(--md-on-primary)}.thinking-track input{position:relative;height:48px;background:transparent;border-radius:999px;touch-action:pan-y}.thinking-track input::-webkit-slider-runnable-track{height:28px;background:transparent;border-radius:999px}.thinking-track input::-webkit-slider-thumb{width:10px;height:44px;margin-top:-8px;border-radius:999px;border:0;background:var(--md-primary);box-shadow:0 0 0 5px var(--md-surface-container-low);transition:width .14s,height .14s,margin-top .14s}.thinking-track input:active::-webkit-slider-thumb{width:6px;height:48px;margin-top:-10px}.thinking-track input::-moz-range-track{height:28px;background:transparent;border-radius:999px}.thinking-track input::-moz-range-thumb{width:10px;height:44px;border:0;border-radius:999px;background:var(--md-primary);box-shadow:0 0 0 5px var(--md-surface-container-low)}.thinking-track input:active::-moz-range-thumb{width:6px;height:48px}.thinking-track input:focus-visible{outline-offset:3px}.thinking-stops{align-items:center;gap:2px;margin-top:2px}.thinking-stops button{border-radius:999px;min-height:30px;padding:6px 9px;transition:background-color .16s,color .16s}.thinking-popover.full{background:color-mix(in srgb,var(--md-surface-container-low) 93%,#a050db);border-color:#a050db55}.thinking-popover.full .thinking-fill{background:linear-gradient(90deg,#7255c8,#ad50d6)}.thinking-popover.full .energy-wave{inset:18px 5px;border-radius:999px;z-index:-1}.thinking-popover p{margin-top:12px}.thinking-popover.full{box-shadow:0 8px 28px #24345d24,0 0 34px #a050db33;border-color:#a050db77}.thinking-popover.full .energy-wave{position:absolute;inset:-3px 4px;border-radius:999px;z-index:-1;background:radial-gradient(70% 120% at 100% 50%,#c56bffbb,transparent 68%),radial-gradient(50% 120% at 0% 50%,#6b8cffaa,transparent 70%);filter:blur(7px);animation:thunder-glow 1.7s ease-in-out infinite}@keyframes thunder-glow{0%,to{opacity:.5;transform:scale(1)}45%{opacity:1;transform:scale(1.03)}}.thinking-popover.full .thinking-capsule{box-shadow:0 0 0 1px #a050db66,0 0 26px #a050db55}.thinking-popover.full .thinking-fill{background:linear-gradient(90deg,#6b8cff,#a050db,#e0a3ff,#a050db);background-size:280% 100%;animation:thunder-flow 2.6s linear infinite}@keyframes thunder-flow{to{background-position:280% 0}}.thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}.thinking-control.full .thinking-trigger span:first-child{animation:thunder-flicker 2s steps(1,end) infinite}@keyframes thunder-flicker{0%,90%,to{opacity:1}92%{opacity:.35}94%{opacity:1}96%{opacity:.5}}#app .thinking-control .thinking-trigger{min-height:52px;padding:0 14px 0 16px;border:1px solid transparent;border-radius:16px;background:var(--md-surface-container-high);color:var(--md-on-surface);font-size:13px;font-weight:500;align-items:center;transition:background-color .18s,border-color .18s,box-shadow .2s,border-radius .34s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .thinking-control .thinking-trigger:hover{background:var(--md-surface-container-highest)}#app .thinking-control .thinking-trigger[aria-expanded=true]{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}#app .thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}.thinking-caption{font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--md-on-surface-variant)}.confirm-scrim{position:fixed;inset:0;z-index:13000;background:#21173566;backdrop-filter:blur(6px);display:grid;place-items:center;padding:20px}.confirm-dialog{width:min(440px,100%);background:var(--md-surface-container-high, var(--md-surface, #fff));color:var(--md-on-surface);border:1px solid var(--md-outline-variant, transparent);border-radius:28px;padding:28px;box-shadow:0 24px 70px #18132d33;outline:none}.confirm-dialog h2{margin:0 0 10px;font-size:22px;font-weight:650}.confirm-dialog p{margin:0;font-size:14px;line-height:1.65;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.confirm-dialog footer{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}.confirm-dialog footer button{border:0;border-radius:999px;padding:12px 22px;font:inherit;font-weight:600;cursor:pointer;background:var(--md-secondary-container, #e7e0ec);color:var(--md-on-secondary-container, #1d1b20)}.confirm-dialog footer .confirm-primary{background:var(--md-primary, #6750a4);color:var(--md-on-primary, #fff)}.confirm-dialog footer .confirm-primary.danger{background:var(--md-error, #b3261e);color:var(--md-on-error, #fff)}.confirm-dialog footer button:focus-visible{outline:3px solid var(--md-primary);outline-offset:3px}.workspace[data-v-bd31ecb2]{--code-font:ui-monospace,\"Cascadia Code\",\"JetBrains Mono\",Consolas,\"SFMono-Regular\",Menlo,monospace;display:flex;height:100%;min-height:0;background:var(--md-surface);color:var(--md-on-surface)}button[data-v-bd31ecb2],input[data-v-bd31ecb2],textarea[data-v-bd31ecb2],select[data-v-bd31ecb2]{font:inherit;color:inherit;border:1px solid var(--md-outline-variant);border-radius:9px;background:var(--md-surface-container-lowest);padding:9px 12px}button[data-v-bd31ecb2]{cursor:pointer;transition:background .15s,box-shadow .15s,filter .15s}button[data-v-bd31ecb2]:disabled{opacity:.45;cursor:default}button[data-v-bd31ecb2]:hover:not(:disabled){background:var(--md-secondary-container);box-shadow:none}input[data-v-bd31ecb2]:focus,textarea[data-v-bd31ecb2]:focus,select[data-v-bd31ecb2]:focus{outline:none;border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent)}input[type=checkbox][data-v-bd31ecb2]{width:auto;accent-color:var(--md-primary)}.sessions[data-v-bd31ecb2]{width:284px;flex-shrink:0;border-right:1px solid var(--md-outline-variant);padding:20px 16px;display:flex;flex-direction:column;gap:14px;background:var(--md-surface-container-low)}.sessions header[data-v-bd31ecb2]{display:flex;align-items:center;justify-content:space-between;gap:12px}.sessions h1[data-v-bd31ecb2]{font-size:22px;font-weight:650;letter-spacing:-.01em;margin:0}.sessions header>button[data-v-bd31ecb2]{height:34px;padding:0 13px;border:0;border-radius:9px;background:var(--md-primary);color:var(--md-on-primary,#fff);font:600 13px/1 inherit}.sessions header>button[data-v-bd31ecb2]:hover:not(:disabled){background:var(--md-primary);filter:brightness(1.08);box-shadow:var(--shadow-1)}.sessions>input[data-v-bd31ecb2]{border-radius:10px;background:var(--md-surface-container-lowest)}.connection[data-v-bd31ecb2]{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--md-on-surface-variant)}.connection button[data-v-bd31ecb2]{margin-left:auto;padding:3px 9px;border-radius:8px;font-size:13px}.connection i[data-v-bd31ecb2]{width:8px;height:8px;border-radius:50%;background:var(--md-outline);box-shadow:0 0 0 3px var(--md-surface-container-high)}.connection i.online[data-v-bd31ecb2]{background:var(--md-success);box-shadow:0 0 0 3px var(--md-success-container)}.filter-bar[data-v-bd31ecb2]{display:flex;gap:3px;padding:4px;border-radius:999px;background:var(--md-surface-container-high)}.filter-bar button[data-v-bd31ecb2]{flex:1;font-size:12px;font-weight:500;padding:7px 4px;border:0;border-radius:999px;background:transparent;color:var(--md-on-surface-variant);box-shadow:none}.filter-bar button[data-v-bd31ecb2]:hover:not(:disabled){background:transparent;color:var(--md-on-surface)}.filter-bar button.chosen[data-v-bd31ecb2]{background:var(--md-surface-container-lowest);color:var(--md-primary);font-weight:650;box-shadow:var(--shadow-1)}.sessions label input[data-v-bd31ecb2]{margin-right:6px}.session-list[data-v-bd31ecb2]{overflow-y:auto;flex:1;min-height:0;margin:0 -4px;padding:0 4px}.session-card[data-v-bd31ecb2]{display:flex;flex-direction:column;width:100%;text-align:left;gap:6px;margin-bottom:8px;padding:12px 13px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest)}.session-card[data-v-bd31ecb2]:hover:not(:disabled){background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-primary) 40%,var(--md-outline-variant));box-shadow:var(--shadow-1)}.session-card.selected[data-v-bd31ecb2]{background:var(--md-secondary-container);border-color:transparent;border-radius:12px 12px 12px 4px}.session-card.selected[data-v-bd31ecb2]:hover{background:var(--md-secondary-container)}.session-card strong[data-v-bd31ecb2]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;font-weight:600;font-size:14px}.origin[data-v-bd31ecb2],small[data-v-bd31ecb2],.sessions .muted[data-v-bd31ecb2]{font-size:12px;color:var(--md-on-surface-variant)}.origin[data-v-bd31ecb2]{font-weight:600;letter-spacing:.02em}.ledger-button[data-v-bd31ecb2]{text-align:left;border-radius:10px;background:var(--md-surface-container-lowest);font-size:13px;font-weight:550}.ledger-button.chosen[data-v-bd31ecb2]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.ledger[data-v-bd31ecb2]{flex:1;overflow-y:auto;padding:var(--space-xl)}.ledger>header[data-v-bd31ecb2]{margin-bottom:8px}.ledger>header h2[data-v-bd31ecb2]{font-size:18px;font-weight:650}.ledger-entry[data-v-bd31ecb2]{border:1px solid var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-lowest);padding:14px 16px;margin:10px 0;box-shadow:var(--shadow-1)}.ledger-entry>div[data-v-bd31ecb2]{display:flex;align-items:center;gap:10px;font-size:12px}.ledger-entry>div>span[data-v-bd31ecb2]:first-child{font-family:var(--code-font);background:var(--md-surface-container);padding:3px 8px;border-radius:6px;font-weight:600}.ledger-entry>div small[data-v-bd31ecb2]{margin-left:auto}.ledger-entry>p[data-v-bd31ecb2]{margin:8px 0;font-size:14px;line-height:1.6;overflow-wrap:anywhere}.ledger-entry details[data-v-bd31ecb2]{margin-top:8px;border-radius:10px;background:var(--md-surface-container);padding:8px 12px;font-size:12px}.ledger-entry summary[data-v-bd31ecb2]{cursor:pointer;color:var(--md-on-surface-variant)}.ledger-entry pre[data-v-bd31ecb2]{margin:8px 0 0;max-height:300px}.conversation[data-v-bd31ecb2]{display:flex;flex:1;min-width:0;flex-direction:column;min-height:0}.conversation-header[data-v-bd31ecb2]{display:flex;align-items:flex-start;gap:14px}.conversation-header>div[data-v-bd31ecb2]:first-child{flex:1;min-width:0}.conversation-header h2[data-v-bd31ecb2]{font-size:17px;font-weight:650;margin:0}.conversation-header p[data-v-bd31ecb2]{margin:6px 0 0;color:var(--md-on-surface-variant);font-size:13px}.session-actions[data-v-bd31ecb2]{display:flex;gap:8px;flex-shrink:0}.session-actions button[data-v-bd31ecb2]{height:32px;padding:0 13px;border-radius:9px;font-size:13px;font-weight:550;background:var(--md-surface-container-lowest)}.running[data-v-bd31ecb2]{color:#b88412;font-weight:650;font-size:12px}.failed[data-v-bd31ecb2]{color:var(--md-error)}.done[data-v-bd31ecb2]{color:var(--md-success);font-weight:600;font-size:12px}.cancelled[data-v-bd31ecb2],.muted[data-v-bd31ecb2]{color:var(--md-on-surface-variant)}.muted[data-v-bd31ecb2]{font-size:12px;line-height:1.6}.error[data-v-bd31ecb2]{background:var(--md-error-container);color:#410e0b;padding:11px 16px;border-radius:12px;margin:8px 0;font-size:13px;overflow-wrap:anywhere}.transcript[data-v-bd31ecb2]{flex:1;overflow-y:auto;padding:26px 28px;min-height:0}.welcome[data-v-bd31ecb2]{max-width:660px;margin:70px auto 0;text-align:center;color:var(--md-on-surface-variant);line-height:1.8}.welcome[data-v-bd31ecb2]:before{content:\"\";display:block;width:64px;height:64px;margin:0 auto 20px;border-radius:20px;background:var(--md-primary-container);background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 24 24' fill='none' stroke='%234d5d91' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z'/%3E%3Cpath d='M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:center}.welcome h2[data-v-bd31ecb2]{color:var(--md-on-surface);font-size:24px;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}.welcome p[data-v-bd31ecb2]{margin:6px 0;font-size:14px}.turn[data-v-bd31ecb2]{max-width:920px;margin:0 auto 30px;display:flex;flex-direction:column;gap:10px}.bubble[data-v-bd31ecb2]{padding:15px 19px;font-size:14px}.bubble.user[data-v-bd31ecb2]{align-self:flex-end;max-width:82%;background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:16px 16px 4px}.bubble.agent[data-v-bd31ecb2]{align-self:flex-start;max-width:100%;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:16px 16px 16px 4px;box-shadow:var(--shadow-1)}.bubble .message-head[data-v-bd31ecb2]{display:flex;align-items:center;gap:14px;margin-bottom:10px;font-size:12px}.bubble .message-head b[data-v-bd31ecb2]{font-weight:700}.bubble .message-head time[data-v-bd31ecb2]{margin-left:auto;opacity:.75;font-size:12px}.bubble .message-head span[data-v-bd31ecb2]{margin-left:auto}.bubble.user .message-head[data-v-bd31ecb2]{margin-bottom:7px;opacity:.85}.message-text[data-v-bd31ecb2]{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:14px}.bubble.agent[data-v-bd31ecb2] p{margin:.4em 0}.bubble.agent[data-v-bd31ecb2] pre{max-height:420px}.agent-speech[data-v-bd31ecb2]{margin:6px 0;padding:2px 0;line-height:1.7}.model-annotation[data-v-bd31ecb2]{display:block;font-size:12px;opacity:.7;margin-bottom:4px;font-family:var(--code-font)}.agent-speech[data-v-bd31ecb2] p{margin:.45em 0}.agent-speech[data-v-bd31ecb2] pre{background:var(--md-surface-container);border:1px solid var(--md-outline-variant);border-radius:10px;padding:12px 14px;max-height:460px;overflow:auto;font-size:13px}.agent-speech[data-v-bd31ecb2] code{font-family:var(--code-font)}.agent-speech[data-v-bd31ecb2] ul{padding-left:20px;margin:.4em 0}.steps[data-v-bd31ecb2]{display:flex;flex-direction:column;gap:8px;margin:12px 0 14px}.steps details[data-v-bd31ecb2]{border-radius:12px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);padding:10px 14px}.steps summary[data-v-bd31ecb2]{cursor:pointer;font-size:13px;font-weight:550}.steps summary small[data-v-bd31ecb2]{margin-left:10px;font-weight:600}.steps summary[data-v-bd31ecb2]::marker{color:var(--md-on-surface-variant)}.steps details pre[data-v-bd31ecb2]{margin:10px 0 0;font-family:var(--code-font);font-size:13px;white-space:pre-wrap;max-height:400px}pre[data-v-bd31ecb2]{max-height:450px;overflow:auto;font-family:var(--code-font)}.subagent-card[data-v-bd31ecb2]{border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest);overflow:hidden;box-shadow:var(--shadow-1)}button.subagent-card-head[data-v-bd31ecb2]{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:0;border-radius:0;background:transparent;padding:11px 14px;font-size:13px}button.subagent-card-head[data-v-bd31ecb2]:hover:not(:disabled){background:var(--md-secondary-container);box-shadow:none}button.subagent-card-head>span[data-v-bd31ecb2]:first-child{color:var(--md-primary)}button.subagent-card-head>strong[data-v-bd31ecb2]{font-weight:700}.subagent-prompt[data-v-bd31ecb2]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--md-on-surface)}.subagent-card small[data-v-bd31ecb2]{font-weight:600}.subagent-chevron[data-v-bd31ecb2]{color:var(--md-on-surface-variant);font-size:12px}.subagent-card-error[data-v-bd31ecb2]{margin:0 10px 10px;padding:8px 12px;font-size:12px}.subagent-card.nested[data-v-bd31ecb2]{margin:6px 0;box-shadow:none}.sub-view[data-v-bd31ecb2]{max-width:900px;margin:0 auto}.sub-view-header[data-v-bd31ecb2]{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--md-outline-variant)}.sub-view-header button[data-v-bd31ecb2]{flex-shrink:0;border-radius:9px;font-size:13px;font-weight:550;background:var(--md-surface-container-lowest)}.sub-view-header h3[data-v-bd31ecb2]{margin:0 0 4px;font-size:16px;font-weight:650}.sub-view-header p[data-v-bd31ecb2]{margin:0;max-width:520px}.sub-view-header>span[data-v-bd31ecb2]{margin-left:auto;font-weight:650;font-size:12px}.sub-view-body[data-v-bd31ecb2]{min-height:120px}.composer[data-v-bd31ecb2]{flex-shrink:0;margin:0 20px 18px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-lowest);overflow:hidden;box-shadow:var(--shadow-1)}.composer-input[data-v-bd31ecb2]{position:relative}.composer-input textarea[data-v-bd31ecb2]{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 64px 15px 18px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}.composer-input textarea[data-v-bd31ecb2]:focus{box-shadow:none;border:0}.send-fly[data-v-bd31ecb2]{position:absolute!important;right:10px!important;bottom:10px!important;z-index:2;width:42px!important;height:42px!important;aspect-ratio:1/1;display:grid!important;place-items:center;border:0!important;border-radius:50%!important;padding:0!important;margin:0!important;background:var(--md-primary);color:var(--md-on-primary,#fff);box-shadow:0 2px 10px color-mix(in srgb,var(--md-primary) 38%,transparent)}.send-fly svg[data-v-bd31ecb2]{width:20px;height:20px}.send-fly[data-v-bd31ecb2]:hover:not(:disabled){filter:brightness(1.08)}.send-fly[data-v-bd31ecb2]:disabled{background:var(--md-surface-container);color:var(--md-on-surface-variant);opacity:.7;box-shadow:none}.send-fly.stop[data-v-bd31ecb2]{background:var(--md-error);color:#fff;box-shadow:0 2px 10px color-mix(in srgb,var(--md-error) 40%,transparent)}.compact-notice[data-v-bd31ecb2]{font-size:12px;padding:10px 16px;color:var(--md-primary);background:var(--md-primary-container);border-radius:10px;margin:10px 16px 0}.execution-options[data-v-bd31ecb2]{display:flex;gap:10px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid var(--md-outline-variant);align-items:end}.execution-options label[data-v-bd31ecb2]{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--md-on-surface-variant);flex:1;min-width:130px}.execution-options[data-v-bd31ecb2] .app-select-trigger,.execution-options .workspace-select[data-v-bd31ecb2]{width:100%;font-size:13px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--md-on-surface);min-height:36px;border-radius:10px;background:var(--md-surface-container);border-color:transparent;text-align:left}.workspace-select[data-v-bd31ecb2]{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block}.composer footer[data-v-bd31ecb2]{display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap;border-top:1px solid var(--md-outline-variant)}.composer footer>select[data-v-bd31ecb2],.composer footer>.app-select[data-v-bd31ecb2]{font-size:13px;border-radius:10px;min-height:34px}.composer footer .muted[data-v-bd31ecb2]{flex:1;min-width:120px}.composer footer>button[data-v-bd31ecb2]{font-size:13px;font-weight:600;border-radius:9px;min-height:34px}.host-panel>strong[data-v-bd31ecb2]{font-size:14px}.host-panel dl[data-v-bd31ecb2]{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;font-size:12px}.host-panel dt[data-v-bd31ecb2]{color:var(--md-on-surface-variant);font-weight:600}.host-panel dd[data-v-bd31ecb2]{margin:4px 0 0;overflow-wrap:anywhere}.usage-rings[data-v-bd31ecb2]{display:flex;align-items:center;gap:24px;padding:14px 0;flex-wrap:wrap}.usage-metric[data-v-bd31ecb2]{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px}.usage-ring[data-v-bd31ecb2]{width:88px;height:88px;border-radius:50%;display:grid;place-items:center}.usage-ring b[data-v-bd31ecb2]{width:68px;height:68px;border-radius:50%;background:var(--md-surface-container-lowest);display:grid;place-items:center;font-size:15px;font-weight:650;box-shadow:var(--shadow-1)}.new-folder[data-v-bd31ecb2]{display:flex;gap:8px}.new-folder input[data-v-bd31ecb2]{flex:1;min-width:0}.directory-backdrop[data-v-bd31ecb2]{position:fixed;inset:0;background:#14111acc;z-index:1000;display:grid;place-items:center;padding:20px}.directory-dialog[data-v-bd31ecb2]{background:var(--md-surface);border:1px solid var(--md-outline-variant);border-radius:20px;padding:22px;width:min(680px,100%);display:flex;flex-direction:column;gap:14px;max-height:85vh;box-shadow:var(--shadow-4)}.directory-dialog>header[data-v-bd31ecb2]{gap:12px}.directory-dialog>header h2[data-v-bd31ecb2]{font-size:16px;font-weight:650}.directory-list[data-v-bd31ecb2]{overflow:auto;min-height:180px;display:flex;flex-direction:column;gap:6px}.directory-list button[data-v-bd31ecb2]{text-align:left;border-radius:10px;background:var(--md-surface-container-low);font-size:13px}.directory-roots[data-v-bd31ecb2]{display:flex;gap:8px;flex-wrap:wrap}.directory-roots button[data-v-bd31ecb2]{border-radius:999px;font-size:12px;padding:6px 12px}.directory-dialog code[data-v-bd31ecb2]{overflow-wrap:anywhere;font-size:12px;background:var(--md-surface-container);padding:8px 10px;border-radius:8px}.directory-dialog>footer[data-v-bd31ecb2]{display:flex;justify-content:flex-end}.directory-dialog>footer button[data-v-bd31ecb2]{background:var(--md-primary);color:var(--md-on-primary,#fff);border-color:transparent;font-weight:600}.permission-request[data-v-bd31ecb2]{margin:12px;padding:16px;border-radius:16px;background:var(--md-tertiary-container)}.permission-request small[data-v-bd31ecb2]{display:block;margin:8px 0}.permission-request pre[data-v-bd31ecb2]{max-height:160px;overflow:auto}.permission-request>div[data-v-bd31ecb2]{display:flex;justify-content:flex-end;gap:8px}#app .workspace[data-v-bd31ecb2]{gap:12px;padding-left:6px;background:var(--md-surface-container)}#app .workspace .sessions[data-v-bd31ecb2]{width:296px;gap:14px;padding:18px 14px;border:0;border-radius:28px;background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}#app .workspace .sessions h1[data-v-bd31ecb2]{font-size:24px;font-weight:800;letter-spacing:-.02em}#app .workspace .sessions header>button[data-v-bd31ecb2]{height:40px;padding:0 16px;border:0;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary,#fff);font:700 13px/1 inherit;display:inline-flex;align-items:center;gap:7px;box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 30%,transparent)}#app .workspace .sessions header>button[data-v-bd31ecb2]:hover:not(:disabled){background:var(--md-primary);filter:brightness(1.06);box-shadow:0 8px 20px color-mix(in srgb,var(--md-primary) 34%,transparent)}#app .workspace .sessions>input[data-v-bd31ecb2]{min-height:48px;padding:0 16px;border:1px solid transparent;border-radius:16px;background:var(--md-surface-container-high);color:var(--md-on-surface);font-size:14px}#app .workspace .sessions>input[data-v-bd31ecb2]:focus{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}#app .workspace .filter-bar[data-v-bd31ecb2]{padding:5px;border-radius:999px;background:var(--md-surface-container-high)}#app .workspace .filter-bar button[data-v-bd31ecb2]{border-radius:999px;padding:8px 4px;font-weight:600}#app .workspace .filter-bar button.chosen[data-v-bd31ecb2]{background:var(--md-primary);color:var(--md-on-primary,#fff);font-weight:700;box-shadow:var(--shadow-1)}#app .workspace .filter-bar button.chosen[data-v-bd31ecb2]:hover:not(:disabled){background:var(--md-primary);color:var(--md-on-primary,#fff)}#app .workspace .session-list[data-v-bd31ecb2]{margin:0 -2px;padding:0 2px}#app .workspace .session-card[data-v-bd31ecb2]{gap:5px;margin-bottom:8px;padding:13px 15px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);border-radius:18px;background:var(--md-surface-container-lowest);transition:transform .26s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .2s,border-color .2s,box-shadow .22s,border-radius .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .workspace .session-card[data-v-bd31ecb2]:hover:not(:disabled){transform:translateY(-2px);box-shadow:var(--shadow-1);border-color:color-mix(in srgb,var(--md-primary) 35%,var(--md-outline-variant))}#app .workspace .session-card.selected[data-v-bd31ecb2]{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent;border-radius:20px 20px 20px 7px;box-shadow:var(--shadow-1)}#app .workspace .session-card .origin[data-v-bd31ecb2]{font-weight:700;letter-spacing:.05em;text-transform:uppercase;font-size:12px;color:var(--md-primary)}#app .workspace .session-card.selected .origin[data-v-bd31ecb2]{color:var(--md-on-secondary-container);opacity:.75}#app .workspace .ledger-button[data-v-bd31ecb2]{min-height:44px;border-radius:16px;font-weight:650;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}#app .workspace .ledger-button.chosen[data-v-bd31ecb2]{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent}#app .workspace .ledger-entry[data-v-bd31ecb2]{border-radius:20px;border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);background:var(--md-surface-container-lowest);box-shadow:var(--shadow-1)}#app .workspace .conversation[data-v-bd31ecb2]{background:var(--md-surface);border-radius:30px;overflow:hidden;box-shadow:var(--shadow-1)}#app .workspace .conversation-header[data-v-bd31ecb2]{padding:20px 26px 16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent)}#app .workspace .conversation-header h2[data-v-bd31ecb2]{font-size:20px;font-weight:750;letter-spacing:-.01em}#app .workspace .session-actions button[data-v-bd31ecb2]{height:36px;padding:0 15px;border-radius:999px;background:var(--md-surface-container-high);border-color:transparent;font-weight:650}#app .workspace .session-actions button[data-v-bd31ecb2]:hover:not(:disabled){background:var(--md-surface-container-highest);box-shadow:none}#app .workspace .running[data-v-bd31ecb2]{color:#b88412;background:color-mix(in srgb,#B88412 14%,transparent);padding:4px 11px;border-radius:999px;font-weight:700}#app .workspace .transcript[data-v-bd31ecb2]{padding:28px 30px}#app .workspace .welcome[data-v-bd31ecb2]{margin:64px auto 0}#app .workspace .welcome[data-v-bd31ecb2]:before{width:76px;height:76px;border-radius:26px 26px 26px 10px;background-color:var(--md-primary-container);background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 24 24' fill='none' stroke='%235944c6' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z'/%3E%3Cpath d='M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z'/%3E%3C/svg%3E\");background-size:34px 34px}#app .workspace .welcome h2[data-v-bd31ecb2]{font-size:26px;font-weight:800;letter-spacing:-.02em}#app .workspace .turn[data-v-bd31ecb2]{gap:12px;margin-bottom:32px}#app .workspace .bubble[data-v-bd31ecb2]{padding:16px 20px;font-size:15px;line-height:1.7}#app .workspace .bubble.user[data-v-bd31ecb2]{background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:24px 24px 8px;box-shadow:var(--shadow-1);max-width:82%}#app .workspace .bubble.agent[data-v-bd31ecb2]{background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);border-radius:8px 24px 24px;box-shadow:var(--shadow-1);max-width:100%}#app .workspace .bubble .message-head b[data-v-bd31ecb2]{font-weight:750}#app .workspace .steps[data-v-bd31ecb2]{gap:9px;margin:14px 0}#app .workspace .steps details[data-v-bd31ecb2]{border-radius:16px;background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);padding:11px 15px}#app .workspace .subagent-card[data-v-bd31ecb2]{border-radius:18px;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);box-shadow:var(--shadow-1)}#app .workspace button.subagent-card-head[data-v-bd31ecb2]{padding:12px 15px}#app .workspace button.subagent-card-head[data-v-bd31ecb2]:hover:not(:disabled){background:var(--md-secondary-container)}#app .workspace .sub-view-header[data-v-bd31ecb2]{padding-bottom:16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent)}#app .workspace .sub-view-header button[data-v-bd31ecb2]{border-radius:999px;background:var(--md-surface-container-high);border-color:transparent;font-weight:650}#app .workspace .agent-speech[data-v-bd31ecb2] pre{border-radius:16px;background:var(--md-surface-container);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}#app .workspace .composer[data-v-bd31ecb2]{margin:0 22px 20px;border-radius:28px;overflow:hidden;background:var(--md-surface-container-lowest);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);box-shadow:var(--shadow-2)}#app .workspace .composer[data-v-bd31ecb2]:focus-within{border-color:color-mix(in srgb,var(--md-primary) 55%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent),var(--shadow-2)}#app .workspace .execution-options[data-v-bd31ecb2]{padding:12px 16px;gap:10px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}#app .workspace .execution-options label[data-v-bd31ecb2]{font-weight:700;letter-spacing:.05em}#app .workspace .execution-options .workspace-select[data-v-bd31ecb2]{min-height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high);font-size:13px}#app .workspace .execution-options[data-v-bd31ecb2] .app-select-trigger,#app .workspace .composer footer[data-v-bd31ecb2] .app-select-trigger{min-height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high);font-size:13px}#app .workspace .composer-input textarea[data-v-bd31ecb2]{border-radius:0;background:transparent}#app .workspace .send-fly[data-v-bd31ecb2]{width:46px!important;height:46px!important;border-radius:50%!important;box-shadow:0 8px 22px color-mix(in srgb,var(--md-primary) 34%,transparent)}#app .workspace .composer footer[data-v-bd31ecb2]{border-top:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);padding:12px 16px}#app .workspace .composer footer>button[data-v-bd31ecb2]{border-radius:999px;min-height:36px;padding-inline:15px;background:var(--md-surface-container-high);border-color:transparent}#app .workspace .host-panel[data-v-bd31ecb2]{margin:0 22px 10px;border-radius:24px;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}#app .workspace .usage-ring b[data-v-bd31ecb2]{background:var(--md-surface-container-lowest)}#app .workspace .directory-dialog[data-v-bd31ecb2]{border-radius:32px;border-color:transparent;box-shadow:var(--shadow-4);background:var(--md-surface-container-low)}#app .workspace .directory-list button[data-v-bd31ecb2]{background:var(--md-surface-container-lowest);border-color:transparent;border-radius:16px;min-height:46px}#app .workspace .directory-list button[data-v-bd31ecb2]:hover:not(:disabled){background:var(--md-secondary-container)}#app .workspace .directory-roots button[data-v-bd31ecb2]{background:var(--md-surface-container-high);border-color:transparent}@media (max-width:800px){.sessions[data-v-bd31ecb2]{width:214px;padding:12px 10px}.transcript[data-v-bd31ecb2]{padding:14px}.composer[data-v-bd31ecb2]{margin:0 12px 12px}.composer footer .muted[data-v-bd31ecb2]{display:none}.conversation-header[data-v-bd31ecb2]{padding:14px 16px}.welcome[data-v-bd31ecb2]{margin:30px auto 0}.turn[data-v-bd31ecb2]{margin-bottom:22px}}@media (max-width:560px){.workspace[data-v-bd31ecb2]{flex-direction:column}.sessions[data-v-bd31ecb2]{width:100%;max-height:230px;border-right:0;border-bottom:1px solid var(--md-outline-variant)}.sessions>input[data-v-bd31ecb2],.filter-bar[data-v-bd31ecb2],.connection[data-v-bd31ecb2]{display:none}.session-list[data-v-bd31ecb2]{display:flex;gap:6px;overflow-x:auto}.session-card[data-v-bd31ecb2]{min-width:160px;width:160px;margin-bottom:0}.ledger-button[data-v-bd31ecb2]{padding:5px;font-size:12px}}\n";document.head.appendChild(s)}})();
+;(()=>{if(typeof document!=='undefined'&&!document.getElementById('agent-plugin-style')){const s=document.createElement('style');s.id='agent-plugin-style';s.textContent=".markdown-content[data-v-ef377647]{line-height:1.75;overflow-wrap:anywhere;font-size:14px}.markdown-content[data-v-ef377647] pre{padding:16px;background:var(--md-surface-container);border-radius:8px;overflow:auto;white-space:pre;line-height:1.5}.markdown-content[data-v-ef377647] code{font-family:monospace;background:var(--md-surface-container);padding:2px 4px;border-radius:4px}.markdown-content[data-v-ef377647] pre code{padding:0;background:none}.markdown-content[data-v-ef377647] table{display:block;overflow:auto;border-collapse:collapse;margin:12px 0}.markdown-content[data-v-ef377647] th,.markdown-content[data-v-ef377647] td{border:1px solid var(--md-outline-variant);padding:8px 12px}.markdown-content[data-v-ef377647] blockquote{border-left:3px solid var(--md-outline);margin:12px 0;padding-left:14px;color:var(--md-on-surface-variant)}.markdown-content[data-v-ef377647] ul,.markdown-content[data-v-ef377647] ol{padding-left:24px}.markdown-content[data-v-ef377647] a{color:var(--md-primary);text-decoration:underline}.markdown-content[data-v-ef377647] img{max-width:100%}.markdown-content[data-v-ef377647] h1,.markdown-content[data-v-ef377647] h2,.markdown-content[data-v-ef377647] h3{margin:16px 0 8px}.tool-card[data-v-c097ee74]{--code-font:ui-monospace,\"Cascadia Code\",\"JetBrains Mono\",Consolas,\"SFMono-Regular\",Menlo,monospace;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container);margin:8px 0;overflow:hidden}button.tool-card-head[data-v-c097ee74]{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;border-radius:0;background:transparent;padding:10px 12px;cursor:pointer;font-size:13px}.tool-kind[data-v-c097ee74]{flex-shrink:0;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--md-on-surface)}.tool-summary[data-v-c097ee74]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--code-font);font-size:13px;color:var(--md-on-surface)}.tool-stat[data-v-c097ee74]{flex-shrink:0;font-size:12px;font-weight:600;color:var(--md-primary);border:1px solid var(--md-outline-variant);border-radius:999px;padding:1px 8px}.tool-state[data-v-c097ee74]{flex-shrink:0;font-size:13px;color:var(--md-on-surface-variant)}.tool-chevron[data-v-c097ee74]{flex-shrink:0;color:var(--md-on-surface-variant);font-size:12px;transition:transform .15s}.tool-card.expanded .tool-chevron[data-v-c097ee74]{transform:rotate(90deg)}.tool-dot[data-v-c097ee74]{font-size:9px}.tool-dot.running[data-v-c097ee74],.tool-dot.pending[data-v-c097ee74]{color:#b88412}.tool-dot.failed[data-v-c097ee74]{color:var(--md-error,#c44)}.tool-dot.done[data-v-c097ee74]{color:#3a6}.tool-dot.cancelled[data-v-c097ee74]{color:var(--md-on-surface-variant)}.tool-card-body[data-v-c097ee74]{padding:4px 12px 12px;border-top:1px solid var(--md-outline-variant);display:flex;flex-direction:column;gap:6px}.tool-section-label[data-v-c097ee74]{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--md-on-surface-variant);margin-top:4px}.tool-card-body pre[data-v-c097ee74]{margin:0;max-height:340px;overflow:auto;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:8px;padding:8px 10px;font-family:var(--code-font);font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.tool-section-text[data-v-c097ee74]{margin:0;font-size:13px;overflow-wrap:anywhere}.tool-error[data-v-c097ee74]{background:var(--md-error-container);padding:8px 12px;border-radius:8px;margin:0;font-size:12px;overflow-wrap:anywhere}.muted[data-v-c097ee74]{font-size:12px;color:var(--md-on-surface-variant);margin:0}.tool-dialog-backdrop[data-v-c097ee74]{position:fixed;inset:0;background:#0008;z-index:1050;display:grid;place-items:center;padding:20px}.tool-dialog[data-v-c097ee74]{background:var(--md-surface);color:var(--md-on-surface);border:1px solid var(--md-outline-variant);border-radius:16px;padding:18px 20px;width:min(680px,100%);max-height:82vh;overflow:auto;display:flex;flex-direction:column;gap:12px}.tool-dialog header[data-v-c097ee74]{display:flex;align-items:center;justify-content:space-between;gap:12px}.tool-dialog h4[data-v-c097ee74]{margin:0;font-size:15px;overflow-wrap:anywhere;flex:1;min-width:0}#app .tool-dialog-close[data-v-c097ee74],.tool-dialog-close[data-v-c097ee74]{flex-shrink:0;width:40px;height:40px;min-height:0;padding:0;border:none;border-radius:50%;background:transparent;color:var(--md-on-surface-variant);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background var(--transition-fast),color var(--transition-fast)}#app .tool-dialog-close[data-v-c097ee74]:hover,.tool-dialog-close[data-v-c097ee74]:hover{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent);box-shadow:none;filter:none;color:var(--md-on-surface)}#app .tool-dialog-close[data-v-c097ee74]:active,.tool-dialog-close[data-v-c097ee74]:active{background:color-mix(in srgb,var(--md-on-surface) 12%,transparent);border-radius:50%}.tool-search-results[data-v-c097ee74]{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:14px}.tool-search-results a[data-v-c097ee74]{color:var(--md-primary);font-size:14px;font-weight:500;text-decoration:none}.tool-search-results a[data-v-c097ee74]:hover{text-decoration:underline}.tool-search-results p[data-v-c097ee74]{margin:4px 0 0;font-size:13px;line-height:1.65;color:var(--md-on-surface)}.tool-search-results small[data-v-c097ee74]{display:block;margin-top:2px;font-size:12px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.tool-card[data-v-c097ee74]{border-radius:16px;border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent);background:var(--md-surface-container);transition:box-shadow .22s,background-color .2s}.tool-card[data-v-c097ee74]:hover{box-shadow:var(--shadow-1)}button.tool-card-head[data-v-c097ee74]{padding:12px 15px;gap:10px;min-height:46px;border-radius:0}button.tool-card-head[data-v-c097ee74]:hover{background:var(--md-secondary-container)}.tool-kind[data-v-c097ee74]{font-weight:700;letter-spacing:.06em}.tool-stat[data-v-c097ee74]{border-color:color-mix(in srgb,var(--md-primary) 30%,transparent);background:color-mix(in srgb,var(--md-primary) 10%,transparent)}.tool-chevron[data-v-c097ee74]{width:22px;height:22px;display:inline-grid;place-items:center;border-radius:50%;background:var(--md-surface-container-high);transition:transform .3s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .16s}.tool-card-body[data-v-c097ee74]{padding:8px 15px 15px;gap:8px;border-top-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}.tool-card-body pre[data-v-c097ee74]{border-radius:14px;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}.tool-section-label[data-v-c097ee74]{font-weight:700}.diff-wrap[data-v-c097ee74]{display:flex;flex-direction:column;gap:10px}.diff-file[data-v-c097ee74]{border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);border-radius:14px;overflow:hidden;background:var(--md-surface-container-lowest)}.diff-file-head[data-v-c097ee74]{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--md-surface-container);font-size:11.5px;font-weight:650}.diff-file-path[data-v-c097ee74]{font-family:var(--code-font);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.diff-file-stat[data-v-c097ee74]{flex:none;font-family:var(--code-font);color:var(--md-on-surface-variant)}.diff-body[data-v-c097ee74]{max-height:360px;overflow:auto;font-family:var(--code-font);font-size:12px;line-height:1.55;padding:4px 0}.diff-line[data-v-c097ee74]{display:grid;grid-template-columns:40px 40px 18px 1fr;white-space:pre;min-width:max-content}.diff-no[data-v-c097ee74]{text-align:right;padding:0 6px;color:var(--md-on-surface-variant);opacity:.6;user-select:none;font-variant-numeric:tabular-nums}.diff-sign[data-v-c097ee74]{text-align:center;user-select:none;opacity:.9}.diff-text[data-v-c097ee74]{padding-right:12px}.diff-line.add[data-v-c097ee74]{background:color-mix(in srgb,#2ea043 20%,transparent);color:#116329}.diff-line.del[data-v-c097ee74]{background:color-mix(in srgb,#cf222e 18%,transparent);color:#82071e}.diff-line.add .diff-sign[data-v-c097ee74]{color:#116329;font-weight:700}.diff-line.del .diff-sign[data-v-c097ee74]{color:#cf222e;font-weight:700}.diff-line.hunk[data-v-c097ee74]{background:var(--md-surface-container);color:var(--md-on-surface-variant)}.diff-line.meta[data-v-c097ee74]{color:var(--md-on-surface-variant);opacity:.75}@media (prefers-color-scheme: dark){.diff-line.add[data-v-c097ee74],.diff-line.add .diff-sign[data-v-c097ee74]{color:#7ee787}.diff-line.del[data-v-c097ee74],.diff-line.del .diff-sign[data-v-c097ee74]{color:#ffa198}}#app .app-select{min-width:0;position:relative;font-size:inherit}#app .app-select.input{padding:0;border:0;min-height:0;background:transparent}#app .app-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:0 14px 0 16px;border:1px solid transparent;border-radius:16px;background-color:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;font-size:15px;text-align:left;cursor:pointer;box-shadow:none;transition:background-color .18s,border-color .18s,box-shadow .2s,border-radius .34s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .app-select-trigger:hover:not(:disabled){background-color:var(--md-surface-container-highest)}#app .app-select-trigger[aria-expanded=true],#app .app-select-trigger:focus-visible{border-color:var(--md-primary);background-color:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent);outline:none}#app .app-select-trigger:disabled{opacity:.5;cursor:not-allowed}.app-select-value{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.app-select-chevron{flex-shrink:0;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;color:var(--md-on-surface-variant);transition:transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .16s}#app .app-select-trigger:hover .app-select-chevron{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent)}.app-select-chevron svg{transition:transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}.app-select-chevron svg.is-open{transform:rotate(180deg)}.app-select-menu{position:fixed;z-index:10000;overflow-y:auto;overscroll-behavior:contain;padding:8px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:24px;background:var(--md-surface-container-low);color:var(--md-on-surface);box-shadow:0 18px 50px -12px color-mix(in srgb,var(--md-scrim,#000) 45%,transparent),0 4px 14px -4px #16244026;font-family:var(--font-family);font-size:14px;transform-origin:top}.app-select-menu.opens-up{transform-origin:bottom}.app-select-option{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:46px;padding:0 14px;border-radius:14px;cursor:pointer;overflow-wrap:anywhere;line-height:1.4;color:var(--md-on-surface);transition:background-color .14s,border-radius .3s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),color .14s}.app-select-option>span{min-width:0}.app-select-check{flex-shrink:0;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;color:var(--md-primary)}.app-select-option.highlighted{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent)}.app-select-option.selected{background:var(--md-primary-container);color:var(--md-on-primary-container);font-weight:650}.app-select-option.selected .app-select-check{background:var(--md-primary);color:var(--md-on-primary)}.app-select-option.selected.highlighted{background:color-mix(in srgb,var(--md-primary-container) 88%,var(--md-primary) 12%)}.app-select-option.disabled{opacity:.4;cursor:not-allowed}.app-select-search{position:sticky;top:-8px;z-index:1;display:flex;align-items:center;gap:10px;margin:-8px -8px 8px;padding:13px 16px;background:var(--md-surface-container-low);border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:24px 24px 0 0;color:var(--md-on-surface-variant)}.app-select-search input{flex:1;min-width:0;border:0;background:transparent;padding:0;font:inherit;color:var(--md-on-surface);outline:none}.app-select-empty{padding:18px;color:var(--md-on-surface-variant);text-align:center;font-size:13px}.select-menu-enter-active{transition:opacity .18s var(--ease-emphasized,cubic-bezier(.2,0,0,1)),transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}.select-menu-leave-active{transition:opacity .13s,transform .13s}.select-menu-enter-from,.select-menu-leave-to{opacity:0;transform:translateY(-6px) scale(.97)}.thinking-control{min-width:110px;flex:1;display:flex;flex-direction:column;gap:5px}.thinking-caption{font-size:12px}#app .thinking-trigger{display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:9px 12px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);font-size:12px;border-radius:9px}.thinking-popover{position:fixed;z-index:10000;padding:16px;border-radius:14px;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);box-shadow:0 10px 32px #16244026;color:var(--md-on-surface);font-family:var(--font-family)}.thinking-popover header{display:flex;justify-content:space-between;gap:12px;font-size:13px}.thinking-popover output{color:var(--md-primary);font-weight:600}.thinking-track{position:relative;padding:22px 4px 16px;display:flex;align-items:center}.thinking-track input{appearance:none;-webkit-appearance:none;width:100%;height:5px;padding:0;margin:0;border:0;border-radius:5px;background:linear-gradient(to right,var(--md-primary) var(--intensity),var(--md-outline-variant) var(--intensity));cursor:pointer;z-index:1}.thinking-track input::-webkit-slider-thumb{appearance:none;width:17px;height:17px;border-radius:50%;background:var(--md-primary);border:2px solid var(--md-surface);box-shadow:0 1px 4px #24345d40}.thinking-track input::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--md-primary);border:2px solid var(--md-surface)}.thinking-track input:focus-visible{outline:2px solid var(--md-primary);outline-offset:7px}.thinking-stops{display:flex;justify-content:space-between;gap:3px}.thinking-stops button{font:inherit;font-size:12px;border:0;background:transparent;color:var(--md-on-surface-variant);padding:6px 5px;border-radius:6px;cursor:pointer}.thinking-stops button.selected{background:var(--md-primary-container);color:var(--md-primary);font-weight:700}.thinking-popover p{font-size:12px;line-height:1.5;color:var(--md-on-surface-variant);margin:12px 0 0}.thinking-control.full .thinking-trigger,.thinking-popover.full{--md-primary:#a050db;border-color:#a050db88;box-shadow:0 0 16px #a050db25}.thinking-popover.full .energy-wave{position:absolute;inset:14px 0 8px;pointer-events:none;border-radius:20px;box-shadow:0 0 12px #a050db66}.thinking-popover.pulse,.thinking-control.pulse .thinking-trigger{animation:thinking-boost .85s ease-out}.thinking-popover.pulse .energy-wave{animation:thinking-wave .85s ease-out}@keyframes thinking-boost{0%{box-shadow:0 0 #a050db66}45%{box-shadow:0 0 0 5px #a050db20,0 0 30px #a050db40}to{box-shadow:0 0 16px #a050db25}}@keyframes thinking-wave{0%{transform:scale(.95);opacity:1}to{transform:scale(1.15,2);opacity:0}}.thinking-menu-enter-active,.thinking-menu-leave-active{transition:opacity .13s,transform .13s}.thinking-menu-enter-from,.thinking-menu-leave-to{opacity:0;transform:translateY(4px)}@media (prefers-reduced-motion:reduce){.thinking-popover.pulse,.thinking-control.pulse .thinking-trigger,.thinking-popover.pulse .energy-wave{animation:none}}.thinking-popover{padding:20px;border-radius:28px;background:var(--md-surface-container-low);border-color:transparent;box-shadow:0 8px 28px #24345d24}.thinking-popover header{align-items:center;font-size:14px;min-height:30px}.thinking-popover output{padding:6px 12px;border-radius:999px;background:var(--md-primary-container);font-size:12px}.thinking-track{height:68px;padding:0;margin:12px 0 0;isolation:isolate}.thinking-capsule{position:absolute;left:5px;right:5px;height:28px;border-radius:999px;background:var(--md-primary-container);overflow:hidden;pointer-events:none}.thinking-fill{height:100%;width:var(--intensity);background:var(--md-primary);border-radius:999px}.thinking-tick{position:absolute;top:50%;width:4px;height:4px;border-radius:50%;background:var(--md-primary);transform:translate(-50%,-50%)}.thinking-tick:first-of-type{left:8px!important}.thinking-tick:last-of-type{left:calc(100% - 8px)!important}.thinking-tick.passed{background:var(--md-on-primary)}.thinking-track input{position:relative;height:48px;background:transparent;border-radius:999px;touch-action:pan-y}.thinking-track input::-webkit-slider-runnable-track{height:28px;background:transparent;border-radius:999px}.thinking-track input::-webkit-slider-thumb{width:10px;height:44px;margin-top:-8px;border-radius:999px;border:0;background:var(--md-primary);box-shadow:0 0 0 5px var(--md-surface-container-low);transition:width .14s,height .14s,margin-top .14s}.thinking-track input:active::-webkit-slider-thumb{width:6px;height:48px;margin-top:-10px}.thinking-track input::-moz-range-track{height:28px;background:transparent;border-radius:999px}.thinking-track input::-moz-range-thumb{width:10px;height:44px;border:0;border-radius:999px;background:var(--md-primary);box-shadow:0 0 0 5px var(--md-surface-container-low)}.thinking-track input:active::-moz-range-thumb{width:6px;height:48px}.thinking-track input:focus-visible{outline-offset:3px}.thinking-stops{align-items:center;gap:2px;margin-top:2px}.thinking-stops button{border-radius:999px;min-height:30px;padding:6px 9px;transition:background-color .16s,color .16s}.thinking-popover.full{background:color-mix(in srgb,var(--md-surface-container-low) 93%,#a050db);border-color:#a050db55}.thinking-popover.full .thinking-fill{background:linear-gradient(90deg,#7255c8,#ad50d6)}.thinking-popover.full .energy-wave{inset:18px 5px;border-radius:999px;z-index:-1}.thinking-popover p{margin-top:12px}.thinking-popover.full{box-shadow:0 8px 28px #24345d24,0 0 34px #a050db33;border-color:#a050db77}.thinking-popover.full .energy-wave{position:absolute;inset:-3px 4px;border-radius:999px;z-index:-1;background:radial-gradient(70% 120% at 100% 50%,#c56bffbb,transparent 68%),radial-gradient(50% 120% at 0% 50%,#6b8cffaa,transparent 70%);filter:blur(7px);animation:thunder-glow 1.7s ease-in-out infinite}@keyframes thunder-glow{0%,to{opacity:.5;transform:scale(1)}45%{opacity:1;transform:scale(1.03)}}.thinking-popover.full .thinking-capsule{box-shadow:0 0 0 1px #a050db66,0 0 26px #a050db55}.thinking-popover.full .thinking-fill{background:linear-gradient(90deg,#6b8cff,#a050db,#e0a3ff,#a050db);background-size:280% 100%;animation:thunder-flow 2.6s linear infinite}@keyframes thunder-flow{to{background-position:280% 0}}.thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}.thinking-control.full .thinking-trigger span:first-child{animation:thunder-flicker 2s steps(1,end) infinite}@keyframes thunder-flicker{0%,90%,to{opacity:1}92%{opacity:.35}94%{opacity:1}96%{opacity:.5}}#app .thinking-control .thinking-trigger{min-height:52px;padding:0 14px 0 16px;border:1px solid transparent;border-radius:16px;background:var(--md-surface-container-high);color:var(--md-on-surface);font-size:13px;font-weight:500;align-items:center;transition:background-color .18s,border-color .18s,box-shadow .2s,border-radius .34s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .thinking-control .thinking-trigger:hover{background:var(--md-surface-container-highest)}#app .thinking-control .thinking-trigger[aria-expanded=true]{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}#app .thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}.thinking-caption{font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--md-on-surface-variant)}.confirm-scrim{position:fixed;inset:0;z-index:13000;background:#21173566;backdrop-filter:blur(6px);display:grid;place-items:center;padding:20px}.confirm-dialog{width:min(440px,100%);background:var(--md-surface-container-high, var(--md-surface, #fff));color:var(--md-on-surface);border:1px solid var(--md-outline-variant, transparent);border-radius:28px;padding:28px;box-shadow:0 24px 70px #18132d33;outline:none}.confirm-dialog h2{margin:0 0 10px;font-size:22px;font-weight:650}.confirm-dialog p{margin:0;font-size:14px;line-height:1.65;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.confirm-dialog footer{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}.confirm-dialog footer button{border:0;border-radius:999px;padding:12px 22px;font:inherit;font-weight:600;cursor:pointer;background:var(--md-secondary-container, #e7e0ec);color:var(--md-on-secondary-container, #1d1b20)}.confirm-dialog footer .confirm-primary{background:var(--md-primary, #6750a4);color:var(--md-on-primary, #fff)}.confirm-dialog footer .confirm-primary.danger{background:var(--md-error, #b3261e);color:var(--md-on-error, #fff)}.confirm-dialog footer button:focus-visible{outline:3px solid var(--md-primary);outline-offset:3px}.workspace[data-v-f473c0ee]{--code-font:ui-monospace,\"Cascadia Code\",\"JetBrains Mono\",Consolas,\"SFMono-Regular\",Menlo,monospace;display:flex;height:100%;min-height:0;background:var(--md-surface);color:var(--md-on-surface)}button[data-v-f473c0ee],input[data-v-f473c0ee],textarea[data-v-f473c0ee],select[data-v-f473c0ee]{font:inherit;color:inherit;border:1px solid var(--md-outline-variant);border-radius:9px;background:var(--md-surface-container-lowest);padding:9px 12px}button[data-v-f473c0ee]{cursor:pointer;transition:background .15s,box-shadow .15s,filter .15s}button[data-v-f473c0ee]:disabled{opacity:.45;cursor:default}button[data-v-f473c0ee]:hover:not(:disabled){background:var(--md-secondary-container);box-shadow:none}input[data-v-f473c0ee]:focus,textarea[data-v-f473c0ee]:focus,select[data-v-f473c0ee]:focus{outline:none;border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent)}input[type=checkbox][data-v-f473c0ee]{width:auto;accent-color:var(--md-primary)}.sessions[data-v-f473c0ee]{width:284px;flex-shrink:0;border-right:1px solid var(--md-outline-variant);padding:20px 16px;display:flex;flex-direction:column;gap:14px;background:var(--md-surface-container-low)}.sessions header[data-v-f473c0ee]{display:flex;align-items:center;justify-content:space-between;gap:12px}.sessions h1[data-v-f473c0ee]{font-size:22px;font-weight:650;letter-spacing:-.01em;margin:0}.sessions header>button[data-v-f473c0ee]{height:34px;padding:0 13px;border:0;border-radius:9px;background:var(--md-primary);color:var(--md-on-primary,#fff);font:600 13px/1 inherit}.sessions header>button[data-v-f473c0ee]:hover:not(:disabled){background:var(--md-primary);filter:brightness(1.08);box-shadow:var(--shadow-1)}.sessions>input[data-v-f473c0ee]{border-radius:10px;background:var(--md-surface-container-lowest)}.connection[data-v-f473c0ee]{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--md-on-surface-variant)}.connection button[data-v-f473c0ee]{margin-left:auto;padding:3px 9px;border-radius:8px;font-size:13px}.connection i[data-v-f473c0ee]{width:8px;height:8px;border-radius:50%;background:var(--md-outline);box-shadow:0 0 0 3px var(--md-surface-container-high)}.connection i.online[data-v-f473c0ee]{background:var(--md-success);box-shadow:0 0 0 3px var(--md-success-container)}.filter-bar[data-v-f473c0ee]{display:flex;gap:3px;padding:4px;border-radius:999px;background:var(--md-surface-container-high)}.filter-bar button[data-v-f473c0ee]{flex:1;font-size:12px;font-weight:500;padding:7px 4px;border:0;border-radius:999px;background:transparent;color:var(--md-on-surface-variant);box-shadow:none}.filter-bar button[data-v-f473c0ee]:hover:not(:disabled){background:transparent;color:var(--md-on-surface)}.filter-bar button.chosen[data-v-f473c0ee]{background:var(--md-surface-container-lowest);color:var(--md-primary);font-weight:650;box-shadow:var(--shadow-1)}.sessions label input[data-v-f473c0ee]{margin-right:6px}.session-list[data-v-f473c0ee]{overflow-y:auto;flex:1;min-height:0;margin:0 -4px;padding:0 4px}.session-card[data-v-f473c0ee]{display:flex;flex-direction:column;width:100%;text-align:left;gap:6px;margin-bottom:8px;padding:12px 13px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest)}.session-card[data-v-f473c0ee]:hover:not(:disabled){background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-primary) 40%,var(--md-outline-variant));box-shadow:var(--shadow-1)}.session-card.selected[data-v-f473c0ee]{background:var(--md-secondary-container);border-color:transparent;border-radius:12px 12px 12px 4px}.session-card.selected[data-v-f473c0ee]:hover{background:var(--md-secondary-container)}.session-card strong[data-v-f473c0ee]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;font-weight:600;font-size:14px}.origin[data-v-f473c0ee],small[data-v-f473c0ee],.sessions .muted[data-v-f473c0ee]{font-size:12px;color:var(--md-on-surface-variant)}.origin[data-v-f473c0ee]{font-weight:600;letter-spacing:.02em}.ledger-button[data-v-f473c0ee]{text-align:left;border-radius:10px;background:var(--md-surface-container-lowest);font-size:13px;font-weight:550}.ledger-button.chosen[data-v-f473c0ee]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.ledger[data-v-f473c0ee]{flex:1;overflow-y:auto;padding:var(--space-xl)}.ledger>header[data-v-f473c0ee]{margin-bottom:8px}.ledger>header h2[data-v-f473c0ee]{font-size:18px;font-weight:650}.ledger-entry[data-v-f473c0ee]{border:1px solid var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-lowest);padding:14px 16px;margin:10px 0;box-shadow:var(--shadow-1)}.ledger-entry>div[data-v-f473c0ee]{display:flex;align-items:center;gap:10px;font-size:12px}.ledger-entry>div>span[data-v-f473c0ee]:first-child{font-family:var(--code-font);background:var(--md-surface-container);padding:3px 8px;border-radius:6px;font-weight:600}.ledger-entry>div small[data-v-f473c0ee]{margin-left:auto}.ledger-entry>p[data-v-f473c0ee]{margin:8px 0;font-size:14px;line-height:1.6;overflow-wrap:anywhere}.ledger-entry details[data-v-f473c0ee]{margin-top:8px;border-radius:10px;background:var(--md-surface-container);padding:8px 12px;font-size:12px}.ledger-entry summary[data-v-f473c0ee]{cursor:pointer;color:var(--md-on-surface-variant)}.ledger-entry pre[data-v-f473c0ee]{margin:8px 0 0;max-height:300px}.conversation[data-v-f473c0ee]{display:flex;flex:1;min-width:0;flex-direction:column;min-height:0}.conversation-header[data-v-f473c0ee]{display:flex;align-items:flex-start;gap:14px}.conversation-header>div[data-v-f473c0ee]:first-child{flex:1;min-width:0}.conversation-header h2[data-v-f473c0ee]{font-size:17px;font-weight:650;margin:0}.conversation-header p[data-v-f473c0ee]{margin:6px 0 0;color:var(--md-on-surface-variant);font-size:13px}.session-actions[data-v-f473c0ee]{display:flex;gap:8px;flex-shrink:0}.session-actions button[data-v-f473c0ee]{height:32px;padding:0 13px;border-radius:9px;font-size:13px;font-weight:550;background:var(--md-surface-container-lowest)}.running[data-v-f473c0ee]{color:#b88412;font-weight:650;font-size:12px}.failed[data-v-f473c0ee]{color:var(--md-error)}.done[data-v-f473c0ee]{color:var(--md-success);font-weight:600;font-size:12px}.cancelled[data-v-f473c0ee],.muted[data-v-f473c0ee]{color:var(--md-on-surface-variant)}.muted[data-v-f473c0ee]{font-size:12px;line-height:1.6}.error[data-v-f473c0ee]{background:var(--md-error-container);color:#410e0b;padding:11px 16px;border-radius:12px;margin:8px 0;font-size:13px;overflow-wrap:anywhere}.transcript[data-v-f473c0ee]{flex:1;overflow-y:auto;padding:26px 28px;min-height:0}.welcome[data-v-f473c0ee]{max-width:660px;margin:70px auto 0;text-align:center;color:var(--md-on-surface-variant);line-height:1.8}.welcome[data-v-f473c0ee]:before{content:\"\";display:block;width:64px;height:64px;margin:0 auto 20px;border-radius:20px;background:var(--md-primary-container);background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 24 24' fill='none' stroke='%234d5d91' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z'/%3E%3Cpath d='M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:center}.welcome h2[data-v-f473c0ee]{color:var(--md-on-surface);font-size:24px;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}.welcome p[data-v-f473c0ee]{margin:6px 0;font-size:14px}.turn[data-v-f473c0ee]{max-width:920px;margin:0 auto 30px;display:flex;flex-direction:column;gap:10px}.bubble[data-v-f473c0ee]{padding:15px 19px;font-size:14px}.bubble.user[data-v-f473c0ee]{align-self:flex-end;max-width:82%;background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:16px 16px 4px}.bubble.agent[data-v-f473c0ee]{align-self:flex-start;max-width:100%;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:16px 16px 16px 4px;box-shadow:var(--shadow-1)}.bubble .message-head[data-v-f473c0ee]{display:flex;align-items:center;gap:14px;margin-bottom:10px;font-size:12px}.bubble .message-head b[data-v-f473c0ee]{font-weight:700}.bubble .message-head time[data-v-f473c0ee]{margin-left:auto;opacity:.75;font-size:12px}.bubble .message-head span[data-v-f473c0ee]{margin-left:auto}.bubble.user .message-head[data-v-f473c0ee]{margin-bottom:7px;opacity:.85}.message-text[data-v-f473c0ee]{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:14px}.bubble.agent[data-v-f473c0ee] p{margin:.4em 0}.bubble.agent[data-v-f473c0ee] pre{max-height:420px}.agent-speech[data-v-f473c0ee]{margin:6px 0;padding:2px 0;line-height:1.7}.model-annotation[data-v-f473c0ee]{display:block;font-size:12px;opacity:.7;margin-bottom:4px;font-family:var(--code-font)}.agent-speech[data-v-f473c0ee] p{margin:.45em 0}.agent-speech[data-v-f473c0ee] pre{background:var(--md-surface-container);border:1px solid var(--md-outline-variant);border-radius:10px;padding:12px 14px;max-height:460px;overflow:auto;font-size:13px}.agent-speech[data-v-f473c0ee] code{font-family:var(--code-font)}.agent-speech[data-v-f473c0ee] ul{padding-left:20px;margin:.4em 0}.steps[data-v-f473c0ee]{display:flex;flex-direction:column;gap:8px;margin:12px 0 14px}.steps details[data-v-f473c0ee]{border-radius:12px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);padding:10px 14px}.steps summary[data-v-f473c0ee]{cursor:pointer;font-size:13px;font-weight:550}.steps summary small[data-v-f473c0ee]{margin-left:10px;font-weight:600}.steps summary[data-v-f473c0ee]::marker{color:var(--md-on-surface-variant)}.steps details pre[data-v-f473c0ee]{margin:10px 0 0;font-family:var(--code-font);font-size:13px;white-space:pre-wrap;max-height:400px}pre[data-v-f473c0ee]{max-height:450px;overflow:auto;font-family:var(--code-font)}.subagent-card[data-v-f473c0ee]{border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest);overflow:hidden;box-shadow:var(--shadow-1)}button.subagent-card-head[data-v-f473c0ee]{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:0;border-radius:0;background:transparent;padding:11px 14px;font-size:13px}button.subagent-card-head[data-v-f473c0ee]:hover:not(:disabled){background:var(--md-secondary-container);box-shadow:none}button.subagent-card-head>span[data-v-f473c0ee]:first-child{color:var(--md-primary)}button.subagent-card-head>strong[data-v-f473c0ee]{font-weight:700}.subagent-prompt[data-v-f473c0ee]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--md-on-surface)}.subagent-card small[data-v-f473c0ee]{font-weight:600}.subagent-chevron[data-v-f473c0ee]{color:var(--md-on-surface-variant);font-size:12px}.subagent-card-error[data-v-f473c0ee]{margin:0 10px 10px;padding:8px 12px;font-size:12px}.subagent-card.nested[data-v-f473c0ee]{margin:6px 0;box-shadow:none}.sub-view[data-v-f473c0ee]{max-width:900px;margin:0 auto}.sub-view-header[data-v-f473c0ee]{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--md-outline-variant)}.sub-view-header button[data-v-f473c0ee]{flex-shrink:0;border-radius:9px;font-size:13px;font-weight:550;background:var(--md-surface-container-lowest)}.sub-view-header h3[data-v-f473c0ee]{margin:0 0 4px;font-size:16px;font-weight:650}.sub-view-header p[data-v-f473c0ee]{margin:0;max-width:520px}.sub-view-header>span[data-v-f473c0ee]{margin-left:auto;font-weight:650;font-size:12px}.sub-view-body[data-v-f473c0ee]{min-height:120px}.composer[data-v-f473c0ee]{flex-shrink:0;margin:0 20px 18px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-lowest);overflow:hidden;box-shadow:var(--shadow-1)}.composer-input[data-v-f473c0ee]{position:relative}.composer-input textarea[data-v-f473c0ee]{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 64px 15px 18px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}.composer-input textarea[data-v-f473c0ee]:focus{box-shadow:none;border:0}.send-fly[data-v-f473c0ee]{position:absolute!important;right:10px!important;bottom:10px!important;z-index:2;width:42px!important;height:42px!important;aspect-ratio:1/1;display:grid!important;place-items:center;border:0!important;border-radius:50%!important;padding:0!important;margin:0!important;background:var(--md-primary);color:var(--md-on-primary,#fff);box-shadow:0 2px 10px color-mix(in srgb,var(--md-primary) 38%,transparent)}.send-fly svg[data-v-f473c0ee]{width:20px;height:20px}.send-fly[data-v-f473c0ee]:hover:not(:disabled){filter:brightness(1.08)}.send-fly[data-v-f473c0ee]:disabled{background:var(--md-surface-container);color:var(--md-on-surface-variant);opacity:.7;box-shadow:none}.send-fly.stop[data-v-f473c0ee]{background:var(--md-error);color:#fff;box-shadow:0 2px 10px color-mix(in srgb,var(--md-error) 40%,transparent)}.compact-notice[data-v-f473c0ee]{font-size:12px;padding:10px 16px;color:var(--md-primary);background:var(--md-primary-container);border-radius:10px;margin:10px 16px 0}.execution-options[data-v-f473c0ee]{display:flex;gap:10px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid var(--md-outline-variant);align-items:end}.execution-options label[data-v-f473c0ee]{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--md-on-surface-variant);flex:1;min-width:130px}.execution-options[data-v-f473c0ee] .app-select-trigger,.execution-options .workspace-select[data-v-f473c0ee]{width:100%;font-size:13px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--md-on-surface);min-height:36px;border-radius:10px;background:var(--md-surface-container);border-color:transparent;text-align:left}.workspace-select[data-v-f473c0ee]{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block}.composer footer[data-v-f473c0ee]{display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap;border-top:1px solid var(--md-outline-variant)}.composer footer>select[data-v-f473c0ee],.composer footer>.app-select[data-v-f473c0ee]{font-size:13px;border-radius:10px;min-height:34px}.composer footer .muted[data-v-f473c0ee]{flex:1;min-width:120px}.composer footer>button[data-v-f473c0ee]{font-size:13px;font-weight:600;border-radius:9px;min-height:34px}.host-panel>strong[data-v-f473c0ee]{font-size:14px}.host-panel dl[data-v-f473c0ee]{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;font-size:12px}.host-panel dt[data-v-f473c0ee]{color:var(--md-on-surface-variant);font-weight:600}.host-panel dd[data-v-f473c0ee]{margin:4px 0 0;overflow-wrap:anywhere}.usage-rings[data-v-f473c0ee]{display:flex;align-items:center;gap:24px;padding:14px 0;flex-wrap:wrap}.usage-metric[data-v-f473c0ee]{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px}.usage-ring[data-v-f473c0ee]{width:88px;height:88px;border-radius:50%;display:grid;place-items:center}.usage-ring b[data-v-f473c0ee]{width:68px;height:68px;border-radius:50%;background:var(--md-surface-container-lowest);display:grid;place-items:center;font-size:15px;font-weight:650;box-shadow:var(--shadow-1)}.new-folder[data-v-f473c0ee]{display:flex;gap:8px}.new-folder input[data-v-f473c0ee]{flex:1;min-width:0}.directory-backdrop[data-v-f473c0ee]{position:fixed;inset:0;background:#14111acc;z-index:1000;display:grid;place-items:center;padding:20px}.directory-dialog[data-v-f473c0ee]{background:var(--md-surface);border:1px solid var(--md-outline-variant);border-radius:20px;padding:22px;width:min(680px,100%);display:flex;flex-direction:column;gap:14px;max-height:85vh;box-shadow:var(--shadow-4)}.directory-dialog>header[data-v-f473c0ee]{gap:12px}.directory-dialog>header h2[data-v-f473c0ee]{font-size:16px;font-weight:650}.directory-list[data-v-f473c0ee]{overflow:auto;min-height:180px;display:flex;flex-direction:column;gap:6px}.directory-list button[data-v-f473c0ee]{text-align:left;border-radius:10px;background:var(--md-surface-container-low);font-size:13px}.directory-roots[data-v-f473c0ee]{display:flex;gap:8px;flex-wrap:wrap}.directory-roots button[data-v-f473c0ee]{border-radius:999px;font-size:12px;padding:6px 12px}.directory-dialog code[data-v-f473c0ee]{overflow-wrap:anywhere;font-size:12px;background:var(--md-surface-container);padding:8px 10px;border-radius:8px}.directory-dialog>footer[data-v-f473c0ee]{display:flex;justify-content:flex-end}.directory-dialog>footer button[data-v-f473c0ee]{background:var(--md-primary);color:var(--md-on-primary,#fff);border-color:transparent;font-weight:600}.permission-request[data-v-f473c0ee]{margin:12px;padding:16px;border-radius:16px;background:var(--md-tertiary-container)}.permission-request small[data-v-f473c0ee]{display:block;margin:8px 0}.permission-request pre[data-v-f473c0ee]{max-height:160px;overflow:auto}.permission-request>div[data-v-f473c0ee]{display:flex;justify-content:flex-end;gap:8px}#app .workspace[data-v-f473c0ee]{gap:12px;padding-left:6px;background:var(--md-surface-container)}#app .workspace .sessions[data-v-f473c0ee]{width:296px;gap:14px;padding:18px 14px;border:0;border-radius:28px;background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}#app .workspace .sessions h1[data-v-f473c0ee]{font-size:24px;font-weight:800;letter-spacing:-.02em}#app .workspace .sessions header>button[data-v-f473c0ee]{height:40px;padding:0 16px;border:0;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary,#fff);font:700 13px/1 inherit;display:inline-flex;align-items:center;gap:7px;box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 30%,transparent)}#app .workspace .sessions header>button[data-v-f473c0ee]:hover:not(:disabled){background:var(--md-primary);filter:brightness(1.06);box-shadow:0 8px 20px color-mix(in srgb,var(--md-primary) 34%,transparent)}#app .workspace .sessions>input[data-v-f473c0ee]{min-height:48px;padding:0 16px;border:1px solid transparent;border-radius:16px;background:var(--md-surface-container-high);color:var(--md-on-surface);font-size:14px}#app .workspace .sessions>input[data-v-f473c0ee]:focus{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}#app .workspace .filter-bar[data-v-f473c0ee]{padding:5px;border-radius:999px;background:var(--md-surface-container-high)}#app .workspace .filter-bar button[data-v-f473c0ee]{border-radius:999px;padding:8px 4px;font-weight:600}#app .workspace .filter-bar button.chosen[data-v-f473c0ee]{background:var(--md-primary);color:var(--md-on-primary,#fff);font-weight:700;box-shadow:var(--shadow-1)}#app .workspace .filter-bar button.chosen[data-v-f473c0ee]:hover:not(:disabled){background:var(--md-primary);color:var(--md-on-primary,#fff)}#app .workspace .session-list[data-v-f473c0ee]{margin:0 -2px;padding:0 2px}#app .workspace .session-card[data-v-f473c0ee]{gap:5px;margin-bottom:8px;padding:13px 15px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);border-radius:18px;background:var(--md-surface-container-lowest);transition:transform .26s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .2s,border-color .2s,box-shadow .22s,border-radius .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .workspace .session-card[data-v-f473c0ee]:hover:not(:disabled){transform:translateY(-2px);box-shadow:var(--shadow-1);border-color:color-mix(in srgb,var(--md-primary) 35%,var(--md-outline-variant))}#app .workspace .session-card.selected[data-v-f473c0ee]{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent;border-radius:20px 20px 20px 7px;box-shadow:var(--shadow-1)}#app .workspace .session-card .origin[data-v-f473c0ee]{font-weight:700;letter-spacing:.05em;text-transform:uppercase;font-size:12px;color:var(--md-primary)}#app .workspace .session-card.selected .origin[data-v-f473c0ee]{color:var(--md-on-secondary-container);opacity:.75}#app .workspace .ledger-button[data-v-f473c0ee]{min-height:44px;border-radius:16px;font-weight:650;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}#app .workspace .ledger-button.chosen[data-v-f473c0ee]{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent}#app .workspace .ledger-entry[data-v-f473c0ee]{border-radius:20px;border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);background:var(--md-surface-container-lowest);box-shadow:var(--shadow-1)}#app .workspace .conversation[data-v-f473c0ee]{background:var(--md-surface);border-radius:30px;overflow:hidden;box-shadow:var(--shadow-1)}#app .workspace .conversation-header[data-v-f473c0ee]{padding:20px 26px 16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent)}#app .workspace .conversation-header h2[data-v-f473c0ee]{font-size:20px;font-weight:750;letter-spacing:-.01em}#app .workspace .session-actions button[data-v-f473c0ee]{height:36px;padding:0 15px;border-radius:999px;background:var(--md-surface-container-high);border-color:transparent;font-weight:650}#app .workspace .session-actions button[data-v-f473c0ee]:hover:not(:disabled){background:var(--md-surface-container-highest);box-shadow:none}#app .workspace .running[data-v-f473c0ee]{color:#b88412;background:color-mix(in srgb,#B88412 14%,transparent);padding:4px 11px;border-radius:999px;font-weight:700}#app .workspace .transcript[data-v-f473c0ee]{padding:28px 30px}#app .workspace .welcome[data-v-f473c0ee]{margin:64px auto 0}#app .workspace .welcome[data-v-f473c0ee]:before{width:76px;height:76px;border-radius:26px 26px 26px 10px;background-color:var(--md-primary-container);background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 24 24' fill='none' stroke='%235944c6' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z'/%3E%3Cpath d='M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z'/%3E%3C/svg%3E\");background-size:34px 34px}#app .workspace .welcome h2[data-v-f473c0ee]{font-size:26px;font-weight:800;letter-spacing:-.02em}#app .workspace .turn[data-v-f473c0ee]{gap:12px;margin-bottom:32px}#app .workspace .bubble[data-v-f473c0ee]{padding:16px 20px;font-size:15px;line-height:1.7}#app .workspace .bubble.user[data-v-f473c0ee]{background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:24px 24px 8px;box-shadow:var(--shadow-1);max-width:82%}#app .workspace .bubble.agent[data-v-f473c0ee]{background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);border-radius:8px 24px 24px;box-shadow:var(--shadow-1);max-width:100%}#app .workspace .bubble .message-head b[data-v-f473c0ee]{font-weight:750}#app .workspace .steps[data-v-f473c0ee]{gap:9px;margin:14px 0}#app .workspace .steps details[data-v-f473c0ee]{border-radius:16px;background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);padding:11px 15px}#app .workspace .subagent-card[data-v-f473c0ee]{border-radius:18px;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);box-shadow:var(--shadow-1)}#app .workspace button.subagent-card-head[data-v-f473c0ee]{padding:12px 15px}#app .workspace button.subagent-card-head[data-v-f473c0ee]:hover:not(:disabled){background:var(--md-secondary-container)}#app .workspace .sub-view-header[data-v-f473c0ee]{padding-bottom:16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent)}#app .workspace .sub-view-header button[data-v-f473c0ee]{border-radius:999px;background:var(--md-surface-container-high);border-color:transparent;font-weight:650}#app .workspace .agent-speech[data-v-f473c0ee] pre{border-radius:16px;background:var(--md-surface-container);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}#app .workspace .composer[data-v-f473c0ee]{margin:0 22px 20px;border-radius:28px;overflow:hidden;background:var(--md-surface-container-lowest);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);box-shadow:var(--shadow-2)}#app .workspace .composer[data-v-f473c0ee]:focus-within{border-color:color-mix(in srgb,var(--md-primary) 55%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent),var(--shadow-2)}#app .workspace .execution-options[data-v-f473c0ee]{padding:12px 16px;gap:10px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}#app .workspace .execution-options label[data-v-f473c0ee]{font-weight:700;letter-spacing:.05em}#app .workspace .execution-options .workspace-select[data-v-f473c0ee]{min-height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high);font-size:13px}#app .workspace .execution-options[data-v-f473c0ee] .app-select-trigger,#app .workspace .composer footer[data-v-f473c0ee] .app-select-trigger{min-height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high);font-size:13px}#app .workspace .composer-input textarea[data-v-f473c0ee]{border-radius:0;background:transparent}#app .workspace .send-fly[data-v-f473c0ee]{width:46px!important;height:46px!important;border-radius:50%!important;box-shadow:0 8px 22px color-mix(in srgb,var(--md-primary) 34%,transparent)}#app .workspace .composer footer[data-v-f473c0ee]{border-top:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);padding:12px 16px}#app .workspace .composer footer>button[data-v-f473c0ee]{border-radius:999px;min-height:36px;padding-inline:15px;background:var(--md-surface-container-high);border-color:transparent}#app .workspace .host-panel[data-v-f473c0ee]{margin:0 22px 10px;border-radius:24px;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}#app .workspace .usage-ring b[data-v-f473c0ee]{background:var(--md-surface-container-lowest)}#app .workspace .directory-dialog[data-v-f473c0ee]{border-radius:32px;border-color:transparent;box-shadow:var(--shadow-4);background:var(--md-surface-container-low)}#app .workspace .directory-list button[data-v-f473c0ee]{background:var(--md-surface-container-lowest);border-color:transparent;border-radius:16px;min-height:46px}#app .workspace .directory-list button[data-v-f473c0ee]:hover:not(:disabled){background:var(--md-secondary-container)}#app .workspace .directory-roots button[data-v-f473c0ee]{background:var(--md-surface-container-high);border-color:transparent}@media (max-width:800px){.sessions[data-v-f473c0ee]{width:214px;padding:12px 10px}.transcript[data-v-f473c0ee]{padding:14px}.composer[data-v-f473c0ee]{margin:0 12px 12px}.composer footer .muted[data-v-f473c0ee]{display:none}.conversation-header[data-v-f473c0ee]{padding:14px 16px}.welcome[data-v-f473c0ee]{margin:30px auto 0}.turn[data-v-f473c0ee]{margin-bottom:22px}}@media (max-width:560px){.workspace[data-v-f473c0ee]{flex-direction:column}.sessions[data-v-f473c0ee]{width:100%;max-height:230px;border-right:0;border-bottom:1px solid var(--md-outline-variant)}.sessions>input[data-v-f473c0ee],.filter-bar[data-v-f473c0ee],.connection[data-v-f473c0ee]{display:none}.session-list[data-v-f473c0ee]{display:flex;gap:6px;overflow-x:auto}.session-card[data-v-f473c0ee]{min-width:160px;width:160px;margin-bottom:0}.ledger-button[data-v-f473c0ee]{padding:5px;font-size:12px}}\n";document.head.appendChild(s)}})();

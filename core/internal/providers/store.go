@@ -499,10 +499,12 @@ func (s *Store) AllModels() []string {
 	return out
 }
 
-// Catalog returns model entries with provider metadata for mocr ChooseModels.
+// CatalogEntry is one enabled model with its owning provider's metadata.
 type CatalogEntry struct {
 	ID               string `json:"id"`
 	Provider         string `json:"provider"`
+	ProviderID       string `json:"provider_id,omitempty"`
+	ProviderName     string `json:"provider_name,omitempty"`
 	SupportsThinking bool   `json:"supports_thinking"`
 }
 
@@ -524,6 +526,8 @@ func (s *Store) Catalog() []CatalogEntry {
 			out = append(out, CatalogEntry{
 				ID:               m,
 				Provider:         p.Provider,
+				ProviderID:       p.ID,
+				ProviderName:     p.Name,
 				SupportsThinking: thinking,
 			})
 		}

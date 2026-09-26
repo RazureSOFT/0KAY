@@ -34,7 +34,7 @@ async function createFolder() {
   try {const response=await fetch(`/api/agent/workspace?executor_id=${encodeURIComponent(executor.value.plugin_id)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:directory.value.path,name:folderName.value.trim()})});if(!response.ok)throw new Error(await response.text());const result=await response.json();folderName.value='';await browse(result.path)}
   catch(e:any){browserError.value=e.message}finally{browserBusy.value=false}
 }
-const models = ref<Array<{ id: string; provider: string }>>([])
+const models = ref<Array<{ id: string; provider: string; provider_id?: string; provider_name?: string }>>([])
 const hostOpen = ref(false)
 const browserOpen = ref(false)
 const browserBusy = ref(false)
@@ -112,8 +112,11 @@ function loadOptions() {
   } catch { executorId.value='';workdir.value='';intensity.value=50;modelId.value='MOCR';draft.value='';mode.value='general' }
 }
 const providerNames = ref<Record<string, string>>({})
-function modelLabel(model: { id: string; provider: string }) {
-  return `${providerNames.value[model.provider] || model.provider}/${model.id}`
+function modelLabel(model: { id: string; provider: string; provider_id?: string; provider_name?: string }) {
+  const name = model.provider_name
+    || (model.provider_id ? providerNames.value[model.provider_id] : '')
+    || model.provider_id || model.provider
+  return `${name}/${model.id}`
 }
 async function fetchModels() {
   try {
@@ -126,7 +129,10 @@ async function fetchModels() {
     if (response.ok) {
       const providers: any[] = (await response.json()).providers || []
       const names: Record<string, string> = {}
-      for (const provider of providers) if (provider.name) names[provider.provider] = provider.name
+      // Key by provider id, not provider type: several providers can share a
+      // type (e.g. three "custom" endpoints), and keying by type made the last
+      // name win for every one of them.
+      for (const provider of providers) if (provider.name && provider.id) names[provider.id] = provider.name
       providerNames.value = names
     }
   } catch { /* provider names are optional */ }
