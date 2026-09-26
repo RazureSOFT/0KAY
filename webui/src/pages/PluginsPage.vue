@@ -459,4 +459,35 @@ onUnmounted(() => {
   margin-top: 8px;
   opacity: 0.8;
 }
+
+/* ---------- Material 3 Expressive ---------- */
+#app .plugins-page .page-header h1{font-size:clamp(24px,2.8vw,34px);font-weight:800;letter-spacing:-.02em}
+#app .plugins-page .subtitle{color:var(--md-on-surface-variant);font-size:14px;margin-top:8px;line-height:1.6}
+#app .plugins-page .btn{
+  height:46px;padding:0 22px;border:1px solid transparent;border-radius:999px;
+  font-weight:700;font-size:13.5px;color:var(--md-on-surface);background:var(--md-surface-container-high);
+  transition:transform 240ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color 180ms,box-shadow 200ms;
+}
+#app .plugins-page .btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:var(--shadow-1)}
+#app .plugins-page .btn-tonal{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+#app .plugins-page .plugin-grid{gap:var(--space-lg)}
+#app .plugins-page .plugin-card{
+  border-radius:24px;border-color:color-mix(in srgb,var(--md-outline-variant) 55%,transparent);
+  background:var(--md-surface-container-low);box-shadow:var(--shadow-1);
+  transition:transform 280ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),box-shadow 280ms,border-color 280ms;
+}
+#app .plugins-page .plugin-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-2);border-color:color-mix(in srgb,var(--md-primary) 30%,var(--md-outline-variant))}
+#app .plugins-page .plugin-card.healthy{border-color:color-mix(in srgb,var(--md-success) 42%,var(--md-outline-variant))}
+#app .plugins-page .plugin-icon{width:52px;height:52px;border-radius:18px 18px 18px 7px;background:var(--md-primary-container);color:var(--md-on-primary-container)}
+#app .plugins-page .plugin-titles h2{font-size:17px;font-weight:750;letter-spacing:-.01em}
+#app .plugins-page .status-chip{height:30px;padding:0 12px;border-radius:999px;font-weight:700;font-size:12px}
+#app .plugins-page .cap-chip{height:26px;padding:0 11px;font-weight:600;border-radius:999px}
+#app .plugins-page .plugin-meta dt{font-size:11px;font-weight:800;letter-spacing:.06em}
+#app .plugins-page .plugin-meta dd{font-size:15px;font-weight:650}
+#app .plugins-page .plugin-switch-slider{width:50px;height:30px;background:var(--md-surface-container-highest);border:2px solid var(--md-outline);transition:background-color 320ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),border-color 320ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}
+#app .plugins-page .plugin-switch-slider::after{left:4px;width:18px;height:18px;background:var(--md-outline);transition:left 340ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),width 340ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),height 340ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color 300ms}
+#app .plugins-page .plugin-switch.on .plugin-switch-slider{background:var(--md-primary);border-color:var(--md-primary)}
+#app .plugins-page .plugin-switch.on .plugin-switch-slider::after{left:24px;width:20px;height:20px;background:var(--md-on-primary)}
+#app .plugins-page .empty-state{background:var(--md-surface-container);border-radius:32px}
+#app .plugins-page .empty-state p{margin:0;font-size:15px;font-weight:600;color:var(--md-on-surface)}
 </style>

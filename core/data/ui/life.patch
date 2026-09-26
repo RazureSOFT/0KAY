@@ -71,22 +71,6 @@
       }
     },
     {
-      "target": "status",
-      "op": "insert",
-      "anchor": "agents",
-      "position": "after",
-      "id": "memory",
-      "item": {
-        "id": "memory",
-        "kind": "memory",
-        "title": "记忆",
-        "titleKey": "memory.title",
-        "endpoint": "/api/life/memories",
-        "pollMs": 15000,
-        "order": 60
-      }
-    },
-    {
       "target": "settings",
       "op": "remove",
       "id": "life",
@@ -110,42 +94,16 @@
     {
       "target": "router",
       "op": "insert",
-      "id": "memory",
-      "item": {
-        "id": "memory",
-        "path": "/memory",
-        "name": "memory",
-        "module": "/api/plugins/life/ui/memory.js",
-        "title": "记忆管理台"
-      }
-    },
-    {
-      "target": "router",
-      "op": "insert",
       "id": "companion",
       "item": { "id": "companion", "path": "/companion", "name": "companion", "module": "/api/plugins/life/ui/companion.js", "title": "陪伴面板" }
     },
     {
       "target": "nav",
       "op": "insert",
-      "anchor": "memory",
-      "position": "after",
-      "id": "companion",
-      "item": { "id": "companion", "to": "/companion", "label": "陪伴", "icon": "life", "order": 25 }
-    },
-    {
-      "target": "nav",
-      "op": "insert",
       "anchor": "plugins",
       "position": "before",
-      "id": "memory",
-      "item": {
-        "id": "memory",
-        "to": "/memory",
-        "label": "记忆",
-        "icon": "memory",
-        "order": 20
-      }
+      "id": "companion",
+      "item": { "id": "companion", "to": "/companion", "label": "陪伴", "icon": "life", "order": 25 }
     },
     {
       "target": "settings",

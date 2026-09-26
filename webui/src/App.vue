@@ -9,6 +9,7 @@ import { useUIPatchesStore } from './stores/uiPatches'
 import SetupWizard from './components/SetupWizard.vue'
 import GlobalAgentInbox from './components/GlobalAgentInbox.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
+import AppSelect from './components/AppSelect.vue'
 import { setLanguage, getLanguage, LOCALES } from './i18n'
 
 const { t } = useI18n()
@@ -122,15 +123,13 @@ function onWizardComplete() {
           :class="{ on: life.isConnected }"
           :title="life.isConnected ? t('status.connected') : t('status.disconnected')"
         ></span>
-        <select
-          class="icon-btn lang-select"
-          :value="lang"
-          :title="t('app.switchLang')"
+        <AppSelect
+          class="lang-select"
+          :model-value="lang"
+          :options="LOCALES.map(option => ({ value: option.code, label: option.label }))"
           :aria-label="t('app.switchLang')"
-          @change="changeLang(($event.target as HTMLSelectElement).value)"
-        >
-          <option v-for="option in LOCALES" :key="option.code" :value="option.code">{{ option.label }}</option>
-        </select>
+          @update:model-value="changeLang"
+        />
         <button
           class="icon-btn settings-btn"
           :class="{ active: route.name === 'settings' }"
@@ -298,15 +297,20 @@ function onWizardComplete() {
 }
 
 .lang-select {
-  appearance: none;
-  -webkit-appearance: none;
-  text-align: center;
-  cursor: pointer;
-  padding: 0 8px;
+  width: 148px;
+  flex-shrink: 0;
 }
-.lang-select option {
-  color: var(--md-on-surface);
-  background: var(--md-surface-container);
+#app .lang-select :deep(.app-select-trigger) {
+  min-height: 44px;
+  border-radius: 18px;
+  background-color: var(--md-surface-container-lowest);
+  padding: 0 10px 0 14px;
+  font-size: 13px;
+  font-weight: 650;
+}
+#app .lang-select :deep(.app-select-chevron) {
+  width: 22px;
+  height: 22px;
 }
 
 .app-body {
