@@ -359,7 +359,7 @@ const activeTasks = computed(() => lifeStore.activeTasks)
 }
 
 .patch-badge {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
   text-transform: uppercase;

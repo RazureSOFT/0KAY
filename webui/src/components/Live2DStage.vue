@@ -631,7 +631,7 @@ function selectModel(url: string) {
   border-radius: var(--radius-full);
   background: color-mix(in srgb, var(--md-inverse-surface) 75%, transparent);
   color: var(--md-inverse-on-surface);
-  font-size: 11px;
+  font-size: 12px;
   text-transform: capitalize;
   pointer-events: none;
 }

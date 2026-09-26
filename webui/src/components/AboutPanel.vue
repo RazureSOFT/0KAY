@@ -329,7 +329,7 @@ onUnmounted(stopPolling)
 .app-id { flex: 1; min-width: 0; }
 .app-id h2 { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
 .ver-badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
-.app-desc { margin: 4px 0 0; font-size: 13.5px; color: var(--md-on-surface-variant); }
+.app-desc { margin: 4px 0 0; font-size: 14px; color: var(--md-on-surface-variant); }
 .identity-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* Sections */
@@ -358,14 +358,14 @@ onUnmounted(stopPolling)
 .apply-banner.failed { background: var(--md-error-container); color: #410e0b; border-color: transparent; }
 .apply-head { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .apply-head b { font-weight: 700; }
-.apply-label { margin-left: auto; font-size: 12.5px; opacity: 0.85; }
+.apply-label { margin-left: auto; font-size: 13px; opacity: 0.85; }
 .mode-chip {
   height: 22px;
   padding: 0 9px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
   background: var(--md-secondary-container);
   color: var(--md-on-secondary-container);
@@ -411,13 +411,13 @@ onUnmounted(stopPolling)
 .tile { padding: 14px 16px; border-radius: 16px; background: var(--md-surface-container); border: 1px solid var(--md-outline-variant); }
 .tile.accent { background: var(--md-primary-container); border-color: transparent; color: var(--md-on-primary-container); }
 .tile.good { background: var(--md-success-container); border-color: transparent; color: #0d1f06; }
-.tile dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.72; margin-bottom: 4px; }
+.tile dt { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.72; margin-bottom: 4px; }
 .tile dd { margin: 0; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 /* Plugin table */
 .ptable { border: 1px solid var(--md-outline-variant); border-radius: 16px; overflow: hidden; }
 .prow { display: grid; grid-template-columns: 1.4fr 1.3fr 1fr auto; gap: 12px; align-items: center; padding: 11px 16px; }
-.phead { background: var(--md-surface-container); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--md-on-surface-variant); font-weight: 700; }
+.phead { background: var(--md-surface-container); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--md-on-surface-variant); font-weight: 700; }
 .prow:not(.phead) { background: var(--md-surface-container-lowest); border-top: 1px solid var(--md-outline-variant); }
 .prow:not(.phead):nth-child(odd) { background: var(--md-surface-container-low); }
 .pname { font-weight: 650; }
@@ -465,7 +465,7 @@ onUnmounted(stopPolling)
 .person img { width: 54px; height: 54px; border-radius: 50%; flex: none; box-shadow: 0 0 0 3px var(--md-surface-container-low), 0 0 0 4px var(--md-outline-variant); }
 .person-info { display: flex; flex-direction: column; min-width: 0; }
 .person-info .name { font-size: 16px; font-weight: 650; }
-.person-info .role { font-size: 12.5px; color: var(--md-on-surface-variant); }
+.person-info .role { font-size: 13px; color: var(--md-on-surface-variant); }
 .person .go { margin-left: auto; color: var(--md-primary); font-weight: 700; }
 
 .contributors-head { margin-top: 6px; }
@@ -486,7 +486,7 @@ onUnmounted(stopPolling)
 .contrib:hover { border-color: var(--md-primary); background: var(--md-surface-container); transform: translateY(-1px); }
 .contrib img { width: 46px; height: 46px; border-radius: 50%; }
 .contrib .login { font-size: 12px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.contrib .count { font-size: 11px; color: var(--md-on-surface-variant); }
+.contrib .count { font-size: 12px; color: var(--md-on-surface-variant); }
 
 /* Footer */
 .foot { display: flex; align-items: center; gap: 12px; padding-top: 18px; border-top: 1px solid var(--md-outline-variant); font-size: 13px; color: var(--md-on-surface-variant); }

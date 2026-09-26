@@ -220,9 +220,9 @@ onUnmounted(() => {
   margin-bottom: clamp(18px, 2.4vw, 28px);
   flex-wrap: wrap;
 }
-.pp-eyebrow { margin: 0 0 8px; color: var(--md-primary); font: 800 11px/1 ui-monospace, monospace; letter-spacing: .18em; }
+.pp-eyebrow { margin: 0 0 8px; color: var(--md-primary); font: 800 12px/1 ui-monospace, monospace; letter-spacing: .18em; }
 .page-header h1, .pp-hero h1 { font-size: clamp(26px, 3vw, 38px); font-weight: 800; letter-spacing: -.02em; margin: 0; }
-.subtitle { color: var(--md-on-surface-variant); font-size: 14.5px; margin-top: 8px; line-height: 1.6; max-width: 70ch; }
+.subtitle { color: var(--md-on-surface-variant); font-size: 15px; margin-top: 8px; line-height: 1.6; max-width: 70ch; }
 
 .error-banner { padding: 14px 18px; border-radius: 18px; background: var(--md-error-container); color: var(--md-on-error-container, #410E0B); margin-bottom: var(--space-lg); }
 
@@ -279,7 +279,7 @@ onUnmounted(() => {
 
 .plugin-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 0; }
 .plugin-meta div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.plugin-meta dt { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--md-on-surface-variant); }
+.plugin-meta dt { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--md-on-surface-variant); }
 .plugin-meta dd { font-size: 14px; font-weight: 650; color: var(--md-on-surface); font-family: ui-monospace, monospace; overflow-wrap: anywhere; margin: 0; }
 
 .caps { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -308,7 +308,7 @@ onUnmounted(() => {
 
 #app .plugins-page .btn {
   height: 46px; padding: 0 22px; border: 1px solid transparent; border-radius: 999px;
-  font-weight: 700; font-size: 13.5px; color: var(--md-on-surface); background: var(--md-surface-container-high);
+  font-weight: 700; font-size: 14px; color: var(--md-on-surface); background: var(--md-surface-container-high);
   display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer;
   transition: transform 240ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)), background-color 180ms, box-shadow 200ms;
 }

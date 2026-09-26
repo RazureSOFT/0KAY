@@ -169,7 +169,7 @@ function getEmotionLabel(emotion: any): string {
   border-bottom-left-radius: var(--radius-sm);
   box-shadow: var(--shadow-2);
 }
-.think-panel{margin-top:6px;border:1px solid var(--md-outline-variant);border-radius:10px;background:var(--md-surface-container-low)}.think-toggle{width:100%;display:flex;justify-content:space-between;align-items:center;border:0;background:transparent;padding:7px 10px;color:var(--md-on-surface-variant);font:600 11px/1.2 monospace;letter-spacing:.06em;cursor:pointer}.think-body{padding:0 10px 9px;color:var(--md-on-surface-variant);font-size:12px;line-height:1.45}.think-body p{margin:4px 0}.think-body b{color:var(--md-on-surface)}
+.think-panel{margin-top:6px;border:1px solid var(--md-outline-variant);border-radius:10px;background:var(--md-surface-container-low)}.think-toggle{width:100%;display:flex;justify-content:space-between;align-items:center;border:0;background:transparent;padding:7px 10px;color:var(--md-on-surface-variant);font:600 12px/1.2 monospace;letter-spacing:.06em;cursor:pointer}.think-body{padding:0 10px 9px;color:var(--md-on-surface-variant);font-size:12px;line-height:1.45}.think-body p{margin:4px 0}.think-body b{color:var(--md-on-surface)}
 .think-summary{margin:6px 0;color:var(--md-on-surface);line-height:1.55}
 .think-raw{margin:6px 0;white-space:pre-wrap;max-height:420px;overflow:auto;color:var(--md-on-surface);font:12px/1.5 monospace}
 

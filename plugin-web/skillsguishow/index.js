@@ -36,16 +36,16 @@ const CSS = `
   background:var(--md-primary);color:var(--md-on-primary);
   box-shadow:0 10px 24px color-mix(in srgb,var(--md-primary) 32%,transparent);
 }
-.skg-eyebrow{display:inline-block;margin-bottom:10px;padding:4px 12px;border-radius:999px;background:color-mix(in srgb,var(--md-on-primary-container) 10%,transparent);font:800 11px/1 ui-monospace,monospace;letter-spacing:.16em}
+.skg-eyebrow{display:inline-block;margin-bottom:10px;padding:4px 12px;border-radius:999px;background:color-mix(in srgb,var(--md-on-primary-container) 10%,transparent);font:800 12px/1 ui-monospace,monospace;letter-spacing:.16em}
 .skg-hero h1{font-size:clamp(24px,2.8vw,34px);font-weight:800;letter-spacing:-.02em}
-.skg-sub{margin-top:10px;font-size:13.5px;line-height:1.6;opacity:.82;max-width:62ch}
+.skg-sub{margin-top:10px;font-size:14px;line-height:1.6;opacity:.82;max-width:62ch}
 .skg-hero-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 
 /* ---------- Buttons ---------- */
 #app .skg .skg-btn{
   height:46px;padding:0 22px;border:0;border-radius:999px;cursor:pointer;
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
-  font:700 13.5px/1 inherit;color:var(--md-on-surface);background:var(--md-surface-container-high);
+  font:700 14px/1 inherit;color:var(--md-on-surface);background:var(--md-surface-container-high);
   transition:transform 260ms var(--skg-spring),background-color 180ms,box-shadow 200ms;
 }
 #app .skg .skg-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:var(--shadow-2)}
@@ -53,7 +53,7 @@ const CSS = `
 #app .skg .skg-btn.skg-primary{background:var(--md-primary);color:var(--md-on-primary);box-shadow:0 8px 20px color-mix(in srgb,var(--md-primary) 32%,transparent)}
 #app .skg .skg-btn.skg-tonal{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 #app .skg .skg-btn.skg-danger{background:var(--md-error-container);color:var(--md-on-error-container,#410e0b)}
-#app .skg .skg-btn.skg-sm{height:34px;padding:0 15px;font-size:12.5px}
+#app .skg .skg-btn.skg-sm{height:34px;padding:0 15px;font-size:13px}
 
 /* ---------- Banners ---------- */
 .skg-banner{padding:13px 18px;border-radius:18px;font-size:13px;margin-bottom:14px;font-weight:600}
@@ -70,7 +70,7 @@ const CSS = `
 .skg-stat:hover{transform:translateY(-3px);box-shadow:var(--shadow-2)}
 .skg-stat .skg-ic{width:40px;height:40px;border-radius:16px 16px 16px 6px;display:grid;place-items:center;background:color-mix(in srgb,currentColor 14%,transparent)}
 .skg-stat b{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
-.skg-stat span{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.78}
+.skg-stat span{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.78}
 .skg-stat.t1{background:var(--md-primary-container);color:var(--md-on-primary-container)}
 .skg-stat.t2{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 .skg-stat.t3{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#421326)}
@@ -85,7 +85,7 @@ const CSS = `
   box-shadow:var(--shadow-1);animation:skg-rise 460ms var(--skg-spring) both;
 }
 .skg-upload h2{font-size:17px;font-weight:800}
-.skg-hint{font-size:12.5px;line-height:1.6;color:var(--md-on-surface-variant)}
+.skg-hint{font-size:13px;line-height:1.6;color:var(--md-on-surface-variant)}
 .skg-upload input[type=text],.skg-textarea,.skg-search input{
   width:100%;border:1px solid transparent;border-radius:16px;background-color:var(--md-surface-container-high);
   color:var(--md-on-surface);font:400 14px/1.4 inherit;outline:none;
@@ -112,7 +112,7 @@ const CSS = `
   background:var(--md-secondary-container);color:var(--md-on-secondary-container);
 }
 .skg-folder b{font-size:14px;font-weight:800}
-.skg-folder span{flex:1;min-width:180px;font-size:12.5px;line-height:1.55;opacity:.88}
+.skg-folder span{flex:1;min-width:180px;font-size:13px;line-height:1.55;opacity:.88}
 .skg-folder .skg-btn{height:40px;padding:0 18px;background:var(--md-on-secondary-container);color:var(--md-secondary-container)}
 .skg-upload-actions{display:flex;justify-content:flex-end;gap:10px}
 
@@ -123,7 +123,7 @@ const CSS = `
 .skg-search input{padding-left:46px}
 .skg-count{
   flex-shrink:0;height:34px;padding:0 14px;border-radius:999px;display:inline-flex;align-items:center;
-  background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:12.5px;font-weight:700;
+  background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:13px;font-weight:700;
 }
 
 /* ---------- Cards ---------- */

@@ -179,6 +179,14 @@ const summary = computed(() => {
       : Array.isArray(d?.files) ? d.files.map((file: any) => file?.path).filter(Boolean) : []
     return clip(files.join(', '))
   }
+  if (name === 'todowrite') {
+    const list = Array.isArray(a?.todos) ? a.todos : Array.isArray(d?.todos) ? d.todos : []
+    if (!list.length) return clip(String(props.step.args || ''))
+    const total = list.length
+    const done = list.filter((item: any) => item?.status === 'completed').length
+    const running = list.filter((item: any) => item?.status === 'in_progress').length
+    return `${total} ${tr('项', 'items')} · ${tr('完成', 'done')} ${done}${running ? ` · ${tr('进行中', 'running')} ${running}` : ''}`
+  }
   if (a && Object.keys(a).length) { try { return clip(JSON.stringify(a)) } catch { /* fall through */ } }
   return clip(String(props.step.args || ''))
 })
@@ -312,13 +320,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 <style scoped>
 .tool-card{--code-font:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,'SFMono-Regular',Menlo,monospace;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container);margin:8px 0;overflow:hidden}
-button.tool-card-head{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;border-radius:0;background:transparent;padding:10px 12px;cursor:pointer;font-size:12px}
+button.tool-card-head{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;border-radius:0;background:transparent;padding:10px 12px;cursor:pointer;font-size:13px}
 button.tool-card-head:hover{background:var(--md-secondary-container)}
-.tool-kind{flex-shrink:0;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--md-on-surface-variant)}
-.tool-summary{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--code-font);font-size:11.5px}
-.tool-stat{flex-shrink:0;font-size:11px;font-weight:600;color:var(--md-primary);border:1px solid var(--md-outline-variant);border-radius:999px;padding:1px 8px}
-.tool-state{flex-shrink:0;font-size:11px;color:var(--md-on-surface-variant)}
-.tool-chevron{flex-shrink:0;color:var(--md-on-surface-variant);font-size:11px;transition:transform .15s}
+.tool-kind{flex-shrink:0;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--md-on-surface)}
+.tool-summary{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--code-font);font-size:13px;color:var(--md-on-surface)}
+.tool-stat{flex-shrink:0;font-size:12px;font-weight:600;color:var(--md-primary);border:1px solid var(--md-outline-variant);border-radius:999px;padding:1px 8px}
+.tool-state{flex-shrink:0;font-size:13px;color:var(--md-on-surface-variant)}
+.tool-chevron{flex-shrink:0;color:var(--md-on-surface-variant);font-size:12px;transition:transform .15s}
 .tool-card.expanded .tool-chevron{transform:rotate(90deg)}
 .tool-dot{font-size:9px}
 .tool-dot.running,.tool-dot.pending{color:#b88412}
@@ -326,9 +334,9 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .tool-dot.done{color:#3a6}
 .tool-dot.cancelled{color:var(--md-on-surface-variant)}
 .tool-card-body{padding:4px 12px 12px;border-top:1px solid var(--md-outline-variant);display:flex;flex-direction:column;gap:6px}
-.tool-section-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--md-on-surface-variant);margin-top:4px}
+.tool-section-label{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--md-on-surface-variant);margin-top:4px}
 .tool-card-body pre{margin:0;max-height:340px;overflow:auto;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:8px;padding:8px 10px;font-family:var(--code-font);font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
-.tool-section-text{margin:0;font-size:12.5px;overflow-wrap:anywhere}
+.tool-section-text{margin:0;font-size:13px;overflow-wrap:anywhere}
 .tool-error{background:var(--md-error-container);padding:8px 12px;border-radius:8px;margin:0;font-size:12px;overflow-wrap:anywhere}
 .muted{font-size:12px;color:var(--md-on-surface-variant);margin:0}
 .tool-dialog-backdrop{position:fixed;inset:0;background:#0008;z-index:1050;display:grid;place-items:center;padding:20px}
@@ -341,8 +349,8 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .tool-search-results{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:14px}
 .tool-search-results a{color:var(--md-primary);font-size:14px;font-weight:500;text-decoration:none}
 .tool-search-results a:hover{text-decoration:underline}
-.tool-search-results p{margin:4px 0 0;font-size:12.5px;line-height:1.65;color:var(--md-on-surface)}
-.tool-search-results small{display:block;margin-top:2px;font-size:11px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}
+.tool-search-results p{margin:4px 0 0;font-size:13px;line-height:1.65;color:var(--md-on-surface)}
+.tool-search-results small{display:block;margin-top:2px;font-size:12px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}
 
 /* Material 3 Expressive polish */
 .tool-card{border-radius:16px;border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent);background:var(--md-surface-container);transition:box-shadow 220ms,background-color 200ms}

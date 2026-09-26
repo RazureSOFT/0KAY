@@ -245,7 +245,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .dot.on{background:var(--md-success);box-shadow:0 0 0 4px color-mix(in srgb,var(--md-success) 22%,transparent)}
 #app .mc .dot.err{background:var(--md-error);box-shadow:0 0 0 4px color-mix(in srgb,var(--md-error) 20%,transparent)}
 #app .mc .tag{
-  font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:999px;
+  font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;
   background:var(--md-success-container);color:#0d3b1e;
 }
 #app .mc .mc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -259,7 +259,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 }
 #app .mc .btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:var(--shadow-1)}
 #app .mc .btn:disabled{opacity:.5;cursor:not-allowed}
-#app .mc .btn.sm{height:32px;padding:0 13px;font-size:12.5px}
+#app .mc .btn.sm{height:32px;padding:0 13px;font-size:13px}
 #app .mc .btn.filled{background:var(--md-primary);color:var(--md-on-primary);box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 30%,transparent)}
 #app .mc .btn.tonic{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 #app .mc .btn.danger{background:var(--md-error-container);color:var(--md-on-error-container,#410e0b)}
@@ -269,7 +269,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .connect input,
 #app .mc .connect select{
   height:44px;padding:0 14px;border:1px solid transparent;border-radius:14px;
-  background:var(--md-surface-container-high);color:var(--md-on-surface);font:400 13.5px/1.4 inherit;outline:none;
+  background:var(--md-surface-container-high);color:var(--md-on-surface);font:400 14px/1.4 inherit;outline:none;
   transition:background-color 180ms,border-color 180ms,box-shadow 200ms;
 }
 #app .mc .url{width:238px}
@@ -288,7 +288,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-bottom:0}
 #app .mc .grid .card{margin-bottom:16px}
 #app .mc .connect-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
-#app .mc .connect-grid label{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--md-on-surface-variant)}
+#app .mc .connect-grid label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--md-on-surface-variant)}
 #app .mc .connect-grid label.wide{grid-column:1/-1}
 #app .mc .connect .actions{display:flex;justify-content:flex-end;margin-top:14px}
 
@@ -316,7 +316,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
 /* Chips */
 #app .mc .chip{
-  display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:11.5px;font-weight:700;
+  display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:700;
   background:var(--md-secondary-container);color:var(--md-on-secondary-container);flex-shrink:0;
 }
 #app .mc .chip.muted{background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-weight:600}
@@ -335,8 +335,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
   transition:transform 200ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color 180ms;
 }
 #app .mc .cell:hover{transform:translateY(-2px);background:var(--md-surface-container-highest)}
-#app .mc .cell .it{font-size:10px;line-height:1.1;text-align:center;word-break:break-word}
-#app .mc .cell .it b{display:block;font-size:10px;color:var(--md-primary);font-weight:800}
+#app .mc .cell .it{font-size:11px;line-height:1.1;text-align:center;word-break:break-word}
+#app .mc .cell .it b{display:block;font-size:11px;color:var(--md-primary);font-weight:800}
 
 @media(max-width:640px){
   #app .mc .url{width:100%}
