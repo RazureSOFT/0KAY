@@ -10,6 +10,7 @@
 import http from 'http';
 import { BotController } from './controller.js';
 import { Autopilot } from './autopilot.js';
+import { startPlugin } from './plugin.js';
 
 const PORT = Number(process.env.MINECRAFT_PORT) || 8765;
 const HOST = process.env.MINECRAFT_BIND_HOST || '127.0.0.1';
@@ -19,6 +20,31 @@ const TOKEN = process.env.MINECRAFT_TOKEN || '';
 const controller = new BotController({ coreUrl: CORE_URL });
 const autopilot = new Autopilot(controller, { coreUrl: CORE_URL });
 controller.autopilot = autopilot;
+
+const serverSettings = {};
+let pluginHandle = null;
+
+function mergedConnectArgs(args = {}) {
+  return {
+    edition: args.edition || serverSettings.default_edition || undefined,
+    host: args.host || serverSettings.default_host || undefined,
+    port: args.port || serverSettings.default_port || undefined,
+    username: args.username || serverSettings.default_username || undefined,
+    version: args.version,
+    auth: args.auth,
+  };
+}
+
+async function pollSettings() {
+  try {
+    const res = await fetch(`${CORE_URL}/api/settings/minecraft`, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return;
+    const body = await res.json();
+    Object.assign(serverSettings, body?.values || {});
+  } catch {
+    // Core not reachable yet; keep previous defaults
+  }
+}
 
 const sseClients = new Set();
 controller.on((type, data) => {
@@ -71,7 +97,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (path === '/health') {
-    send(res, 200, { ok: true, connected: controller.connected, edition: controller.edition });
+    send(res, 200, { ok: true, connected: controller.connected, edition: controller.edition, pluginId: pluginHandle?.pluginId || null });
     return;
   }
   if (path === '/events' && req.method === 'GET') {
@@ -93,7 +119,7 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (req.method === 'GET' && path === '/status') {
-      send(res, 200, controller.status());
+      send(res, 200, { ...controller.status(), pluginId: pluginHandle?.pluginId || null, settings: serverSettings });
       return;
     }
     if (req.method === 'GET' && path === '/autopilot') {
@@ -108,7 +134,9 @@ const server = http.createServer(async (req, res) => {
     const body = await readJson(req);
 
     if (path === '/action') {
-      const result = await controller.action(String(body.action || ''), body.args || {});
+      const action = String(body.action || '');
+      const args = action === 'connect' ? mergedConnectArgs(body.args || {}) : (body.args || {});
+      const result = await controller.action(action, args);
       send(res, 200, { ok: true, result });
       return;
     }
@@ -124,8 +152,7 @@ const server = http.createServer(async (req, res) => {
     const shortcut = path.replace(/^\//, '');
     const allowed = new Set(['connect', 'disconnect', 'chat', 'follow', 'goto', 'stop', 'look', 'dig', 'place', 'attack', 'inventory', 'use', 'players']);
     if (allowed.has(shortcut)) {
-      const args = { ...body };
-      if (shortcut === 'connect' && args.args) Object.assign(args, args.args);
+      const args = shortcut === 'connect' ? mergedConnectArgs({ ...body, ...(body.args || {}) }) : { ...body };
       const result = await controller.action(shortcut, args);
       send(res, 200, { ok: true, result });
       return;
@@ -137,15 +164,23 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, HOST, () => {
+server.listen(PORT, HOST, async () => {
   console.log(`[minecraft] 0kay Minecraft bot service listening on http://${HOST}:${PORT}`);
   console.log(`[minecraft] Core model gateway: ${CORE_URL}`);
   console.log(`[minecraft] Editions: java (mineflayer), bedrock (bedrock-protocol)`);
+  await pollSettings();
+  setInterval(pollSettings, 15_000).unref();
+  try {
+    pluginHandle = await startPlugin({ address: `http://${HOST}:${PORT}`, getActiveTasks: () => (controller.connected ? 1 : 0) });
+  } catch (error) {
+    console.warn(`[minecraft] Core plugin registration failed: ${error.message}`);
+  }
 });
 
 function shutdown() {
   console.log('[minecraft] shutting down');
   autopilot.stop('shutdown');
+  pluginHandle?.stop();
   controller.action('disconnect').catch(() => {});
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 2000).unref();
