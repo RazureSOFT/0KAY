@@ -244,7 +244,16 @@
       "noRelease": "暫無發行版",
       "noPlugins": "暫無已註冊外掛",
       "unsupported": "目前 Core 未提供更新檢查，請更新並重新啟動 Core。",
-      "updateHint": "停止要更新的元件後，使用 0kay-pm 更新並重新啟動。"
+      "updateHint": "停止要更新的元件後，使用 0kay-pm 更新並重新啟動。",
+"tagline": "本機優先的 AI 陪伴平台",
+"currentVersion": "目前版本",
+"latestVersion": "最新版本",
+"developerTitle": "主要開發者",
+"teamTitle": "團隊",
+"contributorsTitle": "貢獻者",
+"contributorsFrom": "來自 GitHub",
+"licenseTitle": "授權條款",
+"repository": "程式庫"
     },
     "generalDesc": "介面語言與基本偏好",
     "providerDesc": "選擇 AI 供應商並設定 API 憑證",

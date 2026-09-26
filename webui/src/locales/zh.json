@@ -244,7 +244,16 @@
       "noRelease": "暂无发行版",
       "noPlugins": "暂无已注册插件",
       "unsupported": "当前 Core 未提供更新检查，请更新并重启 Core。",
-      "updateHint": "停止要更新的组件后，使用 0kay-pm 更新并重新启动。"
+      "updateHint": "停止要更新的组件后，使用 0kay-pm 更新并重新启动。",
+"tagline": "本地优先的 AI 陪伴平台",
+"currentVersion": "当前版本",
+"latestVersion": "最新版本",
+"developerTitle": "主要开发者",
+"teamTitle": "团队",
+"contributorsTitle": "贡献者",
+"contributorsFrom": "来自 GitHub",
+"licenseTitle": "开源许可",
+"repository": "代码仓库"
     },
     "generalDesc": "界面语言与基础偏好",
     "providerDesc": "选择 AI 供应商并配置 API 凭证",

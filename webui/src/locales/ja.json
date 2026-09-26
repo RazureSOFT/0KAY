@@ -244,7 +244,16 @@
       "noRelease": "公開リリースなし",
       "noPlugins": "登録済みプラグインなし",
       "unsupported": "この Core ビルドは更新確認を提供していません。Core を更新して再起動してください。",
-      "updateHint": "0kay-pm で更新する前にコンポーネントを停止し、その後再起動してください。"
+      "updateHint": "0kay-pm で更新する前にコンポーネントを停止し、その後再起動してください。",
+"tagline": "ローカルファーストの AI コンパニオンプラットフォーム",
+"currentVersion": "現在",
+"latestVersion": "最新",
+"developerTitle": "メイン開発者",
+"teamTitle": "チーム",
+"contributorsTitle": "コントリビューター",
+"contributorsFrom": "GitHub から取得",
+"licenseTitle": "ライセンス",
+"repository": "リポジトリ"
     },
     "generalDesc": "UI 言語と基本設定",
     "providerDesc": "AI プロバイダーを選択して API 認証情報を設定",
