@@ -4,13 +4,9 @@ A local-first AI platform with Core orchestration, a persona plugin, a model gat
 
 ## Screenshots
 
-| 对话 | 插件 |
-|---|---|
-| ![对话](assets/chat.png) | ![插件](assets/plugins.png) |
-
-| 插件市场 | 供应商设置 |
-|---|---|
-| ![插件市场](assets/marketplace.png) | ![供应商设置](assets/settings-provider.png) |
+| 对话 | 通用设置 | 供应商设置 |
+|---|---|---|
+| ![对话](assets/chat.png) | ![通用设置](assets/settings-general.png) | ![供应商设置](assets/settings-provider.png) |
 
 All screenshots are real captures of the running WebUI (`webui`, Vite dev server),
 not mockups.

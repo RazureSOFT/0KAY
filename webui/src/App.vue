@@ -13,7 +13,8 @@ import AppSelect from './components/AppSelect.vue'
 import LifeApprovalDialog from './components/LifeApprovalDialog.vue'
 import MinecraftConsentDialog from './components/MinecraftConsentDialog.vue'
 import { setLanguage, getLanguage, LOCALES } from './i18n'
-import { authRequired, submitLogin, cancelLogin } from './auth'
+import { authRequired, submitLogin, cancelLogin, pinRequired, submitPin, cancelPin, verifyPin, pinConfigured, pinSetupRequired, setPin } from './auth'
+import PinInput from './components/PinInput.vue'
 
 const { t } = useI18n()
 const wizard = useWizardStore()
@@ -104,17 +105,36 @@ function onWizardComplete() {
   router.replace('/')
 }
 
-// --- pairing / API-token overlay ------------------------------------------
+// --- pairing / PIN login overlay ------------------------------------------
 const authToken = ref('')
 const authBusy = ref(false)
 const authError = ref('')
+const authInvalid = ref(false)
+const useTokenInput = ref(false)
+
+function resetAuth() {
+  authError.value = ''
+  authInvalid.value = false
+  authToken.value = ''
+  useTokenInput.value = false
+}
+
+function toggleAuthMode() {
+  useTokenInput.value = !useTokenInput.value
+  authToken.value = ''
+  authError.value = ''
+  authInvalid.value = false
+}
 
 async function onAuthSubmit() {
   if (authBusy.value) return
+  const credential = authToken.value.trim()
+  if (!credential) { authError.value = t('auth.failed'); authInvalid.value = true; return }
   authBusy.value = true
   authError.value = ''
+  authInvalid.value = false
   try {
-    await submitLogin(authToken.value)
+    await submitLogin(credential)
     authToken.value = ''
     // The cookie is set now, so live channels can connect.
     if (wizard.isCompleted) {
@@ -123,19 +143,105 @@ async function onAuthSubmit() {
     }
   } catch (e: any) {
     authError.value = e?.message || t('auth.failed')
+    authInvalid.value = true
+    authToken.value = ''
   } finally {
     authBusy.value = false
   }
 }
 
 function onAuthCancel() {
-  authError.value = ''
+  resetAuth()
   cancelLogin()
+}
+
+// --- sensitive-action PIN prompt ------------------------------------------
+const pinInput = ref('')
+const pinError = ref('')
+const pinInvalid = ref(false)
+
+async function onPinSubmit() {
+  const pin = pinInput.value.trim()
+  if (pin.length !== 6) return
+  pinError.value = ''
+  pinInvalid.value = false
+  const ok = await verifyPin(pin)
+  if (!ok) {
+    pinError.value = t('auth.pinWrong')
+    pinInvalid.value = true
+    pinInput.value = ''
+    setTimeout(() => { pinInvalid.value = false }, 400)
+    return
+  }
+  submitPin(pin)
+  pinInput.value = ''
+}
+
+function onPinCancel() {
+  pinError.value = ''
+  pinInvalid.value = false
+  pinInput.value = ''
+  cancelPin()
+}
+
+// --- first-run / upgrade PIN setup ----------------------------------------
+const setupPin = ref('')
+const setupConfirm = ref('')
+const setupError = ref('')
+const setupBusy = ref(false)
+const setupInvalid = ref(false)
+
+async function onSetupSubmit() {
+  if (setupBusy.value) return
+  const pin = setupPin.value
+  if (pin.length !== 6 || setupConfirm.value.length !== 6) return
+  if (pin !== setupConfirm.value) {
+    setupError.value = t('wizard.pinMismatch')
+    setupInvalid.value = true
+    setupConfirm.value = ''
+    setTimeout(() => { setupInvalid.value = false }, 400)
+    return
+  }
+  setupBusy.value = true
+  setupError.value = ''
+  try {
+    await setPin(pin)
+    setupPin.value = ''
+    setupConfirm.value = ''
+  } catch (e: any) {
+    setupError.value = e?.message || t('auth.failed')
+    setupInvalid.value = true
+  } finally {
+    setupBusy.value = false
+  }
 }
 </script>
 
 <template>
   <Teleport to="body">
+    <!-- First run / upgrade: choose a 6-digit access PIN -->
+    <div
+      v-if="pinSetupRequired && !authRequired"
+      class="auth-scrim"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="t('auth.setupTitle')"
+    >
+      <form class="auth-dialog" @submit.prevent="onSetupSubmit">
+        <span class="auth-mark">0kay</span>
+        <h2>{{ t('auth.setupTitle') }}</h2>
+        <p class="auth-hint">{{ t('auth.setupHint') }}</p>
+        <label class="auth-label">{{ t('auth.pinNew') }}</label>
+        <PinInput v-model="setupPin" :invalid="setupInvalid" autofocus />
+        <label class="auth-label">{{ t('auth.pinConfirm') }}</label>
+        <PinInput v-model="setupConfirm" :invalid="setupInvalid" @complete="onSetupSubmit" />
+        <p v-if="setupError" role="alert" class="auth-error">{{ setupError }}</p>
+        <footer class="auth-actions">
+          <button type="submit" class="auth-primary" :disabled="setupBusy">{{ t('auth.savePin') }}</button>
+        </footer>
+      </form>
+    </div>
+
     <div
       v-if="authRequired"
       class="auth-scrim"
@@ -147,18 +253,47 @@ function onAuthCancel() {
         <span class="auth-mark">0kay</span>
         <h2>{{ t('auth.title') }}</h2>
         <p class="auth-hint">{{ t('auth.hint') }}</p>
+        <PinInput
+          v-if="pinConfigured && !useTokenInput"
+          v-model="authToken"
+          :invalid="authInvalid"
+          autofocus
+          @complete="onAuthSubmit"
+        />
         <input
+          v-else
           v-model="authToken"
           type="password"
           class="auth-input"
           :placeholder="t('auth.token')"
           autocomplete="current-password"
-          autofocus
         />
         <p v-if="authError" role="alert" class="auth-error">{{ authError }}</p>
         <footer class="auth-actions">
+          <button type="button" class="auth-secondary" @click="pinConfigured && toggleAuthMode()">
+            {{ pinConfigured && !useTokenInput ? t('auth.useToken') : t('auth.usePin') }}
+          </button>
           <button type="button" class="auth-secondary" @click="onAuthCancel">{{ t('auth.cancel') }}</button>
-          <button type="submit" class="auth-primary" :disabled="authBusy">{{ t('auth.submit') }}</button>
+          <button v-if="!pinConfigured || useTokenInput" type="submit" class="auth-primary" :disabled="authBusy">{{ t('auth.submit') }}</button>
+        </footer>
+      </form>
+    </div>
+
+    <div
+      v-if="pinRequired"
+      class="auth-scrim"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="t('auth.pinTitle')"
+    >
+      <form class="auth-dialog" @submit.prevent="onPinSubmit">
+        <span class="auth-mark">0kay</span>
+        <h2>{{ t('auth.pinTitle') }}</h2>
+        <p class="auth-hint">{{ t('auth.pinHint') }}</p>
+        <PinInput v-model="pinInput" :invalid="pinInvalid" autofocus @complete="onPinSubmit" />
+        <p v-if="pinError" role="alert" class="auth-error">{{ pinError }}</p>
+        <footer class="auth-actions">
+          <button type="button" class="auth-secondary" @click="onPinCancel">{{ t('auth.cancel') }}</button>
         </footer>
       </form>
     </div>
@@ -543,6 +678,14 @@ function onAuthCancel() {
   font-size: 13px;
   color: var(--md-on-surface-variant);
 }
+
+.auth-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--md-on-surface-variant);
+}
+
+.auth-dialog :deep(.pin-boxes) { margin-inline: -6px; }
 
 .auth-input {
   width: 100%;

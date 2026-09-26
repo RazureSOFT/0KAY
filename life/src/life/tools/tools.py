@@ -33,7 +33,9 @@ class RuntimeToolConfig:
     mail_smtp_user: str = ""
     mail_smtp_password: str = ""
     mail_from: str = ""
+    mail_from_name: str = "0KAY"
     mail_require_approval: bool = False
+    mail_auto_approve_all: bool = False
     mcp_enabled: bool = True
     onebot_enabled: bool = False
     onebot_sender: Any = None
@@ -134,7 +136,8 @@ def send_mail(config: "RuntimeToolConfig", to: str, subject: str, body: str) -> 
 
         msg = MIMEText(body or "", "plain", "utf-8")
         msg["Subject"] = Header(subject or "(无主题)", "utf-8")
-        msg["From"] = formataddr(("L.I.F.E", sender)) if sender else sender
+        display_name = str(getattr(config, "mail_from_name", "") or "").strip()
+        msg["From"] = formataddr((display_name, sender)) if (sender and display_name) else sender
         msg["To"] = to
 
         if port == 465:

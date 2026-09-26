@@ -22,6 +22,7 @@ const editorProbe = ref<Probe>({ state: 'idle' })
 const discovered = ref<string[]>([])
 const modelSearch = ref('')
 const showKey = ref(false)
+const editHasStoredKey = ref(false)
 const saving = ref(false)
 
 onMounted(async () => {
@@ -110,17 +111,22 @@ function startAdd() {
   discovered.value = []
   modelSearch.value = ''
   showKey.value = false
+  editHasStoredKey.value = false
   view.value = 'edit'
 }
 
 function startEdit(p: ProviderConfig) {
   edit.value = {
     ...p,
+    api_key: '',
     name: p.name || '',
     models: [...p.models],
     disabled_models: [...(p.disabled_models || [])],
     format: p.format || '',
   }
+  // The catalog is redacted (api_key blank, api_key_masked present): remember a
+  // key already exists so the blank field can be explained and preserved.
+  editHasStoredKey.value = !!((p as unknown as { api_key_masked?: string }).api_key_masked)
   editorError.value = ''
   editorProbe.value = { state: 'idle' }
   discovered.value = []
@@ -324,13 +330,14 @@ const providerTypeOptions = computed(() =>
             <input
               v-model="edit.api_key"
               :type="showKey ? 'text' : 'password'"
-              :placeholder="t('wizard.apiKeyPlaceholder')"
+              :placeholder="editHasStoredKey ? t('settings.apiKeyKept') : t('wizard.apiKeyPlaceholder')"
               class="input"
             />
             <button class="pp-key-toggle" type="button" @click="showKey = !showKey">
               {{ showKey ? t('settings.hideKey') : t('settings.showKey') }}
             </button>
           </div>
+          <p v-if="editHasStoredKey" class="helper-text">{{ t('settings.apiKeyKeptHint') }}</p>
           <p v-if="editorProbe.state === 'error'" class="pp-probe err">{{ editorProbe.message }}</p>
           <p v-else-if="editorProbe.state === 'ok'" class="pp-probe ok">
             {{ t('settings.connectionOk') }} · {{ fetchedSummary() }} · {{ editorProbe.ms }}ms

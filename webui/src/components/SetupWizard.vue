@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useWizardStore } from '../stores/wizard'
 import AppSelect from './AppSelect.vue'
 import { PROVIDERS, WIZARD_STEPS } from '../composables/wizard'
+import PinInput from './PinInput.vue'
 import { LOCALES, setLanguage, getLanguage } from '../i18n'
 
 const { t } = useI18n()
@@ -122,9 +123,42 @@ function toggleModel(model: string) {
   else wizard.selectedModels.push(model)
 }
 
-function finish() {
+const newPin = ref('')
+const confirmPin = ref('')
+const pinError = ref('')
+const savingPin = ref(false)
+
+async function finish() {
+  pinError.value = ''
+  const pin = newPin.value.trim()
+  if (pin) {
+    if (pin.length !== 6 || !/^\d{6}$/.test(pin)) { pinError.value = t('wizard.pinTooShort'); return }
+    if (pin !== confirmPin.value.trim()) { pinError.value = t('wizard.pinMismatch'); return }
+    savingPin.value = true
+    try {
+      const res = await fetch('/api/security/pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.error || `HTTP ${res.status}`)
+      }
+    } catch (e: any) {
+      pinError.value = e?.message || String(e)
+      savingPin.value = false
+      return
+    }
+    savingPin.value = false
+  }
   wizard.completeWizard()
   emit('complete')
+}
+
+function onPinComplete() {
+  const pin = newPin.value.trim()
+  if (pin.length === 6 && pin === confirmPin.value.trim()) void finish()
 }
 
 function useCustomModels() {
@@ -393,13 +427,29 @@ function useCustomModels() {
                 <span class="value">{{ wizard.live2d.enabled ? '✓' : '✗' }}</span>
               </div>
             </div>
+
+            <div class="pin-card">
+              <h3>{{ t('wizard.pinTitle') }}</h3>
+              <p class="pin-hint">{{ t('wizard.pinHint') }}</p>
+              <div class="pin-row">
+                <div class="pin-field">
+                  <label class="pin-label">{{ t('wizard.pinNew') }}</label>
+                  <PinInput v-model="newPin" autofocus />
+                </div>
+                <div class="pin-field">
+                  <label class="pin-label">{{ t('wizard.pinConfirm') }}</label>
+                  <PinInput v-model="confirmPin" @complete="onPinComplete" />
+                </div>
+              </div>
+              <p v-if="pinError" class="pin-error">{{ pinError }}</p>
+            </div>
           </div>
         </div>
 
         <footer class="wizard-footer">
           <button class="btn btn-tonal" @click="wizard.prevStep()" :disabled="wizard.currentStep === 1">{{ t('wizard.back') }}</button>
           <button v-if="wizard.currentStep < 8" class="btn btn-primary" @click="wizard.nextStep()" :disabled="!wizard.canProceed">{{ t('wizard.next') }}</button>
-          <button v-else class="btn btn-primary" @click="finish">{{ t('wizard.startChatting') }}</button>
+          <button v-else class="btn btn-primary" :disabled="savingPin" @click="finish">{{ t('wizard.startChatting') }}</button>
         </footer>
       </section>
     </div>
@@ -659,4 +709,19 @@ function useCustomModels() {
   #app .step-desc { display: none; }
   #app .feature-grid, #app .pv-grid { grid-template-columns: 1fr 1fr; }
 }
+
+#app .pin-card {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 16px;
+  background: var(--md-surface-container-low);
+}
+#app .pin-card h3 { margin: 0 0 4px; font-size: 15px; font-weight: 700; }
+#app .pin-hint { margin: 0 0 12px; font-size: 12.5px; color: var(--md-on-surface-variant); }
+#app .pin-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#app .pin-field { display: flex; flex-direction: column; gap: 6px; }
+#app .pin-label { font-size: 12px; font-weight: 600; color: var(--md-on-surface-variant); }
+#app .pin-error { margin: 10px 0 0; color: var(--md-error); font-size: 12.5px; }
+@media (max-width: 640px) { #app .pin-row { grid-template-columns: 1fr; } }
 </style>

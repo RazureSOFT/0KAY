@@ -4,7 +4,7 @@ import { onMounted, reactive, ref } from 'vue'
 const form = reactive<Record<string, any>>({
   screen_watch: false, computer_use: false, report_agent_host: '',
   mail_mailbox_path: '', mail_imap_host: '', mail_imap_port: 993, mail_imap_user: '', mail_imap_password: '',
-  mail_smtp_host: '', mail_smtp_port: 465, mail_smtp_user: '', mail_smtp_password: '', mail_from: '', mail_require_approval: false,
+  mail_smtp_host: '', mail_smtp_port: 465, mail_smtp_user: '', mail_smtp_password: '', mail_from: '', mail_from_name: '0KAY', mail_require_approval: false, mail_auto_approve_all: false,
   mcp_enabled: true, onebot_enabled: false, onebot_ws_url: 'ws://127.0.0.1:6700', onebot_http_url: 'http://127.0.0.1:6700', onebot_access_token: '', onebot_trigger_keywords: '',
   onebot_observe_group: true, proactive_daily_limit: 3, proactive_target_limit: 1,
   think_model: '', output_model: '',
@@ -23,7 +23,7 @@ function mailConfigPayload() {
     mail_imap_user: form.mail_imap_user, mail_imap_password: form.mail_imap_password,
     mail_smtp_host: form.mail_smtp_host, mail_smtp_port: form.mail_smtp_port,
     mail_smtp_user: form.mail_smtp_user, mail_smtp_password: form.mail_smtp_password,
-    mail_from: form.mail_from,
+    mail_from: form.mail_from, mail_from_name: form.mail_from_name,
   }
 }
 async function testMail(send = false) {
@@ -137,8 +137,10 @@ onMounted(load)
         </div>
         <div class="ls-row">
           <label class="ls-field"><span>发件人地址（可选）</span><input v-model="form.mail_from" placeholder="留空用 SMTP 用户名" /></label>
-          <label class="ls-field"><span>离线邮箱 JSON（可选）</span><input v-model="form.mail_mailbox_path" placeholder="mailbox.json" /></label>
+          <label class="ls-field"><span>发件人昵称（可选）</span><input v-model="form.mail_from_name" placeholder="默认 0KAY" /></label>
         </div>
+        <label class="ls-field"><span>离线邮箱 JSON（可选）</span><input v-model="form.mail_mailbox_path" placeholder="mailbox.json" /></label>
+        <label class="ls-switch"><input v-model="form.mail_auto_approve_all" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>全部自动审批</b><small>所有需确认的权限直接通过，不再弹窗询问</small></span></label>
         <label class="ls-switch"><input v-model="form.mail_require_approval" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>邮件操作需弹窗确认</b><small>读取 / 发送邮件前先在 WebUI 询问你</small></span></label>
         <div class="ls-mail-actions">
           <button type="button" class="ls-test" :disabled="mailTesting" @click="testMail(false)">{{ mailTesting ? '测试中…' : '测试连接' }}</button>

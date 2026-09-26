@@ -15,7 +15,7 @@ from core.v1 import core_pb2, core_pb2_grpc
 from plugin.v1 import plugin_pb2
 
 
-def _manifest_version(fallback: str = "0.1.0") -> str:
+def _manifest_version(fallback: str = "0.1.1") -> str:
     """Read the plugin version from manifest.json in the working directory."""
     try:
         manifest = os.path.join(os.path.dirname(__file__), '..', '..', 'manifest.json')
@@ -201,11 +201,25 @@ class CoreClient:
                             help="留空则使用 SMTP 用户名作为发件人",
                         ),
                         _pb.SettingsField(
+                            key="mail_from_name",
+                            type="text",
+                            label="发件人昵称（可选）",
+                            default_value="0KAY",
+                            help="收件方看到的发件人名称，默认 0KAY",
+                        ),
+                        _pb.SettingsField(
                             key="mail_require_approval",
                             type="bool",
                             label="邮件操作需弹窗确认",
                             default_value="false",
                             help="开启后，L.I.F.E 读取或发送邮件前会先在 WebUI 弹窗询问是否允许（默认关闭）",
+                        ),
+                        _pb.SettingsField(
+                            key="mail_auto_approve_all",
+                            type="bool",
+                            label="全部自动审批（所有权限直接通过）",
+                            default_value="false",
+                            help="开启后所有需要确认的权限直接通过、不再弹窗，优先于逐项确认设置",
                         ),
                         _pb.SettingsField(
                             key="mcp_enabled",

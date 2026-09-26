@@ -61,6 +61,11 @@ type Store struct {
 	// trusted holds networks whose callers are treated like loopback: reverse
 	// proxies and container networks that terminate the local UI.
 	trusted []*net.IPNet
+	// pinSalt/pinHash hold the optional access PIN. When set, sensitive routes
+	// require the X-0kay-Pin header from callers that are not using a machine
+	// credential (paired-device token or CORE_API_TOKEN).
+	pinSalt []byte
+	pinHash []byte
 }
 
 var Default *Store
@@ -99,7 +104,9 @@ func New(directory string) (*Store, error) {
 	}
 	name, _ := os.Hostname()
 	s := &Store{Name: name, path: filepath.Join(directory, "paired_devices.json"), Devices: map[string]Device{}, requests: map[string]*Request{}, addresses: map[string]string{}, enforce: os.Getenv("CORE_LAN_ENABLED") == "1", trusted: trustedNetworks(os.Getenv("CORE_TRUSTED_NETWORKS"))}
+	existingInstall := false
 	if data, err := os.ReadFile(s.path); err == nil {
+		existingInstall = true
 		var saved struct {
 			ID      string
 			Devices map[string]Device
@@ -145,6 +152,7 @@ func New(directory string) (*Store, error) {
 	fingerprint := sha256.Sum256(pair.Certificate[0])
 	s.Fingerprint = hex.EncodeToString(fingerprint[:])
 	s.TLS = &tls.Config{Certificates: []tls.Certificate{pair}, MinVersion: tls.VersionTLS12}
+	s.seedPIN(existingInstall)
 	return s, nil
 }
 func (s *Store) save() error {
@@ -228,7 +236,7 @@ func (s *Store) authorized(r *http.Request) (bool, string) {
 		return true, "token"
 	}
 	if cookie, err := r.Cookie(SessionCookie); err == nil && cookie.Value != "" {
-		if s.valid(cookie.Value) || apiToken(cookie.Value) {
+		if s.valid(cookie.Value) || apiToken(cookie.Value) || s.pinCookieValid(cookie.Value) {
 			return true, "cookie"
 		}
 	}
@@ -289,35 +297,49 @@ func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet, http.MethodHead:
 		ok, method := s.authorized(r)
+		requires := !s.trustedPeer(r.RemoteAddr)
+		// A browser is prompted for the PIN even over loopback; machine clients
+		// (LIFE / agent / scripts) stay exempt.
+		if s.HasPIN() && looksLikeBrowser(r) {
+			requires = true
+			if _, err := r.Cookie(SessionCookie); err != nil {
+				ok, method = false, ""
+			}
+		}
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"authenticated": ok,
 			"method":        method,
-			"requires_auth": !s.trustedPeer(r.RemoteAddr),
+			"requires_auth": requires,
 			"core_id":       s.ID,
 			"lan_enabled":   s.enforce,
 		})
 	case http.MethodPost:
 		var body struct {
 			Token string `json:"token"`
+			Pin   string `json:"pin"`
 		}
 		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
 			writeErr(w, http.StatusBadRequest, "bad_request", "invalid request")
 			return
 		}
 		token := strings.TrimSpace(body.Token)
-		if token == "" {
-			if !s.trustedPeer(r.RemoteAddr) {
-				writeErr(w, http.StatusUnauthorized, "unauthenticated", "paired device or API token required")
-				return
-			}
-		} else if !s.valid(token) && !apiToken(token) {
-			writeErr(w, http.StatusUnauthorized, "unauthenticated", "invalid token")
+		pin := strings.TrimSpace(body.Pin)
+		cookie := ""
+		switch {
+		case pin != "" && s.PinValid(pin), token != "" && s.PinValid(token):
+			cookie = s.pinCookieValue()
+		case token != "" && (s.valid(token) || apiToken(token)):
+			cookie = token
+		case token == "" && pin == "" && s.trustedPeer(r.RemoteAddr):
+			// Trusted caller opening a session without a credential.
+		default:
+			writeErr(w, http.StatusUnauthorized, "unauthenticated", "invalid token or PIN")
 			return
 		}
-		if token != "" {
+		if cookie != "" {
 			http.SetCookie(w, &http.Cookie{
 				Name:     SessionCookie,
-				Value:    token,
+				Value:    cookie,
 				Path:     "/",
 				MaxAge:   30 * 24 * 3600,
 				HttpOnly: true,
@@ -326,7 +348,7 @@ func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 		ok, method := s.authorized(r)
-		if token != "" {
+		if cookie != "" {
 			// The freshly minted cookie is not on this request, so report the
 			// credential that was just accepted.
 			ok, method = true, "cookie"
@@ -364,12 +386,22 @@ func (s *Store) HTTP(next http.Handler) http.Handler {
 			s.handleSession(w, r)
 			return
 		}
+		if r.URL.Path == "/api/security/pin" {
+			s.handlePIN(w, r)
+			return
+		}
 		// Any non-loopback caller (LAN or container network) must present a paired-device
 		// token, the API token, or the session cookie. Loopback and
 		// CORE_TRUSTED_NETWORKS callers stay exempt.
 		if ok, _ := s.authorized(r); !ok {
 			w.Header().Set("WWW-Authenticate", `Bearer realm="0kay"`)
 			writeErr(w, http.StatusUnauthorized, "unauthenticated", "paired device or API token required")
+			return
+		}
+		// Sensitive actions re-confirm the PIN unless the caller is a machine
+		// credential or no PIN is configured.
+		if sensitiveRequest(r) && !s.pinSatisfied(r) {
+			writeErr(w, http.StatusForbidden, "pin_required", "PIN required for this action")
 			return
 		}
 		next.ServeHTTP(w, r)
