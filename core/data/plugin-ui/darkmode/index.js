@@ -1,9 +1,11 @@
-// 0KAY dark mode plugin — appearance page (scheme C, native Vue ESM).
+// 0KAY dark mode plugin — appearance pane (scheme C, native Vue ESM).
 //
-// Served by Core at `/api/plugins/darkmode/ui/index.js` and loaded by the
-// `darkmode.patch` router op. Bare `vue` comes from the WebUI importmap ->
-// host bridge. The theme engine itself lives in `theme.js` (dependency-free),
-// imported here for its side effect so a direct page visit always installs it.
+// Served by Core at `/api/plugins/darkmode/ui/index.js` and loaded inline by the
+// `darkmode.patch` **settings** op (Settings → 外观). Bare `vue` comes from the
+// WebUI importmap -> host bridge; the host mounts the default export without its
+// own Save button, so this pane owns every control. The theme engine itself
+// lives in `theme.js` (dependency-free) and is imported here for its side effect
+// so the pane always installs it.
 //
 // Never processed by Vite: this file is fetched at runtime from Core, so the
 // relative `./theme.js` specifier resolves against the Core-served URL.
@@ -12,15 +14,23 @@ import './theme.js'
 import { h, ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
 const CSS = `
-/* ============ Plugin page (dm- namespace) ============ */
+/* ============ Plugin pane (dm- namespace) ============
+   Rendered inline inside the Settings page content column (the route was
+   retired): it mirrors the host .content-card surface instead of owning a
+   full-page scroll region. */
 #app .dm{
-  height:100%;overflow-y:auto;box-sizing:border-box;
-  padding:clamp(22px,3vw,44px);
+  box-sizing:border-box;
+  padding:clamp(22px,2.6vw,36px);
   color:var(--md-on-surface);font-family:var(--font-family);
   background:
-    radial-gradient(1100px 560px at 105% -12%,color-mix(in srgb,var(--md-primary) 12%,transparent),transparent 62%),
-    var(--md-surface);
+    radial-gradient(460px 240px at 100% 0%,color-mix(in srgb,var(--md-primary) 8%,transparent),transparent 70%),
+    var(--md-surface-container-low);
+  border:1px solid color-mix(in srgb,var(--md-outline-variant) 52%,transparent);
+  border-radius:var(--radius-xl);
+  box-shadow:var(--shadow-1);
+  animation:dm-in 420ms cubic-bezier(.2,0,0,1) both;
 }
+@keyframes dm-in{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
 #app .dm *{box-sizing:border-box}
 #app .dm h1,#app .dm h2,#app .dm p{margin:0}
 #app .dm button{font-family:inherit;position:static;min-height:0;isolation:auto}

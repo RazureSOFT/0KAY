@@ -1,7 +1,7 @@
 {
   "id": "darkmode-ui",
   "name": "Dark mode (appearance)",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "plugin": "",
   "enabled": true,
   "patches": [
@@ -12,32 +12,21 @@
       "item": {
         "id": "darkmode-theme",
         "plugin": "darkmode",
-        "module": "/api/plugins/darkmode/ui/theme.js?v=2"
+        "module": "/api/plugins/darkmode/ui/theme.js?v=3"
       }
     },
     {
-      "target": "nav",
+      "target": "settings",
       "op": "insert",
-      "anchor": "settings",
-      "position": "before",
+      "anchor": "general",
+      "position": "after",
       "id": "appearance",
       "item": {
         "id": "appearance",
-        "to": "/appearance",
+        "icon": "brightness",
         "label": "外观",
-        "order": 95
-      }
-    },
-    {
-      "target": "router",
-      "op": "insert",
-      "id": "appearance",
-      "item": {
-        "id": "appearance",
-        "path": "/appearance",
-        "name": "appearance",
-        "module": "/api/plugins/darkmode/ui/index.js?v=4",
-        "title": "外观"
+        "order": 15,
+        "module": "/api/plugins/darkmode/ui/index.js?v=5"
       }
     }
   ]

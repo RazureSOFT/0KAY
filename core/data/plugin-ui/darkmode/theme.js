@@ -17,8 +17,11 @@
   var STORE_KEY = '0kay_theme_mode'
   var SCHEDULE_KEY = '0kay_theme_schedule'
   var STYLE_ID = '0kay-darkmode-style'
+  var WIPE_ID = '0kay-theme-wipe'
   var MODES = ['auto', 'light', 'dark', 'schedule']
   var DEFAULT_SCHEDULE = { darkFrom: '19:00', darkUntil: '07:00' }
+  var FADE_MS = 560
+  var SURFACE = { light: '#fbf8ff', dark: '#14161d' }
 
   var DARK_CSS = `
 /* ============ 0KAY dark theme (plugin: darkmode) ============ */
@@ -137,6 +140,42 @@ html[data-theme="dark"] .energy-fill,
 html[data-theme="dark"] .emotion-fill{filter:brightness(1.25) saturate(.9)}
 `
 
+  // Transition layer: while `html.0kay-theme-fade` is present (roughly one
+  // FADE_MS window around a switch) every surface interpolates its colours so
+  // the theme change reads as a gradient rather than a hard flip. A fixed
+  // radial wash of the incoming surface colour pulses on top to soften the
+  // gradients the host paints as background-image (which cannot interpolate).
+  var FADE_CSS = `
+/* ============ 0KAY theme transition (plugin: darkmode) ============ */
+html.0kay-theme-fade,
+html.0kay-theme-fade *,
+html.0kay-theme-fade *::before,
+html.0kay-theme-fade *::after{
+  transition:
+    background-color 560ms cubic-bezier(.4,0,.2,1),
+    color 560ms cubic-bezier(.4,0,.2,1),
+    border-color 560ms cubic-bezier(.4,0,.2,1),
+    outline-color 560ms cubic-bezier(.4,0,.2,1),
+    box-shadow 560ms cubic-bezier(.4,0,.2,1),
+    fill 560ms cubic-bezier(.4,0,.2,1),
+    stroke 560ms cubic-bezier(.4,0,.2,1) !important;
+  transition-delay:0ms !important;
+}
+#${WIPE_ID}{
+  position:fixed;inset:0;z-index:2147482000;pointer-events:none;
+  opacity:0;will-change:opacity;
+}
+@media (prefers-reduced-motion: reduce){
+  html.0kay-theme-fade,
+  html.0kay-theme-fade *,
+  html.0kay-theme-fade *::before,
+  html.0kay-theme-fade *::after{transition:none !important}
+  #${WIPE_ID}{display:none}
+}
+`
+
+  var SHEET_CSS = DARK_CSS + FADE_CSS
+
   function media() {
     return typeof window !== 'undefined' && window.matchMedia
       ? window.matchMedia('(prefers-color-scheme: dark)')
@@ -214,14 +253,65 @@ html[data-theme="dark"] .emotion-fill{filter:brightness(1.25) saturate(.9)}
       el.id = STYLE_ID
       document.head.appendChild(el)
     }
-    if (el.textContent !== DARK_CSS) el.textContent = DARK_CSS
+    if (el.textContent !== SHEET_CSS) el.textContent = SHEET_CSS
   }
 
-  function apply(mode) {
+  function prefersReduced() {
+    var m = typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(prefers-reduced-motion: reduce)')
+      : null
+    return !!(m && m.matches)
+  }
+
+  var fadeTimer = null
+
+  /** Fade the whole UI and pulse an incoming-surface wash across the viewport. */
+  function runTransition(next) {
+    var root = document.documentElement
+    root.classList.add('0kay-theme-fade')
+    // Flush style so the "from" colours are committed with the transition
+    // active; otherwise the class flip and the theme flip batch into one style
+    // recalculation and nothing interpolates.
+    void root.offsetHeight
+
+    try {
+      var wipe = document.getElementById(WIPE_ID)
+      if (!wipe && document.body) {
+        wipe = document.createElement('div')
+        wipe.id = WIPE_ID
+        document.body.appendChild(wipe)
+      }
+      if (wipe) {
+        var incoming = next === 'dark' ? SURFACE.dark : SURFACE.light
+        wipe.style.background =
+          'radial-gradient(130% 120% at 50% -10%,' + incoming + ' 0%,transparent 68%)'
+        if (typeof wipe.animate === 'function') {
+          wipe.animate(
+            [{ opacity: 0 }, { opacity: 0.5, offset: 0.5 }, { opacity: 0 }],
+            { duration: FADE_MS, easing: 'cubic-bezier(.4,0,.2,1)' }
+          )
+        }
+      }
+    } catch (e) { /* decorative only */ }
+
+    if (fadeTimer) clearTimeout(fadeTimer)
+    fadeTimer = setTimeout(function () {
+      root.classList.remove('0kay-theme-fade')
+      fadeTimer = null
+    }, FADE_MS + 40)
+  }
+
+  /**
+   * Resolve, apply and (unless `animate === false`) gradient-fade into the
+   * next theme. The first install passes `false` so startup never animates.
+   */
+  function apply(mode, animate) {
     if (typeof document === 'undefined') return resolve(mode)
     ensureSheet()
     var next = resolve(mode)
     var root = document.documentElement
+    var changed = root.dataset.theme && root.dataset.theme !== next
+    if (changed && animate !== false && !prefersReduced()) runTransition(next)
     if (root.dataset.theme !== next) root.dataset.theme = next
     return next
   }
@@ -232,7 +322,7 @@ html[data-theme="dark"] .emotion-fill{filter:brightness(1.25) saturate(.9)}
     var m = media()
     if (!m) return
     listening = true
-    var onChange = function () { if (readMode() === 'auto') apply('auto') }
+    var onChange = function () { if (readMode() === 'auto') apply('auto', true) }
     if (typeof m.addEventListener === 'function') m.addEventListener('change', onChange)
     else if (typeof m.addListener === 'function') m.addListener(onChange)
   }
@@ -240,12 +330,12 @@ html[data-theme="dark"] .emotion-fill{filter:brightness(1.25) saturate(.9)}
   var scheduleTimer = null
   function tick() {
     // Re-evaluate so a "schedule" mode flips at the boundary without a reload.
-    if (readMode() === 'schedule') apply('schedule')
+    if (readMode() === 'schedule') apply('schedule', true)
   }
 
   /** Idempotent: apply the saved mode and follow OS / schedule automatically. */
   function install() {
-    apply(readMode())
+    apply(readMode(), false)
     listen()
     if (!scheduleTimer) scheduleTimer = setInterval(tick, 30000)
   }
@@ -256,7 +346,7 @@ html[data-theme="dark"] .emotion-fill{filter:brightness(1.25) saturate(.9)}
     setMode: function (mode) {
       var m = MODES.indexOf(mode) >= 0 ? mode : 'auto'
       writeMode(m)
-      return apply(m)
+      return apply(m, true)
     },
     toggle: function () {
       return api.setMode(resolve(readMode()) === 'dark' ? 'light' : 'dark')
@@ -266,7 +356,7 @@ html[data-theme="dark"] .emotion-fill{filter:brightness(1.25) saturate(.9)}
       var from = schedule && schedule.darkFrom ? schedule.darkFrom : DEFAULT_SCHEDULE.darkFrom
       var until = schedule && schedule.darkUntil ? schedule.darkUntil : DEFAULT_SCHEDULE.darkUntil
       writeSchedule({ darkFrom: from, darkUntil: until })
-      if (readMode() === 'schedule') apply('schedule')
+      if (readMode() === 'schedule') apply('schedule', true)
     },
     apply: apply,
     install: install,
