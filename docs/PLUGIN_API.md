@@ -75,9 +75,14 @@ started inside `agent/`.
 ```
 
 This is a structural example; the full module list is the repository root
-manifest. Sub-repositories download as source archives, not `git clone`. pm uses
-a built-in package-name → repository map; adding a manifest alone does not make
-an arbitrary third-party repository installable.
+manifest. Sub-repositories download as source archives, not `git clone`.
+First-party names use a built-in package-name → repository map. Other names are
+resolved as third-party packages: pm reads the npm registry `repository` field,
+then falls back to a GitHub `owner/repo` convention for the requested name; an
+unscoped `owner/repo` argument is accepted directly. `0kay-pm install --source
+&lt;local-tree&gt;` installs a local checkout of any package without registry
+resolution. A package manifest must still pass `validateManifest` and its
+declared `name` must match the requested package.
 
 pm runs each sub-manifest `install` in `modules` order and handles sub-manifest
 `ui`. Starting an umbrella package runs the direct sub-manifests' `start`
