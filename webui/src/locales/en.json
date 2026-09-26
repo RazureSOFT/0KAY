@@ -246,6 +246,7 @@
       "unsupported": "This Core build does not expose update checks; update and restart Core.",
       "updateHint": "Stop the component before updating it with 0kay-pm, then restart it.",
 "tagline": "Local-first AI companion platform",
+"pluginUpdates": "Plugin updates",
 "currentVersion": "Current",
 "latestVersion": "Latest",
 "developerTitle": "Main developer",

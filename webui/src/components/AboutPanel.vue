@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiGet, ApiError } from '../api'
 
@@ -19,6 +19,14 @@ const PLATFORM_REPO = 'https://github.com/RazureSOFT/0KAY'
 const TEAM_URL = 'https://github.com/RazureSOFT'
 const DEVELOPER = { login: 'razureink', url: 'https://github.com/razureink', avatar: 'https://github.com/razureink.png' }
 const avatarOf = (login: string, size = 96) => `https://github.com/${login}.png?size=${size}`
+
+const statusKind = computed<'ok' | 'warn' | 'none'>(() => {
+  if (!updateResult.value) return 'none'
+  if (updateResult.value.has_update) return 'warn'
+  return updateResult.value.latest ? 'ok' : 'none'
+})
+
+const updateCount = computed(() => (pluginResults.value || []).filter((p) => p.has_update).length)
 
 async function checkUpdates() {
   aboutLoading.value = true
@@ -74,95 +82,104 @@ onMounted(() => {
   <div class="content-card about">
     <!-- Identity -->
     <header class="identity">
-      <div class="app-icon" aria-hidden="true">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 4v10l-7 4-7-4V7l7-4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 7v10M7.5 9.5l9 5M16.5 9.5l-9 5" stroke="currentColor" stroke-width="1.4"/></svg>
-      </div>
+      <div class="app-icon" aria-hidden="true">0K</div>
       <div class="app-id">
-        <h2>0KAY <span class="ver">v{{ updateResult?.current || '0.1.0' }}</span></h2>
-        <p class="card-desc">{{ t('settings.about.description') }}</p>
+        <h2>0KAY <span class="ver-badge">v{{ updateResult?.current || '0.1.0' }}</span></h2>
+        <p class="app-desc">{{ t('settings.about.description') }}</p>
       </div>
       <div class="identity-actions">
-        <a class="btn btn-tonal mini" :href="PLATFORM_REPO" target="_blank" rel="noopener noreferrer">{{ t('settings.about.repository') }}</a>
-        <a class="btn btn-tonal mini" :href="`${PLATFORM_REPO}/releases`" target="_blank" rel="noopener noreferrer">Releases</a>
+        <a class="btn btn-tonal sm" :href="PLATFORM_REPO" target="_blank" rel="noopener noreferrer">{{ t('settings.about.repository') }} ↗</a>
+        <a class="btn btn-tonal sm" :href="`${PLATFORM_REPO}/releases`" target="_blank" rel="noopener noreferrer">Releases ↗</a>
       </div>
     </header>
 
-    <div class="divider"></div>
-
     <!-- Updates -->
-    <section class="block">
-      <div class="block-head">
-        <h3>{{ t('settings.about.check') }}</h3>
+    <section class="section">
+      <div class="section-head">
+        <h3 class="section-title">{{ t('settings.about.check') }}</h3>
         <div class="head-actions">
-          <button class="btn btn-tonal" :disabled="aboutLoading" @click="checkUpdates">{{ t(aboutLoading ? 'settings.about.checking' : 'settings.about.check') }}</button>
-          <button class="btn btn-tonal" :disabled="pluginsLoading" @click="checkPluginUpdates">{{ t(pluginsLoading ? 'settings.about.checking' : 'settings.about.plugins') }}</button>
+          <button class="btn btn-tonal sm" :disabled="aboutLoading" @click="checkUpdates">{{ t(aboutLoading ? 'settings.about.checking' : 'settings.about.check') }}</button>
+          <button class="btn btn-tonal sm" :disabled="pluginsLoading" @click="checkPluginUpdates">{{ t(pluginsLoading ? 'settings.about.checking' : 'settings.about.plugins') }}</button>
         </div>
       </div>
 
       <p v-if="updateError" class="alert" role="alert">{{ updateError }}</p>
-      <dl v-else class="kv">
-        <div>
+      <div v-else class="status-hero" :class="statusKind">
+        <div class="status-icon" aria-hidden="true">
+          <svg v-if="statusKind === 'ok'" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg v-else-if="statusKind === 'warn'" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 4v11M12 19.5v.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+          <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 12h12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+        </div>
+        <div class="status-text">
+          <b>{{ t(statusKind === 'warn' ? 'settings.about.available' : (statusKind === 'ok' ? 'settings.about.latest' : 'settings.about.noRelease')) }}</b>
+          <span v-if="updateResult?.latest">v{{ updateResult.current }} → v{{ updateResult.latest }}</span>
+          <span v-else>0KAY v{{ updateResult?.current || '0.1.0' }}</span>
+        </div>
+        <a v-if="updateResult?.url" class="btn btn-primary sm" :href="updateResult.url" target="_blank" rel="noopener noreferrer">Release ↗</a>
+      </div>
+
+      <div class="tiles">
+        <div class="tile">
           <dt>{{ t('settings.about.currentVersion') }}</dt>
           <dd>v{{ updateResult?.current || '0.1.0' }}</dd>
         </div>
-        <div>
+        <div class="tile" :class="{ accent: !!updateResult?.latest, good: statusKind === 'ok' }">
           <dt>{{ t('settings.about.latestVersion') }}</dt>
-          <dd :class="{ good: !!updateResult?.latest }">{{ updateResult?.latest ? `v${updateResult.latest}` : '—' }}</dd>
+          <dd>{{ updateResult?.latest ? `v${updateResult.latest}` : '—' }}</dd>
         </div>
-        <div>
-          <dt>Status</dt>
-          <dd>
-            <span v-if="updateResult" class="status-chip" :class="updateResult.has_update ? 'warn' : (updateResult.latest ? 'ok' : '')">
-              {{ t(updateResult.has_update ? 'settings.about.available' : (updateResult.latest ? 'settings.about.latest' : 'settings.about.noRelease')) }}
-            </span>
-            <span v-else>—</span>
-          </dd>
+        <div class="tile">
+          <dt>{{ t('settings.about.pluginUpdates') }}</dt>
+          <dd>{{ updateCount }}</dd>
         </div>
-      </dl>
-      <p v-if="updateResult?.url" class="helper-text"><a :href="updateResult.url" target="_blank" rel="noopener noreferrer">Release ↗</a></p>
+      </div>
 
-      <div v-if="pluginsError" class="alert" role="alert">{{ pluginsError }}</div>
-      <div v-if="pluginResults" class="plugin-list">
-        <div v-for="plugin in pluginResults" :key="plugin.name" class="plugin-row">
+      <p v-if="pluginsError" class="alert" role="alert">{{ pluginsError }}</p>
+      <div v-if="pluginResults" class="ptable">
+        <div class="prow phead">
+          <span>Plugin</span><span>Version</span><span>Status</span><span></span>
+        </div>
+        <div v-for="plugin in pluginResults" :key="plugin.name" class="prow">
           <span class="pname">{{ plugin.name }}</span>
-          <span class="pver">v{{ plugin.version || '—' }}</span>
-          <span class="parrow">→</span>
-          <span class="pver" :class="{ good: !!plugin.latest }">{{ plugin.latest ? `v${plugin.latest}` : '—' }}</span>
+          <span class="pver">
+            <em>v{{ plugin.version || '—' }}</em>
+            <span class="arrow">→</span>
+            <b :class="{ good: !!plugin.latest }">{{ plugin.latest ? `v${plugin.latest}` : '—' }}</b>
+          </span>
           <span class="status-chip" :class="plugin.error ? '' : (plugin.has_update ? 'warn' : (plugin.latest ? 'ok' : ''))">
             {{ plugin.error || t(plugin.has_update ? 'settings.about.available' : (plugin.latest ? 'settings.about.latest' : 'settings.about.noRelease')) }}
           </span>
           <a v-if="plugin.repository" class="repo-link" :href="plugin.repository" target="_blank" rel="noopener noreferrer">Repo ↗</a>
         </div>
-        <p v-if="!pluginResults.length" class="muted">{{ t('settings.about.noPlugins') }}</p>
+        <p v-if="!pluginResults.length" class="empty">{{ t('settings.about.noPlugins') }}</p>
       </div>
 
-      <p class="helper-text">{{ t('settings.about.updateHint') }} <code>0kay-pm update &lt;package&gt;@&lt;version&gt;</code></p>
+      <p class="hint">{{ t('settings.about.updateHint') }} <code>0kay-pm update &lt;package&gt;@&lt;version&gt;</code></p>
     </section>
 
-    <div class="divider"></div>
-
     <!-- Credits -->
-    <section class="block">
-      <h3>{{ t('settings.about.developerTitle') }} &amp; {{ t('settings.about.teamTitle') }}</h3>
-      <div class="people">
+    <section class="section">
+      <h3 class="section-title">{{ t('settings.about.developerTitle') }} &amp; {{ t('settings.about.teamTitle') }}</h3>
+      <div class="credits">
         <a class="person" :href="DEVELOPER.url" target="_blank" rel="noopener noreferrer">
           <img :src="DEVELOPER.avatar" :alt="DEVELOPER.login" loading="lazy" />
-          <div>
-            <strong>{{ DEVELOPER.login }}</strong>
-            <span>{{ t('settings.about.developerTitle') }}</span>
+          <div class="person-info">
+            <span class="name">{{ DEVELOPER.login }}</span>
+            <span class="role">{{ t('settings.about.developerTitle') }}</span>
           </div>
+          <span class="go">↗</span>
         </a>
         <a class="person" :href="TEAM_URL" target="_blank" rel="noopener noreferrer">
           <img :src="avatarOf('RazureSOFT')" alt="RazureSOFT" loading="lazy" />
-          <div>
-            <strong>RazureSOFT</strong>
-            <span>{{ t('settings.about.teamTitle') }}</span>
+          <div class="person-info">
+            <span class="name">RazureSOFT</span>
+            <span class="role">{{ t('settings.about.teamTitle') }}</span>
           </div>
+          <span class="go">↗</span>
         </a>
       </div>
 
-      <div class="block-head contributors-head">
-        <h3>{{ t('settings.about.contributorsTitle') }}</h3>
+      <div class="section-head contributors-head">
+        <h3 class="section-title">{{ t('settings.about.contributorsTitle') }}</h3>
         <span class="muted">{{ t('settings.about.contributorsFrom') }}</span>
       </div>
       <div v-if="contributors.length" class="contribs">
@@ -173,10 +190,10 @@ onMounted(() => {
           :href="person.html_url || `https://github.com/${person.login}`"
           target="_blank"
           rel="noopener noreferrer"
-          :title="person.login"
         >
           <img :src="person.avatar_url || avatarOf(person.login, 64)" :alt="person.login" loading="lazy" />
-          <span>{{ person.login }}</span>
+          <span class="login">{{ person.login }}</span>
+          <span v-if="person.contributions" class="count">{{ person.contributions }}</span>
         </a>
       </div>
       <p v-else class="muted">
@@ -184,135 +201,146 @@ onMounted(() => {
       </p>
     </section>
 
-    <div class="divider"></div>
-
     <footer class="foot">
       <span class="status-chip">MIT</span>
-      <span class="muted">© 2026 RazureSOFT</span>
+      <span>© 2026 RazureSOFT</span>
       <a class="repo-link" :href="`${PLATFORM_REPO}/blob/main/LICENSE`" target="_blank" rel="noopener noreferrer">LICENSE ↗</a>
     </footer>
   </div>
 </template>
 
 <style scoped>
-.about { display: block; }
+.about { display: flex; flex-direction: column; gap: 26px; }
 
 /* Identity */
 .identity { display: flex; align-items: center; gap: 16px; }
 .app-icon {
   flex: none;
-  width: 52px;
-  height: 52px;
-  border-radius: var(--radius-md);
-  background: var(--md-primary-container);
-  color: var(--md-on-primary-container);
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--md-primary);
+  color: var(--md-on-primary);
   display: grid;
   place-items: center;
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: -1px;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--md-primary) 35%, transparent);
 }
 .app-id { flex: 1; min-width: 0; }
-.app-id h2 { font-size: 20px; font-weight: 650; margin: 0; }
-.app-id .ver { margin-left: 8px; font-size: 13px; font-weight: 500; color: var(--md-on-surface-variant); }
-.app-id .card-desc { margin: 2px 0 0; }
+.app-id h2 { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+.ver-badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.app-desc { margin: 4px 0 0; font-size: 13.5px; color: var(--md-on-surface-variant); }
 .identity-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
-/* Buttons (match app) */
-.btn { height: 36px; padding: 0 16px; border: none; border-radius: var(--radius-full); font-weight: 500; font-size: 13px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-.btn-tonal { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
-.btn-tonal:disabled { opacity: 0.6; cursor: not-allowed; }
-.btn.mini { height: 32px; padding: 0 14px; }
-
-.divider { height: 1px; background: var(--md-outline-variant); margin: 20px 0; }
-
-.block { display: block; }
-.block-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.block h3 { font-size: 14px; font-weight: 650; margin: 0 0 12px; color: var(--md-on-surface); }
-.block-head h3 { margin: 0; }
+/* Sections */
+.section { display: flex; flex-direction: column; gap: 14px; }
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.section-title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 17px; font-weight: 650; color: var(--md-on-surface); }
+.section-title::before { content: ''; width: 4px; height: 16px; border-radius: 2px; background: var(--md-primary); }
 .head-actions { display: flex; gap: 8px; }
 
-/* Key/value rows */
-.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 14px 0 0; }
-.kv > div { background: var(--md-surface-container); border-radius: var(--radius-md); padding: 12px 14px; }
-.kv dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--md-on-surface-variant); margin-bottom: 4px; }
-.kv dd { margin: 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.kv dd.good { color: var(--md-success); }
+/* Buttons — use app classes, only shrink */
+.btn.sm { height: 34px; padding-inline: 16px; font-size: 13px; }
 
-/* Status chips (match PluginsPage) */
+/* Status hero */
+.status-hero { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 18px; border: 1px solid transparent; }
+.status-hero.ok { background: var(--md-success-container); color: #0d1f06; }
+.status-hero.warn { background: #ffdf9e; color: #4a3800; }
+.status-hero.none { background: var(--md-surface-container); color: var(--md-on-surface); border-color: var(--md-outline-variant); }
+.status-icon { flex: none; width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: color-mix(in srgb, currentColor 12%, transparent); }
+.status-text { flex: 1; min-width: 0; }
+.status-text b { display: block; font-size: 15px; font-weight: 700; }
+.status-text span { font-size: 13px; opacity: 0.8; }
+.status-hero .btn.btn-primary { background: var(--md-primary); color: var(--md-on-primary); }
+
+/* Stat tiles */
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tile { padding: 14px 16px; border-radius: 16px; background: var(--md-surface-container); border: 1px solid var(--md-outline-variant); }
+.tile.accent { background: var(--md-primary-container); border-color: transparent; color: var(--md-on-primary-container); }
+.tile.good { background: var(--md-success-container); border-color: transparent; color: #0d1f06; }
+.tile dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.72; margin-bottom: 4px; }
+.tile dd { margin: 0; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* Plugin table */
+.ptable { border: 1px solid var(--md-outline-variant); border-radius: 16px; overflow: hidden; }
+.prow { display: grid; grid-template-columns: 1.4fr 1.3fr 1fr auto; gap: 12px; align-items: center; padding: 11px 16px; }
+.phead { background: var(--md-surface-container); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--md-on-surface-variant); font-weight: 700; }
+.prow:not(.phead) { background: var(--md-surface-container-lowest); border-top: 1px solid var(--md-outline-variant); }
+.prow:not(.phead):nth-child(odd) { background: var(--md-surface-container-low); }
+.pname { font-weight: 650; }
+.pver { display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.pver em { font-style: normal; color: var(--md-on-surface-variant); }
+.pver b { font-weight: 650; }
+.pver b.good { color: var(--md-success); }
+.arrow { color: var(--md-on-surface-variant); }
 .status-chip {
-  height: 28px;
+  justify-self: start;
+  height: 26px;
   padding: 0 10px;
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
   display: inline-flex;
   align-items: center;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   background: var(--md-surface-container-highest);
   color: var(--md-on-surface-variant);
 }
-.status-chip.ok { background: var(--md-success-container); color: #0D1F06; }
-.status-chip.warn { background: #ffe6a8; color: #5c4600; }
-
-/* Plugin update rows */
-.plugin-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
-.plugin-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 11px 14px;
-  border-radius: var(--radius-md);
-  background: var(--md-surface-container-low);
-  border: 1px solid var(--md-outline-variant);
-}
-.pname { font-weight: 600; min-width: 96px; }
-.pver { font-variant-numeric: tabular-nums; color: var(--md-on-surface-variant); }
-.pver.good { color: var(--md-success); font-weight: 600; }
-.parrow { color: var(--md-on-surface-variant); }
-.repo-link { margin-left: auto; color: var(--md-primary); text-decoration: none; font-size: 13px; font-weight: 500; }
+.status-chip.ok { background: var(--md-success-container); color: #0d1f06; }
+.status-chip.warn { background: #ffdf9e; color: #4a3800; }
+.repo-link { color: var(--md-primary); text-decoration: none; font-size: 13px; font-weight: 600; white-space: nowrap; }
 .repo-link:hover { text-decoration: underline; }
+.empty { padding: 16px; margin: 0; color: var(--md-on-surface-variant); }
 
-/* People */
-.people { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.hint { margin: 2px 0 0; font-size: 13px; color: var(--md-on-surface-variant); }
+.hint code { background: var(--md-surface-container); padding: 2px 8px; border-radius: 6px; font-size: 12px; }
+
+/* Credits */
+.credits { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 .person {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
+  gap: 14px;
+  padding: 16px;
+  border-radius: 18px;
   background: var(--md-surface-container-low);
   border: 1px solid var(--md-outline-variant);
   text-decoration: none;
   color: inherit;
-  transition: border-color 180ms, background-color 180ms;
+  transition: border-color 180ms, background-color 180ms, transform 200ms;
 }
-.person:hover { border-color: var(--md-primary); background: var(--md-surface-container); }
-.person img { width: 44px; height: 44px; border-radius: 50%; flex: none; }
-.person strong { display: block; font-size: 15px; }
-.person span { font-size: 12px; color: var(--md-on-surface-variant); }
+.person:hover { border-color: var(--md-primary); background: var(--md-surface-container); transform: translateY(-1px); }
+.person img { width: 54px; height: 54px; border-radius: 50%; flex: none; box-shadow: 0 0 0 3px var(--md-surface-container-low), 0 0 0 4px var(--md-outline-variant); }
+.person-info { display: flex; flex-direction: column; min-width: 0; }
+.person-info .name { font-size: 16px; font-weight: 650; }
+.person-info .role { font-size: 12.5px; color: var(--md-on-surface-variant); }
+.person .go { margin-left: auto; color: var(--md-primary); font-weight: 700; }
 
-.contributors-head { margin-top: 20px; }
-.contribs { display: flex; flex-wrap: wrap; gap: 8px; }
+.contributors-head { margin-top: 6px; }
+.contribs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
 .contrib {
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 3px 12px 3px 3px;
-  border-radius: var(--radius-full);
-  background: var(--md-secondary-container);
-  color: var(--md-on-secondary-container);
+  gap: 6px;
+  padding: 14px 8px;
+  border-radius: 16px;
+  background: var(--md-surface-container-low);
+  border: 1px solid var(--md-outline-variant);
   text-decoration: none;
-  font-size: 13px;
-  font-weight: 500;
+  color: inherit;
+  transition: border-color 180ms, background-color 180ms, transform 200ms;
 }
-.contrib:hover { filter: brightness(0.97); }
-.contrib img { width: 26px; height: 26px; border-radius: 50%; }
+.contrib:hover { border-color: var(--md-primary); background: var(--md-surface-container); transform: translateY(-1px); }
+.contrib img { width: 46px; height: 46px; border-radius: 50%; }
+.contrib .login { font-size: 12px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.contrib .count { font-size: 11px; color: var(--md-on-surface-variant); }
 
 /* Footer */
-.foot { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--md-on-surface-variant); }
+.foot { display: flex; align-items: center; gap: 12px; padding-top: 18px; border-top: 1px solid var(--md-outline-variant); font-size: 13px; color: var(--md-on-surface-variant); }
 .foot .repo-link { margin-left: auto; }
 
 .alert { color: var(--md-error); }
-.muted { color: var(--md-on-surface-variant); }
-.helper-text { margin-top: 12px; font-size: 13px; color: var(--md-on-surface-variant); }
-.helper-text a { color: var(--md-primary); text-decoration: none; }
-.helper-text a:hover { text-decoration: underline; }
-code { background: var(--md-surface-container); padding: 2px 7px; border-radius: 6px; font-size: 12px; }
+.muted { color: var(--md-on-surface-variant); font-size: 12px; }
 </style>
