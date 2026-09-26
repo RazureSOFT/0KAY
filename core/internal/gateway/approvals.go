@@ -52,12 +52,11 @@ func (g *Gateway) handleAgentApprovals(w http.ResponseWriter, r *http.Request) {
 		raw, _ := json.Marshal(args)
 		result, err := agentv1.NewAgentServiceClient(conn).RunDirect(pairing.CallbackContext(ctx, agent.Address), &agentv1.RunDirectRequest{Tool: tool, Args: string(raw)})
 		cancel()
-		conn.Close()
+		if err != nil {
+			http.Error(w, err.Error(), 502)
+			return
+		}
 		if r.Method == "POST" {
-			if err != nil {
-				http.Error(w, err.Error(), 502)
-				return
-			}
 			if !result.Success {
 				http.Error(w, result.Error, 409)
 				return
@@ -66,7 +65,7 @@ func (g *Gateway) handleAgentApprovals(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 			return
 		}
-		if err == nil && result.Success {
+		if result.Success {
 			var rows []map[string]interface{}
 			if json.Unmarshal([]byte(result.Result), &rows) == nil {
 				for _, row := range rows {
