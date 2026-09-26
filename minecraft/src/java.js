@@ -61,7 +61,19 @@ export class JavaBot {
       food: bot?.food ?? null,
       dimension: bot?.game?.dimension || '',
       players: this.playerList(),
+      held: bot?.heldItem?.name || null,
+      inventory: this.inventorySummary(),
     };
+  }
+
+  inventorySummary() {
+    const bot = this.bot;
+    if (!bot) return [];
+    try {
+      return bot.inventory.items().map((item) => ({ name: item.name, count: item.count, slot: item.slot }));
+    } catch {
+      return [];
+    }
   }
 
   async connect(opts = {}) {

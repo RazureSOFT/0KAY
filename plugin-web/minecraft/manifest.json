@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "name": "@razuresoft/0kay-web-minecraft",
+  "version": "0.1.0",
+  "install": [
+    [
+      "npm",
+      "ci"
+    ],
+    [
+      "npm",
+      "run",
+      "build"
+    ]
+  ]
+}

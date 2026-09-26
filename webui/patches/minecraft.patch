@@ -1,0 +1,35 @@
+{
+  "id": "minecraft-ui",
+  "name": "Minecraft side panel (inventory, health, server)",
+  "version": "0.1.0",
+  "plugin": "minecraft",
+  "enabled": true,
+  "patches": [
+    {
+      "target": "nav",
+      "op": "insert",
+      "id": "minecraft",
+      "anchor": "plugins",
+      "position": "before",
+      "item": {
+        "id": "minecraft",
+        "to": "/minecraft",
+        "label": "Minecraft",
+        "icon": "minecraft",
+        "order": 22
+      }
+    },
+    {
+      "target": "router",
+      "op": "insert",
+      "id": "minecraft",
+      "item": {
+        "id": "minecraft",
+        "path": "/minecraft",
+        "name": "minecraft",
+        "module": "/api/plugins/minecraft/ui/index.js",
+        "title": "Minecraft"
+      }
+    }
+  ]
+}
