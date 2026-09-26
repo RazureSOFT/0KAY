@@ -257,7 +257,11 @@
 "contributorsTitle": "贡献者",
 "contributorsFrom": "来自 GitHub",
 "licenseTitle": "开源许可",
-"repository": "代码仓库"
+"repository": "代码仓库",
+"updateNow": "立即更新",
+"updating": "更新中…",
+"updated": "已更新",
+"updateFailed": "更新失败"
     },
     "generalDesc": "界面语言与基础偏好",
     "providerDesc": "选择 AI 供应商并配置 API 凭证",

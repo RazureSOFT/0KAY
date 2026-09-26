@@ -3,6 +3,7 @@ package gateway
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"0kay/core/internal/update"
 	"0kay/core/internal/version"
@@ -21,6 +22,8 @@ type pluginUpdateCheck struct {
 	Latest     string `json:"latest,omitempty"`
 	HasUpdate  bool   `json:"has_update"`
 	Repository string `json:"repository,omitempty"`
+	Package    string `json:"package,omitempty"`
+	CanUpdate  bool   `json:"can_update"`
 	Error      string `json:"error,omitempty"`
 }
 
@@ -51,6 +54,46 @@ func (g *Gateway) handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
+// handleUpdateApply starts a stop -> update -> start run for one component.
+func (g *Gateway) handleUpdateApply(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Plugin  string `json:"plugin"`
+		Version string `json:"version"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+		return
+	}
+	state, err := update.Start(req.Plugin, req.Version)
+	if err != nil {
+		status := http.StatusBadGateway
+		switch {
+		case strings.Contains(err.Error(), "already running"):
+			status = http.StatusConflict
+		case strings.Contains(err.Error(), "unsupported component"):
+			status = http.StatusBadRequest
+		}
+		writeJSON(w, status, map[string]any{"error": err.Error(), "state": state})
+		return
+	}
+	writeJSON(w, http.StatusAccepted, state)
+}
+
+// handleUpdateStatus reports the latest update request.
+func (g *Gateway) handleUpdateStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	writeJSON(w, http.StatusOK, update.State())
+}
+
 func (g *Gateway) handleUpdateCheckPlugins(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
@@ -72,6 +115,10 @@ func (g *Gateway) handleUpdateCheckPlugins(w http.ResponseWriter, r *http.Reques
 		}
 		seen[plugin.Info.Name] = true
 		row := pluginUpdateCheck{Name: plugin.Info.Name, Version: plugin.Info.Version}
+		if pkg, ok := update.PackageFor(plugin.Info.Name); ok {
+			row.Package = pkg
+			row.CanUpdate = true
+		}
 		owner, repo, known := update.RepositoryFor(plugin.Info.Name)
 		if known {
 			key := owner + "/" + repo

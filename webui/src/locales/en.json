@@ -257,7 +257,11 @@
 "contributorsTitle": "Contributors",
 "contributorsFrom": "Pulled from GitHub",
 "licenseTitle": "License",
-"repository": "Repository"
+"repository": "Repository",
+"updateNow": "Update now",
+"updating": "Updating…",
+"updated": "Updated",
+"updateFailed": "Update failed"
     },
     "generalDesc": "UI language and basic preferences",
     "providerDesc": "Choose an AI provider and configure API credentials",

@@ -1,19 +1,78 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { apiGet, ApiError } from '../api'
+import { apiGet, apiPost, ApiError } from '../api'
 
 const { t } = useI18n()
 const aboutLoading = ref(false)
 const updateResult = ref<{ current: string; latest?: string; has_update: boolean; url?: string } | null>(null)
 const updateError = ref('')
 const pluginsLoading = ref(false)
-const pluginResults = ref<Array<{ name: string; version: string; latest?: string; has_update: boolean; repository?: string; error?: string }> | null>(null)
+const pluginResults = ref<Array<{ name: string; version: string; latest?: string; has_update: boolean; repository?: string; package?: string; can_update?: boolean; error?: string }> | null>(null)
 const pluginsError = ref('')
 
 type Contributor = { login: string; avatar_url?: string; html_url?: string; contributions?: number }
 const contributors = ref<Contributor[]>([])
 const contributorsError = ref('')
+
+type ApplyState = {
+  plugin: string
+  package: string
+  version?: string
+  status: 'idle' | 'running' | 'done' | 'failed'
+  started?: string
+  error?: string
+  log?: string
+}
+const applyState = ref<ApplyState | null>(null)
+const applyError = ref('')
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+function isUpdating(plugin: string) {
+  return applyState.value?.status === 'running' && applyState.value.plugin === plugin
+}
+
+async function applyUpdate(plugin: string, version?: string) {
+  if (applyState.value?.status === 'running') return
+  applyError.value = ''
+  try {
+    applyState.value = await apiPost('/api/update/apply', { plugin, version: version || '' })
+    startPolling()
+  } catch (error: unknown) {
+    applyError.value = error instanceof Error ? error.message : String(error)
+  }
+}
+
+async function refreshApply() {
+  try {
+    applyState.value = await apiGet('/api/update/status')
+  } catch {
+    return // Core is restarting after a self-update; keep polling.
+  }
+  if (applyState.value && applyState.value.status !== 'running') {
+    stopPolling()
+    void checkUpdates()
+    void checkPluginUpdates()
+  }
+}
+
+function startPolling() {
+  if (pollTimer) return
+  pollTimer = setInterval(refreshApply, 2000)
+}
+
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+}
+
+const applyLabel = computed(() => {
+  switch (applyState.value?.status) {
+    case 'running': return t('settings.about.updating')
+    case 'done': return t('settings.about.updated')
+    case 'failed': return t('settings.about.updateFailed')
+    default: return ''
+  }
+})
 
 const PLATFORM_REPO = 'https://github.com/RazureSOFT/0KAY'
 const TEAM_URL = 'https://github.com/RazureSOFT'
@@ -75,7 +134,15 @@ onMounted(() => {
   void checkUpdates()
   void checkPluginUpdates()
   void fetchContributors()
+  void apiGet('/api/update/status')
+    .then((state: ApplyState) => {
+      applyState.value = state
+      if (state?.status === 'running') startPolling()
+    })
+    .catch(() => { /* older Core without update apply */ })
 })
+
+onUnmounted(stopPolling)
 </script>
 
 <template>
@@ -115,7 +182,23 @@ onMounted(() => {
           <span v-if="updateResult?.latest">v{{ updateResult.current }} → v{{ updateResult.latest }}</span>
           <span v-else>0KAY v{{ updateResult?.current || '0.1.0' }}</span>
         </div>
-        <a v-if="updateResult?.url" class="btn btn-primary sm" :href="updateResult.url" target="_blank" rel="noopener noreferrer">Release ↗</a>
+        <div class="hero-actions">
+          <button v-if="updateResult?.has_update" class="btn btn-primary sm" :disabled="isUpdating('core')" @click="applyUpdate('core', updateResult.latest)">
+            {{ isUpdating('core') ? t('settings.about.updating') : t('settings.about.updateNow') }}
+          </button>
+          <a v-if="updateResult?.url" class="btn btn-tonal sm" :href="updateResult.url" target="_blank" rel="noopener noreferrer">Release ↗</a>
+        </div>
+      </div>
+
+      <p v-if="applyError" class="alert" role="alert">{{ applyError }}</p>
+      <div v-if="applyState && applyState.status !== 'idle'" class="apply-banner" :class="applyState.status">
+        <div class="apply-head">
+          <span class="apply-spinner" aria-hidden="true"></span>
+          <b>{{ applyState.package }}<span v-if="applyState.version">@{{ applyState.version }}</span></b>
+          <span class="apply-label">{{ applyLabel }}</span>
+        </div>
+        <p v-if="applyState.error" class="apply-error">{{ applyState.error }}</p>
+        <pre v-if="applyState.log" class="apply-log">{{ applyState.log }}</pre>
       </div>
 
       <div class="tiles">
@@ -148,7 +231,17 @@ onMounted(() => {
           <span class="status-chip" :class="plugin.error ? '' : (plugin.has_update ? 'warn' : (plugin.latest ? 'ok' : ''))">
             {{ plugin.error || t(plugin.has_update ? 'settings.about.available' : (plugin.latest ? 'settings.about.latest' : 'settings.about.noRelease')) }}
           </span>
-          <a v-if="plugin.repository" class="repo-link" :href="plugin.repository" target="_blank" rel="noopener noreferrer">Repo ↗</a>
+          <span class="prow-actions">
+            <button
+              v-if="plugin.can_update && plugin.has_update"
+              class="btn btn-primary xs"
+              :disabled="isUpdating(plugin.name)"
+              @click="applyUpdate(plugin.name, plugin.latest)"
+            >
+              {{ isUpdating(plugin.name) ? t('settings.about.updating') : t('settings.about.updateNow') }}
+            </button>
+            <a v-if="plugin.repository" class="repo-link" :href="plugin.repository" target="_blank" rel="noopener noreferrer">Repo ↗</a>
+          </span>
         </div>
         <p v-if="!pluginResults.length" class="empty">{{ t('settings.about.noPlugins') }}</p>
       </div>
@@ -243,6 +336,48 @@ onMounted(() => {
 
 /* Buttons — use app classes, only shrink */
 .btn.sm { height: 34px; padding-inline: 16px; font-size: 13px; }
+.btn.xs { height: 30px; padding-inline: 12px; font-size: 12px; }
+.hero-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Update progress */
+.apply-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 16px;
+  background: var(--md-surface-container);
+}
+.apply-banner.done { background: var(--md-success-container); color: #0d1f06; border-color: transparent; }
+.apply-banner.failed { background: var(--md-error-container); color: #410e0b; border-color: transparent; }
+.apply-head { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.apply-head b { font-weight: 700; }
+.apply-label { margin-left: auto; font-size: 12.5px; opacity: 0.85; }
+.apply-spinner {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  opacity: 0.75;
+}
+.apply-banner.running .apply-spinner { animation: apply-spin 0.8s linear infinite; }
+.apply-banner.done .apply-spinner,
+.apply-banner.failed .apply-spinner { display: none; }
+.apply-log,
+.apply-error {
+  margin: 0;
+  max-height: 220px;
+  overflow: auto;
+  font: 12px/1.5 ui-monospace, monospace;
+  white-space: pre-wrap;
+  color: inherit;
+}
+@keyframes apply-spin { to { transform: rotate(360deg); } }
+
+.prow-actions { display: inline-flex; align-items: center; gap: 10px; justify-self: end; }
 
 /* Status hero */
 .status-hero { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 18px; border: 1px solid transparent; }

@@ -257,7 +257,11 @@
 "contributorsTitle": "貢獻者",
 "contributorsFrom": "來自 GitHub",
 "licenseTitle": "授權條款",
-"repository": "程式庫"
+"repository": "程式庫",
+"updateNow": "立即更新",
+"updating": "更新中…",
+"updated": "已更新",
+"updateFailed": "更新失敗"
     },
     "generalDesc": "介面語言與基本偏好",
     "providerDesc": "選擇 AI 供應商並設定 API 憑證",
