@@ -42,6 +42,25 @@ exit $code
 	return script, logPath, nil
 }
 
+// writeInstaller writes the shell script that installs a plugin via 0kay-pm.
+func writeInstaller(dir, pm, pkg string) (string, string, error) {
+	script := filepath.Join(dir, "install.sh")
+	logPath := filepath.Join(dir, "install.log")
+	body := fmt.Sprintf(`#!/bin/sh
+%s install %s --no-pair
+code=$?
+if [ $code -eq 0 ]; then echo %s; else echo %s; fi
+exit $code
+`,
+		shQuote(pm), shQuote(pkg),
+		markerDone, markerFailed,
+	)
+	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
+		return "", "", err
+	}
+	return script, logPath, nil
+}
+
 func joinArgs(cmd []string) string {
 	out := make([]string, 0, len(cmd))
 	for i, arg := range cmd {
