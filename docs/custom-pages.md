@@ -120,7 +120,7 @@ Drop a JSON `.patch` in the plugin-owned UI patch directory (Core merges
 | HTTP | Same-origin `fetch('/api/…')` only |
 | Mount point | Rendered inside `#app .app-main`; the router keeps it alive across tab switches |
 | CSS | Ship styles inside the bundle (inject a `<style>` element, or a scoped SFC). Prefer a page-unique class prefix so host styles cannot collide |
-| Theme tokens | Host MD3 variables (`--md-primary`, `--md-surface*`, `--shadow-*`, `--ease-spring`, …) and the shared component classes (`.btn`, `.input`, `.chip`) are available on `:root` — use them for a consistent look |
+| Theme tokens | Host MD3 variables (`--md-primary`, `--md-surface*`, `--shadow-*`, `--ease-spring`, …) and the shared component classes (`.btn`, `.input`, `.chip`) are available on `:root` — see [WebUI Design System](design-system.md) |
 | Cache | Entry `index.js` is served `no-cache`; hashed `*-<hash>.{js,css}` are immutable. If you must force a refresh of the entry, bump a query (`index.js?v=2`) in the route `module` |
 
 Error handling: if the module fails to import, the host falls back to an empty

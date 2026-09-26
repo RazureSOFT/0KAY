@@ -28,6 +28,7 @@ protobuf contracts and can be installed, updated or disabled independently.
 - [mocr Service](mocr-service.md) — the model gateway.
 - [Settings and UI Patches](settings-ui.md) — declarative settings and WebUI.
 - [WebUI Custom Pages](custom-pages.md) — ship a plugin-owned Vue page end to end.
+- [WebUI Design System](design-system.md) — Material 3 Expressive tokens and shared components.
 - [Thinking Intensity](THINKING.md) — reasoning levels and the execution loop.
 - [Releases and Updates](RELEASES.md) — install, update, one-click updates.
 - [Security and Runtime Rules](security.md) — non-negotiable constraints.
