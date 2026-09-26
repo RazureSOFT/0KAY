@@ -676,6 +676,7 @@ class LifeEngine:
         context = json.dumps(await self._daily_context(), ensure_ascii=False)
         prompt = (
             "你是 L.I.F.E。为今天安排 3~5 项属于你自己的生活活动（例如整理房间、看书、出门散步、打游戏、写点东西、听歌），"
+            "只安排你自己独自完成的事，不要安排\"给某人发消息/联系某人\"（那属于主动行为，不在这里）。"
             f"结合你的作息与最近关心的事；现在是 {today} {datetime.now().strftime('%H:%M')}，时间要合理且不要重复已有日程。"
             '只返回 JSON：{"agenda":[{"title":"","when":"YYYY-MM-DD HH:MM","detail":""}]}。'
             f"\n当前状态与已有日程：\n{context}"
@@ -723,6 +724,7 @@ class LifeEngine:
             upcoming = await asyncio.to_thread(self.companion.upcoming_important_dates, 7)
         except Exception:
             upcoming = []
+        minecraft_enabled = bool(getattr(self.tool_config, "minecraft_enabled", False))
         context = json.dumps({
             "time": now.isoformat(timespec="minutes"),
             "sleeping": rhythm.get("is_sleeping"),
@@ -731,14 +733,23 @@ class LifeEngine:
             "important_dates": [{"title": item.get("title"), "in_days": item.get("days_until")} for item in upcoming],
             "recent": recent[-6:],
             "conversations": list(self._histories.keys())[-3:],
+            "minecraft_enabled": minecraft_enabled,
         }, ensure_ascii=False)
         prompt = (
-            "你是 L.I.F.E，一个有自主性的陪伴体。基于当前状态，独立规划你接下来最想做的事。"
+            "你是 L.I.F.E，一个有自主性的陪伴体。基于当前状态，独立规划你接下来最想做的事——"
+            "是否要安排活动、是否要主动联系谁、以及要不要自己去玩，都由你自己判断。"
             '只返回 JSON：{"agenda":[{"title":"","when":"","detail":""}],'
-            '"proactive":[{"target":"","motive":"","content":""}],"note":""}。'
-            "规则：agenda 最多 2 条，仅在确有值得安排的事时给出；proactive 最多 1 条，自然真诚、不打扰；"
+            '"proactive":[{"target":"","motive":"","content":"","preferred_at":""}],'
+            '"actions":[{"tool":"minecraft","arguments":{"action":""}}],"note":""}。'
+            "规则：agenda 最多 2 条，仅在确有值得安排的事时给出；proactive 最多 1 条，自然真诚、不打扰，"
+            "preferred_at 可选（ISO 时间，表示你想在这个时间点说）；"
             "proactive 的 target 用 \"session:<会话ID>\"（给某个对话发消息，推荐，会话ID 见 conversations）、"
             "\"user:<QQ号>\" 或 \"group:<群号>\"；note 可为空；没有想法就用空数组/空字符串；不要重复已有日程。"
+            "给某人发消息、问候、联系、回复等对外动作必须放进 proactive；agenda 只放你自己独自完成的活动，"
+            "绝对不要把\"给某人发消息\"这类条目写进 agenda。"
+            "actions 是你可以立刻执行的自主动作，最多 2 条，目前仅支持 minecraft："
+            "当你决定自己去玩我的世界时输出 {\"tool\":\"minecraft\",\"arguments\":{\"action\":\"autopilot_start\"}}"
+            "（AI 会自己操作）；想停下用 autopilot_stop；不要频繁启停。"
             "note 仅用于解释本次规划，不是长期记忆，不要写调度结果或睡眠状态报告。\n"
             f"当前状态：{context}"
         )
@@ -751,7 +762,7 @@ class LifeEngine:
         except Exception as error:
             await asyncio.to_thread(self.companion.audit, "autonomy_plan", str(error), "", "failed")
             return {"error": str(error)}
-        applied = {"agenda": 0, "proactive": 0}
+        applied = {"agenda": 0, "proactive": 0, "actions": 0}
         for item in (plan.get("agenda") or [])[:2]:
             title = str(item.get("title") or "").strip()
             if title:
@@ -768,9 +779,17 @@ class LifeEngine:
                 allowed, _ = await asyncio.to_thread(self.companion.can_proactively_send, target)
             except Exception:
                 allowed = False
+            preferred_at = str(item.get("preferred_at") or "").strip()
+            if preferred_at:
+                try:
+                    preferred_at = datetime.fromisoformat(preferred_at.replace("Z", "")).isoformat()
+                except ValueError:
+                    preferred_at = ""
             if allowed:
-                await asyncio.to_thread(self.companion.create_proactive_candidate, target, str(item.get("motive") or "autonomy"), content)
+                await asyncio.to_thread(self.companion.create_proactive_candidate, target,
+                                        str(item.get("motive") or "autonomy"), content, preferred_at)
                 applied["proactive"] += 1
+        applied["actions"] = await self._run_autonomy_actions(plan.get("actions"))
         # NOTE: the daily diary is owned by maybe_daily_entries so a plan can never
         # write an ungrounded journal; a plan's `note` stays in the audit trail only.
         note = str(plan.get("note") or "").strip()
@@ -778,6 +797,43 @@ class LifeEngine:
             await asyncio.to_thread(self.companion.audit, "autonomy_note", note[:400], "", "ok")
         await asyncio.to_thread(self.companion.audit, "autonomy_plan", json.dumps(applied, ensure_ascii=False), "", "ok")
         return {"applied": applied, "plan": plan}
+
+    AUTONOMY_ACTIONS = {"minecraft"}
+    MINECRAFT_ACTIONS = {"autopilot_start", "autopilot_stop", "connect", "disconnect", "status",
+                         "goto", "follow", "stop", "look", "dig", "place", "attack", "use",
+                         "chat", "players", "inventory"}
+
+    async def _run_autonomy_actions(self, actions) -> int:
+        """Execute AI-chosen self-actions from a plan (currently: Minecraft).
+
+        Bounded and allow-listed so a plan can never call arbitrary tools.
+        """
+        ran = 0
+        for item in (actions or [])[:2]:
+            if not isinstance(item, dict):
+                continue
+            tool = str(item.get("tool") or "").strip()
+            if tool not in self.AUTONOMY_ACTIONS:
+                continue
+            if not getattr(self.tool_config, "minecraft_enabled", False):
+                await asyncio.to_thread(self.companion.audit, "autonomy_action", "minecraft disabled", tool, "blocked")
+                continue
+            args = item.get("arguments") if isinstance(item.get("arguments"), dict) else {}
+            action = str(args.get("action") or "").strip()
+            if action not in self.MINECRAFT_ACTIONS:
+                continue
+            try:
+                result = await self._call_minecraft(dict(args))
+                success = bool(getattr(result, "success", False))
+                await asyncio.to_thread(self.companion.audit, "autonomy_action",
+                                        f"minecraft {action}", "", "ok" if success else "failed")
+                if success:
+                    await asyncio.to_thread(self.companion.timeline_add, "游戏",
+                                            f"我的世界 · {action}", str(getattr(result, "data", ""))[:120])
+                    ran += 1
+            except Exception as error:
+                await asyncio.to_thread(self.companion.audit, "autonomy_action", str(error), "", "failed")
+        return ran
 
     def _interest_keywords(self) -> list[str]:
         """LIFE's own interests: skill names/keywords and world-knowledge titles."""
@@ -1127,7 +1183,10 @@ class LifeEngine:
         return selected
 
     def acknowledge_notifications(self, session_id, ids):
-        self._notifications=[item for item in self._notifications if not (item['session_id']==session_id and item['id'] in ids)]
+        # Remove by id: the WebUI may acknowledge messages that were addressed to
+        # an earlier webui session id after the session was recreated.
+        acknowledged=set(ids or [])
+        self._notifications=[item for item in self._notifications if item["id"] not in acknowledged]
         self._save_state()
 
     async def clear_memory(self):

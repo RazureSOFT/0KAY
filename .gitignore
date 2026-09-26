@@ -7,6 +7,8 @@ buf.exe
 /pm/
 # 0kay-mcp (MCP client gateway + shared protobufs) remains an independent repository.
 /mcp/
+# 0kay-minecraft (Minecraft bot plugin) remains an independent repository.
+/minecraft/
 node_modules
 core/data/tasks.json
 core/data/tasks.json.journal

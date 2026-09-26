@@ -78,6 +78,36 @@ class DailyReviewAndMedia(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(result["ok"])
             self.assertIn("onebot", result["reason"])
 
+    async def test_autonomy_actions_are_allowlisted(self):
+        from life.tools.tools import ToolResult
+        with tempfile.TemporaryDirectory() as directory:
+            engine = LifeEngine(directory)
+            calls: list[dict] = []
+
+            async def fake_minecraft(args):
+                calls.append(args)
+                return ToolResult(True, {"ok": True})
+
+            engine._call_minecraft = fake_minecraft
+
+            # Disabled: nothing runs, action is audited as blocked.
+            ran = await engine._run_autonomy_actions([{"tool": "minecraft", "arguments": {"action": "autopilot_start"}}])
+            self.assertEqual(ran, 0)
+            self.assertEqual(calls, [])
+
+            engine.tool_config.minecraft_enabled = True
+            ran = await engine._run_autonomy_actions([
+                {"tool": "minecraft", "arguments": {"action": "nope"}},    # unknown action
+                {"tool": "minecraft", "arguments": {"action": "autopilot_start"}},
+            ])
+            self.assertEqual(ran, 1)
+            self.assertEqual(calls, [{"action": "autopilot_start"}])
+            # Unknown tools are ignored even when minecraft is enabled.
+            ran = await engine._run_autonomy_actions([{"tool": "shell", "arguments": {"action": "rm"}}])
+            self.assertEqual(ran, 0)
+            self.assertEqual(len(calls), 1)
+            self.assertTrue(any(item["topic"] == "游戏" for item in engine.companion.snapshot()["timeline"]))
+
 
 if __name__ == "__main__":
     unittest.main()
