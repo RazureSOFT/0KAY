@@ -44,7 +44,7 @@ export const PROVIDERS: Provider[] = [
   {
     id: 'openai',
     name: 'OpenAI',
-    icon: '🤖',
+    icon: '',
     logo: '/providers/openai.svg',
     description: 'GPT-4, GPT-4o, o1 models',
     baseUrl: 'https://api.openai.com/v1',
@@ -54,7 +54,7 @@ export const PROVIDERS: Provider[] = [
   {
     id: 'anthropic',
     name: 'Anthropic',
-    icon: '🧠',
+    icon: '',
     logo: '/providers/anthropic.svg',
     description: 'Claude 3.5 Sonnet, Haiku, Opus',
     baseUrl: 'https://api.anthropic.com',
@@ -64,7 +64,7 @@ export const PROVIDERS: Provider[] = [
   {
     id: 'deepseek',
     name: 'DeepSeek',
-    icon: '🐋',
+    icon: '',
     logo: '/providers/deepseek.svg',
     description: 'DeepSeek Chat, DeepSeek Reasoner',
     baseUrl: 'https://api.deepseek.com/v1',
@@ -74,7 +74,7 @@ export const PROVIDERS: Provider[] = [
   {
     id: 'kimi',
     name: 'Moonshot AI (Kimi)',
-    icon: '🌙',
+    icon: '',
     logo: '/providers/kimi.svg',
     description: 'Kimi, Moonshot models',
     baseUrl: 'https://api.moonshot.cn/v1',
@@ -84,7 +84,7 @@ export const PROVIDERS: Provider[] = [
   {
     id: 'xai',
     name: 'xAI (Grok)',
-    icon: '𝕏',
+    icon: '',
     logo: '/providers/xai.svg',
     description: 'Grok models by xAI',
     baseUrl: 'https://api.x.ai/v1',
@@ -94,7 +94,8 @@ export const PROVIDERS: Provider[] = [
   {
     id: 'custom',
     name: 'Custom',
-    icon: '⚙️',
+    icon: '',
+    logo: '/providers/custom.svg',
     description: 'OpenAI-compatible custom endpoint',
     baseUrl: '',
     apiKeyUrl: '',
