@@ -1,16 +1,19 @@
 // Plugin-native Skills GUI (scheme C) → core/data/plugin-ui/skillsguishow/.
-// Visual language mirrors built-in management pages (PluginsPage/UsagePage):
-// page-header + subtitle, .btn/.stat-card/.plugin-card global classes, native tokens.
-// Bare `vue` import is provided by WebUI importmap → host bridge.
+// Material 3 Expressive management page. Bare `vue` import comes from the
+// WebUI importmap → host bridge.
 import { h, ref, onMounted, computed } from 'vue'
 
 const CSS = `
 /* Skills GUI — Material 3 Expressive. #app prefixes out-rank the host layer. */
-#app .skills-page{height:100%;overflow-y:auto;padding:clamp(18px,2.4vw,30px);background:var(--md-surface);color:var(--md-on-surface);font-family:var(--font-family)}
+#app .skills-page{
+  height:100%;overflow-y:auto;padding:clamp(22px,3vw,44px);color:var(--md-on-surface);font-family:var(--font-family);
+  background:radial-gradient(1100px 560px at 105% -12%,color-mix(in srgb,var(--md-primary) 10%,transparent),transparent 62%),var(--md-surface);
+}
 #app .skills-page *{box-sizing:border-box}
-#app .skills-page .page-header{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);margin-bottom:clamp(18px,2.4vw,30px);flex-wrap:wrap}
-#app .skills-page .page-header h1{margin:0;font-size:clamp(24px,2.8vw,34px);font-weight:800;letter-spacing:-.02em}
-#app .skills-page .subtitle{color:var(--md-on-surface-variant);font-size:14px;margin:8px 0 0;line-height:1.6;max-width:680px}
+#app .skills-page .page-header{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);margin-bottom:clamp(18px,2.4vw,28px);flex-wrap:wrap}
+#app .skills-page .eyebrow{margin:0 0 8px;color:var(--md-primary);font:800 11px/1 ui-monospace,monospace;letter-spacing:.18em}
+#app .skills-page .page-header h1{margin:0;font-size:clamp(26px,3vw,38px);font-weight:800;letter-spacing:-.02em}
+#app .skills-page .subtitle{color:var(--md-on-surface-variant);font-size:14.5px;margin:8px 0 0;line-height:1.6;max-width:680px}
 #app .skills-page .header-actions{display:flex;gap:10px;flex-wrap:wrap}
 #app .skills-page .btn{
   height:46px;min-height:46px;padding:0 22px;border:1px solid transparent;border-radius:999px;
@@ -24,40 +27,47 @@ const CSS = `
 #app .skills-page .btn.btn-tonal{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 #app .skills-page .btn.btn-danger{background:var(--md-error-container);color:var(--md-on-error-container,#410e0b)}
 #app .skills-page .btn.sm{height:34px;min-height:34px;padding:0 15px;font-size:12.5px}
-#app .skills-page .error-banner{padding:12px 16px;margin-bottom:var(--space-md);background:var(--md-error-container);color:var(--md-on-error-container,#410e0b);border-radius:16px;font-size:13px}
-#app .skills-page .flash-banner{padding:12px 16px;margin-bottom:var(--space-md);background:var(--md-success-container);color:#0d3b1e;border-radius:16px;font-size:13px;font-weight:600}
+#app .skills-page .error-banner{padding:13px 18px;margin-bottom:var(--space-md);background:var(--md-error-container);color:var(--md-on-error-container,#410e0b);border-radius:18px;font-size:13px}
+#app .skills-page .flash-banner{padding:13px 18px;margin-bottom:var(--space-md);background:var(--md-success-container);color:#0d3b1e;border-radius:18px;font-size:13px;font-weight:600}
 #app .skills-page .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:var(--space-lg);margin-bottom:var(--space-xl)}
 #app .skills-page .stat-card{
-  padding:20px;border-radius:24px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);
-  background:var(--md-surface-container-low);box-shadow:var(--shadow-1);display:flex;flex-direction:column;gap:6px;
+  padding:20px;border-radius:24px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);
+  display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow-1);
+  animation:skills-card-in 520ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)) both;
   transition:transform 280ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),box-shadow 280ms;
 }
 #app .skills-page .stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
 #app .skills-page .stat-card:nth-child(3n+1){background:var(--md-primary-container);color:var(--md-on-primary-container)}
 #app .skills-page .stat-card:nth-child(3n+2){background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 #app .skills-page .stat-card:nth-child(3n){background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#421326)}
+@keyframes skills-card-in{from{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}
 #app .skills-page .stat-label{font-size:11.5px;opacity:.75;color:inherit;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
-#app .skills-page .stat-value{font-size:30px;font-weight:800;letter-spacing:-.02em;color:inherit;line-height:1.1}
+#app .skills-page .stat-value{font-size:32px;font-weight:800;letter-spacing:-.02em;color:inherit;line-height:1.1}
 #app .skills-page .stat-dir{font:12px/1.5 ui-monospace,monospace;word-break:break-all;color:inherit;opacity:.85}
 #app .skills-page .upload-panel{
-  padding:22px;border-radius:24px;margin-bottom:var(--space-xl);display:flex;flex-direction:column;gap:12px;
+  padding:22px;border-radius:28px;margin-bottom:var(--space-xl);display:flex;flex-direction:column;gap:12px;
   background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);box-shadow:var(--shadow-1);
 }
 #app .skills-page .upload-panel h2{margin:0;font-size:17px;font-weight:750}
-#app .skills-page .upload-panel .hint{margin:0;font-size:13px;color:var(--md-on-surface-variant)}
+#app .skills-page .upload-panel .hint{margin:0;font-size:13px;color:var(--md-on-surface-variant);line-height:1.55}
 #app .skills-page .upload-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-#app .skills-page .upload-row input[type=text]{flex:1;min-width:200px;height:48px;padding:0 16px}
-#app .skills-page .file-pick{font-size:13px;color:var(--md-on-surface-variant);display:inline-flex;align-items:center;gap:6px}
-#app .skills-page textarea{width:100%;min-height:150px;padding:14px 16px;line-height:1.6;resize:vertical}
+#app .skills-page .upload-row input[type=text]{flex:1;min-width:200px}
+#app .skills-page .file-pick{font-size:13px;color:var(--md-on-surface-variant);display:inline-flex;align-items:center;gap:8px;cursor:pointer}
 #app .skills-page .upload-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:6px}
+#app .skills-page .folder-bar{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:16px 18px;border-radius:20px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);
+}
+#app .skills-page .folder-bar b{font-size:14px;font-weight:750}
+#app .skills-page .folder-bar span{font-size:12.5px;opacity:.85;flex:1;min-width:160px}
 #app .skills-page .toolbar{display:flex;gap:12px;align-items:center;margin-bottom:var(--space-lg)}
-#app .skills-page .toolbar input{flex:1;min-width:0;height:48px;padding:0 16px}
 #app .skills-page .toolbar-count{font-size:13px;color:var(--md-on-surface-variant);white-space:nowrap;padding:0 6px;font-weight:600}
 #app .skills-page .skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--space-lg);padding-bottom:var(--space-lg)}
 #app .skills-page .skill-card{
-  padding:20px;display:flex;flex-direction:column;gap:14px;border-radius:24px;
-  background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);
-  box-shadow:var(--shadow-1);transition:transform 280ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),box-shadow 280ms,border-color 280ms;
+  padding:22px;display:flex;flex-direction:column;gap:14px;border-radius:28px;
+  background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);
+  box-shadow:var(--shadow-1);animation:skills-card-in 520ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)) both;
+  transition:transform 280ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),box-shadow 280ms,border-color 280ms;
 }
 #app .skills-page .skill-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-2);border-color:color-mix(in srgb,var(--md-primary) 30%,var(--md-outline-variant))}
 #app .skills-page .card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -105,6 +115,14 @@ async function api(method, url, body) {
   return data.result !== undefined && data.result !== null ? data.result : data
 }
 
+function skillName(filename) {
+  return String(filename || '')
+    .replace(/\.md$/i, '')
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64)
+}
+
 export default {
   name: 'SkillsGuiShowPage',
   setup() {
@@ -119,6 +137,8 @@ export default {
     const newName = ref('')
     const newContent = ref('')
     const deleting = ref('')
+    const folderProgress = ref('')
+    const folderInput = ref(null)
 
     const visible = computed(() => {
       const q = query.value.trim().toLowerCase()
@@ -192,10 +212,45 @@ export default {
       const reader = new FileReader()
       reader.onload = () => {
         newContent.value = String(reader.result || '')
-        if (!newName.value) newName.value = file.name.replace(/\.md$/i, '')
+        if (!newName.value) newName.value = skillName(file.name)
       }
       reader.readAsText(file)
       ev.target.value = ''
+    }
+
+    async function uploadFolder(ev) {
+      const files = Array.from(ev.target.files || [])
+      ev.target.value = ''
+      const mdFiles = files.filter(
+        (f) => /\.md$/i.test(f.name) || f.type === 'text/markdown' || f.type === 'text/plain',
+      )
+      if (!mdFiles.length) {
+        error.value = '所选文件夹里没有找到 .md 文件'
+        return
+      }
+      busy.value = true
+      error.value = ''
+      flash.value = ''
+      let ok = 0
+      let failed = 0
+      for (let i = 0; i < mdFiles.length; i++) {
+        const file = mdFiles[i]
+        const name = skillName(file.name)
+        folderProgress.value = `${i + 1}/${mdFiles.length} · ${name || file.name}`
+        if (!name) { failed++; continue }
+        try {
+          const content = await file.text()
+          await api('POST', '/api/skills', { name, content })
+          ok++
+        } catch {
+          failed++
+        }
+      }
+      folderProgress.value = ''
+      flash.value = `文件夹上传完成：成功 ${ok} 个${failed ? ` · 失败 ${failed} 个` : ''}`
+      showUpload.value = false
+      await refresh()
+      busy.value = false
     }
 
     onMounted(refresh)
@@ -204,18 +259,33 @@ export default {
       h('div', { class: 'stat-card' }, [
         h('span', { class: 'stat-label' }, label),
         h('span', { class: 'stat-value' }, value),
-        hint ? h('span', { class: 'stat-label', style: 'text-transform:none;letter-spacing:0' }, hint) : null,
+        hint ? h('span', { class: 'stat-label', style: 'text-transform:none;letter-spacing:0;opacity:.7' }, hint) : null,
       ])
 
     return () =>
       h('div', { class: 'skills-page' }, [
+        h('input', {
+          ref: folderInput,
+          type: 'file',
+          webkitdirectory: '',
+          directory: '',
+          multiple: true,
+          style: 'display:none',
+          onChange: uploadFolder,
+        }),
         h('header', { class: 'page-header' }, [
           h('div', {}, [
+            h('p', { class: 'eyebrow' }, 'AGENT · SKILLS'),
             h('h1', {}, '技能管理'),
             h('p', { class: 'subtitle' }, '浏览、上传、删除 Agent 技能。技能由 Agent 插件加载；在对话框输入 /技能名 可强制套用该技能。'),
           ]),
           h('div', { class: 'header-actions' }, [
             h('button', { class: 'btn btn-tonal', disabled: busy.value, onClick: refresh }, busy.value ? '刷新中…' : '刷新'),
+            h('button', {
+              class: 'btn btn-tonal',
+              disabled: busy.value,
+              onClick: () => folderInput.value?.click(),
+            }, '上传文件夹'),
             h('button', { class: 'btn btn-primary', onClick: () => (showUpload.value = !showUpload.value) }, showUpload.value ? '收起上传' : '上传技能'),
           ]),
         ]),
@@ -234,9 +304,9 @@ export default {
         ]),
 
         showUpload.value
-          ? h('section', { class: 'card upload-panel' }, [
+          ? h('section', { class: 'upload-panel' }, [
               h('h2', {}, '上传 / 覆盖技能'),
-              h('p', { class: 'hint' }, 'Markdown 文件或直接粘贴内容。名称仅限英文、数字、-、_，将成为 /斜杠调用名。'),
+              h('p', { class: 'hint' }, '单个 Markdown 文件或直接粘贴内容。名称仅限英文、数字、-、_，将成为 /斜杠调用名。'),
               h('div', { class: 'upload-row' }, [
                 h('input', {
                   type: 'text',
@@ -245,7 +315,7 @@ export default {
                   onInput: (e) => (newName.value = e.target.value),
                 }),
                 h('label', { class: 'file-pick' }, [
-                  '选择 .md 文件 ',
+                  '选择 .md 文件',
                   h('input', { type: 'file', accept: '.md,text/markdown,text/plain', onChange: pickFile }),
                 ]),
               ]),
@@ -254,6 +324,15 @@ export default {
                 value: newContent.value,
                 onInput: (e) => (newContent.value = e.target.value),
               }),
+              h('div', { class: 'folder-bar' }, [
+                h('b', {}, '批量导入'),
+                h('span', {}, `选择包含多个 .md 的整个文件夹，将逐个创建/覆盖技能（文件名即技能名）。${folderProgress.value ? ' ' + folderProgress.value : ''}`),
+                h('button', {
+                  class: 'btn sm btn-tonal',
+                  disabled: busy.value,
+                  onClick: () => folderInput.value?.click(),
+                }, folderProgress.value ? '上传中…' : '选择文件夹'),
+              ]),
               h('div', { class: 'upload-actions' }, [
                 h('button', { class: 'btn btn-tonal', disabled: busy.value, onClick: () => (showUpload.value = false) }, '取消'),
                 h('button', { class: 'btn btn-primary', disabled: busy.value || !newName.value.trim() || !newContent.value.trim(), onClick: save }, '保存技能'),
@@ -273,13 +352,13 @@ export default {
         visible.value.length === 0
           ? h('div', { class: 'empty-state' }, [
               h('p', {}, error.value ? '无法读取技能列表。确认 Agent 在线后重试。' : query.value ? '没有匹配的技能。' : '暂无技能。'),
-              h('p', { class: 'hint' }, error.value ? '' : '点击右上角「上传技能」创建第一个。'),
+              h('p', { class: 'hint' }, error.value ? '' : '点击右上角「上传技能」或「上传文件夹」创建。'),
             ])
           : h(
               'section',
               { class: 'skill-grid' },
-              visible.value.map((s) =>
-                h('article', { class: 'plugin-card skill-card', key: s.name }, [
+              visible.value.map((s, i) =>
+                h('article', { class: 'skill-card', key: s.name, style: `animation-delay:${Math.min(i, 12) * 40}ms` }, [
                   h('div', { class: 'card-top' }, [
                     h('code', {}, `/${s.name}`),
                     h('span', { class: `status-chip${s.source === 'builtin' ? ' builtin' : ''}` }, s.source === 'builtin' ? '内置' : '文件'),
