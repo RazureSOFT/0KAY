@@ -12,9 +12,11 @@ import (
 
 // GitHub repositories that ship 0KAY components.
 const (
-	ownerUmbrella = "RazureSOFT"
-	repoUmbrella  = "0KAY"
-	repoAgent     = "0KAY-agent"
+	ownerUmbrella  = "RazureSOFT"
+	repoUmbrella   = "0KAY"
+	repoAgent      = "0KAY-agent"
+	ownerRazureink = "razureink"
+	repoMinecraft  = "0KAY-minecraft"
 )
 
 var client = &http.Client{Timeout: 10 * time.Second}
@@ -130,6 +132,8 @@ func RepositoryFor(plugin string) (owner, repo string, known bool) {
 		return ownerUmbrella, repoUmbrella, true
 	case "agent":
 		return ownerUmbrella, repoAgent, true
+	case "minecraft":
+		return ownerRazureink, repoMinecraft, true
 	}
 	return "", "", false
 }
