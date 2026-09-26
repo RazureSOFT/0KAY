@@ -46,8 +46,10 @@ func (s *PluginServiceServer) Register(ctx context.Context, req *corev1.Register
 		pairing.Default.Bind(ctx, req.Address)
 	}
 
-	// Register contributed settings sections
+	// Register contributed settings sections. Drop this plugin's previous
+	// sections first so a re-register (e.g. renamed section id) is not stale.
 	if s.settings != nil {
+		s.settings.UnregisterPluginSections(pluginID)
 		for _, sec := range req.SettingsSections {
 			if sec == nil || sec.Id == "" {
 				continue

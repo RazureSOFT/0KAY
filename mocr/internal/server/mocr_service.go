@@ -79,25 +79,17 @@ func refreshCatalog() []prov.ModelInfo {
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil || len(body.Models) == 0 {
 		return cachedCatalog()
 	}
+	rt := currentRuntime()
 	entries := make([]prov.ModelInfo, 0, len(body.Models))
 	for _, m := range body.Models {
-		cost := 0.000001
-		switch {
-		case strings.Contains(strings.ToLower(m.ID), "o1"):
-			cost = 0.000015
-		case strings.Contains(strings.ToLower(m.ID), "opus"):
-			cost = 0.000015
-		case strings.Contains(strings.ToLower(m.ID), "sonnet"):
-			cost = 0.000003
-		case strings.Contains(strings.ToLower(m.ID), "mini") || strings.Contains(strings.ToLower(m.ID), "haiku"):
-			cost = 0.0000002
-		}
+		spec := prov.ResolvePrice(m.ID, rt.PriceOverrides)
 		entries = append(entries, prov.ModelInfo{
 			ID:                    m.ID,
 			Provider:              m.Provider,
 			SupportsThinking:      m.SupportsThinking,
 			MaxContextLength:      128000,
-			EstimatedCostPerToken: cost,
+			EstimatedCostPerToken: spec.OutPerMillion / 1_000_000,
+			Price:                 spec,
 		})
 	}
 	catalog.mu.Lock()
@@ -138,8 +130,9 @@ func (s *MocrServiceServer) ChooseModels(ctx context.Context, req *mocrv1.Choose
 		return nil, fmt.Errorf("prompt is required")
 	}
 
+	rt := currentRuntime()
 	// Pinned default model (provider settings) overrides intelligent selection.
-	if dm := strings.TrimSpace(currentRuntime().DefaultModel); dm != "" {
+	if dm := strings.TrimSpace(rt.DefaultModel); dm != "" {
 		for _, e := range refreshCatalog() {
 			if strings.EqualFold(e.ID, dm) {
 				spec := &mocrv1.ModelSpec{
@@ -171,7 +164,14 @@ func (s *MocrServiceServer) ChooseModels(ctx context.Context, req *mocrv1.Choose
 		costBudget = req.Context.CostBudget
 	}
 
-	result := s.selector.SelectFrom(refreshCatalog(), req.Prompt, difficulty, requireThinking, maxTokens, costBudget)
+	// Model selection strategy from the provider settings (auto|quality|cost).
+	strategy := rt.Strategy
+	if strategy == "quality" {
+		requireThinking = true
+	} else if strategy == "cost" {
+		requireThinking = false
+	}
+	result := s.selector.SelectWithStrategy(strategy, refreshCatalog(), req.Prompt, difficulty, requireThinking, maxTokens, costBudget)
 
 	return &mocrv1.ChooseModelsResponse{
 		ThinkModel: &mocrv1.ModelSpec{
@@ -292,6 +292,8 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 	if rt.AutoSwitch {
 		attempts += rt.SwitchMaxAttempts
 	}
+	// max_retries: same-model retries for transient provider errors before switching.
+	innerTries := 1 + rt.MaxRetries
 
 	var targets []swapTarget
 	var targetsReady bool
@@ -315,15 +317,33 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 		}
 
 		var fullText strings.Builder
+		var info *prov.FinishInfo
+		var err error
 		chunks := 0
-		info, err := prov.Generate(ctx, buildOpts(req), func(chunk string) bool {
-			chunks++
-			fullText.WriteString(chunk)
-			if sendErr := stream.Send(&mocrv1.GenerateResponse{Chunk: chunk}); sendErr != nil {
-				return false
+		for try := 0; try < innerTries; try++ {
+			fullText.Reset()
+			chunks = 0
+			info, err = prov.Generate(ctx, buildOpts(req), func(chunk string) bool {
+				chunks++
+				fullText.WriteString(chunk)
+				if sendErr := stream.Send(&mocrv1.GenerateResponse{Chunk: chunk}); sendErr != nil {
+					return false
+				}
+				return true
+			})
+			if err == nil || chunks > 0 || try+1 >= innerTries || !prov.IsRetryable(err) {
+				break
 			}
-			return true
-		})
+			backoff := time.Duration(400*(1<<try)) * time.Millisecond
+			if backoff > 5*time.Second {
+				backoff = 5 * time.Second
+			}
+			log.Printf("[mocr] retry %d/%d model=%s after error: %v (backoff %s)", try+1, innerTries-1, curModel, err, backoff)
+			select {
+			case <-ctx.Done():
+			case <-time.After(backoff):
+			}
+		}
 
 		if err == nil {
 			hasPayload := chunks > 0 || (info != nil && (len(info.ToolCalls) > 0 || info.ReasoningContent != ""))

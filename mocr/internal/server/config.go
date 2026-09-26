@@ -9,11 +9,16 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"0kay/mocr/internal/providers"
 )
 
 // runtimeSettings mirrors the Core "provider" settings section (15s poll).
 type runtimeSettings struct {
 	DefaultModel      string
+	Strategy          string
+	MaxRetries        int
+	PriceOverrides    map[string]providers.PriceSpec
 	AutoSwitch        bool
 	SwitchMaxAttempts int
 	FallbackModels    []string
@@ -21,7 +26,7 @@ type runtimeSettings struct {
 
 var (
 	rtMu   sync.RWMutex
-	rtVal  = runtimeSettings{AutoSwitch: true, SwitchMaxAttempts: 2}
+	rtVal  = runtimeSettings{AutoSwitch: true, SwitchMaxAttempts: 2, Strategy: "auto", MaxRetries: 2}
 	rtOnce sync.Once
 )
 
@@ -31,6 +36,12 @@ func currentRuntime() runtimeSettings {
 	defer rtMu.RUnlock()
 	out := rtVal
 	out.FallbackModels = append([]string(nil), rtVal.FallbackModels...)
+	if rtVal.PriceOverrides != nil {
+		out.PriceOverrides = make(map[string]providers.PriceSpec, len(rtVal.PriceOverrides))
+		for k, v := range rtVal.PriceOverrides {
+			out.PriceOverrides[k] = v
+		}
+	}
 	return out
 }
 
@@ -79,34 +90,71 @@ func jsonInt(raw json.RawMessage, def int) int {
 	return def
 }
 
-// pollRuntimeSettings fetches provider section values from Core (best-effort).
-func pollRuntimeSettings() {
+// fetchSectionValues pulls one settings section's values from Core (best-effort).
+func fetchSectionValues(section string) (map[string]json.RawMessage, bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, coreHTTPBase()+"/api/settings/provider", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, coreHTTPBase()+"/api/settings/"+section, nil)
 	if err != nil {
-		return
+		return nil, false
 	}
 	coreAuth(req)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return
+		return nil, false
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-		return
+		return nil, false
 	}
 	var body struct {
 		Values map[string]json.RawMessage `json:"values"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil || body.Values == nil {
+		return nil, false
+	}
+	return body.Values, true
+}
+
+// pollRuntimeSettings fetches provider section values from Core (best-effort).
+func pollRuntimeSettings() {
+	// mocr has its own "mocr" section; fall back to the legacy "provider" section.
+	body := struct {
+		Values map[string]json.RawMessage `json:"values"`
+	}{}
+	values, ok := fetchSectionValues("mocr")
+	if !ok || len(values) == 0 {
+		if legacy, legacyOK := fetchSectionValues("provider"); legacyOK {
+			values = legacy
+		}
+	}
+	if values == nil {
 		return
 	}
+	body.Values = values
 
-	next := runtimeSettings{AutoSwitch: true, SwitchMaxAttempts: 2}
+	next := runtimeSettings{AutoSwitch: true, SwitchMaxAttempts: 2, Strategy: "auto", MaxRetries: 2}
 	if raw, ok := body.Values["default_model"]; ok {
 		_ = json.Unmarshal(raw, &next.DefaultModel)
+	}
+	if raw, ok := body.Values["max_retries"]; ok {
+		next.MaxRetries = jsonInt(raw, 2)
+	}
+	if raw, ok := body.Values["model_prices"]; ok {
+		var s string
+		if json.Unmarshal(raw, &s) == nil {
+			next.PriceOverrides = providers.ParsePriceOverrides(s)
+		}
+	}
+	if raw, ok := body.Values["model_strategy"]; ok {
+		var s string
+		if json.Unmarshal(raw, &s) == nil {
+			switch strings.ToLower(strings.TrimSpace(s)) {
+			case "quality", "cost", "pinned", "auto":
+				next.Strategy = strings.ToLower(strings.TrimSpace(s))
+			}
+		}
 	}
 	if raw, ok := body.Values["auto_switch_model"]; ok {
 		next.AutoSwitch = jsonBool(raw, true)
@@ -129,6 +177,12 @@ func pollRuntimeSettings() {
 	}
 	if next.SwitchMaxAttempts > 5 {
 		next.SwitchMaxAttempts = 5
+	}
+	if next.MaxRetries < 0 {
+		next.MaxRetries = 0
+	}
+	if next.MaxRetries > 5 {
+		next.MaxRetries = 5
 	}
 
 	rtMu.Lock()

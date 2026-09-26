@@ -41,6 +41,7 @@ type ModelInfo struct {
 	SupportsThinking      bool
 	MaxContextLength      int
 	EstimatedCostPerToken float64
+	Price                 PriceSpec
 }
 
 // GetModels returns available models for a provider.
