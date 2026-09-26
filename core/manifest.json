@@ -1,1 +1,1 @@
-{"schema":1,"name":"@razuresoft/0kay-core","version":"0.1.0","tags":["0kay-plugin"],"install":[["go","build","-o","core-service.exe","./cmd/core"]],"start":["./core-service.exe"],"ports":{"http":8080,"grpc":50051,"discovery_udp":50050,"lan_https":8443,"lan_grpc":5443}}
+{"schema":1,"name":"@razuresoft/0kay-core","version":"0.1.0","install":[["go","build","-o","core-service.exe","./cmd/core"]],"start":["./core-service.exe"],"ports":{"http":8080,"grpc":50051,"discovery_udp":50050,"lan_https":8443,"lan_grpc":5443}}

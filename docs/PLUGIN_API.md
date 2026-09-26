@@ -19,7 +19,6 @@ package identity, version, build and run commands. The file is consumed by
   "schema": 1,
   "name": "@razuresoft/0kay-agent",
   "version": "0.1.0",
-  "tags": ["0kay-plugin"],
   "dependencies": ["@razuresoft/0kay-mcp"],
   "requires": ["core", "mocr"],
   "install": [["npm", "ci"], ["npm", "run", "build"]],
@@ -32,7 +31,6 @@ package identity, version, build and run commands. The file is consumed by
 | `schema` | number / yes | Fixed at `1` |
 | `name` | string / yes | Package name; an npm-style `@scope/name` (or unscoped). It must equal the requested install name. |
 | `version` | string / yes | Package version; releases use SemVer, e.g. `0.1.0` |
-| `tags` | string[] / yes | Must contain `0kay-plugin` (see below) |
 | `description` | string / no | Human-readable note; does not affect execution |
 | `install` | string[][] / no | Ordered build/install commands; each entry is an argv array |
 | `start` | string[] / no | Single start command argv; omitted when there is no standalone process |
@@ -43,12 +41,11 @@ package identity, version, build and run commands. The file is consumed by
 | `ui` | object / no | Optional plugin WebUI build/publish config (below) |
 | `ports` | object / no | Port metadata such as Core's `http`/`grpc`; not a generic port executor |
 
-**The `0kay-plugin` tag marks a package for the plugin marketplace.** Every
-0kay plugin — third-party and the platform's own (Platform, Core, MOCR, LIFE,
-MCP, Agent, WebUI, Minecraft, searxng and every `plugin-web/*` bundle) — sets
-`"tags": ["0kay-plugin"]`. The marketplace uses this tag to list 0kay plugins;
-**0kay-pm does not require it to install a package.** Other tags may be added
-freely alongside it.
+**Publish to the plugin marketplace by tagging the GitHub repository.** The
+marketplace discovers 0kay plugins through the GitHub repository topic
+`0kay-plugin` (repository → **Topics**), not through anything in
+`manifest.json`. Add that topic to the repository alongside any others. `0kay-pm`
+does not use it for install.
 
 Commands must be non-empty argv arrays such as `["python", "-m", "life.main"]`,
 never a single shell string. Every argument must be a string with no newline or
