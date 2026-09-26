@@ -29,12 +29,14 @@ async function poll() {
 async function decide(item: Approval, allow: boolean) {
   busy.value = true
   try {
-    await fetch('/api/life/companion', {
+    const res = await fetch('/api/life/companion', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'approval_resolve', payload: { id: item.id, allow } }),
     })
+    // Only drop the row once Core confirms; otherwise leave it for a retry.
+    if (!res.ok) throw new Error(String(res.status))
     items.value = items.value.filter((a) => a.id !== item.id)
-  } catch { /* ignore */ } finally { busy.value = false }
+  } catch { /* keep the request pending so the user can retry */ } finally { busy.value = false }
 }
 
 onMounted(() => { poll(); timer = window.setInterval(poll, 2500) })

@@ -5,6 +5,14 @@
     "status": "Status",
     "switchLang": "Switch language"
   },
+  "auth": {
+    "title": "Connect to Core",
+    "hint": "This Core only accepts paired devices or an API token.",
+    "token": "Pairing or API token",
+    "submit": "Connect",
+    "cancel": "Not now",
+    "failed": "Sign-in failed"
+  },
   "nav": {
     "chat": "Chat",
     "agents": "Agents",

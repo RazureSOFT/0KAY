@@ -242,6 +242,7 @@ async function autoFetchEditModels() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        id: ep.id,
         provider: ep.provider,
         base_url: ep.base_url,
         api_key: ep.api_key || '',
@@ -287,6 +288,7 @@ async function fetchModelsForRow(p: ProviderConfig) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        id: p.id,
         provider: p.provider,
         base_url: p.base_url,
         api_key: p.api_key || '',
@@ -410,7 +412,7 @@ async function deleteModel(model: {id:string;url:string;label:string}) {
   })
   if (!ok) return
   try {
-    const response=await fetch(`/api/live2d?id=${encodeURIComponent(model.id)}`,{method:'DELETE'})
+    const response=await fetch(`/api/live2d/${encodeURIComponent(model.id)}`,{method:'DELETE'})
     if(!response.ok)throw new Error(await response.text())
     const body=await response.json();uploadedModels.value=body.models || []
     const folder=model.url.slice(0,model.url.indexOf('/', '/live2d/models/'.length)+1)

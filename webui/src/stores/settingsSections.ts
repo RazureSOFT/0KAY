@@ -23,6 +23,8 @@ export interface SettingsSection {
   fields: SettingsField[]
   plugin_id?: string
   plugin_name?: string
+  /** Present only when fetched with `?values=1`. */
+  values?: Record<string, unknown>
 }
 
 export const useSettingsSectionsStore = defineStore('settingsSections', () => {
@@ -33,14 +35,18 @@ export const useSettingsSectionsStore = defineStore('settingsSections', () => {
   async function fetchSections() {
     loading.value = true
     try {
-      const res = await fetch('/api/settings/sections')
+      // `?values=1` embeds each section's values so the page does not fan out
+      // into one request per section.
+      const res = await fetch('/api/settings/sections?values=1')
       if (!res.ok) return
       const data = await res.json()
-      sections.value = data.sections || []
-      // load values for each
-      for (const sec of sections.value) {
-        await loadValues(sec.id)
+      const rows: SettingsSection[] = data.sections || []
+      sections.value = rows
+      const embedded: Record<string, Record<string, unknown>> = {}
+      for (const section of rows) {
+        if (section.values) embedded[section.id] = section.values
       }
+      values.value = { ...values.value, ...embedded }
     } finally {
       loading.value = false
     }

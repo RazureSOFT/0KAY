@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useWizardStore } from './stores/wizard'
@@ -12,6 +12,7 @@ import ConfirmDialog from './components/ConfirmDialog.vue'
 import AppSelect from './components/AppSelect.vue'
 import LifeApprovalDialog from './components/LifeApprovalDialog.vue'
 import { setLanguage, getLanguage, LOCALES } from './i18n'
+import { authRequired, submitLogin, cancelLogin } from './auth'
 
 const { t } = useI18n()
 const wizard = useWizardStore()
@@ -101,9 +102,67 @@ function onWizardComplete() {
   if (!chat.isConnected) chat.connect()
   router.replace('/')
 }
+
+// --- pairing / API-token overlay ------------------------------------------
+const authToken = ref('')
+const authBusy = ref(false)
+const authError = ref('')
+
+async function onAuthSubmit() {
+  if (authBusy.value) return
+  authBusy.value = true
+  authError.value = ''
+  try {
+    await submitLogin(authToken.value)
+    authToken.value = ''
+    // The cookie is set now, so live channels can connect.
+    if (wizard.isCompleted) {
+      if (!life.isConnected) life.connect()
+      if (!chat.isConnected) chat.connect()
+    }
+  } catch (e: any) {
+    authError.value = e?.message || t('auth.failed')
+  } finally {
+    authBusy.value = false
+  }
+}
+
+function onAuthCancel() {
+  authError.value = ''
+  cancelLogin()
+}
 </script>
 
 <template>
+  <Teleport to="body">
+    <div
+      v-if="authRequired"
+      class="auth-scrim"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="t('auth.title')"
+    >
+      <form class="auth-dialog" @submit.prevent="onAuthSubmit">
+        <span class="auth-mark">0kay</span>
+        <h2>{{ t('auth.title') }}</h2>
+        <p class="auth-hint">{{ t('auth.hint') }}</p>
+        <input
+          v-model="authToken"
+          type="password"
+          class="auth-input"
+          :placeholder="t('auth.token')"
+          autocomplete="current-password"
+          autofocus
+        />
+        <p v-if="authError" role="alert" class="auth-error">{{ authError }}</p>
+        <footer class="auth-actions">
+          <button type="button" class="auth-secondary" @click="onAuthCancel">{{ t('auth.cancel') }}</button>
+          <button type="submit" class="auth-primary" :disabled="authBusy">{{ t('auth.submit') }}</button>
+        </footer>
+      </form>
+    </div>
+  </Teleport>
+
   <SetupWizard
     v-if="!wizard.isCompleted"
     @complete="onWizardComplete"
@@ -432,5 +491,102 @@ function onWizardComplete() {
   }
   .badge { right: calc(50% - 24px); }
   .page-title { display: none; }
+}
+
+.auth-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 14000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: color-mix(in srgb, var(--md-scrim, #000) 45%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.auth-dialog {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px;
+  border-radius: 28px;
+  background: var(--md-surface);
+  color: var(--md-on-surface);
+  box-shadow: 0 24px 70px rgb(0 0 0 / 25%);
+}
+
+.auth-mark {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--md-primary), #9C4FFF);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.auth-dialog h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.auth-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--md-on-surface-variant);
+}
+
+.auth-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--md-outline-variant);
+  background: var(--md-surface-container-low);
+  color: inherit;
+  font: inherit;
+}
+
+.auth-input:focus {
+  outline: 2px solid var(--md-primary);
+  outline-offset: 1px;
+}
+
+.auth-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--md-error, #b3261e);
+}
+
+.auth-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.auth-actions button {
+  min-height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-secondary {
+  background: transparent;
+  color: var(--md-on-surface-variant);
+}
+
+.auth-primary {
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+}
+
+.auth-primary:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 </style>

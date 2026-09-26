@@ -5,6 +5,14 @@
     "status": "狀態",
     "switchLang": "切換語言"
   },
+  "auth": {
+    "title": "連線到 Core",
+    "hint": "此 Core 僅接受已配對裝置或 API 金鑰。",
+    "token": "配對或 API 金鑰",
+    "submit": "連線",
+    "cancel": "暫不連線",
+    "failed": "登入失敗"
+  },
   "nav": {
     "chat": "對話",
     "agents": "Agent",

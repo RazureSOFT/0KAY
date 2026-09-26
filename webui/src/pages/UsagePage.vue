@@ -57,7 +57,7 @@ async function clearUsage() {
   error.value = ''
   clearMsg.value = ''
   try {
-    const res = await fetch('/api/usage/clear', { method: 'POST' })
+    const res = await fetch('/api/usage', { method: 'DELETE' })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     clearMsg.value = t('usage.cleared')
     await fetchUsage()

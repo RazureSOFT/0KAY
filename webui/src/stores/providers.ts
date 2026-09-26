@@ -46,7 +46,7 @@ export const useProvidersStore = defineStore('providers', () => {
   }
 
   async function remove(id: string) {
-    const res = await fetch(`/api/providers/delete?id=${encodeURIComponent(id)}`, {
+    const res = await fetch(`/api/providers/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     })
     if (!res.ok) throw new Error(String(res.status))

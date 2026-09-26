@@ -10,6 +10,11 @@ import './styles/theme.css'
 import './styles/settings.css'
 import { installInteractionMotion } from './composables/motion'
 import { useConfirm } from './composables/confirm'
+import { installAuthGate, bootstrapSession } from './auth'
+
+// Must run before the first Core request so an unauthenticated caller parks
+// its request behind the login overlay instead of failing outright.
+installAuthGate()
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -83,5 +88,6 @@ ui.$subscribe(() => {
 }, { detached: true })
 
 app.mount('#app')
+void bootstrapSession()
 const disposeMotion = installInteractionMotion()
 if (import.meta.hot) import.meta.hot.dispose(disposeMotion)

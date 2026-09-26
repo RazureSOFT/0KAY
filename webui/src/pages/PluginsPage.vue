@@ -213,10 +213,10 @@ async function togglePlugin(p: PluginRow) {
   const enable = !!p.disabled
   toggling.value = p.name || p.id
   try {
-    const res = await fetch(enable ? '/api/plugins/enable' : '/api/plugins/disable', {
-      method: 'POST',
+    const res = await fetch(`/api/plugins/${encodeURIComponent(p.name || p.id)}`, {
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plugin: p.name }),
+      body: JSON.stringify({ enabled: enable }),
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     await Promise.all([fetchPlugins(), sections.fetchSections()])

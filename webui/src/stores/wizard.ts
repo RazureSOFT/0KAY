@@ -125,10 +125,13 @@ export const useWizardStore = defineStore('wizard', () => {
         if (res.ok) existing = ((await res.json()).providers || []) as ProviderConfig[]
       } catch { /* core offline — upsert below creates the row */ }
       // Reuse an existing row instead of appending a second one for the same endpoint.
+      // GET /api/providers masks api_key, so only compare keys when the stored
+      // row still exposes a plaintext one (fresh, unsaved catalog).
       const match = existing.find(p => p.id === provider.value)
         || existing.find(p => p.provider === provider.value && norm(p.base_url) === norm(baseUrl.value))
+      const sameKey = !match?.api_key || match.api_key === apiKey.value
       if (match && match.provider === provider.value && norm(match.base_url) === norm(baseUrl.value)
-          && match.api_key === apiKey.value && (match.models || []).join('\n') === models.join('\n')) {
+          && sameKey && (match.models || []).join('\n') === models.join('\n')) {
         // Identical config already stored — only refresh the defaults.
         await fetch('/api/providers/defaults', {
           method: 'POST',
