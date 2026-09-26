@@ -204,8 +204,8 @@ class CoreClient:
                             key="mail_require_approval",
                             type="bool",
                             label="邮件操作需弹窗确认",
-                            default_value="true",
-                            help="L.I.F.E 读取或发送邮件前，先在 WebUI 弹窗询问是否允许",
+                            default_value="false",
+                            help="开启后，L.I.F.E 读取或发送邮件前会先在 WebUI 弹窗询问是否允许（默认关闭）",
                         ),
                         _pb.SettingsField(
                             key="mcp_enabled",

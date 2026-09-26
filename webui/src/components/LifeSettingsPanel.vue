@@ -4,7 +4,7 @@ import { onMounted, reactive, ref } from 'vue'
 const form = reactive<Record<string, any>>({
   screen_watch: false, computer_use: false, report_agent_host: '',
   mail_mailbox_path: '', mail_imap_host: '', mail_imap_port: 993, mail_imap_user: '', mail_imap_password: '',
-  mail_smtp_host: '', mail_smtp_port: 465, mail_smtp_user: '', mail_smtp_password: '', mail_from: '', mail_require_approval: true,
+  mail_smtp_host: '', mail_smtp_port: 465, mail_smtp_user: '', mail_smtp_password: '', mail_from: '', mail_require_approval: false,
   mcp_enabled: true, onebot_enabled: false, onebot_ws_url: 'ws://127.0.0.1:6700', onebot_http_url: 'http://127.0.0.1:6700', onebot_access_token: '', onebot_trigger_keywords: '',
   onebot_observe_group: true, proactive_daily_limit: 3, proactive_target_limit: 1,
   think_model: '', output_model: '',

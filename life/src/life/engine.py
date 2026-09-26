@@ -1275,7 +1275,7 @@ class LifeEngine:
         self.tool_config.mail_imap_port = int(values.get("mail_imap_port") or 993)
         self.tool_config.mail_smtp_port = int(values.get("mail_smtp_port") or 465)
         self.tool_config.mail_imap_ssl = bool(values.get("mail_imap_ssl", True))
-        self.tool_config.mail_require_approval = values.get("mail_require_approval") is not False
+        self.tool_config.mail_require_approval = bool(values.get("mail_require_approval", False))
         self.tool_config.computer_use = bool(values.get("computer_use", False))
         self.tool_config.mcp_enabled = values.get("mcp_enabled") is not False
         self.tool_config.onebot_enabled = bool(values.get("onebot_enabled", False))

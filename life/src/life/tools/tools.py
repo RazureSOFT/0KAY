@@ -33,7 +33,7 @@ class RuntimeToolConfig:
     mail_smtp_user: str = ""
     mail_smtp_password: str = ""
     mail_from: str = ""
-    mail_require_approval: bool = True
+    mail_require_approval: bool = False
     mcp_enabled: bool = True
     onebot_enabled: bool = False
     onebot_sender: Any = None
