@@ -39,6 +39,7 @@ package identity, version, build and run commands. The file is consumed by
 | `modules` | string[] / no | Sub-manifest paths (relative to the repo root) used by an umbrella package |
 | `repositories` | object[] / no | External sub-repository declarations, each `{path, package, url}` |
 | `ui` | object / no | Optional plugin WebUI build/publish config (below) |
+| `patches` | string[] / no | UI patch files inside the package, copied into `$CORE_DATA_DIR/ui/` on install |
 | `ports` | object / no | Port metadata such as Core's `http`/`grpc`; not a generic port executor |
 
 **Publish to the plugin marketplace by tagging the GitHub repository.** The
@@ -106,6 +107,11 @@ A standalone build can be published through `ui`:
 - `plugin`: publish directory name, `[A-Za-z0-9_-]{1,64}`; must match the plugin
   name used in the UI URL.
 - Output is copied to Core's `plugin-ui/<plugin>/` data directory.
+- The top-level `patches` field lists UI patch files (for example
+  `core/data/ui/example.patch`); 0kay-pm copies them into Core's `data/ui/` so a
+  standalone UI plugin can register its own nav entry and route. A patch with no
+  `plugin`/`capability` is always shown, which is how UI-only plugins (no gRPC
+  service) surface themselves.
 
 This repository's `plugin-web/{life,agent,minecraft,skillsguishow}` Vite configs
 already emit to `core/data/plugin-ui/<name>`, so their manifests only need
