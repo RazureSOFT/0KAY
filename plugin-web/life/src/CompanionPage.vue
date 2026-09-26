@@ -54,6 +54,7 @@ async function load() {
   void loadUsage()
   void loadDiary()
   void loadCalendar()
+  void loadGroups()
 }
 async function act(action: string, payload: any) {
   try {
@@ -207,6 +208,25 @@ async function completeGoal(id: string) { await act('goal_update', { id, status:
 async function removeGoal(id: string) { await act('goal_delete', { id }) }
 async function addFood() { if (!foodForm.value.name.trim()) return; await act('food_add', { ...foodForm.value }); foodForm.value = { name: '', tags: '', note: '' } }
 async function removeFood(id: string) { await act('food_delete', { id }) }
+
+const registry = ref<any[]>([])
+const groupForm = ref({ group_id: '', policy: 'observe', alias: '' })
+const groupSlang = ref<Record<string, any[]>>({})
+const groupMembers = ref<Record<string, any[]>>({})
+const slangForm = ref<Record<string, string>>({})
+async function loadGroups() { const r = await act('group_list', {}); if (r) registry.value = r.groups || [] }
+async function addGroup() { if (!groupForm.value.group_id.trim()) return; await act('group_upsert', { ...groupForm.value }); groupForm.value = { group_id: '', policy: 'observe', alias: '' } }
+async function removeGroup(id: string) { await act('group_delete', { group_id: id }); if (openGroup.value === id) openGroup.value = '' }
+async function setPolicy(g: any, e: Event) { const policy = (e.target as HTMLSelectElement).value; await act('group_upsert', { group_id: g.group_id, policy, alias: g.alias || '', note: g.note || '' }) }
+async function setMemberFlag(id: string, userId: string, e: Event) { const flag = (e.target as HTMLSelectElement).value; await act('group_member_flag', { group_id: id, user_id: userId, flag }); void loadGroupDetail(id) }
+async function loadGroupDetail(id: string) {
+  const [s, m] = await Promise.all([act('group_slang_list', { group_id: id }), act('group_members', { group_id: id })])
+  groupSlang.value[id] = s?.slang || []
+  groupMembers.value[id] = m?.members || []
+}
+function toggleGroup(id: string) { openGroup.value = openGroup.value === id ? '' : id; if (openGroup.value) void loadGroupDetail(id) }
+async function addSlang(id: string) { const topic = (slangForm.value[id] || '').trim(); if (!topic) return; await act('group_slang_update', { group_id: id, topic, score: 1 }); slangForm.value[id] = ''; void loadGroupDetail(id) }
+async function removeSlang(id: string, topic: string) { await act('group_slang_delete', { group_id: id, topic }); void loadGroupDetail(id) }
 onMounted(load)
 </script>
 
@@ -549,22 +569,42 @@ onMounted(load)
     <h2 class="group-title">群聊观察</h2>
     <div class="grid">
       <article class="card">
-        <div class="card-head"><h2 class="card-title">群聊观察</h2><span class="chip muted">{{ groups.length }}</span></div>
+        <div class="card-head"><h2 class="card-title">群聊管理</h2><span class="chip muted">{{ registry.length }}</span></div>
+        <form class="group-form" @submit.prevent="addGroup">
+          <input v-model="groupForm.group_id" class="input" placeholder="群号" aria-label="群号" />
+          <select v-model="groupForm.policy" class="input policy-select" aria-label="策略"><option value="observe">观察</option><option value="whitelist">白名单</option><option value="blacklist">黑名单</option></select>
+          <input v-model="groupForm.alias" class="input" placeholder="备注名（可选）" aria-label="备注名" />
+          <button class="btn btn-primary" type="submit" :disabled="!groupForm.group_id.trim()">添加群</button>
+        </form>
         <ul class="item-list">
-          <li v-for="[id, group] in groups" :key="id" class="item group-item">
+          <li v-for="g in registry" :key="g.group_id" class="item group-item">
             <div class="item-main">
-              <strong>{{ id }}</strong>
-              <span class="item-meta">情绪 {{ (group as any).mood || '—' }} · {{ (group as any).messages?.length || 0 }} 条观察 · {{ (group as any).topics?.length || 0 }} 个话题</span>
-              <div v-if="openGroup === id" class="group-detail">
-                <div v-if="(group as any).topics?.length" class="topics"><span v-for="topic in (group as any).topics" :key="topic.topic" class="chip muted">{{ topic.topic }} · {{ Math.round(topic.score) }}</span></div>
-                <ol class="feed compact">
-                  <li v-for="(m, i) in (group as any).messages" :key="i"><time>{{ fmtTime(m.created_at) }}</time><p><strong>{{ m.user_id }}</strong>：{{ m.content }}</p></li>
-                </ol>
+              <div class="item-row"><strong>{{ g.group_id }}</strong><span v-if="g.alias" class="chip muted">{{ g.alias }}</span><span class="chip" :class="g.policy === 'blacklist' ? 'chip-warn' : g.policy === 'whitelist' ? 'chip-ok' : 'muted'">{{ g.policy }}</span></div>
+              <span class="item-meta">{{ g.observations }} 条观察 · {{ g.topics }} 个话题</span>
+              <div v-if="openGroup === g.group_id" class="group-detail">
+                <h4 class="section-label">黑话 / 话题</h4>
+                <div class="topics">
+                  <span v-for="s in (groupSlang[g.group_id] || [])" :key="s.topic" class="chip muted">{{ s.topic }} · {{ Math.round(s.score) }}<button class="chip-x" @click="removeSlang(g.group_id, s.topic)">×</button></span>
+                  <span v-if="!(groupSlang[g.group_id] || []).length" class="item-meta">暂无</span>
+                </div>
+                <form class="slang-form" @submit.prevent="addSlang(g.group_id)"><input v-model="slangForm[g.group_id]" class="input" placeholder="新增黑话 / 话题" aria-label="新增黑话" /><button class="btn btn-tonal btn-sm" type="submit">添加</button></form>
+                <h4 class="section-label">成员安全</h4>
+                <ul class="member-list">
+                  <li v-for="m in (groupMembers[g.group_id] || [])" :key="m.user_id" class="member-row">
+                    <span class="member-id">{{ m.user_id }}</span><span class="item-meta">{{ m.messages }} 条 · {{ fmtTime(m.last_at) }}</span>
+                    <select class="input flag-select" :value="m.flag" @change="setMemberFlag(g.group_id, m.user_id, $event)"><option value="watch">关注</option><option value="allow">放行</option><option value="mute">禁言</option></select>
+                  </li>
+                  <li v-if="!(groupMembers[g.group_id] || []).length" class="item-meta">暂无成员观察</li>
+                </ul>
               </div>
             </div>
-            <div class="item-actions"><button class="btn btn-tonal btn-sm" @click="openGroup = openGroup === id ? '' : id">{{ openGroup === id ? '收起' : '展开' }}</button></div>
+            <div class="item-actions">
+              <select class="input policy-select" :value="g.policy" @change="setPolicy(g, $event)"><option value="observe">观察</option><option value="whitelist">白名单</option><option value="blacklist">黑名单</option></select>
+              <button class="btn btn-tonal btn-sm" @click="toggleGroup(g.group_id)">{{ openGroup === g.group_id ? '收起' : '管理' }}</button>
+              <button class="btn btn-danger btn-sm" @click="removeGroup(g.group_id)">删除</button>
+            </div>
           </li>
-          <li v-if="!groups.length" class="list-empty">群聊观察尚未启用或没有消息。</li>
+          <li v-if="!registry.length" class="list-empty">还没有群记录。收到群消息或在上面添加。</li>
         </ul>
       </article>
     </div>
@@ -725,6 +765,16 @@ onMounted(load)
 .cal-warn{margin:12px 0 0;padding:8px 12px;border-radius:10px;background:#FFF1DC;color:#7A4400;font-size:12.5px}
 .cloud{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;padding:8px 0}
 .cloud-word{font-weight:700;color:var(--md-primary);line-height:1.2}
+.group-form{display:grid;grid-template-columns:1fr 120px 1fr auto;gap:10px;margin-bottom:12px}
+.policy-select{width:auto;height:34px;flex:0 0 auto}
+.flag-select{width:auto;height:30px;flex:0 0 auto;font-size:12px}
+.slang-form{display:flex;gap:8px;margin:8px 0}
+.slang-form .input{height:34px}
+.chip-x{border:0;background:transparent;color:inherit;cursor:pointer;font-weight:700;margin-left:4px}
+.member-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.member-row{display:flex;align-items:center;gap:10px;font-size:12.5px}
+.member-id{font-weight:600;min-width:80px}
+.member-row .item-meta{flex:1}
 .book{border:1px solid var(--md-outline-variant);border-radius:14px;background:linear-gradient(180deg,var(--md-surface-container-lowest),var(--md-surface-container-low));padding:16px 18px}
 .book-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .book-date{width:auto;height:34px;flex:0 0 auto}

@@ -460,6 +460,22 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = {"food": await asyncio.to_thread(self.engine.companion.list_food)}
             elif action == "word_cloud":
                 result = {"words": await asyncio.to_thread(self.engine.companion.word_cloud, int(payload.get("limit", 60)))}
+            elif action == "group_list":
+                result = {"groups": await asyncio.to_thread(self.engine.companion.group_list)}
+            elif action == "group_upsert":
+                result = await asyncio.to_thread(self.engine.companion.group_upsert, payload.get("group_id",""), payload.get("policy","observe"), payload.get("alias",""), payload.get("note",""))
+            elif action == "group_delete":
+                result = await asyncio.to_thread(self.engine.companion.group_delete, payload.get("group_id",""))
+            elif action == "group_slang_list":
+                result = {"slang": await asyncio.to_thread(self.engine.companion.group_slang_list, payload.get("group_id",""))}
+            elif action == "group_slang_update":
+                result = await asyncio.to_thread(self.engine.companion.group_slang_update, payload.get("group_id",""), payload.get("topic",""), float(payload.get("score",1.0)))
+            elif action == "group_slang_delete":
+                result = await asyncio.to_thread(self.engine.companion.group_slang_delete, payload.get("group_id",""), payload.get("topic",""))
+            elif action == "group_members":
+                result = {"members": await asyncio.to_thread(self.engine.companion.group_members, payload.get("group_id",""), int(payload.get("limit",50)))}
+            elif action == "group_member_flag":
+                result = await asyncio.to_thread(self.engine.companion.group_member_flag, payload.get("group_id",""), payload.get("user_id",""), payload.get("flag","watch"))
             else:
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))

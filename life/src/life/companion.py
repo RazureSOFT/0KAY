@@ -59,6 +59,8 @@ class CompanionSystem:
             CREATE TABLE IF NOT EXISTS important_dates (id TEXT PRIMARY KEY, title TEXT NOT NULL, date_text TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'date', repeat_yearly INTEGER NOT NULL DEFAULT 1, note TEXT DEFAULT '', created_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS personal_goals (id TEXT PRIMARY KEY, title TEXT NOT NULL, detail TEXT DEFAULT '', kind TEXT NOT NULL DEFAULT 'growth', status TEXT NOT NULL DEFAULT 'active', progress REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS food_menu (id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'meal', tags TEXT NOT NULL DEFAULT '', note TEXT DEFAULT '', created_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS group_registry (group_id TEXT PRIMARY KEY, policy TEXT NOT NULL DEFAULT 'observe', alias TEXT NOT NULL DEFAULT '', note TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS group_member_flags (group_id TEXT NOT NULL, user_id TEXT NOT NULL, flag TEXT NOT NULL DEFAULT 'watch', updated_at TEXT NOT NULL, PRIMARY KEY(group_id,user_id));
             """)
             for key, value in {"proactive_daily_limit":"3", "proactive_target_limit":"1", "quiet_start":"23", "quiet_end":"8"}.items():
                 db.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", (key,value))
@@ -383,6 +385,8 @@ class CompanionSystem:
 
     # Group scene domain --------------------------------------------------
     def observe_group(self, group_id: str, user_id: str, message: str) -> None:
+        if self.group_policy(group_id) == "blacklist":
+            return
         with self.db() as db:
             db.execute("INSERT OR IGNORE INTO group_scenes(group_id,updated_at) VALUES(?,?)",(group_id,now()))
             db.execute("INSERT INTO group_observations VALUES(?,?,?,?,?,?,?,?)",(new_id("group_obs"),group_id,user_id,"message",message[:800],"group",now(),(datetime.now()+timedelta(days=14)).isoformat()))
@@ -392,6 +396,84 @@ class CompanionSystem:
     def group_should_wake(self, group_id: str, message: str, mentioned: bool = False, keywords: tuple[str,...] = ()) -> bool:
         if mentioned: return True
         return any(word.lower() in message.lower() for word in keywords if word)
+
+    # Group registry / slang / member safety -------------------------------
+    POLICIES = ("whitelist", "observe", "blacklist")
+
+    def group_policy(self, group_id: str) -> str:
+        with self.db() as db:
+            row = db.execute("SELECT policy FROM group_registry WHERE group_id=?", (group_id,)).fetchone()
+        return row["policy"] if row else "observe"
+
+    def group_list(self) -> list[dict[str,Any]]:
+        with self.db() as db:
+            registry = {r["group_id"]: dict(r) for r in db.execute("SELECT * FROM group_registry").fetchall()}
+            scenes = {r["group_id"]: dict(r) for r in db.execute("SELECT * FROM group_scenes").fetchall()}
+            observations = {r["group_id"]: r["n"] for r in db.execute("SELECT group_id, COUNT(*) AS n FROM group_observations GROUP BY group_id").fetchall()}
+            topics = {r["group_id"]: r["n"] for r in db.execute("SELECT group_id, COUNT(*) AS n FROM group_topics GROUP BY group_id").fetchall()}
+        ids = list(dict.fromkeys([*registry, *scenes]))
+        out = []
+        for group_id in ids:
+            entry = registry.get(group_id, {})
+            out.append({"group_id": group_id, "policy": entry.get("policy", "observe"), "alias": entry.get("alias", ""),
+                        "note": entry.get("note", ""), "mood": (scenes.get(group_id) or {}).get("mood", 0),
+                        "observations": observations.get(group_id, 0), "topics": topics.get(group_id, 0)})
+        out.sort(key=lambda x: x["observations"], reverse=True)
+        return out
+
+    def group_upsert(self, group_id: str, policy: str = "observe", alias: str = "", note: str = "") -> dict[str,Any]:
+        group_id = (group_id or "").strip()
+        if not group_id:
+            raise ValueError("group_id is required")
+        policy = policy if policy in self.POLICIES else "observe"
+        with self.db() as db:
+            db.execute("INSERT INTO group_registry VALUES(?,?,?,?,?,?) ON CONFLICT(group_id) DO UPDATE SET policy=excluded.policy, alias=excluded.alias, note=excluded.note, updated_at=excluded.updated_at",
+                       (group_id, policy, (alias or "")[:80], (note or "")[:300], now(), now()))
+            self._audit_tx(db, "group_upsert", group_id, group_id)
+            return dict(db.execute("SELECT * FROM group_registry WHERE group_id=?", (group_id,)).fetchone())
+
+    def group_delete(self, group_id: str) -> dict[str,Any]:
+        with self.db() as db:
+            db.execute("DELETE FROM group_registry WHERE group_id=?", (group_id,))
+            db.execute("DELETE FROM group_scenes WHERE group_id=?", (group_id,))
+            db.execute("DELETE FROM group_observations WHERE group_id=?", (group_id,))
+            db.execute("DELETE FROM group_topics WHERE group_id=?", (group_id,))
+            self._audit_tx(db, "group_delete", group_id, group_id)
+        return {"deleted": True, "group_id": group_id}
+
+    def group_slang_list(self, group_id: str) -> list[dict[str,Any]]:
+        with self.db() as db:
+            return [dict(r) for r in db.execute("SELECT topic,score,updated_at FROM group_topics WHERE group_id=? ORDER BY score DESC", (group_id,)).fetchall()]
+
+    def group_slang_update(self, group_id: str, topic: str, score: float = 1.0) -> dict[str,Any]:
+        topic = (topic or "").strip()[:60]
+        if not topic:
+            raise ValueError("topic is required")
+        with self.db() as db:
+            db.execute("INSERT INTO group_topics(group_id,topic,score,updated_at) VALUES(?,?,?,?) ON CONFLICT(group_id,topic) DO UPDATE SET score=excluded.score, updated_at=excluded.updated_at",
+                       (group_id, topic, float(score), now()))
+        return {"topic": topic, "score": float(score)}
+
+    def group_slang_delete(self, group_id: str, topic: str) -> dict[str,Any]:
+        with self.db() as db:
+            cursor = db.execute("DELETE FROM group_topics WHERE group_id=? AND topic=?", (group_id, topic))
+            return {"deleted": bool(cursor.rowcount)}
+
+    def group_members(self, group_id: str, limit: int = 50) -> list[dict[str,Any]]:
+        with self.db() as db:
+            rows = [dict(r) for r in db.execute("SELECT user_id, COUNT(*) AS messages, MAX(created_at) AS last_at FROM group_observations WHERE group_id=? GROUP BY user_id ORDER BY messages DESC LIMIT ?", (group_id, max(1, min(int(limit), 200)))).fetchall()]
+            flags = {r["user_id"]: r["flag"] for r in db.execute("SELECT user_id,flag FROM group_member_flags WHERE group_id=?", (group_id,)).fetchall()}
+        for row in rows:
+            row["flag"] = flags.get(row["user_id"], "watch")
+        return rows
+
+    def group_member_flag(self, group_id: str, user_id: str, flag: str = "watch") -> dict[str,Any]:
+        flag = flag if flag in ("allow", "watch", "mute") else "watch"
+        with self.db() as db:
+            db.execute("INSERT INTO group_member_flags VALUES(?,?,?,?) ON CONFLICT(group_id,user_id) DO UPDATE SET flag=excluded.flag, updated_at=excluded.updated_at",
+                       (group_id, user_id, flag, now()))
+            self._audit_tx(db, "group_member_flag", f"{user_id}={flag}", group_id)
+        return {"group_id": group_id, "user_id": user_id, "flag": flag}
 
     def journal_page(self, day: str = "") -> dict[str,Any]:
         """Read a day as one diary page, including entries outside snapshot limits."""

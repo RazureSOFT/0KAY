@@ -30,6 +30,28 @@ class MemoryTests(unittest.TestCase):
             self.assertIn("future", ids)
             self.assertIn("none", ids)
 
+    def test_group_registry_slang_and_members(self):
+        with tempfile.TemporaryDirectory() as directory:
+            companion = CompanionSystem(directory)
+            companion.observe_group("g1", "u1", "hello world")
+            companion.observe_group("g1", "u1", "hello again")
+            companion.group_upsert("g1", "whitelist", alias="test")
+            self.assertEqual(companion.group_policy("g1"), "whitelist")
+            listed = companion.group_list()
+            self.assertEqual(listed[0]["group_id"], "g1")
+            self.assertEqual(listed[0]["observations"], 2)
+            companion.group_upsert("g2", "blacklist")
+            companion.observe_group("g2", "u1", "should be ignored")
+            self.assertEqual([g for g in companion.group_list() if g["group_id"] == "g2"][0]["observations"], 0)
+            companion.group_slang_update("g1", "hello", 5)
+            self.assertEqual(companion.group_slang_list("g1")[0]["topic"], "hello")
+            self.assertTrue(companion.group_slang_delete("g1", "hello")["deleted"])
+            members = companion.group_members("g1")
+            self.assertEqual(members[0]["user_id"], "u1")
+            self.assertEqual(members[0]["messages"], 2)
+            companion.group_member_flag("g1", "u1", "mute")
+            self.assertEqual(companion.group_members("g1")[0]["flag"], "mute")
+
     def test_calendar_month_conflicts_goals_and_food(self):
         with tempfile.TemporaryDirectory() as directory:
             companion = CompanionSystem(directory)
