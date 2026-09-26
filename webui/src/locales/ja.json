@@ -37,7 +37,10 @@
     "thinking": "考え中...",
     "taskStarted": "タスクを開始しました",
     "attachImage": "画像を添付",
-    "removeImage": "画像を削除"
+    "removeImage": "画像を削除",
+    "download": "履歴をダウンロード",
+    "exportTitle": "0KAY 会話履歴",
+    "you": "あなた"
   },
   "status": {
     "title": "キャラクター状態",

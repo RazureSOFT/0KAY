@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Message } from '../stores/chat'
 
 const props = defineProps<{
   message: Message
 }>()
+
+const { locale } = useI18n()
 
 const isUser = computed(() => props.message.role === 'user')
 const thinkOpen = ref(false)
@@ -20,11 +23,17 @@ const think = computed(() => {
     return { summary: `嗯，我听懂啦：${intent}。我现在心里暖暖的，想用轻松一点的方式回应他；先${strategy}，再陪他继续聊下去。` }
   } catch { return { summary: props.message.thinkSummary } }
 })
-const timeStr = computed(() => {
-  return props.message.timestamp.toLocaleTimeString([], {
+const dateTimeStr = computed(() => {
+  const ts = props.message.timestamp
+  const sameYear = ts.getFullYear() === new Date().getFullYear()
+  return new Intl.DateTimeFormat(locale.value, {
+    ...(sameYear ? {} : { year: 'numeric' }),
+    month: 'short',
+    day: 'numeric',
+    weekday: 'short',
     hour: '2-digit',
     minute: '2-digit',
-  })
+  }).format(ts)
 })
 </script>
 
@@ -62,7 +71,7 @@ const timeStr = computed(() => {
         </div>
       </div>
       <div class="meta">
-        <span class="time">{{ timeStr }}</span>
+        <span class="time">{{ dateTimeStr }}</span>
         <template v-if="!isUser && message.emotion">
           <span class="separator">·</span>
           <span class="emotion" :style="{ color: getEmotionColor(message.emotion) }">

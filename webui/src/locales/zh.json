@@ -37,7 +37,10 @@
     "thinking": "思考中...",
     "taskStarted": "任务已开始",
     "attachImage": "上传图片",
-    "removeImage": "移除图片"
+    "removeImage": "移除图片",
+    "download": "下载聊天记录",
+    "exportTitle": "0KAY 对话记录",
+    "you": "我"
   },
   "status": {
     "title": "角色状态",

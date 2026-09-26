@@ -5,7 +5,7 @@ import { useChatStore } from '../stores/chat'
 import { useWizardStore } from '../stores/wizard'
 import MessageBubble from './MessageBubble.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const chatStore = useChatStore()
 const wizard = useWizardStore()
 
@@ -56,6 +56,38 @@ async function onImagePicked(e: Event) {
 
 function removePendingImage(url: string) {
   pendingImages.value = pendingImages.value.filter((u) => u !== url)
+}
+
+function downloadHistory() {
+  const messages = chatStore.messages
+  if (!messages.length) return
+  const personaName = wizard.persona.name || t('chat.defaultCharacter')
+  const fmt = new Intl.DateTimeFormat(locale.value, {
+    year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit',
+  })
+  const lines: string[] = []
+  lines.push(`# ${t('chat.exportTitle')}`, '')
+  lines.push(`- ${t('chat.defaultCharacter')}: ${personaName}`)
+  lines.push(`- ${fmt.format(new Date())}`, '')
+  for (const m of messages) {
+    if (!m.content && !m.images?.length) continue
+    const who = m.role === 'user' ? t('chat.you') : personaName
+    lines.push(`## ${who} · ${fmt.format(m.timestamp)}`)
+    if (m.content) lines.push('', m.content)
+    if (m.images?.length) { lines.push(''); for (const u of m.images) lines.push(`![image](${u})`) }
+    lines.push('')
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const now = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `0kay-chat-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.md`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
 }
 
 onMounted(() => {
@@ -168,6 +200,9 @@ watch(
           {{ t('chat.connected') }}
         </span>
         <span class="hint">上下文约 {{ chatStore.contextTokens.toLocaleString() }} tokens</span>
+        <button class="context-btn" type="button" :disabled="chatStore.messages.length === 0" @click="downloadHistory">
+          {{ t('chat.download') }}
+        </button>
         <button class="context-btn" type="button" :disabled="chatStore.compacting" @click="chatStore.compactContext">
           {{ chatStore.compacting ? '整理中…' : '整理上下文' }}
         </button>
@@ -392,6 +427,8 @@ watch(
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: var(--space-sm);
   max-width: 800px;
   margin-left: auto;

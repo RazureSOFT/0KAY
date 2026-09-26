@@ -37,7 +37,10 @@
     "thinking": "is thinking...",
     "taskStarted": "Task started",
     "attachImage": "Attach image",
-    "removeImage": "Remove image"
+    "removeImage": "Remove image",
+    "download": "Download history",
+    "exportTitle": "0KAY Chat History",
+    "you": "You"
   },
   "status": {
     "title": "Character Status",
