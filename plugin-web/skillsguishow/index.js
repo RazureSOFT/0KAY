@@ -1,107 +1,178 @@
 // Plugin-native Skills GUI (scheme C) → core/data/plugin-ui/skillsguishow/.
-// Material 3 Expressive management page. Bare `vue` import comes from the
-// WebUI importmap → host bridge.
+// Fully self-contained Material 3 Expressive page. Uses an `skg-` namespace so
+// no platform/global styles leak in, and replaces its <style> on every load.
+// Bare `vue` import comes from the WebUI importmap → host bridge.
 import { h, ref, onMounted, computed } from 'vue'
 
 const CSS = `
-/* Skills GUI — Material 3 Expressive. #app prefixes out-rank the host layer. */
-#app .skills-page{
-  height:100%;overflow-y:auto;padding:clamp(22px,3vw,44px);color:var(--md-on-surface);font-family:var(--font-family);
-  background:radial-gradient(1100px 560px at 105% -12%,color-mix(in srgb,var(--md-primary) 10%,transparent),transparent 62%),var(--md-surface);
+/* ============ Skills GUI · Material 3 Expressive ============ */
+#app .skg{
+  --skg-spring:cubic-bezier(.22,1.3,.36,1);
+  height:100%;overflow-y:auto;box-sizing:border-box;
+  padding:clamp(22px,3vw,44px);
+  color:var(--md-on-surface);font-family:var(--font-family);
+  background:
+    radial-gradient(1100px 560px at 105% -12%,color-mix(in srgb,var(--md-primary) 12%,transparent),transparent 62%),
+    radial-gradient(760px 420px at -8% 108%,color-mix(in srgb,var(--md-tertiary) 10%,transparent),transparent 60%),
+    var(--md-surface);
 }
-#app .skills-page *{box-sizing:border-box}
-#app .skills-page .page-header{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);margin-bottom:clamp(18px,2.4vw,28px);flex-wrap:wrap}
-#app .skills-page .eyebrow{margin:0 0 8px;color:var(--md-primary);font:800 11px/1 ui-monospace,monospace;letter-spacing:.18em}
-#app .skills-page .page-header h1{margin:0;font-size:clamp(26px,3vw,38px);font-weight:800;letter-spacing:-.02em}
-#app .skills-page .subtitle{color:var(--md-on-surface-variant);font-size:14.5px;margin:8px 0 0;line-height:1.6;max-width:680px}
-#app .skills-page .header-actions{display:flex;gap:10px;flex-wrap:wrap}
-#app .skills-page .btn{
-  height:46px;min-height:46px;padding:0 22px;border:1px solid transparent;border-radius:999px;
-  font:700 13.5px/1 inherit;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
-  color:var(--md-on-surface);background:var(--md-surface-container-high);
-  transition:transform 240ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color 180ms,box-shadow 200ms;
+#app .skg *{box-sizing:border-box}
+#app .skg h1,#app .skg h2,#app .skg p{margin:0}
+#app .skg button{font-family:inherit;position:static;min-height:0;isolation:auto}
+
+/* ---------- Hero ---------- */
+.skg-hero{
+  position:relative;overflow:hidden;display:flex;justify-content:space-between;align-items:flex-start;gap:22px;flex-wrap:wrap;
+  padding:clamp(24px,2.6vw,34px);border-radius:32px;margin-bottom:22px;
+  background:
+    radial-gradient(520px 260px at 100% 0%,color-mix(in srgb,var(--md-tertiary) 18%,transparent),transparent 70%),
+    linear-gradient(135deg,var(--md-primary-container),color-mix(in srgb,var(--md-primary-container) 45%,var(--md-surface-container-high)));
+  color:var(--md-on-primary-container);box-shadow:var(--shadow-1);
+  animation:skg-rise 520ms var(--skg-spring) both;
 }
-#app .skills-page .btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:var(--shadow-1)}
-#app .skills-page .btn:disabled{opacity:.5;cursor:not-allowed}
-#app .skills-page .btn.btn-primary{background:var(--md-primary);color:var(--md-on-primary);box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 30%,transparent)}
-#app .skills-page .btn.btn-tonal{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-#app .skills-page .btn.btn-danger{background:var(--md-error-container);color:var(--md-on-error-container,#410e0b)}
-#app .skills-page .btn.sm{height:34px;min-height:34px;padding:0 15px;font-size:12.5px}
-#app .skills-page .error-banner{padding:13px 18px;margin-bottom:var(--space-md);background:var(--md-error-container);color:var(--md-on-error-container,#410e0b);border-radius:18px;font-size:13px}
-#app .skills-page .flash-banner{padding:13px 18px;margin-bottom:var(--space-md);background:var(--md-success-container);color:#0d3b1e;border-radius:18px;font-size:13px;font-weight:600}
-#app .skills-page .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:var(--space-lg);margin-bottom:var(--space-xl)}
-#app .skills-page .stat-card{
-  padding:20px;border-radius:24px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);
-  display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow-1);
-  animation:skills-card-in 520ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)) both;
-  transition:transform 280ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),box-shadow 280ms;
+.skg-hero-main{display:flex;gap:18px;align-items:flex-start;min-width:0}
+.skg-logo{
+  width:60px;height:60px;flex-shrink:0;display:grid;place-items:center;border-radius:22px 22px 22px 8px;
+  background:var(--md-primary);color:var(--md-on-primary);
+  box-shadow:0 10px 24px color-mix(in srgb,var(--md-primary) 32%,transparent);
 }
-#app .skills-page .stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
-#app .skills-page .stat-card:nth-child(3n+1){background:var(--md-primary-container);color:var(--md-on-primary-container)}
-#app .skills-page .stat-card:nth-child(3n+2){background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-#app .skills-page .stat-card:nth-child(3n){background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#421326)}
-@keyframes skills-card-in{from{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}
-#app .skills-page .stat-label{font-size:11.5px;opacity:.75;color:inherit;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
-#app .skills-page .stat-value{font-size:32px;font-weight:800;letter-spacing:-.02em;color:inherit;line-height:1.1}
-#app .skills-page .stat-dir{font:12px/1.5 ui-monospace,monospace;word-break:break-all;color:inherit;opacity:.85}
-#app .skills-page .upload-panel{
-  padding:22px;border-radius:28px;margin-bottom:var(--space-xl);display:flex;flex-direction:column;gap:12px;
-  background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);box-shadow:var(--shadow-1);
+.skg-eyebrow{display:inline-block;margin-bottom:10px;padding:4px 12px;border-radius:999px;background:color-mix(in srgb,var(--md-on-primary-container) 10%,transparent);font:800 11px/1 ui-monospace,monospace;letter-spacing:.16em}
+.skg-hero h1{font-size:clamp(24px,2.8vw,34px);font-weight:800;letter-spacing:-.02em}
+.skg-sub{margin-top:10px;font-size:13.5px;line-height:1.6;opacity:.82;max-width:62ch}
+.skg-hero-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* ---------- Buttons ---------- */
+#app .skg .skg-btn{
+  height:46px;padding:0 22px;border:0;border-radius:999px;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font:700 13.5px/1 inherit;color:var(--md-on-surface);background:var(--md-surface-container-high);
+  transition:transform 260ms var(--skg-spring),background-color 180ms,box-shadow 200ms;
 }
-#app .skills-page .upload-panel h2{margin:0;font-size:17px;font-weight:750}
-#app .skills-page .upload-panel .hint{margin:0;font-size:13px;color:var(--md-on-surface-variant);line-height:1.55}
-#app .skills-page .upload-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-#app .skills-page .upload-row input[type=text]{flex:1;min-width:200px}
-#app .skills-page .file-pick{font-size:13px;color:var(--md-on-surface-variant);display:inline-flex;align-items:center;gap:8px;cursor:pointer}
-#app .skills-page .upload-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:6px}
-#app .skills-page .folder-bar{
-  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-  padding:16px 18px;border-radius:20px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);
+#app .skg .skg-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:var(--shadow-2)}
+#app .skg .skg-btn:disabled{opacity:.5;cursor:not-allowed}
+#app .skg .skg-btn.skg-primary{background:var(--md-primary);color:var(--md-on-primary);box-shadow:0 8px 20px color-mix(in srgb,var(--md-primary) 32%,transparent)}
+#app .skg .skg-btn.skg-tonal{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+#app .skg .skg-btn.skg-danger{background:var(--md-error-container);color:var(--md-on-error-container,#410e0b)}
+#app .skg .skg-btn.skg-sm{height:34px;padding:0 15px;font-size:12.5px}
+
+/* ---------- Banners ---------- */
+.skg-banner{padding:13px 18px;border-radius:18px;font-size:13px;margin-bottom:14px;font-weight:600}
+.skg-banner.err{background:var(--md-error-container);color:var(--md-on-error-container,#410e0b)}
+.skg-banner.ok{background:var(--md-success-container);color:#0d3b1e}
+
+/* ---------- Stats ---------- */
+.skg-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:18px;margin-bottom:22px}
+.skg-stat{
+  padding:20px;border-radius:26px;display:flex;flex-direction:column;gap:8px;
+  box-shadow:var(--shadow-1);animation:skg-rise 520ms var(--skg-spring) both;
+  transition:transform 300ms var(--skg-spring),box-shadow 300ms;
 }
-#app .skills-page .folder-bar b{font-size:14px;font-weight:750}
-#app .skills-page .folder-bar span{font-size:12.5px;opacity:.85;flex:1;min-width:160px}
-#app .skills-page .toolbar{display:flex;gap:12px;align-items:center;margin-bottom:var(--space-lg)}
-#app .skills-page .toolbar-count{font-size:13px;color:var(--md-on-surface-variant);white-space:nowrap;padding:0 6px;font-weight:600}
-#app .skills-page .skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--space-lg);padding-bottom:var(--space-lg)}
-#app .skills-page .skill-card{
-  padding:22px;display:flex;flex-direction:column;gap:14px;border-radius:28px;
+.skg-stat:hover{transform:translateY(-3px);box-shadow:var(--shadow-2)}
+.skg-stat .skg-ic{width:40px;height:40px;border-radius:16px 16px 16px 6px;display:grid;place-items:center;background:color-mix(in srgb,currentColor 14%,transparent)}
+.skg-stat b{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+.skg-stat span{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.78}
+.skg-stat.t1{background:var(--md-primary-container);color:var(--md-on-primary-container)}
+.skg-stat.t2{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+.skg-stat.t3{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#421326)}
+.skg-stat.t4{background:var(--md-surface-container-low);color:var(--md-on-surface)}
+.skg-stat.t4 .skg-ic{background:var(--md-surface-container-high)}
+.skg-dir{font:11.5px/1.55 ui-monospace,monospace;word-break:break-all;opacity:.85;margin-top:2px}
+
+/* ---------- Upload panel ---------- */
+.skg-upload{
+  padding:24px;border-radius:28px;margin-bottom:22px;display:flex;flex-direction:column;gap:14px;
   background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);
-  box-shadow:var(--shadow-1);animation:skills-card-in 520ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)) both;
-  transition:transform 280ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),box-shadow 280ms,border-color 280ms;
+  box-shadow:var(--shadow-1);animation:skg-rise 460ms var(--skg-spring) both;
 }
-#app .skills-page .skill-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-2);border-color:color-mix(in srgb,var(--md-primary) 30%,var(--md-outline-variant))}
-#app .skills-page .card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
-#app .skills-page .card-top code{font:700 13px/1.2 ui-monospace,monospace;color:var(--md-on-primary-container);background:var(--md-primary-container);padding:6px 12px;border-radius:999px}
-#app .skills-page .status-chip{
-  height:30px;padding:0 12px;display:inline-flex;align-items:center;font-size:12px;font-weight:700;
-  border-radius:999px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);border:1px solid transparent;white-space:nowrap;
+.skg-upload h2{font-size:17px;font-weight:800}
+.skg-hint{font-size:12.5px;line-height:1.6;color:var(--md-on-surface-variant)}
+.skg-upload input[type=text],.skg-textarea,.skg-search input{
+  width:100%;border:1px solid transparent;border-radius:16px;background-color:var(--md-surface-container-high);
+  color:var(--md-on-surface);font:400 14px/1.4 inherit;outline:none;
+  transition:background-color 180ms,border-color 180ms,box-shadow 200ms;
 }
-#app .skills-page .status-chip.builtin{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-#app .skills-page .card-desc{margin:0;font-size:14px;line-height:1.6;white-space:pre-wrap;color:var(--md-on-surface);flex:1}
-#app .skills-page .tags{display:flex;gap:6px;flex-wrap:wrap}
-#app .skills-page .chip{height:26px;padding:0 11px;font-size:12px;font-weight:600;border-radius:999px;display:inline-flex;align-items:center;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-#app .skills-page .card-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:auto}
-#app .skills-page .slash{font:11px/1.3 ui-monospace,monospace;color:var(--md-on-surface-variant)}
-#app .skills-page .empty-state{padding:var(--space-xxl);text-align:center;background:var(--md-surface-container);color:var(--md-on-surface-variant);border-radius:32px;margin-bottom:var(--space-lg)}
-#app .skills-page .empty-state p{margin:0;font-size:15px;font-weight:600;color:var(--md-on-surface)}
-#app .skills-page .empty-state .hint{margin-top:6px;font-size:13px;font-weight:400;opacity:.85}
+.skg-upload input[type=text],.skg-search input{height:50px;padding:0 16px}
+.skg-textarea{min-height:150px;padding:14px 16px;line-height:1.6;resize:vertical}
+.skg-upload input[type=text]:focus,.skg-textarea:focus,.skg-search input:focus{
+  border-color:var(--md-primary);background-color:var(--md-surface-container-lowest);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent);
+}
+.skg-upload-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.skg-upload-row input[type=text]{flex:1;min-width:200px}
+.skg-file{
+  display:inline-flex;align-items:center;gap:8px;height:50px;padding:0 18px;border-radius:16px;cursor:pointer;
+  background:var(--md-surface-container-high);color:var(--md-on-surface);font:700 13px/1 inherit;
+  transition:background-color 180ms;
+}
+.skg-file:hover{background:var(--md-surface-container-highest)}
+.skg-file input{display:none}
+.skg-folder{
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:16px 18px;border-radius:22px;
+  background:var(--md-secondary-container);color:var(--md-on-secondary-container);
+}
+.skg-folder b{font-size:14px;font-weight:800}
+.skg-folder span{flex:1;min-width:180px;font-size:12.5px;line-height:1.55;opacity:.88}
+.skg-folder .skg-btn{height:40px;padding:0 18px;background:var(--md-on-secondary-container);color:var(--md-secondary-container)}
+.skg-upload-actions{display:flex;justify-content:flex-end;gap:10px}
+
+/* ---------- Toolbar ---------- */
+.skg-toolbar{display:flex;gap:14px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+.skg-search{position:relative;flex:1;min-width:220px;display:flex;align-items:center}
+.skg-search svg{position:absolute;left:16px;color:var(--md-on-surface-variant);pointer-events:none}
+.skg-search input{padding-left:46px}
+.skg-count{
+  flex-shrink:0;height:34px;padding:0 14px;border-radius:999px;display:inline-flex;align-items:center;
+  background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:12.5px;font-weight:700;
+}
+
+/* ---------- Cards ---------- */
+.skg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(304px,1fr));gap:18px;padding-bottom:20px}
+.skg-card{
+  position:relative;padding:22px;border-radius:28px;display:flex;flex-direction:column;gap:14px;
+  background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);
+  box-shadow:var(--shadow-1);animation:skg-rise 520ms var(--skg-spring) both;
+  transition:transform 300ms var(--skg-spring),box-shadow 300ms,border-color 300ms,border-radius 360ms var(--skg-spring);
+}
+.skg-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-3);border-color:color-mix(in srgb,var(--md-primary) 32%,var(--md-outline-variant));border-radius:28px 28px 28px 10px}
+.skg-card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.skg-name{font:700 13px/1.2 ui-monospace,monospace;color:var(--md-on-primary-container);background:var(--md-primary-container);padding:7px 13px;border-radius:999px}
+.skg-pill{
+  flex-shrink:0;height:30px;padding:0 12px;border-radius:999px;display:inline-flex;align-items:center;
+  font-size:12px;font-weight:700;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);
+}
+.skg-pill.builtin{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+.skg-desc{font-size:14px;line-height:1.62;white-space:pre-wrap;color:var(--md-on-surface);flex:1;overflow-wrap:anywhere}
+.skg-tags{display:flex;gap:6px;flex-wrap:wrap}
+.skg-chip{height:26px;padding:0 11px;border-radius:999px;display:inline-flex;align-items:center;font-size:12px;font-weight:600;background:var(--md-primary-container);color:var(--md-on-primary-container)}
+.skg-card-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:auto}
+.skg-slash{font:11px/1.3 ui-monospace,monospace;color:var(--md-on-surface-variant)}
+
+/* ---------- Empty ---------- */
+.skg-empty{padding:64px 24px;text-align:center;border-radius:32px;background:var(--md-surface-container);color:var(--md-on-surface-variant)}
+.skg-empty b{display:block;font-size:16px;font-weight:750;color:var(--md-on-surface)}
+.skg-empty p{margin-top:8px;font-size:13px}
+
+@keyframes skg-rise{from{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}
 @media(max-width:860px){
-  #app .skills-page{padding:var(--space-lg)}
-  #app .skills-page .page-header{display:block}
-  #app .skills-page .header-actions{margin-top:14px}
-  #app .skills-page .skill-grid{grid-template-columns:1fr}
+  #app .skg{padding:var(--space-lg)}
+  .skg-hero{display:block}
+  .skg-hero-actions{margin-top:16px}
+  .skg-grid{grid-template-columns:1fr}
 }
 `
 
-let styleInstalled = false
 function ensureStyle() {
-  if (styleInstalled || typeof document === 'undefined') return
-  if (document.getElementById('skillsguishow-style')) { styleInstalled = true; return }
+  if (typeof document === 'undefined') return
+  // Always install the latest CSS — the module may be re-imported under a new
+  // cache-busting URL while an old <style> element is still in <head>.
+  const stale = document.getElementById('skillsguishow-style')
+  if (stale && stale.textContent === CSS) return
+  if (stale) stale.remove()
   const el = document.createElement('style')
   el.id = 'skillsguishow-style'
   el.textContent = CSS
   document.head.appendChild(el)
-  styleInstalled = true
 }
 
 async function api(method, url, body) {
@@ -122,6 +193,10 @@ function skillName(filename) {
     .replace(/^-+|-+$/g, '')
     .slice(0, 64)
 }
+
+const icon = (paths, size = 22) =>
+  h('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none' },
+    paths.map((d) => h('path', { d, stroke: 'currentColor', 'stroke-width': 1.8, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' })))
 
 export default {
   name: 'SkillsGuiShowPage',
@@ -187,10 +262,7 @@ export default {
     }
 
     async function remove(name) {
-      if (deleting.value !== name) {
-        deleting.value = name
-        return
-      }
+      if (deleting.value !== name) { deleting.value = name; return }
       deleting.value = ''
       busy.value = true
       error.value = ''
@@ -221,13 +293,8 @@ export default {
     async function uploadFolder(ev) {
       const files = Array.from(ev.target.files || [])
       ev.target.value = ''
-      const mdFiles = files.filter(
-        (f) => /\.md$/i.test(f.name) || f.type === 'text/markdown' || f.type === 'text/plain',
-      )
-      if (!mdFiles.length) {
-        error.value = '所选文件夹里没有找到 .md 文件'
-        return
-      }
+      const mdFiles = files.filter((f) => /\.md$/i.test(f.name) || f.type === 'text/markdown' || f.type === 'text/plain')
+      if (!mdFiles.length) { error.value = '所选文件夹里没有找到 .md 文件'; return }
       busy.value = true
       error.value = ''
       flash.value = ''
@@ -242,9 +309,7 @@ export default {
           const content = await file.text()
           await api('POST', '/api/skills', { name, content })
           ok++
-        } catch {
-          failed++
-        }
+        } catch { failed++ }
       }
       folderProgress.value = ''
       flash.value = `文件夹上传完成：成功 ${ok} 个${failed ? ` · 失败 ${failed} 个` : ''}`
@@ -255,129 +320,95 @@ export default {
 
     onMounted(refresh)
 
-    const stat = (label, value, hint) =>
-      h('div', { class: 'stat-card' }, [
-        h('span', { class: 'stat-label' }, label),
-        h('span', { class: 'stat-value' }, value),
-        hint ? h('span', { class: 'stat-label', style: 'text-transform:none;letter-spacing:0;opacity:.7' }, hint) : null,
+    const stat = (tone, ic, value, label, hint) =>
+      h('div', { class: `skg-stat ${tone}` }, [
+        h('span', { class: 'skg-ic' }, ic),
+        h('b', {}, value),
+        h('span', {}, label),
+        hint ? h('div', { class: 'skg-dir' }, hint) : null,
       ])
 
+    const bookIcon = () => icon(['M5 5.5A2.5 2.5 0 0 1 7.5 3H19v16H7.5A2.5 2.5 0 0 0 5 21.5v-16Z'])
+    const fileIcon = () => icon(['M7 3h7l5 5v13H7z', 'M14 3v5h5'])
+    const builtinIcon = () => icon(['M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5Z'])
+    const folderIcon = () => icon(['M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z'])
+    const searchIcon = () => icon(['M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z', 'm20 20-3.5-3.5'])
+    const uploadIcon = () => icon(['M12 16V4', 'm7 9 5-5 5 5', 'M5 20h14'])
+    const refreshIcon = () => icon(['M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5'])
+
     return () =>
-      h('div', { class: 'skills-page' }, [
-        h('input', {
-          ref: folderInput,
-          type: 'file',
-          webkitdirectory: '',
-          directory: '',
-          multiple: true,
-          style: 'display:none',
-          onChange: uploadFolder,
-        }),
-        h('header', { class: 'page-header' }, [
-          h('div', {}, [
-            h('p', { class: 'eyebrow' }, 'AGENT · SKILLS'),
-            h('h1', {}, '技能管理'),
-            h('p', { class: 'subtitle' }, '浏览、上传、删除 Agent 技能。技能由 Agent 插件加载；在对话框输入 /技能名 可强制套用该技能。'),
+      h('div', { class: 'skg' }, [
+        h('input', { ref: folderInput, type: 'file', webkitdirectory: '', directory: '', multiple: true, style: 'display:none', onChange: uploadFolder }),
+
+        h('header', { class: 'skg-hero' }, [
+          h('div', { class: 'skg-hero-main' }, [
+            h('span', { class: 'skg-logo' }, builtinIcon()),
+            h('div', {}, [
+              h('span', { class: 'skg-eyebrow' }, 'AGENT · SKILLS'),
+              h('h1', {}, '技能管理'),
+              h('p', { class: 'skg-sub' }, '浏览、上传、删除 Agent 技能。技能由 Agent 插件加载；在对话框输入 /技能名 可强制套用该技能。'),
+            ]),
           ]),
-          h('div', { class: 'header-actions' }, [
-            h('button', { class: 'btn btn-tonal', disabled: busy.value, onClick: refresh }, busy.value ? '刷新中…' : '刷新'),
-            h('button', {
-              class: 'btn btn-tonal',
-              disabled: busy.value,
-              onClick: () => folderInput.value?.click(),
-            }, '上传文件夹'),
-            h('button', { class: 'btn btn-primary', onClick: () => (showUpload.value = !showUpload.value) }, showUpload.value ? '收起上传' : '上传技能'),
+          h('div', { class: 'skg-hero-actions' }, [
+            h('button', { class: 'skg-btn skg-tonal', disabled: busy.value, onClick: refresh }, [refreshIcon(), busy.value ? '刷新中…' : '刷新']),
+            h('button', { class: 'skg-btn skg-tonal', disabled: busy.value, onClick: () => folderInput.value?.click() }, [folderIcon(), '上传文件夹']),
+            h('button', { class: 'skg-btn skg-primary', onClick: () => (showUpload.value = !showUpload.value) }, [uploadIcon(), showUpload.value ? '收起上传' : '上传技能']),
           ]),
         ]),
 
-        error.value ? h('div', { class: 'error-banner' }, error.value) : null,
-        flash.value ? h('div', { class: 'flash-banner' }, flash.value) : null,
+        error.value ? h('div', { class: 'skg-banner err' }, error.value) : null,
+        flash.value ? h('div', { class: 'skg-banner ok' }, flash.value) : null,
 
-        h('section', { class: 'stat-grid' }, [
-          stat('技能总数', String(skills.value.length), '含内置与文件技能'),
-          stat('文件技能', String(fileCount.value), '可编辑、可删除'),
-          stat('内置技能', String(builtinCount.value), 'code / research / general'),
-          h('div', { class: 'stat-card' }, [
-            h('span', { class: 'stat-label' }, '技能目录'),
-            h('div', { class: 'stat-dir' }, dir.value || '—'),
-          ]),
+        h('section', { class: 'skg-stats' }, [
+          stat('t1', bookIcon(), String(skills.value.length), '技能总数', '含内置与文件技能'),
+          stat('t2', fileIcon(), String(fileCount.value), '文件技能', '可编辑、可删除'),
+          stat('t3', builtinIcon(), String(builtinCount.value), '内置技能', 'code / research / general'),
+          stat('t4', folderIcon(), dir.value ? '目录' : '—', '技能目录', dir.value || '—'),
         ]),
 
         showUpload.value
-          ? h('section', { class: 'upload-panel' }, [
+          ? h('section', { class: 'skg-upload' }, [
               h('h2', {}, '上传 / 覆盖技能'),
-              h('p', { class: 'hint' }, '单个 Markdown 文件或直接粘贴内容。名称仅限英文、数字、-、_，将成为 /斜杠调用名。'),
-              h('div', { class: 'upload-row' }, [
-                h('input', {
-                  type: 'text',
-                  placeholder: '技能名，例如 code-review',
-                  value: newName.value,
-                  onInput: (e) => (newName.value = e.target.value),
-                }),
-                h('label', { class: 'file-pick' }, [
-                  '选择 .md 文件',
-                  h('input', { type: 'file', accept: '.md,text/markdown,text/plain', onChange: pickFile }),
-                ]),
+              h('p', { class: 'skg-hint' }, '单个 Markdown 文件或直接粘贴内容。名称仅限英文、数字、-、_，将成为 /斜杠调用名。'),
+              h('div', { class: 'skg-upload-row' }, [
+                h('input', { type: 'text', placeholder: '技能名，例如 code-review', value: newName.value, onInput: (e) => (newName.value = e.target.value) }),
+                h('label', { class: 'skg-file' }, ['选择 .md 文件', h('input', { type: 'file', accept: '.md,text/markdown,text/plain', onChange: pickFile })]),
               ]),
-              h('textarea', {
-                placeholder: '# 技能名\n\n一句话描述。\n\n1. 步骤…',
-                value: newContent.value,
-                onInput: (e) => (newContent.value = e.target.value),
-              }),
-              h('div', { class: 'folder-bar' }, [
+              h('textarea', { class: 'skg-textarea', placeholder: '# 技能名\n\n一句话描述。\n\n1. 步骤…', value: newContent.value, onInput: (e) => (newContent.value = e.target.value) }),
+              h('div', { class: 'skg-folder' }, [
                 h('b', {}, '批量导入'),
-                h('span', {}, `选择包含多个 .md 的整个文件夹，将逐个创建/覆盖技能（文件名即技能名）。${folderProgress.value ? ' ' + folderProgress.value : ''}`),
-                h('button', {
-                  class: 'btn sm btn-tonal',
-                  disabled: busy.value,
-                  onClick: () => folderInput.value?.click(),
-                }, folderProgress.value ? '上传中…' : '选择文件夹'),
+                h('span', {}, `选择包含多个 .md 的整个文件夹，逐个创建或覆盖（文件名即技能名）。${folderProgress.value ? '  ' + folderProgress.value : ''}`),
+                h('button', { class: 'skg-btn', disabled: busy.value, onClick: () => folderInput.value?.click() }, folderProgress.value ? '上传中…' : '选择文件夹'),
               ]),
-              h('div', { class: 'upload-actions' }, [
-                h('button', { class: 'btn btn-tonal', disabled: busy.value, onClick: () => (showUpload.value = false) }, '取消'),
-                h('button', { class: 'btn btn-primary', disabled: busy.value || !newName.value.trim() || !newContent.value.trim(), onClick: save }, '保存技能'),
+              h('div', { class: 'skg-upload-actions' }, [
+                h('button', { class: 'skg-btn skg-tonal', disabled: busy.value, onClick: () => (showUpload.value = false) }, '取消'),
+                h('button', { class: 'skg-btn skg-primary', disabled: busy.value || !newName.value.trim() || !newContent.value.trim(), onClick: save }, '保存技能'),
               ]),
             ])
           : null,
 
-        h('section', { class: 'toolbar' }, [
-          h('input', {
-            placeholder: '搜索技能名称、描述或标签…',
-            value: query.value,
-            onInput: (e) => (query.value = e.target.value),
-          }),
-          h('span', { class: 'toolbar-count' }, `${visible.value.length} / ${skills.value.length} 个技能`),
+        h('section', { class: 'skg-toolbar' }, [
+          h('label', { class: 'skg-search' }, [searchIcon(), h('input', { placeholder: '搜索技能名称、描述或标签…', value: query.value, onInput: (e) => (query.value = e.target.value) })]),
+          h('span', { class: 'skg-count' }, `${visible.value.length} / ${skills.value.length}`),
         ]),
 
         visible.value.length === 0
-          ? h('div', { class: 'empty-state' }, [
-              h('p', {}, error.value ? '无法读取技能列表。确认 Agent 在线后重试。' : query.value ? '没有匹配的技能。' : '暂无技能。'),
-              h('p', { class: 'hint' }, error.value ? '' : '点击右上角「上传技能」或「上传文件夹」创建。'),
+          ? h('div', { class: 'skg-empty' }, [
+              h('b', {}, error.value ? '无法读取技能列表' : query.value ? '没有匹配的技能' : '暂无技能'),
+              h('p', {}, error.value ? '确认 Agent 在线后重试。' : '点击右上角「上传技能」或「上传文件夹」创建。'),
             ])
-          : h(
-              'section',
-              { class: 'skill-grid' },
+          : h('section', { class: 'skg-grid' },
               visible.value.map((s, i) =>
-                h('article', { class: 'skill-card', key: s.name, style: `animation-delay:${Math.min(i, 12) * 40}ms` }, [
-                  h('div', { class: 'card-top' }, [
-                    h('code', {}, `/${s.name}`),
-                    h('span', { class: `status-chip${s.source === 'builtin' ? ' builtin' : ''}` }, s.source === 'builtin' ? '内置' : '文件'),
+                h('article', { class: 'skg-card', key: s.name, style: `animation-delay:${Math.min(i, 12) * 40}ms` }, [
+                  h('div', { class: 'skg-card-top' }, [
+                    h('code', { class: 'skg-name' }, `/${s.name}`),
+                    h('span', { class: `skg-pill${s.source === 'builtin' ? ' builtin' : ''}` }, s.source === 'builtin' ? '内置' : '文件'),
                   ]),
-                  h('p', { class: 'card-desc' }, s.description || '（无描述）'),
-                  s.tags && s.tags.length
-                    ? h('div', { class: 'tags' }, s.tags.map((t) => h('span', { class: 'chip', key: t }, `#${t}`)))
-                    : null,
-                  h('div', { class: 'card-actions' }, [
-                    h('span', { class: 'slash' }, `对话输入 /${s.name}`),
-                    h(
-                      'button',
-                      {
-                        class: `btn sm ${deleting.value === s.name ? 'btn-danger' : 'btn-tonal'}`,
-                        disabled: busy.value,
-                        onClick: () => remove(s.name),
-                      },
-                      deleting.value === s.name ? '确认删除？' : '删除',
-                    ),
+                  h('p', { class: 'skg-desc' }, s.description || '（无描述）'),
+                  s.tags && s.tags.length ? h('div', { class: 'skg-tags' }, s.tags.map((t) => h('span', { class: 'skg-chip', key: t }, `#${t}`))) : null,
+                  h('div', { class: 'skg-card-foot' }, [
+                    h('span', { class: 'skg-slash' }, `对话输入 /${s.name}`),
+                    h('button', { class: `skg-btn skg-sm ${deleting.value === s.name ? 'skg-danger' : 'skg-tonal'}`, disabled: busy.value, onClick: () => remove(s.name) }, deleting.value === s.name ? '确认删除？' : '删除'),
                   ]),
                 ]),
               ),
