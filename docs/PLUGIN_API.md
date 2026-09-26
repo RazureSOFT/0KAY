@@ -19,6 +19,7 @@ package identity, version, build and run commands. The file is consumed by
   "schema": 1,
   "name": "@razuresoft/0kay-agent",
   "version": "0.1.0",
+  "tags": ["0kay-plugin"],
   "dependencies": ["@razuresoft/0kay-mcp"],
   "requires": ["core", "mocr"],
   "install": [["npm", "ci"], ["npm", "run", "build"]],
@@ -31,6 +32,7 @@ package identity, version, build and run commands. The file is consumed by
 | `schema` | number / yes | Fixed at `1` |
 | `name` | string / yes | Package name; validated as `@razuresoft/` plus lowercase letters, digits or hyphens |
 | `version` | string / yes | Package version; releases use SemVer, e.g. `0.1.0` |
+| `tags` | string[] / yes | Must contain `0kay-plugin` (see below) |
 | `description` | string / no | Human-readable note; does not affect execution |
 | `install` | string[][] / no | Ordered build/install commands; each entry is an argv array |
 | `start` | string[] / no | Single start command argv; omitted when there is no standalone process |
@@ -40,6 +42,13 @@ package identity, version, build and run commands. The file is consumed by
 | `repositories` | object[] / no | External sub-repository declarations, each `{path, package, url}` |
 | `ui` | object / no | Optional plugin WebUI build/publish config (below) |
 | `ports` | object / no | Port metadata such as Core's `http`/`grpc`; not a generic port executor |
+
+**Every 0kay plugin must carry the `0kay-plugin` tag.** The manifest `tags`
+array has to contain `0kay-plugin`; this is the only tag the platform reserves
+and it is how a package is recognized as a 0kay plugin. It applies to
+third-party plugins **and to the platform's own plugins we write** — Agent,
+LIFE, MOCR, MCP, Minecraft, skillsguishow and every `plugin-web/*` bundle
+declare it too. Other tags may be added freely alongside it.
 
 Commands must be non-empty argv arrays such as `["python", "-m", "life.main"]`,
 never a single shell string. Every argument must be a string with no newline or

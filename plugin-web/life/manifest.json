@@ -2,6 +2,7 @@
   "schema": 1,
   "name": "@razuresoft/0kay-web-life",
   "version": "0.1.0",
+  "tags": ["0kay-plugin"],
   "install": [
     [
       "npm",

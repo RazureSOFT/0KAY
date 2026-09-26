@@ -1,1 +1,1 @@
-{"schema":1,"name":"@razuresoft/0kay-mocr","version":"0.1.0","requires":["core"],"install":[["go","build","-o","mocr-service.exe","./cmd/mocr"]],"start":["./mocr-service.exe"]}
+{"schema":1,"name":"@razuresoft/0kay-mocr","version":"0.1.0","tags":["0kay-plugin"],"requires":["core"],"install":[["go","build","-o","mocr-service.exe","./cmd/mocr"]],"start":["./mocr-service.exe"]}

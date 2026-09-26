@@ -1,1 +1,1 @@
-{"schema":1,"name":"@razuresoft/0kay-life","version":"0.1.0","requires":["core","mocr"],"install":[["python","-m","pip","install","-e","."]],"start":["python","-m","life.main"]}
+{"schema":1,"name":"@razuresoft/0kay-life","version":"0.1.0","tags":["0kay-plugin"],"requires":["core","mocr"],"install":[["python","-m","pip","install","-e","."]],"start":["python","-m","life.main"]}

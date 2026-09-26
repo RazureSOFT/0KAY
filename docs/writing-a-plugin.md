@@ -12,6 +12,15 @@ it; Core's gRPC registration, settings and `.patch` files are separate
 interfaces and cannot be replaced by the manifest. See
 [Plugin API §0](PLUGIN_API.md) for every field.
 
+Every 0kay plugin — third-party and the platform's own — must set a `tags`
+array containing `0kay-plugin`:
+
+```json
+{ "tags": ["0kay-plugin"] }
+```
+
+This is the tag the platform reserves to recognize a package as a 0kay plugin.
+
 After a successful install 0kay-pm runs the manifest start command automatically.
 Library and UI-only modules omit `start`. The plugin must still register itself
 with Core and send its manifest version as `plugin_info.version`.

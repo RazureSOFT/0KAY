@@ -2,6 +2,7 @@
   "schema": 1,
   "name": "@razuresoft/0kay-searxng",
   "version": "0.1.0",
+  "tags": ["0kay-plugin"],
   "description": "Optional local search service; run with Python 3.10+.",
   "install": [],
   "start": ["python", "server.py"]
