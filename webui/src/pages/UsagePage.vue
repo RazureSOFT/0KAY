@@ -30,6 +30,8 @@ const error = ref('')
 const clearMsg = ref('')
 let timer: number | undefined
 
+const PALETTE = ['#5944c6', '#9b405e', '#27633e', '#8a5a00', '#1a6fb4', '#7b4bb7', '#0d8a5f', '#b5473c']
+
 async function fetchUsage() {
   loading.value = true
   error.value = ''
@@ -68,7 +70,7 @@ async function clearUsage() {
 const modelRows = computed(() => {
   const by = usage.value?.by_model || {}
   return Object.entries(by)
-    .map(([model, b]) => ({ model, ...b }))
+    .map(([model, b], i) => ({ model, ...b, color: PALETTE[i % PALETTE.length] }))
     .sort((a, b) => (b.total || 0) - (a.total || 0))
 })
 
@@ -84,6 +86,17 @@ const chartDays = computed(() => [...dayRows.value].reverse())
 const maxDay = computed(() => Math.max(1, ...chartDays.value.map((r) => r.total || 0)))
 const maxModel = computed(() => Math.max(1, ...modelRows.value.map((r) => r.total || 0)))
 const peakDay = computed(() => chartDays.value.reduce((best, r) => (r.total > (best?.total || 0) ? r : best), chartDays.value[0] || null))
+const gridLines = [0.25, 0.5, 0.75, 1]
+
+const total = computed(() => Number(usage.value?.total_tokens || 0))
+const promptTokens = computed(() => Number(usage.value?.total_prompt_tokens || 0))
+const completionTokens = computed(() => Number(usage.value?.total_completion_tokens || 0))
+const promptShare = computed(() => (total.value ? Math.round((promptTokens.value / total.value) * 100) : 0))
+const completionShare = computed(() => (total.value ? 100 - promptShare.value : 0))
+const avgPerRequest = computed(() => {
+  const c = Number(usage.value?.request_count || 0)
+  return c ? Math.round(total.value / c) : 0
+})
 
 function n(v: number | undefined | null) {
   return Number(v || 0).toLocaleString()
@@ -98,7 +111,7 @@ function barHeight(v: number) {
   return `${Math.max(3, Math.round((Number(v || 0) / maxDay.value) * 100))}%`
 }
 function share(v: number) {
-  return `${Math.round((Number(v || 0) / maxModel.value) * 100)}%`
+  return `${Math.max(3, Math.round((Number(v || 0) / maxModel.value) * 100))}%`
 }
 function dayLabel(day: string) {
   const d = new Date(day)
@@ -131,54 +144,82 @@ onUnmounted(() => {
     <div v-if="error" class="banner err">{{ error }}</div>
     <div v-if="clearMsg" class="banner ok">{{ clearMsg }}</div>
 
-    <section class="stat-grid">
-      <div class="stat-card tone-1">
-        <span class="stat-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7Z" stroke="currentColor" stroke-width="1.8"/><path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
-        <span class="stat-label">{{ t('usage.totalTokens') }}</span>
-        <span class="stat-value">{{ n(usage?.total_tokens) }}</span>
-      </div>
-      <div class="stat-card tone-2">
-        <span class="stat-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        <span class="stat-label">{{ t('usage.promptTokens') }}</span>
-        <span class="stat-value">{{ n(usage?.total_prompt_tokens) }}</span>
-      </div>
-      <div class="stat-card tone-3">
-        <span class="stat-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        <span class="stat-label">{{ t('usage.completionTokens') }}</span>
-        <span class="stat-value">{{ n(usage?.total_completion_tokens) }}</span>
-      </div>
-      <div class="stat-card tone-4">
-        <span class="stat-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H9l-5 4V6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
-        <span class="stat-label">{{ t('usage.sessions') }}</span>
-        <span class="stat-value">{{ n(usage?.session_count) }}</span>
-      </div>
-      <div class="stat-card tone-5">
-        <span class="stat-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
-        <span class="stat-label">{{ t('usage.requests') }}</span>
-        <span class="stat-value">{{ n(usage?.request_count) }}</span>
+    <!-- Overview -->
+    <section class="overview">
+      <article class="card donut-card">
+        <div class="donut">
+          <svg viewBox="0 0 42 42" aria-hidden="true">
+            <circle class="donut-track" cx="21" cy="21" r="15.9" pathLength="100" />
+            <circle class="donut-prompt" cx="21" cy="21" r="15.9" pathLength="100"
+              :stroke-dasharray="`${promptShare} 100`" />
+            <circle class="donut-completion" cx="21" cy="21" r="15.9" pathLength="100"
+              :stroke-dasharray="`${completionShare} 100`" :stroke-dashoffset="-promptShare" />
+          </svg>
+          <div class="donut-center">
+            <b>{{ compact(total) }}</b>
+            <span>{{ t('usage.totalTokens') }}</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card total-card">
+        <div class="total-head">
+          <span class="stat-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7Z" stroke="currentColor" stroke-width="1.8"/><path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+          <div>
+            <span class="stat-label">{{ t('usage.totalTokens') }}</span>
+            <b class="big">{{ n(total) }}</b>
+          </div>
+        </div>
+        <div class="compose" role="img" :aria-label="`prompt ${promptShare}% / completion ${completionShare}%`">
+          <span class="seg prompt" :style="{ width: `${promptShare}%` }"></span>
+          <span class="seg completion" :style="{ width: `${completionShare}%` }"></span>
+        </div>
+        <div class="legend">
+          <span class="lg"><i class="dot prompt"></i>{{ t('usage.promptTokens') }}<b>{{ n(promptTokens) }}</b><small>{{ promptShare }}%</small></span>
+          <span class="lg"><i class="dot completion"></i>{{ t('usage.completionTokens') }}<b>{{ n(completionTokens) }}</b><small>{{ completionShare }}%</small></span>
+        </div>
+      </article>
+
+      <div class="mini-stack">
+        <article class="mini">
+          <span class="mini-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H9l-5 4V6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
+          <div><b>{{ n(usage?.session_count) }}</b><span>{{ t('usage.sessions') }}</span></div>
+        </article>
+        <article class="mini">
+          <span class="mini-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
+          <div><b>{{ n(usage?.request_count) }}</b><span>{{ t('usage.requests') }}</span></div>
+        </article>
+        <article class="mini">
+          <span class="mini-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v18M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+          <div><b>{{ n(avgPerRequest) }}</b><span>tokens / 请求</span></div>
+        </article>
       </div>
     </section>
 
+    <!-- Daily trend -->
     <section class="panel">
       <div class="panel-head">
         <h2>{{ t('usage.byDay') }}</h2>
         <span v-if="peakDay" class="panel-note">峰值 {{ dayLabel(peakDay.day) }} · {{ compact(peakDay.total) }}</span>
       </div>
       <div v-if="chartDays.length === 0" class="empty">{{ t('usage.empty') }}</div>
-      <div v-else class="chart-wrap">
-        <div class="chart">
-          <div v-for="d in chartDays" :key="d.day" class="col" :title="`${d.day} · ${t('usage.totalTokens')} ${n(d.total)} · ${t('usage.promptTokens')} ${n(d.prompt)} · ${t('usage.completionTokens')} ${n(d.completion)} · #${n(d.count)}`">
-            <span class="col-val">{{ compact(d.total) }}</span>
-            <div class="col-track"><div class="col-bar" :style="{ height: barHeight(d.total) }"></div></div>
-            <span class="col-day">{{ dayLabel(d.day) }}</span>
+      <div v-else class="chart">
+        <div class="bars">
+          <div class="grid" aria-hidden="true">
+            <span v-for="g in gridLines" :key="g" :style="{ bottom: `${g * 100}%` }"><i>{{ compact(maxDay * g) }}</i></span>
+          </div>
+          <div v-for="d in chartDays" :key="d.day" class="col"
+            :title="`${d.day} · ${t('usage.totalTokens')} ${n(d.total)} · ${t('usage.promptTokens')} ${n(d.prompt)} · ${t('usage.completionTokens')} ${n(d.completion)} · #${n(d.count)}`">
+            <div class="col-bar" :style="{ height: barHeight(d.total) }"></div>
           </div>
         </div>
-        <div class="legend">
-          <span class="dot legend-total"></span>{{ t('usage.totalTokens') }}
+        <div class="axis">
+          <span v-for="d in chartDays" :key="d.day">{{ dayLabel(d.day) }}</span>
         </div>
       </div>
     </section>
 
+    <!-- Models -->
     <section class="panel">
       <div class="panel-head">
         <h2>{{ t('usage.byModel') }}</h2>
@@ -186,9 +227,9 @@ onUnmounted(() => {
       </div>
       <div v-if="modelRows.length === 0" class="empty">{{ t('usage.empty') }}</div>
       <div v-else class="model-list">
-        <div v-for="row in modelRows" :key="row.model" class="model-row">
+        <div v-for="row in modelRows" :key="row.model" class="model-row" :style="{ '--c': row.color }">
           <div class="model-head">
-            <code class="model-name">{{ row.model }}</code>
+            <span class="model-name"><i></i><code>{{ row.model }}</code></span>
             <span class="model-total">{{ n(row.total) }} <small>tokens</small></span>
           </div>
           <div class="model-track"><div class="model-fill" :style="{ width: share(row.total) }"></div></div>
@@ -235,58 +276,90 @@ onUnmounted(() => {
 #app .usage-page .btn-tonal { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
 #app .usage-page .btn-danger { background: var(--md-error-container); color: var(--md-on-error-container, #410E0B); }
 
-.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-xl); }
-.stat-card {
-  padding: 20px; border-radius: 26px; display: flex; flex-direction: column; gap: 8px;
-  box-shadow: var(--shadow-1); animation: up 520ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)) both;
-  transition: transform 300ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)), box-shadow 300ms;
-}
-.stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-2); }
-.stat-ic { width: 40px; height: 40px; border-radius: 16px 16px 16px 6px; display: grid; place-items: center; background: color-mix(in srgb, currentColor 14%, transparent); }
-.stat-label { font-size: 11.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; opacity: .8; }
-.stat-value { font-size: 32px; font-weight: 800; letter-spacing: -.02em; line-height: 1.05; }
-.tone-1 { background: var(--md-primary-container); color: var(--md-on-primary-container); }
-.tone-2 { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
-.tone-3 { background: var(--md-tertiary-container); color: var(--md-on-tertiary-container, #421326); }
-.tone-4 { background: var(--md-success-container); color: #0d3b1e; }
-.tone-5 { background: var(--md-surface-container-high); color: var(--md-on-surface-variant); }
-
-.panel {
+/* Overview */
+.overview { display: grid; grid-template-columns: minmax(220px, 0.9fr) minmax(280px, 1.5fr) minmax(200px, 1fr); gap: var(--space-lg); margin-bottom: var(--space-xl); }
+.card {
   background: var(--md-surface-container-low); border: 1px solid color-mix(in srgb, var(--md-outline-variant) 55%, transparent);
-  border-radius: 28px; padding: clamp(20px, 2.2vw, 28px); margin-bottom: var(--space-lg); box-shadow: var(--shadow-1);
+  border-radius: 32px; padding: 24px; box-shadow: var(--shadow-1);
   animation: up 520ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)) both;
 }
-.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+.donut-card { display: grid; place-items: center; }
+.donut { position: relative; width: min(190px, 100%); aspect-ratio: 1; }
+.donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.donut circle { fill: none; stroke-width: 5; }
+.donut-track { stroke: var(--md-surface-container-high); }
+.donut-prompt { stroke: var(--md-primary); stroke-linecap: round; transition: stroke-dasharray 600ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)); }
+.donut-completion { stroke: var(--md-tertiary); stroke-linecap: round; transition: stroke-dasharray 600ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)), stroke-dashoffset 600ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)); }
+.donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; }
+.donut-center b { font-size: 30px; font-weight: 800; letter-spacing: -.02em; }
+.donut-center span { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--md-on-surface-variant); }
+
+.total-card { display: flex; flex-direction: column; gap: 18px; }
+.total-head { display: flex; align-items: center; gap: 16px; }
+.stat-ic { width: 46px; height: 46px; flex-shrink: 0; border-radius: 18px 18px 18px 7px; display: grid; place-items: center; background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.stat-label { font-size: 11.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--md-on-surface-variant); }
+.big { display: block; font-size: clamp(30px, 3.4vw, 42px); font-weight: 800; letter-spacing: -.03em; line-height: 1.05; }
+.compose { display: flex; height: 18px; border-radius: 999px; overflow: hidden; background: var(--md-surface-container-high); }
+.seg { height: 100%; transition: width 600ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)); }
+.seg.prompt { background: linear-gradient(90deg, var(--md-primary), color-mix(in srgb, var(--md-primary) 70%, var(--md-tertiary))); }
+.seg.completion { background: linear-gradient(90deg, color-mix(in srgb, var(--md-tertiary) 80%, var(--md-primary)), var(--md-tertiary)); }
+.legend { display: flex; gap: 20px; flex-wrap: wrap; }
+.lg { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--md-on-surface-variant); }
+.lg b { color: var(--md-on-surface); font-weight: 700; }
+.lg small { color: var(--md-on-surface-variant); font-weight: 700; }
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot.prompt { background: var(--md-primary); }
+.dot.completion { background: var(--md-tertiary); }
+
+.mini-stack { display: grid; grid-template-rows: repeat(3, 1fr); gap: var(--space-lg); }
+.mini {
+  display: flex; align-items: center; gap: 14px; padding: 18px 20px; border-radius: 26px;
+  background: var(--md-surface-container-low); border: 1px solid color-mix(in srgb, var(--md-outline-variant) 50%, transparent);
+  box-shadow: var(--shadow-1); animation: up 520ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)) both;
+  transition: transform 280ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)), box-shadow 280ms;
+}
+.mini:hover { transform: translateY(-3px); box-shadow: var(--shadow-2); }
+.mini-ic { width: 40px; height: 40px; flex-shrink: 0; border-radius: 16px 16px 16px 6px; display: grid; place-items: center; background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.mini b { display: block; font-size: 24px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+.mini span { font-size: 12px; color: var(--md-on-surface-variant); font-weight: 600; }
+
+/* Panels */
+.panel {
+  background: var(--md-surface-container-low); border: 1px solid color-mix(in srgb, var(--md-outline-variant) 55%, transparent);
+  border-radius: 32px; padding: clamp(20px, 2.2vw, 28px); margin-bottom: var(--space-lg); box-shadow: var(--shadow-1);
+  animation: up 520ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)) both;
+}
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
 .panel-head h2 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; margin: 0; }
 .panel-note { font-size: 12.5px; color: var(--md-on-surface-variant); font-weight: 600; }
 
-/* Bar chart */
-.chart-wrap { display: flex; flex-direction: column; gap: 14px; }
-.chart { display: flex; align-items: flex-end; gap: 6px; height: 230px; padding-top: 18px; }
-.col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.col-val { font-size: 10px; color: var(--md-on-surface-variant); opacity: 0; transition: opacity 160ms; }
-.col:hover .col-val { opacity: 1; }
-.col-track { flex: 1; width: 100%; max-width: 46px; display: flex; align-items: flex-end; }
+/* Chart */
+.chart { display: flex; flex-direction: column; height: 264px; padding-left: 42px; }
+.bars { position: relative; flex: 1; display: flex; align-items: flex-end; gap: 6px; }
+.grid { position: absolute; inset: 0; }
+.grid span { position: absolute; left: 0; right: 0; border-top: 1px dashed color-mix(in srgb, var(--md-outline-variant) 70%, transparent); }
+.grid span i { position: absolute; left: -42px; top: -8px; width: 36px; text-align: right; font-size: 10px; font-style: normal; color: var(--md-on-surface-variant); }
+.col { flex: 1; min-width: 0; height: 100%; display: flex; justify-content: center; align-items: flex-end; }
 .col-bar {
-  width: 100%; border-radius: 12px 12px 4px 4px;
-  background: linear-gradient(180deg, var(--md-primary), color-mix(in srgb, var(--md-primary) 58%, var(--md-surface)));
-  transition: height 500ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)), filter 160ms;
+  width: 100%; max-width: 44px; border-radius: 12px 12px 4px 4px;
+  background: linear-gradient(180deg, var(--md-primary), color-mix(in srgb, var(--md-primary) 40%, var(--md-surface)));
+  transition: height 600ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)), filter 160ms;
 }
-.col:hover .col-bar { filter: brightness(1.08); }
-.col-day { font-size: 10.5px; color: var(--md-on-surface-variant); white-space: nowrap; }
-.legend { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--md-on-surface-variant); }
-.dot { width: 10px; height: 10px; border-radius: 50%; }
-.legend-total { background: var(--md-primary); }
+.col:hover .col-bar { filter: brightness(1.1) saturate(1.1); }
+.axis { display: flex; gap: 6px; height: 22px; padding-top: 6px; }
+.axis span { flex: 1; min-width: 0; text-align: center; font-size: 10.5px; color: var(--md-on-surface-variant); white-space: nowrap; }
 
-/* Model ranked rows */
-.model-list { display: flex; flex-direction: column; gap: 18px; }
-.model-row { display: flex; flex-direction: column; gap: 9px; }
+/* Models */
+.model-list { display: flex; flex-direction: column; gap: 20px; }
+.model-row { display: flex; flex-direction: column; gap: 9px; animation: up 460ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)) both; }
 .model-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.model-name { font: 700 13px/1.3 ui-monospace, monospace; color: var(--md-on-surface); overflow-wrap: anywhere; }
+.model-name { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.model-name i { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex-shrink: 0; box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 18%, transparent); }
+.model-name code { font: 700 13px/1.3 ui-monospace, monospace; overflow-wrap: anywhere; }
 .model-total { font-size: 17px; font-weight: 800; flex-shrink: 0; }
 .model-total small { font-size: 11px; font-weight: 600; color: var(--md-on-surface-variant); }
 .model-track { height: 12px; border-radius: 999px; background: var(--md-surface-container-high); overflow: hidden; }
-.model-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--md-primary), color-mix(in srgb, var(--md-primary) 55%, var(--md-tertiary))); transition: width 500ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)); }
+.model-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--c), color-mix(in srgb, var(--c) 55%, var(--md-surface))); transition: width 600ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)); }
 .model-meta { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--md-on-surface-variant); }
 .model-meta b { color: var(--md-on-surface); font-weight: 700; }
 
@@ -294,8 +367,15 @@ onUnmounted(() => {
 
 @keyframes up { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
 
+@media (max-width: 980px) {
+  .overview { grid-template-columns: 1fr 1fr; }
+  .mini-stack { grid-column: 1 / -1; grid-template-rows: none; grid-template-columns: repeat(3, 1fr); }
+}
 @media (max-width: 640px) {
-  .chart { height: 180px; }
-  .col-day { font-size: 9px; }
+  .overview { grid-template-columns: 1fr; }
+  .mini-stack { grid-template-columns: 1fr; }
+  .chart { height: 200px; padding-left: 34px; }
+  .grid span i { left: -34px; width: 28px; }
+  .axis span { font-size: 9px; }
 }
 </style>
