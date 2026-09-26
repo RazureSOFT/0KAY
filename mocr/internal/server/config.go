@@ -204,10 +204,15 @@ type provSnapshot struct {
 }
 
 // fetchProviderSnapshot pulls the live provider catalog (model -> credentials).
+//
+// GET /api/providers is redacted now (api_key is masked), so credentials come
+// from GET /api/providers/credentials, which is the only endpoint that still
+// returns them. It is fetched fresh on every use so provider edits — including
+// keys added for auto-switch targets — take effect immediately.
 func fetchProviderSnapshot() (*provSnapshot, bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, coreHTTPBase()+"/api/providers", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, coreHTTPBase()+"/api/providers/credentials", nil)
 	if err != nil {
 		return nil, false
 	}

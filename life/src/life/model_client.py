@@ -56,7 +56,10 @@ class MocrClient:
         if not self._stub:
             await self.connect()
         client = await self._http_client()
-        response = await client.get(f"{self.core_http}/api/providers", headers=auth_headers())
+        # Credentials are resolved per request: GET /api/providers is redacted,
+        # so the secret-bearing catalog comes from /api/providers/credentials.
+        # Re-reading every time keeps provider edits effective immediately.
+        response = await client.get(f"{self.core_http}/api/providers/credentials", headers=auth_headers())
         response.raise_for_status()
         data = response.json()
         providers = data if isinstance(data, list) else data.get("providers", [])
