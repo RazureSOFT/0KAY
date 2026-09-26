@@ -3,15 +3,14 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useWizardStore } from '../stores/wizard'
-import { useProvidersStore } from '../stores/providers'
 import { useSettingsSectionsStore } from '../stores/settingsSections'
 import { useUIPatchesStore } from '../stores/uiPatches'
-import { PROVIDERS, DEFAULT_LIVE2D_MODELS } from '../composables/wizard'
-import type { ProviderConfig } from '../composables/wizard'
+import { DEFAULT_LIVE2D_MODELS } from '../composables/wizard'
 import Live2DStage from '../components/Live2DStage.vue'
 import LifeSettingsPanel from '../components/LifeSettingsPanel.vue'
 import AboutPanel from '../components/AboutPanel.vue'
 import UpdatesPanel from '../components/UpdatesPanel.vue'
+import ProviderPanel from '../components/ProviderPanel.vue'
 import GeneralPanel from '../components/GeneralPanel.vue'
 import PersonaPanel from '../components/PersonaPanel.vue'
 import PermissionsPanel from '../components/PermissionsPanel.vue'
@@ -24,7 +23,6 @@ import { useSettingsMeta } from '../composables/settingsMeta'
 const { t, locale } = useI18n()
 const { confirm } = useConfirm()
 const wizard = useWizardStore()
-const provStore = useProvidersStore()
 const sectionsStore = useSettingsSectionsStore()
 const uiPatches = useUIPatchesStore()
 const route = useRoute()
@@ -52,27 +50,11 @@ const pluginOnlyTabs = computed(() => {
 const allTabs = computed(() => [...tabs.value, ...pluginOnlyTabs.value])
 
 const activeTab = ref<string>('general')
-const isLoading = ref(false)
-const error = ref('')
 const saved = ref(false)
 
 const uploadedModels = ref<{ id: string; label: string; url: string }[]>([])
 const folderInput = ref<HTMLInputElement | null>(null)
 const uploadMsg = ref('')
-
-// Multi-provider editing state
-const draftProviders = ref<ProviderConfig[]>([])
-const draftDefaultProviderId = ref('')
-const draftDefaultModel = ref('')
-const providerMsg = ref('')
-const editingProvider = ref<ProviderConfig | null>(null)
-/** A custom provider must carry a name: the model picker labels models as
- *  "providerName/model", and an empty name falls back to the generated id. */
-const providerNameMissing = computed(() =>
-  editingProvider.value?.provider === 'custom' && !(editingProvider.value?.name || '').trim())
-const fetchSource = ref<'api' | 'fallback' | ''>('')
-const fetchError = ref('')
-const fetchingProviderId = ref('')
 
 /** Plugin section draft values */
 const sectionDrafts = ref<Record<string, Record<string, unknown>>>({})
@@ -92,36 +74,6 @@ function sectionBool(id: string, key: string): boolean {
   if (typeof v === 'boolean') return v
   if (v === 'true' || v === 1 || v === '1') return true
   return false
-}
-
-function providerMeta(id: string) {
-  return PROVIDERS.find(p => p.id === id) || null
-}
-
-function providerLogo(p: ProviderConfig): string {
-  return providerMeta(p.provider)?.logo || ''
-}
-
-function providerDisplayName(p: ProviderConfig): string {
-  const meta = providerMeta(p.provider)
-  if (meta?.name) return meta.name
-  if (p.provider === 'custom') return t('providers.custom.name', 'Custom')
-  return p.provider
-}
-
-function enabledCount(p: ProviderConfig): number {
-  return p.models.filter(m => !isModelDisabled(p, m)).length
-}
-
-function isModelDisabled(p: ProviderConfig, m: string): boolean {
-  return (p.disabled_models || []).includes(m)
-}
-
-function toggleModelEnabled(p: ProviderConfig, m: string) {
-  const disabled = new Set(p.disabled_models || [])
-  if (disabled.has(m)) disabled.delete(m)
-  else disabled.add(m)
-  p.disabled_models = [...disabled]
 }
 
 function loadSectionDraft(id: string) {
@@ -212,214 +164,6 @@ async function saveSection(id: string) {
   }
 }
 
-function startEditProvider(p: ProviderConfig) {
-  editingProvider.value = { ...p, format: p.format || '', models: [...p.models], disabled_models: [...(p.disabled_models || [])] }
-  fetchSource.value = ''
-  fetchError.value = ''
-  void autoFetchEditModels()
-}
-
-function startAddProvider() {
-  editingProvider.value = {
-    id: '',
-    provider: 'openai',
-    api_key: '',
-    base_url: PROVIDERS.find(p => p.id === 'openai')?.baseUrl || '',
-    models: [],
-    disabled_models: [],
-    default_model: '',
-    enabled: true,
-    format: '',
-  }
-}
-
-/** Switching provider type updates base_url + default format from the catalog. */
-function onEditProviderType() {
-  if (!editingProvider.value) return
-  const p = PROVIDERS.find(x => x.id === editingProvider.value!.provider)
-  if (p?.baseUrl) editingProvider.value.base_url = p.baseUrl
-  editingProvider.value.format = p?.format || ''
-  void autoFetchEditModels()
-}
-
-/** Wire-protocol options for a provider (empty = infer from the preset). */
-const FORMAT_OPTIONS = computed(() => [
-  { value: '', label: t('settings.formatAuto') },
-  { value: 'openai', label: t('settings.formatOpenai') },
-  { value: 'anthropic', label: t('settings.formatAnthropic') },
-])
-
-/** Auto-fetch model list for the edit form when possible. */
-async function autoFetchEditModels() {
-  const ep = editingProvider.value
-  if (!ep) return
-  if (!ep.base_url) return
-  // Prefer real key; fall back to fetch with empty key for public catalogs.
-  isLoading.value = true
-  fetchError.value = ''
-  fetchSource.value = ''
-  try {
-    const res = await fetch('/api/models/fetch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: ep.id,
-        provider: ep.provider,
-        base_url: ep.base_url,
-        api_key: ep.api_key || '',
-        format: ep.format || '',
-      }),
-    })
-    if (!res.ok) throw new Error(String(res.status))
-    const data = await res.json()
-    const models: string[] = data.models || []
-    fetchSource.value = data.source === 'api' ? 'api' : 'fallback'
-    if (data.source === 'api' && data.error) fetchError.value = String(data.error)
-    if (data.source === 'fallback' && data.error) fetchError.value = String(data.error)
-    if (models.length) {
-      ep.models = models
-      if (!ep.default_model || !models.includes(ep.default_model)) {
-        ep.default_model = models[0]
-      }
-      // Keep disabled_models aligned with fetched list
-      ep.disabled_models = (ep.disabled_models || []).filter(m => models.includes(m))
-    } else if (PROVIDERS.find(x => x.id === ep.provider)?.defaultModels?.length) {
-      ep.models = [...(PROVIDERS.find(x => x.id === ep.provider)!.defaultModels)]
-      if (!ep.default_model) ep.default_model = ep.models[0]
-    }
-  } catch (e: any) {
-    fetchSource.value = 'fallback'
-    fetchError.value = e?.message || 'fetch failed'
-    const fallback = PROVIDERS.find(x => x.id === ep.provider)?.defaultModels
-    if (fallback?.length && ep.models.length === 0) {
-      ep.models = [...fallback]
-      if (!ep.default_model) ep.default_model = ep.models[0]
-    }
-  } finally {
-    isLoading.value = false
-  }
-}
-
-/** Fetch models for a provider row (card action) without opening edit form. */
-async function fetchModelsForRow(p: ProviderConfig) {
-  if (!p.base_url) return
-  fetchingProviderId.value = p.id
-  fetchError.value = ''
-  try {
-    const res = await fetch('/api/models/fetch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: p.id,
-        provider: p.provider,
-        base_url: p.base_url,
-        api_key: p.api_key || '',
-        format: p.format || '',
-      }),
-    })
-    if (!res.ok) throw new Error(String(res.status))
-    const data = await res.json()
-    const models: string[] = data.models || []
-    if (models.length) {
-      p.models = models
-      p.disabled_models = (p.disabled_models || []).filter(m => models.includes(m))
-      if (!p.default_model || !models.includes(p.default_model)) {
-        p.default_model = models[0]
-      }
-      // Persist immediately so Core catalog picks up real models
-      try {
-        await provStore.upsert({ ...p })
-        draftProviders.value = [...provStore.providers]
-        providerMsg.value = data.source === 'api'
-          ? t('settings.modelsFetched')
-          : t('settings.modelsFallback')
-      } catch {
-        providerMsg.value = t('settings.permFailed')
-      }
-      fetchSource.value = data.source === 'api' ? 'api' : 'fallback'
-    }
-    if (data.error) fetchError.value = String(data.error)
-  } catch (e: any) {
-    fetchError.value = e?.message || 'fetch failed'
-    providerMsg.value = t('settings.permFailed')
-  } finally {
-    fetchingProviderId.value = ''
-  }
-}
-
-/** Toggle a model on a provider card and persist. */
-async function toggleModelOnCard(p: ProviderConfig, m: string) {
-  toggleModelEnabled(p, m)
-  try {
-    await provStore.upsert({ ...p })
-    draftProviders.value = [...provStore.providers]
-  } catch {
-    providerMsg.value = t('settings.permFailed')
-  }
-}
-
-async function saveProviderEdit() {
-  const p = editingProvider.value
-  if (!p) return
-  p.name = (p.name || '').trim()
-  if (p.provider === 'custom' && !p.name) {
-    providerMsg.value = t('settings.providerNameRequired')
-    return
-  }
-  if (!p.id) {
-    const norm = (u: string) => String(u || '').trim().replace(/\/+$/, '')
-    const dup = draftProviders.value.find(x =>
-      x.provider === p.provider && norm(x.base_url) === norm(p.base_url) && x.api_key === p.api_key)
-    p.id = dup ? dup.id : p.provider + '_' + Date.now().toString(36)
-  }
-  if (!p.default_model && p.models.length) p.default_model = p.models[0]
-  // Keep disabled_models aligned with current model list
-  p.disabled_models = (p.disabled_models || []).filter(m => p.models.includes(m))
-  try {
-    await provStore.upsert(p)
-    if (!draftDefaultProviderId.value) {
-      draftDefaultProviderId.value = p.id
-      draftDefaultModel.value = p.default_model
-      await provStore.setDefaults(p.id, p.default_model)
-    }
-    draftProviders.value = [...provStore.providers]
-    draftDefaultProviderId.value = provStore.defaultProviderId
-    draftDefaultModel.value = provStore.defaultModel
-    providerMsg.value = t('settings.saved')
-    editingProvider.value = null
-    setTimeout(() => { providerMsg.value = '' }, 1500)
-  } catch {
-    providerMsg.value = t('settings.permFailed')
-  }
-}
-
-async function removeProvider(id: string) {
-  try {
-    await provStore.remove(id)
-    draftProviders.value = [...provStore.providers]
-    draftDefaultProviderId.value = provStore.defaultProviderId
-    draftDefaultModel.value = provStore.defaultModel
-  } catch {
-    providerMsg.value = t('settings.permFailed')
-  }
-}
-
-async function makeDefaultProvider(id: string, model: string) {
-  try {
-    await provStore.setDefaults(id, model)
-    draftDefaultProviderId.value = provStore.defaultProviderId
-    draftDefaultModel.value = provStore.defaultModel
-    providerMsg.value = t('settings.saved')
-    setTimeout(() => { providerMsg.value = '' }, 1500)
-  } catch {
-    providerMsg.value = t('settings.permFailed')
-  }
-}
-
-function parseModelsInput(v: string): string[] {
-  return v.split(',').map(m => m.trim()).filter(Boolean)
-}
-
 async function loadUploadedModels() {
   try {
     const res = await fetch('/api/live2d')
@@ -498,10 +242,6 @@ onMounted(async () => {
   const q = route.query.tab as string | undefined
   if (q) activeTab.value = q
   loadUploadedModels()
-  await provStore.fetchAll()
-  draftProviders.value = [...provStore.providers]
-  draftDefaultProviderId.value = provStore.defaultProviderId
-  draftDefaultModel.value = provStore.defaultModel
   await sectionsStore.fetchSections()
   for (const sec of sectionsStore.sections) loadSectionDraft(sec.id)
 })
@@ -573,211 +313,14 @@ function save() {
         <!-- General -->
         <GeneralPanel v-if="activeTab === 'general'" />
 
-        <!-- Provider (multi-provider) -->
-        <div v-else-if="activeTab === 'provider'" class="content-card">
-          <h2>{{ t('settings.tabs.provider') }}</h2>
-          <p class="card-desc">{{ t('settings.providerDesc') }}</p>
-
-          <div class="actions-row">
-            <button class="btn btn-tonal" type="button" @click="startAddProvider">
-              + {{ t('settings.addProvider') }}
-            </button>
-          </div>
-
-          <div v-if="draftProviders.length" class="provider-list">
-            <div
-              v-for="p in draftProviders"
-              :key="p.id"
-              class="provider-list-item"
-              :class="{ selected: draftDefaultProviderId === p.id }"
-            >
-              <div class="provider-card-head">
-                <div class="provider-identity">
-                  <img
-                    v-if="providerLogo(p)"
-                    :src="providerLogo(p)"
-                    :alt="providerDisplayName(p)"
-                    class="provider-logo"
-                  />
-                  <span v-else class="provider-logo-fallback" aria-hidden="true">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
-                  </span>
-                  <div class="provider-identity-text">
-                    <strong class="provider-title">{{ providerDisplayName(p) }}</strong>
-                    <code class="provider-url">{{ p.base_url }}</code>
-                  </div>
-                </div>
-                <div class="provider-badges">
-                  <span v-if="draftDefaultProviderId === p.id" class="badge-default">
-                    {{ t('settings.default') }}
-                  </span>
-                  <span class="badge-count">
-                    {{ enabledCount(p) }}/{{ p.models.length }}
-                  </span>
-                </div>
-              </div>
-
-              <div class="provider-card-actions">
-                <button class="btn btn-tonal" type="button" @click="startEditProvider(p)">
-                  {{ t('settings.edit') }}
-                </button>
-                <button
-                  class="btn btn-ghost"
-                  type="button"
-                  :disabled="fetchingProviderId === p.id"
-                  @click="fetchModelsForRow(p)"
-                >
-                  {{ fetchingProviderId === p.id ? t('wizard.fetching') : t('settings.fetchModels') }}
-                </button>
-                <button
-                  class="btn btn-ghost"
-                  type="button"
-                  @click="makeDefaultProvider(p.id, p.default_model || p.models[0] || '')"
-                >
-                  {{ t('settings.makeDefault') }}
-                </button>
-                <button class="btn btn-ghost danger-text" type="button" @click="removeProvider(p.id)">
-                  {{ t('settings.remove') }}
-                </button>
-              </div>
-
-              <div v-if="p.models.length" class="model-chip-card">
-                <div class="model-chip-card-head">
-                  <span class="model-chip-card-title">{{ t('settings.modelToggles') }}</span>
-                  <span class="model-chip-card-hint">{{ t('settings.modelToggleHint') }}</span>
-                </div>
-                <div class="model-toggle-list">
-                  <label
-                    v-for="m in p.models"
-                    :key="m"
-                    class="model-toggle-row"
-                    :class="{ off: isModelDisabled(p, m) }"
-                  >
-                    <span class="model-toggle-name">{{ m }}</span>
-                    <span
-                      v-if="m === p.default_model"
-                      class="model-toggle-default"
-                    >★</span>
-                    <span class="model-toggle-state">
-                      {{ isModelDisabled(p, m) ? t('settings.modelDisabled') : t('settings.modelEnabled') }}
-                    </span>
-                    <input
-                      type="checkbox"
-                      :checked="!isModelDisabled(p, m)"
-                      @change="toggleModelOnCard(p, m)"
-                    />
-                    <span class="model-toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
-              <p v-else class="helper-text">{{ t('settings.noModelsYet') }}</p>
-            </div>
-          </div>
-          <p v-else class="helper-text">{{ t('settings.noProviders') }}</p>
-
-          <div v-if="providerMsg" class="helper-text">{{ providerMsg }}</div>
-          <div v-if="fetchError && fetchSource" class="helper-text fetch-note">
-            {{ t('settings.fetchSource') }}:
-            {{ fetchSource === 'api' ? t('settings.fetchApi') : t('settings.fetchFallback') }}
-            <span v-if="fetchError"> — {{ fetchError }}</span>
-          </div>
-
-          <!-- Edit / add form -->
-          <div v-if="editingProvider" class="provider-edit card-inner">
-            <div class="field">
-              <label>{{ t('wizard.provider') }}</label>
-              <AppSelect v-model="editingProvider.provider" class="input" :aria-label="t('wizard.provider')" :options="PROVIDERS.map(p=>({value:p.id,label:t(`providers.${p.id}.name`,p.name)}))" @change="onEditProviderType" />
-            </div>
-            <div class="field">
-              <label>{{ t('settings.providerName') }}<span v-if="editingProvider.provider === 'custom'" style="color:var(--md-error);margin-left:2px">*</span></label>
-              <input v-model="editingProvider.name" :placeholder="t('settings.providerNamePlaceholder')" class="input" />
-              <p v-if="editingProvider.provider === 'custom'" class="helper-text">{{ t('settings.providerNameRequired') }}</p>
-            </div>
-            <div class="field">
-              <label>{{ t('wizard.apiKey') }}</label>
-              <input
-                type="password"
-                v-model="editingProvider.api_key"
-                :placeholder="t('wizard.apiKeyPlaceholder')"
-                class="input"
-              />
-            </div>
-            <div class="field">
-              <label>{{ t('wizard.baseUrl') }}</label>
-              <input
-                v-model="editingProvider.base_url"
-                :placeholder="t('wizard.baseUrlPlaceholder')"
-                class="input"
-              />
-            </div>
-            <div class="field">
-              <label>{{ t('settings.apiFormat') }}</label>
-              <AppSelect
-                v-model="editingProvider.format"
-                class="input"
-                :aria-label="t('settings.apiFormat')"
-                :options="FORMAT_OPTIONS"
-              />
-              <p class="helper-text">{{ t('settings.apiFormatHint') }}</p>
-            </div>
-            <div class="field">
-              <label>{{ t('settings.modelsCsv') }}</label>
-              <input
-                :value="editingProvider.models.join(', ')"
-                @input="editingProvider.models = parseModelsInput(($event.target as HTMLInputElement).value)"
-                placeholder="gpt-4o, gpt-4o-mini"
-                class="input"
-              />
-              <button class="btn btn-ghost" type="button" :disabled="isLoading" @click="autoFetchEditModels">
-                {{ isLoading ? t('wizard.fetching') : t('settings.fetchModels') }}
-              </button>
-              <p v-if="fetchSource" class="helper-text">
-                {{ t('settings.fetchSource') }}:
-                {{ fetchSource === 'api' ? t('settings.fetchApi') : t('settings.fetchFallback') }}
-              </p>
-            </div>
-            <div class="field" v-if="editingProvider.models.length">
-              <label>{{ t('settings.modelToggles') }}</label>
-              <div class="model-chip-card">
-                <div class="model-toggle-list">
-                  <label
-                    v-for="m in editingProvider.models"
-                    :key="m"
-                    class="model-toggle-row"
-                    :class="{ off: isModelDisabled(editingProvider, m) }"
-                  >
-                    <span class="model-toggle-name">{{ m }}</span>
-                    <span class="model-toggle-state">
-                      {{ isModelDisabled(editingProvider, m) ? t('settings.modelDisabled') : t('settings.modelEnabled') }}
-                    </span>
-                    <input
-                      type="checkbox"
-                      :checked="!isModelDisabled(editingProvider, m)"
-                      @change="toggleModelEnabled(editingProvider, m)"
-                    />
-                    <span class="model-toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
-            </div>
-            <div class="field">
-              <label>{{ t('wizard.defaultModel') }}</label>
-              <AppSelect v-model="editingProvider.default_model" class="input" :aria-label="t('wizard.defaultModel')" :options="editingProvider.models" />
-            </div>
-          <div class="actions-row">
-            <button class="btn btn-primary" type="button" :disabled="providerNameMissing" @click="saveProviderEdit">
-              {{ t('settings.save') }}
-            </button>
-            <button class="btn btn-ghost" type="button" @click="editingProvider = null">
-              {{ t('settings.cancel') }}
-            </button>
-          </div>
-          </div>
+        <!-- Provider (multi-provider) — dedicated panel -->
+        <template v-else-if="activeTab === 'provider'">
+          <ProviderPanel />
 
           <!-- mocr runtime knobs live under the provider section (merged) -->
           <div
             v-if="pluginSection('provider')?.fields?.length"
-            class="provider-runtime card-inner"
+            class="content-card provider-runtime"
           >
             <h3>{{ pluginSection('provider')!.label }}</h3>
             <p v-if="pluginSection('provider')!.description" class="helper-text">
@@ -819,16 +362,14 @@ function save() {
                 <p v-if="f.help" class="helper-text">{{ f.help }}</p>
               </template>
             </div>
-            <div v-if="sectionMsg && activeTab === 'provider'" class="helper-text">{{ sectionMsg }}</div>
+            <div v-if="sectionMsg" class="helper-text">{{ sectionMsg }}</div>
             <div class="actions-row">
               <button class="btn btn-primary" type="button" @click="saveSection('provider')">
                 {{ t('settings.save') }}
               </button>
             </div>
           </div>
-
-          <div v-if="error" class="error-message">{{ error }}</div>
-        </div>
+        </template>
 
         <!-- Persona (component pane — metadata may come from life.patch) -->
         <PersonaPanel v-else-if="activeTab === 'persona'" />
