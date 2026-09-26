@@ -680,7 +680,8 @@ class MinecraftTool(Tool):
             "Control a Minecraft companion bot on the user's server (Java via mineflayer, "
             "Bedrock via bedrock-protocol). Actions: connect, disconnect, status, chat, "
             "players, follow, goto, stop, look, dig, place, attack, inventory, use, "
-            "scan_blocks, scan_entities, skill_read, skill_list, "
+            "scan_blocks, scan_entities, scan_grid, plan_route, skill_read, skill_list, "
+            "task_status, task_stop, consent_reply, "
             "autopilot_start, autopilot_stop. With autopilot_start the bot plays by itself "
             "using AI decisions and can be stopped with autopilot_stop."
         )
@@ -690,7 +691,8 @@ class MinecraftTool(Tool):
             "action": {"type": "string", "enum": [
                 "connect", "disconnect", "status", "chat", "players", "follow", "goto",
                 "stop", "look", "dig", "place", "attack", "inventory", "use",
-                "scan_blocks", "scan_entities", "skill_read",
+                "scan_blocks", "scan_entities", "scan_grid", "plan_route",
+                "skill_read", "task_status", "task_stop", "consent_reply", "consent_status",
                 "autopilot_start", "autopilot_stop", "events",
                 "world", "waypoint_add", "waypoint_list", "waypoint_goto", "waypoint_remove",
                 "skill_save", "skill_run", "skill_list", "skill_remove"]},
@@ -708,6 +710,7 @@ class MinecraftTool(Tool):
             "radius": {"type": "integer"}, "count": {"type": "integer"},
             "id": {"type": "string"},
             "note": {"type": "string"}, "type": {"type": "string"}, "dimension": {"type": "string"},
+            "allow_dig": {"type": "boolean"}, "background": {"type": "boolean"}, "approve": {"type": "boolean"},
             "steps": {"type": "array", "items": {"type": "object"}},
         }}
 
