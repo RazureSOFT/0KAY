@@ -4,6 +4,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 const storedUrl = (() => { try { return localStorage.getItem('0kay.minecraft.url') || '' } catch { return '' } })()
 const serviceUrl = ref(storedUrl || `http://${location.hostname || '127.0.0.1'}:8765`)
 const status = ref(null)
+const world = ref({ waypoints: [], skills: [] })
 const error = ref('')
 const busy = ref(false)
 const showConnect = ref(false)
@@ -40,9 +41,17 @@ async function refresh() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     status.value = await res.json()
     error.value = ''
+    fetchWorld()
   } catch (e) {
     error.value = e?.message || 'unreachable'
   }
+}
+
+async function fetchWorld() {
+  try {
+    const res = await fetch(`${serviceUrl.value.replace(/\/$/, '')}/world`, { signal: AbortSignal.timeout(6000) })
+    if (res.ok) world.value = await res.json()
+  } catch { /* keep previous world snapshot */ }
 }
 
 async function act(action, args = {}) {
@@ -151,6 +160,30 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       </section>
 
       <section class="card">
+        <h2>记忆的地点 <span class="muted">{{ (world.waypoints || []).length }}</span></h2>
+        <ul class="players">
+          <li v-for="w in world.waypoints || []" :key="w.id">
+            <b>{{ w.name }}</b>
+            <span class="muted">{{ Math.round(w.x) }}, {{ Math.round(w.y) }}, {{ Math.round(w.z) }} · {{ w.type }}</span>
+            <button class="mini" :disabled="busy" @click="act('waypoint_goto', { name: w.name })">前往</button>
+          </li>
+          <li v-if="!(world.waypoints || []).length" class="muted">暂无，机器人会随游玩自动记录</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>学会的技能 <span class="muted">{{ (world.skills || []).length }}</span></h2>
+        <ul class="players">
+          <li v-for="s in world.skills || []" :key="s.id">
+            <b>{{ s.name }}</b>
+            <span class="muted">{{ (s.steps || []).length }} 步 · 用过 {{ s.runs || 0 }} 次</span>
+            <button class="mini" :disabled="busy" @click="act('skill_run', { name: s.name })">执行</button>
+          </li>
+          <li v-if="!(world.skills || []).length" class="muted">暂无，LIFE 会定期复盘并沉淀技能</li>
+        </ul>
+      </section>
+
+      <section class="card">
         <h2>物品栏 <span class="muted">快捷栏</span></h2>
         <div class="inv hotbar">
           <div v-for="s in hotbar" :key="s.slot" class="cell" :title="s.item ? `${itemLabel(s.item.name)} x${s.item.count}` : '空'">
@@ -207,6 +240,7 @@ dd { margin: 0; }
 .players { list-style: none; margin: 0; padding: 0; font-size: 13px; }
 .players li { display: flex; gap: 10px; align-items: center; padding: 3px 0; }
 .players li span:last-child { margin-left: auto; }
+.mini { padding: 2px 10px; font-size: 12px; margin-left: auto; }
 .inv { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; }
 .inv.hotbar { margin-bottom: 4px; }
 .cell { aspect-ratio: 1; border-radius: 8px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; justify-content: center; padding: 2px; overflow: hidden; }

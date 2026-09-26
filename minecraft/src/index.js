@@ -121,7 +121,12 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (req.method === 'GET' && path === '/status') {
-      send(res, 200, { ...controller.status(), pluginId: pluginHandle?.pluginId || null, settings: serverSettings });
+      const snapshot = await controller.status();
+      send(res, 200, { ...snapshot, pluginId: pluginHandle?.pluginId || null, settings: serverSettings });
+      return;
+    }
+    if (req.method === 'GET' && path === '/world') {
+      send(res, 200, await controller.worldSnapshot());
       return;
     }
     if (req.method === 'GET' && path === '/autopilot') {

@@ -526,7 +526,9 @@ class MinecraftTool(Tool):
             "action": {"type": "string", "enum": [
                 "connect", "disconnect", "status", "chat", "players", "follow", "goto",
                 "stop", "look", "dig", "place", "attack", "inventory", "use",
-                "autopilot_start", "autopilot_stop", "events"]},
+                "autopilot_start", "autopilot_stop", "events",
+                "world", "waypoint_add", "waypoint_list", "waypoint_goto", "waypoint_remove",
+                "skill_save", "skill_run", "skill_list", "skill_remove"]},
             "edition": {"type": "string", "enum": ["java", "bedrock"]},
             "host": {"type": "string"}, "port": {"type": "integer"},
             "username": {"type": "string"}, "version": {"type": "string"},
@@ -537,6 +539,10 @@ class MinecraftTool(Tool):
             "item": {"type": "string"}, "goal": {"type": "string"},
             "interval_ms": {"type": "integer"}, "model_id": {"type": "string"},
             "since": {"type": "integer"},
+            "name": {"type": "string"}, "id": {"type": "string"},
+            "x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"},
+            "note": {"type": "string"}, "type": {"type": "string"}, "dimension": {"type": "string"},
+            "steps": {"type": "array", "items": {"type": "object"}},
         }}
 
     async def execute(self, action: str = "", **kwargs) -> ToolResult:

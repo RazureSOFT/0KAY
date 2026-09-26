@@ -73,6 +73,7 @@ class LifeEngine:
         self.active_tasks = {}
         self.minecraft_cursor = 0
         self.minecraft_host = ""
+        self._minecraft_learned_at = None
         self._notifications = []
         self._completed_tasks = []
         self._histories = {}
@@ -1274,3 +1275,81 @@ class LifeEngine:
         cursor = result.data.get("cursor")
         if isinstance(cursor, int):
             self.minecraft_cursor = cursor
+
+    async def learn_from_minecraft(self):
+        """Periodically distil recent Minecraft experiences into notes and skills.
+
+        This is the "auto-learning" loop: every 30 minutes it reads Minecraft
+        memories, asks the model for a concise lesson plus an optional reusable
+        action skill, stores the lesson as a note/memory, and saves the skill to
+        the 0kay-minecraft service so the bot can replay it later.
+        """
+        if not self.tool_config.minecraft_enabled:
+            return
+        now = datetime.now()
+        if self._minecraft_learned_at and (now - self._minecraft_learned_at).total_seconds() < 1800:
+            return
+
+        def _recent():
+            return self.memory.recall("Minecraft 服务器 玩家 聊天 一起玩 挖矿 建筑", top_k=20, scope="")
+
+        try:
+            records = await asyncio.to_thread(_recent)
+        except Exception:
+            return
+        lines = []
+        for record in records:
+            tags = " ".join(getattr(record, "tags", []) or []).lower()
+            content = getattr(record, "content", "") or ""
+            if "minecraft" in tags or "Minecraft" in content:
+                lines.append(content)
+        lines = lines[-15:]
+        if len(lines) < 3:
+            return
+        self._minecraft_learned_at = now
+
+        system = (
+            "You distil a Minecraft companion bot's experiences into durable learning. "
+            "Return JSON only, no prose: "
+            '{"summary":"one or two sentences of lasting knowledge about the server/players",'
+            '"note_title":"short title","note_body":"a few markdown lines",'
+            '"skill":{"name":"short skill name","note":"when to use it",'
+            '"steps":[{"action":"goto|follow|chat|waypoint_goto|waypoint_add|dig|place","args":{},"waitMs":0}]}}'
+            " Use an empty skill name and empty steps when nothing reusable was learned."
+        )
+        try:
+            text = ""
+            model = self._model_for("think")
+            async for chunk in self.mocr.generate(model, [{"role": "user", "content": "\n".join(lines)}], system, max_tokens=800, temperature=0.4):
+                text += chunk
+            cleaned = text.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.strip("`")
+                if cleaned.startswith("json"):
+                    cleaned = cleaned[4:]
+            data = json.loads(cleaned[cleaned.index("{"): cleaned.rindex("}") + 1])
+        except Exception:
+            return
+
+        summary = str(data.get("summary") or "").strip()
+        if summary:
+            try:
+                await asyncio.to_thread(self.memory.remember, f"Minecraft 学习：{summary}", "", ["minecraft", "learned"], 0.6, "knowledge")
+            except Exception:
+                pass
+        title = str(data.get("note_title") or "").strip()
+        body = str(data.get("note_body") or "").strip()
+        if title and body:
+            try:
+                await asyncio.to_thread(self.memory.create_note, title, body, ["minecraft", "learned"], "public")
+            except Exception:
+                pass
+        skill = data.get("skill") if isinstance(data.get("skill"), dict) else {}
+        steps = skill.get("steps") if isinstance(skill.get("steps"), list) else []
+        if skill.get("name") and steps:
+            tool = self.tools.get("minecraft")
+            if tool is not None:
+                try:
+                    await tool.execute(action="skill_save", name=str(skill.get("name")), note=str(skill.get("note") or ""), steps=steps)
+                except Exception:
+                    pass

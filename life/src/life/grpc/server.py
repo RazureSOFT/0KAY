@@ -128,6 +128,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 count = await asyncio.to_thread(self.engine.sync_agents)
                 await self._refresh_settings()
                 await self.engine.poll_minecraft()
+                await self.engine.learn_from_minecraft()
                 await self.engine.task_records.flush()
                 self.engine.circadian.tick(0)
                 self.engine._save_state()

@@ -8,7 +8,7 @@
  * hammering the server.
  */
 
-const ALLOWED_ACTIONS = ['follow', 'goto', 'stop', 'look', 'dig', 'place', 'attack', 'chat', 'use', 'inventory'];
+const ALLOWED_ACTIONS = ['follow', 'goto', 'stop', 'look', 'dig', 'place', 'attack', 'chat', 'use', 'inventory', 'waypoint_add', 'waypoint_goto', 'skill_run'];
 
 const SYSTEM_PROMPT = `You are the brain of a Minecraft companion bot that plays alongside human players.
 Reply with exactly one JSON object and nothing else:
@@ -16,6 +16,8 @@ Reply with exactly one JSON object and nothing else:
 Rules:
 - Prefer social play: follow or look at players, and answer chat.
 - Only dig/place/attack when it clearly helps the shared goal; never grief other players' builds.
+- Use waypoint_goto with a known waypoint name to travel to a remembered place; use waypoint_add to remember a useful spot (name + x/y/z).
+- Use skill_run with a known skill name to replay a learned routine.
 - Keep "say" short (under 120 chars) and only when useful, not every tick.
 - If unsure, use {"action":"look","args":{"target":"nearest"},"say":""}.`;
 
@@ -123,7 +125,9 @@ export class Autopilot {
     const bot = this.controller.bot;
     if (this.editionMismatch(bot)) return;
 
-    const state = this.#stateSummary(bot);
+    await this.controller.captureWorld();
+    const world = await this.controller.worldSnapshot();
+    const state = this.#stateSummary(bot, world);
     const decision = await this.#decide(state);
     if (!decision) {
       this.#note('model returned no usable decision');
@@ -137,12 +141,12 @@ export class Autopilot {
     return bot?.state !== 'connected';
   }
 
-  #stateSummary(bot) {
+  #stateSummary(bot, world = { waypoints: [], skills: [] }) {
     const info = bot.describe();
     const recentChat = this.controller.chat.slice(-12).map((entry) => `${entry.username || 'system'}: ${entry.message}`);
     const mentioned = this.controller.chat.slice(-5).some((entry) =>
       (entry.message || '').includes(info.username) || /0kay|机器人|bot/i.test(entry.message || ''));
-    return { info, recentChat, mentioned, goal: this.goal };
+    return { info, recentChat, mentioned, goal: this.goal, world };
   }
 
   async #decide(state) {
@@ -152,6 +156,8 @@ export class Autopilot {
       `Bot username: ${state.info.username}`,
       `Health: ${state.info.health ?? 'unknown'}, Position: ${JSON.stringify(state.info.position)}`,
       `Players online: ${state.info.players?.map((p) => p.name).join(', ') || '(none)'}`,
+      `Known waypoints: ${(state.world?.waypoints || []).map((w) => `${w.name}(${Math.round(w.x)},${Math.round(w.y)},${Math.round(w.z)})`).join(', ') || '(none)'}`,
+      `Known skills: ${(state.world?.skills || []).map((s) => s.name).join(', ') || '(none)'}`,
       `You were mentioned recently: ${state.mentioned ? 'yes' : 'no'}`,
       'Recent chat (oldest first):',
       state.recentChat.join('\n') || '(none)',
