@@ -122,7 +122,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       <input v-model="form.host" placeholder="服务器地址，如 razure.ink" spellcheck="false" />
       <input v-model="form.port" placeholder="端口（Java 25565 / Bedrock 19132）" spellcheck="false" />
       <input v-model="form.username" placeholder="昵称" spellcheck="false" />
-      <input v-model="form.password" placeholder="服务器密码（可选，用于 /register /login）" spellcheck="false" />
+      <input v-model="form.password" placeholder="服务器密码（留空自动用 LIFE 记忆里的）" spellcheck="false" />
       <button class="primary" :disabled="busy || !form.host.trim()" @click="connect">连接</button>
     </section>
 

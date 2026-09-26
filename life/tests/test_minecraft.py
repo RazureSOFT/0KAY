@@ -1,13 +1,15 @@
 import asyncio
 import json
 import sys
+import tempfile
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from life.tools.tools import MinecraftTool, RuntimeToolConfig, create_default_registry
+from life.engine import LifeEngine
+from life.tools.tools import MinecraftTool, RuntimeToolConfig, ToolResult, create_default_registry
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -63,6 +65,31 @@ class MinecraftToolTests(unittest.TestCase):
     def test_registry_exposes_minecraft(self):
         registry = create_default_registry(config=RuntimeToolConfig())
         self.assertIsNotNone(registry.get("minecraft"))
+
+
+class MinecraftAutoLoginTests(unittest.TestCase):
+    def test_generated_password_is_remembered_and_reused(self):
+        class FakeTool:
+            def __init__(self):
+                self.calls = []
+
+            async def execute(self, **kwargs):
+                self.calls.append(kwargs)
+                if kwargs.get("action") == "connect":
+                    return ToolResult(True, {"generated_password": "pw-123", "host": kwargs.get("host")})
+                return ToolResult(True, {})
+
+        with tempfile.TemporaryDirectory() as directory:
+            engine = LifeEngine(directory)
+            engine.tool_config.minecraft_enabled = True
+            fake = FakeTool()
+            engine.tools.tools["minecraft"] = fake
+
+            asyncio.run(engine._call_minecraft({"action": "connect", "host": "srv:25565"}))
+            self.assertEqual(asyncio.run(engine._minecraft_password("srv:25565")), "pw-123")
+
+            asyncio.run(engine._call_minecraft({"action": "connect", "host": "srv:25565"}))
+            self.assertEqual(fake.calls[-1].get("password"), "pw-123")
 
 
 if __name__ == "__main__":

@@ -278,6 +278,8 @@ class LifeEngine:
                         self._save_state()
                 if result.success:
                     yield {"type": "task_started", "task_id": task_id}
+            elif name == "minecraft":
+                result = await self._call_minecraft(args)
             else:
                 result = await self.tools.call(name, **args)
             summaries.append(json.dumps({"tool": name, "success": result.success, "data": result.data, "error": result.error}, ensure_ascii=False))
@@ -1353,3 +1355,56 @@ class LifeEngine:
                     await tool.execute(action="skill_save", name=str(skill.get("name")), note=str(skill.get("note") or ""), steps=steps)
                 except Exception:
                     pass
+
+    async def _minecraft_password(self, host: str) -> str:
+        """Look up a remembered Minecraft server password (credential scope only)."""
+        if not host:
+            return ""
+
+        def _recall():
+            return self.memory.recall(f"Minecraft server {host} login password 登录密码", top_k=5, scope="credential")
+
+        try:
+            records = await asyncio.to_thread(_recall)
+        except Exception:
+            return ""
+        for record in records:
+            content = getattr(record, "content", "") or ""
+            tags = " ".join(getattr(record, "tags", []) or [])
+            if host not in content and host not in tags:
+                continue
+            match = re.search(r"(?:密码[：:]\s*|password[：:\s]+)(\S+)", content, flags=re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
+            parts = content.split()
+            if parts:
+                return parts[-1].strip()
+        return ""
+
+    async def _call_minecraft(self, args: dict):
+        """Wrap the minecraft tool: auto-fill the server password from memory on
+        connect, and remember any freshly generated password for next time."""
+        action = str(args.get("action") or "").lower()
+        host = str(args.get("host") or "").strip()
+        if action == "connect" and not args.get("password") and host:
+            remembered = await self._minecraft_password(host)
+            if remembered:
+                args["password"] = remembered
+        result = await self.tools.call("minecraft", **args)
+        if action == "connect" and getattr(result, "success", False) and isinstance(result.data, dict):
+            password = result.data.get("generated_password")
+            target = host or str(result.data.get("host") or "")
+            if password and target:
+                try:
+                    await asyncio.to_thread(
+                        self.memory.remember,
+                        f"Minecraft 服务器 {target} 登录密码：{password}",
+                        "该服务器的 /login 密码，供自动登录使用",
+                        ["minecraft", "credential", target],
+                        0.9,
+                        "credential",
+                        "credential",
+                    )
+                except Exception:
+                    pass
+        return result
