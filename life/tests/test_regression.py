@@ -30,6 +30,23 @@ class MemoryTests(unittest.TestCase):
             self.assertIn("future", ids)
             self.assertIn("none", ids)
 
+    def test_user_detail_aggregates_record_and_scoped_memory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            companion = CompanionSystem(directory)
+            memory = MemorySystem(directory)
+            memory.store("likes jazz", metadata={"scope": "session:u1"})
+            memory.store("someone else", metadata={"scope": "session:u2"})
+            companion.apply_relationship_event("u1", "k1", "chat", "private", 0.05)
+            companion.create_proactive_candidate("user:u1", "care", "hello")
+            detail = companion.user_detail("u1")
+            self.assertEqual(detail["relationship"]["user_id"], "u1")
+            self.assertEqual(detail["counts"]["ledger"], 1)
+            self.assertEqual(detail["counts"]["candidates"], 1)
+            page = memory.page_facts(scope="u1")
+            self.assertEqual(page["total"], 1)
+            self.assertEqual(page["items"][0]["content"], "likes jazz")
+            with self.assertRaises(ValueError): companion.user_detail("")
+
     def test_diary_date_lookup_includes_old_entries_and_orders_paragraphs(self):
         with tempfile.TemporaryDirectory() as directory:
             companion = CompanionSystem(directory)

@@ -367,7 +367,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 self.engine.acknowledge_notifications(str(payload.get('session_id') or ''),payload.get('ids') or [])
                 result={'ok':True}
             elif action == "memory_page":
-                result = await asyncio.to_thread(self.engine.memory.page_facts, payload.get("tier",""), payload.get("query",""), int(payload.get("limit",50)), int(payload.get("offset",0)), payload.get("sort","recent"))
+                result = await asyncio.to_thread(self.engine.memory.page_facts, payload.get("tier",""), payload.get("query",""), int(payload.get("limit",50)), int(payload.get("offset",0)), payload.get("sort","recent"), payload.get("scope",""))
             elif action == "memory_detail":
                 result = await asyncio.to_thread(self.engine.memory.get_fact, payload.get("id",""))
             elif action == "memory_reinforce":
@@ -437,6 +437,11 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await self.engine.maybe_daily_agenda(True)
             elif action == "agenda_advance":
                 result = await asyncio.to_thread(self.engine.companion.advance_agenda)
+            elif action == "user_detail":
+                user_id = str(payload.get("user_id") or "")
+                detail = await asyncio.to_thread(self.engine.companion.user_detail, user_id, int(payload.get("limit", 100)))
+                detail["memories"] = await asyncio.to_thread(self.engine.memory.page_facts, "", "", int(payload.get("memory_limit", 100)), 0, "recent", user_id)
+                result = detail
             else:
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))

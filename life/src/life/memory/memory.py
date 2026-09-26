@@ -814,11 +814,13 @@ class MemorySystem:
         }
 
     @synchronized
-    def page_facts(self, tier: str = "", query: str = "", limit: int = 50, offset: int = 0, sort: str = "recent") -> dict:
+    def page_facts(self, tier: str = "", query: str = "", limit: int = 50, offset: int = 0, sort: str = "recent", scope: str = "") -> dict:
         """Paged memory browse with full metadata for the dashboard."""
         pool = self.short_term.memories + self.long_term.memories
         if tier in ("short_term", "long_term"):
             pool = [m for m in pool if self._tier_of(m) == tier]
+        if scope:
+            pool = [m for m in pool if scope in str(m.metadata.get("scope", ""))]
         needle = (query or "").strip().lower()
         if needle:
             pool = [m for m in pool

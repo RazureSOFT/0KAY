@@ -25,7 +25,7 @@ async function loadDiary(day = diaryDate.value) {
   finally { diaryLoading.value = false }
 }
 function shiftDiary(dir: 'previous' | 'next') { const target = dir === 'previous' ? diary.value.previous : diary.value.next; if (target) void loadDiary(target) }
-const openLedger = ref(false); const openGroup = ref<string>('')
+const openGroup = ref<string>('')
 const proactiveForm = ref({ target: '', motive: '', content: '', preferred_at: '' })
 const policy = ref({ daily_limit: 6, per_target_limit: 2, quiet_start: 23, quiet_end: 8 })
 const groups = computed(() => Object.entries(data.value.groups || {}))
@@ -152,6 +152,24 @@ async function clearJournal(kind: 'journal' | 'dream') {  const ok = await confi
   flash('已清除')
 }
 function fmtTime(value?: string) { if (!value) return ''; const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString() }
+
+const selectedUser = ref('')
+const userSearch = ref('')
+const userStage = ref('')
+const detail = ref<any>(null)
+const detailLoading = ref(false)
+const detailTab = ref<'overview' | 'relationship' | 'proactive' | 'memory' | 'diagnostics'>('overview')
+const detailTabs = [{ key: 'overview', label: '概览' }, { key: 'relationship', label: '关系' }, { key: 'proactive', label: '主动' }, { key: 'memory', label: '记忆' }, { key: 'diagnostics', label: '诊断' }] as const
+const userStages = computed(() => Array.from(new Set((data.value.relationships || []).map((r: any) => r.stage).filter(Boolean))))
+const filteredUsers = computed(() => (data.value.relationships || []).filter((r: any) => (!userSearch.value || String(r.user_id).toLowerCase().includes(userSearch.value.toLowerCase())) && (!userStage.value || r.stage === userStage.value)))
+async function openUser(userId: string) {
+  selectedUser.value = userId; detailTab.value = 'overview'; detailLoading.value = true
+  const result = await act('user_detail', { user_id: userId, limit: 100, memory_limit: 100 })
+  detail.value = result || null
+  detailLoading.value = false
+}
+function closeUser() { selectedUser.value = ''; detail.value = null }
+async function deleteMemory(id: string) { await act('delete_memory', { id }); if (selectedUser.value) void openUser(selectedUser.value) }
 onMounted(load)
 </script>
 
@@ -263,26 +281,109 @@ onMounted(load)
     <h2 class="group-title">关系</h2>
     <div class="grid">
       <article class="card">
-        <div class="card-head"><h2 class="card-title">关系账本</h2><button class="btn btn-tonal btn-sm" @click="openLedger = !openLedger">{{ openLedger ? '隐藏事件' : '查看事件账本' }}</button></div>
-        <ul class="rel-list">
-          <li v-for="rel in data.relationships" :key="rel.user_id" class="rel">
-            <span class="avatar">{{ (rel.user_id || '?').slice(0, 1).toUpperCase() }}</span>
-            <div class="rel-main">
-              <div class="rel-top"><strong>{{ rel.user_id }}</strong><span class="chip">{{ rel.stage }}</span></div>
-              <div class="rel-meter"><div class="meter-bar"><i :style="{ width: relPct(rel.affinity) }"></i></div><b>{{ Math.round((rel.affinity || 0) * 100) }}%</b></div>
-              <span class="item-meta">最近互动：{{ rel.last_seen || '暂无' }}</span>
-            </div>
-            <div class="rel-actions"><button class="btn btn-sm btn-tonal" title="更亲近" @click="adjustRelationship(rel.user_id, 0.05)">+</button><button class="btn btn-sm btn-tonal" title="更疏远" @click="adjustRelationship(rel.user_id, -0.05)">−</button></div>
-          </li>
-          <li v-if="!data.relationships?.length" class="list-empty">暂无关系记录</li>
-        </ul>
-        <div v-if="openLedger" class="ledger">
-          <h3 class="section-label">事件账本（最近 {{ data.relationship_ledger?.length || 0 }} 条）</h3>
-          <ol class="feed">
-            <li v-for="event in data.relationship_ledger" :key="event.id"><time>{{ fmtTime(event.created_at) }}</time><p><strong>{{ event.user_id }}</strong> · {{ event.event_key }} <span :class="event.delta >= 0 ? 'pos' : 'neg'">{{ event.delta >= 0 ? '+' : '' }}{{ event.delta }}</span> · {{ event.reason }} ({{ event.channel }})</p></li>
-            <li v-if="!data.relationship_ledger?.length" class="list-empty plain">暂无关系事件</li>
-          </ol>
+        <div class="card-head">
+          <h2 class="card-title">{{ selectedUser ? '用户详情' : '用户' }}</h2>
+          <button v-if="selectedUser" class="btn btn-tonal btn-sm" @click="closeUser">← 返回用户列表</button>
+          <span v-else class="chip muted">{{ filteredUsers.length }} / {{ data.relationships?.length || 0 }}</span>
         </div>
+
+        <template v-if="!selectedUser">
+          <div class="user-tools">
+            <input v-model="userSearch" class="input" placeholder="搜索用户 ID" aria-label="搜索用户" />
+            <select v-model="userStage" class="input user-stage" aria-label="按阶段筛选">
+              <option value="">全部阶段</option>
+              <option v-for="s in userStages" :key="s" :value="s">{{ s }}</option>
+            </select>
+          </div>
+          <ul class="rel-list">
+            <li v-for="rel in filteredUsers" :key="rel.user_id" class="rel" @click="openUser(rel.user_id)">
+              <span class="avatar">{{ (rel.user_id || '?').slice(0, 1).toUpperCase() }}</span>
+              <div class="rel-main">
+                <div class="rel-top"><strong>{{ rel.user_id }}</strong><span class="chip">{{ rel.stage }}</span></div>
+                <div class="rel-meter"><div class="meter-bar"><i :style="{ width: relPct(rel.affinity) }"></i></div><b>{{ Math.round((rel.affinity || 0) * 100) }}%</b></div>
+                <span class="item-meta">最近互动：{{ rel.last_seen || '暂无' }}</span>
+              </div>
+              <span class="rel-chevron" aria-hidden="true">›</span>
+            </li>
+            <li v-if="!filteredUsers.length" class="list-empty">没有匹配的用户</li>
+          </ul>
+        </template>
+
+        <div v-else-if="detailLoading" class="list-empty">加载中…</div>
+
+        <template v-else-if="detail">
+          <div class="detail-head">
+            <span class="avatar">{{ (detail.user_id || '?').slice(0, 1).toUpperCase() }}</span>
+            <div class="rel-main"><strong>{{ detail.user_id }}</strong><span class="item-meta">阶段 {{ detail.relationship?.stage || '未知' }} · 好感 {{ Math.round((detail.relationship?.affinity || 0) * 100) }}% · 最近 {{ detail.relationship?.last_seen || '—' }}</span></div>
+          </div>
+          <nav class="tabs">
+            <button v-for="tab in detailTabs" :key="tab.key" class="tab" :class="{ active: detailTab === tab.key }" @click="detailTab = tab.key">{{ tab.label }}</button>
+          </nav>
+
+          <div v-if="detailTab === 'overview'" class="detail-body">
+            <div class="kv-grid">
+              <div class="kv"><span>关系事件</span><strong>{{ detail.counts?.ledger || 0 }}</strong></div>
+              <div class="kv"><span>主动候选</span><strong>{{ detail.counts?.candidates || 0 }}</strong></div>
+              <div class="kv"><span>已投递</span><strong>{{ detail.counts?.delivered || 0 }}</strong></div>
+              <div class="kv"><span>记忆条数</span><strong>{{ detail.memories?.total || 0 }}</strong></div>
+              <div class="kv"><span>阶段主动上限</span><strong>{{ detail.stage_limit ?? '不限' }}</strong></div>
+            </div>
+            <h3 class="section-label">最近关系事件</h3>
+            <ol class="feed compact">
+              <li v-for="e in (detail.ledger || []).slice(0, 5)" :key="e.id"><time>{{ fmtTime(e.created_at) }}</time><p>{{ e.event_key }} <span :class="e.delta >= 0 ? 'pos' : 'neg'">{{ e.delta >= 0 ? '+' : '' }}{{ e.delta }}</span> · {{ e.reason }}</p></li>
+              <li v-if="!(detail.ledger || []).length" class="list-empty plain">暂无关系事件</li>
+            </ol>
+          </div>
+
+          <div v-else-if="detailTab === 'relationship'" class="detail-body">
+            <div class="rel-meter big"><div class="meter-bar"><i :style="{ width: relPct(detail.relationship?.affinity) }"></i></div><b>{{ Math.round((detail.relationship?.affinity || 0) * 100) }}%</b></div>
+            <div class="rel-actions">
+              <button class="btn btn-tonal btn-sm" @click="adjustRelationship(detail.user_id, 0.05)">更亲近 +</button>
+              <button class="btn btn-tonal btn-sm" @click="adjustRelationship(detail.user_id, -0.05)">更疏远 −</button>
+            </div>
+            <h3 class="section-label">事件账本</h3>
+            <ol class="feed compact">
+              <li v-for="e in detail.ledger" :key="e.id"><time>{{ fmtTime(e.created_at) }}</time><p><strong>{{ e.event_key }}</strong> <span :class="e.delta >= 0 ? 'pos' : 'neg'">{{ e.delta >= 0 ? '+' : '' }}{{ e.delta }}</span> · {{ e.reason }} ({{ e.channel }})</p></li>
+              <li v-if="!(detail.ledger || []).length" class="list-empty plain">暂无关系事件</li>
+            </ol>
+          </div>
+
+          <div v-else-if="detailTab === 'proactive'" class="detail-body">
+            <h3 class="section-label">候选队列</h3>
+            <ul class="item-list">
+              <li v-for="c in (detail.proactive?.candidates || [])" :key="c.id" class="item">
+                <div class="item-main"><strong>{{ c.motive }}</strong><span class="item-meta">{{ c.content }}</span><span class="item-meta">{{ c.status }} · {{ fmtTime(c.updated_at) }}</span></div>
+                <div class="item-actions"><button v-if="!['delivered', 'cancelled'].includes(c.status)" class="btn btn-danger btn-sm" @click="cancelProactive(c.id)">取消</button></div>
+              </li>
+              <li v-if="!(detail.proactive?.candidates || []).length" class="list-empty">暂无主动记录</li>
+            </ul>
+            <h3 class="section-label">投递记录</h3>
+            <ol class="feed compact">
+              <li v-for="r in (detail.proactive?.receipts || [])" :key="r.id"><time>{{ fmtTime(r.created_at) }}</time><p>{{ r.phase }} · {{ r.content }}</p></li>
+              <li v-if="!(detail.proactive?.receipts || []).length" class="list-empty plain">暂无投递</li>
+            </ol>
+          </div>
+
+          <div v-else-if="detailTab === 'memory'" class="detail-body">
+            <ul class="item-list">
+              <li v-for="m in (detail.memories?.items || [])" :key="m.id" class="item">
+                <div class="item-main"><strong class="mem-text">{{ m.content }}</strong><span class="item-meta">scope {{ m.scope }} · 重要度 {{ Math.round((m.importance || 0) * 100) }}% · 召回 {{ m.recall_count }} 次</span></div>
+                <div class="item-actions"><button class="btn btn-danger btn-sm" @click="deleteMemory(m.id)">删除</button></div>
+              </li>
+              <li v-if="!(detail.memories?.items || []).length" class="list-empty">没有与该用户相关的记忆</li>
+            </ul>
+          </div>
+
+          <div v-else class="detail-body">
+            <ol class="timeline">
+              <li v-for="item in (detail.audit || [])" :key="item.id">
+                <span class="dot" :class="item.outcome === 'ok' ? 'ok' : 'warn'" aria-hidden="true"></span>
+                <div class="tl-body"><div class="tl-head"><strong>{{ item.kind }}</strong><span class="chip" :class="item.outcome === 'ok' ? 'chip-ok' : 'chip-warn'">{{ item.outcome }}</span><time>{{ fmtTime(item.created_at) }}</time></div><p class="item-meta">{{ item.target }}</p><p class="tl-detail">{{ item.detail }}</p></div>
+              </li>
+              <li v-if="!(detail.audit || []).length" class="list-empty plain">暂无诊断记录</li>
+            </ol>
+          </div>
+        </template>
       </article>
 
       <article class="card">
@@ -485,6 +586,23 @@ onMounted(load)
 .rel-meter b{font-size:12px}
 .rel-actions{display:flex;gap:4px}
 .ledger{margin-top:16px;border-top:1px solid var(--md-outline-variant);padding-top:12px}
+.user-tools{display:flex;gap:10px;margin-bottom:12px}
+.user-stage{width:130px;flex:0 0 auto}
+.rel{cursor:pointer}
+.rel-chevron{font-size:20px;color:var(--md-on-surface-variant);flex-shrink:0}
+.detail-head{display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--md-outline-variant);margin-bottom:12px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tab{height:32px;padding:0 14px;border:1px solid var(--md-outline-variant);border-radius:999px;background:transparent;color:var(--md-on-surface-variant);font:600 12.5px/1 inherit;cursor:pointer}
+.tab:hover{border-color:var(--md-primary)}
+.tab.active{background:var(--md-primary);color:var(--md-on-primary,#fff);border-color:transparent}
+.detail-body{display:flex;flex-direction:column;gap:6px}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.kv{background:var(--md-surface-container-low);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.kv span{font-size:12px;color:var(--md-on-surface-variant)}
+.kv strong{font-size:20px;font-weight:700}
+.rel-meter.big{margin:6px 0}
+.rel-meter.big b{font-size:15px}
+.mem-text{font-weight:500 !important;line-height:1.6}
 .book{border:1px solid var(--md-outline-variant);border-radius:14px;background:linear-gradient(180deg,var(--md-surface-container-lowest),var(--md-surface-container-low));padding:16px 18px}
 .book-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .book-date{width:auto;height:34px;flex:0 0 auto}

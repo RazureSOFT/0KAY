@@ -351,6 +351,35 @@ class CompanionSystem:
             agenda=rows("SELECT * FROM calendar_events WHERE start_at='' OR substr(replace(start_at,'T',' '),1,10)>=? ORDER BY start_at='' DESC, start_at ASC",(today,))
             return {"relationships":rows("SELECT * FROM relationship_accounts ORDER BY last_seen DESC"),"relationship_ledger":rows("SELECT * FROM relationship_ledger ORDER BY created_at DESC LIMIT 200"),"agenda":agenda,"calendar_candidates":rows("SELECT * FROM calendar_candidates ORDER BY created_at DESC"),"journal":rows("SELECT * FROM journal_entries WHERE kind='journal' ORDER BY created_at DESC LIMIT 50"),"dreams":rows("SELECT * FROM journal_entries WHERE kind='dream' ORDER BY created_at DESC LIMIT 50"),"audit":rows("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT 200"),"groups":groups,"persona_evolution":rows("SELECT * FROM persona_evolution WHERE status='confirmed' ORDER BY updated_at DESC"),"proactive":{"candidates":rows("SELECT * FROM proactive_candidates ORDER BY updated_at DESC LIMIT 100"),"receipts":rows("SELECT * FROM proactive_receipts ORDER BY created_at DESC LIMIT 100")},"important_dates":rows("SELECT * FROM important_dates ORDER BY date_text")}
 
+    def user_detail(self, user_id: str, limit: int = 100) -> dict[str,Any]:
+        """One user's whole companionship record: relationship, proactive, audit."""
+        user_id = (user_id or "").strip()
+        if not user_id:
+            raise ValueError("user_id is required")
+        size = max(1, min(int(limit), 300))
+        with self.db() as db:
+            rel = db.execute("SELECT * FROM relationship_accounts WHERE user_id=?", (user_id,)).fetchone()
+            ledger = [dict(r) for r in db.execute("SELECT * FROM relationship_ledger WHERE user_id=? ORDER BY created_at DESC LIMIT ?", (user_id, size)).fetchall()]
+            targets = (f"user:{user_id}", f"session:{user_id}")
+            candidates = [dict(r) for r in db.execute("SELECT * FROM proactive_candidates WHERE target IN (?,?) ORDER BY updated_at DESC LIMIT ?", (*targets, size)).fetchall()]
+            receipts = [dict(r) for r in db.execute("SELECT r.* FROM proactive_receipts r JOIN proactive_candidates c ON c.id=r.candidate_id WHERE c.target IN (?,?) ORDER BY r.created_at DESC LIMIT ?", (*targets, size)).fetchall()]
+            audits = [dict(r) for r in db.execute("SELECT * FROM audit_events WHERE target LIKE ? OR detail LIKE ? ORDER BY created_at DESC LIMIT 50", (f"%{user_id}%", f"%{user_id}%")).fetchall()]
+            counts = {
+                "ledger": db.execute("SELECT COUNT(*) FROM relationship_ledger WHERE user_id=?", (user_id,)).fetchone()[0],
+                "candidates": db.execute("SELECT COUNT(*) FROM proactive_candidates WHERE target IN (?,?)", (*targets,)).fetchone()[0],
+                "delivered": db.execute("SELECT COUNT(*) FROM proactive_receipts r JOIN proactive_candidates c ON c.id=r.candidate_id WHERE c.target IN (?,?) AND r.phase='delivered'", (*targets,)).fetchone()[0],
+            }
+        stage = (rel["stage"] if rel else "") or ""
+        return {
+            "user_id": user_id,
+            "relationship": dict(rel) if rel else None,
+            "stage_limit": self.STAGE_TARGET_LIMITS.get(stage),
+            "ledger": ledger,
+            "counts": counts,
+            "proactive": {"candidates": candidates, "receipts": receipts},
+            "audit": audits,
+        }
+
     def propose_persona_evolution(self, trait: str, value: str, evidence: str) -> dict[str,Any]:
         trait, value, evidence = trait.strip()[:80], value.strip()[:240], evidence.strip()[:1000]
         if not trait or not value: return {"status":"ignored"}
