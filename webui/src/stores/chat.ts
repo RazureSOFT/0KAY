@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, onScopeDispose } from 'vue'
 import { useWizardStore } from './wizard'
+import { useLifeStore } from './life'
 import { uid } from '../uid'
 
 export interface Message {
@@ -28,6 +29,8 @@ export const useChatStore = defineStore('chat', () => {
   const messages = ref<Message[]>([])
   const isConnected = ref(false)
   const isTyping = ref(false)
+  const unread = ref(0)
+  const chatVisible = ref(false)
   const currentTaskId = ref<string | null>(null)
   const lastUsage = ref<{
     prompt_tokens: number
@@ -85,12 +88,27 @@ export const useChatStore = defineStore('chat', () => {
           const response = await fetch(`/api/life/notifications?session_id=${encodeURIComponent(sessionId.value)}`)
           if (!response.ok) return
           const body = await response.json()
-          for (const notification of body.notifications || []) {
-            if(messages.value.some(message=>message.id===`notification_${notification.id}`))continue
-            messages.value.push({ id: `notification_${notification.id}`, role: 'assistant', content: notification.text, timestamp: new Date(notification.created_at || Date.now()) })
+          const incoming = body.notifications || []
+          if (!incoming.length) return
+          const lifeStore = useLifeStore()
+          let fresh = 0
+          for (const notification of incoming) {
+            if (messages.value.some((message) => message.id === `notification_${notification.id}`)) continue
+            // Surface proactive/task messages as the companion speaking face-to-face:
+            // same bubble treatment (emotion + energy) as a live reply.
+            messages.value.push({
+              id: `notification_${notification.id}`,
+              role: 'assistant',
+              content: notification.text,
+              timestamp: new Date(notification.created_at || Date.now()),
+              emotion: { ...lifeStore.emotion },
+              mentalEnergy: lifeStore.mentalEnergy,
+            })
+            fresh += 1
           }
-          if ((body.notifications || []).length) persistHistory()
-          if ((body.notifications || []).length) await fetch('/api/life/notifications',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sessionId.value,ids:body.notifications.map((item:any)=>item.id)})})
+          if (!chatVisible.value && fresh) unread.value += fresh
+          persistHistory()
+          await fetch('/api/life/notifications', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sessionId.value, ids: incoming.map((item: any) => item.id) }) })
         } catch { /* LIFE may be restarting */ }
       }, 4000)
     }
@@ -209,13 +227,9 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function handleTaskStarted(data: any) {
+    // Task dispatch is an internal event, not the companion speaking. Keep it
+    // out of the face-to-face conversation so only real speech appears there.
     currentTaskId.value = data.task_id
-    messages.value.push({
-      id: `msg_${++messageIdCounter}`,
-      role: 'assistant',
-      content: `Task started: ${data.task_id}`,
-      timestamp: new Date(),
-    })
   }
 
   function handleError(data: any) {
@@ -417,6 +431,14 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  /** Clear the unread badge (called when the conversation becomes visible). */
+  function markRead() { unread.value = 0 }
+
+  function setChatVisible(visible: boolean) {
+    chatVisible.value = visible
+    if (visible) unread.value = 0
+  }
+
   function clearMessages() {
     abortActiveSse()
     messages.value = []
@@ -449,6 +471,8 @@ export const useChatStore = defineStore('chat', () => {
     messages,
     isConnected,
     isTyping,
+    unread,
+    chatVisible,
     currentTaskId,
     lastUsage,
     contextTokens,
@@ -461,5 +485,7 @@ export const useChatStore = defineStore('chat', () => {
     clearMessages,
     compactContext,
     restoreHistory,
+    markRead,
+    setChatVisible,
   }
 })

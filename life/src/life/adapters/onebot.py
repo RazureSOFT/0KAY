@@ -25,6 +25,7 @@ class OneBotConfig:
     observe_group: bool = True
     observer: Callable | None = None
     recall_handler: Callable | None = None
+    should_reply: Callable | None = None
 
 
 class OneBotMessage:
@@ -144,9 +145,17 @@ class OneBotAdapter:
             await self.config.observer(str(msg.group_id), str(msg.user_id), content)
         keywords = tuple(k.lower() for k in self.config.trigger_keywords if k.strip())
         if msg.is_group:
-            # Group chats: speak only when mentioned or a trigger keyword hits; observe otherwise.
+            # Group chats: mention/keyword wakes; otherwise allow a natural continuation
+            # of a topic LIFE recently spoke about (via the should_reply callback).
             mentioned = self._is_mentioned(data, msg)
-            if not mentioned and not (keywords and any(keyword in content.lower() for keyword in keywords)):
+            keyword_hit = bool(keywords) and any(keyword in content.lower() for keyword in keywords)
+            allowed = mentioned or keyword_hit
+            if not allowed and self.config.should_reply:
+                try:
+                    allowed = bool(await self.config.should_reply(str(msg.group_id), str(msg.user_id), content, mentioned))
+                except Exception:
+                    allowed = False
+            if not allowed:
                 return
         elif keywords and not any(keyword in content.lower() for keyword in keywords):
             return

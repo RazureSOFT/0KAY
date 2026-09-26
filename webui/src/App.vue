@@ -52,6 +52,11 @@ function navBadge(item: { badgeFrom?: string; badge?: number | string | null; id
     const v = (life as any)[key]
     if (v !== undefined && v !== null && v !== '' && v !== 0) return v as number | string
   }
+  if (item.badgeFrom?.startsWith('chat.')) {
+    const key = item.badgeFrom.slice(5) as keyof typeof chat
+    const v = (chat as any)[key]
+    if (v !== undefined && v !== null && v !== '' && v !== 0) return v as number | string
+  }
   if (item.badge != null && item.badge !== '') return item.badge
   return null
 }

@@ -5,9 +5,11 @@ import ChatPanel from '../components/ChatPanel.vue'
 import StatusPanel from '../components/StatusPanel.vue'
 import Live2DStage from '../components/Live2DStage.vue'
 import { useUIPatchesStore } from '../stores/uiPatches'
+import { useChatStore } from '../stores/chat'
 
 const { t } = useI18n()
 const ui = useUIPatchesStore()
+const chat = useChatStore()
 const showStatus = ref(false)
 const isMobile = ref(false)
 
@@ -85,12 +87,14 @@ function checkMobile() {
 onMounted(() => {
   loadRatio()
   checkMobile()
+  chat.setChatVisible(true)
   window.addEventListener('resize', checkMobile)
   window.addEventListener('pointermove', onPointerMove)
   window.addEventListener('pointerup', onPointerUp)
 })
 
 onUnmounted(() => {
+  chat.setChatVisible(false)
   window.removeEventListener('resize', checkMobile)
   window.removeEventListener('pointermove', onPointerMove)
   window.removeEventListener('pointerup', onPointerUp)

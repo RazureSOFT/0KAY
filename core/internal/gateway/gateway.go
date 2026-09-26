@@ -23,7 +23,9 @@ import (
 
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 )
 
 // Gateway is the HTTP API gateway.
@@ -96,6 +98,60 @@ func (g *Gateway) dial(address string) (*grpc.ClientConn, error) {
 	}
 	g.conns[address] = connection
 	return connection, nil
+}
+
+// lifeClient returns the first registered LIFE plugin's client.
+func (g *Gateway) lifeClient() (lifev1.LifeServiceClient, bool) {
+	lifes := g.registry.GetPluginsByCapability("life")
+	if len(lifes) == 0 || lifes[0].Address == "" {
+		return nil, false
+	}
+	conn, err := g.dial(lifes[0].Address)
+	if err != nil {
+		return nil, false
+	}
+	return lifev1.NewLifeServiceClient(conn), true
+}
+
+// isTransientLifeError reports dial/availability failures worth retrying.
+func isTransientLifeError(err error) bool {
+	if err == nil {
+		return false
+	}
+	switch status.Code(err) {
+	case codes.Unavailable, codes.DeadlineExceeded, codes.ResourceExhausted:
+		return true
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "connection refused") ||
+		strings.Contains(msg, "actively refused") ||
+		strings.Contains(msg, "Unavailable")
+}
+
+// lifeCall retries transient dial failures so a short LIFE restart is not
+// surfaced to the WebUI as a hard error. Non-transient errors return at once.
+func (g *Gateway) lifeCall(ctx context.Context, fn func(lifev1.LifeServiceClient) error) error {
+	var last error
+	for attempt := 0; attempt < 3; attempt++ {
+		client, ok := g.lifeClient()
+		if !ok {
+			last = fmt.Errorf("life unavailable")
+		} else {
+			last = fn(client)
+			if last == nil {
+				return nil
+			}
+			if !isTransientLifeError(last) {
+				return last
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return last
+		case <-time.After(time.Duration(200*(1<<attempt)) * time.Millisecond):
+		}
+	}
+	return last
 }
 
 // NewGateway creates a new HTTP gateway.
@@ -669,17 +725,7 @@ func (g *Gateway) handleLifeNotifications(w http.ResponseWriter, r *http.Request
 		http.Error(w, "method not allowed", 405)
 		return
 	}
-	lifes := g.registry.GetPluginsByCapability("life")
-	if len(lifes) == 0 || lifes[0].Address == "" {
-		http.Error(w, "LIFE is unavailable", http.StatusServiceUnavailable)
-		return
-	}
-	conn, err := g.dial(lifes[0].Address)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
-		return
-	}
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 6*time.Second)
 	defer cancel()
 	if r.Method == "POST" {
 		var body struct {
@@ -691,8 +737,12 @@ func (g *Gateway) handleLifeNotifications(w http.ResponseWriter, r *http.Request
 			return
 		}
 		payload, _ := json.Marshal(body)
-		response, err := lifev1.NewLifeServiceClient(conn).ManageCompanion(ctx, &lifev1.ManageCompanionRequest{Action: "ack_notifications", PayloadJson: string(payload)})
-		if err != nil || !response.GetOk() {
+		var response *lifev1.ManageCompanionResponse
+		if err := g.lifeCall(ctx, func(client lifev1.LifeServiceClient) error {
+			var callErr error
+			response, callErr = client.ManageCompanion(ctx, &lifev1.ManageCompanionRequest{Action: "ack_notifications", PayloadJson: string(payload)})
+			return callErr
+		}); err != nil || !response.GetOk() {
 			http.Error(w, "notification acknowledgement failed", 502)
 			return
 		}
@@ -700,8 +750,12 @@ func (g *Gateway) handleLifeNotifications(w http.ResponseWriter, r *http.Request
 		fmt.Fprint(w, `{"ok":true}`)
 		return
 	}
-	resp, err := lifev1.NewLifeServiceClient(conn).GetNotifications(ctx, &lifev1.GetNotificationsRequest{SessionId: r.URL.Query().Get("session_id")})
-	if err != nil {
+	var resp *lifev1.GetNotificationsResponse
+	if err := g.lifeCall(ctx, func(client lifev1.LifeServiceClient) error {
+		var callErr error
+		resp, callErr = client.GetNotifications(ctx, &lifev1.GetNotificationsRequest{SessionId: r.URL.Query().Get("session_id")})
+		return callErr
+	}); err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
@@ -1011,22 +1065,15 @@ func (g *Gateway) handleLifeMemories(w http.ResponseWriter, r *http.Request) {
 
 // handleLifeCompanion proxies LIFE-owned companion dashboards and actions.
 func (g *Gateway) handleLifeCompanion(w http.ResponseWriter, r *http.Request) {
-	lifes := g.registry.GetPluginsByCapability("life")
-	if len(lifes) == 0 || lifes[0].Address == "" {
-		http.Error(w, "life unavailable", http.StatusServiceUnavailable)
-		return
-	}
-	conn, err := g.dial(lifes[0].Address)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
-		return
-	}
-	client := lifev1.NewLifeServiceClient(conn)
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
 	defer cancel()
 	if r.Method == http.MethodGet {
-		resp, err := client.GetCompanion(ctx, &lifev1.GetCompanionRequest{})
-		if err != nil {
+		var resp *lifev1.GetCompanionResponse
+		if err := g.lifeCall(ctx, func(client lifev1.LifeServiceClient) error {
+			var callErr error
+			resp, callErr = client.GetCompanion(ctx, &lifev1.GetCompanionRequest{})
+			return callErr
+		}); err != nil {
 			http.Error(w, err.Error(), http.StatusBadGateway)
 			return
 		}
@@ -1047,8 +1094,12 @@ func (g *Gateway) handleLifeCompanion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	payload, _ := json.Marshal(body.Payload)
-	resp, err := client.ManageCompanion(ctx, &lifev1.ManageCompanionRequest{Action: body.Action, PayloadJson: string(payload)})
-	if err != nil {
+	var resp *lifev1.ManageCompanionResponse
+	if err := g.lifeCall(ctx, func(client lifev1.LifeServiceClient) error {
+		var callErr error
+		resp, callErr = client.ManageCompanion(ctx, &lifev1.ManageCompanionRequest{Action: body.Action, PayloadJson: string(payload)})
+		return callErr
+	}); err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}

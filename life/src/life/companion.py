@@ -65,6 +65,8 @@ class CompanionSystem:
             CREATE TABLE IF NOT EXISTS group_observations (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, user_id TEXT NOT NULL, kind TEXT NOT NULL, content TEXT, audience TEXT NOT NULL DEFAULT 'group', created_at TEXT NOT NULL, expires_at TEXT);
             CREATE TABLE IF NOT EXISTS group_topics (group_id TEXT NOT NULL, topic TEXT NOT NULL, score REAL NOT NULL DEFAULT 0, updated_at TEXT NOT NULL, PRIMARY KEY(group_id,topic));
             CREATE TABLE IF NOT EXISTS group_threads (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, topic TEXT NOT NULL, score REAL NOT NULL DEFAULT 1, status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(group_id,topic));
+            CREATE TABLE IF NOT EXISTS group_bot_state (group_id TEXT PRIMARY KEY, last_spoke TEXT, last_topic TEXT);
+            CREATE TABLE IF NOT EXISTS daily_reviews (id TEXT PRIMARY KEY, date TEXT NOT NULL, summary TEXT NOT NULL, findings TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL, UNIQUE(date));
             CREATE TABLE IF NOT EXISTS journal_entries (id TEXT PRIMARY KEY, kind TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS audit_events (id TEXT PRIMARY KEY, trace_id TEXT, kind TEXT NOT NULL, target TEXT, outcome TEXT NOT NULL, detail TEXT, created_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -88,6 +90,82 @@ class CompanionSystem:
             """)
             for key, value in {"proactive_daily_limit":"3", "proactive_target_limit":"1", "quiet_start":"23", "quiet_end":"8"}.items():
                 db.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", (key,value))
+            self._migrate(db)
+
+    DB_SCHEMA_VERSION = 1
+
+    def _migrate(self, db) -> None:
+        """Versioned schema migration; CREATE TABLE IF NOT EXISTS covers new tables."""
+        current = int(db.execute("PRAGMA user_version").fetchone()[0] or 0)
+        if current >= self.DB_SCHEMA_VERSION:
+            return
+        # Hot-path indexes for the dashboard's filtered reads.
+        db.executescript("""
+        CREATE INDEX IF NOT EXISTS idx_journal_kind_day ON journal_entries(kind, created_at);
+        CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_events(created_at);
+        CREATE INDEX IF NOT EXISTS idx_receipts_created ON proactive_receipts(created_at);
+        CREATE INDEX IF NOT EXISTS idx_timeline_created ON bot_timeline(created_at);
+        CREATE INDEX IF NOT EXISTS idx_ledger_user ON relationship_ledger(user_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_topics_open ON unfinished_topics(user_id, status);
+        """)
+        db.execute(f"PRAGMA user_version={int(self.DB_SCHEMA_VERSION)}")
+
+    def backup(self, keep: int = 7) -> dict[str,Any]:
+        """Consistent copy of the companion DB; prunes to the newest `keep` files."""
+        backups = self.path.parent / "backups"
+        backups.mkdir(parents=True, exist_ok=True)
+        target = backups / f"companion-{datetime.now().strftime('%Y%m%d-%H%M%S')}.db"
+        try:
+            source = sqlite3.connect(self.path)
+            destination = sqlite3.connect(target)
+            with destination:
+                source.backup(destination)
+            source.close(); destination.close()
+        except Exception as error:
+            return {"backup": "", "error": str(error)}
+        for old in sorted(backups.glob("companion-*.db"))[:-max(1, keep)]:
+            try:
+                old.unlink()
+            except OSError:
+                pass
+        return {"backup": str(target)}
+
+    def backup_if_due(self, keep: int = 7) -> dict[str,Any]:
+        today = date.today().isoformat()
+        with self.db() as db:
+            if self._setting(db, "last_backup_date", "") == today:
+                return {"skipped": "done"}
+        result = self.backup(keep=keep)
+        with self.db() as db:
+            db.execute("INSERT INTO settings(key,value) VALUES('last_backup_date',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (today,))
+        return result
+
+    def journal_count_for_day(self, day: str, kind: str = "journal") -> int:
+        with self.db() as db:
+            return db.execute("SELECT COUNT(*) FROM journal_entries WHERE kind=? AND substr(created_at,1,10)=?", (kind, day)).fetchone()[0]
+
+    def proactive_delivered_count(self, day: str) -> int:
+        with self.db() as db:
+            return db.execute("SELECT COUNT(*) FROM proactive_receipts WHERE phase='delivered' AND created_at LIKE ?", (f"{day}%",)).fetchone()[0]
+
+    def digests_count(self, day: str) -> int:
+        with self.db() as db:
+            return db.execute("SELECT COUNT(*) FROM content_digests WHERE substr(created_at,1,10)=?", (day,)).fetchone()[0]
+
+    def save_daily_review(self, day: str, summary: str, findings: list[dict]) -> dict[str,Any]:
+        item = {"id": new_id("review"), "date": day, "summary": summary[:2000],
+                "findings": json.dumps(findings or [], ensure_ascii=False), "created_at": now()}
+        with self.db() as db:
+            db.execute("INSERT INTO daily_reviews VALUES(?,?,?,?,?) ON CONFLICT(date) DO UPDATE SET "
+                       "summary=excluded.summary, findings=excluded.findings, created_at=excluded.created_at",
+                       (item["id"], item["date"], item["summary"], item["findings"], item["created_at"]))
+            row = dict(db.execute("SELECT * FROM daily_reviews WHERE date=?", (day,)).fetchone())
+        return row
+
+    def list_daily_reviews(self, limit: int = 14) -> list[dict[str,Any]]:
+        with self.db() as db:
+            return [dict(r) for r in db.execute(
+                "SELECT * FROM daily_reviews ORDER BY date DESC LIMIT ?", (max(1, min(int(limit), 60)),)).fetchall()]
 
     def audit(self, kind: str, detail: str, target: str = "", outcome: str = "ok", trace_id: str = "") -> None:
         with self.db() as db: db.execute("INSERT INTO audit_events VALUES(?,?,?,?,?,?,?)", (new_id("audit"), trace_id, kind, target, outcome, detail[:4000], now()))
@@ -130,11 +208,23 @@ class CompanionSystem:
         return self.apply_relationship_event(user_id, f"message:{hash((user_id,message,datetime.now().strftime('%Y%m%d%H%M')))}", "message_sentiment", "group" if is_group else "private", delta)
 
     # Calendar / continuity domain ---------------------------------------
-    def add_agenda(self, title: str, when: str = "", detail: str = "", kind: str = "persona_soft_activity") -> dict[str,Any]:
-        candidate = {"id":new_id("cal_candidate"),"title":title[:160],"when":when,"detail":detail[:2000],"kind":kind,"status":"pending_confirmation","created_at":now()}
+    def add_agenda(self, title: str, when: str = "", detail: str = "", kind: str = "persona_soft_activity", auto_confirm: bool = True) -> dict[str,Any]:
+        """Add an agenda item. Confirmed immediately by default — no manual step."""
+        title = (title or "").strip()[:160]
+        if not title:
+            return {"status": "ignored"}
+        candidate = {"id":new_id("cal_candidate"),"title":title,"when":when,"detail":detail[:2000],"kind":kind,"status":"pending_confirmation","created_at":now()}
         with self.db() as db:
             db.execute("INSERT INTO calendar_candidates VALUES(?,?,?,?,?,?,?,?,?,?)", (candidate["id"],candidate["title"],when,detail,kind,candidate["status"],None,candidate["created_at"],(datetime.now()+timedelta(days=7)).isoformat(),1))
-        self.audit("calendar_candidate", title, candidate["id"])
+            if auto_confirm:
+                event_id = new_id("calendar")
+                db.execute("INSERT INTO calendar_events VALUES(?,?,?,?,?,?,?,?,?,?)", (event_id,candidate["id"],title,when,detail,kind,"active",1,now(),now()))
+                db.execute("UPDATE calendar_candidates SET status='confirmed', revision=revision+1 WHERE id=?", (candidate["id"],))
+                candidate["status"] = "confirmed"
+                candidate["event_id"] = event_id
+                self._audit_tx(db, "calendar_confirm", title, event_id)
+            else:
+                self._audit_tx(db, "calendar_candidate", title, candidate["id"])
         return candidate
 
     def confirm_agenda(self, candidate_id: str, accept: bool) -> dict[str,Any]:
@@ -175,7 +265,7 @@ class CompanionSystem:
                         "env_timezone": "Asia/Shanghai", "env_city": "", "env_latitude": "", "env_longitude": "",
                         "enable_environment_fetch": "0", "weather_cache_minutes": "60",
                         "enable_content_fetch": "0", "news_feeds": "", "content_items_per_feed": "3",
-                        "tts_endpoint": ""}
+                        "tts_endpoint": "", "proactive_tts": "0"}
 
     SCHEMA_VERSION = 2
     # key -> (kind, spec). kind: int/float/bool/choice/json/text
@@ -196,7 +286,7 @@ class CompanionSystem:
         "env_timezone": ("text", None), "env_city": ("text", None),
         "env_latitude": ("float", (-90.0, 90.0)), "env_longitude": ("float", (-180.0, 180.0)),
         "enable_content_fetch": ("bool", None), "content_items_per_feed": ("int", (1, 20)),
-        "news_feeds": ("text", None), "tts_endpoint": ("text", None),
+        "news_feeds": ("text", None), "tts_endpoint": ("text", None), "proactive_tts": ("bool", None),
     }
     LOCALE_CHOICES = ("zh-CN", "en-US")
     BOOL_VALUES = {"1", "0", "true", "false", "yes", "no", "on", "off"}
@@ -838,6 +928,35 @@ class CompanionSystem:
         label = "热闹" if mood >= 0.3 else "有点低沉" if mood <= -0.3 else "平稳"
         return {"group_id": group_id, "mood": round(mood, 3), "label": label, "threads": threads, "recent": recent}
 
+    def note_group_bot_spoke(self, group_id: str, topic_text: str = "") -> None:
+        """Remember that LIFE just spoke in a group, and about what (for continuation)."""
+        group_id = str(group_id or "").strip()
+        if not group_id:
+            return
+        topic = " ".join(self.group_terms(topic_text)[:6])
+        with self.db() as db:
+            db.execute("INSERT INTO group_bot_state(group_id,last_spoke,last_topic) VALUES(?,?,?) "
+                       "ON CONFLICT(group_id) DO UPDATE SET last_spoke=excluded.last_spoke, last_topic=excluded.last_topic",
+                       (group_id, now(), topic))
+
+    def group_should_continue(self, group_id: str, message: str, window_minutes: int = 6) -> bool:
+        """Natural continuation: still on a topic LIFE recently spoke about."""
+        group_id = str(group_id or "").strip()
+        if not group_id:
+            return False
+        with self.db() as db:
+            row = db.execute("SELECT last_spoke,last_topic FROM group_bot_state WHERE group_id=?", (group_id,)).fetchone()
+        if not row or not row["last_spoke"]:
+            return False
+        try:
+            if (datetime.now() - datetime.fromisoformat(row["last_spoke"])).total_seconds() > window_minutes * 60:
+                return False
+        except ValueError:
+            return False
+        previous = {term for term in str(row["last_topic"] or "").split() if term}
+        current = set(self.group_terms(message))
+        return bool(previous & current)
+
     def group_interest_match(self, group_id: str, interests: list[str]) -> list[str]:
         """Active threads matching LIFE's own interests (world/skills keywords)."""
         wanted = [str(item).strip().lower() for item in (interests or []) if str(item).strip()]
@@ -1142,6 +1261,57 @@ class CompanionSystem:
         snapshot["version"] = self.SCHEMA_VERSION
         return snapshot
 
+    FULL_TABLES = (
+        ("relationships", "relationship_accounts",
+         ("user_id", "affinity", "stage", "interaction", "notes", "last_seen", "revision")),
+        ("open_topics", "unfinished_topics",
+         ("id", "user_id", "topic", "status", "created_at", "updated_at")),
+        ("portraits", "user_portraits", ("user_id", "summary", "traits", "updated_at")),
+        ("timeline", "bot_timeline", ("id", "topic", "summary", "detail", "created_at")),
+        ("digests", "content_digests", ("id", "kind", "source", "title", "summary", "url", "created_at")),
+        ("reviews", "daily_reviews", ("id", "date", "summary", "findings", "created_at")),
+        ("journal", "journal_entries", ("id", "kind", "content", "created_at")),
+    )
+
+    def export_all(self) -> dict[str,Any]:
+        """Full companion export: config + relationships + topics + timeline + journals."""
+        snapshot = self.export_config()
+        with self.db() as db:
+            for key, table, _cols in self.FULL_TABLES:
+                snapshot[key] = [dict(row) for row in db.execute(f"SELECT * FROM {table}").fetchall()]
+        snapshot["scope"] = "all"
+        return snapshot
+
+    def import_all(self, snapshot: dict[str,Any]) -> dict[str,Any]:
+        """Merge a full export. Existing rows win (INSERT OR IGNORE)."""
+        if not isinstance(snapshot, dict):
+            raise ValueError("import payload must be an object")
+        self.import_config(snapshot)
+        applied: dict[str, int] = {}
+        with self.db() as db:
+            for key, table, cols in self.FULL_TABLES:
+                count = 0
+                for item in snapshot.get(key) or []:
+                    if not isinstance(item, dict):
+                        continue
+                    values = []
+                    for column in cols:
+                        value = item.get(column)
+                        if column == "id" and not value:
+                            value = new_id(key)
+                        if column in ("created_at", "updated_at") and not value:
+                            value = now()
+                        values.append(value)
+                    try:
+                        db.execute(
+                            f"INSERT OR IGNORE INTO {table}({','.join(cols)}) VALUES({','.join('?' for _ in cols)})",
+                            tuple(values))
+                        count += 1
+                    except Exception:
+                        continue
+                applied[key] = count
+        return {"applied": applied}
+
     def diagnostics(self) -> dict[str,Any]:
         locale = self.get_settings().get("locale", "zh-CN")
         with self.db() as db:
@@ -1265,7 +1435,7 @@ class CompanionSystem:
             groups={row["group_id"]:{"mood":row["mood"],"topics":rows("SELECT topic,score FROM group_topics WHERE group_id=? ORDER BY score DESC LIMIT 12",(row["group_id"],)),"threads":rows("SELECT topic,score,status FROM group_threads WHERE group_id=? AND status='active' ORDER BY score DESC LIMIT 12",(row["group_id"],)),"messages":rows("SELECT user_id,content,created_at FROM group_observations WHERE group_id=? ORDER BY created_at DESC LIMIT 20",(row["group_id"],))} for row in db.execute("SELECT * FROM group_scenes").fetchall()}
             # Only today and upcoming events: yesterday's schedule is not shown or reused.
             agenda=rows("SELECT * FROM calendar_events WHERE start_at='' OR substr(replace(start_at,'T',' '),1,10)>=? ORDER BY start_at='' DESC, start_at ASC",(today,))
-            return {"relationships":rows("SELECT * FROM relationship_accounts ORDER BY last_seen DESC"),"relationship_ledger":rows("SELECT * FROM relationship_ledger ORDER BY created_at DESC LIMIT 200"),"agenda":agenda,"calendar_candidates":rows("SELECT * FROM calendar_candidates ORDER BY created_at DESC"),"journal":rows("SELECT * FROM journal_entries WHERE kind='journal' ORDER BY created_at DESC LIMIT 50"),"dreams":rows("SELECT * FROM journal_entries WHERE kind='dream' ORDER BY created_at DESC LIMIT 50"),"audit":rows("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT 200"),"groups":groups,"persona_evolution":rows("SELECT * FROM persona_evolution WHERE status='confirmed' ORDER BY updated_at DESC"),"proactive":{"candidates":rows("SELECT * FROM proactive_candidates ORDER BY updated_at DESC LIMIT 100"),"receipts":rows("SELECT * FROM proactive_receipts ORDER BY created_at DESC LIMIT 100")},"important_dates":rows("SELECT * FROM important_dates ORDER BY date_text"),"goals":rows("SELECT * FROM personal_goals ORDER BY updated_at DESC"),"food":rows("SELECT * FROM food_menu ORDER BY created_at DESC"),"word_cloud":rows("SELECT topic, SUM(score) AS score FROM group_topics GROUP BY topic ORDER BY score DESC LIMIT 60"),"skills":rows("SELECT * FROM skills ORDER BY level DESC, updated_at DESC"),"expressions":rows("SELECT * FROM expressions ORDER BY created_at DESC LIMIT 300"),"social_nodes":rows("SELECT * FROM social_nodes ORDER BY updated_at DESC"),"social_edges":rows("SELECT * FROM social_edges ORDER BY created_at DESC"),"settings":{r["key"]: r["value"] for r in db.execute("SELECT key,value FROM settings").fetchall()},"world":rows("SELECT * FROM world_knowledge ORDER BY kind, updated_at DESC"),"timeline":rows("SELECT * FROM bot_timeline ORDER BY created_at DESC LIMIT 100"),"open_topics":rows("SELECT * FROM unfinished_topics WHERE status='open' ORDER BY updated_at DESC LIMIT 100"),"portraits":rows("SELECT * FROM user_portraits ORDER BY updated_at DESC")}
+            return {"relationships":rows("SELECT * FROM relationship_accounts ORDER BY last_seen DESC"),"relationship_ledger":rows("SELECT * FROM relationship_ledger ORDER BY created_at DESC LIMIT 200"),"agenda":agenda,"calendar_candidates":rows("SELECT * FROM calendar_candidates ORDER BY created_at DESC"),"journal":rows("SELECT * FROM journal_entries WHERE kind='journal' ORDER BY created_at DESC LIMIT 50"),"dreams":rows("SELECT * FROM journal_entries WHERE kind='dream' ORDER BY created_at DESC LIMIT 50"),"audit":rows("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT 200"),"groups":groups,"persona_evolution":rows("SELECT * FROM persona_evolution WHERE status='confirmed' ORDER BY updated_at DESC"),"proactive":{"candidates":rows("SELECT * FROM proactive_candidates ORDER BY updated_at DESC LIMIT 100"),"receipts":rows("SELECT * FROM proactive_receipts ORDER BY created_at DESC LIMIT 100")},"important_dates":rows("SELECT * FROM important_dates ORDER BY date_text"),"goals":rows("SELECT * FROM personal_goals ORDER BY updated_at DESC"),"food":rows("SELECT * FROM food_menu ORDER BY created_at DESC"),"word_cloud":rows("SELECT topic, SUM(score) AS score FROM group_topics GROUP BY topic ORDER BY score DESC LIMIT 60"),"skills":rows("SELECT * FROM skills ORDER BY level DESC, updated_at DESC"),"expressions":rows("SELECT * FROM expressions ORDER BY created_at DESC LIMIT 300"),"social_nodes":rows("SELECT * FROM social_nodes ORDER BY updated_at DESC"),"social_edges":rows("SELECT * FROM social_edges ORDER BY created_at DESC"),"settings":{r["key"]: r["value"] for r in db.execute("SELECT key,value FROM settings").fetchall()},"world":rows("SELECT * FROM world_knowledge ORDER BY kind, updated_at DESC"),"timeline":rows("SELECT * FROM bot_timeline ORDER BY created_at DESC LIMIT 100"),"open_topics":rows("SELECT * FROM unfinished_topics WHERE status='open' ORDER BY updated_at DESC LIMIT 100"),"portraits":rows("SELECT * FROM user_portraits ORDER BY updated_at DESC"),"reviews":rows("SELECT * FROM daily_reviews ORDER BY date DESC LIMIT 14")}
 
     def user_detail(self, user_id: str, limit: int = 100) -> dict[str,Any]:
         """One user's whole companionship record: relationship, proactive, audit."""

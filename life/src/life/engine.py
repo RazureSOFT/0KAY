@@ -85,6 +85,7 @@ class LifeEngine:
         self._last_dream_date = ""
         self._last_dream_key = ""
         self._last_agenda_date = ""
+        self._last_review_date = ""
         self._state_path = Path(self.data_dir) / "state.json"
         self._load_state()
 
@@ -124,6 +125,7 @@ class LifeEngine:
         self._last_dream_date = data.get("last_dream_date", "")
         self._last_dream_key = data.get("last_dream_key", "")
         self._last_agenda_date = data.get("last_agenda_date", "")
+        self._last_review_date = data.get("last_review_date", "")
 
     def _save_state(self):
         self._state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -131,7 +133,8 @@ class LifeEngine:
         temporary.write_text(json.dumps({"emotion": self.emotion.state.to_dict(), "circadian": self.circadian.to_dict(),
             "active_tasks": self.active_tasks, "notifications": self._notifications, "completed_tasks": self._completed_tasks,
             "histories": self._histories, "last_diary_date": self._last_diary_date, "last_dream_date": self._last_dream_date,
-            "last_dream_key": self._last_dream_key, "last_agenda_date": self._last_agenda_date}, ensure_ascii=False), encoding="utf-8")
+            "last_dream_key": self._last_dream_key, "last_agenda_date": self._last_agenda_date,
+            "last_review_date": self._last_review_date}, ensure_ascii=False), encoding="utf-8")
         temporary.replace(self._state_path)
 
     @staticmethod
@@ -319,6 +322,12 @@ class LifeEngine:
             pass
         self.usage.record(self._model_for("think"), task="conversation")
         self.usage.record(self._model_for("output"), task="conversation")
+        if turn.adapter_type == "onebot_group":
+            try:
+                group_id = str(turn.session_id).rsplit("_", 1)[-1]
+                await asyncio.to_thread(self.companion.note_group_bot_spoke, group_id, message)
+            except Exception:
+                pass
         # Durable memory comes from extracted key points in _reflect, not the raw turn.
         await asyncio.to_thread(self.memory.enqueue_reflection, turn.session_id, message, response)
         self._save_state()
@@ -581,6 +590,10 @@ class LifeEngine:
         except Exception:
             pass
         try:
+            await asyncio.to_thread(self.companion.backup_if_due)
+        except Exception:
+            pass
+        try:
             await self.environment.weather()
         except Exception:
             pass
@@ -606,6 +619,41 @@ class LifeEngine:
         if result:
             self._save_state()
         return result
+
+    async def run_daily_review(self, force: bool = False) -> dict:
+        """Deterministic end-of-day review of the most recently completed day."""
+        now = datetime.now()
+        target = (now.date() - timedelta(days=1)).isoformat() if now.hour < 12 else now.date().isoformat()
+        if not force and self._last_review_date == target:
+            return {"skipped": "done", "date": target}
+        try:
+            agenda = await asyncio.to_thread(self.companion.agenda_for_day, target)
+            journals = await asyncio.to_thread(self.companion.journal_count_for_day, target, "journal")
+            dreams = await asyncio.to_thread(self.companion.journal_count_for_day, target, "dream")
+            delivered = await asyncio.to_thread(self.companion.proactive_delivered_count, target)
+            digests = await asyncio.to_thread(self.companion.digests_count, target)
+        except Exception as error:
+            await asyncio.to_thread(self.companion.audit, "daily_review", str(error), "", "failed")
+            return {"error": str(error)}
+        completed = sum(1 for item in agenda if item.get("status") == "completed")
+        findings: list[dict] = []
+        if not journals:
+            findings.append({"level": "warn", "title": "缺少日记", "detail": f"{target} 没有生成日记"})
+        if journals > 1:
+            findings.append({"level": "warn", "title": "日记偏多", "detail": f"{target} 有 {journals} 篇日记"})
+        if not dreams:
+            findings.append({"level": "info", "title": "缺少梦境", "detail": f"{target} 没有梦境记录"})
+        unfulfilled = [item for item in agenda if item.get("status") == "active"]
+        if unfulfilled:
+            findings.append({"level": "info", "title": "未推进日程",
+                             "detail": f"{len(unfulfilled)} 项日程未完成：" + "、".join(str(item.get("title")) for item in unfulfilled[:3])})
+        summary = (f"{target} 复盘：日程 {completed}/{len(agenda)}，日记 {journals}，梦境 {dreams}，"
+                   f"主动投递 {delivered}，见闻 {digests}。")
+        report = await asyncio.to_thread(self.companion.save_daily_review, target, summary, findings)
+        await asyncio.to_thread(self.companion.timeline_add, "复盘", summary[:120], "")
+        self._last_review_date = target
+        self._save_state()
+        return {"date": target, "summary": summary, "findings": findings, "report": report}
 
     async def maybe_daily_agenda(self, force: bool = False) -> dict:
         """Let LIFE plan its own day: auto-create today's soft-activity agenda (once per day)."""
@@ -642,9 +690,9 @@ class LifeEngine:
             title = str(item.get("title") or "").strip()
             if not title:
                 continue
+            # add_agenda confirms immediately by default, so no confirmation step.
             candidate = await asyncio.to_thread(self.companion.add_agenda, title[:120], str(item.get("when") or ""), str(item.get("detail") or "")[:300], "persona_soft_activity")
-            if candidate and candidate.get("id"):
-                await asyncio.to_thread(self.companion.confirm_agenda, candidate["id"], True)
+            if candidate and candidate.get("id") and candidate.get("status") != "ignored":
                 created += 1
         self._last_agenda_date = today
         await asyncio.to_thread(self.companion.audit, "daily_agenda", f"created={created}", "", "ok")
@@ -806,6 +854,51 @@ class LifeEngine:
             await asyncio.to_thread(self.companion.timeline_add, "见闻", str(item.get("title"))[:80], str(item.get("summary"))[:160])
         return {"stored": len(collected.get("items") or []), "feeds": collected.get("feeds", 0)}
 
+    def group_should_reply(self, group_id: str, user_id: str, message: str, mentioned: bool = False) -> bool:
+        """Whether LIFE speaks in a group without a mention (natural continuation)."""
+        if mentioned:
+            return True
+        try:
+            return bool(self.companion.group_should_continue(group_id, message))
+        except Exception:
+            return False
+
+    def _onebot_adapter(self):
+        manager = getattr(self, "onebot", None)
+        adapters = getattr(manager, "adapters", None)
+        if not adapters:
+            return None
+        return next(iter(adapters.values()))
+
+    async def send_media(self, kind: str, target: str, payload: dict | None = None) -> dict:
+        """Send optional outbound media through OneBot (fail-closed when unavailable)."""
+        payload = payload or {}
+        adapter = self._onebot_adapter()
+        if adapter is None:
+            return {"ok": False, "reason": "onebot unavailable"}
+        user_id = self._target_user_id(target)
+        group_id = self._target_group_id(target)
+        try:
+            if kind == "tts":
+                await adapter.send_tts(str(payload.get("text") or ""), user_id=user_id, group_id=group_id)
+            elif kind == "image":
+                await adapter.send_image(str(payload.get("file") or ""), user_id=user_id, group_id=group_id)
+            elif kind == "poke":
+                if user_id is None:
+                    return {"ok": False, "reason": "poke requires a user target"}
+                await adapter.send_poke(user_id, group_id=group_id)
+            elif kind == "status":
+                await adapter.set_status(int(payload.get("status") or 0), int(payload.get("battery") or 100))
+            else:
+                return {"ok": False, "reason": f"unknown media kind: {kind}"}
+        except Exception as error:
+            return {"ok": False, "reason": str(error)}
+        try:
+            await asyncio.to_thread(self.companion.timeline_add, "媒体", f"{kind} → {target}", str(payload)[:120])
+        except Exception:
+            pass
+        return {"ok": True, "kind": kind, "target": target}
+
     async def group_wake_tick(self) -> dict:
         """Interest wake: interject into a group thread matching LIFE's own interests."""
         if getattr(self.circadian.state, "is_sleeping", False):
@@ -834,6 +927,7 @@ class LifeEngine:
             content = await self.generate_companion_text("proactive", hint=f"群里正在聊「{matches[0]}」，自然地接一句")
             if content:
                 await asyncio.to_thread(self.companion.create_proactive_candidate, target, "group_interest", content)
+                await asyncio.to_thread(self.companion.note_group_bot_spoke, group_id, matches[0])
                 proposed += 1
         return {"proposed": proposed}
 
@@ -876,9 +970,14 @@ class LifeEngine:
                       if c.get("status") == "candidate" and self._proactive_due(c, now)]
         candidates.sort(key=lambda c: str(c.get("preferred_at") or ""))
         try:
-            min_interval = int((await asyncio.to_thread(self.companion.get_settings)).get("min_interval_minutes", "5"))
+            settings = await asyncio.to_thread(self.companion.get_settings)
         except Exception:
+            settings = {}
+        try:
+            min_interval = int(settings.get("min_interval_minutes", "5"))
+        except (TypeError, ValueError):
             min_interval = 5
+        tts_on = str(settings.get("proactive_tts", "0")) == "1"
         last = await asyncio.to_thread(self.companion.last_delivery_at)
         if last and (now - last).total_seconds() < max(0, min_interval) * 60:
             return {"skipped": "min_interval", "delivered": 0, "blocked": 0, "candidates": len(candidates)}
@@ -923,6 +1022,9 @@ class LifeEngine:
                 await asyncio.to_thread(self.push_notification, "", reviewed)
             await asyncio.to_thread(self.companion.mark_proactive_delivered, candidate_id, reviewed)
             await asyncio.to_thread(self.companion.timeline_add, "主动", f"主动联系 {target}", reviewed[:80])
+            # Optional voice for the same outreach (CQ TTS through OneBot).
+            if tts_on and (user_id is not None or group_id is not None) and self._onebot_adapter() is not None and len(reviewed) <= 60:
+                await self.send_media("tts", target, {"text": reviewed})
             delivered += 1
         return {"delivered": delivered, "blocked": blocked, "candidates": len(candidates)}
 

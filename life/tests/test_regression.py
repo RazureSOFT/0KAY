@@ -205,7 +205,10 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result.success)
         candidates = self.engine.companion.snapshot()["calendar_candidates"]
         self.assertEqual(candidates[0]["title"], "散步")
-        self.assertEqual(candidates[0]["status"], "pending_confirmation")
+        # Agenda is confirmed immediately: no manual confirmation step.
+        self.assertEqual(candidates[0]["status"], "confirmed")
+        events = self.engine.companion.agenda_for_day("2026-09-27")
+        self.assertTrue(any(event["title"] == "散步" for event in events))
 
     async def asyncSetUp(self):
         self.directory = tempfile.TemporaryDirectory()

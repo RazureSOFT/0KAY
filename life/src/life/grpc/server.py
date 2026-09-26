@@ -17,6 +17,7 @@ from plugin.v1 import plugin_pb2
 
 from ..engine import LifeEngine
 from ..core_client import get_core_client
+from ..logging_setup import setup_logging
 
 
 class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
@@ -56,6 +57,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
 
             manager = OneBotManager(message_handler)
             self._onebot_manager = manager
+            self.engine.onebot = manager
             manager.add_adapter(
                 "primary",
                 OneBotConfig(
@@ -66,6 +68,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                     bot_names=tuple(n.strip() for n in str(values.get("onebot_bot_names") or "").split(",") if n.strip()),
                     observe_group=values.get("onebot_observe_group") is not False,
                     observer=lambda group_id, user_id, message: asyncio.to_thread(self.engine.companion.observe_group, group_id, user_id, message),
+                    should_reply=lambda group_id, user_id, message, mentioned: asyncio.to_thread(self.engine.group_should_reply, group_id, user_id, message, mentioned),
+                    recall_handler=lambda session_id, user_id, note, adapter_type: asyncio.to_thread(self.engine.companion.timeline_add, "撤回", note[:80], ""),
                 ),
             )
             self.engine.tool_config.onebot_sender = manager.send_message
@@ -77,6 +81,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             if self._onebot_manager:
                 await self._onebot_manager.stop_all()
             self.engine.tool_config.onebot_sender = None
+            self.engine.onebot = None
             self._onebot_started = False
 
     async def _life_settings(self) -> dict:
@@ -244,6 +249,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                     await self.engine.content_tick()
                     await self.engine.outfit_tick()
                     await self.engine.maybe_daily_entries()
+                    await self.engine.run_daily_review()
                 except Exception as e:
                     print(f"[LIFE] autonomy cycle error: {e}")
             try:
@@ -335,7 +341,10 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             snapshot = await asyncio.to_thread(self.engine.companion.snapshot)
             rhythm = self.engine.circadian.to_dict()
             snapshot["circadian"] = {key: rhythm[key] for key in ("sleep_hour", "wake_hour", "observed_days", "is_sleeping", "mental_energy", "hunger", "health")}
+            snapshot["emotion"] = self.engine.emotion.state.to_dict()
             snapshot["policy"] = await asyncio.to_thread(self.engine.companion.get_policy)
+            # Known conversations the panel can target directly (session:<id>).
+            snapshot["conversations"] = list(self.engine._histories.keys())[-20:]
             return life_pb2.GetCompanionResponse(json=json.dumps(snapshot, ensure_ascii=False))
         except Exception as e:
             context.set_code(grpc.StatusCode.INTERNAL)
@@ -464,6 +473,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = {"timeline": await asyncio.to_thread(self.engine.companion.timeline_list, int(payload.get("limit",50)), payload.get("topic",""))}
             elif action == "open_topic_list":
                 result = {"topics": await asyncio.to_thread(self.engine.companion.list_open_topics, payload.get("user_id",""), int(payload.get("limit",10)))}
+            elif action == "open_topic_add":
+                result = {"added": await asyncio.to_thread(self.engine.companion.record_open_topics, payload.get("user_id",""), [payload.get("topic","")])}
             elif action == "open_topic_resolve":
                 result = {"resolved": await asyncio.to_thread(self.engine.companion.resolve_open_topics, payload.get("user_id",""), payload.get("topics") or None)}
             elif action == "portrait_get":
@@ -512,6 +523,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await asyncio.to_thread(self.engine.companion.add_skill, payload.get("name",""), payload.get("category","general"), int(payload.get("level",1)), payload.get("keywords",""), payload.get("aliases",""), payload.get("note",""))
             elif action == "skill_update":
                 result = await asyncio.to_thread(self.engine.companion.update_skill, payload.get("id",""), payload.get("level"), payload.get("keywords"), payload.get("aliases"), payload.get("note"), payload.get("category"))
+            elif action == "skill_grow":
+                result = await asyncio.to_thread(self.engine.companion.grow_skill, payload.get("name",""), int(payload.get("delta",1)))
             elif action == "skill_delete":
                 result = await asyncio.to_thread(self.engine.companion.delete_skill, payload.get("id",""))
             elif action == "skill_list":
@@ -542,8 +555,16 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await asyncio.to_thread(self.engine.companion.export_config)
             elif action == "config_import":
                 result = await asyncio.to_thread(self.engine.companion.import_config, payload.get("snapshot") or {})
+            elif action == "export_all":
+                result = await asyncio.to_thread(self.engine.companion.export_all)
+            elif action == "import_all":
+                result = await asyncio.to_thread(self.engine.companion.import_all, payload.get("snapshot") or {})
             elif action == "diagnostics":
                 result = await asyncio.to_thread(self.engine.companion.diagnostics)
+            elif action == "daily_review":
+                result = await self.engine.run_daily_review(True)
+            elif action == "daily_review_list":
+                result = {"reviews": await asyncio.to_thread(self.engine.companion.list_daily_reviews, int(payload.get("limit", 14)))}
             elif action == "audit_query":
                 result = await asyncio.to_thread(self.engine.companion.audit_query, payload.get("kind",""), payload.get("outcome",""),
                                                  payload.get("target",""), int(payload.get("limit",100)), int(payload.get("offset",0)))
@@ -553,6 +574,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = {"extensions": self.engine.extension_status()}
             elif action == "media_status":
                 result = {"tts": self.engine.media.has_tts()}
+            elif action == "send_media":
+                result = await self.engine.send_media(str(payload.get("kind","")), str(payload.get("target","")), payload)
             elif action == "usage_summary":
                 result = self.engine.get_usage()
             elif action == "usage_record":
@@ -564,6 +587,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = {"routes": self.engine.apply_model_routes(payload.get("routes") if "routes" in payload else payload)}
             elif action == "config_migrate":
                 result = await asyncio.to_thread(self.engine.companion.migrate_config, payload.get("snapshot") or {})
+            elif action == "backup_now":
+                result = await asyncio.to_thread(self.engine.companion.backup)
             elif action == "world_list":
                 result = {"world": await asyncio.to_thread(self.engine.companion.list_world_knowledge, payload.get("kind",""))}
             elif action == "world_upsert":
@@ -594,11 +619,18 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
 
 async def serve(mocr_address: str = None):
     """Start the L.I.F.E gRPC server."""
+    data_dir = os.environ.get("LIFE_DATA_DIR", "./data/life")
+    log = setup_logging(data_dir)
     port = os.environ.get("LIFE_GRPC_PORT", "50053")
+    log.info("starting LIFE gRPC server on :%s (data_dir=%s)", port, data_dir)
 
     server = aio.server()
 
-    servicer = LifeServiceServicer(mocr_address=mocr_address)
+    try:
+        servicer = LifeServiceServicer(mocr_address=mocr_address)
+    except Exception:
+        log.exception("LIFE failed during initialization")
+        raise
     life_pb2_grpc.add_LifeServiceServicer_to_server(servicer, server)
 
     # Set life address on core client so Core can call us back
@@ -607,17 +639,19 @@ async def serve(mocr_address: str = None):
 
     server.add_insecure_port(f"{os.getenv('LIFE_BIND_HOST', '127.0.0.1')}:{port}")
     await server.start()
+    log.info("LIFE gRPC listening on %s:%s (core=%s, mocr=%s)",
+             os.getenv("LIFE_BIND_HOST", "127.0.0.1"), port, core.address, mocr_address)
 
     # Start background tasks (register with Core, heartbeat, sync agents)
-    await servicer.start_background_tasks()
-
-    print(f"L.I.F.E gRPC server starting on :{port}")
-    print(f"Connected to mocr at: {mocr_address}")
-    print(f"Core at: {core.address}")
+    try:
+        await servicer.start_background_tasks()
+    except Exception:
+        log.exception("LIFE background tasks failed to start")
 
     try:
         await server.wait_for_termination()
     finally:
+        log.info("LIFE shutting down")
         for task in (servicer._sync_task, servicer._onebot_task):
             if task:
                 task.cancel()

@@ -278,6 +278,7 @@
         "label": "对话",
         "labelKey": "nav.chat",
         "icon": "chat",
+        "badgeFrom": "chat.unread",
         "order": 10
       }
     }
