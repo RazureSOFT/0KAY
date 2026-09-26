@@ -131,7 +131,8 @@ func pmInstalledPluginList() []InstalledPlugin {
 	}
 	var state struct {
 		Installed map[string]struct {
-			Repository string `json:"repository"`
+			Repository     string `json:"repository"`
+			RepositoryRoot string `json:"repositoryRoot"`
 		} `json:"installed"`
 	}
 	if json.Unmarshal(raw, &state) != nil {
@@ -139,9 +140,77 @@ func pmInstalledPluginList() []InstalledPlugin {
 	}
 	out := make([]InstalledPlugin, 0, len(state.Installed))
 	for name, record := range state.Installed {
-		out = append(out, InstalledPlugin{Name: name, Repository: record.Repository, Source: "pm"})
+		repository := record.Repository
+		if repository == "" {
+			repository = gitRemoteURL(record.RepositoryRoot)
+		}
+		if repository == "" {
+			repository = packageRepository(record.RepositoryRoot)
+		}
+		out = append(out, InstalledPlugin{Name: name, Repository: repository, Source: "pm"})
 	}
 	return out
+}
+
+// packageRepository resolves a repository URL from an installed package's
+// manifest.json or package.json when 0kay-pm recorded none (source installs).
+func packageRepository(root string) string {
+	if strings.TrimSpace(root) == "" {
+		return ""
+	}
+	for _, name := range []string{"manifest.json", "package.json"} {
+		raw, err := os.ReadFile(filepath.Join(root, name))
+		if err != nil {
+			continue
+		}
+		var meta struct {
+			Repository any `json:"repository"`
+		}
+		if json.Unmarshal(raw, &meta) != nil {
+			continue
+		}
+		switch value := meta.Repository.(type) {
+		case string:
+			if strings.TrimSpace(value) != "" {
+				return value
+			}
+		case map[string]any:
+			if url, _ := value["url"].(string); strings.TrimSpace(url) != "" {
+				return url
+			}
+		}
+	}
+	return ""
+}
+
+// gitRemoteURL reads the origin remote URL from a checkout's .git/config so
+// packages installed from a source checkout still expose a repository link.
+func gitRemoteURL(dir string) string {
+	if strings.TrimSpace(dir) == "" {
+		return ""
+	}
+	repo := gitRepoFor(dir)
+	raw, err := os.ReadFile(filepath.Join(repo, ".git", "config"))
+	if err != nil {
+		return ""
+	}
+	inOrigin := false
+	for _, line := range strings.Split(string(raw), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "[") {
+			inOrigin = trimmed == `[remote "origin"]`
+			continue
+		}
+		if !inOrigin {
+			continue
+		}
+		if idx := strings.Index(trimmed, "url"); idx == 0 {
+			if eq := strings.Index(trimmed, "="); eq >= 0 {
+				return strings.TrimSpace(trimmed[eq+1:])
+			}
+		}
+	}
+	return ""
 }
 
 // sourceInstalledPluginList reports platform packages present in the local
@@ -178,9 +247,12 @@ func InstalledPlugins() []InstalledPlugin {
 		}
 	}
 	// Platform packages are never removable, even if 0kay-pm has a record.
-	for name := range platformComponents {
+	for name, component := range platformComponents {
 		if plugin, ok := merged[name]; ok {
 			plugin.Source = "platform"
+			if plugin.Repository == "" {
+				plugin.Repository = component.Repository
+			}
 			merged[name] = plugin
 		}
 	}
