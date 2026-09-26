@@ -64,6 +64,11 @@ async function act(action: string, payload: any) {
     await load(); return await r.json().catch(() => ({}))
   } catch (e: any) { error.value = e?.message || '操作失败'; return null }
 }
+async function query(action: string, payload: any) {
+  const r = await fetch('/api/life/companion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, payload }) })
+  if (!r.ok) throw Error(await r.text())
+  return await r.json().catch(() => ({}))
+}
 async function addAgenda() { if (!agendaTitle.value.trim()) return; await act('add_agenda', { title: agendaTitle.value, when: agendaWhen.value, detail: agendaDetail.value }); agendaTitle.value = ''; agendaWhen.value = ''; agendaDetail.value = '' }
 async function addEntry(kind: 'journal' | 'dream', content: string) { if (!content.trim()) return; await act(kind, { content }); if (kind === 'journal') journal.value = ''; else dream.value = '' }
 function relPct(v: number) { return `${Math.round(Math.max(0, Math.min(1, v || 0)) * 100)}%` }
@@ -197,7 +202,7 @@ const calendarCells = computed(() => {
   }
   return cells
 })
-async function loadCalendar() { const result = await act('calendar_month', { month: month.value }); if (result) calendar.value = result }
+async function loadCalendar() { try { const result = await query('calendar_month', { month: month.value }); if (result) calendar.value = result } catch { /* calendar is optional */ } }
 function shiftMonth(delta: number) {
   const [y, m] = month.value.split('-').map(Number)
   const d = new Date(y, m - 1 + delta, 1)
@@ -215,7 +220,7 @@ const groupForm = ref({ group_id: '', policy: 'observe', alias: '' })
 const groupSlang = ref<Record<string, any[]>>({})
 const groupMembers = ref<Record<string, any[]>>({})
 const slangForm = ref<Record<string, string>>({})
-async function loadGroups() { const r = await act('group_list', {}); if (r) registry.value = r.groups || [] }
+async function loadGroups() { try { const r = await query('group_list', {}); registry.value = r.groups || [] } catch { /* groups are optional */ } }
 async function addGroup() { if (!groupForm.value.group_id.trim()) return; await act('group_upsert', { ...groupForm.value }); groupForm.value = { group_id: '', policy: 'observe', alias: '' } }
 async function removeGroup(id: string) { await act('group_delete', { group_id: id }); if (openGroup.value === id) openGroup.value = '' }
 async function setPolicy(g: any, e: Event) { const policy = (e.target as HTMLSelectElement).value; await act('group_upsert', { group_id: g.group_id, policy, alias: g.alias || '', note: g.note || '' }) }
