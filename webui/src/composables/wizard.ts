@@ -103,11 +103,12 @@ export const PROVIDERS: Provider[] = [
 ]
 
 export const WIZARD_STEPS = [
-  { id: 1, title: 'Welcome', description: 'Welcome to 0kay' },
-  { id: 2, title: 'Provider', description: 'Select AI provider' },
-  { id: 3, title: 'API Key', description: 'Configure API key & URL' },
-  { id: 4, title: 'Models', description: 'Select models' },
-  { id: 5, title: 'Persona', description: 'Create your persona' },
-  { id: 6, title: 'Live2D', description: 'Optional Live2D setup' },
-  { id: 7, title: 'Complete', description: 'Finish setup' },
+  { id: 1, title: 'Language', description: 'Choose your language' },
+  { id: 2, title: 'Welcome', description: 'Welcome to 0kay' },
+  { id: 3, title: 'Provider', description: 'Select AI provider' },
+  { id: 4, title: 'API Key', description: 'Configure API key & URL' },
+  { id: 5, title: 'Models', description: 'Select models' },
+  { id: 6, title: 'Persona', description: 'Create your persona' },
+  { id: 7, title: 'Live2D', description: 'Optional Live2D setup' },
+  { id: 8, title: 'Complete', description: 'Finish setup' },
 ]

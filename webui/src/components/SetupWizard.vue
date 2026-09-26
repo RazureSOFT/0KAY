@@ -4,20 +4,28 @@ import { useI18n } from 'vue-i18n'
 import { useWizardStore } from '../stores/wizard'
 import AppSelect from './AppSelect.vue'
 import { PROVIDERS, WIZARD_STEPS } from '../composables/wizard'
+import { LOCALES, setLanguage, getLanguage } from '../i18n'
 
 const { t } = useI18n()
 const wizard = useWizardStore()
-const emit = defineEmits<{ complete: []; language: [] }>()
+const emit = defineEmits<{ complete: [] }>()
 
-const STEP_KEY = ['welcome', 'selectProvider', 'apiConfig', 'selectModels', 'createPersona', 'live2d', 'complete']
+const STEP_KEY = ['chooseLanguage', 'welcome', 'selectProvider', 'apiConfig', 'selectModels', 'createPersona', 'live2d', 'complete']
 const ICONS: Record<number, string> = {
-  1: 'M4 11l8-7 8 7v8a2 2 0 0 1-2 2h-4v-6H10v6H6a2 2 0 0 1-2-2z',
-  2: 'M7 18a4 4 0 0 1 .7-7.94A5.5 5.5 0 0 1 18 11.5a3.5 3.5 0 0 1-.5 6.5z',
-  3: 'M15 3a6 6 0 0 0-5.6 8.1L4 16.5V20h3.5l5.4-5.4A6 6 0 1 0 15 3zm1.5 6.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z',
-  4: 'M12 3l9 5-9 5-9-5 9-5zm9 9l-9 5-9-5',
-  5: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20a7 7 0 0 1 14 0',
-  6: 'M4 5h16v14H4zM4 15l5-5 3 3 3-3 5 5',
-  7: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm-4 9l3 3 5-6',
+  1: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18',
+  2: 'M4 11l8-7 8 7v8a2 2 0 0 1-2 2h-4v-6H10v6H6a2 2 0 0 1-2-2z',
+  3: 'M7 18a4 4 0 0 1 .7-7.94A5.5 5.5 0 0 1 18 11.5a3.5 3.5 0 0 1-.5 6.5z',
+  4: 'M15 3a6 6 0 0 0-5.6 8.1L4 16.5V20h3.5l5.4-5.4A6 6 0 1 0 15 3zm1.5 6.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z',
+  5: 'M12 3l9 5-9 5-9-5 9-5zm9 9l-9 5-9-5',
+  6: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20a7 7 0 0 1 14 0',
+  7: 'M4 5h16v14H4zM4 15l5-5 3 3 3-3 5 5',
+  8: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm-4 9l3 3 5-6',
+}
+
+const currentLang = ref(getLanguage())
+function chooseLanguage(code: string) {
+  currentLang.value = code
+  setLanguage(code)
 }
 
 function stepTitle(id: number) { return t('wizard.' + STEP_KEY[id - 1]) }
@@ -123,8 +131,6 @@ function useCustomModels() {
   const models = customModels.value.split(',').map(m => m.trim()).filter(m => m)
   if (models.length > 0) wizard.setFetchedModels(models)
 }
-
-function openLanguage() { emit('language') }
 </script>
 
 <template>
@@ -138,12 +144,6 @@ function openLanguage() { emit('language') }
             <strong>{{ t('wizard.title') }}</strong>
             <span>{{ t('wizard.subtitle') }}</span>
           </div>
-          <button class="icon-btn" :title="t('settings.language')" :aria-label="t('settings.language')" @click="openLanguage">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-              <path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18" stroke="currentColor" stroke-width="2"/>
-            </svg>
-          </button>
         </div>
 
         <ol class="steps">
@@ -181,8 +181,30 @@ function openLanguage() { emit('language') }
         </header>
 
         <div class="wizard-scroll">
-          <!-- Step 1: Welcome -->
+          <!-- Step 1: Language -->
           <div v-if="wizard.currentStep === 1" class="pane">
+            <div class="lang-grid">
+              <button
+                v-for="option in LOCALES"
+                :key="option.code"
+                class="lang-card"
+                :class="{ selected: currentLang === option.code }"
+                @click="chooseLanguage(option.code)"
+              >
+                <span class="lang-text">
+                  <b>{{ option.label }}</b>
+                  <span>{{ option.english }}</span>
+                </span>
+                <span class="lang-check" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+              </button>
+            </div>
+            <p class="lead">{{ t('wizard.languageHint') }}</p>
+          </div>
+
+          <!-- Step 2: Welcome -->
+          <div v-if="wizard.currentStep === 2" class="pane">
             <div class="feature-grid">
               <div class="feature">
                 <span class="feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M7 18a4 4 0 0 1 .7-7.94A5.5 5.5 0 0 1 18 11.5a3.5 3.5 0 0 1-.5 6.5z" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
@@ -200,8 +222,8 @@ function openLanguage() { emit('language') }
             <p class="lead">{{ t('wizard.welcomeDesc') }}</p>
           </div>
 
-          <!-- Step 2: Provider -->
-          <div v-if="wizard.currentStep === 2" class="pane">
+          <!-- Step 3: Provider -->
+          <div v-if="wizard.currentStep === 3" class="pane">
             <div class="pv-grid">
               <button
                 v-for="p in PROVIDERS"
@@ -225,8 +247,8 @@ function openLanguage() { emit('language') }
             </div>
           </div>
 
-          <!-- Step 3: API -->
-          <div v-if="wizard.currentStep === 3" class="pane">
+          <!-- Step 4: API -->
+          <div v-if="wizard.currentStep === 4" class="pane">
             <div class="field">
               <label>{{ t('wizard.apiKey') }}</label>
               <input type="password" v-model="wizard.apiKey" :placeholder="t('wizard.apiKeyPlaceholder')" class="wiz-input" />
@@ -250,8 +272,8 @@ function openLanguage() { emit('language') }
             <div v-if="error" class="alert">{{ error }}</div>
           </div>
 
-          <!-- Step 4: Models -->
-          <div v-if="wizard.currentStep === 4" class="pane">
+          <!-- Step 5: Models -->
+          <div v-if="wizard.currentStep === 5" class="pane">
             <div v-if="wizard.fetchedModels.length > 0" class="model-list">
               <label v-for="model in wizard.fetchedModels" :key="model" class="model-item" :class="{ chosen: wizard.selectedModels.includes(model) }">
                 <input type="checkbox" :checked="wizard.selectedModels.includes(model)" @change="toggleModel(model)" />
@@ -272,8 +294,8 @@ function openLanguage() { emit('language') }
             </div>
           </div>
 
-          <!-- Step 5: Persona -->
-          <div v-if="wizard.currentStep === 5" class="pane">
+          <!-- Step 6: Persona -->
+          <div v-if="wizard.currentStep === 6" class="pane">
             <div class="form-row">
               <div class="field">
                 <label>{{ t('wizard.name') }} *</label>
@@ -302,8 +324,8 @@ function openLanguage() { emit('language') }
             </div>
           </div>
 
-          <!-- Step 6: Live2D -->
-          <div v-if="wizard.currentStep === 6" class="pane">
+          <!-- Step 7: Live2D -->
+          <div v-if="wizard.currentStep === 7" class="pane">
             <label class="switch-row">
               <span class="switch-text">
                 <b>{{ t('wizard.enableLive2d') }}</b>
@@ -347,8 +369,8 @@ function openLanguage() { emit('language') }
             </div>
           </div>
 
-          <!-- Step 7: Complete -->
-          <div v-if="wizard.currentStep === 7" class="pane complete">
+          <!-- Step 8: Complete -->
+          <div v-if="wizard.currentStep === 8" class="pane complete">
             <div class="complete-emblem">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
@@ -376,7 +398,7 @@ function openLanguage() { emit('language') }
 
         <footer class="wizard-footer">
           <button class="btn btn-tonal" @click="wizard.prevStep()" :disabled="wizard.currentStep === 1">{{ t('wizard.back') }}</button>
-          <button v-if="wizard.currentStep < 7" class="btn btn-primary" @click="wizard.nextStep()" :disabled="!wizard.canProceed">{{ t('wizard.next') }}</button>
+          <button v-if="wizard.currentStep < 8" class="btn btn-primary" @click="wizard.nextStep()" :disabled="!wizard.canProceed">{{ t('wizard.next') }}</button>
           <button v-else class="btn btn-primary" @click="finish">{{ t('wizard.startChatting') }}</button>
         </footer>
       </section>
@@ -500,6 +522,31 @@ function openLanguage() { emit('language') }
 
 #app .wizard-scroll { flex: 1; overflow-y: auto; padding: 8px 32px 20px; }
 #app .pane { display: flex; flex-direction: column; gap: 16px; animation: pane-in 260ms var(--ease-spring, ease) both; }
+
+/* Language */
+#app .lang-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+#app .lang-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  min-height: 0;
+  border: 2px solid var(--md-outline-variant);
+  border-radius: 20px;
+  background: var(--md-surface-container-low);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 180ms, background-color 180ms, border-radius 320ms var(--ease-spring, ease);
+}
+#app .lang-card:hover { border-color: var(--md-outline); }
+#app .lang-card.selected { border-color: var(--md-primary); background: var(--md-primary-container); border-radius: 24px 24px 24px 8px; }
+#app .lang-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+#app .lang-text b { font-size: 15px; }
+#app .lang-text span { font-size: 12px; color: var(--md-on-surface-variant); }
+#app .lang-card.selected .lang-text span { color: var(--md-on-primary-container); opacity: 0.8; }
+#app .lang-check { position: absolute; top: 12px; right: 12px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--md-primary); color: var(--md-on-primary); opacity: 0; transform: scale(0.6); transition: opacity 180ms, transform 260ms var(--ease-spring, ease); }
+#app .lang-card.selected .lang-check { opacity: 1; transform: scale(1); }
 
 /* Welcome */
 #app .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }

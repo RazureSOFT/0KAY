@@ -6,7 +6,7 @@ import { DEFAULT_LIVE2D_MODEL_URL } from '../composables/wizard'
 export const useWizardStore = defineStore('wizard', () => {
   const isCompleted = ref(false)
   const currentStep = ref(1)
-  const totalSteps = 7
+  const totalSteps = 8
 
   // Provider config
   const provider = ref('')
@@ -36,13 +36,14 @@ export const useWizardStore = defineStore('wizard', () => {
 
   const canProceed = computed(() => {
     switch (currentStep.value) {
-      case 1: return true
-      case 2: return provider.value !== ''
-      case 3: return apiKey.value !== '' && baseUrl.value !== ''
-      case 4: return defaultModel.value !== ''
-      case 5: return persona.value.name !== ''
-      case 6: return true // Live2D is optional
-      case 7: return true
+      case 1: return true // Language always has a selection
+      case 2: return true
+      case 3: return provider.value !== ''
+      case 4: return apiKey.value !== '' && baseUrl.value !== ''
+      case 5: return defaultModel.value !== ''
+      case 6: return persona.value.name !== ''
+      case 7: return true // Live2D is optional
+      case 8: return true
       default: return false
     }
   })

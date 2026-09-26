@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useWizardStore } from './stores/wizard'
 import { useLifeStore } from './stores/life'
 import { useChatStore } from './stores/chat'
 import { useUIPatchesStore } from './stores/uiPatches'
-import LanguagePage from './pages/LanguagePage.vue'
 import SetupWizard from './components/SetupWizard.vue'
 import GlobalAgentInbox from './components/GlobalAgentInbox.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
@@ -20,8 +19,6 @@ const ui = useUIPatchesStore()
 const route = useRoute()
 const router = useRouter()
 const lang = computed(() => getLanguage())
-// The language page is shown before anything else until a language is chosen.
-const languageChosen = ref(!!localStorage.getItem('0kay_lang'))
 
 const pageTitle = computed(() => {
   const key = route.meta.titleKey as string | undefined
@@ -105,12 +102,9 @@ function onWizardComplete() {
 </script>
 
 <template>
-  <LanguagePage v-if="!languageChosen" @select="languageChosen = true" />
-
   <SetupWizard
-    v-else-if="!wizard.isCompleted"
+    v-if="!wizard.isCompleted"
     @complete="onWizardComplete"
-    @language="languageChosen = false"
   />
 
   <div v-else class="app-shell">
