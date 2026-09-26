@@ -99,4 +99,16 @@ onUnmounted(()=>{clearTimeout(timer);document.removeEventListener('pointerdown',
 .thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}
 .thinking-control.full .thinking-trigger span:first-child{animation:thunder-flicker 2s steps(1,end) infinite}
 @keyframes thunder-flicker{0%,90%,100%{opacity:1}92%{opacity:.35}94%{opacity:1}96%{opacity:.5}}
+
+/* Align the trigger with the expressive select surface. */
+#app .thinking-control .thinking-trigger{
+  min-height:52px;padding:0 14px 0 16px;border:1px solid transparent;border-radius:16px;
+  background:var(--md-surface-container-high);color:var(--md-on-surface);
+  font-size:13px;font-weight:500;align-items:center;
+  transition:background-color 180ms,border-color 180ms,box-shadow 200ms,border-radius 340ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1));
+}
+#app .thinking-control .thinking-trigger:hover{background:var(--md-surface-container-highest)}
+#app .thinking-control .thinking-trigger[aria-expanded="true"]{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}
+#app .thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}
+.thinking-caption{font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--md-on-surface-variant)}
 </style>

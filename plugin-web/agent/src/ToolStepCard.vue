@@ -266,4 +266,16 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .tool-search-results a:hover{text-decoration:underline}
 .tool-search-results p{margin:4px 0 0;font-size:12.5px;line-height:1.65;color:var(--md-on-surface)}
 .tool-search-results small{display:block;margin-top:2px;font-size:11px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}
+
+/* Material 3 Expressive polish */
+.tool-card{border-radius:16px;border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent);background:var(--md-surface-container);transition:box-shadow 220ms,background-color 200ms}
+.tool-card:hover{box-shadow:var(--shadow-1)}
+button.tool-card-head{padding:12px 15px;gap:10px;min-height:46px;border-radius:0}
+button.tool-card-head:hover{background:var(--md-secondary-container)}
+.tool-kind{font-weight:700;letter-spacing:.06em}
+.tool-stat{border-color:color-mix(in srgb,var(--md-primary) 30%,transparent);background:color-mix(in srgb,var(--md-primary) 10%,transparent)}
+.tool-chevron{width:22px;height:22px;display:inline-grid;place-items:center;border-radius:50%;background:var(--md-surface-container-high);transition:transform 300ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color 160ms}
+.tool-card-body{padding:8px 15px 15px;gap:8px;border-top-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}
+.tool-card-body pre{border-radius:14px;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}
+.tool-section-label{font-weight:700}
 </style>

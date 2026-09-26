@@ -554,6 +554,125 @@ button.subagent-card-head>strong{font-weight:700}
 .permission-request pre{max-height:160px;overflow:auto}
 .permission-request>div{display:flex;justify-content:flex-end;gap:8px}
 
+/* ============ Material 3 Expressive polish ============ */
+#app .workspace{gap:12px;padding-left:6px;background:var(--md-surface-container)}
+#app .workspace .sessions{
+  width:296px;gap:14px;padding:18px 14px;border:0;border-radius:28px;
+  background:var(--md-surface-container-low);box-shadow:var(--shadow-1);
+}
+#app .workspace .sessions h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+#app .workspace .sessions header>button{
+  height:40px;padding:0 16px;border:0;border-radius:999px;
+  background:var(--md-primary);color:var(--md-on-primary,#fff);
+  font:700 13px/1 inherit;display:inline-flex;align-items:center;gap:7px;
+  box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 30%,transparent);
+}
+#app .workspace .sessions header>button:hover:not(:disabled){background:var(--md-primary);filter:brightness(1.06);box-shadow:0 8px 20px color-mix(in srgb,var(--md-primary) 34%,transparent)}
+#app .workspace .sessions>input{
+  min-height:48px;padding:0 16px;border:1px solid transparent;border-radius:16px;
+  background:var(--md-surface-container-high);color:var(--md-on-surface);font-size:14px;
+}
+#app .workspace .sessions>input:focus{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}
+#app .workspace .filter-bar{padding:5px;border-radius:999px;background:var(--md-surface-container-high)}
+#app .workspace .filter-bar button{border-radius:999px;padding:8px 4px;font-weight:600}
+#app .workspace .filter-bar button.chosen{background:var(--md-primary);color:var(--md-on-primary,#fff);font-weight:700;box-shadow:var(--shadow-1)}
+#app .workspace .filter-bar button.chosen:hover:not(:disabled){background:var(--md-primary);color:var(--md-on-primary,#fff)}
+#app .workspace .session-list{margin:0 -2px;padding:0 2px}
+#app .workspace .session-card{
+  gap:5px;margin-bottom:8px;padding:13px 15px;
+  border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);
+  border-radius:18px;background:var(--md-surface-container-lowest);
+  transition:transform 260ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color 200ms,border-color 200ms,box-shadow 220ms,border-radius 320ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1));
+}
+#app .workspace .session-card:hover:not(:disabled){transform:translateY(-2px);box-shadow:var(--shadow-1);border-color:color-mix(in srgb,var(--md-primary) 35%,var(--md-outline-variant))}
+#app .workspace .session-card.selected{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent;border-radius:20px 20px 20px 7px;box-shadow:var(--shadow-1)}
+#app .workspace .session-card .origin{font-weight:700;letter-spacing:.05em;text-transform:uppercase;font-size:10.5px;color:var(--md-primary)}
+#app .workspace .session-card.selected .origin{color:var(--md-on-secondary-container);opacity:.75}
+#app .workspace .ledger-button{
+  min-height:44px;border-radius:16px;font-weight:650;
+  background:var(--md-surface-container-lowest);
+  border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);
+}
+#app .workspace .ledger-button.chosen{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent}
+#app .workspace .ledger-entry{border-radius:20px;border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);background:var(--md-surface-container-lowest);box-shadow:var(--shadow-1)}
+
+/* conversation column */
+#app .workspace .conversation{background:var(--md-surface);border-radius:30px;overflow:hidden;box-shadow:var(--shadow-1)}
+#app .workspace .conversation-header{
+  padding:20px 26px 16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);
+}
+#app .workspace .conversation-header h2{font-size:20px;font-weight:750;letter-spacing:-.01em}
+#app .workspace .session-actions button{height:36px;padding:0 15px;border-radius:999px;background:var(--md-surface-container-high);border-color:transparent;font-weight:650}
+#app .workspace .session-actions button:hover:not(:disabled){background:var(--md-surface-container-highest);box-shadow:none}
+#app .workspace .running{color:#B88412;background:color-mix(in srgb,#B88412 14%,transparent);padding:4px 11px;border-radius:999px;font-weight:700}
+#app .workspace .transcript{padding:28px 30px}
+#app .workspace .welcome{margin:64px auto 0}
+#app .workspace .welcome::before{
+  width:76px;height:76px;border-radius:26px 26px 26px 10px;
+  background-color:var(--md-primary-container);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 24 24' fill='none' stroke='%235944c6' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z'/%3E%3Cpath d='M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z'/%3E%3C/svg%3E");
+  background-size:34px 34px;
+}
+#app .workspace .welcome h2{font-size:26px;font-weight:800;letter-spacing:-.02em}
+#app .workspace .turn{gap:12px;margin-bottom:32px}
+#app .workspace .bubble{padding:16px 20px;font-size:14.5px;line-height:1.7}
+#app .workspace .bubble.user{
+  background:var(--md-primary-container);color:var(--md-on-primary-container);
+  border-radius:24px 24px 8px 24px;box-shadow:var(--shadow-1);max-width:82%;
+}
+#app .workspace .bubble.agent{
+  background:var(--md-surface-container-low);
+  border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);
+  border-radius:8px 24px 24px 24px;box-shadow:var(--shadow-1);max-width:100%;
+}
+#app .workspace .bubble .message-head b{font-weight:750}
+#app .workspace .steps{gap:9px;margin:14px 0}
+#app .workspace .steps details{
+  border-radius:16px;background:var(--md-surface-container);
+  border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);padding:11px 15px;
+}
+#app .workspace .subagent-card{border-radius:18px;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);box-shadow:var(--shadow-1)}
+#app .workspace button.subagent-card-head{padding:12px 15px}
+#app .workspace button.subagent-card-head:hover:not(:disabled){background:var(--md-secondary-container)}
+#app .workspace .sub-view-header{padding-bottom:16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent)}
+#app .workspace .sub-view-header button{border-radius:999px;background:var(--md-surface-container-high);border-color:transparent;font-weight:650}
+#app .workspace .agent-speech :deep(pre){border-radius:16px;background:var(--md-surface-container);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}
+
+/* composer */
+#app .workspace .composer{
+  margin:0 22px 20px;border-radius:28px;overflow:hidden;
+  background:var(--md-surface-container-lowest);
+  border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);
+  box-shadow:var(--shadow-2);
+}
+#app .workspace .composer:focus-within{border-color:color-mix(in srgb,var(--md-primary) 55%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent),var(--shadow-2)}
+#app .workspace .execution-options{padding:12px 16px;gap:10px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}
+#app .workspace .execution-options label{font-weight:700;letter-spacing:.05em}
+#app .workspace .execution-options .workspace-select{
+  min-height:52px;border-radius:16px;border-color:transparent;
+  background:var(--md-surface-container-high);font-size:13px;
+}
+#app .workspace .execution-options :deep(.app-select-trigger),
+#app .workspace .composer footer :deep(.app-select-trigger){
+  min-height:52px;border-radius:16px;border-color:transparent;
+  background:var(--md-surface-container-high);font-size:13px;
+}
+#app .workspace .composer-input textarea{border-radius:0;background:transparent}
+#app .workspace .send-fly{
+  width:46px !important;height:46px !important;border-radius:50% !important;
+  box-shadow:0 8px 22px color-mix(in srgb,var(--md-primary) 34%,transparent);
+}
+#app .workspace .composer footer{border-top:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);padding:12px 16px}
+#app .workspace .composer footer>button{border-radius:999px;min-height:36px;padding-inline:15px;background:var(--md-surface-container-high);border-color:transparent}
+
+/* host panel + rings */
+#app .workspace .host-panel{margin:0 22px 10px;border-radius:24px;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+#app .workspace .usage-ring b{background:var(--md-surface-container-lowest)}
+#app .workspace .directory-dialog{border-radius:32px;border-color:transparent;box-shadow:var(--shadow-4);background:var(--md-surface-container-low)}
+#app .workspace .directory-list button{background:var(--md-surface-container-lowest);border-color:transparent;border-radius:16px;min-height:46px}
+#app .workspace .directory-list button:hover:not(:disabled){background:var(--md-secondary-container)}
+#app .workspace .directory-roots button{background:var(--md-surface-container-high);border-color:transparent}
+
 /* ---- responsive ---- */
 @media(max-width:800px){.sessions{width:214px;padding:12px 10px}.transcript{padding:14px}.composer{margin:0 12px 12px}.composer footer .muted{display:none}.conversation-header{padding:14px 16px}.welcome{margin:30px auto 0}.turn{margin-bottom:22px}}
 @media(max-width:560px){.workspace{flex-direction:column}.sessions{width:100%;max-height:230px;border-right:0;border-bottom:1px solid var(--md-outline-variant)}.sessions>input,.filter-bar,.connection{display:none}.session-list{display:flex;gap:6px;overflow-x:auto}.session-card{min-width:160px;width:160px;margin-bottom:0}.ledger-button{padding:5px;font-size:12px}}
