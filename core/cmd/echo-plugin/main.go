@@ -28,7 +28,7 @@ func main() {
 	registerResp, err := client.Register(context.Background(), &corev1.RegisterRequest{
 		PluginInfo: &pluginv1.PluginInfo{
 			Name:        "echo-plugin",
-			Version:     "0.1.0",
+			Version:     "0.1.1",
 			Description: "A simple echo plugin for testing",
 			Author:      "0kay",
 			PluginType:  pluginv1.PluginType_PLUGIN_TYPE_TOOL,

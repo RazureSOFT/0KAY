@@ -246,7 +246,7 @@ onUnmounted(stopPolling)
         <div class="us-hero-text">
           <b>{{ t(statusKind === 'warn' ? 'settings.about.available' : (statusKind === 'ok' ? 'settings.about.latest' : 'settings.about.noRelease')) }}</b>
           <span v-if="updateResult?.latest">v{{ updateResult.current }} → <em>v{{ updateResult.latest }}</em></span>
-          <span v-else>0KAY v{{ updateResult?.current || '0.1.0' }}</span>
+          <span v-else>0KAY v{{ updateResult?.current || '0.1.1' }}</span>
         </div>
         <div class="us-hero-actions">
           <button v-if="updateResult?.has_update" class="btn btn-primary sm" :disabled="isUpdating('core')" @click="applyUpdate('core', updateResult.latest)">

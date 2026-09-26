@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "life"
-version = "0.1.0"
+version = "0.1.1"
 description = "L.I.F.E - Persona plugin for 0kay AI Agent platform"
 requires-python = ">=3.10"
 dependencies = [
