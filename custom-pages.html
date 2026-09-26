@@ -1,0 +1,212 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WebUI Custom Pages · 0KAY</title><style>
+:root{
+  color-scheme: light;
+  --md-primary:#4a5b8c; --md-on-primary:#ffffff;
+  --md-primary-container:#dbe1ff; --md-on-primary-container:#131b2e;
+  --md-secondary-container:#e0e2f0; --md-on-secondary-container:#181a24;
+  --md-surface:#fbf8ff; --md-surface-container-low:#f5f3fb;
+  --md-surface-container:#efedf6; --md-surface-container-high:#e9e7f0;
+  --md-surface-container-highest:#e3e1ea;
+  --md-on-surface:#1a1b21; --md-on-surface-variant:#45464f;
+  --md-outline:#757780; --md-outline-variant:#c5c6d0;
+  --md-success-container:#d7f5cf; --md-error-container:#ffdad6;
+  --md-shadow:rgba(20,18,36,.16);
+  --radius-sm:12px; --radius-md:16px; --radius-lg:24px; --radius-xl:28px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --md-primary:#b3c5ff; --md-on-primary:#1b2b52;
+    --md-primary-container:#33436b; --md-on-primary-container:#dbe1ff;
+    --md-secondary-container:#3a3c47; --md-on-secondary-container:#e0e2f0;
+    --md-surface:#111318; --md-surface-container-low:#1a1b21;
+    --md-surface-container:#1e1f26; --md-surface-container-high:#292a31;
+    --md-surface-container-highest:#34353c;
+    --md-on-surface:#e3e1e9; --md-on-surface-variant:#c6c6d0;
+    --md-outline:#8f9099; --md-outline-variant:#45464f;
+    --md-success-container:#1f4d1a; --md-error-container:#93000a;
+    --md-shadow:rgba(0,0,0,.5);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; min-height:100vh; background:var(--md-surface); color:var(--md-on-surface);
+  font:400 15.5px/1.75 'Roboto','Segoe UI Variable','Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--md-primary-container); color:var(--md-on-primary-container)}
+a{color:var(--md-primary); text-decoration:none}
+a:hover{text-decoration:underline}
+.shell{display:grid; grid-template-columns:300px minmax(0,1fr); min-height:100vh}
+/* ---------- Navigation drawer ---------- */
+.drawer{
+  position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  padding:22px 14px; background:var(--md-surface-container-low);
+  border-right:1px solid var(--md-outline-variant);
+}
+.brand{display:flex; align-items:center; gap:12px; padding:6px 10px 18px}
+.brand-mark{
+  width:46px; height:46px; display:grid; place-items:center; flex:none;
+  border-radius:16px 16px 16px 6px; background:var(--md-primary);
+  color:var(--md-on-primary); font-weight:800; letter-spacing:-1px; font-size:17px;
+}
+.brand-text b{display:block; font-size:16px; font-weight:800; letter-spacing:-.2px}
+.brand-text span{font-size:12px; color:var(--md-on-surface-variant)}
+.nav{display:flex; flex-direction:column; gap:4px}
+.nav-item{
+  position:relative; display:flex; align-items:center; gap:10px;
+  padding:11px 16px; border-radius:22px 22px 22px 8px;
+  color:var(--md-on-surface-variant); font-weight:600; font-size:14px;
+  transition:background-color .22s, color .16s;
+}
+.nav-item:hover{background:color-mix(in srgb, var(--md-primary) 12%, transparent); text-decoration:none; color:var(--md-on-surface)}
+.nav-item.active{background:var(--md-primary-container); color:var(--md-on-primary-container); font-weight:800}
+.nav-item .dot{width:7px; height:7px; border-radius:50%; background:currentColor; opacity:.5; flex:none}
+.drawer-foot{margin-top:18px; padding:12px 12px 0; border-top:1px solid var(--md-outline-variant); font-size:12px; color:var(--md-on-surface-variant)}
+.drawer-foot a{font-weight:700}
+/* ---------- Article ---------- */
+.article{padding:clamp(24px,4vw,56px) clamp(20px,4vw,64px) 80px; max-width:920px}
+.article>h1{
+  margin:0 0 6px; font-size:clamp(30px,4vw,42px); line-height:1.12;
+  font-weight:850; letter-spacing:-.02em;
+}
+.article>h1+p{color:var(--md-on-surface-variant); font-size:16px; margin-top:0}
+h2{font-size:24px; font-weight:800; letter-spacing:-.01em; margin:2.1em 0 .5em}
+h3{font-size:19px; font-weight:750; margin:1.7em 0 .4em}
+h4,h5,h6{font-size:16px; font-weight:750; margin:1.4em 0 .3em}
+p{margin:.7em 0}
+ul{margin:.6em 0; padding-left:22px}
+li{margin:.3em 0}
+hr{border:0; border-top:1px solid var(--md-outline-variant); margin:2em 0}
+strong{font-weight:750}
+code{
+  font-family:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,'SFMono-Regular',Menlo,monospace;
+  font-size:.88em; background:var(--md-surface-container-high);
+  padding:2px 6px; border-radius:8px;
+}
+pre{
+  background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-lg); padding:18px 20px; overflow:auto; margin:1.1em 0;
+}
+pre code{background:none; padding:0; font-size:13.5px; line-height:1.7}
+/* ---------- Tables ---------- */
+table{
+  border-collapse:separate; border-spacing:0; width:100%; margin:1.2em 0; font-size:14px;
+  background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-lg); overflow:hidden;
+}
+th,td{padding:11px 15px; text-align:left; vertical-align:top; border-bottom:1px solid var(--md-outline-variant)}
+th{background:var(--md-surface-container); font-weight:750; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--md-on-surface-variant)}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:color-mix(in srgb, var(--md-primary) 5%, transparent)}
+/* ---------- Chips / footer ---------- */
+.badge{
+  display:inline-flex; align-items:center; height:26px; padding:0 12px; border-radius:999px;
+  background:var(--md-secondary-container); color:var(--md-on-secondary-container);
+  font-size:12px; font-weight:700; margin-left:10px; vertical-align:middle;
+}
+/* ---------- Responsive ---------- */
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .drawer{position:static; height:auto; border-right:0; border-bottom:1px solid var(--md-outline-variant); padding:16px 14px}
+  .nav{flex-direction:row; flex-wrap:wrap}
+  .nav-item{padding:8px 14px; border-radius:999px}
+  .brand{padding-bottom:12px}
+}
+</style></head>
+<body><div class="shell">
+<aside class="drawer">
+  <a class="brand" href="index.html"><span class="brand-mark">0K</span>
+    <span class="brand-text"><b>0KAY</b><span>Plugin API</span></span></a>
+  <nav class="nav"><a class="nav-item" href="index.html"><span class="dot"></span>0KAY Plugin API</a><a class="nav-item" href="HTTP_API.html"><span class="dot"></span>HTTP API Reference</a><a class="nav-item" href="PLUGIN_API.html"><span class="dot"></span>0KAY Plugin API (v1)</a><a class="nav-item" href="plugin-lifecycle.html"><span class="dot"></span>Plugin Lifecycle</a><a class="nav-item" href="writing-a-plugin.html"><span class="dot"></span>Writing a Plugin</a><a class="nav-item" href="core-services.html"><span class="dot"></span>Core Services</a><a class="nav-item" href="agent-service.html"><span class="dot"></span>Agent Service</a><a class="nav-item" href="life-service.html"><span class="dot"></span>L.I.F.E Service</a><a class="nav-item" href="mocr-service.html"><span class="dot"></span>mocr Service</a><a class="nav-item" href="settings-ui.html"><span class="dot"></span>Settings and UI Patches</a><a class="nav-item active" href="custom-pages.html"><span class="dot"></span>WebUI Custom Pages</a><a class="nav-item" href="THINKING.html"><span class="dot"></span>Thinking Intensity and Execution</a><a class="nav-item" href="RELEASES.html"><span class="dot"></span>Releases and Updates</a><a class="nav-item" href="security.html"><span class="dot"></span>Security and Runtime Rules</a></nav>
+  <div class="drawer-foot">
+    <div><a href="https://github.com/RazureSOFT/0KAY">RazureSOFT/0KAY</a></div>
+    <div>MIT · © 2026 RazureSOFT</div>
+  </div>
+</aside>
+<main class="article" data-page="custom-pages"><h1>WebUI Custom Pages</h1><p>A <strong>custom page</strong> is a plugin-owned frontend bundle that Core serves and the</p><p>WebUI mounts through its router. The plugin never edits the host frontend; it</p><p>ships a build artifact plus one <code>.patch</code> route entry. This page is the complete</p><p>guide for that flow.</p><h2>1. Which registration is a "custom page"?</h2><p>A <code>router</code> op resolves in this order (see <a href="settings-ui.html">Settings and UI Patches</a>):</p><table><tr><th>Item</th><th>Renders</th><th>Use for</th></tr><tr><td><code>module</code></td><td>Your plugin ESM bundle, mounted as a native Vue component</td><td><strong>A fully custom page</strong></td></tr><tr><td><code>component</code></td><td>A whitelisted built-in page (<code>chat</code>, <code>agents</code>, <code>plugins</code>, <code>usage</code>, <code>settings</code>, <code>memory</code>, <code>companion</code>)</td><td>Standard platform pages</td></tr><tr><td><code>src</code></td><td>An iframe embed</td><td>Third-party pages you cannot build as ESM</td></tr></table><p>If you build your own UI, use <code>module</code>.</p><h2>2. Source layout and build</h2><p>Put the page in <code>plugin-web/{name}/</code>:</p><pre><code>plugin-web/my-plugin/
+  index.js          # ESM entry, `export default` a Vue component
+  src/MyPage.vue     # page component(s)
+  vite.config.js     # library build → core/data/plugin-ui/my-plugin
+  manifest.json
+</code></pre><p><code>manifest.json</code> uses the <code>ui</code> block so <strong>0kay-pm</strong> can build and publish it</p><p>(fields in <a href="PLUGIN_API.html">Plugin API §0.3</a>):</p><pre><code>{
+  &quot;schema&quot;: 1,
+  &quot;name&quot;: &quot;@razuresoft/0kay-web-my-plugin&quot;,
+  &quot;version&quot;: &quot;0.1.0&quot;,
+  &quot;tags&quot;: [&quot;0kay-plugin&quot;],
+  &quot;install&quot;: [[&quot;npm&quot;, &quot;ci&quot;]],
+  &quot;ui&quot;: { &quot;dir&quot;: &quot;.&quot;, &quot;plugin&quot;: &quot;my-plugin&quot;, &quot;dist&quot;: &quot;dist&quot;, &quot;build&quot;: [[&quot;npm&quot;, &quot;run&quot;, &quot;build&quot;]] }
+}
+</code></pre><p>The Vite config is a <strong>library</strong> build that keeps <code>vue</code> external and emits to</p><p>Core's data directory:</p><pre><code>import path from &#x27;node:path&#x27;
+import { fileURLToPath } from &#x27;node:url&#x27;
+import { defineConfig } from &#x27;vite&#x27;
+import vue from &#x27;@vitejs/plugin-vue&#x27;
+const root = path.dirname(fileURLToPath(import.meta.url))
+export default defineConfig({
+  plugins: [vue() /* + a plugin that inlines the extracted CSS into index.js */],
+  build: {
+    outDir: path.resolve(root, &#x27;../../core/data/plugin-ui/my-plugin&#x27;),
+    emptyOutDir: true, target: &#x27;es2020&#x27;,
+    lib: { entry: path.join(root, &#x27;index.js&#x27;), formats: [&#x27;es&#x27;], fileName: () =&gt; &#x27;index.js&#x27; },
+    rollupOptions: { external: [&#x27;vue&#x27;], output: { entryFileNames: &#x27;index.js&#x27;, chunkFileNames: &#x27;assets/[name]-[hash].js&#x27; } },
+  },
+})
+</code></pre><p>Output must land in <code>${CORE_DATA_DIR}/plugin-ui/{name}/</code>. This repo's</p><p><code>plugin-web/{life,agent,minecraft,skillsguishow}</code> already do this; copy one.</p><h2>3. Register nav + route with a <code>.patch</code></h2><p>Drop a JSON <code>.patch</code> in the plugin-owned UI patch directory (Core merges</p><p><code>CORE_DATA_DIR/ui/*.patch</code> and <code>webui/patches/*.patch</code>):</p><pre><code>{
+  &quot;id&quot;: &quot;my-plugin-ui&quot;,
+  &quot;plugin&quot;: &quot;my-plugin&quot;,
+  &quot;enabled&quot;: true,
+  &quot;patches&quot;: [
+    {
+      &quot;target&quot;: &quot;nav&quot;,
+      &quot;op&quot;: &quot;insert&quot;,
+      &quot;id&quot;: &quot;my-plugin&quot;,
+      &quot;anchor&quot;: &quot;plugins&quot;,
+      &quot;position&quot;: &quot;before&quot;,
+      &quot;item&quot;: { &quot;id&quot;: &quot;my-plugin&quot;, &quot;to&quot;: &quot;/my-plugin&quot;, &quot;label&quot;: &quot;My Plugin&quot;, &quot;icon&quot;: &quot;chip&quot;, &quot;order&quot;: 25 }
+    },
+    {
+      &quot;target&quot;: &quot;router&quot;,
+      &quot;op&quot;: &quot;insert&quot;,
+      &quot;id&quot;: &quot;my-plugin&quot;,
+      &quot;item&quot;: {
+        &quot;id&quot;: &quot;my-plugin&quot;,
+        &quot;path&quot;: &quot;/my-plugin&quot;,
+        &quot;name&quot;: &quot;my-plugin&quot;,
+        &quot;module&quot;: &quot;/api/plugins/my-plugin/ui/index.js&quot;,
+        &quot;title&quot;: &quot;My Plugin&quot;
+      }
+    }
+  ]
+}
+</code></pre><ul><li><code>plugin</code> <strong>must</strong> equal your registered plugin name. Disabling the plugin</li></ul><p>  filters this patch: nav entry, route and (if declared) settings tab all vanish.</p><ul><li>The router <code>module</code> URL is served by Core at</li></ul><p>  <code>GET /api/plugins/{name}/ui/{path…}</code> (404 while the plugin is disabled, path</p><p>  traversal rejected). Only an explicit <code>/api/plugins/…</code> URL is allowed here.</p><h2>4. Runtime contract</h2><table><tr><th>Piece</th><th>Contract</th></tr><tr><td>Entry</td><td><code>export default</code> a Vue component (or an object with <code>setup</code>)</td></tr><tr><td>Vue</td><td>Bare <code>import { h, ref, onMounted } from 'vue'</code> — resolved by the WebUI importmap to the host bridge (<code>window.__0KAY_VUE__</code>), so you use the <strong>same</strong> Vue instance as the host</td></tr><tr><td>Forbidden imports</td><td><code>vue-router</code>, <code>pinia</code>, <code>vue-i18n</code>, and any host-private store; there is no host router/store access</td></tr><tr><td>HTTP</td><td>Same-origin <code>fetch('/api/…')</code> only</td></tr><tr><td>Mount point</td><td>Rendered inside <code>#app .app-main</code>; the router keeps it alive across tab switches</td></tr><tr><td>CSS</td><td>Ship styles inside the bundle (inject a <code>&lt;style&gt;</code> element, or a scoped SFC). Prefer a page-unique class prefix so host styles cannot collide</td></tr><tr><td>Theme tokens</td><td>Host MD3 variables (<code>--md-primary</code>, <code>--md-surface*</code>, <code>--shadow-*</code>, <code>--ease-spring</code>, …) and the shared component classes (<code>.btn</code>, <code>.input</code>, <code>.chip</code>) are available on <code>:root</code> — use them for a consistent look</td></tr><tr><td>Cache</td><td>Entry <code>index.js</code> is served <code>no-cache</code>; hashed <code>*-&lt;hash&gt;.{js,css}</code> are immutable. If you must force a refresh of the entry, bump a query (<code>index.js?v=2</code>) in the route <code>module</code></td></tr></table><p>Error handling: if the module fails to import, the host falls back to an empty</p><p>patch page; log to the console and keep the component resilient.</p><h2>5. Minimal page</h2><pre><code>// index.js
+import { h, ref, onMounted, onUnmounted } from &#x27;vue&#x27;
+
+const CSS = `#app .my-page{padding:24px}
+#app .my-page .card{background:var(--md-surface-container-low);border-radius:28px;padding:20px}`
+
+function ensureStyle() {
+  if (typeof document === &#x27;undefined&#x27; || document.getElementById(&#x27;my-plugin-style&#x27;)) return
+  const el = document.createElement(&#x27;style&#x27;); el.id = &#x27;my-plugin-style&#x27;; el.textContent = CSS
+  document.head.appendChild(el)
+}
+
+export default {
+  name: &#x27;MyPluginPage&#x27;,
+  setup() {
+    ensureStyle()
+    const items = ref([])
+    let timer
+    async function load() { items.value = (await fetch(&#x27;/api/my-plugin/list&#x27;).then(r =&gt; r.json())).items || [] }
+    onMounted(() =&gt; { load(); timer = setInterval(load, 10000) })
+    onUnmounted(() =&gt; clearInterval(timer))
+    return () =&gt; h(&#x27;div&#x27;, { class: &#x27;my-page&#x27; }, [
+      h(&#x27;header&#x27;, {}, [h(&#x27;h1&#x27;, {}, &#x27;My Plugin&#x27;)]),
+      h(&#x27;section&#x27;, { class: &#x27;card&#x27; }, items.value.map((i) =&gt; h(&#x27;div&#x27;, { key: i.id }, i.name))),
+    ])
+  },
+}
+</code></pre><p>Or with a single-file component: <code>index.js</code> just does</p><p><code>import Page from './src/MyPage.vue'; export default Page</code>.</p><h2>6. Optional integrations</h2><ul><li><strong>Settings tab</strong> — either declare <code>type: bool|number|text|select</code> fields in the</li></ul><p>  registration <code>SettingsSection</code>, or point a <code>settings</code> op at a built-in</p><p>  <code>component</code>. See <a href="settings-ui.html">Settings and UI Patches</a>.</p><ul><li><strong>In-page chat slots / status widgets</strong> — <code>chat</code> and <code>status</code> targets extend</li></ul><p>  the chat page; details in <a href="settings-ui.html">Settings and UI Patches</a>.</p><h2>7. Checklist</h2><ul><li>[ ] <code>manifest.json</code> has <code>tags: ["0kay-plugin"]</code> and a matching <code>ui</code> block.</li><li>[ ] <code>npm run build</code> emits <code>index.js</code> into <code>core/data/plugin-ui/{name}/</code>.</li><li>[ ] <code>.patch</code> has <code>plugin</code> set to the exact registered name, a <code>nav</code> op and a</li></ul><p>      <code>router</code> op whose <code>module</code> is <code>/api/plugins/{name}/ui/index.js</code>.</p><ul><li>[ ] Entry <code>export default</code>s a component and imports only bare <code>vue</code> +</li></ul><p>      same-origin <code>fetch</code>.</p><ul><li>[ ] Disabling the plugin removes the nav entry, route and settings.</li><li>[ ] No secrets in the bundle or repository.</li></ul></main>
+</div></body></html>
