@@ -422,9 +422,10 @@ function useCustomModels() {
 
 #app .wizard-sheet {
   width: min(940px, 100%);
-  max-height: min(90vh, 760px);
+  height: min(90vh, 760px);
   display: grid;
   grid-template-columns: 300px 1fr;
+  grid-template-rows: minmax(0, 1fr);
   background: var(--md-surface-container-low);
   border-radius: 32px;
   box-shadow: var(--shadow-4, 0 24px 64px rgba(24, 16, 48, 0.28));
@@ -514,13 +515,13 @@ function useCustomModels() {
 #app .rail-progress .fill { height: 100%; border-radius: 999px; background: var(--md-primary); transition: width 400ms var(--ease-spring, ease); }
 
 /* Body */
-#app .wizard-body { display: flex; flex-direction: column; min-width: 0; background: var(--md-surface); }
+#app .wizard-body { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--md-surface); }
 #app .body-head { padding: 28px 32px 16px; }
 #app .body-head .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--md-primary); }
 #app .body-head h1 { margin: 6px 0 4px; font-size: 26px; font-weight: 750; letter-spacing: -0.5px; color: var(--md-on-surface); }
 #app .body-head p { margin: 0; font-size: 14px; color: var(--md-on-surface-variant); }
 
-#app .wizard-scroll { flex: 1; overflow-y: auto; padding: 8px 32px 20px; }
+#app .wizard-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 32px 20px; }
 #app .pane { display: flex; flex-direction: column; gap: 16px; animation: pane-in 260ms var(--ease-spring, ease) both; }
 
 /* Language */
@@ -652,7 +653,7 @@ function useCustomModels() {
 @keyframes emblem-in { from { opacity: 0; transform: scale(.6) rotate(-10deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
 
 @media (max-width: 860px) {
-  #app .wizard-sheet { grid-template-columns: 1fr; max-height: 94vh; }
+  #app .wizard-sheet { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); height: 94vh; }
   #app .wizard-rail { border-right: 0; border-bottom: 1px solid var(--md-outline-variant); }
   #app .steps { flex-direction: row; overflow-x: auto; }
   #app .step-desc { display: none; }
