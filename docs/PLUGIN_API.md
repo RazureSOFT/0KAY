@@ -32,6 +32,7 @@ package identity, version, build and run commands. The file is consumed by
 | `name` | string / yes | Package name; an npm-style `@scope/name` (or unscoped). It must equal the requested install name. |
 | `version` | string / yes | Package version; releases use SemVer, e.g. `0.1.0` |
 | `description` | string / no | Human-readable note; does not affect execution |
+| `repository` | string / no | Source repository URL. Used for the marketplace/plugin-detail link and README; `0kay-pm` records it so `GET /api/plugins/installed` can report it even for source installs |
 | `install` | string[][] / no | Ordered build/install commands; each entry is an argv array |
 | `start` | string[] / no | Single start command argv; omitted when there is no standalone process |
 | `dependencies` | string[] / no | Packages pm installs recursively; version ranges are not supported yet |
