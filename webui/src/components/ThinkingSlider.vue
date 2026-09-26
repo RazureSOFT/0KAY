@@ -15,7 +15,7 @@ let timer:ReturnType<typeof setTimeout>|undefined
 watch(()=>props.modelValue,()=>{if(!opened.value)dragValue.value=index.value*25})
 watch(full,(value,previous)=>{if(value&&!previous){pulse.value=true;clearTimeout(timer);timer=setTimeout(()=>pulse.value=false,900)}})
 watch(()=>props.disabled,value=>{if(value)opened.value=false})
-function layout(){const rect=trigger.value?.getBoundingClientRect();if(!rect)return;const width=Math.min(352,innerWidth-16),height=204;const up=innerHeight-rect.bottom<height;position.value={left:`${Math.max(8,Math.min(rect.left,innerWidth-width-8))}px`,width:`${width}px`,...(up?{bottom:`${innerHeight-rect.top+8}px`}:{top:`${rect.bottom+8}px`})}}
+function layout(){const rect=trigger.value?.getBoundingClientRect();if(!rect)return;const width=Math.min(352,innerWidth-16),height=236;const up=rect.top>=height+8||innerHeight-rect.bottom<height;position.value={left:`${Math.max(8,Math.min(rect.left,innerWidth-width-8))}px`,width:`${width}px`,...(up?{bottom:`${innerHeight-rect.top+8}px`}:{top:`${rect.bottom+8}px`})}}
 async function toggle(){if(props.disabled)return;opened.value=!opened.value;if(opened.value){dragValue.value=index.value*25;layout();await nextTick();range.value?.focus()}}
 function close(){opened.value=false;trigger.value?.focus()}
 function update(event:Event){dragValue.value=Number((event.target as HTMLInputElement).value);emit('update:modelValue',stops.value[Math.round(dragValue.value/25)].value)}
