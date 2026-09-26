@@ -2,6 +2,19 @@
 
 A local-first AI platform with Core orchestration, a persona plugin, a model gateway, a WebUI, and an independent Agent repository.
 
+## Screenshots
+
+| 对话 | 插件 |
+|---|---|
+| ![对话](assets/chat.png) | ![插件](assets/plugins.png) |
+
+| 插件市场 | 供应商设置 |
+|---|---|
+| ![插件市场](assets/marketplace.png) | ![供应商设置](assets/settings-provider.png) |
+
+All screenshots are real captures of the running WebUI (`webui`, Vite dev server),
+not mockups.
+
 ## Documentation
 
 - [Architecture](ARCHITECTURE.md) - component boundaries, communication, data flow, and UI patches.

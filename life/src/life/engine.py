@@ -1090,45 +1090,90 @@ class LifeEngine:
                 signals.append("screen")
         return "\n\n".join(parts), signals
 
-    async def _think_observation(self, observations: str) -> str:
-        """Let THINK decide, in character, what (if anything) to say."""
+    # Autonomy may execute these tools without user approval; computeruse is
+    # limited to the read-only actions (looking at the user's screen).
+    AUTONOMY_TOOLS = ("computeruse", "search", "web_browse", "minecraft", "agenda_add", "journal")
+    AUTONOMY_COMPUTERUSE_ACTIONS = ("screenshot", "listwindows")
+
+    async def _autonomy_think_loop(self, observations: str) -> tuple[str, list[str]]:
+        """THINK-driven autonomous turn.
+
+        Gives the model state, observations and the full tool set, lets it
+        decide what to do (including using the Agent to look at the user's
+        computer), executes a safe subset, and returns the message it wants to
+        send to the user (if any).
+        """
         try:
             memory_context = await asyncio.to_thread(
                 self.memory.get_memory_context, "主动关心用户近况", f"session:{self._observation_target()}", self.soul.recall_limit())
         except Exception:
             memory_context = ""
-        system = self.think.build_prompt(
-            user_message=("[内部主动巡视] 你刚检查了邮件、QQ 消息和电脑屏幕（见 External Observations）。"
-                          "请以你的人设判断：此刻你是否想主动联系用户？想的话，就用你自己会说的口吻说一句自然的话。"),
-            emotion_context=json.dumps(self.emotion.state.to_dict()),
-            energy_context=f"{self._body_phrase()}；{self.circadian.get_prompt_context()}",
-            memory_context=memory_context,
-            online_agents=self.online_agent_count,
-            skills_context="",
-            tools_context=json.dumps(self.get_tools_schema(), ensure_ascii=False),
-            time_context=datetime.now().strftime("%Y-%m-%d %H:%M"),
-            observations_context=observations,
-        )
-        if self._last_persona_context:
-            system += "\nPersona:\n" + self._last_persona_context
-        system += ("\n\nProactive outreach decision:\n"
-                   "- 如果你（以角色身份）此刻想主动跟用户说话，把要说的话放进 \"proactive_message\""
-                   "（第一人称、≤80 字、自然、不要加引号）。\n"
-                   "- 如果没有什么值得打扰用户的，把 \"proactive_message\" 设为空字符串。")
-        try:
-            raw = "".join([chunk async for chunk in self.mocr.generate(
-                self._model_for("think"), [{"role": "user", "content": "主动巡视"}], system, thinking=True)])
-            plan = self.think.parse_response(raw)
-        except Exception as error:
-            await asyncio.to_thread(self.companion.audit, "observation_think", str(error), "", "failed")
-            return ""
-        self.emotion.state.apply_delta(plan.emotion_delta)
-        return str(plan.proactive_message or "").strip().strip('"')
+        messages = str(observations)
+        taken: list[str] = []
+        message = ""
+        for _ in range(3):
+            system = self.think.build_prompt(
+                user_message=("[内部自主任务] 这是你的自主时间，没有用户直接指令。"
+                              "看 External Observations 里你刚收集到的信息，以你的人设自主决定此刻做什么最有意义："
+                              "可以先用 computeruse 的 listwindows/screenshot 看一眼用户电脑在做什么，"
+                              "也可以写日记、安排日程、自己玩 Minecraft、搜索资料，或什么都不做。"
+                              "如果此刻你想主动跟用户说点什么，就把话写进 proactive_message。"),
+                emotion_context=json.dumps(self.emotion.state.to_dict()),
+                energy_context=f"{self._body_phrase()}；{self.circadian.get_prompt_context()}",
+                memory_context=memory_context,
+                online_agents=self.online_agent_count,
+                skills_context="",
+                tools_context=json.dumps(self.get_tools_schema(), ensure_ascii=False),
+                time_context=datetime.now().strftime("%Y-%m-%d %H:%M"),
+                observations_context=messages,
+            )
+            if self._last_persona_context:
+                system += "\nPersona:\n" + self._last_persona_context
+            system += ("\n\nAutonomous rules:\n"
+                       "- 你可以调用工具来观察或行动，一次最多一个，等结果回来再决定下一步。\n"
+                       "- 允许自动执行：computeruse(仅 screenshot/listwindows)、search、web_browse、minecraft、agenda_add、journal。\n"
+                       "- 想主动联系用户时，把要说的话放进 proactive_message（第一人称、≤80 字、自然、不要引号）；不想打扰就留空。")
+            try:
+                raw = "".join([chunk async for chunk in self.mocr.generate(
+                    self._model_for("think"), [{"role": "user", "content": "自主任务"}], system, thinking=True)])
+                plan = self.think.parse_response(raw)
+            except Exception as error:
+                await asyncio.to_thread(self.companion.audit, "autonomy_think", str(error), "", "failed")
+                break
+            self.emotion.state.apply_delta(plan.emotion_delta)
+            if plan.proactive_message:
+                message = str(plan.proactive_message).strip().strip('"')
+            calls = plan.tool_calls or ([plan.tool_call] if plan.tool_call else [])
+            if not calls:
+                break
+            call = calls[0]
+            name = str(call.get("name") or "")
+            args = call.get("arguments", {k: value for k, value in call.items() if k != "name"})
+            if isinstance(args, str):
+                try:
+                    args = json.loads(args)
+                except ValueError:
+                    args = {}
+            if not isinstance(args, dict):
+                args = {}
+            if name not in self.AUTONOMY_TOOLS:
+                messages += "\n\nAction result:\nblocked " + name + ": not allowed autonomously"
+                continue
+            if name == "computeruse" and str(args.get("action") or "") not in self.AUTONOMY_COMPUTERUSE_ACTIONS:
+                messages += "\n\nAction result:\nblocked computeruse: only screenshot/listwindows"
+                continue
+            result = await self._call_minecraft(args) if name == "minecraft" else await self._call_tool_direct(name, **args)
+            summary = json.dumps({"tool": name, "success": bool(result and result.success),
+                                  "data": (result.data if result else None),
+                                  "error": (result.error if result else "unavailable")}, ensure_ascii=False)
+            taken.append(name)
+            messages += "\n\nAction result:\n" + summary
+        return message, taken
 
     async def observation_tick(self) -> dict:
-        """Active mode: gather mail / QQ / screen, let THINK decide in character
-        whether to reach out and what to say, then queue it as a proactive
-        candidate (quota, review and delivery stay handled by proactive_tick)."""
+        """Autonomous turn: gather signals, then let THINK freely decide what to
+        do (observe the user's computer, act, or reach out). Message delivery
+        stays gated by quota/review in proactive_tick."""
         if getattr(self.circadian.state, "is_sleeping", False):
             return {"skipped": "sleeping"}
         if getattr(self.emotion.state, "irritation", 0) >= 0.7:
@@ -1140,23 +1185,25 @@ class LifeEngine:
         if str(settings.get("enable_proactive", "1")) != "1":
             return {"skipped": "proactive_off"}
         observations, signals = await self._collect_observations()
-        if not signals:
-            return {"skipped": "no_signals"}
+        message, actions = await self._autonomy_think_loop(observations)
         target = self._observation_target()
-        try:
-            allowed, reason = await asyncio.to_thread(self.companion.can_proactively_send, target)
-        except Exception:
-            allowed, reason = False, "error"
-        if not allowed:
-            await asyncio.to_thread(self.companion.audit, "observation_blocked", reason, "", "blocked")
-            return {"skipped": "quota", "reason": reason}
-        message = await self._think_observation(observations)
-        if not message:
-            await asyncio.to_thread(self.companion.timeline_add, "观察", "巡视后决定不打扰", ", ".join(signals)[:60])
-            return {"consulted": True, "spoke": False, "signals": signals}
-        await asyncio.to_thread(self.companion.create_proactive_candidate, target, "observation", message)
-        await asyncio.to_thread(self.companion.timeline_add, "观察", "巡视后决定主动联系", message[:80])
-        return {"consulted": True, "spoke": True, "target": target, "signals": signals}
+        spoke = False
+        if message:
+            try:
+                allowed, reason = await asyncio.to_thread(self.companion.can_proactively_send, target)
+            except Exception:
+                allowed, reason = False, "error"
+            if allowed:
+                await asyncio.to_thread(self.companion.create_proactive_candidate, target, "observation", message)
+                await asyncio.to_thread(self.companion.timeline_add, "自主", "自主决策后主动联系", message[:80])
+                spoke = True
+            else:
+                await asyncio.to_thread(self.companion.audit, "observation_blocked", reason, "", "blocked")
+        if actions:
+            await asyncio.to_thread(self.companion.timeline_add, "自主", "自主执行：" + ", ".join(actions), "")
+        if not spoke and not actions:
+            await asyncio.to_thread(self.companion.timeline_add, "自主", "自主巡视后未行动", ", ".join(signals)[:60])
+        return {"consulted": True, "spoke": spoke, "actions": actions, "signals": signals}
 
     @staticmethod
     def _proactive_due(candidate: dict, now: datetime) -> bool:
