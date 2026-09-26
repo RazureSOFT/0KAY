@@ -11,10 +11,9 @@ import (
 	"syscall"
 )
 
-const (
-	detachedProcess       = 0x00000008
-	createNewProcessGroup = 0x00000200
-)
+// CREATE_NO_WINDOW runs the updater with a hidden console (children such as
+// git/go/npm/powershell inherit it, so no window flashes).
+const createNoWindow = 0x08000000
 
 func winQuote(value string) string {
 	return `"` + strings.ReplaceAll(value, `"`, `""`) + `"`
@@ -102,7 +101,7 @@ func writeSourceUpdater(dir string, plan sourcePlan) (string, string, error) {
 		fmt.Fprintf(&b, "for /f \"tokens=5\" %%%%p in ('netstat -ano ^| findstr :%d ^| findstr LISTENING') do taskkill /F /PID %%%%p >nul 2>&1\r\n", plan.Port)
 		b.WriteString("ping -n 2 127.0.0.1 >nul\r\n")
 	}
-	fmt.Fprintf(&b, "powershell -NoProfile -Command \"%s\"\r\n", winStartCommand(plan))
+	fmt.Fprintf(&b, "powershell -NoProfile -NonInteractive -WindowStyle Hidden -Command \"%s\"\r\n", winStartCommand(plan))
 	fmt.Fprintf(&b, "echo %s\r\n", markerDone)
 	if err := os.WriteFile(script, []byte(b.String()), 0o644); err != nil {
 		return "", "", err
@@ -119,7 +118,7 @@ func launchDetached(script, logPath string) error {
 	cmd := exec.Command("cmd", "/c", script)
 	cmd.Stdout = handle
 	cmd.Stderr = handle
-	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: detachedProcess | createNewProcessGroup}
+	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: createNoWindow}
 	if err := cmd.Start(); err != nil {
 		handle.Close()
 		return err
