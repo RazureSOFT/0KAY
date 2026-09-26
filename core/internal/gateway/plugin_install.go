@@ -39,6 +39,19 @@ func (g *Gateway) handlePluginInstall(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusAccepted, state)
 }
 
+// handlePluginInstalled lists packages already installed via 0kay-pm, so the
+// marketplace can mark them as installed.
+//
+//	GET /api/plugins/installed
+func (g *Gateway) handlePluginInstalled(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"packages": update.InstalledPackages()})
+}
+
 // handlePluginInstallStatus reports the latest install request and, once it
 // finishes, reloads UI patches so a freshly installed plugin appears.
 //

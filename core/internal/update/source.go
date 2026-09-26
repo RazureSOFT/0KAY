@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -50,28 +51,56 @@ func componentPort(plugin string) int {
 	return 0
 }
 
-// pmInstalled reports whether 0kay-pm has a record for the package.
-func pmInstalled(pkg string) bool {
+// pmStatePath locates 0kay-pm's state file (OKAY_PM_HOME override, else ~/.0kay).
+func pmStatePath() string {
 	home := strings.TrimSpace(os.Getenv("OKAY_PM_HOME"))
 	if home == "" {
 		userHome, err := os.UserHomeDir()
 		if err != nil {
-			return false
+			return ""
 		}
 		home = filepath.Join(userHome, ".0kay")
 	}
-	raw, err := os.ReadFile(filepath.Join(home, "state.json"))
+	return filepath.Join(home, "state.json")
+}
+
+// pmInstalledPackages returns the set of package names recorded by 0kay-pm.
+func pmInstalledPackages() map[string]bool {
+	path := pmStatePath()
+	if path == "" {
+		return nil
+	}
+	raw, err := os.ReadFile(path)
 	if err != nil {
-		return false
+		return nil
 	}
 	var state struct {
 		Installed map[string]json.RawMessage `json:"installed"`
 	}
 	if json.Unmarshal(raw, &state) != nil {
-		return false
+		return nil
 	}
-	_, ok := state.Installed[pkg]
-	return ok
+	set := make(map[string]bool, len(state.Installed))
+	for name := range state.Installed {
+		set[name] = true
+	}
+	return set
+}
+
+// pmInstalled reports whether 0kay-pm has a record for the package.
+func pmInstalled(pkg string) bool {
+	return pmInstalledPackages()[pkg]
+}
+
+// InstalledPackages lists packages recorded by 0kay-pm, sorted.
+func InstalledPackages() []string {
+	set := pmInstalledPackages()
+	out := make([]string, 0, len(set))
+	for name := range set {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // sourceRoot locates the umbrella checkout (OKAY_SOURCE_ROOT or by walking up
