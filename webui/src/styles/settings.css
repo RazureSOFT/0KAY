@@ -531,6 +531,130 @@
 .about-plugin { display: flex; flex-wrap: wrap; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--md-outline-variant); }
 .about-plugin strong { min-width: 100px; }
 
+/* ---------- Providers: expressive card polish ---------- */
+#app .settings-page .actions-row .btn-tonal {
+  min-height: 46px;
+  padding-inline: 22px;
+  border-radius: 999px;
+  font-weight: 700;
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+}
+#app .settings-page .provider-list { gap: 16px; }
+#app .settings-page .provider-list-item {
+  position: relative;
+  gap: 14px;
+  padding: 20px;
+  border-radius: 24px;
+  background: var(--md-surface-container-low);
+  border: 1px solid color-mix(in srgb, var(--md-outline-variant) 55%, transparent);
+  box-shadow: var(--shadow-1);
+  transition: transform 300ms var(--set-spring), box-shadow 300ms var(--set-emph), border-color 300ms;
+}
+#app .settings-page .provider-list-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); }
+#app .settings-page .provider-list-item.selected {
+  border-color: color-mix(in srgb, var(--md-primary) 45%, var(--md-outline-variant));
+  background:
+    radial-gradient(460px 220px at 100% 0%, color-mix(in srgb, var(--md-primary) 10%, transparent), transparent 72%),
+    var(--md-surface-container-low);
+}
+#app .settings-page .provider-list-item.selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 18px;
+  bottom: 18px;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--md-primary);
+}
+#app .settings-page .provider-identity { gap: 14px; }
+#app .settings-page .provider-logo {
+  width: 52px;
+  height: 52px;
+  padding: 8px;
+  border-radius: 16px;
+  background: var(--md-surface-container-lowest);
+  border: 1px solid color-mix(in srgb, var(--md-outline-variant) 70%, transparent);
+}
+#app .settings-page .provider-logo-fallback {
+  width: 52px;
+  height: 52px;
+  font-size: 22px;
+  border-radius: 18px 18px 18px 7px;
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+}
+#app .settings-page .provider-title { font-size: 16px; font-weight: 750; letter-spacing: -0.01em; }
+#app .settings-page .provider-url {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--md-surface-container-high);
+  font-size: 12px;
+  color: var(--md-on-surface-variant);
+}
+#app .settings-page .provider-badges { gap: 8px; }
+#app .settings-page .badge-count {
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface-variant);
+  padding: 5px 12px;
+}
+#app .settings-page .badge-default {
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  padding: 5px 12px;
+}
+#app .settings-page .provider-card-actions { gap: 8px; }
+#app .settings-page .provider-card-actions .btn {
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 650;
+}
+#app .settings-page .provider-card-actions .btn-tonal {
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+}
+#app .settings-page .provider-card-actions .btn-ghost {
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface-variant);
+}
+#app .settings-page .provider-card-actions .btn-ghost.danger-text {
+  color: var(--md-error);
+  background: color-mix(in srgb, var(--md-error) 10%, transparent);
+}
+#app .settings-page .model-chip-card {
+  border-radius: 20px;
+  background: var(--md-surface-container);
+  border: 1px solid color-mix(in srgb, var(--md-outline-variant) 40%, transparent);
+  padding: 14px 16px;
+}
+#app .settings-page .model-toggle-list { flex-direction: row; flex-wrap: wrap; gap: 8px; }
+#app .settings-page .model-toggle-row {
+  flex: 0 1 auto;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--md-surface-container-lowest);
+  border-color: color-mix(in srgb, var(--md-outline-variant) 45%, transparent);
+}
+#app .settings-page .model-toggle-name { flex: 0 1 auto; }
+#app .settings-page .model-toggle-state { display: none; }
+#app .settings-page .provider-edit,
+#app .settings-page .provider-runtime {
+  margin-top: var(--space-lg);
+  padding: 22px;
+  border-radius: 24px;
+  background: var(--md-surface-container-low);
+  border: 1px solid color-mix(in srgb, var(--md-outline-variant) 50%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--md-outline-variant) 50%, transparent);
+  box-shadow: var(--shadow-1);
+}
+#app .settings-page .provider-runtime h3 { font-size: 16px; font-weight: 750; margin-bottom: 6px; }
+
 @media (prefers-color-scheme: dark) {
   .provider-logo { background: #1c1b1f; }
   .error-message, .danger-box { color: #ffd9d4; }
