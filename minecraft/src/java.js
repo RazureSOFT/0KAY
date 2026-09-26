@@ -3,11 +3,17 @@
  *
  * The controller owns the session; this class only knows how to drive a single
  * Java connection and reports state back through the `emit` callback.
+ *
+ * Cracked (offline-mode) servers ask for `/register` or `/login`; the bot
+ * answers automatically from a per-server password stored under data/.
  */
 
 import mineflayer from 'mineflayer';
 import pf from 'mineflayer-pathfinder';
 import Vec3 from 'vec3';
+import { randomBytes } from 'crypto';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 
 const { pathfinder, Movements, goals } = pf;
 
@@ -17,14 +23,23 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function randomPassword() {
+  return `0kay-${randomBytes(5).toString('hex')}`;
+}
+
 export class JavaBot {
   constructor(emit) {
     this.emit = emit;
     this.bot = null;
     this.state = 'idle';
     this.lastError = '';
-    this.chat = [];
+    this.chatLog = [];
     this.options = {};
+    this.authHandled = false;
+    this.authGenerated = false;
+    this.credentialsPath = process.env.MINECRAFT_CREDENTIALS
+      || path.join(process.env.MINECRAFT_DATA_DIR || './data', 'credentials.json');
+    this.credentials = {};
   }
 
   describe() {
@@ -44,7 +59,6 @@ export class JavaBot {
       food: bot?.food ?? null,
       dimension: bot?.game?.dimension || '',
       players: this.playerList(),
-      motd: bot?.game?.dimension || '',
     };
   }
 
@@ -55,12 +69,20 @@ export class JavaBot {
       port: Number(opts.port) || Number(process.env.MINECRAFT_JAVA_PORT) || 25565,
       username: opts.username || process.env.MINECRAFT_USERNAME || '0kay_bot',
       version: opts.version || process.env.MINECRAFT_VERSION || undefined,
-      auth: opts.auth === 'microsoft' || opts.password ? 'microsoft' : 'offline',
-      password: opts.password || process.env.MINECRAFT_PASSWORD || undefined,
+      auth: opts.auth === 'microsoft' ? 'microsoft' : 'offline',
+      password: opts.password || opts.server_password || process.env.MINECRAFT_SERVER_PASSWORD || '',
+      microsoftPassword: opts.microsoft_password || process.env.MINECRAFT_PASSWORD || undefined,
     };
+    this.authHandled = false;
+    this.authGenerated = false;
     this.lastError = '';
     this.state = 'connecting';
-    this.emit('log', `java: connecting to ${this.options.host}:${this.options.port} as ${this.options.username}`);
+    this.credentials = await this.#loadCredentials();
+    const key = `${this.options.host}:${this.options.port}`;
+    if (!this.options.password && this.credentials[key]?.password) {
+      this.options.password = this.credentials[key].password;
+    }
+    this.emit('log', `java: connecting to ${this.options.host}:${this.options.port} as ${this.options.username} (${this.options.auth})`);
 
     this.bot = mineflayer.createBot({
       host: this.options.host,
@@ -68,13 +90,16 @@ export class JavaBot {
       username: this.options.username,
       version: this.options.version,
       auth: this.options.auth,
-      password: this.options.password,
+      password: this.options.auth === 'microsoft' ? this.options.microsoftPassword : undefined,
       hideErrors: true,
     });
 
     this.bot.loadPlugin(pathfinder);
     this.#wire(this.bot);
-    return { accepted: true, edition: 'java', state: this.state };
+    await this.#waitForSettle();
+    const result = { accepted: true, edition: 'java', ...this.describe() };
+    if (this.authGenerated) result.generated_password = this.options.password;
+    return result;
   }
 
   #wire(bot) {
@@ -94,7 +119,9 @@ export class JavaBot {
     });
     bot.on('message', (jsonMsg) => {
       const text = jsonMsg?.toString?.() || '';
-      if (text && !this.chat.some((entry) => entry.raw === text)) this.#pushChat('', text, true);
+      if (!text) return;
+      this.#pushChat('', text, true);
+      this.#handleAuthPrompt(text);
     });
     bot.on('playerJoined', (player) => this.emit('log', `java: ${player.username} joined`));
     bot.on('playerLeft', (player) => this.emit('log', `java: ${player.username} left`));
@@ -107,10 +134,70 @@ export class JavaBot {
     });
   }
 
+  #handleAuthPrompt(text) {
+    if (this.authHandled || !this.bot) return;
+    const lower = text.toLowerCase();
+    const wantsRegister = /\/register\b|\bregister\b|注册/.test(lower);
+    const wantsLogin = /\/login\b|\blogin\b|登录|登陆/.test(lower);
+    if (wantsRegister) {
+      if (!this.options.password) {
+        this.options.password = randomPassword();
+        this.authGenerated = true;
+      }
+      this.authHandled = true;
+      this.bot.chat(`/register ${this.options.password} ${this.options.password}`);
+      this.emit('log', `java: sent /register (password ${this.authGenerated ? 'generated' : 'configured'})`);
+      void this.#saveCredentials();
+      return;
+    }
+    if (wantsLogin) {
+      if (!this.options.password) {
+        this.emit('log', 'java: server requires /login but no password is configured');
+        return;
+      }
+      this.authHandled = true;
+      this.bot.chat(`/login ${this.options.password}`);
+      this.emit('log', 'java: sent /login');
+    }
+  }
+
+  async #loadCredentials() {
+    try {
+      return JSON.parse(await fs.readFile(this.credentialsPath, 'utf8'));
+    } catch {
+      return {};
+    }
+  }
+
+  async #saveCredentials() {
+    if (!this.options.password) return;
+    const key = `${this.options.host}:${this.options.port}`;
+    this.credentials[key] = { username: this.options.username, password: this.options.password };
+    try {
+      await fs.mkdir(path.dirname(this.credentialsPath), { recursive: true });
+      await fs.writeFile(this.credentialsPath, JSON.stringify(this.credentials, null, 2), 'utf8');
+    } catch (error) {
+      this.emit('log', `java: could not persist credentials: ${error.message}`);
+    }
+  }
+
+  async #waitForSettle(timeoutMs = 18000) {
+    const deadline = Date.now() + timeoutMs;
+    let connectedAt = 0;
+    while (Date.now() < deadline) {
+      if (this.state === 'error') return;
+      if (this.state === 'connected') {
+        if (!connectedAt) connectedAt = Date.now();
+        if (Date.now() - connectedAt > 3500) return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  }
+
   #pushChat(username, message, raw = false) {
     const entry = { time: new Date().toISOString(), username, message, raw };
-    this.chat.push(entry);
-    if (this.chat.length > CHAT_LIMIT) this.chat.splice(0, this.chat.length - CHAT_LIMIT);
+    this.chatLog.push(entry);
+    if (this.chatLog.length > CHAT_LIMIT) this.chatLog.splice(0, this.chatLog.length - CHAT_LIMIT);
     this.emit('chat', entry);
   }
 

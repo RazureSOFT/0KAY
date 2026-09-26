@@ -37,6 +37,7 @@ export const MINECRAFT_SETTINGS_SECTION = {
     { key: 'default_host', type: 'text', label: '默认服务器', defaultValue: '', help: '例如 mc.example.com' },
     { key: 'default_port', type: 'number', label: '默认端口', defaultValue: '', help: 'Java 默认 25565，Bedrock 默认 19132' },
     { key: 'default_username', type: 'text', label: '默认昵称', defaultValue: '0kay_bot' },
+    { key: 'default_password', type: 'text', label: '服务器密码', defaultValue: '', help: '离线/盗版服的 /register、/login 密码；留空则首次注册时自动生成并保存到 data/credentials.json' },
     { key: 'autopilot_default', type: 'bool', label: '连接后自动游玩', defaultValue: 'false', help: '进入服务器后自动开启 AI 挂机' },
     { key: 'autopilot_interval_ms', type: 'number', label: '决策间隔(ms)', defaultValue: '12000' },
   ],

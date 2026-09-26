@@ -32,6 +32,8 @@ function mergedConnectArgs(args = {}) {
     username: args.username || serverSettings.default_username || undefined,
     version: args.version,
     auth: args.auth,
+    password: args.password || args.server_password || serverSettings.default_password || undefined,
+    microsoft_password: args.microsoft_password,
   };
 }
 

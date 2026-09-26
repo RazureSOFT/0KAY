@@ -531,7 +531,7 @@ class MinecraftTool(Tool):
             "host": {"type": "string"}, "port": {"type": "integer"},
             "username": {"type": "string"}, "version": {"type": "string"},
             "auth": {"type": "string", "enum": ["offline", "microsoft"]},
-            "message": {"type": "string"}, "player": {"type": "string"},
+            "password": {"type": "string"}, "message": {"type": "string"}, "player": {"type": "string"},
             "target": {"type": "string"}, "distance": {"type": "integer"},
             "x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"},
             "item": {"type": "string"}, "goal": {"type": "string"},
@@ -541,7 +541,7 @@ class MinecraftTool(Tool):
     async def execute(self, action: str = "", **kwargs) -> ToolResult:
         if not self.config.minecraft_enabled:
             return ToolResult(False, None, "minecraft is disabled in L.I.F.E settings")
-        action = (action or "").strip().lower()
+        action = (action or kwargs.pop("mode", "") or kwargs.pop("op", "") or kwargs.pop("command", "")).strip().lower()
         if not action:
             return ToolResult(False, None, "action is required")
         base = (self.config.minecraft_url or "http://127.0.0.1:8765").rstrip("/")
@@ -568,7 +568,7 @@ class AgendaTool(Tool):
     @property
     def name(self) -> str: return "agenda_add"
     @property
-    def description(self) -> str: return "Create a schedule candidate in the LIFE companion dashboard, pending confirmation. Use for scheduling requests; when is local YYYY-MM-DD HH:MM."
+    def description(self) -> str: return "Add an item to LIFE's own schedule. It is confirmed immediately (no manual step). Use for scheduling requests; when is local YYYY-MM-DD HH:MM."
     def parameters(self) -> dict:
         return {"type": "object", "required": ["title"], "properties": {"title": {"type": "string"}, "when": {"type": "string"}, "detail": {"type": "string"}}}
     async def execute(self, title="", when="", detail="", **kwargs) -> ToolResult:

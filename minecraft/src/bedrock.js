@@ -16,7 +16,7 @@ export class BedrockBot {
     this.client = null;
     this.state = 'idle';
     this.lastError = '';
-    this.chat = [];
+    this.chatLog = [];
     this.players = new Map();
     this.options = {};
     this.entityId = null;
@@ -105,8 +105,8 @@ export class BedrockBot {
 
   #pushChat(username, message) {
     const entry = { time: new Date().toISOString(), username, message };
-    this.chat.push(entry);
-    if (this.chat.length > CHAT_LIMIT) this.chat.splice(0, this.chat.length - CHAT_LIMIT);
+    this.chatLog.push(entry);
+    if (this.chatLog.length > CHAT_LIMIT) this.chatLog.splice(0, this.chatLog.length - CHAT_LIMIT);
     this.emit('chat', entry);
   }
 
