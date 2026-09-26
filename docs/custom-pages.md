@@ -37,11 +37,14 @@ plugin-web/my-plugin/
   "schema": 1,
   "name": "@razuresoft/0kay-web-my-plugin",
   "version": "0.1.0",
-  "tags": ["0kay-plugin"],
   "install": [["npm", "ci"]],
   "ui": { "dir": ".", "plugin": "my-plugin", "dist": "dist", "build": [["npm", "run", "build"]] }
 }
 ```
+
+To publish in the plugin marketplace, add the GitHub repository topic
+`0kay-plugin` (repository → **Topics**); the topic, not a manifest field, is how
+the marketplace finds 0kay plugins. See [Plugin API §0](PLUGIN_API.md).
 
 The Vite config is a **library** build that keeps `vue` external and emits to
 Core's data directory:
@@ -168,7 +171,8 @@ Or with a single-file component: `index.js` just does
 
 ## 7. Checklist
 
-- [ ] `manifest.json` has `tags: ["0kay-plugin"]` and a matching `ui` block.
+- [ ] `manifest.json` has a matching `ui` block and the repo carries the GitHub
+      topic `0kay-plugin`.
 - [ ] `npm run build` emits `index.js` into `core/data/plugin-ui/{name}/`.
 - [ ] `.patch` has `plugin` set to the exact registered name, a `nav` op and a
       `router` op whose `module` is `/api/plugins/{name}/ui/index.js`.
