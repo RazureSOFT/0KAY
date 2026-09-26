@@ -30,7 +30,7 @@ package identity, version, build and run commands. The file is consumed by
 | Field | Type / required | Meaning |
 |---|---|---|
 | `schema` | number / yes | Fixed at `1` |
-| `name` | string / yes | Package name; validated as `@razuresoft/` plus lowercase letters, digits or hyphens |
+| `name` | string / yes | Package name; an npm-style `@scope/name` (or unscoped). It must equal the requested install name. |
 | `version` | string / yes | Package version; releases use SemVer, e.g. `0.1.0` |
 | `tags` | string[] / yes | Must contain `0kay-plugin` (see below) |
 | `description` | string / no | Human-readable note; does not affect execution |
@@ -43,12 +43,12 @@ package identity, version, build and run commands. The file is consumed by
 | `ui` | object / no | Optional plugin WebUI build/publish config (below) |
 | `ports` | object / no | Port metadata such as Core's `http`/`grpc`; not a generic port executor |
 
-**Every 0kay plugin must carry the `0kay-plugin` tag.** The manifest `tags`
-array has to contain `0kay-plugin`; this is the only tag the platform reserves
-and it is how a package is recognized as a 0kay plugin. It applies to
-third-party plugins **and to the platform's own plugins we write** — Agent,
-LIFE, MOCR, MCP, Minecraft, skillsguishow and every `plugin-web/*` bundle
-declare it too. Other tags may be added freely alongside it.
+**The `0kay-plugin` tag marks a package for the plugin marketplace.** Every
+0kay plugin — third-party and the platform's own (Platform, Core, MOCR, LIFE,
+MCP, Agent, WebUI, Minecraft, searxng and every `plugin-web/*` bundle) — sets
+`"tags": ["0kay-plugin"]`. The marketplace uses this tag to list 0kay plugins;
+**0kay-pm does not require it to install a package.** Other tags may be added
+freely alongside it.
 
 Commands must be non-empty argv arrays such as `["python", "-m", "life.main"]`,
 never a single shell string. Every argument must be a string with no newline or

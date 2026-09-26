@@ -1,5 +1,5 @@
 {
-  "schema":1,"name":"@razuresoft/0kay","version":"0.1.0",
+  "schema":1,"name":"@razuresoft/0kay","version":"0.1.0","tags":["0kay-plugin"],
   "modules":["mcp/manifest.json","core/manifest.json","mocr/manifest.json","life/manifest.json","agent/manifest.json","webui/manifest.json","plugin-web/life/manifest.json","plugin-web/agent/manifest.json","plugin-web/skillsguishow/manifest.json"],
   "repositories":[{"path":"mcp","package":"@razuresoft/0kay-mcp","url":"https://github.com/RazureSOFT/0KAY-mcp.git"},{"path":"agent","package":"@razuresoft/0kay-agent","url":"https://github.com/RazureSOFT/0KAY-agent.git"}]
 }
