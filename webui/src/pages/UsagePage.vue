@@ -226,19 +226,21 @@ onUnmounted(() => {
         <span class="panel-note">{{ modelRows.length }} 个模型</span>
       </div>
       <div v-if="modelRows.length === 0" class="empty">{{ t('usage.empty') }}</div>
-      <div v-else class="model-list">
-        <div v-for="row in modelRows" :key="row.model" class="model-row" :style="{ '--c': row.color }">
-          <div class="model-head">
-            <span class="model-name"><i></i><code>{{ row.model }}</code></span>
-            <span class="model-total">{{ n(row.total) }} <small>tokens</small></span>
+      <div v-else class="model-grid">
+        <article v-for="row in modelRows" :key="row.model" class="model-card" :style="{ '--c': row.color }">
+          <div class="mc-top">
+            <span class="mc-avatar">{{ row.model.slice(0, 1).toUpperCase() }}</span>
+            <code class="mc-name">{{ row.model }}</code>
+            <span class="mc-share">{{ share(row.total).replace('%', '') }}%</span>
           </div>
-          <div class="model-track"><div class="model-fill" :style="{ width: share(row.total) }"></div></div>
-          <div class="model-meta">
-            <span><b>{{ n(row.prompt) }}</b> {{ t('usage.promptTokens') }}</span>
-            <span><b>{{ n(row.completion) }}</b> {{ t('usage.completionTokens') }}</span>
-            <span><b>{{ n(row.count) }}</b> 次请求</span>
+          <b class="mc-total">{{ n(row.total) }} <small>tokens</small></b>
+          <div class="mc-track"><div class="mc-fill" :style="{ width: share(row.total) }"></div></div>
+          <div class="mc-meta">
+            <span><b>{{ n(row.prompt) }}</b>{{ t('usage.promptTokens') }}</span>
+            <span><b>{{ n(row.completion) }}</b>{{ t('usage.completionTokens') }}</span>
+            <span><b>{{ n(row.count) }}</b>次请求</span>
           </div>
-        </div>
+        </article>
       </div>
     </section>
   </div>
@@ -350,18 +352,27 @@ onUnmounted(() => {
 .axis span { flex: 1; min-width: 0; text-align: center; font-size: 10.5px; color: var(--md-on-surface-variant); white-space: nowrap; }
 
 /* Models */
-.model-list { display: flex; flex-direction: column; gap: 20px; }
-.model-row { display: flex; flex-direction: column; gap: 9px; animation: up 460ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)) both; }
-.model-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.model-name { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
-.model-name i { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex-shrink: 0; box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 18%, transparent); }
-.model-name code { font: 700 13px/1.3 ui-monospace, monospace; overflow-wrap: anywhere; }
-.model-total { font-size: 17px; font-weight: 800; flex-shrink: 0; }
-.model-total small { font-size: 11px; font-weight: 600; color: var(--md-on-surface-variant); }
-.model-track { height: 12px; border-radius: 999px; background: var(--md-surface-container-high); overflow: hidden; }
-.model-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--c), color-mix(in srgb, var(--c) 55%, var(--md-surface))); transition: width 600ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)); }
-.model-meta { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--md-on-surface-variant); }
-.model-meta b { color: var(--md-on-surface); font-weight: 700; }
+.model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(264px, 1fr)); gap: 16px; }
+.model-card {
+  position: relative; overflow: hidden; padding: 22px; border-radius: 26px;
+  background: var(--md-surface-container); border: 1px solid color-mix(in srgb, var(--md-outline-variant) 45%, transparent);
+  display: flex; flex-direction: column; gap: 12px;
+  animation: up 460ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)) both;
+  transition: transform 300ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)), box-shadow 300ms, border-color 300ms;
+}
+.model-card::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 5px; background: linear-gradient(90deg, var(--c), color-mix(in srgb, var(--c) 25%, transparent)); }
+.model-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-2); border-color: color-mix(in srgb, var(--c) 40%, var(--md-outline-variant)); }
+.mc-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.mc-avatar { width: 38px; height: 38px; flex-shrink: 0; border-radius: 15px 15px 15px 5px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--c); font-weight: 800; font-size: 16px; }
+.mc-name { flex: 1; min-width: 0; font: 700 12.5px/1.35 ui-monospace, monospace; overflow-wrap: anywhere; }
+.mc-share { flex-shrink: 0; height: 26px; padding: 0 10px; border-radius: 999px; display: inline-flex; align-items: center; background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.mc-total { font-size: 26px; font-weight: 800; letter-spacing: -.02em; line-height: 1.05; }
+.mc-total small { font-size: 11px; font-weight: 600; color: var(--md-on-surface-variant); }
+.mc-track { height: 10px; border-radius: 999px; background: var(--md-surface-container-high); overflow: hidden; }
+.mc-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--c), color-mix(in srgb, var(--c) 50%, var(--md-surface))); transition: width 600ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)); }
+.mc-meta { display: flex; gap: 18px; flex-wrap: wrap; }
+.mc-meta span { display: flex; flex-direction: column; gap: 1px; font-size: 11px; color: var(--md-on-surface-variant); font-weight: 600; }
+.mc-meta b { color: var(--md-on-surface); font-weight: 750; font-size: 14px; font-variant-numeric: tabular-nums; }
 
 .empty { padding: var(--space-xl); text-align: center; color: var(--md-on-surface-variant); background: var(--md-surface-container); border-radius: 20px; }
 
