@@ -262,7 +262,9 @@
 "updateNow": "立即更新",
 "updating": "更新中…",
 "updated": "已更新",
-"updateFailed": "更新失敗"
+"updateFailed": "更新失敗",
+"beta": "測試版（同步倉庫）",
+"betaHint": "直接從程式庫 main 分支同步，而非發行版標籤（可能不穩定）。"
     },
     "generalDesc": "介面語言與基本偏好",
     "providerDesc": "選擇 AI 供應商並設定 API 憑證",

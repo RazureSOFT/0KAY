@@ -186,6 +186,9 @@ onUnmounted(stopPolling)
           <button v-if="updateResult?.has_update" class="btn btn-primary sm" :disabled="isUpdating('core')" @click="applyUpdate('core', updateResult.latest)">
             {{ isUpdating('core') ? t('settings.about.updating') : t('settings.about.updateNow') }}
           </button>
+          <button class="btn btn-tonal sm" :disabled="isUpdating('core')" :title="t('settings.about.betaHint')" @click="applyUpdate('core')">
+            {{ isUpdating('core') ? t('settings.about.updating') : t('settings.about.beta') }}
+          </button>
           <a v-if="updateResult?.url" class="btn btn-tonal sm" :href="updateResult.url" target="_blank" rel="noopener noreferrer">Release ↗</a>
         </div>
       </div>
@@ -194,7 +197,7 @@ onUnmounted(stopPolling)
       <div v-if="applyState && applyState.status !== 'idle'" class="apply-banner" :class="applyState.status">
         <div class="apply-head">
           <span class="apply-spinner" aria-hidden="true"></span>
-          <b>{{ applyState.package }}<span v-if="applyState.version">@{{ applyState.version }}</span></b>
+          <b>{{ applyState.package }}<span v-if="applyState.version">@{{ applyState.version }}</span><span v-else> · main</span></b>
           <span class="apply-label">{{ applyLabel }}</span>
         </div>
         <p v-if="applyState.error" class="apply-error">{{ applyState.error }}</p>

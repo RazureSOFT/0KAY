@@ -262,7 +262,9 @@
 "updateNow": "Update now",
 "updating": "Updating…",
 "updated": "Updated",
-"updateFailed": "Update failed"
+"updateFailed": "Update failed",
+"beta": "Beta (sync repo)",
+"betaHint": "Sync the latest main branch instead of a release tag (may be unstable)."
     },
     "generalDesc": "UI language and basic preferences",
     "providerDesc": "Choose an AI provider and configure API credentials",
