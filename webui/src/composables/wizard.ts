@@ -28,6 +28,7 @@ export interface PersonaConfig {
   description: string
   personality: string
   greeting: string
+  customPrompt: string
 }
 
 export interface Live2DConfig {

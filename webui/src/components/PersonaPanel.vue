@@ -42,5 +42,11 @@ const { tabLabel, tabMeta } = useSettingsMeta()
       <label>{{ t('wizard.greeting') }}</label>
       <textarea v-model="wizard.persona.greeting" :placeholder="t('wizard.greetingPlaceholder')" class="input" rows="2"></textarea>
     </div>
+
+    <div class="field">
+      <label>{{ t('wizard.customPrompt') }}</label>
+      <textarea v-model="wizard.persona.customPrompt" :placeholder="t('wizard.customPromptPlaceholder')" class="input" rows="6"></textarea>
+      <p class="helper-text">{{ t('wizard.customPromptHelp') }}</p>
+    </div>
   </div>
 </template>

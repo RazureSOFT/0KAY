@@ -148,6 +148,9 @@ class LifeEngine:
             if age >= 0: parts.append(f"Current age: {age}")
         except ValueError:
             pass
+        custom = (persona.get("customPrompt") or "").strip()
+        if custom:
+            parts.append("Additional user instructions:\n" + custom)
         parts.append(f"Current local time: {datetime.now().astimezone().isoformat()}")
         return "\n".join(parts)
 

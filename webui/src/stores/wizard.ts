@@ -25,6 +25,7 @@ export const useWizardStore = defineStore('wizard', () => {
     description: '',
     personality: '',
     greeting: '',
+    customPrompt: '',
   })
 
   // Live2D config — model list comes from upload API (sample models removed)
@@ -198,7 +199,7 @@ export const useWizardStore = defineStore('wizard', () => {
     selectedModels.value = []
     defaultModel.value = ''
     fetchedModels.value = []
-    persona.value = { name: '', avatar: '', birthDate: '', description: '', personality: '', greeting: '' }
+    persona.value = { name: '', avatar: '', birthDate: '', description: '', personality: '', greeting: '', customPrompt: '' }
     live2d.value = { enabled: true, modelUrl: DEFAULT_LIVE2D_MODEL_URL, modelData: null }
     localStorage.removeItem('0kay_wizard_complete')
     localStorage.removeItem('0kay_config')
