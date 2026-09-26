@@ -14,8 +14,8 @@ Complete reference for the Core HTTP gateway. Default base URL is
   `Authorization: Bearer <token>`. Failure returns `401` with plain text
   `authentication required`.
 - When `CORE_LAN_ENABLED=1`, requests from outside loopback and
-  `CORE_TRUSTED_NETWORKS` must additionally present a paired device token
-  (or `CORE_API_TOKEN`), otherwise `401 paired device required`.
+  `CORE_TRUSTED_NETWORKS` must additionally present a paired device token (or
+  `CORE_API_TOKEN`), otherwise `401 paired device required`.
 - Plugin callbacks (`/api/pairing/*` routes) are handled before CORS/auth and
   apply their own loopback/Origin rules instead.
 
@@ -24,10 +24,9 @@ Complete reference for the Core HTTP gateway. Default base URL is
 - Allowed origins: same origin, `localhost`/`127.0.0.1` variants, plus any host
   listed in `CORE_ALLOWED_ORIGINS` (comma separated). Other origins get
   `403 origin not allowed`.
-- Allowed methods: `GET, POST, PUT, PATCH, DELETE, OPTIONS`.
-  Allowed headers: `Content-Type, Authorization`.
-- `OPTIONS` preflight returns `200` empty body **before** token validation, so
-  browsers do not need to send credentials on preflight.
+- Allowed methods: `GET, POST, PUT, PATCH, DELETE, OPTIONS`. Allowed headers:
+  `Content-Type, Authorization`.
+- `OPTIONS` preflight returns `200` empty body before token validation.
 
 ### Errors
 
@@ -35,7 +34,7 @@ There is no single error envelope. Expect one of:
 
 | Shape | Where |
 |---|---|
-| `4xx/5xx` plain text (`http.Error`) | Most validation/auth failures, e.g. `invalid request`, `prompt required`, `session not found` |
+| `4xx/5xx` plain text (`http.Error`) | Most validation/auth failures |
 | JSON `{success, result, error}` | `POST /api/run`, `/api/skills` |
 | JSON `{error}` or SSE `event: error` | Chat/generation streams |
 | `204` empty body | `POST /api/usage/record` |
@@ -45,7 +44,8 @@ There is no single error envelope. Expect one of:
 - JSON bodies use `snake_case` field names and `Content-Type: application/json`.
 - Body size limits: sessions 8 KB, messages 128 KB, approvals/questions 64 KB,
   notifications 64 KB, tasks 2 MB, skills POST 2 MB, usage record 16 KB,
-  pairing request 4 KB, images 16 MB, live2d upload 512 MB (32 MB per part).
+  pairing request 4 KB, update apply JSON 8 KB, images 16 MB, live2d upload
+  512 MB (32 MB per part).
 - Common query parameters: `?limit=` `?query=` `?cursor=` `?incremental=1`
   `?session_id=` `?executor_id=` `?path=` `?id=` `?name=` `?file=`.
 
@@ -55,8 +55,6 @@ There is no single error envelope. Expect one of:
 |---|---|---|
 | GET | `/health` | Health summary (exempt from `CORE_API_TOKEN`) |
 | GET | `/api/plugins` | All plugins, including disabled rows |
-| GET | `/api/update/check` | Latest 0KAY GitHub release vs. the running version |
-| GET | `/api/update/check-plugins` | Latest release vs. each registered plugin version |
 | POST | `/api/plugins/enable` | Enable a plugin, body `{plugin\|name}` |
 | POST | `/api/plugins/disable` | Disable a plugin (persisted to `data/disabled_plugins.json`) |
 | GET, HEAD | `/api/plugins/{name}/ui/{path…}` | Plugin frontend ESM/static assets |
@@ -83,13 +81,15 @@ Served from `$CORE_DATA_DIR/plugin-ui/{name}` (default `data/plugin-ui/{name}`).
 - Content-hashed chunks (filename contains `-`, extension `.js`/`.css`) get
   `Cache-Control: public, max-age=31536000, immutable`; everything else
   `no-cache`.
-- Files are referenced by patch modules, e.g.
-  `import("/api/plugins/agent/ui/index.js")`.
 
-### Update checks
+## 3. Updates
 
-Both endpoints accept `GET` only, use the normal Core API authentication, and
-contact the public GitHub Releases API with a 10-second timeout.
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/update/check` | Latest 0KAY GitHub release vs. the running version |
+| GET | `/api/update/check-plugins` | Latest release vs. each registered plugin version |
+| POST | `/api/update/apply` | Start an update for one component |
+| GET | `/api/update/status` | Progress of the most recent update |
 
 ```json
 // GET /api/update/check
@@ -98,20 +98,30 @@ contact the public GitHub Releases API with a 10-second timeout.
 
 // GET /api/update/check-plugins
 {"plugins": [{"name": "agent", "version": "0.1.0", "latest": "0.1.0",
-  "has_update": false, "repository": "https://github.com/RazureSOFT/0KAY-agent"}]}
+  "has_update": false, "repository": "https://github.com/RazureSOFT/0KAY-agent",
+  "package": "@razuresoft/0kay-agent", "can_update": true}]}
+
+// POST /api/update/apply
+// {"plugin": "core"}                      → beta (sync main)
+// {"plugin": "agent", "version": "0.1.0"} → pinned release
+// → 202 Accepted
+{"plugin":"core","package":"@razuresoft/0kay-core","mode":"source",
+ "status":"running","started":"2026-09-26T05:42:52Z"}
+
+// GET /api/update/status
+{"plugin":"core","package":"@razuresoft/0kay-core","mode":"source",
+ "status":"done","started":"2026-09-26T05:42:52Z","log":"git pull --ff-only"}
 ```
 
-- Version comparison is semver-aware: a leading `v` and prerelease/build
-  suffixes are handled, so `0.1.0-rc.1 < 0.1.0`.
-- `latest` is omitted when the repository has no published release. The
-  platform check returns `502` with an `error` field when GitHub is
-  unreachable; the plugin check reports a per-plugin `error` (including
-  `unknown repository` for plugins with no known repository).
-- Plugin versions are the `PluginInfo.version` values sent during registration
-  (`/api/plugins`).
-- Settings → About drives these checks; see [Releases](RELEASES.md).
+- `mode` is `pm` when the component is installed with 0kay-pm, otherwise
+  `source` (git pull + rebuild + restart). See [Releases](RELEASES.md).
+- `status` is `idle`/`running`/`done`/`failed`. Only one update runs at a time;
+  a second request returns `409`. Unknown components return `400`.
+- Version comparison is semver-aware. `latest` is omitted with no release; the
+  platform check returns `502` when GitHub is unreachable, the plugin check
+  reports a per-plugin `error` (including `unknown repository`).
 
-## 3. Agent sessions
+## 4. Agent sessions
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -119,23 +129,13 @@ contact the public GitHub Releases API with a 10-second timeout.
 | GET | `/api/agent/sessions` | List sessions (`kind == "agent_session"` tasks) |
 | POST | `/api/agent/sessions` | Create session, body `{title}` → `201 {session_id}` |
 | PATCH | `/api/agent/sessions` | `{session_id, action: "archive"\|"restore"\|…}` or `{session_id, action:"rename", title}` |
-| DELETE | `/api/agent/sessions` | Same handler as PATCH; body `{session_id}` (forces `action=delete`) |
+| DELETE | `/api/agent/sessions` | Body `{session_id}` (forces `action=delete`) |
 | POST | `/api/agent/messages` | Dispatch a prompt to a session |
 | GET, POST | `/api/agent/workspace` | GET browse `?executor_id=&path=`, POST `{path,name}` mkdir |
 | GET | `/api/agent/host` | `?executor_id=` live CPU/memory sample via `host_status` |
 | POST | `/api/agent/compact` | Compact a session's history via LIFE |
 
 ```json
-// GET /api/agents
-{"agents": [{"plugin_id": "agent-1", "name": "executor", "version": "0.1.0",
-  "address": "127.0.0.1:50054", "status": "PLUGIN_STATUS_HEALTHY",
-  "active_tasks": 0, "last_heartbeat_age_seconds": 3,
-  "host": {"hostname": "WIN", "os": "windows", "arch": "amd64",
-           "cpu_model": "…", "cpu_cores": 8, "memory_total_bytes": 0,
-           "memory_available_bytes": 0, "workdir": "C:/work"},
-  "missing_dependencies": []}],
- "online_count": 1}
-
 // POST /api/agent/messages (128 KB max)
 {"session_id": "s_1", "prompt": "…", "agent_type": "code",
  "executor_id": "", "workdir": "", "model_id": "MOCR",
@@ -143,20 +143,13 @@ contact the public GitHub Releases API with a 10-second timeout.
  "permission_mode": "normal|full_access", "language": "zh"}
 // → 202 {"task_id": "agent-task:…", "accepted": true, "message": ""}
 // 409 session already has an active task · 404 session not found
-// 400 thinking intensity must be between 0 and 100 / invalid permission mode
 ```
 
 `GET /api/agent/workspace` and `GET /api/agent/host` return the executor's
-`RunDirect` result verbatim (JSON string produced by the Agent). If no
-`executor_id` is given, the first healthy executor is used; otherwise
-`503 selected executor unavailable`.
+`RunDirect` result verbatim. If no `executor_id` is given the first healthy
+executor is used, otherwise `503 selected executor unavailable`.
 
-`POST /api/agent/compact` rebuilds history from stored tasks, asks LIFE for a
-summary (120 s timeout), records a `compact` task, and returns
-`{"summary": "…"}`. Failures: `409` while a task is active,
-`400 no conversation to compact`, `503 LIFE unavailable`.
-
-## 4. Approvals and questions
+## 5. Approvals and questions
 
 `GET`/`POST /api/agent/approvals` and `GET`/`POST /api/agent/questions` share
 one handler; the path selects `approval_list`/`approval_decide` versus
@@ -164,15 +157,12 @@ one handler; the path selects `approval_list`/`approval_decide` versus
 
 | Method | Path | Body / query |
 |---|---|---|
-| GET | `/api/agent/approvals` | `?session_id=` → `{approvals: [...]}` (rows gain `executor_id`, `executor_name`) |
+| GET | `/api/agent/approvals` | `?session_id=` → `{approvals: [...]}` |
 | POST | `/api/agent/approvals` | `{executor_id, id, allow: true\|false}` → `{ok:true}` or `409` |
 | GET | `/api/agent/questions` | `?session_id=` → `{approvals: [...]}` |
 | POST | `/api/agent/questions` | `{executor_id, id, answer: "…"}` → `{ok:true}` or `409` |
 
-Aggregated list responses reuse the `approvals` key for both kinds. Each
-decision forwards to one executor (3 s timeout); unknown executor → `503`.
-
-## 5. Skills
+## 6. Skills
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -180,22 +170,21 @@ decision forwards to one executor (3 s timeout); unknown executor → `503`.
 | POST | `/api/skills` | Save/overwrite `{name, content}` (2 MB) |
 | DELETE | `/api/skills?name=` | Delete a file-backed skill (`404` if missing) |
 
-Proxied to the Agent `skills_admin` tool through `RunDirect` with a 30 s
-timeout. `result` is raw JSON or `null`.
+Proxied to the Agent `skills_admin` tool through `RunDirect` with a 30 s timeout.
 
-## 6. Tasks
+## 7. Tasks
 
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/tasks` | `{tasks: [...]}` full list |
-| GET | `/api/tasks?incremental=1&cursor=` | Delta since cursor (same shape as SSE payload) |
+| GET | `/api/tasks?incremental=1&cursor=` | Delta since cursor |
 | POST | `/api/tasks` | Record a `TaskEvent` (2 MB) → `{ok:true}` / `409` |
 | GET | `/api/tasks/events` | SSE stream of task deltas |
 | POST | `/api/tasks/cancel` | `{task_id}` → `{success, message}` |
 
 `TaskEvent` fields: `task_id`, `caller_id`, `session_id`, `parent_id`, `kind`,
 `prompt`, `state`, `result`, `error`. States: `pending`, `running`, `done`,
-`failed`, `cancelled`. Result payloads should stay under ~200 k characters.
+`failed`, `cancelled`. Keep result payloads under ~200 k characters.
 
 SSE (`Content-Type: text/event-stream`):
 
@@ -206,7 +195,7 @@ data: {"cursor":"…","added":[…],"updated":[…],"removed":[…]}
 : heartbeat        (every 15 s; poll tick is 200 ms)
 ```
 
-## 7. Chat and models
+## 8. Chat and models
 
 ### `POST /api/chat` (alias `POST /api/mocr/generate`)
 
@@ -218,10 +207,7 @@ data: {"cursor":"…","added":[…],"updated":[…],"removed":[…]}
 ```
 
 - `stream: false` → `{"request_id", "response", "error"?, "usage"?: {prompt_tokens, completion_tokens, total_tokens}}`
-- `stream: true` → SSE events:
-  - `event: chunk` with the serialized mocr chunk (`chunk`, `done`, …)
-  - `event: done` with `{}`
-  - `event: error` with `{"request_id"?, "error"}`
+- `stream: true` → SSE `event: chunk` / `event: done` / `event: error`.
 
 Empty `model_id` means Core/mocr selection (`MOCR`); pin a model id to bypass
 selection.
@@ -235,10 +221,10 @@ Main WebUI conversation path; proxies LIFE `OnUserMessage` as SSE.
  "prompt": "…", "persona": {}, "history": []}
 ```
 
-Chunk payload: `{request_id, chunk, done, task_id, think_summary,
-emotion: {valence, arousal, connection, irritation}, mental_energy}`.
-Events: `chunk`, `done`, `error` (`503 LIFE is unavailable` when the plugin
-is offline).
+`persona` may include `customPrompt`, which LIFE sends to the model as the
+system prompt. Chunk payload: `{request_id, chunk, done, task_id, think_summary,
+emotion: {valence, arousal, connection, irritation}, mental_energy}`. Events:
+`chunk`, `done`, `error` (`503 LIFE is unavailable` when offline).
 
 ### Model catalog and providers
 
@@ -253,10 +239,10 @@ is offline).
 | POST, PUT | `/api/providers/defaults` | Set defaults → echoed back |
 | POST | `/api/run` | `RunDirect` (60 s) → `{success, result, error}` |
 
-Provider configs persist to `data/providers.json`. `503 provider store not
-ready` while the store is initializing.
+Provider configs persist to `data/providers.json`. `503 provider store not ready`
+while the store is initializing.
 
-## 8. LIFE
+## 9. LIFE
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -276,28 +262,12 @@ ready` while the store is initializing.
  "activeTasks": [], "onlineAgents": 1, "totalAgents": 1, "agentIds": ["agent"],
  "pluginCount": 5, "healthyPlugins": 5, "updatedAt": "2026-09-25T…Z"}
 // emotion/mentalEnergy overlaid from LIFE when the life plugin is healthy
-
-// GET /api/life/permissions
-{"screen_watch": false, "computer_use": false, "report_agent_host": "…"}
-// POST/PUT echoes the stored value set
-
-// GET /api/life/memories?limit=1..500 (default 100)&query=text
-{"memories": [{"id", "content", "importance", "strength",
-               "created_at", "tags", "tier"}],
- "stats": {"working": 0, "shortTerm": {"total": 0}, "longTerm": 0, "avgStrength": 0}}
-// LIFE offline → 200 with empty lists (soft fail, optional "error")
-
-// GET /api/life/companion → LIFE JSON snapshot verbatim
-// POST /api/life/companion {"action": "add_agenda", "payload": {...}}
-//   actions: add_agenda, confirm_agenda, reject_agenda, complete_agenda,
-//            journal, dream, memory_maintenance, delete_memory,
-//            clear_all_memory, ack_notifications
 ```
 
-`POST /api/settings/life` values with keys `screen_watch`, `computer_use`,
-`report_agent_host` are also mirrored into `/api/life/permissions`.
+`POST /api/settings/life` keys `screen_watch`, `computer_use` and
+`report_agent_host` are mirrored into `/api/life/permissions`.
 
-## 9. Usage
+## 10. Usage
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -307,7 +277,7 @@ ready` while the store is initializing.
 
 `/api/usage/record` is called by mocr with `Authorization: Bearer ${CORE_API_TOKEN}`.
 
-## 10. Settings
+## 11. Settings
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -315,12 +285,11 @@ ready` while the store is initializing.
 | GET | `/api/settings/{id}` | `{section, values}` |
 | POST, PUT | `/api/settings/{id}` | Body: flat values or `{values: {...}}` → `{section, values}` |
 
-- `SetValues` is a merge: omitted keys keep their previous value.
-- Sections owned by a disabled plugin: `403 section disabled`.
-- Field schema and the `SettingsSection` contract are described in
-  [Settings and UI Patches](settings-ui.md).
+`SetValues` is a merge: omitted keys keep their previous value. Sections owned by
+a disabled plugin return `403 section disabled`. See
+[Settings and UI Patches](settings-ui.md).
 
-## 11. Images and Live2D
+## 12. Images and Live2D
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -331,38 +300,23 @@ ready` while the store is initializing.
 | DELETE | `/api/live2d?id=` | Remove a model |
 | GET | `/live2d/models/*` | Static model assets |
 
-## 12. UI patches
+## 13. UI patches
 
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/ui/patches` | Flattened patch ops for WebUI |
 | POST | `/api/ui/patches` | Force reload → `{ok: true, count: n}` |
 
-```json
-// GET /api/ui/patches
-{"ops": [{"patchId": "life", "plugin": "life", "capability": "",
-          "target": "router", "op": "insert", "anchor": "", "position": "",
-          "id": "memory", "item": {"path": "/memory", "module": "/api/plugins/life/ui/memory.js"}}],
- "files": ["agent", "life", "mocr", "searxng"],
- "count": 12,
- "loaded": "2026-09-25T12:00:00Z"}
-```
-
-Behavior:
-
-- Discovery directories: `$CORE_DATA_DIR/ui`, `{cwd}/ui`,
-  `{cwd}/../webui/patches`, `{cwd}/data/ui`. Only `*.patch` files are read;
-  contents are JSON (full file object or a bare ops array). Duplicate ids are
-  resolved first-come-wins; missing `id` defaults to the file stem.
-- `GET` rescans at most every **3 seconds** (mtime check). `POST` and plugin
-  enable/disable bypass the cooldown with a forced reload.
+- Discovery directories: `$CORE_DATA_DIR/ui`, `{cwd}/ui`, `{cwd}/../webui/patches`,
+  `{cwd}/data/ui`. Only `*.patch` files are read; contents are JSON.
+- `GET` rescans at most every 3 seconds (mtime check). `POST` and plugin
+  enable/disable bypass the cooldown.
 - An op is dropped when its `capability` (falling back to `plugin`) matches no
-  registered capability. Ops of admin-disabled plugins are always stripped.
-- Targets: `nav`, `router`, `settings`, `status`, `chat`. Operations:
-  `insert`, `remove`, `replace`. WebUI polls this endpoint every 15 s.
-  See [Settings and UI Patches](settings-ui.md) for file format details.
+  registered capability, or when its plugin is disabled.
+- Targets: `nav`, `router`, `settings`, `status`, `chat`. Operations: `insert`,
+  `remove`, `replace`. WebUI polls this endpoint every 15 s.
 
-## 13. WebSocket `/ws`
+## 14. WebSocket `/ws`
 
 Upgrade to WebSocket (`CheckOrigin` uses the same allowed-origin rule).
 
@@ -375,25 +329,21 @@ Client messages:
 ```
 
 Server messages: `{"type": "chunk", "request_id", "chunk", "done"}`,
-`{"type": "usage", "request_id", "usage": {…}}`,
-`{"type": "done", "request_id"}`, `{"type": "error", "request_id", "error"}`,
-`{"type": "pong"}`.
+`{"type": "usage", "request_id", "usage": {…}}`, `{"type": "done", "request_id"}`,
+`{"type": "error", "request_id", "error"}`, `{"type": "pong"}`.
 
-## 14. Pairing
+## 15. Pairing
 
 Handled before CORS/token middleware (`CORE_LAN_ENABLED=1`).
 
 | Method | Path | Access | Purpose |
 |---|---|---|---|
-| POST | `/api/pairing/request` | Origin must be empty or localhost | `{name}` → `{id, code, secret, expires}` (4 KB, max 32 pending) |
+| POST | `/api/pairing/request` | Origin empty or localhost | `{name}` → `{id, code, secret, expires}` (4 KB, max 32 pending) |
 | GET | `/api/pairing/pending` | Loopback only | `{requests: [...]}` |
 | POST | `/api/pairing/approve` | Loopback only | `{id, code, allow}` → `{ok}` |
 | POST | `/api/pairing/status` | Needs `secret` | → `{approved, core_id, token, certificate, server_name}` (single claim) |
 
-Unknown `/api/pairing/*` paths return `404`. Details in
-[PLUGIN_API §5](PLUGIN_API.md).
-
-## 15. Service ports and plugin auth
+## 16. Service ports and plugin auth
 
 | Service | Inbound | Auth |
 |---|---|---|
@@ -401,7 +351,8 @@ Unknown `/api/pairing/*` paths return `404`. Details in
 | Core gRPC | 50051 (TLS 5443 in LAN mode) | pairing on TLS port; loopback plaintext otherwise |
 | mocr gRPC | 50052 | none (loopback bind, plaintext) |
 | LIFE gRPC | 50053 | none (loopback bind, plaintext) |
-| Agent gRPC | 50054 | `authorization: Bearer ${CORE_PAIR_TOKEN\|\|CORE_API_TOKEN}` on every RPC (`UNAUTHENTICATED paired Core required`) |
+| Agent gRPC | 50054 | `authorization: Bearer ${CORE_PAIR_TOKEN\|\|CORE_API_TOKEN}` on every RPC |
+| Minecraft HTTP | 8765 | local tool API for the minecraft plugin |
 | Discovery | UDP 50050 | pairing protocol |
 
 ### Outbound plugin → Core calls
@@ -411,3 +362,4 @@ Unknown `/api/pairing/*` paths return `404`. Details in
 | mocr | `GET /api/models`, `GET /api/settings/provider`, `GET /api/providers`, `POST /api/usage/record` | Bearer only on `usage/record` |
 | LIFE | `GET /api/settings/life`, `GET /api/providers`, `POST /api/tasks` | Bearer on `tasks` (if token set) |
 | Agent | `GET /api/settings/agent`, `GET /api/providers`, `POST /api/tasks` | `Authorization: Bearer ${CORE_PAIR_TOKEN\|\|CORE_API_TOKEN}`; TLS via `CORE_TLS_CA`/`CORE_TLS_NAME` |
+| Minecraft | `POST /api/mocr/generate`, `POST /api/tasks` | Bearer when `CORE_API_TOKEN` is set |

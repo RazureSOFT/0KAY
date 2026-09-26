@@ -1,21 +1,24 @@
 # Writing a Plugin
 
-## Package manifest
+A plugin is a package with a `manifest.json`, an optional protobuf service and,
+optionally, a WebUI surface. It registers itself with Core and owns its own
+domain behavior, process and data.
 
-Every installable plugin or module must include a `manifest.json` describing
-its package name, release version, build commands and optional start command.
-See section 0 of the [plugin API reference](PLUGIN_API.md) for fields,
-service/UI examples, versioned installation and update behavior.
+## 0. Package manifest
 
-After a successful install, 0kay-pm runs the manifest start command automatically
-in the current terminal without opening a browser. Library and UI-only modules
-omit `start`. The plugin must still register itself with Core and send its
-manifest version as `plugin_info.version`; runtime dependency capabilities and
-UI patches are separate from the package manifest.
+Every installable plugin or module needs a `manifest.json` describing its name,
+version, build commands and optional start command. The package manager consumes
+it; Core's gRPC registration, settings and `.patch` files are separate
+interfaces and cannot be replaced by the manifest. See
+[Plugin API §0](PLUGIN_API.md) for every field.
 
-## 1. Define the Contract
+After a successful install 0kay-pm runs the manifest start command automatically.
+Library and UI-only modules omit `start`. The plugin must still register itself
+with Core and send its manifest version as `plugin_info.version`.
 
-Add or extend protobuf APIs under `proto/<package>/v1/`. Regenerate bindings:
+## 1. Define the contract
+
+Add or extend protobuf APIs under `proto/<package>/v1/` and regenerate bindings:
 
 ```powershell
 buf generate
@@ -23,30 +26,31 @@ buf generate
 
 Keep request/response fields backward-compatible and document state transitions.
 
-## 2. Start a gRPC Server
+## 2. Start a gRPC server
 
-Bind a loopback address, add the generated service implementation, and register
-with Core only after the server is ready.
+Bind a loopback address, add the generated service implementation and register
+with Core only after the server is ready. Read your own version from
+`manifest.json` and set it on `plugin_info.version`.
 
-## 3. Register Capabilities
+## 3. Register capabilities
 
-Use stable capability names. Core and other plugins use these names for service
-discovery; do not derive them from display labels.
+Use stable capability names (`agent`, `life`, `mocr`, `minecraft`, …). Core and
+other plugins use them for discovery; never derive them from display labels.
+Declare runtime dependencies as `requires:<plugin>`.
 
-## 4. Add Settings
+## 4. Add settings
 
-Contribute declarative settings fields during registration. Treat secrets as
-local runtime values and validate them before use.
+Contribute declarative settings fields during registration and validate secrets
+before use. See [Settings and UI Patches](settings-ui.md).
 
-## 5. Add UI Through a Patch
+## 5. Add UI through a patch
 
 Place a JSON patch in the plugin-owned UI patch directory with `plugin` set to
-the exact registered plugin name. Do not hardcode plugin pages into the WebUI.
+the exact registered plugin name. Never hardcode plugin pages into the WebUI.
 
 ### 5a. Native Vue page (`module`)
 
-Router ops may load a **plugin-owned ESM bundle** instead of a built-in
-component or iframe:
+Router ops may load a plugin-owned ESM bundle:
 
 ```json
 {
@@ -63,27 +67,21 @@ component or iframe:
 }
 ```
 
-Priority: `module` → `component` (built-in whitelist) → `src` (iframe).
-
 | Piece | Contract |
-|-------|----------|
+|---|---|
 | Source layout | `plugin-web/{name}/` (see `plugin-web/README.md`) |
 | Build output | `${CORE_DATA_DIR}/plugin-ui/{name}/` |
 | HTTP | `GET /api/plugins/{name}/ui/{path…}` (404 if plugin disabled) |
-| Entry export | `export default` Vue component (`setup` → render fn) |
-| Vue import | Bare `import { h, ref, … } from 'vue'` via WebUI importmap → host bridge (`window.__0KAY_VUE__`) |
+| Entry export | `export default` Vue component |
+| Vue import | Bare `import { h, ref, … } from 'vue'` via the WebUI importmap → host bridge (`window.__0KAY_VUE__`) |
 | Forbidden imports | Host `vue-router`, pinia, vue-i18n, private stores |
 | API | Same-origin `fetch('/api/…')` |
 | Cache | Entry `no-cache`; hashed `*-*.{js,css}` immutable |
-| Example | `plugin-web/skillsguishow/` → builds to `core/data/plugin-ui/skillsguishow/`; patch `core/data/ui/skillsguishow.patch` |
 
-Set `plugin` on the `.patch` file so disable/capability filtering applies
-(empty `plugin` always shows the nav entry).
-
-## 6. Heartbeat and Shutdown
+## 6. Heartbeat and shutdown
 
 Send heartbeats every 10 seconds, re-register after Core connectivity loss, and
-close streams/processes on shutdown.
+close streams and child processes on shutdown.
 
 ## 7. Test
 
@@ -92,8 +90,8 @@ At minimum verify:
 - registration and heartbeat;
 - disabled-plugin patch removal;
 - settings defaults and persistence;
-- service unavailable behavior;
+- service-unavailable behavior;
 - task cancellation and completion;
 - no secrets in Git history or build artifacts;
-- native UI: `npm run build` in `plugin-web/{name}`, open the route, confirm
-  interactive content (reference: `webui/scripts/cdp-agents-smoke.cjs` pattern).
+- native UI builds (`npm run build` in `plugin-web/{name}`) and renders without
+  console errors.

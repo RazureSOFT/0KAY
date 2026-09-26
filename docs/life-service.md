@@ -1,79 +1,77 @@
 # L.I.F.E Service
 
 L.I.F.E exposes `life.v1.LifeService` and owns persona, emotion, memory,
-companion domains, OneBot integration, and LIFE-registered WebUI surfaces.
+companion domains, OneBot integration and LIFE-registered WebUI surfaces. It is a
+`PLUGIN_TYPE_PERSONA` plugin with `requires:mocr`.
 
 ## `OnUserMessage`
 
-Server-streaming entry point for WebUI, OneBot, and other adapters.
+Server-streaming entry point for WebUI, OneBot and other adapters.
 
-The request includes:
+Request fields:
 
-- `session_id`
-- `user_id`
-- `message`
-- `adapter_type`
-- `persona_json`
+- `session_id`, `user_id`, `message`, `adapter_type`
+- `persona_json` — the persona object from the client
 - optional `history_json`
 
-Responses contain:
+Responses contain output chunks plus `done`, emotion state, mental energy, a
+started task id and a safe collapsed THINK summary. LIFE may create Agent tasks,
+memory proposals, journal/dream entries or proactive candidates. It never
+exposes hidden model chain-of-thought.
 
-- output chunks
-- `done`
-- emotion state
-- mental energy
-- started task ID
-- safe collapsed THINK summary
+## Persona and the custom prompt
 
-LIFE may create Agent tasks, memory proposals, journal/dream entries, or
-proactive candidates. It must not expose hidden model chain-of-thought.
+The persona object carries `name`, `avatar`, `birthDate`, `description`,
+`personality`, `greeting` and **`customPrompt`**. `customPrompt` is authored in
+Settings → 人设 and is sent **verbatim as the model system prompt**, ahead of the
+persona description, for both the THINK and OUTPUT calls. Leave it empty to
+disable it. The remaining persona fields are rendered into the persona context
+that is embedded in the system prompt.
 
 ## `OnTaskCompleted`
 
-Core calls this when an Agent task reaches a terminal state. LIFE uses the
-callback to update emotion, companion audit, and the session notification queue.
+Core calls this when an Agent task reaches a terminal state. LIFE updates
+emotion, the companion audit log and the session notification queue. The callback
+carries the task id, state, result and error; it is idempotent.
 
 ## `OnScheduledEvent`
 
-Core can send:
-
-- circadian tick
-- memory consolidation
-- idle check
-
-LIFE runs bounded maintenance and persists the result.
+Core can send a circadian tick, memory consolidation or idle check. LIFE runs
+bounded maintenance and persists the result.
 
 ## Memory APIs
 
-`GetMemories` returns memory projections for the LIFE-owned management UI.
-The SQLite fact store is authoritative; BM25, vector, and Tantivy indexes are
+`GetMemories` returns memory projections for the LIFE-owned management UI. The
+SQLite fact store is authoritative; BM25, vector and Tantivy indexes are
 rebuildable projections.
 
 ## Companion APIs
 
 `GetCompanion` returns LIFE-owned relationship, agenda, proactive, group scene,
-journal, dream, persona evolution, and audit projections.
+journal, dream, persona evolution and audit projections.
 
-`ManageCompanion` supports controlled actions such as:
+`ManageCompanion` supports controlled actions:
 
-- `add_agenda`
-- `confirm_agenda`
-- `reject_agenda`
-- `complete_agenda`
-- `journal`
-- `dream`
-- `memory_maintenance`
-- `delete_memory`
-- `clear_all_memory`
+- `add_agenda`, `confirm_agenda`, `reject_agenda`, `complete_agenda`
+- `journal`, `dream`, `memory_maintenance`
+- `delete_memory`, `clear_all_memory`, `ack_notifications`
 
-All mutations must be auditable and should be idempotent where possible.
+All mutations are auditable and idempotent where possible.
 
 ## `CompactConversation`
 
 Summarizes a session through LIFE's configured model. The summary becomes a
 client-restored context projection; it is not an irreversible deletion of the
-underlying local message history until the user chooses to clear it.
+underlying local history until the user clears it.
 
 ## `GetNotifications`
 
-Returns session-addressed task completion notifications for WebUI polling.
+Returns session-addressed task-completion notifications for WebUI polling.
+Reading does not delete: acknowledge with `ack_notifications` (or
+`POST /api/life/notifications`).
+
+## Permissions
+
+`screen_watch`, `computer_use` and `report_agent_host` are off by default. They
+gate screen observation, shell/computer operations and host telemetry in
+heartbeats. `ReportAgentHost` is also mirrored from `POST /api/settings/life`.

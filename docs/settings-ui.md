@@ -1,6 +1,10 @@
 # Settings and UI Patches
 
-## Settings Sections
+Plugins extend the WebUI declaratively — a plugin never edits the host
+frontend. Settings are contributed during registration; navigation, routes and
+in-page surfaces come from JSON `.patch` files.
+
+## Settings sections
 
 Plugins contribute a `SettingsSection` during registration:
 
@@ -23,8 +27,8 @@ Plugins contribute a `SettingsSection` during registration:
 }
 ```
 
-Field types are `bool`, `number`, `text`, and `select`. Values are persisted by
-Core under its local settings store and exposed at:
+Field types are `bool`, `number`, `text` and `select`; `default_value` is always
+a string. Values persist in Core's local settings store and are exposed at:
 
 ```text
 GET  /api/settings/sections
@@ -32,9 +36,11 @@ GET  /api/settings/{section_id}
 POST /api/settings/{section_id}
 ```
 
-Secrets must remain local and must never be committed to a repository.
+`POST` is a merge: omitted keys keep their previous value. Sections owned by a
+disabled plugin return `403 section disabled`. Treat secrets as local runtime
+values, never repository content.
 
-## UI Patches
+## UI patches
 
 UI patch files are JSON despite the `.patch` suffix:
 
@@ -51,7 +57,7 @@ UI patch files are JSON despite the `.patch` suffix:
       "item": {
         "id": "example",
         "to": "/example",
-        "label": "Example",
+        "labelKey": "nav.example",
         "icon": "chip",
         "order": 25
       }
@@ -64,36 +70,33 @@ UI patch files are JSON despite the `.patch` suffix:
         "id": "example",
         "path": "/example",
         "name": "example",
-        "component": "example"
+        "module": "/api/plugins/example/ui/index.js",
+        "title": "Example"
       }
     }
   ]
 }
 ```
 
+The `plugin` field is important: disabling that plugin removes its patch
+operations, settings visibility, navigation and dynamic routes. An empty
+`plugin` always shows the nav entry.
+
+### Router items
+
 Router items resolve in this order:
 
-1. **`module`** — plugin ESM URL under `/api/plugins/{name}/ui/…` (native page; see [Writing a Plugin](writing-a-plugin.md) §5a).
-2. **`component`** — built-in page name (`agents`, `plugins`, `usage`, `settings`, `chat`, `memory`, `companion`).
-3. **`src`** — iframe embed URL.
+1. `module` — plugin ESM URL under `/api/plugins/{name}/ui/…` (native page).
+2. `component` — built-in page (`chat`, `agents`, `plugins`, `usage`, `settings`,
+   `memory`, `companion`).
+3. `src` — iframe embed URL.
 
-```json
-{
-  "target": "router",
-  "op": "insert",
-  "id": "my-plugin",
-  "item": {
-    "id": "my-plugin",
-    "path": "/my-plugin",
-    "name": "my-plugin",
-    "module": "/api/plugins/my-plugin/ui/index.js",
-    "title": "My Plugin"
-  }
-}
-```
+### Targets and operations
 
-Supported targets include `nav`, `router`, `settings`, `status`, and `chat`.
-Supported operations are `insert`, `remove`, and `replace`.
+Supported targets are `nav`, `router`, `settings`, `status` and `chat`. Supported
+operations are `insert`, `remove` and `replace`. Each op may carry `anchor` and
+`position` to place it relative to an existing item.
 
-The `plugin` field is important: disabling that plugin removes its patch
-operations, settings visibility, navigation, and dynamic routes.
+The full flattened patch list (with plugin and capability attribution) is
+available at `GET /api/ui/patches`; the WebUI polls it every 15 seconds and
+reloads immediately after `POST /api/ui/patches` or a plugin enable/disable.
