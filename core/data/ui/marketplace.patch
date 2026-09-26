@@ -1,0 +1,25 @@
+{
+  "id": "marketplace-ui",
+  "name": "0KAY plugin marketplace",
+  "enabled": true,
+  "patches": [
+    {
+      "target": "nav",
+      "op": "insert",
+      "id": "marketplace",
+      "item": { "id": "marketplace", "to": "/marketplace", "label": "插件市场", "icon": "plugins", "order": 35 }
+    },
+    {
+      "target": "router",
+      "op": "insert",
+      "id": "marketplace",
+      "item": {
+        "id": "marketplace",
+        "name": "marketplace",
+        "path": "/marketplace",
+        "module": "/api/plugins/marketplace/ui/index.js",
+        "title": "插件市场"
+      }
+    }
+  ]
+}

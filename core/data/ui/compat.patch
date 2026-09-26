@@ -1,0 +1,13 @@
+{
+  "id": "compat",
+  "name": "0KAY API compatibility layer",
+  "enabled": true,
+  "patches": [
+    {
+      "target": "bootstrap",
+      "op": "insert",
+      "id": "compat",
+      "item": { "id": "compat", "module": "/api/plugins/compat/ui/index.js" }
+    }
+  ]
+}
