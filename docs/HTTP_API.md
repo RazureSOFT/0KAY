@@ -286,7 +286,7 @@ emotion: {valence, arousal, connection, irritation}, mental_energy}`. Events:
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/models` | `{models, all_model_ids, default_provider_id, default_model, providers}` |
-| POST | `/api/models/fetch` | `{id?, provider, base_url, api_key?}` → `{models, source, error}` |
+| POST | `/api/models/fetch` | `{id?, provider, base_url, api_key?, format?}` → `{models, source, error}` |
 | GET | `/api/providers` | Redacted snapshot: `api_key` is dropped and `api_key_masked` added |
 | POST, PUT | `/api/providers` | Upsert `{provider}` or replace `{providers, default_provider_id, default_model}` |
 | DELETE | `/api/providers/{id}` | Remove one provider → snapshot |
@@ -298,6 +298,16 @@ emotion: {valence, arousal, connection, irritation}, mental_energy}`. Events:
 
 Provider configs persist to `data/providers.json`. `503 provider store not ready`
 while the store is initializing.
+
+Each provider row may carry a `format` field selecting the wire protocol
+independently of the `provider` preset: `"openai"` (`/chat/completions`) or
+`"anthropic"` (`/v1/messages`). Empty means *auto* — mocr infers it from the
+preset name or an `anthropic.com` base URL. This lets a `custom` (or any
+OpenAI-named) endpoint speak the Anthropic Messages API, e.g. a Claude-compatible
+relay. Core forwards the effective provider to mocr and to
+`/api/providers/credentials`, so LIFE / Agent / mocr pick the right transport;
+the redacted `/api/providers` view keeps the original preset plus `format` for
+display.
 
 **API keys never leave Core through `/api/providers`.** The list is redacted:
 `api_key` is empty and `api_key_masked` carries `abcd************wxyz`
