@@ -148,9 +148,6 @@ class LifeEngine:
             if age >= 0: parts.append(f"Current age: {age}")
         except ValueError:
             pass
-        custom = (persona.get("customPrompt") or "").strip()
-        if custom:
-            parts.append("Additional user instructions:\n" + custom)
         parts.append(f"Current local time: {datetime.now().astimezone().isoformat()}")
         return "\n".join(parts)
 
@@ -172,6 +169,9 @@ class LifeEngine:
                 if previous and previous[-1] == {"role": "user", "content": message}:
                     previous.pop()
             turn = TurnContext(session_id, user_id, adapter_type, self._persona(persona or {}), previous)
+            # The user-authored prompt is sent as the model system prompt (verbatim,
+            # ahead of everything else), not merged into the persona description.
+            custom_prompt = str((persona or {}).get("customPrompt") or "").strip()
             learned = await asyncio.to_thread(self.companion.persona_evolution_context)
             if learned:
                 turn.persona_context += "\nStable learned traits:\n" + learned
@@ -234,6 +234,8 @@ class LifeEngine:
                 online_agents=self.online_agent_count, skills_context=self.skills.context_block(message),
                 tools_context=json.dumps(self.get_tools_schema(), ensure_ascii=False), time_context=datetime.now().strftime("%Y-%m-%d %H:%M"))
             system += "\nPersona:\n" + turn.persona_context + "\nCompleted tool results (do not repeat these actions):\n" + "\n".join(summaries)
+            if custom_prompt:
+                system = custom_prompt + "\n\n" + system
             try:
                 raw = "".join([chunk async for chunk in self.mocr.generate(self._model_for("think"), turn.history, system, thinking=True)])
                 plan = self.think.parse_response(raw)
@@ -302,6 +304,8 @@ class LifeEngine:
             guidance = relationship_style + "\n" + guidance
         system = self.output.build_prompt(user_message=message, think_guidance=guidance,
             emotion_context=json.dumps(self.emotion.state.to_dict()), persona_context=turn.persona_context)
+        if custom_prompt:
+            system = custom_prompt + "\n\n" + system
         response = ""
         try:
             async for chunk in self.mocr.generate(self._model_for("output"), turn.history, system,
