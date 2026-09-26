@@ -163,9 +163,13 @@ Or with a single-file component: `index.js` just does
 
 ## 6. Optional integrations
 
-- **Settings tab** — either declare `type: bool|number|text|select` fields in the
-  registration `SettingsSection`, or point a `settings` op at a built-in
-  `component`. See [Settings and UI Patches](settings-ui.md).
+- **Settings tab** — a `settings` op inserts a tab whose body resolves in order:
+  `module` (your plugin ESM, mounted inline as a native pane using the same
+  runtime contract as a router module), a built-in `component`, or declarative
+  `type: bool|number|text|select` `fields` (either in the op or in the
+  registration `SettingsSection`). A `module` tab renders without the host Save
+  button and is filtered out when the plugin is disabled. See
+  [Settings and UI Patches](settings-ui.md).
 - **In-page chat slots / status widgets** — `chat` and `status` targets extend
   the chat page; details in [Settings and UI Patches](settings-ui.md).
 

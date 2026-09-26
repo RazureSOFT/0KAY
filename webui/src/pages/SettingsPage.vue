@@ -16,6 +16,7 @@ import GeneralPanel from '../components/GeneralPanel.vue'
 import PersonaPanel from '../components/PersonaPanel.vue'
 import PermissionsPanel from '../components/PermissionsPanel.vue'
 import DangerPanel from '../components/DangerPanel.vue'
+import PluginModulePane from '../components/PluginModulePane.vue'
 import AppSelect from '../components/AppSelect.vue'
 import { useConfirm } from '../composables/confirm'
 import { useSettingsMeta } from '../composables/settingsMeta'
@@ -74,6 +75,12 @@ const sectionDrafts = ref<Record<string, Record<string, unknown>>>({})
 const sectionMsg = ref('')
 
 const { tabMeta, isBuiltinTab, isPluginSection, tabLabel, fieldLabel, fieldHelp, pluginSection } = useSettingsMeta()
+
+/** A patch-declared tab whose body is a plugin ESM module (native pane). */
+const moduleTab = computed(() => {
+  if (isBuiltinTab(activeTab.value)) return null
+  return tabMeta(activeTab.value)?.module || null
+})
 
 /** Coerce section draft values — API may send bool, "true"/"false", 0/1. */
 function sectionBool(id: string, key: string): boolean {
@@ -511,7 +518,7 @@ function save() {
         <h1>{{ t('settings.title') }}</h1>
         <p class="subtitle">{{ t('settings.pageDesc') }}</p>
       </div>
-      <button v-if="activeTab !== 'about'" class="btn btn-primary" @click="save">
+      <button v-if="activeTab !== 'about' && !moduleTab" class="btn btn-primary" @click="save">
         <span v-if="saved">{{ t('settings.saved') }}</span>
         <span v-else>{{ t('settings.save') }}</span>
       </button>
@@ -538,6 +545,8 @@ function save() {
             <svg v-else-if="tab.icon === 'person'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             <!-- avatar / live2d -->
             <svg v-else-if="tab.icon === 'avatar'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="10" r="6" stroke="currentColor" stroke-width="2"/><path d="M5 21c1.5-3 4-4.5 7-4.5S17.5 18 19 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="10" r="1" fill="currentColor"/><circle cx="14" cy="10" r="1" fill="currentColor"/></svg>
+            <!-- brightness / appearance -->
+            <svg v-else-if="tab.icon === 'brightness'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             <!-- warn -->
             <svg v-else-if="tab.icon === 'warn'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 4l9 16H3L12 4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             <!-- info / about -->
@@ -963,6 +972,13 @@ function save() {
             </button>
           </div>
         </div>
+
+        <!-- Patch-declared settings tab backed by a plugin ESM module (native pane) -->
+        <PluginModulePane
+          v-else-if="moduleTab"
+          :key="moduleTab"
+          :module="moduleTab || ''"
+        />
 
         <!-- Patch-declared settings tab (fields + loadApi/saveApi, not a builtin pane) -->
         <div

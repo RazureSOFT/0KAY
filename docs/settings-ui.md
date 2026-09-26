@@ -94,6 +94,39 @@ Router items resolve in this order:
 For a full custom page built in this repository, see
 [WebUI Custom Pages](custom-pages.md).
 
+### Settings items
+
+A `settings` op inserts a tab into the Settings page. The tab body resolves in
+this order (mirroring router items):
+
+1. `module` — plugin ESM URL under `/api/plugins/{name}/ui/…`, mounted inline as
+   a native pane (same runtime contract as a router module).
+2. `component` — a built-in pane template (`provider`, `persona`, `permissions`,
+   `live2d`, `life_settings`).
+3. `fields` — declarative fields rendered by the host pane (see
+   [Settings sections](#settings-sections)).
+
+```json
+{
+  "target": "settings",
+  "op": "insert",
+  "anchor": "danger",
+  "position": "before",
+  "id": "appearance",
+  "item": {
+    "id": "appearance",
+    "icon": "brightness",
+    "label": "外观",
+    "order": 15,
+    "module": "/api/plugins/darkmode/ui/index.js?v=5"
+  }
+}
+```
+
+A module tab keeps the panel fully plugin-owned: the host only mounts your
+default-exported Vue component and never injects its own Save button. `module`
+and `fields` are mutually exclusive; when both are present `module` wins.
+
 ### Targets and operations
 
 Supported targets are `nav`, `router`, `settings`, `status` and `chat`. Supported

@@ -98,6 +98,10 @@ export interface SettingsTabItem {
   descriptionKey?: string
   /** Map to an existing builtin pane template */
   component?: string
+  /** Plugin ESM entry served by Core, rendered as the tab body (native pane). */
+  module?: string
+  /** Owning plugin name (optional; used for module attribution). */
+  plugin?: string
   fields?: SettingsField[]
   loadApi?: string
   saveApi?: string
