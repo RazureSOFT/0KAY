@@ -274,25 +274,27 @@ The full per-endpoint request/response, auth and query details are in the
 | /api/update/apply | POST start a component update |
 | /api/update/status | GET latest update progress |
 | /api/agents | GET executors, hosts, missing dependencies |
-| /api/agent/sessions | GET/POST sessions; PATCH archive/restore/rename; DELETE remove |
+| /api/agent/sessions | GET list; POST create; PATCH/DELETE `/api/agent/sessions/{session_id}` (body alias kept) |
 | /api/agent/messages | POST session_id/prompt/agent_type and execution options |
 | /api/agent/workspace | GET browse; POST mkdir |
 | /api/agent/host | GET live CPU/memory sample |
+| /api/agent/inbox | GET merged approvals + questions |
 | /api/agent/approvals, /questions | GET pending; POST decision |
 | /api/agent/compact | POST session_id, build and store a summary |
-| /api/skills | GET list; POST save; DELETE ?name= remove |
+| /api/skills | GET list; POST save; DELETE `/api/skills/{name}` (alias `?name=`) |
 | /api/tasks | GET full/incremental; POST TaskEvent |
 | /api/tasks/events | GET SSE task delta stream |
-| /api/tasks/cancel | POST task_id |
+| /api/tasks/{task_id}/cancel | POST cancel (alias `/api/tasks/cancel` body) |
 | /api/chat, /api/mocr/generate | POST base model generation, SSE capable |
 | /api/life/chat | POST prompt/session_id/user_id/persona/history, SSE |
 | /api/life/compact, /notifications, /state, /permissions, /memories, /companion | LIFE features |
 | /api/run | POST direct tool call |
-| /api/models, /models/fetch | model catalog |
-| /api/providers, /delete, /defaults | provider config |
-| /api/settings/sections, /settings/{id} | settings sections and values |
-| /api/usage, /record, /clear | usage |
-| /api/live2d, /live2d/models/* | Live2D models |
+| /api/models, /models/fetch | model catalog (`/models/fetch` resolves masked keys by `id`) |
+| /api/providers | redacted config; `/api/providers/{id}` DELETE; `/api/providers/credentials` plaintext (service-only) |
+| /api/auth/session | GET/POST/DELETE browser session cookie |
+| /api/settings/sections, /settings/{id} | settings sections/values (`?values=1` embeds values) |
+| /api/usage | GET usage; POST `/record`; DELETE to clear (alias `/clear`) |
+| /api/live2d, /live2d/models/* | Live2D models; DELETE `/api/live2d/{path…}` |
 | /api/images | image upload/read |
 | /api/ui/patches | GET UI ops; POST reload |
 | /api/plugins/{name}/ui/{path…} | GET plugin ESM/static assets (404 when disabled) |

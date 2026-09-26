@@ -10,6 +10,11 @@ Returns `think_model` and `output_model` for a prompt, based on difficulty,
 thinking requirements, token budget and the current Core provider catalog
 (`GET /api/models`). A pinned `model_id` on `Generate` bypasses selection.
 
+Auto-switch resolves candidate credentials from
+`GET /api/providers/credentials` (the redacted `GET /api/providers` no longer
+carries keys); the lookup runs per request so newly added providers are usable
+immediately.
+
 Selection strategies (Settings → **模型**) are `auto` (difficulty + cost),
 `quality`, `cost` and `pinned` (use the configured default model only).
 

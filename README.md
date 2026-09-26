@@ -75,8 +75,14 @@ Services bind to loopback by default. Docker exposes backend ports on host
 loopback only. `CORE_BIND_HOST`, `AGENT_BIND_HOST`, `MOCR_BIND_HOST`, and
 `LIFE_BIND_HOST` explicitly override this for trusted service networks. For an
 externally exposed HTTP deployment use an authenticated reverse proxy; optional
-`CORE_API_TOKEN` enforces a bearer token on Core HTTP requests. Foreign browser
-origins are denied unless included in `CORE_ALLOWED_ORIGINS`.
+`CORE_API_TOKEN` enforces a bearer token on Core HTTP requests. Browsers can
+trade a token for an HttpOnly `0kay_session` cookie through
+`POST /api/auth/session`, so EventSource and WebSocket clients authenticate
+too. Foreign browser origins are denied unless included in
+`CORE_ALLOWED_ORIGINS`, and requests with an unexpected `Host` header are
+rejected (DNS-rebinding guard). Provider API keys are never returned by
+`GET /api/providers`; only the service-only `GET /api/providers/credentials`
+returns plaintext.
 
 `agent/` is maintained in an independent repository. On a fresh clone, run
 `powershell -File bootstrap.ps1` to check out the revision recorded in

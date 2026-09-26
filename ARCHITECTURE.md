@@ -121,7 +121,8 @@
 - Vite 开发服 `:3000`（生产 `vite build` → `dist/`）
 - 只依赖 Core HTTP：
   - `/health`、`/api/state`、`/api/chat`（SSE）、`/api/models*`、`/api/providers*`
-  - `/api/settings/*`、`/api/plugins/*`、`/api/ui/patches`、`/api/usage*`、`/api/agents`、`/api/tasks`
+  - `/api/settings/*`、`/api/plugins/*`、`/api/ui/patches`、`/api/usage*`、`/api/agents`、`/api/agent/inbox`、`/api/tasks`
+  - `/api/auth/session`（浏览器会话 cookie；`main.ts` 的 fetch 包装器遇 401 弹出登录层并重放一次请求）
 - **Patch 驱动 UI**：
   - `BUILTIN_NAV` / `BUILTIN_SETTINGS` / `BUILTIN_STATUS` + patch 合并
   - `registerPatchRoutes()` 把 patch 里的 `router` 项注册进 vue-router
@@ -184,16 +185,21 @@ ExecuteTask (gRPC / Core → Agent)
 
 ```
 Settings → 获取模型列表
-  → POST /api/models/fetch {provider, base_url, api_key}
+  → POST /api/models/fetch {id?, provider, base_url, api_key?}
+  → Core 解析密钥（api_key 为空或是掩码时按 id / (provider,base_url) 查库）
   → Core 向上游 GET /models
   → success: source="api"；fail: 默认列表 source="fallback"
   → UI 显示来源；可写入 provider.models 并持久化
 ```
 
+`GET /api/providers` 返回脱敏数据（`api_key` 置空、附 `api_key_masked`）；
+明文密钥只经 `GET /api/providers/credentials` 提供给进程内服务（LIFE / Agent /
+mocr），且每次调用都重新读取，保证改配置即时生效。
+
 ### 4.4 插件停用联动
 
 ```
-POST /api/plugins/disable {plugin}
+PATCH /api/plugins/{name} {enabled:false}   （别名：POST /api/plugins/disable {plugin}）
   → registry.IsDisabled(plugin)=true
   → 该插件的 settings sections 返回 403/过滤
   → 该插件的 *.patch 从 FlattenOps 剔除

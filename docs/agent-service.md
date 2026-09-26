@@ -55,7 +55,8 @@ computer-use.
 In `normal` permission mode every privileged tool call waits for a user decision
 (`Approval`), and the `question` tool waits for a choice or free text. Core
 exposes the outstanding items through `/api/agent/approvals` and
-`/api/agent/questions`. In `full_access` mode calls run without prompting.
+`/api/agent/questions` (the WebUI inbox reads the merged `/api/agent/inbox`).
+In `full_access` mode calls run without prompting.
 
 ## File edits and diffs
 
