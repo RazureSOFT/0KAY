@@ -24,8 +24,10 @@ export interface Message {
 export const useChatStore = defineStore('chat', () => {
   const HISTORY_KEY = '0kay.life.chat.webui.default.v1'
   const SESSION_KEY = '0kay.life.session.v1'
-  const sessionId = ref(sessionStorage.getItem(SESSION_KEY) || `webui:${uid()}`)
-  sessionStorage.setItem(SESSION_KEY, sessionId.value)
+  // Persist the session id so LIFE's proactive messages keep targeting this
+  // conversation across reloads and tab closes (sessionStorage did not).
+  const sessionId = ref(localStorage.getItem(SESSION_KEY) || `webui:${uid()}`)
+  localStorage.setItem(SESSION_KEY, sessionId.value)
   const messages = ref<Message[]>([])
   const isConnected = ref(false)
   const isTyping = ref(false)
@@ -85,10 +87,15 @@ export const useChatStore = defineStore('chat', () => {
     if (!notificationTimer) {
       notificationTimer = setInterval(async () => {
         try {
-          const response = await fetch(`/api/life/notifications?session_id=${encodeURIComponent(sessionId.value)}`)
+          const response = await fetch('/api/life/notifications')
           if (!response.ok) return
           const body = await response.json()
-          const incoming = body.notifications || []
+          // LIFE may have targeted an earlier webui session id; keep webui-directed
+          // messages in this conversation instead of stranding them.
+          const incoming = (body.notifications || []).filter((notification: any) => {
+            const target = String(notification.session_id || '')
+            return !target || target.startsWith('webui:') || target === sessionId.value
+          })
           if (!incoming.length) return
           const lifeStore = useLifeStore()
           let fresh = 0
@@ -445,7 +452,7 @@ export const useChatStore = defineStore('chat', () => {
     lastUsage.value = null
     contextSummary.value = ''
     sessionId.value = `webui:${uid()}`
-    sessionStorage.setItem(SESSION_KEY, sessionId.value)
+    localStorage.setItem(SESSION_KEY, sessionId.value)
     try { localStorage.removeItem(HISTORY_KEY) } catch { /* ignore */ }
   }
 
