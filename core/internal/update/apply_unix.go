@@ -42,6 +42,51 @@ exit $code
 	return script, logPath, nil
 }
 
+func joinArgs(cmd []string) string {
+	out := make([]string, 0, len(cmd))
+	for i, arg := range cmd {
+		if i == 0 {
+			arg = strings.TrimPrefix(arg, "./")
+		}
+		out = append(out, shQuote(arg))
+	}
+	return strings.Join(out, " ")
+}
+
+// writeSourceUpdater writes the git-sync + rebuild + restart script.
+func writeSourceUpdater(dir string, plan sourcePlan) (string, string, error) {
+	script := filepath.Join(dir, "source-update.sh")
+	logPath := filepath.Join(dir, "apply.log")
+	startLog := filepath.Join(plan.Dir, "update-run.log")
+	var b strings.Builder
+	b.WriteString("#!/bin/sh\n")
+	b.WriteString("set -e\n")
+	fmt.Fprintf(&b, "trap 'echo %s' EXIT\n", markerFailed)
+	b.WriteString("export GIT_TERMINAL_PROMPT=0\n")
+	b.WriteString("export GIT_HTTP_LOW_SPEED_LIMIT=1000\n")
+	b.WriteString("export GIT_HTTP_LOW_SPEED_TIME=20\n")
+	fmt.Fprintf(&b, "cd %s\n", shQuote(plan.RepoDir))
+	b.WriteString("git pull --ff-only\n")
+	fmt.Fprintf(&b, "cd %s\n", shQuote(plan.Dir))
+	for key, value := range plan.Env {
+		fmt.Fprintf(&b, "export %s=%s\n", key, shQuote(value))
+	}
+	for _, cmd := range plan.Build {
+		fmt.Fprintf(&b, "%s\n", joinArgs(cmd))
+	}
+	if plan.Port > 0 {
+		fmt.Fprintf(&b, "for pid in $(lsof -ti tcp:%d -sTCP:LISTEN 2>/dev/null); do kill \"$pid\" 2>/dev/null || true; done\n", plan.Port)
+		b.WriteString("sleep 1\n")
+	}
+	fmt.Fprintf(&b, "setsid %s >>%s 2>&1 &\n", joinArgs(plan.Start), shQuote(startLog))
+	b.WriteString("trap - EXIT\n")
+	fmt.Fprintf(&b, "echo %s\n", markerDone)
+	if err := os.WriteFile(script, []byte(b.String()), 0o755); err != nil {
+		return "", "", err
+	}
+	return script, logPath, nil
+}
+
 // launchDetached runs the script in its own session with output to the log.
 func launchDetached(script, logPath string) error {
 	handle, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)

@@ -44,7 +44,8 @@ type ApplyState struct {
 	Plugin  string `json:"plugin"`
 	Package string `json:"package"`
 	Version string `json:"version,omitempty"`
-	Status  string `json:"status"` // idle|running|done|failed
+	Mode    string `json:"mode,omitempty"` // pm|source
+	Status  string `json:"status"`         // idle|running|done|failed
 	Started string `json:"started,omitempty"`
 	Error   string `json:"error,omitempty"`
 	Log     string `json:"log,omitempty"`
@@ -94,6 +95,9 @@ func State() ApplyState {
 	case strings.Contains(text, markerFailed):
 		state.Status = "failed"
 		if state.Error == "" {
+			state.Error = lastLogLine(state.Log)
+		}
+		if state.Error == "" {
 			state.Error = "update script reported a failure"
 		}
 	default:
@@ -102,16 +106,36 @@ func State() ApplyState {
 	return state
 }
 
-// Start launches stop -> update -> start for a component as a detached script,
-// so Core can replace and restart itself without killing the updater.
+// Start launches an update for a component as a detached script, so Core can
+// replace and restart itself without killing the updater. Components installed
+// with 0kay-pm use the package manager; a plain source checkout is synced from
+// its git repository and rebuilt instead.
 func Start(plugin, version string) (ApplyState, error) {
-	pkg, ok := PackageFor(plugin)
-	if !ok {
-		return ApplyState{Status: "idle"}, fmt.Errorf("unsupported component %q", plugin)
+	pkg, known := PackageFor(plugin)
+	if !known {
+		if _, ok := componentSubdir(plugin); !ok {
+			return ApplyState{Status: "idle"}, fmt.Errorf("unsupported component %q", plugin)
+		}
 	}
 	if current := State(); current.Status == "running" {
 		return current, fmt.Errorf("an update is already running")
 	}
+	dir := updatesDir()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return ApplyState{Status: "idle"}, err
+	}
+
+	startMu.Lock()
+	defer startMu.Unlock()
+
+	if known && pmInstalled(pkg) {
+		return startPM(dir, plugin, pkg, version)
+	}
+	return startSource(dir, plugin, version)
+}
+
+// startPM runs 0kay-pm stop/update/start (optionally pinned to a release tag).
+func startPM(dir, plugin, pkg, version string) (ApplyState, error) {
 	pm, err := PMCommand()
 	if err != nil {
 		return ApplyState{Status: "idle"}, err
@@ -121,25 +145,45 @@ func Start(plugin, version string) (ApplyState, error) {
 	if ver != "" {
 		target = pkg + "@" + ver
 	}
-
-	dir := updatesDir()
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return ApplyState{Status: "idle"}, err
-	}
-
-	startMu.Lock()
-	defer startMu.Unlock()
-
 	script, logPath, err := writeUpdater(dir, pm, pkg, target)
 	if err != nil {
 		return ApplyState{Status: "idle"}, err
 	}
-	_ = os.Remove(logPath) // discard stale markers before the new run
-
+	_ = os.Remove(logPath)
 	state := ApplyState{
 		Plugin:  plugin,
 		Package: pkg,
 		Version: ver,
+		Mode:    "pm",
+		Status:  "running",
+		Started: time.Now().UTC().Format(time.RFC3339),
+	}
+	writeStateFile(dir, state)
+	if err := launchDetached(script, logPath); err != nil {
+		state.Status = "failed"
+		state.Error = err.Error()
+		writeStateFile(dir, state)
+		return state, err
+	}
+	return state, nil
+}
+
+// startSource syncs the component's git repository, rebuilds it and restarts it.
+func startSource(dir, plugin, version string) (ApplyState, error) {
+	plan, err := sourcePlanFor(plugin)
+	if err != nil {
+		return ApplyState{Status: "idle"}, err
+	}
+	script, logPath, err := writeSourceUpdater(dir, *plan)
+	if err != nil {
+		return ApplyState{Status: "idle"}, err
+	}
+	_ = os.Remove(logPath)
+	state := ApplyState{
+		Plugin:  plugin,
+		Package: plan.Package,
+		Version: strings.TrimPrefix(strings.TrimSpace(version), "v"),
+		Mode:    "source",
 		Status:  "running",
 		Started: time.Now().UTC().Format(time.RFC3339),
 	}
@@ -156,6 +200,17 @@ func Start(plugin, version string) (ApplyState, error) {
 func writeStateFile(dir string, state ApplyState) {
 	raw, _ := json.MarshalIndent(state, "", "  ")
 	_ = os.WriteFile(filepath.Join(dir, "apply.json"), raw, 0o644)
+}
+
+// lastLogLine returns the most recent non-empty line of captured output.
+func lastLogLine(text string) string {
+	lines := strings.Split(text, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		if line := strings.TrimSpace(strings.TrimRight(lines[i], "\r")); line != "" {
+			return line
+		}
+	}
+	return ""
 }
 
 // sanitizeLog strips the status markers and keeps the tail readable.

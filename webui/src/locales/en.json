@@ -264,7 +264,8 @@
 "updated": "Updated",
 "updateFailed": "Update failed",
 "beta": "Beta (sync repo)",
-"betaHint": "Sync the latest main branch instead of a release tag (may be unstable)."
+"betaHint": "Sync the latest main branch instead of a release tag (may be unstable).",
+"sourceMode": "Source sync"
     },
     "generalDesc": "UI language and basic preferences",
     "providerDesc": "Choose an AI provider and configure API credentials",

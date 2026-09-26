@@ -264,7 +264,8 @@
 "updated": "已更新",
 "updateFailed": "更新失败",
 "beta": "测试版（同步仓库）",
-"betaHint": "直接从代码仓库 main 分支同步，而非发布版标签（可能不稳定）。"
+"betaHint": "直接从代码仓库 main 分支同步，而非发布版标签（可能不稳定）。",
+"sourceMode": "源码同步"
     },
     "generalDesc": "界面语言与基础偏好",
     "providerDesc": "选择 AI 供应商并配置 API 凭证",

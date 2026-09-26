@@ -10,6 +10,7 @@ data/settings.json
 data/usage.json
 data/disabled_plugins.json
 data/uploads/
+data/updates/
 
 # Logs
 *.log

@@ -264,7 +264,8 @@
 "updated": "更新完了",
 "updateFailed": "更新に失敗しました",
 "beta": "ベータ（リポジトリ同期）",
-"betaHint": "リリースタグではなく main ブランチから同期します（不安定な場合があります）。"
+"betaHint": "リリースタグではなく main ブランチから同期します（不安定な場合があります）。",
+"sourceMode": "ソース同期"
     },
     "generalDesc": "UI 言語と基本設定",
     "providerDesc": "AI プロバイダーを選択して API 認証情報を設定",

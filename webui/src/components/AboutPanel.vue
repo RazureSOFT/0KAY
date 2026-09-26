@@ -19,6 +19,7 @@ type ApplyState = {
   plugin: string
   package: string
   version?: string
+  mode?: 'pm' | 'source' | string
   status: 'idle' | 'running' | 'done' | 'failed'
   started?: string
   error?: string
@@ -198,6 +199,7 @@ onUnmounted(stopPolling)
         <div class="apply-head">
           <span class="apply-spinner" aria-hidden="true"></span>
           <b>{{ applyState.package }}<span v-if="applyState.version">@{{ applyState.version }}</span><span v-else> · main</span></b>
+          <span v-if="applyState.mode === 'source'" class="mode-chip">{{ t('settings.about.sourceMode') }}</span>
           <span class="apply-label">{{ applyLabel }}</span>
         </div>
         <p v-if="applyState.error" class="apply-error">{{ applyState.error }}</p>
@@ -357,6 +359,17 @@ onUnmounted(stopPolling)
 .apply-head { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .apply-head b { font-weight: 700; }
 .apply-label { margin-left: auto; font-size: 12.5px; opacity: 0.85; }
+.mode-chip {
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+}
 .apply-spinner {
   flex: none;
   width: 14px;
