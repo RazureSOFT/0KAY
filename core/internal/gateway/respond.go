@@ -35,6 +35,16 @@ func writeErr(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, map[string]string{"error": message, "code": code})
 }
 
+// deprecated marks a legacy alias route before its response is written.
+//
+// It emits the standard Deprecation/Link pair so tooling and logs can see that
+// the caller should move to the successor route, while the alias itself keeps
+// working (no forced migration).
+func deprecated(w http.ResponseWriter, successor string) {
+	w.Header().Set("Deprecation", "true")
+	w.Header().Set("Link", "<"+successor+`>; rel="successor-version"`)
+}
+
 // allowMethod reports whether r.Method is one of allowed. Otherwise it writes
 // a 405 with an Allow header using the JSON error envelope.
 func allowMethod(w http.ResponseWriter, r *http.Request, allowed ...string) bool {

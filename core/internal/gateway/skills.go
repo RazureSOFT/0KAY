@@ -37,6 +37,7 @@ func (g *Gateway) handleSkills(w http.ResponseWriter, r *http.Request) {
 		action = "delete"
 		args["name"] = r.PathValue("name")
 		if args["name"] == "" {
+			deprecated(w, "/api/skills/{name}")
 			args["name"] = r.URL.Query().Get("name")
 		}
 		if args["name"] == "" {

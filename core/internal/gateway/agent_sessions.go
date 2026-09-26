@@ -18,6 +18,7 @@ func (g *Gateway) handleAgentSessions(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPatch, http.MethodDelete:
 		// Legacy body-parameter form of DELETE/PATCH /api/agent/sessions/{session_id}.
+		deprecated(w, "/api/agent/sessions/{session_id}")
 		var body struct {
 			SessionID string `json:"session_id"`
 			Action    string `json:"action"`
@@ -180,6 +181,7 @@ func (g *Gateway) handleTaskCancel(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return
 	}
+	deprecated(w, "/api/tasks/{task_id}/cancel")
 	var body struct {
 		TaskID string `json:"task_id"`
 	}

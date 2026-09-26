@@ -60,6 +60,7 @@ func (g *Gateway) overlayLifeState(r *http.Request, state map[string]interface{}
 
 // handleLifeState is the legacy path; now delegates to platform state.
 func (g *Gateway) handleLifeState(w http.ResponseWriter, r *http.Request) {
+	deprecated(w, "/api/state")
 	g.handleState(w, r)
 }
 

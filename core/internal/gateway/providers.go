@@ -109,6 +109,7 @@ func (g *Gateway) handleProviderDelete(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodDelete) {
 		return
 	}
+	deprecated(w, "/api/providers/{id}")
 	g.deleteProvider(w, r.URL.Query().Get("id"))
 }
 

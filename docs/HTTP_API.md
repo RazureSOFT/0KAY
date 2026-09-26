@@ -76,6 +76,18 @@ mismatches return `405` with `Allow`. Common codes: `bad_request`,
 - Common query parameters: `?limit=` `?query=` `?cursor=` `?incremental=1`
   `?session_id=` `?executor_id=` `?path=` `?id=` `?name=` `?values=1` `?file=`.
 
+### Deprecation
+
+Legacy alias routes keep working and answer with
+
+```
+Deprecation: true
+Link: </api/usage>; rel="successor-version"
+```
+
+pointing at the successor, for example `POST /api/usage/clear` →
+`DELETE /api/usage` and `POST /api/plugins/enable` → `PATCH /api/plugins/{name}`.
+
 ## 2. Health and plugins
 
 | Method | Path | Purpose |

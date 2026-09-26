@@ -396,6 +396,7 @@ func (g *Gateway) handlePluginToggle(w http.ResponseWriter, r *http.Request, ena
 	if !allowMethod(w, r, http.MethodPost) {
 		return
 	}
+	deprecated(w, "/api/plugins/{name}")
 	var req pluginToggleReq
 	if !decodeBody(w, r, &req, 64<<10) {
 		badRequest(w, "invalid request body")
@@ -1070,19 +1071,23 @@ func (g *Gateway) handleUsage(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(g.localCore.GetUsage())
 }
 
-// handleUsageClear POST /api/usage/clear —wipe recorded usage.
+// handleUsageClear wipes recorded usage.
+//
+//	DELETE /api/usage          (current)
+//	POST   /api/usage/clear    (legacy alias)
 func (g *Gateway) handleUsageClear(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if r.Method == http.MethodPost {
+		deprecated(w, "/api/usage")
+	}
+	if !allowMethod(w, r, http.MethodPost, http.MethodDelete) {
 		return
 	}
 	if g.localCore == nil {
-		http.Error(w, "core not ready", http.StatusServiceUnavailable)
+		unavailable(w, "core not ready")
 		return
 	}
 	g.localCore.ClearUsage()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"ok":    true,
 		"usage": g.localCore.GetUsage(),
 	})
@@ -1654,6 +1659,7 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 			"model_url": firstModelURL,
 		})
 	case http.MethodDelete:
+		deprecated(w, "/api/live2d/{path...}")
 		g.deleteLive2DModelByID(w, r.URL.Query().Get("id"))
 	default:
 		allowMethod(w, r, http.MethodGet, http.MethodPost, http.MethodDelete)
