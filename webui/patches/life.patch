@@ -95,7 +95,7 @@
       "target": "router",
       "op": "insert",
       "id": "companion",
-      "item": { "id": "companion", "path": "/companion", "name": "companion", "module": "/api/plugins/life/ui/companion.js", "title": "陪伴面板" }
+      "item": { "id": "companion", "path": "/companion", "name": "companion", "module": "/api/plugins/life/ui/companion.js?v=2", "title": "陪伴面板" }
     },
     {
       "target": "nav",

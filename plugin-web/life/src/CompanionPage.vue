@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useConfirm } from './confirm'
 import ConfirmDialog from './ConfirmDialog.vue'
+import AppSelect from './AppSelect.vue'
 
 const { confirm } = useConfirm()
 const data = ref<any>({ relationships: [], relationship_ledger: [], agenda: [], calendar_candidates: [], journal: [], dreams: [], audit: [], groups: {}, proactive: { candidates: [], receipts: [] }, persona_evolution: [], open_topics: [], portraits: [], timeline: [] })
@@ -250,6 +251,14 @@ const targetOptions = computed(() => {
   for (const g of registry.value) opts.push({ value: `group:${g.group_id}`, label: `群 · ${g.alias || g.group_id}` })
   return opts
 })
+const policyOptions = [{ value: 'observe', label: '观察' }, { value: 'whitelist', label: '白名单' }, { value: 'blacklist', label: '黑名单' }]
+const memberFlagOptions = [{ value: 'watch', label: '关注' }, { value: 'allow', label: '放行' }, { value: 'mute', label: '禁言' }]
+const stageOptions = computed(() => [{ value: '', label: '全部阶段' }, ...userStages.value.map((s: string) => ({ value: s, label: s }))])
+const stageCapOptions = ['警惕', '疏离', '陌生', '认识', '熟悉', '友好', '亲近', '亲密']
+const localeOptions = [{ value: 'zh-CN', label: '简体中文' }, { value: 'en-US', label: 'English' }]
+const mediaKindOptions = [{ value: 'tts', label: '语音 TTS' }, { value: 'image', label: '图片' }, { value: 'poke', label: '戳一戳' }, { value: 'status', label: 'QQ 状态' }]
+const proactiveTargetOptions = computed(() => [{ value: '', label: '选择发送到哪个对话 / 对象…' }, ...targetOptions.value, { value: '__manual__', label: '手动输入…' }])
+const mediaTargetOptions = computed(() => [{ value: '', label: '选择目标…' }, ...targetOptions.value])
 const groupForm = ref({ group_id: '', policy: 'observe', alias: '' })
 const groupSlang = ref<Record<string, any[]>>({})
 const groupMembers = ref<Record<string, any[]>>({})
@@ -258,8 +267,8 @@ const slangForm = ref<Record<string, string>>({})
 async function loadGroups() { try { const r = await query('group_list', {}); registry.value = r.groups || [] } catch { /* optional */ } }
 async function addGroup() { if (!groupForm.value.group_id.trim()) return; await act('group_upsert', { ...groupForm.value }); groupForm.value = { group_id: '', policy: 'observe', alias: '' } }
 async function removeGroup(id: string) { await act('group_delete', { group_id: id }); if (openGroup.value === id) openGroup.value = '' }
-async function setPolicy(g: any, e: Event) { const policy = (e.target as HTMLSelectElement).value; await act('group_upsert', { group_id: g.group_id, policy, alias: g.alias || '', note: g.note || '' }) }
-async function setMemberFlag(id: string, userId: string, e: Event) { const flag = (e.target as HTMLSelectElement).value; await act('group_member_flag', { group_id: id, user_id: userId, flag }); void loadGroupDetail(id) }
+async function setPolicy(g: any, policy: string) { await act('group_upsert', { group_id: g.group_id, policy, alias: g.alias || '', note: g.note || '' }) }
+async function setMemberFlag(id: string, userId: string, flag: string) { await act('group_member_flag', { group_id: id, user_id: userId, flag }); void loadGroupDetail(id) }
 async function loadGroupDetail(id: string) {
   const [s, m, a] = await Promise.all([act('group_slang_list', { group_id: id }), act('group_members', { group_id: id }), query('group_atmosphere', { group_id: id }).catch(() => null)])
   groupSlang.value[id] = s?.slang || []; groupMembers.value[id] = m?.members || []; if (a) groupAtmo.value[id] = a
@@ -609,7 +618,7 @@ onMounted(load)
           <article class="card">
             <h3>{{ worldForm.id ? '编辑条目' : '新增条目' }}</h3>
             <div class="form-row">
-              <select v-model="worldForm.kind" class="field" style="max-width:150px"><option v-for="k in worldKinds" :key="k" :value="k">{{ k }}</option></select>
+              <AppSelect v-model="worldForm.kind" class="sel" style="width:160px" :options="worldKinds" aria-label="条目类型" />
               <input v-model="worldForm.title" class="field" placeholder="标题，如 世界观 / 今日穿搭" />
             </div>
             <textarea v-model="worldForm.content" class="field area" placeholder="内容…"></textarea>
@@ -633,7 +642,7 @@ onMounted(load)
     <section v-show="tab === 'users'" class="panel">
       <div class="section-head"><div><h2>用户档案</h2><p class="desc">关系阶段、互动表达、未完话题与画像；先看身份，再进入详情。</p></div>
         <div class="head-actions"><input v-model="userSearch" class="field search" placeholder="搜索用户 ID" />
-          <select v-model="userStage" class="field" style="max-width:150px"><option value="">全部阶段</option><option v-for="s in userStages" :key="s" :value="s">{{ s }}</option></select>
+          <AppSelect v-model="userStage" class="sel" style="width:170px" :options="stageOptions" aria-label="阶段筛选" />
         </div>
       </div>
       <div class="user-layout">
@@ -693,7 +702,7 @@ onMounted(load)
         <div class="head-actions"><input v-model="groupSearch" class="field search" placeholder="搜索群号 / 备注" /><button class="btn tonal sm" @click="wakeGroup">兴趣唤醒一次</button></div>
       </div>
       <article class="card">
-        <div class="group-form"><input v-model="groupForm.group_id" class="field" placeholder="群号" /><select v-model="groupForm.policy" class="field" style="max-width:130px"><option value="observe">观察</option><option value="whitelist">白名单</option><option value="blacklist">黑名单</option></select><input v-model="groupForm.alias" class="field" placeholder="备注名（可选）" /><button class="btn filled sm" @click="addGroup" :disabled="!groupForm.group_id.trim()">添加群</button></div>
+        <div class="group-form"><input v-model="groupForm.group_id" class="field" placeholder="群号" /><AppSelect v-model="groupForm.policy" class="sel" style="width:140px" :options="policyOptions" aria-label="群策略" /><input v-model="groupForm.alias" class="field" placeholder="备注名（可选）" /><button class="btn filled sm" @click="addGroup" :disabled="!groupForm.group_id.trim()">添加群</button></div>
         <div class="cards">
           <article v-for="g in filteredRegistry" :key="g.group_id" class="card sub">
             <div class="row"><strong>{{ g.group_id }}</strong><span v-if="g.alias" class="chip muted">{{ g.alias }}</span><span class="chip" :class="g.policy === 'blacklist' ? 'danger' : g.policy === 'whitelist' ? 'ok' : 'muted'">{{ g.policy }}</span></div>
@@ -705,9 +714,9 @@ onMounted(load)
               <div class="chips"><span v-for="s in (groupSlang[g.group_id] || [])" :key="s.topic" class="chip muted">{{ s.topic }} · {{ Math.round(s.score) }}<button @click="removeSlang(g.group_id, s.topic)">×</button></span></div>
               <div class="form-row"><input v-model="slangForm[g.group_id]" class="field" placeholder="新增黑话 / 话题" /><button class="btn tonal sm" @click="addSlang(g.group_id)">添加</button></div>
               <h4 class="sub-label">成员安全</h4>
-              <div class="members"><div v-for="m in (groupMembers[g.group_id] || [])" :key="m.user_id" class="member"><span>{{ m.user_id }}</span><span class="meta">{{ m.messages }} 条</span><select :value="m.flag" @change="setMemberFlag(g.group_id, m.user_id, $event)" class="field tiny"><option value="watch">关注</option><option value="allow">放行</option><option value="mute">禁言</option></select></div></div>
+              <div class="members"><div v-for="m in (groupMembers[g.group_id] || [])" :key="m.user_id" class="member"><span>{{ m.user_id }}</span><span class="meta">{{ m.messages }} 条</span><AppSelect :model-value="m.flag" class="sel-tiny" style="width:108px" :options="memberFlagOptions" aria-label="成员标记" @update:model-value="(v: string) => setMemberFlag(g.group_id, m.user_id, v)" /></div></div>
             </div>
-            <div class="actions-row"><select :value="g.policy" @change="setPolicy(g, $event)" class="field tiny" style="max-width:120px"><option value="observe">观察</option><option value="whitelist">白名单</option><option value="blacklist">黑名单</option></select><button class="btn tonal sm" @click="toggleGroup(g.group_id)">{{ openGroup === g.group_id ? '收起' : '管理' }}</button><button class="btn danger sm" @click="removeGroup(g.group_id)">删除</button></div>
+            <div class="actions-row"><AppSelect :model-value="g.policy" class="sel-tiny" style="width:124px" :options="policyOptions" aria-label="群策略" @update:model-value="(v: string) => setPolicy(g, v)" /><button class="btn tonal sm" @click="toggleGroup(g.group_id)">{{ openGroup === g.group_id ? '收起' : '管理' }}</button><button class="btn danger sm" @click="removeGroup(g.group_id)">删除</button></div>
           </article>
           <p v-if="!filteredRegistry.length" class="empty">还没有群记录。</p>
         </div>
@@ -811,11 +820,7 @@ onMounted(load)
         <article class="card">
           <h3>候选队列 <span class="count-pill">{{ activeCandidates.length }}</span></h3>
           <div class="form-row">
-            <select v-model="targetChoice" class="field">
-              <option value="">选择发送到哪个对话 / 对象…</option>
-              <option v-for="o in targetOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-              <option value="__manual__">手动输入…</option>
-            </select>
+            <AppSelect v-model="targetChoice" style="flex:1;min-width:200px" :options="proactiveTargetOptions" aria-label="发送目标" />
             <input v-if="targetChoice === '__manual__'" v-model="targetManual" class="field" placeholder="session:<会话ID> / user:<QQ> / group:<群号>" />
           </div>
           <div class="form-row"><input v-model="proactiveForm.motive" class="field" placeholder="动机，如 care" /><input v-model="proactiveForm.preferred_at" class="field" placeholder="期望时间（ISO，可选）" /></div>
@@ -888,8 +893,8 @@ onMounted(load)
           <div class="settings-grid">
             <label class="wide"><span>主要用户 ID（逗号分隔）</span><input v-model="settingsForm.owner_user_ids" class="field" /></label>
             <label class="wide"><span>次要用户 ID（逗号分隔）</span><input v-model="settingsForm.secondary_user_ids" class="field" /></label>
-            <label><span>普通用户阶段上限</span><select v-model="settingsForm.other_stage_cap" class="field"><option v-for="s in ['警惕','疏离','陌生','认识','熟悉','友好','亲近','亲密']" :key="s" :value="s">{{ s }}</option></select></label>
-            <label><span>次要用户阶段上限</span><select v-model="settingsForm.secondary_stage_cap" class="field"><option v-for="s in ['警惕','疏离','陌生','认识','熟悉','友好','亲近','亲密']" :key="s" :value="s">{{ s }}</option></select></label>
+            <label><span>普通用户阶段上限</span><AppSelect v-model="settingsForm.other_stage_cap" :options="stageCapOptions" aria-label="普通用户阶段上限" /></label>
+            <label><span>次要用户阶段上限</span><AppSelect v-model="settingsForm.secondary_stage_cap" :options="stageCapOptions" aria-label="次要用户阶段上限" /></label>
             <label><span>好感回落/天</span><input v-model.number="settingsForm.affinity_decay_per_day" type="number" step="0.01" min="0" max="1" class="field tiny" /></label>
             <label><span>未互动多久才回落(天)</span><input v-model.number="settingsForm.affinity_decay_after_days" type="number" min="0" class="field tiny" /></label>
           </div>
@@ -904,7 +909,7 @@ onMounted(load)
             <label><span>经度</span><input v-model="settingsForm.env_longitude" class="field tiny" /></label>
             <label><span>天气缓存(分)</span><input v-model.number="settingsForm.weather_cache_minutes" type="number" min="5" class="field tiny" /></label>
             <label><span>每条源条数</span><input v-model.number="settingsForm.content_items_per_feed" type="number" min="1" class="field tiny" /></label>
-            <label><span>语言</span><select v-model="settingsForm.locale" class="field"><option value="zh-CN">简体中文</option><option value="en-US">English</option></select></label>
+            <label><span>语言</span><AppSelect v-model="settingsForm.locale" :options="localeOptions" aria-label="语言" /></label>
           </div>
           <input v-model="settingsForm.news_feeds" class="field" placeholder="news_feeds：ai:https://… , bilibili:https://… , https://…" />
           <input v-model="settingsForm.tts_endpoint" class="field" placeholder="tts_endpoint（可选）" />
@@ -947,8 +952,8 @@ onMounted(load)
         <article class="card"><h3>生图（扩展门控）</h3><p class="hint">未安装生图扩展或未配置端点时不会伪装成功。</p><div class="actions-row"><button class="btn tonal sm" @click="tryImage">尝试生图</button></div></article>
         <article class="card"><h3>多模态出站</h3>
           <div class="form-row">
-            <select v-model="mediaForm.kind" class="field" style="max-width:140px"><option value="tts">语音 TTS</option><option value="image">图片</option><option value="poke">戳一戳</option><option value="status">QQ 状态</option></select>
-            <select v-model="mediaForm.target" class="field"><option value="">选择目标…</option><option v-for="o in targetOptions" :key="o.value" :value="o.value">{{ o.label }}</option></select>
+            <AppSelect v-model="mediaForm.kind" class="sel" style="width:160px" :options="mediaKindOptions" aria-label="媒体类型" />
+            <AppSelect v-model="mediaForm.target" style="flex:1;min-width:200px" :options="mediaTargetOptions" aria-label="发送目标" />
           </div>
           <textarea v-if="mediaForm.kind === 'tts'" v-model="mediaForm.text" class="field area" placeholder="语音内容…"></textarea>
           <input v-else-if="mediaForm.kind === 'image'" v-model="mediaForm.file" class="field" placeholder="图片路径 / URL" />
@@ -1228,6 +1233,10 @@ h1,h2,h3,h4{margin:0;letter-spacing:-.01em}
 #app .pcp .stat-card,
 #app .pcp .item-card{border-color:color-mix(in srgb,var(--md-outline-variant) 55%,transparent)}
 #app .pcp .note,#app .pcp .fact,#app .pcp .tl li,#app .pcp .feed li,#app .pcp .kv,#app .pcp .cap,#app .pcp .group-detail{background:var(--md-surface-container)}
+#app .pcp .sel{flex:0 0 auto}
+#app .pcp .sel :deep(.app-select-trigger){min-height:48px;border-radius:14px}
+#app .pcp .sel-tiny{flex:0 0 auto}
+#app .pcp .sel-tiny :deep(.app-select-trigger){min-height:38px;padding:0 10px;border-radius:12px;font-size:12.5px}
 
 @media (prefers-color-scheme: dark){
   .pill.bad{background:#5a2d00;color:#ffd7b0}

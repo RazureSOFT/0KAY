@@ -27,7 +27,7 @@
         "id": "skillsguishow",
         "path": "/skills",
         "name": "skillsguishow",
-        "module": "/api/plugins/skillsguishow/ui/index.js",
+        "module": "/api/plugins/skillsguishow/ui/index.js?v=2",
         "title": "技能"
       }
     }
