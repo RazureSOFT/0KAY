@@ -30,6 +30,25 @@ class MemoryTests(unittest.TestCase):
             self.assertIn("future", ids)
             self.assertIn("none", ids)
 
+    def test_learning_skills_expressions_and_social_graph(self):
+        with tempfile.TemporaryDirectory() as directory:
+            companion = CompanionSystem(directory)
+            skill = companion.add_skill("piano", category="music", level=2, keywords="play")
+            self.assertEqual(companion.list_skills()[0]["name"], "piano")
+            self.assertTrue(companion.update_skill(skill["id"], level=5)["updated"])
+            self.assertTrue(companion.delete_skill(skill["id"])["deleted"])
+            expr = companion.add_expression("晚安呀", scene="night")
+            self.assertEqual(expr["status"], "pending")
+            self.assertEqual(companion.add_expression("晚安呀")["id"], expr["id"])
+            self.assertTrue(companion.review_expression(expr["id"], True)["updated"])
+            self.assertEqual(companion.list_expressions("approved")[0]["id"], expr["id"])
+            companion.upsert_social_node("u1", name="Alice", tags="friend")
+            self.assertEqual(companion.list_social_nodes()[0]["user_id"], "u1")
+            edge = companion.add_social_edge("u1", "u2", "classmate")
+            self.assertEqual(companion.list_social_edges()[0]["relation"], "classmate")
+            self.assertTrue(companion.delete_social_edge(edge["id"])["deleted"])
+            with self.assertRaises(ValueError): companion.add_social_edge("u1", "u1")
+
     def test_group_registry_slang_and_members(self):
         with tempfile.TemporaryDirectory() as directory:
             companion = CompanionSystem(directory)

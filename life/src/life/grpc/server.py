@@ -476,6 +476,32 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = {"members": await asyncio.to_thread(self.engine.companion.group_members, payload.get("group_id",""), int(payload.get("limit",50)))}
             elif action == "group_member_flag":
                 result = await asyncio.to_thread(self.engine.companion.group_member_flag, payload.get("group_id",""), payload.get("user_id",""), payload.get("flag","watch"))
+            elif action == "skill_add":
+                result = await asyncio.to_thread(self.engine.companion.add_skill, payload.get("name",""), payload.get("category","general"), int(payload.get("level",1)), payload.get("keywords",""), payload.get("aliases",""), payload.get("note",""))
+            elif action == "skill_update":
+                result = await asyncio.to_thread(self.engine.companion.update_skill, payload.get("id",""), payload.get("level"), payload.get("keywords"), payload.get("aliases"), payload.get("note"), payload.get("category"))
+            elif action == "skill_delete":
+                result = await asyncio.to_thread(self.engine.companion.delete_skill, payload.get("id",""))
+            elif action == "skill_list":
+                result = {"skills": await asyncio.to_thread(self.engine.companion.list_skills)}
+            elif action == "expression_add":
+                result = await asyncio.to_thread(self.engine.companion.add_expression, payload.get("text",""), payload.get("scene",""), payload.get("scope","public"), payload.get("source","manual"))
+            elif action == "expression_list":
+                result = {"expressions": await asyncio.to_thread(self.engine.companion.list_expressions, payload.get("status",""), int(payload.get("limit",200)))}
+            elif action == "expression_review":
+                result = await asyncio.to_thread(self.engine.companion.review_expression, payload.get("id",""), bool(payload.get("accept", True)))
+            elif action == "expression_delete":
+                result = await asyncio.to_thread(self.engine.companion.delete_expression, payload.get("id",""))
+            elif action == "social_node_upsert":
+                result = await asyncio.to_thread(self.engine.companion.upsert_social_node, payload.get("user_id",""), payload.get("name",""), payload.get("tags",""), payload.get("note",""))
+            elif action == "social_node_list":
+                result = {"nodes": await asyncio.to_thread(self.engine.companion.list_social_nodes)}
+            elif action == "social_edge_add":
+                result = await asyncio.to_thread(self.engine.companion.add_social_edge, payload.get("source_id",""), payload.get("target_id",""), payload.get("relation","contact"), payload.get("note",""))
+            elif action == "social_edge_list":
+                result = {"edges": await asyncio.to_thread(self.engine.companion.list_social_edges)}
+            elif action == "social_edge_delete":
+                result = await asyncio.to_thread(self.engine.companion.delete_social_edge, payload.get("id",""))
             else:
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))

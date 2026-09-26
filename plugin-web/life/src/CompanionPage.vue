@@ -227,6 +227,25 @@ async function loadGroupDetail(id: string) {
 function toggleGroup(id: string) { openGroup.value = openGroup.value === id ? '' : id; if (openGroup.value) void loadGroupDetail(id) }
 async function addSlang(id: string) { const topic = (slangForm.value[id] || '').trim(); if (!topic) return; await act('group_slang_update', { group_id: id, topic, score: 1 }); slangForm.value[id] = ''; void loadGroupDetail(id) }
 async function removeSlang(id: string, topic: string) { await act('group_slang_delete', { group_id: id, topic }); void loadGroupDetail(id) }
+
+const skillForm = ref({ name: '', category: 'general', level: 1, keywords: '' })
+const exprForm = ref({ text: '', scene: '' })
+const exprStatus = ref<'pending' | 'approved' | 'rejected'>('pending')
+const nodeForm = ref({ user_id: '', name: '', tags: '' })
+const edgeForm = ref({ source_id: '', target_id: '', relation: '' })
+const expressions = computed(() => (data.value.expressions || []).filter((e: any) => e.status === exprStatus.value))
+const exprCounts = computed(() => {
+  const all = data.value.expressions || []
+  return { pending: all.filter((e: any) => e.status === 'pending').length, approved: all.filter((e: any) => e.status === 'approved').length, rejected: all.filter((e: any) => e.status === 'rejected').length }
+})
+async function addSkill() { if (!skillForm.value.name.trim()) return; await act('skill_add', { ...skillForm.value, level: Number(skillForm.value.level) }); skillForm.value = { name: '', category: 'general', level: 1, keywords: '' } }
+async function removeSkill(id: string) { await act('skill_delete', { id }) }
+async function addExpression() { if (!exprForm.value.text.trim()) return; await act('expression_add', { ...exprForm.value }); exprForm.value = { text: '', scene: '' } }
+async function reviewExpression(id: string, accept: boolean) { await act('expression_review', { id, accept }) }
+async function removeExpression(id: string) { await act('expression_delete', { id }) }
+async function addNode() { if (!nodeForm.value.user_id.trim()) return; await act('social_node_upsert', { ...nodeForm.value }); nodeForm.value = { user_id: '', name: '', tags: '' } }
+async function addEdge() { if (!edgeForm.value.source_id.trim() || !edgeForm.value.target_id.trim()) return; await act('social_edge_add', { ...edgeForm.value }); edgeForm.value = { source_id: '', target_id: '', relation: '' } }
+async function removeEdge(id: string) { await act('social_edge_delete', { id }) }
 onMounted(load)
 </script>
 
@@ -527,6 +546,69 @@ onMounted(load)
   </section>
 
   <section class="group">
+    <h2 class="group-title">学习</h2>
+    <div class="grid">
+      <article class="card">
+        <div class="card-head"><h2 class="card-title">技能学习</h2><span class="chip muted">{{ (data.skills || []).length }}</span></div>
+        <form class="stack-form" @submit.prevent="addSkill">
+          <input v-model="skillForm.name" class="input" placeholder="技能，如 弹钢琴" aria-label="技能名称" />
+          <div class="form-row"><input v-model="skillForm.category" class="input" placeholder="分类" aria-label="分类" /><input v-model.number="skillForm.level" class="input tiny" type="number" min="1" max="10" aria-label="等级" /></div>
+          <input v-model="skillForm.keywords" class="input" placeholder="关键词（逗号分隔，可选）" aria-label="关键词" />
+          <button class="btn btn-primary" type="submit" :disabled="!skillForm.name.trim()">添加技能</button>
+        </form>
+        <ul class="item-list">
+          <li v-for="s in data.skills" :key="s.id" class="item">
+            <div class="item-main"><div class="item-row"><strong>{{ s.name }}</strong><span class="chip muted">Lv.{{ s.level }}</span><span class="chip">{{ s.category }}</span></div><span v-if="s.keywords" class="item-meta">{{ s.keywords }}</span></div>
+            <div class="item-actions"><button class="btn btn-danger btn-sm" @click="removeSkill(s.id)">删除</button></div>
+          </li>
+          <li v-if="!(data.skills || []).length" class="list-empty">还没有技能</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2 class="card-title">表达学习</h2><span class="chip muted">待审 {{ exprCounts.pending }}</span></div>
+        <div class="toolbar-inline">
+          <button class="btn btn-sm" :class="exprStatus === 'pending' ? 'btn-primary' : 'btn-tonal'" @click="exprStatus = 'pending'">待审 {{ exprCounts.pending }}</button>
+          <button class="btn btn-sm" :class="exprStatus === 'approved' ? 'btn-primary' : 'btn-tonal'" @click="exprStatus = 'approved'">已用 {{ exprCounts.approved }}</button>
+          <button class="btn btn-sm" :class="exprStatus === 'rejected' ? 'btn-primary' : 'btn-tonal'" @click="exprStatus = 'rejected'">已拒 {{ exprCounts.rejected }}</button>
+        </div>
+        <form class="slang-form" @submit.prevent="addExpression"><input v-model="exprForm.text" class="input" placeholder="表达，如 晚安呀" aria-label="表达内容" /><input v-model="exprForm.scene" class="input scene-input" placeholder="场景" aria-label="场景" /><button class="btn btn-primary btn-sm" type="submit" :disabled="!exprForm.text.trim()">入库</button></form>
+        <ul class="item-list">
+          <li v-for="e in expressions" :key="e.id" class="item">
+            <div class="item-main"><strong>{{ e.text }}</strong><span class="item-meta">{{ e.scene || '通用' }} · {{ e.source }}</span></div>
+            <div class="item-actions"><button v-if="e.status === 'pending'" class="btn btn-primary btn-sm" @click="reviewExpression(e.id, true)">采用</button><button v-if="e.status === 'pending'" class="btn btn-tonal btn-sm" @click="reviewExpression(e.id, false)">拒绝</button><button class="btn btn-danger btn-sm" @click="removeExpression(e.id)">删除</button></div>
+          </li>
+          <li v-if="!expressions.length" class="list-empty">该分类下没有表达</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2 class="card-title">社交关系网</h2><span class="chip muted">{{ (data.social_nodes || []).length }} 人 · {{ (data.social_edges || []).length }} 关系</span></div>
+        <form class="stack-form" @submit.prevent="addNode">
+          <input v-model="nodeForm.user_id" class="input" placeholder="用户 ID" aria-label="用户 ID" />
+          <div class="form-row"><input v-model="nodeForm.name" class="input" placeholder="称呼（可选）" aria-label="称呼" /><input v-model="nodeForm.tags" class="input" placeholder="标签（可选）" aria-label="标签" /></div>
+          <button class="btn btn-primary" type="submit" :disabled="!nodeForm.user_id.trim()">加入关系网</button>
+        </form>
+        <ul class="item-list">
+          <li v-for="n in data.social_nodes" :key="n.user_id" class="item"><div class="item-main"><strong>{{ n.name || n.user_id }}</strong><span class="item-meta">{{ n.user_id }}<template v-if="n.tags"> · {{ n.tags }}</template></span></div></li>
+          <li v-if="!(data.social_nodes || []).length" class="list-empty">关系网还是空的</li>
+        </ul>
+        <h3 class="section-label">关系连线</h3>
+        <form class="form-row" @submit.prevent="addEdge">
+          <input v-model="edgeForm.source_id" class="input" placeholder="A" aria-label="关系起点" />
+          <input v-model="edgeForm.target_id" class="input" placeholder="B" aria-label="关系终点" />
+          <input v-model="edgeForm.relation" class="input" placeholder="关系，如 同学" aria-label="关系" />
+          <button class="btn btn-tonal btn-sm" type="submit" :disabled="!edgeForm.source_id.trim() || !edgeForm.target_id.trim()">连线</button>
+        </form>
+        <ul class="item-list">
+          <li v-for="e in data.social_edges" :key="e.id" class="item"><div class="item-main"><strong>{{ e.source_id }} → {{ e.target_id }}</strong><span class="item-meta">{{ e.relation }}</span></div><div class="item-actions"><button class="btn btn-danger btn-sm" @click="removeEdge(e.id)">删除</button></div></li>
+          <li v-if="!(data.social_edges || []).length" class="list-empty">还没有关系连线</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <section class="group">
     <h2 class="group-title">主动行为</h2>
     <div class="grid">
       <article class="card">
@@ -775,6 +857,9 @@ onMounted(load)
 .member-row{display:flex;align-items:center;gap:10px;font-size:12.5px}
 .member-id{font-weight:600;min-width:80px}
 .member-row .item-meta{flex:1}
+.form-row{display:flex;gap:10px}
+.form-row .input{flex:1}
+.scene-input{width:120px;flex:0 0 auto}
 .book{border:1px solid var(--md-outline-variant);border-radius:14px;background:linear-gradient(180deg,var(--md-surface-container-lowest),var(--md-surface-container-low));padding:16px 18px}
 .book-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .book-date{width:auto;height:34px;flex:0 0 auto}

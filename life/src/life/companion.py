@@ -61,6 +61,10 @@ class CompanionSystem:
             CREATE TABLE IF NOT EXISTS food_menu (id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'meal', tags TEXT NOT NULL DEFAULT '', note TEXT DEFAULT '', created_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS group_registry (group_id TEXT PRIMARY KEY, policy TEXT NOT NULL DEFAULT 'observe', alias TEXT NOT NULL DEFAULT '', note TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS group_member_flags (group_id TEXT NOT NULL, user_id TEXT NOT NULL, flag TEXT NOT NULL DEFAULT 'watch', updated_at TEXT NOT NULL, PRIMARY KEY(group_id,user_id));
+            CREATE TABLE IF NOT EXISTS skills (id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'general', level INTEGER NOT NULL DEFAULT 1, keywords TEXT NOT NULL DEFAULT '', aliases TEXT NOT NULL DEFAULT '', note TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS expressions (id TEXT PRIMARY KEY, text TEXT NOT NULL, scene TEXT NOT NULL DEFAULT '', scope TEXT NOT NULL DEFAULT 'public', status TEXT NOT NULL DEFAULT 'pending', source TEXT NOT NULL DEFAULT 'manual', created_at TEXT NOT NULL, reviewed_at TEXT, UNIQUE(text));
+            CREATE TABLE IF NOT EXISTS social_nodes (user_id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', tags TEXT NOT NULL DEFAULT '', note TEXT DEFAULT '', updated_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS social_edges (id TEXT PRIMARY KEY, source_id TEXT NOT NULL, target_id TEXT NOT NULL, relation TEXT NOT NULL DEFAULT 'contact', note TEXT DEFAULT '', created_at TEXT NOT NULL);
             """)
             for key, value in {"proactive_daily_limit":"3", "proactive_target_limit":"1", "quiet_start":"23", "quiet_end":"8"}.items():
                 db.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", (key,value))
@@ -475,6 +479,109 @@ class CompanionSystem:
             self._audit_tx(db, "group_member_flag", f"{user_id}={flag}", group_id)
         return {"group_id": group_id, "user_id": user_id, "flag": flag}
 
+    # Learning: skills / expressions / social graph -----------------------
+    def add_skill(self, name: str, category: str = "general", level: int = 1, keywords: str = "", aliases: str = "", note: str = "") -> dict[str,Any]:
+        name = (name or "").strip()[:80]
+        if not name:
+            raise ValueError("skill name is required")
+        item = {"id": new_id("skill"), "name": name, "category": (category or "general")[:40], "level": max(1, min(10, int(level))),
+                "keywords": (keywords or "")[:200], "aliases": (aliases or "")[:200], "note": (note or "")[:400], "created_at": now(), "updated_at": now()}
+        with self.db() as db:
+            db.execute("INSERT INTO skills VALUES(?,?,?,?,?,?,?,?,?)", (item["id"], item["name"], item["category"], item["level"], item["keywords"], item["aliases"], item["note"], item["created_at"], item["updated_at"]))
+            self._audit_tx(db, "skill_add", name, item["id"])
+        return item
+
+    def update_skill(self, skill_id: str, level: int | None = None, keywords: str | None = None, aliases: str | None = None, note: str | None = None, category: str | None = None) -> dict[str,Any]:
+        with self.db() as db:
+            row = db.execute("SELECT * FROM skills WHERE id=?", (skill_id,)).fetchone()
+            if not row:
+                return {"updated": False}
+            final = {"level": row["level"] if level is None else max(1, min(10, int(level))),
+                     "keywords": row["keywords"] if keywords is None else keywords[:200],
+                     "aliases": row["aliases"] if aliases is None else aliases[:200],
+                     "note": row["note"] if note is None else note[:400],
+                     "category": row["category"] if category is None else category[:40]}
+            db.execute("UPDATE skills SET level=?,keywords=?,aliases=?,note=?,category=?,updated_at=? WHERE id=?",
+                       (final["level"], final["keywords"], final["aliases"], final["note"], final["category"], now(), skill_id))
+            after = dict(db.execute("SELECT * FROM skills WHERE id=?", (skill_id,)).fetchone())
+            self._audit_tx(db, "skill_update", after["name"], skill_id)
+        return {"updated": True, "skill": after}
+
+    def delete_skill(self, skill_id: str) -> dict[str,Any]:
+        with self.db() as db:
+            cursor = db.execute("DELETE FROM skills WHERE id=?", (skill_id,))
+            return {"deleted": bool(cursor.rowcount), "id": skill_id}
+
+    def list_skills(self) -> list[dict[str,Any]]:
+        with self.db() as db:
+            return [dict(r) for r in db.execute("SELECT * FROM skills ORDER BY level DESC, updated_at DESC").fetchall()]
+
+    def add_expression(self, text: str, scene: str = "", scope: str = "public", source: str = "manual") -> dict[str,Any]:
+        text = (text or "").strip()[:300]
+        if not text:
+            raise ValueError("expression text is required")
+        with self.db() as db:
+            row = db.execute("SELECT * FROM expressions WHERE text=?", (text,)).fetchone()
+            if row:
+                return dict(row)
+            item = {"id": new_id("expr"), "text": text, "scene": (scene or "")[:60], "scope": (scope or "public")[:40], "status": "pending", "source": (source or "manual")[:40], "created_at": now()}
+            db.execute("INSERT INTO expressions VALUES(?,?,?,?,?,?,?,?)", (item["id"], item["text"], item["scene"], item["scope"], item["status"], item["source"], item["created_at"], None))
+            self._audit_tx(db, "expression_add", text[:60], item["id"])
+        return item
+
+    def list_expressions(self, status: str = "", limit: int = 200) -> list[dict[str,Any]]:
+        with self.db() as db:
+            size = max(1, min(int(limit), 500))
+            if status:
+                return [dict(r) for r in db.execute("SELECT * FROM expressions WHERE status=? ORDER BY created_at DESC LIMIT ?", (status, size)).fetchall()]
+            return [dict(r) for r in db.execute("SELECT * FROM expressions ORDER BY created_at DESC LIMIT ?", (size,)).fetchall()]
+
+    def review_expression(self, expression_id: str, accept: bool = True) -> dict[str,Any]:
+        status = "approved" if accept else "rejected"
+        with self.db() as db:
+            row = db.execute("SELECT * FROM expressions WHERE id=?", (expression_id,)).fetchone()
+            if not row:
+                return {"updated": False}
+            db.execute("UPDATE expressions SET status=?, reviewed_at=? WHERE id=?", (status, now(), expression_id))
+            self._audit_tx(db, "expression_review", status, expression_id)
+            return {"updated": True, "id": expression_id, "status": status}
+
+    def delete_expression(self, expression_id: str) -> dict[str,Any]:
+        with self.db() as db:
+            cursor = db.execute("DELETE FROM expressions WHERE id=?", (expression_id,))
+            return {"deleted": bool(cursor.rowcount), "id": expression_id}
+
+    def upsert_social_node(self, user_id: str, name: str = "", tags: str = "", note: str = "") -> dict[str,Any]:
+        user_id = (user_id or "").strip()
+        if not user_id:
+            raise ValueError("user_id is required")
+        with self.db() as db:
+            db.execute("INSERT INTO social_nodes VALUES(?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET name=excluded.name, tags=excluded.tags, note=excluded.note, updated_at=excluded.updated_at",
+                       (user_id, (name or "")[:80], (tags or "")[:200], (note or "")[:300], now()))
+            return dict(db.execute("SELECT * FROM social_nodes WHERE user_id=?", (user_id,)).fetchone())
+
+    def list_social_nodes(self) -> list[dict[str,Any]]:
+        with self.db() as db:
+            return [dict(r) for r in db.execute("SELECT * FROM social_nodes ORDER BY updated_at DESC").fetchall()]
+
+    def add_social_edge(self, source_id: str, target_id: str, relation: str = "contact", note: str = "") -> dict[str,Any]:
+        source_id, target_id = (source_id or "").strip(), (target_id or "").strip()
+        if not source_id or not target_id or source_id == target_id:
+            raise ValueError("two distinct user ids are required")
+        item = {"id": new_id("edge"), "source_id": source_id, "target_id": target_id, "relation": (relation or "contact")[:40], "note": (note or "")[:300], "created_at": now()}
+        with self.db() as db:
+            db.execute("INSERT INTO social_edges VALUES(?,?,?,?,?,?)", (item["id"], item["source_id"], item["target_id"], item["relation"], item["note"], item["created_at"]))
+        return item
+
+    def list_social_edges(self) -> list[dict[str,Any]]:
+        with self.db() as db:
+            return [dict(r) for r in db.execute("SELECT * FROM social_edges ORDER BY created_at DESC").fetchall()]
+
+    def delete_social_edge(self, edge_id: str) -> dict[str,Any]:
+        with self.db() as db:
+            cursor = db.execute("DELETE FROM social_edges WHERE id=?", (edge_id,))
+            return {"deleted": bool(cursor.rowcount), "id": edge_id}
+
     def journal_page(self, day: str = "") -> dict[str,Any]:
         """Read a day as one diary page, including entries outside snapshot limits."""
         day = date.fromisoformat(day).isoformat() if day else date.today().isoformat()
@@ -514,7 +621,7 @@ class CompanionSystem:
             groups={row["group_id"]:{"mood":row["mood"],"topics":rows("SELECT topic,score FROM group_topics WHERE group_id=? ORDER BY score DESC LIMIT 12",(row["group_id"],)),"messages":rows("SELECT user_id,content,created_at FROM group_observations WHERE group_id=? ORDER BY created_at DESC LIMIT 20",(row["group_id"],))} for row in db.execute("SELECT * FROM group_scenes").fetchall()}
             # Only today and upcoming events: yesterday's schedule is not shown or reused.
             agenda=rows("SELECT * FROM calendar_events WHERE start_at='' OR substr(replace(start_at,'T',' '),1,10)>=? ORDER BY start_at='' DESC, start_at ASC",(today,))
-            return {"relationships":rows("SELECT * FROM relationship_accounts ORDER BY last_seen DESC"),"relationship_ledger":rows("SELECT * FROM relationship_ledger ORDER BY created_at DESC LIMIT 200"),"agenda":agenda,"calendar_candidates":rows("SELECT * FROM calendar_candidates ORDER BY created_at DESC"),"journal":rows("SELECT * FROM journal_entries WHERE kind='journal' ORDER BY created_at DESC LIMIT 50"),"dreams":rows("SELECT * FROM journal_entries WHERE kind='dream' ORDER BY created_at DESC LIMIT 50"),"audit":rows("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT 200"),"groups":groups,"persona_evolution":rows("SELECT * FROM persona_evolution WHERE status='confirmed' ORDER BY updated_at DESC"),"proactive":{"candidates":rows("SELECT * FROM proactive_candidates ORDER BY updated_at DESC LIMIT 100"),"receipts":rows("SELECT * FROM proactive_receipts ORDER BY created_at DESC LIMIT 100")},"important_dates":rows("SELECT * FROM important_dates ORDER BY date_text"),"goals":rows("SELECT * FROM personal_goals ORDER BY updated_at DESC"),"food":rows("SELECT * FROM food_menu ORDER BY created_at DESC"),"word_cloud":rows("SELECT topic, SUM(score) AS score FROM group_topics GROUP BY topic ORDER BY score DESC LIMIT 60")}
+            return {"relationships":rows("SELECT * FROM relationship_accounts ORDER BY last_seen DESC"),"relationship_ledger":rows("SELECT * FROM relationship_ledger ORDER BY created_at DESC LIMIT 200"),"agenda":agenda,"calendar_candidates":rows("SELECT * FROM calendar_candidates ORDER BY created_at DESC"),"journal":rows("SELECT * FROM journal_entries WHERE kind='journal' ORDER BY created_at DESC LIMIT 50"),"dreams":rows("SELECT * FROM journal_entries WHERE kind='dream' ORDER BY created_at DESC LIMIT 50"),"audit":rows("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT 200"),"groups":groups,"persona_evolution":rows("SELECT * FROM persona_evolution WHERE status='confirmed' ORDER BY updated_at DESC"),"proactive":{"candidates":rows("SELECT * FROM proactive_candidates ORDER BY updated_at DESC LIMIT 100"),"receipts":rows("SELECT * FROM proactive_receipts ORDER BY created_at DESC LIMIT 100")},"important_dates":rows("SELECT * FROM important_dates ORDER BY date_text"),"goals":rows("SELECT * FROM personal_goals ORDER BY updated_at DESC"),"food":rows("SELECT * FROM food_menu ORDER BY created_at DESC"),"word_cloud":rows("SELECT topic, SUM(score) AS score FROM group_topics GROUP BY topic ORDER BY score DESC LIMIT 60"),"skills":rows("SELECT * FROM skills ORDER BY level DESC, updated_at DESC"),"expressions":rows("SELECT * FROM expressions ORDER BY created_at DESC LIMIT 300"),"social_nodes":rows("SELECT * FROM social_nodes ORDER BY updated_at DESC"),"social_edges":rows("SELECT * FROM social_edges ORDER BY created_at DESC")}
 
     def user_detail(self, user_id: str, limit: int = 100) -> dict[str,Any]:
         """One user's whole companionship record: relationship, proactive, audit."""
