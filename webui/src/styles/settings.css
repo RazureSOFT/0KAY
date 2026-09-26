@@ -96,15 +96,11 @@
   transition: background-color 220ms var(--set-emph), color 160ms, border-radius 380ms var(--set-spring);
 }
 #app .settings-page .nav-indicator {
-  content: '';
   position: absolute;
-  left: 12px;
-  top: 50%;
-  width: 40px;
-  height: 36px;
+  inset: 0;
   border-radius: 999px;
   background: transparent;
-  transform: translateY(-50%) scale(0.6);
+  transform: scale(0.96);
   opacity: 0;
   pointer-events: none;
   transition: transform 440ms var(--set-spring), opacity 200ms, background-color 240ms, border-radius 440ms var(--set-spring);
@@ -128,21 +124,21 @@
 }
 #app .settings-page .nav-item:hover:not(.active) .nav-indicator {
   opacity: 1;
-  transform: translateY(-50%) scale(1);
-  background: color-mix(in srgb, var(--md-primary) 14%, transparent);
+  transform: scale(1);
+  background: color-mix(in srgb, var(--md-primary) 12%, transparent);
 }
 #app .settings-page .nav-item.active {
-  color: var(--md-primary);
+  color: var(--md-on-primary-container);
   font-weight: 800;
 }
 #app .settings-page .nav-item.active .nav-indicator {
   opacity: 1;
-  transform: translateY(-50%) scale(1);
+  transform: scale(1);
   background: var(--md-primary-container);
-  border-radius: 18px 18px 18px 7px;
+  border-radius: 22px 22px 22px 8px;
 }
 #app .settings-page .nav-item.active .nav-icon {
-  transform: scale(1.12);
+  transform: scale(1.1);
   color: var(--md-on-primary-container);
 }
 
