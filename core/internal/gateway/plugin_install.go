@@ -49,7 +49,12 @@ func (g *Gateway) handlePluginInstalled(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"packages": update.InstalledPackages()})
+	installed := update.InstalledPlugins()
+	names := make([]string, 0, len(installed))
+	for _, plugin := range installed {
+		names = append(names, plugin.Name)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"packages": names, "installed": installed})
 }
 
 // handlePluginInstallStatus reports the latest install request and, once it

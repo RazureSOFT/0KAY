@@ -92,14 +92,36 @@ func pmInstalled(pkg string) bool {
 	return pmInstalledPackages()[pkg]
 }
 
-// InstalledPackages lists packages recorded by 0kay-pm, sorted.
-func InstalledPackages() []string {
-	set := pmInstalledPackages()
-	out := make([]string, 0, len(set))
-	for name := range set {
-		out = append(out, name)
+// InstalledPlugin is a package recorded by 0kay-pm, with its source repository
+// so callers can match by name even when a manifest is unavailable.
+type InstalledPlugin struct {
+	Name       string `json:"name"`
+	Repository string `json:"repository,omitempty"`
+}
+
+// InstalledPlugins lists packages recorded by 0kay-pm, sorted by name.
+func InstalledPlugins() []InstalledPlugin {
+	path := pmStatePath()
+	if path == "" {
+		return nil
 	}
-	sort.Strings(out)
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	var state struct {
+		Installed map[string]struct {
+			Repository string `json:"repository"`
+		} `json:"installed"`
+	}
+	if json.Unmarshal(raw, &state) != nil {
+		return nil
+	}
+	out := make([]InstalledPlugin, 0, len(state.Installed))
+	for name, record := range state.Installed {
+		out = append(out, InstalledPlugin{Name: name, Repository: record.Repository})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out
 }
 
