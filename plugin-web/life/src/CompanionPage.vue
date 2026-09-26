@@ -8,12 +8,31 @@ const data = ref<any>({ relationships: [], relationship_ledger: [], agenda: [], 
 const loading = ref(false); const error = ref(''); const notice = ref('')
 const agendaTitle = ref(''); const agendaWhen = ref(''); const agendaDetail = ref('')
 const journal = ref(''); const dream = ref('')
+const localToday = () => { const d = new Date(); const p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}` }
+const diaryDate = ref(localToday())
+const diary = ref<{ date: string; content: string; previous: string | null; next: string | null }>({ date: '', content: '', previous: null, next: null })
+const diaryLoading = ref(false)
+const diaryParagraphs = computed(() => (diary.value.content || '').split(/\n{2,}/).map((p) => p.trim()).filter(Boolean))
+async function loadDiary(day = diaryDate.value) {
+  diaryLoading.value = true
+  try {
+    const r = await fetch('/api/life/companion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'journal_page', payload: { date: day } }) })
+    if (!r.ok) throw Error(await r.text())
+    const body = await r.json()
+    diary.value = { date: body?.date || day, content: body?.content || '', previous: body?.previous || null, next: body?.next || null }
+    diaryDate.value = diary.value.date
+  } catch (e: any) { error.value = e?.message || '无法读取日记' }
+  finally { diaryLoading.value = false }
+}
+function shiftDiary(dir: 'previous' | 'next') { const target = dir === 'previous' ? diary.value.previous : diary.value.next; if (target) void loadDiary(target) }
 const openLedger = ref(false); const openGroup = ref<string>('')
 const proactiveForm = ref({ target: '', motive: '', content: '', preferred_at: '' })
 const policy = ref({ daily_limit: 6, per_target_limit: 2, quiet_start: 23, quiet_end: 8 })
 const groups = computed(() => Object.entries(data.value.groups || {}))
 const activeCandidates = computed(() => (data.value.proactive?.candidates || []).filter((x: any) => !['delivered', 'cancelled'].includes(x.status)))
 const receipts = computed(() => data.value.proactive?.receipts || [])
+const todayKey = localToday()
+const todayAgenda = computed(() => (data.value.agenda || []).filter((x: any) => { const s = String(x.start_at || '').replace('T', ' '); return !s || s.slice(0, 10) >= todayKey }))
 
 function flash(message: string) { notice.value = message; setTimeout(() => { if (notice.value === message) notice.value = '' }, 2000) }
 const usage = ref<any>(null)
@@ -33,6 +52,7 @@ async function load() {
   } catch (e: any) { error.value = e?.message || '无法读取 LIFE 陪伴状态' }
   finally { loading.value = false }
   void loadUsage()
+  void loadDiary()
 }
 async function act(action: string, payload: any) {
   try {
@@ -146,7 +166,7 @@ onMounted(load)
 
     <section class="stat-grid">
       <article class="stat-card"><div class="stat-head"><span class="icon-badge tone-1" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8.5" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M16 6.2a3.2 3.2 0 010 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><span class="stat-label">关系对象</span></div><strong class="stat-value">{{ data.relationships?.length || 0 }}</strong><span class="stat-hint">被 LIFE 记住的人</span></article>
-      <article class="stat-card"><div class="stat-head"><span class="icon-badge tone-2" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><rect x="4" y="5.5" width="16" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M8 3.5v4M16 3.5v4M4 10h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><span class="stat-label">活动日程</span></div><strong class="stat-value">{{ data.agenda?.filter((x: any) => x.status === 'active').length || 0 }}</strong><span class="stat-hint">待确认 + 已确认</span></article>
+      <article class="stat-card"><div class="stat-head"><span class="icon-badge tone-2" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><rect x="4" y="5.5" width="16" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M8 3.5v4M16 3.5v4M4 10h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><span class="stat-label">活动日程</span></div><strong class="stat-value">{{ todayAgenda.filter((x: any) => x.status === 'active').length }}</strong><span class="stat-hint">今天起待进行</span></article>
       <article class="stat-card"><div class="stat-head"><span class="icon-badge tone-3" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M12 4l1.7 4.6L18 10l-4.3 1.4L12 16l-1.7-4.6L6 10l4.3-1.4L12 4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span><span class="stat-label">待投递主动行为</span></div><strong class="stat-value">{{ activeCandidates.length }}</strong><span class="stat-hint">已投递 {{ receipts.length }} 次</span></article>
       <article class="stat-card"><div class="stat-head"><span class="icon-badge tone-4" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M5 6.5h14A1.5 1.5 0 0120.5 8v8a1.5 1.5 0 01-1.5 1.5H9l-4 3v-3H5A1.5 1.5 0 013.5 16V8A1.5 1.5 0 015 6.5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></span><span class="stat-label">已观察群聊</span></div><strong class="stat-value">{{ groups.length }}</strong><span class="stat-hint">群消息学习</span></article>
   </section>
@@ -180,13 +200,13 @@ onMounted(load)
         </ul>
         <h3 class="section-label">今天的日程 <small class="hint-inline">LIFE 按时间自动推进</small></h3>
         <ul class="item-list">
-          <li v-for="item in data.agenda" :key="item.id" class="item">
+          <li v-for="item in todayAgenda" :key="item.id" class="item">
             <div class="item-main">
               <div class="item-row"><strong :class="{ done: item.status === 'completed' }">{{ item.title }}</strong><span class="chip" :class="agendaState(item).cls">{{ agendaState(item).label }}</span></div>
               <span class="item-meta">{{ item.start_at }}<template v-if="item.detail"> · {{ item.detail }}</template></span>
             </div>
           </li>
-          <li v-if="!data.agenda?.length" class="list-empty">今天还没有安排，点右上角让 LIFE 安排。</li>
+          <li v-if="!todayAgenda.length" class="list-empty">今天还没有安排，点右上角让 LIFE 安排。</li>
         </ul>
       </article>
 
@@ -213,11 +233,19 @@ onMounted(load)
 
       <article class="card">
         <div class="card-head"><h2 class="card-title">日记</h2><div class="head-actions"><button class="btn btn-danger btn-sm" @click="clearJournal('journal')">清除</button><button class="btn btn-tonal btn-sm" :disabled="generating === 'journal'" @click="generate('journal')">{{ generating === 'journal' ? '生成中…' : '由 LIFE 生成' }}</button></div></div>
-        <form class="stack-form" @submit.prevent="addEntry('journal', journal)"><textarea v-model="journal" class="input area" placeholder="记录 LIFE 的日记…"></textarea><button class="btn btn-tonal" type="submit">写入日记</button></form>
-        <ol class="feed">
-          <li v-for="item in data.journal" :key="item.id"><time>{{ item.at }}</time><p>{{ item.content }}</p></li>
-          <li v-if="!data.journal?.length" class="list-empty plain">还没有日记</li>
-        </ol>
+        <div class="book">
+          <div class="book-nav">
+            <button class="btn btn-tonal btn-sm" :disabled="!diary.previous || diaryLoading" @click="shiftDiary('previous')">← 前一页</button>
+            <input v-model="diaryDate" class="input book-date" type="date" aria-label="日记日期" @change="loadDiary(diaryDate)" />
+            <button class="btn btn-tonal btn-sm" :disabled="!diary.next || diaryLoading" @click="shiftDiary('next')">后一页 →</button>
+          </div>
+          <div class="book-page">
+            <p class="book-heading">{{ diary.date }}</p>
+            <div v-if="diaryParagraphs.length" class="book-body"><p v-for="(para, i) in diaryParagraphs" :key="i">{{ para }}</p></div>
+            <p v-else class="book-empty">{{ diaryLoading ? '翻页中…' : '这一天还没有写下什么。' }}</p>
+          </div>
+        </div>
+        <form class="stack-form diary-manual" @submit.prevent="addEntry('journal', journal)"><textarea v-model="journal" class="input area" placeholder="为今天写下一点…"></textarea><button class="btn btn-tonal" type="submit">写入今天</button></form>
       </article>
 
       <article class="card">
@@ -457,6 +485,15 @@ onMounted(load)
 .rel-meter b{font-size:12px}
 .rel-actions{display:flex;gap:4px}
 .ledger{margin-top:16px;border-top:1px solid var(--md-outline-variant);padding-top:12px}
+.book{border:1px solid var(--md-outline-variant);border-radius:14px;background:linear-gradient(180deg,var(--md-surface-container-lowest),var(--md-surface-container-low));padding:16px 18px}
+.book-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.book-date{width:auto;height:34px;flex:0 0 auto}
+.book-page{min-height:120px;border-top:1px solid var(--md-outline-variant);padding-top:14px}
+.book-heading{margin:0 0 10px;font:600 13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--md-on-surface-variant);letter-spacing:.02em}
+.book-body{display:flex;flex-direction:column;gap:10px}
+.book-body p{margin:0;font-size:14px;line-height:1.95;text-indent:2em;color:var(--md-on-surface);white-space:pre-wrap;overflow-wrap:anywhere}
+.book-empty{margin:0;font-size:13px;color:var(--md-on-surface-variant);font-style:italic}
+.diary-manual{margin-top:14px;border-top:1px dashed var(--md-outline-variant);padding-top:12px}
 .feed li{padding:12px 14px;border-left:3px solid var(--md-primary);background:var(--md-surface-container-low);border-radius:0 12px 12px 0}
 .feed.compact li{padding:8px 12px}
 .feed time,.timeline time{font-size:11px;color:var(--md-on-surface-variant);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}

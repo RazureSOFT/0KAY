@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+from datetime import date
 from pathlib import Path
 import sys
 import tempfile
@@ -17,6 +18,18 @@ from life.model_client import MocrClient
 
 
 class MemoryTests(unittest.TestCase):
+    def test_agenda_snapshot_hides_past_days(self):
+        with tempfile.TemporaryDirectory() as directory:
+            companion = CompanionSystem(directory)
+            with companion.db() as db:
+                for event_id, start in [("past", "2020-01-01 08:00"), ("today", f"{date.today().isoformat()} 09:00"), ("future", "2999-01-01 09:00"), ("none", "")]:
+                    db.execute("INSERT INTO calendar_events VALUES(?,?,?,?,?,?,?,?,?,?)", (event_id, "", f"{event_id} t", start, "", "persona_soft_activity", "active", 1, "x", "x"))
+            ids = [row["id"] for row in companion.snapshot()["agenda"]]
+            self.assertNotIn("past", ids)
+            self.assertIn("today", ids)
+            self.assertIn("future", ids)
+            self.assertIn("none", ids)
+
     def test_diary_date_lookup_includes_old_entries_and_orders_paragraphs(self):
         with tempfile.TemporaryDirectory() as directory:
             companion = CompanionSystem(directory)
