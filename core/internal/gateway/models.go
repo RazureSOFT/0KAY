@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -139,21 +140,29 @@ func validateModelsURL(raw string) error {
 	return nil
 }
 
+// versionedPath matches a base URL that already ends in an API version segment
+// such as /v1, /v2 or /v1beta.
+var versionedPath = regexp.MustCompile(`(?i)/v\d+[a-z0-9.]*$`)
+
+// catalogURL builds the model-catalog endpoint. A base URL without a version
+// segment gets "/v1" appended, so gateways that serve the catalog under
+// /v1/models are reached instead of the site root (which returns HTML). A base
+// that already ends in a version (the app's usual convention) is left as is, so
+// /v1 never doubles up.
+func catalogURL(baseURL string) string {
+	base := strings.TrimSuffix(strings.TrimSpace(baseURL), "/")
+	if !versionedPath.MatchString(base) {
+		base += "/v1"
+	}
+	return base + "/models"
+}
+
 // fetchModelsFromProvider fetches models from the provider's API. format is the
 // effective wire protocol ("anthropic" or anything else for OpenAI-compatible).
 func fetchModelsFromProvider(format, baseURL, apiKey string) ([]string, error) {
-	// Normalize base URL
-	baseURL = strings.TrimSuffix(baseURL, "/")
-
 	isAnthropic := format == "anthropic" || strings.Contains(strings.ToLower(baseURL), "anthropic.com")
 
-	var modelsURL string
-	if isAnthropic {
-		modelsURL = baseURL + "/v1/models"
-	} else {
-		// OpenAI-compatible API
-		modelsURL = baseURL + "/models"
-	}
+	modelsURL := catalogURL(baseURL)
 
 	if err := validateModelsURL(modelsURL); err != nil {
 		return nil, err
