@@ -305,6 +305,7 @@
     "addProvider": "添加供应商",
     "providerName": "供应商名称",
     "providerNamePlaceholder": "可选，如：团队网关、内网主账号",
+    "providerNameRequired": "自定义供应商必须填写名称",
     "apiFormat": "API 格式",
     "apiFormatHint": "该端点使用的协议。自动＝按供应商推断；Claude 兼容的中转请选择 Anthropic。",
     "formatAuto": "自动",

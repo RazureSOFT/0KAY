@@ -66,6 +66,10 @@ const draftDefaultProviderId = ref('')
 const draftDefaultModel = ref('')
 const providerMsg = ref('')
 const editingProvider = ref<ProviderConfig | null>(null)
+/** A custom provider must carry a name: the model picker labels models as
+ *  "providerName/model", and an empty name falls back to the generated id. */
+const providerNameMissing = computed(() =>
+  editingProvider.value?.provider === 'custom' && !(editingProvider.value?.name || '').trim())
 const fetchSource = ref<'api' | 'fallback' | ''>('')
 const fetchError = ref('')
 const fetchingProviderId = ref('')
@@ -357,6 +361,11 @@ async function toggleModelOnCard(p: ProviderConfig, m: string) {
 async function saveProviderEdit() {
   const p = editingProvider.value
   if (!p) return
+  p.name = (p.name || '').trim()
+  if (p.provider === 'custom' && !p.name) {
+    providerMsg.value = t('settings.providerNameRequired')
+    return
+  }
   if (!p.id) {
     const norm = (u: string) => String(u || '').trim().replace(/\/+$/, '')
     const dup = draftProviders.value.find(x =>
@@ -680,8 +689,9 @@ function save() {
               <AppSelect v-model="editingProvider.provider" class="input" :aria-label="t('wizard.provider')" :options="PROVIDERS.map(p=>({value:p.id,label:t(`providers.${p.id}.name`,p.name)}))" @change="onEditProviderType" />
             </div>
             <div class="field">
-              <label>{{ t('settings.providerName') }}</label>
+              <label>{{ t('settings.providerName') }}<span v-if="editingProvider.provider === 'custom'" style="color:var(--md-error);margin-left:2px">*</span></label>
               <input v-model="editingProvider.name" :placeholder="t('settings.providerNamePlaceholder')" class="input" />
+              <p v-if="editingProvider.provider === 'custom'" class="helper-text">{{ t('settings.providerNameRequired') }}</p>
             </div>
             <div class="field">
               <label>{{ t('wizard.apiKey') }}</label>
@@ -755,7 +765,7 @@ function save() {
               <AppSelect v-model="editingProvider.default_model" class="input" :aria-label="t('wizard.defaultModel')" :options="editingProvider.models" />
             </div>
           <div class="actions-row">
-            <button class="btn btn-primary" type="button" @click="saveProviderEdit">
+            <button class="btn btn-primary" type="button" :disabled="providerNameMissing" @click="saveProviderEdit">
               {{ t('settings.save') }}
             </button>
             <button class="btn btn-ghost" type="button" @click="editingProvider = null">

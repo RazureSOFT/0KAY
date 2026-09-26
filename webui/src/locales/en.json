@@ -305,6 +305,7 @@
     "addProvider": "Add provider",
     "providerName": "Provider name",
     "providerNamePlaceholder": "Optional, e.g. Team gateway, Work account",
+"providerNameRequired": "Required for a custom provider",
     "apiFormat": "API format",
     "apiFormatHint": "Wire protocol for this endpoint. Auto infers it from the provider; pick Anthropic for Claude-compatible relays.",
     "formatAuto": "Auto",

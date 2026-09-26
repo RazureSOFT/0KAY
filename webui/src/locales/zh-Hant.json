@@ -305,6 +305,7 @@
     "addProvider": "新增供應商",
     "providerName": "供應商名稱",
     "providerNamePlaceholder": "選填，如：團隊閘道、內網主帳號",
+    "providerNameRequired": "自訂供應商必須填寫名稱",
     "apiFormat": "API 格式",
     "apiFormatHint": "此端點使用的協定。自動＝依供應商推斷；Claude 相容的中轉請選擇 Anthropic。",
     "formatAuto": "自動",
