@@ -680,6 +680,7 @@ class MinecraftTool(Tool):
             "Control a Minecraft companion bot on the user's server (Java via mineflayer, "
             "Bedrock via bedrock-protocol). Actions: connect, disconnect, status, chat, "
             "players, follow, goto, stop, look, dig, place, attack, inventory, use, "
+            "scan_blocks, scan_entities, skill_read, skill_list, "
             "autopilot_start, autopilot_stop. With autopilot_start the bot plays by itself "
             "using AI decisions and can be stopped with autopilot_stop."
         )
@@ -689,6 +690,7 @@ class MinecraftTool(Tool):
             "action": {"type": "string", "enum": [
                 "connect", "disconnect", "status", "chat", "players", "follow", "goto",
                 "stop", "look", "dig", "place", "attack", "inventory", "use",
+                "scan_blocks", "scan_entities", "skill_read",
                 "autopilot_start", "autopilot_stop", "events",
                 "world", "waypoint_add", "waypoint_list", "waypoint_goto", "waypoint_remove",
                 "skill_save", "skill_run", "skill_list", "skill_remove"]},
@@ -702,8 +704,9 @@ class MinecraftTool(Tool):
             "item": {"type": "string"}, "goal": {"type": "string"},
             "interval_ms": {"type": "integer"}, "model_id": {"type": "string"},
             "since": {"type": "integer"},
-            "name": {"type": "string"}, "id": {"type": "string"},
-            "x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"},
+            "name": {"type": "string"}, "names": {"type": "array", "items": {"type": "string"}},
+            "radius": {"type": "integer"}, "count": {"type": "integer"},
+            "id": {"type": "string"},
             "note": {"type": "string"}, "type": {"type": "string"}, "dimension": {"type": "string"},
             "steps": {"type": "array", "items": {"type": "object"}},
         }}
