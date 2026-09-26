@@ -18,6 +18,7 @@ const contributorsError = ref('')
 const PLATFORM_REPO = 'https://github.com/RazureSOFT/0KAY'
 const TEAM_URL = 'https://github.com/RazureSOFT'
 const DEVELOPER = { login: 'razureink', url: 'https://github.com/razureink', avatar: 'https://github.com/razureink.png' }
+const avatarOf = (login: string, size = 96) => `https://github.com/${login}.png?size=${size}`
 
 async function checkUpdates() {
   aboutLoading.value = true
@@ -71,37 +72,48 @@ onMounted(() => {
 
 <template>
   <div class="about">
+    <!-- Brand hero -->
     <section class="content-card hero">
-      <div class="hero-main">
-        <h2>0KAY <span class="ver">v{{ updateResult?.current || '0.1.0' }}</span></h2>
-        <p class="card-desc">{{ t('settings.about.tagline') }}</p>
-        <div class="links">
-          <a :href="PLATFORM_REPO" target="_blank" rel="noopener noreferrer">{{ t('settings.about.repository') }}</a>
-          <a :href="`${PLATFORM_REPO}/releases`" target="_blank" rel="noopener noreferrer">{{ t('settings.tabs.about') }} · Releases</a>
+      <div class="brand">
+        <span class="brand-mark">0K</span>
+        <div class="brand-text">
+          <h1>0KAY <span class="version">v{{ updateResult?.current || '0.1.0' }}</span></h1>
+          <p>{{ t('settings.about.tagline') }}</p>
         </div>
       </div>
-      <span class="license-pill">MIT</span>
+      <div class="hero-actions">
+        <a class="text-link" :href="PLATFORM_REPO" target="_blank" rel="noopener noreferrer">
+          <span>{{ t('settings.about.repository') }}</span><span class="ext">↗</span>
+        </a>
+        <a class="text-link" :href="`${PLATFORM_REPO}/releases`" target="_blank" rel="noopener noreferrer">
+          <span>Releases</span><span class="ext">↗</span>
+        </a>
+        <span class="mit-badge">MIT</span>
+      </div>
     </section>
 
+    <!-- Updates -->
     <section class="content-card">
-      <div class="card-head">
-        <h3>{{ t('settings.about.description') }}</h3>
-        <div class="actions-row">
+      <header class="card-head">
+        <div>
+          <h2>{{ t('settings.about.description') }}</h2>
+        </div>
+        <div class="head-actions">
           <button class="btn btn-tonal" :disabled="aboutLoading" @click="checkUpdates">{{ t(aboutLoading ? 'settings.about.checking' : 'settings.about.check') }}</button>
           <button class="btn btn-tonal" :disabled="pluginsLoading" @click="checkPluginUpdates">{{ t(pluginsLoading ? 'settings.about.checking' : 'settings.about.plugins') }}</button>
         </div>
-      </div>
+      </header>
 
       <p v-if="updateError" class="alert" role="alert">{{ updateError }}</p>
-      <div v-else class="update-row">
-        <div class="ver-block">
-          <span class="ver-label">{{ t('settings.about.currentVersion') }}</span>
-          <span class="ver-num">v{{ updateResult?.current || '0.1.0' }}</span>
+      <div v-else class="compare">
+        <div class="vstat">
+          <span class="vlabel">{{ t('settings.about.currentVersion') }}</span>
+          <span class="vnum">v{{ updateResult?.current || '0.1.0' }}</span>
         </div>
-        <div class="arrow">→</div>
-        <div class="ver-block">
-          <span class="ver-label">{{ t('settings.about.latestVersion') }}</span>
-          <span class="ver-num" :class="{ ok: !!updateResult?.latest }">{{ updateResult?.latest ? `v${updateResult.latest}` : '—' }}</span>
+        <span class="connector" aria-hidden="true">→</span>
+        <div class="vstat" :class="{ next: updateResult?.latest }">
+          <span class="vlabel">{{ t('settings.about.latestVersion') }}</span>
+          <span class="vnum">{{ updateResult?.latest ? `v${updateResult.latest}` : '—' }}</span>
         </div>
         <span v-if="updateResult" class="pill" :class="updateResult.has_update ? 'warn' : (updateResult.latest ? 'ok' : 'muted')">
           {{ t(updateResult.has_update ? 'settings.about.available' : (updateResult.latest ? 'settings.about.latest' : 'settings.about.noRelease')) }}
@@ -112,10 +124,10 @@ onMounted(() => {
       <div v-if="pluginsError" class="alert" role="alert">{{ pluginsError }}</div>
       <div v-if="pluginResults" class="plugins">
         <div v-for="plugin in pluginResults" :key="plugin.name" class="plugin-row">
-          <span class="plugin-name">{{ plugin.name }}</span>
-          <span class="plugin-ver">v{{ plugin.version || '—' }}</span>
-          <span class="plugin-arrow">→</span>
-          <span class="plugin-ver" :class="{ ok: !!plugin.latest }">{{ plugin.latest ? `v${plugin.latest}` : '—' }}</span>
+          <span class="pname">{{ plugin.name }}</span>
+          <span class="pver">v{{ plugin.version || '—' }}</span>
+          <span class="connector" aria-hidden="true">→</span>
+          <span class="pver" :class="{ good: !!plugin.latest }">{{ plugin.latest ? `v${plugin.latest}` : '—' }}</span>
           <span class="pill" :class="plugin.error ? 'muted' : (plugin.has_update ? 'warn' : (plugin.latest ? 'ok' : 'muted'))">
             {{ plugin.error || t(plugin.has_update ? 'settings.about.available' : (plugin.latest ? 'settings.about.latest' : 'settings.about.noRelease')) }}
           </span>
@@ -124,93 +136,246 @@ onMounted(() => {
         <p v-if="!pluginResults.length" class="muted">{{ t('settings.about.noPlugins') }}</p>
       </div>
 
-      <p class="helper-text">{{ t('settings.about.updateHint') }}</p>
-      <code>0kay-pm update &lt;package&gt;@&lt;version&gt;</code>
+      <div class="tip">
+        <span class="tip-icon">i</span>
+        <span>{{ t('settings.about.updateHint') }} <code>0kay-pm update &lt;package&gt;@&lt;version&gt;</code></span>
+      </div>
     </section>
 
+    <!-- Credits -->
     <section class="content-card">
-      <div class="credits">
-        <div class="credit-col">
-          <h3>{{ t('settings.about.developerTitle') }}</h3>
-          <a class="person" :href="DEVELOPER.url" target="_blank" rel="noopener noreferrer">
-            <img :src="DEVELOPER.avatar" alt="" loading="lazy" />
-            <span>{{ DEVELOPER.login }}</span>
-          </a>
-        </div>
-        <div class="credit-col">
-          <h3>{{ t('settings.about.teamTitle') }}</h3>
-          <a class="person" :href="TEAM_URL" target="_blank" rel="noopener noreferrer">
-            <img src="https://github.com/RazureSOFT.png" alt="" loading="lazy" />
-            <span>RazureSOFT</span>
-          </a>
-        </div>
+      <div class="people">
+        <a class="person-card" :href="DEVELOPER.url" target="_blank" rel="noopener noreferrer">
+          <img class="avatar" :src="DEVELOPER.avatar" :alt="DEVELOPER.login" loading="lazy" />
+          <div class="person-info">
+            <strong>{{ DEVELOPER.login }}</strong>
+            <span>{{ t('settings.about.developerTitle') }}</span>
+          </div>
+          <span class="ext">↗</span>
+        </a>
+        <a class="person-card" :href="TEAM_URL" target="_blank" rel="noopener noreferrer">
+          <img class="avatar" :src="avatarOf('RazureSOFT')" alt="RazureSOFT" loading="lazy" />
+          <div class="person-info">
+            <strong>RazureSOFT</strong>
+            <span>{{ t('settings.about.teamTitle') }}</span>
+          </div>
+          <span class="ext">↗</span>
+        </a>
       </div>
 
-      <div class="contributors">
-        <div class="contrib-head">
-          <h3>{{ t('settings.about.contributorsTitle') }}</h3>
-          <span class="muted">{{ t('settings.about.contributorsFrom') }}</span>
-        </div>
-        <div v-if="contributors.length" class="contrib-grid">
-          <a v-for="person in contributors" :key="person.login" class="contrib" :href="person.html_url || `https://github.com/${person.login}`" target="_blank" rel="noopener noreferrer" :title="person.login">
-            <img :src="person.avatar_url || `https://github.com/${person.login}.png?size=80`" alt="" loading="lazy" />
-            <span>{{ person.login }}</span>
-          </a>
-        </div>
-        <p v-else class="muted">{{ contributorsError || 'razureink' }}</p>
+      <div class="section-head">
+        <h2>{{ t('settings.about.contributorsTitle') }}</h2>
+        <span class="muted">{{ t('settings.about.contributorsFrom') }}</span>
       </div>
+      <div v-if="contributors.length" class="contrib-grid">
+        <a
+          v-for="person in contributors"
+          :key="person.login"
+          class="contrib"
+          :href="person.html_url || `https://github.com/${person.login}`"
+          target="_blank"
+          rel="noopener noreferrer"
+          :title="`${person.login}${person.contributions ? ` · ${person.contributions} commits` : ''}`"
+        >
+          <img :src="person.avatar_url || avatarOf(person.login, 64)" :alt="person.login" loading="lazy" />
+          <span class="contrib-name">{{ person.login }}</span>
+          <span v-if="person.contributions" class="contrib-count">{{ person.contributions }}</span>
+        </a>
+      </div>
+      <p v-else class="muted">
+        <a class="text-link" :href="DEVELOPER.url" target="_blank" rel="noopener noreferrer">razureink ↗</a>
+      </p>
 
-      <div class="license">
-        <h3>{{ t('settings.about.licenseTitle') }}</h3>
-        <p><a :href="`${PLATFORM_REPO}/blob/main/LICENSE`" target="_blank" rel="noopener noreferrer">MIT License</a> © 2026 RazureSOFT</p>
-      </div>
+      <footer class="license">
+        <span class="mit-badge">MIT</span>
+        <span>© 2026 RazureSOFT</span>
+        <a class="text-link" :href="`${PLATFORM_REPO}/blob/main/LICENSE`" target="_blank" rel="noopener noreferrer">LICENSE ↗</a>
+      </footer>
     </section>
   </div>
 </template>
 
 <style scoped>
-.about { display: flex; flex-direction: column; gap: 14px; }
-.hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.hero .ver { font-size: 13px; font-weight: 400; color: var(--md-on-surface-variant, #a8a2ab); margin-left: 6px; }
-.links { display: flex; gap: 14px; margin-top: 8px; }
-.links a, .release-link { color: var(--md-primary, #6ea8fe); text-decoration: none; }
-.links a:hover, .release-link:hover { text-decoration: underline; }
-.license-pill { flex: none; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--md-outline, #49454f); color: var(--md-on-surface-variant, #a8a2ab); }
-.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.card-head h3 { margin: 0; font-size: 14px; }
-.actions-row { display: flex; gap: 8px; }
-.update-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 12px 0 6px; }
-.ver-block { display: flex; flex-direction: column; gap: 2px; min-width: 84px; }
-.ver-label { font-size: 11px; color: var(--md-on-surface-variant, #a8a2ab); }
-.ver-num { font-size: 16px; font-weight: 600; }
-.ver-num.ok { color: #37c871; }
-.arrow, .plugin-arrow { color: var(--md-on-surface-variant, #a8a2ab); }
-.pill { font-size: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid transparent; }
-.pill.ok { color: #37c871; background: rgba(55,200,113,.12); border-color: rgba(55,200,113,.4); }
-.pill.warn { color: #f0b132; background: rgba(240,177,50,.12); border-color: rgba(240,177,50,.45); }
-.pill.muted { color: var(--md-on-surface-variant, #a8a2ab); background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.1); }
-.plugins { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
-.plugin-row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; background: rgba(255,255,255,.04); }
-.plugin-name { font-weight: 600; min-width: 90px; }
-.plugin-ver { font-variant-numeric: tabular-nums; color: var(--md-on-surface-variant, #a8a2ab); }
-.plugin-ver.ok { color: #37c871; }
-.plugin-row .release-link { margin-left: auto; font-size: 12px; }
-.credits { display: flex; gap: 28px; flex-wrap: wrap; }
-.credit-col h3, .contrib-head h3, .license h3 { margin: 0 0 10px; font-size: 14px; }
-.person { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
-.person img { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--md-outline, #49454f); }
-.contrib-head { display: flex; align-items: baseline; gap: 10px; margin-top: 18px; }
-.contrib-head h3 { margin: 0; }
-.contrib-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.contrib { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: 999px; background: rgba(255,255,255,.05); text-decoration: none; color: inherit; font-size: 13px; }
-.contrib:hover { background: rgba(255,255,255,.1); }
-.contrib img { width: 24px; height: 24px; border-radius: 50%; }
-.license { margin-top: 18px; }
-.license p { margin: 0; color: var(--md-on-surface-variant, #a8a2ab); }
-.license a { color: var(--md-primary, #6ea8fe); text-decoration: none; }
-.license a:hover { text-decoration: underline; }
-.alert { color: #e35d5d; }
-.muted { color: var(--md-on-surface-variant, #a8a2ab); }
-.helper-text { margin-top: 10px; }
-code { display: inline-block; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,.06); }
+.about { display: flex; flex-direction: column; gap: 16px; }
+
+/* Hero */
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  background: linear-gradient(120deg, var(--md-primary-container), var(--md-surface-container-low) 70%);
+  color: var(--md-on-primary-container, var(--md-on-surface));
+}
+.brand { display: flex; align-items: center; gap: 16px; }
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 18px 18px 18px 6px;
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -1px;
+}
+.brand-text h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin: 0; }
+.brand-text h1 .version { margin-left: 8px; font-size: 14px; font-weight: 500; color: var(--md-on-surface-variant); }
+.brand-text p { margin: 4px 0 0; font-size: 14px; color: var(--md-on-surface-variant); }
+.hero-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Text links */
+.text-link { display: inline-flex; align-items: center; gap: 4px; color: var(--md-primary); text-decoration: none; font-size: 13px; font-weight: 600; }
+.text-link:hover { text-decoration: underline; }
+.ext { font-size: 11px; opacity: 0.75; }
+
+.mit-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  background: var(--md-surface-container-highest);
+  color: var(--md-on-surface-variant);
+}
+
+/* Card head */
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+.card-head h2 { font-size: 16px; margin: 0; }
+.head-actions { display: flex; gap: 8px; }
+
+/* Version compare */
+.compare {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--md-surface-container);
+}
+.vstat { display: flex; flex-direction: column; gap: 3px; min-width: 92px; }
+.vlabel { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--md-on-surface-variant); }
+.vnum { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.vstat.next .vnum { color: var(--md-success, #27633e); }
+.connector { color: var(--md-on-surface-variant); font-size: 16px; }
+.release-link { margin-left: auto; color: var(--md-primary); text-decoration: none; font-size: 13px; font-weight: 600; }
+.release-link:hover { text-decoration: underline; }
+
+/* Pills */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.ok { background: var(--md-success-container, #d3f0d9); color: var(--md-success, #27633e); }
+.pill.warn { background: #fff1cf; color: #7a5900; }
+.pill.muted { background: var(--md-surface-container-highest); color: var(--md-on-surface-variant); }
+
+/* Plugins */
+.plugins { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.plugin-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  background: var(--md-surface-container-low);
+  border: 1px solid var(--md-outline-variant);
+  transition: border-color 180ms, background-color 180ms;
+}
+.plugin-row:hover { border-color: var(--md-primary); background: var(--md-surface-container); }
+.pname { font-weight: 650; min-width: 96px; }
+.pver { font-variant-numeric: tabular-nums; color: var(--md-on-surface-variant); }
+.pver.good { color: var(--md-success, #27633e); font-weight: 600; }
+.plugin-row .release-link { margin-left: auto; }
+
+/* Tip */
+.tip {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.tip-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--md-on-secondary-container);
+  color: var(--md-secondary-container);
+  font-size: 11px;
+  font-weight: 700;
+  font-style: italic;
+}
+.tip code { background: color-mix(in srgb, var(--md-on-secondary-container) 12%, transparent); padding: 1px 6px; border-radius: 6px; }
+
+/* Credits */
+.people { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.person-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--md-surface-container-low);
+  border: 1px solid var(--md-outline-variant);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 180ms, background-color 180ms, transform 220ms;
+}
+.person-card:hover { border-color: var(--md-primary); background: var(--md-surface-container); transform: translateY(-1px); }
+.person-card .ext { margin-left: auto; color: var(--md-on-surface-variant); }
+.avatar { width: 48px; height: 48px; border-radius: 50%; box-shadow: 0 0 0 2px var(--md-surface-container-lowest), 0 0 0 4px var(--md-primary-container); }
+.person-info { display: flex; flex-direction: column; gap: 2px; }
+.person-info strong { font-size: 15px; }
+.person-info span { font-size: 12px; color: var(--md-on-surface-variant); }
+
+.section-head { display: flex; align-items: baseline; gap: 10px; margin: 22px 0 12px; }
+.section-head h2 { font-size: 16px; margin: 0; }
+.section-head .muted { font-size: 12px; }
+
+.contrib-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.contrib {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 4px;
+  border-radius: 999px;
+  background: var(--md-surface-container);
+  border: 1px solid transparent;
+  text-decoration: none;
+  color: inherit;
+  font-size: 13px;
+  transition: background-color 180ms, border-color 180ms, transform 200ms;
+}
+.contrib:hover { background: var(--md-surface-container-high); border-color: var(--md-outline-variant); transform: translateY(-1px); }
+.contrib img { width: 26px; height: 26px; border-radius: 50%; }
+.contrib-name { font-weight: 550; }
+.contrib-count { font-size: 11px; color: var(--md-on-surface-variant); background: var(--md-surface-container-highest); border-radius: 999px; padding: 1px 8px; }
+
+.license { display: flex; align-items: center; gap: 12px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--md-outline-variant); font-size: 13px; color: var(--md-on-surface-variant); }
+.license .text-link { margin-left: auto; }
+
+.alert { color: var(--md-error, #b3261e); }
+.muted { color: var(--md-on-surface-variant); }
 </style>
