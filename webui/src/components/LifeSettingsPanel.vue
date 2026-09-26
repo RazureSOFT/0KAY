@@ -4,7 +4,7 @@ import { onMounted, reactive, ref } from 'vue'
 const form = reactive<Record<string, any>>({
   screen_watch: false, computer_use: false, report_agent_host: '',
   mail_mailbox_path: '', mail_imap_host: '', mail_imap_port: 993, mail_imap_user: '', mail_imap_password: '',
-  mail_smtp_host: '', mail_smtp_port: 465, mail_smtp_user: '', mail_smtp_password: '', mail_from: '',
+  mail_smtp_host: '', mail_smtp_port: 465, mail_smtp_user: '', mail_smtp_password: '', mail_from: '', mail_require_approval: true,
   mcp_enabled: true, onebot_enabled: false, onebot_ws_url: 'ws://127.0.0.1:6700', onebot_http_url: 'http://127.0.0.1:6700', onebot_access_token: '', onebot_trigger_keywords: '',
   onebot_observe_group: true, proactive_daily_limit: 3, proactive_target_limit: 1,
   think_model: '', output_model: '',
@@ -139,6 +139,7 @@ onMounted(load)
           <label class="ls-field"><span>发件人地址（可选）</span><input v-model="form.mail_from" placeholder="留空用 SMTP 用户名" /></label>
           <label class="ls-field"><span>离线邮箱 JSON（可选）</span><input v-model="form.mail_mailbox_path" placeholder="mailbox.json" /></label>
         </div>
+        <label class="ls-switch"><input v-model="form.mail_require_approval" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>邮件操作需弹窗确认</b><small>读取 / 发送邮件前先在 WebUI 询问你</small></span></label>
         <div class="ls-mail-actions">
           <button type="button" class="ls-test" :disabled="mailTesting" @click="testMail(false)">{{ mailTesting ? '测试中…' : '测试连接' }}</button>
           <button type="button" class="ls-test" :disabled="mailTesting" @click="testMail(true)">发送测试邮件</button>
@@ -205,11 +206,11 @@ onMounted(load)
   padding: 4px 12px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--md-on-primary-container) 10%, transparent);
-  font: 800 11px/1 ui-monospace, monospace;
+  font: 800 12px/1 ui-monospace, monospace;
   letter-spacing: .16em;
 }
 .ls-hero h2 { margin: 0; font-size: clamp(22px, 2.4vw, 30px); font-weight: 800; letter-spacing: -.02em; }
-.ls-sub { margin: 10px 0 0; font-size: 13.5px; line-height: 1.6; opacity: .82; max-width: 60ch; }
+.ls-sub { margin: 10px 0 0; font-size: 14px; line-height: 1.6; opacity: .82; max-width: 60ch; }
 
 #app .ls-save {
   min-height: 52px;
@@ -218,7 +219,7 @@ onMounted(load)
   border-radius: 999px;
   background: var(--md-primary);
   color: var(--md-on-primary);
-  font: 700 14.5px/1 inherit;
+  font: 700 15px/1 inherit;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -253,7 +254,7 @@ onMounted(load)
 .ls-grid > .ls-card:nth-child(5) { animation-delay: 240ms; }
 .ls-card-wide { grid-column: 1 / -1; }
 .ls-card-head { display: flex; align-items: center; gap: 12px; }
-.ls-card-head h3 { margin: 0; font-size: 15.5px; font-weight: 800; letter-spacing: -.01em; }
+.ls-card-head h3 { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: -.01em; }
 .ls-ic {
   width: 38px; height: 38px;
   border-radius: 16px 16px 16px 6px;
@@ -268,17 +269,17 @@ onMounted(load)
 
 .ls-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .ls-note { margin: -4px 0 0; font-size: 12px; color: var(--md-on-surface-variant); }
-.ls-label { margin: 4px 0 -4px; font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--md-on-surface-variant); }
-.ls-empty { font-size: 12.5px; color: var(--md-on-surface-variant); padding: 8px 2px; }
+.ls-label { margin: 4px 0 -4px; font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--md-on-surface-variant); }
+.ls-empty { font-size: 13px; color: var(--md-on-surface-variant); padding: 8px 2px; }
 
 /* ---------- Filled fields ---------- */
 .ls-field { display: flex; flex-direction: column; gap: 6px; }
-.ls-field > span { font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--md-on-surface-variant); }
+.ls-field > span { font-size: 12px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--md-on-surface-variant); }
 #app .ls-field input {
   width: 100%; min-height: 52px; padding: 0 17px;
   border: 1px solid transparent; border-radius: 16px;
   background-color: var(--md-surface-container-high); color: var(--md-on-surface);
-  font: 400 14.5px/1.4 inherit; outline: none;
+  font: 400 15px/1.4 inherit; outline: none;
   transition: background-color 180ms, border-color 180ms, box-shadow 200ms, border-radius 340ms var(--ls-spring);
 }
 #app .ls-field input:hover { background-color: var(--md-surface-container-highest); }
@@ -305,7 +306,7 @@ onMounted(load)
 .ls-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
 .ls-switch-text { display: flex; flex-direction: column; gap: 2px; }
 .ls-switch-text b { font-size: 14px; font-weight: 700; }
-.ls-switch-text small { font-size: 11.5px; color: var(--md-on-surface-variant); }
+.ls-switch-text small { font-size: 12px; color: var(--md-on-surface-variant); }
 .ls-track {
   position: relative;
   width: 54px; height: 32px; flex-shrink: 0; border-radius: 999px;
@@ -318,7 +319,7 @@ onMounted(load)
   display: grid; place-items: center;
   position: absolute; top: 50%; left: 5px; width: 18px; height: 18px;
   border-radius: 50%; background: var(--md-outline); color: transparent;
-  font-size: 11px; font-weight: 900; line-height: 1;
+  font-size: 12px; font-weight: 900; line-height: 1;
   transform: translateY(-50%);
   transition: left 340ms var(--ls-spring), width 340ms var(--ls-spring), height 340ms var(--ls-spring), background-color 300ms var(--ls-spring), color 300ms;
 }
@@ -350,8 +351,8 @@ onMounted(load)
   background: var(--md-primary); color: var(--md-on-primary);
   font-size: 12px; font-weight: 900;
 }
-.ls-model b { font-size: 12.5px; word-break: break-all; }
-.ls-model span { font-size: 11px; color: var(--md-on-surface-variant); }
+.ls-model b { font-size: 13px; word-break: break-all; }
+.ls-model span { font-size: 12px; color: var(--md-on-surface-variant); }
 
 .ls-state {
   margin: 18px 0 0;

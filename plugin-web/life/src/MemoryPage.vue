@@ -398,7 +398,7 @@ onMounted(async () => { await loadMemories(); await loadStats() })
 .page{height:100%;overflow-y:auto;padding:var(--space-xl);background:var(--md-surface);color:var(--md-on-surface)}
 .page-inner{max-width:1180px;margin:0 auto}
 .page-header{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);margin-bottom:var(--space-xl);flex-wrap:wrap}
-.eyebrow{margin:0 0 6px;color:var(--md-primary);font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em}
+.eyebrow{margin:0 0 6px;color:var(--md-primary);font:700 12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em}
 .page-header h1{margin:0;font-size:var(--font-size-lg);font-weight:650;letter-spacing:-.01em}
 .subtitle{margin:6px 0 0;max-width:640px;color:var(--md-on-surface-variant);font-size:14px;line-height:1.55}
 .header-actions{display:flex;gap:var(--space-sm);padding-top:20px;flex-shrink:0;flex-wrap:wrap}
@@ -459,17 +459,17 @@ onMounted(async () => { await loadMemories(); await loadStats() })
 .tags{display:flex;gap:6px;flex-wrap:wrap}
 .tags span{font-size:12px;font-weight:500;color:var(--md-on-primary-container);background:var(--md-primary-container);padding:3px 8px;border-radius:999px}
 .memory-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--md-outline-variant)}
-.meter{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--md-on-surface-variant)}
+.meter{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--md-on-surface-variant)}
 .meter-bar{width:56px;height:5px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}
 .meter-bar i{display:block;height:100%;border-radius:999px;transition:width .3s}
 .fill-primary{background:var(--md-primary)}
 .fill-secondary{background:var(--md-secondary,#536255)}
-.meter-text{margin-left:auto;font-size:11px;color:var(--md-on-surface-variant)}
+.meter-text{margin-left:auto;font-size:12px;color:var(--md-on-surface-variant)}
 .detail{border-top:1px solid var(--md-outline-variant);padding-top:10px}
 .detail dl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0;font-size:12px}
 .detail dt{color:var(--md-on-surface-variant);font-weight:600}
 .detail dd{margin:3px 0 0;overflow-wrap:anywhere}
-.detail code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+.detail code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
 .card-actions{display:flex;gap:8px;justify-content:flex-end}
 .hidden-input{display:none}
 
@@ -487,16 +487,16 @@ onMounted(async () => { await loadMemories(); await loadStats() })
 .note-list,.reflection-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .note-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-low)}
 .note-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.note-main strong{font-size:13.5px;font-weight:600;overflow-wrap:anywhere}
+.note-main strong{font-size:14px;font-weight:600;overflow-wrap:anywhere}
 .item-meta{font-size:12px;color:var(--md-on-surface-variant);line-height:1.5;overflow-wrap:anywhere}
 .note-actions{display:flex;gap:6px;flex-shrink:0}
 .list-empty{padding:14px;text-align:center;font-size:13px;color:var(--md-on-surface-variant);background:var(--md-surface-container);border-radius:12px;border:1px dashed var(--md-outline-variant)}
 .reader{margin-top:var(--space-lg)}
-.reader pre{margin:0;max-height:460px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.7;white-space:pre-wrap;background:var(--md-surface-container);padding:14px 16px;border-radius:12px}
+.reader pre{margin:0;max-height:460px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.7;white-space:pre-wrap;background:var(--md-surface-container);padding:14px 16px;border-radius:12px}
 .reflection .card-title{font-size:14px;font-weight:600}
 .reflection details{margin-top:6px}
 .reflection summary{cursor:pointer;font-size:12px;color:var(--md-on-surface-variant)}
-.quote{margin:8px 0 0;font-size:12.5px;line-height:1.6;background:var(--md-surface-container);padding:8px 12px;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere}
+.quote{margin:8px 0 0;font-size:13px;line-height:1.6;background:var(--md-surface-container);padding:8px 12px;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere}
 
 /* ---------- Material 3 Expressive align ---------- */
 #app .memory-page .page-header h1{font-size:clamp(24px,2.8vw,34px);font-weight:800;letter-spacing:-.02em}
@@ -517,7 +517,7 @@ onMounted(async () => { await loadMemories(); await loadStats() })
 #app .memory-page .memory-card{transition:transform 260ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),box-shadow 220ms,border-color 200ms}
 #app .memory-page .memory-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2);border-color:color-mix(in srgb,var(--md-primary) 30%,var(--md-outline-variant))}
 #app .memory-page .btn{height:44px;padding:0 20px;border-radius:999px;font-weight:700}
-#app .memory-page .btn-sm{height:34px;padding:0 14px;font-size:12.5px}
+#app .memory-page .btn-sm{height:34px;padding:0 14px;font-size:13px}
 #app .memory-page .btn-tonal{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 #app .memory-page .btn-primary{background:var(--md-primary);color:var(--md-on-primary);box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 28%,transparent)}
 #app .memory-page .input{

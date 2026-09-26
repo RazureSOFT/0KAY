@@ -89,7 +89,7 @@ onUnmounted(()=>{document.removeEventListener('pointerdown',outside,true);window
  display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
  min-height:52px;padding:0 14px 0 16px;border:1px solid transparent;border-radius:16px;
  background-color:var(--md-surface-container-high);color:var(--md-on-surface);
- font:inherit;font-size:14.5px;text-align:left;cursor:pointer;box-shadow:none;
+ font:inherit;font-size:15px;text-align:left;cursor:pointer;box-shadow:none;
  transition:background-color 180ms,border-color 180ms,box-shadow 200ms,border-radius 340ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1));
 }
 #app .app-select-trigger:hover:not(:disabled){background-color:var(--md-surface-container-highest)}

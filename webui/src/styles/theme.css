@@ -125,7 +125,8 @@ html, body {
   font-size: var(--font-size-base);
   color: var(--md-on-surface);
   background: var(--md-surface);
-  -webkit-font-smoothing: antialiased;
+  /* 不启用 -webkit-font-smoothing: antialiased —— 它在 Windows 的 Chrome/Edge 上会
+     关掉 ClearType 次像素抗锯齿，让文字整体发虚。保留 macOS/Firefox 的灰度平滑即可。 */
   -moz-osx-font-smoothing: grayscale;
 }
 
@@ -463,7 +464,7 @@ body { background: var(--md-surface-container); }
   #app .app-body { padding: 0; gap: 0; }
   #app .app-main { border-radius: 24px 24px 0 0; }
   #app .nav-rail { width: 100%; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); gap: 2px; overflow-y: hidden; background: var(--md-surface-container); }
-  #app .nav-item { min-height: 58px; min-width: 60px; padding: 7px 4px; font-size: 11px; }
+  #app .nav-item { min-height: 58px; min-width: 60px; padding: 7px 4px; font-size: 12px; }
   #app .nav-item::before { top: 2px; width: 52px; height: 32px; }
   #app .brand-mark { font-size: 19px; padding: 8px 14px; border-radius: 18px 18px 18px 6px; }
   #app .conversation-header { padding: 16px; flex-wrap: wrap; }
@@ -480,7 +481,7 @@ body { background: var(--md-surface-container); }
 /* ============ refined.css ============ */
 /* Expressive workstation: tonal grouping and purposeful motion, without visual noise. */
 :root{--md-primary:#4d5d91;--md-primary-container:#e8ecf7;--md-on-primary-container:#24345d;--md-secondary-container:#e7ebf2;--md-on-secondary-container:#29364c;--md-tertiary-container:#f0edf5;--md-surface:#fff;--md-surface-container-lowest:#fff;--md-surface-container-low:#f8f9fb;--md-surface-container:#f1f3f6;--md-surface-container-high:#e9edf2;--md-outline-variant:#dfe3ea;--md-on-surface:#253044;--md-on-surface-variant:#657086;--radius-lg:16px;--radius-xl:20px}
-#app .app-header{height:58px;padding:0 20px}#app .brand-mark{background:none;color:var(--md-on-surface);padding:0;font-size:22px;letter-spacing:-.7px}#app .page-title{font-size:14px;font-weight:500}#app .app-body{gap:0;padding:0}#app .app-main{border-radius:0;box-shadow:none;border-top:1px solid var(--md-outline-variant)}#app .nav-rail{width:82px;border-right:1px solid var(--md-outline-variant);background:#f8f9fb;gap:2px}#app .nav-item{font-size:11px;min-height:62px;border-radius:10px}#app .nav-item::before{border-radius:10px;width:56px;height:32px}#app .nav-item.active .nav-icon{transform:none}
+#app .app-header{height:58px;padding:0 20px}#app .brand-mark{background:none;color:var(--md-on-surface);padding:0;font-size:22px;letter-spacing:-.7px}#app .page-title{font-size:14px;font-weight:500}#app .app-body{gap:0;padding:0}#app .app-main{border-radius:0;box-shadow:none;border-top:1px solid var(--md-outline-variant)}#app .nav-rail{width:82px;border-right:1px solid var(--md-outline-variant);background:#f8f9fb;gap:2px}#app .nav-item{font-size:12px;min-height:62px;border-radius:10px}#app .nav-item::before{border-radius:10px;width:56px;height:32px}#app .nav-item.active .nav-icon{transform:none}
 #app button{border-radius:9px;font-weight:500}#app button:active:not(:disabled){border-radius:9px;transform:translateY(1px)}#app :is(.btn-primary,button[type=submit]){border-radius:10px}#app :is(.stat-card,.stats>article){background:var(--md-surface-container-low);color:var(--md-on-surface)}#app :is(.card,.plugin-card,.stat-card,.memory-card,.provider-card,.settings-card,.tasks-card,.stats>article){border-radius:14px;box-shadow:none}#app .sessions{width:250px;padding:16px 12px;background:#f8f9fb;border-right:1px solid var(--md-outline-variant)}#app .session-item.selected{border-radius:10px;background:#e8edf6}#app .session-item{border-radius:10px;padding:12px}#app .filters{border-radius:10px}#app .filters button{border-radius:7px}#app .conversation-header{padding:18px 24px;border-bottom:1px solid var(--md-outline-variant)}#app .conversation-header h2{font-size:17px}#app .message.request{background:#f1f4fa;border-radius:12px;margin-left:0}#app .message.response{border:0;padding:12px 0;background:transparent;border-radius:0}#app .composer{border-radius:14px;box-shadow:0 2px 10px #26365308}#app .composer textarea{border-radius:14px 14px 0 0}#app .execution-options{gap:7px}#app .execution-options :is(button,select){border-radius:8px}#app .host-panel,#app .character-profile{background:#f4f6fa;border-radius:12px}#app .usage-ring b{background:#f4f6fa}#app .welcome{margin:48px auto}#app .welcome h2{font-size:24px}#app :is(.agent-modal,.directory-dialog,.modal-content,[role=dialog]){border-radius:16px}#app .icon-btn{background:transparent;border-radius:10px}#app .empty-icon{border-radius:16px;animation:none}#app .turn{animation:fadeIn 180ms ease-out}.route-enter-from{transform:translateY(4px)}
 @media(max-width:720px){#app .nav-rail{width:100%;border-right:0}#app .app-main{border-radius:0}#app .sessions{width:210px}#app .conversation-header{padding:12px}}
 @media(max-width:560px){#app .sessions{width:100%;max-height:200px}#app .execution-options label{min-width:110px}}
@@ -509,7 +510,7 @@ body { background: var(--md-surface-container); }
   background-color:var(--md-surface-container-high);
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='m6 9 6 6 6-6' stroke='%2383798f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat:no-repeat; background-position:right 15px center; background-size:18px 18px;
-  color:var(--md-on-surface); font:400 14.5px/1.4 var(--font-family); text-align:left;
+  color:var(--md-on-surface); font:400 15px/1.4 var(--font-family); text-align:left;
   cursor:pointer;
   transition:background-color 180ms,border-color 180ms,box-shadow 200ms,border-radius 340ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1));
 }
@@ -517,6 +518,6 @@ body { background: var(--md-surface-container); }
 #app select:not([multiple]):focus{border-color:var(--md-primary);background-color:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent);outline:none}
 #app select option{background:var(--md-surface-container);color:var(--md-on-surface)}
 #app select.field.tiny,#app select.tiny{
-  min-height:38px;height:38px;padding:0 34px 0 12px;border-radius:12px;font-size:12.5px;
+  min-height:38px;height:38px;padding:0 34px 0 12px;border-radius:12px;font-size:13px;
   background-size:14px 14px;background-position:right 12px center;
 }

@@ -37,7 +37,7 @@
 }
 .settings-page .subtitle {
   color: var(--md-on-surface-variant);
-  font-size: 14.5px;
+  font-size: 15px;
   margin-top: 8px;
   line-height: 1.6;
   max-width: 70ch;
@@ -90,7 +90,7 @@
   border-radius: 999px;
   background: transparent;
   color: var(--md-on-surface-variant);
-  font: 600 14.5px/1 var(--font-family);
+  font: 600 15px/1 var(--font-family);
   cursor: pointer;
   text-align: left;
   transition: background-color 220ms var(--set-emph), color 160ms, border-radius 380ms var(--set-spring);
@@ -176,7 +176,7 @@
 }
 .card-desc {
   color: var(--md-on-surface-variant);
-  font-size: 14.5px;
+  font-size: 15px;
   line-height: 1.6;
   margin-bottom: clamp(18px, 2vw, 28px);
   max-width: 70ch;
@@ -186,7 +186,7 @@
 .field { margin-bottom: 18px; }
 .field label {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -201,7 +201,7 @@
   border-radius: 16px;
   background-color: var(--md-surface-container-high);
   color: var(--md-on-surface);
-  font: 400 14.5px/1.4 var(--font-family);
+  font: 400 15px/1.4 var(--font-family);
   outline: none;
   transition: background-color 180ms, border-color 180ms, box-shadow 200ms, border-radius 340ms var(--set-spring);
 }
@@ -232,7 +232,7 @@
 
 .helper-text {
   margin-top: 8px;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.55;
   color: var(--md-on-surface-variant);
 }
@@ -258,7 +258,7 @@
 }
 #app .settings-page .toggle-label:active { transform: scale(0.995); }
 .toggle-label > span:last-child { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
-.toggle-label strong { font-size: 14.5px; font-weight: 700; }
+.toggle-label strong { font-size: 15px; font-weight: 700; }
 .toggle-label .helper-text { margin-top: 2px; }
 .toggle-label input { position: absolute; opacity: 0; width: 0; height: 0; }
 
@@ -320,7 +320,7 @@
 .model-choice:hover { transform: translateY(-2px); background: var(--md-surface-container); }
 .model-choice input { grid-row: 1 / span 2; accent-color: var(--md-primary); }
 .model-choice span { font-weight: 700; font-size: 14px; color: var(--md-on-surface); }
-.model-choice code { grid-column: 2; font-size: 11px; color: var(--md-on-surface-variant); word-break: break-all; }
+.model-choice code { grid-column: 2; font-size: 12px; color: var(--md-on-surface-variant); word-break: break-all; }
 .model-choice.selected,
 .model-choice:has(input:checked) {
   border-color: var(--md-primary);
@@ -402,7 +402,7 @@
 .badge-count {
   display: inline-block; padding: 4px 11px; border-radius: 999px;
   background: var(--md-secondary-container); color: var(--md-on-secondary-container);
-  font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
+  font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
 }
 .provider-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
@@ -413,8 +413,8 @@
   padding: 14px 16px;
 }
 .model-chip-card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 10px; }
-.model-chip-card-title { font-size: 12.5px; font-weight: 700; color: var(--md-on-surface); }
-.model-chip-card-hint { font-size: 11px; color: var(--md-on-surface-variant); }
+.model-chip-card-title { font-size: 13px; font-weight: 700; color: var(--md-on-surface); }
+.model-chip-card-hint { font-size: 12px; color: var(--md-on-surface-variant); }
 .model-chip-card .model-toggle-list { margin-bottom: 0; }
 .model-toggle-default { color: #d4a017; font-size: 12px; }
 .fetch-note { margin-top: 4px; }
@@ -431,7 +431,7 @@
 .badge-default {
   display: inline-block; align-self: flex-start; padding: 4px 11px; border-radius: 999px;
   background: var(--md-secondary-container); color: var(--md-on-secondary-container);
-  font-size: 11px; font-weight: 700;
+  font-size: 12px; font-weight: 700;
 }
 .provider-row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .provider-edit { margin-top: var(--space-md); padding-top: var(--space-md); border-top: 1px dashed var(--md-outline-variant); }
@@ -495,7 +495,7 @@
   display: grid; place-items: center;
   position: absolute; top: 50%; left: 3px; width: 16px; height: 16px;
   background: var(--md-outline); color: transparent; border-radius: 50%;
-  font-size: 10px; font-weight: 900; line-height: 1;
+  font-size: 11px; font-weight: 900; line-height: 1;
   transform: translateY(-50%);
   transition: left 340ms var(--set-spring), background-color 300ms var(--set-spring), color 300ms;
 }

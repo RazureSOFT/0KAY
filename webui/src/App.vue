@@ -10,6 +10,7 @@ import SetupWizard from './components/SetupWizard.vue'
 import GlobalAgentInbox from './components/GlobalAgentInbox.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import AppSelect from './components/AppSelect.vue'
+import LifeApprovalDialog from './components/LifeApprovalDialog.vue'
 import { setLanguage, getLanguage, LOCALES } from './i18n'
 
 const { t } = useI18n()
@@ -111,6 +112,7 @@ function onWizardComplete() {
   <div v-else class="app-shell">
     <GlobalAgentInbox />
     <ConfirmDialog />
+    <LifeApprovalDialog />
     <header class="app-header">
       <div class="brand">
         <span class="brand-mark">0kay</span>
@@ -340,7 +342,7 @@ function onWizardComplete() {
   border-radius: var(--radius-md);
   color: var(--md-on-surface-variant);
   text-decoration: none;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   transition: background var(--transition-fast), color var(--transition-fast);
   background: transparent;
@@ -386,7 +388,7 @@ function onWizardComplete() {
   border-radius: var(--radius-full);
   background: var(--md-primary);
   color: var(--md-on-primary);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   display: flex;
   align-items: center;
