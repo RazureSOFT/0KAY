@@ -91,6 +91,9 @@ Router items resolve in this order:
    `memory`, `companion`).
 3. `src` — iframe embed URL.
 
+For a full custom page built in this repository, see
+[WebUI Custom Pages](custom-pages.md).
+
 ### Targets and operations
 
 Supported targets are `nav`, `router`, `settings`, `status` and `chat`. Supported

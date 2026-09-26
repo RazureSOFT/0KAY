@@ -55,7 +55,9 @@ the exact registered plugin name. Never hardcode plugin pages into the WebUI.
 
 ### 5a. Native Vue page (`module`)
 
-Router ops may load a plugin-owned ESM bundle:
+Router ops may load a plugin-owned ESM bundle. The full end-to-end guide —
+source layout, Vite library build, runtime contract, caching and a minimal
+example — is in [WebUI Custom Pages](custom-pages.md).
 
 ```json
 {

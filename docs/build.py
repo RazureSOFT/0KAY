@@ -16,7 +16,7 @@ OUT = ROOT.parent / "_site"
 ORDER = [
     "index", "HTTP_API", "PLUGIN_API", "plugin-lifecycle", "writing-a-plugin",
     "core-services", "agent-service", "life-service", "mocr-service",
-    "settings-ui", "THINKING", "RELEASES", "security",
+    "settings-ui", "custom-pages", "THINKING", "RELEASES", "security",
 ]
 
 REPO = "https://github.com/RazureSOFT/0KAY"

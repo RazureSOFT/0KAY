@@ -27,6 +27,7 @@ protobuf contracts and can be installed, updated or disabled independently.
 - [L.I.F.E Service](life-service.md) — persona, emotion, memory, companion.
 - [mocr Service](mocr-service.md) — the model gateway.
 - [Settings and UI Patches](settings-ui.md) — declarative settings and WebUI.
+- [WebUI Custom Pages](custom-pages.md) — ship a plugin-owned Vue page end to end.
 - [Thinking Intensity](THINKING.md) — reasoning levels and the execution loop.
 - [Releases and Updates](RELEASES.md) — install, update, one-click updates.
 - [Security and Runtime Rules](security.md) — non-negotiable constraints.
