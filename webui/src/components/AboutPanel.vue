@@ -71,103 +71,101 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="about">
-    <!-- Brand hero -->
-    <section class="content-card hero">
-      <div class="brand">
-        <span class="brand-mark">0K</span>
-        <div class="brand-text">
-          <h1>0KAY <span class="version">v{{ updateResult?.current || '0.1.0' }}</span></h1>
-          <p>{{ t('settings.about.tagline') }}</p>
-        </div>
+  <div class="content-card about">
+    <!-- Identity -->
+    <header class="identity">
+      <div class="app-icon" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 4v10l-7 4-7-4V7l7-4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 7v10M7.5 9.5l9 5M16.5 9.5l-9 5" stroke="currentColor" stroke-width="1.4"/></svg>
       </div>
-      <div class="hero-actions">
-        <a class="text-link" :href="PLATFORM_REPO" target="_blank" rel="noopener noreferrer">
-          <span>{{ t('settings.about.repository') }}</span><span class="ext">↗</span>
-        </a>
-        <a class="text-link" :href="`${PLATFORM_REPO}/releases`" target="_blank" rel="noopener noreferrer">
-          <span>Releases</span><span class="ext">↗</span>
-        </a>
-        <span class="mit-badge">MIT</span>
+      <div class="app-id">
+        <h2>0KAY <span class="ver">v{{ updateResult?.current || '0.1.0' }}</span></h2>
+        <p class="card-desc">{{ t('settings.about.description') }}</p>
       </div>
-    </section>
+      <div class="identity-actions">
+        <a class="btn btn-tonal mini" :href="PLATFORM_REPO" target="_blank" rel="noopener noreferrer">{{ t('settings.about.repository') }}</a>
+        <a class="btn btn-tonal mini" :href="`${PLATFORM_REPO}/releases`" target="_blank" rel="noopener noreferrer">Releases</a>
+      </div>
+    </header>
+
+    <div class="divider"></div>
 
     <!-- Updates -->
-    <section class="content-card">
-      <header class="card-head">
-        <div>
-          <h2>{{ t('settings.about.description') }}</h2>
-        </div>
+    <section class="block">
+      <div class="block-head">
+        <h3>{{ t('settings.about.check') }}</h3>
         <div class="head-actions">
           <button class="btn btn-tonal" :disabled="aboutLoading" @click="checkUpdates">{{ t(aboutLoading ? 'settings.about.checking' : 'settings.about.check') }}</button>
           <button class="btn btn-tonal" :disabled="pluginsLoading" @click="checkPluginUpdates">{{ t(pluginsLoading ? 'settings.about.checking' : 'settings.about.plugins') }}</button>
         </div>
-      </header>
-
-      <p v-if="updateError" class="alert" role="alert">{{ updateError }}</p>
-      <div v-else class="compare">
-        <div class="vstat">
-          <span class="vlabel">{{ t('settings.about.currentVersion') }}</span>
-          <span class="vnum">v{{ updateResult?.current || '0.1.0' }}</span>
-        </div>
-        <span class="connector" aria-hidden="true">→</span>
-        <div class="vstat" :class="{ next: updateResult?.latest }">
-          <span class="vlabel">{{ t('settings.about.latestVersion') }}</span>
-          <span class="vnum">{{ updateResult?.latest ? `v${updateResult.latest}` : '—' }}</span>
-        </div>
-        <span v-if="updateResult" class="pill" :class="updateResult.has_update ? 'warn' : (updateResult.latest ? 'ok' : 'muted')">
-          {{ t(updateResult.has_update ? 'settings.about.available' : (updateResult.latest ? 'settings.about.latest' : 'settings.about.noRelease')) }}
-        </span>
-        <a v-if="updateResult?.url" class="release-link" :href="updateResult.url" target="_blank" rel="noopener noreferrer">Release ↗</a>
       </div>
 
+      <p v-if="updateError" class="alert" role="alert">{{ updateError }}</p>
+      <dl v-else class="kv">
+        <div>
+          <dt>{{ t('settings.about.currentVersion') }}</dt>
+          <dd>v{{ updateResult?.current || '0.1.0' }}</dd>
+        </div>
+        <div>
+          <dt>{{ t('settings.about.latestVersion') }}</dt>
+          <dd :class="{ good: !!updateResult?.latest }">{{ updateResult?.latest ? `v${updateResult.latest}` : '—' }}</dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd>
+            <span v-if="updateResult" class="status-chip" :class="updateResult.has_update ? 'warn' : (updateResult.latest ? 'ok' : '')">
+              {{ t(updateResult.has_update ? 'settings.about.available' : (updateResult.latest ? 'settings.about.latest' : 'settings.about.noRelease')) }}
+            </span>
+            <span v-else>—</span>
+          </dd>
+        </div>
+      </dl>
+      <p v-if="updateResult?.url" class="helper-text"><a :href="updateResult.url" target="_blank" rel="noopener noreferrer">Release ↗</a></p>
+
       <div v-if="pluginsError" class="alert" role="alert">{{ pluginsError }}</div>
-      <div v-if="pluginResults" class="plugins">
+      <div v-if="pluginResults" class="plugin-list">
         <div v-for="plugin in pluginResults" :key="plugin.name" class="plugin-row">
           <span class="pname">{{ plugin.name }}</span>
           <span class="pver">v{{ plugin.version || '—' }}</span>
-          <span class="connector" aria-hidden="true">→</span>
+          <span class="parrow">→</span>
           <span class="pver" :class="{ good: !!plugin.latest }">{{ plugin.latest ? `v${plugin.latest}` : '—' }}</span>
-          <span class="pill" :class="plugin.error ? 'muted' : (plugin.has_update ? 'warn' : (plugin.latest ? 'ok' : 'muted'))">
+          <span class="status-chip" :class="plugin.error ? '' : (plugin.has_update ? 'warn' : (plugin.latest ? 'ok' : ''))">
             {{ plugin.error || t(plugin.has_update ? 'settings.about.available' : (plugin.latest ? 'settings.about.latest' : 'settings.about.noRelease')) }}
           </span>
-          <a v-if="plugin.repository" class="release-link" :href="plugin.repository" target="_blank" rel="noopener noreferrer">Repo ↗</a>
+          <a v-if="plugin.repository" class="repo-link" :href="plugin.repository" target="_blank" rel="noopener noreferrer">Repo ↗</a>
         </div>
         <p v-if="!pluginResults.length" class="muted">{{ t('settings.about.noPlugins') }}</p>
       </div>
 
-      <div class="tip">
-        <span class="tip-icon">i</span>
-        <span>{{ t('settings.about.updateHint') }} <code>0kay-pm update &lt;package&gt;@&lt;version&gt;</code></span>
-      </div>
+      <p class="helper-text">{{ t('settings.about.updateHint') }} <code>0kay-pm update &lt;package&gt;@&lt;version&gt;</code></p>
     </section>
 
+    <div class="divider"></div>
+
     <!-- Credits -->
-    <section class="content-card">
+    <section class="block">
+      <h3>{{ t('settings.about.developerTitle') }} &amp; {{ t('settings.about.teamTitle') }}</h3>
       <div class="people">
-        <a class="person-card" :href="DEVELOPER.url" target="_blank" rel="noopener noreferrer">
-          <img class="avatar" :src="DEVELOPER.avatar" :alt="DEVELOPER.login" loading="lazy" />
-          <div class="person-info">
+        <a class="person" :href="DEVELOPER.url" target="_blank" rel="noopener noreferrer">
+          <img :src="DEVELOPER.avatar" :alt="DEVELOPER.login" loading="lazy" />
+          <div>
             <strong>{{ DEVELOPER.login }}</strong>
             <span>{{ t('settings.about.developerTitle') }}</span>
           </div>
-          <span class="ext">↗</span>
         </a>
-        <a class="person-card" :href="TEAM_URL" target="_blank" rel="noopener noreferrer">
-          <img class="avatar" :src="avatarOf('RazureSOFT')" alt="RazureSOFT" loading="lazy" />
-          <div class="person-info">
+        <a class="person" :href="TEAM_URL" target="_blank" rel="noopener noreferrer">
+          <img :src="avatarOf('RazureSOFT')" alt="RazureSOFT" loading="lazy" />
+          <div>
             <strong>RazureSOFT</strong>
             <span>{{ t('settings.about.teamTitle') }}</span>
           </div>
-          <span class="ext">↗</span>
         </a>
       </div>
 
-      <div class="section-head">
-        <h2>{{ t('settings.about.contributorsTitle') }}</h2>
+      <div class="block-head contributors-head">
+        <h3>{{ t('settings.about.contributorsTitle') }}</h3>
         <span class="muted">{{ t('settings.about.contributorsFrom') }}</span>
       </div>
-      <div v-if="contributors.length" class="contrib-grid">
+      <div v-if="contributors.length" class="contribs">
         <a
           v-for="person in contributors"
           :key="person.login"
@@ -175,116 +173,86 @@ onMounted(() => {
           :href="person.html_url || `https://github.com/${person.login}`"
           target="_blank"
           rel="noopener noreferrer"
-          :title="`${person.login}${person.contributions ? ` · ${person.contributions} commits` : ''}`"
+          :title="person.login"
         >
           <img :src="person.avatar_url || avatarOf(person.login, 64)" :alt="person.login" loading="lazy" />
-          <span class="contrib-name">{{ person.login }}</span>
-          <span v-if="person.contributions" class="contrib-count">{{ person.contributions }}</span>
+          <span>{{ person.login }}</span>
         </a>
       </div>
       <p v-else class="muted">
-        <a class="text-link" :href="DEVELOPER.url" target="_blank" rel="noopener noreferrer">razureink ↗</a>
+        <a class="repo-link" :href="DEVELOPER.url" target="_blank" rel="noopener noreferrer">razureink ↗</a>
       </p>
-
-      <footer class="license">
-        <span class="mit-badge">MIT</span>
-        <span>© 2026 RazureSOFT</span>
-        <a class="text-link" :href="`${PLATFORM_REPO}/blob/main/LICENSE`" target="_blank" rel="noopener noreferrer">LICENSE ↗</a>
-      </footer>
     </section>
+
+    <div class="divider"></div>
+
+    <footer class="foot">
+      <span class="status-chip">MIT</span>
+      <span class="muted">© 2026 RazureSOFT</span>
+      <a class="repo-link" :href="`${PLATFORM_REPO}/blob/main/LICENSE`" target="_blank" rel="noopener noreferrer">LICENSE ↗</a>
+    </footer>
   </div>
 </template>
 
 <style scoped>
-.about { display: flex; flex-direction: column; gap: 16px; }
+.about { display: block; }
 
-/* Hero */
-.hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  flex-wrap: wrap;
-  background: linear-gradient(120deg, var(--md-primary-container), var(--md-surface-container-low) 70%);
-  color: var(--md-on-primary-container, var(--md-on-surface));
-}
-.brand { display: flex; align-items: center; gap: 16px; }
-.brand-mark {
+/* Identity */
+.identity { display: flex; align-items: center; gap: 16px; }
+.app-icon {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: var(--md-primary-container);
+  color: var(--md-on-primary-container);
   display: grid;
   place-items: center;
-  width: 60px;
-  height: 60px;
-  border-radius: 18px 18px 18px 6px;
-  background: var(--md-primary);
-  color: var(--md-on-primary);
-  font-size: 22px;
-  font-weight: 750;
-  letter-spacing: -1px;
 }
-.brand-text h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin: 0; }
-.brand-text h1 .version { margin-left: 8px; font-size: 14px; font-weight: 500; color: var(--md-on-surface-variant); }
-.brand-text p { margin: 4px 0 0; font-size: 14px; color: var(--md-on-surface-variant); }
-.hero-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.app-id { flex: 1; min-width: 0; }
+.app-id h2 { font-size: 20px; font-weight: 650; margin: 0; }
+.app-id .ver { margin-left: 8px; font-size: 13px; font-weight: 500; color: var(--md-on-surface-variant); }
+.app-id .card-desc { margin: 2px 0 0; }
+.identity-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
-/* Text links */
-.text-link { display: inline-flex; align-items: center; gap: 4px; color: var(--md-primary); text-decoration: none; font-size: 13px; font-weight: 600; }
-.text-link:hover { text-decoration: underline; }
-.ext { font-size: 11px; opacity: 0.75; }
+/* Buttons (match app) */
+.btn { height: 36px; padding: 0 16px; border: none; border-radius: var(--radius-full); font-weight: 500; font-size: 13px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn-tonal { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.btn-tonal:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn.mini { height: 32px; padding: 0 14px; }
 
-.mit-badge {
+.divider { height: 1px; background: var(--md-outline-variant); margin: 20px 0; }
+
+.block { display: block; }
+.block-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.block h3 { font-size: 14px; font-weight: 650; margin: 0 0 12px; color: var(--md-on-surface); }
+.block-head h3 { margin: 0; }
+.head-actions { display: flex; gap: 8px; }
+
+/* Key/value rows */
+.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 14px 0 0; }
+.kv > div { background: var(--md-surface-container); border-radius: var(--radius-md); padding: 12px 14px; }
+.kv dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--md-on-surface-variant); margin-bottom: 4px; }
+.kv dd { margin: 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.kv dd.good { color: var(--md-success); }
+
+/* Status chips (match PluginsPage) */
+.status-chip {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
-  border-radius: 999px;
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
+  font-weight: 500;
   background: var(--md-surface-container-highest);
   color: var(--md-on-surface-variant);
 }
+.status-chip.ok { background: var(--md-success-container); color: #0D1F06; }
+.status-chip.warn { background: #ffe6a8; color: #5c4600; }
 
-/* Card head */
-.card-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
-.card-head h2 { font-size: 16px; margin: 0; }
-.head-actions { display: flex; gap: 8px; }
-
-/* Version compare */
-.compare {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 14px 16px;
-  border-radius: var(--radius-md);
-  background: var(--md-surface-container);
-}
-.vstat { display: flex; flex-direction: column; gap: 3px; min-width: 92px; }
-.vlabel { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--md-on-surface-variant); }
-.vnum { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.vstat.next .vnum { color: var(--md-success, #27633e); }
-.connector { color: var(--md-on-surface-variant); font-size: 16px; }
-.release-link { margin-left: auto; color: var(--md-primary); text-decoration: none; font-size: 13px; font-weight: 600; }
-.release-link:hover { text-decoration: underline; }
-
-/* Pills */
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 26px;
-  padding: 0 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 650;
-  white-space: nowrap;
-}
-.pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.pill.ok { background: var(--md-success-container, #d3f0d9); color: var(--md-success, #27633e); }
-.pill.warn { background: #fff1cf; color: #7a5900; }
-.pill.muted { background: var(--md-surface-container-highest); color: var(--md-on-surface-variant); }
-
-/* Plugins */
-.plugins { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+/* Plugin update rows */
+.plugin-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .plugin-row {
   display: flex;
   align-items: center;
@@ -293,89 +261,58 @@ onMounted(() => {
   border-radius: var(--radius-md);
   background: var(--md-surface-container-low);
   border: 1px solid var(--md-outline-variant);
-  transition: border-color 180ms, background-color 180ms;
 }
-.plugin-row:hover { border-color: var(--md-primary); background: var(--md-surface-container); }
-.pname { font-weight: 650; min-width: 96px; }
+.pname { font-weight: 600; min-width: 96px; }
 .pver { font-variant-numeric: tabular-nums; color: var(--md-on-surface-variant); }
-.pver.good { color: var(--md-success, #27633e); font-weight: 600; }
-.plugin-row .release-link { margin-left: auto; }
+.pver.good { color: var(--md-success); font-weight: 600; }
+.parrow { color: var(--md-on-surface-variant); }
+.repo-link { margin-left: auto; color: var(--md-primary); text-decoration: none; font-size: 13px; font-weight: 500; }
+.repo-link:hover { text-decoration: underline; }
 
-/* Tip */
-.tip {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  margin-top: 16px;
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
-  background: var(--md-secondary-container);
-  color: var(--md-on-secondary-container);
-  font-size: 13px;
-  line-height: 1.5;
-}
-.tip-icon {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--md-on-secondary-container);
-  color: var(--md-secondary-container);
-  font-size: 11px;
-  font-weight: 700;
-  font-style: italic;
-}
-.tip code { background: color-mix(in srgb, var(--md-on-secondary-container) 12%, transparent); padding: 1px 6px; border-radius: 6px; }
-
-/* Credits */
-.people { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-.person-card {
+/* People */
+.people { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.person {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: 12px;
+  padding: 12px 14px;
   border-radius: var(--radius-md);
   background: var(--md-surface-container-low);
   border: 1px solid var(--md-outline-variant);
   text-decoration: none;
   color: inherit;
-  transition: border-color 180ms, background-color 180ms, transform 220ms;
+  transition: border-color 180ms, background-color 180ms;
 }
-.person-card:hover { border-color: var(--md-primary); background: var(--md-surface-container); transform: translateY(-1px); }
-.person-card .ext { margin-left: auto; color: var(--md-on-surface-variant); }
-.avatar { width: 48px; height: 48px; border-radius: 50%; box-shadow: 0 0 0 2px var(--md-surface-container-lowest), 0 0 0 4px var(--md-primary-container); }
-.person-info { display: flex; flex-direction: column; gap: 2px; }
-.person-info strong { font-size: 15px; }
-.person-info span { font-size: 12px; color: var(--md-on-surface-variant); }
+.person:hover { border-color: var(--md-primary); background: var(--md-surface-container); }
+.person img { width: 44px; height: 44px; border-radius: 50%; flex: none; }
+.person strong { display: block; font-size: 15px; }
+.person span { font-size: 12px; color: var(--md-on-surface-variant); }
 
-.section-head { display: flex; align-items: baseline; gap: 10px; margin: 22px 0 12px; }
-.section-head h2 { font-size: 16px; margin: 0; }
-.section-head .muted { font-size: 12px; }
-
-.contrib-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.contributors-head { margin-top: 20px; }
+.contribs { display: flex; flex-wrap: wrap; gap: 8px; }
 .contrib {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 12px 4px 4px;
-  border-radius: 999px;
-  background: var(--md-surface-container);
-  border: 1px solid transparent;
+  padding: 3px 12px 3px 3px;
+  border-radius: var(--radius-full);
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
   text-decoration: none;
-  color: inherit;
   font-size: 13px;
-  transition: background-color 180ms, border-color 180ms, transform 200ms;
+  font-weight: 500;
 }
-.contrib:hover { background: var(--md-surface-container-high); border-color: var(--md-outline-variant); transform: translateY(-1px); }
+.contrib:hover { filter: brightness(0.97); }
 .contrib img { width: 26px; height: 26px; border-radius: 50%; }
-.contrib-name { font-weight: 550; }
-.contrib-count { font-size: 11px; color: var(--md-on-surface-variant); background: var(--md-surface-container-highest); border-radius: 999px; padding: 1px 8px; }
 
-.license { display: flex; align-items: center; gap: 12px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--md-outline-variant); font-size: 13px; color: var(--md-on-surface-variant); }
-.license .text-link { margin-left: auto; }
+/* Footer */
+.foot { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--md-on-surface-variant); }
+.foot .repo-link { margin-left: auto; }
 
-.alert { color: var(--md-error, #b3261e); }
+.alert { color: var(--md-error); }
 .muted { color: var(--md-on-surface-variant); }
+.helper-text { margin-top: 12px; font-size: 13px; color: var(--md-on-surface-variant); }
+.helper-text a { color: var(--md-primary); text-decoration: none; }
+.helper-text a:hover { text-decoration: underline; }
+code { background: var(--md-surface-container); padding: 2px 7px; border-radius: 6px; font-size: 12px; }
 </style>
