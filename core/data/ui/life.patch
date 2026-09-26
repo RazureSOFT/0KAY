@@ -94,8 +94,34 @@
     {
       "target": "router",
       "op": "insert",
+      "id": "memory",
+      "item": {
+        "id": "memory",
+        "path": "/memory",
+        "name": "memory",
+        "module": "/api/plugins/life/ui/memory.js?v=2",
+        "title": "记忆管理台"
+      }
+    },
+    {
+      "target": "router",
+      "op": "insert",
       "id": "companion",
       "item": { "id": "companion", "path": "/companion", "name": "companion", "module": "/api/plugins/life/ui/companion.js?v=2", "title": "陪伴面板" }
+    },
+    {
+      "target": "nav",
+      "op": "insert",
+      "anchor": "plugins",
+      "position": "before",
+      "id": "memory",
+      "item": {
+        "id": "memory",
+        "to": "/memory",
+        "label": "记忆",
+        "icon": "memory",
+        "order": 20
+      }
     },
     {
       "target": "nav",
