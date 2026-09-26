@@ -53,6 +53,7 @@ async function load() {
   finally { loading.value = false }
   void loadUsage()
   void loadDiary()
+  void loadCalendar()
 }
 async function act(action: string, payload: any) {
   try {
@@ -170,6 +171,42 @@ async function openUser(userId: string) {
 }
 function closeUser() { selectedUser.value = ''; detail.value = null }
 async function deleteMemory(id: string) { await act('delete_memory', { id }); if (selectedUser.value) void openUser(selectedUser.value) }
+
+const month = ref(localToday().slice(0, 7))
+const calendar = ref<any>({ events: [], candidates: [], conflicts: [] })
+const goalForm = ref({ title: '', detail: '', kind: 'growth' })
+const foodForm = ref({ name: '', tags: '', note: '' })
+const words = computed(() => data.value.word_cloud || [])
+const calendarCells = computed(() => {
+  const [y, m] = month.value.split('-').map(Number)
+  if (!y || !m) return [] as any[]
+  const days = new Date(y, m, 0).getDate()
+  const startPad = new Date(y, m - 1, 1).getDay()
+  const byDay: Record<string, any[]> = {}
+  for (const e of calendar.value.events || []) {
+    const day = String(e.start_at || '').replace('T', ' ').slice(0, 10)
+    ;(byDay[day] ||= []).push(e)
+  }
+  const cells: any[] = []
+  for (let i = 0; i < startPad; i++) cells.push({ key: `pad-${i}`, empty: true })
+  for (let d = 1; d <= days; d++) {
+    const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    cells.push({ key: iso, day: d, iso, events: byDay[iso] || [], today: iso === todayKey })
+  }
+  return cells
+})
+async function loadCalendar() { const result = await act('calendar_month', { month: month.value }); if (result) calendar.value = result }
+function shiftMonth(delta: number) {
+  const [y, m] = month.value.split('-').map(Number)
+  const d = new Date(y, m - 1 + delta, 1)
+  month.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  void loadCalendar()
+}
+async function addGoal() { if (!goalForm.value.title.trim()) return; await act('goal_add', { ...goalForm.value }); goalForm.value = { title: '', detail: '', kind: 'growth' } }
+async function completeGoal(id: string) { await act('goal_update', { id, status: 'done', progress: 1 }) }
+async function removeGoal(id: string) { await act('goal_delete', { id }) }
+async function addFood() { if (!foodForm.value.name.trim()) return; await act('food_add', { ...foodForm.value }); foodForm.value = { name: '', tags: '', note: '' } }
+async function removeFood(id: string) { await act('food_delete', { id }) }
 onMounted(load)
 </script>
 
@@ -273,6 +310,76 @@ onMounted(load)
           <li v-for="item in data.dreams" :key="item.id"><time>{{ item.at }}</time><p>{{ item.content }}</p></li>
           <li v-if="!data.dreams?.length" class="list-empty plain">还没有梦境记录</li>
         </ol>
+      </article>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2 class="group-title">生活日历</h2>
+    <div class="grid">
+      <article class="card cal-card">
+        <div class="card-head">
+          <h2 class="card-title">生活日历</h2>
+          <div class="head-actions"><button class="btn btn-tonal btn-sm" @click="shiftMonth(-1)">←</button><strong class="cal-month">{{ month }}</strong><button class="btn btn-tonal btn-sm" @click="shiftMonth(1)">→</button></div>
+        </div>
+        <div class="cal-week"><span v-for="w in ['日', '一', '二', '三', '四', '五', '六']" :key="w">{{ w }}</span></div>
+        <div class="cal-grid">
+          <div v-for="cell in calendarCells" :key="cell.key" class="cal-cell" :class="{ empty: cell.empty, today: cell.today, has: cell.events?.length }">
+            <span v-if="!cell.empty" class="cal-day">{{ cell.day }}</span>
+            <span v-for="e in (cell.events || []).slice(0, 2)" :key="e.id" class="cal-chip" :title="e.title">{{ e.title }}</span>
+            <span v-if="(cell.events || []).length > 2" class="cal-more">+{{ cell.events.length - 2 }}</span>
+          </div>
+        </div>
+        <p v-if="calendar.conflicts?.length" class="cal-warn">⚠ {{ calendar.conflicts.length }} 处时间冲突：{{ calendar.conflicts.map((c: any) => c.titles.join(' / ')).join('；') }}</p>
+        <h3 class="section-label">本月待确认候选 ({{ calendar.candidates?.length || 0 }})</h3>
+        <ul class="item-list">
+          <li v-for="c in (calendar.candidates || []).slice(0, 6)" :key="c.id" class="item">
+            <div class="item-main"><strong>{{ c.title }}</strong><span class="item-meta">{{ c.when_text }}</span></div>
+            <div class="item-actions"><button class="btn btn-primary btn-sm" @click="act('confirm_agenda', { id: c.id }).then(loadCalendar)">确认</button><button class="btn btn-danger btn-sm" @click="act('reject_agenda', { id: c.id }).then(loadCalendar)">拒绝</button></div>
+          </li>
+          <li v-if="!(calendar.candidates || []).length" class="list-empty">没有待确认候选</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2 class="card-title">个人目标</h2><span class="chip muted">{{ (data.goals || []).length }}</span></div>
+        <form class="stack-form" @submit.prevent="addGoal">
+          <input v-model="goalForm.title" class="input" placeholder="目标，如 学会一首钢琴曲" aria-label="目标标题" />
+          <input v-model="goalForm.detail" class="input" placeholder="说明（可选）" aria-label="目标说明" />
+          <button class="btn btn-primary" type="submit" :disabled="!goalForm.title.trim()">添加目标</button>
+        </form>
+        <ul class="item-list">
+          <li v-for="g in data.goals" :key="g.id" class="item">
+            <div class="item-main">
+              <div class="item-row"><strong :class="{ done: g.status === 'done' }">{{ g.title }}</strong><span class="chip" :class="g.status === 'done' ? 'chip-ok' : 'muted'">{{ g.status === 'done' ? '已完成' : '进行中' }}</span></div>
+              <div class="meter-bar"><i :style="{ width: relPct(g.progress) }"></i></div>
+              <span v-if="g.detail" class="item-meta">{{ g.detail }}</span>
+            </div>
+            <div class="item-actions"><button v-if="g.status !== 'done'" class="btn btn-tonal btn-sm" @click="completeGoal(g.id)">完成</button><button class="btn btn-danger btn-sm" @click="removeGoal(g.id)">删除</button></div>
+          </li>
+          <li v-if="!(data.goals || []).length" class="list-empty">还没有个人目标</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2 class="card-title">食物菜单</h2><span class="chip muted">{{ (data.food || []).length }}</span></div>
+        <form class="stack-form" @submit.prevent="addFood">
+          <input v-model="foodForm.name" class="input" placeholder="食物，如 番茄牛腩" aria-label="食物名称" />
+          <input v-model="foodForm.tags" class="input" placeholder="标签，如 家常 / 甜（可选）" aria-label="食物标签" />
+          <button class="btn btn-primary" type="submit" :disabled="!foodForm.name.trim()">加入菜单</button>
+        </form>
+        <ul class="item-list">
+          <li v-for="f in data.food" :key="f.id" class="item"><div class="item-main"><strong>{{ f.name }}</strong><span class="item-meta">{{ f.tags || '—' }}</span></div><div class="item-actions"><button class="btn btn-danger btn-sm" @click="removeFood(f.id)">删除</button></div></li>
+          <li v-if="!(data.food || []).length" class="list-empty">菜单还是空的</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2 class="card-title">群聊黑话词云</h2><span class="chip muted">{{ words.length }}</span></div>
+        <div class="cloud">
+          <span v-for="w in words" :key="w.topic" class="cloud-word" :style="{ fontSize: (12 + Math.min(18, Math.log(w.score + 1) * 6)) + 'px', opacity: 0.55 + Math.min(0.45, w.score / 20) }">{{ w.topic }}</span>
+          <span v-if="!words.length" class="list-empty plain">还没有群聊词云数据</span>
+        </div>
       </article>
     </div>
   </section>
@@ -603,6 +710,21 @@ onMounted(load)
 .rel-meter.big{margin:6px 0}
 .rel-meter.big b{font-size:15px}
 .mem-text{font-weight:500 !important;line-height:1.6}
+.cal-card{grid-column:1/-1}
+.cal-month{font-size:14px;font-weight:700;min-width:76px;text-align:center}
+.cal-week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}
+.cal-week span{text-align:center;font-size:11px;color:var(--md-on-surface-variant);font-weight:600}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal-cell{min-height:74px;border:1px solid var(--md-outline-variant);border-radius:10px;padding:6px;display:flex;flex-direction:column;gap:3px;background:var(--md-surface-container-lowest)}
+.cal-cell.empty{border-color:transparent;background:transparent}
+.cal-cell.today{border-color:var(--md-primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--md-primary) 18%,transparent)}
+.cal-cell.has{background:var(--md-surface-container-low)}
+.cal-day{font-size:12px;font-weight:700;color:var(--md-on-surface-variant)}
+.cal-chip{font-size:10.5px;line-height:1.3;background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:6px;padding:2px 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-more{font-size:10px;color:var(--md-on-surface-variant)}
+.cal-warn{margin:12px 0 0;padding:8px 12px;border-radius:10px;background:#FFF1DC;color:#7A4400;font-size:12.5px}
+.cloud{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;padding:8px 0}
+.cloud-word{font-weight:700;color:var(--md-primary);line-height:1.2}
 .book{border:1px solid var(--md-outline-variant);border-radius:14px;background:linear-gradient(180deg,var(--md-surface-container-lowest),var(--md-surface-container-low));padding:16px 18px}
 .book-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .book-date{width:auto;height:34px;flex:0 0 auto}

@@ -442,6 +442,24 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 detail = await asyncio.to_thread(self.engine.companion.user_detail, user_id, int(payload.get("limit", 100)))
                 detail["memories"] = await asyncio.to_thread(self.engine.memory.page_facts, "", "", int(payload.get("memory_limit", 100)), 0, "recent", user_id)
                 result = detail
+            elif action == "calendar_month":
+                result = await asyncio.to_thread(self.engine.companion.calendar_month, str(payload.get("month") or ""))
+            elif action == "goal_add":
+                result = await asyncio.to_thread(self.engine.companion.add_goal, payload.get("title",""), payload.get("detail",""), payload.get("kind","growth"))
+            elif action == "goal_update":
+                result = await asyncio.to_thread(self.engine.companion.update_goal, payload.get("id",""), payload.get("progress"), payload.get("status",""), payload.get("detail"))
+            elif action == "goal_delete":
+                result = await asyncio.to_thread(self.engine.companion.delete_goal, payload.get("id",""))
+            elif action == "goal_list":
+                result = {"goals": await asyncio.to_thread(self.engine.companion.list_goals, payload.get("status",""))}
+            elif action == "food_add":
+                result = await asyncio.to_thread(self.engine.companion.add_food, payload.get("name",""), payload.get("kind","meal"), payload.get("tags",""), payload.get("note",""))
+            elif action == "food_delete":
+                result = await asyncio.to_thread(self.engine.companion.delete_food, payload.get("id",""))
+            elif action == "food_list":
+                result = {"food": await asyncio.to_thread(self.engine.companion.list_food)}
+            elif action == "word_cloud":
+                result = {"words": await asyncio.to_thread(self.engine.companion.word_cloud, int(payload.get("limit", 60)))}
             else:
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))

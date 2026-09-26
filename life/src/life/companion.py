@@ -57,6 +57,8 @@ class CompanionSystem:
             CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS persona_evolution (id TEXT PRIMARY KEY, trait TEXT NOT NULL, value TEXT NOT NULL, evidence TEXT NOT NULL, support_count INTEGER NOT NULL DEFAULT 1, confidence REAL NOT NULL DEFAULT 0.35, status TEXT NOT NULL DEFAULT 'proposed', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE(trait,value));
             CREATE TABLE IF NOT EXISTS important_dates (id TEXT PRIMARY KEY, title TEXT NOT NULL, date_text TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'date', repeat_yearly INTEGER NOT NULL DEFAULT 1, note TEXT DEFAULT '', created_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS personal_goals (id TEXT PRIMARY KEY, title TEXT NOT NULL, detail TEXT DEFAULT '', kind TEXT NOT NULL DEFAULT 'growth', status TEXT NOT NULL DEFAULT 'active', progress REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS food_menu (id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'meal', tags TEXT NOT NULL DEFAULT '', note TEXT DEFAULT '', created_at TEXT NOT NULL);
             """)
             for key, value in {"proactive_daily_limit":"3", "proactive_target_limit":"1", "quiet_start":"23", "quiet_end":"8"}.items():
                 db.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", (key,value))
@@ -298,6 +300,87 @@ class CompanionSystem:
                 self._audit_tx(db, "agenda_advance", f"completed={completed}", "", "ok")
         return {"completed": completed}
 
+    def calendar_month(self, month: str = "") -> dict[str,Any]:
+        """Events and pending candidates for a YYYY-MM month, with simple conflict detection."""
+        try:
+            anchor = datetime.strptime(month, "%Y-%m") if month else datetime.now()
+        except ValueError:
+            raise ValueError("month must be formatted as YYYY-MM")
+        start = anchor.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end = start.replace(year=start.year + 1, month=1) if start.month == 12 else start.replace(month=start.month + 1)
+        lo, hi = start.date().isoformat(), end.date().isoformat()
+        with self.db() as db:
+            events = [dict(r) for r in db.execute(
+                "SELECT * FROM calendar_events WHERE start_at<>'' AND substr(replace(start_at,'T',' '),1,10)>=? AND substr(replace(start_at,'T',' '),1,10)<? ORDER BY start_at",
+                (lo, hi)).fetchall()]
+            candidates = [dict(r) for r in db.execute("SELECT * FROM calendar_candidates WHERE status='pending_confirmation' ORDER BY created_at DESC").fetchall()]
+        buckets: dict[str, list] = {}
+        for event in events:
+            key = str(event.get("start_at") or "").replace("T", " ").strip()
+            if key:
+                buckets.setdefault(key, []).append(event)
+        conflicts = [{"start_at": key, "titles": [e["title"] for e in items], "ids": [e["id"] for e in items]}
+                     for key, items in buckets.items() if len(items) > 1]
+        return {"month": f"{start.year:04d}-{start.month:02d}", "start": lo, "end": hi, "events": events, "candidates": candidates, "conflicts": conflicts}
+
+    # Goals / food / word cloud (life workspace) --------------------------
+    def add_goal(self, title: str, detail: str = "", kind: str = "growth") -> dict[str,Any]:
+        title = (title or "").strip()[:160]
+        if not title:
+            raise ValueError("goal title is required")
+        item = {"id": new_id("goal"), "title": title, "detail": (detail or "")[:1000], "kind": (kind or "growth")[:40], "status": "active", "progress": 0.0, "created_at": now(), "updated_at": now()}
+        with self.db() as db:
+            db.execute("INSERT INTO personal_goals VALUES(?,?,?,?,?,?,?,?)", (item["id"], item["title"], item["detail"], item["kind"], item["status"], item["progress"], item["created_at"], item["updated_at"]))
+            self._audit_tx(db, "goal_add", title, item["id"])
+        return item
+
+    def update_goal(self, goal_id: str, progress: float | None = None, status: str = "", detail: str | None = None) -> dict[str,Any]:
+        with self.db() as db:
+            row = db.execute("SELECT * FROM personal_goals WHERE id=?", (goal_id,)).fetchone()
+            if not row:
+                return {"updated": False}
+            final_status = (status or row["status"])[:40]
+            final_detail = row["detail"] if detail is None else detail[:1000]
+            final_progress = row["progress"] if progress is None else max(0.0, min(1.0, float(progress)))
+            db.execute("UPDATE personal_goals SET status=?, detail=?, progress=?, updated_at=? WHERE id=?", (final_status, final_detail, final_progress, now(), goal_id))
+            after = dict(db.execute("SELECT * FROM personal_goals WHERE id=?", (goal_id,)).fetchone())
+            self._audit_tx(db, "goal_update", after["title"], goal_id)
+        return {"updated": True, "goal": after}
+
+    def delete_goal(self, goal_id: str) -> dict[str,Any]:
+        with self.db() as db:
+            cursor = db.execute("DELETE FROM personal_goals WHERE id=?", (goal_id,))
+            self._audit_tx(db, "goal_delete", goal_id, goal_id, "ok" if cursor.rowcount else "not_found")
+            return {"deleted": bool(cursor.rowcount), "id": goal_id}
+
+    def list_goals(self, status: str = "") -> list[dict[str,Any]]:
+        with self.db() as db:
+            if status:
+                return [dict(r) for r in db.execute("SELECT * FROM personal_goals WHERE status=? ORDER BY updated_at DESC", (status,)).fetchall()]
+            return [dict(r) for r in db.execute("SELECT * FROM personal_goals ORDER BY updated_at DESC").fetchall()]
+
+    def add_food(self, name: str, kind: str = "meal", tags: str = "", note: str = "") -> dict[str,Any]:
+        name = (name or "").strip()[:80]
+        if not name:
+            raise ValueError("food name is required")
+        item = {"id": new_id("food"), "name": name, "kind": (kind or "meal")[:40], "tags": (tags or "")[:200], "note": (note or "")[:400], "created_at": now()}
+        with self.db() as db:
+            db.execute("INSERT INTO food_menu VALUES(?,?,?,?,?,?)", (item["id"], item["name"], item["kind"], item["tags"], item["note"], item["created_at"]))
+        return item
+
+    def delete_food(self, food_id: str) -> dict[str,Any]:
+        with self.db() as db:
+            cursor = db.execute("DELETE FROM food_menu WHERE id=?", (food_id,))
+            return {"deleted": bool(cursor.rowcount), "id": food_id}
+
+    def list_food(self) -> list[dict[str,Any]]:
+        with self.db() as db:
+            return [dict(r) for r in db.execute("SELECT * FROM food_menu ORDER BY created_at DESC").fetchall()]
+
+    def word_cloud(self, limit: int = 60) -> list[dict[str,Any]]:
+        with self.db() as db:
+            return [dict(r) for r in db.execute("SELECT topic, SUM(score) AS score FROM group_topics GROUP BY topic ORDER BY score DESC LIMIT ?", (max(1, min(int(limit), 200)),)).fetchall()]
+
     # Group scene domain --------------------------------------------------
     def observe_group(self, group_id: str, user_id: str, message: str) -> None:
         with self.db() as db:
@@ -349,7 +432,7 @@ class CompanionSystem:
             groups={row["group_id"]:{"mood":row["mood"],"topics":rows("SELECT topic,score FROM group_topics WHERE group_id=? ORDER BY score DESC LIMIT 12",(row["group_id"],)),"messages":rows("SELECT user_id,content,created_at FROM group_observations WHERE group_id=? ORDER BY created_at DESC LIMIT 20",(row["group_id"],))} for row in db.execute("SELECT * FROM group_scenes").fetchall()}
             # Only today and upcoming events: yesterday's schedule is not shown or reused.
             agenda=rows("SELECT * FROM calendar_events WHERE start_at='' OR substr(replace(start_at,'T',' '),1,10)>=? ORDER BY start_at='' DESC, start_at ASC",(today,))
-            return {"relationships":rows("SELECT * FROM relationship_accounts ORDER BY last_seen DESC"),"relationship_ledger":rows("SELECT * FROM relationship_ledger ORDER BY created_at DESC LIMIT 200"),"agenda":agenda,"calendar_candidates":rows("SELECT * FROM calendar_candidates ORDER BY created_at DESC"),"journal":rows("SELECT * FROM journal_entries WHERE kind='journal' ORDER BY created_at DESC LIMIT 50"),"dreams":rows("SELECT * FROM journal_entries WHERE kind='dream' ORDER BY created_at DESC LIMIT 50"),"audit":rows("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT 200"),"groups":groups,"persona_evolution":rows("SELECT * FROM persona_evolution WHERE status='confirmed' ORDER BY updated_at DESC"),"proactive":{"candidates":rows("SELECT * FROM proactive_candidates ORDER BY updated_at DESC LIMIT 100"),"receipts":rows("SELECT * FROM proactive_receipts ORDER BY created_at DESC LIMIT 100")},"important_dates":rows("SELECT * FROM important_dates ORDER BY date_text")}
+            return {"relationships":rows("SELECT * FROM relationship_accounts ORDER BY last_seen DESC"),"relationship_ledger":rows("SELECT * FROM relationship_ledger ORDER BY created_at DESC LIMIT 200"),"agenda":agenda,"calendar_candidates":rows("SELECT * FROM calendar_candidates ORDER BY created_at DESC"),"journal":rows("SELECT * FROM journal_entries WHERE kind='journal' ORDER BY created_at DESC LIMIT 50"),"dreams":rows("SELECT * FROM journal_entries WHERE kind='dream' ORDER BY created_at DESC LIMIT 50"),"audit":rows("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT 200"),"groups":groups,"persona_evolution":rows("SELECT * FROM persona_evolution WHERE status='confirmed' ORDER BY updated_at DESC"),"proactive":{"candidates":rows("SELECT * FROM proactive_candidates ORDER BY updated_at DESC LIMIT 100"),"receipts":rows("SELECT * FROM proactive_receipts ORDER BY created_at DESC LIMIT 100")},"important_dates":rows("SELECT * FROM important_dates ORDER BY date_text"),"goals":rows("SELECT * FROM personal_goals ORDER BY updated_at DESC"),"food":rows("SELECT * FROM food_menu ORDER BY created_at DESC"),"word_cloud":rows("SELECT topic, SUM(score) AS score FROM group_topics GROUP BY topic ORDER BY score DESC LIMIT 60")}
 
     def user_detail(self, user_id: str, limit: int = 100) -> dict[str,Any]:
         """One user's whole companionship record: relationship, proactive, audit."""

@@ -30,6 +30,24 @@ class MemoryTests(unittest.TestCase):
             self.assertIn("future", ids)
             self.assertIn("none", ids)
 
+    def test_calendar_month_conflicts_goals_and_food(self):
+        with tempfile.TemporaryDirectory() as directory:
+            companion = CompanionSystem(directory)
+            with companion.db() as db:
+                for event_id, start in [("a", "2026-03-05 09:00"), ("b", "2026-03-05 09:00"), ("c", "2026-04-01 09:00")]:
+                    db.execute("INSERT INTO calendar_events VALUES(?,?,?,?,?,?,?,?,?,?)", (event_id, "", event_id, start, "", "persona_soft_activity", "active", 1, "x", "x"))
+            page = companion.calendar_month("2026-03")
+            self.assertEqual([e["id"] for e in page["events"]], ["a", "b"])
+            self.assertEqual(len(page["conflicts"]), 1)
+            self.assertEqual(page["conflicts"][0]["titles"], ["a", "b"])
+            goal = companion.add_goal("learn piano")
+            self.assertEqual(companion.list_goals()[0]["title"], "learn piano")
+            self.assertTrue(companion.update_goal(goal["id"], progress=0.5)["updated"])
+            self.assertTrue(companion.delete_goal(goal["id"])["deleted"])
+            companion.add_food("ramen", tags="hot")
+            self.assertEqual(companion.list_food()[0]["name"], "ramen")
+            with self.assertRaises(ValueError): companion.calendar_month("nope")
+
     def test_user_detail_aggregates_record_and_scoped_memory(self):
         with tempfile.TemporaryDirectory() as directory:
             companion = CompanionSystem(directory)
