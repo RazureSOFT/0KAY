@@ -1215,6 +1215,20 @@ h1,h2,h3,h4{margin:0;letter-spacing:-.01em}
 .findings{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
 .findings li{display:flex;gap:8px;align-items:center}
 
+/* ---------- Material 3 Expressive align ---------- */
+#app .pcp .card,
+#app .pcp .dcard{border-color:color-mix(in srgb,var(--md-outline-variant) 55%,transparent);background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}
+#app .pcp .field{height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high)}
+#app .pcp .field:focus{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}
+#app .pcp .field.area{height:auto}
+#app .pcp .field.tiny{height:40px}
+#app .pcp .settings-grid .field{height:44px}
+#app .pcp .btn{height:44px;padding:0 20px}
+#app .pcp .btn.sm{height:36px;padding:0 15px}
+#app .pcp .stat-card,
+#app .pcp .item-card{border-color:color-mix(in srgb,var(--md-outline-variant) 55%,transparent)}
+#app .pcp .note,#app .pcp .fact,#app .pcp .tl li,#app .pcp .feed li,#app .pcp .kv,#app .pcp .cap,#app .pcp .group-detail{background:var(--md-surface-container)}
+
 @media (prefers-color-scheme: dark){
   .pill.bad{background:#5a2d00;color:#ffd7b0}
   .chip.warn{background:#5a3d00;color:#ffe0a3}

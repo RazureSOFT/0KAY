@@ -5,49 +5,81 @@
 import { h, ref, onMounted, computed } from 'vue'
 
 const CSS = `
-.skills-page{height:100%;overflow-y:auto;padding:var(--space-xl);background:var(--md-surface)}
-.skills-page *{box-sizing:border-box}
-.skills-page .page-header{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);margin-bottom:var(--space-xl);flex-wrap:wrap}
-.skills-page .subtitle{color:var(--md-on-surface-variant);font-size:14px;margin:4px 0 0;line-height:1.6;max-width:680px}
-.skills-page .header-actions{display:flex;gap:var(--space-sm);flex-wrap:wrap}
-.skills-page .btn{height:36px;min-height:36px;padding:0 14px;font-size:13px}
-.skills-page .btn.sm{height:28px;min-height:28px;padding:0 10px;font-size:12px}
-.skills-page .error-banner{padding:12px 16px;margin-bottom:var(--space-md);background:var(--md-error-container);color:#410E0B;border-radius:var(--radius-md);font-size:13px}
-.skills-page .flash-banner{padding:12px 16px;margin-bottom:var(--space-md);background:var(--md-success-container);color:#0D1F06;border-radius:var(--radius-md);font-size:13px}
-.skills-page .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--space-md);margin-bottom:var(--space-xl)}
-.skills-page .stat-card{padding:var(--space-lg);border:1px solid var(--md-outline-variant);display:flex;flex-direction:column;gap:6px}
-.skills-page .stat-label{font-size:12px;color:var(--md-on-surface-variant);text-transform:uppercase;letter-spacing:.4px}
-.skills-page .stat-value{font-size:28px;font-weight:700;color:var(--md-on-surface)}
-.skills-page .stat-dir{font:12px/1.5 ui-monospace,monospace;word-break:break-all;color:var(--md-on-surface-variant)}
-.skills-page .upload-panel{padding:var(--space-lg);margin-bottom:var(--space-xl);display:flex;flex-direction:column;gap:var(--space-sm)}
-.skills-page .upload-panel h2{margin:0;font-size:16px;font-weight:600}
-.skills-page .upload-panel .hint{margin:0 0 var(--space-sm);font-size:13px;color:var(--md-on-surface-variant)}
-.skills-page .upload-row{display:flex;gap:var(--space-sm);flex-wrap:wrap;align-items:center}
-.skills-page .upload-row input[type=text]{flex:1;min-width:200px;height:40px;padding:0 14px}
-.skills-page .file-pick{font-size:13px;color:var(--md-on-surface-variant);display:inline-flex;align-items:center;gap:6px}
-.skills-page textarea{width:100%;min-height:140px;padding:12px 14px;line-height:1.5;resize:vertical}
-.skills-page .upload-actions{display:flex;justify-content:flex-end;gap:var(--space-sm);margin-top:var(--space-sm)}
-.skills-page .toolbar{display:flex;gap:12px;align-items:center;margin-bottom:var(--space-lg)}
-.skills-page .toolbar input{flex:1;min-width:0;height:40px;padding:0 14px}
-.skills-page .toolbar-count{font-size:13px;color:var(--md-on-surface-variant);white-space:nowrap;padding:0 4px}
-.skills-page .skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--space-lg);padding-bottom:var(--space-lg)}
-.skills-page .skill-card{padding:var(--space-lg);display:flex;flex-direction:column;gap:var(--space-md)}
-.skills-page .card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.skills-page .card-top code{font:600 13px/1.2 ui-monospace,monospace;color:var(--md-primary);background:var(--md-primary-container);padding:4px 10px;border-radius:var(--radius-full)}
-.skills-page .status-chip{height:28px;padding:0 10px;display:inline-flex;align-items:center;font-size:12px;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);border:1px solid transparent;white-space:nowrap}
-.skills-page .status-chip.builtin{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-.skills-page .card-desc{margin:0;font-size:14px;line-height:1.55;white-space:pre-wrap;color:var(--md-on-surface);flex:1}
-.skills-page .tags{display:flex;gap:6px;flex-wrap:wrap}
-.skills-page .chip{height:24px;padding:0 8px;font-size:12px;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-.skills-page .card-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:auto}
-.skills-page .slash{font:11px/1.3 ui-monospace,monospace;color:var(--md-on-surface-variant)}
-.skills-page .empty-state{padding:var(--space-xxl);text-align:center;background:var(--md-surface-container);color:var(--md-on-surface-variant);border-radius:32px;margin-bottom:var(--space-lg)}
-.skills-page .empty-state .hint{margin-top:6px;font-size:13px;opacity:.85}
+/* Skills GUI — Material 3 Expressive. #app prefixes out-rank the host layer. */
+#app .skills-page{height:100%;overflow-y:auto;padding:clamp(18px,2.4vw,30px);background:var(--md-surface);color:var(--md-on-surface);font-family:var(--font-family)}
+#app .skills-page *{box-sizing:border-box}
+#app .skills-page .page-header{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);margin-bottom:clamp(18px,2.4vw,30px);flex-wrap:wrap}
+#app .skills-page .page-header h1{margin:0;font-size:clamp(24px,2.8vw,34px);font-weight:800;letter-spacing:-.02em}
+#app .skills-page .subtitle{color:var(--md-on-surface-variant);font-size:14px;margin:8px 0 0;line-height:1.6;max-width:680px}
+#app .skills-page .header-actions{display:flex;gap:10px;flex-wrap:wrap}
+#app .skills-page .btn{
+  height:46px;min-height:46px;padding:0 22px;border:1px solid transparent;border-radius:999px;
+  font:700 13.5px/1 inherit;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
+  color:var(--md-on-surface);background:var(--md-surface-container-high);
+  transition:transform 240ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color 180ms,box-shadow 200ms;
+}
+#app .skills-page .btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:var(--shadow-1)}
+#app .skills-page .btn:disabled{opacity:.5;cursor:not-allowed}
+#app .skills-page .btn.btn-primary{background:var(--md-primary);color:var(--md-on-primary);box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 30%,transparent)}
+#app .skills-page .btn.btn-tonal{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+#app .skills-page .btn.btn-danger{background:var(--md-error-container);color:var(--md-on-error-container,#410e0b)}
+#app .skills-page .btn.sm{height:34px;min-height:34px;padding:0 15px;font-size:12.5px}
+#app .skills-page .error-banner{padding:12px 16px;margin-bottom:var(--space-md);background:var(--md-error-container);color:var(--md-on-error-container,#410e0b);border-radius:16px;font-size:13px}
+#app .skills-page .flash-banner{padding:12px 16px;margin-bottom:var(--space-md);background:var(--md-success-container);color:#0d3b1e;border-radius:16px;font-size:13px;font-weight:600}
+#app .skills-page .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:var(--space-lg);margin-bottom:var(--space-xl)}
+#app .skills-page .stat-card{
+  padding:20px;border-radius:24px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);
+  background:var(--md-surface-container-low);box-shadow:var(--shadow-1);display:flex;flex-direction:column;gap:6px;
+  transition:transform 280ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),box-shadow 280ms;
+}
+#app .skills-page .stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
+#app .skills-page .stat-card:nth-child(3n+1){background:var(--md-primary-container);color:var(--md-on-primary-container)}
+#app .skills-page .stat-card:nth-child(3n+2){background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+#app .skills-page .stat-card:nth-child(3n){background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#421326)}
+#app .skills-page .stat-label{font-size:11.5px;opacity:.75;color:inherit;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+#app .skills-page .stat-value{font-size:30px;font-weight:800;letter-spacing:-.02em;color:inherit;line-height:1.1}
+#app .skills-page .stat-dir{font:12px/1.5 ui-monospace,monospace;word-break:break-all;color:inherit;opacity:.85}
+#app .skills-page .upload-panel{
+  padding:22px;border-radius:24px;margin-bottom:var(--space-xl);display:flex;flex-direction:column;gap:12px;
+  background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);box-shadow:var(--shadow-1);
+}
+#app .skills-page .upload-panel h2{margin:0;font-size:17px;font-weight:750}
+#app .skills-page .upload-panel .hint{margin:0;font-size:13px;color:var(--md-on-surface-variant)}
+#app .skills-page .upload-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+#app .skills-page .upload-row input[type=text]{flex:1;min-width:200px;height:48px;padding:0 16px}
+#app .skills-page .file-pick{font-size:13px;color:var(--md-on-surface-variant);display:inline-flex;align-items:center;gap:6px}
+#app .skills-page textarea{width:100%;min-height:150px;padding:14px 16px;line-height:1.6;resize:vertical}
+#app .skills-page .upload-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:6px}
+#app .skills-page .toolbar{display:flex;gap:12px;align-items:center;margin-bottom:var(--space-lg)}
+#app .skills-page .toolbar input{flex:1;min-width:0;height:48px;padding:0 16px}
+#app .skills-page .toolbar-count{font-size:13px;color:var(--md-on-surface-variant);white-space:nowrap;padding:0 6px;font-weight:600}
+#app .skills-page .skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--space-lg);padding-bottom:var(--space-lg)}
+#app .skills-page .skill-card{
+  padding:20px;display:flex;flex-direction:column;gap:14px;border-radius:24px;
+  background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);
+  box-shadow:var(--shadow-1);transition:transform 280ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),box-shadow 280ms,border-color 280ms;
+}
+#app .skills-page .skill-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-2);border-color:color-mix(in srgb,var(--md-primary) 30%,var(--md-outline-variant))}
+#app .skills-page .card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+#app .skills-page .card-top code{font:700 13px/1.2 ui-monospace,monospace;color:var(--md-on-primary-container);background:var(--md-primary-container);padding:6px 12px;border-radius:999px}
+#app .skills-page .status-chip{
+  height:30px;padding:0 12px;display:inline-flex;align-items:center;font-size:12px;font-weight:700;
+  border-radius:999px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);border:1px solid transparent;white-space:nowrap;
+}
+#app .skills-page .status-chip.builtin{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+#app .skills-page .card-desc{margin:0;font-size:14px;line-height:1.6;white-space:pre-wrap;color:var(--md-on-surface);flex:1}
+#app .skills-page .tags{display:flex;gap:6px;flex-wrap:wrap}
+#app .skills-page .chip{height:26px;padding:0 11px;font-size:12px;font-weight:600;border-radius:999px;display:inline-flex;align-items:center;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+#app .skills-page .card-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:auto}
+#app .skills-page .slash{font:11px/1.3 ui-monospace,monospace;color:var(--md-on-surface-variant)}
+#app .skills-page .empty-state{padding:var(--space-xxl);text-align:center;background:var(--md-surface-container);color:var(--md-on-surface-variant);border-radius:32px;margin-bottom:var(--space-lg)}
+#app .skills-page .empty-state p{margin:0;font-size:15px;font-weight:600;color:var(--md-on-surface)}
+#app .skills-page .empty-state .hint{margin-top:6px;font-size:13px;font-weight:400;opacity:.85}
 @media(max-width:860px){
-  .skills-page{padding:var(--space-lg)}
-  .skills-page .page-header{display:block}
-  .skills-page .header-actions{margin-top:12px}
-  .skills-page .skill-grid{grid-template-columns:1fr}
+  #app .skills-page{padding:var(--space-lg)}
+  #app .skills-page .page-header{display:block}
+  #app .skills-page .header-actions{margin-top:14px}
+  #app .skills-page .skill-grid{grid-template-columns:1fr}
 }
 `
 

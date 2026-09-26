@@ -217,7 +217,7 @@ onMounted(async () => { await loadMemories(); await loadStats() })
 </script>
 
 <template>
-  <main class="page">
+  <main class="page memory-page">
     <div class="page-inner">
       <header class="page-header">
         <div>
@@ -497,6 +497,42 @@ onMounted(async () => { await loadMemories(); await loadStats() })
 .reflection details{margin-top:6px}
 .reflection summary{cursor:pointer;font-size:12px;color:var(--md-on-surface-variant)}
 .quote{margin:8px 0 0;font-size:12.5px;line-height:1.6;background:var(--md-surface-container);padding:8px 12px;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* ---------- Material 3 Expressive align ---------- */
+#app .memory-page .page-header h1{font-size:clamp(24px,2.8vw,34px);font-weight:800;letter-spacing:-.02em}
+#app .memory-page .stat-grid{gap:var(--space-lg)}
+#app .memory-page .stat-card,
+#app .memory-page .card,
+#app .memory-page .memory-card{
+  border-color:color-mix(in srgb,var(--md-outline-variant) 55%,transparent);
+  background:var(--md-surface-container-low);
+  box-shadow:var(--shadow-1);
+}
+#app .memory-page .stat-card{border-radius:24px;transition:transform 280ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),box-shadow 280ms}
+#app .memory-page .stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
+#app .memory-page .stat-value{font-size:34px;font-weight:800;letter-spacing:-.02em}
+#app .memory-page .icon-badge{width:44px;height:44px;border-radius:16px 16px 16px 6px}
+#app .memory-page .card,
+#app .memory-page .memory-card{border-radius:24px}
+#app .memory-page .memory-card{transition:transform 260ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),box-shadow 220ms,border-color 200ms}
+#app .memory-page .memory-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2);border-color:color-mix(in srgb,var(--md-primary) 30%,var(--md-outline-variant))}
+#app .memory-page .btn{height:44px;padding:0 20px;border-radius:999px;font-weight:700}
+#app .memory-page .btn-sm{height:34px;padding:0 14px;font-size:12.5px}
+#app .memory-page .btn-tonal{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+#app .memory-page .btn-primary{background:var(--md-primary);color:var(--md-on-primary);box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 28%,transparent)}
+#app .memory-page .input{
+  height:48px;border:1px solid transparent;border-radius:14px;background:var(--md-surface-container-high);
+  transition:background-color 180ms,border-color 180ms,box-shadow 200ms;
+}
+#app .memory-page .input:focus{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}
+#app .memory-page .input.area{height:auto;padding:14px 16px}
+#app .memory-page .search-field input{height:44px}
+#app .memory-page .search-field.mini{border-color:transparent;background:var(--md-surface-container-high);border-radius:14px}
+#app .memory-page .select select{height:44px;border-color:transparent;border-radius:14px;background:var(--md-surface-container-high);padding:0 14px}
+#app .memory-page .tabs{padding:5px;border-radius:999px;background:var(--md-surface-container-high)}
+#app .memory-page .tabs button{border-radius:999px;padding:9px 20px;font-weight:650}
+#app .memory-page .tabs button.active{background:var(--md-primary);color:var(--md-on-primary);box-shadow:var(--shadow-1)}
+#app .memory-page .note-item{border-radius:16px;border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);background:var(--md-surface-container-low)}
 
 @media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}.grid-notes{grid-template-columns:1fr}}
 @media(max-width:640px){.page{padding:var(--space-lg)}.header-actions{padding-top:0}.memory-list{grid-template-columns:1fr}}
