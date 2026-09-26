@@ -27,13 +27,38 @@ window.__0KAY_VUE__ = VueRuntime
 
 const ui = useUIPatchesStore(pinia)
 
+/** Bootstrap modules already imported (by URL) so reloads don't re-run them. */
+const loadedBootstrap = new Set<string>()
+
 /**
- * Register Core .patch routes, then re-resolve the current URL if it was
- * swallowed by the catch-all before dynamic routes existed (full page load
- * race on /agents, /search, etc.).
+ * Import each patch-declared bootstrap module once. A module exposes
+ * `install(context)` (or a default function) and may patch global behaviour,
+ * e.g. an API compatibility layer.
+ */
+async function installBootstrapModules() {
+  for (const item of ui.bootstrapItems) {
+    const url = item.module
+    if (!url || loadedBootstrap.has(url)) continue
+    loadedBootstrap.add(url)
+    try {
+      const mod: any = await import(/* @vite-ignore */ url)
+      const install = mod?.install || mod?.default
+      if (typeof install === 'function') install({ plugin: item.plugin, id: item.id })
+    } catch (e) {
+      loadedBootstrap.delete(url)
+      console.warn('[0kay] bootstrap module failed:', url, e)
+    }
+  }
+}
+
+/**
+ * Register Core .patch routes, load bootstrap modules, then re-resolve the
+ * current URL if it was swallowed by the catch-all before dynamic routes
+ * existed (full page load race on /agents, /search, etc.).
  */
 function applyPatchesAndRematch() {
   registerPatchRoutes()
+  void installBootstrapModules()
   const cur = router.currentRoute.value
   if (cur.matched.some((r) => r.name === 'catch-all')) {
     const path = cur.fullPath

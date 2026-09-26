@@ -117,6 +117,14 @@ export interface ChatSlotItem {
   titleKey?: string
 }
 
+/** Startup module a plugin loads globally (API compatibility shims, etc). */
+export interface BootstrapItem {
+  id: string
+  /** ESM entry served by Core, e.g. /api/plugins/compat/ui/index.js */
+  module?: string
+  plugin?: string
+}
+
 /** Built-in sidebar items. Chat/对话 is registered by life.patch; Agent by agent.patch. */
 export const BUILTIN_NAV: NavItem[] = [
   { id: 'plugins', to: '/plugins', labelKey: 'nav.plugins', icon: 'plugins', order: 30 },
@@ -289,6 +297,25 @@ export const useUIPatchesStore = defineStore('uiPatches', () => {
     })),
   )
 
+  /**
+   * Bootstrap modules: patches with target "bootstrap" whose ESM entry the host
+   * imports once at startup. Used by plugins that must patch global behaviour
+   * (for example an API compatibility layer).
+   */
+  const bootstrapItems = computed<BootstrapItem[]>(() => {
+    const out: BootstrapItem[] = []
+    for (const op of opsFor('bootstrap')) {
+      if (op.op === 'insert' && op.item) {
+        const it = op.item as BootstrapItem
+        if (it.module && !out.some((b) => b.id === it.id)) out.push(it)
+      } else if (op.op === 'remove' && op.id) {
+        const i = out.findIndex((b) => b.id === op.id)
+        if (i >= 0) out.splice(i, 1)
+      }
+    }
+    return out
+  })
+
   function settingsTab(id: string): SettingsTabItem | undefined {
     return settingsTabs.value.find((t) => t.id === id)
   }
@@ -340,6 +367,7 @@ export const useUIPatchesStore = defineStore('uiPatches', () => {
     removedSettingsIds,
     chatSlots,
     chatRegion,
+    bootstrapItems,
     patchFieldTabs,
     isBuiltinSettingsId,
     hasSettingsTab,
