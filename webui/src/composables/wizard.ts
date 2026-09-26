@@ -7,6 +7,8 @@ export interface Provider {
   baseUrl: string
   apiKeyUrl: string
   defaultModels: string[]
+  /** Default wire protocol when this preset is selected: 'openai' | 'anthropic'. */
+  format?: string
 }
 
 export interface ProviderConfig {
@@ -19,6 +21,8 @@ export interface ProviderConfig {
   disabled_models?: string[]
   default_model: string
   enabled: boolean
+  /** Wire protocol override: 'openai' | 'anthropic' | '' (infer from preset). */
+  format?: string
 }
 
 export interface PersonaConfig {
@@ -61,6 +65,7 @@ export const PROVIDERS: Provider[] = [
     baseUrl: 'https://api.anthropic.com',
     apiKeyUrl: 'https://console.anthropic.com/settings/keys',
     defaultModels: ['claude-opus-4-1-20250805', 'claude-sonnet-4-20250514', 'claude-3-7-sonnet-20250219', 'claude-3-5-haiku-20241022'],
+    format: 'anthropic',
   },
   {
     id: 'deepseek',

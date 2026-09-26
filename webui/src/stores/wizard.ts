@@ -142,6 +142,7 @@ export const useWizardStore = defineStore('wizard', () => {
       }
       const id = match?.id || provider.value
       const merged = match ? Array.from(new Set([...(match.models || []), ...models])) : models
+      const format = match?.format || (provider.value === 'anthropic' ? 'anthropic' : '')
       const body = {
         provider: {
           id,
@@ -152,6 +153,7 @@ export const useWizardStore = defineStore('wizard', () => {
           disabled_models: (match?.disabled_models || []).filter(m => merged.includes(m)),
           default_model: defaultModel.value || (merged.includes(match?.default_model || '') ? match!.default_model : merged[0] || ''),
           enabled: true,
+          format,
         },
         default_provider_id: id,
         default_model: defaultModel.value || (merged.includes(match?.default_model || '') ? match!.default_model : merged[0] || ''),

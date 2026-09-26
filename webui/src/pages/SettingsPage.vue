@@ -201,7 +201,7 @@ async function saveSection(id: string) {
 }
 
 function startEditProvider(p: ProviderConfig) {
-  editingProvider.value = { ...p, models: [...p.models], disabled_models: [...(p.disabled_models || [])] }
+  editingProvider.value = { ...p, format: p.format || '', models: [...p.models], disabled_models: [...(p.disabled_models || [])] }
   fetchSource.value = ''
   fetchError.value = ''
   void autoFetchEditModels()
@@ -217,16 +217,25 @@ function startAddProvider() {
     disabled_models: [],
     default_model: '',
     enabled: true,
+    format: '',
   }
 }
 
-/** Switching provider type updates base_url from PROVIDERS catalog. */
+/** Switching provider type updates base_url + default format from the catalog. */
 function onEditProviderType() {
   if (!editingProvider.value) return
   const p = PROVIDERS.find(x => x.id === editingProvider.value!.provider)
   if (p?.baseUrl) editingProvider.value.base_url = p.baseUrl
+  editingProvider.value.format = p?.format || ''
   void autoFetchEditModels()
 }
+
+/** Wire-protocol options for a provider (empty = infer from the preset). */
+const FORMAT_OPTIONS = computed(() => [
+  { value: '', label: t('settings.formatAuto') },
+  { value: 'openai', label: t('settings.formatOpenai') },
+  { value: 'anthropic', label: t('settings.formatAnthropic') },
+])
 
 /** Auto-fetch model list for the edit form when possible. */
 async function autoFetchEditModels() {
@@ -246,6 +255,7 @@ async function autoFetchEditModels() {
         provider: ep.provider,
         base_url: ep.base_url,
         api_key: ep.api_key || '',
+        format: ep.format || '',
       }),
     })
     if (!res.ok) throw new Error(String(res.status))
@@ -292,6 +302,7 @@ async function fetchModelsForRow(p: ProviderConfig) {
         provider: p.provider,
         base_url: p.base_url,
         api_key: p.api_key || '',
+        format: p.format || '',
       }),
     })
     if (!res.ok) throw new Error(String(res.status))
@@ -676,6 +687,16 @@ function save() {
                 :placeholder="t('wizard.baseUrlPlaceholder')"
                 class="input"
               />
+            </div>
+            <div class="field">
+              <label>{{ t('settings.apiFormat') }}</label>
+              <AppSelect
+                v-model="editingProvider.format"
+                class="input"
+                :aria-label="t('settings.apiFormat')"
+                :options="FORMAT_OPTIONS"
+              />
+              <p class="helper-text">{{ t('settings.apiFormatHint') }}</p>
             </div>
             <div class="field">
               <label>{{ t('settings.modelsCsv') }}</label>
