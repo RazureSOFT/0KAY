@@ -288,6 +288,14 @@ async function importConfig() {
   if (result) { importText.value = ''; flash(`已导入：${Object.entries(result.applied || {}).map(([k, v]) => `${k} ${v}`).join(' · ')}`) }
 }
 async function runDiagnostics() { const result = await act('diagnostics', {}); if (result) diagnostics.value = result }
+
+const worldKinds = ['persona', 'worldview', 'style', 'background', 'wardrobe', 'reference']
+const worldKind = ref('')
+const worldForm = ref({ id: '', kind: 'worldview', title: '', content: '', tags: '' })
+const worldList = computed(() => (data.value.world || []).filter((w: any) => !worldKind.value || w.kind === worldKind.value))
+function editWorld(w: any) { worldForm.value = { id: w.id, kind: w.kind, title: w.title, content: w.content, tags: w.tags || '' } }
+async function saveWorld() { if (!worldForm.value.title.trim() || !worldForm.value.content.trim()) return; await act('world_upsert', { ...worldForm.value }); worldForm.value = { id: '', kind: 'worldview', title: '', content: '', tags: '' } }
+async function removeWorld(id: string) { await act('world_delete', { id }) }
 onMounted(load)
 </script>
 
@@ -651,6 +659,38 @@ onMounted(load)
   </section>
 
   <section class="group">
+    <h2 class="group-title">世界知识</h2>
+    <div class="grid">
+      <article class="card">
+        <div class="card-head"><h2 class="card-title">{{ worldForm.id ? '编辑条目' : '新增条目' }}</h2><span class="chip muted">{{ (data.world || []).length }}</span></div>
+        <form class="stack-form" @submit.prevent="saveWorld">
+          <div class="form-row">
+            <select v-model="worldForm.kind" class="input world-kind" aria-label="类型"><option v-for="k in worldKinds" :key="k" :value="k">{{ k }}</option></select>
+            <input v-model="worldForm.title" class="input" placeholder="标题，如 世界观 / 今日穿搭" aria-label="标题" />
+          </div>
+          <textarea v-model="worldForm.content" class="input area" placeholder="内容…"></textarea>
+          <input v-model="worldForm.tags" class="input" placeholder="标签（可选）" aria-label="标签" />
+          <div class="toolbar-inline"><button class="btn btn-primary" type="submit" :disabled="!worldForm.title.trim() || !worldForm.content.trim()">{{ worldForm.id ? '保存' : '添加' }}</button><button v-if="worldForm.id" type="button" class="btn btn-tonal" @click="worldForm = { id: '', kind: 'worldview', title: '', content: '', tags: '' }">取消编辑</button></div>
+        </form>
+        <div class="world-filter">
+          <button class="btn btn-sm" :class="worldKind === '' ? 'btn-primary' : 'btn-tonal'" @click="worldKind = ''">全部</button>
+          <button v-for="k in worldKinds" :key="k" class="btn btn-sm" :class="worldKind === k ? 'btn-primary' : 'btn-tonal'" @click="worldKind = k">{{ k }}</button>
+        </div>
+      </article>
+      <article class="card">
+        <div class="card-head"><h2 class="card-title">条目</h2></div>
+        <ul class="item-list">
+          <li v-for="w in worldList" :key="w.id" class="item">
+            <div class="item-main"><div class="item-row"><strong>{{ w.title }}</strong><span class="chip muted">{{ w.kind }}</span></div><span class="item-meta world-content">{{ w.content }}</span><span v-if="w.tags" class="item-meta">{{ w.tags }}</span></div>
+            <div class="item-actions"><button class="btn btn-tonal btn-sm" @click="editWorld(w)">编辑</button><button class="btn btn-danger btn-sm" @click="removeWorld(w.id)">删除</button></div>
+          </li>
+          <li v-if="!worldList.length" class="list-empty">还没有条目</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <section class="group">
     <h2 class="group-title">主动行为</h2>
     <div class="grid">
       <article class="card">
@@ -951,6 +991,9 @@ onMounted(load)
 .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
 .toggle-row{display:flex;gap:16px;flex-wrap:wrap}
 .select span{white-space:nowrap}
+.world-kind{width:130px;flex:0 0 auto}
+.world-filter{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.world-content{white-space:pre-wrap}
 .book{border:1px solid var(--md-outline-variant);border-radius:14px;background:linear-gradient(180deg,var(--md-surface-container-lowest),var(--md-surface-container-low));padding:16px 18px}
 .book-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .book-date{width:auto;height:34px;flex:0 0 auto}

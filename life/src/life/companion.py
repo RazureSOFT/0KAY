@@ -65,6 +65,7 @@ class CompanionSystem:
             CREATE TABLE IF NOT EXISTS expressions (id TEXT PRIMARY KEY, text TEXT NOT NULL, scene TEXT NOT NULL DEFAULT '', scope TEXT NOT NULL DEFAULT 'public', status TEXT NOT NULL DEFAULT 'pending', source TEXT NOT NULL DEFAULT 'manual', created_at TEXT NOT NULL, reviewed_at TEXT, UNIQUE(text));
             CREATE TABLE IF NOT EXISTS social_nodes (user_id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '', tags TEXT NOT NULL DEFAULT '', note TEXT DEFAULT '', updated_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS social_edges (id TEXT PRIMARY KEY, source_id TEXT NOT NULL, target_id TEXT NOT NULL, relation TEXT NOT NULL DEFAULT 'contact', note TEXT DEFAULT '', created_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS world_knowledge (id TEXT PRIMARY KEY, kind TEXT NOT NULL DEFAULT 'worldview', title TEXT NOT NULL, content TEXT NOT NULL, tags TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
             """)
             for key, value in {"proactive_daily_limit":"3", "proactive_target_limit":"1", "quiet_start":"23", "quiet_end":"8"}.items():
                 db.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", (key,value))
@@ -669,6 +670,42 @@ class CompanionSystem:
         ]
         return {"checks": checks, "counts": counts, "generated_at": now()}
 
+    # World knowledge / reference / wardrobe (text) ------------------------
+    WORLD_KINDS = ("persona", "worldview", "style", "background", "wardrobe", "reference")
+
+    def upsert_world_knowledge(self, kind: str, title: str, content: str, tags: str = "", knowledge_id: str = "") -> dict[str,Any]:
+        kind = kind if kind in self.WORLD_KINDS else "worldview"
+        title, content = (title or "").strip()[:120], (content or "").strip()[:4000]
+        if not title or not content:
+            raise ValueError("title and content are required")
+        with self.db() as db:
+            existing = db.execute("SELECT 1 FROM world_knowledge WHERE id=?", (knowledge_id,)).fetchone() if knowledge_id else None
+            if existing:
+                db.execute("UPDATE world_knowledge SET kind=?,title=?,content=?,tags=?,updated_at=? WHERE id=?", (kind, title, content, (tags or "")[:200], now(), knowledge_id))
+            else:
+                knowledge_id = knowledge_id or new_id("world")
+                db.execute("INSERT INTO world_knowledge VALUES(?,?,?,?,?,?,?)", (knowledge_id, kind, title, content, (tags or "")[:200], now(), now()))
+            self._audit_tx(db, "world_upsert", title, knowledge_id)
+            return dict(db.execute("SELECT * FROM world_knowledge WHERE id=?", (knowledge_id,)).fetchone())
+
+    def list_world_knowledge(self, kind: str = "") -> list[dict[str,Any]]:
+        with self.db() as db:
+            if kind:
+                return [dict(r) for r in db.execute("SELECT * FROM world_knowledge WHERE kind=? ORDER BY updated_at DESC", (kind,)).fetchall()]
+            return [dict(r) for r in db.execute("SELECT * FROM world_knowledge ORDER BY kind, updated_at DESC").fetchall()]
+
+    def delete_world_knowledge(self, knowledge_id: str) -> dict[str,Any]:
+        with self.db() as db:
+            cursor = db.execute("DELETE FROM world_knowledge WHERE id=?", (knowledge_id,))
+            return {"deleted": bool(cursor.rowcount), "id": knowledge_id}
+
+    def world_context(self, limit: int = 12) -> str:
+        with self.db() as db:
+            rows = db.execute("SELECT kind,title,content FROM world_knowledge ORDER BY updated_at DESC LIMIT ?", (max(1, min(int(limit), 50)),)).fetchall()
+        if not rows:
+            return ""
+        return "\n".join(f"- [{row['kind']}] {row['title']}：{row['content']}" for row in rows)
+
     def journal_page(self, day: str = "") -> dict[str,Any]:
         """Read a day as one diary page, including entries outside snapshot limits."""
         day = date.fromisoformat(day).isoformat() if day else date.today().isoformat()
@@ -708,7 +745,7 @@ class CompanionSystem:
             groups={row["group_id"]:{"mood":row["mood"],"topics":rows("SELECT topic,score FROM group_topics WHERE group_id=? ORDER BY score DESC LIMIT 12",(row["group_id"],)),"messages":rows("SELECT user_id,content,created_at FROM group_observations WHERE group_id=? ORDER BY created_at DESC LIMIT 20",(row["group_id"],))} for row in db.execute("SELECT * FROM group_scenes").fetchall()}
             # Only today and upcoming events: yesterday's schedule is not shown or reused.
             agenda=rows("SELECT * FROM calendar_events WHERE start_at='' OR substr(replace(start_at,'T',' '),1,10)>=? ORDER BY start_at='' DESC, start_at ASC",(today,))
-            return {"relationships":rows("SELECT * FROM relationship_accounts ORDER BY last_seen DESC"),"relationship_ledger":rows("SELECT * FROM relationship_ledger ORDER BY created_at DESC LIMIT 200"),"agenda":agenda,"calendar_candidates":rows("SELECT * FROM calendar_candidates ORDER BY created_at DESC"),"journal":rows("SELECT * FROM journal_entries WHERE kind='journal' ORDER BY created_at DESC LIMIT 50"),"dreams":rows("SELECT * FROM journal_entries WHERE kind='dream' ORDER BY created_at DESC LIMIT 50"),"audit":rows("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT 200"),"groups":groups,"persona_evolution":rows("SELECT * FROM persona_evolution WHERE status='confirmed' ORDER BY updated_at DESC"),"proactive":{"candidates":rows("SELECT * FROM proactive_candidates ORDER BY updated_at DESC LIMIT 100"),"receipts":rows("SELECT * FROM proactive_receipts ORDER BY created_at DESC LIMIT 100")},"important_dates":rows("SELECT * FROM important_dates ORDER BY date_text"),"goals":rows("SELECT * FROM personal_goals ORDER BY updated_at DESC"),"food":rows("SELECT * FROM food_menu ORDER BY created_at DESC"),"word_cloud":rows("SELECT topic, SUM(score) AS score FROM group_topics GROUP BY topic ORDER BY score DESC LIMIT 60"),"skills":rows("SELECT * FROM skills ORDER BY level DESC, updated_at DESC"),"expressions":rows("SELECT * FROM expressions ORDER BY created_at DESC LIMIT 300"),"social_nodes":rows("SELECT * FROM social_nodes ORDER BY updated_at DESC"),"social_edges":rows("SELECT * FROM social_edges ORDER BY created_at DESC"),"settings":{r["key"]: r["value"] for r in db.execute("SELECT key,value FROM settings").fetchall()}}
+            return {"relationships":rows("SELECT * FROM relationship_accounts ORDER BY last_seen DESC"),"relationship_ledger":rows("SELECT * FROM relationship_ledger ORDER BY created_at DESC LIMIT 200"),"agenda":agenda,"calendar_candidates":rows("SELECT * FROM calendar_candidates ORDER BY created_at DESC"),"journal":rows("SELECT * FROM journal_entries WHERE kind='journal' ORDER BY created_at DESC LIMIT 50"),"dreams":rows("SELECT * FROM journal_entries WHERE kind='dream' ORDER BY created_at DESC LIMIT 50"),"audit":rows("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT 200"),"groups":groups,"persona_evolution":rows("SELECT * FROM persona_evolution WHERE status='confirmed' ORDER BY updated_at DESC"),"proactive":{"candidates":rows("SELECT * FROM proactive_candidates ORDER BY updated_at DESC LIMIT 100"),"receipts":rows("SELECT * FROM proactive_receipts ORDER BY created_at DESC LIMIT 100")},"important_dates":rows("SELECT * FROM important_dates ORDER BY date_text"),"goals":rows("SELECT * FROM personal_goals ORDER BY updated_at DESC"),"food":rows("SELECT * FROM food_menu ORDER BY created_at DESC"),"word_cloud":rows("SELECT topic, SUM(score) AS score FROM group_topics GROUP BY topic ORDER BY score DESC LIMIT 60"),"skills":rows("SELECT * FROM skills ORDER BY level DESC, updated_at DESC"),"expressions":rows("SELECT * FROM expressions ORDER BY created_at DESC LIMIT 300"),"social_nodes":rows("SELECT * FROM social_nodes ORDER BY updated_at DESC"),"social_edges":rows("SELECT * FROM social_edges ORDER BY created_at DESC"),"settings":{r["key"]: r["value"] for r in db.execute("SELECT key,value FROM settings").fetchall()},"world":rows("SELECT * FROM world_knowledge ORDER BY kind, updated_at DESC")}
 
     def user_detail(self, user_id: str, limit: int = 100) -> dict[str,Any]:
         """One user's whole companionship record: relationship, proactive, audit."""

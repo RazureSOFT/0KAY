@@ -129,6 +129,9 @@ class LifeEngine:
             learned = await asyncio.to_thread(self.companion.persona_evolution_context)
             if learned:
                 turn.persona_context += "\nStable learned traits:\n" + learned
+            world = await asyncio.to_thread(self.companion.world_context)
+            if world:
+                turn.persona_context += "\nWorld & persona knowledge:\n" + world
             turn.history.append({"role": "user", "content": message})
             token = task_context.set({"session_id": session_id})
             record = await self.task_records.start("conversation", message)
@@ -354,9 +357,11 @@ class LifeEngine:
         prompt = f"{instruction}\n附加提示：{hint[:200]}\n今天的事实（JSON）：\n{context}" if hint else f"{instruction}\n今天的事实（JSON）：\n{context}"
         prompt += "\n注意：正文里不要出现任何数字、百分比、参数名或内部指标（例如不要写“饥饿值 21.9”“精力 97”），只用自然语言描述感受。"
         model = self.think_model or self.default_model
+        world = await asyncio.to_thread(self.companion.world_context)
+        system = "你是 L.I.F.E 的内心独白作者。" + (f"\n世界与角色设定：\n{world}" if world else "")
         try:
             text = "".join([chunk async for chunk in self.mocr.generate(
-                model, [{"role": "user", "content": prompt}], "你是 L.I.F.E 的内心独白作者。", thinking=False, max_tokens=600)])
+                model, [{"role": "user", "content": prompt}], system, thinking=False, max_tokens=600)])
         except Exception:
             return ""
         return text.strip().strip('"')

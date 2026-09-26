@@ -30,6 +30,18 @@ class MemoryTests(unittest.TestCase):
             self.assertIn("future", ids)
             self.assertIn("none", ids)
 
+    def test_world_knowledge_context(self):
+        with tempfile.TemporaryDirectory() as directory:
+            companion = CompanionSystem(directory)
+            item = companion.upsert_world_knowledge("worldview", "世界观", "一座临海的小城", tags="setting")
+            self.assertEqual(companion.list_world_knowledge("worldview")[0]["title"], "世界观")
+            self.assertIn("临海", companion.world_context())
+            companion.upsert_world_knowledge("worldview", "世界观", "改了", tags="setting", knowledge_id=item["id"])
+            self.assertEqual(len(companion.list_world_knowledge("worldview")), 1)
+            self.assertIn("改了", companion.world_context())
+            self.assertTrue(companion.delete_world_knowledge(item["id"])["deleted"])
+            with self.assertRaises(ValueError): companion.upsert_world_knowledge("worldview", "", "")
+
     def test_settings_export_import_and_diagnostics(self):
         with tempfile.TemporaryDirectory() as directory:
             companion = CompanionSystem(directory)

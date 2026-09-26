@@ -512,6 +512,12 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await asyncio.to_thread(self.engine.companion.import_config, payload.get("snapshot") or {})
             elif action == "diagnostics":
                 result = await asyncio.to_thread(self.engine.companion.diagnostics)
+            elif action == "world_list":
+                result = {"world": await asyncio.to_thread(self.engine.companion.list_world_knowledge, payload.get("kind",""))}
+            elif action == "world_upsert":
+                result = await asyncio.to_thread(self.engine.companion.upsert_world_knowledge, payload.get("kind","worldview"), payload.get("title",""), payload.get("content",""), payload.get("tags",""), payload.get("id",""))
+            elif action == "world_delete":
+                result = await asyncio.to_thread(self.engine.companion.delete_world_knowledge, payload.get("id",""))
             else:
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))
