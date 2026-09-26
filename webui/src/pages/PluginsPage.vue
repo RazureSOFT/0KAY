@@ -8,7 +8,7 @@ const { t } = useI18n()
 const router = useRouter()
 const sections = useSettingsSectionsStore()
 
-interface PluginRow {
+interface RuntimePlugin {
   plugin_id: string
   name: string
   version: string
@@ -19,23 +19,109 @@ interface PluginRow {
   disabled?: boolean
 }
 
+interface InstalledEntry {
+  name: string
+  repository?: string
+  source?: string
+}
+
+interface PluginRow {
+  key: string
+  id: string
+  name: string
+  packageName: string
+  version: string
+  type: string
+  capabilities: string[]
+  status: string
+  active_tasks: number
+  disabled?: boolean
+  runtime: boolean
+  installedSource: 'platform' | 'pm' | ''
+  repository?: string
+}
+
 const plugins = ref<PluginRow[]>([])
 const loading = ref(false)
 const error = ref('')
+const notice = ref('')
 const toggling = ref<string>('')
+const uninstalling = ref<string>('')
 let timer: ReturnType<typeof setInterval> | null = null
 
-const healthyCount = computed(() => plugins.value.filter((p) => isHealthy(p)).length)
-const disabledCount = computed(() => plugins.value.filter((p) => p.disabled).length)
+const healthyCount = computed(() => plugins.value.filter((p) => p.runtime && isHealthy(p)).length)
+const disabledCount = computed(() => plugins.value.filter((p) => p.runtime && p.disabled).length)
+const removableCount = computed(() => plugins.value.filter((p) => p.installedSource === 'pm').length)
+
+function shortName(pkg: string) {
+  const part = pkg.includes('/') ? pkg.split('/').pop() || pkg : pkg
+  return part.replace(/^0kay-/, '') || pkg
+}
+
+function repoUrl(p: PluginRow) {
+  return p.repository ? p.repository.replace(/\.git$/, '') : ''
+}
+
+function isHealthy(p: PluginRow) {
+  if (!p.runtime || p.disabled) return false
+  return p.status.includes('HEALTHY') || p.status === 'HEALTHY'
+}
 
 async function fetchPlugins() {
   loading.value = true
   error.value = ''
   try {
-    const res = await fetch('/api/plugins')
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const data = await res.json()
-    plugins.value = Array.isArray(data) ? data : []
+    const [rtRes, instRes] = await Promise.all([fetch('/api/plugins'), fetch('/api/plugins/installed')])
+    const runtime: RuntimePlugin[] = rtRes.ok ? await rtRes.json() : []
+    const instData = instRes.ok ? await instRes.json() : {}
+    const installed: InstalledEntry[] = Array.isArray(instData) ? instData : instData.installed || []
+
+    const runtimeList = Array.isArray(runtime) ? runtime : []
+    const byBase = new Map<string, RuntimePlugin>()
+    for (const p of runtimeList) byBase.set(p.name, p)
+
+    const rows: PluginRow[] = []
+    const seen = new Set<string>()
+    for (const entry of installed) {
+      const pkg = entry.name
+      const base = shortName(pkg)
+      const rt = byBase.get(base)
+      if (rt) seen.add(base)
+      rows.push({
+        key: pkg,
+        id: rt?.plugin_id || pkg,
+        name: rt?.name || shortName(pkg),
+        packageName: pkg,
+        version: rt?.version || '',
+        type: rt?.type || '',
+        capabilities: rt?.capabilities || [],
+        status: rt?.status || '',
+        active_tasks: rt?.active_tasks || 0,
+        disabled: rt?.disabled,
+        runtime: !!rt,
+        installedSource: entry.source === 'pm' ? 'pm' : 'platform',
+        repository: entry.repository,
+      })
+    }
+    for (const p of runtimeList) {
+      if (seen.has(p.name)) continue
+      rows.push({
+        key: p.name,
+        id: p.plugin_id,
+        name: p.name,
+        packageName: p.name,
+        version: p.version,
+        type: p.type,
+        capabilities: p.capabilities || [],
+        status: p.status,
+        active_tasks: p.active_tasks,
+        disabled: p.disabled,
+        runtime: true,
+        installedSource: '',
+      })
+    }
+    rows.sort((a, b) => Number(b.runtime) - Number(a.runtime) || a.name.localeCompare(b.name))
+    plugins.value = rows
   } catch (e: any) {
     error.value = e.message || 'failed'
   } finally {
@@ -43,14 +129,9 @@ async function fetchPlugins() {
   }
 }
 
-function isHealthy(p: PluginRow) {
-  if (p.disabled) return false
-  return p.status.includes('HEALTHY') || p.status === 'HEALTHY'
-}
-
 async function togglePlugin(p: PluginRow) {
   const enable = !!p.disabled
-  toggling.value = p.name || p.plugin_id
+  toggling.value = p.name || p.id
   try {
     const res = await fetch(enable ? '/api/plugins/enable' : '/api/plugins/disable', {
       method: 'POST',
@@ -66,9 +147,46 @@ async function togglePlugin(p: PluginRow) {
   }
 }
 
+async function waitForOp() {
+  for (let i = 0; i < 180; i++) {
+    await new Promise((r) => setTimeout(r, 1000))
+    const res = await fetch('/api/plugins/install/status')
+    if (!res.ok) continue
+    const state = await res.json()
+    if (state.status === 'done') return
+    if (state.status === 'error') throw new Error(state.error || '操作失败')
+  }
+  throw new Error('操作超时')
+}
+
+async function uninstall(p: PluginRow) {
+  const pkg = p.packageName
+  if (!window.confirm(`确定卸载 ${pkg}？`)) return
+  notice.value = ''
+  uninstalling.value = pkg
+  try {
+    const res = await fetch('/api/plugins/uninstall', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ package: pkg }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error(data.error || `HTTP ${res.status}`)
+    }
+    await waitForOp()
+    notice.value = `已卸载 ${pkg}`
+    await Promise.all([fetchPlugins(), sections.fetchSections()])
+  } catch (e: any) {
+    error.value = e.message || 'failed'
+  } finally {
+    uninstalling.value = ''
+  }
+}
+
 function sectionFor(p: PluginRow) {
   return sections.sections.find(
-    (s) => s.id === p.name || s.plugin_name === p.name || s.plugin_id === p.plugin_id
+    (s) => s.id === p.name || s.plugin_name === p.name || s.plugin_id === p.id
   )
 }
 
@@ -79,14 +197,21 @@ function openSettings(p: PluginRow) {
 
 function statusLabel(p: PluginRow) {
   if (p.disabled) return t('plugins.disabled')
-  if (isHealthy(p)) return t('agents.healthy')
-  return p.status
+  if (p.runtime) return isHealthy(p) ? t('agents.healthy') : p.status
+  return p.installedSource === 'pm' ? '已安装' : '平台组件'
+}
+
+function sourceLabel(p: PluginRow) {
+  if (p.runtime) return '运行时'
+  return p.installedSource === 'pm' ? '第三方' : '平台'
 }
 
 onMounted(() => {
   fetchPlugins()
   sections.fetchSections()
-  timer = setInterval(fetchPlugins, 5000)
+  timer = setInterval(() => {
+    if (!uninstalling.value && !toggling.value) fetchPlugins()
+  }, 5000)
 })
 
 onUnmounted(() => {
@@ -108,19 +233,21 @@ onUnmounted(() => {
     </header>
 
     <div v-if="error" class="error-banner">{{ error }}</div>
+    <div v-if="notice" class="notice-banner">{{ notice }}</div>
 
     <section class="pp-stats" v-if="plugins.length">
       <div class="pp-stat tone-primary"><b>{{ plugins.length }}</b><span>插件总数</span></div>
       <div class="pp-stat tone-success"><b>{{ healthyCount }}</b><span>运行健康</span></div>
       <div class="pp-stat tone-muted"><b>{{ disabledCount }}</b><span>已禁用</span></div>
+      <div class="pp-stat tone-muted"><b>{{ removableCount }}</b><span>可卸载</span></div>
     </section>
 
     <div class="plugin-grid">
       <article
         v-for="(p, i) in plugins"
-        :key="p.plugin_id"
+        :key="p.key"
         class="plugin-card"
-        :class="{ healthy: isHealthy(p), disabled: p.disabled }"
+        :class="{ healthy: isHealthy(p), disabled: p.runtime && p.disabled }"
         :style="{ animationDelay: `${Math.min(i, 12) * 40}ms` }"
       >
         <div class="plugin-top">
@@ -130,10 +257,10 @@ onUnmounted(() => {
             </svg>
           </div>
           <div class="plugin-titles">
-            <h2>{{ p.name || p.plugin_id }}</h2>
-            <span class="plugin-id">{{ p.plugin_id }}</span>
+            <h2>{{ p.name }}<span class="source-badge" :class="p.runtime ? 'rt' : p.installedSource">{{ sourceLabel(p) }}</span></h2>
+            <span class="plugin-id">{{ p.packageName }}</span>
           </div>
-          <span class="status-chip" :class="{ ok: isHealthy(p), off: p.disabled }">
+          <span class="status-chip" :class="{ ok: isHealthy(p), off: p.runtime && p.disabled }">
             <span class="status-dot"></span>{{ statusLabel(p) }}
           </span>
         </div>
@@ -145,11 +272,11 @@ onUnmounted(() => {
           </div>
           <div>
             <dt>{{ t('agents.tasks') }}</dt>
-            <dd>{{ p.active_tasks }}</dd>
+            <dd>{{ p.runtime ? p.active_tasks : '—' }}</dd>
           </div>
           <div>
             <dt>{{ t('plugins.type') }}</dt>
-            <dd>{{ p.type || '—' }}</dd>
+            <dd>{{ p.runtime ? (p.type || '—') : sourceLabel(p) }}</dd>
           </div>
         </dl>
 
@@ -160,14 +287,15 @@ onUnmounted(() => {
 
         <div class="card-actions">
           <label
+            v-if="p.runtime"
             class="plugin-switch"
-            :class="{ on: !p.disabled, busy: toggling === (p.name || p.plugin_id) }"
+            :class="{ on: !p.disabled, busy: toggling === p.name }"
             :title="p.disabled ? t('plugins.enable') : t('plugins.disable')"
           >
             <input
               type="checkbox"
               :checked="!p.disabled"
-              :disabled="toggling === (p.name || p.plugin_id)"
+              :disabled="toggling === p.name"
               @change="togglePlugin(p)"
             />
             <span class="plugin-switch-slider"></span>
@@ -175,6 +303,14 @@ onUnmounted(() => {
               {{ p.disabled ? t('plugins.enable') : t('plugins.disable') }}
             </span>
           </label>
+          <button
+            v-if="p.installedSource === 'pm'"
+            class="btn btn-danger"
+            :disabled="uninstalling === p.packageName"
+            @click="uninstall(p)"
+          >
+            {{ uninstalling === p.packageName ? '卸载中…' : '卸载' }}
+          </button>
           <button
             v-if="sectionFor(p)"
             class="btn btn-tonal"
@@ -189,6 +325,13 @@ onUnmounted(() => {
           >
             {{ t('plugins.configure') }}
           </router-link>
+          <a
+            v-if="repoUrl(p)"
+            class="btn btn-tonal"
+            :href="repoUrl(p)"
+            target="_blank"
+            rel="noopener noreferrer"
+          >仓库</a>
         </div>
       </article>
 
@@ -225,6 +368,7 @@ onUnmounted(() => {
 .subtitle { color: var(--md-on-surface-variant); font-size: 15px; margin-top: 8px; line-height: 1.6; max-width: 70ch; }
 
 .error-banner { padding: 14px 18px; border-radius: 18px; background: var(--md-error-container); color: var(--md-on-error-container, #410E0B); margin-bottom: var(--space-lg); }
+.notice-banner { padding: 14px 18px; border-radius: 18px; background: var(--md-secondary-container); color: var(--md-on-secondary-container); margin-bottom: var(--space-lg); }
 
 .pp-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-lg); }
 .pp-stat { border-radius: 24px; padding: 18px 20px; display: flex; flex-direction: column; gap: 4px; box-shadow: var(--shadow-1); }
@@ -263,9 +407,12 @@ onUnmounted(() => {
   background: var(--md-primary-container); color: var(--md-on-primary-container);
   display: flex; align-items: center; justify-content: center;
 }
-.plugin-titles { flex: 1; min-width: 0; }
-.plugin-titles h2 { font-size: 17px; font-weight: 750; letter-spacing: -.01em; }
-.plugin-id { font-size: 12px; color: var(--md-on-surface-variant); font-family: ui-monospace, monospace; }
+.plugin-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.plugin-titles h2 { font-size: 17px; font-weight: 750; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.plugin-id { font-size: 12px; color: var(--md-on-surface-variant); font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+.source-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--md-surface-container-highest); color: var(--md-on-surface-variant); }
+.source-badge.rt { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.source-badge.pm { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
 
 .status-chip {
   display: inline-flex; align-items: center; gap: 6px;
@@ -315,6 +462,7 @@ onUnmounted(() => {
 #app .plugins-page .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-1); }
 #app .plugins-page .btn:disabled { opacity: .6; cursor: not-allowed; }
 #app .plugins-page .btn-tonal { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+#app .plugins-page .btn-danger { background: var(--md-error-container); color: #410e0b; }
 
 .empty-state { grid-column: 1 / -1; padding: var(--space-xxl); text-align: center; background: var(--md-surface-container); border-radius: 32px; color: var(--md-on-surface-variant); }
 .empty-state p { margin: 0; font-size: 15px; font-weight: 600; color: var(--md-on-surface); }
