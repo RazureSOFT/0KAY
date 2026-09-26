@@ -4,6 +4,7 @@ import { onMounted, reactive, ref } from 'vue'
 const form = reactive<Record<string, any>>({
   screen_watch: false, computer_use: false, report_agent_host: '',
   mail_mailbox_path: '', mail_imap_host: '', mail_imap_port: 993, mail_imap_user: '', mail_imap_password: '',
+  mail_smtp_host: '', mail_smtp_port: 465, mail_smtp_user: '', mail_smtp_password: '', mail_from: '',
   mcp_enabled: true, onebot_enabled: false, onebot_ws_url: 'ws://127.0.0.1:6700', onebot_http_url: 'http://127.0.0.1:6700', onebot_access_token: '', onebot_trigger_keywords: '',
   onebot_observe_group: true, proactive_daily_limit: 3, proactive_target_limit: 1,
   think_model: '', output_model: '',
@@ -13,6 +14,42 @@ const saving = ref(false)
 const models = ref<string[]>([])
 const modelSource = ref('')
 const modelCards = ref<Array<{ id: string; provider: string; supports_thinking?: boolean }>>([])
+const mailTesting = ref(false)
+const mailResult = ref('')
+const mailOk = ref<boolean | null>(null)
+function mailConfigPayload() {
+  return {
+    mail_imap_host: form.mail_imap_host, mail_imap_port: form.mail_imap_port,
+    mail_imap_user: form.mail_imap_user, mail_imap_password: form.mail_imap_password,
+    mail_smtp_host: form.mail_smtp_host, mail_smtp_port: form.mail_smtp_port,
+    mail_smtp_user: form.mail_smtp_user, mail_smtp_password: form.mail_smtp_password,
+    mail_from: form.mail_from,
+  }
+}
+async function testMail(send = false) {
+  mailTesting.value = true; mailResult.value = ''; mailOk.value = null
+  try {
+    const response = await fetch('/api/life/companion', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'mail_test', payload: { to: send ? (form.mail_from || form.mail_imap_user) : '', config: mailConfigPayload() } }),
+    })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`)
+    const imap = body.imap || {}
+    const smtp = body.smtp || {}
+    const sent = body.sent
+    mailOk.value = !!imap.ok && !!smtp.ok && (!sent || sent.ok)
+    const parts = [
+      `收信 IMAP：${imap.ok ? `✓ 登录成功${imap.messages != null ? ` · 收件箱 ${imap.messages} 封` : ''}` : `✗ ${imap.error || '失败'}`}`,
+      `发信 SMTP：${smtp.ok ? '✓ 登录成功' : `✗ ${smtp.error || '失败'}`}`,
+    ]
+    if (sent) parts.push(`测试邮件：${sent.ok ? `✓ 已发送至 ${sent.to}` : `✗ ${sent.error || '发送失败'}`}`)
+    mailResult.value = parts.join('　·　')
+  } catch (e: any) {
+    mailOk.value = false
+    mailResult.value = e?.message || '测试失败'
+  } finally { mailTesting.value = false }
+}
 async function load() {
   try {
     const [settings, catalog] = await Promise.all([fetch('/api/settings/life'), fetch('/api/models')])
@@ -78,14 +115,35 @@ onMounted(load)
       </article>
 
       <article class="ls-card">
-        <div class="ls-card-head"><span class="ls-ic tone-3">✉</span><h3>邮件 / IMAP</h3></div>
-        <label class="ls-field"><span>离线邮箱 JSON 文件（可选）</span><input v-model="form.mail_mailbox_path" placeholder="mailbox.json" /></label>
-        <label class="ls-field"><span>IMAP 主机</span><input v-model="form.mail_imap_host" placeholder="imap.example.com" /></label>
+        <div class="ls-card-head"><span class="ls-ic tone-3">✉</span><h3>邮件收发</h3></div>
+        <p class="ls-note">收信走 IMAP，发信走 SMTP；密码仅保存在本机 Core settings 文件。可填 <code>mailbox.json</code> 做离线收信。</p>
+        <p class="ls-label">收信 · IMAP</p>
         <div class="ls-row">
+          <label class="ls-field"><span>IMAP 主机</span><input v-model="form.mail_imap_host" placeholder="imap.example.com" /></label>
           <label class="ls-field"><span>端口</span><input v-model.number="form.mail_imap_port" type="number" placeholder="993" /></label>
-          <label class="ls-field"><span>用户名</span><input v-model="form.mail_imap_user" placeholder="user" /></label>
         </div>
-        <label class="ls-field"><span>应用专用密码</span><input v-model="form.mail_imap_password" type="password" placeholder="••••••••" /></label>
+        <div class="ls-row">
+          <label class="ls-field"><span>用户名</span><input v-model="form.mail_imap_user" placeholder="user@example.com" /></label>
+          <label class="ls-field"><span>密码 / 应用专用密码</span><input v-model="form.mail_imap_password" type="password" placeholder="••••••••" /></label>
+        </div>
+        <p class="ls-label">发信 · SMTP</p>
+        <div class="ls-row">
+          <label class="ls-field"><span>SMTP 主机</span><input v-model="form.mail_smtp_host" placeholder="smtp.example.com" /></label>
+          <label class="ls-field"><span>端口</span><input v-model.number="form.mail_smtp_port" type="number" placeholder="465" /></label>
+        </div>
+        <div class="ls-row">
+          <label class="ls-field"><span>用户名</span><input v-model="form.mail_smtp_user" placeholder="user@example.com" /></label>
+          <label class="ls-field"><span>密码 / 应用专用密码</span><input v-model="form.mail_smtp_password" type="password" placeholder="••••••••" /></label>
+        </div>
+        <div class="ls-row">
+          <label class="ls-field"><span>发件人地址（可选）</span><input v-model="form.mail_from" placeholder="留空用 SMTP 用户名" /></label>
+          <label class="ls-field"><span>离线邮箱 JSON（可选）</span><input v-model="form.mail_mailbox_path" placeholder="mailbox.json" /></label>
+        </div>
+        <div class="ls-mail-actions">
+          <button type="button" class="ls-test" :disabled="mailTesting" @click="testMail(false)">{{ mailTesting ? '测试中…' : '测试连接' }}</button>
+          <button type="button" class="ls-test" :disabled="mailTesting" @click="testMail(true)">发送测试邮件</button>
+        </div>
+        <p v-if="mailResult" class="ls-mail-result" :class="mailOk ? 'ok' : 'bad'">{{ mailResult }}</p>
       </article>
 
       <article class="ls-card">
@@ -305,6 +363,20 @@ onMounted(load)
   font-weight: 650;
   animation: ls-rise 320ms var(--ls-spring) both;
 }
+
+.ls-mail-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+#app .ls-mail-actions .ls-test {
+  height: 42px; padding: 0 20px; border: 0; border-radius: 999px; cursor: pointer;
+  font: 700 13px/1 inherit; background: var(--md-secondary-container); color: var(--md-on-secondary-container);
+  transition: transform 240ms var(--ls-spring), box-shadow 200ms;
+}
+#app .ls-mail-actions .ls-test:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-1); }
+#app .ls-mail-actions .ls-test:disabled { opacity: .55; cursor: not-allowed; }
+.ls-mail-result {
+  margin: 4px 0 0; padding: 12px 15px; border-radius: 16px; font-size: 12.5px; line-height: 1.55; font-weight: 600;
+}
+.ls-mail-result.ok { background: var(--md-success-container); color: #0d3b1e; }
+.ls-mail-result.bad { background: var(--md-error-container); color: var(--md-on-error-container, #410e0b); }
 
 @keyframes ls-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes ls-card-in { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }

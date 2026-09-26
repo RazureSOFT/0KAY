@@ -27,11 +27,148 @@ class RuntimeToolConfig:
     mail_imap_port: int = 993
     mail_imap_user: str = ""
     mail_imap_password: str = ""
+    mail_imap_ssl: bool = True
+    mail_smtp_host: str = ""
+    mail_smtp_port: int = 465
+    mail_smtp_user: str = ""
+    mail_smtp_password: str = ""
+    mail_from: str = ""
     mcp_enabled: bool = True
     onebot_enabled: bool = False
     onebot_sender: Any = None
     minecraft_enabled: bool = False
     minecraft_url: str = "http://127.0.0.1:8765"
+
+
+def _imap_credentials(config: "RuntimeToolConfig"):
+    import os
+    host = config.mail_imap_host or os.environ.get("IMAP_HOST", "")
+    user = config.mail_imap_user or os.environ.get("IMAP_USER", "")
+    password = config.mail_imap_password or os.environ.get("IMAP_PASSWORD", "")
+    port = int(config.mail_imap_port or os.environ.get("IMAP_PORT") or 993)
+    use_ssl = getattr(config, "mail_imap_ssl", True)
+    return host, port, user, password, use_ssl
+
+
+def _smtp_credentials(config: "RuntimeToolConfig"):
+    import os
+    host = config.mail_smtp_host or os.environ.get("SMTP_HOST", "")
+    user = config.mail_smtp_user or os.environ.get("SMTP_USER", "")
+    password = config.mail_smtp_password or os.environ.get("SMTP_PASSWORD", "")
+    port = int(config.mail_smtp_port or os.environ.get("SMTP_PORT") or 465)
+    sender = config.mail_from or os.environ.get("MAIL_FROM") or user
+    return host, port, user, password, sender
+
+
+def test_imap(config: "RuntimeToolConfig") -> dict:
+    """Verify IMAP credentials and count INBOX messages."""
+    host, port, user, password, use_ssl = _imap_credentials(config)
+    if not (host and user and password):
+        return {"ok": False, "error": "IMAP 未配置（缺少主机/用户名/密码）"}
+    try:
+        import imaplib
+        conn = imaplib.IMAP4_SSL(host, port=port, timeout=15) if use_ssl else imaplib.IMAP4(host, port=port)
+        try:
+            conn.login(user, password)
+            typ, _ = conn.select("INBOX")
+            total = 0
+            if typ == "OK":
+                try:
+                    typ2, data = conn.search(None, "ALL")
+                    if typ2 == "OK" and data and data[0]:
+                        total = len((data[0] or b"").split())
+                except Exception:
+                    total = 0
+            return {"ok": True, "host": host, "port": port, "user": user, "messages": total}
+        finally:
+            try:
+                conn.logout()
+            except Exception:
+                pass
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+def test_smtp(config: "RuntimeToolConfig") -> dict:
+    """Verify SMTP credentials (connect + STARTTLS/SSL + login)."""
+    host, port, user, password, _sender = _smtp_credentials(config)
+    if not (host and user and password):
+        return {"ok": False, "error": "SMTP 未配置（缺少主机/用户名/密码）"}
+    try:
+        import smtplib
+        if port == 465:
+            server = smtplib.SMTP_SSL(host, port, timeout=15)
+        else:
+            server = smtplib.SMTP(host, port, timeout=15)
+            server.ehlo()
+            try:
+                server.starttls()
+                server.ehlo()
+            except Exception:
+                pass
+        try:
+            server.login(user, password)
+        finally:
+            try:
+                server.quit()
+            except Exception:
+                pass
+        return {"ok": True, "host": host, "port": port, "user": user}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+def send_mail(config: "RuntimeToolConfig", to: str, subject: str, body: str) -> ToolResult:
+    """Send a plain-text email via SMTP."""
+    host, port, user, password, sender = _smtp_credentials(config)
+    if not (host and user and password):
+        return ToolResult(False, None, "SMTP 未配置（缺少主机/用户名/密码）")
+    if not to:
+        return ToolResult(False, None, "缺少收件人")
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.header import Header
+        from email.utils import formataddr
+
+        msg = MIMEText(body or "", "plain", "utf-8")
+        msg["Subject"] = Header(subject or "(无主题)", "utf-8")
+        msg["From"] = formataddr(("L.I.F.E", sender)) if sender else sender
+        msg["To"] = to
+
+        if port == 465:
+            server = smtplib.SMTP_SSL(host, port, timeout=20)
+        else:
+            server = smtplib.SMTP(host, port, timeout=20)
+            server.ehlo()
+            try:
+                server.starttls()
+                server.ehlo()
+            except Exception:
+                pass
+        try:
+            server.login(user, password)
+            server.sendmail(sender or user, [to], msg.as_string())
+        finally:
+            try:
+                server.quit()
+            except Exception:
+                pass
+        return ToolResult(True, {"to": to, "subject": subject, "from": sender})
+    except Exception as e:
+        return ToolResult(False, None, str(e))
+
+
+def mail_status(config: "RuntimeToolConfig", test_to: str = "") -> dict:
+    """Full mail check: IMAP login, SMTP login and an optional test send."""
+    imap = test_imap(config)
+    smtp = test_smtp(config)
+    _host, _port, _user, _password, sender = _smtp_credentials(config)
+    result: dict = {"imap": imap, "smtp": smtp, "from": sender}
+    if test_to and smtp.get("ok"):
+        sent = send_mail(config, test_to, "0KAY 邮箱测试", "这是一封来自 0KAY L.I.F.E 的测试邮件，收到即表示发件配置正确。")
+        result["sent"] = {"ok": sent.success, "to": test_to, "error": sent.error}
+    return result
 
 
 class Tool(ABC):
@@ -189,6 +326,31 @@ class GetMailTool(Tool):
             data=None,
             error="getmail not configured (set L.I.F.E mail settings)",
         )
+
+
+class SendMailTool(Tool):
+    """Tool to send an email via SMTP (config- or env-configured)."""
+
+    @property
+    def name(self) -> str:
+        return "sendmail"
+
+    @property
+    def description(self) -> str:
+        return "Send an email to a recipient. Provide to, subject and body."
+
+    def __init__(self, config: RuntimeToolConfig):
+        self.config = config
+
+    def parameters(self) -> dict:
+        return {"type": "object", "properties": {
+            "to": {"type": "string", "description": "Recipient email address"},
+            "subject": {"type": "string"},
+            "body": {"type": "string"},
+        }, "required": ["to", "body"]}
+
+    async def execute(self, to: str = "", subject: str = "", body: str = "", **kwargs) -> ToolResult:
+        return await asyncio.to_thread(send_mail, self.config, str(to), str(subject), str(body))
 
 
 class SearchTool(Tool):
@@ -738,6 +900,7 @@ def create_default_registry(core_client=None, config: RuntimeToolConfig | None =
     registry = ToolRegistry()
     config = config or RuntimeToolConfig()
     registry.register(GetMailTool(config))
+    registry.register(SendMailTool(config))
     registry.register(SearchTool())
     registry.register(UseAgentTool(core_client=core_client))
     registry.register(WebBrowseTool())

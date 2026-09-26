@@ -38,6 +38,7 @@ class TurnContext:
     adapter_type: str
     persona_context: str
     history: list[dict] = field(default_factory=list)
+    custom_prompt: str = ""
 
 
 class LifeEngine:
@@ -171,7 +172,7 @@ class LifeEngine:
             turn = TurnContext(session_id, user_id, adapter_type, self._persona(persona or {}), previous)
             # The user-authored prompt is sent as the model system prompt (verbatim,
             # ahead of everything else), not merged into the persona description.
-            custom_prompt = str((persona or {}).get("customPrompt") or "").strip()
+            turn.custom_prompt = str((persona or {}).get("customPrompt") or "").strip()
             learned = await asyncio.to_thread(self.companion.persona_evolution_context)
             if learned:
                 turn.persona_context += "\nStable learned traits:\n" + learned
@@ -203,6 +204,7 @@ class LifeEngine:
                 task_context.reset(token)
 
     async def _process_turn(self, turn, message):
+        custom_prompt = turn.custom_prompt
         await asyncio.to_thread(self.companion.observe_user, turn.user_id or "anonymous", message, is_group=turn.adapter_type == "onebot_group")
         if turn.adapter_type == "onebot_group":
             await asyncio.to_thread(self.companion.observe_group, turn.session_id, turn.user_id or "anonymous", message)
@@ -1264,9 +1266,12 @@ class LifeEngine:
         return self.usage.summary()
 
     def apply_tool_settings(self, values):
-        for key in ("mail_mailbox_path", "mail_imap_host", "mail_imap_user", "mail_imap_password"):
+        for key in ("mail_mailbox_path", "mail_imap_host", "mail_imap_user", "mail_imap_password",
+                    "mail_smtp_host", "mail_smtp_user", "mail_smtp_password", "mail_from"):
             setattr(self.tool_config, key, str(values.get(key) or ""))
         self.tool_config.mail_imap_port = int(values.get("mail_imap_port") or 993)
+        self.tool_config.mail_smtp_port = int(values.get("mail_smtp_port") or 465)
+        self.tool_config.mail_imap_ssl = bool(values.get("mail_imap_ssl", True))
         self.tool_config.computer_use = bool(values.get("computer_use", False))
         self.tool_config.mcp_enabled = values.get("mcp_enabled") is not False
         self.tool_config.onebot_enabled = bool(values.get("onebot_enabled", False))
@@ -1279,6 +1284,31 @@ class LifeEngine:
         if values.get("model_routes") is not None:
             self.apply_model_routes(values.get("model_routes"))
         self.companion.set_runtime_policy(int(values.get("proactive_daily_limit", 3)), int(values.get("proactive_target_limit", 1)))
+
+    def mail_test(self, test_to: str = "", overrides: dict | None = None) -> dict:
+        """Check mail credentials (IMAP + SMTP), optionally sending a test email.
+
+        ``overrides`` lets the settings page validate unsaved values directly.
+        """
+        import dataclasses
+        from .tools.tools import mail_status
+        config = self.tool_config
+        if overrides:
+            fields = {f.name for f in dataclasses.fields(self.tool_config)}
+            clean = {}
+            for key, value in overrides.items():
+                if key not in fields:
+                    continue
+                if key.endswith("_port"):
+                    try:
+                        value = int(value)
+                    except (TypeError, ValueError):
+                        continue
+                if key == "mail_imap_ssl":
+                    value = bool(value)
+                clean[key] = value
+            config = dataclasses.replace(self.tool_config, **clean)
+        return mail_status(config, test_to or "")
 
     async def poll_minecraft(self):
         """Ingest new 0kay-minecraft events into durable memory.
