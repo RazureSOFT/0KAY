@@ -75,10 +75,9 @@ func main() {
 		PluginName:   "mocr",
 		Capabilities: []string{"mocr"},
 		SettingsSections: []*pluginv1.SettingsSection{
-			{Id: "usage", Label: "用量", Icon: "usage", Order: 90, Description: "由 mocr 提供的模型用量统计"},
 			{
 				Id:          "mocr",
-				Label:       "模型（mocr）",
+				Label:       "模型",
 				Icon:        "cloud",
 				Order:       20,
 				Description: "mocr 的模型选择策略与运行参数（供应商凭证与模型目录在「供应商」标签）",

@@ -497,7 +497,7 @@ function save() {
         <h1>{{ t('settings.title') }}</h1>
         <p class="subtitle">{{ t('settings.pageDesc') }}</p>
       </div>
-      <button class="btn btn-primary" @click="save">
+      <button v-if="activeTab !== 'about'" class="btn btn-primary" @click="save">
         <span v-if="saved">{{ t('settings.saved') }}</span>
         <span v-else>{{ t('settings.save') }}</span>
       </button>
