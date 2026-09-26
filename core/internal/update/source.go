@@ -99,8 +99,26 @@ type InstalledPlugin struct {
 	Repository string `json:"repository,omitempty"`
 }
 
-// InstalledPlugins lists packages recorded by 0kay-pm, sorted by name.
-func InstalledPlugins() []InstalledPlugin {
+// platformComponents maps published platform packages to their directory inside
+// a source checkout ("." is the umbrella root) and their source repository.
+var platformComponents = map[string]struct {
+	Dir        string
+	Repository string
+}{
+	"@razuresoft/0kay":           {".", "https://github.com/RazureSOFT/0KAY.git"},
+	"@razuresoft/0kay-core":      {"core", "https://github.com/RazureSOFT/0KAY.git"},
+	"@razuresoft/0kay-webui":     {"webui", "https://github.com/RazureSOFT/0KAY.git"},
+	"@razuresoft/0kay-life":      {"life", "https://github.com/RazureSOFT/0KAY.git"},
+	"@razuresoft/0kay-mocr":      {"mocr", "https://github.com/RazureSOFT/0KAY.git"},
+	"@razuresoft/0kay-searxng":   {"searxng", "https://github.com/RazureSOFT/0KAY.git"},
+	"@razuresoft/0kay-pm":        {"pm", "https://github.com/RazureSOFT/0KAY-pm.git"},
+	"@razuresoft/0kay-agent":     {"agent", "https://github.com/RazureSOFT/0KAY-agent.git"},
+	"@razuresoft/0kay-mcp":       {"mcp", "https://github.com/RazureSOFT/0KAY-mcp.git"},
+	"@razuresoft/0kay-minecraft": {"minecraft", "https://github.com/razureink/0KAY-minecraft.git"},
+}
+
+// pmInstalledPluginList lists packages recorded by 0kay-pm.
+func pmInstalledPluginList() []InstalledPlugin {
 	path := pmStatePath()
 	if path == "" {
 		return nil
@@ -120,6 +138,46 @@ func InstalledPlugins() []InstalledPlugin {
 	out := make([]InstalledPlugin, 0, len(state.Installed))
 	for name, record := range state.Installed {
 		out = append(out, InstalledPlugin{Name: name, Repository: record.Repository})
+	}
+	return out
+}
+
+// sourceInstalledPluginList reports platform packages present in the local
+// source checkout, so components run from a git checkout read as installed
+// even though 0kay-pm has no record for them.
+func sourceInstalledPluginList() []InstalledPlugin {
+	root, err := sourceRoot()
+	if err != nil {
+		return nil
+	}
+	out := make([]InstalledPlugin, 0, len(platformComponents))
+	for name, component := range platformComponents {
+		path := root
+		if component.Dir != "." {
+			path = filepath.Join(root, component.Dir)
+		}
+		if info, err := os.Stat(path); err == nil && info.IsDir() {
+			out = append(out, InstalledPlugin{Name: name, Repository: component.Repository})
+		}
+	}
+	return out
+}
+
+// InstalledPlugins lists installed packages (0kay-pm records plus platform
+// components found in the source tree), sorted by name.
+func InstalledPlugins() []InstalledPlugin {
+	merged := map[string]InstalledPlugin{}
+	for _, plugin := range pmInstalledPluginList() {
+		merged[plugin.Name] = plugin
+	}
+	for _, plugin := range sourceInstalledPluginList() {
+		if _, ok := merged[plugin.Name]; !ok {
+			merged[plugin.Name] = plugin
+		}
+	}
+	out := make([]InstalledPlugin, 0, len(merged))
+	for _, plugin := range merged {
+		out = append(out, plugin)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out
