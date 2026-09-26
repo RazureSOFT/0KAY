@@ -81,6 +81,77 @@ const diffStat = computed(() => {
   return ''
 })
 
+interface DiffLine { kind: 'add' | 'del' | 'hunk' | 'meta' | 'ctx'; oldNo: string; newNo: string; text: string }
+interface DiffFile { path: string; lines: DiffLine[] }
+
+/** Parse a unified diff, tracking old/new line numbers for each row. */
+function parseDiff(text: string, fallbackPath: string): DiffFile[] {
+  const files: DiffFile[] = []
+  let current: DiffFile | null = null
+  let oldNo = 0
+  let newNo = 0
+  const push = (line: DiffLine) => { if (!current) { current = { path: fallbackPath, lines: [] }; files.push(current) } current.lines.push(line) }
+  for (const raw of String(text || '').split('\n')) {
+    if (raw.startsWith('+++ ')) {
+      const path = raw.slice(4).split('\t')[0].trim().replace(/^[ab]\//, '')
+      current = { path: path === '/dev/null' ? fallbackPath : path, lines: [] }
+      files.push(current)
+      continue
+    }
+    if (raw.startsWith('--- ')) continue
+    if (raw.startsWith('diff --git')) {
+      if (!current) { current = { path: fallbackPath, lines: [] }; files.push(current) }
+      continue
+    }
+    if (raw.startsWith('@@')) {
+      const match = /@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(raw)
+      if (match) { oldNo = parseInt(match[1], 10); newNo = parseInt(match[2], 10) }
+      push({ kind: 'hunk', oldNo: '', newNo: '', text: raw })
+      continue
+    }
+    if (/^(index |new file|deleted file|old mode|new mode|similarity |rename |copy )/.test(raw)) {
+      push({ kind: 'meta', oldNo: '', newNo: '', text: raw })
+      continue
+    }
+    if (raw.startsWith('+')) { push({ kind: 'add', oldNo: '', newNo: String(newNo++), text: raw.slice(1) }); continue }
+    if (raw.startsWith('-')) { push({ kind: 'del', oldNo: String(oldNo++), newNo: '', text: raw.slice(1) }); continue }
+    if (raw.startsWith('\\')) { push({ kind: 'meta', oldNo: '', newNo: '', text: raw }); continue }
+    push({ kind: 'ctx', oldNo: String(oldNo++), newNo: String(newNo++), text: raw })
+  }
+  return files
+}
+
+const diffFiles = computed<DiffFile[]>(() => {
+  const name = tool.value
+  const d = inner.value
+  const a = args.value
+  if (name === 'edit' && d) return parseDiff(String(d.diff || ''), String(a?.filePath || d.path || ''))
+  if (name === 'apply_patch') {
+    const out: DiffFile[] = []
+    if (Array.isArray(d?.files)) {
+      for (const file of d.files) {
+        const parsed = parseDiff(String(file?.diff || ''), String(file?.path || ''))
+        if (parsed.length) out.push(...parsed)
+        else out.push({ path: String(file?.path || ''), lines: [] })
+      }
+      return out
+    }
+    if (Array.isArray(a?.patches)) {
+      const text = a.patches.map((patch: any) => String(patch?.patch ?? patch?.diff ?? patch?.text ?? '')).join('\n')
+      return parseDiff(text, '')
+    }
+    return out
+  }
+  return []
+})
+
+function fileStat(file: DiffFile): string {
+  const lines = file.lines || []
+  const added = lines.filter((line) => line.kind === 'add').length
+  const removed = lines.filter((line) => line.kind === 'del').length
+  return added || removed ? `+${added} −${removed}` : ''
+}
+
 const summary = computed(() => {
   const name = tool.value
   const a = args.value
@@ -139,20 +210,8 @@ const sections = computed<Section[]>(() => {
     out.push({ label: tr('内容', 'Content'), text: `${typeof d.lines === 'number' ? d.lines : '—'} ${tr('行', 'lines')}${d.created ? ` · ${tr('新建文件', 'created')}` : ''} · ${d.bytes ?? '—'} B` })
     return out
   }
-  if (name === 'edit' && d) {
-    return [
-      { label: tr('文件', 'File'), text: String(d.path || '') },
-      { label: `diff${typeof d.replacements === 'number' && d.replacements > 1 ? ` · ×${d.replacements}` : ''}`, text: String(d.diff || ''), mono: true },
-    ]
-  }
-  if (name === 'apply_patch' && Array.isArray(d?.files) && d.files.length) {
-    const out: Section[] = []
-    for (const file of d.files) {
-      out.push({ label: tr('文件', 'File'), text: String(file?.path || '') })
-      if (file?.diff) out.push({ label: 'diff', text: String(file.diff), mono: true })
-    }
-    return out
-  }
+  // edit / apply_patch render a colored diff (see diffFiles) instead of raw text.
+  if (name === 'edit' || name === 'apply_patch') return []
   if (name === 'read' && d) {
     const out: Section[] = [{ label: tr('文件', 'File'), text: String(d.path || '') }]
     out.push({ label: `${tr('第', 'line')} ${d.offset ?? '—'} ${tr('行起', 'onward')}`, text: String(d.content || ''), mono: true })
@@ -193,13 +252,31 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       <span class="tool-chevron" aria-hidden="true">▸</span>
     </button>
     <div v-if="open && !isSearch" class="tool-card-body">
-      <p v-if="step.state === 'running' && !sections.length" class="muted">{{ tr('执行中…', 'Running…') }}</p>
-      <template v-for="(section, index) in sections" :key="index">
-        <small v-if="section.label" class="tool-section-label">{{ section.label }}</small>
-        <pre v-if="section.mono">{{ section.text }}</pre>
-        <p v-else class="tool-section-text">{{ section.text }}</p>
+      <p v-if="step.state === 'running' && !sections.length && !diffFiles.length" class="muted">{{ tr('执行中…', 'Running…') }}</p>
+      <div v-if="diffFiles.length" class="diff-wrap">
+        <div v-for="(file, fi) in diffFiles" :key="fi" class="diff-file">
+          <div class="diff-file-head">
+            <span class="diff-file-path" :title="file.path">{{ file.path || '—' }}</span>
+            <span v-if="fileStat(file)" class="diff-file-stat">{{ fileStat(file) }}</span>
+          </div>
+          <div class="diff-body">
+            <div v-for="(line, li) in file.lines" :key="li" class="diff-line" :class="line.kind">
+              <span class="diff-no">{{ line.oldNo }}</span>
+              <span class="diff-no">{{ line.newNo }}</span>
+              <span class="diff-sign">{{ line.kind === 'add' ? '+' : line.kind === 'del' ? '-' : '' }}</span>
+              <span class="diff-text">{{ line.text }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <template v-else>
+        <template v-for="(section, index) in sections" :key="index">
+          <small v-if="section.label" class="tool-section-label">{{ section.label }}</small>
+          <pre v-if="section.mono">{{ section.text }}</pre>
+          <p v-else class="tool-section-text">{{ section.text }}</p>
+        </template>
       </template>
-      <p v-if="!sections.length && step.state !== 'running' && !step.error" class="muted">{{ tr('执行完成，无输出', 'Completed with no output') }}</p>
+      <p v-if="!sections.length && !diffFiles.length && step.state !== 'running' && !step.error" class="muted">{{ tr('执行完成，无输出', 'Completed with no output') }}</p>
       <p v-if="step.error" class="tool-error">{{ formatError?.(step.error) || step.error }}</p>
     </div>
     <div v-if="searchOpen" class="tool-dialog-backdrop" @click.self="searchOpen = false">
@@ -234,11 +311,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 </template>
 
 <style scoped>
-.tool-card{border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container);margin:8px 0;overflow:hidden}
+.tool-card{--code-font:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,'SFMono-Regular',Menlo,monospace;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container);margin:8px 0;overflow:hidden}
 button.tool-card-head{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;border-radius:0;background:transparent;padding:10px 12px;cursor:pointer;font-size:12px}
 button.tool-card-head:hover{background:var(--md-secondary-container)}
 .tool-kind{flex-shrink:0;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--md-on-surface-variant)}
-.tool-summary{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:11.5px}
+.tool-summary{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--code-font);font-size:11.5px}
 .tool-stat{flex-shrink:0;font-size:11px;font-weight:600;color:var(--md-primary);border:1px solid var(--md-outline-variant);border-radius:999px;padding:1px 8px}
 .tool-state{flex-shrink:0;font-size:11px;color:var(--md-on-surface-variant)}
 .tool-chevron{flex-shrink:0;color:var(--md-on-surface-variant);font-size:11px;transition:transform .15s}
@@ -250,7 +327,7 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .tool-dot.cancelled{color:var(--md-on-surface-variant)}
 .tool-card-body{padding:4px 12px 12px;border-top:1px solid var(--md-outline-variant);display:flex;flex-direction:column;gap:6px}
 .tool-section-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--md-on-surface-variant);margin-top:4px}
-.tool-card-body pre{margin:0;max-height:340px;overflow:auto;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.tool-card-body pre{margin:0;max-height:340px;overflow:auto;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:8px;padding:8px 10px;font-family:var(--code-font);font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
 .tool-section-text{margin:0;font-size:12.5px;overflow-wrap:anywhere}
 .tool-error{background:var(--md-error-container);padding:8px 12px;border-radius:8px;margin:0;font-size:12px;overflow-wrap:anywhere}
 .muted{font-size:12px;color:var(--md-on-surface-variant);margin:0}
@@ -278,4 +355,28 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .tool-card-body{padding:8px 15px 15px;gap:8px;border-top-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}
 .tool-card-body pre{border-radius:14px;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}
 .tool-section-label{font-weight:700}
+
+/* Colored diff (edit / apply_patch): green = added, red = deleted */
+.diff-wrap{display:flex;flex-direction:column;gap:10px}
+.diff-file{border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);border-radius:14px;overflow:hidden;background:var(--md-surface-container-lowest)}
+.diff-file-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--md-surface-container);font-size:11.5px;font-weight:650}
+.diff-file-path{font-family:var(--code-font);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.diff-file-stat{flex:none;font-family:var(--code-font);color:var(--md-on-surface-variant)}
+.diff-body{max-height:360px;overflow:auto;font-family:var(--code-font);font-size:12px;line-height:1.55;padding:4px 0}
+.diff-line{display:grid;grid-template-columns:40px 40px 18px 1fr;white-space:pre;min-width:max-content}
+.diff-no{text-align:right;padding:0 6px;color:var(--md-on-surface-variant);opacity:.6;user-select:none;font-variant-numeric:tabular-nums}
+.diff-sign{text-align:center;user-select:none;opacity:.9}
+.diff-text{padding-right:12px}
+.diff-line.add{background:color-mix(in srgb,#2ea043 20%,transparent);color:#116329}
+.diff-line.del{background:color-mix(in srgb,#cf222e 18%,transparent);color:#82071e}
+.diff-line.add .diff-sign{color:#116329;font-weight:700}
+.diff-line.del .diff-sign{color:#cf222e;font-weight:700}
+.diff-line.hunk{background:var(--md-surface-container);color:var(--md-on-surface-variant)}
+.diff-line.meta{color:var(--md-on-surface-variant);opacity:.75}
+@media (prefers-color-scheme: dark){
+  .diff-line.add{color:#7ee787}
+  .diff-line.add .diff-sign{color:#7ee787}
+  .diff-line.del{color:#ffa198}
+  .diff-line.del .diff-sign{color:#ffa198}
+}
 </style>

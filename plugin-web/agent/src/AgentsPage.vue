@@ -380,7 +380,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
 </template>
 
 <style scoped>
-.workspace{display:flex;height:100%;min-height:0;background:var(--md-surface);color:var(--md-on-surface)}
+.workspace{--code-font:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,'SFMono-Regular',Menlo,monospace;display:flex;height:100%;min-height:0;background:var(--md-surface);color:var(--md-on-surface)}
 
 /* ---- baseline controls ---- */
 button,input,textarea,select{font:inherit;color:inherit;border:1px solid var(--md-outline-variant);border-radius:9px;background:var(--md-surface-container-lowest);padding:9px 12px}
@@ -426,7 +426,7 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .ledger>header h2{font-size:18px;font-weight:650}
 .ledger-entry{border:1px solid var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-lowest);padding:14px 16px;margin:10px 0;box-shadow:var(--shadow-1)}
 .ledger-entry>div{display:flex;align-items:center;gap:10px;font-size:12px}
-.ledger-entry>div>span:first-child{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--md-surface-container);padding:3px 8px;border-radius:6px;font-weight:600}
+.ledger-entry>div>span:first-child{font-family:var(--code-font);background:var(--md-surface-container);padding:3px 8px;border-radius:6px;font-weight:600}
 .ledger-entry>div small{margin-left:auto}
 .ledger-entry>p{margin:8px 0;font-size:13.5px;line-height:1.6;overflow-wrap:anywhere}
 .ledger-entry details{margin-top:8px;border-radius:10px;background:var(--md-surface-container);padding:8px 12px;font-size:12px}
@@ -470,10 +470,10 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 
 /* agent speech / markdown inside response */
 .agent-speech{margin:6px 0;padding:2px 0;line-height:1.7}
-.model-annotation{display:block;font-size:11px;opacity:.7;margin-bottom:4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.model-annotation{display:block;font-size:11px;opacity:.7;margin-bottom:4px;font-family:var(--code-font)}
 .agent-speech :deep(p){margin:.45em 0}
 .agent-speech :deep(pre){background:var(--md-surface-container);border:1px solid var(--md-outline-variant);border-radius:10px;padding:12px 14px;max-height:460px;overflow:auto;font-size:12.5px}
-.agent-speech :deep(code){font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.agent-speech :deep(code){font-family:var(--code-font)}
 .agent-speech :deep(ul,.agent-speech :deep(ol)){padding-left:20px;margin:.4em 0}
 
 /* ---- steps ---- */
@@ -482,8 +482,8 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .steps summary{cursor:pointer;font-size:12.5px;font-weight:550}
 .steps summary small{margin-left:10px;font-weight:600}
 .steps summary::marker{color:var(--md-on-surface-variant)}
-.steps details pre{margin:10px 0 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;white-space:pre-wrap;max-height:400px}
-pre{max-height:450px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.steps details pre{margin:10px 0 0;font-family:var(--code-font);font-size:12.5px;white-space:pre-wrap;max-height:400px}
+pre{max-height:450px;overflow:auto;font-family:var(--code-font)}
 
 /* ---- subagent card ---- */
 .subagent-card{border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest);overflow:hidden;box-shadow:var(--shadow-1)}
