@@ -1,20 +1,26 @@
 package gateway
 
 import (
-	"0kay/core/internal/pairing"
-	"0kay/core/internal/server"
-	agentv1 "0kay/gen/agent/v1"
-	lifev1 "0kay/gen/life/v1"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
+
+	"0kay/core/internal/pairing"
+	"0kay/core/internal/server"
+	agentv1 "0kay/gen/agent/v1"
+	lifev1 "0kay/gen/life/v1"
 )
 
 func (g *Gateway) handleAgentWorkspace(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" && !(r.Method == "POST" && r.URL.Path == "/api/agent/workspace") {
-		http.Error(w, "method not allowed", 405)
+	// GET browses; POST creates a folder — but only on /api/agent/workspace
+	// (/api/agent/host is read-only).
+	if r.Method == http.MethodPost && r.URL.Path != "/api/agent/workspace" {
+		allowMethod(w, r, http.MethodGet)
+		return
+	}
+	if !allowMethod(w, r, http.MethodGet, http.MethodPost) {
 		return
 	}
 	id := r.URL.Query().Get("executor_id")
@@ -25,7 +31,7 @@ func (g *Gateway) handleAgentWorkspace(w http.ResponseWriter, r *http.Request) {
 		}
 		conn, err := g.dial(agent.Address)
 		if err != nil {
-			http.Error(w, err.Error(), 502)
+			upstreamError(w, err.Error())
 			return
 		}
 		tool := "workspace_browse"
@@ -33,13 +39,12 @@ func (g *Gateway) handleAgentWorkspace(w http.ResponseWriter, r *http.Request) {
 			tool = "host_status"
 		}
 		args, _ := json.Marshal(map[string]string{"path": r.URL.Query().Get("path")})
-		if r.Method == "POST" {
+		if r.Method == http.MethodPost {
 			var body struct {
 				Path string `json:"path"`
 				Name string `json:"name"`
 			}
-			if json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192)).Decode(&body) != nil {
-				http.Error(w, "invalid folder request", 400)
+			if !decodeBody(w, r, &body, maxSmallBody) {
 				return
 			}
 			tool = "workspace_mkdir"
@@ -49,30 +54,31 @@ func (g *Gateway) handleAgentWorkspace(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 		result, err := agentv1.NewAgentServiceClient(conn).RunDirect(pairing.CallbackContext(ctx, agent.Address), &agentv1.RunDirectRequest{Tool: tool, Args: string(args)})
 		if err != nil {
-			http.Error(w, err.Error(), 502)
+			upstreamError(w, err.Error())
 			return
 		}
 		if !result.Success {
-			http.Error(w, result.Error, 400)
+			writeErr(w, http.StatusBadRequest, "workspace_error", result.Error)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, result.Result)
+		writeRawJSON(w, http.StatusOK, result.Result)
 		return
 	}
-	http.Error(w, "selected executor unavailable", 503)
+	unavailable(w, "selected executor unavailable")
 }
 
 func (g *Gateway) handleAgentCompact(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+	if !allowMethod(w, r, http.MethodPost) {
 		return
 	}
 	var body struct {
 		SessionID string `json:"session_id"`
 	}
-	if json.NewDecoder(r.Body).Decode(&body) != nil || g.localCore == nil || !g.localCore.HasAgentSession(body.SessionID) {
-		http.Error(w, "invalid session", 400)
+	if !decodeBody(w, r, &body, maxSmallBody) {
+		return
+	}
+	if g.localCore == nil || !g.localCore.HasAgentSession(body.SessionID) {
+		badRequest(w, "invalid session")
 		return
 	}
 	tasks := g.localCore.ListTasks()
@@ -83,7 +89,7 @@ func (g *Gateway) handleAgentCompact(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if task["state"] == "running" || task["state"] == "pending" {
-			http.Error(w, "wait for active work to finish", 409)
+			writeErr(w, http.StatusConflict, "conflict", "wait for active work to finish")
 			return
 		}
 		if task["kind"] == "compact" && task["state"] == "done" {
@@ -97,18 +103,18 @@ func (g *Gateway) handleAgentCompact(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(history) == 0 {
-		http.Error(w, "no conversation to compact", 400)
+		badRequest(w, "no conversation to compact")
 		return
 	}
 	lifes := g.registry.GetPluginsByCapability("life")
 	if len(lifes) == 0 {
-		http.Error(w, "LIFE unavailable", 503)
+		unavailable(w, "LIFE unavailable")
 		return
 	}
 	id := fmt.Sprintf("compact:%d", time.Now().UnixNano())
 	event := server.TaskEvent{TaskID: id, SessionID: body.SessionID, CallerID: "webui", Kind: "compact", Prompt: "/compact", State: "running"}
 	if err := g.localCore.RecordTask(event); err != nil {
-		http.Error(w, err.Error(), 409)
+		writeErr(w, http.StatusConflict, "conflict", err.Error())
 		return
 	}
 	conn, err := g.dial(lifes[0].Address)
@@ -116,7 +122,7 @@ func (g *Gateway) handleAgentCompact(w http.ResponseWriter, r *http.Request) {
 		event.State = "failed"
 		event.Error = err.Error()
 		g.localCore.RecordTask(event)
-		http.Error(w, err.Error(), 502)
+		upstreamError(w, err.Error())
 		return
 	}
 	data, _ := json.Marshal(history)
@@ -130,22 +136,21 @@ func (g *Gateway) handleAgentCompact(w http.ResponseWriter, r *http.Request) {
 			event.Error = response.GetError()
 		}
 		g.localCore.RecordTask(event)
-		http.Error(w, event.Error, 502)
+		upstreamError(w, event.Error)
 		return
 	}
 	if response.Summary == "" {
 		event.State = "failed"
 		event.Error = "empty compaction summary"
 		g.localCore.RecordTask(event)
-		http.Error(w, event.Error, 502)
+		upstreamError(w, event.Error)
 		return
 	}
 	event.State = "done"
 	event.Result = response.Summary
 	if err := g.localCore.RecordTask(event); err != nil {
-		http.Error(w, err.Error(), 409)
+		writeErr(w, http.StatusConflict, "conflict", err.Error())
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"summary": response.Summary})
+	writeJSON(w, http.StatusOK, map[string]string{"summary": response.Summary})
 }

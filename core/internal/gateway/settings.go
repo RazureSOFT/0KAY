@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -10,41 +9,56 @@ import (
 
 // handleSettingsSections lists plugin-contributed settings sections.
 // Sections owned by an admin-disabled plugin are omitted.
+//
+//	GET /api/settings/sections            → { sections: [...] }
+//	GET /api/settings/sections?values=1   → { sections: [ {..., values: {...}} ] }
+//
+// The ?values=1 form exists so the settings page can render section values in
+// one round trip instead of issuing one GET per section.
 func (g *Gateway) handleSettingsSections(w http.ResponseWriter, r *http.Request) {
-	if g.settingsStore == nil {
-		http.Error(w, "settings store not ready", http.StatusServiceUnavailable)
+	if !allowMethod(w, r, http.MethodGet) {
 		return
 	}
+	if g.settingsStore == nil {
+		unavailable(w, "settings store not ready")
+		return
+	}
+	withValues := r.URL.Query().Get("values") == "1"
 	all := g.settingsStore.List()
-	out := make([]settings.Section, 0, len(all))
+	type sectionRow struct {
+		settings.Section
+		Values map[string]interface{} `json:"values,omitempty"`
+	}
+	out := make([]sectionRow, 0, len(all))
 	for _, sec := range all {
 		if sec.PluginName != "" && g.registry != nil && g.registry.IsDisabled(sec.PluginName) {
 			continue
 		}
-		out = append(out, sec)
+		row := sectionRow{Section: sec}
+		if withValues {
+			row.Values = g.settingsStore.GetValues(sec.ID)
+		}
+		out = append(out, row)
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"sections": out,
-	})
+	writeJSON(w, http.StatusOK, map[string]interface{}{"sections": out})
 }
 
 // handleSettingsSection handles GET/POST values for /api/settings/{id}.
 func (g *Gateway) handleSettingsSection(w http.ResponseWriter, r *http.Request) {
 	if g.settingsStore == nil {
-		http.Error(w, "settings store not ready", http.StatusServiceUnavailable)
+		unavailable(w, "settings store not ready")
 		return
 	}
 	id := strings.TrimPrefix(r.URL.Path, "/api/settings/")
 	if id == "" || id == "sections" {
-		http.Error(w, "section id required", http.StatusBadRequest)
+		badRequest(w, "section id required")
 		return
 	}
 
 	// Block access to sections owned by an admin-disabled plugin.
 	if sec, ok := g.settingsStore.Get(id); ok && sec.PluginName != "" &&
 		g.registry != nil && g.registry.IsDisabled(sec.PluginName) {
-		http.Error(w, "section disabled", http.StatusForbidden)
+		writeErr(w, http.StatusForbidden, "section_disabled", "section disabled")
 		return
 	}
 
@@ -52,19 +66,17 @@ func (g *Gateway) handleSettingsSection(w http.ResponseWriter, r *http.Request) 
 	case http.MethodGet:
 		sec, ok := g.settingsStore.Get(id)
 		if !ok {
-			http.Error(w, "section not found", http.StatusNotFound)
+			notFound(w, "section not found")
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"section": sec,
 			"values":  g.settingsStore.GetValues(id),
 		})
 
 	case http.MethodPost, http.MethodPut:
 		var body map[string]interface{}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid request", http.StatusBadRequest)
+		if !decodeBody(w, r, &body, maxSmallBody) {
 			return
 		}
 		// accept either flat values or {values:{...}}
@@ -73,7 +85,7 @@ func (g *Gateway) handleSettingsSection(w http.ResponseWriter, r *http.Request) 
 			vals = v
 		}
 		if err := g.settingsStore.SetValues(id, vals); err != nil {
-			http.Error(w, "section not found", http.StatusNotFound)
+			notFound(w, "section not found")
 			return
 		}
 		// Special-case life permissions mirror for backward compatibility
@@ -91,14 +103,13 @@ func (g *Gateway) handleSettingsSection(w http.ResponseWriter, r *http.Request) 
 			g.localCore.SetPermissions(p)
 			g.forwardLifePermissions(p)
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"section": mustSection(g, id),
 			"values":  g.settingsStore.GetValues(id),
 		})
 
 	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		allowMethod(w, r, http.MethodGet, http.MethodPost, http.MethodPut)
 	}
 }
 

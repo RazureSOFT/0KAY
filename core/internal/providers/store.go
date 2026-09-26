@@ -10,16 +10,48 @@ import (
 )
 
 // ProviderConfig is one configured AI provider (multi-provider support).
+//
+// APIKey is the stored secret. It is never sent over HTTP: Store.Snapshot
+// clears it and fills APIKeyMasked instead, and callers that need the secret
+// use ResolveModel / SnapshotRaw / Secret (all in-process only).
 type ProviderConfig struct {
 	ID             string   `json:"id"`
 	Provider       string   `json:"provider"`
 	Name           string   `json:"name,omitempty"`
 	BaseURL        string   `json:"base_url"`
 	APIKey         string   `json:"api_key"`
+	APIKeyMasked   string   `json:"api_key_masked,omitempty"`
 	Models         []string `json:"models"`
 	DisabledModels []string `json:"disabled_models,omitempty"`
 	DefaultModel   string   `json:"default_model"`
 	Enabled        bool     `json:"enabled"`
+}
+
+// MaskKey renders an API key safe for transport and logging: a short prefix so
+// humans can recognise the credential, the tail so revocation is identifiable,
+// and nothing usable in between. Empty keys stay empty.
+func MaskKey(key string) string {
+	if key == "" {
+		return ""
+	}
+	if len(key) <= 8 {
+		return strings.Repeat("*", len(key))
+	}
+	head := key[:4]
+	return head + strings.Repeat("*", 12) + key[len(key)-4:]
+}
+
+// IsMasked reports whether v should be treated as a masked placeholder rather
+// than a new secret: it is empty, it is the masked form of key, or (when no
+// secret is known) it contains the masking filler.
+func IsMasked(v, key string) bool {
+	if v == "" {
+		return true
+	}
+	if key != "" {
+		return v == MaskKey(key)
+	}
+	return strings.Contains(v, "*")
 }
 
 // IsModelEnabled reports whether a model is active on this provider.
@@ -200,16 +232,67 @@ func (s *Store) saveLocked() error {
 	return os.Rename(temporary, s.path)
 }
 
-// Snapshot returns a copy of the current config (API keys included for admin UI).
+// Snapshot returns a copy of the current config with every API key replaced by
+// its mask. This is the shape served over HTTP, so no secret can leak by
+// accident. Use SnapshotRaw / Secret / ResolveModel in-process when the real
+// credential is needed.
 func (s *Store) Snapshot() File {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := File{
+	return redactFile(s.data)
+}
+
+// SnapshotRaw returns a copy of the current config including plaintext API
+// keys. Never serialize this to an HTTP response.
+func (s *Store) SnapshotRaw() File {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return File{
 		DefaultProviderID: s.data.DefaultProviderID,
 		DefaultModel:      s.data.DefaultModel,
 		Providers:         append([]ProviderConfig{}, s.data.Providers...),
 	}
+}
+
+// Secret returns the plaintext API key for one provider ("" when unknown).
+func (s *Store) Secret(id string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, p := range s.data.Providers {
+		if p.ID == id {
+			return p.APIKey
+		}
+	}
+	return ""
+}
+
+func redactFile(f File) File {
+	out := File{
+		DefaultProviderID: f.DefaultProviderID,
+		DefaultModel:      f.DefaultModel,
+		Providers:         make([]ProviderConfig, 0, len(f.Providers)),
+	}
+	for _, p := range f.Providers {
+		out.Providers = append(out.Providers, redactProvider(p))
+	}
 	return out
+}
+
+func redactProvider(p ProviderConfig) ProviderConfig {
+	if p.APIKey != "" {
+		p.APIKeyMasked = MaskKey(p.APIKey)
+	}
+	p.APIKey = ""
+	return p
+}
+
+// preserveSecret keeps the stored credential when an incoming update carries
+// nothing, or carries back the mask the API just handed out.
+func preserveSecret(incoming *ProviderConfig, existing string) {
+	if IsMasked(incoming.APIKey, existing) {
+		incoming.APIKey = existing
+	}
+	incoming.APIKeyMasked = ""
 }
 
 // Replace overwrites the entire store.
@@ -218,6 +301,13 @@ func (s *Store) Replace(f File) error {
 	defer s.mu.Unlock()
 	if f.Providers == nil {
 		f.Providers = []ProviderConfig{}
+	}
+	previous := map[string]string{}
+	for _, p := range s.data.Providers {
+		previous[p.ID] = p.APIKey
+	}
+	for i := range f.Providers {
+		preserveSecret(&f.Providers[i], previous[f.Providers[i].ID])
 	}
 	dedupeFile(&f)
 	s.data = f
@@ -236,6 +326,7 @@ func (s *Store) Upsert(p ProviderConfig) error {
 	found := false
 	for i := range s.data.Providers {
 		if s.data.Providers[i].ID == p.ID {
+			preserveSecret(&p, s.data.Providers[i].APIKey)
 			s.data.Providers[i] = p
 			found = true
 			break
@@ -258,6 +349,7 @@ func (s *Store) Upsert(p ProviderConfig) error {
 					p.DisabledModels = append(p.DisabledModels, d)
 				}
 			}
+			preserveSecret(&p, existing.APIKey)
 			*existing = p
 			found = true
 			break

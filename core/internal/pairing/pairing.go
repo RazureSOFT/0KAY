@@ -203,20 +203,141 @@ func apiToken(token string) bool {
 	expected := os.Getenv("CORE_API_TOKEN")
 	return expected != "" && token != "" && subtle.ConstantTimeCompare([]byte(token), []byte(expected)) == 1
 }
+
+// SessionCookie carries a paired-device or API token so a browser frontend can
+// authenticate once instead of attaching an Authorization header to every call
+// (EventSource and WebSocket cannot send headers at all).
+const SessionCookie = "0kay_session"
+
+func bearerToken(header string) string {
+	if len(header) > 7 && strings.EqualFold(header[:7], "Bearer ") {
+		return strings.TrimSpace(header[7:])
+	}
+	return ""
+}
+
+// authorized reports whether the caller may reach the API and names the method
+// that satisfied the check. Trusted (loopback / CORE_TRUSTED_NETWORKS) callers
+// always pass; everyone else needs a paired-device token, the API token, or the
+// session cookie minted by POST /api/auth/session.
+func (s *Store) authorized(r *http.Request) (bool, string) {
+	if s.trustedPeer(r.RemoteAddr) {
+		return true, "trusted"
+	}
+	if token := bearerToken(r.Header.Get("Authorization")); token != "" && (s.valid(token) || apiToken(token)) {
+		return true, "token"
+	}
+	if cookie, err := r.Cookie(SessionCookie); err == nil && cookie.Value != "" {
+		if s.valid(cookie.Value) || apiToken(cookie.Value) {
+			return true, "cookie"
+		}
+	}
+	return false, ""
+}
+
+func writeJSON(w http.ResponseWriter, status int, value any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(value)
+}
+
+func writeErr(w http.ResponseWriter, status int, code, message string) {
+	writeJSON(w, status, map[string]string{"error": message, "code": code})
+}
+
+// handleSession implements the browser session endpoints. They run ahead of the
+// authentication gate so an unauthenticated caller can still discover that a
+// credential is required and supply one.
+//
+//	GET    /api/auth/session  -> {authenticated, method, requires_auth, core_id}
+//	POST   /api/auth/session  {"token": "..."} -> sets the HttpOnly session cookie
+//	DELETE /api/auth/session  -> clears the session cookie
+func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet, http.MethodHead:
+		ok, method := s.authorized(r)
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"authenticated": ok,
+			"method":        method,
+			"requires_auth": !s.trustedPeer(r.RemoteAddr),
+			"core_id":       s.ID,
+			"lan_enabled":   s.enforce,
+		})
+	case http.MethodPost:
+		var body struct {
+			Token string `json:"token"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+			writeErr(w, http.StatusBadRequest, "bad_request", "invalid request")
+			return
+		}
+		token := strings.TrimSpace(body.Token)
+		if token == "" {
+			if !s.trustedPeer(r.RemoteAddr) {
+				writeErr(w, http.StatusUnauthorized, "unauthenticated", "paired device or API token required")
+				return
+			}
+		} else if !s.valid(token) && !apiToken(token) {
+			writeErr(w, http.StatusUnauthorized, "unauthenticated", "invalid token")
+			return
+		}
+		if token != "" {
+			http.SetCookie(w, &http.Cookie{
+				Name:     SessionCookie,
+				Value:    token,
+				Path:     "/",
+				MaxAge:   30 * 24 * 3600,
+				HttpOnly: true,
+				SameSite: http.SameSiteStrictMode,
+				Secure:   r.TLS != nil,
+			})
+		}
+		ok, method := s.authorized(r)
+		if token != "" {
+			// The freshly minted cookie is not on this request, so report the
+			// credential that was just accepted.
+			ok, method = true, "cookie"
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"authenticated": ok,
+			"method":        method,
+			"requires_auth": !s.trustedPeer(r.RemoteAddr),
+			"core_id":       s.ID,
+		})
+	case http.MethodDelete:
+		http.SetCookie(w, &http.Cookie{
+			Name:     SessionCookie,
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			HttpOnly: true,
+			SameSite: http.SameSiteStrictMode,
+			Secure:   r.TLS != nil,
+		})
+		writeJSON(w, http.StatusOK, map[string]interface{}{"authenticated": false, "method": ""})
+	default:
+		w.Header().Set("Allow", "GET, HEAD, POST, DELETE, OPTIONS")
+		writeErr(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+	}
+}
+
 func (s *Store) HTTP(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/pairing/") {
 			s.handle(w, r)
 			return
 		}
+		if r.URL.Path == "/api/auth/session" {
+			s.handleSession(w, r)
+			return
+		}
 		// Any non-loopback caller (LAN or container network) must present a paired-device
-		// or API token. Loopback and CORE_TRUSTED_NETWORKS callers stay exempt.
-		if !s.trustedPeer(r.RemoteAddr) {
-			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-			if !s.valid(token) && !apiToken(token) {
-				http.Error(w, "paired device or API token required", 401)
-				return
-			}
+		// token, the API token, or the session cookie. Loopback and
+		// CORE_TRUSTED_NETWORKS callers stay exempt.
+		if ok, _ := s.authorized(r); !ok {
+			w.Header().Set("WWW-Authenticate", `Bearer realm="0kay"`)
+			writeErr(w, http.StatusUnauthorized, "unauthenticated", "paired device or API token required")
+			return
 		}
 		next.ServeHTTP(w, r)
 	})

@@ -27,16 +27,8 @@ type pluginUpdateCheck struct {
 	Error      string `json:"error,omitempty"`
 }
 
-func writeJSON(w http.ResponseWriter, status int, value any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(value)
-}
-
 func (g *Gateway) handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !allowMethod(w, r, http.MethodGet) {
 		return
 	}
 	owner, repo := update.PlatformRepository()
@@ -56,9 +48,7 @@ func (g *Gateway) handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 
 // handleUpdateApply starts a stop -> update -> start run for one component.
 func (g *Gateway) handleUpdateApply(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !allowMethod(w, r, http.MethodPost) {
 		return
 	}
 	var req struct {
@@ -86,18 +76,14 @@ func (g *Gateway) handleUpdateApply(w http.ResponseWriter, r *http.Request) {
 
 // handleUpdateStatus reports the latest update request.
 func (g *Gateway) handleUpdateStatus(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !allowMethod(w, r, http.MethodGet) {
 		return
 	}
 	writeJSON(w, http.StatusOK, update.State())
 }
 
 func (g *Gateway) handleUpdateCheckPlugins(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !allowMethod(w, r, http.MethodGet) {
 		return
 	}
 	type repositoryRelease struct {

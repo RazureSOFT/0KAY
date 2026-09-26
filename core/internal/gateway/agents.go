@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -29,6 +28,9 @@ type AgentsResponse struct {
 
 // handleAgents returns the list of registered Agent plugins.
 func (g *Gateway) handleAgents(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
 	agents := g.registry.GetAgents(false)
 	onlineCount := g.registry.CountOnlineAgents()
 
@@ -61,8 +63,7 @@ func (g *Gateway) handleAgents(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(AgentsResponse{
+	writeJSON(w, http.StatusOK, AgentsResponse{
 		Agents:      result,
 		OnlineCount: onlineCount,
 	})

@@ -12,9 +12,7 @@ import (
 //
 //	POST /api/plugins/install  {"package":"owner/repo" | "@scope/name"}
 func (g *Gateway) handlePluginInstall(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !allowMethod(w, r, http.MethodPost) {
 		return
 	}
 	var req struct {
@@ -43,9 +41,7 @@ func (g *Gateway) handlePluginInstall(w http.ResponseWriter, r *http.Request) {
 //
 //	POST /api/plugins/uninstall  {"package":"owner/repo" | "@scope/name"}
 func (g *Gateway) handlePluginUninstall(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !allowMethod(w, r, http.MethodPost) {
 		return
 	}
 	var req struct {
@@ -79,9 +75,7 @@ func (g *Gateway) handlePluginUninstall(w http.ResponseWriter, r *http.Request) 
 //
 //	GET /api/plugins/installed
 func (g *Gateway) handlePluginInstalled(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !allowMethod(w, r, http.MethodGet) {
 		return
 	}
 	installed := update.InstalledPlugins()
@@ -97,9 +91,7 @@ func (g *Gateway) handlePluginInstalled(w http.ResponseWriter, r *http.Request) 
 //
 //	GET /api/plugins/install/status
 func (g *Gateway) handlePluginInstallStatus(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !allowMethod(w, r, http.MethodGet) {
 		return
 	}
 	state := update.InstallStatus()

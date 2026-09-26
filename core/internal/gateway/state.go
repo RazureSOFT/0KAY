@@ -15,6 +15,9 @@ import (
 // Core is the single source of truth for agents/plugins/tasks;
 // emotion/energy are optionally merged from Life via handleLifeState.
 func (g *Gateway) handleState(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
 	plugins := g.registry.GetAllPlugins()
 	healthy := 0
 	for _, p := range plugins {
@@ -59,8 +62,7 @@ func (g *Gateway) handleState(w http.ResponseWriter, r *http.Request) {
 	// Overlay Life emotion when the persona plugin is healthy.
 	g.overlayLifeState(r, state)
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(state)
+	writeJSON(w, http.StatusOK, state)
 }
 
 // handleUIPatches serves flattened UI extension ops for WebUI.

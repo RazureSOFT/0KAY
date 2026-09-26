@@ -1,22 +1,22 @@
 package gateway
 
 import (
-	"encoding/json"
 	"net/http"
+	"strings"
 
 	"0kay/core/internal/providers"
 )
 
 func (g *Gateway) handleProviders(w http.ResponseWriter, r *http.Request) {
 	if g.providerStore == nil {
-		http.Error(w, "provider store not ready", http.StatusServiceUnavailable)
+		unavailable(w, "provider store not ready")
 		return
 	}
 
 	switch r.Method {
 	case http.MethodGet:
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(g.providerStore.Snapshot())
+		// Masked view: never returns plaintext API keys.
+		writeJSON(w, http.StatusOK, g.providerStore.Snapshot())
 
 	case http.MethodPost, http.MethodPut:
 		var body struct {
@@ -27,14 +27,13 @@ func (g *Gateway) handleProviders(w http.ResponseWriter, r *http.Request) {
 			// Single upsert
 			Provider *providers.ProviderConfig `json:"provider"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid request", http.StatusBadRequest)
+		if !decodeBody(w, r, &body, maxSmallBody) {
 			return
 		}
 
 		if body.Provider != nil {
 			if err := g.providerStore.Upsert(*body.Provider); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				badRequest(w, err.Error())
 				return
 			}
 			// optional default update in same call
@@ -57,52 +56,96 @@ func (g *Gateway) handleProviders(w http.ResponseWriter, r *http.Request) {
 				Providers:         body.Providers,
 			}
 			if err := g.providerStore.Replace(f); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				badRequest(w, err.Error())
 				return
 			}
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(g.providerStore.Snapshot())
+		writeJSON(w, http.StatusOK, g.providerStore.Snapshot())
 
 	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		allowMethod(w, r, http.MethodGet, http.MethodPost, http.MethodPut)
 	}
 }
 
-func (g *Gateway) handleProviderDelete(w http.ResponseWriter, r *http.Request) {
+// handleProviderCredentials GET /api/providers/credentials[?id=…]
+//
+// Deliberate, authenticated escape hatch for in-repo services (life / agent /
+// mocr) that must forward a provider key upstream. It is not reachable from a
+// cross-site browser context (Sec-Fetch-Site is rejected) and is not part of
+// the anonymous/trusted-network surface beyond the normal auth gate.
+//
+// Without ?id= it returns exactly the legacy plaintext shape of
+// GET /api/providers, so migrating a caller is a one-line URL change.
+func (g *Gateway) handleProviderCredentials(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
 	if g.providerStore == nil {
-		http.Error(w, "provider store not ready", http.StatusServiceUnavailable)
+		unavailable(w, "provider store not ready")
 		return
 	}
-	if r.Method != http.MethodDelete {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if strings.EqualFold(r.Header.Get("Sec-Fetch-Site"), "cross-site") {
+		writeErr(w, http.StatusForbidden, "cross_site_denied", "cross-site credential reads are not allowed")
 		return
 	}
+	snap := g.providerStore.SnapshotRaw()
 	id := r.URL.Query().Get("id")
 	if id == "" {
-		http.Error(w, "id is required", http.StatusBadRequest)
+		writeJSON(w, http.StatusOK, snap)
+		return
+	}
+	for _, p := range snap.Providers {
+		if p.ID == id {
+			writeJSON(w, http.StatusOK, p)
+			return
+		}
+	}
+	writeErr(w, http.StatusNotFound, "not_found", "provider not found")
+}
+
+// handleProviderDelete DELETE /api/providers/delete?id=… (legacy query form).
+func (g *Gateway) handleProviderDelete(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodDelete) {
+		return
+	}
+	g.deleteProvider(w, r.URL.Query().Get("id"))
+}
+
+// handleProviderDeletePath DELETE /api/providers/{id} (REST form).
+func (g *Gateway) handleProviderDeletePath(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodDelete) {
+		return
+	}
+	g.deleteProvider(w, r.PathValue("id"))
+}
+
+func (g *Gateway) deleteProvider(w http.ResponseWriter, id string) {
+	if g.providerStore == nil {
+		unavailable(w, "provider store not ready")
+		return
+	}
+	if id == "" {
+		badRequest(w, "id is required")
 		return
 	}
 	if err := g.providerStore.Delete(id); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		badRequest(w, err.Error())
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(g.providerStore.Snapshot())
+	writeJSON(w, http.StatusOK, g.providerStore.Snapshot())
 }
 
 // handleProviderDefaults sets default provider/model for chat.
 func (g *Gateway) handleProviderDefaults(w http.ResponseWriter, r *http.Request) {
 	if g.providerStore == nil {
-		http.Error(w, "provider store not ready", http.StatusServiceUnavailable)
+		unavailable(w, "provider store not ready")
 		return
 	}
 	switch r.Method {
 	case http.MethodGet:
 		snap := g.providerStore.Snapshot()
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{
+		writeJSON(w, http.StatusOK, map[string]string{
 			"default_provider_id": snap.DefaultProviderID,
 			"default_model":       snap.DefaultModel,
 		})
@@ -111,20 +154,18 @@ func (g *Gateway) handleProviderDefaults(w http.ResponseWriter, r *http.Request)
 			DefaultProviderID string `json:"default_provider_id"`
 			DefaultModel      string `json:"default_model"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid request", http.StatusBadRequest)
+		if !decodeBody(w, r, &body, maxSmallBody) {
 			return
 		}
 		if err := g.providerStore.SetDefaults(body.DefaultProviderID, body.DefaultModel); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			badRequest(w, err.Error())
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{
+		writeJSON(w, http.StatusOK, map[string]string{
 			"default_provider_id": body.DefaultProviderID,
 			"default_model":       body.DefaultModel,
 		})
 	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		allowMethod(w, r, http.MethodGet, http.MethodPost, http.MethodPut)
 	}
 }

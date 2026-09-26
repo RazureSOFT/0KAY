@@ -8,10 +8,13 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"0kay/core/internal/providers"
 )
 
 // ModelsRequest is the request for fetching models.
 type ModelsRequest struct {
+	ID       string `json:"id"`
 	Provider string `json:"provider"`
 	BaseURL  string `json:"base_url"`
 	APIKey   string `json:"api_key"`
@@ -27,24 +30,22 @@ type ModelsResponse struct {
 
 // handleFetchModels fetches available models from provider API.
 func (g *Gateway) handleFetchModels(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !allowMethod(w, r, http.MethodPost) {
 		return
 	}
 
 	var req ModelsRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+	if !decodeBody(w, r, &req, maxSmallBody) {
 		return
 	}
 
 	if req.BaseURL == "" {
-		http.Error(w, "Base URL is required", http.StatusBadRequest)
+		badRequest(w, "Base URL is required")
 		return
 	}
 
 	resp := ModelsResponse{Models: []string{}, Source: "fallback"}
-	models, err := fetchModelsFromProvider(req.Provider, req.BaseURL, req.APIKey)
+	models, err := fetchModelsFromProvider(req.Provider, req.BaseURL, g.resolveModelAPIKey(req))
 	if err != nil {
 		resp.Models = getDefaultModels(req.Provider)
 		resp.Error = err.Error()
@@ -53,8 +54,43 @@ func (g *Gateway) handleFetchModels(w http.ResponseWriter, r *http.Request) {
 		resp.Source = "api"
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// resolveModelAPIKey returns the credential to send upstream for a model-catalog
+// fetch. GET /api/providers is masked now, so the browser only ever holds a
+// masked (or empty) key; resolve it server-side by id, then by (provider,
+// base_url). A masked key is never forwarded: leaking the mask upstream would
+// turn a working endpoint into a confusing 401 from the provider.
+func (g *Gateway) resolveModelAPIKey(req ModelsRequest) string {
+	if req.APIKey != "" && !providers.IsMasked(req.APIKey, "") {
+		return req.APIKey
+	}
+	if g.providerStore == nil {
+		return ""
+	}
+	if req.ID != "" {
+		if key := g.providerStore.Secret(req.ID); key != "" {
+			return key
+		}
+	}
+	norm := func(u string) string { return strings.TrimSuffix(strings.TrimSpace(u), "/") }
+	target := norm(req.BaseURL)
+	if target == "" {
+		return ""
+	}
+	for _, p := range g.providerStore.SnapshotRaw().Providers {
+		if req.Provider != "" && p.Provider != req.Provider {
+			continue
+		}
+		if norm(p.BaseURL) != target {
+			continue
+		}
+		if key := g.providerStore.Secret(p.ID); key != "" {
+			return key
+		}
+	}
+	return ""
 }
 
 // modelClient bounds provider model-list requests so a slow provider cannot hang

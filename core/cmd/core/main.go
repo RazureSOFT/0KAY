@@ -85,7 +85,10 @@ func main() {
 	gw.SetCoreService(coreSvc)
 	gw.SetProviderStore(provStore)
 	gw.SetSettingsStore(setStore)
-	handler := pairs.HTTP(gw.Handler())
+	// Public = Host allow-list (DNS-rebinding defence) + CORS, then pairing
+	// authentication, then the routes themselves. Both loopback and the optional
+	// LAN listener share this stack so the two surfaces cannot drift apart.
+	handler := gateway.Public(pairs.HTTP(gw.Handler()))
 
 	// Create HTTP server. WriteTimeout stays unset so SSE streams are not cut off;
 	// ReadHeaderTimeout/IdleTimeout limit slowloris-style connections.

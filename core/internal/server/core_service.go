@@ -44,6 +44,9 @@ type CoreServiceServer struct {
 	taskRevision     uint64
 	taskChanges      map[string]uint64
 	taskRemoved      map[string]uint64
+	// lastJournalSync throttles fsync on the task journal: intermediate
+	// running/pending updates are batched, terminal states are always synced.
+	lastJournalSync time.Time
 
 	// sessions: session_id -> conversation history
 	sessionMu sync.RWMutex
@@ -60,6 +63,13 @@ type CoreServiceServer struct {
 	mocrOnce sync.Once
 	mocrConn *grpc.ClientConn
 	mocrErr  error
+
+	// connPool caches outbound gRPC connections to plugins by address so
+	// frequent calls (RunDirect fan-out, cancel, LIFE notifications) do not pay
+	// a new handshake each time. gRPC reconnects transparently, so dropping the
+	// connection after every call bought nothing.
+	connMu   sync.Mutex
+	connPool map[string]*grpc.ClientConn
 
 	// dispatchActivity tracks last ledger progress per dispatched task for the
 	// inactivity watchdog (dead/hung executor detection).
@@ -138,26 +148,59 @@ type UsageStore struct {
 	file     string
 	lastSave time.Time
 	unsaved  int
+	// indexed is the dedupe set for Record.RequestID. Without it every ingest
+	// scans the whole ledger (up to maxUsageRecords) to spot a retry.
+	indexed map[string]struct{}
 }
+
+const maxUsageRecords = 10000
 
 // NewUsageStore creates a usage store, optionally restoring from disk.
 func NewUsageStore(path string) *UsageStore {
-	u := &UsageStore{file: path, records: nil}
+	u := &UsageStore{file: path, records: nil, indexed: map[string]struct{}{}}
 	if path != "" {
 		if data, err := os.ReadFile(path); err == nil {
 			_ = json.Unmarshal(data, &u.records)
 		}
 	}
+	for _, rec := range u.records {
+		if rec.RequestID != "" {
+			u.indexed[rec.RequestID] = struct{}{}
+		}
+	}
 	return u
+}
+
+// AddIfNew records a usage sample unless its request id has already been
+// ingested, so a client retry can never double-count tokens. Callers must hold
+// the ledger lock.
+func (u *UsageStore) AddIfNew(rec UsageRecord) bool {
+	if rec.RequestID != "" {
+		if u.indexed == nil {
+			u.indexed = map[string]struct{}{}
+		}
+		if _, seen := u.indexed[rec.RequestID]; seen {
+			return false
+		}
+		u.indexed[rec.RequestID] = struct{}{}
+	}
+	u.Add(rec)
+	return true
 }
 
 // Add records a usage sample. Disk writes are throttled to at most one per
 // three seconds, or sooner once a burst accumulates.
 func (u *UsageStore) Add(rec UsageRecord) {
-	u.records = append(u.records, rec)
-	if len(u.records) > 10000 {
-		u.records = u.records[len(u.records)-10000:]
+	if len(u.records) >= maxUsageRecords {
+		trim := len(u.records) - (maxUsageRecords - 1)
+		for _, old := range u.records[:trim] {
+			if old.RequestID != "" && u.indexed != nil {
+				delete(u.indexed, old.RequestID)
+			}
+		}
+		u.records = u.records[trim:]
 	}
+	u.records = append(u.records, rec)
 	u.unsaved++
 	if u.file == "" {
 		return
@@ -245,6 +288,7 @@ func (u *UsageStore) Clear() {
 	u.records = nil
 	u.unsaved = 0
 	u.lastSave = time.Time{}
+	u.indexed = map[string]struct{}{}
 	if u.file != "" {
 		_ = os.Remove(u.file)
 	}
@@ -323,6 +367,31 @@ func NewCoreServiceServer(reg *registry.Registry) *CoreServiceServer {
 	return instance
 }
 
+// journalSyncInterval bounds how often a burst of non-terminal task updates
+// forces an fsync of the task journal.
+const journalSyncInterval = 500 * time.Millisecond
+
+// isTerminalTaskState reports whether a task state must survive a power loss.
+func isTerminalTaskState(state string) bool {
+	return state == "done" || state == "failed" || state == "cancelled"
+}
+
+// shouldSyncJournalLocked reports whether this batch needs an immediate fsync.
+func (s *CoreServiceServer) shouldSyncJournalLocked(changes []persistedTask, removed []string) bool {
+	if len(removed) > 0 {
+		return true
+	}
+	for _, item := range changes {
+		if isTerminalTaskState(item.State) {
+			return true
+		}
+		if item.Kind == "agent_session" && (item.State == "deleted" || item.State == "archived") {
+			return true
+		}
+	}
+	return time.Since(s.lastJournalSync) >= journalSyncInterval
+}
+
 func (s *CoreServiceServer) persistTasksLocked() {
 	if s.taskHistoryPath == "" {
 		return
@@ -376,8 +445,14 @@ func (s *CoreServiceServer) persistTasksLocked() {
 		Removed []string        `json:"removed"`
 	}{changes, removed})
 	_, err = journal.Write(append(raw, '\n'))
-	if err == nil {
+	// Durability policy: reaching disk immediately matters when a task settles
+	// (done/failed/cancelled, session archive/delete, or a removal). Intermediate
+	// "running" updates are only fsynced at most every journalSyncInterval, so a
+	// busy ledger cannot turn every heartbeat into a disk flush. The data is
+	// still written on every call; only the fsync is batched.
+	if err == nil && s.shouldSyncJournalLocked(changes, removed) {
 		err = journal.Sync()
+		s.lastJournalSync = time.Now()
 	}
 	journal.Close()
 	if err != nil {
@@ -401,16 +476,47 @@ func (s *CoreServiceServer) persistTasksLocked() {
 	if data, err := json.MarshalIndent(items, "", "  "); err == nil {
 		_ = os.MkdirAll(filepath.Dir(s.taskHistoryPath), 0o755)
 		temporary := s.taskHistoryPath + ".tmp"
-		if err := os.WriteFile(temporary, data, 0o600); err == nil {
+		if err := writeFileSync(temporary, data, 0o600); err == nil {
 			if err = os.Rename(temporary, s.taskHistoryPath); err != nil {
 				log.Printf("persist tasks: %v", err)
 			} else {
+				// Make the rename itself durable before dropping the journal,
+				// otherwise a crash could resurrect the old snapshot with an
+				// already-truncated journal behind it.
+				syncDir(filepath.Dir(s.taskHistoryPath))
 				_ = os.WriteFile(s.taskHistoryPath+".journal", nil, 0600)
+				s.lastJournalSync = time.Now()
 			}
 		} else {
 			log.Printf("persist tasks: %v", err)
 		}
 	}
+}
+
+// writeFileSync writes data to path and flushes it to the disk before
+// returning, so a subsequent rename cannot publish a half-written snapshot.
+func writeFileSync(path string, data []byte, perm os.FileMode) error {
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, perm)
+	if err != nil {
+		return err
+	}
+	if _, err = file.Write(data); err == nil {
+		err = file.Sync()
+	}
+	if closeErr := file.Close(); err == nil {
+		err = closeErr
+	}
+	return err
+}
+
+// syncDir flushes a directory entry (file creation / rename) to disk.
+func syncDir(path string) {
+	dir, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	_ = dir.Sync()
+	_ = dir.Close()
 }
 
 // SetProviderStore wires multi-provider credential resolution.
@@ -435,14 +541,7 @@ func (s *CoreServiceServer) ClearUsage() {
 func (s *CoreServiceServer) RecordUsage(record UsageRecord) {
 	s.usageMu.Lock()
 	defer s.usageMu.Unlock()
-	if record.RequestID != "" {
-		for _, existing := range s.usage.records {
-			if existing.RequestID == record.RequestID {
-				return
-			}
-		}
-	}
-	s.usage.Add(record)
+	s.usage.AddIfNew(record)
 }
 
 // touchDispatch records ledger activity for a dispatched root task tree.
@@ -539,6 +638,25 @@ func (s *CoreServiceServer) dialMocr(ctx context.Context) (mocrv1.MocrServiceCli
 	return client, func() {}, nil
 }
 
+// dialCached returns a process-wide cached gRPC connection for addr. The caller
+// must not Close it; the connection belongs to the server and is reused.
+func (s *CoreServiceServer) dialCached(addr string) (*grpc.ClientConn, error) {
+	s.connMu.Lock()
+	defer s.connMu.Unlock()
+	if s.connPool == nil {
+		s.connPool = map[string]*grpc.ClientConn{}
+	}
+	if conn, ok := s.connPool[addr]; ok {
+		return conn, nil
+	}
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	s.connPool[addr] = conn
+	return conn, nil
+}
+
 // CallMocr proxies a request to the mocr service (real gRPC when available).
 func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.CoreService_CallMocrServer) (callErr error) {
 	id := fmt.Sprintf("core-model:%d", time.Now().UnixNano())
@@ -590,9 +708,8 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 
 	client, closeFn, err := s.dialMocr(ctx)
 	if err != nil {
-		// Fallback: echo so UI still works without mocr
 		log.Printf("[CallMocr] dial mocr failed: %v", err)
-		return s.fallbackStream(req, history, stream, err.Error())
+		return s.failStream(req, stream, "mocr unavailable: "+err.Error())
 	}
 	defer closeFn()
 
@@ -653,18 +770,22 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 	genStream, err := client.Generate(ctx, genReq)
 	if err != nil {
 		log.Printf("[CallMocr] generate failed: %v", err)
-		return s.fallbackStream(req, history, stream, err.Error())
+		return s.failStream(req, stream, "generation failed to start: "+err.Error())
 	}
 
 	var full strings.Builder
 	for {
 		resp, err := genStream.Recv()
 		if err == io.EOF {
-			break
+			// mocr always terminates with either a Done frame or a non-OK
+			// status. Reaching EOF without one means the stream was truncated;
+			// treat it as a failure rather than a silent success.
+			log.Printf("[CallMocr] stream ended without a terminal frame")
+			return s.failStream(req, stream, "generation stream ended without a completion frame")
 		}
 		if err != nil {
 			log.Printf("[CallMocr] stream recv: %v", err)
-			break
+			return s.failStream(req, stream, "generation failed: "+err.Error())
 		}
 		if resp.Chunk != "" {
 			full.WriteString(resp.Chunk)
@@ -708,25 +829,6 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 			})
 		}
 	}
-
-	// EOF without explicit done
-	pt := estimateTokens(req.Prompt)
-	ct := estimateTokens(full.String())
-	if req.Prompt != "" {
-		s.appendSession(sessionID, &corev1.ChatMessage{Role: "user", Content: req.Prompt})
-	}
-	if full.Len() > 0 {
-		s.appendSession(sessionID, &corev1.ChatMessage{Role: "assistant", Content: full.String()})
-	}
-	return stream.Send(&corev1.CallMocrResponse{
-		RequestId: req.RequestId,
-		Done:      true,
-		Usage: &corev1.TokenUsage{
-			PromptTokens:     pt,
-			CompletionTokens: ct,
-			TotalTokens:      pt + ct,
-		},
-	})
 }
 
 func (s *CoreServiceServer) maybeCompressFrom(sessionID string, history []*corev1.ChatMessage, maxContext int) []*corev1.ChatMessage {
@@ -758,50 +860,20 @@ func (s *CoreServiceServer) maybeCompressFrom(sessionID string, history []*corev
 	return compressed
 }
 
-func (s *CoreServiceServer) fallbackStream(req *corev1.CallMocrRequest, history []*corev1.ChatMessage, stream corev1.CoreService_CallMocrServer, reason string) error {
-	// Build a deterministic offline reply so the UI keeps working.
-	lastUser := req.Prompt
-	for i := len(history) - 1; i >= 0; i-- {
-		if history[i].Role == "user" {
-			lastUser = history[i].Content
-			break
-		}
-	}
-	if lastUser == "" {
-		lastUser = "(empty)"
-	}
-	reply := "0kay offline reply (mocr unreachable): " + truncateRunes(lastUser, 120)
-	chunks := splitRunes(reply, 40)
-	for _, c := range chunks {
-		if err := stream.Send(&corev1.CallMocrResponse{
-			RequestId: req.RequestId,
-			Chunk:     c,
-		}); err != nil {
-			return err
-		}
-	}
-	pt := estimateTokens(req.Prompt)
-	ct := estimateTokens(reply)
-	sessionID := req.SessionId
-	if sessionID == "" {
-		sessionID = "default"
-	}
-	if req.Prompt != "" {
-		s.appendSession(sessionID, &corev1.ChatMessage{Role: "user", Content: req.Prompt})
-	}
-	s.appendSession(sessionID, &corev1.ChatMessage{Role: "assistant", Content: reply})
-	// Offline text is not provider token usage and must not enter billed totals.
-
-	return stream.Send(&corev1.CallMocrResponse{
+// failStream reports a generation failure to the client and (via CallMocr's
+// deferred ledger update) to the task record.
+//
+// It deliberately sends no assistant text and no usage: an unreachable model is
+// an error, not an answer. Fabricated text must never reach the session history
+// or look like a real completion, and offline text must never enter token
+// totals.
+func (s *CoreServiceServer) failStream(req *corev1.CallMocrRequest, stream corev1.CoreService_CallMocrServer, reason string) error {
+	_ = stream.Send(&corev1.CallMocrResponse{
 		RequestId: req.RequestId,
 		Error:     reason,
 		Done:      true,
-		Usage: &corev1.TokenUsage{
-			PromptTokens:     pt,
-			CompletionTokens: ct,
-			TotalTokens:      pt + ct,
-		},
 	})
+	return status.Error(codes.Unavailable, reason)
 }
 
 func truncateRunes(s string, n int) string {
@@ -810,19 +882,6 @@ func truncateRunes(s string, n int) string {
 		return s
 	}
 	return string(r[:n]) + "…"
-}
-
-func splitRunes(s string, n int) []string {
-	r := []rune(s)
-	var out []string
-	for i := 0; i < len(r); i += n {
-		end := i + n
-		if end > len(r) {
-			end = len(r)
-		}
-		out = append(out, string(r[i:end]))
-	}
-	return out
 }
 
 // ListAgents returns all registered Agent plugins.
@@ -889,11 +948,10 @@ func (s *CoreServiceServer) RunDirect(ctx context.Context, req *corev1.RunDirect
 		}, nil
 	}
 
-	conn, err := grpc.NewClient(agents[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := s.dialCached(agents[0].Address)
 	if err != nil {
 		return nil, status.Errorf(codes.Unavailable, "connect agent: %v", err)
 	}
-	defer conn.Close()
 
 	client := agentv1.NewAgentServiceClient(conn)
 	resp, err := client.RunDirect(pairing.CallbackContext(ctx, agents[0].Address), &agentv1.RunDirectRequest{
@@ -926,8 +984,9 @@ func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRe
 	}
 	originSession := req.Metadata["session_id"]
 	req.Metadata["origin_session_id"] = originSession
-	req.Metadata["session_id"] = s.EnsureAgentSession(originSession, req.CallerId, req.Prompt)
-	if err := s.RecordTask(TaskEvent{TaskID: req.TaskId, CallerID: req.CallerId, Prompt: req.Prompt, State: "pending", Kind: "agent", SessionID: req.Metadata["session_id"], ParentID: req.Metadata["parent_id"]}); err != nil {
+	sessionID, err := s.startAgentTask(TaskEvent{TaskID: req.TaskId, CallerID: req.CallerId, Prompt: req.Prompt, State: "pending", Kind: "agent", ParentID: req.Metadata["parent_id"]}, originSession, req.CallerId, req.Prompt)
+	req.Metadata["session_id"] = sessionID
+	if err != nil {
 		return nil, status.Error(codes.AlreadyExists, err.Error())
 	}
 	agents := s.registry.GetAgents(true)
@@ -1168,12 +1227,11 @@ func (s *CoreServiceServer) deliverTaskCallback(taskID string, state pluginv1.Ta
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	conn, err := grpc.NewClient(life.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := s.dialCached(life.Address)
 	if err != nil {
 		log.Printf("[TaskCompleted] Failed to connect to L.I.F.E at %s: %v", life.Address, err)
 		return
 	}
-	defer conn.Close()
 
 	client := lifev1.NewLifeServiceClient(conn)
 
@@ -1224,13 +1282,12 @@ func (s *CoreServiceServer) CancelAgent(ctx context.Context, req *corev1.CancelA
 	cancelled := false
 	for _, a := range agents {
 		if a.PluginID == agentID && a.Address != "" {
-			conn, err := grpc.NewClient(a.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			conn, err := s.dialCached(a.Address)
 			if err != nil {
 				continue
 			}
 			agentClient := agentv1.NewAgentServiceClient(conn)
 			response, callErr := agentClient.CancelTask(pairing.CallbackContext(ctx, a.Address), &agentv1.CancelTaskRequest{TaskId: req.TaskId})
-			conn.Close()
 			if callErr != nil {
 				return nil, callErr
 			}

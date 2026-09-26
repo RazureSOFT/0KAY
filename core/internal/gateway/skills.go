@@ -11,12 +11,12 @@ import (
 
 // handleSkills proxies Agent skill administration via RunDirect (no LLM):
 //
-//	GET    /api/skills          → { dir, skills: [{name,description,tags,source}] }
-//	POST   /api/skills          → { name, content } save/overwrite
-//	DELETE /api/skills?name=…   → delete a file-backed skill
+//	GET    /api/skills              → { dir, skills: [{name,description,tags,source}] }
+//	POST   /api/skills              → { name, content } save/overwrite
+//	DELETE /api/skills?name=…       → delete a file-backed skill (legacy alias)
+//	DELETE /api/skills/{name...}    → delete a file-backed skill
 func (g *Gateway) handleSkills(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet && r.Method != http.MethodPost && r.Method != http.MethodDelete {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !allowMethod(w, r, http.MethodGet, http.MethodPost, http.MethodDelete) {
 		return
 	}
 	action := "list"
@@ -28,24 +28,28 @@ func (g *Gateway) handleSkills(w http.ResponseWriter, r *http.Request) {
 			Name    string `json:"name"`
 			Content string `json:"content"`
 		}
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2<<20)).Decode(&body); err != nil {
-			http.Error(w, "invalid request", http.StatusBadRequest)
+		if !decodeBody(w, r, &body, 2<<20) {
 			return
 		}
 		args["name"] = body.Name
 		args["content"] = body.Content
 	case http.MethodDelete:
 		action = "delete"
-		args["name"] = r.URL.Query().Get("name")
+		args["name"] = r.PathValue("name")
+		if args["name"] == "" {
+			args["name"] = r.URL.Query().Get("name")
+		}
 		if args["name"] == "" {
 			var body struct {
 				Name string `json:"name"`
 			}
-			_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&body)
+			if !decodeBody(w, r, &body, maxSmallBody) {
+				return
+			}
 			args["name"] = body.Name
 		}
 		if args["name"] == "" {
-			http.Error(w, "name required", http.StatusBadRequest)
+			badRequest(w, "name required")
 			return
 		}
 	}
@@ -60,14 +64,14 @@ func (g *Gateway) handleSkills(w http.ResponseWriter, r *http.Request) {
 		SessionId: "skills-ui",
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		writeErr(w, http.StatusBadGateway, "upstream_error", err.Error())
 		return
 	}
+	status := http.StatusOK
 	if !resp.Success && action == "delete" {
-		w.WriteHeader(http.StatusNotFound)
+		status = http.StatusNotFound
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
+	writeJSON(w, status, map[string]any{
 		"success": resp.Success,
 		"result":  json.RawMessage(orEmptyJSON(resp.Result)),
 		"error":   resp.Error,

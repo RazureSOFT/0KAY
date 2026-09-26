@@ -63,15 +63,23 @@ func TestUpsertReusesExistingEndpointRow(t *testing.T) {
 		t.Fatal(err)
 	}
 	snap := s.Snapshot()
-	if len(snap.Providers) != 1 {
-		t.Fatalf("want 1 provider, got %d: %+v", len(snap.Providers), snap.Providers)
+	raw := s.SnapshotRaw()
+	if len(raw.Providers) != 1 {
+		t.Fatalf("want 1 provider, got %d: %+v", len(raw.Providers), raw.Providers)
 	}
-	got := snap.Providers[0]
+	got := raw.Providers[0]
 	if got.ID != "custom_a" {
 		t.Fatalf("should reuse existing id, got %q", got.ID)
 	}
 	if got.APIKey != "new" {
 		t.Fatalf("new credentials should win, got %q", got.APIKey)
+	}
+	if got.APIKeyMasked != "" {
+		t.Fatalf("mask must not be persisted, got %q", got.APIKeyMasked)
+	}
+	// The HTTP view must never carry the secret.
+	if snap.Providers[0].APIKey != "" {
+		t.Fatalf("Snapshot leaked api key %q", snap.Providers[0].APIKey)
 	}
 	if len(got.Models) != 2 {
 		t.Fatalf("models should be unioned, got %v", got.Models)

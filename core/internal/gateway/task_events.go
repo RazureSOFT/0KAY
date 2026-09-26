@@ -8,17 +8,16 @@ import (
 )
 
 func (g *Gateway) handleTaskEvents(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, "method not allowed", 405)
+	if !allowMethod(w, r, http.MethodGet) {
 		return
 	}
 	if g.localCore == nil {
-		http.Error(w, "Core unavailable", 503)
+		unavailable(w, "core not ready")
 		return
 	}
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "streaming unavailable", 500)
+		writeErr(w, http.StatusInternalServerError, "stream_unsupported", "streaming unavailable")
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")

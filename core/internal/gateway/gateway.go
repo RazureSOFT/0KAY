@@ -80,6 +80,38 @@ type Session struct {
 	Send     chan []byte
 	Done     chan struct{}
 	Registry *registry.Registry
+
+	// ctx bounds every chat stream started by this socket; it is cancelled as
+	// soon as the reader stops so no orphaned generation keeps running.
+	ctx    context.Context
+	cancel context.CancelFunc
+	once   sync.Once
+}
+
+// shutdown ends the session exactly once (read pump exit, write pump exit or
+// an error), closing Done so both pumps and any in-flight chat stop.
+func (s *Session) shutdown() {
+	s.once.Do(func() {
+		close(s.Done)
+		if s.cancel != nil {
+			s.cancel()
+		}
+	})
+}
+
+// push queues a payload unless the session is already closing.
+func (s *Session) push(payload []byte) bool {
+	select {
+	case <-s.Done:
+		return false
+	default:
+	}
+	select {
+	case s.Send <- payload:
+		return true
+	case <-s.Done:
+		return false
+	}
 }
 
 // dial returns a cached gRPC client connection for a plugin address.
@@ -201,18 +233,22 @@ func (g *Gateway) SettingsStore() *settings.Store {
 	return g.settingsStore
 }
 
-// Handler returns the HTTP handler.
+// Handler returns the HTTP handler. Browser-facing guards (Host allow-list,
+// CORS, authentication) are layered on by Public/Handler composition in main.
 func (g *Gateway) Handler() http.Handler {
 	g.initUIPatches()
 	g.loadDisabledPlugins()
 	mux := http.NewServeMux()
 
+	// Health / registry reads (GET only; a wrong method now returns 405).
 	mux.HandleFunc("/health", g.handleHealth)
 	mux.HandleFunc("/api/plugins", g.handlePlugins)
 	mux.HandleFunc("/api/update/check", g.handleUpdateCheck)
 	mux.HandleFunc("/api/update/check-plugins", g.handleUpdateCheckPlugins)
 	mux.HandleFunc("/api/update/apply", g.handleUpdateApply)
 	mux.HandleFunc("/api/update/status", g.handleUpdateStatus)
+	// REST plugin lifecycle: PATCH /api/plugins/{name} {"enabled":bool}
+	mux.HandleFunc("PATCH /api/plugins/{name}", g.handlePluginPatch)
 	mux.HandleFunc("/api/plugins/enable", g.handlePluginEnable)
 	mux.HandleFunc("/api/plugins/disable", g.handlePluginDisable)
 	mux.HandleFunc("/api/plugins/install", g.handlePluginInstall)
@@ -223,14 +259,19 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/plugins/{name}/ui/{path...}", g.handlePluginUI)
 	mux.HandleFunc("/api/agents", g.handleAgents)
 	mux.HandleFunc("/api/agent/sessions", g.handleAgentSessions)
+	mux.HandleFunc("PATCH /api/agent/sessions/{session_id}", g.handleAgentSessionItem)
+	mux.HandleFunc("DELETE /api/agent/sessions/{session_id}", g.handleAgentSessionItem)
 	mux.HandleFunc("/api/agent/messages", g.handleAgentMessage)
 	mux.HandleFunc("/api/agent/workspace", g.handleAgentWorkspace)
 	mux.HandleFunc("/api/agent/approvals", g.handleAgentApprovals)
 	mux.HandleFunc("/api/agent/questions", g.handleAgentApprovals)
+	mux.HandleFunc("/api/agent/inbox", g.handleAgentInbox)
 	mux.HandleFunc("/api/agent/host", g.handleAgentWorkspace)
 	mux.HandleFunc("/api/agent/compact", g.handleAgentCompact)
 	mux.HandleFunc("/api/skills", g.handleSkills)
+	mux.HandleFunc("DELETE /api/skills/{name...}", g.handleSkills)
 	mux.HandleFunc("/api/tasks/cancel", g.handleTaskCancel)
+	mux.HandleFunc("POST /api/tasks/{task_id}/cancel", g.handleTaskCancelPath)
 	mux.HandleFunc("/api/chat", g.handleChat)
 	mux.HandleFunc("/api/life/chat", g.handleLifeChat)
 	mux.HandleFunc("/api/life/compact", g.handleLifeCompact)
@@ -244,26 +285,33 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/life/memories", g.handleLifeMemories)
 	mux.HandleFunc("/api/life/companion", g.handleLifeCompanion)
 	mux.HandleFunc("/api/usage", g.handleUsage)
+	mux.HandleFunc("DELETE /api/usage", g.handleUsageClear)
 	mux.HandleFunc("/api/usage/record", g.handleUsageRecord)
 	mux.HandleFunc("/api/usage/clear", g.handleUsageClear)
 	mux.HandleFunc("/api/models", g.handleModelsList)
 	mux.HandleFunc("/api/run", g.handleRunDirect)
 	mux.HandleFunc("/api/live2d", g.handleLive2D)
+	mux.HandleFunc("DELETE /api/live2d/{path...}", g.handleLive2DDeletePath)
 	mux.HandleFunc("/api/images", g.handleImages)
 	mux.Handle("/live2d/models/", http.StripPrefix("/live2d/models/", http.FileServer(http.Dir(live2DRoot()))))
 	mux.HandleFunc("/api/tasks", g.handleTasks)
 	mux.HandleFunc("/api/tasks/events", g.handleTaskEvents)
 	mux.HandleFunc("/api/providers", g.handleProviders)
+	mux.HandleFunc("DELETE /api/providers/{id}", g.handleProviderDeletePath)
 	mux.HandleFunc("/api/providers/delete", g.handleProviderDelete)
+	mux.HandleFunc("/api/providers/credentials", g.handleProviderCredentials)
 	mux.HandleFunc("/api/providers/defaults", g.handleProviderDefaults)
 	mux.HandleFunc("/api/settings/sections", g.handleSettingsSections)
 	mux.HandleFunc("/api/settings/", g.handleSettingsSection)
 	mux.HandleFunc("/ws", g.handleWebSocket)
 
-	return corsMiddleware(logMiddleware(mux))
+	return logMiddleware(mux)
 }
 
 func (g *Gateway) handleHealth(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
 	plugins := g.registry.GetAllPlugins()
 	healthy := 0
 	for _, p := range plugins {
@@ -272,8 +320,7 @@ func (g *Gateway) handleHealth(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"status":  "ok",
 		"plugins": len(plugins),
 		"healthy": healthy,
@@ -281,6 +328,9 @@ func (g *Gateway) handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g *Gateway) handlePlugins(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
 	plugins := g.registry.GetAllPlugins()
 
 	type PluginInfo struct {
@@ -343,13 +393,12 @@ func (g *Gateway) handlePluginDisable(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g *Gateway) handlePluginToggle(w http.ResponseWriter, r *http.Request, enable bool) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !allowMethod(w, r, http.MethodPost) {
 		return
 	}
 	var req pluginToggleReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "bad json", http.StatusBadRequest)
+	if !decodeBody(w, r, &req, 64<<10) {
+		badRequest(w, "invalid request body")
 		return
 	}
 	name := req.Plugin
@@ -357,7 +406,38 @@ func (g *Gateway) handlePluginToggle(w http.ResponseWriter, r *http.Request, ena
 		name = req.Name
 	}
 	if name == "" {
-		http.Error(w, "plugin name required", http.StatusBadRequest)
+		badRequest(w, "plugin name required")
+		return
+	}
+	g.setPluginEnabled(name, enable, w)
+}
+
+// handlePluginPatch is the REST form of enable/disable:
+//
+//	PATCH /api/plugins/{name}  {"enabled": true|false}
+func (g *Gateway) handlePluginPatch(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodPatch) {
+		return
+	}
+	name := r.PathValue("name")
+	if name == "" {
+		badRequest(w, "plugin name required")
+		return
+	}
+	var req struct {
+		Enabled *bool `json:"enabled"`
+	}
+	if !decodeBody(w, r, &req, 64<<10) || req.Enabled == nil {
+		badRequest(w, "enabled is required")
+		return
+	}
+	g.setPluginEnabled(name, *req.Enabled, w)
+}
+
+// setPluginEnabled flips a plugin and reports 404 for names Core never knew.
+func (g *Gateway) setPluginEnabled(name string, enable bool, w http.ResponseWriter) {
+	if !g.knownPlugin(name) {
+		notFound(w, "plugin not found")
 		return
 	}
 	g.registry.SetEnabled(name, enable)
@@ -366,12 +446,26 @@ func (g *Gateway) handlePluginToggle(w http.ResponseWriter, r *http.Request, ena
 	if g.uiPatches != nil {
 		g.uiPatches.Reload()
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"plugin":  name,
 		"enabled": enable,
 		"ok":      true,
 	})
+}
+
+// knownPlugin reports whether name refers to a registered or disabled plugin.
+func (g *Gateway) knownPlugin(name string) bool {
+	for _, plugin := range g.registry.GetAllPlugins() {
+		if plugin.Info != nil && plugin.Info.Name == name {
+			return true
+		}
+	}
+	for _, disabled := range g.registry.DisabledNames() {
+		if disabled == name {
+			return true
+		}
+	}
+	return false
 }
 
 func (g *Gateway) persistDisabledPlugins() {
@@ -406,8 +500,7 @@ func (g *Gateway) loadDisabledPlugins() {
 }
 
 func (g *Gateway) handleChat(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !allowMethod(w, r, http.MethodPost) {
 		return
 	}
 
@@ -426,8 +519,7 @@ func (g *Gateway) handleChat(w http.ResponseWriter, r *http.Request) {
 		} `json:"messages"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+	if !decodeBody(w, r, &req, maxChatBody) {
 		return
 	}
 
@@ -493,14 +585,17 @@ func (o chatOpts) toCallMocrRequest(stream bool) *corev1.CallMocrRequest {
 	return req
 }
 
+// handleChatSync collects a non-streaming completion. Provider failures are
+// surfaced as 502 with the standard error envelope rather than a 200 with an
+// empty response (docs/PLUGIN_API.md: a network failure is not success).
 func (g *Gateway) handleChatSync(w http.ResponseWriter, r *http.Request, opts chatOpts) {
 	stream, err := g.coreSvc.CallMocr(r.Context(), opts.toCallMocrRequest(false))
 	if err != nil {
-		http.Error(w, fmt.Sprintf("gRPC error: %v", err), http.StatusInternalServerError)
+		upstreamError(w, err.Error())
 		return
 	}
 
-	var result string
+	var result strings.Builder
 	var streamErr string
 	var usage *corev1.TokenUsage
 	for {
@@ -509,24 +604,25 @@ func (g *Gateway) handleChatSync(w http.ResponseWriter, r *http.Request, opts ch
 			break
 		}
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Stream error: %v", err), http.StatusInternalServerError)
+			upstreamError(w, err.Error())
 			return
 		}
 		if resp.Error != "" {
 			streamErr = resp.Error
 		}
-		result += resp.Chunk
+		result.WriteString(resp.Chunk)
 		if resp.Done {
 			usage = resp.Usage
 		}
 	}
+	if streamErr != "" {
+		writeErr(w, http.StatusBadGateway, "generation_failed", streamErr)
+		return
+	}
 
 	payload := map[string]interface{}{
 		"request_id": opts.RequestID,
-		"response":   result,
-	}
-	if streamErr != "" {
-		payload["error"] = streamErr
+		"response":   result.String(),
 	}
 	if usage != nil {
 		payload["usage"] = map[string]int32{
@@ -535,14 +631,13 @@ func (g *Gateway) handleChatSync(w http.ResponseWriter, r *http.Request, opts ch
 			"total_tokens":      usage.TotalTokens,
 		}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(payload)
+	writeJSON(w, http.StatusOK, payload)
 }
 
 func (g *Gateway) handleChatStream(w http.ResponseWriter, r *http.Request, opts chatOpts) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "Streaming not supported", http.StatusInternalServerError)
+		unavailable(w, "streaming not supported")
 		return
 	}
 
@@ -558,17 +653,22 @@ func (g *Gateway) handleChatStream(w http.ResponseWriter, r *http.Request, opts 
 		return
 	}
 
+	completed := false
 	for {
 		resp, err := stream.Recv()
 		if err == io.EOF {
-			fmt.Fprintf(w, "event: done\ndata: {}\n\n")
+			if completed {
+				fmt.Fprintf(w, "event: done\ndata: {}\n\n")
+			} else {
+				fmt.Fprintf(w, "event: error\ndata: %s\n\n", jsonEscape("stream ended without completion"))
+			}
 			flusher.Flush()
-			break
+			return
 		}
 		if err != nil {
 			fmt.Fprintf(w, "event: error\ndata: %s\n\n", jsonEscape(err.Error()))
 			flusher.Flush()
-			break
+			return
 		}
 		if resp.Error != "" {
 			data, _ := json.Marshal(map[string]string{
@@ -577,7 +677,7 @@ func (g *Gateway) handleChatStream(w http.ResponseWriter, r *http.Request, opts 
 			})
 			fmt.Fprintf(w, "event: error\ndata: %s\n\n", data)
 			flusher.Flush()
-			break
+			return
 		}
 
 		data, _ := json.Marshal(resp)
@@ -585,7 +685,10 @@ func (g *Gateway) handleChatStream(w http.ResponseWriter, r *http.Request, opts 
 		flusher.Flush()
 
 		if resp.Done {
-			break
+			completed = true
+			fmt.Fprintf(w, "event: done\ndata: {}\n\n")
+			flusher.Flush()
+			return
 		}
 	}
 }
@@ -598,15 +701,18 @@ func jsonEscape(s string) string {
 	return string(b)
 }
 
+// handleMocrGenerate is the legacy name for POST /api/chat. Kept as an alias so
+// prebuilt plugin bundles keep working; see docs/HTTP_API.md for the mapping.
 func (g *Gateway) handleMocrGenerate(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Deprecation", "true")
+	w.Header().Set("Link", `</api/chat>; rel="successor-version"`)
 	g.handleChat(w, r)
 }
 
 // handleLifeChat is the WebUI chat path. LIFE owns persona expression, memory,
 // emotions, tools, and companion behavior; Core only proxies its gRPC stream.
 func (g *Gateway) handleLifeChat(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !allowMethod(w, r, http.MethodPost) {
 		return
 	}
 	var req struct {
@@ -617,12 +723,11 @@ func (g *Gateway) handleLifeChat(w http.ResponseWriter, r *http.Request) {
 		Persona   json.RawMessage `json:"persona"`
 		History   json.RawMessage `json:"history"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+	if !decodeBody(w, r, &req, maxLifeChatBody) {
 		return
 	}
 	if req.Prompt == "" {
-		http.Error(w, "prompt required", http.StatusBadRequest)
+		badRequest(w, "prompt required")
 		return
 	}
 	if req.RequestID == "" {
@@ -636,34 +741,38 @@ func (g *Gateway) handleLifeChat(w http.ResponseWriter, r *http.Request) {
 	}
 	lifes := g.registry.GetPluginsByCapability("life")
 	if len(lifes) == 0 || lifes[0].Address == "" {
-		http.Error(w, "LIFE is unavailable", http.StatusServiceUnavailable)
+		unavailable(w, "LIFE is unavailable")
 		return
 	}
 	conn, err := g.dial(lifes[0].Address)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		upstreamError(w, err.Error())
 		return
 	}
 	stream, err := lifev1.NewLifeServiceClient(conn).OnUserMessage(r.Context(), &lifev1.OnUserMessageRequest{
 		SessionId: req.SessionID, UserId: req.UserID, Message: req.Prompt, AdapterType: "webui", PersonaJson: string(req.Persona), HistoryJson: string(req.History),
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		upstreamError(w, err.Error())
 		return
 	}
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "streaming unavailable", http.StatusInternalServerError)
+		unavailable(w, "streaming unavailable")
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+	completed := false
 	for {
 		resp, err := stream.Recv()
 		if err == io.EOF {
-			fmt.Fprint(w, "event: done\ndata: {}\n\n")
-			flusher.Flush()
+			if !completed {
+				data, _ := json.Marshal(map[string]string{"request_id": req.RequestID, "error": "stream ended without completion"})
+				fmt.Fprintf(w, "event: error\ndata: %s\n\n", data)
+				flusher.Flush()
+			}
 			return
 		}
 		if err != nil {
@@ -680,6 +789,7 @@ func (g *Gateway) handleLifeChat(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "event: chunk\ndata: %s\n\n", data)
 		flusher.Flush()
 		if resp.Done {
+			completed = true
 			fmt.Fprint(w, "event: done\ndata: {}\n\n")
 			flusher.Flush()
 			return
@@ -688,8 +798,7 @@ func (g *Gateway) handleLifeChat(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g *Gateway) handleLifeCompact(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !allowMethod(w, r, http.MethodPost) {
 		return
 	}
 	var req struct {
@@ -697,49 +806,46 @@ func (g *Gateway) handleLifeCompact(w http.ResponseWriter, r *http.Request) {
 		History   json.RawMessage `json:"history"`
 		Persona   json.RawMessage `json:"persona"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+	if !decodeBody(w, r, &req, maxLifeChatBody) {
 		return
 	}
 	lifes := g.registry.GetPluginsByCapability("life")
 	if len(lifes) == 0 || lifes[0].Address == "" {
-		http.Error(w, "LIFE is unavailable", http.StatusServiceUnavailable)
+		unavailable(w, "LIFE is unavailable")
 		return
 	}
 	conn, err := g.dial(lifes[0].Address)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		upstreamError(w, err.Error())
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
 	defer cancel()
 	resp, err := lifev1.NewLifeServiceClient(conn).CompactConversation(ctx, &lifev1.CompactConversationRequest{SessionId: req.SessionID, HistoryJson: string(req.History), PersonaJson: string(req.Persona)})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		upstreamError(w, err.Error())
 		return
 	}
 	if !resp.Ok {
-		http.Error(w, resp.Error, http.StatusBadRequest)
+		writeErr(w, http.StatusBadRequest, "compact_failed", resp.Error)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"summary": resp.Summary})
+	writeJSON(w, http.StatusOK, map[string]string{"summary": resp.Summary})
 }
 
 func (g *Gateway) handleLifeNotifications(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" && r.Method != "POST" {
-		http.Error(w, "method not allowed", 405)
+	if !allowMethod(w, r, http.MethodGet, http.MethodPost) {
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 6*time.Second)
 	defer cancel()
-	if r.Method == "POST" {
+	if r.Method == http.MethodPost {
 		var body struct {
 			SessionID string   `json:"session_id"`
 			IDs       []string `json:"ids"`
 		}
-		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 65536)).Decode(&body) != nil || body.SessionID == "" {
-			http.Error(w, "invalid acknowledgement", 400)
+		if !decodeBody(w, r, &body, maxSmallBody) || body.SessionID == "" {
+			badRequest(w, "invalid acknowledgement")
 			return
 		}
 		payload, _ := json.Marshal(body)
@@ -749,11 +855,10 @@ func (g *Gateway) handleLifeNotifications(w http.ResponseWriter, r *http.Request
 			response, callErr = client.ManageCompanion(ctx, &lifev1.ManageCompanionRequest{Action: "ack_notifications", PayloadJson: string(payload)})
 			return callErr
 		}); err != nil || !response.GetOk() {
-			http.Error(w, "notification acknowledgement failed", 502)
+			upstreamError(w, "notification acknowledgement failed")
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"ok":true}`)
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 		return
 	}
 	var resp *lifev1.GetNotificationsResponse
@@ -762,26 +867,31 @@ func (g *Gateway) handleLifeNotifications(w http.ResponseWriter, r *http.Request
 		resp, callErr = client.GetNotifications(ctx, &lifev1.GetNotificationsRequest{SessionId: r.URL.Query().Get("session_id")})
 		return callErr
 	}); err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		upstreamError(w, err.Error())
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"notifications": resp.Notifications})
+	writeJSON(w, http.StatusOK, map[string]interface{}{"notifications": resp.Notifications})
 }
 
 func (g *Gateway) handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
 	conn, err := g.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("WebSocket upgrade failed: %v", err)
 		return
 	}
 
+	ctx, cancel := context.WithCancel(r.Context())
 	session := &Session{
 		ID:       fmt.Sprintf("ws_%d", time.Now().UnixNano()),
 		Conn:     conn,
 		Send:     make(chan []byte, 256),
 		Done:     make(chan struct{}),
 		Registry: g.registry,
+		ctx:      ctx,
+		cancel:   cancel,
 	}
 
 	g.mu.Lock()
@@ -789,12 +899,24 @@ func (g *Gateway) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	g.mu.Unlock()
 
 	go session.writePump()
-	go session.readPump(g.coreSvc)
+	go session.readPump(g)
 }
 
-func (s *Session) readPump(coreSvc corev1.CoreServiceClient) {
+// forgetSession removes a closed session from the registry so the map does not
+// grow for the lifetime of the process.
+func (g *Gateway) forgetSession(session *Session) {
+	g.mu.Lock()
+	if g.sessions[session.ID] == session {
+		delete(g.sessions, session.ID)
+	}
+	g.mu.Unlock()
+}
+
+func (s *Session) readPump(g *Gateway) {
 	defer func() {
+		s.shutdown()
 		s.Conn.Close()
+		g.forgetSession(s)
 		s.Registry = nil
 	}()
 
@@ -829,15 +951,15 @@ func (s *Session) readPump(coreSvc corev1.CoreServiceClient) {
 			for _, m := range req.Messages {
 				history = append(history, &corev1.ChatMessage{Role: m.Role, Content: m.Content})
 			}
-			go s.handleChatRequest(coreSvc, req.RequestID, req.Prompt, sessionID, history)
+			go s.handleChatRequest(g.coreSvc, req.RequestID, req.Prompt, sessionID, history)
 		case "ping":
-			s.Send <- []byte(`{"type":"pong"}`)
+			s.push([]byte(`{"type":"pong"}`))
 		}
 	}
 }
 
 func (s *Session) handleChatRequest(coreSvc corev1.CoreServiceClient, requestID, prompt, sessionID string, history []*corev1.ChatMessage) {
-	stream, err := coreSvc.CallMocr(context.Background(), &corev1.CallMocrRequest{
+	stream, err := coreSvc.CallMocr(s.ctx, &corev1.CallMocrRequest{
 		RequestId: requestID,
 		Prompt:    prompt,
 		Stream:    true,
@@ -850,18 +972,21 @@ func (s *Session) handleChatRequest(coreSvc corev1.CoreServiceClient, requestID,
 			"request_id": requestID,
 			"error":      err.Error(),
 		})
-		s.Send <- errResp
+		s.push(errResp)
 		return
 	}
 
+	completed := false
 	for {
 		resp, err := stream.Recv()
 		if err == io.EOF {
-			doneResp, _ := json.Marshal(map[string]string{
-				"type":       "done",
-				"request_id": requestID,
-			})
-			s.Send <- doneResp
+			payload := map[string]string{"type": "done", "request_id": requestID}
+			if !completed {
+				payload["type"] = "error"
+				payload["error"] = "stream ended without completion"
+			}
+			raw, _ := json.Marshal(payload)
+			s.push(raw)
 			break
 		}
 		if err != nil {
@@ -870,7 +995,16 @@ func (s *Session) handleChatRequest(coreSvc corev1.CoreServiceClient, requestID,
 				"request_id": requestID,
 				"error":      err.Error(),
 			})
-			s.Send <- errResp
+			s.push(errResp)
+			break
+		}
+		if resp.Error != "" {
+			errResp, _ := json.Marshal(map[string]string{
+				"type":       "error",
+				"request_id": requestID,
+				"error":      resp.Error,
+			})
+			s.push(errResp)
 			break
 		}
 
@@ -880,9 +1014,10 @@ func (s *Session) handleChatRequest(coreSvc corev1.CoreServiceClient, requestID,
 			"chunk":      resp.Chunk,
 			"done":       resp.Done,
 		})
-		s.Send <- data
+		s.push(data)
 
 		if resp.Done {
+			completed = true
 			if resp.Usage != nil {
 				usageResp, _ := json.Marshal(map[string]interface{}{
 					"type":       "usage",
@@ -893,7 +1028,7 @@ func (s *Session) handleChatRequest(coreSvc corev1.CoreServiceClient, requestID,
 						"total_tokens":      resp.Usage.TotalTokens,
 					},
 				})
-				s.Send <- usageResp
+				s.push(usageResp)
 			}
 			break
 		}
@@ -901,19 +1036,22 @@ func (s *Session) handleChatRequest(coreSvc corev1.CoreServiceClient, requestID,
 }
 
 func (s *Session) writePump() {
-	defer s.Conn.Close()
+	defer func() {
+		s.shutdown()
+		s.Conn.Close()
+	}()
 
 	for {
 		select {
-		case message, ok := <-s.Send:
-			if !ok {
-				s.Conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
+		case message := <-s.Send:
+			_ = s.Conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
 			if err := s.Conn.WriteMessage(websocket.TextMessage, message); err != nil {
 				return
 			}
 		case <-s.Done:
+			_ = s.Conn.WriteControl(websocket.CloseMessage,
+				websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
+				time.Now().Add(time.Second))
 			return
 		}
 	}
@@ -932,7 +1070,7 @@ func (g *Gateway) handleUsage(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(g.localCore.GetUsage())
 }
 
-// handleUsageClear POST /api/usage/clear — wipe recorded usage.
+// handleUsageClear POST /api/usage/clear —wipe recorded usage.
 func (g *Gateway) handleUsageClear(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -950,7 +1088,7 @@ func (g *Gateway) handleUsageClear(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleModelsList GET /api/models — enabled model catalog for mocr/WebUI.
+// handleModelsList GET /api/models —enabled model catalog for mocr/WebUI.
 func (g *Gateway) handleModelsList(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -1001,22 +1139,25 @@ func (g *Gateway) handleLifePermissions(w http.ResponseWriter, r *http.Request) 
 }
 
 func (g *Gateway) handleLifeMemories(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
+	emptyMemories := map[string]interface{}{
+		"memories": []interface{}{},
+		"stats": map[string]interface{}{
+			"working": 0, "shortTerm": map[string]int{"total": 0}, "longTerm": 0, "avgStrength": 0,
+		},
+	}
 	// Proxy to registered L.I.F.E plugin if present; otherwise empty.
 	lifes := g.registry.GetPluginsByCapability("life")
 	if len(lifes) == 0 || lifes[0].Address == "" {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"memories": []interface{}{},
-			"stats": map[string]interface{}{
-				"working": 0, "shortTerm": map[string]int{"total": 0}, "longTerm": 0, "avgStrength": 0,
-			},
-		})
+		writeJSON(w, http.StatusOK, emptyMemories)
 		return
 	}
 
 	conn, err := g.dial(lifes[0].Address)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		upstreamError(w, err.Error())
 		return
 	}
 	client := lifev1.NewLifeServiceClient(conn)
@@ -1033,14 +1174,12 @@ func (g *Gateway) handleLifeMemories(w http.ResponseWriter, r *http.Request) {
 	resp, err := client.GetMemories(ctx, &lifev1.GetMemoriesRequest{Limit: limit, Query: r.URL.Query().Get("query")})
 	if err != nil {
 		// Soft-fail so the sidebar never breaks
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"memories": []interface{}{},
-			"stats": map[string]interface{}{
-				"working": 0, "shortTerm": map[string]int{"total": 0}, "longTerm": 0, "avgStrength": 0,
-			},
-			"error": err.Error(),
-		})
+		payload := map[string]interface{}{}
+		for k, v := range emptyMemories {
+			payload[k] = v
+		}
+		payload["error"] = err.Error()
+		writeJSON(w, http.StatusOK, payload)
 		return
 	}
 
@@ -1057,8 +1196,7 @@ func (g *Gateway) handleLifeMemories(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"memories": items,
 		"stats": map[string]interface{}{
 			"working":     resp.WorkingCount,
@@ -1080,23 +1218,21 @@ func (g *Gateway) handleLifeCompanion(w http.ResponseWriter, r *http.Request) {
 			resp, callErr = client.GetCompanion(ctx, &lifev1.GetCompanionRequest{})
 			return callErr
 		}); err != nil {
-			http.Error(w, err.Error(), http.StatusBadGateway)
+			upstreamError(w, err.Error())
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(resp.Json))
+		writeRawJSON(w, http.StatusOK, resp.Json)
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		allowMethod(w, r, http.MethodGet, http.MethodPost)
 		return
 	}
 	var body struct {
 		Action  string                 `json:"action"`
 		Payload map[string]interface{} `json:"payload"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+	if !decodeBody(w, r, &body, maxSmallBody) {
 		return
 	}
 	payload, _ := json.Marshal(body.Payload)
@@ -1106,20 +1242,18 @@ func (g *Gateway) handleLifeCompanion(w http.ResponseWriter, r *http.Request) {
 		resp, callErr = client.ManageCompanion(ctx, &lifev1.ManageCompanionRequest{Action: body.Action, PayloadJson: string(payload)})
 		return callErr
 	}); err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		upstreamError(w, err.Error())
 		return
 	}
 	if !resp.Ok {
-		http.Error(w, resp.Error, http.StatusBadRequest)
+		writeErr(w, http.StatusBadRequest, "companion_error", resp.Error)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write([]byte(resp.Json))
+	writeRawJSON(w, http.StatusOK, resp.Json)
 }
 
 func (g *Gateway) handleRunDirect(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !allowMethod(w, r, http.MethodPost) {
 		return
 	}
 	var req struct {
@@ -1127,8 +1261,11 @@ func (g *Gateway) handleRunDirect(w http.ResponseWriter, r *http.Request) {
 		Args      string `json:"args"`
 		SessionID string `json:"session_id"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+	if !decodeBody(w, r, &req, maxDirectRunBody) {
+		return
+	}
+	if req.Tool == "" {
+		badRequest(w, "tool required")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
@@ -1139,11 +1276,10 @@ func (g *Gateway) handleRunDirect(w http.ResponseWriter, r *http.Request) {
 		SessionId: req.SessionID,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		upstreamError(w, err.Error())
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"success": resp.Success,
 		"result":  resp.Result,
 		"error":   resp.Error,
@@ -1181,9 +1317,9 @@ var allowedImageExt = map[string]bool{
 func (g *Gateway) handleImages(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
-		r.Body = http.MaxBytesReader(w, r.Body, 32<<20)
-		if err := r.ParseMultipartForm(16 << 20); err != nil {
-			http.Error(w, "invalid multipart form: "+err.Error(), http.StatusBadRequest)
+		r.Body = http.MaxBytesReader(w, r.Body, 16<<20)
+		if err := r.ParseMultipartForm(8 << 20); err != nil {
+			badRequest(w, "invalid multipart form: "+err.Error())
 			return
 		}
 		file, hdr, err := r.FormFile("file")
@@ -1251,37 +1387,36 @@ func (g *Gateway) handleImages(w http.ResponseWriter, r *http.Request) {
 
 // handleTasks lists Core task-state machine entries (active + recent).
 func (g *Gateway) handleTasks(w http.ResponseWriter, r *http.Request) {
-	if g.localCore == nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"tasks": []interface{}{}})
-		return
-	}
-	if r.Method == http.MethodPost {
+	switch r.Method {
+	case http.MethodPost:
+		if g.localCore == nil {
+			unavailable(w, "core not ready")
+			return
+		}
 		var event server.TaskEvent
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2<<20)).Decode(&event); err != nil {
-			http.Error(w, "invalid task event", 400)
+		if !decodeBody(w, r, &event, maxTaskBody) {
 			return
 		}
 		if err := g.localCore.RecordTask(event); err != nil {
-			http.Error(w, err.Error(), 409)
+			writeErr(w, http.StatusConflict, "conflict", err.Error())
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
-		return
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	case http.MethodGet:
+		if g.localCore == nil {
+			writeJSON(w, http.StatusOK, map[string]interface{}{"tasks": []interface{}{}})
+			return
+		}
+		if r.URL.Query().Get("incremental") == "1" {
+			writeJSON(w, http.StatusOK, g.localCore.TaskDelta(r.URL.Query().Get("cursor")))
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"tasks": g.localCore.ListTasks(),
+		})
+	default:
+		allowMethod(w, r, http.MethodGet, http.MethodPost)
 	}
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", 405)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if r.URL.Query().Get("incremental") == "1" {
-		json.NewEncoder(w).Encode(g.localCore.TaskDelta(r.URL.Query().Get("cursor")))
-		return
-	}
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"tasks": g.localCore.ListTasks(),
-	})
 }
 
 // listLive2DModels scans for *.model3.json under live2DRoot.
@@ -1319,8 +1454,7 @@ func listLive2DModels() []map[string]string {
 func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"models": listLive2DModels(),
 		})
 	case http.MethodPost:
@@ -1473,7 +1607,7 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 			} else if idx := strings.Index(rel, "/"); idx <= 0 {
-				// bare filename — place under root folder
+				// bare filename: place it under the root folder
 				remainder = rel
 			}
 			dstPath := filepath.Join(targetDir, filepath.FromSlash(remainder))
@@ -1520,55 +1654,34 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 			"model_url": firstModelURL,
 		})
 	case http.MethodDelete:
-		id := r.URL.Query().Get("id")
-		if err := deleteLive2DModel(id); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		if g.settingsStore != nil {
-			values := g.settingsStore.GetValues("live2d")
-			current, _ := values["model_url"].(string)
-			folder := strings.Split(id, "/")[0]
-			if strings.HasPrefix(current, "/live2d/models/"+folder+"/") {
-				_ = g.settingsStore.SetValues("live2d", map[string]interface{}{"enabled": false, "model_url": ""})
-			}
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "models": listLive2DModels()})
+		g.deleteLive2DModelByID(w, r.URL.Query().Get("id"))
 	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		allowMethod(w, r, http.MethodGet, http.MethodPost, http.MethodDelete)
 	}
 }
 
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !allowedOrigin(r) {
-			http.Error(w, "origin not allowed", http.StatusForbidden)
-			return
-		}
-		if origin := r.Header.Get("Origin"); origin != "" {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Add("Vary", "Origin")
-		}
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		if token := os.Getenv("CORE_API_TOKEN"); token != "" && r.URL.Path != "/health" && r.Header.Get("Authorization") != "Bearer "+token {
-			http.Error(w, "authentication required", http.StatusUnauthorized)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
+// handleLive2DDeletePath DELETE /api/live2d/{path...} — REST form of
+// DELETE /api/live2d?id=<path>. Ids contain "/" (folder/manifest), hence the
+// trailing wildcard.
+func (g *Gateway) handleLive2DDeletePath(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodDelete) {
+		return
+	}
+	g.deleteLive2DModelByID(w, r.PathValue("path"))
 }
 
-func logMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s %s", r.Method, r.URL.Path)
-		next.ServeHTTP(w, r)
-	})
+func (g *Gateway) deleteLive2DModelByID(w http.ResponseWriter, id string) {
+	if err := deleteLive2DModel(id); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid_model", err.Error())
+		return
+	}
+	if g.settingsStore != nil {
+		values := g.settingsStore.GetValues("live2d")
+		current, _ := values["model_url"].(string)
+		folder := strings.Split(id, "/")[0]
+		if strings.HasPrefix(current, "/live2d/models/"+folder+"/") {
+			_ = g.settingsStore.SetValues("live2d", map[string]interface{}{"enabled": false, "model_url": ""})
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{"ok": true, "models": listLive2DModels()})
 }
