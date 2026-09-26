@@ -30,6 +30,8 @@ class RuntimeToolConfig:
     mcp_enabled: bool = True
     onebot_enabled: bool = False
     onebot_sender: Any = None
+    minecraft_enabled: bool = False
+    minecraft_url: str = "http://127.0.0.1:8765"
 
 
 class Tool(ABC):
@@ -499,6 +501,68 @@ class SendOneBotTool(Tool):
             return ToolResult(False, None, str(e))
 
 
+class MinecraftTool(Tool):
+    """Connect a Minecraft bot to the user's server and play alongside people."""
+
+    def __init__(self, config: RuntimeToolConfig):
+        self.config = config
+
+    @property
+    def name(self) -> str:
+        return "minecraft"
+
+    @property
+    def description(self) -> str:
+        return (
+            "Control a Minecraft companion bot on the user's server (Java via mineflayer, "
+            "Bedrock via bedrock-protocol). Actions: connect, disconnect, status, chat, "
+            "players, follow, goto, stop, look, dig, place, attack, inventory, use, "
+            "autopilot_start, autopilot_stop. With autopilot_start the bot plays by itself "
+            "using AI decisions and can be stopped with autopilot_stop."
+        )
+
+    def parameters(self) -> dict:
+        return {"type": "object", "required": ["action"], "properties": {
+            "action": {"type": "string", "enum": [
+                "connect", "disconnect", "status", "chat", "players", "follow", "goto",
+                "stop", "look", "dig", "place", "attack", "inventory", "use",
+                "autopilot_start", "autopilot_stop"]},
+            "edition": {"type": "string", "enum": ["java", "bedrock"]},
+            "host": {"type": "string"}, "port": {"type": "integer"},
+            "username": {"type": "string"}, "version": {"type": "string"},
+            "auth": {"type": "string", "enum": ["offline", "microsoft"]},
+            "message": {"type": "string"}, "player": {"type": "string"},
+            "target": {"type": "string"}, "distance": {"type": "integer"},
+            "x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"},
+            "item": {"type": "string"}, "goal": {"type": "string"},
+            "interval_ms": {"type": "integer"}, "model_id": {"type": "string"},
+        }}
+
+    async def execute(self, action: str = "", **kwargs) -> ToolResult:
+        if not self.config.minecraft_enabled:
+            return ToolResult(False, None, "minecraft is disabled in L.I.F.E settings")
+        action = (action or "").strip().lower()
+        if not action:
+            return ToolResult(False, None, "action is required")
+        base = (self.config.minecraft_url or "http://127.0.0.1:8765").rstrip("/")
+        args = {key: value for key, value in kwargs.items() if value is not None and key != "action"}
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                if action in ("autopilot_start", "autopilot_stop"):
+                    payload = {"goal": args.get("goal"), "intervalMs": args.get("interval_ms"), "modelId": args.get("model_id")}
+                    endpoint = f"{base}/autopilot/{'start' if action.endswith('start') else 'stop'}"
+                    resp = await client.post(endpoint, json={key: value for key, value in payload.items() if value not in (None, "")})
+                else:
+                    resp = await client.post(f"{base}/action", json={"action": action, "args": args})
+                resp.raise_for_status()
+                data = resp.json()
+        except Exception as e:
+            return ToolResult(False, None, f"minecraft service unreachable: {e}")
+        if data.get("ok") is False:
+            return ToolResult(False, data, data.get("error") or "minecraft action failed")
+        return ToolResult(True, data.get("result", data))
+
+
 class AgendaTool(Tool):
     def __init__(self, companion): self.companion = companion
     @property
@@ -672,6 +736,7 @@ def create_default_registry(core_client=None, config: RuntimeToolConfig | None =
     registry.register(WebBrowseTool())
     registry.register(ComputerUseTool(core_client, config))
     registry.register(McpTool(core_client, config))
+    registry.register(MinecraftTool(config))
     registry.register(SendOneBotTool(config, companion))
     if memory is not None:
         registry.register(RememberTool(memory))

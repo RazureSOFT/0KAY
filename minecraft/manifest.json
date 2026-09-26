@@ -1,0 +1,1 @@
+{"schema":1,"name":"@razuresoft/0kay-minecraft","version":"0.1.0","requires":["core"],"install":[["npm","ci"]],"start":["node","src/index.js"]}

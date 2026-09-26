@@ -1097,6 +1097,8 @@ class LifeEngine:
         self.tool_config.computer_use = bool(values.get("computer_use", False))
         self.tool_config.mcp_enabled = values.get("mcp_enabled") is not False
         self.tool_config.onebot_enabled = bool(values.get("onebot_enabled", False))
+        self.tool_config.minecraft_enabled = bool(values.get("minecraft_enabled", False))
+        self.tool_config.minecraft_url = str(values.get("minecraft_url") or "http://127.0.0.1:8765")
         self._screen_watch = bool(values.get("screen_watch", False))
         self._report_agent_host = str(values.get("report_agent_host") or "")
         self.think_model = str(values.get("think_model") or os.getenv("LIFE_THINK_MODEL", ""))

@@ -228,6 +228,20 @@ class CoreClient:
                             default_value="1",
                             help="同一用户或群组每天最多主动发送次数",
                         ),
+                        _pb.SettingsField(
+                            key="minecraft_enabled",
+                            type="bool",
+                            label="Minecraft 联机",
+                            default_value="false",
+                            help="允许 L.I.F.E 通过 0kay-minecraft 服务连接你的世界并与玩家一起游玩",
+                        ),
+                        _pb.SettingsField(
+                            key="minecraft_url",
+                            type="text",
+                            label="Minecraft 服务地址",
+                            default_value="http://127.0.0.1:8765",
+                            help="0kay-minecraft 机器人服务地址（默认本机 8765）",
+                        ),
                     ],
                 )
                 request.settings_sections.append(sec)
