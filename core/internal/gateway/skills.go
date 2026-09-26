@@ -68,11 +68,17 @@ func (g *Gateway) handleSkills(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadGateway, "upstream_error", err.Error())
 		return
 	}
-	status := http.StatusOK
+	// A failed delete is a real error, so it uses the canonical envelope
+	// (docs/HTTP_API.md) instead of a 404 carrying a success-shaped body.
 	if !resp.Success && action == "delete" {
-		status = http.StatusNotFound
+		message := resp.Error
+		if message == "" {
+			message = "skill not found"
+		}
+		notFound(w, message)
+		return
 	}
-	writeJSON(w, status, map[string]any{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"success": resp.Success,
 		"result":  json.RawMessage(orEmptyJSON(resp.Result)),
 		"error":   resp.Error,

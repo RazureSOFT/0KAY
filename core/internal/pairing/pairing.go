@@ -235,6 +235,39 @@ func (s *Store) authorized(r *http.Request) (bool, string) {
 	return false, ""
 }
 
+// secureCookie reports whether the session cookie may carry the Secure flag.
+//
+// The cookie value is the bearer token itself, so it must not travel in clear
+// text. r.TLS alone is not enough: with a TLS-terminating reverse proxy the
+// hop into Core is plain HTTP even though the browser used HTTPS. The forwarded
+// scheme is only believed from a trusted peer (a hostile client could otherwise
+// set the header itself, which would just make its own cookie stricter, but the
+// check keeps the signal honest). CORE_COOKIE_SECURE forces either answer for
+// deployments the heuristic cannot see.
+func (s *Store) secureCookie(r *http.Request) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("CORE_COOKIE_SECURE"))) {
+	case "1", "true", "yes":
+		return true
+	case "0", "false", "no":
+		return false
+	}
+	if r.TLS != nil {
+		return true
+	}
+	if !s.trustedPeer(r.RemoteAddr) {
+		return false
+	}
+	proto := r.Header.Get("X-Forwarded-Proto")
+	if proto == "" {
+		return false
+	}
+	// A proxy chain sends a comma separated list; the first entry is the client.
+	if index := strings.Index(proto, ","); index >= 0 {
+		proto = proto[:index]
+	}
+	return strings.EqualFold(strings.TrimSpace(proto), "https")
+}
+
 func writeJSON(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
@@ -289,7 +322,7 @@ func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 				MaxAge:   30 * 24 * 3600,
 				HttpOnly: true,
 				SameSite: http.SameSiteStrictMode,
-				Secure:   r.TLS != nil,
+				Secure:   s.secureCookie(r),
 			})
 		}
 		ok, method := s.authorized(r)
@@ -312,7 +345,7 @@ func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 			MaxAge:   -1,
 			HttpOnly: true,
 			SameSite: http.SameSiteStrictMode,
-			Secure:   r.TLS != nil,
+			Secure:   s.secureCookie(r),
 		})
 		writeJSON(w, http.StatusOK, map[string]interface{}{"authenticated": false, "method": ""})
 	default:

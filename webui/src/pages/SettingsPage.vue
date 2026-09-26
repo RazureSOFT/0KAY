@@ -11,6 +11,7 @@ import type { ProviderConfig } from '../composables/wizard'
 import Live2DStage from '../components/Live2DStage.vue'
 import LifeSettingsPanel from '../components/LifeSettingsPanel.vue'
 import AboutPanel from '../components/AboutPanel.vue'
+import UpdatesPanel from '../components/UpdatesPanel.vue'
 import GeneralPanel from '../components/GeneralPanel.vue'
 import PersonaPanel from '../components/PersonaPanel.vue'
 import PermissionsPanel from '../components/PermissionsPanel.vue'
@@ -541,6 +542,8 @@ function save() {
             <svg v-else-if="tab.icon === 'warn'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 4l9 16H3L12 4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             <!-- info / about -->
             <svg v-else-if="tab.icon === 'info'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 11v5M12 7.5v.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <!-- download / updates -->
+            <svg v-else-if="tab.icon === 'download'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             <!-- lock / permissions -->
             <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </span>
@@ -1022,6 +1025,7 @@ function save() {
         </div>
 
         <AboutPanel v-else-if="activeTab === 'about'" />
+        <UpdatesPanel v-else-if="activeTab === 'updates'" />
 
         <!-- Danger -->
         <DangerPanel v-else />

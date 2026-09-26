@@ -150,7 +150,7 @@ Core exposes component-update endpoints; the About panel renders **Update now**
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/update/check` | Latest platform release vs the running version |
-| GET | `/api/update/check-plugins` | Latest release vs each registered plugin |
+| GET | `/api/update/check-plugins` | Latest release vs every installed component |
 | POST | `/api/update/apply` | Start an update for one component |
 | GET | `/api/update/status` | Progress of the most recent update |
 
@@ -162,7 +162,19 @@ Core exposes component-update endpoints; the About panel renders **Update now**
 - **source mode**: with no pm record, Core `git pull --ff-only` the component's
   git repository, rebuilds it from `manifest.json` (dependency installs
   skipped), then restarts the component on its listen port. Components without a
-  pm package (e.g. Minecraft) also use source mode.
+  pm package (e.g. Minecraft) also use source mode. A component whose manifest
+  has no `start` (e.g. `mcp`, `pm`) is synced and built without a restart.
+
+`check-plugins` reports **every installed component**, not just running plugins:
+registered services plus platform components in the source checkout (`core`,
+`webui`, `life`, `mocr`, `agent`, `searxng`, `mcp`, `minecraft`, `pm`) and
+third-party plugins installed through 0kay-pm, which appear under their package
+name. `can_update` is true whenever `apply` accepts the id.
+
+The global GitHub mirror ("plugin source") is the `github_proxy` value in the
+core-owned `updates` settings section (`GET`/`POST /api/settings/updates`), e.g.
+`https://gh-proxy.com`. When set, source syncs and the git commands `0kay-pm`
+runs during install/update are rewritten through it; empty means direct access.
 
 Both paths run as a detached script that writes to
 `$CORE_DATA_DIR/updates/apply.log` and prints a completion marker;

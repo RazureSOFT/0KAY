@@ -26,8 +26,13 @@ discover that a credential is required and supply one:
 | Method | Path | Purpose |
 |---|---|---|
 | GET, HEAD | `/api/auth/session` | `{authenticated, method, requires_auth, core_id, lan_enabled}` |
-| POST | `/api/auth/session` | `{token}` → sets `0kay_session` (HttpOnly, SameSite=Strict, 30 d, Secure under TLS) → `{authenticated, method:"cookie", requires_auth, core_id}` |
+| POST | `/api/auth/session` | `{token}` → sets `0kay_session` (HttpOnly, SameSite=Strict, 30 d) → `{authenticated, method:"cookie", requires_auth, core_id}` |
 | DELETE | `/api/auth/session` | Clears the cookie → `{authenticated:false, method:""}` |
+
+The cookie value is the bearer token itself, so `Secure` is set whenever the
+browser hop is encrypted: direct TLS, or `X-Forwarded-Proto: https` from a
+trusted peer (a TLS-terminating reverse proxy). `CORE_COOKIE_SECURE=1|0`
+overrides the detection when the deployment cannot be inferred.
 
 Plugin pairing callbacks (`/api/pairing/*`) are handled before this gate and
 apply their own loopback/Origin rules instead.
@@ -37,7 +42,11 @@ apply their own loopback/Origin rules instead.
 - DNS-rebinding guard: loopback, IP literals and single-label hostnames
   (e.g. the compose service name `core`) are accepted; any other host must be
   listed in `CORE_ALLOWED_HOSTS` / `CORE_ALLOWED_ORIGINS` or reported by
-  `pairingHostIdentity()`, otherwise `403 host_not_allowed`.
+  `pairingHostIdentity()`, otherwise `403 host_not_allowed`. Entries in either
+  variable may be a bare hostname, `host:port`, or a full origin URL; all three
+  are reduced to the hostname for the Host check. For CORS authorization,
+  `CORE_ALLOWED_ORIGINS` entries must still be complete origins (scheme, host,
+  and port when non-default), matching the browser's Origin header exactly.
 - Allowed origins: same origin, `localhost`/`127.0.0.1` variants, plus any host
   listed in `CORE_ALLOWED_ORIGINS` (comma separated). Other origins get
   `403 origin_not_allowed`.
@@ -45,7 +54,7 @@ apply their own loopback/Origin rules instead.
   `Content-Type, Authorization`.
 - Accepted origins are echoed back with `Access-Control-Allow-Origin`,
   `Access-Control-Allow-Credentials: true` and `Vary: Origin`.
-- `OPTIONS` preflight returns `200` empty body before token validation.
+- `OPTIONS` preflight returns `204` empty body before token validation.
 
 ### Errors
 
@@ -128,7 +137,7 @@ Served from `$CORE_DATA_DIR/plugin-ui/{name}` (default `data/plugin-ui/{name}`).
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/update/check` | Latest 0KAY GitHub release vs. the running version |
-| GET | `/api/update/check-plugins` | Latest release vs. each registered plugin version |
+| GET | `/api/update/check-plugins` | Latest release vs. every installed component (registered plugins + source/pm components) |
 | POST | `/api/update/apply` | Start an update for one component |
 | GET | `/api/update/status` | Progress of the most recent update |
 
@@ -156,6 +165,18 @@ Served from `$CORE_DATA_DIR/plugin-ui/{name}` (default `data/plugin-ui/{name}`).
 
 - `mode` is `pm` when the component is installed with 0kay-pm, otherwise
   `source` (git pull + rebuild + restart). See [Releases](RELEASES.md).
+- `check-plugins` lists **every installed component**, not only currently
+  running plugins: registered plugin services, platform components found in the
+  source checkout (`core`, `webui`, `life`, `mocr`, `agent`, `searxng`, `mcp`,
+  `minecraft`, `pm`) and third-party plugins installed through 0kay-pm (listed
+  by their package name). `can_update` is true whenever `apply` can handle it.
+- `apply` with no `version` syncs the latest source (or runs `0kay-pm update`)
+  for that component; a component whose manifest declares no start command
+  (e.g. `mcp`, `pm`) is synced/built without a restart.
+- The global GitHub mirror ("plugin source") lives in the core-owned `updates`
+  settings section as `github_proxy` (`GET`/`POST /api/settings/updates`). When
+  set (e.g. `https://gh-proxy.com`) it is applied to source syncs and to the git
+  commands `0kay-pm` runs during install/update; empty means direct access.
 - `status` is `idle`/`running`/`done`/`failed`. Only one update runs at a time;
   a second request returns `409`. Unknown components return `400`.
 - Version comparison is semver-aware. `latest` is omitted with no release; the

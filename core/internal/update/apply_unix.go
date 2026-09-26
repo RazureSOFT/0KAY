@@ -15,13 +15,23 @@ func shQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'"
 }
 
+// shEnvLines renders the git mirror environment for a shell script (empty when
+// no mirror is configured).
+func shEnvLines() string {
+	var b strings.Builder
+	for _, kv := range gitProxyEnv() {
+		fmt.Fprintf(&b, "export %s=%s\n", kv[0], shQuote(kv[1]))
+	}
+	return b.String()
+}
+
 // writeUpdater writes the shell script that stops, updates and starts a
 // component, then prints a status marker for State() to read.
 func writeUpdater(dir, pm, pkg, target string) (string, string, error) {
 	script := filepath.Join(dir, "update.sh")
 	logPath := filepath.Join(dir, "apply.log")
 	body := fmt.Sprintf(`#!/bin/sh
-%s stop %s
+%s%s stop %s
 %s update %s
 code=$?
 if [ $code -eq 0 ]; then
@@ -31,6 +41,7 @@ fi
 if [ $code -eq 0 ]; then echo %s; else echo %s; fi
 exit $code
 `,
+		shEnvLines(),
 		shQuote(pm), shQuote(pkg),
 		shQuote(pm), shQuote(target),
 		shQuote(pm), shQuote(pkg),
@@ -47,11 +58,12 @@ func writeInstaller(dir, pm, pkg string) (string, string, error) {
 	script := filepath.Join(dir, "install.sh")
 	logPath := filepath.Join(dir, "install.log")
 	body := fmt.Sprintf(`#!/bin/sh
-%s install %s --no-pair
+%s%s install %s --no-pair
 code=$?
 if [ $code -eq 0 ]; then echo %s; else echo %s; fi
 exit $code
 `,
+		shEnvLines(),
 		shQuote(pm), shQuote(pkg),
 		markerDone, markerFailed,
 	)
@@ -103,6 +115,7 @@ func writeSourceUpdater(dir string, plan sourcePlan) (string, string, error) {
 	b.WriteString("export GIT_TERMINAL_PROMPT=0\n")
 	b.WriteString("export GIT_HTTP_LOW_SPEED_LIMIT=1000\n")
 	b.WriteString("export GIT_HTTP_LOW_SPEED_TIME=20\n")
+	b.WriteString(shEnvLines())
 	fmt.Fprintf(&b, "cd %s\n", shQuote(plan.RepoDir))
 	b.WriteString("git pull --ff-only\n")
 	fmt.Fprintf(&b, "cd %s\n", shQuote(plan.Dir))
@@ -116,7 +129,9 @@ func writeSourceUpdater(dir string, plan sourcePlan) (string, string, error) {
 		fmt.Fprintf(&b, "for pid in $(lsof -ti tcp:%d -sTCP:LISTEN 2>/dev/null); do kill \"$pid\" 2>/dev/null || true; done\n", plan.Port)
 		b.WriteString("sleep 1\n")
 	}
-	fmt.Fprintf(&b, "setsid %s >>%s 2>&1 &\n", joinArgs(plan.Start), shQuote(startLog))
+	if len(plan.Start) > 0 {
+		fmt.Fprintf(&b, "setsid %s >>%s 2>&1 &\n", joinArgs(plan.Start), shQuote(startLog))
+	}
 	b.WriteString("trap - EXIT\n")
 	fmt.Fprintf(&b, "echo %s\n", markerDone)
 	if err := os.WriteFile(script, []byte(b.String()), 0o755); err != nil {

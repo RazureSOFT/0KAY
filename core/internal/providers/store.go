@@ -40,6 +40,11 @@ func (p ProviderConfig) EffectiveProvider() string {
 	return p.Provider
 }
 
+// maskFiller is the opaque middle section MaskKey writes. Its length is what
+// IsMasked matches on, so a real credential that merely contains an asterisk is
+// not mistaken for a placeholder.
+const maskFiller = "************" // 12
+
 // MaskKey renders an API key safe for transport and logging: a short prefix so
 // humans can recognise the credential, the tail so revocation is identifiable,
 // and nothing usable in between. Empty keys stay empty.
@@ -50,13 +55,15 @@ func MaskKey(key string) string {
 	if len(key) <= 8 {
 		return strings.Repeat("*", len(key))
 	}
-	head := key[:4]
-	return head + strings.Repeat("*", 12) + key[len(key)-4:]
+	return key[:4] + maskFiller + key[len(key)-4:]
 }
 
 // IsMasked reports whether v should be treated as a masked placeholder rather
-// than a new secret: it is empty, it is the masked form of key, or (when no
-// secret is known) it contains the masking filler.
+// than a new secret: it is empty, or it is the masked form of key. When no
+// secret is known the shape of the mask is matched instead — either the full
+// filler MaskKey emits for a long key, or the all-asterisk form it emits for a
+// short one. A key that merely happens to contain an asterisk is NOT masked, so
+// a first-time save of such a credential is stored rather than silently dropped.
 func IsMasked(v, key string) bool {
 	if v == "" {
 		return true
@@ -64,7 +71,10 @@ func IsMasked(v, key string) bool {
 	if key != "" {
 		return v == MaskKey(key)
 	}
-	return strings.Contains(v, "*")
+	if strings.Contains(v, maskFiller) {
+		return true
+	}
+	return strings.Trim(v, "*") == ""
 }
 
 // IsModelEnabled reports whether a model is active on this provider.

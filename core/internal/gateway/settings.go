@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"0kay/core/internal/settings"
+	"0kay/core/internal/update"
 )
 
 // handleSettingsSections lists plugin-contributed settings sections.
@@ -87,6 +88,12 @@ func (g *Gateway) handleSettingsSection(w http.ResponseWriter, r *http.Request) 
 		if err := g.settingsStore.SetValues(id, vals); err != nil {
 			notFound(w, "section not found")
 			return
+		}
+		// Plugin updates settings drive the global git mirror; push it live so
+		// the next source sync / 0kay-pm run uses it without a restart.
+		if id == "updates" {
+			proxy, _ := g.settingsStore.GetValues("updates")["github_proxy"].(string)
+			update.SetGitHubProxy(proxy)
 		}
 		// Special-case life permissions mirror for backward compatibility
 		if id == "life" && g.localCore != nil {

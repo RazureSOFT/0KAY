@@ -27,10 +27,20 @@ type Release struct {
 	HTMLURL string `json:"html_url"`
 }
 
+// apiBase is the base URL for GitHub API requests. When a mirror is configured
+// it is prefixed gh-proxy style ("https://gh-proxy.com/https://api.github.com")
+// so release checks do not hit github.com directly.
+func apiBase() string {
+	if githubProxy == "" {
+		return "https://api.github.com"
+	}
+	return githubProxy + "/https://api.github.com"
+}
+
 // Latest fetches the newest published release of owner/repo.
 // It returns (nil, nil) when the repository has no releases yet.
 func Latest(owner, repo string) (*Release, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repo)
+	url := fmt.Sprintf("%s/repos/%s/%s/releases/latest", apiBase(), owner, repo)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -132,6 +142,8 @@ func RepositoryFor(plugin string) (owner, repo string, known bool) {
 		return ownerUmbrella, repoUmbrella, true
 	case "agent":
 		return ownerUmbrella, repoAgent, true
+	case "pm":
+		return ownerUmbrella, "0KAY-pm", true
 	case "minecraft":
 		return ownerRazureink, repoMinecraft, true
 	}

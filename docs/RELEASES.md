@@ -61,7 +61,7 @@ Core exposes:
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/update/check` | latest platform release vs the running version |
-| GET | `/api/update/check-plugins` | latest release vs each registered plugin |
+| GET | `/api/update/check-plugins` | latest release vs every installed component |
 | POST | `/api/update/apply` | start an update for one component |
 | GET | `/api/update/status` | progress of the most recent update |
 
@@ -89,6 +89,17 @@ completion marker; `GET /api/update/status` derives `running`/`done`/`failed`
 from that file, so status survives a Core restart. On Windows the updater runs
 with no console window.
 
+### GitHub mirror (global plugin source)
+
+Settings → **Plugin updates** exposes a global mirror as `github_proxy` in the
+`updates` settings section (`GET`/`POST /api/settings/updates`), for example
+`https://gh-proxy.com`. When set, Core rewrites `https://github.com/...` through
+the mirror for **source syncs and every git command 0kay-pm runs** during
+install/update, using git's `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_n`/
+`GIT_CONFIG_VALUE_n` environment (the global git config is never modified). The
+release check itself still queries `api.github.com` directly. Leave the field
+empty for direct GitHub access.
+
 ### Update-check details
 
 - Version comparison is semver-aware: a leading `v` and prerelease/build
@@ -98,5 +109,12 @@ with no console window.
   plugin check reports a per-plugin `error` (including `unknown repository`).
 - `check-plugins` also returns `package` and `can_update` so the WebUI only shows
   an update button for components it can update.
+- `check-plugins` lists **every installed component**, not only running plugins:
+  registered plugin services, platform components present in the source checkout
+  (`core`, `webui`, `life`, `mocr`, `agent`, `searxng`, `mcp`, `minecraft`, `pm`)
+  and third-party plugins installed through 0kay-pm, which appear under their
+  package name. A component whose manifest declares no `start` command (`mcp`,
+  `pm`) is synced/built without a restart.
 - Plugin versions come from the gRPC `PluginInfo.version` registration field; no
-  protocol change is required.
+  protocol change is required. Components that are not registered read their
+  version from `manifest.json`/`package.json`.

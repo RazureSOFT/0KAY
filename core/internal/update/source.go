@@ -24,7 +24,7 @@ type sourcePlan struct {
 // componentSubdir maps a plugin name to its directory inside the source tree.
 func componentSubdir(plugin string) (string, bool) {
 	switch plugin {
-	case "core", "mocr", "life", "agent", "webui", "searxng", "mcp", "minecraft":
+	case "core", "mocr", "life", "agent", "webui", "searxng", "mcp", "minecraft", "pm":
 		return plugin, true
 	}
 	return "", false
@@ -96,6 +96,7 @@ func pmInstalled(pkg string) bool {
 // so callers can match by name even when a manifest is unavailable.
 type InstalledPlugin struct {
 	Name       string `json:"name"`
+	Version    string `json:"version,omitempty"`
 	Repository string `json:"repository,omitempty"`
 	// Source is "pm" (removable) or "platform" (part of the 0KAY platform).
 	Source string `json:"source,omitempty"`
@@ -131,6 +132,7 @@ func pmInstalledPluginList() []InstalledPlugin {
 	}
 	var state struct {
 		Installed map[string]struct {
+			Version        string `json:"version"`
 			Repository     string `json:"repository"`
 			RepositoryRoot string `json:"repositoryRoot"`
 		} `json:"installed"`
@@ -147,7 +149,11 @@ func pmInstalledPluginList() []InstalledPlugin {
 		if repository == "" {
 			repository = packageRepository(record.RepositoryRoot)
 		}
-		out = append(out, InstalledPlugin{Name: name, Repository: repository, Source: "pm"})
+		version := record.Version
+		if version == "" {
+			version = packageVersion(record.RepositoryRoot)
+		}
+		out = append(out, InstalledPlugin{Name: name, Version: version, Repository: repository, Source: "pm"})
 	}
 	return out
 }
@@ -181,6 +187,79 @@ func packageRepository(root string) string {
 		}
 	}
 	return ""
+}
+
+// packageVersion reads the version from a component directory's manifest.json
+// or package.json (whichever is present).
+func packageVersion(dir string) string {
+	if strings.TrimSpace(dir) == "" {
+		return ""
+	}
+	for _, name := range []string{"manifest.json", "package.json"} {
+		raw, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			continue
+		}
+		var meta struct {
+			Version string `json:"version"`
+		}
+		if json.Unmarshal(raw, &meta) != nil {
+			continue
+		}
+		if strings.TrimSpace(meta.Version) != "" {
+			return meta.Version
+		}
+	}
+	return ""
+}
+
+// ComponentForPackage maps an installed 0kay-pm package to the component id used
+// for updates: platform packages map to their directory name, third-party
+// plugins keep their package name. The umbrella package (directory ".") has no
+// standalone update row and reports false.
+func ComponentForPackage(pkg string) (string, bool) {
+	if component, ok := platformComponents[pkg]; ok {
+		if component.Dir == "." {
+			return "", false
+		}
+		return component.Dir, true
+	}
+	if strings.TrimSpace(pkg) == "" {
+		return "", false
+	}
+	return pkg, true
+}
+
+// CanUpdate reports whether the About page can update a component: it is a
+// published platform package, a component in the source checkout, or a plugin
+// installed through 0kay-pm.
+func CanUpdate(name string) bool {
+	if _, ok := PackageFor(name); ok {
+		return true
+	}
+	if _, ok := componentSubdir(name); ok {
+		return true
+	}
+	return pmInstalled(name)
+}
+
+// RepositoryURL resolves the git repository backing a component id, preferring
+// the platform manifest and falling back to the installed-plugin records.
+func RepositoryURL(name string) (string, bool) {
+	if pkg, ok := PackageFor(name); ok {
+		if component, found := platformComponents[pkg]; found && strings.TrimSpace(component.Repository) != "" {
+			return component.Repository, true
+		}
+	}
+	if owner, repo, ok := RepositoryFor(name); ok {
+		return "https://github.com/" + owner + "/" + repo, true
+	}
+	for _, plugin := range InstalledPlugins() {
+		if plugin.Name == name && strings.TrimSpace(plugin.Repository) != "" {
+			return plugin.Repository, true
+		}
+	}
+	return "", false
 }
 
 // gitRemoteURL reads the origin remote URL from a checkout's .git/config so
@@ -228,7 +307,7 @@ func sourceInstalledPluginList() []InstalledPlugin {
 			path = filepath.Join(root, component.Dir)
 		}
 		if info, err := os.Stat(path); err == nil && info.IsDir() {
-			out = append(out, InstalledPlugin{Name: name, Repository: component.Repository, Source: "platform"})
+			out = append(out, InstalledPlugin{Name: name, Version: packageVersion(path), Repository: component.Repository, Source: "platform"})
 		}
 	}
 	return out
@@ -365,19 +444,25 @@ func sourcePlanFor(plugin string) (*sourcePlan, error) {
 	if !dirExists(dir) {
 		return nil, fmt.Errorf("source directory not found: %s", dir)
 	}
+	plan := &sourcePlan{
+		Name:    plugin,
+		RepoDir: gitRepoFor(dir),
+		Dir:     dir,
+		Port:    componentPort(plugin),
+		Env:     map[string]string{},
+	}
+	if plugin == "pm" {
+		// 0kay-pm ships as a plain ESM script with no manifest and no build
+		// step, so syncing its checkout is the whole update.
+		plan.Package, _ = PackageFor(plugin)
+		return plan, nil
+	}
 	manifest, err := loadSourceManifest(dir)
 	if err != nil {
 		return nil, err
 	}
-	plan := &sourcePlan{
-		Name:    plugin,
-		Package: manifest.Name,
-		RepoDir: gitRepoFor(dir),
-		Dir:     dir,
-		Port:    componentPort(plugin),
-		Start:   manifest.Start,
-		Env:     map[string]string{},
-	}
+	plan.Package = manifest.Name
+	plan.Start = manifest.Start
 	for _, cmd := range manifest.Install {
 		if isDependencyStep(cmd) {
 			continue
@@ -386,9 +471,6 @@ func sourcePlanFor(plugin string) (*sourcePlan, error) {
 	}
 	if plugin == "life" {
 		plan.Env["PYTHONPATH"] = filepath.Join(dir, "src")
-	}
-	if len(plan.Start) == 0 {
-		return nil, fmt.Errorf("component %q has no start command", plugin)
 	}
 	return plan, nil
 }

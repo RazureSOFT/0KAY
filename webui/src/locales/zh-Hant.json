@@ -253,8 +253,15 @@
       "live2d": "Live2D",
       "permissions": "權限",
       "danger": "危險區",
+      "updates": "外掛更新",
       "about": "關於"
     },
+    "pluginSourceTitle": "外掛來源",
+    "pluginSourceDesc": "更新與 0kay-pm 安裝的下載來源。",
+    "pluginSource": "GitHub 加速來源（代理）",
+    "pluginSourcePlaceholder": "https://gh-proxy.com",
+    "pluginSourceHelp": "留空為直連 GitHub；填入加速前綴（如 https://gh-proxy.com）後，原始碼同步與 0kay-pm 安裝/更新都會走該代理。",
+    "pluginSourceDirect": "直連",
     "about": {
       "description": "平台版本與 GitHub 發行版更新",
       "check": "檢查更新",

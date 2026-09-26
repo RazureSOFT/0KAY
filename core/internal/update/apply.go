@@ -33,6 +33,10 @@ func PackageFor(plugin string) (string, bool) {
 		return "@razuresoft/0kay-agent", true
 	case "mcp":
 		return "@razuresoft/0kay-mcp", true
+	case "minecraft":
+		return "@razuresoft/0kay-minecraft", true
+	case "pm":
+		return "@razuresoft/0kay-pm", true
 	case "searxng":
 		return "@razuresoft/0kay-searxng", true
 	}
@@ -46,7 +50,7 @@ type ApplyState struct {
 	Version string `json:"version,omitempty"`
 	Action  string `json:"action,omitempty"` // install|uninstall
 	Mode    string `json:"mode,omitempty"`   // pm|source
-	Status  string `json:"status"`         // idle|running|done|failed
+	Status  string `json:"status"`           // idle|running|done|failed
 	Started string `json:"started,omitempty"`
 	Error   string `json:"error,omitempty"`
 	Log     string `json:"log,omitempty"`
@@ -112,9 +116,12 @@ func State() ApplyState {
 // with 0kay-pm use the package manager; a plain source checkout is synced from
 // its git repository and rebuilt instead.
 func Start(plugin, version string) (ApplyState, error) {
+	plugin = strings.TrimSpace(plugin)
 	pkg, known := PackageFor(plugin)
 	if !known {
-		if _, ok := componentSubdir(plugin); !ok {
+		// Unknown ids are accepted only when they are a source-checkout
+		// component or a plugin that 0kay-pm already installed.
+		if _, ok := componentSubdir(plugin); !ok && !pmInstalled(plugin) {
 			return ApplyState{Status: "idle"}, fmt.Errorf("unsupported component %q", plugin)
 		}
 	}
@@ -129,10 +136,15 @@ func Start(plugin, version string) (ApplyState, error) {
 	startMu.Lock()
 	defer startMu.Unlock()
 
-	if known && pmInstalled(pkg) {
+	switch {
+	case known && pmInstalled(pkg):
 		return startPM(dir, plugin, pkg, version)
+	case !known && pmInstalled(plugin):
+		// Third-party plugin: the id is its own 0kay-pm package name.
+		return startPM(dir, plugin, plugin, version)
+	default:
+		return startSource(dir, plugin, version)
 	}
-	return startSource(dir, plugin, version)
 }
 
 // startPM runs 0kay-pm stop/update/start (optionally pinned to a release tag).

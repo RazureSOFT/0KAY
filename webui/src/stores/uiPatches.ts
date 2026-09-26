@@ -128,7 +128,6 @@ export interface BootstrapItem {
 /** Built-in sidebar items. Chat/对话 is registered by life.patch; Agent by agent.patch. */
 export const BUILTIN_NAV: NavItem[] = [
   { id: 'plugins', to: '/plugins', labelKey: 'nav.plugins', icon: 'plugins', order: 30 },
-  { id: 'updates', to: '/updates', labelKey: 'nav.updates', icon: 'updates', order: 35 },
   { id: 'settings', to: '/settings', labelKey: 'nav.settings', icon: 'settings', order: 100 },
 ]
 
@@ -148,6 +147,7 @@ export const BUILTIN_SETTINGS: SettingsTabItem[] = [
   { id: 'persona', icon: 'person', order: 40, component: 'persona' },
   { id: 'permissions', icon: 'lock', order: 60, component: 'permissions' },
   { id: 'danger', icon: 'warn', order: 100 },
+  { id: 'updates', icon: 'download', order: 105 },
   { id: 'about', icon: 'info', order: 110 },
 ]
 

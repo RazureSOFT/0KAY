@@ -42,17 +42,18 @@ func (g *Gateway) handleAgentApprovals(w http.ResponseWriter, r *http.Request) {
 	if questions {
 		tool = "question_list"
 	}
-	items, failed := g.collectAgentItems(r, body.ExecutorID, tool, func() (string, map[string]any, bool) {
-		if r.Method != http.MethodPost {
-			return "", nil, false
+	var decide func() (string, map[string]any, bool)
+	if r.Method == http.MethodPost {
+		decide = func() (string, map[string]any, bool) {
+			if questions {
+				return "question_answer", map[string]any{"id": body.ID, "answer": *body.Answer}, true
+			}
+			return "approval_decide", map[string]any{"id": body.ID, "allow": *body.Allow}, true
 		}
-		if questions {
-			return "question_answer", map[string]any{"id": body.ID, "answer": *body.Answer}, true
-		}
-		return "approval_decide", map[string]any{"id": body.ID, "allow": *body.Allow}, true
-	})
+	}
+	items, failed := g.collectAgentItems(r, body.ExecutorID, tool, decide)
 	if failed != nil {
-		writeErr(w, http.StatusBadGateway, "upstream_error", failed.Error())
+		writeAgentErr(w, failed)
 		return
 	}
 	if r.Method == http.MethodPost {
@@ -72,12 +73,12 @@ func (g *Gateway) handleAgentInbox(w http.ResponseWriter, r *http.Request) {
 	}
 	approvals, err := g.collectAgentItems(r, "", "approval_list", nil)
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, "upstream_error", err.Error())
+		writeAgentErr(w, err)
 		return
 	}
 	questions, err := g.collectAgentItems(r, "", "question_list", nil)
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, "upstream_error", err.Error())
+		writeAgentErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -86,10 +87,36 @@ func (g *Gateway) handleAgentInbox(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// agentError carries the HTTP status a collectAgentItems failure must map to,
+// so a decision that was rejected by the executor (409) stays distinguishable
+// from a transport failure (502) and from "no executor answered" (503).
+type agentError struct {
+	status int
+	code   string
+	err    error
+}
+
+func (e *agentError) Error() string { return e.err.Error() }
+func (e *agentError) Unwrap() error { return e.err }
+
+// errNoExecutor means no reachable agent handled the decision.
+var errNoExecutor = errors.New("executor unavailable")
+
+// writeAgentErr renders a collectAgentItems failure with its original status.
+// Anything untyped is treated as an upstream transport failure.
+func writeAgentErr(w http.ResponseWriter, err error) {
+	var agentErr *agentError
+	if errors.As(err, &agentErr) {
+		writeErr(w, agentErr.status, agentErr.code, agentErr.Error())
+		return
+	}
+	upstreamError(w, err.Error())
+}
+
 // collectAgentItems fans a RunDirect tool call out to every reachable agent.
 // decide is nil for reads; when set it returns the (tool, args, proceed) to use
-// instead of the read tool. A non-nil error means at least one executor failed
-// and the HTTP status must reflect it.
+// instead of the read tool. A non-nil error means at least one executor failed;
+// it is an *agentError carrying the status the response must use.
 func (g *Gateway) collectAgentItems(
 	r *http.Request,
 	executorID string,
@@ -121,11 +148,17 @@ func (g *Gateway) collectAgentItems(
 		)
 		cancel()
 		if err != nil {
-			return nil, err
+			return nil, &agentError{status: http.StatusBadGateway, code: "upstream_error", err: err}
 		}
 		if decide != nil {
 			if !result.Success {
-				return nil, errors.New(result.Error)
+				// The executor rejected the decision (already decided, expired,
+				// unknown id): permanent, not a transport failure.
+				return nil, &agentError{
+					status: http.StatusConflict,
+					code:   "conflict",
+					err:    errors.New(result.Error),
+				}
 			}
 			return items, nil
 		}
@@ -141,7 +174,11 @@ func (g *Gateway) collectAgentItems(
 		}
 	}
 	if decide != nil {
-		return nil, errors.New("executor unavailable")
+		return nil, &agentError{
+			status: http.StatusServiceUnavailable,
+			code:   "unavailable",
+			err:    errNoExecutor,
+		}
 	}
 	return items, nil
 }

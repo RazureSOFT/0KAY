@@ -3,6 +3,7 @@ package gateway
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 	"strings"
 
 	"0kay/core/internal/update"
@@ -87,44 +88,76 @@ func (g *Gateway) handleUpdateCheckPlugins(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	type repositoryRelease struct {
-		owner, repo string
-		release     *update.Release
-		err         error
+		release *update.Release
+		err     error
 	}
-	plugins := g.registry.GetAllPlugins()
 	releases := map[string]*repositoryRelease{}
 	seen := map[string]bool{}
 	result := []pluginUpdateCheck{}
-	for _, plugin := range plugins {
-		if plugin.Info == nil || seen[plugin.Info.Name] {
-			continue
+
+	// add records one updatable component exactly once. Every installed
+	// component is listed (registered plugins AND packages found in the source
+	// checkout or installed through 0kay-pm), so the About page can update the
+	// whole platform, not just services that happen to be running.
+	add := func(name, version, pkg, repository string) {
+		if name == "" || seen[name] {
+			return
 		}
-		seen[plugin.Info.Name] = true
-		row := pluginUpdateCheck{Name: plugin.Info.Name, Version: plugin.Info.Version}
-		if pkg, ok := update.PackageFor(plugin.Info.Name); ok {
-			row.Package = pkg
-			row.CanUpdate = true
-		}
-		owner, repo, known := update.RepositoryFor(plugin.Info.Name)
-		if known {
+		seen[name] = true
+		row := pluginUpdateCheck{Name: name, Version: version, Package: pkg, Repository: repository, CanUpdate: update.CanUpdate(name)}
+		if owner, repo, ok := githubSlug(repository); ok {
 			key := owner + "/" + repo
-			state, ok := releases[key]
-			if !ok {
-				state = &repositoryRelease{owner: owner, repo: repo}
+			state, cached := releases[key]
+			if !cached {
+				state = &repositoryRelease{}
 				state.release, state.err = update.Latest(owner, repo)
 				releases[key] = state
 			}
-			row.Repository = "https://github.com/" + key
 			if state.err != nil {
 				row.Error = state.err.Error()
 			} else if state.release != nil {
 				row.Latest = update.Normalize(state.release.TagName)
-				row.HasUpdate = update.Newer(state.release.TagName, plugin.Info.Version)
+				row.HasUpdate = update.Newer(state.release.TagName, version)
 			}
-		} else {
+		} else if repository == "" {
 			row.Error = "unknown repository"
 		}
 		result = append(result, row)
 	}
+
+	for _, plugin := range g.registry.GetAllPlugins() {
+		if plugin.Info == nil || plugin.Info.Name == "" {
+			continue
+		}
+		pkg, _ := update.PackageFor(plugin.Info.Name)
+		repository, _ := update.RepositoryURL(plugin.Info.Name)
+		add(plugin.Info.Name, plugin.Info.Version, pkg, repository)
+	}
+	for _, plugin := range update.InstalledPlugins() {
+		name, ok := update.ComponentForPackage(plugin.Name)
+		if !ok {
+			continue
+		}
+		pkg := ""
+		if update.PlatformPackage(plugin.Name) {
+			pkg = plugin.Name
+		}
+		add(name, plugin.Version, pkg, plugin.Repository)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
 	writeJSON(w, http.StatusOK, map[string]any{"plugins": result})
+}
+
+// githubSlug extracts owner/repo from a github.com repository URL.
+func githubSlug(url string) (owner, repo string, ok bool) {
+	url = strings.TrimSuffix(strings.TrimSpace(url), ".git")
+	const prefix = "https://github.com/"
+	if !strings.HasPrefix(url, prefix) {
+		return "", "", false
+	}
+	parts := strings.Split(strings.TrimPrefix(url, prefix), "/")
+	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
+		return "", "", false
+	}
+	return parts[0], parts[1], true
 }

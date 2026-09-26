@@ -38,20 +38,29 @@ func hostAllowedHosts() map[string]bool {
 			allowed[value] = true
 		}
 	}
-	trimURL := func(value string) string {
+	// Entries may be written as a bare hostname, host:port, or a full origin
+	// URL. hostAllowed compares bare hostnames, so every form is reduced to
+	// one: parse as a URL when a scheme is present, otherwise strip the port.
+	addHost := func(value string) {
 		value = strings.TrimSuffix(strings.TrimSpace(value), "/")
-		value = strings.TrimPrefix(value, "https://")
-		value = strings.TrimPrefix(value, "http://")
-		if parsed, err := url.Parse(value); err == nil && parsed.Host != "" {
-			add(parsed.Hostname())
+		if value == "" {
+			return
 		}
-		return value
+		if strings.Contains(value, "://") {
+			if parsed, err := url.Parse(value); err == nil && parsed.Host != "" {
+				add(parsed.Hostname())
+			}
+			return
+		}
+		if host, _, err := net.SplitHostPort(value); err == nil {
+			value = host
+		}
+		add(strings.Trim(value, "[]"))
 	}
-	for _, entry := range strings.Split(os.Getenv("CORE_ALLOWED_HOSTS"), ",") {
-		add(trimURL(entry))
-	}
-	for _, entry := range strings.Split(os.Getenv("CORE_ALLOWED_ORIGINS"), ",") {
-		trimURL(entry)
+	for _, key := range []string{"CORE_ALLOWED_HOSTS", "CORE_ALLOWED_ORIGINS"} {
+		for _, entry := range strings.Split(os.Getenv(key), ",") {
+			addHost(entry)
+		}
 	}
 	add(pairingHostIdentity())
 	return allowed

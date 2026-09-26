@@ -13,7 +13,7 @@ export function useSettingsMeta() {
   }
 
   function isBuiltinTab(id: string): boolean {
-    return ['general', 'provider', 'persona', 'live2d', 'permissions', 'danger', 'about'].includes(id)
+    return ['general', 'provider', 'persona', 'live2d', 'permissions', 'danger', 'updates', 'about'].includes(id)
   }
 
   function pluginSection(id: string) {

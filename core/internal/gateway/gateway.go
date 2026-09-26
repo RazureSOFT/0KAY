@@ -398,8 +398,8 @@ func (g *Gateway) handlePluginToggle(w http.ResponseWriter, r *http.Request, ena
 	}
 	deprecated(w, "/api/plugins/{name}")
 	var req pluginToggleReq
-	if !decodeBody(w, r, &req, 64<<10) {
-		badRequest(w, "invalid request body")
+	// decodeBody already wrote the 400 envelope.
+	if !decodeBody(w, r, &req, maxSmallBody) {
 		return
 	}
 	name := req.Plugin
@@ -428,7 +428,10 @@ func (g *Gateway) handlePluginPatch(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Enabled *bool `json:"enabled"`
 	}
-	if !decodeBody(w, r, &req, 64<<10) || req.Enabled == nil {
+	if !decodeBody(w, r, &req, maxSmallBody) {
+		return
+	}
+	if req.Enabled == nil {
 		badRequest(w, "enabled is required")
 		return
 	}
@@ -845,7 +848,10 @@ func (g *Gateway) handleLifeNotifications(w http.ResponseWriter, r *http.Request
 			SessionID string   `json:"session_id"`
 			IDs       []string `json:"ids"`
 		}
-		if !decodeBody(w, r, &body, maxSmallBody) || body.SessionID == "" {
+		if !decodeBody(w, r, &body, maxSmallBody) {
+			return
+		}
+		if body.SessionID == "" {
 			badRequest(w, "invalid acknowledgement")
 			return
 		}
@@ -884,7 +890,11 @@ func (g *Gateway) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithCancel(r.Context())
+	// The context must outlive this handler: net/http cancels r.Context() as
+	// soon as ServeHTTP returns, even for a hijacked connection, so deriving
+	// from it would kill every chat stream before the first message arrives.
+	// Session.shutdown is the only thing allowed to cancel it.
+	ctx, cancel := context.WithCancel(context.WithoutCancel(r.Context()))
 	session := &Session{
 		ID:       fmt.Sprintf("ws_%d", time.Now().UnixNano()),
 		Conn:     conn,
@@ -1058,17 +1068,21 @@ func (s *Session) writePump() {
 	}
 }
 
+// handleUsage GET /api/usage — the recorded usage ledger. DELETE on the same
+// path is routed to handleUsageClear by the mux, so only GET reaches here.
 func (g *Gateway) handleUsage(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
 	if g.localCore == nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"total_tokens": 0,
 			"by_model":     map[string]interface{}{},
 			"by_day":       map[string]interface{}{},
 		})
 		return
 	}
-	json.NewEncoder(w).Encode(g.localCore.GetUsage())
+	writeJSON(w, http.StatusOK, g.localCore.GetUsage())
 }
 
 // handleUsageClear wipes recorded usage.

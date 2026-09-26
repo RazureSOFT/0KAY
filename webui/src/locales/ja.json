@@ -245,8 +245,15 @@
       "live2d": "Live2D",
       "permissions": "権限",
       "danger": "危険",
+      "updates": "プラグイン更新",
       "about": "情報"
     },
+    "pluginSourceTitle": "プラグインソース",
+    "pluginSourceDesc": "更新と 0kay-pm インストールの取得元。",
+    "pluginSource": "GitHub ミラー",
+    "pluginSourcePlaceholder": "https://gh-proxy.com",
+    "pluginSourceHelp": "空欄なら GitHub へ直接アクセス。ミラー（例: https://gh-proxy.com）を設定すると、ソース同期と 0kay-pm のインストール/更新がミラー経由になります。",
+    "pluginSourceDirect": "直接",
     "about": {
       "description": "プラットフォームのバージョンと GitHub リリース更新",
       "check": "更新を確認",

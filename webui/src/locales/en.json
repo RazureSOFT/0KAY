@@ -253,8 +253,15 @@
       "live2d": "Live2D",
       "permissions": "Permissions",
       "danger": "Danger",
+      "updates": "Plugin updates",
       "about": "About"
     },
+    "pluginSourceTitle": "Plugin source",
+    "pluginSourceDesc": "Where updates and 0kay-pm installs fetch from.",
+    "pluginSource": "GitHub mirror",
+    "pluginSourcePlaceholder": "https://gh-proxy.com",
+    "pluginSourceHelp": "Leave empty for direct GitHub access. With a mirror set (e.g. https://gh-proxy.com), source syncs and 0kay-pm installs/updates go through it.",
+    "pluginSourceDirect": "Direct",
     "about": {
       "description": "Platform version and GitHub release updates",
       "check": "Check for updates",

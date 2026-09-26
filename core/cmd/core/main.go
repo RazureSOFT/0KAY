@@ -18,6 +18,7 @@ import (
 	"0kay/core/internal/registry"
 	"0kay/core/internal/server"
 	"0kay/core/internal/settings"
+	"0kay/core/internal/update"
 	"0kay/core/internal/version"
 	corev1 "0kay/gen/core/v1"
 	mocrv1 "0kay/gen/mocr/v1"
@@ -43,6 +44,10 @@ func main() {
 	}
 	provStore := providers.NewStore(dataDir + "/providers.json")
 	setStore := settings.NewStore(dataDir + "/settings.json")
+
+	// GitHub mirror for plugin/update fetches (Settings → Plugin updates).
+	registerUpdateSettings(setStore)
+	applyGitHubProxy(setStore)
 
 	// Create gRPC server
 	pairs, err := pairing.New(dataDir)
@@ -210,6 +215,36 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 		}
 		registerSearxngSettings(setStore)
 	}
+}
+
+// registerUpdateSettings contributes the updates panel preferences. The section
+// is core-owned (no plugin name) so it is always visible under Settings.
+func registerUpdateSettings(setStore *settings.Store) {
+	setStore.RegisterSection(settings.Section{
+		ID:          "updates",
+		Label:       "插件更新",
+		Icon:        "cloud",
+		Order:       105,
+		Description: "更新平台与插件，并配置全局插件源",
+		Fields: []settings.Field{
+			{
+				Key:          "github_proxy",
+				Type:         "text",
+				Label:        "全局插件源（GitHub 代理）",
+				DefaultValue: "",
+				Help:         "留空为直连 GitHub；填写加速前缀（如 https://gh-proxy.com）后，源码同步与 0kay-pm 安装/更新都会走该代理。",
+			},
+		},
+	})
+}
+
+// applyGitHubProxy pushes the saved mirror into the update package.
+func applyGitHubProxy(setStore *settings.Store) {
+	if setStore == nil {
+		return
+	}
+	proxy, _ := setStore.GetValues("updates")["github_proxy"].(string)
+	update.SetGitHubProxy(proxy)
 }
 
 // registerSearxngSettings contributes the engine picker under Settings.

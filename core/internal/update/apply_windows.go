@@ -19,18 +19,28 @@ func winQuote(value string) string {
 	return `"` + strings.ReplaceAll(value, `"`, `""`) + `"`
 }
 
+// winEnvLines renders the git mirror environment for a batch script (empty when
+// no mirror is configured).
+func winEnvLines() string {
+	var b strings.Builder
+	for _, kv := range gitProxyEnv() {
+		fmt.Fprintf(&b, "set \"%s=%s\"\r\n", kv[0], strings.ReplaceAll(kv[1], "%", "%%"))
+	}
+	return b.String()
+}
+
 // writeUpdater writes the batch script that stops, updates and starts a
 // component, then prints a status marker for State() to read.
 func writeUpdater(dir, pm, pkg, target string) (string, string, error) {
 	script := filepath.Join(dir, "update.cmd")
 	logPath := filepath.Join(dir, "apply.log")
-	body := fmt.Sprintf("@echo off\r\n"+
+	body := "@echo off\r\n" + winEnvLines() + fmt.Sprintf(
 		"call %s stop %s\r\n"+
-		"call %s update %s\r\n"+
-		"if errorlevel 1 (echo %s & exit /b 1)\r\n"+
-		"call %s start %s\r\n"+
-		"if errorlevel 1 (echo %s & exit /b 1)\r\n"+
-		"echo %s\r\n",
+			"call %s update %s\r\n"+
+			"if errorlevel 1 (echo %s & exit /b 1)\r\n"+
+			"call %s start %s\r\n"+
+			"if errorlevel 1 (echo %s & exit /b 1)\r\n"+
+			"echo %s\r\n",
 		winQuote(pm), winQuote(pkg),
 		winQuote(pm), winQuote(target), markerFailed,
 		winQuote(pm), winQuote(pkg), markerFailed,
@@ -46,10 +56,10 @@ func writeUpdater(dir, pm, pkg, target string) (string, string, error) {
 func writeInstaller(dir, pm, pkg string) (string, string, error) {
 	script := filepath.Join(dir, "install.cmd")
 	logPath := filepath.Join(dir, "install.log")
-	body := fmt.Sprintf("@echo off\r\n"+
+	body := "@echo off\r\n" + winEnvLines() + fmt.Sprintf(
 		"call %s install %s --no-pair\r\n"+
-		"if errorlevel 1 (echo %s & exit /b 1)\r\n"+
-		"echo %s\r\n",
+			"if errorlevel 1 (echo %s & exit /b 1)\r\n"+
+			"echo %s\r\n",
 		winQuote(pm), winQuote(pkg),
 		markerFailed,
 		markerDone,
@@ -122,6 +132,7 @@ func writeSourceUpdater(dir string, plan sourcePlan) (string, string, error) {
 	b.WriteString("set GIT_TERMINAL_PROMPT=0\r\n")
 	b.WriteString("set GIT_HTTP_LOW_SPEED_LIMIT=1000\r\n")
 	b.WriteString("set GIT_HTTP_LOW_SPEED_TIME=20\r\n")
+	b.WriteString(winEnvLines())
 	fmt.Fprintf(&b, "cd /d %s || (echo %s & exit /b 1)\r\n", winQuote(plan.RepoDir), markerFailed)
 	b.WriteString("git pull --ff-only\r\n")
 	fmt.Fprintf(&b, "if errorlevel 1 (echo %s & exit /b 1)\r\n", markerFailed)
@@ -137,7 +148,9 @@ func writeSourceUpdater(dir string, plan sourcePlan) (string, string, error) {
 		fmt.Fprintf(&b, "for /f \"tokens=5\" %%%%p in ('netstat -ano ^| findstr :%d ^| findstr LISTENING') do taskkill /F /PID %%%%p >nul 2>&1\r\n", plan.Port)
 		b.WriteString("ping -n 2 127.0.0.1 >nul\r\n")
 	}
-	fmt.Fprintf(&b, "powershell -NoProfile -NonInteractive -WindowStyle Hidden -Command \"%s\"\r\n", winStartCommand(plan))
+	if len(plan.Start) > 0 {
+		fmt.Fprintf(&b, "powershell -NoProfile -NonInteractive -WindowStyle Hidden -Command \"%s\"\r\n", winStartCommand(plan))
+	}
 	fmt.Fprintf(&b, "echo %s\r\n", markerDone)
 	if err := os.WriteFile(script, []byte(b.String()), 0o644); err != nil {
 		return "", "", err
