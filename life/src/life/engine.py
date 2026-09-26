@@ -1588,6 +1588,11 @@ class LifeEngine:
             if kind == "state" and isinstance(data, dict) and data.get("host"):
                 self.minecraft_host = f"{data.get('host')}:{data.get('port', '')}".rstrip(":")
                 continue
+            if kind == "consent_request" and isinstance(data, dict):
+                detail = str(data.get("detail") or data.get("action") or "需要批准的动作")
+                await asyncio.to_thread(self.push_notification, "", f"Minecraft：机器人想{detail}，请在页面批准或拒绝。")
+                await asyncio.to_thread(self.companion.audit, "minecraft_consent", detail, str(data.get("id") or ""), "pending")
+                continue
             if kind == "chat" and isinstance(data, dict):
                 if data.get("raw"):
                     continue

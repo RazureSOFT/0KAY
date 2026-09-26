@@ -13,10 +13,16 @@
     "cancel": "Not now",
     "failed": "Sign-in failed"
   },
+  "minecraftConsent": {
+    "title": "Minecraft bot needs approval",
+    "approve": "Allow",
+    "deny": "Deny"
+  },
   "nav": {
     "chat": "Chat",
     "agents": "Agents",
     "plugins": "Plugins",
+    "updates": "Updates",
     "usage": "Usage",
     "settings": "Settings",
     "search": "Search",
@@ -271,6 +277,7 @@
 "licenseTitle": "License",
 "repository": "Repository",
 "updateNow": "Update now",
+"syncNow": "Sync",
 "updating": "Updating…",
 "updated": "Updated",
 "updateFailed": "Update failed",

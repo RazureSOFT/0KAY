@@ -11,6 +11,7 @@ import GlobalAgentInbox from './components/GlobalAgentInbox.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import AppSelect from './components/AppSelect.vue'
 import LifeApprovalDialog from './components/LifeApprovalDialog.vue'
+import MinecraftConsentDialog from './components/MinecraftConsentDialog.vue'
 import { setLanguage, getLanguage, LOCALES } from './i18n'
 import { authRequired, submitLogin, cancelLogin } from './auth'
 
@@ -172,6 +173,7 @@ function onAuthCancel() {
     <GlobalAgentInbox />
     <ConfirmDialog />
     <LifeApprovalDialog />
+<MinecraftConsentDialog />
     <header class="app-header">
       <div class="brand">
         <span class="brand-mark">0kay</span>
@@ -238,6 +240,11 @@ function onAuthCancel() {
             <svg v-else-if="item.icon === 'usage' || item.id === 'usage'" width="22" height="22" viewBox="0 0 24 24" fill="none">
               <path d="M4 19V5M4 19h16" stroke="currentColor" stroke-width="2"/>
               <path d="M8 15v-4M12 15V8M16 15v-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <!-- updates -->
+            <svg v-else-if="item.icon === 'updates' || item.id === 'updates'" width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M12 4v10M12 14l-3.5-3.5M12 14l3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M5 17.5A4 4 0 0 0 8.5 20h7a4 4 0 0 0 .5-7.97" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
             <!-- settings -->
             <svg v-else-if="item.icon === 'settings' || item.id === 'settings'" width="22" height="22" viewBox="0 0 24 24" fill="none">

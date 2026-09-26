@@ -5,10 +5,16 @@
     "status": "ステータス",
     "switchLang": "言語を切り替え"
   },
+  "minecraftConsent": {
+    "title": "Minecraft ボットが承認を求めています",
+    "approve": "許可",
+    "deny": "拒否"
+  },
   "nav": {
     "chat": "チャット",
     "agents": "エージェント",
     "plugins": "プラグイン",
+    "updates": "プラグイン更新",
     "usage": "使用量",
     "settings": "設定",
     "search": "検索",
@@ -263,6 +269,7 @@
 "licenseTitle": "ライセンス",
 "repository": "リポジトリ",
 "updateNow": "今すぐ更新",
+"syncNow": "同期",
 "updating": "更新中…",
 "updated": "更新完了",
 "updateFailed": "更新に失敗しました",

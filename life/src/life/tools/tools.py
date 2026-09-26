@@ -691,7 +691,7 @@ class MinecraftTool(Tool):
             "action": {"type": "string", "enum": [
                 "connect", "disconnect", "status", "chat", "players", "follow", "goto",
                 "stop", "look", "dig", "place", "attack", "inventory", "use",
-                "scan_blocks", "scan_entities", "scan_grid", "plan_route",
+                "scan_blocks", "scan_entities", "scan_grid", "plan_route", "goto_route",
                 "skill_read", "task_status", "task_stop", "consent_reply", "consent_status",
                 "autopilot_start", "autopilot_stop", "events",
                 "world", "waypoint_add", "waypoint_list", "waypoint_goto", "waypoint_remove",

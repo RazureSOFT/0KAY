@@ -13,10 +13,16 @@
     "cancel": "暫不連線",
     "failed": "登入失敗"
   },
+  "minecraftConsent": {
+    "title": "Minecraft 機器人請求批准",
+    "approve": "允許",
+    "deny": "拒絕"
+  },
   "nav": {
     "chat": "對話",
     "agents": "Agent",
     "plugins": "外掛",
+    "updates": "外掛更新",
     "usage": "用量",
     "settings": "設定",
     "search": "搜尋",
@@ -271,6 +277,7 @@
 "licenseTitle": "授權條款",
 "repository": "程式庫",
 "updateNow": "立即更新",
+"syncNow": "同步",
 "updating": "更新中…",
 "updated": "已更新",
 "updateFailed": "更新失敗",

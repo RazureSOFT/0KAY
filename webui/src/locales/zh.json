@@ -13,10 +13,16 @@
     "cancel": "暂不连接",
     "failed": "登录失败"
   },
+  "minecraftConsent": {
+    "title": "Minecraft 机器人请求批准",
+    "approve": "允许",
+    "deny": "拒绝"
+  },
   "nav": {
     "chat": "对话",
     "agents": "Agent",
     "plugins": "插件",
+    "updates": "插件更新",
     "usage": "用量",
     "settings": "设置",
     "search": "搜索",
@@ -271,6 +277,7 @@
 "licenseTitle": "开源许可",
 "repository": "代码仓库",
 "updateNow": "立即更新",
+"syncNow": "同步",
 "updating": "更新中…",
 "updated": "已更新",
 "updateFailed": "更新失败",

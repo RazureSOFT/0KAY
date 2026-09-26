@@ -7,9 +7,6 @@ const { t } = useI18n()
 const aboutLoading = ref(false)
 const updateResult = ref<{ current: string; latest?: string; has_update: boolean; url?: string } | null>(null)
 const updateError = ref('')
-const pluginsLoading = ref(false)
-const pluginResults = ref<Array<{ name: string; version: string; latest?: string; has_update: boolean; repository?: string; package?: string; can_update?: boolean; error?: string }> | null>(null)
-const pluginsError = ref('')
 
 type Contributor = { login: string; avatar_url?: string; html_url?: string; contributions?: number }
 const contributors = ref<Contributor[]>([])
@@ -53,7 +50,6 @@ async function refreshApply() {
   if (applyState.value && applyState.value.status !== 'running') {
     stopPolling()
     void checkUpdates()
-    void checkPluginUpdates()
   }
 }
 
@@ -86,8 +82,6 @@ const statusKind = computed<'ok' | 'warn' | 'none'>(() => {
   return updateResult.value.latest ? 'ok' : 'none'
 })
 
-const updateCount = computed(() => (pluginResults.value || []).filter((p) => p.has_update).length)
-
 async function checkUpdates() {
   aboutLoading.value = true
   updateError.value = ''
@@ -99,21 +93,6 @@ async function checkUpdates() {
       : error instanceof Error ? error.message : String(error)
   } finally {
     aboutLoading.value = false
-  }
-}
-
-async function checkPluginUpdates() {
-  pluginsLoading.value = true
-  pluginsError.value = ''
-  try {
-    const data = await apiGet('/api/update/check-plugins')
-    pluginResults.value = data.plugins || []
-  } catch (error: unknown) {
-    pluginsError.value = error instanceof ApiError && error.status === 404
-      ? t('settings.about.unsupported')
-      : error instanceof Error ? error.message : String(error)
-  } finally {
-    pluginsLoading.value = false
   }
 }
 
@@ -133,7 +112,6 @@ async function fetchContributors() {
 
 onMounted(() => {
   void checkUpdates()
-  void checkPluginUpdates()
   void fetchContributors()
   void apiGet('/api/update/status')
     .then((state: ApplyState) => {
@@ -167,7 +145,7 @@ onUnmounted(stopPolling)
         <h3 class="section-title">{{ t('settings.about.check') }}</h3>
         <div class="head-actions">
           <button class="btn btn-tonal sm" :disabled="aboutLoading" @click="checkUpdates">{{ t(aboutLoading ? 'settings.about.checking' : 'settings.about.check') }}</button>
-          <button class="btn btn-tonal sm" :disabled="pluginsLoading" @click="checkPluginUpdates">{{ t(pluginsLoading ? 'settings.about.checking' : 'settings.about.plugins') }}</button>
+          <router-link class="btn btn-tonal sm" to="/updates">{{ t('nav.updates') }}</router-link>
         </div>
       </div>
 
@@ -215,40 +193,6 @@ onUnmounted(stopPolling)
           <dt>{{ t('settings.about.latestVersion') }}</dt>
           <dd>{{ updateResult?.latest ? `v${updateResult.latest}` : '—' }}</dd>
         </div>
-        <div class="tile">
-          <dt>{{ t('settings.about.pluginUpdates') }}</dt>
-          <dd>{{ updateCount }}</dd>
-        </div>
-      </div>
-
-      <p v-if="pluginsError" class="alert" role="alert">{{ pluginsError }}</p>
-      <div v-if="pluginResults" class="ptable">
-        <div class="prow phead">
-          <span>Plugin</span><span>Version</span><span>Status</span><span></span>
-        </div>
-        <div v-for="plugin in pluginResults" :key="plugin.name" class="prow">
-          <span class="pname">{{ plugin.name }}</span>
-          <span class="pver">
-            <em>v{{ plugin.version || '—' }}</em>
-            <span class="arrow">→</span>
-            <b :class="{ good: !!plugin.latest }">{{ plugin.latest ? `v${plugin.latest}` : '—' }}</b>
-          </span>
-          <span class="status-chip" :class="plugin.error ? '' : (plugin.has_update ? 'warn' : (plugin.latest ? 'ok' : ''))">
-            {{ plugin.error || t(plugin.has_update ? 'settings.about.available' : (plugin.latest ? 'settings.about.latest' : 'settings.about.noRelease')) }}
-          </span>
-          <span class="prow-actions">
-            <button
-              v-if="plugin.can_update && plugin.has_update"
-              class="btn btn-primary xs"
-              :disabled="isUpdating(plugin.name)"
-              @click="applyUpdate(plugin.name, plugin.latest)"
-            >
-              {{ isUpdating(plugin.name) ? t('settings.about.updating') : t('settings.about.updateNow') }}
-            </button>
-            <a v-if="plugin.repository" class="repo-link" :href="plugin.repository" target="_blank" rel="noopener noreferrer">Repo ↗</a>
-          </span>
-        </div>
-        <p v-if="!pluginResults.length" class="empty">{{ t('settings.about.noPlugins') }}</p>
       </div>
 
       <p class="hint">{{ t('settings.about.updateHint') }} <code>0kay-pm update &lt;package&gt;@&lt;version&gt;</code></p>

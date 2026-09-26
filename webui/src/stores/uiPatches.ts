@@ -128,6 +128,7 @@ export interface BootstrapItem {
 /** Built-in sidebar items. Chat/对话 is registered by life.patch; Agent by agent.patch. */
 export const BUILTIN_NAV: NavItem[] = [
   { id: 'plugins', to: '/plugins', labelKey: 'nav.plugins', icon: 'plugins', order: 30 },
+  { id: 'updates', to: '/updates', labelKey: 'nav.updates', icon: 'updates', order: 35 },
   { id: 'settings', to: '/settings', labelKey: 'nav.settings', icon: 'settings', order: 100 },
 ]
 

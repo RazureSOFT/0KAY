@@ -7,6 +7,7 @@ import PluginsPage from '../pages/PluginsPage.vue'
 import UsagePage from '../pages/UsagePage.vue'
 import SettingsPage from '../pages/SettingsPage.vue'
 import PatchPage from '../pages/PatchPage.vue'
+import UpdatesPage from '../pages/UpdatesPage.vue'
 
 /** Builtin page components that patches may reference by name. */
 const PATCH_COMPONENTS: Record<string, any> = {
@@ -67,6 +68,7 @@ const router = createRouter({
     { path: '/', name: 'chat', component: ChatPage, meta: { titleKey: 'nav.chat' } },
     // /agents is registered at runtime by agent.patch (agent plugin uiPatches).
     { path: '/plugins', name: 'plugins', component: PluginsPage, meta: { titleKey: 'nav.plugins' } },
+    { path: '/updates', name: 'updates', component: UpdatesPage, meta: { titleKey: 'nav.updates' } },
     { path: '/settings', name: 'settings', component: SettingsPage, meta: { titleKey: 'nav.settings' } },
     { path: '/:pathMatch(.*)*', name: 'catch-all', component: PatchPage },
   ],
