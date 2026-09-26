@@ -34,6 +34,59 @@ class MocrClient:
         if self._channel:
             await self._channel.close()
 
+    async def describe_image(self, model_id, image_base64, mime="image/jpeg", prompt="", max_tokens=1024, timeout=90.0) -> str:
+        """Describe an image with a vision-capable model.
+
+        Resolves credentials per request like text generation, so it works with
+        OpenAI-compatible and Anthropic-format providers. Used for screen
+        observation (a downscaled screenshot from the Agent host).
+        """
+        client = await self._http_client()
+        response = await client.get(f"{self.core_http}/api/providers/credentials", headers=auth_headers())
+        response.raise_for_status()
+        data = response.json()
+        providers = data if isinstance(data, list) else data.get("providers", [])
+        default_id = data.get("default_provider_id", "") if isinstance(data, dict) else ""
+        if not model_id or str(model_id).lower() in ("auto", "mocr"):
+            chosen = next((p for p in providers if p.get("enabled", True) and p.get("id") == default_id), None)
+        else:
+            matches = [p for p in providers if p.get("enabled", True)
+                       and any((m if isinstance(m, str) else m.get("id", m.get("model_id"))) == model_id for m in p.get("models", []))]
+            chosen = next((p for p in matches if p.get("id") == default_id), matches[0] if matches else None)
+        if not chosen:
+            raise RuntimeError(f"No enabled provider configured for vision model {model_id}")
+        provider = str(chosen.get("provider") or "").strip().lower()
+        fmt = str(chosen.get("format") or "").strip().lower()
+        base = str(chosen.get("base_url") or "").rstrip("/")
+        key = str(chosen.get("api_key") or "")
+        ask = prompt or "用两三句话描述这张电脑屏幕截图：正在使用什么程序、有哪些窗口或内容、用户可能在做什么。"
+        async with httpx.AsyncClient(timeout=timeout) as http:
+            if provider == "anthropic" or fmt == "anthropic":
+                url = base + ("/messages" if base.endswith("/v1") else "/v1/messages")
+                body = {"model": model_id, "max_tokens": max_tokens, "messages": [{"role": "user", "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": mime, "data": image_base64}},
+                    {"type": "text", "text": ask},
+                ]}]}
+                resp = await http.post(url, json=body, headers={"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
+                resp.raise_for_status()
+                payload = resp.json()
+                return "".join(str(part.get("text") or "") for part in (payload.get("content") or []) if isinstance(part, dict)).strip()
+            url = base + "/chat/completions"
+            body = {"model": model_id, "max_tokens": max_tokens, "messages": [{"role": "user", "content": [
+                {"type": "text", "text": ask},
+                {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{image_base64}"}},
+            ]}]}
+            resp = await http.post(url, json=body, headers={"Authorization": f"Bearer {key}", "content-type": "application/json"})
+            resp.raise_for_status()
+            payload = resp.json()
+            choices = payload.get("choices") or []
+            if not choices:
+                return ""
+            content = (choices[0].get("message") or {}).get("content")
+            if isinstance(content, list):
+                return "".join(str(part.get("text") or "") for part in content if isinstance(part, dict)).strip()
+            return str(content or "").strip()
+
     async def generate(self, model_id, messages, system_prompt="", thinking=False, max_tokens=1024, temperature=None):
         record = await self.recorder.start("think" if thinking else "output", messages[-1]["content"] if messages else model_id) if self.recorder else None
         result = ""

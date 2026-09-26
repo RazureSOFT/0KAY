@@ -570,7 +570,7 @@ class ComputerUseTool(Tool):
 
     def parameters(self) -> dict:
         return {"type": "object", "required": ["action"], "properties": {
-            "action": {"type": "string", "enum": ["screenshot", "move", "click", "type", "key"]},
+            "action": {"type": "string", "enum": ["screenshot", "listwindows", "move", "click", "type", "key"]},
             "x": {"type": "integer"}, "y": {"type": "integer"}, "button": {"type": "string", "enum": ["left", "right"]},
             "text": {"type": "string"}, "key": {"type": "string"},
         }}

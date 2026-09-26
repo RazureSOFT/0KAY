@@ -1064,14 +1064,29 @@ class LifeEngine:
             pass
         # Screen — only when the user granted screen watch / computer use.
         if getattr(self, "_screen_watch", False) or getattr(self.tool_config, "computer_use", False):
-            result = await self._call_tool_direct("computeruse", timeout=30.0, action="screenshot")
-            if result and result.success:
-                data = result.data or {}
-                detail = str(data.get("description") or data.get("text") or "").strip()
-                ref = str(data.get("path") or data.get("file") or "").strip()
-                if not detail:
-                    detail = f"已截取屏幕画面（{ref}）" if ref else "已截取屏幕画面"
-                parts.append("电脑屏幕:\n- " + detail[:200])
+            windows = await self._call_tool_direct("computeruse", timeout=20.0, action="listwindows")
+            titles = []
+            if windows and windows.success and isinstance(windows.data, dict):
+                titles = [str(t) for t in (windows.data.get("windows") or []) if str(t).strip()]
+            if titles:
+                parts.append("当前打开的窗口（进程 :: 标题）:\n" + "\n".join(f"- {t}" for t in titles[:20]))
+                signals.append("windows")
+            shot = await self._call_tool_direct("computeruse", timeout=40.0, action="screenshot")
+            if shot and shot.success and isinstance(shot.data, dict):
+                data = shot.data
+                description = str(data.get("description") or "").strip()
+                image_b64 = str(data.get("base64") or "").strip()
+                mime = str(data.get("mime") or "image/jpeg")
+                if not description and image_b64:
+                    try:
+                        description = await self.mocr.describe_image(
+                            self._model_for("vision"), image_b64, mime,
+                            prompt="这是用户电脑的屏幕截图。请用两三句话说明：正在使用什么程序、有哪些窗口或内容、用户可能在做什么。")
+                    except Exception as error:
+                        await asyncio.to_thread(self.companion.audit, "vision_describe", str(error), "", "failed")
+                if not description:
+                    description = "已截取屏幕画面（视觉模型未返回描述）"
+                parts.append("电脑屏幕（视觉模型描述）:\n- " + description[:400])
                 signals.append("screen")
         return "\n\n".join(parts), signals
 
