@@ -25,6 +25,19 @@ type ProviderConfig struct {
 	DisabledModels []string `json:"disabled_models,omitempty"`
 	DefaultModel   string   `json:"default_model"`
 	Enabled        bool     `json:"enabled"`
+	// Format selects the wire protocol independently of the provider preset:
+	// "openai" (chat/completions) or "anthropic" (messages). Empty means infer
+	// from Provider/BaseURL, preserving the original behaviour.
+	Format string `json:"format,omitempty"`
+}
+
+// EffectiveProvider is the provider identity forwarded to mocr so it can pick
+// the right wire protocol. An explicit Format wins over the preset name.
+func (p ProviderConfig) EffectiveProvider() string {
+	if f := strings.ToLower(strings.TrimSpace(p.Format)); f != "" {
+		return f
+	}
+	return p.Provider
 }
 
 // MaskKey renders an API key safe for transport and logging: a short prefix so
@@ -307,6 +320,7 @@ func (s *Store) Replace(f File) error {
 		previous[p.ID] = p.APIKey
 	}
 	for i := range f.Providers {
+		f.Providers[i].Format = strings.ToLower(strings.TrimSpace(f.Providers[i].Format))
 		preserveSecret(&f.Providers[i], previous[f.Providers[i].ID])
 	}
 	dedupeFile(&f)
@@ -321,6 +335,7 @@ func (s *Store) Upsert(p ProviderConfig) error {
 	if p.ID == "" {
 		return fmt.Errorf("provider id is required")
 	}
+	p.Format = strings.ToLower(strings.TrimSpace(p.Format))
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	found := false
@@ -414,7 +429,7 @@ func (s *Store) ResolveModel(modelID string) (provider, baseURL, apiKey, resolve
 						if p.DefaultModel != "" {
 							modelID = p.DefaultModel
 						}
-						return p.Provider, p.BaseURL, p.APIKey, modelID, true
+						return p.EffectiveProvider(), p.BaseURL, p.APIKey, modelID, true
 					}
 				}
 			}
@@ -425,7 +440,7 @@ func (s *Store) ResolveModel(modelID string) (provider, baseURL, apiKey, resolve
 					if m == "" {
 						m = p.Models[0]
 					}
-					return p.Provider, p.BaseURL, p.APIKey, m, true
+					return p.EffectiveProvider(), p.BaseURL, p.APIKey, m, true
 				}
 			}
 			return "", "", "", "", false
@@ -436,11 +451,11 @@ func (s *Store) ResolveModel(modelID string) (provider, baseURL, apiKey, resolve
 	for _, p := range s.data.Providers {
 		for _, m := range p.Models {
 			if m == modelID && p.IsModelEnabled(m) {
-				return p.Provider, p.BaseURL, p.APIKey, modelID, true
+				return p.EffectiveProvider(), p.BaseURL, p.APIKey, modelID, true
 			}
 		}
 		if p.DefaultModel == modelID && p.IsModelEnabled(modelID) {
-			return p.Provider, p.BaseURL, p.APIKey, modelID, true
+			return p.EffectiveProvider(), p.BaseURL, p.APIKey, modelID, true
 		}
 	}
 
@@ -451,7 +466,7 @@ func (s *Store) ResolveModel(modelID string) (provider, baseURL, apiKey, resolve
 			if m == "" {
 				m = p.Models[0]
 			}
-			return p.Provider, p.BaseURL, p.APIKey, m, true
+			return p.EffectiveProvider(), p.BaseURL, p.APIKey, m, true
 		}
 	}
 	return "", "", "", "", false

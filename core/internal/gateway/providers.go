@@ -90,6 +90,14 @@ func (g *Gateway) handleProviderCredentials(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	snap := g.providerStore.SnapshotRaw()
+	// Normalize the provider identity to its effective wire protocol so
+	// in-repo consumers (life / agent / mocr) dispatch the right transport even
+	// when a preset name (e.g. "custom") is paired with an explicit format.
+	for i := range snap.Providers {
+		if eff := snap.Providers[i].EffectiveProvider(); eff != snap.Providers[i].Provider {
+			snap.Providers[i].Provider = eff
+		}
+	}
 	id := r.URL.Query().Get("id")
 	if id == "" {
 		writeJSON(w, http.StatusOK, snap)

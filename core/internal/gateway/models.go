@@ -18,6 +18,16 @@ type ModelsRequest struct {
 	Provider string `json:"provider"`
 	BaseURL  string `json:"base_url"`
 	APIKey   string `json:"api_key"`
+	Format   string `json:"format"`
+}
+
+// effectiveFormat maps a provider preset + explicit format to the wire protocol
+// used for the model-catalog request.
+func effectiveFormat(provider, format string) string {
+	if f := strings.ToLower(strings.TrimSpace(format)); f != "" {
+		return f
+	}
+	return strings.ToLower(strings.TrimSpace(provider))
 }
 
 // ModelsResponse is the response containing model list.
@@ -45,9 +55,10 @@ func (g *Gateway) handleFetchModels(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := ModelsResponse{Models: []string{}, Source: "fallback"}
-	models, err := fetchModelsFromProvider(req.Provider, req.BaseURL, g.resolveModelAPIKey(req))
+	format := effectiveFormat(req.Provider, req.Format)
+	models, err := fetchModelsFromProvider(format, req.BaseURL, g.resolveModelAPIKey(req))
 	if err != nil {
-		resp.Models = getDefaultModels(req.Provider)
+		resp.Models = getDefaultModels(format)
 		resp.Error = err.Error()
 	} else {
 		resp.Models = models
@@ -128,16 +139,18 @@ func validateModelsURL(raw string) error {
 	return nil
 }
 
-// fetchModelsFromProvider fetches models from the provider's API.
-func fetchModelsFromProvider(provider, baseURL, apiKey string) ([]string, error) {
+// fetchModelsFromProvider fetches models from the provider's API. format is the
+// effective wire protocol ("anthropic" or anything else for OpenAI-compatible).
+func fetchModelsFromProvider(format, baseURL, apiKey string) ([]string, error) {
 	// Normalize base URL
 	baseURL = strings.TrimSuffix(baseURL, "/")
 
+	isAnthropic := format == "anthropic" || strings.Contains(strings.ToLower(baseURL), "anthropic.com")
+
 	var modelsURL string
-	switch provider {
-	case "anthropic":
+	if isAnthropic {
 		modelsURL = baseURL + "/v1/models"
-	default:
+	} else {
 		// OpenAI-compatible API
 		modelsURL = baseURL + "/models"
 	}
@@ -155,7 +168,7 @@ func fetchModelsFromProvider(provider, baseURL, apiKey string) ([]string, error)
 	if apiKey != "" {
 		req.Header.Set("Authorization", "Bearer "+apiKey)
 	}
-	if provider == "anthropic" {
+	if isAnthropic {
 		req.Header.Set("x-api-key", apiKey)
 		req.Header.Set("anthropic-version", "2023-06-01")
 	}
@@ -178,7 +191,7 @@ func fetchModelsFromProvider(provider, baseURL, apiKey string) ([]string, error)
 		return nil, err
 	}
 
-	return parseModelsResponse(provider, body)
+	return parseModelsResponse(format, body)
 }
 
 // parseModelsResponse parses the models list from API response.
