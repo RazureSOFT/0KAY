@@ -44,7 +44,8 @@ type ApplyState struct {
 	Plugin  string `json:"plugin"`
 	Package string `json:"package"`
 	Version string `json:"version,omitempty"`
-	Mode    string `json:"mode,omitempty"` // pm|source
+	Action  string `json:"action,omitempty"` // install|uninstall
+	Mode    string `json:"mode,omitempty"`   // pm|source
 	Status  string `json:"status"`         // idle|running|done|failed
 	Started string `json:"started,omitempty"`
 	Error   string `json:"error,omitempty"`

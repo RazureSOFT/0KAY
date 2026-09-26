@@ -60,6 +60,24 @@ func writeInstaller(dir, pm, pkg string) (string, string, error) {
 	return script, logPath, nil
 }
 
+// writeUninstaller writes the batch script that removes a plugin via 0kay-pm.
+func writeUninstaller(dir, pm, pkg string) (string, string, error) {
+	script := filepath.Join(dir, "uninstall.cmd")
+	logPath := filepath.Join(dir, "install.log")
+	body := fmt.Sprintf("@echo off\r\n"+
+		"call %s uninstall %s\r\n"+
+		"if errorlevel 1 (echo %s & exit /b 1)\r\n"+
+		"echo %s\r\n",
+		winQuote(pm), winQuote(pkg),
+		markerFailed,
+		markerDone,
+	)
+	if err := os.WriteFile(script, []byte(body), 0o644); err != nil {
+		return "", "", err
+	}
+	return script, logPath, nil
+}
+
 func joinArgsWin(cmd []string) string {
 	out := make([]string, 0, len(cmd))
 	for i, arg := range cmd {

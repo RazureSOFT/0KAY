@@ -217,6 +217,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/plugins/disable", g.handlePluginDisable)
 	mux.HandleFunc("/api/plugins/install", g.handlePluginInstall)
 	mux.HandleFunc("/api/plugins/install/status", g.handlePluginInstallStatus)
+	mux.HandleFunc("/api/plugins/uninstall", g.handlePluginUninstall)
 	mux.HandleFunc("/api/plugins/installed", g.handlePluginInstalled)
 	// Plugin front-end ESM bundles (scheme C): CORE_DATA_DIR/plugin-ui/{name}/
 	mux.HandleFunc("/api/plugins/{name}/ui/{path...}", g.handlePluginUI)

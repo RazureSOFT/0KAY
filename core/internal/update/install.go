@@ -40,6 +40,7 @@ func StartInstall(pkg string) (ApplyState, error) {
 	state := ApplyState{
 		Plugin:  pkg,
 		Package: pkg,
+		Action:  "install",
 		Mode:    "pm",
 		Status:  "running",
 		Started: time.Now().UTC().Format(time.RFC3339),
@@ -52,6 +53,57 @@ func StartInstall(pkg string) (ApplyState, error) {
 		return state, err
 	}
 	return state, nil
+}
+
+// StartUninstall removes a plugin installed via 0kay-pm as a detached script.
+func StartUninstall(pkg string) (ApplyState, error) {
+	pkg = strings.TrimSpace(pkg)
+	if !validInstallTarget(pkg) {
+		return ApplyState{Status: "idle"}, fmt.Errorf("invalid package %q", pkg)
+	}
+	if current := InstallStatus(); current.Status == "running" {
+		return current, fmt.Errorf("an operation is already running")
+	}
+	pm, err := PMCommand()
+	if err != nil {
+		return ApplyState{Status: "idle"}, err
+	}
+	dir := updatesDir()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return ApplyState{Status: "idle"}, err
+	}
+
+	startMu.Lock()
+	defer startMu.Unlock()
+
+	script, logPath, err := writeUninstaller(dir, pm, pkg)
+	if err != nil {
+		return ApplyState{Status: "idle"}, err
+	}
+	_ = os.Remove(logPath)
+	state := ApplyState{
+		Plugin:  pkg,
+		Package: pkg,
+		Action:  "uninstall",
+		Mode:    "pm",
+		Status:  "running",
+		Started: time.Now().UTC().Format(time.RFC3339),
+	}
+	writeInstallStateFile(dir, state)
+	if err := launchDetached(script, logPath); err != nil {
+		state.Status = "failed"
+		state.Error = err.Error()
+		writeInstallStateFile(dir, state)
+		return state, err
+	}
+	return state, nil
+}
+
+// PlatformPackage reports whether a package is part of the 0KAY platform and so
+// must not be uninstalled through the marketplace.
+func PlatformPackage(pkg string) bool {
+	_, ok := platformComponents[pkg]
+	return ok
 }
 
 // InstallStatus reports the latest install request from the status files.

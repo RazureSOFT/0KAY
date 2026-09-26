@@ -61,6 +61,25 @@ exit $code
 	return script, logPath, nil
 }
 
+// writeUninstaller writes the shell script that removes a plugin via 0kay-pm.
+func writeUninstaller(dir, pm, pkg string) (string, string, error) {
+	script := filepath.Join(dir, "uninstall.sh")
+	logPath := filepath.Join(dir, "install.log")
+	body := fmt.Sprintf(`#!/bin/sh
+%s uninstall %s
+code=$?
+if [ $code -eq 0 ]; then echo %s; else echo %s; fi
+exit $code
+`,
+		shQuote(pm), shQuote(pkg),
+		markerDone, markerFailed,
+	)
+	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
+		return "", "", err
+	}
+	return script, logPath, nil
+}
+
 func joinArgs(cmd []string) string {
 	out := make([]string, 0, len(cmd))
 	for i, arg := range cmd {

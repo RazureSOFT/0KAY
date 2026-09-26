@@ -97,6 +97,8 @@ func pmInstalled(pkg string) bool {
 type InstalledPlugin struct {
 	Name       string `json:"name"`
 	Repository string `json:"repository,omitempty"`
+	// Source is "pm" (removable) or "platform" (part of the 0KAY platform).
+	Source string `json:"source,omitempty"`
 }
 
 // platformComponents maps published platform packages to their directory inside
@@ -137,7 +139,7 @@ func pmInstalledPluginList() []InstalledPlugin {
 	}
 	out := make([]InstalledPlugin, 0, len(state.Installed))
 	for name, record := range state.Installed {
-		out = append(out, InstalledPlugin{Name: name, Repository: record.Repository})
+		out = append(out, InstalledPlugin{Name: name, Repository: record.Repository, Source: "pm"})
 	}
 	return out
 }
@@ -157,7 +159,7 @@ func sourceInstalledPluginList() []InstalledPlugin {
 			path = filepath.Join(root, component.Dir)
 		}
 		if info, err := os.Stat(path); err == nil && info.IsDir() {
-			out = append(out, InstalledPlugin{Name: name, Repository: component.Repository})
+			out = append(out, InstalledPlugin{Name: name, Repository: component.Repository, Source: "platform"})
 		}
 	}
 	return out
@@ -173,6 +175,13 @@ func InstalledPlugins() []InstalledPlugin {
 	for _, plugin := range sourceInstalledPluginList() {
 		if _, ok := merged[plugin.Name]; !ok {
 			merged[plugin.Name] = plugin
+		}
+	}
+	// Platform packages are never removable, even if 0kay-pm has a record.
+	for name := range platformComponents {
+		if plugin, ok := merged[name]; ok {
+			plugin.Source = "platform"
+			merged[name] = plugin
 		}
 	}
 	out := make([]InstalledPlugin, 0, len(merged))
