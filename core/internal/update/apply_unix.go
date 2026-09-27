@@ -19,7 +19,7 @@ func shQuote(value string) string {
 // no mirror is configured).
 func shEnvLines() string {
 	var b strings.Builder
-	for _, kv := range gitProxyEnv() {
+	for _, kv := range processProxyEnv() {
 		fmt.Fprintf(&b, "export %s=%s\n", kv[0], shQuote(kv[1]))
 	}
 	return b.String()

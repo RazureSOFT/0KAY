@@ -29,8 +29,8 @@ func TestScriptsEmbedGitHubProxy(t *testing.T) {
 		t.Fatal(err)
 	}
 	rawUp, _ := os.ReadFile(up)
-	if !strings.Contains(string(rawUp), "gh-proxy.com") {
-		t.Fatalf("pm updater missing proxy env:\n%s", rawUp)
+	if !strings.Contains(string(rawUp), `set "OKAY_GITHUB_PROXY=https://gh-proxy.com"`) {
+		t.Fatalf("pm updater missing OKAY_GITHUB_PROXY:\n%s", rawUp)
 	}
 
 	installer, _, err := writeInstaller(dir, "0kay-pm", "@razureink/0kay-compat")
@@ -38,7 +38,7 @@ func TestScriptsEmbedGitHubProxy(t *testing.T) {
 		t.Fatal(err)
 	}
 	rawInstaller, _ := os.ReadFile(installer)
-	if !strings.Contains(string(rawInstaller), "gh-proxy.com") {
-		t.Fatalf("installer missing proxy env:\n%s", rawInstaller)
+	if !strings.Contains(string(rawInstaller), `set "OKAY_GITHUB_PROXY=https://gh-proxy.com"`) {
+		t.Fatalf("installer missing OKAY_GITHUB_PROXY:\n%s", rawInstaller)
 	}
 }

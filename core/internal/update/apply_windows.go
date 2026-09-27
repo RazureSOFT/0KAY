@@ -23,7 +23,7 @@ func winQuote(value string) string {
 // no mirror is configured).
 func winEnvLines() string {
 	var b strings.Builder
-	for _, kv := range gitProxyEnv() {
+	for _, kv := range processProxyEnv() {
 		fmt.Fprintf(&b, "set \"%s=%s\"\r\n", kv[0], strings.ReplaceAll(kv[1], "%", "%%"))
 	}
 	return b.String()

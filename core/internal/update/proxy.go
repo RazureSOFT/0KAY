@@ -34,3 +34,20 @@ func gitProxyEnv() [][2]string {
 		{"GIT_CONFIG_VALUE_0", "https://github.com/"},
 	}
 }
+
+// pmProxyEnv exposes the mirror to 0kay-pm itself. Its source downloads are
+// plain HTTPS (github.com/archive, codeload) rather than git, so the
+// GIT_CONFIG_* rewrite above never reaches them; 0kay-pm reads this variable and
+// prefixes its download URLs with the mirror.
+func pmProxyEnv() [][2]string {
+	if githubProxy == "" {
+		return nil
+	}
+	return [][2]string{{"OKAY_GITHUB_PROXY", githubProxy}}
+}
+
+// processProxyEnv is the full mirror environment handed to update/install
+// scripts (git rewrite + the 0kay-pm download prefix).
+func processProxyEnv() [][2]string {
+	return append(gitProxyEnv(), pmProxyEnv()...)
+}
