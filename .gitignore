@@ -9,6 +9,8 @@ buf.exe
 /mcp/
 # 0kay-minecraft (Minecraft bot plugin) remains an independent repository.
 /minecraft/
+# 0kay-free-model remains an independent repository.
+/free-model/
 node_modules
 core/data/tasks.json
 core/data/tasks.json.journal
