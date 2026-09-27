@@ -41,3 +41,10 @@ npm run build
 ```
 
 Reference implementation: `plugin-web/skillsguishow/`.
+
+## Patch-only packages
+
+`fluentui/` has no build step: it is a declarative `target:"theme"` patch
+published as a standalone 0kay-pm package (`manifest.json` + `patches/` +
+README), so it needs none of the layout rules above. The platform ships its
+runtime copy at `core/data/ui/fluentui.patch`, disabled until you opt in.

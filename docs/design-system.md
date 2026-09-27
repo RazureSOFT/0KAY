@@ -131,3 +131,9 @@ Expressive palette by overriding them in a `theme` patch instead of editing
 
 Full field reference and rendering rules:
 [Settings and UI Patches → Theme items](settings-ui.md#theme-items).
+
+**Worked example:** the repo ships a complete Fluent Design (Windows 11) theme
+as a real patch — `core/data/ui/fluentui.patch`, packaged as
+`plugin-web/fluentui/`. It redeclares all 37 color roles per scheme plus
+`css` for shape, typography, elevation and control restyling, so read it next to
+this section when authoring your own theme.
