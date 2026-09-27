@@ -159,10 +159,11 @@ WebUI compiles it into a `<style>` element in `<head>`.
 
 How the host renders it:
 
-1. Light tokens compile to `:root { … }`, dark tokens to
-   `:root:where([data-theme="dark"]) { … }`. Both carry the same specificity,
-   so **document order alone decides the winner** across plugins and across
-   schemes; `order` is the tiebreaker.
+1. Light tokens compile to `html:root { … }`, dark tokens to
+   `html:root:where([data-theme="dark"]) { … }`. Both score specificity
+   `(0,1,1)`, so they outrank a plain `:root` sheet and tie with an
+   `html[data-theme="dark"]` sheet; across plugins and schemes **document order
+   alone decides the winner**, and the host keeps its own elements last.
 2. Each item owns exactly one `<style id="0kay-theme-patch-{id}">` (plus one
    `<link>` when `cssUrl` is set). Those elements are kept in patch order,
    updated in place, and pruned when the item is removed; no other stylesheet is

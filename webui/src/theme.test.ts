@@ -91,15 +91,15 @@ describe('buildThemeCSS', () => {
       tokens: { light: { '--md-primary': '#a1' }, dark: { '--md-primary': '#a2' } },
     })
     expect(css).toBe(
-      ':root {\n  --md-primary: #a1;\n}\n:root:where([data-theme="dark"]) {\n  --md-primary: #a2;\n}',
+      'html:root {\n  --md-primary: #a1;\n}\nhtml:root:where([data-theme="dark"]) {\n  --md-primary: #a2;\n}',
     )
-    expect(css.indexOf('data-theme="dark"]')).toBeGreaterThan(css.indexOf(':root {'))
+    expect(css.indexOf('data-theme="dark"]')).toBeGreaterThan(css.indexOf('html:root {'))
   })
 
   it('omits a scheme the plugin did not define', () => {
     const css = buildThemeCSS({ id: 'demo', tokens: { dark: { '--md-primary': '#a2' } } })
-    expect(css).toContain(':root:where([data-theme="dark"])')
-    expect(css).not.toMatch(/:root \{/)
+    expect(css).toContain('html:root:where([data-theme="dark"])')
+    expect(css).not.toContain('html:root {')
   })
 
   it('appends raw css after the token declarations', () => {

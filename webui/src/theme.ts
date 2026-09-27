@@ -8,10 +8,11 @@
  * Cascade rules the renderer guarantees:
  *   - one <style id="0kay-theme-patch-{id}"> per item, one <link> per cssUrl
  *   - elements are kept in patch order (`order` ascending) in <head>
- *   - light tokens compile to `:root { … }`
- *   - dark tokens compile to `:root:where([data-theme="dark"]) { … }`
- *     (same specificity as `:root`, so document order alone decides the winner
- *     across plugins and across schemes)
+ *   - light tokens compile to `html:root { … }`
+ *   - dark tokens compile to `html:root:where([data-theme="dark"]) { … }`
+ *     Both score (0,1,1): above a bare `:root` sheet on specificity, tied with
+ *     an `html[data-theme="dark"]` sheet, so document order alone decides there
+ *     — and the renderer keeps its own elements last.
  */
 
 /** Per-scheme token maps. Unset schemes inherit the host palette. */
@@ -108,9 +109,9 @@ export function buildThemeCSS(item: ThemePatchItem | null | undefined): string {
   const { light, dark } = resolveTokenSets(item.tokens)
   const parts: string[] = []
   const lightBlock = declarationBlock(light)
-  if (lightBlock) parts.push(`:root ${lightBlock}`)
+  if (lightBlock) parts.push(`html:root ${lightBlock}`)
   const darkBlock = declarationBlock(dark)
-  if (darkBlock) parts.push(`:root:where([data-theme="dark"]) ${darkBlock}`)
+  if (darkBlock) parts.push(`html:root:where([data-theme="dark"]) ${darkBlock}`)
   const css = typeof item.css === 'string' ? item.css.trim() : ''
   if (css) parts.push(css)
   return parts.join('\n')
