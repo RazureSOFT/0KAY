@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	pluginv1 "0kay/gen/plugin/v1"
+
 	"0kay/core/internal/registry"
 )
 
@@ -145,5 +147,73 @@ func TestLifePermissionsRefusesWhenDisabled(t *testing.T) {
 	g.handleLifePermissions(rec, httptest.NewRequest(http.MethodGet, "/api/life/permissions", nil))
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status=%d, want 503 while life is disabled", rec.Code)
+	}
+}
+
+// The user story end to end: register the row, flip the switch the way
+// PluginsPage does, and watch the theme ops leave /api/ui/patches.
+func TestThemeOpsFollowThePluginSwitch(t *testing.T) {
+	data := t.TempDir()
+	t.Setenv("CORE_DATA_DIR", data)
+	writePatch(t, filepath.Join(data, "ui"), "fluentui.patch", map[string]any{
+		"id":      "fluentui-theme",
+		"plugin":  "fluentui",
+		"enabled": true,
+		"patches": []map[string]any{
+			{"target": "theme", "op": "insert", "id": "fluentui", "item": map[string]any{"id": "fluentui"}},
+		},
+	})
+
+	reg := registry.NewRegistry()
+	if _, err := reg.RegisterBuiltin(&pluginv1.PluginInfo{Name: "fluentui"}, []string{"fluentui"}, ""); err != nil {
+		t.Fatal(err)
+	}
+	g := &Gateway{registry: reg}
+	g.uiPatches = NewUIPatchStore(filepath.Join(data, "ui"))
+	g.uiPatches.SetPluginDisabledHook(func(plugin string) bool { return reg.IsDisabled(plugin) })
+
+	themeOps := func() int {
+		rec := httptest.NewRecorder()
+		g.handleUIPatches(rec, httptest.NewRequest(http.MethodGet, "/api/ui/patches", nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET /api/ui/patches status=%d", rec.Code)
+		}
+		var body struct {
+			Ops []struct {
+				Target string `json:"target"`
+			} `json:"ops"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		n := 0
+		for _, op := range body.Ops {
+			if op.Target == "theme" {
+				n++
+			}
+		}
+		return n
+	}
+
+	if got := themeOps(); got != 1 {
+		t.Fatalf("enabled: %d theme ops, want 1", got)
+	}
+
+	off := httptest.NewRecorder()
+	g.setPluginEnabled("fluentui", false, off)
+	if off.Code != http.StatusOK {
+		t.Fatalf("disable status=%d body=%s", off.Code, off.Body.String())
+	}
+	if got := themeOps(); got != 0 {
+		t.Fatalf("disabled: %d theme ops, want 0", got)
+	}
+
+	on := httptest.NewRecorder()
+	g.setPluginEnabled("fluentui", true, on)
+	if on.Code != http.StatusOK {
+		t.Fatalf("enable status=%d", on.Code)
+	}
+	if got := themeOps(); got != 1 {
+		t.Fatalf("re-enabled: %d theme ops, want 1", got)
 	}
 }
