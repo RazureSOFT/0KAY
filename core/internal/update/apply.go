@@ -136,12 +136,20 @@ func Start(plugin, version string) (ApplyState, error) {
 	startMu.Lock()
 	defer startMu.Unlock()
 
+	const umbrella = "@razuresoft/0kay"
 	switch {
 	case known && pmInstalled(pkg):
 		return startPM(dir, plugin, pkg, version)
 	case !known && pmInstalled(plugin):
 		// Third-party plugin: the id is its own 0kay-pm package name.
 		return startPM(dir, plugin, plugin, version)
+	case known && pmInstalled(umbrella) && !SourceAvailable():
+		// A 0kay-pm deployment of the platform: there is no git checkout to
+		// sync, so update the umbrella package instead. Reinstalling the
+		// umbrella rebuilds and restarts every platform component, which is
+		// what the beta (sync-repo) channel means for a package install. This
+		// makes beta work for everyone, not only source checkouts.
+		return startPM(dir, plugin, umbrella, version)
 	default:
 		return startSource(dir, plugin, version)
 	}
