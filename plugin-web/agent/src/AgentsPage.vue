@@ -154,6 +154,10 @@ const sessions = computed(() => store.sessions.filter(item =>
 const turns = computed(() => store.tasks.filter(item => item.kind === 'agent' && item.session_id === selectedId.value)
   .sort((a,b) => (a.started_at || '').localeCompare(b.started_at || '') || a.task_id.localeCompare(b.task_id)))
 const active = computed(() => store.tasks.find(item => item.session_id===selectedId.value && ['agent','compact'].includes(item.kind || '') && ['running','pending'].includes(item.state)))
+const contextSummary = computed(() => {
+  const done = store.tasks.filter(item => item.kind === 'compact' && item.session_id === selectedId.value && item.state === 'done' && (item.result || '').trim())
+  return done.length ? done.reduce((latest, item) => (item.started_at || '') >= (latest.started_at || '') ? item : latest) : null
+})
 const stateName = (value: string) => (locale.value==='en'?{pending:'Queued',running:'Running',done:'Completed',failed:'Failed',cancelled:'Stopped'}:{ pending:'等待执行', running:'执行中', done:'完成', failed:'失败', cancelled:'已停止' })[value] || value
 const time = (value?: string) => value ? new Date(value).toLocaleString() : ''
 function steps(turn: TaskRow) {
@@ -333,7 +337,11 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
           </div>
         </div>
         <template v-else>
-        <div v-if="!turns.length" class="welcome"><h2>想让 Agent 帮你做什么？</h2><p>直接描述目标，Agent 会在这个会话里回复并使用工具完成工作。</p><p>左侧的「LIFE 发起」会话可以查看 LIFE 与 Agent 的交流，也支持你继续提问。</p></div>
+        <div v-if="!turns.length && !contextSummary" class="welcome"><h2>想让 Agent 帮你做什么？</h2><p>直接描述目标，Agent 会在这个会话里回复并使用工具完成工作。</p><p>左侧的「LIFE 发起」会话可以查看 LIFE 与 Agent 的交流，也支持你继续提问。</p></div>
+        <article v-if="contextSummary" class="context-summary">
+          <div class="context-summary-head"><strong>{{ tr('上下文摘要', 'Context summary') }}</strong><time>{{ time(contextSummary.started_at) }}</time></div>
+          <MarkdownContent :content="contextSummary.result || ''" />
+        </article>
         <article v-for="turn in turns" :key="turn.task_id" class="turn">
           <div class="bubble user"><div class="message-head"><b>{{ isLife(turn) ? 'LIFE' : '你' }}</b><time>{{ time(turn.started_at) }}</time></div><div class="message-text">{{ turn.prompt?.replace(/^\[thinking_intensity=\w+\]\s*/, '') }}</div></div>
           <div class="bubble agent"><div class="message-head"><b>Agent</b><span :class="turn.state">{{ stateName(turn.state) }}</span></div>
@@ -455,6 +463,10 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .error{background:var(--md-error-container);color:#410E0B;padding:11px 16px;border-radius:12px;margin:8px 0;font-size:13px;overflow-wrap:anywhere}
 
 .transcript{flex:1;overflow-y:auto;padding:26px 28px;min-height:0}
+.context-summary{max-width:920px;margin:0 auto 22px;padding:14px 18px;border:1px dashed var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-low)}
+.context-summary-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.context-summary-head strong{font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--md-primary)}
+.context-summary-head time{font-size:12px;opacity:.75}
 .welcome{max-width:660px;margin:70px auto 0;text-align:center;color:var(--md-on-surface-variant);line-height:1.8}
 .welcome::before{content:'';display:block;width:64px;height:64px;margin:0 auto 20px;border-radius:20px;background:var(--md-primary-container);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 24 24' fill='none' stroke='%234d5d91' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z'/%3E%3Cpath d='M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:center}
 .welcome h2{color:var(--md-on-surface);font-size:24px;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}

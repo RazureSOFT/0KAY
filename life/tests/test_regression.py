@@ -296,7 +296,19 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('early fact',prompts[0])
         self.assertIn('retained early facts',prompts[-1])
         self.assertIn('latest fact',prompts[-1])
-        self.assertEqual(summary,'retained early facts')
+        self.assertIn('retained early facts',summary)
+        self.assertIn('## Objective',summary)
+
+    async def test_compaction_output_uses_fixed_schema(self):
+        class Model:
+            async def generate(self, *args, **kwargs):
+                yield '## Work State\n- Completed: shipped\n\n## Next Move\nkeep going'
+        self.engine.mocr=Model()
+        summary=await self.engine.compact_conversation([{'role':'user','content':'do the thing'}])
+        for heading in ('Objective','Important Details','Work State','Next Move','Relevant Files'):
+            self.assertIn(f'## {heading}',summary)
+        self.assertLess(summary.index('## Work State'),summary.index('## Next Move'))
+        self.assertIn('shipped',summary)
 
     async def test_tool_results_replan_and_secondary_recall_reaches_output(self):
         self.engine.memory.store("secretmarker useful fact", metadata={"scope": "session:a"})

@@ -33,6 +33,65 @@ from .task_records import TaskRecorder, task_context
 
 logger = get_logger("engine")
 
+# Context compaction rewrites a session into a fixed handoff schema so the raw
+# transcript can be dropped while continuity survives. Keep the headings stable:
+# downstream prompt assembly and the WebUI both assume this structure.
+COMPACTION_HEADINGS = ("Objective", "Important Details", "Work State", "Next Move", "Relevant Files")
+_HEADING_RE = re.compile(r"^\s{0,3}#{0,6}\s*([A-Za-z][A-Za-z /]*?)\s*:?\s*$")
+
+
+def _compaction_prompt(persona=None) -> str:
+    label = str(persona.get("name") or "").strip() if isinstance(persona, dict) else ""
+    persona_line = f"\n- 你正在为角色「{label}」维护这段对话的交接摘要。" if label else ""
+    headings = "\n".join(f"## {heading}" for heading in COMPACTION_HEADINGS)
+    return (
+        "You maintain a structured handoff summary of an ongoing conversation so it can continue "
+        "after the raw transcript is dropped. Rewrite it using EXACTLY these Markdown sections, in "
+        f"this order, and keep every section:{persona_line}\n\n{headings}\n\n"
+        "Rules:\n"
+        "- Objective: the current goal and what done means.\n"
+        "- Important Details: durable facts, decisions, constraints, file paths, IDs, environment quirks, "
+        "and questions already answered. Never include secrets.\n"
+        "- Work State: grouped as Completed / Active / Blocked. Report only observed results; never invent success.\n"
+        "- Next Move: the concrete immediate next step(s).\n"
+        "- Relevant Files: file_path:line references needed to continue.\n"
+        "- If a section has nothing, write 无.\n"
+        "- Carry the prior summary forward and never drop early facts.\n"
+        "- Start directly with ## Objective: no preamble, and never restate these instructions.\n"
+        "- Be terse and factual, no process narration. Write the content in the conversation's language (default Chinese)."
+    )
+
+
+def _normalize_compaction_summary(text: str) -> str:
+    """Guarantee the fixed schema even if the model omits or reorders sections."""
+    text = (text or "").strip()
+    if not text:
+        return text
+    canonical = {heading.lower(): heading for heading in COMPACTION_HEADINGS}
+    sections: dict[str, list[str]] = {}
+    loose: list[str] = []
+    current = None
+    for line in text.splitlines():
+        match = _HEADING_RE.match(line)
+        heading = canonical.get(match.group(1).strip().lower()) if match else None
+        if heading:
+            current = heading
+            sections.setdefault(heading, [])
+            continue
+        if current:
+            sections[current].append(line)
+        else:
+            loose.append(line)
+    if not sections:
+        sections = {COMPACTION_HEADINGS[0]: text.splitlines()}
+    elif any(line.strip() for line in loose):
+        sections[COMPACTION_HEADINGS[0]] = loose + sections.get(COMPACTION_HEADINGS[0], [])
+    blocks = []
+    for heading in COMPACTION_HEADINGS:
+        body = "\n".join(sections.get(heading, [])).strip() or "无"
+        blocks.append(f"## {heading}\n{body}")
+    return "\n\n".join(blocks)
+
 
 @dataclass
 class TurnContext:
@@ -1417,14 +1476,16 @@ class LifeEngine:
         # Summarize bounded batches, carrying the prior summary forward. Never
         # silently replace durable context with the last few lines on failure.
         transcript = "\n".join(entries)
+        system_prompt = _compaction_prompt(persona)
         summary = ""
         for offset in range(0, len(transcript), 18000):
-            content = f"Prior summary:\n{summary}\n\nNext transcript segment:\n{transcript[offset:offset+18000]}"
+            segment = transcript[offset:offset+18000]
+            content = f"Prior summary:\n{summary}\n\nNext transcript segment:\n{segment}" if summary else f"Transcript segment:\n{segment}"
             summary = "".join([chunk async for chunk in self.mocr.generate(self._model_for("compact"),
-                [{"role":"user","content":content}], "Update the summary faithfully. Keep user goals, file paths, completed changes, observed results, failures, decisions and unfinished work. Do not invent success. Output concise Chinese.", thinking=True)])
+                [{"role":"user","content":content}], system_prompt, thinking=True)])
             if not summary.strip() or summary.startswith('[mocr offline]'):
                 raise RuntimeError("压缩模型未返回有效摘要，原上下文保持不变")
-        return summary
+        return _normalize_compaction_summary(summary)
 
     def get_tools_schema(self):
         return self.tools.list_tools()
