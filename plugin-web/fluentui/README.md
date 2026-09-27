@@ -40,18 +40,27 @@ Full contract: `docs/settings-ui.md` § **Theme items** and `docs/design-system.
 
 ## Enable / disable
 
-The patch ships `enabled: true`, so installing it turns Fluent on immediately.
+Core skips any file whose top-level `"enabled"` is `false`
+(`uiPatchStore.List(false)`), so the switch lives in the file, not in the API.
 
-- One-shot disable (survives reload, persisted server-side):
+- **Repo (dev) copy** — `core/data/ui/fluentui.patch` ships `false`; flip it to
+  `true` and the theme goes live. It is loaded from `{cwd}/data/ui` when Core
+  runs from `core/`, from `$CORE_DATA_DIR/ui` in a deployment.
+- **Installed copy** — `0kay-pm install` drops the package patch (which is
+  `enabled: true`) into `$CORE_DATA_DIR/ui/`, and it takes effect on the next
+  reload.
+- **Force a reload** without restarting — Core re-scans on every `GET
+  /api/ui/patches` (mtime, at most once per 3s), the WebUI polls that endpoint
+  every 15s, and an explicit reload is just:
 
   ```sh
-  curl -X POST http://127.0.0.1:19420/api/ui/patches \
-    -H 'content-type: application/json' \
-    -d '{"id":"fluentui-theme","enabled":false}'
+  curl -X POST http://127.0.0.1:19420/api/ui/patches
   ```
 
-- Re-enable with `"enabled":true`, or remove it entirely by editing
-  `~/.0kay/ui/*` / the `ui-patches` store (see `docs/HTTP_API.md`).
+  The POST takes no body — it only reloads; there is no API that writes
+  `enabled`.
+- **Turn it off**: set `"enabled": false` back in the file (or delete the
+  `.patch`), then reload again.
 
 ## Customise
 
