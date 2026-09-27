@@ -11,10 +11,13 @@ import (
 )
 
 type updateCheck struct {
-	Current   string `json:"current"`
-	Latest    string `json:"latest,omitempty"`
-	HasUpdate bool   `json:"has_update"`
-	URL       string `json:"url,omitempty"`
+	Current     string `json:"current"`
+	Latest      string `json:"latest,omitempty"`
+	HasUpdate   bool   `json:"has_update"`
+	URL         string `json:"url,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Notes       string `json:"notes,omitempty"`
+	PublishedAt string `json:"published_at,omitempty"`
 }
 
 type pluginUpdateCheck struct {
@@ -43,6 +46,9 @@ func (g *Gateway) handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 		result.Latest = update.Normalize(release.TagName)
 		result.HasUpdate = update.Newer(release.TagName, version.Version)
 		result.URL = release.HTMLURL
+		result.Name = release.Name
+		result.Notes = release.Body
+		result.PublishedAt = release.PublishedAt
 	}
 	writeJSON(w, http.StatusOK, result)
 }

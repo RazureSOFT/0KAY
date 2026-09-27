@@ -265,6 +265,7 @@
       "noPlugins": "登録済みプラグインなし",
       "unsupported": "この Core ビルドは更新確認を提供していません。Core を更新して再起動してください。",
       "updateHint": "0kay-pm で更新する前にコンポーネントを停止し、その後再起動してください。",
+      "whatsNew": "このバージョンの新機能",
 "tagline": "ローカルファーストの AI コンパニオンプラットフォーム",
 "pluginUpdates": "プラグイン更新",
 "currentVersion": "現在",

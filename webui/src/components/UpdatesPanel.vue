@@ -4,9 +4,6 @@ import { useI18n } from 'vue-i18n'
 import { apiGet, apiPost, ApiError } from '../api'
 
 const { t } = useI18n()
-const aboutLoading = ref(false)
-const updateResult = ref<{ current: string; latest?: string; has_update: boolean; url?: string } | null>(null)
-const updateError = ref('')
 const pluginsLoading = ref(false)
 const pluginResults = ref<Array<{ name: string; version: string; latest?: string; has_update: boolean; repository?: string; package?: string; can_update?: boolean; error?: string }> | null>(null)
 const pluginsError = ref('')
@@ -59,7 +56,6 @@ async function refreshApply() {
   }
   if (applyState.value && applyState.value.status !== 'running') {
     stopPolling()
-    void checkUpdates()
     void checkPluginUpdates()
   }
 }
@@ -82,27 +78,7 @@ const applyLabel = computed(() => {
   }
 })
 
-const statusKind = computed<'ok' | 'warn' | 'none'>(() => {
-  if (!updateResult.value) return 'none'
-  if (updateResult.value.has_update) return 'warn'
-  return updateResult.value.latest ? 'ok' : 'none'
-})
-
 const updateCount = computed(() => (pluginResults.value || []).filter((p) => p.has_update).length)
-
-async function checkUpdates() {
-  aboutLoading.value = true
-  updateError.value = ''
-  try {
-    updateResult.value = await apiGet('/api/update/check')
-  } catch (error: unknown) {
-    updateError.value = error instanceof ApiError && error.status === 404
-      ? t('settings.about.unsupported')
-      : error instanceof Error ? error.message : String(error)
-  } finally {
-    aboutLoading.value = false
-  }
-}
 
 async function checkPluginUpdates() {
   pluginsLoading.value = true
@@ -156,7 +132,6 @@ function setProxy(value: string) {
 }
 
 onMounted(() => {
-  void checkUpdates()
   void checkPluginUpdates()
   void loadProxy()
   void apiGet('/api/update/status')
@@ -221,59 +196,6 @@ onUnmounted(stopPolling)
 
     <div class="us-divider"></div>
 
-    <!-- Platform version -->
-    <section class="us-block">
-      <header class="us-head">
-        <span class="us-ico" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        </span>
-        <div class="us-head-text">
-          <h3 class="us-title">0KAY</h3>
-          <p class="us-desc">{{ t('settings.about.description') }}</p>
-        </div>
-        <div class="us-head-actions">
-          <button class="btn btn-tonal sm" :disabled="aboutLoading" @click="checkUpdates">{{ t(aboutLoading ? 'settings.about.checking' : 'settings.about.check') }}</button>
-        </div>
-      </header>
-
-      <p v-if="updateError" class="alert" role="alert">{{ updateError }}</p>
-      <div v-else class="us-hero" :class="statusKind">
-        <div class="us-hero-icon" aria-hidden="true">
-          <svg v-if="statusKind === 'ok'" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <svg v-else-if="statusKind === 'warn'" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 4v11M12 19.5v.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
-          <svg v-else width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M6 12h12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
-        </div>
-        <div class="us-hero-text">
-          <b>{{ t(statusKind === 'warn' ? 'settings.about.available' : (statusKind === 'ok' ? 'settings.about.latest' : 'settings.about.noRelease')) }}</b>
-          <span v-if="updateResult?.latest">v{{ updateResult.current }} → <em>v{{ updateResult.latest }}</em></span>
-          <span v-else>0KAY v{{ updateResult?.current || '0.1.1' }}</span>
-        </div>
-        <div class="us-hero-actions">
-          <button v-if="updateResult?.has_update" class="btn btn-primary sm" :disabled="isUpdating('core')" @click="applyUpdate('core', updateResult.latest)">
-            {{ isUpdating('core') ? t('settings.about.updating') : t('settings.about.updateNow') }}
-          </button>
-          <button class="btn btn-tonal sm" :disabled="isUpdating('core')" :title="t('settings.about.betaHint')" @click="applyUpdate('core')">
-            {{ isUpdating('core') ? t('settings.about.updating') : t('settings.about.beta') }}
-          </button>
-          <a v-if="updateResult?.url" class="btn btn-ghost sm" :href="updateResult.url" target="_blank" rel="noopener noreferrer">Release ↗</a>
-        </div>
-      </div>
-
-      <p v-if="applyError" class="alert" role="alert">{{ applyError }}</p>
-      <div v-if="applyState && applyState.status !== 'idle'" class="us-apply-banner" :class="applyState.status">
-        <div class="us-apply-head">
-          <span class="us-spinner" aria-hidden="true"></span>
-          <b>{{ applyState.package }}<span v-if="applyState.version">@{{ applyState.version }}</span><span v-else> · main</span></b>
-          <span v-if="applyState.mode === 'source'" class="us-chip-tag">{{ t('settings.about.sourceMode') }}</span>
-          <span class="us-apply-label">{{ applyLabel }}</span>
-        </div>
-        <p v-if="applyState.error" class="us-apply-error">{{ applyState.error }}</p>
-        <pre v-if="applyState.log" class="us-apply-log">{{ applyState.log }}</pre>
-      </div>
-    </section>
-
-    <div class="us-divider"></div>
-
     <!-- Components -->
     <section class="us-block">
       <header class="us-head">
@@ -289,6 +211,18 @@ onUnmounted(stopPolling)
           <button class="btn btn-tonal sm" :disabled="pluginsLoading" @click="checkPluginUpdates">{{ t(pluginsLoading ? 'settings.about.checking' : 'settings.about.check') }}</button>
         </div>
       </header>
+
+      <p v-if="applyError" class="alert" role="alert">{{ applyError }}</p>
+      <div v-if="applyState && applyState.status !== 'idle'" class="us-apply-banner" :class="applyState.status">
+        <div class="us-apply-head">
+          <span class="us-spinner" aria-hidden="true"></span>
+          <b>{{ applyState.package }}<span v-if="applyState.version">@{{ applyState.version }}</span><span v-else> · main</span></b>
+          <span v-if="applyState.mode === 'source'" class="us-chip-tag">{{ t('settings.about.sourceMode') }}</span>
+          <span class="us-apply-label">{{ applyLabel }}</span>
+        </div>
+        <p v-if="applyState.error" class="us-apply-error">{{ applyState.error }}</p>
+        <pre v-if="applyState.log" class="us-apply-log">{{ applyState.log }}</pre>
+      </div>
 
       <p v-if="pluginsError" class="alert" role="alert">{{ pluginsError }}</p>
       <div v-if="pluginResults" class="us-table">

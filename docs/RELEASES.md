@@ -104,6 +104,9 @@ empty for direct GitHub access.
 
 - Version comparison is semver-aware: a leading `v` and prerelease/build
   suffixes are handled, so `0.1.1-rc.1 < 0.1.1`.
+- `/api/update/check` also returns the release `name`, `notes` (the published
+  release body, i.e. the changelog) and `published_at`, which Settings → About
+  shows as the new version's features.
 - `latest` is omitted when the repository has no published release. The platform
   check returns `502` with an `error` field when GitHub is unreachable; the
   plugin check reports a per-plugin `error` (including `unknown repository`).

@@ -23,8 +23,11 @@ var client = &http.Client{Timeout: 10 * time.Second}
 
 // Release is the subset of a GitHub release the update checks need.
 type Release struct {
-	TagName string `json:"tag_name"`
-	HTMLURL string `json:"html_url"`
+	TagName     string `json:"tag_name"`
+	Name        string `json:"name"`
+	Body        string `json:"body"`
+	PublishedAt string `json:"published_at"`
+	HTMLURL     string `json:"html_url"`
 }
 
 // apiBase is the base URL for GitHub API requests. When a mirror is configured
