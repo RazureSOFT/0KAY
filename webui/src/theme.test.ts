@@ -1,4 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
+import coreRaw from '../../core/data/ui/fluentui.patch?raw'
+import pkgRaw from '../../plugin-web/fluentui/patches/fluentui.patch?raw'
+import manifestRaw from '../../plugin-web/fluentui/manifest.json?raw'
 import { createPinia, setActivePinia } from 'pinia'
 import {
   applyThemePatches,
@@ -273,5 +276,36 @@ describe('uiPatches store themePatches', () => {
       order: 5,
       tokens: { light: { '--md-primary': '#z' } },
     })
+  })
+})
+
+describe('shipped Fluent theme patch', () => {
+  const read = (text: string) => JSON.parse(text)
+  const core = read(coreRaw)
+  const item = core.patches.find((p: any) => p.target === 'theme').item
+
+  it('compiles every declared token without the sanitizer dropping any', () => {
+    const css = buildThemeCSS(item)
+    for (const scheme of ['light', 'dark']) {
+      expect(item.tokens[scheme]).toBeDefined()
+      for (const key of Object.keys(item.tokens[scheme])) expect(css).toContain(`${key}:`)
+    }
+    expect(css).toContain('html:root {')
+    expect(css).toContain('html:root:where([data-theme="dark"]) {')
+    expect(css).toContain('#app .btn {')
+    expect(css).toContain(':focus-visible { outline: 2px solid var(--md-primary);')
+  })
+
+  it('keeps the pm package copy in sync', () => {
+    const pkg = read(pkgRaw)
+    expect(pkg.enabled).toBe(true)
+    expect(core.enabled).toBe(false)
+    expect({ ...pkg, enabled: core.enabled }).toEqual(core)
+
+    const manifest = read(manifestRaw)
+    expect(manifest.patches).toEqual(['patches/fluentui.patch'])
+    expect(manifest.version).toBe(pkg.version)
+    expect(pkg.id).toBe('fluentui-theme')
+    expect(pkg.plugin).toBe('')
   })
 })
