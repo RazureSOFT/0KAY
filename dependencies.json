@@ -1,7 +1,7 @@
 {
   "agent": {
     "repository": "https://github.com/RazureSOFT/0KAY-agent.git",
-    "revision": "04ec1917a6e95fcec7f5ffcdb5de8c638d311e3a",
+    "revision": "eab19b189730cb8958af60d2d64f7420ce5e675a",
     "path": "agent"
   }
 }
