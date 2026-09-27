@@ -46,5 +46,6 @@ Reference implementation: `plugin-web/skillsguishow/`.
 
 `fluentui/` has no build step: it is a declarative `target:"theme"` patch
 published as a standalone 0kay-pm package (`manifest.json` + `patches/` +
-README), so it needs none of the layout rules above. The platform ships its
-runtime copy at `core/data/ui/fluentui.patch`, disabled until you opt in.
+README), so it needs none of the layout rules above. Nothing about it ships
+with the platform — `0kay-pm install` copies `patches/fluentui.patch` into
+Core's `data/ui/`, which is also what materializes its Plugins page row.

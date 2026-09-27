@@ -133,10 +133,12 @@ Full field reference and rendering rules:
 [Settings and UI Patches → Theme items](settings-ui.md#theme-items).
 
 **Worked example:** the repo ships a complete Fluent Design (Windows 11) theme
-as a real patch — `core/data/ui/fluentui.patch`, packaged as
-`plugin-web/fluentui/`. It redeclares all 37 color roles per scheme plus
-`css` for shape, typography, elevation and control restyling, so read it next to
-this section when authoring your own theme. It is owned by the `fluentui`
-plugin row (a Core-managed, process-less plugin), so the switch on the Plugins
-page turns the whole theme off — see
+as a real patch — `plugin-web/fluentui/patches/fluentui.patch`, published as the
+`@razuresoft/0kay-theme-fluentui` pm package. It redeclares all 37 color roles
+per scheme plus `css` for shape, typography, elevation and control restyling, so
+read it next to this section when authoring your own theme. Installing the
+package copies the patch into Core's `data/ui/` (manifest `patches`), where the
+`fluentui` registry row picks it up; it is owned by that row (a Core-managed,
+process-less plugin), so the switch on the Plugins page turns the whole theme
+off — see
 [Theme items → Owning plugin](settings-ui.md#owning-plugin-and-the-plugins-page-switch).

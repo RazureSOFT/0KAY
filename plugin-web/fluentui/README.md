@@ -12,9 +12,9 @@ rectangles and Fluent elevations.
 | `manifest.json` | pm manifest, installs `patches/fluentui.patch` |
 | `patches/fluentui.patch` | one `insert` op whose `item` carries `tokens` + `css` |
 
-The runtime copy the 0KAY server ships with lives at
-`core/data/ui/fluentui.patch`; both copies are byte-identical and carry
-`"plugin": "fluentui"`, which is what ties the theme to its Plugins page row.
+The patch is **not** part of the platform checkout: installing this package
+copies `patches/fluentui.patch` into Core's `data/ui/`, where its
+`"plugin": "fluentui"` field ties the theme to its Plugins page row.
 
 ## How it works
 
@@ -36,6 +36,21 @@ The patch contains a single op:
   surfaces, focus).
 
 Full contract: `docs/settings-ui.md` § **Theme items** and `docs/design-system.md` § **6**.
+
+## Install
+
+```sh
+# local checkout
+0kay-pm install @razuresoft/0kay-theme-fluentui --source .\plugin-web\fluentui
+# published repository
+0kay-pm install https://github.com/<you>/0kay-theme-fluentui
+```
+
+`manifest.patches` is what copies the file into `CORE_DATA_DIR/ui/` (and
+`0kay-pm uninstall` takes it away again). Restart Core afterwards: the
+`fluentui` row is registered at startup only when the file exists
+(`gateway.HasUIPatch` → `registerBuiltins`), and until a row carries the
+`fluentui` capability its ops are filtered out of `GET /api/ui/patches`.
 
 ## Enable / disable
 

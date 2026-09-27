@@ -1,5 +1,4 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import coreRaw from '../../core/data/ui/fluentui.patch?raw'
 import pkgRaw from '../../plugin-web/fluentui/patches/fluentui.patch?raw'
 import manifestRaw from '../../plugin-web/fluentui/manifest.json?raw'
 import { createPinia, setActivePinia } from 'pinia'
@@ -279,10 +278,10 @@ describe('uiPatches store themePatches', () => {
   })
 })
 
-describe('shipped Fluent theme patch', () => {
+describe('Fluent theme patch package', () => {
   const read = (text: string) => JSON.parse(text)
-  const core = read(coreRaw)
-  const item = core.patches.find((p: any) => p.target === 'theme').item
+  const pkg = read(pkgRaw)
+  const item = pkg.patches.find((p: any) => p.target === 'theme').item
 
   it('compiles every declared token without the sanitizer dropping any', () => {
     const css = buildThemeCSS(item)
@@ -296,11 +295,9 @@ describe('shipped Fluent theme patch', () => {
     expect(css).toContain(':focus-visible { outline: 2px solid var(--md-primary);')
   })
 
-  it('keeps the pm package copy in sync', () => {
-    const pkg = read(pkgRaw)
+  it('reaches data/ui through the pm manifest instead of shipping there', () => {
     expect(pkg.enabled).toBe(true)
     expect(pkg.plugin).toBe('fluentui')
-    expect(pkg).toEqual(core)
 
     const manifest = read(manifestRaw)
     expect(manifest.patches).toEqual(['patches/fluentui.patch'])

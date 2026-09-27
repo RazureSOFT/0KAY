@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	pluginv1 "0kay/gen/plugin/v1"
@@ -96,17 +98,19 @@ func TestHasUIPatchLooksInCoreDataDir(t *testing.T) {
 	}
 }
 
-// The shipped patch must name the builtin row Core registers for it
+// The package patch must name the builtin row Core registers for it
 // (cmd/core/registerBuiltins), otherwise the Plugins page switch cannot reach
-// it: ops are filtered through GetPluginsByCapability(plugin).
-func TestShippedFluentPatchIsOwnedByItsPanelRow(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "..", "data", "ui", "fluentui.patch"))
+// it: ops are filtered through GetPluginsByCapability(plugin). It must NOT
+// ship inside core/data/ui — 0kay-pm copies it there on install, and only then
+// does the row (and the theme) appear.
+func TestPackageFluentPatchIsOwnedByItsPanelRow(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "plugin-web", "fluentui", "patches", "fluentui.patch"))
 	if err != nil {
-		t.Fatalf("read shipped patch: %v", err)
+		t.Fatalf("read package patch: %v", err)
 	}
 	var doc UIPatchFile
 	if err := json.Unmarshal(raw, &doc); err != nil {
-		t.Fatalf("parse shipped patch: %v", err)
+		t.Fatalf("parse package patch: %v", err)
 	}
 	if doc.Plugin != "fluentui" {
 		t.Fatalf("plugin=%q, want fluentui", doc.Plugin)
@@ -124,15 +128,34 @@ func TestShippedFluentPatchIsOwnedByItsPanelRow(t *testing.T) {
 		}
 	}
 	if !hasTheme {
-		t.Fatal("shipped patch carries no theme op")
+		t.Fatal("package patch carries no theme op")
 	}
 
-	pkg, err := os.ReadFile(filepath.Join("..", "..", "..", "plugin-web", "fluentui", "patches", "fluentui.patch"))
+	// The pm manifest is what carries the patch into CORE_DATA_DIR/ui on
+	// install; without that entry the package would install inert.
+	manifest, err := os.ReadFile(filepath.Join("..", "..", "..", "plugin-web", "fluentui", "manifest.json"))
 	if err != nil {
-		t.Fatalf("read package patch: %v", err)
+		t.Fatalf("read package manifest: %v", err)
 	}
-	if string(pkg) != string(raw) {
-		t.Fatal("plugin-web/fluentui and core/data/ui copies drifted apart")
+	var pm struct {
+		Patches []string `json:"patches"`
+	}
+	if err := json.Unmarshal(manifest, &pm); err != nil {
+		t.Fatalf("parse package manifest: %v", err)
+	}
+	if len(pm.Patches) != 1 || pm.Patches[0] != "patches/fluentui.patch" {
+		t.Fatalf("manifest patches=%v, want [patches/fluentui.patch]", pm.Patches)
+	}
+
+	// The platform must not commit a runtime copy: a plain `git pull` would
+	// activate the theme before anyone installs it. Checked through git so an
+	// 0kay-pm install landing in the same directory stays legal.
+	cmd := exec.Command("git", "ls-files", "--error-unmatch", filepath.Join("core", "data", "ui", "fluentui.patch"))
+	cmd.Dir = filepath.Join("..", "..")
+	if out, err := cmd.CombinedOutput(); err == nil {
+		t.Fatalf("core/data/ui/fluentui.patch is tracked by git, it must only arrive on install: %s", out)
+	} else if len(out) > 0 && strings.Contains(string(out), "not a git repository") {
+		t.Skip("outside a git checkout")
 	}
 }
 

@@ -200,8 +200,10 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 
 	// Fluent Design theme: a patch-only plugin, i.e. it has no process to
 	// register itself from. Core materializes the registry row so the Plugins
-	// page can switch it; core/data/ui/fluentui.patch names `plugin: "fluentui"`
-	// and is therefore served only while this row is enabled.
+	// page can switch it. The patch is not shipped in core/data/ui — 0kay-pm
+	// copies plugin-web/fluentui/patches/fluentui.patch there on install, so
+	// this row only exists on machines that installed the theme. The file names
+	// `plugin: "fluentui"` and is therefore served only while this row is on.
 	if gateway.HasUIPatch("fluentui.patch") {
 		if _, err := reg.RegisterBuiltin(&pluginv1.PluginInfo{
 			Name:        "fluentui",
