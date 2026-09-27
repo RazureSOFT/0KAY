@@ -174,9 +174,14 @@ func sensitiveRequest(r *http.Request) bool {
 // looksLikeBrowser distinguishes a browser tab (sends Fetch metadata / Origin)
 // from a machine client such as LIFE, the agent or a script. Browser callers
 // face the PIN even when they reach Core over loopback.
+//
+// Sec-Fetch-Mode alone is deliberately ignored: Node's undici fetch (used by
+// the agent and plugin proxies) always sends "Sec-Fetch-Mode: cors" without any
+// of the other signals, so treating it as a browser would deny every Node
+// machine client. Real browsers additionally send Sec-Fetch-Site, and their
+// same-origin fetch/XHR also carries Referer (and Origin for cross-origin).
 func looksLikeBrowser(r *http.Request) bool {
-	return r.Header.Get("Sec-Fetch-Mode") != "" ||
-		r.Header.Get("Sec-Fetch-Site") != "" ||
+	return r.Header.Get("Sec-Fetch-Site") != "" ||
 		r.Header.Get("Origin") != "" ||
 		r.Header.Get("Referer") != ""
 }

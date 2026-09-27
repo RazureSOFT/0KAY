@@ -129,3 +129,37 @@ func TestSensitiveGate(t *testing.T) {
 		t.Fatalf("non-sensitive read = %d, want 200", code)
 	}
 }
+
+// Node's undici fetch (the agent and plugin proxies) always sends
+// "Sec-Fetch-Mode: cors" without any real browser signals, so it must stay
+// exempt; genuine browser metadata still has to face the PIN.
+func TestNodeFetchIsNotABrowser(t *testing.T) {
+	s, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPIN("424242"); err != nil {
+		t.Fatal(err)
+	}
+	handler := s.HTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+
+	call := func(header, value string) int {
+		req := httptest.NewRequest(http.MethodGet, "/api/providers/credentials", nil)
+		req.RemoteAddr = "127.0.0.1:50000"
+		if header != "" {
+			req.Header.Set(header, value)
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		return w.Code
+	}
+
+	if code := call("Sec-Fetch-Mode", "cors"); code != http.StatusOK {
+		t.Fatalf("undici-style loopback request = %d, want 200", code)
+	}
+	for _, header := range []string{"Sec-Fetch-Site", "Origin", "Referer"} {
+		if code := call(header, "http://localhost:3000/"); code != http.StatusForbidden {
+			t.Fatalf("browser %s = %d, want 403", header, code)
+		}
+	}
+}
