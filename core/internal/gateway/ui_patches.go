@@ -37,8 +37,15 @@ type UIPatchFile struct {
 //   - "router"  — extra SPA routes (component: "iframe" | "external" | path)
 //   - "settings"— extra settings tabs (mirrors settings sections)
 //   - "status"  — StatusPanel sections
+//   - "chat"    — ChatPage slots
+//   - "theme"   — design-token / CSS overrides for the Material 3 palette
+//   - "bootstrap" — global ESM modules imported once at startup
+//
+// Targets are resolved by the WebUI; Core stores and serves them verbatim
+// (the Item map is passed through untouched) so new targets need no backend
+// change.
 type UIPatchOp struct {
-	// Target is one of nav | router | settings | status.
+	// Target is one of nav | router | settings | status | chat | theme | bootstrap.
 	Target string `json:"target"`
 	// Op is insert | remove | replace.
 	Op string `json:"op"`

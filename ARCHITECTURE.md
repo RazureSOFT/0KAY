@@ -227,7 +227,7 @@ PATCH /api/plugins/{name} {enabled:false}   （别名：POST /api/plugins/disabl
 
 | 字段 | 说明 |
 |------|------|
-| `target` | `nav` \| `router` \| `settings` \| `status` \| `chat` |
+| `target` | `nav` \| `router` \| `settings` \| `status` \| `chat` \| `theme` \| `bootstrap` |
 | `op` | `insert` \| `remove` \| `replace` |
 | `anchor` / `position` | 相对兄弟项定位：`before` / `after` |
 | `plugin` | 所属插件；插件停用时整文件被过滤 |

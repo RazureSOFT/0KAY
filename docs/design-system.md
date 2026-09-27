@@ -90,3 +90,44 @@ look or ship a copy:
   without respecting reduced motion.
 - See [WebUI Custom Pages](custom-pages.md) for how a page is registered and
   loaded.
+
+## 6. Replacing the theme from a plugin
+
+The token names above are the contract: a plugin swaps the whole Material 3
+Expressive palette by overriding them in a `theme` patch instead of editing
+`webui/src/styles/theme.css` or injecting a `<style>` tag from JavaScript.
+
+```json
+{
+  "id": "midnight-theme",
+  "plugin": "midnight",
+  "patches": [
+    {
+      "target": "theme",
+      "op": "insert",
+      "id": "midnight",
+      "item": {
+        "id": "midnight",
+        "order": 10,
+        "tokens": {
+          "light": { "--md-primary": "#006874", "--md-surface": "#f5f9fa" },
+          "dark": { "--md-primary": "#4fd8eb", "--md-surface": "#0e1416" }
+        },
+        "cssUrl": "/api/plugins/midnight/ui/theme.css"
+      }
+    }
+  ]
+}
+```
+
+- **`tokens`** is the fast path: only roles you name are redeclared, everything
+  else keeps the host palette. A flat map (no `light`/`dark` wrapper) applies
+  the same values in both schemes.
+- **`css`** / **`cssUrl`** are the escape hatch for anything tokens cannot
+  express — component restyling, an added font, a full replacement stylesheet.
+- Declarations are ordered by `order` (ascending) in `<head>`; light and dark
+  blocks share one specificity, so a later `order` always wins. `remove` takes
+  the theme back off.
+
+Full field reference and rendering rules:
+[Settings and UI Patches → Theme items](settings-ui.md#theme-items).

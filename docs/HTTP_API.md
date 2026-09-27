@@ -419,8 +419,9 @@ a disabled plugin return `403 section disabled`. See
   enable/disable bypass the cooldown.
 - An op is dropped when its `capability` (falling back to `plugin`) matches no
   registered capability, or when its plugin is disabled.
-- Targets: `nav`, `router`, `settings`, `status`, `chat`. Operations: `insert`,
-  `remove`, `replace`. WebUI polls this endpoint every 15 s.
+- Targets: `nav`, `router`, `settings`, `status`, `chat`, `theme`, `bootstrap`.
+  Operations: `insert`, `remove`, `replace`. WebUI polls this endpoint every
+  15 s.
 
 ## 14. WebSocket `/ws`
 

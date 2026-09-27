@@ -1,15 +1,18 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import type { ThemePatchItem } from '../theme'
 
 export interface UIPatchOp {
   patchId?: string
-  target: 'nav' | 'router' | 'settings' | 'status' | string
+  target: 'nav' | 'router' | 'settings' | 'status' | 'theme' | string
   op: 'insert' | 'remove' | 'replace' | string
   anchor?: string
   position?: 'before' | 'after' | string
   id?: string
   item?: Record<string, any> | null
 }
+
+export type { ThemePatchItem }
 
 export interface NavItem {
   id: string
@@ -325,6 +328,13 @@ export const useUIPatchesStore = defineStore('uiPatches', () => {
     return settingsTabs.value.find((t) => t.id === id)
   }
 
+  /**
+   * Theme patches (target "theme"): design-token overrides plus raw CSS a
+   * plugin contributes to replace or layer over the Material 3 Expressive
+   * palette. `applyThemePatches()` renders them into <head> in this order.
+   */
+  const themePatches = computed<ThemePatchItem[]>(() => applyListOps<ThemePatchItem>([], opsFor('theme')))
+
   /** Settings ids removed by patches (may target plugin-only sections). */
   const removedSettingsIds = computed(() =>
     patches.value
@@ -372,6 +382,7 @@ export const useUIPatchesStore = defineStore('uiPatches', () => {
     removedSettingsIds,
     chatSlots,
     chatRegion,
+    themePatches,
     bootstrapItems,
     patchFieldTabs,
     isBuiltinSettingsId,

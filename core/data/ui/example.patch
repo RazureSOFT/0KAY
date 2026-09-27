@@ -1,6 +1,6 @@
 {
   "id": "platform-state-note",
-  "name": "Example: extra settings tab (disabled by default)",
+  "name": "Example: settings tab and theme override (disabled by default)",
   "version": "0.1.0",
   "plugin": "example",
   "enabled": false,
@@ -15,6 +15,20 @@
         "id": "example",
         "icon": "chip",
         "order": 90
+      }
+    },
+    {
+      "target": "theme",
+      "op": "insert",
+      "id": "example-theme",
+      "item": {
+        "id": "example-theme",
+        "order": 10,
+        "tokens": {
+          "light": { "--md-primary": "#006874" },
+          "dark": { "--md-primary": "#4fd8eb" }
+        },
+        "css": "#app .card { border-radius: 24px }"
       }
     }
   ]

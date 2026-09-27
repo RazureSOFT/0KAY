@@ -6,6 +6,7 @@ import router, { registerPatchRoutes } from './router'
 import { i18n } from './i18n'
 import { useWizardStore } from './stores/wizard'
 import { useUIPatchesStore } from './stores/uiPatches'
+import { applyThemePatches } from './theme'
 import './styles/theme.css'
 import './styles/settings.css'
 import { installInteractionMotion } from './composables/motion'
@@ -71,6 +72,7 @@ async function installBootstrapModules() {
 function applyPatchesAndRematch() {
   registerPatchRoutes()
   void installBootstrapModules()
+  applyThemePatches(ui.themePatches)
   const cur = router.currentRoute.value
   if (cur.matched.some((r) => r.name === 'catch-all')) {
     const path = cur.fullPath

@@ -315,8 +315,9 @@ The full per-endpoint request/response, auth and query details are in the
 TaskEvent: task_id/caller_id/session_id/parent_id/kind/prompt/state/result/error.
 Keep results under ~200k characters. UI patch files carry
 plugin/id/enabled/patches; each op sets target, op, id, item, anchor, position.
-Targets are nav/router/settings/status/chat; disabling a plugin filters its
-patches.
+Targets are nav/router/settings/status/chat/bootstrap/theme; a `theme` item
+overrides design tokens (or supplies css/cssUrl) instead of loading a module;
+disabling a plugin filters its patches.
 
 ## 5. LAN discovery and pairing
 
