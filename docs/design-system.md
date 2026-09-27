@@ -136,4 +136,7 @@ Full field reference and rendering rules:
 as a real patch — `core/data/ui/fluentui.patch`, packaged as
 `plugin-web/fluentui/`. It redeclares all 37 color roles per scheme plus
 `css` for shape, typography, elevation and control restyling, so read it next to
-this section when authoring your own theme.
+this section when authoring your own theme. It is owned by the `fluentui`
+plugin row (a Core-managed, process-less plugin), so the switch on the Plugins
+page turns the whole theme off — see
+[Theme items → Owning plugin](settings-ui.md#owning-plugin-and-the-plugins-page-switch).

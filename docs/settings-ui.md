@@ -189,3 +189,26 @@ op may carry `anchor` and `position` to place it relative to an existing item.
 The full flattened patch list (with plugin and capability attribution) is
 available at `GET /api/ui/patches`; the WebUI polls it every 15 seconds and
 reloads immediately after `POST /api/ui/patches` or a plugin enable/disable.
+
+### Owning plugin and the Plugins page switch
+
+A patch file that sets `plugin` (with an optional separate `capability`) is
+served only while that plugin is **enabled** on the Plugins page:
+
+1. `uiPatchStore.List(false)` skips the entire file when
+   `registry.IsDisabled(plugin)` is true — that is what the switch flips.
+2. `GET /api/ui/patches` additionally filters every op through
+   `GetPluginsByCapability(capability || plugin)`, so an unhealthy or disabled
+   owner loses its ops even if the file is still there.
+
+The file-level `enabled` flag is an *independent* second gate (the two are
+ANDed), so keep it `true` when the panel switch is meant to be the only control.
+
+A patch-only plugin — one with no process, e.g. `fluentui` — would never reach
+the registry by itself. Core registers a built-in row for it whenever
+`<plugin>.patch` exists in a UI patch directory (`gateway.HasUIPatch`, called
+from `registerBuiltins` in `cmd/core`), which is what puts the switch on the
+Plugins page. `L.I.F.E` is the mirror case: it registers over gRPC and its
+`plugin: "life"` patches follow the same two gates, while the permissions API —
+which reads Core's own store instead of proxying — is gated explicitly in
+`handleLifePermissions`.

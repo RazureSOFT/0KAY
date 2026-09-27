@@ -3,12 +3,14 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useSettingsSectionsStore } from '../stores/settingsSections'
+import { useUIPatchesStore } from '../stores/uiPatches'
 import { useConfirm } from '../composables/confirm'
 import MarkdownContent from '../components/MarkdownContent.vue'
 
 const { t } = useI18n()
 const router = useRouter()
 const sections = useSettingsSectionsStore()
+const uiPatches = useUIPatchesStore()
 const { confirm } = useConfirm()
 
 interface RuntimePlugin {
@@ -219,7 +221,9 @@ async function togglePlugin(p: PluginRow) {
       body: JSON.stringify({ enabled: enable }),
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    await Promise.all([fetchPlugins(), sections.fetchSections()])
+    // Re-fetch patches too: the owner filter in /api/ui/patches changes with the
+    // switch, and main.ts re-applies ops (nav/routes/theme) on every store change.
+    await Promise.all([fetchPlugins(), sections.fetchSections(), uiPatches.fetchPatches()])
   } catch (e: any) {
     error.value = e.message || 'failed'
   } finally {

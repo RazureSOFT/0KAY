@@ -13,9 +13,8 @@ rectangles and Fluent elevations.
 | `patches/fluentui.patch` | one `insert` op whose `item` carries `tokens` + `css` |
 
 The runtime copy the 0KAY server ships with lives at
-`core/data/ui/fluentui.patch`. It is identical to this file except that it sets
-`"enabled": false`, so running Core from the repo keeps the stock Material 3
-palette until you opt in.
+`core/data/ui/fluentui.patch`; both copies are byte-identical and carry
+`"plugin": "fluentui"`, which is what ties the theme to its Plugins page row.
 
 ## How it works
 
@@ -40,27 +39,33 @@ Full contract: `docs/settings-ui.md` § **Theme items** and `docs/design-system.
 
 ## Enable / disable
 
-Core skips any file whose top-level `"enabled"` is `false`
-(`uiPatchStore.List(false)`), so the switch lives in the file, not in the API.
+The theme is a real plugin row, so it is switched from the Plugins page (插件栏)
+— no file editing:
 
-- **Repo (dev) copy** — `core/data/ui/fluentui.patch` ships `false`; flip it to
-  `true` and the theme goes live. It is loaded from `{cwd}/data/ui` when Core
-  runs from `core/`, from `$CORE_DATA_DIR/ui` in a deployment.
-- **Installed copy** — `0kay-pm install` drops the package patch (which is
-  `enabled: true`) into `$CORE_DATA_DIR/ui/`, and it takes effect on the next
-  reload.
-- **Force a reload** without restarting — Core re-scans on every `GET
-  /api/ui/patches` (mtime, at most once per 3s), the WebUI polls that endpoint
-  every 15s, and an explicit reload is just:
+- Core registers a built-in `fluentui` plugin whenever `fluentui.patch` exists in
+  a UI patch directory (`gateway.HasUIPatch` → `registerBuiltins`), which is what
+  puts the row and its switch on the panel.
+- The switch calls `PATCH /api/plugins/fluentui {"enabled": bool}`. Core persists
+  the choice to `data/disabled_plugins.json` and reloads the patch store, and the
+  WebUI immediately re-fetches `/api/ui/patches`, so nav/routes/**theme** flip on
+  the spot.
+- Two gates then drop every op until you switch it back on:
+  `uiPatchStore.List(false)` skips the file because its owner is disabled, and
+  `GET /api/ui/patches` filters on `GetPluginsByCapability("fluentui")`.
+- The file-level `"enabled"` field is an independent second gate ANDed with the
+  switch. Keep it `true` — otherwise the switch cannot turn the theme on.
 
-  ```sh
-  curl -X POST http://127.0.0.1:19420/api/ui/patches
-  ```
+Bootstrap-style plugins (darkmode, compat) differ: their `bootstrap` modules are
+imported once per page load, so disabling them only takes full effect after a
+page reload. A `theme` patch has no such residue — its `<style>` element is
+removed as soon as the ops disappear.
 
-  The POST takes no body — it only reloads; there is no API that writes
-  `enabled`.
-- **Turn it off**: set `"enabled": false` back in the file (or delete the
-  `.patch`), then reload again.
+Force a reload without restarting (rarely needed — Core re-scans on `GET` at
+most once every 3s):
+
+```sh
+curl -X POST http://127.0.0.1:19420/api/ui/patches
+```
 
 ## Customise
 

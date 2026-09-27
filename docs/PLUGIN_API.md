@@ -110,9 +110,16 @@ A standalone build can be published through `ui`:
 - Output is copied to Core's `plugin-ui/<plugin>/` data directory.
 - The top-level `patches` field lists UI patch files (for example
   `core/data/ui/example.patch`); 0kay-pm copies them into Core's `data/ui/` so a
-  standalone UI plugin can register its own nav entry and route. A patch with no
-  `plugin`/`capability` is always shown, which is how UI-only plugins (no gRPC
-  service) surface themselves.
+  standalone UI plugin can register its own nav entry and route.
+  - A patch with **no** `plugin`/`capability` is always shown — the simplest way
+    for a UI-only plugin (no gRPC service) to surface itself, but it gets no
+    switch in the Plugins page.
+  - A patch that **names** `plugin` is served only while that plugin is enabled:
+    Core drops it from `GET /api/ui/patches` (owner disabled and capability
+    lookup both fail). A plugin with no process still needs a registry row to be
+    switchable, so Core materializes one from the file name itself when
+    `<plugin>.patch` exists — that is how `fluentui` appears with a switch
+    (see `gateway.HasUIPatch` and `registerBuiltins` in `cmd/core`).
 
 This repository's `plugin-web/{life,agent,minecraft,skillsguishow}` Vite configs
 already emit to `core/data/plugin-ui/<name>`, so their manifests only need

@@ -1134,6 +1134,13 @@ func (g *Gateway) handleModelsList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g *Gateway) handleLifePermissions(w http.ResponseWriter, r *http.Request) {
+	// Permissions live in Core's own store, so this handler would keep
+	// answering after an admin disables L.I.F.E. Gate it on the switch too:
+	// "disabled" has to mean off everywhere, not just for the gRPC proxies.
+	if g.registry != nil && g.registry.IsDisabled("life") {
+		unavailable(w, "LIFE is unavailable")
+		return
+	}
 	if g.localCore == nil {
 		http.Error(w, "core not ready", http.StatusServiceUnavailable)
 		return

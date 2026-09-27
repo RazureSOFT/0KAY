@@ -111,7 +111,9 @@ func (g *Gateway) handleUIPatches(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (g *Gateway) uiPatchDirs() []string {
+// UIPatchDirs returns every directory Core loads *.patch files from, in
+// precedence order (the first directory that carries a given id wins).
+func UIPatchDirs() []string {
 	var dirs []string
 	dataDir := os.Getenv("CORE_DATA_DIR")
 	if dataDir == "" {
@@ -127,6 +129,19 @@ func (g *Gateway) uiPatchDirs() []string {
 		)
 	}
 	return dirs
+}
+
+// HasUIPatch reports whether a *.patch file with this basename exists in any
+// UI patch directory. Core uses it to register a panel row for a patch-only
+// plugin — one that has no process of its own, so nothing else would ever put
+// it in the registry.
+func HasUIPatch(basename string) bool {
+	for _, dir := range UIPatchDirs() {
+		if fi, err := os.Stat(filepath.Join(dir, basename)); err == nil && !fi.IsDir() {
+			return true
+		}
+	}
+	return false
 }
 
 var (
@@ -152,7 +167,7 @@ func (g *Gateway) ensureUIPatchStore() {
 	uiPatchMu.Lock()
 	defer uiPatchMu.Unlock()
 	if g.uiPatches == nil {
-		g.uiPatches = NewUIPatchStore(g.uiPatchDirs()...)
+		g.uiPatches = NewUIPatchStore(UIPatchDirs()...)
 		g.uiPatches.SetPluginDisabledHook(func(plugin string) bool {
 			return g.registry != nil && g.registry.IsDisabled(plugin)
 		})

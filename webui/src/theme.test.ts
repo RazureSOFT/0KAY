@@ -299,13 +299,12 @@ describe('shipped Fluent theme patch', () => {
   it('keeps the pm package copy in sync', () => {
     const pkg = read(pkgRaw)
     expect(pkg.enabled).toBe(true)
-    expect(core.enabled).toBe(false)
-    expect({ ...pkg, enabled: core.enabled }).toEqual(core)
+    expect(pkg.plugin).toBe('fluentui')
+    expect(pkg).toEqual(core)
 
     const manifest = read(manifestRaw)
     expect(manifest.patches).toEqual(['patches/fluentui.patch'])
     expect(manifest.version).toBe(pkg.version)
     expect(pkg.id).toBe('fluentui-theme')
-    expect(pkg.plugin).toBe('')
   })
 })

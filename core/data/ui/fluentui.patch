@@ -2,8 +2,8 @@
   "id": "fluentui-theme",
   "name": "Fluent Design theme",
   "version": "0.1.0",
-  "plugin": "",
-  "enabled": false,
+  "plugin": "fluentui",
+  "enabled": true,
   "patches": [
     {
       "target": "theme",

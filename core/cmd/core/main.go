@@ -198,6 +198,22 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 		log.Printf("register webui builtin: %v", err)
 	}
 
+	// Fluent Design theme: a patch-only plugin, i.e. it has no process to
+	// register itself from. Core materializes the registry row so the Plugins
+	// page can switch it; core/data/ui/fluentui.patch names `plugin: "fluentui"`
+	// and is therefore served only while this row is enabled.
+	if gateway.HasUIPatch("fluentui.patch") {
+		if _, err := reg.RegisterBuiltin(&pluginv1.PluginInfo{
+			Name:        "fluentui",
+			Version:     version.Version,
+			Description: "Fluent Design theme for the WebUI (patch-only)",
+			Author:      "0kay",
+			PluginType:  pluginv1.PluginType_PLUGIN_TYPE_ADAPTER,
+		}, []string{"fluentui"}, ""); err != nil {
+			log.Printf("register fluentui builtin: %v", err)
+		}
+	}
+
 	// Optional: local SearXNG (searxng service) if enabled
 	if os.Getenv("SEARXNG_ENABLED") == "1" || os.Getenv("SEARXNG_URL") != "" {
 		searxAddr := os.Getenv("SEARXNG_URL")
