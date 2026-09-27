@@ -1,6 +1,29 @@
 package update
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestIsUmbrellaRootAcceptsGitFileAndMarkers(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".git"), []byte("gitdir: /elsewhere\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !isUmbrellaRoot(dir) {
+		t.Fatal("git file + manifest should be an umbrella root")
+	}
+	if err := os.Remove(filepath.Join(dir, "manifest.json")); err != nil {
+		t.Fatal(err)
+	}
+	if isUmbrellaRoot(dir) {
+		t.Fatal("git file without an umbrella marker is not a root")
+	}
+}
 
 func TestComponentForPackage(t *testing.T) {
 	for _, tc := range []struct {

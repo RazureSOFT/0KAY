@@ -17,7 +17,7 @@ const avatarOf = (login: string, size = 96) => `https://github.com/${login}.png?
 
 // Platform (0KAY core) update check and apply.
 const aboutLoading = ref(false)
-const updateResult = ref<{ current: string; latest?: string; has_update: boolean; url?: string; name?: string; notes?: string; published_at?: string } | null>(null)
+const updateResult = ref<{ current: string; latest?: string; has_update: boolean; url?: string; name?: string; notes?: string; published_at?: string; source_available?: boolean } | null>(null)
 const updateError = ref('')
 
 type ApplyState = {
@@ -168,7 +168,7 @@ onUnmounted(stopPolling)
           <button v-if="updateResult?.has_update" class="btn btn-primary sm" :disabled="isUpdating('core')" @click="applyUpdate('core', updateResult.latest)">
             {{ isUpdating('core') ? t('settings.about.updating') : t('settings.about.updateNow') }}
           </button>
-          <button class="btn btn-tonal sm" :disabled="isUpdating('core')" :title="t('settings.about.betaHint')" @click="applyUpdate('core')">
+          <button v-if="updateResult?.source_available !== false" class="btn btn-tonal sm" :disabled="isUpdating('core')" :title="t('settings.about.betaHint')" @click="applyUpdate('core')">
             {{ isUpdating('core') ? t('settings.about.updating') : t('settings.about.beta') }}
           </button>
           <a v-if="updateResult?.url" class="btn btn-ghost sm" :href="updateResult.url" target="_blank" rel="noopener noreferrer">Release ↗</a>

@@ -344,9 +344,10 @@ func InstalledPlugins() []InstalledPlugin {
 }
 
 // sourceRoot locates the umbrella checkout (OKAY_SOURCE_ROOT or by walking up
-// from the running executable until a manifest.json + .git pair is found).
+// from the running executable until a git repository with an umbrella marker is
+// found).
 func sourceRoot() (string, error) {
-	if value := strings.TrimSpace(os.Getenv("OKAY_SOURCE_ROOT")); value != "" {
+	if value := strings.TrimSpace(os.Getenv("OKAY_SOURCE_ROOT")); value != "" && dirExists(value) {
 		return value, nil
 	}
 	executable, err := os.Executable()
@@ -355,7 +356,7 @@ func sourceRoot() (string, error) {
 	}
 	dir := filepath.Dir(executable)
 	for i := 0; i < 8; i++ {
-		if fileExists(filepath.Join(dir, "manifest.json")) && dirExists(filepath.Join(dir, ".git")) {
+		if isUmbrellaRoot(dir) {
 			return dir, nil
 		}
 		parent := filepath.Dir(dir)
@@ -364,7 +365,37 @@ func sourceRoot() (string, error) {
 		}
 		dir = parent
 	}
-	return "", fmt.Errorf("source root not found (set OKAY_SOURCE_ROOT)")
+	return "", fmt.Errorf("source root not found: run 0KAY from a git checkout or set OKAY_SOURCE_ROOT")
+}
+
+// SourceAvailable reports whether Core runs from a source checkout whose
+// components can be synced with git. The About page uses it to decide whether
+// the beta (sync-from-repo) update is offered.
+func SourceAvailable() bool {
+	_, err := sourceRoot()
+	return err == nil
+}
+
+// isUmbrellaRoot reports whether dir is the umbrella checkout root: a git
+// repository that also carries an umbrella marker. It stays compatible with
+// linked worktrees and submodules, where ".git" is a file, not a directory.
+func isUmbrellaRoot(dir string) bool {
+	if !gitMarkerExists(dir) {
+		return false
+	}
+	for _, marker := range []string{"manifest.json", "bootstrap.ps1", "buf.gen.yaml", filepath.Join("pm", "package.json")} {
+		if fileExists(filepath.Join(dir, marker)) {
+			return true
+		}
+	}
+	return false
+}
+
+// gitMarkerExists accepts both a ".git" directory (normal clone) and a ".git"
+// file (linked worktree or submodule).
+func gitMarkerExists(dir string) bool {
+	_, err := os.Stat(filepath.Join(dir, ".git"))
+	return err == nil
 }
 
 func fileExists(path string) bool {

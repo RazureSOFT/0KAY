@@ -11,13 +11,14 @@ import (
 )
 
 type updateCheck struct {
-	Current     string `json:"current"`
-	Latest      string `json:"latest,omitempty"`
-	HasUpdate   bool   `json:"has_update"`
-	URL         string `json:"url,omitempty"`
-	Name        string `json:"name,omitempty"`
-	Notes       string `json:"notes,omitempty"`
-	PublishedAt string `json:"published_at,omitempty"`
+	Current         string `json:"current"`
+	Latest          string `json:"latest,omitempty"`
+	HasUpdate       bool   `json:"has_update"`
+	URL             string `json:"url,omitempty"`
+	Name            string `json:"name,omitempty"`
+	Notes           string `json:"notes,omitempty"`
+	PublishedAt     string `json:"published_at,omitempty"`
+	SourceAvailable bool   `json:"source_available"`
 }
 
 type pluginUpdateCheck struct {
@@ -36,7 +37,7 @@ func (g *Gateway) handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	owner, repo := update.PlatformRepository()
-	result := updateCheck{Current: version.Version}
+	result := updateCheck{Current: version.Version, SourceAvailable: update.SourceAvailable()}
 	release, err := update.Latest(owner, repo)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
