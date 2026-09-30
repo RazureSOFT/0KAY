@@ -1008,6 +1008,45 @@ func (s *CoreServiceServer) Egress(ctx context.Context, req *corev1.EgressReques
 	}, nil
 }
 
+// ListPluginTools returns tools contributed by plugins for a consumer scope.
+func (s *CoreServiceServer) ListPluginTools(ctx context.Context, req *corev1.ListPluginToolsRequest) (*corev1.ListPluginToolsResponse, error) {
+	tools := s.registry.ListTools(strings.TrimSpace(req.Scope))
+	out := make([]*corev1.PluginToolEntry, 0, len(tools))
+	for _, t := range tools {
+		out = append(out, &corev1.PluginToolEntry{Plugin: t.Plugin, Tool: t.Tool})
+	}
+	return &corev1.ListPluginToolsResponse{Tools: out}, nil
+}
+
+// CallPluginTool routes a tool call to the owning plugin's ToolService.
+func (s *CoreServiceServer) CallPluginTool(ctx context.Context, req *corev1.CallPluginToolRequest) (*corev1.CallPluginToolResponse, error) {
+	if strings.TrimSpace(req.Tool) == "" {
+		return &corev1.CallPluginToolResponse{Error: "tool is required"}, nil
+	}
+	info, _, ok := s.registry.ToolOwner(req.Tool)
+	if !ok {
+		return &corev1.CallPluginToolResponse{Error: "unknown tool " + req.Tool}, nil
+	}
+	if info.Address == "" {
+		return &corev1.CallPluginToolResponse{Error: "plugin " + info.Info.GetName() + " has no address"}, nil
+	}
+	conn, err := s.dialCached(info.Address)
+	if err != nil {
+		return nil, status.Errorf(codes.Unavailable, "connect plugin: %v", err)
+	}
+	client := pluginv1.NewToolServiceClient(conn)
+	resp, err := client.CallTool(pairing.CallbackContext(ctx, info.Address), &pluginv1.CallToolRequest{
+		CallerId:  req.CallerId,
+		Tool:      req.Tool,
+		ArgsJson:  req.ArgsJson,
+		SessionId: req.SessionId,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "plugin tool: %v", err)
+	}
+	return &corev1.CallPluginToolResponse{Success: resp.Success, Result: resp.Result, Error: resp.Error}, nil
+}
+
 // UseAgent dispatches a task to a healthy Agent asynchronously.
 func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRequest) (*corev1.UseAgentResponse, error) {
 	if req.TaskId == "" {

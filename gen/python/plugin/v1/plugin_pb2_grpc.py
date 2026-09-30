@@ -2,3 +2,80 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
+from plugin.v1 import plugin_pb2 as plugin_dot_v1_dot_plugin__pb2
+
+
+class ToolServiceStub:
+    """ToolService is implemented by plugins that contribute tools.
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.CallTool = channel.unary_unary(
+                '/plugin.v1.ToolService/CallTool',
+                request_serializer=plugin_dot_v1_dot_plugin__pb2.CallToolRequest.SerializeToString,
+                response_deserializer=plugin_dot_v1_dot_plugin__pb2.CallToolResponse.FromString,
+                _registered_method=True)
+
+
+class ToolServiceServicer:
+    """ToolService is implemented by plugins that contribute tools.
+    """
+
+    def CallTool(self, request, context):
+        """CallTool executes one of the plugin's declared tools.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_ToolServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'CallTool': grpc.unary_unary_rpc_method_handler(
+                    servicer.CallTool,
+                    request_deserializer=plugin_dot_v1_dot_plugin__pb2.CallToolRequest.FromString,
+                    response_serializer=plugin_dot_v1_dot_plugin__pb2.CallToolResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'plugin.v1.ToolService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('plugin.v1.ToolService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class ToolService:
+    """ToolService is implemented by plugins that contribute tools.
+    """
+
+    @staticmethod
+    def CallTool(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/plugin.v1.ToolService/CallTool',
+            plugin_dot_v1_dot_plugin__pb2.CallToolRequest.SerializeToString,
+            plugin_dot_v1_dot_plugin__pb2.CallToolResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)

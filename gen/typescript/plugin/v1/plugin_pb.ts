@@ -2,15 +2,15 @@
 // @generated from file plugin/v1/plugin.proto (package plugin.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
-import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file plugin/v1/plugin.proto.
  */
 export const file_plugin_v1_plugin: GenFile = /*@__PURE__*/
-  fileDesc("ChZwbHVnaW4vdjEvcGx1Z2luLnByb3RvEglwbHVnaW4udjEirgEKClBsdWdpbkluZm8SDAoEbmFtZRgBIAEoCRIPCgd2ZXJzaW9uGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEg4KBmF1dGhvchgEIAEoCRIqCgtwbHVnaW5fdHlwZRgFIAEoDjIVLnBsdWdpbi52MS5QbHVnaW5UeXBlEjAKC3Blcm1pc3Npb25zGAYgASgLMhsucGx1Z2luLnYxLlBsdWdpblBlcm1pc3Npb24iTQoQUGx1Z2luUGVybWlzc2lvbhIUCgxhcGlfcmVxdWlyZXMYASADKAkSEwoLYXBpX2V4cG9zZXMYAiADKAkSDgoGZWdyZXNzGAMgAygJIm8KDVNldHRpbmdzRmllbGQSCwoDa2V5GAEgASgJEgwKBHR5cGUYAiABKAkSDQoFbGFiZWwYAyABKAkSFQoNZGVmYXVsdF92YWx1ZRgEIAEoCRIPCgdvcHRpb25zGAUgAygJEgwKBGhlbHAYBiABKAkiiAEKD1NldHRpbmdzU2VjdGlvbhIKCgJpZBgBIAEoCRINCgVsYWJlbBgCIAEoCRIMCgRpY29uGAMgASgJEg0KBW9yZGVyGAQgASgFEhMKC2Rlc2NyaXB0aW9uGAUgASgJEigKBmZpZWxkcxgGIAMoCzIYLnBsdWdpbi52MS5TZXR0aW5nc0ZpZWxkKooBCgpQbHVnaW5UeXBlEhsKF1BMVUdJTl9UWVBFX1VOU1BFQ0lGSUVEEAASFwoTUExVR0lOX1RZUEVfQURBUFRFUhABEhcKE1BMVUdJTl9UWVBFX1BFUlNPTkEQAhIUChBQTFVHSU5fVFlQRV9UT09MEAMSFwoTUExVR0lOX1RZUEVfU0VSVklDRRAEKp0BCglUYXNrU3RhdGUSGgoWVEFTS19TVEFURV9VTlNQRUNJRklFRBAAEhYKElRBU0tfU1RBVEVfUEVORElORxABEhYKElRBU0tfU1RBVEVfUlVOTklORxACEhMKD1RBU0tfU1RBVEVfRE9ORRADEhUKEVRBU0tfU1RBVEVfRkFJTEVEEAQSGAoUVEFTS19TVEFURV9DQU5DRUxMRUQQBUJWChVhaS56ZXJvLmtheS5wbHVnaW4udjFQAVobMGtheS9nZW4vcGx1Z2luL3YxO3BsdWdpbnYxogIIWktQbHVnaW6qAhJaZXJvLktheS5QbHVnaW4uVjFiBnByb3RvMw");
+  fileDesc("ChZwbHVnaW4vdjEvcGx1Z2luLnByb3RvEglwbHVnaW4udjEi1AEKClBsdWdpbkluZm8SDAoEbmFtZRgBIAEoCRIPCgd2ZXJzaW9uGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEg4KBmF1dGhvchgEIAEoCRIqCgtwbHVnaW5fdHlwZRgFIAEoDjIVLnBsdWdpbi52MS5QbHVnaW5UeXBlEjAKC3Blcm1pc3Npb25zGAYgASgLMhsucGx1Z2luLnYxLlBsdWdpblBlcm1pc3Npb24SJAoFdG9vbHMYByADKAsyFS5wbHVnaW4udjEuUGx1Z2luVG9vbCJrCgpQbHVnaW5Ub29sEgwKBG5hbWUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSFwoPcGFyYW1ldGVyc19qc29uGAMgASgJEhEKCWRhbmdlcm91cxgEIAEoCBIOCgZzY29wZXMYBSADKAkiWQoPQ2FsbFRvb2xSZXF1ZXN0EhEKCWNhbGxlcl9pZBgBIAEoCRIMCgR0b29sGAIgASgJEhEKCWFyZ3NfanNvbhgDIAEoCRISCgpzZXNzaW9uX2lkGAQgASgJIkIKEENhbGxUb29sUmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCBIOCgZyZXN1bHQYAiABKAkSDQoFZXJyb3IYAyABKAkiTQoQUGx1Z2luUGVybWlzc2lvbhIUCgxhcGlfcmVxdWlyZXMYASADKAkSEwoLYXBpX2V4cG9zZXMYAiADKAkSDgoGZWdyZXNzGAMgAygJIm8KDVNldHRpbmdzRmllbGQSCwoDa2V5GAEgASgJEgwKBHR5cGUYAiABKAkSDQoFbGFiZWwYAyABKAkSFQoNZGVmYXVsdF92YWx1ZRgEIAEoCRIPCgdvcHRpb25zGAUgAygJEgwKBGhlbHAYBiABKAkiiAEKD1NldHRpbmdzU2VjdGlvbhIKCgJpZBgBIAEoCRINCgVsYWJlbBgCIAEoCRIMCgRpY29uGAMgASgJEg0KBW9yZGVyGAQgASgFEhMKC2Rlc2NyaXB0aW9uGAUgASgJEigKBmZpZWxkcxgGIAMoCzIYLnBsdWdpbi52MS5TZXR0aW5nc0ZpZWxkKooBCgpQbHVnaW5UeXBlEhsKF1BMVUdJTl9UWVBFX1VOU1BFQ0lGSUVEEAASFwoTUExVR0lOX1RZUEVfQURBUFRFUhABEhcKE1BMVUdJTl9UWVBFX1BFUlNPTkEQAhIUChBQTFVHSU5fVFlQRV9UT09MEAMSFwoTUExVR0lOX1RZUEVfU0VSVklDRRAEKp0BCglUYXNrU3RhdGUSGgoWVEFTS19TVEFURV9VTlNQRUNJRklFRBAAEhYKElRBU0tfU1RBVEVfUEVORElORxABEhYKElRBU0tfU1RBVEVfUlVOTklORxACEhMKD1RBU0tfU1RBVEVfRE9ORRADEhUKEVRBU0tfU1RBVEVfRkFJTEVEEAQSGAoUVEFTS19TVEFURV9DQU5DRUxMRUQQBTJSCgtUb29sU2VydmljZRJDCghDYWxsVG9vbBIaLnBsdWdpbi52MS5DYWxsVG9vbFJlcXVlc3QaGy5wbHVnaW4udjEuQ2FsbFRvb2xSZXNwb25zZUJWChVhaS56ZXJvLmtheS5wbHVnaW4udjFQAVobMGtheS9nZW4vcGx1Z2luL3YxO3BsdWdpbnYxogIIWktQbHVnaW6qAhJaZXJvLktheS5QbHVnaW4uVjFiBnByb3RvMw");
 
 /**
  * PluginInfo contains metadata about a plugin.
@@ -62,6 +62,15 @@ export type PluginInfo = Message<"plugin.v1.PluginInfo"> & {
    * @generated from field: plugin.v1.PluginPermission permissions = 6;
    */
   permissions?: PluginPermission | undefined;
+
+  /**
+   * tools lists tool descriptors this plugin contributes to Agent and/or
+   * L.I.F.E. Core publishes them in its tool catalog; calls are routed back to
+   * the plugin's ToolService.
+   *
+   * @generated from field: repeated plugin.v1.PluginTool tools = 7;
+   */
+  tools: PluginTool[];
 };
 
 /**
@@ -70,6 +79,132 @@ export type PluginInfo = Message<"plugin.v1.PluginInfo"> & {
  */
 export const PluginInfoSchema: GenMessage<PluginInfo> = /*@__PURE__*/
   messageDesc(file_plugin_v1_plugin, 0);
+
+/**
+ * PluginTool is a tool a plugin contributes to Agent / L.I.F.E.
+ *
+ * @generated from message plugin.v1.PluginTool
+ */
+export type PluginTool = Message<"plugin.v1.PluginTool"> & {
+  /**
+   * name is the globally unique tool name shown to the model.
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * description explains what the tool does.
+   *
+   * @generated from field: string description = 2;
+   */
+  description: string;
+
+  /**
+   * parameters_json is a JSON Schema object for the tool arguments.
+   *
+   * @generated from field: string parameters_json = 3;
+   */
+  parametersJson: string;
+
+  /**
+   * dangerous marks a tool that mutates the host or is otherwise privileged.
+   *
+   * @generated from field: bool dangerous = 4;
+   */
+  dangerous: boolean;
+
+  /**
+   * scopes lists the consumers allowed to use it ("agent", "life").
+   *
+   * @generated from field: repeated string scopes = 5;
+   */
+  scopes: string[];
+};
+
+/**
+ * Describes the message plugin.v1.PluginTool.
+ * Use `create(PluginToolSchema)` to create a new message.
+ */
+export const PluginToolSchema: GenMessage<PluginTool> = /*@__PURE__*/
+  messageDesc(file_plugin_v1_plugin, 1);
+
+/**
+ * CallToolRequest is the request for ToolService.CallTool.
+ *
+ * @generated from message plugin.v1.CallToolRequest
+ */
+export type CallToolRequest = Message<"plugin.v1.CallToolRequest"> & {
+  /**
+   * caller_id is the consumer invoking the tool ("agent", "life", ...).
+   *
+   * @generated from field: string caller_id = 1;
+   */
+  callerId: string;
+
+  /**
+   * tool is the tool name.
+   *
+   * @generated from field: string tool = 2;
+   */
+  tool: string;
+
+  /**
+   * args_json is the JSON-encoded arguments object.
+   *
+   * @generated from field: string args_json = 3;
+   */
+  argsJson: string;
+
+  /**
+   * session_id groups the call into a conversation session.
+   *
+   * @generated from field: string session_id = 4;
+   */
+  sessionId: string;
+};
+
+/**
+ * Describes the message plugin.v1.CallToolRequest.
+ * Use `create(CallToolRequestSchema)` to create a new message.
+ */
+export const CallToolRequestSchema: GenMessage<CallToolRequest> = /*@__PURE__*/
+  messageDesc(file_plugin_v1_plugin, 2);
+
+/**
+ * CallToolResponse is the response for ToolService.CallTool.
+ *
+ * @generated from message plugin.v1.CallToolResponse
+ */
+export type CallToolResponse = Message<"plugin.v1.CallToolResponse"> & {
+  /**
+   * success indicates the tool ran without error.
+   *
+   * @generated from field: bool success = 1;
+   */
+  success: boolean;
+
+  /**
+   * result is a JSON-encoded result payload.
+   *
+   * @generated from field: string result = 2;
+   */
+  result: string;
+
+  /**
+   * error is a human-readable error when success is false.
+   *
+   * @generated from field: string error = 3;
+   */
+  error: string;
+};
+
+/**
+ * Describes the message plugin.v1.CallToolResponse.
+ * Use `create(CallToolResponseSchema)` to create a new message.
+ */
+export const CallToolResponseSchema: GenMessage<CallToolResponse> = /*@__PURE__*/
+  messageDesc(file_plugin_v1_plugin, 3);
 
 /**
  * PluginPermission is a plugin's declared permission set, mirrored from its
@@ -110,7 +245,7 @@ export type PluginPermission = Message<"plugin.v1.PluginPermission"> & {
  * Use `create(PluginPermissionSchema)` to create a new message.
  */
 export const PluginPermissionSchema: GenMessage<PluginPermission> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 1);
+  messageDesc(file_plugin_v1_plugin, 4);
 
 /**
  * SettingsField is one declarative form field inside a settings section.
@@ -166,7 +301,7 @@ export type SettingsField = Message<"plugin.v1.SettingsField"> & {
  * Use `create(SettingsFieldSchema)` to create a new message.
  */
 export const SettingsFieldSchema: GenMessage<SettingsField> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 2);
+  messageDesc(file_plugin_v1_plugin, 5);
 
 /**
  * SettingsSection is a settings tab contributed by a plugin.
@@ -222,7 +357,7 @@ export type SettingsSection = Message<"plugin.v1.SettingsSection"> & {
  * Use `create(SettingsSectionSchema)` to create a new message.
  */
 export const SettingsSectionSchema: GenMessage<SettingsSection> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 3);
+  messageDesc(file_plugin_v1_plugin, 6);
 
 /**
  * PluginType categorizes the plugin's role in the system.
@@ -326,4 +461,23 @@ export enum TaskState {
  */
 export const TaskStateSchema: GenEnum<TaskState> = /*@__PURE__*/
   enumDesc(file_plugin_v1_plugin, 1);
+
+/**
+ * ToolService is implemented by plugins that contribute tools.
+ *
+ * @generated from service plugin.v1.ToolService
+ */
+export const ToolService: GenService<{
+  /**
+   * CallTool executes one of the plugin's declared tools.
+   *
+   * @generated from rpc plugin.v1.ToolService.CallTool
+   */
+  callTool: {
+    methodKind: "unary";
+    input: typeof CallToolRequestSchema;
+    output: typeof CallToolResponseSchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_plugin_v1_plugin, 0);
 

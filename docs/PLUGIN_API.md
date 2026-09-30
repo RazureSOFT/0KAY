@@ -308,6 +308,8 @@ bool/number/text/select and `default_value` is a string.
 | ListAgents | include_unhealthy; returns agents/online_count |
 | RunDirect | tool, args (JSON string), session_id; returns success/result/error |
 | Egress | proxy a plugin outbound HTTP request; enforces the declared egress allow-list |
+| ListPluginTools | scope → tools contributed by plugins (name/description/parameters/scopes) |
+| CallPluginTool | tool, args_json, session_id, caller_id → routes to the owning plugin's ToolService |
 
 UseAgent metadata: `session_id`, `parent_id`, `executor_id`, `workdir`,
 `model_id` (MOCR = automatic), `thinking_intensity`
@@ -350,8 +352,17 @@ added lines green and deleted lines red.
 - CompactConversation: session_id/history_json/persona_json → ok/summary/error.
 - GetNotifications: session_id → notifications; reads do not delete — confirm with ack_notifications.
 
-### Tool plugins (minecraft, …)
-`minecraft` registers as `PLUGIN_TYPE_TOOL` with `capabilities=["minecraft"]` and
+### plugin.v1.ToolService (contributed tools)
+- CallTool: caller_id/tool/args_json/session_id → success/result/error.
+A plugin contributes tools by sending `repeated PluginTool tools` on registration
+(`{name, description, parameters_json, dangerous, scopes}`; `scopes` is
+`["agent"]`, `["life"]` or empty for both). Core publishes them in its tool
+catalog and routes calls back to the plugin's `ToolService`. Agent and L.I.F.E.
+discover them at runtime (`GET /api/tools?scope=agent|life`) and register one
+dynamic tool per entry; a tool call goes through Core
+(`POST /api/tools/call {tool,args,session_id,caller}`).
+
+### Tool plugins (minecraft, …)`minecraft` registers as `PLUGIN_TYPE_TOOL` with `capabilities=["minecraft"]` and
 a settings section (edition, server, username, password, autopilot, …). It
 exposes a local HTTP tool API (default `127.0.0.1:8765`) that LIFE reaches
 through Core.
@@ -395,6 +406,7 @@ The full per-endpoint request/response, auth and query details are in the
 | /api/ui/patches | GET UI ops; POST reload |
 | /api/plugins/{name}/ui/{path…} | GET plugin ESM/static assets (404 when disabled) |
 | /api/net/egress | POST plugin outbound HTTP proxy (declared egress allow-list) |
+| /api/tools | GET plugin tool catalog (`?scope=agent\|life`); POST `/api/tools/call` to invoke |
 | /ws | WebSocket notifications and legacy chat |
 
 TaskEvent: task_id/caller_id/session_id/parent_id/kind/prompt/state/result/error.

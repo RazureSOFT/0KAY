@@ -23,7 +23,7 @@ from . import prompt as prompt_sections
 from .extensions import ExtensionRegistry
 from .think.think import ThinkStage, ThinkResult
 from .output.output import OutputStage
-from .tools.tools import RuntimeToolConfig, create_default_registry
+from .tools.tools import RuntimeToolConfig, create_default_registry, PluginTool
 from .skills import get_skill_registry
 from .core_client import get_core_client
 from .companion import CompanionSystem
@@ -165,6 +165,7 @@ class LifeEngine:
         self.online_agent_count = 0
         self.tool_config = RuntimeToolConfig()
         self.tools = create_default_registry(core_client=self.core, config=self.tool_config, memory=self.memory, companion=self.companion)
+        self._plugin_tool_names: set = set()
         self.tools.recorder = self.task_records
         self.tools.approver = self._approve_tool
         self.tools.approval_tools = {"getmail", "sendmail"}
@@ -1667,6 +1668,34 @@ class LifeEngine:
         if values.get("model_routes") is not None:
             self.apply_model_routes(values.get("model_routes"))
         self.companion.set_runtime_policy(int(values.get("proactive_daily_limit", 3)), int(values.get("proactive_target_limit", 1)))
+        try:
+            asyncio.get_running_loop().create_task(self.refresh_plugin_tools())
+        except RuntimeError:
+            pass
+
+    async def refresh_plugin_tools(self):
+        """Load tools contributed by plugins from Core and register them dynamically."""
+        import httpx
+
+        from life.http_auth import auth_headers
+
+        for name in list(self._plugin_tool_names):
+            self.tools.tools.pop(name, None)
+        self._plugin_tool_names.clear()
+        base = (os.environ.get("CORE_HTTP_ADDR") or os.environ.get("CORE_HTTP") or "http://127.0.0.1:8080").rstrip("/")
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.get(f"{base}/api/tools", params={"scope": "life"}, headers=auth_headers())
+            if response.status_code != 200:
+                return
+            for definition in response.json().get("tools") or []:
+                name = str(definition.get("name") or "")
+                if not name or name in self.tools.tools:
+                    continue
+                self.tools.register(PluginTool(definition))
+                self._plugin_tool_names.add(name)
+        except Exception:
+            return
 
     async def _approve_tool(self, tool: str, args: dict):
         """Block a mail tool call until the user approves it in the WebUI."""

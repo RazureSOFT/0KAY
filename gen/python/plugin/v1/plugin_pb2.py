@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16plugin/v1/plugin.proto\x12\tplugin.v1\"\xeb\x01\n\nPluginInfo\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n\x07version\x18\x02 \x01(\tR\x07version\x12 \n\x0b\x64\x65scription\x18\x03 \x01(\tR\x0b\x64\x65scription\x12\x16\n\x06\x61uthor\x18\x04 \x01(\tR\x06\x61uthor\x12\x36\n\x0bplugin_type\x18\x05 \x01(\x0e\x32\x15.plugin.v1.PluginTypeR\npluginType\x12=\n\x0bpermissions\x18\x06 \x01(\x0b\x32\x1b.plugin.v1.PluginPermissionR\x0bpermissions\"n\n\x10PluginPermission\x12!\n\x0c\x61pi_requires\x18\x01 \x03(\tR\x0b\x61piRequires\x12\x1f\n\x0b\x61pi_exposes\x18\x02 \x03(\tR\napiExposes\x12\x16\n\x06\x65gress\x18\x03 \x03(\tR\x06\x65gress\"\x9e\x01\n\rSettingsField\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n\x04type\x18\x02 \x01(\tR\x04type\x12\x14\n\x05label\x18\x03 \x01(\tR\x05label\x12#\n\rdefault_value\x18\x04 \x01(\tR\x0c\x64\x65\x66\x61ultValue\x12\x18\n\x07options\x18\x05 \x03(\tR\x07options\x12\x12\n\x04help\x18\x06 \x01(\tR\x04help\"\xb5\x01\n\x0fSettingsSection\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n\x05label\x18\x02 \x01(\tR\x05label\x12\x12\n\x04icon\x18\x03 \x01(\tR\x04icon\x12\x14\n\x05order\x18\x04 \x01(\x05R\x05order\x12 \n\x0b\x64\x65scription\x18\x05 \x01(\tR\x0b\x64\x65scription\x12\x30\n\x06\x66ields\x18\x06 \x03(\x0b\x32\x18.plugin.v1.SettingsFieldR\x06\x66ields*\x8a\x01\n\nPluginType\x12\x1b\n\x17PLUGIN_TYPE_UNSPECIFIED\x10\x00\x12\x17\n\x13PLUGIN_TYPE_ADAPTER\x10\x01\x12\x17\n\x13PLUGIN_TYPE_PERSONA\x10\x02\x12\x14\n\x10PLUGIN_TYPE_TOOL\x10\x03\x12\x17\n\x13PLUGIN_TYPE_SERVICE\x10\x04*\x9d\x01\n\tTaskState\x12\x1a\n\x16TASK_STATE_UNSPECIFIED\x10\x00\x12\x16\n\x12TASK_STATE_PENDING\x10\x01\x12\x16\n\x12TASK_STATE_RUNNING\x10\x02\x12\x13\n\x0fTASK_STATE_DONE\x10\x03\x12\x15\n\x11TASK_STATE_FAILED\x10\x04\x12\x18\n\x14TASK_STATE_CANCELLED\x10\x05\x42V\n\x15\x61i.zero.kay.plugin.v1P\x01Z\x1b\x30kay/gen/plugin/v1;pluginv1\xa2\x02\x08ZKPlugin\xaa\x02\x12Zero.Kay.Plugin.V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16plugin/v1/plugin.proto\x12\tplugin.v1\"\x98\x02\n\nPluginInfo\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n\x07version\x18\x02 \x01(\tR\x07version\x12 \n\x0b\x64\x65scription\x18\x03 \x01(\tR\x0b\x64\x65scription\x12\x16\n\x06\x61uthor\x18\x04 \x01(\tR\x06\x61uthor\x12\x36\n\x0bplugin_type\x18\x05 \x01(\x0e\x32\x15.plugin.v1.PluginTypeR\npluginType\x12=\n\x0bpermissions\x18\x06 \x01(\x0b\x32\x1b.plugin.v1.PluginPermissionR\x0bpermissions\x12+\n\x05tools\x18\x07 \x03(\x0b\x32\x15.plugin.v1.PluginToolR\x05tools\"\xa1\x01\n\nPluginTool\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12 \n\x0b\x64\x65scription\x18\x02 \x01(\tR\x0b\x64\x65scription\x12\'\n\x0fparameters_json\x18\x03 \x01(\tR\x0eparametersJson\x12\x1c\n\tdangerous\x18\x04 \x01(\x08R\tdangerous\x12\x16\n\x06scopes\x18\x05 \x03(\tR\x06scopes\"~\n\x0f\x43\x61llToolRequest\x12\x1b\n\tcaller_id\x18\x01 \x01(\tR\x08\x63\x61llerId\x12\x12\n\x04tool\x18\x02 \x01(\tR\x04tool\x12\x1b\n\targs_json\x18\x03 \x01(\tR\x08\x61rgsJson\x12\x1d\n\nsession_id\x18\x04 \x01(\tR\tsessionId\"Z\n\x10\x43\x61llToolResponse\x12\x18\n\x07success\x18\x01 \x01(\x08R\x07success\x12\x16\n\x06result\x18\x02 \x01(\tR\x06result\x12\x14\n\x05\x65rror\x18\x03 \x01(\tR\x05\x65rror\"n\n\x10PluginPermission\x12!\n\x0c\x61pi_requires\x18\x01 \x03(\tR\x0b\x61piRequires\x12\x1f\n\x0b\x61pi_exposes\x18\x02 \x03(\tR\napiExposes\x12\x16\n\x06\x65gress\x18\x03 \x03(\tR\x06\x65gress\"\x9e\x01\n\rSettingsField\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n\x04type\x18\x02 \x01(\tR\x04type\x12\x14\n\x05label\x18\x03 \x01(\tR\x05label\x12#\n\rdefault_value\x18\x04 \x01(\tR\x0c\x64\x65\x66\x61ultValue\x12\x18\n\x07options\x18\x05 \x03(\tR\x07options\x12\x12\n\x04help\x18\x06 \x01(\tR\x04help\"\xb5\x01\n\x0fSettingsSection\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n\x05label\x18\x02 \x01(\tR\x05label\x12\x12\n\x04icon\x18\x03 \x01(\tR\x04icon\x12\x14\n\x05order\x18\x04 \x01(\x05R\x05order\x12 \n\x0b\x64\x65scription\x18\x05 \x01(\tR\x0b\x64\x65scription\x12\x30\n\x06\x66ields\x18\x06 \x03(\x0b\x32\x18.plugin.v1.SettingsFieldR\x06\x66ields*\x8a\x01\n\nPluginType\x12\x1b\n\x17PLUGIN_TYPE_UNSPECIFIED\x10\x00\x12\x17\n\x13PLUGIN_TYPE_ADAPTER\x10\x01\x12\x17\n\x13PLUGIN_TYPE_PERSONA\x10\x02\x12\x14\n\x10PLUGIN_TYPE_TOOL\x10\x03\x12\x17\n\x13PLUGIN_TYPE_SERVICE\x10\x04*\x9d\x01\n\tTaskState\x12\x1a\n\x16TASK_STATE_UNSPECIFIED\x10\x00\x12\x16\n\x12TASK_STATE_PENDING\x10\x01\x12\x16\n\x12TASK_STATE_RUNNING\x10\x02\x12\x13\n\x0fTASK_STATE_DONE\x10\x03\x12\x15\n\x11TASK_STATE_FAILED\x10\x04\x12\x18\n\x14TASK_STATE_CANCELLED\x10\x05\x32R\n\x0bToolService\x12\x43\n\x08\x43\x61llTool\x12\x1a.plugin.v1.CallToolRequest\x1a\x1b.plugin.v1.CallToolResponseBV\n\x15\x61i.zero.kay.plugin.v1P\x01Z\x1b\x30kay/gen/plugin/v1;pluginv1\xa2\x02\x08ZKPlugin\xaa\x02\x12Zero.Kay.Plugin.V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,16 +32,24 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'plugin.v1.plugin_pb2', _glo
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\025ai.zero.kay.plugin.v1P\001Z\0330kay/gen/plugin/v1;pluginv1\242\002\010ZKPlugin\252\002\022Zero.Kay.Plugin.V1'
-  _globals['_PLUGINTYPE']._serialized_start=733
-  _globals['_PLUGINTYPE']._serialized_end=871
-  _globals['_TASKSTATE']._serialized_start=874
-  _globals['_TASKSTATE']._serialized_end=1031
+  _globals['_PLUGINTYPE']._serialized_start=1162
+  _globals['_PLUGINTYPE']._serialized_end=1300
+  _globals['_TASKSTATE']._serialized_start=1303
+  _globals['_TASKSTATE']._serialized_end=1460
   _globals['_PLUGININFO']._serialized_start=38
-  _globals['_PLUGININFO']._serialized_end=273
-  _globals['_PLUGINPERMISSION']._serialized_start=275
-  _globals['_PLUGINPERMISSION']._serialized_end=385
-  _globals['_SETTINGSFIELD']._serialized_start=388
-  _globals['_SETTINGSFIELD']._serialized_end=546
-  _globals['_SETTINGSSECTION']._serialized_start=549
-  _globals['_SETTINGSSECTION']._serialized_end=730
+  _globals['_PLUGININFO']._serialized_end=318
+  _globals['_PLUGINTOOL']._serialized_start=321
+  _globals['_PLUGINTOOL']._serialized_end=482
+  _globals['_CALLTOOLREQUEST']._serialized_start=484
+  _globals['_CALLTOOLREQUEST']._serialized_end=610
+  _globals['_CALLTOOLRESPONSE']._serialized_start=612
+  _globals['_CALLTOOLRESPONSE']._serialized_end=702
+  _globals['_PLUGINPERMISSION']._serialized_start=704
+  _globals['_PLUGINPERMISSION']._serialized_end=814
+  _globals['_SETTINGSFIELD']._serialized_start=817
+  _globals['_SETTINGSFIELD']._serialized_end=975
+  _globals['_SETTINGSSECTION']._serialized_start=978
+  _globals['_SETTINGSSECTION']._serialized_end=1159
+  _globals['_TOOLSERVICE']._serialized_start=1462
+  _globals['_TOOLSERVICE']._serialized_end=1544
 # @@protoc_insertion_point(module_scope)

@@ -627,9 +627,49 @@ class McpTool(Tool):
             return ToolResult(True, {"result": response.get("result", "")})
 
 
+class PluginTool(Tool):
+    """A tool contributed by a plugin; execution is routed through Core."""
+
+    def __init__(self, definition: dict):
+        self.definition = definition or {}
+
+    @property
+    def name(self) -> str:
+        return str(self.definition.get("name") or "")
+
+    @property
+    def description(self) -> str:
+        return str(self.definition.get("description") or "由插件提供的外部工具")
+
+    def parameters(self) -> dict:
+        parameters = self.definition.get("parameters")
+        return parameters if isinstance(parameters, dict) else {"type": "object", "properties": {}}
+
+    async def execute(self, **kwargs) -> ToolResult:
+        import os
+
+        from life.http_auth import auth_headers
+
+        base = (os.environ.get("CORE_HTTP_ADDR") or os.environ.get("CORE_HTTP") or "http://127.0.0.1:8080").rstrip("/")
+        try:
+            async with httpx.AsyncClient(timeout=120) as client:
+                response = await client.post(
+                    f"{base}/api/tools/call",
+                    json={"tool": self.name, "args": kwargs, "caller": "life"},
+                    headers=auth_headers(),
+                )
+            if response.status_code != 200:
+                return ToolResult(False, None, f"调用失败（HTTP {response.status_code}）")
+            data = response.json()
+            if not data.get("success"):
+                return ToolResult(False, None, data.get("error") or "插件工具执行失败")
+            return ToolResult(True, data.get("result"))
+        except Exception as error:  # noqa: BLE001 - surface any transport error
+            return ToolResult(False, None, str(error))
+
+
 class SendOneBotTool(Tool):
     """Allow THINK to send a deliberate proactive OneBot message."""
-
     def __init__(self, config: RuntimeToolConfig, companion=None):
         self.config = config
         self.companion = companion

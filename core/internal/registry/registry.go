@@ -428,6 +428,72 @@ func (r *Registry) CountOnlineAgents() int {
 	return len(r.GetAgents(true))
 }
 
+// PluginTool is a contributed tool plus its owning plugin.
+type PluginTool struct {
+	Plugin string
+	Tool   *pluginv1.PluginTool
+}
+
+// ListTools returns every tool contributed by a non-disabled plugin, filtered
+// by consumer scope when scope is non-empty ("agent" / "life").
+func (r *Registry) ListTools(scope string) []PluginTool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var out []PluginTool
+	for _, p := range r.plugins {
+		if p.Info == nil || len(p.Info.Tools) == 0 {
+			continue
+		}
+		if r.isLockedDisabledLocked(p.Info.Name) {
+			continue
+		}
+		for _, tool := range p.Info.Tools {
+			if scope != "" && !toolHasScope(tool, scope) {
+				continue
+			}
+			out = append(out, PluginTool{Plugin: p.Info.Name, Tool: proto.Clone(tool).(*pluginv1.PluginTool)})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Tool.Name < out[j].Tool.Name })
+	return out
+}
+
+// ToolOwner finds the plugin that declared a tool name.
+func (r *Registry) ToolOwner(name string) (*PluginInstance, *pluginv1.PluginTool, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, p := range r.plugins {
+		if p.Info == nil {
+			continue
+		}
+		if r.isLockedDisabledLocked(p.Info.Name) {
+			continue
+		}
+		for _, tool := range p.Info.Tools {
+			if tool.Name == name {
+				return snapshot(p), proto.Clone(tool).(*pluginv1.PluginTool), true
+			}
+		}
+	}
+	return nil, nil, false
+}
+
+func toolHasScope(tool *pluginv1.PluginTool, scope string) bool {
+	if tool == nil {
+		return false
+	}
+	if len(tool.Scopes) == 0 {
+		// No scope declared: usable by both Agent and L.I.F.E.
+		return true
+	}
+	for _, s := range tool.Scopes {
+		if s == scope {
+			return true
+		}
+	}
+	return false
+}
+
 // GetAllPlugins returns all registered plugins (excluding admin-disabled).
 func (r *Registry) GetAllPlugins() []*PluginInstance {
 	r.mu.RLock()

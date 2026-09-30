@@ -4,7 +4,7 @@
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { PluginInfo, SettingsSection } from "../../plugin/v1/plugin_pb";
+import type { PluginInfo, PluginTool, SettingsSection } from "../../plugin/v1/plugin_pb";
 import { file_plugin_v1_plugin } from "../../plugin/v1/plugin_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file core/v1/core.proto.
  */
 export const file_core_v1_core: GenFile = /*@__PURE__*/
-  fileDesc("ChJjb3JlL3YxL2NvcmUucHJvdG8SB2NvcmUudjEimwEKD1JlZ2lzdGVyUmVxdWVzdBIqCgtwbHVnaW5faW5mbxgBIAEoCzIVLnBsdWdpbi52MS5QbHVnaW5JbmZvEhQKDGNhcGFiaWxpdGllcxgCIAMoCRIPCgdhZGRyZXNzGAMgASgJEjUKEXNldHRpbmdzX3NlY3Rpb25zGAQgAygLMhoucGx1Z2luLnYxLlNldHRpbmdzU2VjdGlvbiJeChBSZWdpc3RlclJlc3BvbnNlEg8KB3N1Y2Nlc3MYASABKAgSEQoJcGx1Z2luX2lkGAIgASgJEg8KB21lc3NhZ2UYAyABKAkSFQoNc2VydmljZV90b2tlbhgEIAEoCSKDAQoQSGVhcnRiZWF0UmVxdWVzdBIRCglwbHVnaW5faWQYASABKAkSJQoGc3RhdHVzGAIgASgOMhUuY29yZS52MS5QbHVnaW5TdGF0dXMSFAoMYWN0aXZlX3Rhc2tzGAMgASgFEh8KBGhvc3QYBCABKAsyES5jb3JlLnYxLkhvc3RJbmZvIqkBCghIb3N0SW5mbxIQCghob3N0bmFtZRgBIAEoCRIKCgJvcxgCIAEoCRIMCgRhcmNoGAMgASgJEhEKCWNwdV9tb2RlbBgEIAEoCRIRCgljcHVfY29yZXMYBSABKAUSGgoSbWVtb3J5X3RvdGFsX2J5dGVzGAYgASgDEh4KFm1lbW9yeV9hdmFpbGFibGVfYnl0ZXMYByABKAMSDwoHd29ya2RpchgIIAEoCSI4ChFIZWFydGJlYXRSZXNwb25zZRIKCgJvaxgBIAEoCBIXCg9zaHV0ZG93bl9zaWduYWwYAiABKAgi5AEKD0NhbGxNb2NyUmVxdWVzdBISCgpyZXF1ZXN0X2lkGAEgASgJEhEKCWNhbGxlcl9pZBgCIAEoCRIOCgZwcm9tcHQYAyABKAkSJQoHY29udGV4dBgEIAEoCzIULmNvcmUudjEuTW9jckNvbnRleHQSDgoGc3RyZWFtGAUgASgIEhIKCnNlc3Npb25faWQYBiABKAkSJgoIbWVzc2FnZXMYByADKAsyFC5jb3JlLnYxLkNoYXRNZXNzYWdlEhAKCG1vZGVsX2lkGAggASgJEhUKDXN5c3RlbV9wcm9tcHQYCSABKAkiLAoLQ2hhdE1lc3NhZ2USDAoEcm9sZRgBIAEoCRIPCgdjb250ZW50GAIgASgJInYKEENhbGxNb2NyUmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCRINCgVjaHVuaxgCIAEoCRIMCgRkb25lGAMgASgIEg0KBWVycm9yGAQgASgJEiIKBXVzYWdlGAUgASgLMhMuY29yZS52MS5Ub2tlblVzYWdlIsQBCg9Vc2VBZ2VudFJlcXVlc3QSDwoHdGFza19pZBgBIAEoCRIRCgljYWxsZXJfaWQYAiABKAkSDgoGcHJvbXB0GAMgASgJEhIKCmFnZW50X3R5cGUYBCABKAkSOAoIbWV0YWRhdGEYBSADKAsyJi5jb3JlLnYxLlVzZUFnZW50UmVxdWVzdC5NZXRhZGF0YUVudHJ5Gi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJGChBVc2VBZ2VudFJlc3BvbnNlEhAKCGFjY2VwdGVkGAEgASgIEg8KB3Rhc2tfaWQYAiABKAkSDwoHbWVzc2FnZRgDIAEoCSI4ChJDYW5jZWxBZ2VudFJlcXVlc3QSDwoHdGFza19pZBgBIAEoCRIRCgljYWxsZXJfaWQYAiABKAkiNwoTQ2FuY2VsQWdlbnRSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEg8KB21lc3NhZ2UYAiABKAkiLgoRTGlzdEFnZW50c1JlcXVlc3QSGQoRaW5jbHVkZV91bmhlYWx0aHkYASABKAgiTgoSTGlzdEFnZW50c1Jlc3BvbnNlEiIKBmFnZW50cxgBIAMoCzISLmNvcmUudjEuQWdlbnRJbmZvEhQKDG9ubGluZV9jb3VudBgCIAEoBSLQAQoJQWdlbnRJbmZvEhEKCXBsdWdpbl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB3ZlcnNpb24YAyABKAkSDwoHYWRkcmVzcxgEIAEoCRIlCgZzdGF0dXMYBSABKA4yFS5jb3JlLnYxLlBsdWdpblN0YXR1cxIUCgxhY3RpdmVfdGFza3MYBiABKAUSIgoabGFzdF9oZWFydGJlYXRfYWdlX3NlY29uZHMYByABKAMSHwoEaG9zdBgIIAEoCzIRLmNvcmUudjEuSG9zdEluZm8iQgoQUnVuRGlyZWN0UmVxdWVzdBIMCgR0b29sGAEgASgJEgwKBGFyZ3MYAiABKAkSEgoKc2Vzc2lvbl9pZBgDIAEoCSJDChFSdW5EaXJlY3RSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEg4KBnJlc3VsdBgCIAEoCRINCgVlcnJvchgDIAEoCSLHAQoNRWdyZXNzUmVxdWVzdBIRCglwbHVnaW5faWQYASABKAkSDgoGbWV0aG9kGAIgASgJEgsKA3VybBgDIAEoCRI0CgdoZWFkZXJzGAQgAygLMiMuY29yZS52MS5FZ3Jlc3NSZXF1ZXN0LkhlYWRlcnNFbnRyeRIMCgRib2R5GAUgASgMEhIKCnRpbWVvdXRfbXMYBiABKAUaLgoMSGVhZGVyc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEipAEKDkVncmVzc1Jlc3BvbnNlEg4KBnN0YXR1cxgBIAEoBRI1CgdoZWFkZXJzGAIgAygLMiQuY29yZS52MS5FZ3Jlc3NSZXNwb25zZS5IZWFkZXJzRW50cnkSDAoEYm9keRgDIAEoDBINCgVlcnJvchgEIAEoCRouCgxIZWFkZXJzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJ3CgtNb2NyQ29udGV4dBIXCg9kaWZmaWN1bHR5X2hpbnQYASABKAESEgoKbWF4X3Rva2VucxgCIAEoBRITCgt0ZW1wZXJhdHVyZRgDIAEoARITCgtjb3N0X2J1ZGdldBgEIAEoARIRCgl0YXNrX3R5cGUYBSABKAkiVAoKVG9rZW5Vc2FnZRIVCg1wcm9tcHRfdG9rZW5zGAEgASgFEhkKEWNvbXBsZXRpb25fdG9rZW5zGAIgASgFEhQKDHRvdGFsX3Rva2VucxgDIAEoBSqBAQoMUGx1Z2luU3RhdHVzEh0KGVBMVUdJTl9TVEFUVVNfVU5TUEVDSUZJRUQQABIZChVQTFVHSU5fU1RBVFVTX0hFQUxUSFkQARIaChZQTFVHSU5fU1RBVFVTX0RFR1JBREVEEAISGwoXUExVR0lOX1NUQVRVU19VTkhFQUxUSFkQAzKUAQoNUGx1Z2luU2VydmljZRI/CghSZWdpc3RlchIYLmNvcmUudjEuUmVnaXN0ZXJSZXF1ZXN0GhkuY29yZS52MS5SZWdpc3RlclJlc3BvbnNlEkIKCUhlYXJ0YmVhdBIZLmNvcmUudjEuSGVhcnRiZWF0UmVxdWVzdBoaLmNvcmUudjEuSGVhcnRiZWF0UmVzcG9uc2UyoQMKC0NvcmVTZXJ2aWNlEkEKCENhbGxNb2NyEhguY29yZS52MS5DYWxsTW9jclJlcXVlc3QaGS5jb3JlLnYxLkNhbGxNb2NyUmVzcG9uc2UwARI/CghVc2VBZ2VudBIYLmNvcmUudjEuVXNlQWdlbnRSZXF1ZXN0GhkuY29yZS52MS5Vc2VBZ2VudFJlc3BvbnNlEkgKC0NhbmNlbEFnZW50EhsuY29yZS52MS5DYW5jZWxBZ2VudFJlcXVlc3QaHC5jb3JlLnYxLkNhbmNlbEFnZW50UmVzcG9uc2USRQoKTGlzdEFnZW50cxIaLmNvcmUudjEuTGlzdEFnZW50c1JlcXVlc3QaGy5jb3JlLnYxLkxpc3RBZ2VudHNSZXNwb25zZRJCCglSdW5EaXJlY3QSGS5jb3JlLnYxLlJ1bkRpcmVjdFJlcXVlc3QaGi5jb3JlLnYxLlJ1bkRpcmVjdFJlc3BvbnNlEjkKBkVncmVzcxIWLmNvcmUudjEuRWdyZXNzUmVxdWVzdBoXLmNvcmUudjEuRWdyZXNzUmVzcG9uc2VCTAoTYWkuemVyby5rYXkuY29yZS52MVABWhcwa2F5L2dlbi9jb3JlL3YxO2NvcmV2MaICBlpLQ29yZaoCEFplcm8uS2F5LkNvcmUuVjFiBnByb3RvMw", [file_plugin_v1_plugin]);
+  fileDesc("ChJjb3JlL3YxL2NvcmUucHJvdG8SB2NvcmUudjEimwEKD1JlZ2lzdGVyUmVxdWVzdBIqCgtwbHVnaW5faW5mbxgBIAEoCzIVLnBsdWdpbi52MS5QbHVnaW5JbmZvEhQKDGNhcGFiaWxpdGllcxgCIAMoCRIPCgdhZGRyZXNzGAMgASgJEjUKEXNldHRpbmdzX3NlY3Rpb25zGAQgAygLMhoucGx1Z2luLnYxLlNldHRpbmdzU2VjdGlvbiJeChBSZWdpc3RlclJlc3BvbnNlEg8KB3N1Y2Nlc3MYASABKAgSEQoJcGx1Z2luX2lkGAIgASgJEg8KB21lc3NhZ2UYAyABKAkSFQoNc2VydmljZV90b2tlbhgEIAEoCSKDAQoQSGVhcnRiZWF0UmVxdWVzdBIRCglwbHVnaW5faWQYASABKAkSJQoGc3RhdHVzGAIgASgOMhUuY29yZS52MS5QbHVnaW5TdGF0dXMSFAoMYWN0aXZlX3Rhc2tzGAMgASgFEh8KBGhvc3QYBCABKAsyES5jb3JlLnYxLkhvc3RJbmZvIqkBCghIb3N0SW5mbxIQCghob3N0bmFtZRgBIAEoCRIKCgJvcxgCIAEoCRIMCgRhcmNoGAMgASgJEhEKCWNwdV9tb2RlbBgEIAEoCRIRCgljcHVfY29yZXMYBSABKAUSGgoSbWVtb3J5X3RvdGFsX2J5dGVzGAYgASgDEh4KFm1lbW9yeV9hdmFpbGFibGVfYnl0ZXMYByABKAMSDwoHd29ya2RpchgIIAEoCSI4ChFIZWFydGJlYXRSZXNwb25zZRIKCgJvaxgBIAEoCBIXCg9zaHV0ZG93bl9zaWduYWwYAiABKAgi5AEKD0NhbGxNb2NyUmVxdWVzdBISCgpyZXF1ZXN0X2lkGAEgASgJEhEKCWNhbGxlcl9pZBgCIAEoCRIOCgZwcm9tcHQYAyABKAkSJQoHY29udGV4dBgEIAEoCzIULmNvcmUudjEuTW9jckNvbnRleHQSDgoGc3RyZWFtGAUgASgIEhIKCnNlc3Npb25faWQYBiABKAkSJgoIbWVzc2FnZXMYByADKAsyFC5jb3JlLnYxLkNoYXRNZXNzYWdlEhAKCG1vZGVsX2lkGAggASgJEhUKDXN5c3RlbV9wcm9tcHQYCSABKAkiLAoLQ2hhdE1lc3NhZ2USDAoEcm9sZRgBIAEoCRIPCgdjb250ZW50GAIgASgJInYKEENhbGxNb2NyUmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCRINCgVjaHVuaxgCIAEoCRIMCgRkb25lGAMgASgIEg0KBWVycm9yGAQgASgJEiIKBXVzYWdlGAUgASgLMhMuY29yZS52MS5Ub2tlblVzYWdlIsQBCg9Vc2VBZ2VudFJlcXVlc3QSDwoHdGFza19pZBgBIAEoCRIRCgljYWxsZXJfaWQYAiABKAkSDgoGcHJvbXB0GAMgASgJEhIKCmFnZW50X3R5cGUYBCABKAkSOAoIbWV0YWRhdGEYBSADKAsyJi5jb3JlLnYxLlVzZUFnZW50UmVxdWVzdC5NZXRhZGF0YUVudHJ5Gi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJGChBVc2VBZ2VudFJlc3BvbnNlEhAKCGFjY2VwdGVkGAEgASgIEg8KB3Rhc2tfaWQYAiABKAkSDwoHbWVzc2FnZRgDIAEoCSI4ChJDYW5jZWxBZ2VudFJlcXVlc3QSDwoHdGFza19pZBgBIAEoCRIRCgljYWxsZXJfaWQYAiABKAkiNwoTQ2FuY2VsQWdlbnRSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEg8KB21lc3NhZ2UYAiABKAkiLgoRTGlzdEFnZW50c1JlcXVlc3QSGQoRaW5jbHVkZV91bmhlYWx0aHkYASABKAgiTgoSTGlzdEFnZW50c1Jlc3BvbnNlEiIKBmFnZW50cxgBIAMoCzISLmNvcmUudjEuQWdlbnRJbmZvEhQKDG9ubGluZV9jb3VudBgCIAEoBSLQAQoJQWdlbnRJbmZvEhEKCXBsdWdpbl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB3ZlcnNpb24YAyABKAkSDwoHYWRkcmVzcxgEIAEoCRIlCgZzdGF0dXMYBSABKA4yFS5jb3JlLnYxLlBsdWdpblN0YXR1cxIUCgxhY3RpdmVfdGFza3MYBiABKAUSIgoabGFzdF9oZWFydGJlYXRfYWdlX3NlY29uZHMYByABKAMSHwoEaG9zdBgIIAEoCzIRLmNvcmUudjEuSG9zdEluZm8iQgoQUnVuRGlyZWN0UmVxdWVzdBIMCgR0b29sGAEgASgJEgwKBGFyZ3MYAiABKAkSEgoKc2Vzc2lvbl9pZBgDIAEoCSJDChFSdW5EaXJlY3RSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEg4KBnJlc3VsdBgCIAEoCRINCgVlcnJvchgDIAEoCSLHAQoNRWdyZXNzUmVxdWVzdBIRCglwbHVnaW5faWQYASABKAkSDgoGbWV0aG9kGAIgASgJEgsKA3VybBgDIAEoCRI0CgdoZWFkZXJzGAQgAygLMiMuY29yZS52MS5FZ3Jlc3NSZXF1ZXN0LkhlYWRlcnNFbnRyeRIMCgRib2R5GAUgASgMEhIKCnRpbWVvdXRfbXMYBiABKAUaLgoMSGVhZGVyc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEipAEKDkVncmVzc1Jlc3BvbnNlEg4KBnN0YXR1cxgBIAEoBRI1CgdoZWFkZXJzGAIgAygLMiQuY29yZS52MS5FZ3Jlc3NSZXNwb25zZS5IZWFkZXJzRW50cnkSDAoEYm9keRgDIAEoDBINCgVlcnJvchgEIAEoCRouCgxIZWFkZXJzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASInChZMaXN0UGx1Z2luVG9vbHNSZXF1ZXN0Eg0KBXNjb3BlGAEgASgJIkYKD1BsdWdpblRvb2xFbnRyeRIOCgZwbHVnaW4YASABKAkSIwoEdG9vbBgCIAEoCzIVLnBsdWdpbi52MS5QbHVnaW5Ub29sIkIKF0xpc3RQbHVnaW5Ub29sc1Jlc3BvbnNlEicKBXRvb2xzGAEgAygLMhguY29yZS52MS5QbHVnaW5Ub29sRW50cnkiXwoVQ2FsbFBsdWdpblRvb2xSZXF1ZXN0EgwKBHRvb2wYASABKAkSEQoJYXJnc19qc29uGAIgASgJEhIKCnNlc3Npb25faWQYAyABKAkSEQoJY2FsbGVyX2lkGAQgASgJIkgKFkNhbGxQbHVnaW5Ub29sUmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCBIOCgZyZXN1bHQYAiABKAkSDQoFZXJyb3IYAyABKAkidwoLTW9jckNvbnRleHQSFwoPZGlmZmljdWx0eV9oaW50GAEgASgBEhIKCm1heF90b2tlbnMYAiABKAUSEwoLdGVtcGVyYXR1cmUYAyABKAESEwoLY29zdF9idWRnZXQYBCABKAESEQoJdGFza190eXBlGAUgASgJIlQKClRva2VuVXNhZ2USFQoNcHJvbXB0X3Rva2VucxgBIAEoBRIZChFjb21wbGV0aW9uX3Rva2VucxgCIAEoBRIUCgx0b3RhbF90b2tlbnMYAyABKAUqgQEKDFBsdWdpblN0YXR1cxIdChlQTFVHSU5fU1RBVFVTX1VOU1BFQ0lGSUVEEAASGQoVUExVR0lOX1NUQVRVU19IRUFMVEhZEAESGgoWUExVR0lOX1NUQVRVU19ERUdSQURFRBACEhsKF1BMVUdJTl9TVEFUVVNfVU5IRUFMVEhZEAMylAEKDVBsdWdpblNlcnZpY2USPwoIUmVnaXN0ZXISGC5jb3JlLnYxLlJlZ2lzdGVyUmVxdWVzdBoZLmNvcmUudjEuUmVnaXN0ZXJSZXNwb25zZRJCCglIZWFydGJlYXQSGS5jb3JlLnYxLkhlYXJ0YmVhdFJlcXVlc3QaGi5jb3JlLnYxLkhlYXJ0YmVhdFJlc3BvbnNlMsoECgtDb3JlU2VydmljZRJBCghDYWxsTW9jchIYLmNvcmUudjEuQ2FsbE1vY3JSZXF1ZXN0GhkuY29yZS52MS5DYWxsTW9jclJlc3BvbnNlMAESPwoIVXNlQWdlbnQSGC5jb3JlLnYxLlVzZUFnZW50UmVxdWVzdBoZLmNvcmUudjEuVXNlQWdlbnRSZXNwb25zZRJICgtDYW5jZWxBZ2VudBIbLmNvcmUudjEuQ2FuY2VsQWdlbnRSZXF1ZXN0GhwuY29yZS52MS5DYW5jZWxBZ2VudFJlc3BvbnNlEkUKCkxpc3RBZ2VudHMSGi5jb3JlLnYxLkxpc3RBZ2VudHNSZXF1ZXN0GhsuY29yZS52MS5MaXN0QWdlbnRzUmVzcG9uc2USQgoJUnVuRGlyZWN0EhkuY29yZS52MS5SdW5EaXJlY3RSZXF1ZXN0GhouY29yZS52MS5SdW5EaXJlY3RSZXNwb25zZRI5CgZFZ3Jlc3MSFi5jb3JlLnYxLkVncmVzc1JlcXVlc3QaFy5jb3JlLnYxLkVncmVzc1Jlc3BvbnNlElQKD0xpc3RQbHVnaW5Ub29scxIfLmNvcmUudjEuTGlzdFBsdWdpblRvb2xzUmVxdWVzdBogLmNvcmUudjEuTGlzdFBsdWdpblRvb2xzUmVzcG9uc2USUQoOQ2FsbFBsdWdpblRvb2wSHi5jb3JlLnYxLkNhbGxQbHVnaW5Ub29sUmVxdWVzdBofLmNvcmUudjEuQ2FsbFBsdWdpblRvb2xSZXNwb25zZUJMChNhaS56ZXJvLmtheS5jb3JlLnYxUAFaFzBrYXkvZ2VuL2NvcmUvdjE7Y29yZXYxogIGWktDb3JlqgIQWmVyby5LYXkuQ29yZS5WMWIGcHJvdG8z", [file_plugin_v1_plugin]);
 
 /**
  * RegisterRequest is the request for PluginService.Register.
@@ -803,6 +803,145 @@ export const EgressResponseSchema: GenMessage<EgressResponse> = /*@__PURE__*/
   messageDesc(file_core_v1_core, 18);
 
 /**
+ * ListPluginToolsRequest is the request for CoreService.ListPluginTools.
+ *
+ * @generated from message core.v1.ListPluginToolsRequest
+ */
+export type ListPluginToolsRequest = Message<"core.v1.ListPluginToolsRequest"> & {
+  /**
+   * scope filters by consumer: "agent", "life" (empty = all).
+   *
+   * @generated from field: string scope = 1;
+   */
+  scope: string;
+};
+
+/**
+ * Describes the message core.v1.ListPluginToolsRequest.
+ * Use `create(ListPluginToolsRequestSchema)` to create a new message.
+ */
+export const ListPluginToolsRequestSchema: GenMessage<ListPluginToolsRequest> = /*@__PURE__*/
+  messageDesc(file_core_v1_core, 19);
+
+/**
+ * PluginToolEntry pairs a contributed tool with its owning plugin.
+ *
+ * @generated from message core.v1.PluginToolEntry
+ */
+export type PluginToolEntry = Message<"core.v1.PluginToolEntry"> & {
+  /**
+   * plugin is the plugin name that owns the tool.
+   *
+   * @generated from field: string plugin = 1;
+   */
+  plugin: string;
+
+  /**
+   * tool is the contributed tool descriptor.
+   *
+   * @generated from field: plugin.v1.PluginTool tool = 2;
+   */
+  tool?: PluginTool | undefined;
+};
+
+/**
+ * Describes the message core.v1.PluginToolEntry.
+ * Use `create(PluginToolEntrySchema)` to create a new message.
+ */
+export const PluginToolEntrySchema: GenMessage<PluginToolEntry> = /*@__PURE__*/
+  messageDesc(file_core_v1_core, 20);
+
+/**
+ * ListPluginToolsResponse is the response for CoreService.ListPluginTools.
+ *
+ * @generated from message core.v1.ListPluginToolsResponse
+ */
+export type ListPluginToolsResponse = Message<"core.v1.ListPluginToolsResponse"> & {
+  /**
+   * @generated from field: repeated core.v1.PluginToolEntry tools = 1;
+   */
+  tools: PluginToolEntry[];
+};
+
+/**
+ * Describes the message core.v1.ListPluginToolsResponse.
+ * Use `create(ListPluginToolsResponseSchema)` to create a new message.
+ */
+export const ListPluginToolsResponseSchema: GenMessage<ListPluginToolsResponse> = /*@__PURE__*/
+  messageDesc(file_core_v1_core, 21);
+
+/**
+ * CallPluginToolRequest is the request for CoreService.CallPluginTool.
+ *
+ * @generated from message core.v1.CallPluginToolRequest
+ */
+export type CallPluginToolRequest = Message<"core.v1.CallPluginToolRequest"> & {
+  /**
+   * tool is the tool name to call.
+   *
+   * @generated from field: string tool = 1;
+   */
+  tool: string;
+
+  /**
+   * args_json is the JSON-encoded arguments object.
+   *
+   * @generated from field: string args_json = 2;
+   */
+  argsJson: string;
+
+  /**
+   * session_id groups the call into a conversation session.
+   *
+   * @generated from field: string session_id = 3;
+   */
+  sessionId: string;
+
+  /**
+   * caller_id is the consumer invoking the tool ("agent", "life", ...).
+   *
+   * @generated from field: string caller_id = 4;
+   */
+  callerId: string;
+};
+
+/**
+ * Describes the message core.v1.CallPluginToolRequest.
+ * Use `create(CallPluginToolRequestSchema)` to create a new message.
+ */
+export const CallPluginToolRequestSchema: GenMessage<CallPluginToolRequest> = /*@__PURE__*/
+  messageDesc(file_core_v1_core, 22);
+
+/**
+ * CallPluginToolResponse is the response for CoreService.CallPluginTool.
+ *
+ * @generated from message core.v1.CallPluginToolResponse
+ */
+export type CallPluginToolResponse = Message<"core.v1.CallPluginToolResponse"> & {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success: boolean;
+
+  /**
+   * @generated from field: string result = 2;
+   */
+  result: string;
+
+  /**
+   * @generated from field: string error = 3;
+   */
+  error: string;
+};
+
+/**
+ * Describes the message core.v1.CallPluginToolResponse.
+ * Use `create(CallPluginToolResponseSchema)` to create a new message.
+ */
+export const CallPluginToolResponseSchema: GenMessage<CallPluginToolResponse> = /*@__PURE__*/
+  messageDesc(file_core_v1_core, 23);
+
+/**
  * MocrContext provides additional context for model selection.
  *
  * @generated from message core.v1.MocrContext
@@ -849,7 +988,7 @@ export type MocrContext = Message<"core.v1.MocrContext"> & {
  * Use `create(MocrContextSchema)` to create a new message.
  */
 export const MocrContextSchema: GenMessage<MocrContext> = /*@__PURE__*/
-  messageDesc(file_core_v1_core, 19);
+  messageDesc(file_core_v1_core, 24);
 
 /**
  * TokenUsage contains token usage information.
@@ -884,7 +1023,7 @@ export type TokenUsage = Message<"core.v1.TokenUsage"> & {
  * Use `create(TokenUsageSchema)` to create a new message.
  */
 export const TokenUsageSchema: GenMessage<TokenUsage> = /*@__PURE__*/
-  messageDesc(file_core_v1_core, 20);
+  messageDesc(file_core_v1_core, 25);
 
 /**
  * PluginStatus represents the health status of a plugin.
@@ -1023,6 +1162,27 @@ export const CoreService: GenService<{
     methodKind: "unary";
     input: typeof EgressRequestSchema;
     output: typeof EgressResponseSchema;
+  },
+  /**
+   * ListPluginTools returns the tools contributed by healthy plugins for a
+   * consumer scope ("agent" / "life").
+   *
+   * @generated from rpc core.v1.CoreService.ListPluginTools
+   */
+  listPluginTools: {
+    methodKind: "unary";
+    input: typeof ListPluginToolsRequestSchema;
+    output: typeof ListPluginToolsResponseSchema;
+  },
+  /**
+   * CallPluginTool routes a tool call to the owning plugin's ToolService.
+   *
+   * @generated from rpc core.v1.CoreService.CallPluginTool
+   */
+  callPluginTool: {
+    methodKind: "unary";
+    input: typeof CallPluginToolRequestSchema;
+    output: typeof CallPluginToolResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_core_v1_core, 1);

@@ -308,6 +308,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/images", g.handleImages)
 	mux.HandleFunc("/api/files", g.handleFiles)
 	mux.HandleFunc("/api/net/egress", g.handleEgress)
+	mux.HandleFunc("/api/tools", g.handleTools)
 	mux.Handle("/live2d/models/", http.StripPrefix("/live2d/models/", http.FileServer(http.Dir(live2DRoot()))))
 	mux.HandleFunc("/api/tasks", g.handleTasks)
 	mux.HandleFunc("/api/tasks/events", g.handleTaskEvents)

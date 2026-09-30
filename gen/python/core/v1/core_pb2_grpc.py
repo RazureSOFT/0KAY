@@ -165,6 +165,16 @@ class CoreServiceStub:
                 request_serializer=core_dot_v1_dot_core__pb2.EgressRequest.SerializeToString,
                 response_deserializer=core_dot_v1_dot_core__pb2.EgressResponse.FromString,
                 _registered_method=True)
+        self.ListPluginTools = channel.unary_unary(
+                '/core.v1.CoreService/ListPluginTools',
+                request_serializer=core_dot_v1_dot_core__pb2.ListPluginToolsRequest.SerializeToString,
+                response_deserializer=core_dot_v1_dot_core__pb2.ListPluginToolsResponse.FromString,
+                _registered_method=True)
+        self.CallPluginTool = channel.unary_unary(
+                '/core.v1.CoreService/CallPluginTool',
+                request_serializer=core_dot_v1_dot_core__pb2.CallPluginToolRequest.SerializeToString,
+                response_deserializer=core_dot_v1_dot_core__pb2.CallPluginToolResponse.FromString,
+                _registered_method=True)
 
 
 class CoreServiceServicer:
@@ -215,6 +225,21 @@ class CoreServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ListPluginTools(self, request, context):
+        """ListPluginTools returns the tools contributed by healthy plugins for a
+        consumer scope ("agent" / "life").
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def CallPluginTool(self, request, context):
+        """CallPluginTool routes a tool call to the owning plugin's ToolService.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_CoreServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -247,6 +272,16 @@ def add_CoreServiceServicer_to_server(servicer, server):
                     servicer.Egress,
                     request_deserializer=core_dot_v1_dot_core__pb2.EgressRequest.FromString,
                     response_serializer=core_dot_v1_dot_core__pb2.EgressResponse.SerializeToString,
+            ),
+            'ListPluginTools': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListPluginTools,
+                    request_deserializer=core_dot_v1_dot_core__pb2.ListPluginToolsRequest.FromString,
+                    response_serializer=core_dot_v1_dot_core__pb2.ListPluginToolsResponse.SerializeToString,
+            ),
+            'CallPluginTool': grpc.unary_unary_rpc_method_handler(
+                    servicer.CallPluginTool,
+                    request_deserializer=core_dot_v1_dot_core__pb2.CallPluginToolRequest.FromString,
+                    response_serializer=core_dot_v1_dot_core__pb2.CallPluginToolResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -412,6 +447,60 @@ class CoreService:
             '/core.v1.CoreService/Egress',
             core_dot_v1_dot_core__pb2.EgressRequest.SerializeToString,
             core_dot_v1_dot_core__pb2.EgressResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListPluginTools(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/core.v1.CoreService/ListPluginTools',
+            core_dot_v1_dot_core__pb2.ListPluginToolsRequest.SerializeToString,
+            core_dot_v1_dot_core__pb2.ListPluginToolsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def CallPluginTool(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/core.v1.CoreService/CallPluginTool',
+            core_dot_v1_dot_core__pb2.CallPluginToolRequest.SerializeToString,
+            core_dot_v1_dot_core__pb2.CallPluginToolResponse.FromString,
             options,
             channel_credentials,
             insecure,

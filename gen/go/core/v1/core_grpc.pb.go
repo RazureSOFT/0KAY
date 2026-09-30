@@ -167,12 +167,14 @@ var PluginService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	CoreService_CallMocr_FullMethodName    = "/core.v1.CoreService/CallMocr"
-	CoreService_UseAgent_FullMethodName    = "/core.v1.CoreService/UseAgent"
-	CoreService_CancelAgent_FullMethodName = "/core.v1.CoreService/CancelAgent"
-	CoreService_ListAgents_FullMethodName  = "/core.v1.CoreService/ListAgents"
-	CoreService_RunDirect_FullMethodName   = "/core.v1.CoreService/RunDirect"
-	CoreService_Egress_FullMethodName      = "/core.v1.CoreService/Egress"
+	CoreService_CallMocr_FullMethodName        = "/core.v1.CoreService/CallMocr"
+	CoreService_UseAgent_FullMethodName        = "/core.v1.CoreService/UseAgent"
+	CoreService_CancelAgent_FullMethodName     = "/core.v1.CoreService/CancelAgent"
+	CoreService_ListAgents_FullMethodName      = "/core.v1.CoreService/ListAgents"
+	CoreService_RunDirect_FullMethodName       = "/core.v1.CoreService/RunDirect"
+	CoreService_Egress_FullMethodName          = "/core.v1.CoreService/Egress"
+	CoreService_ListPluginTools_FullMethodName = "/core.v1.CoreService/ListPluginTools"
+	CoreService_CallPluginTool_FullMethodName  = "/core.v1.CoreService/CallPluginTool"
 )
 
 // CoreServiceClient is the client API for CoreService service.
@@ -195,6 +197,11 @@ type CoreServiceClient interface {
 	// plugin network access flows through Core and is checked against the
 	// plugin's declared egress allowlist. Built-in plugins bypass the check.
 	Egress(ctx context.Context, in *EgressRequest, opts ...grpc.CallOption) (*EgressResponse, error)
+	// ListPluginTools returns the tools contributed by healthy plugins for a
+	// consumer scope ("agent" / "life").
+	ListPluginTools(ctx context.Context, in *ListPluginToolsRequest, opts ...grpc.CallOption) (*ListPluginToolsResponse, error)
+	// CallPluginTool routes a tool call to the owning plugin's ToolService.
+	CallPluginTool(ctx context.Context, in *CallPluginToolRequest, opts ...grpc.CallOption) (*CallPluginToolResponse, error)
 }
 
 type coreServiceClient struct {
@@ -274,6 +281,26 @@ func (c *coreServiceClient) Egress(ctx context.Context, in *EgressRequest, opts 
 	return out, nil
 }
 
+func (c *coreServiceClient) ListPluginTools(ctx context.Context, in *ListPluginToolsRequest, opts ...grpc.CallOption) (*ListPluginToolsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPluginToolsResponse)
+	err := c.cc.Invoke(ctx, CoreService_ListPluginTools_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreServiceClient) CallPluginTool(ctx context.Context, in *CallPluginToolRequest, opts ...grpc.CallOption) (*CallPluginToolResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CallPluginToolResponse)
+	err := c.cc.Invoke(ctx, CoreService_CallPluginTool_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CoreServiceServer is the server API for CoreService service.
 // All implementations must embed UnimplementedCoreServiceServer
 // for forward compatibility.
@@ -294,6 +321,11 @@ type CoreServiceServer interface {
 	// plugin network access flows through Core and is checked against the
 	// plugin's declared egress allowlist. Built-in plugins bypass the check.
 	Egress(context.Context, *EgressRequest) (*EgressResponse, error)
+	// ListPluginTools returns the tools contributed by healthy plugins for a
+	// consumer scope ("agent" / "life").
+	ListPluginTools(context.Context, *ListPluginToolsRequest) (*ListPluginToolsResponse, error)
+	// CallPluginTool routes a tool call to the owning plugin's ToolService.
+	CallPluginTool(context.Context, *CallPluginToolRequest) (*CallPluginToolResponse, error)
 	mustEmbedUnimplementedCoreServiceServer()
 }
 
@@ -321,6 +353,12 @@ func (UnimplementedCoreServiceServer) RunDirect(context.Context, *RunDirectReque
 }
 func (UnimplementedCoreServiceServer) Egress(context.Context, *EgressRequest) (*EgressResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Egress not implemented")
+}
+func (UnimplementedCoreServiceServer) ListPluginTools(context.Context, *ListPluginToolsRequest) (*ListPluginToolsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPluginTools not implemented")
+}
+func (UnimplementedCoreServiceServer) CallPluginTool(context.Context, *CallPluginToolRequest) (*CallPluginToolResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CallPluginTool not implemented")
 }
 func (UnimplementedCoreServiceServer) mustEmbedUnimplementedCoreServiceServer() {}
 func (UnimplementedCoreServiceServer) testEmbeddedByValue()                     {}
@@ -444,6 +482,42 @@ func _CoreService_Egress_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreService_ListPluginTools_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPluginToolsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreServiceServer).ListPluginTools(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreService_ListPluginTools_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreServiceServer).ListPluginTools(ctx, req.(*ListPluginToolsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreService_CallPluginTool_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CallPluginToolRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreServiceServer).CallPluginTool(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreService_CallPluginTool_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreServiceServer).CallPluginTool(ctx, req.(*CallPluginToolRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CoreService_ServiceDesc is the grpc.ServiceDesc for CoreService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -470,6 +544,14 @@ var CoreService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Egress",
 			Handler:    _CoreService_Egress_Handler,
+		},
+		{
+			MethodName: "ListPluginTools",
+			Handler:    _CoreService_ListPluginTools_Handler,
+		},
+		{
+			MethodName: "CallPluginTool",
+			Handler:    _CoreService_CallPluginTool_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -30,6 +30,62 @@ message PluginInfo {
   // api_requires is rejected, and egress not listed in `egress` is blocked.
   // Built-in plugins are exempt (full access).
   PluginPermission permissions = 6;
+
+  // tools lists tool descriptors this plugin contributes to Agent and/or
+  // L.I.F.E. Core publishes them in its tool catalog; calls are routed back to
+  // the plugin's ToolService.
+  repeated PluginTool tools = 7;
+}
+
+// PluginTool is a tool a plugin contributes to Agent / L.I.F.E.
+message PluginTool {
+  // name is the globally unique tool name shown to the model.
+  string name = 1;
+
+  // description explains what the tool does.
+  string description = 2;
+
+  // parameters_json is a JSON Schema object for the tool arguments.
+  string parameters_json = 3;
+
+  // dangerous marks a tool that mutates the host or is otherwise privileged.
+  bool dangerous = 4;
+
+  // scopes lists the consumers allowed to use it ("agent", "life").
+  repeated string scopes = 5;
+}
+
+// ToolService is implemented by plugins that contribute tools.
+service ToolService {
+  // CallTool executes one of the plugin's declared tools.
+  rpc CallTool(CallToolRequest) returns (CallToolResponse);
+}
+
+// CallToolRequest is the request for ToolService.CallTool.
+message CallToolRequest {
+  // caller_id is the consumer invoking the tool ("agent", "life", ...).
+  string caller_id = 1;
+
+  // tool is the tool name.
+  string tool = 2;
+
+  // args_json is the JSON-encoded arguments object.
+  string args_json = 3;
+
+  // session_id groups the call into a conversation session.
+  string session_id = 4;
+}
+
+// CallToolResponse is the response for ToolService.CallTool.
+message CallToolResponse {
+  // success indicates the tool ran without error.
+  bool success = 1;
+
+  // result is a JSON-encoded result payload.
+  string result = 2;
+
+  // error is a human-readable error when success is false.
+  string error = 3;
 }
 
 // PluginPermission is a plugin's declared permission set, mirrored from its

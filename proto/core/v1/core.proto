@@ -40,6 +40,13 @@ service CoreService {
   // plugin network access flows through Core and is checked against the
   // plugin's declared egress allowlist. Built-in plugins bypass the check.
   rpc Egress(EgressRequest) returns (EgressResponse);
+
+  // ListPluginTools returns the tools contributed by healthy plugins for a
+  // consumer scope ("agent" / "life").
+  rpc ListPluginTools(ListPluginToolsRequest) returns (ListPluginToolsResponse);
+
+  // CallPluginTool routes a tool call to the owning plugin's ToolService.
+  rpc CallPluginTool(CallPluginToolRequest) returns (CallPluginToolResponse);
 }
 
 // RegisterRequest is the request for PluginService.Register.
@@ -313,6 +320,48 @@ message EgressResponse {
 
   // error is set when the request was blocked or failed at the transport layer.
   string error = 4;
+}
+
+// ListPluginToolsRequest is the request for CoreService.ListPluginTools.
+message ListPluginToolsRequest {
+  // scope filters by consumer: "agent", "life" (empty = all).
+  string scope = 1;
+}
+
+// PluginToolEntry pairs a contributed tool with its owning plugin.
+message PluginToolEntry {
+  // plugin is the plugin name that owns the tool.
+  string plugin = 1;
+
+  // tool is the contributed tool descriptor.
+  plugin.v1.PluginTool tool = 2;
+}
+
+// ListPluginToolsResponse is the response for CoreService.ListPluginTools.
+message ListPluginToolsResponse {
+  repeated PluginToolEntry tools = 1;
+}
+
+// CallPluginToolRequest is the request for CoreService.CallPluginTool.
+message CallPluginToolRequest {
+  // tool is the tool name to call.
+  string tool = 1;
+
+  // args_json is the JSON-encoded arguments object.
+  string args_json = 2;
+
+  // session_id groups the call into a conversation session.
+  string session_id = 3;
+
+  // caller_id is the consumer invoking the tool ("agent", "life", ...).
+  string caller_id = 4;
+}
+
+// CallPluginToolResponse is the response for CoreService.CallPluginTool.
+message CallPluginToolResponse {
+  bool success = 1;
+  string result = 2;
+  string error = 3;
 }
 
 // MocrContext provides additional context for model selection.

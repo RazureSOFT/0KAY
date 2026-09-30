@@ -164,7 +164,11 @@ type PluginInfo struct {
 	// network it requires. Core enforces these: an API call not listed in
 	// api_requires is rejected, and egress not listed in `egress` is blocked.
 	// Built-in plugins are exempt (full access).
-	Permissions   *PluginPermission `protobuf:"bytes,6,opt,name=permissions,proto3" json:"permissions,omitempty"`
+	Permissions *PluginPermission `protobuf:"bytes,6,opt,name=permissions,proto3" json:"permissions,omitempty"`
+	// tools lists tool descriptors this plugin contributes to Agent and/or
+	// L.I.F.E. Core publishes them in its tool catalog; calls are routed back to
+	// the plugin's ToolService.
+	Tools         []*PluginTool `protobuf:"bytes,7,rep,name=tools,proto3" json:"tools,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -241,6 +245,232 @@ func (x *PluginInfo) GetPermissions() *PluginPermission {
 	return nil
 }
 
+func (x *PluginInfo) GetTools() []*PluginTool {
+	if x != nil {
+		return x.Tools
+	}
+	return nil
+}
+
+// PluginTool is a tool a plugin contributes to Agent / L.I.F.E.
+type PluginTool struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// name is the globally unique tool name shown to the model.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// description explains what the tool does.
+	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	// parameters_json is a JSON Schema object for the tool arguments.
+	ParametersJson string `protobuf:"bytes,3,opt,name=parameters_json,json=parametersJson,proto3" json:"parameters_json,omitempty"`
+	// dangerous marks a tool that mutates the host or is otherwise privileged.
+	Dangerous bool `protobuf:"varint,4,opt,name=dangerous,proto3" json:"dangerous,omitempty"`
+	// scopes lists the consumers allowed to use it ("agent", "life").
+	Scopes        []string `protobuf:"bytes,5,rep,name=scopes,proto3" json:"scopes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PluginTool) Reset() {
+	*x = PluginTool{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PluginTool) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PluginTool) ProtoMessage() {}
+
+func (x *PluginTool) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PluginTool.ProtoReflect.Descriptor instead.
+func (*PluginTool) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *PluginTool) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *PluginTool) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *PluginTool) GetParametersJson() string {
+	if x != nil {
+		return x.ParametersJson
+	}
+	return ""
+}
+
+func (x *PluginTool) GetDangerous() bool {
+	if x != nil {
+		return x.Dangerous
+	}
+	return false
+}
+
+func (x *PluginTool) GetScopes() []string {
+	if x != nil {
+		return x.Scopes
+	}
+	return nil
+}
+
+// CallToolRequest is the request for ToolService.CallTool.
+type CallToolRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// caller_id is the consumer invoking the tool ("agent", "life", ...).
+	CallerId string `protobuf:"bytes,1,opt,name=caller_id,json=callerId,proto3" json:"caller_id,omitempty"`
+	// tool is the tool name.
+	Tool string `protobuf:"bytes,2,opt,name=tool,proto3" json:"tool,omitempty"`
+	// args_json is the JSON-encoded arguments object.
+	ArgsJson string `protobuf:"bytes,3,opt,name=args_json,json=argsJson,proto3" json:"args_json,omitempty"`
+	// session_id groups the call into a conversation session.
+	SessionId     string `protobuf:"bytes,4,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CallToolRequest) Reset() {
+	*x = CallToolRequest{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CallToolRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CallToolRequest) ProtoMessage() {}
+
+func (x *CallToolRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CallToolRequest.ProtoReflect.Descriptor instead.
+func (*CallToolRequest) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CallToolRequest) GetCallerId() string {
+	if x != nil {
+		return x.CallerId
+	}
+	return ""
+}
+
+func (x *CallToolRequest) GetTool() string {
+	if x != nil {
+		return x.Tool
+	}
+	return ""
+}
+
+func (x *CallToolRequest) GetArgsJson() string {
+	if x != nil {
+		return x.ArgsJson
+	}
+	return ""
+}
+
+func (x *CallToolRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+// CallToolResponse is the response for ToolService.CallTool.
+type CallToolResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// success indicates the tool ran without error.
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	// result is a JSON-encoded result payload.
+	Result string `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`
+	// error is a human-readable error when success is false.
+	Error         string `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CallToolResponse) Reset() {
+	*x = CallToolResponse{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CallToolResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CallToolResponse) ProtoMessage() {}
+
+func (x *CallToolResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CallToolResponse.ProtoReflect.Descriptor instead.
+func (*CallToolResponse) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CallToolResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *CallToolResponse) GetResult() string {
+	if x != nil {
+		return x.Result
+	}
+	return ""
+}
+
+func (x *CallToolResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 // PluginPermission is a plugin's declared permission set, mirrored from its
 // package manifest (`permissions`) at registration time.
 type PluginPermission struct {
@@ -262,7 +492,7 @@ type PluginPermission struct {
 
 func (x *PluginPermission) Reset() {
 	*x = PluginPermission{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[1]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -274,7 +504,7 @@ func (x *PluginPermission) String() string {
 func (*PluginPermission) ProtoMessage() {}
 
 func (x *PluginPermission) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[1]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -287,7 +517,7 @@ func (x *PluginPermission) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PluginPermission.ProtoReflect.Descriptor instead.
 func (*PluginPermission) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{1}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *PluginPermission) GetApiRequires() []string {
@@ -332,7 +562,7 @@ type SettingsField struct {
 
 func (x *SettingsField) Reset() {
 	*x = SettingsField{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[2]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -344,7 +574,7 @@ func (x *SettingsField) String() string {
 func (*SettingsField) ProtoMessage() {}
 
 func (x *SettingsField) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[2]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -357,7 +587,7 @@ func (x *SettingsField) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettingsField.ProtoReflect.Descriptor instead.
 func (*SettingsField) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{2}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SettingsField) GetKey() string {
@@ -423,7 +653,7 @@ type SettingsSection struct {
 
 func (x *SettingsSection) Reset() {
 	*x = SettingsSection{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[3]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -435,7 +665,7 @@ func (x *SettingsSection) String() string {
 func (*SettingsSection) ProtoMessage() {}
 
 func (x *SettingsSection) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[3]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -448,7 +678,7 @@ func (x *SettingsSection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettingsSection.ProtoReflect.Descriptor instead.
 func (*SettingsSection) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{3}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *SettingsSection) GetId() string {
@@ -497,7 +727,7 @@ var File_plugin_v1_plugin_proto protoreflect.FileDescriptor
 
 const file_plugin_v1_plugin_proto_rawDesc = "" +
 	"\n" +
-	"\x16plugin/v1/plugin.proto\x12\tplugin.v1\"\xeb\x01\n" +
+	"\x16plugin/v1/plugin.proto\x12\tplugin.v1\"\x98\x02\n" +
 	"\n" +
 	"PluginInfo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
@@ -506,7 +736,25 @@ const file_plugin_v1_plugin_proto_rawDesc = "" +
 	"\x06author\x18\x04 \x01(\tR\x06author\x126\n" +
 	"\vplugin_type\x18\x05 \x01(\x0e2\x15.plugin.v1.PluginTypeR\n" +
 	"pluginType\x12=\n" +
-	"\vpermissions\x18\x06 \x01(\v2\x1b.plugin.v1.PluginPermissionR\vpermissions\"n\n" +
+	"\vpermissions\x18\x06 \x01(\v2\x1b.plugin.v1.PluginPermissionR\vpermissions\x12+\n" +
+	"\x05tools\x18\a \x03(\v2\x15.plugin.v1.PluginToolR\x05tools\"\xa1\x01\n" +
+	"\n" +
+	"PluginTool\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x12'\n" +
+	"\x0fparameters_json\x18\x03 \x01(\tR\x0eparametersJson\x12\x1c\n" +
+	"\tdangerous\x18\x04 \x01(\bR\tdangerous\x12\x16\n" +
+	"\x06scopes\x18\x05 \x03(\tR\x06scopes\"~\n" +
+	"\x0fCallToolRequest\x12\x1b\n" +
+	"\tcaller_id\x18\x01 \x01(\tR\bcallerId\x12\x12\n" +
+	"\x04tool\x18\x02 \x01(\tR\x04tool\x12\x1b\n" +
+	"\targs_json\x18\x03 \x01(\tR\bargsJson\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x04 \x01(\tR\tsessionId\"Z\n" +
+	"\x10CallToolResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x16\n" +
+	"\x06result\x18\x02 \x01(\tR\x06result\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"n\n" +
 	"\x10PluginPermission\x12!\n" +
 	"\fapi_requires\x18\x01 \x03(\tR\vapiRequires\x12\x1f\n" +
 	"\vapi_exposes\x18\x02 \x03(\tR\n" +
@@ -539,7 +787,9 @@ const file_plugin_v1_plugin_proto_rawDesc = "" +
 	"\x12TASK_STATE_RUNNING\x10\x02\x12\x13\n" +
 	"\x0fTASK_STATE_DONE\x10\x03\x12\x15\n" +
 	"\x11TASK_STATE_FAILED\x10\x04\x12\x18\n" +
-	"\x14TASK_STATE_CANCELLED\x10\x05BV\n" +
+	"\x14TASK_STATE_CANCELLED\x10\x052R\n" +
+	"\vToolService\x12C\n" +
+	"\bCallTool\x12\x1a.plugin.v1.CallToolRequest\x1a\x1b.plugin.v1.CallToolResponseBV\n" +
 	"\x15ai.zero.kay.plugin.v1P\x01Z\x1b0kay/gen/plugin/v1;pluginv1\xa2\x02\bZKPlugin\xaa\x02\x12Zero.Kay.Plugin.V1b\x06proto3"
 
 var (
@@ -555,24 +805,30 @@ func file_plugin_v1_plugin_proto_rawDescGZIP() []byte {
 }
 
 var file_plugin_v1_plugin_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_plugin_v1_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_plugin_v1_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_plugin_v1_plugin_proto_goTypes = []any{
 	(PluginType)(0),          // 0: plugin.v1.PluginType
 	(TaskState)(0),           // 1: plugin.v1.TaskState
 	(*PluginInfo)(nil),       // 2: plugin.v1.PluginInfo
-	(*PluginPermission)(nil), // 3: plugin.v1.PluginPermission
-	(*SettingsField)(nil),    // 4: plugin.v1.SettingsField
-	(*SettingsSection)(nil),  // 5: plugin.v1.SettingsSection
+	(*PluginTool)(nil),       // 3: plugin.v1.PluginTool
+	(*CallToolRequest)(nil),  // 4: plugin.v1.CallToolRequest
+	(*CallToolResponse)(nil), // 5: plugin.v1.CallToolResponse
+	(*PluginPermission)(nil), // 6: plugin.v1.PluginPermission
+	(*SettingsField)(nil),    // 7: plugin.v1.SettingsField
+	(*SettingsSection)(nil),  // 8: plugin.v1.SettingsSection
 }
 var file_plugin_v1_plugin_proto_depIdxs = []int32{
 	0, // 0: plugin.v1.PluginInfo.plugin_type:type_name -> plugin.v1.PluginType
-	3, // 1: plugin.v1.PluginInfo.permissions:type_name -> plugin.v1.PluginPermission
-	4, // 2: plugin.v1.SettingsSection.fields:type_name -> plugin.v1.SettingsField
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	6, // 1: plugin.v1.PluginInfo.permissions:type_name -> plugin.v1.PluginPermission
+	3, // 2: plugin.v1.PluginInfo.tools:type_name -> plugin.v1.PluginTool
+	7, // 3: plugin.v1.SettingsSection.fields:type_name -> plugin.v1.SettingsField
+	4, // 4: plugin.v1.ToolService.CallTool:input_type -> plugin.v1.CallToolRequest
+	5, // 5: plugin.v1.ToolService.CallTool:output_type -> plugin.v1.CallToolResponse
+	5, // [5:6] is the sub-list for method output_type
+	4, // [4:5] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_plugin_v1_plugin_proto_init() }
@@ -586,9 +842,9 @@ func file_plugin_v1_plugin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_plugin_v1_plugin_proto_rawDesc), len(file_plugin_v1_plugin_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   4,
+			NumMessages:   7,
 			NumExtensions: 0,
-			NumServices:   0,
+			NumServices:   1,
 		},
 		GoTypes:           file_plugin_v1_plugin_proto_goTypes,
 		DependencyIndexes: file_plugin_v1_plugin_proto_depIdxs,

@@ -1469,6 +1469,286 @@ func (x *EgressResponse) GetError() string {
 	return ""
 }
 
+// ListPluginToolsRequest is the request for CoreService.ListPluginTools.
+type ListPluginToolsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// scope filters by consumer: "agent", "life" (empty = all).
+	Scope         string `protobuf:"bytes,1,opt,name=scope,proto3" json:"scope,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPluginToolsRequest) Reset() {
+	*x = ListPluginToolsRequest{}
+	mi := &file_core_v1_core_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPluginToolsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPluginToolsRequest) ProtoMessage() {}
+
+func (x *ListPluginToolsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPluginToolsRequest.ProtoReflect.Descriptor instead.
+func (*ListPluginToolsRequest) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *ListPluginToolsRequest) GetScope() string {
+	if x != nil {
+		return x.Scope
+	}
+	return ""
+}
+
+// PluginToolEntry pairs a contributed tool with its owning plugin.
+type PluginToolEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// plugin is the plugin name that owns the tool.
+	Plugin string `protobuf:"bytes,1,opt,name=plugin,proto3" json:"plugin,omitempty"`
+	// tool is the contributed tool descriptor.
+	Tool          *v1.PluginTool `protobuf:"bytes,2,opt,name=tool,proto3" json:"tool,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PluginToolEntry) Reset() {
+	*x = PluginToolEntry{}
+	mi := &file_core_v1_core_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PluginToolEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PluginToolEntry) ProtoMessage() {}
+
+func (x *PluginToolEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PluginToolEntry.ProtoReflect.Descriptor instead.
+func (*PluginToolEntry) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *PluginToolEntry) GetPlugin() string {
+	if x != nil {
+		return x.Plugin
+	}
+	return ""
+}
+
+func (x *PluginToolEntry) GetTool() *v1.PluginTool {
+	if x != nil {
+		return x.Tool
+	}
+	return nil
+}
+
+// ListPluginToolsResponse is the response for CoreService.ListPluginTools.
+type ListPluginToolsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tools         []*PluginToolEntry     `protobuf:"bytes,1,rep,name=tools,proto3" json:"tools,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPluginToolsResponse) Reset() {
+	*x = ListPluginToolsResponse{}
+	mi := &file_core_v1_core_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPluginToolsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPluginToolsResponse) ProtoMessage() {}
+
+func (x *ListPluginToolsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPluginToolsResponse.ProtoReflect.Descriptor instead.
+func (*ListPluginToolsResponse) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ListPluginToolsResponse) GetTools() []*PluginToolEntry {
+	if x != nil {
+		return x.Tools
+	}
+	return nil
+}
+
+// CallPluginToolRequest is the request for CoreService.CallPluginTool.
+type CallPluginToolRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// tool is the tool name to call.
+	Tool string `protobuf:"bytes,1,opt,name=tool,proto3" json:"tool,omitempty"`
+	// args_json is the JSON-encoded arguments object.
+	ArgsJson string `protobuf:"bytes,2,opt,name=args_json,json=argsJson,proto3" json:"args_json,omitempty"`
+	// session_id groups the call into a conversation session.
+	SessionId string `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	// caller_id is the consumer invoking the tool ("agent", "life", ...).
+	CallerId      string `protobuf:"bytes,4,opt,name=caller_id,json=callerId,proto3" json:"caller_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CallPluginToolRequest) Reset() {
+	*x = CallPluginToolRequest{}
+	mi := &file_core_v1_core_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CallPluginToolRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CallPluginToolRequest) ProtoMessage() {}
+
+func (x *CallPluginToolRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CallPluginToolRequest.ProtoReflect.Descriptor instead.
+func (*CallPluginToolRequest) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *CallPluginToolRequest) GetTool() string {
+	if x != nil {
+		return x.Tool
+	}
+	return ""
+}
+
+func (x *CallPluginToolRequest) GetArgsJson() string {
+	if x != nil {
+		return x.ArgsJson
+	}
+	return ""
+}
+
+func (x *CallPluginToolRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *CallPluginToolRequest) GetCallerId() string {
+	if x != nil {
+		return x.CallerId
+	}
+	return ""
+}
+
+// CallPluginToolResponse is the response for CoreService.CallPluginTool.
+type CallPluginToolResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Result        string                 `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CallPluginToolResponse) Reset() {
+	*x = CallPluginToolResponse{}
+	mi := &file_core_v1_core_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CallPluginToolResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CallPluginToolResponse) ProtoMessage() {}
+
+func (x *CallPluginToolResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CallPluginToolResponse.ProtoReflect.Descriptor instead.
+func (*CallPluginToolResponse) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *CallPluginToolResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *CallPluginToolResponse) GetResult() string {
+	if x != nil {
+		return x.Result
+	}
+	return ""
+}
+
+func (x *CallPluginToolResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 // MocrContext provides additional context for model selection.
 type MocrContext struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1488,7 +1768,7 @@ type MocrContext struct {
 
 func (x *MocrContext) Reset() {
 	*x = MocrContext{}
-	mi := &file_core_v1_core_proto_msgTypes[19]
+	mi := &file_core_v1_core_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1500,7 +1780,7 @@ func (x *MocrContext) String() string {
 func (*MocrContext) ProtoMessage() {}
 
 func (x *MocrContext) ProtoReflect() protoreflect.Message {
-	mi := &file_core_v1_core_proto_msgTypes[19]
+	mi := &file_core_v1_core_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1513,7 +1793,7 @@ func (x *MocrContext) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MocrContext.ProtoReflect.Descriptor instead.
 func (*MocrContext) Descriptor() ([]byte, []int) {
-	return file_core_v1_core_proto_rawDescGZIP(), []int{19}
+	return file_core_v1_core_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *MocrContext) GetDifficultyHint() float64 {
@@ -1566,7 +1846,7 @@ type TokenUsage struct {
 
 func (x *TokenUsage) Reset() {
 	*x = TokenUsage{}
-	mi := &file_core_v1_core_proto_msgTypes[20]
+	mi := &file_core_v1_core_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1578,7 +1858,7 @@ func (x *TokenUsage) String() string {
 func (*TokenUsage) ProtoMessage() {}
 
 func (x *TokenUsage) ProtoReflect() protoreflect.Message {
-	mi := &file_core_v1_core_proto_msgTypes[20]
+	mi := &file_core_v1_core_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1591,7 +1871,7 @@ func (x *TokenUsage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenUsage.ProtoReflect.Descriptor instead.
 func (*TokenUsage) Descriptor() ([]byte, []int) {
-	return file_core_v1_core_proto_rawDescGZIP(), []int{20}
+	return file_core_v1_core_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *TokenUsage) GetPromptTokens() int32 {
@@ -1731,7 +2011,24 @@ const file_core_v1_core_proto_rawDesc = "" +
 	"\x05error\x18\x04 \x01(\tR\x05error\x1a:\n" +
 	"\fHeadersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb5\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\".\n" +
+	"\x16ListPluginToolsRequest\x12\x14\n" +
+	"\x05scope\x18\x01 \x01(\tR\x05scope\"T\n" +
+	"\x0fPluginToolEntry\x12\x16\n" +
+	"\x06plugin\x18\x01 \x01(\tR\x06plugin\x12)\n" +
+	"\x04tool\x18\x02 \x01(\v2\x15.plugin.v1.PluginToolR\x04tool\"I\n" +
+	"\x17ListPluginToolsResponse\x12.\n" +
+	"\x05tools\x18\x01 \x03(\v2\x18.core.v1.PluginToolEntryR\x05tools\"\x84\x01\n" +
+	"\x15CallPluginToolRequest\x12\x12\n" +
+	"\x04tool\x18\x01 \x01(\tR\x04tool\x12\x1b\n" +
+	"\targs_json\x18\x02 \x01(\tR\bargsJson\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x03 \x01(\tR\tsessionId\x12\x1b\n" +
+	"\tcaller_id\x18\x04 \x01(\tR\bcallerId\"`\n" +
+	"\x16CallPluginToolResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x16\n" +
+	"\x06result\x18\x02 \x01(\tR\x06result\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"\xb5\x01\n" +
 	"\vMocrContext\x12'\n" +
 	"\x0fdifficulty_hint\x18\x01 \x01(\x01R\x0edifficultyHint\x12\x1d\n" +
 	"\n" +
@@ -1752,7 +2049,7 @@ const file_core_v1_core_proto_rawDesc = "" +
 	"\x17PLUGIN_STATUS_UNHEALTHY\x10\x032\x94\x01\n" +
 	"\rPluginService\x12?\n" +
 	"\bRegister\x12\x18.core.v1.RegisterRequest\x1a\x19.core.v1.RegisterResponse\x12B\n" +
-	"\tHeartbeat\x12\x19.core.v1.HeartbeatRequest\x1a\x1a.core.v1.HeartbeatResponse2\xa1\x03\n" +
+	"\tHeartbeat\x12\x19.core.v1.HeartbeatRequest\x1a\x1a.core.v1.HeartbeatResponse2\xca\x04\n" +
 	"\vCoreService\x12A\n" +
 	"\bCallMocr\x12\x18.core.v1.CallMocrRequest\x1a\x19.core.v1.CallMocrResponse0\x01\x12?\n" +
 	"\bUseAgent\x12\x18.core.v1.UseAgentRequest\x1a\x19.core.v1.UseAgentResponse\x12H\n" +
@@ -1760,7 +2057,9 @@ const file_core_v1_core_proto_rawDesc = "" +
 	"\n" +
 	"ListAgents\x12\x1a.core.v1.ListAgentsRequest\x1a\x1b.core.v1.ListAgentsResponse\x12B\n" +
 	"\tRunDirect\x12\x19.core.v1.RunDirectRequest\x1a\x1a.core.v1.RunDirectResponse\x129\n" +
-	"\x06Egress\x12\x16.core.v1.EgressRequest\x1a\x17.core.v1.EgressResponseBL\n" +
+	"\x06Egress\x12\x16.core.v1.EgressRequest\x1a\x17.core.v1.EgressResponse\x12T\n" +
+	"\x0fListPluginTools\x12\x1f.core.v1.ListPluginToolsRequest\x1a .core.v1.ListPluginToolsResponse\x12Q\n" +
+	"\x0eCallPluginTool\x12\x1e.core.v1.CallPluginToolRequest\x1a\x1f.core.v1.CallPluginToolResponseBL\n" +
 	"\x13ai.zero.kay.core.v1P\x01Z\x170kay/gen/core/v1;corev1\xa2\x02\x06ZKCore\xaa\x02\x10Zero.Kay.Core.V1b\x06proto3"
 
 var (
@@ -1776,71 +2075,83 @@ func file_core_v1_core_proto_rawDescGZIP() []byte {
 }
 
 var file_core_v1_core_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_core_v1_core_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_core_v1_core_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_core_v1_core_proto_goTypes = []any{
-	(PluginStatus)(0),           // 0: core.v1.PluginStatus
-	(*RegisterRequest)(nil),     // 1: core.v1.RegisterRequest
-	(*RegisterResponse)(nil),    // 2: core.v1.RegisterResponse
-	(*HeartbeatRequest)(nil),    // 3: core.v1.HeartbeatRequest
-	(*HostInfo)(nil),            // 4: core.v1.HostInfo
-	(*HeartbeatResponse)(nil),   // 5: core.v1.HeartbeatResponse
-	(*CallMocrRequest)(nil),     // 6: core.v1.CallMocrRequest
-	(*ChatMessage)(nil),         // 7: core.v1.ChatMessage
-	(*CallMocrResponse)(nil),    // 8: core.v1.CallMocrResponse
-	(*UseAgentRequest)(nil),     // 9: core.v1.UseAgentRequest
-	(*UseAgentResponse)(nil),    // 10: core.v1.UseAgentResponse
-	(*CancelAgentRequest)(nil),  // 11: core.v1.CancelAgentRequest
-	(*CancelAgentResponse)(nil), // 12: core.v1.CancelAgentResponse
-	(*ListAgentsRequest)(nil),   // 13: core.v1.ListAgentsRequest
-	(*ListAgentsResponse)(nil),  // 14: core.v1.ListAgentsResponse
-	(*AgentInfo)(nil),           // 15: core.v1.AgentInfo
-	(*RunDirectRequest)(nil),    // 16: core.v1.RunDirectRequest
-	(*RunDirectResponse)(nil),   // 17: core.v1.RunDirectResponse
-	(*EgressRequest)(nil),       // 18: core.v1.EgressRequest
-	(*EgressResponse)(nil),      // 19: core.v1.EgressResponse
-	(*MocrContext)(nil),         // 20: core.v1.MocrContext
-	(*TokenUsage)(nil),          // 21: core.v1.TokenUsage
-	nil,                         // 22: core.v1.UseAgentRequest.MetadataEntry
-	nil,                         // 23: core.v1.EgressRequest.HeadersEntry
-	nil,                         // 24: core.v1.EgressResponse.HeadersEntry
-	(*v1.PluginInfo)(nil),       // 25: plugin.v1.PluginInfo
-	(*v1.SettingsSection)(nil),  // 26: plugin.v1.SettingsSection
+	(PluginStatus)(0),               // 0: core.v1.PluginStatus
+	(*RegisterRequest)(nil),         // 1: core.v1.RegisterRequest
+	(*RegisterResponse)(nil),        // 2: core.v1.RegisterResponse
+	(*HeartbeatRequest)(nil),        // 3: core.v1.HeartbeatRequest
+	(*HostInfo)(nil),                // 4: core.v1.HostInfo
+	(*HeartbeatResponse)(nil),       // 5: core.v1.HeartbeatResponse
+	(*CallMocrRequest)(nil),         // 6: core.v1.CallMocrRequest
+	(*ChatMessage)(nil),             // 7: core.v1.ChatMessage
+	(*CallMocrResponse)(nil),        // 8: core.v1.CallMocrResponse
+	(*UseAgentRequest)(nil),         // 9: core.v1.UseAgentRequest
+	(*UseAgentResponse)(nil),        // 10: core.v1.UseAgentResponse
+	(*CancelAgentRequest)(nil),      // 11: core.v1.CancelAgentRequest
+	(*CancelAgentResponse)(nil),     // 12: core.v1.CancelAgentResponse
+	(*ListAgentsRequest)(nil),       // 13: core.v1.ListAgentsRequest
+	(*ListAgentsResponse)(nil),      // 14: core.v1.ListAgentsResponse
+	(*AgentInfo)(nil),               // 15: core.v1.AgentInfo
+	(*RunDirectRequest)(nil),        // 16: core.v1.RunDirectRequest
+	(*RunDirectResponse)(nil),       // 17: core.v1.RunDirectResponse
+	(*EgressRequest)(nil),           // 18: core.v1.EgressRequest
+	(*EgressResponse)(nil),          // 19: core.v1.EgressResponse
+	(*ListPluginToolsRequest)(nil),  // 20: core.v1.ListPluginToolsRequest
+	(*PluginToolEntry)(nil),         // 21: core.v1.PluginToolEntry
+	(*ListPluginToolsResponse)(nil), // 22: core.v1.ListPluginToolsResponse
+	(*CallPluginToolRequest)(nil),   // 23: core.v1.CallPluginToolRequest
+	(*CallPluginToolResponse)(nil),  // 24: core.v1.CallPluginToolResponse
+	(*MocrContext)(nil),             // 25: core.v1.MocrContext
+	(*TokenUsage)(nil),              // 26: core.v1.TokenUsage
+	nil,                             // 27: core.v1.UseAgentRequest.MetadataEntry
+	nil,                             // 28: core.v1.EgressRequest.HeadersEntry
+	nil,                             // 29: core.v1.EgressResponse.HeadersEntry
+	(*v1.PluginInfo)(nil),           // 30: plugin.v1.PluginInfo
+	(*v1.SettingsSection)(nil),      // 31: plugin.v1.SettingsSection
+	(*v1.PluginTool)(nil),           // 32: plugin.v1.PluginTool
 }
 var file_core_v1_core_proto_depIdxs = []int32{
-	25, // 0: core.v1.RegisterRequest.plugin_info:type_name -> plugin.v1.PluginInfo
-	26, // 1: core.v1.RegisterRequest.settings_sections:type_name -> plugin.v1.SettingsSection
+	30, // 0: core.v1.RegisterRequest.plugin_info:type_name -> plugin.v1.PluginInfo
+	31, // 1: core.v1.RegisterRequest.settings_sections:type_name -> plugin.v1.SettingsSection
 	0,  // 2: core.v1.HeartbeatRequest.status:type_name -> core.v1.PluginStatus
 	4,  // 3: core.v1.HeartbeatRequest.host:type_name -> core.v1.HostInfo
-	20, // 4: core.v1.CallMocrRequest.context:type_name -> core.v1.MocrContext
+	25, // 4: core.v1.CallMocrRequest.context:type_name -> core.v1.MocrContext
 	7,  // 5: core.v1.CallMocrRequest.messages:type_name -> core.v1.ChatMessage
-	21, // 6: core.v1.CallMocrResponse.usage:type_name -> core.v1.TokenUsage
-	22, // 7: core.v1.UseAgentRequest.metadata:type_name -> core.v1.UseAgentRequest.MetadataEntry
+	26, // 6: core.v1.CallMocrResponse.usage:type_name -> core.v1.TokenUsage
+	27, // 7: core.v1.UseAgentRequest.metadata:type_name -> core.v1.UseAgentRequest.MetadataEntry
 	15, // 8: core.v1.ListAgentsResponse.agents:type_name -> core.v1.AgentInfo
 	0,  // 9: core.v1.AgentInfo.status:type_name -> core.v1.PluginStatus
 	4,  // 10: core.v1.AgentInfo.host:type_name -> core.v1.HostInfo
-	23, // 11: core.v1.EgressRequest.headers:type_name -> core.v1.EgressRequest.HeadersEntry
-	24, // 12: core.v1.EgressResponse.headers:type_name -> core.v1.EgressResponse.HeadersEntry
-	1,  // 13: core.v1.PluginService.Register:input_type -> core.v1.RegisterRequest
-	3,  // 14: core.v1.PluginService.Heartbeat:input_type -> core.v1.HeartbeatRequest
-	6,  // 15: core.v1.CoreService.CallMocr:input_type -> core.v1.CallMocrRequest
-	9,  // 16: core.v1.CoreService.UseAgent:input_type -> core.v1.UseAgentRequest
-	11, // 17: core.v1.CoreService.CancelAgent:input_type -> core.v1.CancelAgentRequest
-	13, // 18: core.v1.CoreService.ListAgents:input_type -> core.v1.ListAgentsRequest
-	16, // 19: core.v1.CoreService.RunDirect:input_type -> core.v1.RunDirectRequest
-	18, // 20: core.v1.CoreService.Egress:input_type -> core.v1.EgressRequest
-	2,  // 21: core.v1.PluginService.Register:output_type -> core.v1.RegisterResponse
-	5,  // 22: core.v1.PluginService.Heartbeat:output_type -> core.v1.HeartbeatResponse
-	8,  // 23: core.v1.CoreService.CallMocr:output_type -> core.v1.CallMocrResponse
-	10, // 24: core.v1.CoreService.UseAgent:output_type -> core.v1.UseAgentResponse
-	12, // 25: core.v1.CoreService.CancelAgent:output_type -> core.v1.CancelAgentResponse
-	14, // 26: core.v1.CoreService.ListAgents:output_type -> core.v1.ListAgentsResponse
-	17, // 27: core.v1.CoreService.RunDirect:output_type -> core.v1.RunDirectResponse
-	19, // 28: core.v1.CoreService.Egress:output_type -> core.v1.EgressResponse
-	21, // [21:29] is the sub-list for method output_type
-	13, // [13:21] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	28, // 11: core.v1.EgressRequest.headers:type_name -> core.v1.EgressRequest.HeadersEntry
+	29, // 12: core.v1.EgressResponse.headers:type_name -> core.v1.EgressResponse.HeadersEntry
+	32, // 13: core.v1.PluginToolEntry.tool:type_name -> plugin.v1.PluginTool
+	21, // 14: core.v1.ListPluginToolsResponse.tools:type_name -> core.v1.PluginToolEntry
+	1,  // 15: core.v1.PluginService.Register:input_type -> core.v1.RegisterRequest
+	3,  // 16: core.v1.PluginService.Heartbeat:input_type -> core.v1.HeartbeatRequest
+	6,  // 17: core.v1.CoreService.CallMocr:input_type -> core.v1.CallMocrRequest
+	9,  // 18: core.v1.CoreService.UseAgent:input_type -> core.v1.UseAgentRequest
+	11, // 19: core.v1.CoreService.CancelAgent:input_type -> core.v1.CancelAgentRequest
+	13, // 20: core.v1.CoreService.ListAgents:input_type -> core.v1.ListAgentsRequest
+	16, // 21: core.v1.CoreService.RunDirect:input_type -> core.v1.RunDirectRequest
+	18, // 22: core.v1.CoreService.Egress:input_type -> core.v1.EgressRequest
+	20, // 23: core.v1.CoreService.ListPluginTools:input_type -> core.v1.ListPluginToolsRequest
+	23, // 24: core.v1.CoreService.CallPluginTool:input_type -> core.v1.CallPluginToolRequest
+	2,  // 25: core.v1.PluginService.Register:output_type -> core.v1.RegisterResponse
+	5,  // 26: core.v1.PluginService.Heartbeat:output_type -> core.v1.HeartbeatResponse
+	8,  // 27: core.v1.CoreService.CallMocr:output_type -> core.v1.CallMocrResponse
+	10, // 28: core.v1.CoreService.UseAgent:output_type -> core.v1.UseAgentResponse
+	12, // 29: core.v1.CoreService.CancelAgent:output_type -> core.v1.CancelAgentResponse
+	14, // 30: core.v1.CoreService.ListAgents:output_type -> core.v1.ListAgentsResponse
+	17, // 31: core.v1.CoreService.RunDirect:output_type -> core.v1.RunDirectResponse
+	19, // 32: core.v1.CoreService.Egress:output_type -> core.v1.EgressResponse
+	22, // 33: core.v1.CoreService.ListPluginTools:output_type -> core.v1.ListPluginToolsResponse
+	24, // 34: core.v1.CoreService.CallPluginTool:output_type -> core.v1.CallPluginToolResponse
+	25, // [25:35] is the sub-list for method output_type
+	15, // [15:25] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_core_v1_core_proto_init() }
@@ -1854,7 +2165,7 @@ func file_core_v1_core_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_core_v1_core_proto_rawDesc), len(file_core_v1_core_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   24,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
