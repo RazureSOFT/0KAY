@@ -87,20 +87,20 @@ describe('resolveTokenSets', () => {
 })
 
 describe('buildThemeCSS', () => {
-  it('emits light then dark blocks with equal-specificity selectors', () => {
+  it('emits light then dark blocks, dark outranking an imperative dark sheet', () => {
     const css = buildThemeCSS({
       id: 'demo',
       tokens: { light: { '--md-primary': '#a1' }, dark: { '--md-primary': '#a2' } },
     })
     expect(css).toBe(
-      'html:root {\n  --md-primary: #a1;\n}\nhtml:root:where([data-theme="dark"]) {\n  --md-primary: #a2;\n}',
+      'html:root {\n  --md-primary: #a1;\n}\nhtml:root[data-theme="dark"] {\n  --md-primary: #a2;\n}',
     )
     expect(css.indexOf('data-theme="dark"]')).toBeGreaterThan(css.indexOf('html:root {'))
   })
 
   it('omits a scheme the plugin did not define', () => {
     const css = buildThemeCSS({ id: 'demo', tokens: { dark: { '--md-primary': '#a2' } } })
-    expect(css).toContain('html:root:where([data-theme="dark"])')
+    expect(css).toContain('html:root[data-theme="dark"]')
     expect(css).not.toContain('html:root {')
   })
 
@@ -290,9 +290,9 @@ describe('Fluent theme patch package', () => {
       for (const key of Object.keys(item.tokens[scheme])) expect(css).toContain(`${key}:`)
     }
     expect(css).toContain('html:root {')
-    expect(css).toContain('html:root:where([data-theme="dark"]) {')
+    expect(css).toContain('html:root[data-theme="dark"] {')
     expect(css).toContain('#app .btn {')
-    expect(css).toContain(':focus-visible { outline: 2px solid var(--md-primary);')
+    expect(css).toContain(':focus-visible { outline: 2px solid var(--md-primary) !important;')
   })
 
   it('reaches data/ui through the pm manifest instead of shipping there', () => {

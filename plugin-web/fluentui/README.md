@@ -26,9 +26,9 @@ The patch contains a single op:
 ```
 
 - `tokens.light` is emitted into `html:root { … }`, `tokens.dark` into
-  `html:root:where([data-theme="dark"]) { … }` — same specificity, so document
-  order decides, and the host re-appends its own `<style>` last (a theme patch
-  therefore beats any bootstrap-injected dark stylesheet).
+  `html:root[data-theme="dark"] { … }` — specificity (0,2,1), so the dark
+  palette outranks an imperatively injected `html[data-theme="dark"]` sheet
+  (0,1,1), e.g. the darkmode bootstrap, regardless of `<head>` order.
 - Only tokens whose keys start with `--` are emitted; values containing `;`,
   `{` or `}` are dropped.
 - `css` is emitted verbatim into the same `<style>` element for component rules
