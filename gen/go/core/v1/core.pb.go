@@ -162,7 +162,11 @@ type RegisterResponse struct {
 	// plugin_id is the unique identifier assigned to this plugin.
 	PluginId string `protobuf:"bytes,2,opt,name=plugin_id,json=pluginId,proto3" json:"plugin_id,omitempty"`
 	// message contains optional human-readable status.
-	Message       string `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	Message string `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	// service_token is the plugin's per-identity bearer token, issued by Core.
+	// The plugin sends it (with its name) on Core HTTP calls and the egress RPC
+	// so Core can attribute and authorize the request.
+	ServiceToken  string `protobuf:"bytes,4,opt,name=service_token,json=serviceToken,proto3" json:"service_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -214,6 +218,13 @@ func (x *RegisterResponse) GetPluginId() string {
 func (x *RegisterResponse) GetMessage() string {
 	if x != nil {
 		return x.Message
+	}
+	return ""
+}
+
+func (x *RegisterResponse) GetServiceToken() string {
+	if x != nil {
+		return x.ServiceToken
 	}
 	return ""
 }
@@ -1294,6 +1305,170 @@ func (x *RunDirectResponse) GetError() string {
 	return ""
 }
 
+// EgressRequest is an outbound HTTP request a plugin asks Core to perform.
+type EgressRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// plugin_id is the calling plugin's id (CallerID is filled by Core).
+	PluginId string `protobuf:"bytes,1,opt,name=plugin_id,json=pluginId,proto3" json:"plugin_id,omitempty"`
+	// method is the HTTP method (GET/POST/...); defaults to GET.
+	Method string `protobuf:"bytes,2,opt,name=method,proto3" json:"method,omitempty"`
+	// url is the absolute target URL.
+	Url string `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
+	// headers are forwarded request headers.
+	Headers map[string]string `protobuf:"bytes,4,rep,name=headers,proto3" json:"headers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// body is the request body (optional).
+	Body []byte `protobuf:"bytes,5,opt,name=body,proto3" json:"body,omitempty"`
+	// timeout_ms caps the request duration (0 = Core default).
+	TimeoutMs     int32 `protobuf:"varint,6,opt,name=timeout_ms,json=timeoutMs,proto3" json:"timeout_ms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EgressRequest) Reset() {
+	*x = EgressRequest{}
+	mi := &file_core_v1_core_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EgressRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EgressRequest) ProtoMessage() {}
+
+func (x *EgressRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EgressRequest.ProtoReflect.Descriptor instead.
+func (*EgressRequest) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *EgressRequest) GetPluginId() string {
+	if x != nil {
+		return x.PluginId
+	}
+	return ""
+}
+
+func (x *EgressRequest) GetMethod() string {
+	if x != nil {
+		return x.Method
+	}
+	return ""
+}
+
+func (x *EgressRequest) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *EgressRequest) GetHeaders() map[string]string {
+	if x != nil {
+		return x.Headers
+	}
+	return nil
+}
+
+func (x *EgressRequest) GetBody() []byte {
+	if x != nil {
+		return x.Body
+	}
+	return nil
+}
+
+func (x *EgressRequest) GetTimeoutMs() int32 {
+	if x != nil {
+		return x.TimeoutMs
+	}
+	return 0
+}
+
+// EgressResponse is the result of CoreService.Egress.
+type EgressResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// status is the upstream HTTP status code (0 on transport error).
+	Status int32 `protobuf:"varint,1,opt,name=status,proto3" json:"status,omitempty"`
+	// headers are the upstream response headers.
+	Headers map[string]string `protobuf:"bytes,2,rep,name=headers,proto3" json:"headers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// body is the upstream response body.
+	Body []byte `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
+	// error is set when the request was blocked or failed at the transport layer.
+	Error         string `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EgressResponse) Reset() {
+	*x = EgressResponse{}
+	mi := &file_core_v1_core_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EgressResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EgressResponse) ProtoMessage() {}
+
+func (x *EgressResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EgressResponse.ProtoReflect.Descriptor instead.
+func (*EgressResponse) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *EgressResponse) GetStatus() int32 {
+	if x != nil {
+		return x.Status
+	}
+	return 0
+}
+
+func (x *EgressResponse) GetHeaders() map[string]string {
+	if x != nil {
+		return x.Headers
+	}
+	return nil
+}
+
+func (x *EgressResponse) GetBody() []byte {
+	if x != nil {
+		return x.Body
+	}
+	return nil
+}
+
+func (x *EgressResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 // MocrContext provides additional context for model selection.
 type MocrContext struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1313,7 +1488,7 @@ type MocrContext struct {
 
 func (x *MocrContext) Reset() {
 	*x = MocrContext{}
-	mi := &file_core_v1_core_proto_msgTypes[17]
+	mi := &file_core_v1_core_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1325,7 +1500,7 @@ func (x *MocrContext) String() string {
 func (*MocrContext) ProtoMessage() {}
 
 func (x *MocrContext) ProtoReflect() protoreflect.Message {
-	mi := &file_core_v1_core_proto_msgTypes[17]
+	mi := &file_core_v1_core_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1338,7 +1513,7 @@ func (x *MocrContext) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MocrContext.ProtoReflect.Descriptor instead.
 func (*MocrContext) Descriptor() ([]byte, []int) {
-	return file_core_v1_core_proto_rawDescGZIP(), []int{17}
+	return file_core_v1_core_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *MocrContext) GetDifficultyHint() float64 {
@@ -1391,7 +1566,7 @@ type TokenUsage struct {
 
 func (x *TokenUsage) Reset() {
 	*x = TokenUsage{}
-	mi := &file_core_v1_core_proto_msgTypes[18]
+	mi := &file_core_v1_core_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1403,7 +1578,7 @@ func (x *TokenUsage) String() string {
 func (*TokenUsage) ProtoMessage() {}
 
 func (x *TokenUsage) ProtoReflect() protoreflect.Message {
-	mi := &file_core_v1_core_proto_msgTypes[18]
+	mi := &file_core_v1_core_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1416,7 +1591,7 @@ func (x *TokenUsage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenUsage.ProtoReflect.Descriptor instead.
 func (*TokenUsage) Descriptor() ([]byte, []int) {
-	return file_core_v1_core_proto_rawDescGZIP(), []int{18}
+	return file_core_v1_core_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *TokenUsage) GetPromptTokens() int32 {
@@ -1450,11 +1625,12 @@ const file_core_v1_core_proto_rawDesc = "" +
 	"pluginInfo\x12\"\n" +
 	"\fcapabilities\x18\x02 \x03(\tR\fcapabilities\x12\x18\n" +
 	"\aaddress\x18\x03 \x01(\tR\aaddress\x12G\n" +
-	"\x11settings_sections\x18\x04 \x03(\v2\x1a.plugin.v1.SettingsSectionR\x10settingsSections\"c\n" +
+	"\x11settings_sections\x18\x04 \x03(\v2\x1a.plugin.v1.SettingsSectionR\x10settingsSections\"\x88\x01\n" +
 	"\x10RegisterResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1b\n" +
 	"\tplugin_id\x18\x02 \x01(\tR\bpluginId\x12\x18\n" +
-	"\amessage\x18\x03 \x01(\tR\amessage\"\xa8\x01\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\x12#\n" +
+	"\rservice_token\x18\x04 \x01(\tR\fserviceToken\"\xa8\x01\n" +
 	"\x10HeartbeatRequest\x12\x1b\n" +
 	"\tplugin_id\x18\x01 \x01(\tR\bpluginId\x12-\n" +
 	"\x06status\x18\x02 \x01(\x0e2\x15.core.v1.PluginStatusR\x06status\x12!\n" +
@@ -1536,7 +1712,26 @@ const file_core_v1_core_proto_rawDesc = "" +
 	"\x11RunDirectResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x16\n" +
 	"\x06result\x18\x02 \x01(\tR\x06result\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error\"\xb5\x01\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"\x84\x02\n" +
+	"\rEgressRequest\x12\x1b\n" +
+	"\tplugin_id\x18\x01 \x01(\tR\bpluginId\x12\x16\n" +
+	"\x06method\x18\x02 \x01(\tR\x06method\x12\x10\n" +
+	"\x03url\x18\x03 \x01(\tR\x03url\x12=\n" +
+	"\aheaders\x18\x04 \x03(\v2#.core.v1.EgressRequest.HeadersEntryR\aheaders\x12\x12\n" +
+	"\x04body\x18\x05 \x01(\fR\x04body\x12\x1d\n" +
+	"\n" +
+	"timeout_ms\x18\x06 \x01(\x05R\ttimeoutMs\x1a:\n" +
+	"\fHeadersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xce\x01\n" +
+	"\x0eEgressResponse\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\x05R\x06status\x12>\n" +
+	"\aheaders\x18\x02 \x03(\v2$.core.v1.EgressResponse.HeadersEntryR\aheaders\x12\x12\n" +
+	"\x04body\x18\x03 \x01(\fR\x04body\x12\x14\n" +
+	"\x05error\x18\x04 \x01(\tR\x05error\x1a:\n" +
+	"\fHeadersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb5\x01\n" +
 	"\vMocrContext\x12'\n" +
 	"\x0fdifficulty_hint\x18\x01 \x01(\x01R\x0edifficultyHint\x12\x1d\n" +
 	"\n" +
@@ -1557,14 +1752,15 @@ const file_core_v1_core_proto_rawDesc = "" +
 	"\x17PLUGIN_STATUS_UNHEALTHY\x10\x032\x94\x01\n" +
 	"\rPluginService\x12?\n" +
 	"\bRegister\x12\x18.core.v1.RegisterRequest\x1a\x19.core.v1.RegisterResponse\x12B\n" +
-	"\tHeartbeat\x12\x19.core.v1.HeartbeatRequest\x1a\x1a.core.v1.HeartbeatResponse2\xe6\x02\n" +
+	"\tHeartbeat\x12\x19.core.v1.HeartbeatRequest\x1a\x1a.core.v1.HeartbeatResponse2\xa1\x03\n" +
 	"\vCoreService\x12A\n" +
 	"\bCallMocr\x12\x18.core.v1.CallMocrRequest\x1a\x19.core.v1.CallMocrResponse0\x01\x12?\n" +
 	"\bUseAgent\x12\x18.core.v1.UseAgentRequest\x1a\x19.core.v1.UseAgentResponse\x12H\n" +
 	"\vCancelAgent\x12\x1b.core.v1.CancelAgentRequest\x1a\x1c.core.v1.CancelAgentResponse\x12E\n" +
 	"\n" +
 	"ListAgents\x12\x1a.core.v1.ListAgentsRequest\x1a\x1b.core.v1.ListAgentsResponse\x12B\n" +
-	"\tRunDirect\x12\x19.core.v1.RunDirectRequest\x1a\x1a.core.v1.RunDirectResponseBL\n" +
+	"\tRunDirect\x12\x19.core.v1.RunDirectRequest\x1a\x1a.core.v1.RunDirectResponse\x129\n" +
+	"\x06Egress\x12\x16.core.v1.EgressRequest\x1a\x17.core.v1.EgressResponseBL\n" +
 	"\x13ai.zero.kay.core.v1P\x01Z\x170kay/gen/core/v1;corev1\xa2\x02\x06ZKCore\xaa\x02\x10Zero.Kay.Core.V1b\x06proto3"
 
 var (
@@ -1580,7 +1776,7 @@ func file_core_v1_core_proto_rawDescGZIP() []byte {
 }
 
 var file_core_v1_core_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_core_v1_core_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_core_v1_core_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_core_v1_core_proto_goTypes = []any{
 	(PluginStatus)(0),           // 0: core.v1.PluginStatus
 	(*RegisterRequest)(nil),     // 1: core.v1.RegisterRequest
@@ -1600,43 +1796,51 @@ var file_core_v1_core_proto_goTypes = []any{
 	(*AgentInfo)(nil),           // 15: core.v1.AgentInfo
 	(*RunDirectRequest)(nil),    // 16: core.v1.RunDirectRequest
 	(*RunDirectResponse)(nil),   // 17: core.v1.RunDirectResponse
-	(*MocrContext)(nil),         // 18: core.v1.MocrContext
-	(*TokenUsage)(nil),          // 19: core.v1.TokenUsage
-	nil,                         // 20: core.v1.UseAgentRequest.MetadataEntry
-	(*v1.PluginInfo)(nil),       // 21: plugin.v1.PluginInfo
-	(*v1.SettingsSection)(nil),  // 22: plugin.v1.SettingsSection
+	(*EgressRequest)(nil),       // 18: core.v1.EgressRequest
+	(*EgressResponse)(nil),      // 19: core.v1.EgressResponse
+	(*MocrContext)(nil),         // 20: core.v1.MocrContext
+	(*TokenUsage)(nil),          // 21: core.v1.TokenUsage
+	nil,                         // 22: core.v1.UseAgentRequest.MetadataEntry
+	nil,                         // 23: core.v1.EgressRequest.HeadersEntry
+	nil,                         // 24: core.v1.EgressResponse.HeadersEntry
+	(*v1.PluginInfo)(nil),       // 25: plugin.v1.PluginInfo
+	(*v1.SettingsSection)(nil),  // 26: plugin.v1.SettingsSection
 }
 var file_core_v1_core_proto_depIdxs = []int32{
-	21, // 0: core.v1.RegisterRequest.plugin_info:type_name -> plugin.v1.PluginInfo
-	22, // 1: core.v1.RegisterRequest.settings_sections:type_name -> plugin.v1.SettingsSection
+	25, // 0: core.v1.RegisterRequest.plugin_info:type_name -> plugin.v1.PluginInfo
+	26, // 1: core.v1.RegisterRequest.settings_sections:type_name -> plugin.v1.SettingsSection
 	0,  // 2: core.v1.HeartbeatRequest.status:type_name -> core.v1.PluginStatus
 	4,  // 3: core.v1.HeartbeatRequest.host:type_name -> core.v1.HostInfo
-	18, // 4: core.v1.CallMocrRequest.context:type_name -> core.v1.MocrContext
+	20, // 4: core.v1.CallMocrRequest.context:type_name -> core.v1.MocrContext
 	7,  // 5: core.v1.CallMocrRequest.messages:type_name -> core.v1.ChatMessage
-	19, // 6: core.v1.CallMocrResponse.usage:type_name -> core.v1.TokenUsage
-	20, // 7: core.v1.UseAgentRequest.metadata:type_name -> core.v1.UseAgentRequest.MetadataEntry
+	21, // 6: core.v1.CallMocrResponse.usage:type_name -> core.v1.TokenUsage
+	22, // 7: core.v1.UseAgentRequest.metadata:type_name -> core.v1.UseAgentRequest.MetadataEntry
 	15, // 8: core.v1.ListAgentsResponse.agents:type_name -> core.v1.AgentInfo
 	0,  // 9: core.v1.AgentInfo.status:type_name -> core.v1.PluginStatus
 	4,  // 10: core.v1.AgentInfo.host:type_name -> core.v1.HostInfo
-	1,  // 11: core.v1.PluginService.Register:input_type -> core.v1.RegisterRequest
-	3,  // 12: core.v1.PluginService.Heartbeat:input_type -> core.v1.HeartbeatRequest
-	6,  // 13: core.v1.CoreService.CallMocr:input_type -> core.v1.CallMocrRequest
-	9,  // 14: core.v1.CoreService.UseAgent:input_type -> core.v1.UseAgentRequest
-	11, // 15: core.v1.CoreService.CancelAgent:input_type -> core.v1.CancelAgentRequest
-	13, // 16: core.v1.CoreService.ListAgents:input_type -> core.v1.ListAgentsRequest
-	16, // 17: core.v1.CoreService.RunDirect:input_type -> core.v1.RunDirectRequest
-	2,  // 18: core.v1.PluginService.Register:output_type -> core.v1.RegisterResponse
-	5,  // 19: core.v1.PluginService.Heartbeat:output_type -> core.v1.HeartbeatResponse
-	8,  // 20: core.v1.CoreService.CallMocr:output_type -> core.v1.CallMocrResponse
-	10, // 21: core.v1.CoreService.UseAgent:output_type -> core.v1.UseAgentResponse
-	12, // 22: core.v1.CoreService.CancelAgent:output_type -> core.v1.CancelAgentResponse
-	14, // 23: core.v1.CoreService.ListAgents:output_type -> core.v1.ListAgentsResponse
-	17, // 24: core.v1.CoreService.RunDirect:output_type -> core.v1.RunDirectResponse
-	18, // [18:25] is the sub-list for method output_type
-	11, // [11:18] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	23, // 11: core.v1.EgressRequest.headers:type_name -> core.v1.EgressRequest.HeadersEntry
+	24, // 12: core.v1.EgressResponse.headers:type_name -> core.v1.EgressResponse.HeadersEntry
+	1,  // 13: core.v1.PluginService.Register:input_type -> core.v1.RegisterRequest
+	3,  // 14: core.v1.PluginService.Heartbeat:input_type -> core.v1.HeartbeatRequest
+	6,  // 15: core.v1.CoreService.CallMocr:input_type -> core.v1.CallMocrRequest
+	9,  // 16: core.v1.CoreService.UseAgent:input_type -> core.v1.UseAgentRequest
+	11, // 17: core.v1.CoreService.CancelAgent:input_type -> core.v1.CancelAgentRequest
+	13, // 18: core.v1.CoreService.ListAgents:input_type -> core.v1.ListAgentsRequest
+	16, // 19: core.v1.CoreService.RunDirect:input_type -> core.v1.RunDirectRequest
+	18, // 20: core.v1.CoreService.Egress:input_type -> core.v1.EgressRequest
+	2,  // 21: core.v1.PluginService.Register:output_type -> core.v1.RegisterResponse
+	5,  // 22: core.v1.PluginService.Heartbeat:output_type -> core.v1.HeartbeatResponse
+	8,  // 23: core.v1.CoreService.CallMocr:output_type -> core.v1.CallMocrResponse
+	10, // 24: core.v1.CoreService.UseAgent:output_type -> core.v1.UseAgentResponse
+	12, // 25: core.v1.CoreService.CancelAgent:output_type -> core.v1.CancelAgentResponse
+	14, // 26: core.v1.CoreService.ListAgents:output_type -> core.v1.ListAgentsResponse
+	17, // 27: core.v1.CoreService.RunDirect:output_type -> core.v1.RunDirectResponse
+	19, // 28: core.v1.CoreService.Egress:output_type -> core.v1.EgressResponse
+	21, // [21:29] is the sub-list for method output_type
+	13, // [13:21] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_core_v1_core_proto_init() }
@@ -1650,7 +1854,7 @@ func file_core_v1_core_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_core_v1_core_proto_rawDesc), len(file_core_v1_core_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   20,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

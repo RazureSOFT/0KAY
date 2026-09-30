@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file plugin/v1/plugin.proto.
  */
 export const file_plugin_v1_plugin: GenFile = /*@__PURE__*/
-  fileDesc("ChZwbHVnaW4vdjEvcGx1Z2luLnByb3RvEglwbHVnaW4udjEifAoKUGx1Z2luSW5mbxIMCgRuYW1lGAEgASgJEg8KB3ZlcnNpb24YAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDgoGYXV0aG9yGAQgASgJEioKC3BsdWdpbl90eXBlGAUgASgOMhUucGx1Z2luLnYxLlBsdWdpblR5cGUibwoNU2V0dGluZ3NGaWVsZBILCgNrZXkYASABKAkSDAoEdHlwZRgCIAEoCRINCgVsYWJlbBgDIAEoCRIVCg1kZWZhdWx0X3ZhbHVlGAQgASgJEg8KB29wdGlvbnMYBSADKAkSDAoEaGVscBgGIAEoCSKIAQoPU2V0dGluZ3NTZWN0aW9uEgoKAmlkGAEgASgJEg0KBWxhYmVsGAIgASgJEgwKBGljb24YAyABKAkSDQoFb3JkZXIYBCABKAUSEwoLZGVzY3JpcHRpb24YBSABKAkSKAoGZmllbGRzGAYgAygLMhgucGx1Z2luLnYxLlNldHRpbmdzRmllbGQqigEKClBsdWdpblR5cGUSGwoXUExVR0lOX1RZUEVfVU5TUEVDSUZJRUQQABIXChNQTFVHSU5fVFlQRV9BREFQVEVSEAESFwoTUExVR0lOX1RZUEVfUEVSU09OQRACEhQKEFBMVUdJTl9UWVBFX1RPT0wQAxIXChNQTFVHSU5fVFlQRV9TRVJWSUNFEAQqnQEKCVRhc2tTdGF0ZRIaChZUQVNLX1NUQVRFX1VOU1BFQ0lGSUVEEAASFgoSVEFTS19TVEFURV9QRU5ESU5HEAESFgoSVEFTS19TVEFURV9SVU5OSU5HEAISEwoPVEFTS19TVEFURV9ET05FEAMSFQoRVEFTS19TVEFURV9GQUlMRUQQBBIYChRUQVNLX1NUQVRFX0NBTkNFTExFRBAFQlYKFWFpLnplcm8ua2F5LnBsdWdpbi52MVABWhswa2F5L2dlbi9wbHVnaW4vdjE7cGx1Z2ludjGiAghaS1BsdWdpbqoCElplcm8uS2F5LlBsdWdpbi5WMWIGcHJvdG8z");
+  fileDesc("ChZwbHVnaW4vdjEvcGx1Z2luLnByb3RvEglwbHVnaW4udjEirgEKClBsdWdpbkluZm8SDAoEbmFtZRgBIAEoCRIPCgd2ZXJzaW9uGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEg4KBmF1dGhvchgEIAEoCRIqCgtwbHVnaW5fdHlwZRgFIAEoDjIVLnBsdWdpbi52MS5QbHVnaW5UeXBlEjAKC3Blcm1pc3Npb25zGAYgASgLMhsucGx1Z2luLnYxLlBsdWdpblBlcm1pc3Npb24iTQoQUGx1Z2luUGVybWlzc2lvbhIUCgxhcGlfcmVxdWlyZXMYASADKAkSEwoLYXBpX2V4cG9zZXMYAiADKAkSDgoGZWdyZXNzGAMgAygJIm8KDVNldHRpbmdzRmllbGQSCwoDa2V5GAEgASgJEgwKBHR5cGUYAiABKAkSDQoFbGFiZWwYAyABKAkSFQoNZGVmYXVsdF92YWx1ZRgEIAEoCRIPCgdvcHRpb25zGAUgAygJEgwKBGhlbHAYBiABKAkiiAEKD1NldHRpbmdzU2VjdGlvbhIKCgJpZBgBIAEoCRINCgVsYWJlbBgCIAEoCRIMCgRpY29uGAMgASgJEg0KBW9yZGVyGAQgASgFEhMKC2Rlc2NyaXB0aW9uGAUgASgJEigKBmZpZWxkcxgGIAMoCzIYLnBsdWdpbi52MS5TZXR0aW5nc0ZpZWxkKooBCgpQbHVnaW5UeXBlEhsKF1BMVUdJTl9UWVBFX1VOU1BFQ0lGSUVEEAASFwoTUExVR0lOX1RZUEVfQURBUFRFUhABEhcKE1BMVUdJTl9UWVBFX1BFUlNPTkEQAhIUChBQTFVHSU5fVFlQRV9UT09MEAMSFwoTUExVR0lOX1RZUEVfU0VSVklDRRAEKp0BCglUYXNrU3RhdGUSGgoWVEFTS19TVEFURV9VTlNQRUNJRklFRBAAEhYKElRBU0tfU1RBVEVfUEVORElORxABEhYKElRBU0tfU1RBVEVfUlVOTklORxACEhMKD1RBU0tfU1RBVEVfRE9ORRADEhUKEVRBU0tfU1RBVEVfRkFJTEVEEAQSGAoUVEFTS19TVEFURV9DQU5DRUxMRUQQBUJWChVhaS56ZXJvLmtheS5wbHVnaW4udjFQAVobMGtheS9nZW4vcGx1Z2luL3YxO3BsdWdpbnYxogIIWktQbHVnaW6qAhJaZXJvLktheS5QbHVnaW4uVjFiBnByb3RvMw");
 
 /**
  * PluginInfo contains metadata about a plugin.
@@ -52,6 +52,16 @@ export type PluginInfo = Message<"plugin.v1.PluginInfo"> & {
    * @generated from field: plugin.v1.PluginType plugin_type = 5;
    */
   pluginType: PluginType;
+
+  /**
+   * permissions declares the APIs the plugin needs/exposes and the outbound
+   * network it requires. Core enforces these: an API call not listed in
+   * api_requires is rejected, and egress not listed in `egress` is blocked.
+   * Built-in plugins are exempt (full access).
+   *
+   * @generated from field: plugin.v1.PluginPermission permissions = 6;
+   */
+  permissions?: PluginPermission | undefined;
 };
 
 /**
@@ -60,6 +70,47 @@ export type PluginInfo = Message<"plugin.v1.PluginInfo"> & {
  */
 export const PluginInfoSchema: GenMessage<PluginInfo> = /*@__PURE__*/
   messageDesc(file_plugin_v1_plugin, 0);
+
+/**
+ * PluginPermission is a plugin's declared permission set, mirrored from its
+ * package manifest (`permissions`) at registration time.
+ *
+ * @generated from message plugin.v1.PluginPermission
+ */
+export type PluginPermission = Message<"plugin.v1.PluginPermission"> & {
+  /**
+   * api_requires lists the Core APIs the plugin may call, as
+   * "METHOD /path" (e.g. "GET /api/providers/credentials") or a gRPC method
+   * (e.g. "core.v1.CoreService/CallMocr"). A trailing "*" matches a prefix.
+   *
+   * @generated from field: repeated string api_requires = 1;
+   */
+  apiRequires: string[];
+
+  /**
+   * api_exposes lists the APIs this plugin exposes to Core and other plugins,
+   * using the same notation (e.g. "agent.v1.AgentService/ExecuteTask").
+   *
+   * @generated from field: repeated string api_exposes = 2;
+   */
+  apiExposes: string[];
+
+  /**
+   * egress lists the hosts the plugin may reach through Core's egress proxy,
+   * as a hostname, "host:port" or IP (e.g. "api.open-meteo.com"). A leading
+   * "*." matches any subdomain.
+   *
+   * @generated from field: repeated string egress = 3;
+   */
+  egress: string[];
+};
+
+/**
+ * Describes the message plugin.v1.PluginPermission.
+ * Use `create(PluginPermissionSchema)` to create a new message.
+ */
+export const PluginPermissionSchema: GenMessage<PluginPermission> = /*@__PURE__*/
+  messageDesc(file_plugin_v1_plugin, 1);
 
 /**
  * SettingsField is one declarative form field inside a settings section.
@@ -115,7 +166,7 @@ export type SettingsField = Message<"plugin.v1.SettingsField"> & {
  * Use `create(SettingsFieldSchema)` to create a new message.
  */
 export const SettingsFieldSchema: GenMessage<SettingsField> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 1);
+  messageDesc(file_plugin_v1_plugin, 2);
 
 /**
  * SettingsSection is a settings tab contributed by a plugin.
@@ -171,7 +222,7 @@ export type SettingsSection = Message<"plugin.v1.SettingsSection"> & {
  * Use `create(SettingsSectionSchema)` to create a new message.
  */
 export const SettingsSectionSchema: GenMessage<SettingsSection> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 2);
+  messageDesc(file_plugin_v1_plugin, 3);
 
 /**
  * PluginType categorizes the plugin's role in the system.

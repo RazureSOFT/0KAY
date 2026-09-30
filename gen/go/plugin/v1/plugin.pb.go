@@ -159,7 +159,12 @@ type PluginInfo struct {
 	// author is the plugin author's name or identifier.
 	Author string `protobuf:"bytes,4,opt,name=author,proto3" json:"author,omitempty"`
 	// plugin_type categorizes the plugin.
-	PluginType    PluginType `protobuf:"varint,5,opt,name=plugin_type,json=pluginType,proto3,enum=plugin.v1.PluginType" json:"plugin_type,omitempty"`
+	PluginType PluginType `protobuf:"varint,5,opt,name=plugin_type,json=pluginType,proto3,enum=plugin.v1.PluginType" json:"plugin_type,omitempty"`
+	// permissions declares the APIs the plugin needs/exposes and the outbound
+	// network it requires. Core enforces these: an API call not listed in
+	// api_requires is rejected, and egress not listed in `egress` is blocked.
+	// Built-in plugins are exempt (full access).
+	Permissions   *PluginPermission `protobuf:"bytes,6,opt,name=permissions,proto3" json:"permissions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -229,6 +234,83 @@ func (x *PluginInfo) GetPluginType() PluginType {
 	return PluginType_PLUGIN_TYPE_UNSPECIFIED
 }
 
+func (x *PluginInfo) GetPermissions() *PluginPermission {
+	if x != nil {
+		return x.Permissions
+	}
+	return nil
+}
+
+// PluginPermission is a plugin's declared permission set, mirrored from its
+// package manifest (`permissions`) at registration time.
+type PluginPermission struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// api_requires lists the Core APIs the plugin may call, as
+	// "METHOD /path" (e.g. "GET /api/providers/credentials") or a gRPC method
+	// (e.g. "core.v1.CoreService/CallMocr"). A trailing "*" matches a prefix.
+	ApiRequires []string `protobuf:"bytes,1,rep,name=api_requires,json=apiRequires,proto3" json:"api_requires,omitempty"`
+	// api_exposes lists the APIs this plugin exposes to Core and other plugins,
+	// using the same notation (e.g. "agent.v1.AgentService/ExecuteTask").
+	ApiExposes []string `protobuf:"bytes,2,rep,name=api_exposes,json=apiExposes,proto3" json:"api_exposes,omitempty"`
+	// egress lists the hosts the plugin may reach through Core's egress proxy,
+	// as a hostname, "host:port" or IP (e.g. "api.open-meteo.com"). A leading
+	// "*." matches any subdomain.
+	Egress        []string `protobuf:"bytes,3,rep,name=egress,proto3" json:"egress,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PluginPermission) Reset() {
+	*x = PluginPermission{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PluginPermission) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PluginPermission) ProtoMessage() {}
+
+func (x *PluginPermission) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PluginPermission.ProtoReflect.Descriptor instead.
+func (*PluginPermission) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *PluginPermission) GetApiRequires() []string {
+	if x != nil {
+		return x.ApiRequires
+	}
+	return nil
+}
+
+func (x *PluginPermission) GetApiExposes() []string {
+	if x != nil {
+		return x.ApiExposes
+	}
+	return nil
+}
+
+func (x *PluginPermission) GetEgress() []string {
+	if x != nil {
+		return x.Egress
+	}
+	return nil
+}
+
 // SettingsField is one declarative form field inside a settings section.
 type SettingsField struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -250,7 +332,7 @@ type SettingsField struct {
 
 func (x *SettingsField) Reset() {
 	*x = SettingsField{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[1]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -262,7 +344,7 @@ func (x *SettingsField) String() string {
 func (*SettingsField) ProtoMessage() {}
 
 func (x *SettingsField) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[1]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -275,7 +357,7 @@ func (x *SettingsField) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettingsField.ProtoReflect.Descriptor instead.
 func (*SettingsField) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{1}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *SettingsField) GetKey() string {
@@ -341,7 +423,7 @@ type SettingsSection struct {
 
 func (x *SettingsSection) Reset() {
 	*x = SettingsSection{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[2]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -353,7 +435,7 @@ func (x *SettingsSection) String() string {
 func (*SettingsSection) ProtoMessage() {}
 
 func (x *SettingsSection) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[2]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -366,7 +448,7 @@ func (x *SettingsSection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettingsSection.ProtoReflect.Descriptor instead.
 func (*SettingsSection) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{2}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *SettingsSection) GetId() string {
@@ -415,7 +497,7 @@ var File_plugin_v1_plugin_proto protoreflect.FileDescriptor
 
 const file_plugin_v1_plugin_proto_rawDesc = "" +
 	"\n" +
-	"\x16plugin/v1/plugin.proto\x12\tplugin.v1\"\xac\x01\n" +
+	"\x16plugin/v1/plugin.proto\x12\tplugin.v1\"\xeb\x01\n" +
 	"\n" +
 	"PluginInfo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
@@ -423,7 +505,13 @@ const file_plugin_v1_plugin_proto_rawDesc = "" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x16\n" +
 	"\x06author\x18\x04 \x01(\tR\x06author\x126\n" +
 	"\vplugin_type\x18\x05 \x01(\x0e2\x15.plugin.v1.PluginTypeR\n" +
-	"pluginType\"\x9e\x01\n" +
+	"pluginType\x12=\n" +
+	"\vpermissions\x18\x06 \x01(\v2\x1b.plugin.v1.PluginPermissionR\vpermissions\"n\n" +
+	"\x10PluginPermission\x12!\n" +
+	"\fapi_requires\x18\x01 \x03(\tR\vapiRequires\x12\x1f\n" +
+	"\vapi_exposes\x18\x02 \x03(\tR\n" +
+	"apiExposes\x12\x16\n" +
+	"\x06egress\x18\x03 \x03(\tR\x06egress\"\x9e\x01\n" +
 	"\rSettingsField\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x14\n" +
@@ -467,22 +555,24 @@ func file_plugin_v1_plugin_proto_rawDescGZIP() []byte {
 }
 
 var file_plugin_v1_plugin_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_plugin_v1_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_plugin_v1_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_plugin_v1_plugin_proto_goTypes = []any{
-	(PluginType)(0),         // 0: plugin.v1.PluginType
-	(TaskState)(0),          // 1: plugin.v1.TaskState
-	(*PluginInfo)(nil),      // 2: plugin.v1.PluginInfo
-	(*SettingsField)(nil),   // 3: plugin.v1.SettingsField
-	(*SettingsSection)(nil), // 4: plugin.v1.SettingsSection
+	(PluginType)(0),          // 0: plugin.v1.PluginType
+	(TaskState)(0),           // 1: plugin.v1.TaskState
+	(*PluginInfo)(nil),       // 2: plugin.v1.PluginInfo
+	(*PluginPermission)(nil), // 3: plugin.v1.PluginPermission
+	(*SettingsField)(nil),    // 4: plugin.v1.SettingsField
+	(*SettingsSection)(nil),  // 5: plugin.v1.SettingsSection
 }
 var file_plugin_v1_plugin_proto_depIdxs = []int32{
 	0, // 0: plugin.v1.PluginInfo.plugin_type:type_name -> plugin.v1.PluginType
-	3, // 1: plugin.v1.SettingsSection.fields:type_name -> plugin.v1.SettingsField
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 1: plugin.v1.PluginInfo.permissions:type_name -> plugin.v1.PluginPermission
+	4, // 2: plugin.v1.SettingsSection.fields:type_name -> plugin.v1.SettingsField
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_plugin_v1_plugin_proto_init() }
@@ -496,7 +586,7 @@ func file_plugin_v1_plugin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_plugin_v1_plugin_proto_rawDesc), len(file_plugin_v1_plugin_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

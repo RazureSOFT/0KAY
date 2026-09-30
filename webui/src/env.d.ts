@@ -9,6 +9,7 @@ declare module '*.vue' {
 type OkayConfirmOptions = {
   title?: string
   message: string
+  details?: string[]
   confirmLabel?: string
   cancelLabel?: string
   danger?: boolean

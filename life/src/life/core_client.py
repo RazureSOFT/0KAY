@@ -25,6 +25,25 @@ def _manifest_version(fallback: str = "0.1.1") -> str:
         return fallback
 
 
+def _manifest_permissions():
+    """Read the declarative `permissions` block from manifest.json."""
+    try:
+        manifest = os.path.join(os.path.dirname(__file__), '..', '..', 'manifest.json')
+        with open(manifest, encoding="utf-8") as handle:
+            perms = json.load(handle).get("permissions") or {}
+    except (OSError, ValueError):
+        return None
+    api = perms.get("api") or {}
+    requires = api.get("requires") or []
+    exposes = api.get("exposes") or []
+    egress = perms.get("egress") or []
+    if not (requires or exposes or egress):
+        return None
+    return plugin_pb2.PluginPermission(
+        api_requires=requires, api_exposes=exposes, egress=egress
+    )
+
+
 class CoreClient:
     """gRPC client for talking to 0kay Core (PluginService + CoreService)."""
 
@@ -76,14 +95,18 @@ class CoreClient:
         try:
             # Declare Life settings section for the WebUI Settings page
             from plugin.v1 import plugin_pb2 as _pb
+            info = plugin_pb2.PluginInfo(
+                name="life",
+                version=_manifest_version(),
+                description="L.I.F.E - Persona engine (THINK/OUTPUT)",
+                author="0kay",
+                plugin_type=plugin_pb2.PLUGIN_TYPE_PERSONA,
+            )
+            permissions = _manifest_permissions()
+            if permissions is not None:
+                info.permissions.CopyFrom(permissions)
             request = core_pb2.RegisterRequest(
-                plugin_info=plugin_pb2.PluginInfo(
-                    name="life",
-                    version=_manifest_version(),
-                    description="L.I.F.E - Persona engine (THINK/OUTPUT)",
-                    author="0kay",
-                    plugin_type=plugin_pb2.PLUGIN_TYPE_PERSONA,
-                ),
+                plugin_info=info,
                 capabilities=["life", "requires:mocr"],
                 address=self.life_address,
             )
@@ -309,6 +332,11 @@ class CoreClient:
             resp = self._plugin_stub.Register(request, timeout=5)
             if resp.success:
                 self.plugin_id = resp.plugin_id
+                try:
+                    from life.identity import set_identity
+                    set_identity("life", resp.service_token)
+                except Exception:
+                    pass
                 print(f"[LIFE-Core] Registered with Core: plugin_id={self.plugin_id}")
                 return True
             else:

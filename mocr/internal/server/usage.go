@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"0kay/mocr/internal/register"
 )
 
 const usageOutboxMax = 512
@@ -20,6 +22,14 @@ const usageOutboxTTL = 7 * 24 * time.Hour
 var usageLock sync.Mutex
 
 func coreAuth(req *http.Request) {
+	// Attribute the call with the plugin identity issued at registration so Core
+	// can enforce mocr's declared API allow-list. Fall back to the shared service
+	// token when mocr has not registered yet (early startup).
+	if name, token := register.Identity(); name != "" && token != "" {
+		req.Header.Set("X-0KAY-Plugin", name)
+		req.Header.Set("Authorization", "Bearer "+token)
+		return
+	}
 	if token := os.Getenv("CORE_API_TOKEN"); token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}

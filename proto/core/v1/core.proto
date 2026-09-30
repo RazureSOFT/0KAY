@@ -35,6 +35,11 @@ service CoreService {
 
   // RunDirect executes a tool command on an Agent without an LLM loop.
   rpc RunDirect(RunDirectRequest) returns (RunDirectResponse);
+
+  // Egress proxies an outbound HTTP request on behalf of a plugin so all
+  // plugin network access flows through Core and is checked against the
+  // plugin's declared egress allowlist. Built-in plugins bypass the check.
+  rpc Egress(EgressRequest) returns (EgressResponse);
 }
 
 // RegisterRequest is the request for PluginService.Register.
@@ -64,6 +69,11 @@ message RegisterResponse {
 
   // message contains optional human-readable status.
   string message = 3;
+
+  // service_token is the plugin's per-identity bearer token, issued by Core.
+  // The plugin sends it (with its name) on Core HTTP calls and the egress RPC
+  // so Core can attribute and authorize the request.
+  string service_token = 4;
 }
 
 // HeartbeatRequest is the request for PluginService.Heartbeat.
@@ -267,6 +277,42 @@ message RunDirectResponse {
   bool success = 1;
   string result = 2;
   string error = 3;
+}
+
+// EgressRequest is an outbound HTTP request a plugin asks Core to perform.
+message EgressRequest {
+  // plugin_id is the calling plugin's id (CallerID is filled by Core).
+  string plugin_id = 1;
+
+  // method is the HTTP method (GET/POST/...); defaults to GET.
+  string method = 2;
+
+  // url is the absolute target URL.
+  string url = 3;
+
+  // headers are forwarded request headers.
+  map<string, string> headers = 4;
+
+  // body is the request body (optional).
+  bytes body = 5;
+
+  // timeout_ms caps the request duration (0 = Core default).
+  int32 timeout_ms = 6;
+}
+
+// EgressResponse is the result of CoreService.Egress.
+message EgressResponse {
+  // status is the upstream HTTP status code (0 on transport error).
+  int32 status = 1;
+
+  // headers are the upstream response headers.
+  map<string, string> headers = 2;
+
+  // body is the upstream response body.
+  bytes body = 3;
+
+  // error is set when the request was blocked or failed at the transport layer.
+  string error = 4;
 }
 
 // MocrContext provides additional context for model selection.

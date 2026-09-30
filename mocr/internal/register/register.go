@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	corev1 "0kay/gen/core/v1"
@@ -13,6 +14,27 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
+
+var (
+	identityMu    sync.RWMutex
+	identityName  string
+	identityToken string
+)
+
+// SetIdentity records the name + service token returned by Core at registration.
+// The HTTP helpers attach them so Core can attribute and authorize plugin calls.
+func SetIdentity(name, token string) {
+	identityMu.Lock()
+	defer identityMu.Unlock()
+	identityName, identityToken = name, token
+}
+
+// Identity returns the last registered plugin name and service token.
+func Identity() (string, string) {
+	identityMu.RLock()
+	defer identityMu.RUnlock()
+	return identityName, identityToken
+}
 
 // Options configures mocr plugin registration with Core.
 type Options struct {
@@ -39,6 +61,34 @@ func ManifestVersion(fallback string) string {
 		return fallback
 	}
 	return manifest.Version
+}
+
+// ManifestPermissions reads the declared `permissions` block from manifest.json.
+func ManifestPermissions() *pluginv1.PluginPermission {
+	data, err := os.ReadFile("manifest.json")
+	if err != nil {
+		return nil
+	}
+	var manifest struct {
+		Permissions struct {
+			API struct {
+				Requires []string `json:"requires"`
+				Exposes  []string `json:"exposes"`
+			} `json:"api"`
+			Egress []string `json:"egress"`
+		} `json:"permissions"`
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return nil
+	}
+	if len(manifest.Permissions.API.Requires) == 0 && len(manifest.Permissions.API.Exposes) == 0 && len(manifest.Permissions.Egress) == 0 {
+		return nil
+	}
+	return &pluginv1.PluginPermission{
+		ApiRequires: manifest.Permissions.API.Requires,
+		ApiExposes:  manifest.Permissions.API.Exposes,
+		Egress:      manifest.Permissions.Egress,
+	}
 }
 
 // Start registers mocr as a plugin and keeps heartbeating until ctx is done.
@@ -84,6 +134,7 @@ func Start(ctx context.Context, opts Options) {
 					Description: "mocr - model selector / multi-provider LLM gateway",
 					Author:      "0kay",
 					PluginType:  pluginv1.PluginType_PLUGIN_TYPE_SERVICE,
+					Permissions: ManifestPermissions(),
 				},
 				Capabilities:     opts.Capabilities,
 				Address:          opts.MocrAddress,
@@ -98,6 +149,7 @@ func Start(ctx context.Context, opts Options) {
 				return false
 			}
 			pluginID = resp.PluginId
+			SetIdentity(opts.PluginName, resp.ServiceToken)
 			log.Printf("[mocr-register] registered with Core: plugin_id=%s", pluginID)
 			return true
 		}

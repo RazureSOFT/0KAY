@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"log"
 	"net"
@@ -44,6 +45,20 @@ func main() {
 	}
 	provStore := providers.NewStore(dataDir + "/providers.json")
 	setStore := settings.NewStore(dataDir + "/settings.json")
+
+	// Per-plugin service tokens derive from a persisted key so they survive
+	// Core restarts (a plugin keeps working without re-registering).
+	if secret, err := loadPluginTokenSecret(dataDir); err != nil {
+		log.Printf("plugin token secret: %v (plugin identity disabled)", err)
+	} else {
+		reg.SetSecret(secret)
+	}
+	// First-party platform plugins bypass the manifest permission allow-lists
+	// (their egress is fully permitted). Third-party plugins are enforced.
+	reg.SetTrusted([]string{
+		"webui", "agent", "life", "mocr", "mcp", "searxng", "minecraft",
+		"pm", "0kay-pm", "fluentui", "liquidglass", "free-model", "marketplace",
+	})
 
 	// GitHub mirror for plugin/update fetches (Settings → Plugin updates).
 	registerUpdateSettings(setStore)
@@ -198,6 +213,28 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 		log.Printf("register webui builtin: %v", err)
 	}
 
+	// 0kay-pm (the package manager) registers as a built-in service plugin so it
+	// appears in the Plugins page and its permission surface is auditable. It has
+	// no process of its own; Core exposes the install/lifecycle APIs it drives.
+	if _, err := reg.RegisterBuiltin(&pluginv1.PluginInfo{
+		Name:        "pm",
+		Version:     version.Version,
+		Description: "0kay-pm - package manager (install/update/uninstall plugins)",
+		Author:      "0kay",
+		PluginType:  pluginv1.PluginType_PLUGIN_TYPE_SERVICE,
+		Permissions: &pluginv1.PluginPermission{
+			ApiExposes: []string{
+				"POST /api/plugins/install",
+				"POST /api/plugins/uninstall",
+				"GET /api/plugins/installed",
+				"GET /api/plugins/install/status",
+			},
+			Egress: []string{"github.com", "codeload.github.com", "registry.npmjs.org", "*.githubusercontent.com"},
+		},
+	}, []string{"package-manager"}, ""); err != nil {
+		log.Printf("register pm builtin: %v", err)
+	}
+
 	// Fluent Design theme: a patch-only plugin, i.e. it has no process to
 	// register itself from. Core materializes the registry row so the Plugins
 	// page can switch it. The patch is not shipped in core/data/ui — 0kay-pm
@@ -234,8 +271,7 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 	}
 
 	// Optional: local SearXNG (searxng service) if enabled
-	if os.Getenv("SEARXNG_ENABLED") == "1" || os.Getenv("SEARXNG_URL") != "" {
-		searxAddr := os.Getenv("SEARXNG_URL")
+	if os.Getenv("SEARXNG_ENABLED") == "1" || os.Getenv("SEARXNG_URL") != "" {		searxAddr := os.Getenv("SEARXNG_URL")
 		if searxAddr == "" {
 			searxAddr = "http://127.0.0.1:8888"
 		}
@@ -302,6 +338,26 @@ func registerSearxngSettings(setStore *settings.Store) {
 			},
 		},
 	})
+}
+
+// loadPluginTokenSecret reads (or creates) the 32-byte HMAC key used to derive
+// plugin service tokens.
+func loadPluginTokenSecret(dataDir string) ([]byte, error) {
+	path := dataDir + "/plugin-token.key"
+	if raw, err := os.ReadFile(path); err == nil && len(raw) >= 32 {
+		return raw, nil
+	}
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(dataDir, 0o700); err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(path, secret, 0o600); err != nil {
+		return nil, err
+	}
+	return secret, nil
 }
 
 func startHeartbeatChecker(reg *registry.Registry, cfg *config.Config) {

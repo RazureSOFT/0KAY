@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file core/v1/core.proto.
  */
 export const file_core_v1_core: GenFile = /*@__PURE__*/
-  fileDesc("ChJjb3JlL3YxL2NvcmUucHJvdG8SB2NvcmUudjEimwEKD1JlZ2lzdGVyUmVxdWVzdBIqCgtwbHVnaW5faW5mbxgBIAEoCzIVLnBsdWdpbi52MS5QbHVnaW5JbmZvEhQKDGNhcGFiaWxpdGllcxgCIAMoCRIPCgdhZGRyZXNzGAMgASgJEjUKEXNldHRpbmdzX3NlY3Rpb25zGAQgAygLMhoucGx1Z2luLnYxLlNldHRpbmdzU2VjdGlvbiJHChBSZWdpc3RlclJlc3BvbnNlEg8KB3N1Y2Nlc3MYASABKAgSEQoJcGx1Z2luX2lkGAIgASgJEg8KB21lc3NhZ2UYAyABKAkigwEKEEhlYXJ0YmVhdFJlcXVlc3QSEQoJcGx1Z2luX2lkGAEgASgJEiUKBnN0YXR1cxgCIAEoDjIVLmNvcmUudjEuUGx1Z2luU3RhdHVzEhQKDGFjdGl2ZV90YXNrcxgDIAEoBRIfCgRob3N0GAQgASgLMhEuY29yZS52MS5Ib3N0SW5mbyKpAQoISG9zdEluZm8SEAoIaG9zdG5hbWUYASABKAkSCgoCb3MYAiABKAkSDAoEYXJjaBgDIAEoCRIRCgljcHVfbW9kZWwYBCABKAkSEQoJY3B1X2NvcmVzGAUgASgFEhoKEm1lbW9yeV90b3RhbF9ieXRlcxgGIAEoAxIeChZtZW1vcnlfYXZhaWxhYmxlX2J5dGVzGAcgASgDEg8KB3dvcmtkaXIYCCABKAkiOAoRSGVhcnRiZWF0UmVzcG9uc2USCgoCb2sYASABKAgSFwoPc2h1dGRvd25fc2lnbmFsGAIgASgIIuQBCg9DYWxsTW9jclJlcXVlc3QSEgoKcmVxdWVzdF9pZBgBIAEoCRIRCgljYWxsZXJfaWQYAiABKAkSDgoGcHJvbXB0GAMgASgJEiUKB2NvbnRleHQYBCABKAsyFC5jb3JlLnYxLk1vY3JDb250ZXh0Eg4KBnN0cmVhbRgFIAEoCBISCgpzZXNzaW9uX2lkGAYgASgJEiYKCG1lc3NhZ2VzGAcgAygLMhQuY29yZS52MS5DaGF0TWVzc2FnZRIQCghtb2RlbF9pZBgIIAEoCRIVCg1zeXN0ZW1fcHJvbXB0GAkgASgJIiwKC0NoYXRNZXNzYWdlEgwKBHJvbGUYASABKAkSDwoHY29udGVudBgCIAEoCSJ2ChBDYWxsTW9jclJlc3BvbnNlEhIKCnJlcXVlc3RfaWQYASABKAkSDQoFY2h1bmsYAiABKAkSDAoEZG9uZRgDIAEoCBINCgVlcnJvchgEIAEoCRIiCgV1c2FnZRgFIAEoCzITLmNvcmUudjEuVG9rZW5Vc2FnZSLEAQoPVXNlQWdlbnRSZXF1ZXN0Eg8KB3Rhc2tfaWQYASABKAkSEQoJY2FsbGVyX2lkGAIgASgJEg4KBnByb21wdBgDIAEoCRISCgphZ2VudF90eXBlGAQgASgJEjgKCG1ldGFkYXRhGAUgAygLMiYuY29yZS52MS5Vc2VBZ2VudFJlcXVlc3QuTWV0YWRhdGFFbnRyeRovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiRgoQVXNlQWdlbnRSZXNwb25zZRIQCghhY2NlcHRlZBgBIAEoCBIPCgd0YXNrX2lkGAIgASgJEg8KB21lc3NhZ2UYAyABKAkiOAoSQ2FuY2VsQWdlbnRSZXF1ZXN0Eg8KB3Rhc2tfaWQYASABKAkSEQoJY2FsbGVyX2lkGAIgASgJIjcKE0NhbmNlbEFnZW50UmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCBIPCgdtZXNzYWdlGAIgASgJIi4KEUxpc3RBZ2VudHNSZXF1ZXN0EhkKEWluY2x1ZGVfdW5oZWFsdGh5GAEgASgIIk4KEkxpc3RBZ2VudHNSZXNwb25zZRIiCgZhZ2VudHMYASADKAsyEi5jb3JlLnYxLkFnZW50SW5mbxIUCgxvbmxpbmVfY291bnQYAiABKAUi0AEKCUFnZW50SW5mbxIRCglwbHVnaW5faWQYASABKAkSDAoEbmFtZRgCIAEoCRIPCgd2ZXJzaW9uGAMgASgJEg8KB2FkZHJlc3MYBCABKAkSJQoGc3RhdHVzGAUgASgOMhUuY29yZS52MS5QbHVnaW5TdGF0dXMSFAoMYWN0aXZlX3Rhc2tzGAYgASgFEiIKGmxhc3RfaGVhcnRiZWF0X2FnZV9zZWNvbmRzGAcgASgDEh8KBGhvc3QYCCABKAsyES5jb3JlLnYxLkhvc3RJbmZvIkIKEFJ1bkRpcmVjdFJlcXVlc3QSDAoEdG9vbBgBIAEoCRIMCgRhcmdzGAIgASgJEhIKCnNlc3Npb25faWQYAyABKAkiQwoRUnVuRGlyZWN0UmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCBIOCgZyZXN1bHQYAiABKAkSDQoFZXJyb3IYAyABKAkidwoLTW9jckNvbnRleHQSFwoPZGlmZmljdWx0eV9oaW50GAEgASgBEhIKCm1heF90b2tlbnMYAiABKAUSEwoLdGVtcGVyYXR1cmUYAyABKAESEwoLY29zdF9idWRnZXQYBCABKAESEQoJdGFza190eXBlGAUgASgJIlQKClRva2VuVXNhZ2USFQoNcHJvbXB0X3Rva2VucxgBIAEoBRIZChFjb21wbGV0aW9uX3Rva2VucxgCIAEoBRIUCgx0b3RhbF90b2tlbnMYAyABKAUqgQEKDFBsdWdpblN0YXR1cxIdChlQTFVHSU5fU1RBVFVTX1VOU1BFQ0lGSUVEEAASGQoVUExVR0lOX1NUQVRVU19IRUFMVEhZEAESGgoWUExVR0lOX1NUQVRVU19ERUdSQURFRBACEhsKF1BMVUdJTl9TVEFUVVNfVU5IRUFMVEhZEAMylAEKDVBsdWdpblNlcnZpY2USPwoIUmVnaXN0ZXISGC5jb3JlLnYxLlJlZ2lzdGVyUmVxdWVzdBoZLmNvcmUudjEuUmVnaXN0ZXJSZXNwb25zZRJCCglIZWFydGJlYXQSGS5jb3JlLnYxLkhlYXJ0YmVhdFJlcXVlc3QaGi5jb3JlLnYxLkhlYXJ0YmVhdFJlc3BvbnNlMuYCCgtDb3JlU2VydmljZRJBCghDYWxsTW9jchIYLmNvcmUudjEuQ2FsbE1vY3JSZXF1ZXN0GhkuY29yZS52MS5DYWxsTW9jclJlc3BvbnNlMAESPwoIVXNlQWdlbnQSGC5jb3JlLnYxLlVzZUFnZW50UmVxdWVzdBoZLmNvcmUudjEuVXNlQWdlbnRSZXNwb25zZRJICgtDYW5jZWxBZ2VudBIbLmNvcmUudjEuQ2FuY2VsQWdlbnRSZXF1ZXN0GhwuY29yZS52MS5DYW5jZWxBZ2VudFJlc3BvbnNlEkUKCkxpc3RBZ2VudHMSGi5jb3JlLnYxLkxpc3RBZ2VudHNSZXF1ZXN0GhsuY29yZS52MS5MaXN0QWdlbnRzUmVzcG9uc2USQgoJUnVuRGlyZWN0EhkuY29yZS52MS5SdW5EaXJlY3RSZXF1ZXN0GhouY29yZS52MS5SdW5EaXJlY3RSZXNwb25zZUJMChNhaS56ZXJvLmtheS5jb3JlLnYxUAFaFzBrYXkvZ2VuL2NvcmUvdjE7Y29yZXYxogIGWktDb3JlqgIQWmVyby5LYXkuQ29yZS5WMWIGcHJvdG8z", [file_plugin_v1_plugin]);
+  fileDesc("ChJjb3JlL3YxL2NvcmUucHJvdG8SB2NvcmUudjEimwEKD1JlZ2lzdGVyUmVxdWVzdBIqCgtwbHVnaW5faW5mbxgBIAEoCzIVLnBsdWdpbi52MS5QbHVnaW5JbmZvEhQKDGNhcGFiaWxpdGllcxgCIAMoCRIPCgdhZGRyZXNzGAMgASgJEjUKEXNldHRpbmdzX3NlY3Rpb25zGAQgAygLMhoucGx1Z2luLnYxLlNldHRpbmdzU2VjdGlvbiJeChBSZWdpc3RlclJlc3BvbnNlEg8KB3N1Y2Nlc3MYASABKAgSEQoJcGx1Z2luX2lkGAIgASgJEg8KB21lc3NhZ2UYAyABKAkSFQoNc2VydmljZV90b2tlbhgEIAEoCSKDAQoQSGVhcnRiZWF0UmVxdWVzdBIRCglwbHVnaW5faWQYASABKAkSJQoGc3RhdHVzGAIgASgOMhUuY29yZS52MS5QbHVnaW5TdGF0dXMSFAoMYWN0aXZlX3Rhc2tzGAMgASgFEh8KBGhvc3QYBCABKAsyES5jb3JlLnYxLkhvc3RJbmZvIqkBCghIb3N0SW5mbxIQCghob3N0bmFtZRgBIAEoCRIKCgJvcxgCIAEoCRIMCgRhcmNoGAMgASgJEhEKCWNwdV9tb2RlbBgEIAEoCRIRCgljcHVfY29yZXMYBSABKAUSGgoSbWVtb3J5X3RvdGFsX2J5dGVzGAYgASgDEh4KFm1lbW9yeV9hdmFpbGFibGVfYnl0ZXMYByABKAMSDwoHd29ya2RpchgIIAEoCSI4ChFIZWFydGJlYXRSZXNwb25zZRIKCgJvaxgBIAEoCBIXCg9zaHV0ZG93bl9zaWduYWwYAiABKAgi5AEKD0NhbGxNb2NyUmVxdWVzdBISCgpyZXF1ZXN0X2lkGAEgASgJEhEKCWNhbGxlcl9pZBgCIAEoCRIOCgZwcm9tcHQYAyABKAkSJQoHY29udGV4dBgEIAEoCzIULmNvcmUudjEuTW9jckNvbnRleHQSDgoGc3RyZWFtGAUgASgIEhIKCnNlc3Npb25faWQYBiABKAkSJgoIbWVzc2FnZXMYByADKAsyFC5jb3JlLnYxLkNoYXRNZXNzYWdlEhAKCG1vZGVsX2lkGAggASgJEhUKDXN5c3RlbV9wcm9tcHQYCSABKAkiLAoLQ2hhdE1lc3NhZ2USDAoEcm9sZRgBIAEoCRIPCgdjb250ZW50GAIgASgJInYKEENhbGxNb2NyUmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCRINCgVjaHVuaxgCIAEoCRIMCgRkb25lGAMgASgIEg0KBWVycm9yGAQgASgJEiIKBXVzYWdlGAUgASgLMhMuY29yZS52MS5Ub2tlblVzYWdlIsQBCg9Vc2VBZ2VudFJlcXVlc3QSDwoHdGFza19pZBgBIAEoCRIRCgljYWxsZXJfaWQYAiABKAkSDgoGcHJvbXB0GAMgASgJEhIKCmFnZW50X3R5cGUYBCABKAkSOAoIbWV0YWRhdGEYBSADKAsyJi5jb3JlLnYxLlVzZUFnZW50UmVxdWVzdC5NZXRhZGF0YUVudHJ5Gi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJGChBVc2VBZ2VudFJlc3BvbnNlEhAKCGFjY2VwdGVkGAEgASgIEg8KB3Rhc2tfaWQYAiABKAkSDwoHbWVzc2FnZRgDIAEoCSI4ChJDYW5jZWxBZ2VudFJlcXVlc3QSDwoHdGFza19pZBgBIAEoCRIRCgljYWxsZXJfaWQYAiABKAkiNwoTQ2FuY2VsQWdlbnRSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEg8KB21lc3NhZ2UYAiABKAkiLgoRTGlzdEFnZW50c1JlcXVlc3QSGQoRaW5jbHVkZV91bmhlYWx0aHkYASABKAgiTgoSTGlzdEFnZW50c1Jlc3BvbnNlEiIKBmFnZW50cxgBIAMoCzISLmNvcmUudjEuQWdlbnRJbmZvEhQKDG9ubGluZV9jb3VudBgCIAEoBSLQAQoJQWdlbnRJbmZvEhEKCXBsdWdpbl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB3ZlcnNpb24YAyABKAkSDwoHYWRkcmVzcxgEIAEoCRIlCgZzdGF0dXMYBSABKA4yFS5jb3JlLnYxLlBsdWdpblN0YXR1cxIUCgxhY3RpdmVfdGFza3MYBiABKAUSIgoabGFzdF9oZWFydGJlYXRfYWdlX3NlY29uZHMYByABKAMSHwoEaG9zdBgIIAEoCzIRLmNvcmUudjEuSG9zdEluZm8iQgoQUnVuRGlyZWN0UmVxdWVzdBIMCgR0b29sGAEgASgJEgwKBGFyZ3MYAiABKAkSEgoKc2Vzc2lvbl9pZBgDIAEoCSJDChFSdW5EaXJlY3RSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEg4KBnJlc3VsdBgCIAEoCRINCgVlcnJvchgDIAEoCSLHAQoNRWdyZXNzUmVxdWVzdBIRCglwbHVnaW5faWQYASABKAkSDgoGbWV0aG9kGAIgASgJEgsKA3VybBgDIAEoCRI0CgdoZWFkZXJzGAQgAygLMiMuY29yZS52MS5FZ3Jlc3NSZXF1ZXN0LkhlYWRlcnNFbnRyeRIMCgRib2R5GAUgASgMEhIKCnRpbWVvdXRfbXMYBiABKAUaLgoMSGVhZGVyc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEipAEKDkVncmVzc1Jlc3BvbnNlEg4KBnN0YXR1cxgBIAEoBRI1CgdoZWFkZXJzGAIgAygLMiQuY29yZS52MS5FZ3Jlc3NSZXNwb25zZS5IZWFkZXJzRW50cnkSDAoEYm9keRgDIAEoDBINCgVlcnJvchgEIAEoCRouCgxIZWFkZXJzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJ3CgtNb2NyQ29udGV4dBIXCg9kaWZmaWN1bHR5X2hpbnQYASABKAESEgoKbWF4X3Rva2VucxgCIAEoBRITCgt0ZW1wZXJhdHVyZRgDIAEoARITCgtjb3N0X2J1ZGdldBgEIAEoARIRCgl0YXNrX3R5cGUYBSABKAkiVAoKVG9rZW5Vc2FnZRIVCg1wcm9tcHRfdG9rZW5zGAEgASgFEhkKEWNvbXBsZXRpb25fdG9rZW5zGAIgASgFEhQKDHRvdGFsX3Rva2VucxgDIAEoBSqBAQoMUGx1Z2luU3RhdHVzEh0KGVBMVUdJTl9TVEFUVVNfVU5TUEVDSUZJRUQQABIZChVQTFVHSU5fU1RBVFVTX0hFQUxUSFkQARIaChZQTFVHSU5fU1RBVFVTX0RFR1JBREVEEAISGwoXUExVR0lOX1NUQVRVU19VTkhFQUxUSFkQAzKUAQoNUGx1Z2luU2VydmljZRI/CghSZWdpc3RlchIYLmNvcmUudjEuUmVnaXN0ZXJSZXF1ZXN0GhkuY29yZS52MS5SZWdpc3RlclJlc3BvbnNlEkIKCUhlYXJ0YmVhdBIZLmNvcmUudjEuSGVhcnRiZWF0UmVxdWVzdBoaLmNvcmUudjEuSGVhcnRiZWF0UmVzcG9uc2UyoQMKC0NvcmVTZXJ2aWNlEkEKCENhbGxNb2NyEhguY29yZS52MS5DYWxsTW9jclJlcXVlc3QaGS5jb3JlLnYxLkNhbGxNb2NyUmVzcG9uc2UwARI/CghVc2VBZ2VudBIYLmNvcmUudjEuVXNlQWdlbnRSZXF1ZXN0GhkuY29yZS52MS5Vc2VBZ2VudFJlc3BvbnNlEkgKC0NhbmNlbEFnZW50EhsuY29yZS52MS5DYW5jZWxBZ2VudFJlcXVlc3QaHC5jb3JlLnYxLkNhbmNlbEFnZW50UmVzcG9uc2USRQoKTGlzdEFnZW50cxIaLmNvcmUudjEuTGlzdEFnZW50c1JlcXVlc3QaGy5jb3JlLnYxLkxpc3RBZ2VudHNSZXNwb25zZRJCCglSdW5EaXJlY3QSGS5jb3JlLnYxLlJ1bkRpcmVjdFJlcXVlc3QaGi5jb3JlLnYxLlJ1bkRpcmVjdFJlc3BvbnNlEjkKBkVncmVzcxIWLmNvcmUudjEuRWdyZXNzUmVxdWVzdBoXLmNvcmUudjEuRWdyZXNzUmVzcG9uc2VCTAoTYWkuemVyby5rYXkuY29yZS52MVABWhcwa2F5L2dlbi9jb3JlL3YxO2NvcmV2MaICBlpLQ29yZaoCEFplcm8uS2F5LkNvcmUuVjFiBnByb3RvMw", [file_plugin_v1_plugin]);
 
 /**
  * RegisterRequest is the request for PluginService.Register.
@@ -84,6 +84,15 @@ export type RegisterResponse = Message<"core.v1.RegisterResponse"> & {
    * @generated from field: string message = 3;
    */
   message: string;
+
+  /**
+   * service_token is the plugin's per-identity bearer token, issued by Core.
+   * The plugin sends it (with its name) on Core HTTP calls and the egress RPC
+   * so Core can attribute and authorize the request.
+   *
+   * @generated from field: string service_token = 4;
+   */
+  serviceToken: string;
 };
 
 /**
@@ -696,6 +705,104 @@ export const RunDirectResponseSchema: GenMessage<RunDirectResponse> = /*@__PURE_
   messageDesc(file_core_v1_core, 16);
 
 /**
+ * EgressRequest is an outbound HTTP request a plugin asks Core to perform.
+ *
+ * @generated from message core.v1.EgressRequest
+ */
+export type EgressRequest = Message<"core.v1.EgressRequest"> & {
+  /**
+   * plugin_id is the calling plugin's id (CallerID is filled by Core).
+   *
+   * @generated from field: string plugin_id = 1;
+   */
+  pluginId: string;
+
+  /**
+   * method is the HTTP method (GET/POST/...); defaults to GET.
+   *
+   * @generated from field: string method = 2;
+   */
+  method: string;
+
+  /**
+   * url is the absolute target URL.
+   *
+   * @generated from field: string url = 3;
+   */
+  url: string;
+
+  /**
+   * headers are forwarded request headers.
+   *
+   * @generated from field: map<string, string> headers = 4;
+   */
+  headers: { [key: string]: string };
+
+  /**
+   * body is the request body (optional).
+   *
+   * @generated from field: bytes body = 5;
+   */
+  body: Uint8Array;
+
+  /**
+   * timeout_ms caps the request duration (0 = Core default).
+   *
+   * @generated from field: int32 timeout_ms = 6;
+   */
+  timeoutMs: number;
+};
+
+/**
+ * Describes the message core.v1.EgressRequest.
+ * Use `create(EgressRequestSchema)` to create a new message.
+ */
+export const EgressRequestSchema: GenMessage<EgressRequest> = /*@__PURE__*/
+  messageDesc(file_core_v1_core, 17);
+
+/**
+ * EgressResponse is the result of CoreService.Egress.
+ *
+ * @generated from message core.v1.EgressResponse
+ */
+export type EgressResponse = Message<"core.v1.EgressResponse"> & {
+  /**
+   * status is the upstream HTTP status code (0 on transport error).
+   *
+   * @generated from field: int32 status = 1;
+   */
+  status: number;
+
+  /**
+   * headers are the upstream response headers.
+   *
+   * @generated from field: map<string, string> headers = 2;
+   */
+  headers: { [key: string]: string };
+
+  /**
+   * body is the upstream response body.
+   *
+   * @generated from field: bytes body = 3;
+   */
+  body: Uint8Array;
+
+  /**
+   * error is set when the request was blocked or failed at the transport layer.
+   *
+   * @generated from field: string error = 4;
+   */
+  error: string;
+};
+
+/**
+ * Describes the message core.v1.EgressResponse.
+ * Use `create(EgressResponseSchema)` to create a new message.
+ */
+export const EgressResponseSchema: GenMessage<EgressResponse> = /*@__PURE__*/
+  messageDesc(file_core_v1_core, 18);
+
+/**
  * MocrContext provides additional context for model selection.
  *
  * @generated from message core.v1.MocrContext
@@ -742,7 +849,7 @@ export type MocrContext = Message<"core.v1.MocrContext"> & {
  * Use `create(MocrContextSchema)` to create a new message.
  */
 export const MocrContextSchema: GenMessage<MocrContext> = /*@__PURE__*/
-  messageDesc(file_core_v1_core, 17);
+  messageDesc(file_core_v1_core, 19);
 
 /**
  * TokenUsage contains token usage information.
@@ -777,7 +884,7 @@ export type TokenUsage = Message<"core.v1.TokenUsage"> & {
  * Use `create(TokenUsageSchema)` to create a new message.
  */
 export const TokenUsageSchema: GenMessage<TokenUsage> = /*@__PURE__*/
-  messageDesc(file_core_v1_core, 18);
+  messageDesc(file_core_v1_core, 20);
 
 /**
  * PluginStatus represents the health status of a plugin.
@@ -904,6 +1011,18 @@ export const CoreService: GenService<{
     methodKind: "unary";
     input: typeof RunDirectRequestSchema;
     output: typeof RunDirectResponseSchema;
+  },
+  /**
+   * Egress proxies an outbound HTTP request on behalf of a plugin so all
+   * plugin network access flows through Core and is checked against the
+   * plugin's declared egress allowlist. Built-in plugins bypass the check.
+   *
+   * @generated from rpc core.v1.CoreService.Egress
+   */
+  egress: {
+    methodKind: "unary";
+    input: typeof EgressRequestSchema;
+    output: typeof EgressResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_core_v1_core, 1);

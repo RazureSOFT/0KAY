@@ -24,6 +24,30 @@ message PluginInfo {
 
   // plugin_type categorizes the plugin.
   PluginType plugin_type = 5;
+
+  // permissions declares the APIs the plugin needs/exposes and the outbound
+  // network it requires. Core enforces these: an API call not listed in
+  // api_requires is rejected, and egress not listed in `egress` is blocked.
+  // Built-in plugins are exempt (full access).
+  PluginPermission permissions = 6;
+}
+
+// PluginPermission is a plugin's declared permission set, mirrored from its
+// package manifest (`permissions`) at registration time.
+message PluginPermission {
+  // api_requires lists the Core APIs the plugin may call, as
+  // "METHOD /path" (e.g. "GET /api/providers/credentials") or a gRPC method
+  // (e.g. "core.v1.CoreService/CallMocr"). A trailing "*" matches a prefix.
+  repeated string api_requires = 1;
+
+  // api_exposes lists the APIs this plugin exposes to Core and other plugins,
+  // using the same notation (e.g. "agent.v1.AgentService/ExecuteTask").
+  repeated string api_exposes = 2;
+
+  // egress lists the hosts the plugin may reach through Core's egress proxy,
+  // as a hostname, "host:port" or IP (e.g. "api.open-meteo.com"). A leading
+  // "*." matches any subdomain.
+  repeated string egress = 3;
 }
 
 // PluginType categorizes the plugin's role in the system.

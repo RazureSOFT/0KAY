@@ -172,6 +172,7 @@ const (
 	CoreService_CancelAgent_FullMethodName = "/core.v1.CoreService/CancelAgent"
 	CoreService_ListAgents_FullMethodName  = "/core.v1.CoreService/ListAgents"
 	CoreService_RunDirect_FullMethodName   = "/core.v1.CoreService/RunDirect"
+	CoreService_Egress_FullMethodName      = "/core.v1.CoreService/Egress"
 )
 
 // CoreServiceClient is the client API for CoreService service.
@@ -190,6 +191,10 @@ type CoreServiceClient interface {
 	ListAgents(ctx context.Context, in *ListAgentsRequest, opts ...grpc.CallOption) (*ListAgentsResponse, error)
 	// RunDirect executes a tool command on an Agent without an LLM loop.
 	RunDirect(ctx context.Context, in *RunDirectRequest, opts ...grpc.CallOption) (*RunDirectResponse, error)
+	// Egress proxies an outbound HTTP request on behalf of a plugin so all
+	// plugin network access flows through Core and is checked against the
+	// plugin's declared egress allowlist. Built-in plugins bypass the check.
+	Egress(ctx context.Context, in *EgressRequest, opts ...grpc.CallOption) (*EgressResponse, error)
 }
 
 type coreServiceClient struct {
@@ -259,6 +264,16 @@ func (c *coreServiceClient) RunDirect(ctx context.Context, in *RunDirectRequest,
 	return out, nil
 }
 
+func (c *coreServiceClient) Egress(ctx context.Context, in *EgressRequest, opts ...grpc.CallOption) (*EgressResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EgressResponse)
+	err := c.cc.Invoke(ctx, CoreService_Egress_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CoreServiceServer is the server API for CoreService service.
 // All implementations must embed UnimplementedCoreServiceServer
 // for forward compatibility.
@@ -275,6 +290,10 @@ type CoreServiceServer interface {
 	ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error)
 	// RunDirect executes a tool command on an Agent without an LLM loop.
 	RunDirect(context.Context, *RunDirectRequest) (*RunDirectResponse, error)
+	// Egress proxies an outbound HTTP request on behalf of a plugin so all
+	// plugin network access flows through Core and is checked against the
+	// plugin's declared egress allowlist. Built-in plugins bypass the check.
+	Egress(context.Context, *EgressRequest) (*EgressResponse, error)
 	mustEmbedUnimplementedCoreServiceServer()
 }
 
@@ -299,6 +318,9 @@ func (UnimplementedCoreServiceServer) ListAgents(context.Context, *ListAgentsReq
 }
 func (UnimplementedCoreServiceServer) RunDirect(context.Context, *RunDirectRequest) (*RunDirectResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RunDirect not implemented")
+}
+func (UnimplementedCoreServiceServer) Egress(context.Context, *EgressRequest) (*EgressResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Egress not implemented")
 }
 func (UnimplementedCoreServiceServer) mustEmbedUnimplementedCoreServiceServer() {}
 func (UnimplementedCoreServiceServer) testEmbeddedByValue()                     {}
@@ -404,6 +426,24 @@ func _CoreService_RunDirect_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreService_Egress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EgressRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreServiceServer).Egress(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreService_Egress_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreServiceServer).Egress(ctx, req.(*EgressRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CoreService_ServiceDesc is the grpc.ServiceDesc for CoreService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -426,6 +466,10 @@ var CoreService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RunDirect",
 			Handler:    _CoreService_RunDirect_Handler,
+		},
+		{
+			MethodName: "Egress",
+			Handler:    _CoreService_Egress_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

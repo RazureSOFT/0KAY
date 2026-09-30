@@ -18,6 +18,23 @@
   prompt. It is user-owned content stored locally; never inject or auto-load it
   from untrusted sources.
 
+## Plugin permissions and egress
+
+- Every plugin declares `permissions` in its manifest: the Core APIs it calls
+  (`api.requires`), the APIs it exposes (`api.exposes`) and the hosts it may
+  reach (`egress`). Core enforces these at runtime; first-party platform plugins
+  and Core-registered builtins are exempt.
+- A plugin attributes its Core calls with `X-0KAY-Plugin` + its service token
+  (issued at registration). An attributed call with a bad token is rejected and,
+  for third-party plugins, any API not declared is denied
+  (`403 api_not_permitted`).
+- Plugins must not dial the internet directly. All outbound traffic goes through
+  Core (`POST /api/net/egress` / `CoreService.Egress`), which checks the declared
+  egress allow-list and re-checks every redirect. A direct-socket block is a
+  deployment hardening step, not the enforcement boundary.
+- The per-plugin service-token key lives at `CORE_DATA_DIR/plugin-token.key`
+  (never commit it); tokens are derived (HMAC) and stable across restarts.
+
 ## Updates and the package manager
 
 - Components installed with 0kay-pm are updated through `0kay-pm`

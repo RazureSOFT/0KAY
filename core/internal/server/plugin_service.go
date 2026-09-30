@@ -89,9 +89,10 @@ func (s *PluginServiceServer) Register(ctx context.Context, req *corev1.Register
 		message = "registered; waiting for dependencies: " + strings.Join(missing, ", ")
 	}
 	return &corev1.RegisterResponse{
-		Success:  true,
-		PluginId: pluginID,
-		Message:  message,
+		Success:      true,
+		PluginId:     pluginID,
+		Message:      message,
+		ServiceToken: s.registry.Token(pluginID),
 	}, nil
 }
 

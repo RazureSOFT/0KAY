@@ -58,7 +58,7 @@ const W = { class: "mp" }, Z = { class: "mp-hero" }, ee = { class: "mp-actions" 
           if (!e) break;
           e.loadingManifest = !0;
           const s = await I(e.full_name, e.branch);
-          s && (e.manifest = { name: s.name, version: s.version, description: s.description }), e.loadingManifest = !1;
+          s && (e.manifest = { name: s.name, version: s.version, description: s.description, permissions: s.permissions }), e.loadingManifest = !1;
         }
       });
       await Promise.all(t);
@@ -153,11 +153,27 @@ const W = { class: "mp" }, Z = { class: "mp-hero" }, ee = { class: "mp-actions" 
         t.installing = !1, g.value = "";
       }
     }
-    function V(n) {
-      if (!(g.value || n.installed))
-        return f.value = "", E("/api/plugins/install", n, n.full_name, () => {
-          n.installed = !0, n.entryName = n.manifest?.name || n.full_name, f.value = `已安装 ${n.full_name}，正在刷新…`;
-        });
+    function permsOf(n) {
+      const m = n.manifest?.permissions, out = [];
+      if (m?.api?.requires?.length) out.push("调用 Core API：" + m.api.requires.join("、"));
+      if (m?.api?.exposes?.length) out.push("对外暴露 API：" + m.api.exposes.join("、"));
+      if (m?.egress?.length) out.push("出网访问：" + m.egress.join("、"));
+      if (!out.length) out.push("未申请任何额外权限");
+      return out;
+    }
+    async function askInstall(n) {
+      const t = window.__0KAY_UI__, details = permsOf(n);
+      const message = `${n.full_name}${n.manifest?.version ? ` v${n.manifest.version}` : ""} 申请以下权限：`;
+      return t && typeof t.confirm == "function"
+        ? await t.confirm({ title: "确认安装", message, details, confirmLabel: "安装" })
+        : window.confirm(message + "\n\n" + details.join("\n"));
+    }
+    async function V(n) {
+      if (g.value || n.installed) return;
+      if (!(await askInstall(n))) return;
+      f.value = "", E("/api/plugins/install", n, n.full_name, () => {
+        n.installed = !0, n.entryName = n.manifest?.name || n.full_name, f.value = `已安装 ${n.full_name}，正在刷新…`;
+      });
     }
     async function z(n) {
       const t = window.__0KAY_UI__;

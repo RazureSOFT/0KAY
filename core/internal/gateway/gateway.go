@@ -296,6 +296,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/live2d/{path...}", g.handleLive2DDeletePath)
 	mux.HandleFunc("/api/images", g.handleImages)
 	mux.HandleFunc("/api/files", g.handleFiles)
+	mux.HandleFunc("/api/net/egress", g.handleEgress)
 	mux.Handle("/live2d/models/", http.StripPrefix("/live2d/models/", http.FileServer(http.Dir(live2DRoot()))))
 	mux.HandleFunc("/api/tasks", g.handleTasks)
 	mux.HandleFunc("/api/tasks/events", g.handleTaskEvents)
@@ -308,7 +309,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/settings/", g.handleSettingsSection)
 	mux.HandleFunc("/ws", g.handleWebSocket)
 
-	return logMiddleware(mux)
+	return logMiddleware(g.pluginGuard(mux))
 }
 
 func (g *Gateway) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -345,6 +346,8 @@ func (g *Gateway) handlePlugins(w http.ResponseWriter, r *http.Request) {
 		Status       string   `json:"status"`
 		ActiveTasks  int32    `json:"active_tasks"`
 		Disabled     bool     `json:"disabled"`
+		Builtin      bool     `json:"builtin"`
+		Permissions  any      `json:"permissions,omitempty"`
 	}
 
 	// Include currently disabled plugins as hidden rows for admin UI.
@@ -352,6 +355,14 @@ func (g *Gateway) handlePlugins(w http.ResponseWriter, r *http.Request) {
 	seen := map[string]bool{}
 	var result []PluginInfo
 	for _, p := range plugins {
+		var perms any
+		if p.Info != nil && p.Info.Permissions != nil {
+			perms = map[string]any{
+				"api_requires": p.Info.Permissions.ApiRequires,
+				"api_exposes":  p.Info.Permissions.ApiExposes,
+				"egress":       p.Info.Permissions.Egress,
+			}
+		}
 		result = append(result, PluginInfo{
 			PluginID:     p.PluginID,
 			Name:         p.Info.Name,
@@ -361,6 +372,8 @@ func (g *Gateway) handlePlugins(w http.ResponseWriter, r *http.Request) {
 			Status:       p.Status.String(),
 			ActiveTasks:  p.ActiveTasks,
 			Disabled:     false,
+			Builtin:      p.Builtin,
+			Permissions:  perms,
 		})
 		if p.Info != nil {
 			seen[p.Info.Name] = true

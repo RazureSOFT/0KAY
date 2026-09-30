@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"0kay/core/internal/egress"
 	"0kay/core/internal/pairing"
 	"0kay/core/internal/registry"
 	agentv1 "0kay/gen/agent/v1"
@@ -970,6 +971,40 @@ func (s *CoreServiceServer) RunDirect(ctx context.Context, req *corev1.RunDirect
 		Success: resp.Success,
 		Result:  resp.Result,
 		Error:   resp.Error,
+	}, nil
+}
+
+// Egress proxies an outbound HTTP request for a plugin through Core, checking
+// the plugin's declared egress allow-list. Built-in plugins are exempt.
+func (s *CoreServiceServer) Egress(ctx context.Context, req *corev1.EgressRequest) (*corev1.EgressResponse, error) {
+	info, ok := s.registry.FindByName(req.PluginId)
+	if !ok {
+		info, ok = s.registry.FindByID(req.PluginId)
+	}
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "unknown plugin identity")
+	}
+	allowlist := []string{"*"}
+	if info.Info == nil || !s.registry.IsTrusted(info.Info.Name) {
+		allowlist = nil
+		if info.Info != nil && info.Info.Permissions != nil {
+			allowlist = info.Info.Permissions.Egress
+		}
+	}
+	resp, err := egress.Do(ctx, egress.Request{
+		Method:  req.Method,
+		URL:     req.Url,
+		Headers: req.Headers,
+		Body:    req.Body,
+		Timeout: time.Duration(req.TimeoutMs) * time.Millisecond,
+	}, allowlist)
+	if err != nil {
+		return &corev1.EgressResponse{Error: err.Error()}, nil
+	}
+	return &corev1.EgressResponse{
+		Status:  int32(resp.Status),
+		Headers: resp.Headers,
+		Body:    resp.Body,
 	}, nil
 }
 

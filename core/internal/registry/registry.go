@@ -1,7 +1,10 @@
 package registry
 
 import (
+	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/hex"
 	"fmt"
 	"google.golang.org/protobuf/proto"
 	"sort"
@@ -39,6 +42,11 @@ type Registry struct {
 	plugins  map[string]*PluginInstance // plugin_id -> PluginInstance
 	counter  int64
 	disabled map[string]bool // plugin name -> disabled by admin
+	// secret derives each plugin's service token (HMAC). Empty disables tokens.
+	secret []byte
+	// trusted holds first-party plugin names exempt from the manifest permission
+	// checks (they ship with the platform).
+	trusted map[string]bool
 }
 
 // NewRegistry creates a new plugin registry.
@@ -46,7 +54,128 @@ func NewRegistry() *Registry {
 	return &Registry{
 		plugins:  make(map[string]*PluginInstance),
 		disabled: make(map[string]bool),
+		trusted:  make(map[string]bool),
 	}
+}
+
+// SetTrusted marks first-party plugin names as exempt from permission checks.
+func (r *Registry) SetTrusted(names []string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.trusted = make(map[string]bool, len(names))
+	for _, n := range names {
+		if n != "" {
+			r.trusted[n] = true
+		}
+	}
+}
+
+// IsTrusted reports whether a plugin is Core-builtin or part of the first-party
+// platform set, both of which bypass the manifest permission allow-lists.
+func (r *Registry) IsTrusted(name string) bool {
+	if name == "" {
+		return false
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if r.trusted[name] {
+		return true
+	}
+	for _, p := range r.plugins {
+		if p.Info != nil && p.Info.Name == name && p.Builtin {
+			return true
+		}
+	}
+	return false
+}
+
+// SetSecret installs the HMAC key used to derive per-plugin service tokens.
+// Call before any plugin registers so tokens are stable across process restarts.
+func (r *Registry) SetSecret(secret []byte) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.secret = append([]byte(nil), secret...)
+}
+
+// Token returns the stable service token for a plugin id. It is issued to the
+// plugin at registration and verified on every attributed HTTP/egress call.
+func (r *Registry) Token(pluginID string) string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.tokenLocked(pluginID)
+}
+
+func (r *Registry) tokenLocked(pluginID string) string {
+	if len(r.secret) == 0 || pluginID == "" {
+		return ""
+	}
+	mac := hmac.New(sha256.New, r.secret)
+	mac.Write([]byte(pluginID))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// FindByName returns the plugin instance registered under a plugin name.
+func (r *Registry) FindByName(name string) (*PluginInstance, bool) {
+	if name == "" {
+		return nil, false
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, p := range r.plugins {
+		if p.Info != nil && p.Info.Name == name {
+			return snapshot(p), true
+		}
+	}
+	return nil, false
+}
+
+// FindByID returns the plugin instance registered under a plugin id.
+func (r *Registry) FindByID(id string) (*PluginInstance, bool) {
+	if id == "" {
+		return nil, false
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if p, ok := r.plugins[id]; ok {
+		return snapshot(p), true
+	}
+	return nil, false
+}
+
+// Authenticate resolves a plugin name + service token to its instance. An empty
+// token only matches when the registry has no secret (tokens disabled).
+func (r *Registry) Authenticate(name, token string) (*PluginInstance, bool) {
+	if name == "" {
+		return nil, false
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, p := range r.plugins {
+		if p.Info == nil || p.Info.Name != name {
+			continue
+		}
+		expected := r.tokenLocked(p.PluginID)
+		if expected == "" {
+			return snapshot(p), true
+		}
+		if subtle.ConstantTimeCompare([]byte(expected), []byte(token)) == 1 {
+			return snapshot(p), true
+		}
+		return nil, false
+	}
+	return nil, false
+}
+
+// IsBuiltin reports whether the named plugin was registered by Core.
+func (r *Registry) IsBuiltin(name string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, p := range r.plugins {
+		if p.Info != nil && p.Info.Name == name {
+			return p.Builtin
+		}
+	}
+	return false
 }
 
 // SetEnabled enables or disables a plugin by name. Disabled plugins are

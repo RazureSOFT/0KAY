@@ -22,6 +22,14 @@ interface RuntimePlugin {
   status: string
   active_tasks: number
   disabled?: boolean
+  builtin?: boolean
+  permissions?: PluginPermissions
+}
+
+interface PluginPermissions {
+  api_requires?: string[]
+  api_exposes?: string[]
+  egress?: string[]
 }
 
 interface InstalledEntry {
@@ -44,6 +52,8 @@ interface PluginRow {
   runtime: boolean
   installedSource: 'platform' | 'pm' | ''
   repository?: string
+  builtin?: boolean
+  permissions?: PluginPermissions
 }
 
 const plugins = ref<PluginRow[]>([])
@@ -175,6 +185,8 @@ async function fetchPlugins() {
         runtime: !!rt,
         installedSource: entry.source === 'pm' ? 'pm' : 'platform',
         repository: entry.repository,
+        builtin: rt?.builtin,
+        permissions: rt?.permissions,
       })
     }
     for (const p of runtimeList) {
@@ -192,6 +204,8 @@ async function fetchPlugins() {
         disabled: p.disabled,
         runtime: true,
         installedSource: '',
+        builtin: p.builtin,
+        permissions: p.permissions,
       })
     }
     rows.sort((a, b) => Number(b.runtime) - Number(a.runtime) || a.name.localeCompare(b.name))
@@ -470,6 +484,27 @@ onUnmounted(() => {
           </div>
 
           <div class="pd-body">
+            <div v-if="detail.builtin" class="pd-perms builtin">
+              内置插件 · 权限与出网已全部放行
+            </div>
+            <div v-else-if="detail.permissions" class="pd-perms">
+              <div v-if="detail.permissions.api_requires?.length">
+                <h4>调用 Core API</h4>
+                <ul><li v-for="x in detail.permissions.api_requires" :key="x">{{ x }}</li></ul>
+              </div>
+              <div v-if="detail.permissions.api_exposes?.length">
+                <h4>对外暴露 API</h4>
+                <ul><li v-for="x in detail.permissions.api_exposes" :key="x">{{ x }}</li></ul>
+              </div>
+              <div v-if="detail.permissions.egress?.length">
+                <h4>出网访问</h4>
+                <ul><li v-for="x in detail.permissions.egress" :key="x">{{ x }}</li></ul>
+              </div>
+              <p
+                v-if="!detail.permissions.api_requires?.length && !detail.permissions.api_exposes?.length && !detail.permissions.egress?.length"
+                class="pd-hint"
+              >未申请任何额外权限</p>
+            </div>
             <p v-if="readmeLoading" class="pd-hint">正在加载 README…</p>
             <p v-else-if="readmeError" class="pd-hint err">{{ readmeError }}</p>
             <MarkdownContent v-else-if="readme" :content="readme" />
@@ -660,6 +695,11 @@ onUnmounted(() => {
 .pd-chip.ok { background: var(--md-success-container); color: #0d3b1e; }
 .pd-repo { font-size: 13px; font-weight: 650; color: var(--md-primary); text-decoration: underline; overflow-wrap: anywhere; }
 .pd-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px; margin: 0 -4px; border-radius: 16px; background: var(--md-surface-container-low); }
+.pd-perms { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; padding: 14px 16px; border-radius: 16px; background: var(--md-surface-container-low); }
+.pd-perms.builtin { color: var(--md-on-surface-variant); font-size: 13px; font-weight: 650; }
+.pd-perms h4 { margin: 0 0 4px; font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--md-primary); }
+.pd-perms ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 2px; }
+.pd-perms li { font-size: 12.5px; font-family: ui-monospace, monospace; color: var(--md-on-surface); overflow-wrap: anywhere; }
 .pd-hint { margin: 0; padding: 24px; text-align: center; color: var(--md-on-surface-variant); font-size: 14px; }
 .pd-hint.err { color: var(--md-error); }
 .pd-foot { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; flex-wrap: wrap; }

@@ -73,6 +73,9 @@ function onKeydown(event: KeyboardEvent) {
       >
         <h2 id="confirm-dialog-title">{{ title() }}</h2>
         <p id="confirm-dialog-message">{{ confirmState.options.message }}</p>
+        <ul v-if="confirmState.options.details?.length" class="confirm-details">
+          <li v-for="(item, i) in confirmState.options.details" :key="i">{{ item }}</li>
+        </ul>
         <footer>
           <button ref="cancelBtn" type="button" @click="settle(false)">{{ cancelLabel() }}</button>
           <button
@@ -122,13 +125,28 @@ function onKeydown(event: KeyboardEvent) {
   color: var(--md-on-surface-variant);
   overflow-wrap: anywhere;
 }
+.confirm-details {
+  margin: 14px 0 0;
+  padding: 12px 14px 12px 30px;
+  list-style: disc;
+  border-radius: 16px;
+  background: var(--md-surface-container, var(--md-surface-container-high, #f3edf7));
+  color: var(--md-on-surface);
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.confirm-details li + li {
+  margin-top: 4px;
+}
 .confirm-dialog footer {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
   margin-top: 24px;
-}
-.confirm-dialog footer button {
+}.confirm-dialog footer button {
   border: 0;
   border-radius: 999px;
   padding: 12px 22px;

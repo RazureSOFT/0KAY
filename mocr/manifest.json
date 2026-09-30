@@ -1,1 +1,1 @@
-{"schema":1,"name":"@razuresoft/0kay-mocr","version":"0.1.1","requires":["core"],"install":[["go","build","-o","mocr-service.exe","./cmd/mocr"]],"start":["./mocr-service.exe"]}
+{"schema":1,"name":"@razuresoft/0kay-mocr","version":"0.1.1","requires":["core"],"install":[["go","build","-o","mocr-service.exe","./cmd/mocr"]],"start":["./mocr-service.exe"],"permissions":{"api":{"requires":["GET /api/models","GET /api/settings/*","GET /api/providers/credentials","POST /api/usage/record","POST /api/net/egress"]},"egress":["*"]}}

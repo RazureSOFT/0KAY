@@ -160,6 +160,11 @@ class CoreServiceStub:
                 request_serializer=core_dot_v1_dot_core__pb2.RunDirectRequest.SerializeToString,
                 response_deserializer=core_dot_v1_dot_core__pb2.RunDirectResponse.FromString,
                 _registered_method=True)
+        self.Egress = channel.unary_unary(
+                '/core.v1.CoreService/Egress',
+                request_serializer=core_dot_v1_dot_core__pb2.EgressRequest.SerializeToString,
+                response_deserializer=core_dot_v1_dot_core__pb2.EgressResponse.FromString,
+                _registered_method=True)
 
 
 class CoreServiceServicer:
@@ -201,6 +206,15 @@ class CoreServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Egress(self, request, context):
+        """Egress proxies an outbound HTTP request on behalf of a plugin so all
+        plugin network access flows through Core and is checked against the
+        plugin's declared egress allowlist. Built-in plugins bypass the check.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_CoreServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -228,6 +242,11 @@ def add_CoreServiceServicer_to_server(servicer, server):
                     servicer.RunDirect,
                     request_deserializer=core_dot_v1_dot_core__pb2.RunDirectRequest.FromString,
                     response_serializer=core_dot_v1_dot_core__pb2.RunDirectResponse.SerializeToString,
+            ),
+            'Egress': grpc.unary_unary_rpc_method_handler(
+                    servicer.Egress,
+                    request_deserializer=core_dot_v1_dot_core__pb2.EgressRequest.FromString,
+                    response_serializer=core_dot_v1_dot_core__pb2.EgressResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -366,6 +385,33 @@ class CoreService:
             '/core.v1.CoreService/RunDirect',
             core_dot_v1_dot_core__pb2.RunDirectRequest.SerializeToString,
             core_dot_v1_dot_core__pb2.RunDirectResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Egress(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/core.v1.CoreService/Egress',
+            core_dot_v1_dot_core__pb2.EgressRequest.SerializeToString,
+            core_dot_v1_dot_core__pb2.EgressResponse.FromString,
             options,
             channel_credentials,
             insecure,

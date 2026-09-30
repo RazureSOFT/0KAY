@@ -3,6 +3,8 @@ import { ref } from 'vue'
 export type ConfirmOptions = {
   title?: string
   message: string
+  /** Optional bullet list rendered under the message (e.g. requested permissions). */
+  details?: string[]
   confirmLabel?: string
   cancelLabel?: string
   danger?: boolean

@@ -37,6 +37,7 @@ package identity, version, build and run commands. The file is consumed by
 | `start` | string[] / no | Single start command argv; omitted when there is no standalone process |
 | `dependencies` | string[] / no | Packages pm installs recursively; version ranges are not supported yet |
 | `requires` | string[] / no | Runtime dependency hints; pm does not install, wait for readiness or register capabilities from these |
+| `permissions` | object / no | Declared API + egress permissions (below). Enforced by Core at runtime |
 | `modules` | string[] / no | Sub-manifest paths (relative to the repo root) used by an umbrella package |
 | `repositories` | object[] / no | External sub-repository declarations, each `{path, package, url}` |
 | `ui` | object / no | Optional plugin WebUI build/publish config (below) |
@@ -55,6 +56,65 @@ NUL; do not rely on `&&`, pipes or shell variable expansion. Service commands
 run with the manifest directory as the working directory; the standalone agent
 package is arranged by pm into an `agent/`, `mcp/`, `proto/` layout and built and
 started inside `agent/`.
+
+### 0.1.1 Declared permissions and egress
+
+A package declares what it calls, what it exposes and where it may reach on the
+network. Core enforces these at runtime; **first-party platform plugins**
+(`webui`, `agent`, `life`, `mocr`, `mcp`, `searxng`, `minecraft`, `pm` and the
+themes) and Core-registered builtins are exempt (full access). Third-party
+plugins are denied anything they did not declare.
+
+```json
+{
+  "schema": 1,
+  "name": "@example/0kay-tool",
+  "version": "0.1.0",
+  "permissions": {
+    "api": {
+      "requires": ["GET /api/models", "POST /api/net/egress"],
+      "exposes":  ["agent.v1.AgentService/ExecuteTask"]
+    },
+    "egress": ["api.open-meteo.com", "127.0.0.1:8888"]
+  }
+}
+```
+
+- `api.requires` — Core APIs the plugin may call. Entries are `"METHOD /path"`
+  (`METHOD` may be `*`, and a trailing `*` matches a path prefix) or a gRPC
+  method such as `core.v1.CoreService/CallMocr`. A call outside the list is
+  rejected with `403 {"code":"api_not_permitted"}`.
+- `api.exposes` — APIs the plugin exposes to Core and other plugins (same
+  notation); surfaced in `GET /api/plugins`.
+- `egress` — hosts the plugin may reach **through Core** (hostname, `host:port`
+  or IP; a leading `*.` matches any subdomain). Anything else is blocked.
+
+A plugin attributes every Core call with the name + service token Core returned
+in `RegisterResponse.service_token`:
+
+```
+X-0KAY-Plugin: <plugin name>
+Authorization: Bearer <service token>
+```
+
+The token is derived from a persisted per-install key, so it survives Core
+restarts. An attributed call with a bad token is rejected (`401`), and a
+non-builtin plugin may only reach APIs it declared. Machine calls to an API a
+third-party plugin declared must be attributed; browser/owner traffic (session
+cookie) is unaffected.
+
+#### Egress proxy
+
+Plugins must not dial the internet directly; all outbound traffic flows through
+Core, which checks the declared `egress` allow-list (every redirect is re-checked
+and `Host` cannot be overridden):
+
+| Method | Path | Body → Response |
+|---|---|---|
+| POST | `/api/net/egress` | `{method,url,headers,body,timeout_ms}` → `{status,headers,body}` |
+
+The gRPC equivalent is `core.v1.CoreService/Egress`. A blocked host returns
+`502 {"code":"egress_failed"}`. Both require a plugin identity.
 
 ### 0.2 Umbrella packages and sub-repositories
 
@@ -231,6 +291,7 @@ bool/number/text/select and `default_value` is a string.
 | CancelAgent | task_id/caller_id; cancels execution, returns success/message |
 | ListAgents | include_unhealthy; returns agents/online_count |
 | RunDirect | tool, args (JSON string), session_id; returns success/result/error |
+| Egress | proxy a plugin outbound HTTP request; enforces the declared egress allow-list |
 
 UseAgent metadata: `session_id`, `parent_id`, `executor_id`, `workdir`,
 `model_id` (MOCR = automatic), `thinking_intensity`
@@ -317,6 +378,7 @@ The full per-endpoint request/response, auth and query details are in the
 | /api/images | image upload/read |
 | /api/ui/patches | GET UI ops; POST reload |
 | /api/plugins/{name}/ui/{path…} | GET plugin ESM/static assets (404 when disabled) |
+| /api/net/egress | POST plugin outbound HTTP proxy (declared egress allow-list) |
 | /ws | WebSocket notifications and legacy chat |
 
 TaskEvent: task_id/caller_id/session_id/parent_id/kind/prompt/state/result/error.
