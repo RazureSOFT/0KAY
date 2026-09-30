@@ -121,9 +121,9 @@ function Cr() {
 function Zn() {
   return { async: !1, breaks: !1, extensions: null, gfm: !0, hooks: null, pedantic: !1, renderer: null, silent: !1, tokenizer: null, walkTokens: null };
 }
-var kt = Zn();
+var vt = Zn();
 function qs(n) {
-  kt = n;
+  vt = n;
 }
 var mt = { exec: () => null };
 function Rt(n) {
@@ -146,8 +146,8 @@ var Lr = ((n = "") => {
   } catch {
     return !1;
   }
-})(), we = { codeRemoveIndent: /^(?: {0,3}\t| {1,4})/gm, outputLinkReplace: /\\([\[\]])/g, indentCodeCompensation: /^(\s+)(?:```)/, beginningSpace: /^\s+/, endingHash: /#$/, startingSpaceChar: /^ /, endingSpaceChar: / $/, endingSpaceTabChar: /[ \t]$/, nonSpaceChar: /[^ ]/, newLineCharGlobal: /\n/g, tabCharGlobal: /\t/g, leadingSpaceTab: /^[ \t]+/, multipleSpaceGlobal: /\s+/g, blankLine: /^[ \t]*$/, doubleBlankLine: /\n[ \t]*\n[ \t]*$/, blockquoteStart: /^ {0,3}>/, blockquoteSetextReplace: /\n {0,3}((?:=+|-+) *)(?=\n|$)/g, blockquoteSetextReplace2: /^ {0,3}>[ \t]?/gm, listReplaceNesting: /^ {1,4}(?=( {4})*[^ ])/g, listIsTask: /^\[[ xX]\] +\S/, listReplaceTask: /^\[[ xX]\] +/, listTaskCheckbox: /\[[ xX]\]/, anyLine: /\n.*\n/, hrefBrackets: /^<(.*)>$/, tableDelimiter: /[:|]/, tableAlignChars: /^\||\| *$/g, tableRowBlankLine: /\n[ \t]*$/, tableAlignRight: /^ *-+: *$/, tableAlignCenter: /^ *:-+: *$/, tableAlignLeft: /^ *:-+ *$/, startATag: /^<a /i, endATag: /^<\/a>/i, startPreScriptTag: /^<(pre|code|kbd|script)(\s|>)/i, endPreScriptTag: /^<\/(pre|code|kbd|script)(\s|>)/i, startAngleBracket: /^</, endAngleBracket: />$/, pedanticHrefTitle: /^([^'"]*[^\s])\s+(['"])(.*)\2/, unicodeAlphaNumeric: /[\p{L}\p{N}]/u, numericCharacterReference: /&#(?:(\d{1,7})|[Xx]([A-Fa-f0-9]{1,6}));/g, escapeTest: /[&<>"']/, escapeReplace: /[&<>"']/g, escapeTestNoEncode: /[<>"']|&(?!(#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/, escapeReplaceNoEncode: /[<>"']|&(?!(#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/g, caret: /(^|[^\[])\^/g, percentDecode: /%25/g, findPipe: /\|/g, splitPipe: / \|/, slashPipe: /\\\|/g, carriageReturn: /\r\n|\r/g, spaceLine: /^ +$/gm, notSpaceStart: /^\S*/, endingNewline: /\n$/, listItemRegex: (n) => new RegExp(`^( {0,3}${n})((?:[	 ][^\\n]*)?(?:\\n|$))`), nextBulletRegex: Rt((n) => new RegExp(`^ {0,${n}}(?:[*+-]|\\d{1,9}[.)])((?:[ 	][^\\n]*)?(?:\\n|$))`)), hrRegex: Rt((n) => new RegExp(`^ {0,${n}}((?:-[ 	]*){3,}|(?:_[ 	]*){3,}|(?:\\*[ 	]*){3,})(?:\\n+|$)`)), fencesBeginRegex: Rt((n) => new RegExp(`^ {0,${n}}(?:\`\`\`|~~~)`)), headingBeginRegex: Rt((n) => new RegExp(`^ {0,${n}}#`)), htmlBeginRegex: Rt((n) => new RegExp(`^ {0,${n}}(?:</?(?:${an})(?: +|$|/?>)|<(?:script|pre|style|textarea|!--))`, "i")), blockquoteBeginRegex: Rt((n) => new RegExp(`^ {0,${n}}>`)) }, Ir = /^(?:[ \t]*(?:\n|$))+/, Or = /^((?: {4}| {0,3}\t)[^\n]+(?:\n(?:[ \t]*(?:\n|$))*)?)+/, Pr = /^ {0,3}(`{3,}(?=[^`\n]*(?:\n|$))|~{3,})([^\n]*)(?:\n|$)(?:|([\s\S]*?)(?:\n|$))(?: {0,3}\1[~`]* *(?=\n|$)|$)/, ln = /^ {0,3}((?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/, Nr = /^ {0,3}(#{1,6})(?=\s|$)(.*)(?:\n+|$)/, Kn = / {0,3}(?:[*+-]|\d{1,9}[.)])/, Gs = /^(?!bull |blockCode|fences|blockquote|heading|html|table)((?:.|\n(?!\s*?\n|bull |fences|blockquote|heading|hr|html|table))+?)\n {0,3}(=+|-+) *(?:\n+|$)/, Ys = H(Gs).replace(/bull/g, Kn).replace(/blockCode/g, /(?: {4}| {0,3}\t)/).replace(/fences/g, / {0,3}(?:`{3,}|~{3,})/).replace(/blockquote/g, / {0,3}>/).replace(/heading/g, / {0,3}#{1,6}(?:\s|$)/).replace(/hr/g, / {0,3}(?:(?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/).replace(/html/g, / {0,3}<[^\n>]+>\n/).replace(/\|table/g, "").getRegex(), Dr = H(Gs).replace(/bull/g, Kn).replace(/blockCode/g, /(?: {4}| {0,3}\t)/).replace(/fences/g, / {0,3}(?:`{3,}|~{3,})/).replace(/blockquote/g, / {0,3}>/).replace(/heading/g, / {0,3}#{1,6}(?:\s|$)/).replace(/hr/g, / {0,3}(?:(?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/).replace(/html/g, / {0,3}<[^\n>]+>\n/).replace(/table/g, / {0,3}\|?(?:[:\- ]*\|)+[\:\- ]*\n/).getRegex(), Xn = /^([^\n]+(?:\n(?!hr|heading|lheading|blockquote|fences|list|html|table|[ \t]+\n)[^\n]+)*)/, Mr = /^[^\n]+/, Qn = /(?!\s*\])(?:\\[\s\S]|[^\[\]\\])+/, zr = H(/^ {0,3}\[(label)\]: *(?:\n[ \t]*)?([^<\s][^\s]*|<.*?>)(?:(?: +(?:\n[ \t]*)?| *\n[ \t]*)(title))? *(?:\n+|$)/).replace("label", Qn).replace("title", /(?:"(?:\\"?|[^"\\])*"|'[^'\n]*(?:\n[^'\n]+)*\n?'|\([^()]*\))/).getRegex(), Fr = H(/^(bull)([ \t][^\n]*?)?(?:\n|$)/).replace(/bull/g, Kn).getRegex(), an = "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul", Jn = /<!--(?:-?>|[\s\S]*?(?:-->|$))/, Ur = H("^ {0,3}(?:<(script|pre|style|textarea)[\\s>][\\s\\S]*?(?:</\\1>[^\\n]*\\n*|$)|comment[^\\n]*(\\n+|$)|<\\?[\\s\\S]*?(?:\\?>[^\\n]*\\n*|$)|<![A-Z][\\s\\S]*?(?:>[^\\n]*\\n*|$)|<!\\[CDATA\\[[\\s\\S]*?(?:\\]\\]>[^\\n]*\\n*|$)|</?(tag)(?: +|\\n|/?>)[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$)|<(?!script|pre|style|textarea)([a-z][a-z0-9-]*)(?:attribute)*? */?>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$)|</(?!script|pre|style|textarea)[a-z][a-z0-9-]*\\s*>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$))", "i").replace("comment", Jn).replace("tag", an).replace("attribute", / +[a-zA-Z:_][\w.:-]*(?: *= *"[^"\n]*"| *= *'[^'\n]*'| *= *[^\s"'=<>`]+)?/).getRegex(), Zs = (n) => H(Xn).replace("hr", ln).replace("heading", " {0,3}#{1,6}(?:\\s|$)").replace("|lheading", "").replace("|table", "").replace("blockquote", " {0,3}>").replace("fences", " {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)").replace("list", n).replace("html", "</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag", an).getRegex(), Br = Zs(/ {0,3}(?:[*+-]|1[.)])[ \t]+[^ \t\n]/), Hr = Zs(/ {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]|\n|$)/), jr = H(/^( {0,3}> ?(paragraph|[^\n]*)(?:\n|$))+/).replace("paragraph", Hr).getRegex(), es = { blockquote: jr, code: Or, def: zr, fences: Pr, heading: Nr, hr: ln, html: Ur, lheading: Ys, list: Fr, newline: Ir, paragraph: Br, table: mt, text: Mr }, ks = H("^ *([^\\n ].*)\\n {0,3}((?:\\| *)?:?-+:? *(?:\\| *:?-+:? *)*(?:\\| *)?)(?:\\n((?:(?! *\\n|hr|heading|blockquote|code|fences|list|html).*(?:\\n|$))*)\\n*|$)").replace("hr", ln).replace("heading", " {0,3}#{1,6}(?:\\s|$)").replace("blockquote", " {0,3}>").replace("code", "(?: {4}| {0,3}	)[^\\n]").replace("fences", " {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)").replace("list", " {0,3}(?:[*+-]|1[.)])[ \\t]").replace("html", "</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag", an).getRegex(), Wr = { ...es, lheading: Dr, table: ks, paragraph: H(Xn).replace("hr", ln).replace("heading", " {0,3}#{1,6}(?:\\s|$)").replace("|lheading", "").replace("table", ks).replace("blockquote", " {0,3}>").replace("fences", " {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)").replace("list", " {0,3}(?:[*+-]|1[.)])[ \\t]+[^ \\t\\n]").replace("html", "</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag", an).getRegex() }, Vr = { ...es, html: H(`^ *(?:comment *(?:\\n|\\s*$)|<(tag)[\\s\\S]+?</\\1> *(?:\\n{2,}|\\s*$)|<tag(?:"[^"]*"|'[^']*'|\\s[^'"/>\\s]*)*?/?> *(?:\\n{2,}|\\s*$))`).replace("comment", Jn).replace(/tag/g, "(?!(?:a|em|strong|small|s|cite|q|dfn|abbr|data|time|code|var|samp|kbd|sub|sup|i|b|u|mark|ruby|rt|rp|bdi|bdo|span|br|wbr|ins|del|img)\\b)\\w+(?!:|[^\\w\\s@]*@)\\b").getRegex(), def: /^ *\[([^\]]+)\]: *<?([^\s>]+)>?(?: +(["(][^\n]+[")]))? *(?:\n+|$)/, heading: /^(#{1,6})(.*)(?:\n+|$)/, fences: mt, lheading: /^(.+?)\n {0,3}(=+|-+) *(?:\n+|$)/, paragraph: H(Xn).replace("hr", ln).replace("heading", ` *#{1,6} *[^
-]`).replace("lheading", Ys).replace("|table", "").replace("blockquote", " {0,3}>").replace("|fences", "").replace("|list", "").replace("|html", "").replace("|tag", "").getRegex() }, qr = /^\\([!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~])/, Gr = /^(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/, Ks = /^( {2,}|\\)\n(?!\s*$)[ \t]*/, Yr = /^(`+|[^`])(?:(?= {2,}\n)|[\s\S]*?(?:(?=[\\<!\[`*_]|\b_|$)|[^ ](?= {2,}\n)))/, Je = /[\p{P}\p{S}]/u, Pt = /[\s\p{P}\p{S}]/u, on = /[^\s\p{P}\p{S}]/u, Zr = H(/^((?![*_])punctSpace)/, "u").replace(/punctSpace/g, Pt).getRegex(), Kr = /[\p{Pi}\p{Ps}"']/u, Xs = /(?!~)[\p{P}\p{S}]/u, Xr = /(?!~)[\s\p{P}\p{S}]/u, Qr = /(?:[^\s\p{P}\p{S}]|~)/u, Jr = H(/link|precode-code|html/, "g").replace("link", /\[(?:[^\[\]`]|(?<a>`+)[^`]+\k<a>(?!`))*?\]\((?:\\[\s\S]|[^\\\(\)]|\((?:\\[\s\S]|[^\\\(\)])*\))*\)/).replace("precode-", Lr ? "(?<!`)()" : "(^^|[^`])").replace("code", /(?<b>`+)[^`]+\k<b>(?!`)/).replace("html", /<(?! )[^<>]*?>/).getRegex(), Qs = /^(?:\*+(?:((?!\*)punct)|([^\s*]))?)|^_+(?:((?!_)punct)|([^\s_]))?/, el = H(Qs, "u").replace(/punct/g, Je).getRegex(), tl = H(Qs, "u").replace(/punct/g, Xs).getRegex(), nl = /^(?:\*+(?:((?!\*)(?!openQuote)punct)|([^\s*]))?)|^_+(?:((?!_)(?!openQuote)punct)|([^\s_]))?/, sl = H(nl, "u").replace(/openQuote/g, Kr).replace(/punct/g, Je).getRegex(), Js = "^[^_*]*?__[^_*]*?\\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\\*)punct(\\*+)(?=[\\s]|$)|notPunctSpace(\\*+)(?!\\*)(?=punctSpace|$)|(?!\\*)punctSpace(\\*+)(?=notPunctSpace)|[\\s](\\*+)(?!\\*)(?=punct)|(?!\\*)punct(\\*+)(?!\\*)(?=punct)|notPunctSpace(\\*+)(?=notPunctSpace)", rl = H(Js, "gu").replace(/notPunctSpace/g, on).replace(/punctSpace/g, Pt).replace(/punct/g, Je).getRegex(), ll = H(Js, "gu").replace(/notPunctSpace/g, Qr).replace(/punctSpace/g, Xr).replace(/punct/g, Xs).getRegex(), al = "^[^_*]*?__[^_*]*?\\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\\*)punct(\\*+)(?=[\\s]|$)|notPunctSpace(\\*+)(?!\\*)(?=punctSpace|$)|(?!\\*)[\\s](\\*+)(?=notPunctSpace)|[\\s](\\*+)(?!\\*)(?=punct)|(?!\\*)punct(\\*+)(?!\\*)(?=punct)|(?:(?!\\*)punct|notPunctSpace)(\\*+)(?!\\*)(?=notPunctSpace)", ol = H(al, "gu").replace(/notPunctSpace/g, on).replace(/punctSpace/g, Pt).replace(/punct/g, Je).getRegex(), il = H("^[^_*]*?\\*\\*[^_*]*?_[^_*]*?(?=\\*\\*)|[^_]+(?=[^_])|(?!_)punct(_+)(?=[\\s]|$)|notPunctSpace(_+)(?!_)(?=punctSpace|$)|(?!_)punctSpace(_+)(?=notPunctSpace)|[\\s](_+)(?!_)(?=punct)|(?!_)punct(_+)(?!_)(?=punct)", "gu").replace(/notPunctSpace/g, on).replace(/punctSpace/g, Pt).replace(/punct/g, Je).getRegex(), ul = "^[^_*]*?\\*\\*[^_*]*?_[^_*]*?(?=\\*\\*)|[^_]+(?=[^_])|(?!_)punct(_+)(?=[\\s]|$)|notPunctSpace(_+)(?!_)(?=punctSpace|$)|(?!_)[\\s](_+)(?=notPunctSpace)|[\\s](_+)(?!_)(?=punct)|(?!_)punct(_+)(?!_)(?=punct)|(?:(?!_)punct|notPunctSpace)(_+)(?!_)(?=notPunctSpace)", cl = H(ul, "gu").replace(/notPunctSpace/g, on).replace(/punctSpace/g, Pt).replace(/punct/g, Je).getRegex(), dl = H(/^~~?(?:((?!~)punct)|[^\s~])/, "u").replace(/punct/g, Je).getRegex(), pl = "^[^~]+(?=[^~])|(?!~)punct(~~?)(?=[\\s]|$)|notPunctSpace(~~?)(?!~)(?=punctSpace|$)|(?!~)punctSpace(~~?)(?=notPunctSpace)|[\\s](~~?)(?!~)(?=punct)|(?!~)punct(~~?)(?!~)(?=punct)|notPunctSpace(~~?)(?=notPunctSpace)", hl = H(pl, "gu").replace(/notPunctSpace/g, on).replace(/punctSpace/g, Pt).replace(/punct/g, Je).getRegex(), fl = H(/\\(punct)/, "gu").replace(/punct/g, Je).getRegex(), gl = H(/^<(scheme:[^\s\x00-\x1f<>]*|email)>/).replace("scheme", /[a-zA-Z][a-zA-Z0-9+.-]{1,31}/).replace("email", /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+(@)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+(?![-_])/).getRegex(), ml = H(Jn).replace("(?:-->|$)", "-->").getRegex(), vl = H("^comment|^</[a-zA-Z][a-zA-Z0-9-]*\\s*>|^<[a-zA-Z][a-zA-Z0-9-]*(?:attribute)*?\\s*/?>|^<\\?[\\s\\S]*?\\?>|^<![a-zA-Z]+\\s[\\s\\S]*?>|^<!\\[CDATA\\[[\\s\\S]*?\\]\\]>").replace("comment", ml).replace("attribute", /\s+[a-zA-Z:_][\w.:-]*(?:\s*=\s*"[^"]*"|\s*=\s*'[^']*'|\s*=\s*[^\s"'=<>`]+)?/).getRegex(), er = /\[(?:\\[\s\S]|[^\[\]\\])*\]/, wn = H(/(?:\[(?:brackets|\\[\s\S]|[^\[\]\\])*\]|\\[\s\S]|`+(?!`)[^`]*?`+(?!`)|``+(?=\])|[^\[\]\\`])*?/).replace("brackets", er).getRegex(), kl = H(/^!?\[(label)\]\(\s*(href)(?:(?:[ \t]+(?:\n[ \t]*)?|\n[ \t]*)(title))?\s*\)/).replace("label", wn).replace("href", /<(?:\\.|[^\n<>\\])+>|[^ \t\n\x00-\x1f]+|(?=\))/).replace("title", /"(?:\\"?|[^"\\])*"|'(?:\\'?|[^'\\])*'|\((?:\\\)?|[^)\\])*\)/).getRegex(), bl = H(/^!?\[(label)\]\[(ref)\]/).replace("label", wn).replace("ref", Qn).getRegex(), yl = H(/^!?\[(ref)\](?:\[\])?/).replace("ref", Qn).getRegex(), bs = /(?!\s*\])(?:\\[\s\S]|[^\[\]\\]){1,999}/, _l = H(/(?:[^\[\]\\`]*(?:\[(?:brackets|\\[\s\S]|[^\[\]\\])*\]|\\[\s\S]|`+(?!`)[^`]*?`+(?!`)|``+(?=\]))){0,999}?[^\[\]\\`]*?/).replace("brackets", er).getRegex(), wl = H("reflink|nolink(?!\\()", "g").replace("reflink", H(/^!?\[(label)\]\[(ref)\]/).replace("label", _l).replace("ref", bs).getRegex()).replace("nolink", H(/^!?\[(ref)\](?:\[\])?/).replace("ref", bs).getRegex()).getRegex(), ys = /[hH][tT][tT][pP][sS]?|[fF][tT][pP]/, xl = /[A-Za-z0-9._+-]+@[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![\w-])/, Sl = H(/(?:mailto:email|xmpp:email(?:\/[A-Za-z0-9@.]+)?)/).replace(/email/g, xl).getRegex(), ts = { _backpedal: mt, anyPunctuation: fl, autolink: gl, blockSkip: Jr, br: Ks, code: Gr, del: mt, delLDelim: mt, delRDelim: mt, emStrongLDelim: el, emStrongRDelimAst: rl, emStrongRDelimUnd: il, escape: qr, link: kl, nolink: yl, punctuation: Zr, reflink: bl, reflinkSearch: wl, tag: vl, text: Yr, url: mt }, Tl = { ...ts, emStrongLDelim: sl, emStrongRDelimAst: ol, emStrongRDelimUnd: cl, link: H(/^!?\[(label)\]\((.*?)\)/).replace("label", wn).getRegex(), reflink: H(/^!?\[(label)\]\s*\[([^\]]*)\]/).replace("label", wn).getRegex() }, jn = { ...ts, emStrongRDelimAst: ll, emStrongLDelim: tl, delLDelim: dl, delRDelim: hl, url: H(/^emailProtocol|^((?:protocol):\/\/|www\.)(?:[a-zA-Z0-9\-]+\.?)+[^\s<]*|^email/).replace("emailProtocol", Sl).replace("protocol", ys).replace("email", /[A-Za-z0-9._+-]+(@)[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![\w-])/).getRegex(), _backpedal: /(?:[^?!.,:;*_'"~()&]+|\([^)]*\)|&(?![a-zA-Z0-9]+;$)|[?!.,:;*_'"~)]+(?!$))+/, del: /^(~~?)(?=[^\s~])((?:\\[\s\S]|[^\\])*?(?:\\[\s\S]|[^\s~\\]))\1(?=[^~]|$)/, text: H(/^(?:[^a-zA-Z0-9](?=emailProtocol)|(`+|~+|[^`~])(?:(?=[`~])|(?= {2,}\n)|(?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@)|[\s\S]*?(?:(?=[\\<!\[`*~_]|\b_|protocol:\/\/|www\.|$)|[^ ](?= {2,}\n)|[^a-zA-Z0-9](?=emailProtocol)|[^a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-](?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@))))/).replace("protocol", ys).replace(/emailProtocol/g, /(?:mailto|xmpp):/).getRegex() }, Al = { ...jn, br: H(Ks).replace("{2,}", "*").getRegex(), text: H(jn.text).replace("\\b_", "\\b_| {2,}\\n").replace(/\{2,\}/g, "*").getRegex() }, vn = { normal: es, gfm: Wr, pedantic: Vr }, Kt = { normal: ts, gfm: jn, breaks: Al, pedantic: Tl }, El = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }, _s = (n) => El[n];
+})(), we = { codeRemoveIndent: /^(?: {0,3}\t| {1,4})/gm, outputLinkReplace: /\\([\[\]])/g, indentCodeCompensation: /^(\s+)(?:```)/, beginningSpace: /^\s+/, endingHash: /#$/, startingSpaceChar: /^ /, endingSpaceChar: / $/, endingSpaceTabChar: /[ \t]$/, nonSpaceChar: /[^ ]/, newLineCharGlobal: /\n/g, tabCharGlobal: /\t/g, leadingSpaceTab: /^[ \t]+/, multipleSpaceGlobal: /\s+/g, blankLine: /^[ \t]*$/, doubleBlankLine: /\n[ \t]*\n[ \t]*$/, blockquoteStart: /^ {0,3}>/, blockquoteSetextReplace: /\n {0,3}((?:=+|-+) *)(?=\n|$)/g, blockquoteSetextReplace2: /^ {0,3}>[ \t]?/gm, listReplaceNesting: /^ {1,4}(?=( {4})*[^ ])/g, listIsTask: /^\[[ xX]\] +\S/, listReplaceTask: /^\[[ xX]\] +/, listTaskCheckbox: /\[[ xX]\]/, anyLine: /\n.*\n/, hrefBrackets: /^<(.*)>$/, tableDelimiter: /[:|]/, tableAlignChars: /^\||\| *$/g, tableRowBlankLine: /\n[ \t]*$/, tableAlignRight: /^ *-+: *$/, tableAlignCenter: /^ *:-+: *$/, tableAlignLeft: /^ *:-+ *$/, startATag: /^<a /i, endATag: /^<\/a>/i, startPreScriptTag: /^<(pre|code|kbd|script)(\s|>)/i, endPreScriptTag: /^<\/(pre|code|kbd|script)(\s|>)/i, startAngleBracket: /^</, endAngleBracket: />$/, pedanticHrefTitle: /^([^'"]*[^\s])\s+(['"])(.*)\2/, unicodeAlphaNumeric: /[\p{L}\p{N}]/u, numericCharacterReference: /&#(?:(\d{1,7})|[Xx]([A-Fa-f0-9]{1,6}));/g, escapeTest: /[&<>"']/, escapeReplace: /[&<>"']/g, escapeTestNoEncode: /[<>"']|&(?!(#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/, escapeReplaceNoEncode: /[<>"']|&(?!(#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/g, caret: /(^|[^\[])\^/g, percentDecode: /%25/g, findPipe: /\|/g, splitPipe: / \|/, slashPipe: /\\\|/g, carriageReturn: /\r\n|\r/g, spaceLine: /^ +$/gm, notSpaceStart: /^\S*/, endingNewline: /\n$/, listItemRegex: (n) => new RegExp(`^( {0,3}${n})((?:[	 ][^\\n]*)?(?:\\n|$))`), nextBulletRegex: Rt((n) => new RegExp(`^ {0,${n}}(?:[*+-]|\\d{1,9}[.)])((?:[ 	][^\\n]*)?(?:\\n|$))`)), hrRegex: Rt((n) => new RegExp(`^ {0,${n}}((?:-[ 	]*){3,}|(?:_[ 	]*){3,}|(?:\\*[ 	]*){3,})(?:\\n+|$)`)), fencesBeginRegex: Rt((n) => new RegExp(`^ {0,${n}}(?:\`\`\`|~~~)`)), headingBeginRegex: Rt((n) => new RegExp(`^ {0,${n}}#`)), htmlBeginRegex: Rt((n) => new RegExp(`^ {0,${n}}(?:</?(?:${an})(?: +|$|/?>)|<(?:script|pre|style|textarea|!--))`, "i")), blockquoteBeginRegex: Rt((n) => new RegExp(`^ {0,${n}}>`)) }, Ir = /^(?:[ \t]*(?:\n|$))+/, Or = /^((?: {4}| {0,3}\t)[^\n]+(?:\n(?:[ \t]*(?:\n|$))*)?)+/, Pr = /^ {0,3}(`{3,}(?=[^`\n]*(?:\n|$))|~{3,})([^\n]*)(?:\n|$)(?:|([\s\S]*?)(?:\n|$))(?: {0,3}\1[~`]* *(?=\n|$)|$)/, ln = /^ {0,3}((?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/, Nr = /^ {0,3}(#{1,6})(?=\s|$)(.*)(?:\n+|$)/, Kn = / {0,3}(?:[*+-]|\d{1,9}[.)])/, Gs = /^(?!bull |blockCode|fences|blockquote|heading|html|table)((?:.|\n(?!\s*?\n|bull |fences|blockquote|heading|hr|html|table))+?)\n {0,3}(=+|-+) *(?:\n+|$)/, Ys = H(Gs).replace(/bull/g, Kn).replace(/blockCode/g, /(?: {4}| {0,3}\t)/).replace(/fences/g, / {0,3}(?:`{3,}|~{3,})/).replace(/blockquote/g, / {0,3}>/).replace(/heading/g, / {0,3}#{1,6}(?:\s|$)/).replace(/hr/g, / {0,3}(?:(?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/).replace(/html/g, / {0,3}<[^\n>]+>\n/).replace(/\|table/g, "").getRegex(), Dr = H(Gs).replace(/bull/g, Kn).replace(/blockCode/g, /(?: {4}| {0,3}\t)/).replace(/fences/g, / {0,3}(?:`{3,}|~{3,})/).replace(/blockquote/g, / {0,3}>/).replace(/heading/g, / {0,3}#{1,6}(?:\s|$)/).replace(/hr/g, / {0,3}(?:(?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/).replace(/html/g, / {0,3}<[^\n>]+>\n/).replace(/table/g, / {0,3}\|?(?:[:\- ]*\|)+[\:\- ]*\n/).getRegex(), Xn = /^([^\n]+(?:\n(?!hr|heading|lheading|blockquote|fences|list|html|table|[ \t]+\n)[^\n]+)*)/, Mr = /^[^\n]+/, Qn = /(?!\s*\])(?:\\[\s\S]|[^\[\]\\])+/, zr = H(/^ {0,3}\[(label)\]: *(?:\n[ \t]*)?([^<\s][^\s]*|<.*?>)(?:(?: +(?:\n[ \t]*)?| *\n[ \t]*)(title))? *(?:\n+|$)/).replace("label", Qn).replace("title", /(?:"(?:\\"?|[^"\\])*"|'[^'\n]*(?:\n[^'\n]+)*\n?'|\([^()]*\))/).getRegex(), Fr = H(/^(bull)([ \t][^\n]*?)?(?:\n|$)/).replace(/bull/g, Kn).getRegex(), an = "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul", Jn = /<!--(?:-?>|[\s\S]*?(?:-->|$))/, Ur = H("^ {0,3}(?:<(script|pre|style|textarea)[\\s>][\\s\\S]*?(?:</\\1>[^\\n]*\\n*|$)|comment[^\\n]*(\\n+|$)|<\\?[\\s\\S]*?(?:\\?>[^\\n]*\\n*|$)|<![A-Z][\\s\\S]*?(?:>[^\\n]*\\n*|$)|<!\\[CDATA\\[[\\s\\S]*?(?:\\]\\]>[^\\n]*\\n*|$)|</?(tag)(?: +|\\n|/?>)[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$)|<(?!script|pre|style|textarea)([a-z][a-z0-9-]*)(?:attribute)*? */?>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$)|</(?!script|pre|style|textarea)[a-z][a-z0-9-]*\\s*>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$))", "i").replace("comment", Jn).replace("tag", an).replace("attribute", / +[a-zA-Z:_][\w.:-]*(?: *= *"[^"\n]*"| *= *'[^'\n]*'| *= *[^\s"'=<>`]+)?/).getRegex(), Zs = (n) => H(Xn).replace("hr", ln).replace("heading", " {0,3}#{1,6}(?:\\s|$)").replace("|lheading", "").replace("|table", "").replace("blockquote", " {0,3}>").replace("fences", " {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)").replace("list", n).replace("html", "</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag", an).getRegex(), Br = Zs(/ {0,3}(?:[*+-]|1[.)])[ \t]+[^ \t\n]/), Hr = Zs(/ {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]|\n|$)/), jr = H(/^( {0,3}> ?(paragraph|[^\n]*)(?:\n|$))+/).replace("paragraph", Hr).getRegex(), es = { blockquote: jr, code: Or, def: zr, fences: Pr, heading: Nr, hr: ln, html: Ur, lheading: Ys, list: Fr, newline: Ir, paragraph: Br, table: mt, text: Mr }, vs = H("^ *([^\\n ].*)\\n {0,3}((?:\\| *)?:?-+:? *(?:\\| *:?-+:? *)*(?:\\| *)?)(?:\\n((?:(?! *\\n|hr|heading|blockquote|code|fences|list|html).*(?:\\n|$))*)\\n*|$)").replace("hr", ln).replace("heading", " {0,3}#{1,6}(?:\\s|$)").replace("blockquote", " {0,3}>").replace("code", "(?: {4}| {0,3}	)[^\\n]").replace("fences", " {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)").replace("list", " {0,3}(?:[*+-]|1[.)])[ \\t]").replace("html", "</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag", an).getRegex(), Wr = { ...es, lheading: Dr, table: vs, paragraph: H(Xn).replace("hr", ln).replace("heading", " {0,3}#{1,6}(?:\\s|$)").replace("|lheading", "").replace("table", vs).replace("blockquote", " {0,3}>").replace("fences", " {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)").replace("list", " {0,3}(?:[*+-]|1[.)])[ \\t]+[^ \\t\\n]").replace("html", "</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag", an).getRegex() }, Vr = { ...es, html: H(`^ *(?:comment *(?:\\n|\\s*$)|<(tag)[\\s\\S]+?</\\1> *(?:\\n{2,}|\\s*$)|<tag(?:"[^"]*"|'[^']*'|\\s[^'"/>\\s]*)*?/?> *(?:\\n{2,}|\\s*$))`).replace("comment", Jn).replace(/tag/g, "(?!(?:a|em|strong|small|s|cite|q|dfn|abbr|data|time|code|var|samp|kbd|sub|sup|i|b|u|mark|ruby|rt|rp|bdi|bdo|span|br|wbr|ins|del|img)\\b)\\w+(?!:|[^\\w\\s@]*@)\\b").getRegex(), def: /^ *\[([^\]]+)\]: *<?([^\s>]+)>?(?: +(["(][^\n]+[")]))? *(?:\n+|$)/, heading: /^(#{1,6})(.*)(?:\n+|$)/, fences: mt, lheading: /^(.+?)\n {0,3}(=+|-+) *(?:\n+|$)/, paragraph: H(Xn).replace("hr", ln).replace("heading", ` *#{1,6} *[^
+]`).replace("lheading", Ys).replace("|table", "").replace("blockquote", " {0,3}>").replace("|fences", "").replace("|list", "").replace("|html", "").replace("|tag", "").getRegex() }, qr = /^\\([!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~])/, Gr = /^(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/, Ks = /^( {2,}|\\)\n(?!\s*$)[ \t]*/, Yr = /^(`+|[^`])(?:(?= {2,}\n)|[\s\S]*?(?:(?=[\\<!\[`*_]|\b_|$)|[^ ](?= {2,}\n)))/, Je = /[\p{P}\p{S}]/u, Pt = /[\s\p{P}\p{S}]/u, on = /[^\s\p{P}\p{S}]/u, Zr = H(/^((?![*_])punctSpace)/, "u").replace(/punctSpace/g, Pt).getRegex(), Kr = /[\p{Pi}\p{Ps}"']/u, Xs = /(?!~)[\p{P}\p{S}]/u, Xr = /(?!~)[\s\p{P}\p{S}]/u, Qr = /(?:[^\s\p{P}\p{S}]|~)/u, Jr = H(/link|precode-code|html/, "g").replace("link", /\[(?:[^\[\]`]|(?<a>`+)[^`]+\k<a>(?!`))*?\]\((?:\\[\s\S]|[^\\\(\)]|\((?:\\[\s\S]|[^\\\(\)])*\))*\)/).replace("precode-", Lr ? "(?<!`)()" : "(^^|[^`])").replace("code", /(?<b>`+)[^`]+\k<b>(?!`)/).replace("html", /<(?! )[^<>]*?>/).getRegex(), Qs = /^(?:\*+(?:((?!\*)punct)|([^\s*]))?)|^_+(?:((?!_)punct)|([^\s_]))?/, el = H(Qs, "u").replace(/punct/g, Je).getRegex(), tl = H(Qs, "u").replace(/punct/g, Xs).getRegex(), nl = /^(?:\*+(?:((?!\*)(?!openQuote)punct)|([^\s*]))?)|^_+(?:((?!_)(?!openQuote)punct)|([^\s_]))?/, sl = H(nl, "u").replace(/openQuote/g, Kr).replace(/punct/g, Je).getRegex(), Js = "^[^_*]*?__[^_*]*?\\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\\*)punct(\\*+)(?=[\\s]|$)|notPunctSpace(\\*+)(?!\\*)(?=punctSpace|$)|(?!\\*)punctSpace(\\*+)(?=notPunctSpace)|[\\s](\\*+)(?!\\*)(?=punct)|(?!\\*)punct(\\*+)(?!\\*)(?=punct)|notPunctSpace(\\*+)(?=notPunctSpace)", rl = H(Js, "gu").replace(/notPunctSpace/g, on).replace(/punctSpace/g, Pt).replace(/punct/g, Je).getRegex(), ll = H(Js, "gu").replace(/notPunctSpace/g, Qr).replace(/punctSpace/g, Xr).replace(/punct/g, Xs).getRegex(), al = "^[^_*]*?__[^_*]*?\\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\\*)punct(\\*+)(?=[\\s]|$)|notPunctSpace(\\*+)(?!\\*)(?=punctSpace|$)|(?!\\*)[\\s](\\*+)(?=notPunctSpace)|[\\s](\\*+)(?!\\*)(?=punct)|(?!\\*)punct(\\*+)(?!\\*)(?=punct)|(?:(?!\\*)punct|notPunctSpace)(\\*+)(?!\\*)(?=notPunctSpace)", ol = H(al, "gu").replace(/notPunctSpace/g, on).replace(/punctSpace/g, Pt).replace(/punct/g, Je).getRegex(), il = H("^[^_*]*?\\*\\*[^_*]*?_[^_*]*?(?=\\*\\*)|[^_]+(?=[^_])|(?!_)punct(_+)(?=[\\s]|$)|notPunctSpace(_+)(?!_)(?=punctSpace|$)|(?!_)punctSpace(_+)(?=notPunctSpace)|[\\s](_+)(?!_)(?=punct)|(?!_)punct(_+)(?!_)(?=punct)", "gu").replace(/notPunctSpace/g, on).replace(/punctSpace/g, Pt).replace(/punct/g, Je).getRegex(), ul = "^[^_*]*?\\*\\*[^_*]*?_[^_*]*?(?=\\*\\*)|[^_]+(?=[^_])|(?!_)punct(_+)(?=[\\s]|$)|notPunctSpace(_+)(?!_)(?=punctSpace|$)|(?!_)[\\s](_+)(?=notPunctSpace)|[\\s](_+)(?!_)(?=punct)|(?!_)punct(_+)(?!_)(?=punct)|(?:(?!_)punct|notPunctSpace)(_+)(?!_)(?=notPunctSpace)", cl = H(ul, "gu").replace(/notPunctSpace/g, on).replace(/punctSpace/g, Pt).replace(/punct/g, Je).getRegex(), dl = H(/^~~?(?:((?!~)punct)|[^\s~])/, "u").replace(/punct/g, Je).getRegex(), pl = "^[^~]+(?=[^~])|(?!~)punct(~~?)(?=[\\s]|$)|notPunctSpace(~~?)(?!~)(?=punctSpace|$)|(?!~)punctSpace(~~?)(?=notPunctSpace)|[\\s](~~?)(?!~)(?=punct)|(?!~)punct(~~?)(?!~)(?=punct)|notPunctSpace(~~?)(?=notPunctSpace)", hl = H(pl, "gu").replace(/notPunctSpace/g, on).replace(/punctSpace/g, Pt).replace(/punct/g, Je).getRegex(), fl = H(/\\(punct)/, "gu").replace(/punct/g, Je).getRegex(), gl = H(/^<(scheme:[^\s\x00-\x1f<>]*|email)>/).replace("scheme", /[a-zA-Z][a-zA-Z0-9+.-]{1,31}/).replace("email", /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+(@)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+(?![-_])/).getRegex(), ml = H(Jn).replace("(?:-->|$)", "-->").getRegex(), kl = H("^comment|^</[a-zA-Z][a-zA-Z0-9-]*\\s*>|^<[a-zA-Z][a-zA-Z0-9-]*(?:attribute)*?\\s*/?>|^<\\?[\\s\\S]*?\\?>|^<![a-zA-Z]+\\s[\\s\\S]*?>|^<!\\[CDATA\\[[\\s\\S]*?\\]\\]>").replace("comment", ml).replace("attribute", /\s+[a-zA-Z:_][\w.:-]*(?:\s*=\s*"[^"]*"|\s*=\s*'[^']*'|\s*=\s*[^\s"'=<>`]+)?/).getRegex(), er = /\[(?:\\[\s\S]|[^\[\]\\])*\]/, wn = H(/(?:\[(?:brackets|\\[\s\S]|[^\[\]\\])*\]|\\[\s\S]|`+(?!`)[^`]*?`+(?!`)|``+(?=\])|[^\[\]\\`])*?/).replace("brackets", er).getRegex(), vl = H(/^!?\[(label)\]\(\s*(href)(?:(?:[ \t]+(?:\n[ \t]*)?|\n[ \t]*)(title))?\s*\)/).replace("label", wn).replace("href", /<(?:\\.|[^\n<>\\])+>|[^ \t\n\x00-\x1f]+|(?=\))/).replace("title", /"(?:\\"?|[^"\\])*"|'(?:\\'?|[^'\\])*'|\((?:\\\)?|[^)\\])*\)/).getRegex(), bl = H(/^!?\[(label)\]\[(ref)\]/).replace("label", wn).replace("ref", Qn).getRegex(), yl = H(/^!?\[(ref)\](?:\[\])?/).replace("ref", Qn).getRegex(), bs = /(?!\s*\])(?:\\[\s\S]|[^\[\]\\]){1,999}/, _l = H(/(?:[^\[\]\\`]*(?:\[(?:brackets|\\[\s\S]|[^\[\]\\])*\]|\\[\s\S]|`+(?!`)[^`]*?`+(?!`)|``+(?=\]))){0,999}?[^\[\]\\`]*?/).replace("brackets", er).getRegex(), wl = H("reflink|nolink(?!\\()", "g").replace("reflink", H(/^!?\[(label)\]\[(ref)\]/).replace("label", _l).replace("ref", bs).getRegex()).replace("nolink", H(/^!?\[(ref)\](?:\[\])?/).replace("ref", bs).getRegex()).getRegex(), ys = /[hH][tT][tT][pP][sS]?|[fF][tT][pP]/, xl = /[A-Za-z0-9._+-]+@[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![\w-])/, Sl = H(/(?:mailto:email|xmpp:email(?:\/[A-Za-z0-9@.]+)?)/).replace(/email/g, xl).getRegex(), ts = { _backpedal: mt, anyPunctuation: fl, autolink: gl, blockSkip: Jr, br: Ks, code: Gr, del: mt, delLDelim: mt, delRDelim: mt, emStrongLDelim: el, emStrongRDelimAst: rl, emStrongRDelimUnd: il, escape: qr, link: vl, nolink: yl, punctuation: Zr, reflink: bl, reflinkSearch: wl, tag: kl, text: Yr, url: mt }, Tl = { ...ts, emStrongLDelim: sl, emStrongRDelimAst: ol, emStrongRDelimUnd: cl, link: H(/^!?\[(label)\]\((.*?)\)/).replace("label", wn).getRegex(), reflink: H(/^!?\[(label)\]\s*\[([^\]]*)\]/).replace("label", wn).getRegex() }, jn = { ...ts, emStrongRDelimAst: ll, emStrongLDelim: tl, delLDelim: dl, delRDelim: hl, url: H(/^emailProtocol|^((?:protocol):\/\/|www\.)(?:[a-zA-Z0-9\-]+\.?)+[^\s<]*|^email/).replace("emailProtocol", Sl).replace("protocol", ys).replace("email", /[A-Za-z0-9._+-]+(@)[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![\w-])/).getRegex(), _backpedal: /(?:[^?!.,:;*_'"~()&]+|\([^)]*\)|&(?![a-zA-Z0-9]+;$)|[?!.,:;*_'"~)]+(?!$))+/, del: /^(~~?)(?=[^\s~])((?:\\[\s\S]|[^\\])*?(?:\\[\s\S]|[^\s~\\]))\1(?=[^~]|$)/, text: H(/^(?:[^a-zA-Z0-9](?=emailProtocol)|(`+|~+|[^`~])(?:(?=[`~])|(?= {2,}\n)|(?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@)|[\s\S]*?(?:(?=[\\<!\[`*~_]|\b_|protocol:\/\/|www\.|$)|[^ ](?= {2,}\n)|[^a-zA-Z0-9](?=emailProtocol)|[^a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-](?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@))))/).replace("protocol", ys).replace(/emailProtocol/g, /(?:mailto|xmpp):/).getRegex() }, Al = { ...jn, br: H(Ks).replace("{2,}", "*").getRegex(), text: H(jn.text).replace("\\b_", "\\b_| {2,}\\n").replace(/\{2,\}/g, "*").getRegex() }, kn = { normal: es, gfm: Wr, pedantic: Vr }, Kt = { normal: ts, gfm: jn, breaks: Al, pedantic: Tl }, El = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }, _s = (n) => El[n];
 function Pe(n, e) {
   if (e) {
     if (we.escapeTest.test(n)) return n.replace(we.escapeReplace, _s);
@@ -269,7 +269,7 @@ var Sn = class {
     ne(this, "options");
     ne(this, "rules");
     ne(this, "lexer");
-    this.options = n || kt;
+    this.options = n || vt;
   }
   space(n) {
     let e = this.rules.block.newline.exec(n);
@@ -601,12 +601,12 @@ ${C.join(`
     ne(this, "state");
     ne(this, "inlineQueue");
     ne(this, "tokenizer");
-    this.tokens = [], this.tokens.links = /* @__PURE__ */ Object.create(null), this.options = e || kt, this.options.tokenizer = this.options.tokenizer || new Sn(), this.tokenizer = this.options.tokenizer, this.tokenizer.options = this.options, this.tokenizer.lexer = this, this.inlineQueue = [], this.state = { inLink: !1, inRawBlock: !1, linkEmitted: !1, top: !0 };
-    let t = { other: we, block: vn.normal, inline: Kt.normal };
-    this.options.pedantic ? (t.block = vn.pedantic, t.inline = Kt.pedantic) : this.options.gfm && (t.block = vn.gfm, this.options.breaks ? t.inline = Kt.breaks : t.inline = Kt.gfm), this.tokenizer.rules = t;
+    this.tokens = [], this.tokens.links = /* @__PURE__ */ Object.create(null), this.options = e || vt, this.options.tokenizer = this.options.tokenizer || new Sn(), this.tokenizer = this.options.tokenizer, this.tokenizer.options = this.options, this.tokenizer.lexer = this, this.inlineQueue = [], this.state = { inLink: !1, inRawBlock: !1, linkEmitted: !1, top: !0 };
+    let t = { other: we, block: kn.normal, inline: Kt.normal };
+    this.options.pedantic ? (t.block = kn.pedantic, t.inline = Kt.pedantic) : this.options.gfm && (t.block = kn.gfm, this.options.breaks ? t.inline = Kt.breaks : t.inline = Kt.gfm), this.tokenizer.rules = t;
   }
   static get rules() {
-    return { block: vn, inline: Kt };
+    return { block: kn, inline: Kt };
   }
   static lex(e, t) {
     return new Wn(t).lex(e);
@@ -835,7 +835,7 @@ ${C.join(`
   constructor(n) {
     ne(this, "options");
     ne(this, "parser");
-    this.options = n || kt;
+    this.options = n || vt;
   }
   space(n) {
     return "";
@@ -984,7 +984,7 @@ ${n}</tr>
     ne(this, "options");
     ne(this, "renderer");
     ne(this, "textRenderer");
-    this.options = e || kt, this.options.renderer = this.options.renderer || new Tn(), this.renderer = this.options.renderer, this.renderer.options = this.options, this.renderer.parser = this, this.textRenderer = new ns();
+    this.options = e || vt, this.options.renderer = this.options.renderer || new Tn(), this.renderer = this.options.renderer, this.renderer.options = this.options, this.renderer.parser = this, this.textRenderer = new ns();
   }
   static parse(e, t) {
     return new Vn(t).parse(e);
@@ -1134,7 +1134,7 @@ ${n}</tr>
   constructor(n) {
     ne(this, "options");
     ne(this, "block");
-    this.options = n || kt;
+    this.options = n || vt;
   }
   preprocess(n) {
     return n;
@@ -1314,23 +1314,23 @@ Please report this to https://github.com/markedjs/marked.`, n) {
       throw t;
     };
   }
-}, vt = new Ll();
+}, kt = new Ll();
 function se(n, e) {
-  return vt.parse(n, e);
+  return kt.parse(n, e);
 }
 se.options = se.setOptions = function(n) {
-  return vt.setOptions(n), se.defaults = vt.defaults, qs(se.defaults), se;
+  return kt.setOptions(n), se.defaults = kt.defaults, qs(se.defaults), se;
 };
 se.getDefaults = Zn;
-se.defaults = kt;
+se.defaults = vt;
 function Il(...n) {
-  return vt.use(...n), se.defaults = vt.defaults, qs(se.defaults), se;
+  return kt.use(...n), se.defaults = kt.defaults, qs(se.defaults), se;
 }
 se.use = Il;
 se.walkTokens = function(n, e) {
-  return vt.walkTokens(n, e);
+  return kt.walkTokens(n, e);
 };
-se.parseInline = vt.parseInline;
+se.parseInline = kt.parseInline;
 se.Parser = Ve;
 se.parser = Ve.parse;
 se.Renderer = Tn;
@@ -1389,8 +1389,8 @@ function Ml(n, e) {
   }
 }
 const tr = Object.entries, $s = Object.setPrototypeOf, zl = Object.isFrozen, Fl = Object.getPrototypeOf, Ul = Object.getOwnPropertyDescriptor;
-let ke = Object.freeze, ye = Object.seal, Ct = Object.create, nr = typeof Reflect < "u" && Reflect, qn = nr.apply, Gn = nr.construct;
-ke || (ke = function(e) {
+let ve = Object.freeze, ye = Object.seal, Ct = Object.create, nr = typeof Reflect < "u" && Reflect, qn = nr.apply, Gn = nr.construct;
+ve || (ve = function(e) {
   return e;
 });
 ye || (ye = function(e) {
@@ -1494,7 +1494,7 @@ function Zl(n) {
     return !1;
   }
 }
-const Ns = ke([
+const Ns = ve([
   "a",
   "abbr",
   "acronym",
@@ -1614,7 +1614,7 @@ const Ns = ke([
   "var",
   "video",
   "wbr"
-]), zn = ke([
+]), zn = ve([
   "svg",
   "a",
   "altglyph",
@@ -1662,7 +1662,7 @@ const Ns = ke([
   "tspan",
   "view",
   "vkern"
-]), Fn = ke([
+]), Fn = ve([
   "feBlend",
   "feColorMatrix",
   "feComponentTransfer",
@@ -1688,7 +1688,7 @@ const Ns = ke([
   "feSpotLight",
   "feTile",
   "feTurbulence"
-]), Kl = ke([
+]), Kl = ve([
   "animate",
   "color-profile",
   "cursor",
@@ -1711,7 +1711,7 @@ const Ns = ke([
   "solidcolor",
   "unknown",
   "use"
-]), Un = ke([
+]), Un = ve([
   "math",
   "menclose",
   "merror",
@@ -1742,7 +1742,7 @@ const Ns = ke([
   "munder",
   "munderover",
   "mprescripts"
-]), Xl = ke([
+]), Xl = ve([
   "maction",
   "maligngroup",
   "malignmark",
@@ -1758,7 +1758,7 @@ const Ns = ke([
   "annotation-xml",
   "mprescripts",
   "none"
-]), Ds = ke(["#text"]), Ms = ke([
+]), Ds = ve(["#text"]), Ms = ve([
   "accept",
   "action",
   "align",
@@ -1877,7 +1877,7 @@ const Ns = ke([
   "width",
   "wrap",
   "xmlns"
-]), Bn = ke([
+]), Bn = ve([
   "accent-height",
   "accumulate",
   "additive",
@@ -2070,7 +2070,7 @@ const Ns = ke([
   "y2",
   "z",
   "zoomandpan"
-]), zs = ke([
+]), zs = ve([
   "accent",
   "accentunder",
   "align",
@@ -2125,7 +2125,7 @@ const Ns = ke([
   "voffset",
   "width",
   "xmlns"
-]), kn = ke([
+]), vn = ve([
   "xlink:href",
   "xml:id",
   "xlink:title",
@@ -2153,11 +2153,11 @@ const Ns = ke([
   "noframes",
   "plaintext",
   "noscript"
-], ua = ke(Y({}, sr)), ca = function() {
+], ua = ve(Y({}, sr)), ca = function() {
   const n = {};
   return gt(sr, (e) => {
     n[e] = ye(new RegExp("</" + e + "(?=[\\t\\n\\f\\r />])", "i"));
-  }), ke(n);
+  }), ve(n);
 }(), da = function() {
   return typeof window > "u" ? null : window;
 }, pa = function(e, t) {
@@ -2251,7 +2251,7 @@ function rr() {
     ...Ms,
     ...Bn,
     ...zs,
-    ...kn
+    ...vn
   ]);
   let $e = Object.seal(Ct(null, {
     tagNameCheck: {
@@ -2287,7 +2287,7 @@ function rr() {
       value: null
     }
   }));
-  let qe = !0, Xe = !0, He = !1, ve = !0, Ce = !1, ie = !0, Le = !1, _t = !1, dt = null, ce = null, rt = !1, Ae = !1, je = !1, lt = !1, pt = !0, Ut = !1;
+  let qe = !0, Xe = !0, He = !1, ke = !0, Ce = !1, ie = !0, Le = !1, _t = !1, dt = null, ce = null, rt = !1, Ae = !1, je = !1, lt = !1, pt = !0, Ut = !1;
   const Bt = "user-content-";
   let Ht = !0, jt = !1, Ge = {}, Ee = null;
   const Wt = Y({}, [
@@ -2349,7 +2349,7 @@ function rr() {
     wt,
     ht,
     Me
-  ], Mn), $ = ke([
+  ], Mn), $ = ve([
     "mi",
     "mo",
     "mn",
@@ -2357,7 +2357,7 @@ function rr() {
     "mtext"
   ]);
   let _e = Y({}, $);
-  const rs = ke(["annotation-xml"]);
+  const rs = ve(["annotation-xml"]);
   let In = Y({}, rs);
   const ir = Y({}, [
     "title",
@@ -2380,9 +2380,9 @@ function rr() {
     }), Vt = ut(l, "ADD_DATA_URI_TAGS", cn, {
       transform: fe,
       base: cn
-    }), Ee = ut(l, "FORBID_CONTENTS", Wt, { transform: fe }), st = ut(l, "FORBID_TAGS", Ne({}), { transform: fe }), te = ut(l, "FORBID_ATTR", Ne({}), { transform: fe }), Ge = Re(l, "USE_PROFILES") ? l.USE_PROFILES && typeof l.USE_PROFILES == "object" ? Ne(l.USE_PROFILES) : l.USE_PROFILES : !1, qe = l.ALLOW_ARIA_ATTR !== !1, Xe = l.ALLOW_DATA_ATTR !== !1, He = l.ALLOW_UNKNOWN_PROTOCOLS || !1, ve = l.ALLOW_SELF_CLOSE_IN_ATTR !== !1, Ce = l.SAFE_FOR_TEMPLATES || !1, ie = l.SAFE_FOR_XML !== !1, Le = l.WHOLE_DOCUMENT || !1, Ae = l.RETURN_DOM || !1, je = l.RETURN_DOM_FRAGMENT || !1, lt = l.RETURN_TRUSTED_TYPE || !1, rt = l.FORCE_BODY || !1, pt = l.SANITIZE_DOM !== !1, Ut = l.SANITIZE_NAMED_PROPS || !1, Ht = l.KEEP_CONTENT !== !1, jt = l.IN_PLACE || !1, V = Zl(l.ALLOWED_URI_REGEXP) ? l.ALLOWED_URI_REGEXP : Fs, Ye = typeof l.NAMESPACE == "string" ? l.NAMESPACE : Me, _e = Hn(l, "MATHML_TEXT_INTEGRATION_POINTS", () => Y({}, $)), In = Hn(l, "HTML_INTEGRATION_POINTS", () => Y({}, rs));
+    }), Ee = ut(l, "FORBID_CONTENTS", Wt, { transform: fe }), st = ut(l, "FORBID_TAGS", Ne({}), { transform: fe }), te = ut(l, "FORBID_ATTR", Ne({}), { transform: fe }), Ge = Re(l, "USE_PROFILES") ? l.USE_PROFILES && typeof l.USE_PROFILES == "object" ? Ne(l.USE_PROFILES) : l.USE_PROFILES : !1, qe = l.ALLOW_ARIA_ATTR !== !1, Xe = l.ALLOW_DATA_ATTR !== !1, He = l.ALLOW_UNKNOWN_PROTOCOLS || !1, ke = l.ALLOW_SELF_CLOSE_IN_ATTR !== !1, Ce = l.SAFE_FOR_TEMPLATES || !1, ie = l.SAFE_FOR_XML !== !1, Le = l.WHOLE_DOCUMENT || !1, Ae = l.RETURN_DOM || !1, je = l.RETURN_DOM_FRAGMENT || !1, lt = l.RETURN_TRUSTED_TYPE || !1, rt = l.FORCE_BODY || !1, pt = l.SANITIZE_DOM !== !1, Ut = l.SANITIZE_NAMED_PROPS || !1, Ht = l.KEEP_CONTENT !== !1, jt = l.IN_PLACE || !1, V = Zl(l.ALLOWED_URI_REGEXP) ? l.ALLOWED_URI_REGEXP : Fs, Ye = typeof l.NAMESPACE == "string" ? l.NAMESPACE : Me, _e = Hn(l, "MATHML_TEXT_INTEGRATION_POINTS", () => Y({}, $)), In = Hn(l, "HTML_INTEGRATION_POINTS", () => Y({}, rs));
     const p = Hn(l, "CUSTOM_ELEMENT_HANDLING", () => Ct(null));
-    if ($e = Ct(null), Re(p, "tagNameCheck") && ls(p.tagNameCheck) && ($e.tagNameCheck = p.tagNameCheck), Re(p, "attributeNameCheck") && ls(p.attributeNameCheck) && ($e.attributeNameCheck = p.attributeNameCheck), Re(p, "allowCustomizedBuiltInElements") && typeof p.allowCustomizedBuiltInElements == "boolean" && ($e.allowCustomizedBuiltInElements = p.allowCustomizedBuiltInElements), ye($e), Ce && (Xe = !1), je && (Ae = !0), Ge && (re = Y({}, Ds), le = Ct(null), Ge.html === !0 && (Y(re, Ns), Y(le, Ms)), Ge.svg === !0 && (Y(re, zn), Y(le, Bn), Y(le, kn)), Ge.svgFilters === !0 && (Y(re, Fn), Y(le, Bn), Y(le, kn)), Ge.mathMl === !0 && (Y(re, Un), Y(le, zs), Y(le, kn))), pe.tagCheck = null, pe.attributeCheck = null, Re(l, "ADD_TAGS") && (typeof l.ADD_TAGS == "function" ? pe.tagCheck = l.ADD_TAGS : It(l.ADD_TAGS) && (re === yt && (re = Ne(re)), Y(re, l.ADD_TAGS, fe))), Re(l, "ADD_ATTR") && (typeof l.ADD_ATTR == "function" ? pe.attributeCheck = l.ADD_ATTR : It(l.ADD_ATTR) && (le === Ft && (le = Ne(le)), Y(le, l.ADD_ATTR, fe))), Re(l, "ADD_FORBID_CONTENTS") && It(l.ADD_FORBID_CONTENTS) && (Ee === Wt && (Ee = Ne(Ee)), Y(Ee, l.ADD_FORBID_CONTENTS, fe)), Ht && (re["#text"] = !0), Le && Y(re, [
+    if ($e = Ct(null), Re(p, "tagNameCheck") && ls(p.tagNameCheck) && ($e.tagNameCheck = p.tagNameCheck), Re(p, "attributeNameCheck") && ls(p.attributeNameCheck) && ($e.attributeNameCheck = p.attributeNameCheck), Re(p, "allowCustomizedBuiltInElements") && typeof p.allowCustomizedBuiltInElements == "boolean" && ($e.allowCustomizedBuiltInElements = p.allowCustomizedBuiltInElements), ye($e), Ce && (Xe = !1), je && (Ae = !0), Ge && (re = Y({}, Ds), le = Ct(null), Ge.html === !0 && (Y(re, Ns), Y(le, Ms)), Ge.svg === !0 && (Y(re, zn), Y(le, Bn), Y(le, vn)), Ge.svgFilters === !0 && (Y(re, Fn), Y(le, Bn), Y(le, vn)), Ge.mathMl === !0 && (Y(re, Un), Y(le, zs), Y(le, vn))), pe.tagCheck = null, pe.attributeCheck = null, Re(l, "ADD_TAGS") && (typeof l.ADD_TAGS == "function" ? pe.tagCheck = l.ADD_TAGS : It(l.ADD_TAGS) && (re === yt && (re = Ne(re)), Y(re, l.ADD_TAGS, fe))), Re(l, "ADD_ATTR") && (typeof l.ADD_ATTR == "function" ? pe.attributeCheck = l.ADD_ATTR : It(l.ADD_ATTR) && (le === Ft && (le = Ne(le)), Y(le, l.ADD_ATTR, fe))), Re(l, "ADD_FORBID_CONTENTS") && It(l.ADD_FORBID_CONTENTS) && (Ee === Wt && (Ee = Ne(Ee)), Y(Ee, l.ADD_FORBID_CONTENTS, fe)), Ht && (re["#text"] = !0), Le && Y(re, [
       "html",
       "head",
       "body"
@@ -2397,7 +2397,7 @@ function rr() {
         throw _ = w, A;
       }
     } else l.TRUSTED_TYPES_POLICY === null ? (_ = void 0, f = "") : (_ === void 0 && (_ = me()), _ && typeof f == "string" && (f = Z("")));
-    ke && ke(l), xt = l;
+    ve && ve(l), xt = l;
   }, as = Y({}, [
     ...zn,
     ...Fn,
@@ -2495,7 +2495,7 @@ function rr() {
     }
   }, us = function(l, p) {
     return ie ? l === "patchsrc" ? !0 : l === "for" && p !== "label" && p !== "output" : !1;
-  }, vr = function(l) {
+  }, kr = function(l) {
     if (!ie) return;
     const p = [l];
     for (; p.length > 0; ) {
@@ -2578,7 +2578,7 @@ function rr() {
       w.call(e, l, p, xt);
     });
   }
-  const kr = function(l, p) {
+  const vr = function(l, p) {
     return !!(ie && l.hasChildNodes() && !Zt(l.firstElementChild) && Se(Us, l.textContent) && Se(Us, l.innerHTML) || ie && l.namespaceURI === Me && ua[p] && (Zt(l.firstElementChild) || typeof l.textContent == "string" && Se(ca[p], l.textContent)) || l.nodeType === Oe.processingInstruction || ie && l.nodeType === Oe.comment && Se(Bs, l.data));
   }, gn = function(l, p) {
     if (l instanceof RegExp) return Se(l, p);
@@ -2613,7 +2613,7 @@ function rr() {
       tagName: w,
       allowedTags: re
     }), Tt(l, p)) return !0;
-    if (kr(l, w))
+    if (vr(l, w))
       return at(l), !0;
     if (st[w] || !(pe.tagCheck instanceof Function && pe.tagCheck(w)) && !re[w]) {
       const A = br(l, w, p);
@@ -2671,8 +2671,8 @@ function rr() {
     const j = fe(l.nodeName);
     for (; O--; ) {
       const q = w[O], he = q.name, ze = q.namespaceURI, Ie = q.value, At = fe(he), Dn = Ie;
-      let Te = he === "value" ? Dn : jl(Dn), vs = !1;
-      if (A.attrName = At, A.attrValue = Te, A.keepAttr = !0, A.forceKeepAttr = void 0, Ze(X.uponSanitizeAttribute, l, A), Te = A.attrValue, Ut && (At === "id" || At === "name") && Is(Te, Bt) !== 0 && (ft(he, l, q), Te = Bt + Te, vs = !0), ie && Se(/((--!?|])>)|<\/(style|script|title|xmp|textarea|noscript|iframe|noembed|noframes)/i, Te)) {
+      let Te = he === "value" ? Dn : jl(Dn), ks = !1;
+      if (A.attrName = At, A.attrValue = Te, A.keepAttr = !0, A.forceKeepAttr = void 0, Ze(X.uponSanitizeAttribute, l, A), Te = A.attrValue, Ut && (At === "id" || At === "name") && Is(Te, Bt) !== 0 && (ft(he, l, q), Te = Bt + Te, ks = !0), ie && Se(/((--!?|])>)|<\/(style|script|title|xmp|textarea|noscript|iframe|noembed|noframes)/i, Te)) {
         ft(he, l, q);
         continue;
       }
@@ -2685,7 +2685,7 @@ function rr() {
           ft(he, l, q);
           continue;
         }
-        if (!ve && Se(ia, Te)) {
+        if (!ke && Se(ia, Te)) {
           ft(he, l, q);
           continue;
         }
@@ -2693,7 +2693,7 @@ function rr() {
           ft(he, l, q);
           continue;
         }
-        Te = _r(j, At, ze, Te), Te !== Dn && wr(l, he, ze, Te) && vs && Cs(e.removed);
+        Te = _r(j, At, ze, Te), Te !== Dn && wr(l, he, ze, Te) && ks && Cs(e.removed);
       }
     }
     Ze(X.afterSanitizeAttributes, l, null), Tt(l, p);
@@ -2752,7 +2752,7 @@ function rr() {
     _t ? (re = dt, le = ce) : On(l), (X.uponSanitizeElement.length > 0 || X.uponSanitizeAttribute.length > 0) && (re = Ne(re)), X.uponSanitizeAttribute.length > 0 && (le = Ne(le)), e.removed = [];
     const j = jt && typeof x != "string" && Zt(x);
     if (j) {
-      vr(x);
+      kr(x);
       const ze = F(x);
       if (typeof ze == "string") {
         const Ie = fe(ze);
@@ -2851,7 +2851,7 @@ const Qe = N(lr());
 function ma() {
   Qe.value = lr();
 }
-const va = { class: "tool-kind" }, ka = { class: "tool-summary" }, ba = {
+const ka = { class: "tool-kind" }, va = { class: "tool-summary" }, ba = {
   key: 0,
   class: "tool-stat"
 }, ya = { class: "tool-state" }, _a = {
@@ -3129,8 +3129,8 @@ const va = { class: "tool-kind" }, ka = { class: "tool-summary" }, ba = {
         i("span", {
           class: de(["tool-dot", n.step.state])
         }, "●", 2),
-        i("strong", va, g(E.value), 1),
-        i("span", ka, g(Q.value), 1),
+        i("strong", ka, g(E.value), 1),
+        i("span", va, g(Q.value), 1),
         L.value ? (k(), b("small", ba, g(L.value), 1)) : I("", !0),
         i("small", ya, g(P(n.step.state)), 1),
         f[2] || (f[2] = i("span", {
@@ -3675,7 +3675,7 @@ const go = /* @__PURE__ */ Ot({
       ], 32)) : I("", !0)
     ]));
   }
-}), mo = { class: "workspace" }, vo = { class: "sessions" }, ko = ["disabled", "title"], bo = { class: "connection" }, yo = ["title"], _o = ["placeholder", "aria-label"], wo = { class: "filter-bar" }, xo = ["onClick"], So = { class: "muted" }, To = { class: "session-list" }, Ao = ["disabled", "onClick"], Eo = { class: "origin" }, Ro = {
+}), mo = { class: "workspace" }, ko = { class: "sessions" }, vo = ["disabled", "title"], bo = { class: "connection" }, yo = ["title"], _o = ["placeholder", "aria-label"], wo = { class: "filter-bar" }, xo = ["onClick"], So = { class: "muted" }, To = { class: "session-list" }, Ao = ["disabled", "onClick"], Eo = { class: "origin" }, Ro = {
   key: 0,
   class: "muted"
 }, $o = {
@@ -3718,81 +3718,81 @@ const go = /* @__PURE__ */ Ot({
 }, Jo = {
   key: 3,
   class: "error"
-}, ei = {
+}, ei = ["open"], ti = {
   key: 1,
   class: "subagent-card nested"
-}, ti = ["onClick"], ni = { class: "subagent-prompt" }, si = { key: 3 }, ri = {
+}, ni = ["onClick"], si = { class: "subagent-prompt" }, ri = { key: 3 }, li = {
   key: 0,
   class: "agent-speech"
-}, li = {
+}, ai = {
   key: 1,
   class: "error"
-}, ai = {
+}, oi = {
   key: 2,
   class: "muted"
-}, oi = {
+}, ii = {
   key: 0,
   class: "welcome"
-}, ii = {
+}, ui = {
   key: 1,
   class: "context-summary"
-}, ui = { class: "context-summary-head" }, ci = { class: "bubble user" }, di = { class: "message-head" }, pi = { class: "message-text" }, hi = { class: "bubble agent" }, fi = { class: "message-head" }, gi = {
+}, ci = { class: "context-summary-head" }, di = { class: "bubble user" }, pi = { class: "message-head" }, hi = { class: "message-text" }, fi = { class: "bubble agent" }, gi = { class: "message-head" }, mi = {
   key: 0,
   class: "steps"
-}, mi = {
+}, ki = {
   key: 0,
   class: "agent-speech"
 }, vi = {
   key: 0,
   class: "muted model-annotation"
-}, ki = {
+}, bi = {
   key: 0,
   class: "running"
-}, bi = {
+}, yi = {
   key: 2,
   class: "muted"
-}, yi = {
+}, _i = {
   key: 3,
   class: "error"
-}, _i = {
+}, wi = ["open"], xi = {
   key: 1,
   class: "subagent-card"
-}, wi = ["onClick"], xi = { class: "subagent-prompt" }, Si = {
+}, Si = ["onClick"], Ti = { class: "subagent-prompt" }, Ai = {
   key: 0,
   class: "error subagent-card-error"
-}, Ti = { key: 3 }, Ai = {
+}, Ei = { key: 3 }, Ri = {
   key: 2,
   class: "error"
-}, Ei = {
+}, $i = {
   key: 3,
   class: "muted"
-}, Ri = {
+}, Ci = {
   key: 0,
   class: "compact-notice"
-}, $i = { class: "execution-options" }, Ci = ["disabled", "title"], Li = { class: "attach-row" }, Ii = ["disabled", "aria-label", "title"], Oi = ["title"], Pi = ["aria-label", "title", "onClick"], Ni = {
+}, Li = { class: "execution-options" }, Ii = ["disabled", "title"], Oi = { class: "attach-row" }, Pi = ["disabled", "aria-label", "title"], Ni = ["title"], Di = ["aria-label", "title", "onClick"], Mi = {
   key: 0,
   class: "attach-error"
-}, Di = { class: "composer-input" }, Mi = {
+}, zi = { class: "composer-input" }, Fi = {
   key: 0,
   class: "attach-chips"
-}, zi = ["title"], Fi = ["aria-label", "title", "onClick"], Ui = {
+}, Ui = ["title"], Bi = ["aria-label", "title", "onClick"], Hi = {
   key: 0,
   class: "attach-error"
-}, Bi = ["disabled", "placeholder"], Hi = ["disabled", "aria-label", "title"], ji = ["disabled", "aria-label", "title"], Wi = ["aria-label", "title"], Vi = ["disabled"], qi = { class: "muted" }, Gi = {
+}, ji = ["disabled", "placeholder"], Wi = ["disabled", "aria-label", "title"], Vi = ["disabled", "aria-label", "title"], qi = ["aria-label", "title"], Gi = ["disabled"], Yi = { class: "muted" }, Zi = {
   class: "directory-dialog",
   role: "dialog",
   "aria-modal": "true",
   "aria-label": "选择工作区目录"
-}, Yi = { class: "directory-roots" }, Zi = ["disabled", "onClick"], Ki = ["disabled"], Xi = ["disabled"], Qi = ["disabled"], Ji = {
+}, Ki = { class: "directory-roots" }, Xi = ["disabled", "onClick"], Qi = ["disabled"], Ji = ["disabled"], eu = ["disabled"], tu = {
   key: 0,
   class: "error"
-}, eu = { key: 1 }, tu = {
+}, nu = { key: 1 }, su = {
   key: 2,
   class: "directory-list"
-}, nu = ["onClick"], su = {
+}, ru = ["onClick"], lu = {
   key: 1,
   class: "muted"
-}, ru = ["disabled"], lu = /* @__PURE__ */ Ot({
+}, au = ["disabled"], ou = /* @__PURE__ */ Ot({
   __name: "AgentsPage",
   setup(n) {
     const e = (d, h) => Qe.value === "en" ? h : d, { confirm: t } = or(), s = Cr(), r = N(localStorage.getItem("0kay.agent.selected") || ""), a = N(""), u = N([]), o = N(!1), v = N(""), y = N(null);
@@ -3959,7 +3959,7 @@ const go = /* @__PURE__ */ Ot({
       const d = z.value === 0 ? "off" : z.value < 35 ? "low" : z.value < 62.5 ? "medium" : z.value < 87.5 ? "high" : "max";
       return { executor_id: Q.value, workdir: C.value.trim(), thinking_intensity: d, model_id: J.value, permission_mode: ue.value, language: Qe.value };
     }
-    const te = N(!1), pe = N(""), qe = N(!1), Xe = N(!1), He = N([]), ve = ee(() => He.value[He.value.length - 1] || null), Ce = N(null), ie = ee(() => s.sessions.find((d) => d.session_id === r.value)), Le = (d) => d.caller_id !== "webui", _t = ee(() => s.sessions.filter((d) => (Xe.value ? d.state === "archived" : d.state !== "archived") && (M.value === "all" || (M.value === "life" ? Le(d) : !Le(d))) && (d.prompt || "").toLowerCase().includes(K.value.toLowerCase()))), dt = ee(() => s.tasks.filter((d) => d.kind === "agent" && d.session_id === r.value).sort((d, h) => (d.started_at || "").localeCompare(h.started_at || "") || d.task_id.localeCompare(h.task_id))), ce = ee(() => s.tasks.find((d) => d.session_id === r.value && ["agent", "compact"].includes(d.kind || "") && ["running", "pending"].includes(d.state))), rt = ee(() => {
+    const te = N(!1), pe = N(""), qe = N(!1), Xe = N(!1), He = N([]), ke = ee(() => He.value[He.value.length - 1] || null), Ce = N(null), ie = ee(() => s.sessions.find((d) => d.session_id === r.value)), Le = (d) => d.caller_id !== "webui", _t = ee(() => s.sessions.filter((d) => (Xe.value ? d.state === "archived" : d.state !== "archived") && (M.value === "all" || (M.value === "life" ? Le(d) : !Le(d))) && (d.prompt || "").toLowerCase().includes(K.value.toLowerCase()))), dt = ee(() => s.tasks.filter((d) => d.kind === "agent" && d.session_id === r.value).sort((d, h) => (d.started_at || "").localeCompare(h.started_at || "") || d.task_id.localeCompare(h.task_id))), ce = ee(() => s.tasks.find((d) => d.session_id === r.value && ["agent", "compact"].includes(d.kind || "") && ["running", "pending"].includes(d.state))), rt = ee(() => {
       const d = s.tasks.filter((h) => h.kind === "compact" && h.session_id === r.value && h.state === "done" && (h.result || "").trim());
       return d.length ? d.reduce((h, c) => (c.started_at || "") >= (h.started_at || "") ? c : h) : null;
     }), Ae = (d) => (Qe.value === "en" ? { pending: "Queued", running: "Running", done: "Completed", failed: "Failed", cancelled: "Stopped" } : { pending: "等待执行", running: "执行中", done: "完成", failed: "失败", cancelled: "已停止" })[d] || d, je = (d) => d ? new Date(d).toLocaleString() : "";
@@ -4083,7 +4083,7 @@ const go = /* @__PURE__ */ Ot({
       tt(), X(), s.disconnect(), et && clearInterval(et), window.removeEventListener("keydown", un);
     }), (d, h) => (k(), b(ae, null, [
       i("main", mo, [
-        i("aside", vo, [
+        i("aside", ko, [
           i("header", null, [
             h[19] || (h[19] = i("h1", null, "Agent", -1)),
             i("button", {
@@ -4106,7 +4106,7 @@ const go = /* @__PURE__ */ Ot({
                 })
               ], -1)),
               xe(" " + g(e("新对话", "New chat")), 1)
-            ], 8, ko)
+            ], 8, vo)
           ]),
           i("div", bo, [
             i("i", {
@@ -4284,7 +4284,7 @@ const go = /* @__PURE__ */ Ot({
             class: "transcript",
             onScrollPassive: $n
           }, [
-            ve.value ? (k(), b("div", Ho, [
+            ke.value ? (k(), b("div", Ho, [
               i("header", jo, [
                 i("button", {
                   type: "button",
@@ -4292,24 +4292,24 @@ const go = /* @__PURE__ */ Ot({
                 }, "← " + g(He.value.length > 1 ? e("返回上一层", "Back one level") : e("返回会话", "Back to chat")), 1),
                 i("div", null, [
                   i("h3", null, g(e("子 Agent", "Subagent")), 1),
-                  i("p", Wo, g(ve.value.prompt), 1)
+                  i("p", Wo, g(ke.value.prompt), 1)
                 ]),
                 i("span", {
-                  class: de(ve.value.state)
-                }, g(Ae(ve.value.state)), 3)
+                  class: de(ke.value.state)
+                }, g(Ae(ke.value.state)), 3)
               ]),
               i("div", Vo, [
                 i("div", qo, [
                   i("div", Go, [
                     i("b", null, g(e("父 Agent", "Parent agent")), 1),
-                    i("time", null, g(je(ve.value.started_at)), 1)
+                    i("time", null, g(je(ke.value.started_at)), 1)
                   ]),
-                  i("div", Yo, g(ve.value.prompt), 1)
+                  i("div", Yo, g(ke.value.prompt), 1)
                 ]),
-                (k(!0), b(ae, null, be(pt(ve.value), (c) => (k(), b(ae, {
+                (k(!0), b(ae, null, be(pt(ke.value), (c) => (k(), b(ae, {
                   key: c.task_id
                 }, [
-                  c.kind === "think" && (c.result || c.state === "running" || c.error) ? (k(), b("div", Zo, [
+                  c.kind === "think" && (c.result || c.reasoning || c.state === "running" || c.error) ? (k(), b("div", Zo, [
                     c.prompt ? (k(), b("small", Ko, g(c.prompt), 1)) : I("", !0),
                     c.result ? (k(), b(ae, { key: 1 }, [
                       Ue(en, {
@@ -4317,8 +4317,16 @@ const go = /* @__PURE__ */ Ot({
                       }, null, 8, ["content"]),
                       c.state === "running" ? (k(), b("span", Xo, " ▍")) : I("", !0)
                     ], 64)) : c.state === "running" ? (k(), b("small", Qo, g(e("子 Agent 正在生成回复…", "Subagent is drafting a reply…")), 1)) : I("", !0),
-                    c.error ? (k(), b("p", Jo, g(Ee(c.error)), 1)) : I("", !0)
-                  ])) : c.kind === "subagent" ? (k(), b("div", ei, [
+                    c.error ? (k(), b("p", Jo, g(Ee(c.error)), 1)) : I("", !0),
+                    c.reasoning ? (k(), b("details", {
+                      key: 4,
+                      class: "think-chain",
+                      open: c.state === "running"
+                    }, [
+                      i("summary", null, g(e("思维链", "Reasoning")), 1),
+                      i("pre", null, g(c.reasoning), 1)
+                    ], 8, ei)) : I("", !0)
+                  ])) : c.kind === "subagent" ? (k(), b("div", ti, [
                     i("button", {
                       type: "button",
                       class: "subagent-card-head",
@@ -4328,18 +4336,18 @@ const go = /* @__PURE__ */ Ot({
                         class: de(c.state)
                       }, "●", 2),
                       i("strong", null, g(e("子 Agent", "Subagent")), 1),
-                      i("span", ni, g(c.prompt), 1),
+                      i("span", si, g(c.prompt), 1),
                       i("small", null, g(Ae(c.state)), 1),
                       h[29] || (h[29] = i("span", {
                         class: "subagent-chevron",
                         "aria-hidden": "true"
                       }, "▸", -1))
-                    ], 8, ti)
+                    ], 8, ni)
                   ])) : c.kind === "tool" ? (k(), Lt(js, {
                     key: 2,
                     step: c,
                     "format-error": Ee
-                  }, null, 8, ["step"])) : c.kind !== "think" ? (k(), b("details", si, [
+                  }, null, 8, ["step"])) : c.kind !== "think" ? (k(), b("details", ri, [
                     i("summary", null, [
                       i("span", {
                         class: de(c.state)
@@ -4350,22 +4358,22 @@ const go = /* @__PURE__ */ Ot({
                     i("pre", null, g(c.result || c.error || (c.state === "running" ? "执行中…" : "执行完成，无输出")), 1)
                   ])) : I("", !0)
                 ], 64))), 128)),
-                Ge(ve.value) ? (k(), b("div", ri, [
+                Ge(ke.value) ? (k(), b("div", li, [
                   Ue(en, {
-                    content: Ge(ve.value)
+                    content: Ge(ke.value)
                   }, null, 8, ["content"])
                 ])) : I("", !0),
-                ve.value.error ? (k(), b("p", li, g(Ee(ve.value.error)), 1)) : I("", !0),
-                !pt(ve.value).length && !Ge(ve.value) && !ve.value.error ? (k(), b("p", ai, g(ve.value.state === "running" ? e("子 Agent 正在执行…", "Subagent is running…") : e("没有子步骤记录", "No child steps recorded")), 1)) : I("", !0)
+                ke.value.error ? (k(), b("p", ai, g(Ee(ke.value.error)), 1)) : I("", !0),
+                !pt(ke.value).length && !Ge(ke.value) && !ke.value.error ? (k(), b("p", oi, g(ke.value.state === "running" ? e("子 Agent 正在执行…", "Subagent is running…") : e("没有子步骤记录", "No child steps recorded")), 1)) : I("", !0)
               ])
             ])) : (k(), b(ae, { key: 1 }, [
-              !dt.value.length && !rt.value ? (k(), b("div", oi, [...h[30] || (h[30] = [
+              !dt.value.length && !rt.value ? (k(), b("div", ii, [...h[30] || (h[30] = [
                 i("h2", null, "想让 Agent 帮你做什么？", -1),
                 i("p", null, "直接描述目标，Agent 会在这个会话里回复并使用工具完成工作。", -1),
                 i("p", null, "左侧的「LIFE 发起」会话可以查看 LIFE 与 Agent 的交流，也支持你继续提问。", -1)
               ])])) : I("", !0),
-              rt.value ? (k(), b("article", ii, [
-                i("div", ui, [
+              rt.value ? (k(), b("article", ui, [
+                i("div", ci, [
                   i("strong", null, g(e("上下文摘要", "Context summary")), 1),
                   i("time", null, g(je(rt.value.started_at)), 1)
                 ]),
@@ -4377,34 +4385,42 @@ const go = /* @__PURE__ */ Ot({
                 key: c.task_id,
                 class: "turn"
               }, [
-                i("div", ci, [
-                  i("div", di, [
+                i("div", di, [
+                  i("div", pi, [
                     i("b", null, g(Le(c) ? "LIFE" : "你"), 1),
                     i("time", null, g(je(c.started_at)), 1)
                   ]),
-                  i("div", pi, g(c.prompt?.replace(/^\[thinking_intensity=\w+\]\s*/, "")), 1)
+                  i("div", hi, g(c.prompt?.replace(/^\[thinking_intensity=\w+\]\s*/, "")), 1)
                 ]),
-                i("div", hi, [
-                  i("div", fi, [
+                i("div", fi, [
+                  i("div", gi, [
                     h[31] || (h[31] = i("b", null, "Agent", -1)),
                     i("span", {
                       class: de(c.state)
                     }, g(Ae(c.state)), 3)
                   ]),
-                  lt(c).length ? (k(), b("div", gi, [
+                  lt(c).length ? (k(), b("div", mi, [
                     (k(!0), b(ae, null, be(lt(c), ($) => (k(), b(ae, {
                       key: $.task_id
                     }, [
-                      $.kind === "think" && ($.result || $.state === "running" || $.error) ? (k(), b("div", mi, [
+                      $.kind === "think" && ($.result || $.reasoning || $.state === "running" || $.error) ? (k(), b("div", ki, [
                         $.prompt ? (k(), b("small", vi, g($.prompt), 1)) : I("", !0),
                         $.result ? (k(), b(ae, { key: 1 }, [
                           Ue(en, {
                             content: $.result
                           }, null, 8, ["content"]),
-                          $.state === "running" ? (k(), b("span", ki, " ▍")) : I("", !0)
-                        ], 64)) : $.state === "running" ? (k(), b("small", bi, "Agent 正在生成回复…")) : I("", !0),
-                        $.error ? (k(), b("p", yi, g(Ee($.error)), 1)) : I("", !0)
-                      ])) : $.kind === "subagent" ? (k(), b("div", _i, [
+                          $.state === "running" ? (k(), b("span", bi, " ▍")) : I("", !0)
+                        ], 64)) : $.state === "running" ? (k(), b("small", yi, "Agent 正在生成回复…")) : I("", !0),
+                        $.error ? (k(), b("p", _i, g(Ee($.error)), 1)) : I("", !0),
+                        $.reasoning ? (k(), b("details", {
+                          key: 4,
+                          class: "think-chain",
+                          open: $.state === "running"
+                        }, [
+                          i("summary", null, g(e("思维链", "Reasoning")), 1),
+                          i("pre", null, g($.reasoning), 1)
+                        ], 8, wi)) : I("", !0)
+                      ])) : $.kind === "subagent" ? (k(), b("div", xi, [
                         i("button", {
                           type: "button",
                           class: "subagent-card-head",
@@ -4414,7 +4430,7 @@ const go = /* @__PURE__ */ Ot({
                             class: de($.state)
                           }, "●", 2),
                           i("strong", null, g(e("子 Agent", "Subagent")), 1),
-                          i("span", xi, g($.prompt), 1),
+                          i("span", Ti, g($.prompt), 1),
                           i("small", null, [
                             xe(g(Ae($.state)), 1),
                             Vt($) ? (k(), b(ae, { key: 0 }, [
@@ -4425,13 +4441,13 @@ const go = /* @__PURE__ */ Ot({
                             class: "subagent-chevron",
                             "aria-hidden": "true"
                           }, "▸", -1))
-                        ], 8, wi),
-                        $.error ? (k(), b("p", Si, g(Ee($.error)), 1)) : I("", !0)
+                        ], 8, Si),
+                        $.error ? (k(), b("p", Ai, g(Ee($.error)), 1)) : I("", !0)
                       ])) : $.kind === "tool" ? (k(), Lt(js, {
                         key: 2,
                         step: $,
                         "format-error": Ee
-                      }, null, 8, ["step"])) : $.kind !== "think" ? (k(), b("details", Ti, [
+                      }, null, 8, ["step"])) : $.kind !== "think" ? (k(), b("details", Ei, [
                         i("summary", null, [
                           i("span", {
                             class: de($.state)
@@ -4447,19 +4463,19 @@ const go = /* @__PURE__ */ Ot({
                     key: 1,
                     content: c.result
                   }, null, 8, ["content"])) : I("", !0),
-                  c.error ? (k(), b("div", Ai, g(Ee(c.error)), 1)) : I("", !0),
-                  ["running", "pending"].includes(c.state) ? (k(), b("p", Ei, "Agent 正在处理，执行过程会自动更新…")) : I("", !0)
+                  c.error ? (k(), b("div", Ri, g(Ee(c.error)), 1)) : I("", !0),
+                  ["running", "pending"].includes(c.state) ? (k(), b("p", $i, "Agent 正在处理，执行过程会自动更新…")) : I("", !0)
                 ])
               ]))), 128))
             ], 64))
           ], 544),
-          ve.value ? I("", !0) : (k(), b("form", {
+          ke.value ? I("", !0) : (k(), b("form", {
             key: 2,
             class: "composer",
             onSubmit: Be(ht, ["prevent"])
           }, [
-            me.value ? (k(), b("div", Ri, g(me.value), 1)) : I("", !0),
-            i("div", $i, [
+            me.value ? (k(), b("div", Ci, g(me.value), 1)) : I("", !0),
+            i("div", Li, [
               i("label", null, [
                 xe(g(e("权限", "Permissions")), 1),
                 Ue(bn, {
@@ -4504,7 +4520,7 @@ const go = /* @__PURE__ */ Ot({
                     })
                   ], -1)),
                   xe(" " + g(C.value || e("选择目录…", "Select folder…")), 1)
-                ], 8, Ci)
+                ], 8, Ii)
               ]),
               Ue(fo, {
                 modelValue: z.value,
@@ -4524,7 +4540,7 @@ const go = /* @__PURE__ */ Ot({
                 }, null, 8, ["modelValue", "aria-label", "disabled", "options"])
               ])
             ]),
-            i("div", Li, [
+            i("div", Oi, [
               i("input", {
                 ref_key: "fileInput",
                 ref: y,
@@ -4557,7 +4573,7 @@ const go = /* @__PURE__ */ Ot({
                   })
                 ], -1)),
                 xe(" " + g(o.value ? e("上传中…", "Uploading…") : e("附件", "Attach")), 1)
-              ], 8, Ii),
+              ], 8, Pi),
               (k(!0), b(ae, null, be(u.value, (c, $) => (k(), b("span", {
                 key: $,
                 class: "attach-chip",
@@ -4569,12 +4585,12 @@ const go = /* @__PURE__ */ Ot({
                   "aria-label": e("移除附件", "Remove attachment"),
                   title: e("移除", "Remove"),
                   onClick: (_e) => E($)
-                }, "×", 8, Pi)
-              ], 8, Oi))), 128)),
-              v.value ? (k(), b("span", Ni, g(v.value), 1)) : I("", !0)
+                }, "×", 8, Di)
+              ], 8, Ni))), 128)),
+              v.value ? (k(), b("span", Mi, g(v.value), 1)) : I("", !0)
             ]),
-            i("div", Di, [
-              u.value.length || v.value ? (k(), b("div", Mi, [
+            i("div", zi, [
+              u.value.length || v.value ? (k(), b("div", Fi, [
                 (k(!0), b(ae, null, be(u.value, (c, $) => (k(), b("span", {
                   key: $,
                   class: "attach-chip",
@@ -4586,9 +4602,9 @@ const go = /* @__PURE__ */ Ot({
                     "aria-label": e("移除附件", "Remove attachment"),
                     title: e("移除", "Remove"),
                     onClick: (_e) => E($)
-                  }, "×", 8, Fi)
-                ], 8, zi))), 128)),
-                v.value ? (k(), b("span", Ui, g(v.value), 1)) : I("", !0)
+                  }, "×", 8, Bi)
+                ], 8, Ui))), 128)),
+                v.value ? (k(), b("span", Hi, g(v.value), 1)) : I("", !0)
               ])) : I("", !0),
               tn(i("textarea", {
                 "onUpdate:modelValue": h[12] || (h[12] = (c) => a.value = c),
@@ -4597,7 +4613,7 @@ const go = /* @__PURE__ */ Ot({
                 "aria-label": "给 Agent 发消息",
                 onKeydown: Rn,
                 onPaste: L
-              }, null, 40, Bi), [
+              }, null, 40, ji), [
                 [_n, a.value]
               ]),
               ce.value?.kind !== "agent" ? (k(), b("button", {
@@ -4624,7 +4640,7 @@ const go = /* @__PURE__ */ Ot({
                     "stroke-linejoin": "round"
                   })
                 ], -1)
-              ])], 8, Hi)) : I("", !0),
+              ])], 8, Wi)) : I("", !0),
               ce.value?.kind !== "agent" ? (k(), b("button", {
                 key: 2,
                 type: "submit",
@@ -4653,7 +4669,7 @@ const go = /* @__PURE__ */ Ot({
                     "stroke-linecap": "round"
                   })
                 ], -1)
-              ])], 8, ji)) : (k(), b("button", {
+              ])], 8, Vi)) : (k(), b("button", {
                 key: 3,
                 type: "button",
                 class: "send-fly stop",
@@ -4677,7 +4693,7 @@ const go = /* @__PURE__ */ Ot({
                     fill: "currentColor"
                   })
                 ], -1)
-              ])], 8, Wi))
+              ])], 8, qi))
             ]),
             i("footer", null, [
               Ue(bn, {
@@ -4695,8 +4711,8 @@ const go = /* @__PURE__ */ Ot({
                 type: "button",
                 disabled: !ie.value || !!ce.value || te.value || ie.value.state === "archived",
                 onClick: zt
-              }, "/compact", 8, Vi),
-              i("span", qi, g(ce.value?.kind === "compact" ? e("上下文压缩中…", "Compacting…") : oe(s).onlineCount ? e("在当前会话中继续", "Continue this session") : e("执行器离线", "Executor offline")), 1)
+              }, "/compact", 8, Gi),
+              i("span", Yi, g(ce.value?.kind === "compact" ? e("上下文压缩中…", "Compacting…") : oe(s).onlineCount ? e("在当前会话中继续", "Continue this session") : e("执行器离线", "Executor offline")), 1)
             ])
           ], 32))
         ])),
@@ -4705,21 +4721,21 @@ const go = /* @__PURE__ */ Ot({
           class: "directory-backdrop",
           onClick: Be(X, ["self"])
         }, [
-          i("section", Gi, [
+          i("section", Zi, [
             i("header", null, [
               i("h2", null, "选择 " + g(V.value?.host?.hostname || "执行器") + " 的工作区", 1),
               i("button", { onClick: X }, "关闭")
             ]),
-            i("div", Yi, [
+            i("div", Ki, [
               (k(!0), b(ae, null, be(Z.value.roots, (c) => (k(), b("button", {
                 key: c,
                 disabled: R.value,
                 onClick: ($) => nt(c)
-              }, g(c), 9, Zi))), 128)),
+              }, g(c), 9, Xi))), 128)),
               i("button", {
                 disabled: R.value,
                 onClick: h[15] || (h[15] = (c) => nt(V.value?.host?.workdir || ""))
-              }, "默认目录", 8, Ki)
+              }, "默认目录", 8, Qi)
             ]),
             i("code", null, g(Z.value.path), 1),
             i("form", {
@@ -4731,15 +4747,15 @@ const go = /* @__PURE__ */ Ot({
                 placeholder: "新文件夹名称",
                 "aria-label": "新文件夹名称",
                 disabled: R.value
-              }, null, 8, Xi), [
+              }, null, 8, Ji), [
                 [_n, F.value]
               ]),
               i("button", {
                 disabled: R.value || !F.value.trim() || !Z.value.path
-              }, "新建文件夹", 8, Qi)
+              }, "新建文件夹", 8, eu)
             ], 32),
-            D.value ? (k(), b("p", Ji, g(D.value), 1)) : I("", !0),
-            R.value ? (k(), b("p", eu, "正在读取目录…")) : (k(), b("div", tu, [
+            D.value ? (k(), b("p", tu, g(D.value), 1)) : I("", !0),
+            R.value ? (k(), b("p", nu, "正在读取目录…")) : (k(), b("div", su, [
               Z.value.parent !== Z.value.path ? (k(), b("button", {
                 key: 0,
                 onClick: h[17] || (h[17] = (c) => nt(Z.value.parent))
@@ -4763,14 +4779,14 @@ const go = /* @__PURE__ */ Ot({
                   })
                 ], -1)),
                 xe(" " + g(c.name), 1)
-              ], 8, nu))), 128)),
-              Z.value.directories.length ? I("", !0) : (k(), b("p", su, "没有子目录"))
+              ], 8, ru))), 128)),
+              Z.value.directories.length ? I("", !0) : (k(), b("p", lu, "没有子目录"))
             ])),
             i("footer", null, [
               i("button", {
                 disabled: R.value || !!D.value || !Z.value.path,
                 onClick: Cn
-              }, "选择当前目录", 8, ru)
+              }, "选择当前目录", 8, au)
             ])
           ])
         ])) : I("", !0)
@@ -4778,9 +4794,9 @@ const go = /* @__PURE__ */ Ot({
       Ue(go)
     ], 64));
   }
-}), iu = /* @__PURE__ */ ss(lu, [["__scopeId", "data-v-5a56afca"]]);
+}), cu = /* @__PURE__ */ ss(ou, [["__scopeId", "data-v-0dce92c7"]]);
 export {
-  iu as default
+  cu as default
 };
 
-;(()=>{if(typeof document!=='undefined'&&!document.getElementById('agent-plugin-style')){const s=document.createElement('style');s.id='agent-plugin-style';s.textContent=".markdown-content[data-v-ef377647]{line-height:1.75;overflow-wrap:anywhere;font-size:14px}.markdown-content[data-v-ef377647] pre{padding:16px;background:var(--md-surface-container);border-radius:8px;overflow:auto;white-space:pre;line-height:1.5}.markdown-content[data-v-ef377647] code{font-family:monospace;background:var(--md-surface-container);padding:2px 4px;border-radius:4px}.markdown-content[data-v-ef377647] pre code{padding:0;background:none}.markdown-content[data-v-ef377647] table{display:block;overflow:auto;border-collapse:collapse;margin:12px 0}.markdown-content[data-v-ef377647] th,.markdown-content[data-v-ef377647] td{border:1px solid var(--md-outline-variant);padding:8px 12px}.markdown-content[data-v-ef377647] blockquote{border-left:3px solid var(--md-outline);margin:12px 0;padding-left:14px;color:var(--md-on-surface-variant)}.markdown-content[data-v-ef377647] ul,.markdown-content[data-v-ef377647] ol{padding-left:24px}.markdown-content[data-v-ef377647] a{color:var(--md-primary);text-decoration:underline}.markdown-content[data-v-ef377647] img{max-width:100%}.markdown-content[data-v-ef377647] h1,.markdown-content[data-v-ef377647] h2,.markdown-content[data-v-ef377647] h3{margin:16px 0 8px}.tool-card[data-v-f13fbd25]{--code-font:ui-monospace,\"Cascadia Code\",\"JetBrains Mono\",Consolas,\"SFMono-Regular\",Menlo,monospace;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container);margin:8px 0;overflow:hidden}button.tool-card-head[data-v-f13fbd25]{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;border-radius:0;background:transparent;padding:10px 12px;cursor:pointer;font-size:13px}.tool-kind[data-v-f13fbd25]{flex-shrink:0;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--md-on-surface)}.tool-summary[data-v-f13fbd25]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--code-font);font-size:13px;color:var(--md-on-surface)}.tool-stat[data-v-f13fbd25]{flex-shrink:0;font-size:12px;font-weight:600;color:var(--md-primary);border:1px solid var(--md-outline-variant);border-radius:999px;padding:1px 8px}.tool-state[data-v-f13fbd25]{flex-shrink:0;font-size:13px;color:var(--md-on-surface-variant)}.tool-chevron[data-v-f13fbd25]{flex-shrink:0;color:var(--md-on-surface-variant);font-size:12px;transition:transform .15s}.tool-card.expanded .tool-chevron[data-v-f13fbd25]{transform:rotate(90deg)}.tool-dot[data-v-f13fbd25]{font-size:9px}.tool-dot.running[data-v-f13fbd25],.tool-dot.pending[data-v-f13fbd25]{color:#b88412}.tool-dot.failed[data-v-f13fbd25]{color:var(--md-error,#c44)}.tool-dot.done[data-v-f13fbd25]{color:#3a6}.tool-dot.cancelled[data-v-f13fbd25]{color:var(--md-on-surface-variant)}.tool-card-body[data-v-f13fbd25]{padding:4px 12px 12px;border-top:1px solid var(--md-outline-variant);display:flex;flex-direction:column;gap:6px}.tool-section-label[data-v-f13fbd25]{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--md-on-surface-variant);margin-top:4px}.tool-card-body pre[data-v-f13fbd25]{margin:0;max-height:340px;overflow:auto;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:8px;padding:8px 10px;font-family:var(--code-font);font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.tool-shot[data-v-f13fbd25]{margin:0;display:flex;flex-direction:column;gap:6px}.tool-shot img[data-v-f13fbd25]{width:100%;border-radius:12px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-lowest);display:block}.tool-shot figcaption[data-v-f13fbd25]{font-family:var(--code-font);font-size:11.5px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.tool-section-text[data-v-f13fbd25]{margin:0;font-size:13px;overflow-wrap:anywhere}.tool-error[data-v-f13fbd25]{background:var(--md-error-container);padding:8px 12px;border-radius:8px;margin:0;font-size:12px;overflow-wrap:anywhere}.muted[data-v-f13fbd25]{font-size:12px;color:var(--md-on-surface-variant);margin:0}.tool-dialog-backdrop[data-v-f13fbd25]{position:fixed;inset:0;background:#0008;z-index:1050;display:grid;place-items:center;padding:20px}.tool-dialog[data-v-f13fbd25]{background:var(--md-surface);color:var(--md-on-surface);border:1px solid var(--md-outline-variant);border-radius:16px;padding:18px 20px;width:min(680px,100%);max-height:82vh;overflow:auto;display:flex;flex-direction:column;gap:12px}.tool-dialog header[data-v-f13fbd25]{display:flex;align-items:center;justify-content:space-between;gap:12px}.tool-dialog h4[data-v-f13fbd25]{margin:0;font-size:15px;overflow-wrap:anywhere;flex:1;min-width:0}#app .tool-dialog-close[data-v-f13fbd25],.tool-dialog-close[data-v-f13fbd25]{flex-shrink:0;width:40px;height:40px;min-height:0;padding:0;border:none;border-radius:50%;background:transparent;color:var(--md-on-surface-variant);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background var(--transition-fast),color var(--transition-fast)}#app .tool-dialog-close[data-v-f13fbd25]:hover,.tool-dialog-close[data-v-f13fbd25]:hover{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent);box-shadow:none;filter:none;color:var(--md-on-surface)}#app .tool-dialog-close[data-v-f13fbd25]:active,.tool-dialog-close[data-v-f13fbd25]:active{background:color-mix(in srgb,var(--md-on-surface) 12%,transparent);border-radius:50%}.tool-search-results[data-v-f13fbd25]{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:14px}.tool-search-results a[data-v-f13fbd25]{color:var(--md-primary);font-size:14px;font-weight:500;text-decoration:none}.tool-search-results a[data-v-f13fbd25]:hover{text-decoration:underline}.tool-search-results p[data-v-f13fbd25]{margin:4px 0 0;font-size:13px;line-height:1.65;color:var(--md-on-surface)}.tool-search-results small[data-v-f13fbd25]{display:block;margin-top:2px;font-size:12px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.tool-card[data-v-f13fbd25]{border-radius:16px;border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent);background:var(--md-surface-container);transition:box-shadow .22s,background-color .2s}.tool-card[data-v-f13fbd25]:hover{box-shadow:var(--shadow-1)}button.tool-card-head[data-v-f13fbd25]{padding:12px 15px;gap:10px;min-height:46px;border-radius:0}button.tool-card-head[data-v-f13fbd25]:hover{background:var(--md-secondary-container)}.tool-kind[data-v-f13fbd25]{font-weight:700;letter-spacing:.06em}.tool-stat[data-v-f13fbd25]{border-color:color-mix(in srgb,var(--md-primary) 30%,transparent);background:color-mix(in srgb,var(--md-primary) 10%,transparent)}.tool-chevron[data-v-f13fbd25]{width:22px;height:22px;display:inline-grid;place-items:center;border-radius:50%;background:var(--md-surface-container-high);transition:transform .3s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .16s}.tool-card-body[data-v-f13fbd25]{padding:8px 15px 15px;gap:8px;border-top-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}.tool-card-body pre[data-v-f13fbd25]{border-radius:14px;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}.tool-section-label[data-v-f13fbd25]{font-weight:700}.diff-wrap[data-v-f13fbd25]{display:flex;flex-direction:column;gap:10px}.diff-file[data-v-f13fbd25]{border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);border-radius:14px;overflow:hidden;background:var(--md-surface-container-lowest)}.diff-file-head[data-v-f13fbd25]{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--md-surface-container);font-size:11.5px;font-weight:650}.diff-file-path[data-v-f13fbd25]{font-family:var(--code-font);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.diff-file-stat[data-v-f13fbd25]{flex:none;font-family:var(--code-font);color:var(--md-on-surface-variant)}.diff-body[data-v-f13fbd25]{max-height:360px;overflow:auto;font-family:var(--code-font);font-size:12px;line-height:1.55;padding:4px 0}.diff-line[data-v-f13fbd25]{display:grid;grid-template-columns:40px 40px 18px 1fr;white-space:pre;min-width:max-content}.diff-no[data-v-f13fbd25]{text-align:right;padding:0 6px;color:var(--md-on-surface-variant);opacity:.6;user-select:none;font-variant-numeric:tabular-nums}.diff-sign[data-v-f13fbd25]{text-align:center;user-select:none;opacity:.9}.diff-text[data-v-f13fbd25]{padding-right:12px}.diff-line.add[data-v-f13fbd25]{background:color-mix(in srgb,#2ea043 20%,transparent);color:#116329}.diff-line.del[data-v-f13fbd25]{background:color-mix(in srgb,#cf222e 18%,transparent);color:#82071e}.diff-line.add .diff-sign[data-v-f13fbd25]{color:#116329;font-weight:700}.diff-line.del .diff-sign[data-v-f13fbd25]{color:#cf222e;font-weight:700}.diff-line.hunk[data-v-f13fbd25]{background:var(--md-surface-container);color:var(--md-on-surface-variant)}.diff-line.meta[data-v-f13fbd25]{color:var(--md-on-surface-variant);opacity:.75}@media (prefers-color-scheme: dark){.diff-line.add[data-v-f13fbd25],.diff-line.add .diff-sign[data-v-f13fbd25]{color:#7ee787}.diff-line.del[data-v-f13fbd25],.diff-line.del .diff-sign[data-v-f13fbd25]{color:#ffa198}}#app .app-select{min-width:0;position:relative;font-size:inherit}#app .app-select.input{padding:0;border:0;min-height:0;background:transparent}#app .app-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:0 14px 0 16px;border:1px solid transparent;border-radius:16px;background-color:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;font-size:15px;text-align:left;cursor:pointer;box-shadow:none;transition:background-color .18s,border-color .18s,box-shadow .2s,border-radius .34s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .app-select-trigger:hover:not(:disabled){background-color:var(--md-surface-container-highest)}#app .app-select-trigger[aria-expanded=true],#app .app-select-trigger:focus-visible{border-color:var(--md-primary);background-color:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent);outline:none}#app .app-select-trigger:disabled{opacity:.5;cursor:not-allowed}.app-select-value{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.app-select-chevron{flex-shrink:0;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;color:var(--md-on-surface-variant);transition:transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .16s}#app .app-select-trigger:hover .app-select-chevron{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent)}.app-select-chevron svg{transition:transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}.app-select-chevron svg.is-open{transform:rotate(180deg)}.app-select-menu{position:fixed;z-index:10000;overflow-y:auto;overscroll-behavior:contain;padding:8px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:24px;background:var(--md-surface-container-low);color:var(--md-on-surface);box-shadow:0 18px 50px -12px color-mix(in srgb,var(--md-scrim,#000) 45%,transparent),0 4px 14px -4px #16244026;font-family:var(--font-family);font-size:14px;transform-origin:top}.app-select-menu.opens-up{transform-origin:bottom}.app-select-option{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:46px;padding:0 14px;border-radius:14px;cursor:pointer;overflow-wrap:anywhere;line-height:1.4;color:var(--md-on-surface);transition:background-color .14s,border-radius .3s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),color .14s}.app-select-option>span{min-width:0}.app-select-check{flex-shrink:0;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;color:var(--md-primary)}.app-select-option.highlighted{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent)}.app-select-option.selected{background:var(--md-primary-container);color:var(--md-on-primary-container);font-weight:650}.app-select-option.selected .app-select-check{background:var(--md-primary);color:var(--md-on-primary)}.app-select-option.selected.highlighted{background:color-mix(in srgb,var(--md-primary-container) 88%,var(--md-primary) 12%)}.app-select-option.disabled{opacity:.4;cursor:not-allowed}.app-select-search{position:sticky;top:-8px;z-index:1;display:flex;align-items:center;gap:10px;margin:-8px -8px 8px;padding:13px 16px;background:var(--md-surface-container-low);border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:24px 24px 0 0;color:var(--md-on-surface-variant)}.app-select-search input{flex:1;min-width:0;border:0;background:transparent;padding:0;font:inherit;color:var(--md-on-surface);outline:none}.app-select-empty{padding:18px;color:var(--md-on-surface-variant);text-align:center;font-size:13px}.select-menu-enter-active{transition:opacity .18s var(--ease-emphasized,cubic-bezier(.2,0,0,1)),transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}.select-menu-leave-active{transition:opacity .13s,transform .13s}.select-menu-enter-from,.select-menu-leave-to{opacity:0;transform:translateY(-6px) scale(.97)}.thinking-control{min-width:110px;flex:1;display:flex;flex-direction:column;gap:5px}.thinking-caption{font-size:12px}#app .thinking-trigger{display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:9px 12px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);font-size:12px;border-radius:9px}.thinking-popover{position:fixed;z-index:10000;padding:16px;border-radius:14px;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);box-shadow:0 10px 32px #16244026;color:var(--md-on-surface);font-family:var(--font-family)}.thinking-popover header{display:flex;justify-content:space-between;gap:12px;font-size:13px}.thinking-popover output{color:var(--md-primary);font-weight:600}.thinking-track{position:relative;padding:22px 4px 16px;display:flex;align-items:center}.thinking-track input{appearance:none;-webkit-appearance:none;width:100%;height:5px;padding:0;margin:0;border:0;border-radius:5px;background:linear-gradient(to right,var(--md-primary) var(--intensity),var(--md-outline-variant) var(--intensity));cursor:pointer;z-index:1}.thinking-track input::-webkit-slider-thumb{appearance:none;width:17px;height:17px;border-radius:50%;background:var(--md-primary);border:2px solid var(--md-surface);box-shadow:0 1px 4px #24345d40}.thinking-track input::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--md-primary);border:2px solid var(--md-surface)}.thinking-track input:focus-visible{outline:2px solid var(--md-primary);outline-offset:7px}.thinking-stops{display:flex;justify-content:space-between;gap:3px}.thinking-stops button{font:inherit;font-size:12px;border:0;background:transparent;color:var(--md-on-surface-variant);padding:6px 5px;border-radius:6px;cursor:pointer}.thinking-stops button.selected{background:var(--md-primary-container);color:var(--md-primary);font-weight:700}.thinking-popover p{font-size:12px;line-height:1.5;color:var(--md-on-surface-variant);margin:12px 0 0}.thinking-control.full .thinking-trigger,.thinking-popover.full{--md-primary:#a050db;border-color:#a050db88;box-shadow:0 0 16px #a050db25}.thinking-popover.full .energy-wave{position:absolute;inset:14px 0 8px;pointer-events:none;border-radius:20px;box-shadow:0 0 12px #a050db66}.thinking-popover.pulse,.thinking-control.pulse .thinking-trigger{animation:thinking-boost .85s ease-out}.thinking-popover.pulse .energy-wave{animation:thinking-wave .85s ease-out}@keyframes thinking-boost{0%{box-shadow:0 0 #a050db66}45%{box-shadow:0 0 0 5px #a050db20,0 0 30px #a050db40}to{box-shadow:0 0 16px #a050db25}}@keyframes thinking-wave{0%{transform:scale(.95);opacity:1}to{transform:scale(1.15,2);opacity:0}}.thinking-menu-enter-active,.thinking-menu-leave-active{transition:opacity .13s,transform .13s}.thinking-menu-enter-from,.thinking-menu-leave-to{opacity:0;transform:translateY(4px)}@media (prefers-reduced-motion:reduce){.thinking-popover.pulse,.thinking-control.pulse .thinking-trigger,.thinking-popover.pulse .energy-wave{animation:none}}.thinking-popover{padding:20px;border-radius:28px;background:var(--md-surface-container-low);border-color:transparent;box-shadow:0 8px 28px #24345d24}.thinking-popover header{align-items:center;font-size:14px;min-height:30px}.thinking-popover output{padding:6px 12px;border-radius:999px;background:var(--md-primary-container);font-size:12px}.thinking-track{height:68px;padding:0;margin:12px 0 0;isolation:isolate}.thinking-capsule{position:absolute;left:5px;right:5px;height:28px;border-radius:999px;background:var(--md-primary-container);overflow:hidden;pointer-events:none}.thinking-fill{height:100%;width:var(--intensity);background:var(--md-primary);border-radius:999px}.thinking-tick{position:absolute;top:50%;width:4px;height:4px;border-radius:50%;background:var(--md-primary);transform:translate(-50%,-50%)}.thinking-tick:first-of-type{left:8px!important}.thinking-tick:last-of-type{left:calc(100% - 8px)!important}.thinking-tick.passed{background:var(--md-on-primary)}.thinking-track input{position:relative;height:48px;background:transparent;border-radius:999px;touch-action:pan-y}.thinking-track input::-webkit-slider-runnable-track{height:28px;background:transparent;border-radius:999px}.thinking-track input::-webkit-slider-thumb{width:10px;height:44px;margin-top:-8px;border-radius:999px;border:0;background:var(--md-primary);box-shadow:0 0 0 5px var(--md-surface-container-low);transition:width .14s,height .14s,margin-top .14s}.thinking-track input:active::-webkit-slider-thumb{width:6px;height:48px;margin-top:-10px}.thinking-track input::-moz-range-track{height:28px;background:transparent;border-radius:999px}.thinking-track input::-moz-range-thumb{width:10px;height:44px;border:0;border-radius:999px;background:var(--md-primary);box-shadow:0 0 0 5px var(--md-surface-container-low)}.thinking-track input:active::-moz-range-thumb{width:6px;height:48px}.thinking-track input:focus-visible{outline-offset:3px}.thinking-stops{align-items:center;gap:2px;margin-top:2px}.thinking-stops button{border-radius:999px;min-height:30px;padding:6px 9px;transition:background-color .16s,color .16s}.thinking-popover.full{background:color-mix(in srgb,var(--md-surface-container-low) 93%,#a050db);border-color:#a050db55}.thinking-popover.full .thinking-fill{background:linear-gradient(90deg,#7255c8,#ad50d6)}.thinking-popover.full .energy-wave{inset:18px 5px;border-radius:999px;z-index:-1}.thinking-popover p{margin-top:12px}.thinking-popover.full{box-shadow:0 8px 28px #24345d24,0 0 34px #a050db33;border-color:#a050db77}.thinking-popover.full .energy-wave{position:absolute;inset:-3px 4px;border-radius:999px;z-index:-1;background:radial-gradient(70% 120% at 100% 50%,#c56bffbb,transparent 68%),radial-gradient(50% 120% at 0% 50%,#6b8cffaa,transparent 70%);filter:blur(7px);animation:thunder-glow 1.7s ease-in-out infinite}@keyframes thunder-glow{0%,to{opacity:.5;transform:scale(1)}45%{opacity:1;transform:scale(1.03)}}.thinking-popover.full .thinking-capsule{box-shadow:0 0 0 1px #a050db66,0 0 26px #a050db55}.thinking-popover.full .thinking-fill{background:linear-gradient(90deg,#6b8cff,#a050db,#e0a3ff,#a050db);background-size:280% 100%;animation:thunder-flow 2.6s linear infinite}@keyframes thunder-flow{to{background-position:280% 0}}.thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}.thinking-control.full .thinking-trigger span:first-child{animation:thunder-flicker 2s steps(1,end) infinite}@keyframes thunder-flicker{0%,90%,to{opacity:1}92%{opacity:.35}94%{opacity:1}96%{opacity:.5}}#app .thinking-control .thinking-trigger{min-height:52px;padding:0 14px 0 16px;border:1px solid transparent;border-radius:16px;background:var(--md-surface-container-high);color:var(--md-on-surface);font-size:13px;font-weight:500;align-items:center;transition:background-color .18s,border-color .18s,box-shadow .2s,border-radius .34s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .thinking-control .thinking-trigger:hover{background:var(--md-surface-container-highest)}#app .thinking-control .thinking-trigger[aria-expanded=true]{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}#app .thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}.thinking-caption{font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--md-on-surface-variant)}.confirm-scrim{position:fixed;inset:0;z-index:13000;background:#21173566;backdrop-filter:blur(6px);display:grid;place-items:center;padding:20px}.confirm-dialog{width:min(440px,100%);background:var(--md-surface-container-high, var(--md-surface, #fff));color:var(--md-on-surface);border:1px solid var(--md-outline-variant, transparent);border-radius:28px;padding:28px;box-shadow:0 24px 70px #18132d33;outline:none}.confirm-dialog h2{margin:0 0 10px;font-size:22px;font-weight:650}.confirm-dialog p{margin:0;font-size:14px;line-height:1.65;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.confirm-dialog footer{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}.confirm-dialog footer button{border:0;border-radius:999px;padding:12px 22px;font:inherit;font-weight:600;cursor:pointer;background:var(--md-secondary-container, #e7e0ec);color:var(--md-on-secondary-container, #1d1b20)}.confirm-dialog footer .confirm-primary{background:var(--md-primary, #6750a4);color:var(--md-on-primary, #fff)}.confirm-dialog footer .confirm-primary.danger{background:var(--md-error, #b3261e);color:var(--md-on-error, #fff)}.confirm-dialog footer button:focus-visible{outline:3px solid var(--md-primary);outline-offset:3px}.workspace[data-v-5a56afca]{--code-font:ui-monospace,\"Cascadia Code\",\"JetBrains Mono\",Consolas,\"SFMono-Regular\",Menlo,monospace;display:flex;height:100%;min-height:0;background:var(--md-surface);color:var(--md-on-surface)}button[data-v-5a56afca],input[data-v-5a56afca],textarea[data-v-5a56afca],select[data-v-5a56afca]{font:inherit;color:inherit;border:1px solid var(--md-outline-variant);border-radius:9px;background:var(--md-surface-container-lowest);padding:9px 12px}button[data-v-5a56afca]{cursor:pointer;transition:background .15s,box-shadow .15s,filter .15s}button[data-v-5a56afca]:disabled{opacity:.45;cursor:default}button[data-v-5a56afca]:hover:not(:disabled){background:var(--md-secondary-container);box-shadow:none}input[data-v-5a56afca]:focus,textarea[data-v-5a56afca]:focus,select[data-v-5a56afca]:focus{outline:none;border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent)}input[type=checkbox][data-v-5a56afca]{width:auto;accent-color:var(--md-primary)}.sessions[data-v-5a56afca]{width:284px;flex-shrink:0;border-right:1px solid var(--md-outline-variant);padding:20px 16px;display:flex;flex-direction:column;gap:14px;background:var(--md-surface-container-low)}.sessions header[data-v-5a56afca]{display:flex;align-items:center;justify-content:space-between;gap:12px}.sessions h1[data-v-5a56afca]{font-size:22px;font-weight:650;letter-spacing:-.01em;margin:0}.sessions header>button[data-v-5a56afca]{height:34px;padding:0 13px;border:0;border-radius:9px;background:var(--md-primary);color:var(--md-on-primary,#fff);font:600 13px/1 inherit}.sessions header>button[data-v-5a56afca]:hover:not(:disabled){background:var(--md-primary);filter:brightness(1.08);box-shadow:var(--shadow-1)}.sessions>input[data-v-5a56afca]{border-radius:10px;background:var(--md-surface-container-lowest)}.connection[data-v-5a56afca]{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--md-on-surface-variant)}.connection button[data-v-5a56afca]{margin-left:auto;padding:3px 9px;border-radius:8px;font-size:13px}.connection i[data-v-5a56afca]{width:8px;height:8px;border-radius:50%;background:var(--md-outline);box-shadow:0 0 0 3px var(--md-surface-container-high)}.connection i.online[data-v-5a56afca]{background:var(--md-success);box-shadow:0 0 0 3px var(--md-success-container)}.filter-bar[data-v-5a56afca]{display:flex;gap:3px;padding:4px;border-radius:999px;background:var(--md-surface-container-high)}.filter-bar button[data-v-5a56afca]{flex:1;font-size:12px;font-weight:500;padding:7px 4px;border:0;border-radius:999px;background:transparent;color:var(--md-on-surface-variant);box-shadow:none}.filter-bar button[data-v-5a56afca]:hover:not(:disabled){background:transparent;color:var(--md-on-surface)}.filter-bar button.chosen[data-v-5a56afca]{background:var(--md-surface-container-lowest);color:var(--md-primary);font-weight:650;box-shadow:var(--shadow-1)}.sessions label input[data-v-5a56afca]{margin-right:6px}.session-list[data-v-5a56afca]{overflow-y:auto;flex:1;min-height:0;margin:0 -4px;padding:0 4px}.session-card[data-v-5a56afca]{display:flex;flex-direction:column;width:100%;text-align:left;gap:6px;margin-bottom:8px;padding:12px 13px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest)}.session-card[data-v-5a56afca]:hover:not(:disabled){background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-primary) 40%,var(--md-outline-variant));box-shadow:var(--shadow-1)}.session-card.selected[data-v-5a56afca]{background:var(--md-secondary-container);border-color:transparent;border-radius:12px 12px 12px 4px}.session-card.selected[data-v-5a56afca]:hover{background:var(--md-secondary-container)}.session-card strong[data-v-5a56afca]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;font-weight:600;font-size:14px}.origin[data-v-5a56afca],small[data-v-5a56afca],.sessions .muted[data-v-5a56afca]{font-size:12px;color:var(--md-on-surface-variant)}.origin[data-v-5a56afca]{font-weight:600;letter-spacing:.02em}.ledger-button[data-v-5a56afca]{text-align:left;border-radius:10px;background:var(--md-surface-container-lowest);font-size:13px;font-weight:550}.ledger-button.chosen[data-v-5a56afca]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.ledger[data-v-5a56afca]{flex:1;overflow-y:auto;padding:var(--space-xl)}.ledger>header[data-v-5a56afca]{margin-bottom:8px}.ledger>header h2[data-v-5a56afca]{font-size:18px;font-weight:650}.ledger-entry[data-v-5a56afca]{border:1px solid var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-lowest);padding:14px 16px;margin:10px 0;box-shadow:var(--shadow-1)}.ledger-entry>div[data-v-5a56afca]{display:flex;align-items:center;gap:10px;font-size:12px}.ledger-entry>div>span[data-v-5a56afca]:first-child{font-family:var(--code-font);background:var(--md-surface-container);padding:3px 8px;border-radius:6px;font-weight:600}.ledger-entry>div small[data-v-5a56afca]{margin-left:auto}.ledger-entry>p[data-v-5a56afca]{margin:8px 0;font-size:14px;line-height:1.6;overflow-wrap:anywhere}.ledger-entry details[data-v-5a56afca]{margin-top:8px;border-radius:10px;background:var(--md-surface-container);padding:8px 12px;font-size:12px}.ledger-entry summary[data-v-5a56afca]{cursor:pointer;color:var(--md-on-surface-variant)}.ledger-entry pre[data-v-5a56afca]{margin:8px 0 0;max-height:300px}.conversation[data-v-5a56afca]{display:flex;flex:1;min-width:0;flex-direction:column;min-height:0}.conversation-header[data-v-5a56afca]{display:flex;align-items:flex-start;gap:14px}.conversation-header>div[data-v-5a56afca]:first-child{flex:1;min-width:0}.conversation-header h2[data-v-5a56afca]{font-size:17px;font-weight:650;margin:0}.conversation-header p[data-v-5a56afca]{margin:6px 0 0;color:var(--md-on-surface-variant);font-size:13px}.session-actions[data-v-5a56afca]{display:flex;gap:8px;flex-shrink:0}.session-actions button[data-v-5a56afca]{height:32px;padding:0 13px;border-radius:9px;font-size:13px;font-weight:550;background:var(--md-surface-container-lowest)}.running[data-v-5a56afca]{color:#b88412;font-weight:650;font-size:12px}.failed[data-v-5a56afca]{color:var(--md-error)}.done[data-v-5a56afca]{color:var(--md-success);font-weight:600;font-size:12px}.cancelled[data-v-5a56afca],.muted[data-v-5a56afca]{color:var(--md-on-surface-variant)}.muted[data-v-5a56afca]{font-size:12px;line-height:1.6}.error[data-v-5a56afca]{background:var(--md-error-container);color:#410e0b;padding:11px 16px;border-radius:12px;margin:8px 0;font-size:13px;overflow-wrap:anywhere}.transcript[data-v-5a56afca]{flex:1;overflow-y:auto;padding:26px 28px;min-height:0}.context-summary[data-v-5a56afca]{max-width:920px;margin:0 auto 22px;padding:14px 18px;border:1px dashed var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-low)}.context-summary-head[data-v-5a56afca]{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.context-summary-head strong[data-v-5a56afca]{font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--md-primary)}.context-summary-head time[data-v-5a56afca]{font-size:12px;opacity:.75}.welcome[data-v-5a56afca]{max-width:660px;margin:70px auto 0;text-align:center;color:var(--md-on-surface-variant);line-height:1.8}.welcome[data-v-5a56afca]:before{content:\"\";display:block;width:64px;height:64px;margin:0 auto 20px;border-radius:20px;background:var(--md-primary-container);background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 24 24' fill='none' stroke='%234d5d91' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z'/%3E%3Cpath d='M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:center}.welcome h2[data-v-5a56afca]{color:var(--md-on-surface);font-size:24px;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}.welcome p[data-v-5a56afca]{margin:6px 0;font-size:14px}.turn[data-v-5a56afca]{max-width:920px;margin:0 auto 30px;display:flex;flex-direction:column;gap:10px}.bubble[data-v-5a56afca]{padding:15px 19px;font-size:14px}.bubble.user[data-v-5a56afca]{align-self:flex-end;max-width:82%;background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:16px 16px 4px}.bubble.agent[data-v-5a56afca]{align-self:flex-start;max-width:100%;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:16px 16px 16px 4px;box-shadow:var(--shadow-1)}.bubble .message-head[data-v-5a56afca]{display:flex;align-items:center;gap:14px;margin-bottom:10px;font-size:12px}.bubble .message-head b[data-v-5a56afca]{font-weight:700}.bubble .message-head time[data-v-5a56afca]{margin-left:auto;opacity:.75;font-size:12px}.bubble .message-head span[data-v-5a56afca]{margin-left:auto}.bubble.user .message-head[data-v-5a56afca]{margin-bottom:7px;opacity:.85}.message-text[data-v-5a56afca]{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:14px}.bubble.agent[data-v-5a56afca] p{margin:.4em 0}.bubble.agent[data-v-5a56afca] pre{max-height:420px}.agent-speech[data-v-5a56afca]{margin:6px 0;padding:2px 0;line-height:1.7}.model-annotation[data-v-5a56afca]{display:block;font-size:12px;opacity:.7;margin-bottom:4px;font-family:var(--code-font)}.agent-speech[data-v-5a56afca] p{margin:.45em 0}.agent-speech[data-v-5a56afca] pre{background:var(--md-surface-container);border:1px solid var(--md-outline-variant);border-radius:10px;padding:12px 14px;max-height:460px;overflow:auto;font-size:13px}.agent-speech[data-v-5a56afca] code{font-family:var(--code-font)}.agent-speech[data-v-5a56afca] ul{padding-left:20px;margin:.4em 0}.steps[data-v-5a56afca]{display:flex;flex-direction:column;gap:8px;margin:12px 0 14px}.steps details[data-v-5a56afca]{border-radius:12px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);padding:10px 14px}.steps summary[data-v-5a56afca]{cursor:pointer;font-size:13px;font-weight:550}.steps summary small[data-v-5a56afca]{margin-left:10px;font-weight:600}.steps summary[data-v-5a56afca]::marker{color:var(--md-on-surface-variant)}.steps details pre[data-v-5a56afca]{margin:10px 0 0;font-family:var(--code-font);font-size:13px;white-space:pre-wrap;max-height:400px}pre[data-v-5a56afca]{max-height:450px;overflow:auto;font-family:var(--code-font)}.subagent-card[data-v-5a56afca]{border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest);overflow:hidden;box-shadow:var(--shadow-1)}button.subagent-card-head[data-v-5a56afca]{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:0;border-radius:0;background:transparent;padding:11px 14px;font-size:13px}button.subagent-card-head[data-v-5a56afca]:hover:not(:disabled){background:var(--md-secondary-container);box-shadow:none}button.subagent-card-head>span[data-v-5a56afca]:first-child{color:var(--md-primary)}button.subagent-card-head>strong[data-v-5a56afca]{font-weight:700}.subagent-prompt[data-v-5a56afca]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--md-on-surface)}.subagent-card small[data-v-5a56afca]{font-weight:600}.subagent-chevron[data-v-5a56afca]{color:var(--md-on-surface-variant);font-size:12px}.subagent-card-error[data-v-5a56afca]{margin:0 10px 10px;padding:8px 12px;font-size:12px}.subagent-card.nested[data-v-5a56afca]{margin:6px 0;box-shadow:none}.sub-view[data-v-5a56afca]{max-width:900px;margin:0 auto}.sub-view-header[data-v-5a56afca]{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--md-outline-variant)}.sub-view-header button[data-v-5a56afca]{flex-shrink:0;border-radius:9px;font-size:13px;font-weight:550;background:var(--md-surface-container-lowest)}.sub-view-header h3[data-v-5a56afca]{margin:0 0 4px;font-size:16px;font-weight:650}.sub-view-header p[data-v-5a56afca]{margin:0;max-width:520px}.sub-view-header>span[data-v-5a56afca]{margin-left:auto;font-weight:650;font-size:12px}.sub-view-body[data-v-5a56afca]{min-height:120px}.composer[data-v-5a56afca]{flex-shrink:0;margin:0 20px 18px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-lowest);overflow:hidden;box-shadow:var(--shadow-1)}.composer-input[data-v-5a56afca]{position:relative}.composer-input textarea[data-v-5a56afca]{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 64px 15px 60px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}.composer-input textarea[data-v-5a56afca]:focus{box-shadow:none;border:0}.attach-chips[data-v-5a56afca]{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px 0}.attach-fly[data-v-5a56afca]{position:absolute!important;left:10px!important;bottom:10px!important;z-index:2;width:42px!important;height:42px!important;aspect-ratio:1/1;display:grid!important;place-items:center;border:0!important;border-radius:50%!important;padding:0!important;margin:0!important;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.attach-fly svg[data-v-5a56afca]{width:18px;height:18px}.attach-fly[data-v-5a56afca]:hover:not(:disabled){filter:brightness(1.05)}.attach-fly[data-v-5a56afca]:disabled{opacity:.5;cursor:default}.attach-chip[data-v-5a56afca]{display:inline-flex;align-items:center;gap:6px;max-width:220px;font-size:12px;padding:4px 6px 4px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attach-chip button[data-v-5a56afca]{border:0;background:transparent;cursor:pointer;font-size:14px;line-height:1;padding:0 4px;color:var(--md-on-surface-variant)}.attach-chip button[data-v-5a56afca]:hover{color:var(--md-error)}.attach-error[data-v-5a56afca]{font-size:12px;color:var(--md-error)}.send-fly[data-v-5a56afca]{position:absolute!important;right:10px!important;bottom:10px!important;z-index:2;width:42px!important;height:42px!important;aspect-ratio:1/1;display:grid!important;place-items:center;border:0!important;border-radius:50%!important;padding:0!important;margin:0!important;background:var(--md-primary);color:var(--md-on-primary,#fff);box-shadow:0 2px 10px color-mix(in srgb,var(--md-primary) 38%,transparent)}.send-fly svg[data-v-5a56afca]{width:20px;height:20px}.send-fly[data-v-5a56afca]:hover:not(:disabled){filter:brightness(1.08)}.send-fly[data-v-5a56afca]:disabled{background:var(--md-surface-container);color:var(--md-on-surface-variant);opacity:.7;box-shadow:none}.send-fly.stop[data-v-5a56afca]{background:var(--md-error);color:#fff;box-shadow:0 2px 10px color-mix(in srgb,var(--md-error) 40%,transparent)}.compact-notice[data-v-5a56afca]{font-size:12px;padding:10px 16px;color:var(--md-primary);background:var(--md-primary-container);border-radius:10px;margin:10px 16px 0}.execution-options[data-v-5a56afca]{display:flex;gap:10px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid var(--md-outline-variant);align-items:end}.execution-options label[data-v-5a56afca]{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--md-on-surface-variant);flex:1;min-width:130px}.execution-options[data-v-5a56afca] .app-select-trigger,.execution-options .workspace-select[data-v-5a56afca]{width:100%;font-size:13px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--md-on-surface);min-height:36px;border-radius:10px;background:var(--md-surface-container);border-color:transparent;text-align:left}.workspace-select[data-v-5a56afca]{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block}.composer footer[data-v-5a56afca]{display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap;border-top:1px solid var(--md-outline-variant)}.composer footer>select[data-v-5a56afca],.composer footer>.app-select[data-v-5a56afca]{font-size:13px;border-radius:10px;min-height:34px}.composer footer .muted[data-v-5a56afca]{flex:1;min-width:120px}.composer footer>button[data-v-5a56afca]{font-size:13px;font-weight:600;border-radius:9px;min-height:34px}.host-panel>strong[data-v-5a56afca]{font-size:14px}.host-panel dl[data-v-5a56afca]{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;font-size:12px}.host-panel dt[data-v-5a56afca]{color:var(--md-on-surface-variant);font-weight:600}.host-panel dd[data-v-5a56afca]{margin:4px 0 0;overflow-wrap:anywhere}.usage-rings[data-v-5a56afca]{display:flex;align-items:center;gap:24px;padding:14px 0;flex-wrap:wrap}.usage-metric[data-v-5a56afca]{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px}.usage-ring[data-v-5a56afca]{width:88px;height:88px;border-radius:50%;display:grid;place-items:center}.usage-ring b[data-v-5a56afca]{width:68px;height:68px;border-radius:50%;background:var(--md-surface-container-lowest);display:grid;place-items:center;font-size:15px;font-weight:650;box-shadow:var(--shadow-1)}.new-folder[data-v-5a56afca]{display:flex;gap:8px}.new-folder input[data-v-5a56afca]{flex:1;min-width:0}.directory-backdrop[data-v-5a56afca]{position:fixed;inset:0;background:#14111acc;z-index:1000;display:grid;place-items:center;padding:20px}.directory-dialog[data-v-5a56afca]{background:var(--md-surface);border:1px solid var(--md-outline-variant);border-radius:20px;padding:22px;width:min(680px,100%);display:flex;flex-direction:column;gap:14px;max-height:85vh;box-shadow:var(--shadow-4)}.directory-dialog>header[data-v-5a56afca]{gap:12px}.directory-dialog>header h2[data-v-5a56afca]{font-size:16px;font-weight:650}.directory-list[data-v-5a56afca]{overflow:auto;min-height:180px;display:flex;flex-direction:column;gap:6px}.directory-list button[data-v-5a56afca]{text-align:left;border-radius:10px;background:var(--md-surface-container-low);font-size:13px}.directory-roots[data-v-5a56afca]{display:flex;gap:8px;flex-wrap:wrap}.directory-roots button[data-v-5a56afca]{border-radius:999px;font-size:12px;padding:6px 12px}.directory-dialog code[data-v-5a56afca]{overflow-wrap:anywhere;font-size:12px;background:var(--md-surface-container);padding:8px 10px;border-radius:8px}.directory-dialog>footer[data-v-5a56afca]{display:flex;justify-content:flex-end}.directory-dialog>footer button[data-v-5a56afca]{background:var(--md-primary);color:var(--md-on-primary,#fff);border-color:transparent;font-weight:600}.permission-request[data-v-5a56afca]{margin:12px;padding:16px;border-radius:16px;background:var(--md-tertiary-container)}.permission-request small[data-v-5a56afca]{display:block;margin:8px 0}.permission-request pre[data-v-5a56afca]{max-height:160px;overflow:auto}.permission-request>div[data-v-5a56afca]{display:flex;justify-content:flex-end;gap:8px}#app .workspace[data-v-5a56afca]{gap:12px;padding-left:6px;background:var(--md-surface-container)}#app .workspace .sessions[data-v-5a56afca]{width:296px;gap:14px;padding:18px 14px;border:0;border-radius:28px;background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}#app .workspace .sessions h1[data-v-5a56afca]{font-size:24px;font-weight:800;letter-spacing:-.02em}#app .workspace .sessions header>button[data-v-5a56afca]{height:40px;padding:0 16px;border:0;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary,#fff);font:700 13px/1 inherit;display:inline-flex;align-items:center;gap:7px;box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 30%,transparent)}#app .workspace .sessions header>button[data-v-5a56afca]:hover:not(:disabled){background:var(--md-primary);filter:brightness(1.06);box-shadow:0 8px 20px color-mix(in srgb,var(--md-primary) 34%,transparent)}#app .workspace .sessions>input[data-v-5a56afca]{min-height:48px;padding:0 16px;border:1px solid transparent;border-radius:16px;background:var(--md-surface-container-high);color:var(--md-on-surface);font-size:14px}#app .workspace .sessions>input[data-v-5a56afca]:focus{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}#app .workspace .filter-bar[data-v-5a56afca]{padding:5px;border-radius:999px;background:var(--md-surface-container-high)}#app .workspace .filter-bar button[data-v-5a56afca]{border-radius:999px;padding:8px 4px;font-weight:600}#app .workspace .filter-bar button.chosen[data-v-5a56afca]{background:var(--md-primary);color:var(--md-on-primary,#fff);font-weight:700;box-shadow:var(--shadow-1)}#app .workspace .filter-bar button.chosen[data-v-5a56afca]:hover:not(:disabled){background:var(--md-primary);color:var(--md-on-primary,#fff)}#app .workspace .session-list[data-v-5a56afca]{margin:0 -2px;padding:0 2px}#app .workspace .session-card[data-v-5a56afca]{gap:5px;margin-bottom:8px;padding:13px 15px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);border-radius:18px;background:var(--md-surface-container-lowest);transition:transform .26s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .2s,border-color .2s,box-shadow .22s,border-radius .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .workspace .session-card[data-v-5a56afca]:hover:not(:disabled){transform:translateY(-2px);box-shadow:var(--shadow-1);border-color:color-mix(in srgb,var(--md-primary) 35%,var(--md-outline-variant))}#app .workspace .session-card.selected[data-v-5a56afca]{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent;border-radius:20px 20px 20px 7px;box-shadow:var(--shadow-1)}#app .workspace .session-card .origin[data-v-5a56afca]{font-weight:700;letter-spacing:.05em;text-transform:uppercase;font-size:12px;color:var(--md-primary)}#app .workspace .session-card.selected .origin[data-v-5a56afca]{color:var(--md-on-secondary-container);opacity:.75}#app .workspace .ledger-button[data-v-5a56afca]{min-height:44px;border-radius:16px;font-weight:650;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}#app .workspace .ledger-button.chosen[data-v-5a56afca]{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent}#app .workspace .ledger-entry[data-v-5a56afca]{border-radius:20px;border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);background:var(--md-surface-container-lowest);box-shadow:var(--shadow-1)}#app .workspace .conversation[data-v-5a56afca]{background:var(--md-surface);border-radius:30px;overflow:hidden;box-shadow:var(--shadow-1)}#app .workspace .conversation-header[data-v-5a56afca]{padding:20px 26px 16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent)}#app .workspace .conversation-header h2[data-v-5a56afca]{font-size:20px;font-weight:750;letter-spacing:-.01em}#app .workspace .session-actions button[data-v-5a56afca]{height:36px;padding:0 15px;border-radius:999px;background:var(--md-surface-container-high);border-color:transparent;font-weight:650}#app .workspace .session-actions button[data-v-5a56afca]:hover:not(:disabled){background:var(--md-surface-container-highest);box-shadow:none}#app .workspace .running[data-v-5a56afca]{color:#b88412;background:color-mix(in srgb,#B88412 14%,transparent);padding:4px 11px;border-radius:999px;font-weight:700}#app .workspace .transcript[data-v-5a56afca]{padding:28px 30px}#app .workspace .welcome[data-v-5a56afca]{margin:64px auto 0}#app .workspace .welcome[data-v-5a56afca]:before{width:76px;height:76px;border-radius:26px 26px 26px 10px;background-color:var(--md-primary-container);background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 24 24' fill='none' stroke='%235944c6' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z'/%3E%3Cpath d='M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z'/%3E%3C/svg%3E\");background-size:34px 34px}#app .workspace .welcome h2[data-v-5a56afca]{font-size:26px;font-weight:800;letter-spacing:-.02em}#app .workspace .turn[data-v-5a56afca]{gap:12px;margin-bottom:32px}#app .workspace .bubble[data-v-5a56afca]{padding:16px 20px;font-size:15px;line-height:1.7}#app .workspace .bubble.user[data-v-5a56afca]{background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:24px 24px 8px;box-shadow:var(--shadow-1);max-width:82%}#app .workspace .bubble.agent[data-v-5a56afca]{background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);border-radius:8px 24px 24px;box-shadow:var(--shadow-1);max-width:100%}#app .workspace .bubble .message-head b[data-v-5a56afca]{font-weight:750}#app .workspace .steps[data-v-5a56afca]{gap:9px;margin:14px 0}#app .workspace .steps details[data-v-5a56afca]{border-radius:16px;background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);padding:11px 15px}#app .workspace .subagent-card[data-v-5a56afca]{border-radius:18px;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);box-shadow:var(--shadow-1)}#app .workspace button.subagent-card-head[data-v-5a56afca]{padding:12px 15px}#app .workspace button.subagent-card-head[data-v-5a56afca]:hover:not(:disabled){background:var(--md-secondary-container)}#app .workspace .sub-view-header[data-v-5a56afca]{padding-bottom:16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent)}#app .workspace .sub-view-header button[data-v-5a56afca]{border-radius:999px;background:var(--md-surface-container-high);border-color:transparent;font-weight:650}#app .workspace .agent-speech[data-v-5a56afca] pre{border-radius:16px;background:var(--md-surface-container);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}#app .workspace .composer[data-v-5a56afca]{margin:0 22px 20px;border-radius:28px;overflow:hidden;background:var(--md-surface-container-lowest);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);box-shadow:var(--shadow-2)}#app .workspace .composer[data-v-5a56afca]:focus-within{border-color:color-mix(in srgb,var(--md-primary) 55%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent),var(--shadow-2)}#app .workspace .execution-options[data-v-5a56afca]{padding:12px 16px;gap:10px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}#app .workspace .execution-options label[data-v-5a56afca]{font-weight:700;letter-spacing:.05em}#app .workspace .execution-options .workspace-select[data-v-5a56afca]{min-height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high);font-size:13px}#app .workspace .execution-options[data-v-5a56afca] .app-select-trigger,#app .workspace .composer footer[data-v-5a56afca] .app-select-trigger{min-height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high);font-size:13px}#app .workspace .composer-input textarea[data-v-5a56afca]{border-radius:0;background:transparent}#app .workspace .send-fly[data-v-5a56afca]{width:46px!important;height:46px!important;border-radius:50%!important;box-shadow:0 8px 22px color-mix(in srgb,var(--md-primary) 34%,transparent)}#app .workspace .composer footer[data-v-5a56afca]{border-top:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);padding:12px 16px}#app .workspace .composer footer>button[data-v-5a56afca]{border-radius:999px;min-height:36px;padding-inline:15px;background:var(--md-surface-container-high);border-color:transparent}#app .workspace .host-panel[data-v-5a56afca]{margin:0 22px 10px;border-radius:24px;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}#app .workspace .usage-ring b[data-v-5a56afca]{background:var(--md-surface-container-lowest)}#app .workspace .directory-dialog[data-v-5a56afca]{border-radius:32px;border-color:transparent;box-shadow:var(--shadow-4);background:var(--md-surface-container-low)}#app .workspace .directory-list button[data-v-5a56afca]{background:var(--md-surface-container-lowest);border-color:transparent;border-radius:16px;min-height:46px}#app .workspace .directory-list button[data-v-5a56afca]:hover:not(:disabled){background:var(--md-secondary-container)}#app .workspace .directory-roots button[data-v-5a56afca]{background:var(--md-surface-container-high);border-color:transparent}@media (max-width:800px){.sessions[data-v-5a56afca]{width:214px;padding:12px 10px}.transcript[data-v-5a56afca]{padding:14px}.composer[data-v-5a56afca]{margin:0 12px 12px}.composer footer .muted[data-v-5a56afca]{display:none}.conversation-header[data-v-5a56afca]{padding:14px 16px}.welcome[data-v-5a56afca]{margin:30px auto 0}.turn[data-v-5a56afca]{margin-bottom:22px}}@media (max-width:560px){.workspace[data-v-5a56afca]{flex-direction:column}.sessions[data-v-5a56afca]{width:100%;max-height:230px;border-right:0;border-bottom:1px solid var(--md-outline-variant)}.sessions>input[data-v-5a56afca],.filter-bar[data-v-5a56afca],.connection[data-v-5a56afca]{display:none}.session-list[data-v-5a56afca]{display:flex;gap:6px;overflow-x:auto}.session-card[data-v-5a56afca]{min-width:160px;width:160px;margin-bottom:0}.ledger-button[data-v-5a56afca]{padding:5px;font-size:12px}}\n";document.head.appendChild(s)}})();
+;(()=>{if(typeof document!=='undefined'&&!document.getElementById('agent-plugin-style')){const s=document.createElement('style');s.id='agent-plugin-style';s.textContent=".markdown-content[data-v-ef377647]{line-height:1.75;overflow-wrap:anywhere;font-size:14px}.markdown-content[data-v-ef377647] pre{padding:16px;background:var(--md-surface-container);border-radius:8px;overflow:auto;white-space:pre;line-height:1.5}.markdown-content[data-v-ef377647] code{font-family:monospace;background:var(--md-surface-container);padding:2px 4px;border-radius:4px}.markdown-content[data-v-ef377647] pre code{padding:0;background:none}.markdown-content[data-v-ef377647] table{display:block;overflow:auto;border-collapse:collapse;margin:12px 0}.markdown-content[data-v-ef377647] th,.markdown-content[data-v-ef377647] td{border:1px solid var(--md-outline-variant);padding:8px 12px}.markdown-content[data-v-ef377647] blockquote{border-left:3px solid var(--md-outline);margin:12px 0;padding-left:14px;color:var(--md-on-surface-variant)}.markdown-content[data-v-ef377647] ul,.markdown-content[data-v-ef377647] ol{padding-left:24px}.markdown-content[data-v-ef377647] a{color:var(--md-primary);text-decoration:underline}.markdown-content[data-v-ef377647] img{max-width:100%}.markdown-content[data-v-ef377647] h1,.markdown-content[data-v-ef377647] h2,.markdown-content[data-v-ef377647] h3{margin:16px 0 8px}.tool-card[data-v-f13fbd25]{--code-font:ui-monospace,\"Cascadia Code\",\"JetBrains Mono\",Consolas,\"SFMono-Regular\",Menlo,monospace;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container);margin:8px 0;overflow:hidden}button.tool-card-head[data-v-f13fbd25]{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;border-radius:0;background:transparent;padding:10px 12px;cursor:pointer;font-size:13px}.tool-kind[data-v-f13fbd25]{flex-shrink:0;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--md-on-surface)}.tool-summary[data-v-f13fbd25]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--code-font);font-size:13px;color:var(--md-on-surface)}.tool-stat[data-v-f13fbd25]{flex-shrink:0;font-size:12px;font-weight:600;color:var(--md-primary);border:1px solid var(--md-outline-variant);border-radius:999px;padding:1px 8px}.tool-state[data-v-f13fbd25]{flex-shrink:0;font-size:13px;color:var(--md-on-surface-variant)}.tool-chevron[data-v-f13fbd25]{flex-shrink:0;color:var(--md-on-surface-variant);font-size:12px;transition:transform .15s}.tool-card.expanded .tool-chevron[data-v-f13fbd25]{transform:rotate(90deg)}.tool-dot[data-v-f13fbd25]{font-size:9px}.tool-dot.running[data-v-f13fbd25],.tool-dot.pending[data-v-f13fbd25]{color:#b88412}.tool-dot.failed[data-v-f13fbd25]{color:var(--md-error,#c44)}.tool-dot.done[data-v-f13fbd25]{color:#3a6}.tool-dot.cancelled[data-v-f13fbd25]{color:var(--md-on-surface-variant)}.tool-card-body[data-v-f13fbd25]{padding:4px 12px 12px;border-top:1px solid var(--md-outline-variant);display:flex;flex-direction:column;gap:6px}.tool-section-label[data-v-f13fbd25]{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--md-on-surface-variant);margin-top:4px}.tool-card-body pre[data-v-f13fbd25]{margin:0;max-height:340px;overflow:auto;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:8px;padding:8px 10px;font-family:var(--code-font);font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.tool-shot[data-v-f13fbd25]{margin:0;display:flex;flex-direction:column;gap:6px}.tool-shot img[data-v-f13fbd25]{width:100%;border-radius:12px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-lowest);display:block}.tool-shot figcaption[data-v-f13fbd25]{font-family:var(--code-font);font-size:11.5px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.tool-section-text[data-v-f13fbd25]{margin:0;font-size:13px;overflow-wrap:anywhere}.tool-error[data-v-f13fbd25]{background:var(--md-error-container);padding:8px 12px;border-radius:8px;margin:0;font-size:12px;overflow-wrap:anywhere}.muted[data-v-f13fbd25]{font-size:12px;color:var(--md-on-surface-variant);margin:0}.tool-dialog-backdrop[data-v-f13fbd25]{position:fixed;inset:0;background:#0008;z-index:1050;display:grid;place-items:center;padding:20px}.tool-dialog[data-v-f13fbd25]{background:var(--md-surface);color:var(--md-on-surface);border:1px solid var(--md-outline-variant);border-radius:16px;padding:18px 20px;width:min(680px,100%);max-height:82vh;overflow:auto;display:flex;flex-direction:column;gap:12px}.tool-dialog header[data-v-f13fbd25]{display:flex;align-items:center;justify-content:space-between;gap:12px}.tool-dialog h4[data-v-f13fbd25]{margin:0;font-size:15px;overflow-wrap:anywhere;flex:1;min-width:0}#app .tool-dialog-close[data-v-f13fbd25],.tool-dialog-close[data-v-f13fbd25]{flex-shrink:0;width:40px;height:40px;min-height:0;padding:0;border:none;border-radius:50%;background:transparent;color:var(--md-on-surface-variant);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background var(--transition-fast),color var(--transition-fast)}#app .tool-dialog-close[data-v-f13fbd25]:hover,.tool-dialog-close[data-v-f13fbd25]:hover{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent);box-shadow:none;filter:none;color:var(--md-on-surface)}#app .tool-dialog-close[data-v-f13fbd25]:active,.tool-dialog-close[data-v-f13fbd25]:active{background:color-mix(in srgb,var(--md-on-surface) 12%,transparent);border-radius:50%}.tool-search-results[data-v-f13fbd25]{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:14px}.tool-search-results a[data-v-f13fbd25]{color:var(--md-primary);font-size:14px;font-weight:500;text-decoration:none}.tool-search-results a[data-v-f13fbd25]:hover{text-decoration:underline}.tool-search-results p[data-v-f13fbd25]{margin:4px 0 0;font-size:13px;line-height:1.65;color:var(--md-on-surface)}.tool-search-results small[data-v-f13fbd25]{display:block;margin-top:2px;font-size:12px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.tool-card[data-v-f13fbd25]{border-radius:16px;border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent);background:var(--md-surface-container);transition:box-shadow .22s,background-color .2s}.tool-card[data-v-f13fbd25]:hover{box-shadow:var(--shadow-1)}button.tool-card-head[data-v-f13fbd25]{padding:12px 15px;gap:10px;min-height:46px;border-radius:0}button.tool-card-head[data-v-f13fbd25]:hover{background:var(--md-secondary-container)}.tool-kind[data-v-f13fbd25]{font-weight:700;letter-spacing:.06em}.tool-stat[data-v-f13fbd25]{border-color:color-mix(in srgb,var(--md-primary) 30%,transparent);background:color-mix(in srgb,var(--md-primary) 10%,transparent)}.tool-chevron[data-v-f13fbd25]{width:22px;height:22px;display:inline-grid;place-items:center;border-radius:50%;background:var(--md-surface-container-high);transition:transform .3s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .16s}.tool-card-body[data-v-f13fbd25]{padding:8px 15px 15px;gap:8px;border-top-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}.tool-card-body pre[data-v-f13fbd25]{border-radius:14px;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}.tool-section-label[data-v-f13fbd25]{font-weight:700}.diff-wrap[data-v-f13fbd25]{display:flex;flex-direction:column;gap:10px}.diff-file[data-v-f13fbd25]{border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);border-radius:14px;overflow:hidden;background:var(--md-surface-container-lowest)}.diff-file-head[data-v-f13fbd25]{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--md-surface-container);font-size:11.5px;font-weight:650}.diff-file-path[data-v-f13fbd25]{font-family:var(--code-font);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.diff-file-stat[data-v-f13fbd25]{flex:none;font-family:var(--code-font);color:var(--md-on-surface-variant)}.diff-body[data-v-f13fbd25]{max-height:360px;overflow:auto;font-family:var(--code-font);font-size:12px;line-height:1.55;padding:4px 0}.diff-line[data-v-f13fbd25]{display:grid;grid-template-columns:40px 40px 18px 1fr;white-space:pre;min-width:max-content}.diff-no[data-v-f13fbd25]{text-align:right;padding:0 6px;color:var(--md-on-surface-variant);opacity:.6;user-select:none;font-variant-numeric:tabular-nums}.diff-sign[data-v-f13fbd25]{text-align:center;user-select:none;opacity:.9}.diff-text[data-v-f13fbd25]{padding-right:12px}.diff-line.add[data-v-f13fbd25]{background:color-mix(in srgb,#2ea043 20%,transparent);color:#116329}.diff-line.del[data-v-f13fbd25]{background:color-mix(in srgb,#cf222e 18%,transparent);color:#82071e}.diff-line.add .diff-sign[data-v-f13fbd25]{color:#116329;font-weight:700}.diff-line.del .diff-sign[data-v-f13fbd25]{color:#cf222e;font-weight:700}.diff-line.hunk[data-v-f13fbd25]{background:var(--md-surface-container);color:var(--md-on-surface-variant)}.diff-line.meta[data-v-f13fbd25]{color:var(--md-on-surface-variant);opacity:.75}@media (prefers-color-scheme: dark){.diff-line.add[data-v-f13fbd25],.diff-line.add .diff-sign[data-v-f13fbd25]{color:#7ee787}.diff-line.del[data-v-f13fbd25],.diff-line.del .diff-sign[data-v-f13fbd25]{color:#ffa198}}#app .app-select{min-width:0;position:relative;font-size:inherit}#app .app-select.input{padding:0;border:0;min-height:0;background:transparent}#app .app-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:0 14px 0 16px;border:1px solid transparent;border-radius:16px;background-color:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;font-size:15px;text-align:left;cursor:pointer;box-shadow:none;transition:background-color .18s,border-color .18s,box-shadow .2s,border-radius .34s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .app-select-trigger:hover:not(:disabled){background-color:var(--md-surface-container-highest)}#app .app-select-trigger[aria-expanded=true],#app .app-select-trigger:focus-visible{border-color:var(--md-primary);background-color:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent);outline:none}#app .app-select-trigger:disabled{opacity:.5;cursor:not-allowed}.app-select-value{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.app-select-chevron{flex-shrink:0;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;color:var(--md-on-surface-variant);transition:transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .16s}#app .app-select-trigger:hover .app-select-chevron{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent)}.app-select-chevron svg{transition:transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}.app-select-chevron svg.is-open{transform:rotate(180deg)}.app-select-menu{position:fixed;z-index:10000;overflow-y:auto;overscroll-behavior:contain;padding:8px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:24px;background:var(--md-surface-container-low);color:var(--md-on-surface);box-shadow:0 18px 50px -12px color-mix(in srgb,var(--md-scrim,#000) 45%,transparent),0 4px 14px -4px #16244026;font-family:var(--font-family);font-size:14px;transform-origin:top}.app-select-menu.opens-up{transform-origin:bottom}.app-select-option{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:46px;padding:0 14px;border-radius:14px;cursor:pointer;overflow-wrap:anywhere;line-height:1.4;color:var(--md-on-surface);transition:background-color .14s,border-radius .3s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),color .14s}.app-select-option>span{min-width:0}.app-select-check{flex-shrink:0;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;color:var(--md-primary)}.app-select-option.highlighted{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent)}.app-select-option.selected{background:var(--md-primary-container);color:var(--md-on-primary-container);font-weight:650}.app-select-option.selected .app-select-check{background:var(--md-primary);color:var(--md-on-primary)}.app-select-option.selected.highlighted{background:color-mix(in srgb,var(--md-primary-container) 88%,var(--md-primary) 12%)}.app-select-option.disabled{opacity:.4;cursor:not-allowed}.app-select-search{position:sticky;top:-8px;z-index:1;display:flex;align-items:center;gap:10px;margin:-8px -8px 8px;padding:13px 16px;background:var(--md-surface-container-low);border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:24px 24px 0 0;color:var(--md-on-surface-variant)}.app-select-search input{flex:1;min-width:0;border:0;background:transparent;padding:0;font:inherit;color:var(--md-on-surface);outline:none}.app-select-empty{padding:18px;color:var(--md-on-surface-variant);text-align:center;font-size:13px}.select-menu-enter-active{transition:opacity .18s var(--ease-emphasized,cubic-bezier(.2,0,0,1)),transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}.select-menu-leave-active{transition:opacity .13s,transform .13s}.select-menu-enter-from,.select-menu-leave-to{opacity:0;transform:translateY(-6px) scale(.97)}.thinking-control{min-width:110px;flex:1;display:flex;flex-direction:column;gap:5px}.thinking-caption{font-size:12px}#app .thinking-trigger{display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:9px 12px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);font-size:12px;border-radius:9px}.thinking-popover{position:fixed;z-index:10000;padding:16px;border-radius:14px;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);box-shadow:0 10px 32px #16244026;color:var(--md-on-surface);font-family:var(--font-family)}.thinking-popover header{display:flex;justify-content:space-between;gap:12px;font-size:13px}.thinking-popover output{color:var(--md-primary);font-weight:600}.thinking-track{position:relative;padding:22px 4px 16px;display:flex;align-items:center}.thinking-track input{appearance:none;-webkit-appearance:none;width:100%;height:5px;padding:0;margin:0;border:0;border-radius:5px;background:linear-gradient(to right,var(--md-primary) var(--intensity),var(--md-outline-variant) var(--intensity));cursor:pointer;z-index:1}.thinking-track input::-webkit-slider-thumb{appearance:none;width:17px;height:17px;border-radius:50%;background:var(--md-primary);border:2px solid var(--md-surface);box-shadow:0 1px 4px #24345d40}.thinking-track input::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--md-primary);border:2px solid var(--md-surface)}.thinking-track input:focus-visible{outline:2px solid var(--md-primary);outline-offset:7px}.thinking-stops{display:flex;justify-content:space-between;gap:3px}.thinking-stops button{font:inherit;font-size:12px;border:0;background:transparent;color:var(--md-on-surface-variant);padding:6px 5px;border-radius:6px;cursor:pointer}.thinking-stops button.selected{background:var(--md-primary-container);color:var(--md-primary);font-weight:700}.thinking-popover p{font-size:12px;line-height:1.5;color:var(--md-on-surface-variant);margin:12px 0 0}.thinking-control.full .thinking-trigger,.thinking-popover.full{--md-primary:#a050db;border-color:#a050db88;box-shadow:0 0 16px #a050db25}.thinking-popover.full .energy-wave{position:absolute;inset:14px 0 8px;pointer-events:none;border-radius:20px;box-shadow:0 0 12px #a050db66}.thinking-popover.pulse,.thinking-control.pulse .thinking-trigger{animation:thinking-boost .85s ease-out}.thinking-popover.pulse .energy-wave{animation:thinking-wave .85s ease-out}@keyframes thinking-boost{0%{box-shadow:0 0 #a050db66}45%{box-shadow:0 0 0 5px #a050db20,0 0 30px #a050db40}to{box-shadow:0 0 16px #a050db25}}@keyframes thinking-wave{0%{transform:scale(.95);opacity:1}to{transform:scale(1.15,2);opacity:0}}.thinking-menu-enter-active,.thinking-menu-leave-active{transition:opacity .13s,transform .13s}.thinking-menu-enter-from,.thinking-menu-leave-to{opacity:0;transform:translateY(4px)}@media (prefers-reduced-motion:reduce){.thinking-popover.pulse,.thinking-control.pulse .thinking-trigger,.thinking-popover.pulse .energy-wave{animation:none}}.thinking-popover{padding:20px;border-radius:28px;background:var(--md-surface-container-low);border-color:transparent;box-shadow:0 8px 28px #24345d24}.thinking-popover header{align-items:center;font-size:14px;min-height:30px}.thinking-popover output{padding:6px 12px;border-radius:999px;background:var(--md-primary-container);font-size:12px}.thinking-track{height:68px;padding:0;margin:12px 0 0;isolation:isolate}.thinking-capsule{position:absolute;left:5px;right:5px;height:28px;border-radius:999px;background:var(--md-primary-container);overflow:hidden;pointer-events:none}.thinking-fill{height:100%;width:var(--intensity);background:var(--md-primary);border-radius:999px}.thinking-tick{position:absolute;top:50%;width:4px;height:4px;border-radius:50%;background:var(--md-primary);transform:translate(-50%,-50%)}.thinking-tick:first-of-type{left:8px!important}.thinking-tick:last-of-type{left:calc(100% - 8px)!important}.thinking-tick.passed{background:var(--md-on-primary)}.thinking-track input{position:relative;height:48px;background:transparent;border-radius:999px;touch-action:pan-y}.thinking-track input::-webkit-slider-runnable-track{height:28px;background:transparent;border-radius:999px}.thinking-track input::-webkit-slider-thumb{width:10px;height:44px;margin-top:-8px;border-radius:999px;border:0;background:var(--md-primary);box-shadow:0 0 0 5px var(--md-surface-container-low);transition:width .14s,height .14s,margin-top .14s}.thinking-track input:active::-webkit-slider-thumb{width:6px;height:48px;margin-top:-10px}.thinking-track input::-moz-range-track{height:28px;background:transparent;border-radius:999px}.thinking-track input::-moz-range-thumb{width:10px;height:44px;border:0;border-radius:999px;background:var(--md-primary);box-shadow:0 0 0 5px var(--md-surface-container-low)}.thinking-track input:active::-moz-range-thumb{width:6px;height:48px}.thinking-track input:focus-visible{outline-offset:3px}.thinking-stops{align-items:center;gap:2px;margin-top:2px}.thinking-stops button{border-radius:999px;min-height:30px;padding:6px 9px;transition:background-color .16s,color .16s}.thinking-popover.full{background:color-mix(in srgb,var(--md-surface-container-low) 93%,#a050db);border-color:#a050db55}.thinking-popover.full .thinking-fill{background:linear-gradient(90deg,#7255c8,#ad50d6)}.thinking-popover.full .energy-wave{inset:18px 5px;border-radius:999px;z-index:-1}.thinking-popover p{margin-top:12px}.thinking-popover.full{box-shadow:0 8px 28px #24345d24,0 0 34px #a050db33;border-color:#a050db77}.thinking-popover.full .energy-wave{position:absolute;inset:-3px 4px;border-radius:999px;z-index:-1;background:radial-gradient(70% 120% at 100% 50%,#c56bffbb,transparent 68%),radial-gradient(50% 120% at 0% 50%,#6b8cffaa,transparent 70%);filter:blur(7px);animation:thunder-glow 1.7s ease-in-out infinite}@keyframes thunder-glow{0%,to{opacity:.5;transform:scale(1)}45%{opacity:1;transform:scale(1.03)}}.thinking-popover.full .thinking-capsule{box-shadow:0 0 0 1px #a050db66,0 0 26px #a050db55}.thinking-popover.full .thinking-fill{background:linear-gradient(90deg,#6b8cff,#a050db,#e0a3ff,#a050db);background-size:280% 100%;animation:thunder-flow 2.6s linear infinite}@keyframes thunder-flow{to{background-position:280% 0}}.thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}.thinking-control.full .thinking-trigger span:first-child{animation:thunder-flicker 2s steps(1,end) infinite}@keyframes thunder-flicker{0%,90%,to{opacity:1}92%{opacity:.35}94%{opacity:1}96%{opacity:.5}}#app .thinking-control .thinking-trigger{min-height:52px;padding:0 14px 0 16px;border:1px solid transparent;border-radius:16px;background:var(--md-surface-container-high);color:var(--md-on-surface);font-size:13px;font-weight:500;align-items:center;transition:background-color .18s,border-color .18s,box-shadow .2s,border-radius .34s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .thinking-control .thinking-trigger:hover{background:var(--md-surface-container-highest)}#app .thinking-control .thinking-trigger[aria-expanded=true]{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}#app .thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}.thinking-caption{font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--md-on-surface-variant)}.confirm-scrim{position:fixed;inset:0;z-index:13000;background:#21173566;backdrop-filter:blur(6px);display:grid;place-items:center;padding:20px}.confirm-dialog{width:min(440px,100%);background:var(--md-surface-container-high, var(--md-surface, #fff));color:var(--md-on-surface);border:1px solid var(--md-outline-variant, transparent);border-radius:28px;padding:28px;box-shadow:0 24px 70px #18132d33;outline:none}.confirm-dialog h2{margin:0 0 10px;font-size:22px;font-weight:650}.confirm-dialog p{margin:0;font-size:14px;line-height:1.65;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.confirm-dialog footer{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}.confirm-dialog footer button{border:0;border-radius:999px;padding:12px 22px;font:inherit;font-weight:600;cursor:pointer;background:var(--md-secondary-container, #e7e0ec);color:var(--md-on-secondary-container, #1d1b20)}.confirm-dialog footer .confirm-primary{background:var(--md-primary, #6750a4);color:var(--md-on-primary, #fff)}.confirm-dialog footer .confirm-primary.danger{background:var(--md-error, #b3261e);color:var(--md-on-error, #fff)}.confirm-dialog footer button:focus-visible{outline:3px solid var(--md-primary);outline-offset:3px}.workspace[data-v-0dce92c7]{--code-font:ui-monospace,\"Cascadia Code\",\"JetBrains Mono\",Consolas,\"SFMono-Regular\",Menlo,monospace;display:flex;height:100%;min-height:0;background:var(--md-surface);color:var(--md-on-surface)}button[data-v-0dce92c7],input[data-v-0dce92c7],textarea[data-v-0dce92c7],select[data-v-0dce92c7]{font:inherit;color:inherit;border:1px solid var(--md-outline-variant);border-radius:9px;background:var(--md-surface-container-lowest);padding:9px 12px}button[data-v-0dce92c7]{cursor:pointer;transition:background .15s,box-shadow .15s,filter .15s}button[data-v-0dce92c7]:disabled{opacity:.45;cursor:default}button[data-v-0dce92c7]:hover:not(:disabled){background:var(--md-secondary-container);box-shadow:none}input[data-v-0dce92c7]:focus,textarea[data-v-0dce92c7]:focus,select[data-v-0dce92c7]:focus{outline:none;border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent)}input[type=checkbox][data-v-0dce92c7]{width:auto;accent-color:var(--md-primary)}.sessions[data-v-0dce92c7]{width:284px;flex-shrink:0;border-right:1px solid var(--md-outline-variant);padding:20px 16px;display:flex;flex-direction:column;gap:14px;background:var(--md-surface-container-low)}.sessions header[data-v-0dce92c7]{display:flex;align-items:center;justify-content:space-between;gap:12px}.sessions h1[data-v-0dce92c7]{font-size:22px;font-weight:650;letter-spacing:-.01em;margin:0}.sessions header>button[data-v-0dce92c7]{height:34px;padding:0 13px;border:0;border-radius:9px;background:var(--md-primary);color:var(--md-on-primary,#fff);font:600 13px/1 inherit}.sessions header>button[data-v-0dce92c7]:hover:not(:disabled){background:var(--md-primary);filter:brightness(1.08);box-shadow:var(--shadow-1)}.sessions>input[data-v-0dce92c7]{border-radius:10px;background:var(--md-surface-container-lowest)}.connection[data-v-0dce92c7]{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--md-on-surface-variant)}.connection button[data-v-0dce92c7]{margin-left:auto;padding:3px 9px;border-radius:8px;font-size:13px}.connection i[data-v-0dce92c7]{width:8px;height:8px;border-radius:50%;background:var(--md-outline);box-shadow:0 0 0 3px var(--md-surface-container-high)}.connection i.online[data-v-0dce92c7]{background:var(--md-success);box-shadow:0 0 0 3px var(--md-success-container)}.filter-bar[data-v-0dce92c7]{display:flex;gap:3px;padding:4px;border-radius:999px;background:var(--md-surface-container-high)}.filter-bar button[data-v-0dce92c7]{flex:1;font-size:12px;font-weight:500;padding:7px 4px;border:0;border-radius:999px;background:transparent;color:var(--md-on-surface-variant);box-shadow:none}.filter-bar button[data-v-0dce92c7]:hover:not(:disabled){background:transparent;color:var(--md-on-surface)}.filter-bar button.chosen[data-v-0dce92c7]{background:var(--md-surface-container-lowest);color:var(--md-primary);font-weight:650;box-shadow:var(--shadow-1)}.sessions label input[data-v-0dce92c7]{margin-right:6px}.session-list[data-v-0dce92c7]{overflow-y:auto;flex:1;min-height:0;margin:0 -4px;padding:0 4px}.session-card[data-v-0dce92c7]{display:flex;flex-direction:column;width:100%;text-align:left;gap:6px;margin-bottom:8px;padding:12px 13px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest)}.session-card[data-v-0dce92c7]:hover:not(:disabled){background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-primary) 40%,var(--md-outline-variant));box-shadow:var(--shadow-1)}.session-card.selected[data-v-0dce92c7]{background:var(--md-secondary-container);border-color:transparent;border-radius:12px 12px 12px 4px}.session-card.selected[data-v-0dce92c7]:hover{background:var(--md-secondary-container)}.session-card strong[data-v-0dce92c7]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;font-weight:600;font-size:14px}.origin[data-v-0dce92c7],small[data-v-0dce92c7],.sessions .muted[data-v-0dce92c7]{font-size:12px;color:var(--md-on-surface-variant)}.origin[data-v-0dce92c7]{font-weight:600;letter-spacing:.02em}.ledger-button[data-v-0dce92c7]{text-align:left;border-radius:10px;background:var(--md-surface-container-lowest);font-size:13px;font-weight:550}.ledger-button.chosen[data-v-0dce92c7]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.ledger[data-v-0dce92c7]{flex:1;overflow-y:auto;padding:var(--space-xl)}.ledger>header[data-v-0dce92c7]{margin-bottom:8px}.ledger>header h2[data-v-0dce92c7]{font-size:18px;font-weight:650}.ledger-entry[data-v-0dce92c7]{border:1px solid var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-lowest);padding:14px 16px;margin:10px 0;box-shadow:var(--shadow-1)}.ledger-entry>div[data-v-0dce92c7]{display:flex;align-items:center;gap:10px;font-size:12px}.ledger-entry>div>span[data-v-0dce92c7]:first-child{font-family:var(--code-font);background:var(--md-surface-container);padding:3px 8px;border-radius:6px;font-weight:600}.ledger-entry>div small[data-v-0dce92c7]{margin-left:auto}.ledger-entry>p[data-v-0dce92c7]{margin:8px 0;font-size:14px;line-height:1.6;overflow-wrap:anywhere}.ledger-entry details[data-v-0dce92c7]{margin-top:8px;border-radius:10px;background:var(--md-surface-container);padding:8px 12px;font-size:12px}.ledger-entry summary[data-v-0dce92c7]{cursor:pointer;color:var(--md-on-surface-variant)}.ledger-entry pre[data-v-0dce92c7]{margin:8px 0 0;max-height:300px}.conversation[data-v-0dce92c7]{display:flex;flex:1;min-width:0;flex-direction:column;min-height:0}.conversation-header[data-v-0dce92c7]{display:flex;align-items:flex-start;gap:14px}.conversation-header>div[data-v-0dce92c7]:first-child{flex:1;min-width:0}.conversation-header h2[data-v-0dce92c7]{font-size:17px;font-weight:650;margin:0}.conversation-header p[data-v-0dce92c7]{margin:6px 0 0;color:var(--md-on-surface-variant);font-size:13px}.session-actions[data-v-0dce92c7]{display:flex;gap:8px;flex-shrink:0}.session-actions button[data-v-0dce92c7]{height:32px;padding:0 13px;border-radius:9px;font-size:13px;font-weight:550;background:var(--md-surface-container-lowest)}.running[data-v-0dce92c7]{color:#b88412;font-weight:650;font-size:12px}.failed[data-v-0dce92c7]{color:var(--md-error)}.done[data-v-0dce92c7]{color:var(--md-success);font-weight:600;font-size:12px}.cancelled[data-v-0dce92c7],.muted[data-v-0dce92c7]{color:var(--md-on-surface-variant)}.muted[data-v-0dce92c7]{font-size:12px;line-height:1.6}.error[data-v-0dce92c7]{background:var(--md-error-container);color:#410e0b;padding:11px 16px;border-radius:12px;margin:8px 0;font-size:13px;overflow-wrap:anywhere}.transcript[data-v-0dce92c7]{flex:1;overflow-y:auto;padding:26px 28px;min-height:0}.context-summary[data-v-0dce92c7]{max-width:920px;margin:0 auto 22px;padding:14px 18px;border:1px dashed var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-low)}.context-summary-head[data-v-0dce92c7]{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.context-summary-head strong[data-v-0dce92c7]{font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--md-primary)}.context-summary-head time[data-v-0dce92c7]{font-size:12px;opacity:.75}.welcome[data-v-0dce92c7]{max-width:660px;margin:70px auto 0;text-align:center;color:var(--md-on-surface-variant);line-height:1.8}.welcome[data-v-0dce92c7]:before{content:\"\";display:block;width:64px;height:64px;margin:0 auto 20px;border-radius:20px;background:var(--md-primary-container);background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 24 24' fill='none' stroke='%234d5d91' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z'/%3E%3Cpath d='M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:center}.welcome h2[data-v-0dce92c7]{color:var(--md-on-surface);font-size:24px;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}.welcome p[data-v-0dce92c7]{margin:6px 0;font-size:14px}.turn[data-v-0dce92c7]{max-width:920px;margin:0 auto 30px;display:flex;flex-direction:column;gap:10px}.bubble[data-v-0dce92c7]{padding:15px 19px;font-size:14px}.bubble.user[data-v-0dce92c7]{align-self:flex-end;max-width:82%;background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:16px 16px 4px}.bubble.agent[data-v-0dce92c7]{align-self:flex-start;max-width:100%;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:16px 16px 16px 4px;box-shadow:var(--shadow-1)}.bubble .message-head[data-v-0dce92c7]{display:flex;align-items:center;gap:14px;margin-bottom:10px;font-size:12px}.bubble .message-head b[data-v-0dce92c7]{font-weight:700}.bubble .message-head time[data-v-0dce92c7]{margin-left:auto;opacity:.75;font-size:12px}.bubble .message-head span[data-v-0dce92c7]{margin-left:auto}.bubble.user .message-head[data-v-0dce92c7]{margin-bottom:7px;opacity:.85}.message-text[data-v-0dce92c7]{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:14px}.bubble.agent[data-v-0dce92c7] p{margin:.4em 0}.bubble.agent[data-v-0dce92c7] pre{max-height:420px}.agent-speech[data-v-0dce92c7]{margin:6px 0;padding:2px 0;line-height:1.7}.model-annotation[data-v-0dce92c7]{display:block;font-size:12px;opacity:.7;margin-bottom:4px;font-family:var(--code-font)}.think-chain[data-v-0dce92c7]{margin-top:8px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-low);overflow:hidden}.think-chain>summary[data-v-0dce92c7]{cursor:pointer;list-style:none;padding:7px 12px;font-size:12px;font-weight:650;letter-spacing:.04em;color:var(--md-on-surface-variant);user-select:none}.think-chain>summary[data-v-0dce92c7]::-webkit-details-marker{display:none}.think-chain>summary[data-v-0dce92c7]:before{content:\"▸\";display:inline-block;margin-right:6px;transition:transform .15s}.think-chain[open]>summary[data-v-0dce92c7]:before{transform:rotate(90deg)}.think-chain>pre[data-v-0dce92c7]{margin:0;padding:0 12px 10px;max-height:320px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--code-font);font-size:12px;line-height:1.6;color:var(--md-on-surface-variant)}.agent-speech[data-v-0dce92c7] p{margin:.45em 0}.agent-speech[data-v-0dce92c7] pre{background:var(--md-surface-container);border:1px solid var(--md-outline-variant);border-radius:10px;padding:12px 14px;max-height:460px;overflow:auto;font-size:13px}.agent-speech[data-v-0dce92c7] code{font-family:var(--code-font)}.agent-speech[data-v-0dce92c7] ul{padding-left:20px;margin:.4em 0}.steps[data-v-0dce92c7]{display:flex;flex-direction:column;gap:8px;margin:12px 0 14px}.steps details[data-v-0dce92c7]{border-radius:12px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);padding:10px 14px}.steps summary[data-v-0dce92c7]{cursor:pointer;font-size:13px;font-weight:550}.steps summary small[data-v-0dce92c7]{margin-left:10px;font-weight:600}.steps summary[data-v-0dce92c7]::marker{color:var(--md-on-surface-variant)}.steps details pre[data-v-0dce92c7]{margin:10px 0 0;font-family:var(--code-font);font-size:13px;white-space:pre-wrap;max-height:400px}pre[data-v-0dce92c7]{max-height:450px;overflow:auto;font-family:var(--code-font)}.subagent-card[data-v-0dce92c7]{border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest);overflow:hidden;box-shadow:var(--shadow-1)}button.subagent-card-head[data-v-0dce92c7]{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:0;border-radius:0;background:transparent;padding:11px 14px;font-size:13px}button.subagent-card-head[data-v-0dce92c7]:hover:not(:disabled){background:var(--md-secondary-container);box-shadow:none}button.subagent-card-head>span[data-v-0dce92c7]:first-child{color:var(--md-primary)}button.subagent-card-head>strong[data-v-0dce92c7]{font-weight:700}.subagent-prompt[data-v-0dce92c7]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--md-on-surface)}.subagent-card small[data-v-0dce92c7]{font-weight:600}.subagent-chevron[data-v-0dce92c7]{color:var(--md-on-surface-variant);font-size:12px}.subagent-card-error[data-v-0dce92c7]{margin:0 10px 10px;padding:8px 12px;font-size:12px}.subagent-card.nested[data-v-0dce92c7]{margin:6px 0;box-shadow:none}.sub-view[data-v-0dce92c7]{max-width:900px;margin:0 auto}.sub-view-header[data-v-0dce92c7]{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--md-outline-variant)}.sub-view-header button[data-v-0dce92c7]{flex-shrink:0;border-radius:9px;font-size:13px;font-weight:550;background:var(--md-surface-container-lowest)}.sub-view-header h3[data-v-0dce92c7]{margin:0 0 4px;font-size:16px;font-weight:650}.sub-view-header p[data-v-0dce92c7]{margin:0;max-width:520px}.sub-view-header>span[data-v-0dce92c7]{margin-left:auto;font-weight:650;font-size:12px}.sub-view-body[data-v-0dce92c7]{min-height:120px}.composer[data-v-0dce92c7]{flex-shrink:0;margin:0 20px 18px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-lowest);overflow:hidden;box-shadow:var(--shadow-1)}.composer-input[data-v-0dce92c7]{position:relative}.composer-input textarea[data-v-0dce92c7]{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 64px 15px 60px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}.composer-input textarea[data-v-0dce92c7]:focus{box-shadow:none;border:0}.attach-chips[data-v-0dce92c7]{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px 0}.attach-fly[data-v-0dce92c7]{position:absolute!important;left:10px!important;bottom:10px!important;z-index:2;width:42px!important;height:42px!important;aspect-ratio:1/1;display:grid!important;place-items:center;border:0!important;border-radius:50%!important;padding:0!important;margin:0!important;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.attach-fly svg[data-v-0dce92c7]{width:18px;height:18px}.attach-fly[data-v-0dce92c7]:hover:not(:disabled){filter:brightness(1.05)}.attach-fly[data-v-0dce92c7]:disabled{opacity:.5;cursor:default}.attach-chip[data-v-0dce92c7]{display:inline-flex;align-items:center;gap:6px;max-width:220px;font-size:12px;padding:4px 6px 4px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attach-chip button[data-v-0dce92c7]{border:0;background:transparent;cursor:pointer;font-size:14px;line-height:1;padding:0 4px;color:var(--md-on-surface-variant)}.attach-chip button[data-v-0dce92c7]:hover{color:var(--md-error)}.attach-error[data-v-0dce92c7]{font-size:12px;color:var(--md-error)}.send-fly[data-v-0dce92c7]{position:absolute!important;right:10px!important;bottom:10px!important;z-index:2;width:42px!important;height:42px!important;aspect-ratio:1/1;display:grid!important;place-items:center;border:0!important;border-radius:50%!important;padding:0!important;margin:0!important;background:var(--md-primary);color:var(--md-on-primary,#fff);box-shadow:0 2px 10px color-mix(in srgb,var(--md-primary) 38%,transparent)}.send-fly svg[data-v-0dce92c7]{width:20px;height:20px}.send-fly[data-v-0dce92c7]:hover:not(:disabled){filter:brightness(1.08)}.send-fly[data-v-0dce92c7]:disabled{background:var(--md-surface-container);color:var(--md-on-surface-variant);opacity:.7;box-shadow:none}.send-fly.stop[data-v-0dce92c7]{background:var(--md-error);color:#fff;box-shadow:0 2px 10px color-mix(in srgb,var(--md-error) 40%,transparent)}.compact-notice[data-v-0dce92c7]{font-size:12px;padding:10px 16px;color:var(--md-primary);background:var(--md-primary-container);border-radius:10px;margin:10px 16px 0}.execution-options[data-v-0dce92c7]{display:flex;gap:10px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid var(--md-outline-variant);align-items:end}.execution-options label[data-v-0dce92c7]{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--md-on-surface-variant);flex:1;min-width:130px}.execution-options[data-v-0dce92c7] .app-select-trigger,.execution-options .workspace-select[data-v-0dce92c7]{width:100%;font-size:13px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--md-on-surface);min-height:36px;border-radius:10px;background:var(--md-surface-container);border-color:transparent;text-align:left}.workspace-select[data-v-0dce92c7]{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block}.composer footer[data-v-0dce92c7]{display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap;border-top:1px solid var(--md-outline-variant)}.composer footer>select[data-v-0dce92c7],.composer footer>.app-select[data-v-0dce92c7]{font-size:13px;border-radius:10px;min-height:34px}.composer footer .muted[data-v-0dce92c7]{flex:1;min-width:120px}.composer footer>button[data-v-0dce92c7]{font-size:13px;font-weight:600;border-radius:9px;min-height:34px}.host-panel>strong[data-v-0dce92c7]{font-size:14px}.host-panel dl[data-v-0dce92c7]{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;font-size:12px}.host-panel dt[data-v-0dce92c7]{color:var(--md-on-surface-variant);font-weight:600}.host-panel dd[data-v-0dce92c7]{margin:4px 0 0;overflow-wrap:anywhere}.usage-rings[data-v-0dce92c7]{display:flex;align-items:center;gap:24px;padding:14px 0;flex-wrap:wrap}.usage-metric[data-v-0dce92c7]{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px}.usage-ring[data-v-0dce92c7]{width:88px;height:88px;border-radius:50%;display:grid;place-items:center}.usage-ring b[data-v-0dce92c7]{width:68px;height:68px;border-radius:50%;background:var(--md-surface-container-lowest);display:grid;place-items:center;font-size:15px;font-weight:650;box-shadow:var(--shadow-1)}.new-folder[data-v-0dce92c7]{display:flex;gap:8px}.new-folder input[data-v-0dce92c7]{flex:1;min-width:0}.directory-backdrop[data-v-0dce92c7]{position:fixed;inset:0;background:#14111acc;z-index:1000;display:grid;place-items:center;padding:20px}.directory-dialog[data-v-0dce92c7]{background:var(--md-surface);border:1px solid var(--md-outline-variant);border-radius:20px;padding:22px;width:min(680px,100%);display:flex;flex-direction:column;gap:14px;max-height:85vh;box-shadow:var(--shadow-4)}.directory-dialog>header[data-v-0dce92c7]{gap:12px}.directory-dialog>header h2[data-v-0dce92c7]{font-size:16px;font-weight:650}.directory-list[data-v-0dce92c7]{overflow:auto;min-height:180px;display:flex;flex-direction:column;gap:6px}.directory-list button[data-v-0dce92c7]{text-align:left;border-radius:10px;background:var(--md-surface-container-low);font-size:13px}.directory-roots[data-v-0dce92c7]{display:flex;gap:8px;flex-wrap:wrap}.directory-roots button[data-v-0dce92c7]{border-radius:999px;font-size:12px;padding:6px 12px}.directory-dialog code[data-v-0dce92c7]{overflow-wrap:anywhere;font-size:12px;background:var(--md-surface-container);padding:8px 10px;border-radius:8px}.directory-dialog>footer[data-v-0dce92c7]{display:flex;justify-content:flex-end}.directory-dialog>footer button[data-v-0dce92c7]{background:var(--md-primary);color:var(--md-on-primary,#fff);border-color:transparent;font-weight:600}.permission-request[data-v-0dce92c7]{margin:12px;padding:16px;border-radius:16px;background:var(--md-tertiary-container)}.permission-request small[data-v-0dce92c7]{display:block;margin:8px 0}.permission-request pre[data-v-0dce92c7]{max-height:160px;overflow:auto}.permission-request>div[data-v-0dce92c7]{display:flex;justify-content:flex-end;gap:8px}#app .workspace[data-v-0dce92c7]{gap:12px;padding-left:6px;background:var(--md-surface-container)}#app .workspace .sessions[data-v-0dce92c7]{width:296px;gap:14px;padding:18px 14px;border:0;border-radius:28px;background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}#app .workspace .sessions h1[data-v-0dce92c7]{font-size:24px;font-weight:800;letter-spacing:-.02em}#app .workspace .sessions header>button[data-v-0dce92c7]{height:40px;padding:0 16px;border:0;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary,#fff);font:700 13px/1 inherit;display:inline-flex;align-items:center;gap:7px;box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 30%,transparent)}#app .workspace .sessions header>button[data-v-0dce92c7]:hover:not(:disabled){background:var(--md-primary);filter:brightness(1.06);box-shadow:0 8px 20px color-mix(in srgb,var(--md-primary) 34%,transparent)}#app .workspace .sessions>input[data-v-0dce92c7]{min-height:48px;padding:0 16px;border:1px solid transparent;border-radius:16px;background:var(--md-surface-container-high);color:var(--md-on-surface);font-size:14px}#app .workspace .sessions>input[data-v-0dce92c7]:focus{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}#app .workspace .filter-bar[data-v-0dce92c7]{padding:5px;border-radius:999px;background:var(--md-surface-container-high)}#app .workspace .filter-bar button[data-v-0dce92c7]{border-radius:999px;padding:8px 4px;font-weight:600}#app .workspace .filter-bar button.chosen[data-v-0dce92c7]{background:var(--md-primary);color:var(--md-on-primary,#fff);font-weight:700;box-shadow:var(--shadow-1)}#app .workspace .filter-bar button.chosen[data-v-0dce92c7]:hover:not(:disabled){background:var(--md-primary);color:var(--md-on-primary,#fff)}#app .workspace .session-list[data-v-0dce92c7]{margin:0 -2px;padding:0 2px}#app .workspace .session-card[data-v-0dce92c7]{gap:5px;margin-bottom:8px;padding:13px 15px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);border-radius:18px;background:var(--md-surface-container-lowest);transition:transform .26s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .2s,border-color .2s,box-shadow .22s,border-radius .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .workspace .session-card[data-v-0dce92c7]:hover:not(:disabled){transform:translateY(-2px);box-shadow:var(--shadow-1);border-color:color-mix(in srgb,var(--md-primary) 35%,var(--md-outline-variant))}#app .workspace .session-card.selected[data-v-0dce92c7]{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent;border-radius:20px 20px 20px 7px;box-shadow:var(--shadow-1)}#app .workspace .session-card .origin[data-v-0dce92c7]{font-weight:700;letter-spacing:.05em;text-transform:uppercase;font-size:12px;color:var(--md-primary)}#app .workspace .session-card.selected .origin[data-v-0dce92c7]{color:var(--md-on-secondary-container);opacity:.75}#app .workspace .ledger-button[data-v-0dce92c7]{min-height:44px;border-radius:16px;font-weight:650;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}#app .workspace .ledger-button.chosen[data-v-0dce92c7]{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent}#app .workspace .ledger-entry[data-v-0dce92c7]{border-radius:20px;border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);background:var(--md-surface-container-lowest);box-shadow:var(--shadow-1)}#app .workspace .conversation[data-v-0dce92c7]{background:var(--md-surface);border-radius:30px;overflow:hidden;box-shadow:var(--shadow-1)}#app .workspace .conversation-header[data-v-0dce92c7]{padding:20px 26px 16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent)}#app .workspace .conversation-header h2[data-v-0dce92c7]{font-size:20px;font-weight:750;letter-spacing:-.01em}#app .workspace .session-actions button[data-v-0dce92c7]{height:36px;padding:0 15px;border-radius:999px;background:var(--md-surface-container-high);border-color:transparent;font-weight:650}#app .workspace .session-actions button[data-v-0dce92c7]:hover:not(:disabled){background:var(--md-surface-container-highest);box-shadow:none}#app .workspace .running[data-v-0dce92c7]{color:#b88412;background:color-mix(in srgb,#B88412 14%,transparent);padding:4px 11px;border-radius:999px;font-weight:700}#app .workspace .transcript[data-v-0dce92c7]{padding:28px 30px}#app .workspace .welcome[data-v-0dce92c7]{margin:64px auto 0}#app .workspace .welcome[data-v-0dce92c7]:before{width:76px;height:76px;border-radius:26px 26px 26px 10px;background-color:var(--md-primary-container);background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 24 24' fill='none' stroke='%235944c6' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z'/%3E%3Cpath d='M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z'/%3E%3C/svg%3E\");background-size:34px 34px}#app .workspace .welcome h2[data-v-0dce92c7]{font-size:26px;font-weight:800;letter-spacing:-.02em}#app .workspace .turn[data-v-0dce92c7]{gap:12px;margin-bottom:32px}#app .workspace .bubble[data-v-0dce92c7]{padding:16px 20px;font-size:15px;line-height:1.7}#app .workspace .bubble.user[data-v-0dce92c7]{background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:24px 24px 8px;box-shadow:var(--shadow-1);max-width:82%}#app .workspace .bubble.agent[data-v-0dce92c7]{background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);border-radius:8px 24px 24px;box-shadow:var(--shadow-1);max-width:100%}#app .workspace .bubble .message-head b[data-v-0dce92c7]{font-weight:750}#app .workspace .steps[data-v-0dce92c7]{gap:9px;margin:14px 0}#app .workspace .steps details[data-v-0dce92c7]{border-radius:16px;background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);padding:11px 15px}#app .workspace .subagent-card[data-v-0dce92c7]{border-radius:18px;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);box-shadow:var(--shadow-1)}#app .workspace button.subagent-card-head[data-v-0dce92c7]{padding:12px 15px}#app .workspace button.subagent-card-head[data-v-0dce92c7]:hover:not(:disabled){background:var(--md-secondary-container)}#app .workspace .sub-view-header[data-v-0dce92c7]{padding-bottom:16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent)}#app .workspace .sub-view-header button[data-v-0dce92c7]{border-radius:999px;background:var(--md-surface-container-high);border-color:transparent;font-weight:650}#app .workspace .agent-speech[data-v-0dce92c7] pre{border-radius:16px;background:var(--md-surface-container);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}#app .workspace .composer[data-v-0dce92c7]{margin:0 22px 20px;border-radius:28px;overflow:hidden;background:var(--md-surface-container-lowest);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);box-shadow:var(--shadow-2)}#app .workspace .composer[data-v-0dce92c7]:focus-within{border-color:color-mix(in srgb,var(--md-primary) 55%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent),var(--shadow-2)}#app .workspace .execution-options[data-v-0dce92c7]{padding:12px 16px;gap:10px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}#app .workspace .execution-options label[data-v-0dce92c7]{font-weight:700;letter-spacing:.05em}#app .workspace .execution-options .workspace-select[data-v-0dce92c7]{min-height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high);font-size:13px}#app .workspace .execution-options[data-v-0dce92c7] .app-select-trigger,#app .workspace .composer footer[data-v-0dce92c7] .app-select-trigger{min-height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high);font-size:13px}#app .workspace .composer-input textarea[data-v-0dce92c7]{border-radius:0;background:transparent}#app .workspace .send-fly[data-v-0dce92c7]{width:46px!important;height:46px!important;border-radius:50%!important;box-shadow:0 8px 22px color-mix(in srgb,var(--md-primary) 34%,transparent)}#app .workspace .composer footer[data-v-0dce92c7]{border-top:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);padding:12px 16px}#app .workspace .composer footer>button[data-v-0dce92c7]{border-radius:999px;min-height:36px;padding-inline:15px;background:var(--md-surface-container-high);border-color:transparent}#app .workspace .host-panel[data-v-0dce92c7]{margin:0 22px 10px;border-radius:24px;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}#app .workspace .usage-ring b[data-v-0dce92c7]{background:var(--md-surface-container-lowest)}#app .workspace .directory-dialog[data-v-0dce92c7]{border-radius:32px;border-color:transparent;box-shadow:var(--shadow-4);background:var(--md-surface-container-low)}#app .workspace .directory-list button[data-v-0dce92c7]{background:var(--md-surface-container-lowest);border-color:transparent;border-radius:16px;min-height:46px}#app .workspace .directory-list button[data-v-0dce92c7]:hover:not(:disabled){background:var(--md-secondary-container)}#app .workspace .directory-roots button[data-v-0dce92c7]{background:var(--md-surface-container-high);border-color:transparent}@media (max-width:800px){.sessions[data-v-0dce92c7]{width:214px;padding:12px 10px}.transcript[data-v-0dce92c7]{padding:14px}.composer[data-v-0dce92c7]{margin:0 12px 12px}.composer footer .muted[data-v-0dce92c7]{display:none}.conversation-header[data-v-0dce92c7]{padding:14px 16px}.welcome[data-v-0dce92c7]{margin:30px auto 0}.turn[data-v-0dce92c7]{margin-bottom:22px}}@media (max-width:560px){.workspace[data-v-0dce92c7]{flex-direction:column}.sessions[data-v-0dce92c7]{width:100%;max-height:230px;border-right:0;border-bottom:1px solid var(--md-outline-variant)}.sessions>input[data-v-0dce92c7],.filter-bar[data-v-0dce92c7],.connection[data-v-0dce92c7]{display:none}.session-list[data-v-0dce92c7]{display:flex;gap:6px;overflow-x:auto}.session-card[data-v-0dce92c7]{min-width:160px;width:160px;margin-bottom:0}.ledger-button[data-v-0dce92c7]{padding:5px;font-size:12px}}\n";document.head.appendChild(s)}})();

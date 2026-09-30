@@ -19,6 +19,8 @@ type TaskEvent struct {
 	State     string `json:"state"`
 	Result    string `json:"result"`
 	Error     string `json:"error"`
+	// Reasoning carries a model step's native chain-of-thought for display.
+	Reasoning string `json:"reasoning,omitempty"`
 }
 
 // RecordTask validates and applies one ledger transition.
@@ -90,6 +92,9 @@ func (s *CoreServiceServer) recordTaskLocked(event TaskEvent) error {
 	task.State, task.Result, task.Error = event.State, event.Result, event.Error
 	if event.Args != "" {
 		task.Args = event.Args
+	}
+	if event.Reasoning != "" {
+		task.Reasoning = event.Reasoning
 	}
 	if isTerminalTaskState(event.State) {
 		task.EndedAt = time.Now()

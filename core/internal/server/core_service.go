@@ -113,6 +113,8 @@ type TaskInfo struct {
 	Kind      string
 	ParentID  string
 	Args      string
+	// Reasoning carries the model's native chain-of-thought for this step.
+	Reasoning string
 }
 
 type persistedTask struct {
@@ -129,6 +131,7 @@ type persistedTask struct {
 	Kind      string    `json:"kind,omitempty"`
 	ParentID  string    `json:"parent_id,omitempty"`
 	Args      string    `json:"args,omitempty"`
+	Reasoning string    `json:"reasoning,omitempty"`
 }
 
 // UsageRecord is one token-usage sample.
@@ -326,6 +329,7 @@ func NewCoreServiceServer(reg *registry.Registry) *CoreServiceServer {
 				tasks[item.TaskID].Kind = copy.Kind
 				tasks[item.TaskID].ParentID = copy.ParentID
 				tasks[item.TaskID].Args = copy.Args
+				tasks[item.TaskID].Reasoning = copy.Reasoning
 				if copy.State == "running" || copy.State == "pending" {
 					tasks[item.TaskID].State = "failed"
 					tasks[item.TaskID].Error = "Core restarted before execution was acknowledged"
@@ -398,7 +402,7 @@ func (s *CoreServiceServer) persistTasksLocked() {
 	}
 	items := make([]persistedTask, 0, len(s.tasks))
 	for _, t := range s.tasks {
-		items = append(items, persistedTask{TaskID: t.TaskID, CallerID: t.CallerID, Prompt: t.Prompt, AgentID: t.AgentID, State: t.State, Result: t.Result, Error: t.Error, StartedAt: t.StartedAt, EndedAt: t.EndedAt, SessionID: t.SessionID, Kind: t.Kind, ParentID: t.ParentID, Args: t.Args})
+		items = append(items, persistedTask{TaskID: t.TaskID, CallerID: t.CallerID, Prompt: t.Prompt, AgentID: t.AgentID, State: t.State, Result: t.Result, Error: t.Error, StartedAt: t.StartedAt, EndedAt: t.EndedAt, SessionID: t.SessionID, Kind: t.Kind, ParentID: t.ParentID, Args: t.Args, Reasoning: t.Reasoning})
 	}
 	if s.taskFingerprints == nil {
 		s.taskFingerprints = map[string]string{}
@@ -1353,6 +1357,9 @@ func (s *CoreServiceServer) ListTasks() []map[string]interface{} {
 		}
 		if t.Result != "" {
 			item["result"] = t.Result
+		}
+		if t.Reasoning != "" {
+			item["reasoning"] = t.Reasoning
 		}
 		if t.Error != "" {
 			item["error"] = t.Error

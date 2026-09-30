@@ -32,6 +32,7 @@ export interface TaskRow {
   ended_at?: string
   result?: string
   error?: string
+  reasoning?: string
   session_id?: string
   kind?: string
   parent_id?: string
