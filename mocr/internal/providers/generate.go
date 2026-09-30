@@ -275,6 +275,27 @@ func isDeepseek(provider, model string) bool {
 	return strings.Contains(strings.ToLower(provider), "deepseek") || strings.Contains(strings.ToLower(model), "deepseek")
 }
 
+// effortForLevel maps a 0kay thinking level to an OpenAI-style reasoning_effort.
+// Returns "" when no level is set and thinking is off.
+func effortForLevel(level string, thinking bool) string {
+	switch strings.ToLower(strings.TrimSpace(level)) {
+	case "low", "light":
+		return "low"
+	case "medium", "balanced":
+		return "medium"
+	case "high", "deep":
+		return "high"
+	case "max", "very_high":
+		return "high"
+	case "off", "none":
+		return "none"
+	}
+	if thinking {
+		return "medium"
+	}
+	return ""
+}
+
 func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []ChatMessage, onChunk StreamFunc) (*FinishInfo, error) {
 	base := strings.TrimSuffix(opts.BaseURL, "/")
 	url := base + "/chat/completions"
@@ -296,6 +317,11 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 			mode = "enabled"
 		}
 		body["thinking"] = map[string]string{"type": mode}
+		// DeepSeek-style APIs toggle thinking on/off, but the 0kay free lane
+		// reads reasoning_effort to size the thinking budget, so forward it too.
+		if effort := effortForLevel(opts.ThinkingLevel, opts.Thinking); effort != "" && effort != "none" {
+			body["reasoning_effort"] = effort
+		}
 	} else if strings.HasPrefix(model, "o1") || strings.HasPrefix(model, "o3") || strings.HasPrefix(model, "o4") || strings.HasPrefix(model, "gpt-5") {
 		effort := "low"
 		if opts.Thinking {
@@ -317,6 +343,10 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 		delete(body, "temperature")
 		delete(body, "max_tokens")
 		body["max_completion_tokens"] = opts.MaxTokens
+	} else if effort := effortForLevel(opts.ThinkingLevel, opts.Thinking); effort != "" {
+		// Other OpenAI-compatible providers (GLM, Kimi, Qwen, the 0kay free
+		// lane, …): forward the level so the model can size its reasoning.
+		body["reasoning_effort"] = effort
 	}
 	if len(opts.Tools) > 0 {
 		body["tools"] = openAITools(opts.Tools)

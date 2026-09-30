@@ -132,3 +132,40 @@ func TestAnthropicMultimodalContent(t *testing.T) {
 		t.Fatalf("bad image source %#v", src)
 	}
 }
+
+func TestReasoningEffortForwardedFromThinkingLevel(t *testing.T) {
+	var got map[string]any
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("data: {\"choices\":[{\"delta\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"))
+	}))
+	defer upstream.Close()
+	_, err := Generate(context.Background(), GenerateOptions{Provider: "custom", BaseURL: upstream.URL, APIKey: "mock", ModelID: "deepseek-v4-flash-free", Thinking: true, ThinkingLevel: "max", Stream: true}, func(string) bool { return true })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["reasoning_effort"] != "high" {
+		t.Fatalf("reasoning_effort=%v", got["reasoning_effort"])
+	}
+	if _, ok := got["thinking"]; !ok {
+		t.Fatalf("deepseek thinking toggle missing")
+	}
+}
+
+func TestReasoningEffortForwardedForGenericProvider(t *testing.T) {
+	var got map[string]any
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("data: {\"choices\":[{\"delta\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"))
+	}))
+	defer upstream.Close()
+	_, err := Generate(context.Background(), GenerateOptions{Provider: "custom", BaseURL: upstream.URL, APIKey: "mock", ModelID: "glm-5", Thinking: true, ThinkingLevel: "low", Stream: true}, func(string) bool { return true })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["reasoning_effort"] != "low" {
+		t.Fatalf("generic reasoning_effort=%v", got["reasoning_effort"])
+	}
+}
