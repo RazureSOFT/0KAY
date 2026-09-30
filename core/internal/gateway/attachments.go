@@ -2,7 +2,6 @@ package gateway
 
 import (
 	"encoding/json"
-	"strings"
 )
 
 // Attachment is an uploaded-file reference handed from a client to an agent
@@ -15,32 +14,24 @@ type Attachment struct {
 	Size int64  `json:"size"`
 }
 
-func (a Attachment) label() string {
-	name := strings.TrimSpace(a.Name)
-	if name == "" {
-		name = "file"
-	}
-	parts := []string{name}
-	if a.URL != "" {
-		parts = append(parts, a.URL)
-	}
-	if a.Mime != "" {
-		parts = append(parts, a.Mime)
-	}
-	return "[" + strings.Join(parts, " | ") + "]"
-}
+const (
+	attachmentMarkerStart = "<attachments>"
+	attachmentMarkerEnd   = "</attachments>"
+)
 
-// attachmentPrompt renders attachments so text-only models can still refer to
-// them. Uploaded files live on the Core host and are addressable by URL.
+// attachmentPrompt wraps the attachment references in a machine-parseable
+// marker. LIFE reads it, fetches each file from Core and folds the real content
+// (text inline, images via the vision model) into the model context, then
+// strips the marker from the visible message.
 func attachmentPrompt(attachments []Attachment) string {
 	if len(attachments) == 0 {
 		return ""
 	}
-	lines := make([]string, 0, len(attachments))
-	for _, a := range attachments {
-		lines = append(lines, a.label())
+	encoded, err := json.Marshal(attachments)
+	if err != nil {
+		return ""
 	}
-	return "\n\nAttachments (uploaded to Core; fetch with the webfetch tool by URL):\n" + strings.Join(lines, "\n")
+	return "\n\n" + attachmentMarkerStart + string(encoded) + attachmentMarkerEnd
 }
 
 // encodeAttachments serializes references for the agent metadata passthrough.

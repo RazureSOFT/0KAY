@@ -114,6 +114,33 @@ class DailyReviewAndMedia(unittest.IsolatedAsyncioTestCase):
             {"screenshot", "listwindows", "move", "click", "type", "key"},
         )
 
+    async def test_attachments_are_ingested_into_context(self):
+        import json as _json
+        from life.engine import ATTACHMENT_MARKER
+
+        with tempfile.TemporaryDirectory() as directory:
+            engine = LifeEngine(directory)
+
+            async def fake_fetch(url, timeout=30.0):
+                return b"line1\nline2"
+
+            async def fake_describe(model_id, image_base64, mime="image/jpeg", prompt="", max_tokens=1024, timeout=90.0):
+                return "一只猫"
+
+            engine.mocr.fetch_file = fake_fetch
+            engine.mocr.describe_image = fake_describe
+
+            marker = "<attachments>" + _json.dumps([
+                {"name": "a.txt", "url": "/api/files?file=file_1.txt", "mime": "text/plain", "size": 11},
+                {"name": "cat.png", "url": "/api/files?file=file_2.png", "mime": "image/png", "size": 3},
+            ]) + "</attachments>"
+            cleaned, context = await engine._ingest_attachments("看看这个\n\n" + marker)
+            self.assertEqual(cleaned, "看看这个")
+            self.assertNotIn("<attachments>", cleaned)
+            self.assertIn("line1", context)
+            self.assertIn("一只猫", context)
+            self.assertIsNone(ATTACHMENT_MARKER.search(cleaned))
+
 
 if __name__ == "__main__":
     unittest.main()

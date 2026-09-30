@@ -1,5 +1,6 @@
 """Session-aware LIFE orchestration: plan, execute, express, and deliver."""
 import asyncio
+import base64
 import json
 import os
 import random
@@ -38,6 +39,30 @@ logger = get_logger("engine")
 # downstream prompt assembly and the WebUI both assume this structure.
 COMPACTION_HEADINGS = ("Objective", "Important Details", "Work State", "Next Move", "Relevant Files")
 _HEADING_RE = re.compile(r"^\s{0,3}#{0,6}\s*([A-Za-z][A-Za-z /]*?)\s*:?\s*$")
+
+# Uploaded attachments arrive from Core as a JSON marker on the user message.
+# LIFE fetches the real bytes from Core and folds text inline / describes images
+# with the vision model so the actual content (not just a URL) reaches the model.
+ATTACHMENT_MARKER = re.compile(r"\n*<attachments>(.*?)</attachments>", re.S)
+_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
+_TEXT_EXTS = {
+    ".txt", ".md", ".markdown", ".json", ".yaml", ".yml", ".toml", ".csv", ".tsv", ".log",
+    ".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".vue", ".go", ".rs", ".java", ".kt",
+    ".c", ".h", ".cc", ".cpp", ".hpp", ".cs", ".rb", ".php", ".sh", ".ps1", ".bat", ".cmd",
+    ".html", ".htm", ".css", ".scss", ".xml", ".ini", ".cfg", ".conf", ".sql", ".env",
+}
+_TEXT_MIMES = {"application/json", "application/xml", "application/javascript", "application/x-yaml",
+               "application/yaml", "application/toml", "application/x-sh", "application/sql"}
+
+
+def _attachment_is_image(name: str, mime: str) -> bool:
+    return mime.startswith("image/") or Path(name).suffix.lower() in _IMAGE_EXTS
+
+
+def _attachment_is_text(name: str, mime: str) -> bool:
+    if mime.startswith("text/") or mime in _TEXT_MIMES:
+        return True
+    return Path(name).suffix.lower() in _TEXT_EXTS
 
 
 def _compaction_prompt(persona=None) -> str:
@@ -225,6 +250,54 @@ class LifeEngine:
                 return intensity
         return "medium"
 
+    async def _ingest_attachments(self, message: str):
+        """Replace the Core attachment marker with real content.
+
+        Text files are inlined, images are described by the vision model; the
+        returned context block is added to the model context and the marker is
+        stripped from the visible message.
+        """
+        match = ATTACHMENT_MARKER.search(message or "")
+        if not match:
+            return message, ""
+        cleaned = ATTACHMENT_MARKER.sub("", message or "").strip()
+        try:
+            items = json.loads(match.group(1))
+        except ValueError:
+            return cleaned, ""
+        if not isinstance(items, list):
+            return cleaned, ""
+        blocks = []
+        for item in items[:10]:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or "file")
+            url = str(item.get("url") or "")
+            mime = str(item.get("mime") or "")
+            if not url:
+                continue
+            try:
+                data = await self.mocr.fetch_file(url)
+            except Exception as error:
+                blocks.append(f"[附件 {name}] 无法读取：{error}")
+                continue
+            if _attachment_is_image(name, mime):
+                try:
+                    description = await self.mocr.describe_image(
+                        self._model_for("vision"), base64.b64encode(data).decode(), mime or "image/png",
+                        prompt=f"用户在对话中上传了图片「{name}」，请用中文简明描述它的内容与要点。")
+                except Exception as error:
+                    description = f"（视觉模型不可用：{error}）"
+                blocks.append(f"[图片附件 {name}] {description or '（未获得描述）'}")
+            elif _attachment_is_text(name, mime) and len(data) <= 1_000_000:
+                text = data.decode("utf-8", "replace")
+                if len(text) > 20000:
+                    text = text[:20000] + "\n…（内容过长已截断）"
+                blocks.append(f"[文本附件 {name}]\n```\n{text}\n```")
+            else:
+                blocks.append(f"[附件 {name}（{mime or '未知类型'}，{len(data)} 字节）] 二进制内容，无法在对话中直接查看。")
+        return cleaned, "\n\n".join(blocks)
+
     async def process_message(self, session_id, user_id, message, adapter_type="webui", persona=None, history=None):
         session_id = session_id or f"{adapter_type}:{user_id or 'default'}"
         lock = self._session_locks.setdefault(session_id, asyncio.Lock())
@@ -245,6 +318,9 @@ class LifeEngine:
             world = await asyncio.to_thread(self.companion.world_context)
             if world:
                 turn.persona_context += "\nWorld & persona knowledge:\n" + world
+            message, attachment_context = await self._ingest_attachments(message)
+            if attachment_context:
+                turn.persona_context += "\nUser uploaded attachments:\n" + attachment_context
             turn.history.append({"role": "user", "content": message})
             token = task_context.set({"session_id": session_id})
             record = await self.task_records.start("conversation", message)

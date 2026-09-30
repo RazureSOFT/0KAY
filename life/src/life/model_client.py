@@ -27,6 +27,16 @@ class MocrClient:
             self._http = httpx.AsyncClient(timeout=5)
         return self._http
 
+    async def fetch_file(self, url: str, timeout: float = 30.0) -> bytes:
+        """Download an uploaded attachment from Core by its /api/files URL."""
+        if not url:
+            raise ValueError("empty attachment url")
+        target = url if url.startswith("http") else f"{self.core_http}{url}"
+        async with httpx.AsyncClient(timeout=timeout) as http:
+            response = await http.get(target, headers=auth_headers())
+            response.raise_for_status()
+            return response.content
+
     async def close(self):
         if self._http:
             await self._http.aclose()

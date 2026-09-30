@@ -96,7 +96,10 @@ func TestAttachmentsPassthrough(t *testing.T) {
 		t.Fatal("nil attachments must encode to empty string")
 	}
 	prompt := attachmentPrompt(refs)
-	if !strings.Contains(prompt, "a.txt") || !strings.Contains(prompt, "/api/files?file=file_1.txt") {
+	if !strings.Contains(prompt, attachmentMarkerStart) || !strings.Contains(prompt, attachmentMarkerEnd) {
+		t.Fatalf("attachmentPrompt missing marker: %q", prompt)
+	}
+	if !strings.Contains(prompt, `"name":"a.txt"`) || !strings.Contains(prompt, `"url":"/api/files?file=file_1.txt"`) {
 		t.Fatalf("attachmentPrompt missing reference: %q", prompt)
 	}
 	if attachmentPrompt(nil) != "" {
