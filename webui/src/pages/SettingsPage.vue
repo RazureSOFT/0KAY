@@ -14,6 +14,7 @@ import ProviderPanel from '../components/ProviderPanel.vue'
 import GeneralPanel from '../components/GeneralPanel.vue'
 import PersonaPanel from '../components/PersonaPanel.vue'
 import PermissionsPanel from '../components/PermissionsPanel.vue'
+import McpPanel from '../components/McpPanel.vue'
 import DangerPanel from '../components/DangerPanel.vue'
 import PluginModulePane from '../components/PluginModulePane.vue'
 import AppSelect from '../components/AppSelect.vue'
@@ -461,7 +462,8 @@ function save() {
         </div>
 
         <!-- Permissions — shell pane; fields/labels from life.patch when present -->
-        <PermissionsPanel v-else-if="activeTab === 'permissions'" />
+          <PermissionsPanel v-else-if="activeTab === 'permissions'" />
+          <McpPanel v-else-if="activeTab === 'mcp'" />
 
         <!-- Plugin-registered settings sections (declarative fields) -->
         <LifeSettingsPanel v-else-if="activeTab === 'life_settings'" />

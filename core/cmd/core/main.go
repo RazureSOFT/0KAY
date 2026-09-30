@@ -238,6 +238,11 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 		log.Printf("register pm builtin: %v", err)
 	}
 
+	// MCP server configuration is core-owned: the 0kay-mcp package is a client
+	// library with no process, so Core stores the shared server list and Agent /
+	// L.I.F.E. read it back (`GET /api/settings/mcp`).
+	registerMcpSettings(setStore)
+
 	// Fluent Design theme: a patch-only plugin, i.e. it has no process to
 	// register itself from. Core materializes the registry row so the Plugins
 	// page can switch it. The patch is not shipped in core/data/ui — 0kay-pm
@@ -319,6 +324,28 @@ func applyGitHubProxy(setStore *settings.Store) {
 	}
 	proxy, _ := setStore.GetValues("updates")["github_proxy"].(string)
 	update.SetGitHubProxy(proxy)
+}
+
+// registerMcpSettings contributes the shared MCP server list. The value is a
+// JSON array edited by the WebUI MCP panel and read by Agent / L.I.F.E.
+func registerMcpSettings(setStore *settings.Store) {
+	setStore.RegisterSection(settings.Section{
+		ID:          "mcp",
+		Label:       "MCP",
+		Icon:        "plug",
+		Order:       78,
+		Description: "外部 MCP 服务（模型上下文协议）共享配置",
+		PluginName:  "mcp",
+		Fields: []settings.Field{
+			{
+				Key:          "servers",
+				Type:         "text",
+				Label:        "MCP 服务",
+				DefaultValue: "[]",
+				Help:         "JSON 数组；由 WebUI 的 MCP 面板编辑，Agent 与 L.I.F.E 共用",
+			},
+		},
+	})
 }
 
 // registerSearxngSettings contributes the engine picker under Settings.
