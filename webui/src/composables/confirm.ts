@@ -3,6 +3,12 @@ import { ref } from 'vue'
 export type ConfirmOptions = {
   title?: string
   message: string
+  /** Optional icon (URL) shown beside the title, e.g. a plugin avatar. */
+  icon?: string
+  /** Optional short summary shown under the title. */
+  description?: string
+  /** Optional Markdown body (e.g. a plugin README) rendered in a scroll area. */
+  readme?: string
   /** Optional bullet list rendered under the message (e.g. requested permissions). */
   details?: string[]
   confirmLabel?: string

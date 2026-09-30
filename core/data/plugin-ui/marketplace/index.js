@@ -161,16 +161,43 @@ const W = { class: "mp" }, Z = { class: "mp-hero" }, ee = { class: "mp-actions" 
       if (!out.length) out.push("未申请任何额外权限");
       return out;
     }
+    async function readmeOf(n) {
+      const files = ["README.md", "readme.md", "README.MD", "Readme.md", "README.markdown", "README.rst", "README.txt", "README"];
+      for (const file of files) {
+        try {
+          const res = await fetch(`https://raw.githubusercontent.com/${n.full_name}/${n.branch || "HEAD"}/${file}`, { signal: AbortSignal.timeout(8000) });
+          if (res.ok) {
+            const text = await res.text();
+            if (text.trim()) return text;
+          } else if (res.status !== 404) break;
+        } catch {
+          break;
+        }
+      }
+      return "";
+    }
     async function askInstall(n) {
       const t = window.__0KAY_UI__, details = permsOf(n);
       const message = `${n.full_name}${n.manifest?.version ? ` v${n.manifest.version}` : ""} 申请以下权限：`;
-      return t && typeof t.confirm == "function"
-        ? await t.confirm({ title: "确认安装", message, details, confirmLabel: "安装" })
-        : window.confirm(message + "\n\n" + details.join("\n"));
+      if (!(t && typeof t.confirm === "function"))
+        return window.confirm(message + "\n\n" + details.join("\n"));
+      const readme = await readmeOf(n);
+      return await t.confirm({
+        title: "确认安装",
+        message,
+        icon: n.avatar || "",
+        description: n.manifest?.description || n.description || "",
+        readme,
+        details,
+        confirmLabel: "安装",
+      });
     }
     async function V(n) {
       if (g.value || n.installed) return;
-      if (!(await askInstall(n))) return;
+      n.installing = !0;
+      let ok = !1;
+      try { ok = await askInstall(n); } finally { n.installing = !1; }
+      if (!ok) return;
       f.value = "", E("/api/plugins/pm/install", n, n.full_name, () => {
         n.installed = !0, n.entryName = n.manifest?.name || n.full_name, f.value = `已安装 ${n.full_name}，正在刷新…`;
       });

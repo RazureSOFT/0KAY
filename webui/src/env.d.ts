@@ -9,6 +9,9 @@ declare module '*.vue' {
 type OkayConfirmOptions = {
   title?: string
   message: string
+  icon?: string
+  description?: string
+  readme?: string
   details?: string[]
   confirmLabel?: string
   cancelLabel?: string

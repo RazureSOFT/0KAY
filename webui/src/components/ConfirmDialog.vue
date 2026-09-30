@@ -2,6 +2,7 @@
 import { nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from '../composables/confirm'
+import MarkdownContent from './MarkdownContent.vue'
 
 const { t, locale } = useI18n()
 const { confirmState, settle } = useConfirm()
@@ -71,11 +72,26 @@ function onKeydown(event: KeyboardEvent) {
         aria-describedby="confirm-dialog-message"
         tabindex="-1"
       >
-        <h2 id="confirm-dialog-title">{{ title() }}</h2>
+        <header class="confirm-head">
+          <img
+            v-if="confirmState.options.icon"
+            class="confirm-icon"
+            :src="confirmState.options.icon"
+            alt=""
+            loading="lazy"
+          />
+          <div class="confirm-headtext">
+            <h2 id="confirm-dialog-title">{{ title() }}</h2>
+            <p v-if="confirmState.options.description" class="confirm-desc">{{ confirmState.options.description }}</p>
+          </div>
+        </header>
         <p id="confirm-dialog-message">{{ confirmState.options.message }}</p>
         <ul v-if="confirmState.options.details?.length" class="confirm-details">
           <li v-for="(item, i) in confirmState.options.details" :key="i">{{ item }}</li>
         </ul>
+        <div v-if="confirmState.options.readme" class="confirm-readme">
+          <MarkdownContent :content="confirmState.options.readme" />
+        </div>
         <footer>
           <button ref="cancelBtn" type="button" @click="settle(false)">{{ cancelLabel() }}</button>
           <button
@@ -103,7 +119,10 @@ function onKeydown(event: KeyboardEvent) {
   animation: fadeIn 180ms ease-out;
 }
 .confirm-dialog {
-  width: min(440px, 100%);
+  width: min(680px, 100%);
+  max-height: min(88vh, 900px);
+  display: flex;
+  flex-direction: column;
   background: var(--md-surface-container-high, var(--md-surface, #fff));
   color: var(--md-on-surface);
   border: 1px solid var(--md-outline-variant, transparent);
@@ -113,10 +132,44 @@ function onKeydown(event: KeyboardEvent) {
   animation: dialog-arrive 320ms var(--ease-emphasized, ease-out) both;
   outline: none;
 }
+.confirm-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.confirm-icon {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  object-fit: cover;
+  background: var(--md-surface-container, #f3edf7);
+}
+.confirm-headtext {
+  min-width: 0;
+}
 .confirm-dialog h2 {
   margin: 0 0 10px;
   font-size: 22px;
   font-weight: 650;
+}
+.confirm-headtext h2 {
+  margin-bottom: 2px;
+}
+.confirm-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--md-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+.confirm-readme {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--md-surface-container-low, var(--md-surface-container, #f3edf7));
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1 1 auto;
 }
 .confirm-dialog p {
   margin: 0;
