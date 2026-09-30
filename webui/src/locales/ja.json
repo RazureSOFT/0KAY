@@ -240,6 +240,7 @@
     "save": "保存",
     "saved": "保存しました",
     "tabs": {
+      "mcp": "MCP",
       "general": "一般",
       "provider": "プロバイダー",
       "models": "モデル",

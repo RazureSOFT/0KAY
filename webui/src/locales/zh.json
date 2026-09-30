@@ -265,6 +265,7 @@
     "save": "保存",
     "saved": "已保存",
     "tabs": {
+      "mcp": "MCP",
       "general": "通用",
       "provider": "供应商",
       "models": "模型",

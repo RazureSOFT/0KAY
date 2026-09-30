@@ -265,6 +265,7 @@
     "save": "Save",
     "saved": "Saved",
     "tabs": {
+      "mcp": "MCP",
       "general": "General",
       "provider": "Provider",
       "models": "Models",
