@@ -1,7 +1,7 @@
 {
   "id": "liquidglass-theme",
   "name": "Liquid Glass theme",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "plugin": "liquidglass",
   "enabled": true,
   "patches": [
@@ -126,7 +126,7 @@
       "item": {
         "id": "liquidglass-engine",
         "plugin": "liquidglass",
-        "module": "/api/plugins/liquidglass/ui/theme.js?v=1"
+        "module": "/api/plugins/liquidglass/ui/theme.js?v=2"
       }
     }
   ]

@@ -8,11 +8,11 @@
 // bar, agent composer, settings drawer, select menus) it upgrades the
 // stylesheet's plain glass
 //
-//     backdrop-filter: blur(28px) saturate(190%)
+//     backdrop-filter: blur(2px) saturate(140%)
 //
 // into a true refraction by appending a same-sized SVG displacement filter:
 //
-//     backdrop-filter: blur(28px) saturate(190%) url(#lg-disp-N)
+//     backdrop-filter: blur(2px) saturate(140%) url(#lg-disp-N)
 //
 // The filter (feImage + feDisplacementMap) is fed a canvas-rendered rounded-
 // rectangle SDF map: neutral gray in the middle, edge-banded normals that pinch
@@ -20,12 +20,13 @@
 // backdrop-filter reject the inline value at parse time, which silently falls
 // back to the stylesheet's blur — degradation is automatic.
 //
-// Keep BASE in sync with the glass rules in patches/liquidglass.patch.
+// Keep BASE in sync with ui/optics.css. The patch is the static fallback.
 
 ;(function () {
   var SVG_ID = 'liquidglass-filters'
   var ATTR = 'data-lg'
-  var BASE = 'blur(28px) saturate(190%)'
+  var BASE = 'blur(2px) saturate(140%)'
+  var material = null
   var TARGETS = [
     '#app .app-header',
     '#app .nav-rail',
@@ -145,6 +146,31 @@
     disp.setAttribute('yChannelSelector', 'G')
     f.appendChild(imgEl)
     f.appendChild(disp)
+    // Slightly different refraction per wavelength, recombined with screen.
+    slot.channels = [disp]
+    ;['red', 'green', 'blue'].forEach(function (channel, index) {
+      var displacement = index === 0 ? disp : disp.cloneNode()
+      displacement.setAttribute('result', slot.filterId + '-' + channel)
+      if (index > 0) f.appendChild(displacement)
+      if (index > 0) slot.channels.push(displacement)
+      var matrix = document.createElementNS('http://www.w3.org/2000/svg', 'feColorMatrix')
+      matrix.setAttribute('in', slot.filterId + '-' + channel)
+      matrix.setAttribute('type', 'matrix')
+      matrix.setAttribute('values', index === 0 ? '1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0' : index === 1 ? '0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0' : '0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0')
+      matrix.setAttribute('result', slot.filterId + '-' + channel + '-only')
+      f.appendChild(matrix)
+    })
+    var blend = document.createElementNS('http://www.w3.org/2000/svg', 'feBlend')
+    blend.setAttribute('in', slot.filterId + '-red-only')
+    blend.setAttribute('in2', slot.filterId + '-green-only')
+    blend.setAttribute('mode', 'screen')
+    blend.setAttribute('result', slot.filterId + '-rg')
+    f.appendChild(blend)
+    var finalBlend = blend.cloneNode()
+    finalBlend.setAttribute('in', slot.filterId + '-rg')
+    finalBlend.setAttribute('in2', slot.filterId + '-blue-only')
+    finalBlend.removeAttribute('result')
+    f.appendChild(finalBlend)
     defs.appendChild(f)
     slot.filterEl = f
     slot.feImage = imgEl
@@ -155,13 +181,13 @@
     var w = Math.max(1, Math.round(el.offsetWidth))
     var h = Math.max(1, Math.round(el.offsetHeight))
     var r = radiusOf(el)
-    var band = clamp(Math.round(Math.min(w, h) * 0.16), 16, 34)
-    var amp = clamp(Math.round(band * 0.42), 6, 11)
+    var band = clamp(Math.round(Math.min(w, h) * 0.12), 10, 24)
+    var amp = clamp(Math.round(band * 0.75), 8, 18)
     var map = buildMap(w, h, r, band, amp)
     ensureFilter(slot)
     slot.feImage.setAttribute('href', map)
     slot.feImage.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', map)
-    slot.disp.setAttribute('scale', String(amp * 2))
+    slot.channels.forEach(function (channel, index) { channel.setAttribute('scale', String(amp * 2 + index * 1.5)) })
     slot.mapBytes = map.length
     slot.w = w
     slot.h = h
@@ -172,6 +198,11 @@
   }
 
   function detach(slot) {
+    if (slot.el && slot.pointer) {
+      slot.el.removeEventListener('pointermove', slot.pointer)
+      slot.el.removeEventListener('pointerleave', slot.leave)
+    }
+    if (slot.frame) { cancelAnimationFrame(slot.frame); slot.frame = 0 }
     if (slot.ro) { try { slot.ro.disconnect() } catch (e) {} slot.ro = 0 }
     if (slot.timer) { clearTimeout(slot.timer); slot.timer = 0 }
     if (slot.el) {
@@ -187,10 +218,29 @@
 
   function attach(slot, el) {
     slot.el = el
-    slot.previous = ['backdrop-filter', '-webkit-backdrop-filter'].map(function (name) {
+    slot.previous = ['backdrop-filter', '-webkit-backdrop-filter', '--lg-pointer-x', '--lg-pointer-y'].map(function (name) {
       return { name: name, value: el.style.getPropertyValue(name), priority: el.style.getPropertyPriority(name) }
     })
     slot.previousAttr = el.getAttribute(ATTR)
+    slot.pointer = function (event) {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+      slot.pointerX = event.clientX
+      slot.pointerY = event.clientY
+      if (slot.frame) return
+      slot.frame = requestAnimationFrame(function () {
+        slot.frame = 0
+        var rect = el.getBoundingClientRect()
+        el.style.setProperty('--lg-pointer-x', (100 * (slot.pointerX - rect.left) / rect.width) + '%')
+        el.style.setProperty('--lg-pointer-y', (100 * (slot.pointerY - rect.top) / rect.height) + '%')
+      })
+    }
+    slot.leave = function () {
+      if (slot.frame) { cancelAnimationFrame(slot.frame); slot.frame = 0 }
+      el.style.removeProperty('--lg-pointer-x')
+      el.style.removeProperty('--lg-pointer-y')
+    }
+    el.addEventListener('pointermove', slot.pointer, { passive: true })
+    el.addEventListener('pointerleave', slot.leave)
     ensureFilter(slot)
     paint(slot, el)
     if (typeof ResizeObserver !== 'undefined') {
@@ -227,6 +277,13 @@
   }
 
   function install() {
+    if (!material) {
+      material = document.createElement('link')
+      material.rel = 'stylesheet'
+      material.href = new URL('./optics.css?v=2', import.meta.url).href
+      material.onload = function () { if (installed) slots.forEach(function (slot) { if (slot.el) paint(slot, slot.el) }) }
+      document.head.appendChild(material)
+    }
     if (!supportsRefraction()) return false
     ensureSvg()
     if (!installed) {
@@ -243,6 +300,7 @@
   }
 
   function uninstall() {
+    if (material) { material.onload = null; material.remove(); material = null }
     for (var i = 0; i < slots.length; i++) detach(slots[i])
     if (domObs) { try { domObs.disconnect() } catch (e) {} domObs = 0 }
     if (scanTimer) { clearTimeout(scanTimer); scanTimer = 0 }

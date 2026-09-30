@@ -1,5 +1,26 @@
 # @razuresoft/0kay-theme-liquidglass
 
+## 0.2 clear-lens material
+
+The runtime material in `ui/optics.css` replaces the original heavy frost with
+2px blur, thin transparent tint, directional inner highlights and floating
+shadows. The engine bends only an edge band and separates RGB displacement
+slightly to produce subtle edge dispersion. Pointer position moves the surface
+reflection; reduced-motion disables that interaction. Text is never filtered.
+
+The patch remains the static fallback. The bootstrap loads and unloads both
+the optical stylesheet and the filter resources. Edit `ui/optics.css` for the
+runtime material and keep its blur/saturation synchronized with `BASE` in
+`ui/theme.js`.
+
+Design references (independent implementation):
+- https://inspira-ui.com/docs/cn/components/visualization/liquid-glass
+- https://juejin.cn/post/7514618352829448244
+- https://github.com/mianbeishiwole/Liquid-Glass-Vue
+
+Browser checks establish rendering and lifecycle behavior; visual fidelity
+still needs human review on the actual application background.
+
 An Apple-flavoured `target:"theme"` theme patch for the 0KAY WebUI with a real
 refraction engine: translucent **liquid glass** chrome (nav rail, header,
 chat input bar, agent composer, settings drawer, select menus) that optically bends the color wash
@@ -30,7 +51,7 @@ Two ops in one patch file:
   "item": { "id": "liquidglass", "order": 20, "tokens": { "light": {…}, "dark": {…} }, "css": "…" } }
 { "target": "bootstrap", "op": "insert", "id": "liquidglass-engine",
   "item": { "id": "liquidglass-engine", "plugin": "liquidglass",
-            "module": "/api/plugins/liquidglass/ui/theme.js?v=1" } }
+            "module": "/api/plugins/liquidglass/ui/theme.js?v=2" } }
 ```
 
 - **Tokens** follow the usual contract: `light` into `html:root { … }`,
@@ -93,8 +114,8 @@ page (插件):
 ## Customise
 
 - Refraction strength: band/amp inside `paint` (`ui/theme.js`); keep
-  `BASE = 'blur(28px) saturate(190%)'` identical to the glass rules in
-  `patches/liquidglass.patch` if you retune the base blur.
+  `BASE = 'blur(2px) saturate(140%)'` identical to the glass rules in
+  `ui/optics.css` if you retune the base blur.
 - Wash/material colors: the `--lg-*` token keys.
 - `patches/liquidglass.patch` is the editable source: tokens and component CSS
   are carried directly in this JSON document. No external generator or build
