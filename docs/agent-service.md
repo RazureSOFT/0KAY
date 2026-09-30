@@ -47,8 +47,13 @@ Agent tools expose `name`, `description`, a JSON Schema `parameters` object and
 an asynchronous execution returning `{ success, data, error? }`. Dangerous tools
 stay disabled by default unless the user or plugin permission explicitly enables
 them. Built-in tools include file read/write/edit, `apply_patch`, glob, grep,
-shell (`bash`), web fetch/search, todo, sub-agent (`task`), MCP and Windows
-computer-use.
+shell (`bash`), web fetch/search, todo, sub-agent (`task`), MCP and computer-use.
+The `computeruse` tool drives the whole desktop — screenshot, window list, mouse
+move/click, typing and key presses — on Windows (`powershell`), macOS
+(`screencapture`/`osascript`/`cliclick`) and Linux
+(`grim`/`scrot`/ImageMagick, `xdotool`), and stays disabled until the user grants
+computer-use permission. Uploaded task attachments (see `attachments` on
+`/api/agent/messages`) are materialised under `<workdir>/.0kay/attachments/`.
 
 ## Approvals and questions
 

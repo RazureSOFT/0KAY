@@ -14,6 +14,30 @@ const { confirm } = useConfirm()
 const store = useAgentsStore()
 const selectedId = ref(localStorage.getItem('0kay.agent.selected') || '')
 const draft = ref('')
+const attachments = ref<Array<{ name: string; url: string; mime: string; size: number }>>([])
+const uploading = ref(false)
+const attachError = ref('')
+const fileInput = ref<HTMLInputElement | null>(null)
+function pickFiles() { fileInput.value?.click() }
+function removeAttachment(index: number) { attachments.value.splice(index, 1) }
+async function onFilesPicked(event: Event) {
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files || [])
+  input.value = ''
+  if (!files.length) return
+  uploading.value = true; attachError.value = ''
+  try {
+    for (const file of files) {
+      const form = new FormData()
+      form.append('file', file)
+      const response = await fetch('/api/files', { method: 'POST', body: form })
+      if (!response.ok) throw new Error(await response.text())
+      const data = await response.json()
+      attachments.value.push({ name: data.name || file.name, url: data.url, mime: data.mime || file.type || 'application/octet-stream', size: data.size ?? file.size })
+    }
+  } catch (e: any) { attachError.value = e.message }
+  finally { uploading.value = false }
+}
 const search = ref('')
 const source = ref('all')
 const mode = ref('general')
@@ -241,19 +265,24 @@ async function create() {
 }
 async function send() {
   if(draft.value.trim()==='/compact') {await compact();return}
-  if (!draft.value.trim() || busy.value || active.value || session.value?.state === 'archived') return
+  const hasAttachments = attachments.value.length > 0
+  if ((!draft.value.trim() && !hasAttachments) || busy.value || active.value || session.value?.state === 'archived') return
   busy.value = true; error.value = ''
   try {
-    const requestOptions = options()
-    const message=draft.value.trim(),agentMode=mode.value
+    const requestOptions: Record<string, any> = options()
+    const message = draft.value.trim() || tr('请查看我上传的附件。','Please review the attached files.')
+    const agentMode=mode.value
     if (!session.value) {
       const id=await store.createSession(message.slice(0,60))
       localStorage.setItem(`0kay.agent.editor:${id}`,JSON.stringify({...requestOptions,draft:message,mode:agentMode}))
       selectedId.value=id;localStorage.setItem('0kay.agent.selected',id)
     }
     rememberEditor()
+    if (hasAttachments) requestOptions.attachments = attachments.value.map(item => ({ ...item }))
     await store.sendTask(selectedId.value, message, agentMode, requestOptions)
     draft.value = ''
+    attachments.value = []
+    attachError.value = ''
     rememberEditor();followLatest.value=true;await scrollBottom()
   } catch (e: any) { error.value = e.message }
   finally { busy.value = false }
@@ -375,6 +404,18 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
           <label>{{ tr('工作区','Workspace') }}<button type="button" class="workspace-select" :disabled="!!active || busy || !executor" :title="workdir || executor?.host?.workdir" @click="browse(workdir || executor?.host?.workdir || '')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ workdir || tr('选择目录…','Select folder…') }}</button></label>
           <ThinkingSlider v-model="intensity" :disabled="!!active || busy" />
           <label>{{ tr('模型','Model') }}<AppSelect v-model="modelId" searchable :aria-label="tr('模型','Model')" :disabled="!!active || busy" @open="fetchModels" :options="[{value:'MOCR',label:tr('MOCR · 自动选型','MOCR · Automatic')},...models.map(model=>({value:model.id,label:modelLabel(model)}))]" /></label>
+        </div>
+        <div class="attach-row">
+          <input ref="fileInput" type="file" multiple hidden @change="onFilesPicked" />
+          <button type="button" class="attach-btn" :disabled="busy || uploading || session?.state === 'archived'" :aria-label="tr('添加附件','Add attachment')" :title="tr('添加附件','Attach files')" @click="pickFiles">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16.5 6.5 8.9 14.1a2.5 2.5 0 0 0 3.5 3.5l7.6-7.6a4.5 4.5 0 0 0-6.4-6.4l-8.3 8.3a6.5 6.5 0 0 0 9.2 9.2l5.6-5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {{ uploading ? tr('上传中…','Uploading…') : tr('附件','Attach') }}
+          </button>
+          <span v-for="(file, index) in attachments" :key="index" class="attach-chip" :title="`${file.mime} · ${file.size} B`">
+            {{ file.name }}
+            <button type="button" :aria-label="tr('移除附件','Remove attachment')" :title="tr('移除','Remove')" @click="removeAttachment(index)">×</button>
+          </span>
+          <span v-if="attachError" class="attach-error">{{ attachError }}</span>
         </div>
         <div class="composer-input">
           <textarea v-model="draft" :disabled="busy || session?.state === 'archived'" :placeholder="session?.state === 'archived' ? '恢复会话后可以继续对话' : '给 Agent 发消息…（Enter 发送，Shift+Enter 换行）'" aria-label="给 Agent 发消息" @keydown="onComposerKey" />
@@ -529,6 +570,14 @@ button.subagent-card-head>strong{font-weight:700}
 .composer-input{position:relative}
 .composer-input textarea{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 64px 15px 18px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}
 .composer-input textarea:focus{box-shadow:none;border:0}
+.attach-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px 0}
+.attach-btn{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:650;min-height:30px;padding:0 12px;border-radius:999px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);border:0}
+.attach-btn:hover:not(:disabled){filter:brightness(1.04)}
+.attach-btn:disabled{opacity:.5}
+.attach-chip{display:inline-flex;align-items:center;gap:6px;max-width:220px;font-size:12px;padding:4px 6px 4px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attach-chip button{border:0;background:transparent;cursor:pointer;font-size:14px;line-height:1;padding:0 4px;color:var(--md-on-surface-variant)}
+.attach-chip button:hover{color:var(--md-error)}
+.attach-error{font-size:12px;color:var(--md-error)}
 .send-fly{position:absolute !important;right:10px !important;bottom:10px !important;z-index:2;width:42px !important;height:42px !important;aspect-ratio:1/1;display:grid !important;place-items:center;border:0 !important;border-radius:50% !important;padding:0 !important;margin:0 !important;background:var(--md-primary);color:var(--md-on-primary,#fff);box-shadow:0 2px 10px color-mix(in srgb,var(--md-primary) 38%,transparent)}
 .send-fly svg{width:20px;height:20px}
 .send-fly:hover:not(:disabled){filter:brightness(1.08)}

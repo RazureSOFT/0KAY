@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// Request body limits. Uploading files goes through /api/images and
-// /api/live2d, which have their own (much larger) bounds.
+// Request body limits. Uploading files goes through /api/images, /api/files
+// and /api/live2d, which have their own (much larger) bounds.
 const (
 	maxChatBody      = 4 << 20 // chat history + prompt
 	maxLifeChatBody  = 4 << 20

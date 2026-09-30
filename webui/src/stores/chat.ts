@@ -11,6 +11,7 @@ export interface Message {
   timestamp: Date
   requestId?: string
   images?: string[]
+  files?: Array<{ name: string; url: string; mime?: string; size?: number }>
   emotion?: {
     valence: number
     arousal: number
@@ -264,17 +265,32 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   /**
+   * Upload an arbitrary attachment (document, archive, …) to Core.
+   * Files are referenced from the conversation; LIFE fetches them by URL.
+   */
+  async function uploadFile(file: File): Promise<{ name: string; url: string; mime?: string; size?: number }> {
+    const form = new FormData()
+    form.append('file', file)
+    const res = await fetch('/api/files', { method: 'POST', body: form })
+    if (!res.ok) throw new Error(`upload failed: HTTP ${res.status}`)
+    const data = await res.json()
+    if (!data.url) throw new Error('upload failed: no url')
+    return { name: data.name || file.name, url: data.url as string, mime: data.mime, size: data.size }
+  }
+
+  /**
    * Send a chat message.
    * Primary: HTTP SSE (POST /api/chat?stream=true) for incremental token streaming.
    * Fallback: WebSocket when HTTP/SSE fails.
    */
-  async function sendMessage(content: string, images: string[] = []) {
+  async function sendMessage(content: string, images: string[] = [], files: Array<{ name: string; url: string; mime?: string; size?: number }> = []) {
     messages.value.push({
       id: `msg_${++messageIdCounter}`,
       role: 'user',
       content,
       timestamp: new Date(),
       images: images.length ? [...images] : undefined,
+      files: files.length ? files.map((file) => ({ ...file })) : undefined,
     })
     persistHistory()
 
@@ -294,18 +310,22 @@ export const useChatStore = defineStore('chat', () => {
     const history = messages.value
       .filter((m) => !(m.role === 'assistant' && m.requestId === requestId && !m.content))
       .slice(-20)
-      .filter((m) => m.content || m.images?.length)
+      .filter((m) => m.content || m.images?.length || m.files?.length)
       .map((m) => {
         let text = m.content || ''
         if (m.images?.length) {
           const refs = m.images.map((u) => `[image: ${u}]`).join(' ')
           text = text ? `${text}\n${refs}` : refs
         }
+        if (m.files?.length) {
+          const refs = m.files.map((file) => `[file: ${file.name} ${file.url}]`).join(' ')
+          text = text ? `${text}\n${refs}` : refs
+        }
         return { role: m.role, content: text }
       })
 
     try {
-      await sendViaSSE(requestId, content, history)
+      await sendViaSSE(requestId, content, history, files)
     } catch (e) {
       console.warn('SSE chat failed, falling back to WebSocket:', e)
       if (ws && ws.readyState === WebSocket.OPEN) {
@@ -324,7 +344,8 @@ export const useChatStore = defineStore('chat', () => {
   async function sendViaSSE(
     requestId: string,
     prompt: string,
-    history: Array<{ role: string; content: string }>
+    history: Array<{ role: string; content: string }>,
+    attachments: Array<{ name: string; url: string; mime?: string; size?: number }> = []
   ): Promise<void> {
     abortActiveSse()
     const controller = new AbortController()
@@ -344,6 +365,7 @@ export const useChatStore = defineStore('chat', () => {
         // typed field so the base model cannot overwrite the selected identity.
         user_id: 'webui',
         persona,
+        attachments: attachments.map((file) => ({ name: file.name, url: file.url, mime: file.mime, size: file.size })),
         history: [{ role: 'system', content: contextSummary.value }, ...history],
       }),
     })
@@ -489,6 +511,7 @@ export const useChatStore = defineStore('chat', () => {
     connect,
     sendMessage,
     uploadImage,
+    uploadFile,
     clearMessages,
     compactContext,
     restoreHistory,

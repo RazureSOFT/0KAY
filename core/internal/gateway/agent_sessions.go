@@ -113,15 +113,16 @@ func (g *Gateway) handleAgentMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		SessionID  string `json:"session_id"`
-		Prompt     string `json:"prompt"`
-		AgentType  string `json:"agent_type"`
-		ExecutorID string `json:"executor_id"`
-		Workdir    string `json:"workdir"`
-		ModelID    string `json:"model_id"`
-		Intensity  string `json:"thinking_intensity"`
-		Permission string `json:"permission_mode"`
-		Language   string `json:"language"`
+		SessionID   string       `json:"session_id"`
+		Prompt      string       `json:"prompt"`
+		AgentType   string       `json:"agent_type"`
+		ExecutorID  string       `json:"executor_id"`
+		Workdir     string       `json:"workdir"`
+		ModelID     string       `json:"model_id"`
+		Intensity   string       `json:"thinking_intensity"`
+		Permission  string       `json:"permission_mode"`
+		Language    string       `json:"language"`
+		Attachments []Attachment `json:"attachments"`
 	}
 	if !decodeBody(w, r, &body, maxAgentBody) {
 		return
@@ -163,7 +164,11 @@ func (g *Gateway) handleAgentMessage(w http.ResponseWriter, r *http.Request) {
 		badRequest(w, "invalid permission mode")
 		return
 	}
-	response, err := g.coreSvc.UseAgent(r.Context(), &corev1.UseAgentRequest{TaskId: id, CallerId: "webui", Prompt: body.Prompt, AgentType: body.AgentType, Metadata: map[string]string{"session_id": body.SessionID, "executor_id": body.ExecutorID, "workdir": body.Workdir, "model_id": body.ModelID, "thinking_intensity": body.Intensity, "permission_mode": body.Permission, "language": body.Language}})
+	metadata := map[string]string{"session_id": body.SessionID, "executor_id": body.ExecutorID, "workdir": body.Workdir, "model_id": body.ModelID, "thinking_intensity": body.Intensity, "permission_mode": body.Permission, "language": body.Language}
+	if encoded := encodeAttachments(body.Attachments); encoded != "" {
+		metadata["attachments"] = encoded
+	}
+	response, err := g.coreSvc.UseAgent(r.Context(), &corev1.UseAgentRequest{TaskId: id, CallerId: "webui", Prompt: body.Prompt, AgentType: body.AgentType, Metadata: metadata})
 	if err != nil {
 		writeErr(w, http.StatusBadGateway, "upstream_error", err.Error())
 		return

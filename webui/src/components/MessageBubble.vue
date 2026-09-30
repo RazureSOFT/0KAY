@@ -60,6 +60,17 @@ const dateTimeStr = computed(() => {
       <div v-if="message.images?.length" class="images">
         <img v-for="(src, i) in message.images" :key="i" :src="src" alt="" class="msg-img" />
       </div>
+      <div v-if="message.files?.length" class="files">
+        <a
+          v-for="(file, i) in message.files"
+          :key="i"
+          :href="file.url"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="msg-file"
+          :title="file.mime || ''"
+        >{{ file.name }}</a>
+      </div>
       <div v-if="message.content" class="content">{{ message.content }}</div>
       <div v-if="!isUser && think" class="think-panel">
         <button class="think-toggle" type="button" @click="thinkOpen = !thinkOpen">
@@ -143,6 +154,34 @@ function getEmotionLabel(emotion: any): string {
   border-radius: var(--radius-md);
   object-fit: cover;
   display: block;
+}
+
+.files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.msg-file {
+  display: inline-flex;
+  align-items: center;
+  max-width: 240px;
+  padding: 5px 12px;
+  border-radius: var(--radius-round);
+  background: var(--neutral-gray-4);
+  border: 1px solid var(--neutral-gray-6);
+  color: var(--neutral-gray-60);
+  font-size: var(--font-size-xs);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msg-file:hover {
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
 }
 
 .content-wrapper {

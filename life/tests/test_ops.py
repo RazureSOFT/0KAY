@@ -108,6 +108,12 @@ class DailyReviewAndMedia(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(calls), 1)
             self.assertTrue(any(item["topic"] == "游戏" for item in engine.companion.snapshot()["timeline"]))
 
+    def test_autonomy_computeruse_allows_all_actions(self):
+        self.assertEqual(
+            set(LifeEngine.AUTONOMY_COMPUTERUSE_ACTIONS),
+            {"screenshot", "listwindows", "move", "click", "type", "key"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

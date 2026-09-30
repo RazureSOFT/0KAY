@@ -1149,10 +1149,11 @@ class LifeEngine:
                 signals.append("screen")
         return "\n\n".join(parts), signals
 
-    # Autonomy may execute these tools without user approval; computeruse is
-    # limited to the read-only actions (looking at the user's screen).
+    # Autonomy may execute these tools without user approval; computeruse can
+    # look at the screen and drive the mouse/keyboard (gated by the user's
+    # computer_use permission on Core and the agent host).
     AUTONOMY_TOOLS = ("computeruse", "search", "web_browse", "minecraft", "agenda_add", "journal")
-    AUTONOMY_COMPUTERUSE_ACTIONS = ("screenshot", "listwindows")
+    AUTONOMY_COMPUTERUSE_ACTIONS = ("screenshot", "listwindows", "move", "click", "type", "key")
 
     async def _autonomy_think_loop(self, observations: str) -> tuple[str, list[str]]:
         """THINK-driven autonomous turn.
@@ -1174,7 +1175,7 @@ class LifeEngine:
             system = self.think.build_prompt(
                 user_message=("[内部自主任务] 这是你的自主时间，没有用户直接指令。"
                               "看 External Observations 里你刚收集到的信息，以你的人设自主决定此刻做什么最有意义："
-                              "可以先用 computeruse 的 listwindows/screenshot 看一眼用户电脑在做什么，"
+                              "可以先用 computeruse 的 listwindows/screenshot 看一眼用户电脑在做什么，必要时也能用 move/click/type/key 帮用户操作，"
                               "也可以写日记、安排日程、自己玩 Minecraft、搜索资料，或什么都不做。"
                               "如果此刻你想主动跟用户说点什么，就把话写进 proactive_message。"),
                 emotion_context=json.dumps(self.emotion.state.to_dict()),
@@ -1190,7 +1191,7 @@ class LifeEngine:
                 system += "\nPersona:\n" + self._last_persona_context
             system += ("\n\nAutonomous rules:\n"
                        "- 你可以调用工具来观察或行动，一次最多一个，等结果回来再决定下一步。\n"
-                       "- 允许自动执行：computeruse(仅 screenshot/listwindows)、search、web_browse、minecraft、agenda_add、journal。\n"
+                       "- 允许自动执行：computeruse（screenshot/listwindows/move/click/type/key）、search、web_browse、minecraft、agenda_add、journal。\n"
                        "- 想主动联系用户时，把要说的话放进 proactive_message（第一人称、≤80 字、自然、不要引号）；不想打扰就留空。")
             try:
                 raw = "".join([chunk async for chunk in self.mocr.generate(

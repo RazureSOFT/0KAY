@@ -33,6 +33,12 @@ const inner = computed<any | null>(() => {
   return value
 })
 
+const screenshot = computed<{ src: string; width?: number; height?: number; path?: string } | null>(() => {
+  const d = inner.value
+  if (!d || typeof d.base64 !== 'string' || typeof d.mime !== 'string' || !d.mime.startsWith('image/')) return null
+  return { src: `data:${d.mime};base64,${d.base64}`, width: d.width, height: d.height, path: d.path }
+})
+
 const label = computed(() => {
   switch (tool.value) {
     case 'websearch': case 'web_search': case 'search': return tr('搜索', 'Search')
@@ -44,6 +50,7 @@ const label = computed(() => {
     case 'todowrite': return tr('待办', 'Todo')
     case 'task': return tr('子任务', 'Subtask')
     case 'skills_admin': case 'skill': return tr('技能', 'Skill')
+    case 'computeruse': return tr('电脑操作', 'Computer')
     default: return tr('工具', 'Tool')
   }
 })
@@ -187,6 +194,13 @@ const summary = computed(() => {
     const running = list.filter((item: any) => item?.status === 'in_progress').length
     return `${total} ${tr('项', 'items')} · ${tr('完成', 'done')} ${done}${running ? ` · ${tr('进行中', 'running')} ${running}` : ''}`
   }
+  if (name === 'computeruse') {
+    const action = String(a?.action ?? d?.action ?? '')
+    const position = a && a.x !== undefined ? ` (${a.x}, ${a.y})` : ''
+    const dims = d?.width && d?.height ? ` · ${d.width}×${d.height}` : ''
+    const count = Array.isArray(d?.windows) ? ` · ${d.windows.length} ${tr('个窗口', 'windows')}` : ''
+    return clip(`${action}${position}${dims}${count}`)
+  }
   if (a && Object.keys(a).length) { try { return clip(JSON.stringify(a)) } catch { /* fall through */ } }
   return clip(String(props.step.args || ''))
 })
@@ -206,6 +220,7 @@ interface Section { label: string; text: string; mono?: boolean }
 const sections = computed<Section[]>(() => {
   const name = tool.value
   const d = inner.value
+  if (name === 'computeruse' && screenshot.value) return []
   if (name === 'bash' && d) {
     const out: Section[] = [{ label: tr('工作目录', 'cwd'), text: String(d.cwd || '') }]
     if (d.stdout) out.push({ label: 'stdout', text: String(d.stdout), mono: true })
@@ -260,7 +275,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       <span class="tool-chevron" aria-hidden="true">▸</span>
     </button>
     <div v-if="open && !isSearch" class="tool-card-body">
-      <p v-if="step.state === 'running' && !sections.length && !diffFiles.length" class="muted">{{ tr('执行中…', 'Running…') }}</p>
+      <p v-if="step.state === 'running' && !sections.length && !diffFiles.length && !screenshot" class="muted">{{ tr('执行中…', 'Running…') }}</p>
+      <figure v-if="screenshot" class="tool-shot">
+        <img :src="screenshot.src" :alt="tr('屏幕截图', 'Screenshot')" />
+        <figcaption>{{ screenshot.width && screenshot.height ? `${screenshot.width}×${screenshot.height} · ` : '' }}{{ screenshot.path }}</figcaption>
+      </figure>
       <div v-if="diffFiles.length" class="diff-wrap">
         <div v-for="(file, fi) in diffFiles" :key="fi" class="diff-file">
           <div class="diff-file-head">
@@ -277,14 +296,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           </div>
         </div>
       </div>
-      <template v-else>
+      <template v-else-if="!screenshot">
         <template v-for="(section, index) in sections" :key="index">
           <small v-if="section.label" class="tool-section-label">{{ section.label }}</small>
           <pre v-if="section.mono">{{ section.text }}</pre>
           <p v-else class="tool-section-text">{{ section.text }}</p>
         </template>
       </template>
-      <p v-if="!sections.length && !diffFiles.length && step.state !== 'running' && !step.error" class="muted">{{ tr('执行完成，无输出', 'Completed with no output') }}</p>
+      <p v-if="!sections.length && !diffFiles.length && !screenshot && step.state !== 'running' && !step.error" class="muted">{{ tr('执行完成，无输出', 'Completed with no output') }}</p>
       <p v-if="step.error" class="tool-error">{{ formatError?.(step.error) || step.error }}</p>
     </div>
     <div v-if="searchOpen" class="tool-dialog-backdrop" @click.self="searchOpen = false">
@@ -336,6 +355,9 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .tool-card-body{padding:4px 12px 12px;border-top:1px solid var(--md-outline-variant);display:flex;flex-direction:column;gap:6px}
 .tool-section-label{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--md-on-surface-variant);margin-top:4px}
 .tool-card-body pre{margin:0;max-height:340px;overflow:auto;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:8px;padding:8px 10px;font-family:var(--code-font);font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.tool-shot{margin:0;display:flex;flex-direction:column;gap:6px}
+.tool-shot img{width:100%;border-radius:12px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-lowest);display:block}
+.tool-shot figcaption{font-family:var(--code-font);font-size:11.5px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}
 .tool-section-text{margin:0;font-size:13px;overflow-wrap:anywhere}
 .tool-error{background:var(--md-error-container);padding:8px 12px;border-radius:8px;margin:0;font-size:12px;overflow-wrap:anywhere}
 .muted{font-size:12px;color:var(--md-on-surface-variant);margin:0}

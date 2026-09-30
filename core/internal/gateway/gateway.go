@@ -7,9 +7,11 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -293,6 +295,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/live2d", g.handleLive2D)
 	mux.HandleFunc("/api/live2d/{path...}", g.handleLive2DDeletePath)
 	mux.HandleFunc("/api/images", g.handleImages)
+	mux.HandleFunc("/api/files", g.handleFiles)
 	mux.Handle("/live2d/models/", http.StripPrefix("/live2d/models/", http.FileServer(http.Dir(live2DRoot()))))
 	mux.HandleFunc("/api/tasks", g.handleTasks)
 	mux.HandleFunc("/api/tasks/events", g.handleTaskEvents)
@@ -720,20 +723,22 @@ func (g *Gateway) handleLifeChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		RequestID string          `json:"request_id"`
-		SessionID string          `json:"session_id"`
-		UserID    string          `json:"user_id"`
-		Prompt    string          `json:"prompt"`
-		Persona   json.RawMessage `json:"persona"`
-		History   json.RawMessage `json:"history"`
+		RequestID   string          `json:"request_id"`
+		SessionID   string          `json:"session_id"`
+		UserID      string          `json:"user_id"`
+		Prompt      string          `json:"prompt"`
+		Persona     json.RawMessage `json:"persona"`
+		History     json.RawMessage `json:"history"`
+		Attachments []Attachment    `json:"attachments"`
 	}
 	if !decodeBody(w, r, &req, maxLifeChatBody) {
 		return
 	}
-	if req.Prompt == "" {
+	if req.Prompt == "" && len(req.Attachments) == 0 {
 		badRequest(w, "prompt required")
 		return
 	}
+	req.Prompt += attachmentPrompt(req.Attachments)
 	if req.RequestID == "" {
 		req.RequestID = fmt.Sprintf("life_%d", time.Now().UnixNano())
 	}
@@ -1408,6 +1413,109 @@ func (g *Gateway) handleImages(w http.ResponseWriter, r *http.Request) {
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// filesRoot stores generic user uploads (agent attachments, LIFE files).
+func filesRoot() string {
+	if p := os.Getenv("UPLOAD_FILE_DIR"); p != "" {
+		return p
+	}
+	dataDir := os.Getenv("CORE_DATA_DIR")
+	if dataDir == "" {
+		dataDir = "data"
+	}
+	return filepath.Join(dataDir, "uploads", "files")
+}
+
+// uploadNamePattern accepts only generated names (`file_<unixnano><ext>`), so a
+// request can never walk outside filesRoot.
+var uploadNamePattern = regexp.MustCompile(`^file_[0-9]+(\.[A-Za-z0-9]{1,12})?$`)
+
+func safeUploadExt(name string) string {
+	ext := strings.ToLower(filepath.Ext(name))
+	for _, r := range ext[1:] {
+		if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9') {
+			return ""
+		}
+	}
+	if len(ext) > 13 || len(ext) < 2 {
+		return ""
+	}
+	return ext
+}
+
+// handleFiles POST saves a generic attachment; GET streams one by ?file=name.
+// Unlike /api/images there is no extension whitelist: the agent and LIFE accept
+// arbitrary documents. Names are generated, never taken from the client.
+func (g *Gateway) handleFiles(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost:
+		r.Body = http.MaxBytesReader(w, r.Body, 64<<20)
+		if err := r.ParseMultipartForm(16 << 20); err != nil {
+			badRequest(w, "invalid multipart form: "+err.Error())
+			return
+		}
+		file, hdr, err := r.FormFile("file")
+		if err != nil {
+			badRequest(w, "file is required")
+			return
+		}
+		defer file.Close()
+
+		root := filesRoot()
+		if err := os.MkdirAll(root, 0o755); err != nil {
+			writeErr(w, http.StatusInternalServerError, "server_error", err.Error())
+			return
+		}
+		ext := safeUploadExt(hdr.Filename)
+		name := fmt.Sprintf("file_%d%s", time.Now().UnixNano(), ext)
+		dstPath := filepath.Join(root, name)
+		dst, err := os.Create(dstPath)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, "server_error", err.Error())
+			return
+		}
+		written, err := io.Copy(dst, file)
+		dst.Close()
+		if err != nil {
+			_ = os.Remove(dstPath)
+			writeErr(w, http.StatusInternalServerError, "server_error", err.Error())
+			return
+		}
+
+		contentType := mime.TypeByExtension(ext)
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"file": name,
+			"url":  "/api/files?file=" + name,
+			"name": filepath.Base(hdr.Filename),
+			"size": written,
+			"mime": contentType,
+		})
+
+	case http.MethodGet:
+		name := r.URL.Query().Get("file")
+		if !uploadNamePattern.MatchString(name) {
+			badRequest(w, "invalid file")
+			return
+		}
+		path := filepath.Join(filesRoot(), name)
+		if _, err := os.Stat(path); err != nil {
+			notFound(w, "not found")
+			return
+		}
+		if ct := mime.TypeByExtension(filepath.Ext(name)); ct != "" {
+			w.Header().Set("Content-Type", ct)
+		}
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		w.Header().Set("Content-Disposition", "inline")
+		http.ServeFile(w, r, path)
+
+	default:
+		allowMethod(w, r, http.MethodGet, http.MethodPost)
 	}
 }
 

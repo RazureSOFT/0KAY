@@ -13,15 +13,19 @@ const inputText = ref('')
 const chatContainer = ref<HTMLElement | null>(null)
 const pendingImages = ref<string[]>([])
 const imageInput = ref<HTMLInputElement | null>(null)
+const pendingFiles = ref<Array<{ name: string; url: string; mime?: string; size?: number }>>([])
+const fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
 
 function sendMessage() {
   const text = inputText.value.trim()
-  if (!text && pendingImages.value.length === 0) return
+  if (!text && pendingImages.value.length === 0 && pendingFiles.value.length === 0) return
 
   const images = [...pendingImages.value]
+  const files = pendingFiles.value.map((file) => ({ ...file }))
   pendingImages.value = []
-  chatStore.sendMessage(text, images)
+  pendingFiles.value = []
+  chatStore.sendMessage(text, images, files)
   inputText.value = ''
 }
 
@@ -58,6 +62,31 @@ function removePendingImage(url: string) {
   pendingImages.value = pendingImages.value.filter((u) => u !== url)
 }
 
+function openFilePicker() {
+  fileInput.value?.click()
+}
+
+async function onFilesPicked(e: Event) {
+  const input = e.target as HTMLInputElement
+  const files = Array.from(input.files || [])
+  input.value = ''
+  if (!files.length) return
+  uploading.value = true
+  try {
+    for (const f of files) {
+      pendingFiles.value.push(await chatStore.uploadFile(f))
+    }
+  } catch (err) {
+    console.error('file upload failed:', err)
+  } finally {
+    uploading.value = false
+  }
+}
+
+function removePendingFile(url: string) {
+  pendingFiles.value = pendingFiles.value.filter((file) => file.url !== url)
+}
+
 function downloadHistory() {
   const messages = chatStore.messages
   if (!messages.length) return
@@ -70,11 +99,12 @@ function downloadHistory() {
   lines.push(`- ${t('chat.defaultCharacter')}: ${personaName}`)
   lines.push(`- ${fmt.format(new Date())}`, '')
   for (const m of messages) {
-    if (!m.content && !m.images?.length) continue
+    if (!m.content && !m.images?.length && !m.files?.length) continue
     const who = m.role === 'user' ? t('chat.you') : personaName
     lines.push(`## ${who} · ${fmt.format(m.timestamp)}`)
     if (m.content) lines.push('', m.content)
     if (m.images?.length) { lines.push(''); for (const u of m.images) lines.push(`![image](${u})`) }
+    if (m.files?.length) { lines.push(''); for (const f of m.files) lines.push(`- [${f.name}](${f.url})`) }
     lines.push('')
   }
   const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' })
@@ -150,6 +180,14 @@ watch(
           </button>
         </div>
       </div>
+      <div v-if="pendingFiles.length" class="pending-files">
+        <span v-for="file in pendingFiles" :key="file.url" class="pending-file" :title="`${file.mime || ''} · ${file.size || 0} B`">
+          {{ file.name }}
+          <button class="remove-file" type="button" :title="t('chat.removeFile')" @click="removePendingFile(file.url)">
+            ×
+          </button>
+        </span>
+      </div>
       <div class="input-wrapper">
         <input
           ref="imageInput"
@@ -158,6 +196,13 @@ watch(
           multiple
           hidden
           @change="onImagePicked"
+        />
+        <input
+          ref="fileInput"
+          type="file"
+          multiple
+          hidden
+          @change="onFilesPicked"
         />
         <button
           class="attach-btn"
@@ -172,6 +217,17 @@ watch(
             <path d="M4 17l5-5 4 4 3-3 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
+        <button
+          class="attach-btn"
+          type="button"
+          :title="t('chat.attachFile')"
+          :disabled="uploading || !chatStore.isConnected"
+          @click="openFilePicker"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M16.5 6.5 8.9 14.1a2.5 2.5 0 0 0 3.5 3.5l7.6-7.6a4.5 4.5 0 0 0-6.4-6.4l-8.3 8.3a6.5 6.5 0 0 0 9.2 9.2l5.6-5.6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
         <textarea
           v-model="inputText"
           class="message-input"
@@ -183,7 +239,7 @@ watch(
         <button
           class="send-button"
           @click="sendMessage"
-          :disabled="(!inputText.trim() && !pendingImages.length) || !chatStore.isConnected"
+          :disabled="(!inputText.trim() && !pendingImages.length && !pendingFiles.length) || !chatStore.isConnected"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M18 2L9 11M18 2L12 18L9 11M18 2L2 8L9 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -340,6 +396,44 @@ watch(
   gap: 8px;
   max-width: 800px;
   margin: 0 auto var(--space-sm);
+}
+
+.pending-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 800px;
+  margin: 0 auto var(--space-sm);
+}
+
+.pending-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 240px;
+  padding: 6px 6px 6px 12px;
+  border-radius: var(--radius-round);
+  background: var(--neutral-gray-4);
+  border: 1px solid var(--neutral-gray-6);
+  font-size: var(--font-size-xs);
+  color: var(--neutral-gray-50);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remove-file {
+  border: none;
+  background: transparent;
+  color: var(--neutral-gray-30);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.remove-file:hover {
+  color: var(--error);
 }
 
 .pending-thumb {

@@ -80,8 +80,8 @@ mismatches return `405` with `Allow`. Common codes: `bad_request`,
   before decode): chat/LIFE chat 4 MB, direct runs (`/api/run`, approvals,
   questions, workspace, host, compact) 64 KB, agent messages 128 KB, generic
   small bodies (settings, providers, models, skills deletes) 64 KB, skills
-  POST 2 MB, tasks 2 MB, images 16 MB (8 MB per multipart part), live2d upload
-  512 MB (32 MB per part).
+  POST 2 MB, tasks 2 MB, images 16 MB (8 MB per multipart part), files 64 MB
+  (16 MB per part), live2d upload 512 MB (32 MB per part).
 - Common query parameters: `?limit=` `?query=` `?cursor=` `?incremental=1`
   `?session_id=` `?executor_id=` `?path=` `?id=` `?name=` `?values=1` `?file=`.
 
@@ -205,10 +205,16 @@ Served from `$CORE_DATA_DIR/plugin-ui/{name}` (default `data/plugin-ui/{name}`).
 {"session_id": "s_1", "prompt": "…", "agent_type": "code",
  "executor_id": "", "workdir": "", "model_id": "MOCR",
  "thinking_intensity": "off|low|medium|high|max|<0-100>",
- "permission_mode": "normal|full_access", "language": "zh"}
+ "permission_mode": "normal|full_access", "language": "zh",
+ "attachments": [{"name": "notes.txt", "url": "/api/files?file=file_1.txt",
+                  "mime": "text/plain", "size": 12}]}
 // → 202 {"task_id": "agent-task:…", "accepted": true, "message": ""}
 // 409 session already has an active task · 404 session not found
 ```
+
+`attachments` are references returned by `POST /api/files`. The agent host
+downloads each one into `<workdir>/.0kay/attachments/` before the task starts, so
+the `read`/`glob` tools can open them.
 
 `GET /api/agent/workspace` and `GET /api/agent/host` return the executor's
 `RunDirect` result verbatim. If no `executor_id` is given the first healthy
@@ -296,8 +302,14 @@ Main WebUI conversation path; proxies LIFE `OnUserMessage` as SSE.
 
 ```json
 {"request_id": "life_1", "session_id": "webui:default", "user_id": "webui",
- "prompt": "…", "persona": {}, "history": []}
+ "prompt": "…", "persona": {}, "history": [],
+ "attachments": [{"name": "report.pdf", "url": "/api/files?file=file_2.pdf",
+                  "mime": "application/pdf", "size": 1024}]}
 ```
+
+`attachments` (from `POST /api/files`) are appended to the prompt as
+`[name | url | mime]` lines so LIFE can fetch them by URL. `prompt` may be empty
+when at least one attachment is present.
 
 `persona` may include `customPrompt`, which LIFE sends to the model as the
 system prompt. Chunk payload: `{request_id, chunk, done, task_id, think_summary,
@@ -394,12 +406,14 @@ masked key is never forwarded to the provider's model endpoint.
 a disabled plugin return `403 section disabled`. See
 [Settings and UI Patches](settings-ui.md).
 
-## 12. Images and Live2D
+## 12. Images, files and Live2D
 
 | Method | Path | Purpose |
 |---|---|---|
 | POST | `/api/images` | multipart `file` (16 MB) → `{file, url}` |
 | GET | `/api/images?file=` | Read stored image |
+| POST | `/api/files` | multipart `file` (any type, 64 MB) → `{file, url, name, size, mime}` |
+| GET | `/api/files?file=` | Read a stored attachment (names are server-generated) |
 | GET | `/api/live2d` | List models `[{id, label, url}]` |
 | POST | `/api/live2d` | multipart upload: files + `paths` (512 MB total) |
 | DELETE | `/api/live2d/{path…}` | Remove a model (ids contain `/`, e.g. `nice/model.json`) |

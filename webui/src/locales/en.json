@@ -63,6 +63,8 @@
     "taskStarted": "Task started",
     "attachImage": "Attach image",
     "removeImage": "Remove image",
+    "attachFile": "Attach file",
+    "removeFile": "Remove file",
     "download": "Download history",
     "exportTitle": "0KAY Chat History",
     "you": "You"
