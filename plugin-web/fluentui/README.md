@@ -45,7 +45,7 @@ Full contract: `docs/settings-ui.md` § **Theme items** and `docs/design-system.
 # local checkout
 0kay-pm install @razuresoft/0kay-theme-fluentui --source .\plugin-web\fluentui
 # published repository
-0kay-pm install https://github.com/<you>/0kay-theme-fluentui
+0kay-pm install https://github.com/razureink/0kay-theme-fluentui
 ```
 
 `manifest.patches` is what copies the file into `CORE_DATA_DIR/ui/` (and
@@ -97,7 +97,7 @@ Push this directory as its own repo with the GitHub topic `0kay-plugin` so
 `0kay-pm` can install it from a source repo:
 
 ```sh
-0kay-pm install https://github.com/<you>/0kay-theme-fluentui
+0kay-pm install https://github.com/razureink/0kay-theme-fluentui
 ```
 
 > Note: `pm` only installs a manifest's own `patches[]` (root manifest), so this
