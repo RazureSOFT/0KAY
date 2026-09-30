@@ -33,7 +33,9 @@ The patch contains a single op:
   `{` or `}` are dropped.
 - `css` is emitted verbatim into the same `<style>` element for component rules
   that token slots in `webui/src/styles/theme.css` do not cover (controls,
-  surfaces, focus).
+  surfaces, focus, motion). The motion layer retunes the host's M3 springs:
+  entrances run `fluent-rise` at 200ms on a decelerate curve, controls at
+  150ms `--ease-standard`, and hover lifts/brightness filters are removed.
 
 Full contract: `docs/settings-ui.md` § **Theme items** and `docs/design-system.md` § **6**.
 
