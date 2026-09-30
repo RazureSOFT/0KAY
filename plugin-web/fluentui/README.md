@@ -36,6 +36,13 @@ The patch contains a single op:
   surfaces, focus, motion). The motion layer retunes the host's M3 springs:
   entrances run `fluent-rise` at 200ms on a decelerate curve, controls at
   150ms `--ease-standard`, and hover lifts/brightness filters are removed.
+- The component layer swaps the host's line-art SVG chrome for **Segoe Fluent
+  Icons** glyphs (nav rail keyed by `href`, settings tabs by rendered
+  position, tiles/composer by class; Segoe MDL2 Assets covers older Windows),
+  demotes eyebrows to 11px neutral captions, reserves accent fills for
+  primary actions (tonal/search go standard, destructive actions go
+  text-type danger), and drops chip strokes, nested-card borders and the
+  radial page washes.
 
 Full contract: `docs/settings-ui.md` § **Theme items** and `docs/design-system.md` § **6**.
 
