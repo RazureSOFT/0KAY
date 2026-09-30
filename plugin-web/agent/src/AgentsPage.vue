@@ -427,7 +427,17 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
           <span v-if="attachError" class="attach-error">{{ attachError }}</span>
         </div>
         <div class="composer-input">
+          <div v-if="attachments.length || attachError" class="attach-chips">
+            <span v-for="(file, index) in attachments" :key="index" class="attach-chip" :title="`${file.mime} · ${file.size} B`">
+              {{ file.name }}
+              <button type="button" :aria-label="tr('移除附件','Remove attachment')" :title="tr('移除','Remove')" @click="removeAttachment(index)">×</button>
+            </span>
+            <span v-if="attachError" class="attach-error">{{ attachError }}</span>
+          </div>
           <textarea v-model="draft" :disabled="busy || session?.state === 'archived'" :placeholder="session?.state === 'archived' ? '恢复会话后可以继续对话' : '给 Agent 发消息…（Enter 发送，Shift+Enter 换行，可 Ctrl+V 粘贴图片/文件）'" aria-label="给 Agent 发消息" @keydown="onComposerKey" @paste="onPaste" />
+          <button v-if="active?.kind !== 'agent'" type="button" class="attach-fly" :disabled="busy || uploading || session?.state === 'archived'" :aria-label="tr('添加附件','Add attachment')" :title="uploading ? tr('上传中…','Uploading…') : tr('添加附件（也可 Ctrl+V 粘贴）','Attach (or Ctrl+V to paste)')" @click="pickFiles">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16.5 6.5 8.9 14.1a2.5 2.5 0 0 0 3.5 3.5l7.6-7.6a4.5 4.5 0 0 0-6.4-6.4l-8.3 8.3a6.5 6.5 0 0 0 9.2 9.2l5.6-5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
           <button v-if="active?.kind !== 'agent'" type="submit" class="send-fly" :disabled="busy || !!active || !draft.trim() || session?.state === 'archived'" :aria-label="tr('发送','Send')" :title="tr('发送','Send')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.6 11.2 20.4 4l-7.1 16.4-2.5-6.8-7.2-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m10.8 13.6 3.4-3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
           </button>
@@ -577,12 +587,13 @@ button.subagent-card-head>strong{font-weight:700}
 /* ---- composer ---- */
 .composer{flex-shrink:0;margin:0 20px 18px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-lowest);overflow:hidden;box-shadow:var(--shadow-1)}
 .composer-input{position:relative}
-.composer-input textarea{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 64px 15px 18px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}
+.composer-input textarea{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 64px 15px 60px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}
 .composer-input textarea:focus{box-shadow:none;border:0}
-.attach-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px 0}
-.attach-btn{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:650;min-height:30px;padding:0 12px;border-radius:999px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);border:0}
-.attach-btn:hover:not(:disabled){filter:brightness(1.04)}
-.attach-btn:disabled{opacity:.5}
+.attach-chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px 0}
+.attach-fly{position:absolute !important;left:10px !important;bottom:10px !important;z-index:2;width:42px !important;height:42px !important;aspect-ratio:1/1;display:grid !important;place-items:center;border:0 !important;border-radius:50% !important;padding:0 !important;margin:0 !important;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+.attach-fly svg{width:18px;height:18px}
+.attach-fly:hover:not(:disabled){filter:brightness(1.05)}
+.attach-fly:disabled{opacity:.5;cursor:default}
 .attach-chip{display:inline-flex;align-items:center;gap:6px;max-width:220px;font-size:12px;padding:4px 6px 4px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .attach-chip button{border:0;background:transparent;cursor:pointer;font-size:14px;line-height:1;padding:0 4px;color:var(--md-on-surface-variant)}
 .attach-chip button:hover{color:var(--md-error)}
