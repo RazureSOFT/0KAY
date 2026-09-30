@@ -1,6 +1,6 @@
 {
   "schema": 1,
   "name": "@razuresoft/0kay-theme-fluentui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "patches": ["patches/fluentui.patch"]
 }
