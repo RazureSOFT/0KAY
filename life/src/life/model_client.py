@@ -115,6 +115,19 @@ class MocrClient:
                 await self.recorder.finish(record, result, str(error))
             raise
 
+    @staticmethod
+    def _wire_message(message):
+        """Build a proto Message, including multimodal content_parts when present."""
+        wire = mocr_pb2.Message(role=str(message.get("role") or "user"), content=str(message.get("content") or ""))
+        for part in message.get("parts") or []:
+            wire.content_parts.add(
+                type=str(part.get("type") or "text"),
+                text=str(part.get("text") or ""),
+                image_url=str(part.get("imageUrl") or part.get("image_url") or ""),
+                mime_type=str(part.get("mime") or part.get("mimeType") or ""),
+            )
+        return wire
+
     async def _generate(self, model_id, messages, system_prompt="", thinking=False, max_tokens=1024, temperature=None):
         if not self._stub:
             await self.connect()
@@ -145,7 +158,7 @@ class MocrClient:
             if not chosen:
                 raise RuntimeError(f"No enabled provider configured for model {model_id}")
         request = mocr_pb2.GenerateRequest(
-            model_id=model_id, messages=[mocr_pb2.Message(role=m["role"], content=m["content"]) for m in messages],
+            model_id=model_id, messages=[self._wire_message(m) for m in messages],
             system_prompt=system_prompt, max_tokens=max_tokens, stream=True, thinking=thinking,
             provider=chosen.get("provider", ""), base_url=chosen.get("base_url", ""), api_key=chosen.get("api_key", ""))
         if temperature is not None:

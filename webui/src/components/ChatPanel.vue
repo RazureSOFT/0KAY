@@ -87,6 +87,23 @@ function removePendingFile(url: string) {
   pendingFiles.value = pendingFiles.value.filter((file) => file.url !== url)
 }
 
+async function onPaste(e: ClipboardEvent) {
+  const files = Array.from(e.clipboardData?.files || [])
+  if (!files.length) return
+  e.preventDefault()
+  uploading.value = true
+  try {
+    for (const f of files) {
+      if (f.type.startsWith('image/')) pendingImages.value.push(await chatStore.uploadImage(f))
+      else pendingFiles.value.push(await chatStore.uploadFile(f))
+    }
+  } catch (err) {
+    console.error('paste upload failed:', err)
+  } finally {
+    uploading.value = false
+  }
+}
+
 function downloadHistory() {
   const messages = chatStore.messages
   if (!messages.length) return
@@ -234,6 +251,7 @@ watch(
           :placeholder="t('chat.inputPlaceholder')"
           rows="1"
           @keydown="handleKeydown"
+          @paste="onPaste"
           :disabled="!chatStore.isConnected"
         ></textarea>
         <button

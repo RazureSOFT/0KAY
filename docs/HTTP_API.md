@@ -309,9 +309,10 @@ Main WebUI conversation path; proxies LIFE `OnUserMessage` as SSE.
 
 `attachments` (from `POST /api/files`) are appended to the prompt inside an
 `<attachments>…</attachments>` JSON marker. LIFE fetches each file from Core and
-folds the real content into the model context — text inline, images described by
-the vision model — then strips the marker, so the model actually sees the bytes.
-`prompt` may be empty when at least one attachment is present.
+turns it into multimodal model content — text inlined, images sent as native
+image parts (falling back to the configured vision model when the main model
+rejects images) — then strips the marker. `prompt` may be empty when at least one
+attachment is present.
 
 `persona` may include `customPrompt`, which LIFE sends to the model as the
 system prompt. Chunk payload: `{request_id, chunk, done, task_id, think_summary,

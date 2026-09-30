@@ -114,7 +114,7 @@ class DailyReviewAndMedia(unittest.IsolatedAsyncioTestCase):
             {"screenshot", "listwindows", "move", "click", "type", "key"},
         )
 
-    async def test_attachments_are_ingested_into_context(self):
+    async def test_attachments_become_multimodal_parts(self):
         import json as _json
         from life.engine import ATTACHMENT_MARKER
 
@@ -122,24 +122,23 @@ class DailyReviewAndMedia(unittest.IsolatedAsyncioTestCase):
             engine = LifeEngine(directory)
 
             async def fake_fetch(url, timeout=30.0):
-                return b"line1\nline2"
-
-            async def fake_describe(model_id, image_base64, mime="image/jpeg", prompt="", max_tokens=1024, timeout=90.0):
-                return "一只猫"
+                return b"\x89PNG\r\n\x1a\n" if url.endswith(".png") else b"line1\nline2"
 
             engine.mocr.fetch_file = fake_fetch
-            engine.mocr.describe_image = fake_describe
 
             marker = "<attachments>" + _json.dumps([
                 {"name": "a.txt", "url": "/api/files?file=file_1.txt", "mime": "text/plain", "size": 11},
-                {"name": "cat.png", "url": "/api/files?file=file_2.png", "mime": "image/png", "size": 3},
+                {"name": "cat.png", "url": "/api/files?file=file_2.png", "mime": "image/png", "size": 8},
             ]) + "</attachments>"
-            cleaned, context = await engine._ingest_attachments("看看这个\n\n" + marker)
+            cleaned, parts = await engine._ingest_attachments("看看这个\n\n" + marker)
             self.assertEqual(cleaned, "看看这个")
             self.assertNotIn("<attachments>", cleaned)
-            self.assertIn("line1", context)
-            self.assertIn("一只猫", context)
             self.assertIsNone(ATTACHMENT_MARKER.search(cleaned))
+            texts = " ".join(str(part.get("text") or "") for part in parts)
+            self.assertIn("line1", texts)
+            images = [part for part in parts if part.get("type") == "image"]
+            self.assertEqual(len(images), 1)
+            self.assertTrue(images[0]["imageUrl"].startswith("data:image/png;base64,"))
 
 
 if __name__ == "__main__":

@@ -836,8 +836,11 @@ type Message struct {
 	// replaying history (DeepSeek thinking mode requires it on every assistant
 	// message whenever tools are present).
 	ReasoningContent string `protobuf:"bytes,5,opt,name=reasoning_content,json=reasoningContent,proto3" json:"reasoning_content,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// content_parts carries multimodal content (text and images) for a turn.
+	// When non-empty it is used instead of content to build the provider request.
+	ContentParts  []*ContentPart `protobuf:"bytes,6,rep,name=content_parts,json=contentParts,proto3" json:"content_parts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Message) Reset() {
@@ -905,6 +908,86 @@ func (x *Message) GetReasoningContent() string {
 	return ""
 }
 
+func (x *Message) GetContentParts() []*ContentPart {
+	if x != nil {
+		return x.ContentParts
+	}
+	return nil
+}
+
+// ContentPart is one segment of a multimodal message.
+type ContentPart struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// type is "text" or "image".
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	// text is the text content when type == "text".
+	Text string `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	// image_url is a data URL (data:<mime>;base64,<data>) or an https URL.
+	ImageUrl string `protobuf:"bytes,3,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
+	// mime_type is the image media type (e.g. "image/png"), used by Anthropic.
+	MimeType      string `protobuf:"bytes,4,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ContentPart) Reset() {
+	*x = ContentPart{}
+	mi := &file_mocr_v1_mocr_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ContentPart) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ContentPart) ProtoMessage() {}
+
+func (x *ContentPart) ProtoReflect() protoreflect.Message {
+	mi := &file_mocr_v1_mocr_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ContentPart.ProtoReflect.Descriptor instead.
+func (*ContentPart) Descriptor() ([]byte, []int) {
+	return file_mocr_v1_mocr_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ContentPart) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *ContentPart) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *ContentPart) GetImageUrl() string {
+	if x != nil {
+		return x.ImageUrl
+	}
+	return ""
+}
+
+func (x *ContentPart) GetMimeType() string {
+	if x != nil {
+		return x.MimeType
+	}
+	return ""
+}
+
 // TokenUsage contains token usage information.
 type TokenUsage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -920,7 +1003,7 @@ type TokenUsage struct {
 
 func (x *TokenUsage) Reset() {
 	*x = TokenUsage{}
-	mi := &file_mocr_v1_mocr_proto_msgTypes[10]
+	mi := &file_mocr_v1_mocr_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -932,7 +1015,7 @@ func (x *TokenUsage) String() string {
 func (*TokenUsage) ProtoMessage() {}
 
 func (x *TokenUsage) ProtoReflect() protoreflect.Message {
-	mi := &file_mocr_v1_mocr_proto_msgTypes[10]
+	mi := &file_mocr_v1_mocr_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -945,7 +1028,7 @@ func (x *TokenUsage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenUsage.ProtoReflect.Descriptor instead.
 func (*TokenUsage) Descriptor() ([]byte, []int) {
-	return file_mocr_v1_mocr_proto_rawDescGZIP(), []int{10}
+	return file_mocr_v1_mocr_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *TokenUsage) GetPromptTokens() int32 {
@@ -1034,7 +1117,7 @@ const file_mocr_v1_mocr_proto_rawDesc = "" +
 	"\vcost_budget\x18\x04 \x01(\x01R\n" +
 	"costBudget\x12)\n" +
 	"\x10require_thinking\x18\x05 \x01(\bR\x0frequireThinking\x12)\n" +
-	"\x10available_models\x18\x06 \x03(\tR\x0favailableModels\"\xb8\x01\n" +
+	"\x10available_models\x18\x06 \x03(\tR\x0favailableModels\"\xf3\x01\n" +
 	"\aMessage\x12\x12\n" +
 	"\x04role\x18\x01 \x01(\tR\x04role\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12 \n" +
@@ -1042,7 +1125,13 @@ const file_mocr_v1_mocr_proto_rawDesc = "" +
 	"toolCallId\x120\n" +
 	"\n" +
 	"tool_calls\x18\x04 \x03(\v2\x11.mocr.v1.ToolCallR\ttoolCalls\x12+\n" +
-	"\x11reasoning_content\x18\x05 \x01(\tR\x10reasoningContent\"\x81\x01\n" +
+	"\x11reasoning_content\x18\x05 \x01(\tR\x10reasoningContent\x129\n" +
+	"\rcontent_parts\x18\x06 \x03(\v2\x14.mocr.v1.ContentPartR\fcontentParts\"o\n" +
+	"\vContentPart\x12\x12\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
+	"\timage_url\x18\x03 \x01(\tR\bimageUrl\x12\x1b\n" +
+	"\tmime_type\x18\x04 \x01(\tR\bmimeType\"\x81\x01\n" +
 	"\n" +
 	"TokenUsage\x12#\n" +
 	"\rprompt_tokens\x18\x01 \x01(\x05R\fpromptTokens\x12+\n" +
@@ -1072,7 +1161,7 @@ func file_mocr_v1_mocr_proto_rawDescGZIP() []byte {
 }
 
 var file_mocr_v1_mocr_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_mocr_v1_mocr_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_mocr_v1_mocr_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_mocr_v1_mocr_proto_goTypes = []any{
 	(FinishReason)(0),            // 0: mocr.v1.FinishReason
 	(*ChooseModelsRequest)(nil),  // 1: mocr.v1.ChooseModelsRequest
@@ -1085,7 +1174,8 @@ var file_mocr_v1_mocr_proto_goTypes = []any{
 	(*ModelSpec)(nil),            // 8: mocr.v1.ModelSpec
 	(*SelectionContext)(nil),     // 9: mocr.v1.SelectionContext
 	(*Message)(nil),              // 10: mocr.v1.Message
-	(*TokenUsage)(nil),           // 11: mocr.v1.TokenUsage
+	(*ContentPart)(nil),          // 11: mocr.v1.ContentPart
+	(*TokenUsage)(nil),           // 12: mocr.v1.TokenUsage
 }
 var file_mocr_v1_mocr_proto_depIdxs = []int32{
 	9,  // 0: mocr.v1.ChooseModelsRequest.context:type_name -> mocr.v1.SelectionContext
@@ -1094,19 +1184,20 @@ var file_mocr_v1_mocr_proto_depIdxs = []int32{
 	10, // 3: mocr.v1.GenerateRequest.messages:type_name -> mocr.v1.Message
 	5,  // 4: mocr.v1.GenerateRequest.tools:type_name -> mocr.v1.Tool
 	0,  // 5: mocr.v1.GenerateResponse.finish_reason:type_name -> mocr.v1.FinishReason
-	11, // 6: mocr.v1.GenerateResponse.usage:type_name -> mocr.v1.TokenUsage
+	12, // 6: mocr.v1.GenerateResponse.usage:type_name -> mocr.v1.TokenUsage
 	7,  // 7: mocr.v1.GenerateResponse.tool_calls:type_name -> mocr.v1.ToolCall
 	6,  // 8: mocr.v1.Tool.function:type_name -> mocr.v1.FunctionDef
 	7,  // 9: mocr.v1.Message.tool_calls:type_name -> mocr.v1.ToolCall
-	1,  // 10: mocr.v1.MocrService.ChooseModels:input_type -> mocr.v1.ChooseModelsRequest
-	3,  // 11: mocr.v1.MocrService.Generate:input_type -> mocr.v1.GenerateRequest
-	2,  // 12: mocr.v1.MocrService.ChooseModels:output_type -> mocr.v1.ChooseModelsResponse
-	4,  // 13: mocr.v1.MocrService.Generate:output_type -> mocr.v1.GenerateResponse
-	12, // [12:14] is the sub-list for method output_type
-	10, // [10:12] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	11, // 10: mocr.v1.Message.content_parts:type_name -> mocr.v1.ContentPart
+	1,  // 11: mocr.v1.MocrService.ChooseModels:input_type -> mocr.v1.ChooseModelsRequest
+	3,  // 12: mocr.v1.MocrService.Generate:input_type -> mocr.v1.GenerateRequest
+	2,  // 13: mocr.v1.MocrService.ChooseModels:output_type -> mocr.v1.ChooseModelsResponse
+	4,  // 14: mocr.v1.MocrService.Generate:output_type -> mocr.v1.GenerateResponse
+	13, // [13:15] is the sub-list for method output_type
+	11, // [11:13] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_mocr_v1_mocr_proto_init() }
@@ -1120,7 +1211,7 @@ func file_mocr_v1_mocr_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mocr_v1_mocr_proto_rawDesc), len(file_mocr_v1_mocr_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -198,6 +198,25 @@ message Message {
   // replaying history (DeepSeek thinking mode requires it on every assistant
   // message whenever tools are present).
   string reasoning_content = 5;
+
+  // content_parts carries multimodal content (text and images) for a turn.
+  // When non-empty it is used instead of content to build the provider request.
+  repeated ContentPart content_parts = 6;
+}
+
+// ContentPart is one segment of a multimodal message.
+message ContentPart {
+  // type is "text" or "image".
+  string type = 1;
+
+  // text is the text content when type == "text".
+  string text = 2;
+
+  // image_url is a data URL (data:<mime>;base64,<data>) or an https URL.
+  string image_url = 3;
+
+  // mime_type is the image media type (e.g. "image/png"), used by Anthropic.
+  string mime_type = 4;
 }
 
 // TokenUsage contains token usage information.

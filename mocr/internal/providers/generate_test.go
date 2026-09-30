@@ -97,3 +97,38 @@ func TestStreamAccumulatesReasoningContent(t *testing.T) {
 		t.Fatalf("reasoning=%q", info.ReasoningContent)
 	}
 }
+
+func TestOpenAIMultimodalContent(t *testing.T) {
+	textOnly := openAIMessages([]ChatMessage{{Role: "user", Content: "hi"}}, false, false)
+	if _, ok := textOnly[0]["content"].(string); !ok {
+		t.Fatalf("text-only content must stay a string, got %#v", textOnly[0]["content"])
+	}
+	msg := ChatMessage{Role: "user", Parts: []MessagePart{
+		{Type: "text", Text: "look at this"},
+		{Type: "image", ImageURL: "data:image/png;base64,AAAA", MimeType: "image/png"},
+	}}
+	wire := openAIMessages([]ChatMessage{msg}, false, false)
+	parts, ok := wire[0]["content"].([]map[string]interface{})
+	if !ok || len(parts) != 2 {
+		t.Fatalf("expected 2 parts, got %#v", wire[0]["content"])
+	}
+	if parts[1]["type"] != "image_url" {
+		t.Fatalf("second part not image_url: %#v", parts[1])
+	}
+}
+
+func TestAnthropicMultimodalContent(t *testing.T) {
+	msg := ChatMessage{Role: "user", Parts: []MessagePart{
+		{Type: "text", Text: "hi"},
+		{Type: "image", ImageURL: "data:image/png;base64,ZZZZ", MimeType: "image/png"},
+	}}
+	wire := anthropicMessages([]ChatMessage{msg})
+	blocks, ok := wire[0]["content"].([]map[string]interface{})
+	if !ok || len(blocks) != 2 || blocks[1]["type"] != "image" {
+		t.Fatalf("bad blocks %#v", wire[0]["content"])
+	}
+	src, _ := blocks[1]["source"].(map[string]interface{})
+	if src["media_type"] != "image/png" || src["data"] != "ZZZZ" {
+		t.Fatalf("bad image source %#v", src)
+	}
+}

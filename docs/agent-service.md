@@ -53,9 +53,9 @@ move/click, typing and key presses — on Windows (`powershell`), macOS
 (`screencapture`/`osascript`/`cliclick`) and Linux
 (`grim`/`scrot`/ImageMagick, `xdotool`), and stays disabled until the user grants
 computer-use permission. Uploaded task attachments (see `attachments` on
-`/api/agent/messages`) are saved under `<workdir>/.0kay/attachments/`, text files
-are inlined into the task prompt, and images are turned into a description by the
-vision model so the text-only loop can act on them.
+`/api/agent/messages`) are fetched into memory — nothing is written to disk:
+text files are inlined into the task prompt and images are sent to the model as
+native multimodal image parts (`Message.content_parts` over mocr).
 
 ## Approvals and questions
 

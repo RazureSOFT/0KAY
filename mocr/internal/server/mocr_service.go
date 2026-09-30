@@ -225,6 +225,9 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 				Arguments: tc.Arguments,
 			})
 		}
+		for _, p := range m.ContentParts {
+			cm.Parts = append(cm.Parts, prov.MessagePart{Type: p.Type, Text: p.Text, ImageURL: p.ImageUrl, MimeType: p.MimeType})
+		}
 		msgs = append(msgs, cm)
 	}
 

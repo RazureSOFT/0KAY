@@ -42,12 +42,27 @@ type ToolCall struct {
 	Arguments string
 }
 
+// MessagePart is one segment of a multimodal message.
+type MessagePart struct {
+	// Type is "text" or "image".
+	Type string
+	// Text holds the text when Type == "text".
+	Text string
+	// ImageURL is a data URL (data:<mime>;base64,<data>) or an https URL.
+	ImageURL string
+	// MimeType is the image media type (e.g. "image/png").
+	MimeType string
+}
+
 // ChatMessage is a provider-agnostic chat message (supports tool turns).
 type ChatMessage struct {
 	Role       string     `json:"role"`
 	Content    string     `json:"content"`
 	ToolCallID string     `json:"tool_call_id,omitempty"`
 	ToolCalls  []ToolCall `json:"-"`
+	// Parts carries multimodal content (text + images). When non-empty it is
+	// used instead of Content for user turns.
+	Parts []MessagePart `json:"-"`
 	// ReasoningContent is prior-turn chain-of-thought (DeepSeek thinking mode
 	// requires it to be passed back on assistant messages).
 	ReasoningContent string `json:"-"`
@@ -147,6 +162,61 @@ func openAITools(tools []ToolDef) []map[string]interface{} {
 	return out
 }
 
+// openAIContent builds an OpenAI content value: a plain string, or an array of
+// text/image_url parts when the message carries multimodal parts.
+func openAIContent(m ChatMessage) interface{} {
+	if len(m.Parts) == 0 {
+		return m.Content
+	}
+	parts := make([]map[string]interface{}, 0, len(m.Parts))
+	for _, p := range m.Parts {
+		if p.Type == "image" {
+			parts = append(parts, map[string]interface{}{
+				"type":      "image_url",
+				"image_url": map[string]interface{}{"url": p.ImageURL},
+			})
+			continue
+		}
+		parts = append(parts, map[string]interface{}{"type": "text", "text": p.Text})
+	}
+	return parts
+}
+
+// anthropicContentBlocks builds Anthropic content blocks (text/image) when the
+// message carries multimodal parts.
+func anthropicContentBlocks(m ChatMessage) []map[string]interface{} {
+	blocks := make([]map[string]interface{}, 0, len(m.Parts))
+	for _, p := range m.Parts {
+		if p.Type == "image" {
+			blocks = append(blocks, map[string]interface{}{"type": "image", "source": anthropicImageSource(p)})
+			continue
+		}
+		blocks = append(blocks, map[string]interface{}{"type": "text", "text": p.Text})
+	}
+	return blocks
+}
+
+// anthropicImageSource converts a data/https image URL into an Anthropic source.
+func anthropicImageSource(p MessagePart) map[string]interface{} {
+	if strings.HasPrefix(p.ImageURL, "data:") {
+		header := p.ImageURL[len("data:"):]
+		data := ""
+		if i := strings.Index(header, ","); i >= 0 {
+			data = header[i+1:]
+			header = header[:i]
+		}
+		mime := p.MimeType
+		if i := strings.Index(header, ";"); i >= 0 {
+			mime = header[:i]
+		}
+		if mime == "" {
+			mime = "image/png"
+		}
+		return map[string]interface{}{"type": "base64", "media_type": mime, "data": data}
+	}
+	return map[string]interface{}{"type": "url", "url": p.ImageURL}
+}
+
 // openAIMessages converts normalized messages to OpenAI request JSON.
 // thinking enables assistant.reasoning_content; deepseek forces the key even
 // when empty (DeepSeek thinking mode rejects requests missing it on any
@@ -193,7 +263,7 @@ func openAIMessages(msgs []ChatMessage, thinking, deepseek bool) []map[string]in
 			}
 			out = append(out, entry)
 		default:
-			out = append(out, map[string]interface{}{"role": role, "content": m.Content})
+			out = append(out, map[string]interface{}{"role": role, "content": openAIContent(m)})
 		}
 	}
 	return out
@@ -519,7 +589,11 @@ func anthropicMessages(msgs []ChatMessage) []map[string]interface{} {
 			if role != "assistant" {
 				role = "user"
 			}
-			out = append(out, map[string]interface{}{"role": role, "content": m.Content})
+			if len(m.Parts) > 0 {
+				out = append(out, map[string]interface{}{"role": role, "content": anthropicContentBlocks(m)})
+			} else {
+				out = append(out, map[string]interface{}{"role": role, "content": m.Content})
+			}
 		}
 	}
 	flushResults()

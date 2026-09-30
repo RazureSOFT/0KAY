@@ -10,7 +10,7 @@ import type { Message as Message$1 } from "@bufbuild/protobuf";
  * Describes the file mocr/v1/mocr.proto.
  */
 export const file_mocr_v1_mocr: GenFile = /*@__PURE__*/
-  fileDesc("ChJtb2NyL3YxL21vY3IucHJvdG8SB21vY3IudjEiUQoTQ2hvb3NlTW9kZWxzUmVxdWVzdBIOCgZwcm9tcHQYASABKAkSKgoHY29udGV4dBgCIAEoCzIZLm1vY3IudjEuU2VsZWN0aW9uQ29udGV4dCJ8ChRDaG9vc2VNb2RlbHNSZXNwb25zZRInCgt0aGlua19tb2RlbBgBIAEoCzISLm1vY3IudjEuTW9kZWxTcGVjEigKDG91dHB1dF9tb2RlbBgCIAEoCzISLm1vY3IudjEuTW9kZWxTcGVjEhEKCXJlYXNvbmluZxgDIAEoCSKRAgoPR2VuZXJhdGVSZXF1ZXN0EhAKCG1vZGVsX2lkGAEgASgJEiIKCG1lc3NhZ2VzGAIgAygLMhAubW9jci52MS5NZXNzYWdlEhUKDXN5c3RlbV9wcm9tcHQYAyABKAkSEgoKbWF4X3Rva2VucxgEIAEoBRITCgt0ZW1wZXJhdHVyZRgFIAEoARIOCgZzdHJlYW0YBiABKAgSEAoIdGhpbmtpbmcYByABKAgSEAoIcHJvdmlkZXIYCCABKAkSEAoIYmFzZV91cmwYCSABKAkSDwoHYXBpX2tleRgKIAEoCRIcCgV0b29scxgLIAMoCzINLm1vY3IudjEuVG9vbBITCgt0b29sX2Nob2ljZRgMIAEoCSLeAQoQR2VuZXJhdGVSZXNwb25zZRINCgVjaHVuaxgBIAEoCRIMCgRkb25lGAIgASgIEiwKDWZpbmlzaF9yZWFzb24YAyABKA4yFS5tb2NyLnYxLkZpbmlzaFJlYXNvbhIiCgV1c2FnZRgEIAEoCzITLm1vY3IudjEuVG9rZW5Vc2FnZRIYChB0aGlua2luZ19jb250ZW50GAUgASgJEgwKBHJvbGUYBiABKAkSJQoKdG9vbF9jYWxscxgHIAMoCzIRLm1vY3IudjEuVG9vbENhbGwSDAoEdGV4dBgIIAEoCSI8CgRUb29sEgwKBHR5cGUYASABKAkSJgoIZnVuY3Rpb24YAiABKAsyFC5tb2NyLnYxLkZ1bmN0aW9uRGVmIkkKC0Z1bmN0aW9uRGVmEgwKBG5hbWUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSFwoPcGFyYW1ldGVyc19qc29uGAMgASgJIk4KCFRvb2xDYWxsEgoKAmlkGAEgASgJEgwKBHR5cGUYAiABKAkSFQoNZnVuY3Rpb25fbmFtZRgDIAEoCRIRCglhcmd1bWVudHMYBCABKAkiiAEKCU1vZGVsU3BlYxIQCghtb2RlbF9pZBgBIAEoCRIQCghwcm92aWRlchgCIAEoCRIgChhlc3RpbWF0ZWRfY29zdF9wZXJfdG9rZW4YAyABKAESGQoRc3VwcG9ydHNfdGhpbmtpbmcYBCABKAgSGgoSbWF4X2NvbnRleHRfbGVuZ3RoGAUgASgFIpsBChBTZWxlY3Rpb25Db250ZXh0EhEKCXRhc2tfdHlwZRgBIAEoCRIXCg9kaWZmaWN1bHR5X2hpbnQYAiABKAESEgoKbWF4X3Rva2VucxgDIAEoBRITCgtjb3N0X2J1ZGdldBgEIAEoARIYChByZXF1aXJlX3RoaW5raW5nGAUgASgIEhgKEGF2YWlsYWJsZV9tb2RlbHMYBiADKAkigAEKB01lc3NhZ2USDAoEcm9sZRgBIAEoCRIPCgdjb250ZW50GAIgASgJEhQKDHRvb2xfY2FsbF9pZBgDIAEoCRIlCgp0b29sX2NhbGxzGAQgAygLMhEubW9jci52MS5Ub29sQ2FsbBIZChFyZWFzb25pbmdfY29udGVudBgFIAEoCSJUCgpUb2tlblVzYWdlEhUKDXByb21wdF90b2tlbnMYASABKAUSGQoRY29tcGxldGlvbl90b2tlbnMYAiABKAUSFAoMdG90YWxfdG9rZW5zGAMgASgFKpoBCgxGaW5pc2hSZWFzb24SHQoZRklOSVNIX1JFQVNPTl9VTlNQRUNJRklFRBAAEhYKEkZJTklTSF9SRUFTT05fU1RPUBABEhgKFEZJTklTSF9SRUFTT05fTEVOR1RIEAISIAocRklOSVNIX1JFQVNPTl9DT05URU5UX0ZJTFRFUhADEhcKE0ZJTklTSF9SRUFTT05fRVJST1IQBDKdAQoLTW9jclNlcnZpY2USSwoMQ2hvb3NlTW9kZWxzEhwubW9jci52MS5DaG9vc2VNb2RlbHNSZXF1ZXN0Gh0ubW9jci52MS5DaG9vc2VNb2RlbHNSZXNwb25zZRJBCghHZW5lcmF0ZRIYLm1vY3IudjEuR2VuZXJhdGVSZXF1ZXN0GhkubW9jci52MS5HZW5lcmF0ZVJlc3BvbnNlMAFCTAoTYWkuemVyby5rYXkubW9jci52MVABWhcwa2F5L2dlbi9tb2NyL3YxO21vY3J2MaICBlpLTW9jcqoCEFplcm8uS2F5Lk1vY3IuVjFiBnByb3RvMw");
+  fileDesc("ChJtb2NyL3YxL21vY3IucHJvdG8SB21vY3IudjEiUQoTQ2hvb3NlTW9kZWxzUmVxdWVzdBIOCgZwcm9tcHQYASABKAkSKgoHY29udGV4dBgCIAEoCzIZLm1vY3IudjEuU2VsZWN0aW9uQ29udGV4dCJ8ChRDaG9vc2VNb2RlbHNSZXNwb25zZRInCgt0aGlua19tb2RlbBgBIAEoCzISLm1vY3IudjEuTW9kZWxTcGVjEigKDG91dHB1dF9tb2RlbBgCIAEoCzISLm1vY3IudjEuTW9kZWxTcGVjEhEKCXJlYXNvbmluZxgDIAEoCSKRAgoPR2VuZXJhdGVSZXF1ZXN0EhAKCG1vZGVsX2lkGAEgASgJEiIKCG1lc3NhZ2VzGAIgAygLMhAubW9jci52MS5NZXNzYWdlEhUKDXN5c3RlbV9wcm9tcHQYAyABKAkSEgoKbWF4X3Rva2VucxgEIAEoBRITCgt0ZW1wZXJhdHVyZRgFIAEoARIOCgZzdHJlYW0YBiABKAgSEAoIdGhpbmtpbmcYByABKAgSEAoIcHJvdmlkZXIYCCABKAkSEAoIYmFzZV91cmwYCSABKAkSDwoHYXBpX2tleRgKIAEoCRIcCgV0b29scxgLIAMoCzINLm1vY3IudjEuVG9vbBITCgt0b29sX2Nob2ljZRgMIAEoCSLeAQoQR2VuZXJhdGVSZXNwb25zZRINCgVjaHVuaxgBIAEoCRIMCgRkb25lGAIgASgIEiwKDWZpbmlzaF9yZWFzb24YAyABKA4yFS5tb2NyLnYxLkZpbmlzaFJlYXNvbhIiCgV1c2FnZRgEIAEoCzITLm1vY3IudjEuVG9rZW5Vc2FnZRIYChB0aGlua2luZ19jb250ZW50GAUgASgJEgwKBHJvbGUYBiABKAkSJQoKdG9vbF9jYWxscxgHIAMoCzIRLm1vY3IudjEuVG9vbENhbGwSDAoEdGV4dBgIIAEoCSI8CgRUb29sEgwKBHR5cGUYASABKAkSJgoIZnVuY3Rpb24YAiABKAsyFC5tb2NyLnYxLkZ1bmN0aW9uRGVmIkkKC0Z1bmN0aW9uRGVmEgwKBG5hbWUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSFwoPcGFyYW1ldGVyc19qc29uGAMgASgJIk4KCFRvb2xDYWxsEgoKAmlkGAEgASgJEgwKBHR5cGUYAiABKAkSFQoNZnVuY3Rpb25fbmFtZRgDIAEoCRIRCglhcmd1bWVudHMYBCABKAkiiAEKCU1vZGVsU3BlYxIQCghtb2RlbF9pZBgBIAEoCRIQCghwcm92aWRlchgCIAEoCRIgChhlc3RpbWF0ZWRfY29zdF9wZXJfdG9rZW4YAyABKAESGQoRc3VwcG9ydHNfdGhpbmtpbmcYBCABKAgSGgoSbWF4X2NvbnRleHRfbGVuZ3RoGAUgASgFIpsBChBTZWxlY3Rpb25Db250ZXh0EhEKCXRhc2tfdHlwZRgBIAEoCRIXCg9kaWZmaWN1bHR5X2hpbnQYAiABKAESEgoKbWF4X3Rva2VucxgDIAEoBRITCgtjb3N0X2J1ZGdldBgEIAEoARIYChByZXF1aXJlX3RoaW5raW5nGAUgASgIEhgKEGF2YWlsYWJsZV9tb2RlbHMYBiADKAkirQEKB01lc3NhZ2USDAoEcm9sZRgBIAEoCRIPCgdjb250ZW50GAIgASgJEhQKDHRvb2xfY2FsbF9pZBgDIAEoCRIlCgp0b29sX2NhbGxzGAQgAygLMhEubW9jci52MS5Ub29sQ2FsbBIZChFyZWFzb25pbmdfY29udGVudBgFIAEoCRIrCg1jb250ZW50X3BhcnRzGAYgAygLMhQubW9jci52MS5Db250ZW50UGFydCJPCgtDb250ZW50UGFydBIMCgR0eXBlGAEgASgJEgwKBHRleHQYAiABKAkSEQoJaW1hZ2VfdXJsGAMgASgJEhEKCW1pbWVfdHlwZRgEIAEoCSJUCgpUb2tlblVzYWdlEhUKDXByb21wdF90b2tlbnMYASABKAUSGQoRY29tcGxldGlvbl90b2tlbnMYAiABKAUSFAoMdG90YWxfdG9rZW5zGAMgASgFKpoBCgxGaW5pc2hSZWFzb24SHQoZRklOSVNIX1JFQVNPTl9VTlNQRUNJRklFRBAAEhYKEkZJTklTSF9SRUFTT05fU1RPUBABEhgKFEZJTklTSF9SRUFTT05fTEVOR1RIEAISIAocRklOSVNIX1JFQVNPTl9DT05URU5UX0ZJTFRFUhADEhcKE0ZJTklTSF9SRUFTT05fRVJST1IQBDKdAQoLTW9jclNlcnZpY2USSwoMQ2hvb3NlTW9kZWxzEhwubW9jci52MS5DaG9vc2VNb2RlbHNSZXF1ZXN0Gh0ubW9jci52MS5DaG9vc2VNb2RlbHNSZXNwb25zZRJBCghHZW5lcmF0ZRIYLm1vY3IudjEuR2VuZXJhdGVSZXF1ZXN0GhkubW9jci52MS5HZW5lcmF0ZVJlc3BvbnNlMAFCTAoTYWkuemVyby5rYXkubW9jci52MVABWhcwa2F5L2dlbi9tb2NyL3YxO21vY3J2MaICBlpLTW9jcqoCEFplcm8uS2F5Lk1vY3IuVjFiBnByb3RvMw");
 
 /**
  * ChooseModelsRequest is the request for MocrService.ChooseModels.
@@ -496,6 +496,14 @@ export type Message = Message$1<"mocr.v1.Message"> & {
    * @generated from field: string reasoning_content = 5;
    */
   reasoningContent: string;
+
+  /**
+   * content_parts carries multimodal content (text and images) for a turn.
+   * When non-empty it is used instead of content to build the provider request.
+   *
+   * @generated from field: repeated mocr.v1.ContentPart content_parts = 6;
+   */
+  contentParts: ContentPart[];
 };
 
 /**
@@ -504,6 +512,48 @@ export type Message = Message$1<"mocr.v1.Message"> & {
  */
 export const MessageSchema: GenMessage<Message> = /*@__PURE__*/
   messageDesc(file_mocr_v1_mocr, 9);
+
+/**
+ * ContentPart is one segment of a multimodal message.
+ *
+ * @generated from message mocr.v1.ContentPart
+ */
+export type ContentPart = Message$1<"mocr.v1.ContentPart"> & {
+  /**
+   * type is "text" or "image".
+   *
+   * @generated from field: string type = 1;
+   */
+  type: string;
+
+  /**
+   * text is the text content when type == "text".
+   *
+   * @generated from field: string text = 2;
+   */
+  text: string;
+
+  /**
+   * image_url is a data URL (data:<mime>;base64,<data>) or an https URL.
+   *
+   * @generated from field: string image_url = 3;
+   */
+  imageUrl: string;
+
+  /**
+   * mime_type is the image media type (e.g. "image/png"), used by Anthropic.
+   *
+   * @generated from field: string mime_type = 4;
+   */
+  mimeType: string;
+};
+
+/**
+ * Describes the message mocr.v1.ContentPart.
+ * Use `create(ContentPartSchema)` to create a new message.
+ */
+export const ContentPartSchema: GenMessage<ContentPart> = /*@__PURE__*/
+  messageDesc(file_mocr_v1_mocr, 10);
 
 /**
  * TokenUsage contains token usage information.
@@ -538,7 +588,7 @@ export type TokenUsage = Message$1<"mocr.v1.TokenUsage"> & {
  * Use `create(TokenUsageSchema)` to create a new message.
  */
 export const TokenUsageSchema: GenMessage<TokenUsage> = /*@__PURE__*/
-  messageDesc(file_mocr_v1_mocr, 10);
+  messageDesc(file_mocr_v1_mocr, 11);
 
 /**
  * FinishReason explains why generation stopped.

@@ -20,10 +20,7 @@ const attachError = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 function pickFiles() { fileInput.value?.click() }
 function removeAttachment(index: number) { attachments.value.splice(index, 1) }
-async function onFilesPicked(event: Event) {
-  const input = event.target as HTMLInputElement
-  const files = Array.from(input.files || [])
-  input.value = ''
+async function addFiles(files: File[]) {
   if (!files.length) return
   uploading.value = true; attachError.value = ''
   try {
@@ -37,6 +34,18 @@ async function onFilesPicked(event: Event) {
     }
   } catch (e: any) { attachError.value = e.message }
   finally { uploading.value = false }
+}
+async function onFilesPicked(event: Event) {
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files || [])
+  input.value = ''
+  await addFiles(files)
+}
+function onPaste(event: ClipboardEvent) {
+  const files = Array.from(event.clipboardData?.files || [])
+  if (!files.length) return
+  event.preventDefault()
+  void addFiles(files)
 }
 const search = ref('')
 const source = ref('all')
@@ -418,7 +427,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
           <span v-if="attachError" class="attach-error">{{ attachError }}</span>
         </div>
         <div class="composer-input">
-          <textarea v-model="draft" :disabled="busy || session?.state === 'archived'" :placeholder="session?.state === 'archived' ? '恢复会话后可以继续对话' : '给 Agent 发消息…（Enter 发送，Shift+Enter 换行）'" aria-label="给 Agent 发消息" @keydown="onComposerKey" />
+          <textarea v-model="draft" :disabled="busy || session?.state === 'archived'" :placeholder="session?.state === 'archived' ? '恢复会话后可以继续对话' : '给 Agent 发消息…（Enter 发送，Shift+Enter 换行，可 Ctrl+V 粘贴图片/文件）'" aria-label="给 Agent 发消息" @keydown="onComposerKey" @paste="onPaste" />
           <button v-if="active?.kind !== 'agent'" type="submit" class="send-fly" :disabled="busy || !!active || !draft.trim() || session?.state === 'archived'" :aria-label="tr('发送','Send')" :title="tr('发送','Send')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.6 11.2 20.4 4l-7.1 16.4-2.5-6.8-7.2-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m10.8 13.6 3.4-3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
           </button>

@@ -65,6 +65,15 @@ def _attachment_is_text(name: str, mime: str) -> bool:
     return Path(name).suffix.lower() in _TEXT_EXTS
 
 
+_VISION_ERROR_HINTS = ("image", "vision", "multimodal", "modality", "unsupported content",
+                       "invalid content", "content type", "不支持", "图片")
+
+
+def _looks_vision_error(error) -> bool:
+    text = str(error).lower()
+    return any(hint in text for hint in _VISION_ERROR_HINTS)
+
+
 def _compaction_prompt(persona=None) -> str:
     label = str(persona.get("name") or "").strip() if isinstance(persona, dict) else ""
     persona_line = f"\n- 你正在为角色「{label}」维护这段对话的交接摘要。" if label else ""
@@ -251,23 +260,20 @@ class LifeEngine:
         return "medium"
 
     async def _ingest_attachments(self, message: str):
-        """Replace the Core attachment marker with real content.
-
-        Text files are inlined, images are described by the vision model; the
-        returned context block is added to the model context and the marker is
-        stripped from the visible message.
-        """
+        """Split Core's attachment marker off the message and turn each file into
+        a multimodal part: images become data-URL image parts handed straight to
+        the model, text files are inlined, other files become a short note."""
         match = ATTACHMENT_MARKER.search(message or "")
         if not match:
-            return message, ""
+            return message, []
         cleaned = ATTACHMENT_MARKER.sub("", message or "").strip()
         try:
             items = json.loads(match.group(1))
         except ValueError:
-            return cleaned, ""
+            return cleaned, []
         if not isinstance(items, list):
-            return cleaned, ""
-        blocks = []
+            return cleaned, []
+        parts = []
         for item in items[:10]:
             if not isinstance(item, dict):
                 continue
@@ -279,24 +285,53 @@ class LifeEngine:
             try:
                 data = await self.mocr.fetch_file(url)
             except Exception as error:
-                blocks.append(f"[附件 {name}] 无法读取：{error}")
+                parts.append({"type": "text", "text": f"[附件 {name}] 无法读取：{error}"})
                 continue
             if _attachment_is_image(name, mime):
-                try:
-                    description = await self.mocr.describe_image(
-                        self._model_for("vision"), base64.b64encode(data).decode(), mime or "image/png",
-                        prompt=f"用户在对话中上传了图片「{name}」，请用中文简明描述它的内容与要点。")
-                except Exception as error:
-                    description = f"（视觉模型不可用：{error}）"
-                blocks.append(f"[图片附件 {name}] {description or '（未获得描述）'}")
+                media = mime or "image/png"
+                parts.append({"type": "image", "imageUrl": f"data:{media};base64,{base64.b64encode(data).decode()}", "mime": media})
             elif _attachment_is_text(name, mime) and len(data) <= 1_000_000:
                 text = data.decode("utf-8", "replace")
                 if len(text) > 20000:
                     text = text[:20000] + "\n…（内容过长已截断）"
-                blocks.append(f"[文本附件 {name}]\n```\n{text}\n```")
+                parts.append({"type": "text", "text": f"[文本附件 {name}]\n```\n{text}\n```"})
             else:
-                blocks.append(f"[附件 {name}（{mime or '未知类型'}，{len(data)} 字节）] 二进制内容，无法在对话中直接查看。")
-        return cleaned, "\n\n".join(blocks)
+                parts.append({"type": "text", "text": f"[附件 {name}（{mime or '未知类型'}，{len(data)} 字节）] 二进制内容，无法直接查看。"})
+        return cleaned, parts
+
+    @staticmethod
+    def _has_image_parts(messages) -> bool:
+        return any(str(part.get("type")) == "image" for m in messages for part in (m.get("parts") or []))
+
+    @staticmethod
+    def _history_text_only(messages):
+        """Drop image parts (kept only for the think/vision stage) so the output
+        model never needs vision support."""
+        out = []
+        for m in messages:
+            entry = {"role": m.get("role", "user"), "content": m.get("content", "")}
+            parts = m.get("parts") or []
+            if parts:
+                extra = "\n".join(str(p.get("text") or "") for p in parts if str(p.get("type")) != "image")
+                images = sum(1 for p in parts if str(p.get("type")) == "image")
+                if images:
+                    extra = (extra + f"\n[{images} 张图片已在思考阶段查看]").strip()
+                entry["content"] = (entry["content"] + "\n" + extra).strip()
+            out.append(entry)
+        return out
+
+    async def _think_generate(self, messages, system):
+        """Think-stage generation with a vision fallback: if the chosen model
+        rejects images, retry the turn on the configured vision model."""
+        model_id = self._model_for("think")
+        try:
+            return "".join([chunk async for chunk in self.mocr.generate(model_id, messages, system, thinking=True)])
+        except Exception as error:
+            vision = self._model_for("vision")
+            if vision and vision != model_id and self._has_image_parts(messages) and _looks_vision_error(error):
+                await asyncio.to_thread(self.companion.audit, "vision_fallback", f"{model_id} -> {vision}: {error}", "", "failed")
+                return "".join([chunk async for chunk in self.mocr.generate(vision, messages, system, thinking=True)])
+            raise
 
     async def process_message(self, session_id, user_id, message, adapter_type="webui", persona=None, history=None):
         session_id = session_id or f"{adapter_type}:{user_id or 'default'}"
@@ -318,10 +353,11 @@ class LifeEngine:
             world = await asyncio.to_thread(self.companion.world_context)
             if world:
                 turn.persona_context += "\nWorld & persona knowledge:\n" + world
-            message, attachment_context = await self._ingest_attachments(message)
-            if attachment_context:
-                turn.persona_context += "\nUser uploaded attachments:\n" + attachment_context
-            turn.history.append({"role": "user", "content": message})
+            message, attachment_parts = await self._ingest_attachments(message)
+            user_turn = {"role": "user", "content": message}
+            if attachment_parts:
+                user_turn["parts"] = [{"type": "text", "text": message}] + attachment_parts
+            turn.history.append(user_turn)
             token = task_context.set({"session_id": session_id})
             record = await self.task_records.start("conversation", message)
             task_context.set({"session_id": session_id, "task_id": record["task_id"]})
@@ -383,7 +419,7 @@ class LifeEngine:
             if custom_prompt:
                 system = custom_prompt + "\n\n" + system
             try:
-                raw = "".join([chunk async for chunk in self.mocr.generate(self._model_for("think"), turn.history, system, thinking=True)])
+                raw = await self._think_generate(turn.history, system)
                 plan = self.think.parse_response(raw)
             except Exception as error:
                 guidance = f"Planning service is unavailable ({type(error).__name__}). Explain that the request was not completed. Do not claim a task was dispatched."
@@ -456,7 +492,7 @@ class LifeEngine:
             system = custom_prompt + "\n\n" + system
         response = ""
         try:
-            async for chunk in self.mocr.generate(self._model_for("output"), turn.history, system,
+            async for chunk in self.mocr.generate(self._model_for("output"), self._history_text_only(turn.history), system,
                     max_tokens=self.soul.output_tokens(), temperature=self.soul.temperature()):
                 response += chunk
                 yield {"type": "chunk", "chunk": chunk, "done": False}
