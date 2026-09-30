@@ -65,7 +65,7 @@ const W = { class: "mp" }, Z = { class: "mp-hero" }, ee = { class: "mp-actions" 
     }
     async function U() {
       try {
-        const n = await fetch("/api/plugins/installed");
+        const n = await fetch("/api/plugins/pm/installed");
         if (!n.ok) return;
         const t = await n.json(), e = /* @__PURE__ */ new Map(), s = /* @__PURE__ */ new Map();
         for (const a of Array.isArray(t?.installed) ? t.installed : [])
@@ -121,7 +121,7 @@ const W = { class: "mp" }, Z = { class: "mp-hero" }, ee = { class: "mp-actions" 
     async function B(n) {
       for (let t = 0; t < 400; t++) {
         await new Promise((a) => setTimeout(a, 1500));
-        const e = await fetch("/api/plugins/install/status");
+        const e = await fetch("/api/plugins/pm/status");
         if (!e.ok) continue;
         const s = await e.json();
         if (s.status === "done") {
@@ -171,7 +171,7 @@ const W = { class: "mp" }, Z = { class: "mp-hero" }, ee = { class: "mp-actions" 
     async function V(n) {
       if (g.value || n.installed) return;
       if (!(await askInstall(n))) return;
-      f.value = "", E("/api/plugins/install", n, n.full_name, () => {
+      f.value = "", E("/api/plugins/pm/install", n, n.full_name, () => {
         n.installed = !0, n.entryName = n.manifest?.name || n.full_name, f.value = `已安装 ${n.full_name}，正在刷新…`;
       });
     }
@@ -183,7 +183,7 @@ const W = { class: "mp" }, Z = { class: "mp-hero" }, ee = { class: "mp-actions" 
       if (g.value || !n.installed) return;
       const t = n.entryName || n.full_name;
       if (await z(t))
-        return f.value = "", E("/api/plugins/uninstall", n, t, () => {
+        return f.value = "", E("/api/plugins/pm/uninstall", n, t, () => {
           n.installed = !1, n.removable = !1, n.entryName = void 0, f.value = `已卸载 ${t}，正在刷新…`;
         });
     }
@@ -303,7 +303,7 @@ const W = { class: "mp" }, Z = { class: "mp-hero" }, ee = { class: "mp-actions" 
       ])) : v("", !0),
       t[10] || (t[10] = l("p", { class: "mp-note" }, [
         h("一键安装会调用本机 Core 的 "),
-        l("code", null, "/api/plugins/install"),
+        l("code", null, "/api/plugins/pm/install"),
         h("，由 "),
         l("code", null, "0kay-pm"),
         h(" 完成下载与构建；未登录的 GitHub 搜索接口每小时约 60 次。")

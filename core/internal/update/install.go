@@ -106,6 +106,24 @@ func PlatformPackage(pkg string) bool {
 	return ok
 }
 
+// PMStatus merges the install/uninstall and update status files into the single
+// state the pm-plugin API reports: a running operation wins, otherwise the most
+// recent request (by Started) is returned.
+func PMStatus() ApplyState {
+	install := InstallStatus()
+	apply := State()
+	switch {
+	case install.Status == "running":
+		return install
+	case apply.Status == "running":
+		return apply
+	case install.Started > apply.Started:
+		return install
+	default:
+		return apply
+	}
+}
+
 // InstallStatus reports the latest install request from the status files.
 func InstallStatus() ApplyState {
 	dir := updatesDir()

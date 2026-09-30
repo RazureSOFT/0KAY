@@ -100,3 +100,19 @@ func (g *Gateway) handlePluginInstallStatus(w http.ResponseWriter, r *http.Reque
 	}
 	writeJSON(w, http.StatusOK, state)
 }
+
+// handlePMStatus reports the unified status of the most recent pm-plugin
+// operation (install/uninstall/update), so all three install surfaces poll one
+// endpoint.
+//
+//	GET /api/plugins/pm/status
+func (g *Gateway) handlePMStatus(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
+	state := update.PMStatus()
+	if state.Status == "done" {
+		g.uiPatches.Reload()
+	}
+	writeJSON(w, http.StatusOK, state)
+}

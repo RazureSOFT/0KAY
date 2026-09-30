@@ -221,6 +221,22 @@ Core exposes component-update endpoints; the About panel renders **Update now**
 | POST | `/api/update/apply` | Start an update for one component |
 | GET | `/api/update/status` | Progress of the most recent update |
 
+The **pm plugin** is the single entry point for installs and updates. The
+marketplace, the Settings "plugin updates" panel, the About "0kay update" panel
+and the Plugins page all call its namespaced API; the `/api/update/*` and
+`/api/plugins/{install,uninstall,installed,install/status}` routes above are
+deprecated aliases for the same Core handlers.
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/plugins/pm/install` | Install a package (`{package}`) |
+| POST | `/api/plugins/pm/uninstall` | Remove a package (`{package}`) |
+| POST | `/api/plugins/pm/update` | Update a component (`{plugin,version?}`) |
+| GET | `/api/plugins/pm/installed` | Packages installed via 0kay-pm |
+| GET | `/api/plugins/pm/status` | Unified install/uninstall/update status |
+| GET | `/api/plugins/pm/check` | Platform release vs running version |
+| GET | `/api/plugins/pm/check-plugins` | Release vs every installed component |
+
 `POST /api/update/apply` takes `{plugin, version?}`; omitting `version` syncs
 `main` (beta). The update path is chosen automatically:
 

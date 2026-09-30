@@ -41,7 +41,7 @@ async function applyUpdate(plugin: string, version?: string) {
   if (applyState.value?.status === 'running') return
   applyError.value = ''
   try {
-    applyState.value = await apiPost('/api/update/apply', { plugin, version: version || '' })
+    applyState.value = await apiPost('/api/plugins/pm/update', { plugin, version: version || '' })
     startPolling()
   } catch (error: unknown) {
     applyError.value = error instanceof Error ? error.message : String(error)
@@ -50,7 +50,7 @@ async function applyUpdate(plugin: string, version?: string) {
 
 async function refreshApply() {
   try {
-    applyState.value = await apiGet('/api/update/status')
+    applyState.value = await apiGet('/api/plugins/pm/status')
   } catch {
     return // Core is restarting after a self-update; keep polling.
   }
@@ -84,7 +84,7 @@ async function checkPluginUpdates() {
   pluginsLoading.value = true
   pluginsError.value = ''
   try {
-    const data = await apiGet('/api/update/check-plugins')
+    const data = await apiGet('/api/plugins/pm/check-plugins')
     pluginResults.value = data.plugins || []
   } catch (error: unknown) {
     pluginsError.value = error instanceof ApiError && error.status === 404
@@ -134,7 +134,7 @@ function setProxy(value: string) {
 onMounted(() => {
   void checkPluginUpdates()
   void loadProxy()
-  void apiGet('/api/update/status')
+  void apiGet('/api/plugins/pm/status')
     .then((state: ApplyState) => {
       applyState.value = state
       if (state?.status === 'running') startPolling()

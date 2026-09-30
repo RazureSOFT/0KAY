@@ -155,7 +155,7 @@ async function fetchPlugins() {
   loading.value = true
   error.value = ''
   try {
-    const [rtRes, instRes] = await Promise.all([fetch('/api/plugins'), fetch('/api/plugins/installed')])
+    const [rtRes, instRes] = await Promise.all([fetch('/api/plugins'), fetch('/api/plugins/pm/installed')])
     const runtime: RuntimePlugin[] = rtRes.ok ? await rtRes.json() : []
     const instData = instRes.ok ? await instRes.json() : {}
     const installed: InstalledEntry[] = Array.isArray(instData) ? instData : instData.installed || []
@@ -248,7 +248,7 @@ async function togglePlugin(p: PluginRow) {
 async function waitForOp() {
   for (let i = 0; i < 180; i++) {
     await new Promise((r) => setTimeout(r, 1000))
-    const res = await fetch('/api/plugins/install/status')
+    const res = await fetch('/api/plugins/pm/status')
     if (!res.ok) continue
     const state = await res.json()
     if (state.status === 'done') return
@@ -269,7 +269,7 @@ async function uninstall(p: PluginRow) {
   notice.value = ''
   uninstalling.value = pkg
   try {
-    const res = await fetch('/api/plugins/uninstall', {
+    const res = await fetch('/api/plugins/pm/uninstall', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ package: pkg }),

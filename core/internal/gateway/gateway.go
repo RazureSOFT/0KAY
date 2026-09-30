@@ -257,6 +257,17 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("GET /api/plugins/install/status", g.handlePluginInstallStatus)
 	mux.HandleFunc("POST /api/plugins/uninstall", g.handlePluginUninstall)
 	mux.HandleFunc("GET /api/plugins/installed", g.handlePluginInstalled)
+	// pm plugin: the single install/update entry point. The marketplace, the
+	// Settings "plugin updates" panel and the About "0kay update" panel all call
+	// these; the legacy /api/plugins/{install,uninstall,installed,install/status}
+	// and /api/update/* routes above/below stay as deprecated aliases.
+	mux.HandleFunc("POST /api/plugins/pm/install", g.handlePluginInstall)
+	mux.HandleFunc("POST /api/plugins/pm/uninstall", g.handlePluginUninstall)
+	mux.HandleFunc("GET /api/plugins/pm/installed", g.handlePluginInstalled)
+	mux.HandleFunc("GET /api/plugins/pm/status", g.handlePMStatus)
+	mux.HandleFunc("POST /api/plugins/pm/update", g.handleUpdateApply)
+	mux.HandleFunc("GET /api/plugins/pm/check", g.handleUpdateCheck)
+	mux.HandleFunc("GET /api/plugins/pm/check-plugins", g.handleUpdateCheckPlugins)
 	// Plugin front-end ESM bundles (scheme C): CORE_DATA_DIR/plugin-ui/{name}/
 	mux.HandleFunc("/api/plugins/{name}/ui/{path...}", g.handlePluginUI)
 	mux.HandleFunc("/api/agents", g.handleAgents)

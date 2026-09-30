@@ -224,10 +224,13 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 		PluginType:  pluginv1.PluginType_PLUGIN_TYPE_SERVICE,
 		Permissions: &pluginv1.PluginPermission{
 			ApiExposes: []string{
-				"POST /api/plugins/install",
-				"POST /api/plugins/uninstall",
-				"GET /api/plugins/installed",
-				"GET /api/plugins/install/status",
+				"POST /api/plugins/pm/install",
+				"POST /api/plugins/pm/uninstall",
+				"POST /api/plugins/pm/update",
+				"GET /api/plugins/pm/installed",
+				"GET /api/plugins/pm/status",
+				"GET /api/plugins/pm/check",
+				"GET /api/plugins/pm/check-plugins",
 			},
 			Egress: []string{"github.com", "codeload.github.com", "registry.npmjs.org", "*.githubusercontent.com"},
 		},
