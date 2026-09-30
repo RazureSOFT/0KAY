@@ -216,6 +216,23 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 		}
 	}
 
+	// Liquid Glass theme: same patch-only pattern as fluentui above; 0kay-pm
+	// copies plugin-web/liquidglass/patches/liquidglass.patch into data/ui on
+	// install, so the row exists only where the theme is installed. The file
+	// names `plugin: "liquidglass"` and its bootstrap engine module lives in
+	// data/plugin-ui/liquidglass/ (manifest `ui`).
+	if gateway.HasUIPatch("liquidglass.patch") {
+		if _, err := reg.RegisterBuiltin(&pluginv1.PluginInfo{
+			Name:        "liquidglass",
+			Version:     version.Version,
+			Description: "Liquid Glass theme for the WebUI (patch-only)",
+			Author:      "0kay",
+			PluginType:  pluginv1.PluginType_PLUGIN_TYPE_ADAPTER,
+		}, []string{"liquidglass"}, ""); err != nil {
+			log.Printf("register liquidglass builtin: %v", err)
+		}
+	}
+
 	// Optional: local SearXNG (searxng service) if enabled
 	if os.Getenv("SEARXNG_ENABLED") == "1" || os.Getenv("SEARXNG_URL") != "" {
 		searxAddr := os.Getenv("SEARXNG_URL")

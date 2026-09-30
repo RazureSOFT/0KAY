@@ -7,6 +7,7 @@ import { i18n } from './i18n'
 import { useWizardStore } from './stores/wizard'
 import { useUIPatchesStore } from './stores/uiPatches'
 import { applyThemePatches } from './theme'
+import { createBootstrapManager } from './bootstrap'
 import './styles/theme.css'
 import './styles/settings.css'
 import { installInteractionMotion } from './composables/motion'
@@ -40,8 +41,7 @@ window.__0KAY_UI__ = {
 
 const ui = useUIPatchesStore(pinia)
 
-/** Bootstrap modules already imported (by URL) so reloads don't re-run them. */
-const loadedBootstrap = new Set<string>()
+const bootstrap = createBootstrapManager(url => import(/* @vite-ignore */ url))
 
 /**
  * Import each patch-declared bootstrap module once. A module exposes
@@ -49,19 +49,7 @@ const loadedBootstrap = new Set<string>()
  * e.g. an API compatibility layer.
  */
 async function installBootstrapModules() {
-  for (const item of ui.bootstrapItems) {
-    const url = item.module
-    if (!url || loadedBootstrap.has(url)) continue
-    loadedBootstrap.add(url)
-    try {
-      const mod: any = await import(/* @vite-ignore */ url)
-      const install = mod?.install || mod?.default
-      if (typeof install === 'function') install({ plugin: item.plugin, id: item.id })
-    } catch (e) {
-      loadedBootstrap.delete(url)
-      console.warn('[0kay] bootstrap module failed:', url, e)
-    }
-  }
+  await bootstrap.sync(ui.bootstrapItems)
 }
 
 /**
