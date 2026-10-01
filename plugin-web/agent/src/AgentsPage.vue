@@ -479,18 +479,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
           <ThinkingSlider v-model="intensity" :disabled="!!active || busy" />
           <label>{{ tr('模型','Model') }}<AppSelect v-model="modelId" searchable :aria-label="tr('模型','Model')" :disabled="!!active || busy" @open="fetchModels" :options="[{value:'MOCR',label:tr('MOCR · 自动选型','MOCR · Automatic')},...models.map(model=>({value:model.id,label:modelLabel(model)}))]" /></label>
         </div>
-        <div class="attach-row">
-          <input ref="fileInput" type="file" multiple hidden @change="onFilesPicked" />
-          <button type="button" class="attach-btn" :disabled="busy || uploading || session?.state === 'archived'" :aria-label="tr('添加附件','Add attachment')" :title="tr('添加附件','Attach files')" @click="pickFiles">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16.5 6.5 8.9 14.1a2.5 2.5 0 0 0 3.5 3.5l7.6-7.6a4.5 4.5 0 0 0-6.4-6.4l-8.3 8.3a6.5 6.5 0 0 0 9.2 9.2l5.6-5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            {{ uploading ? tr('上传中…','Uploading…') : tr('附件','Attach') }}
-          </button>
-          <span v-for="(file, index) in attachments" :key="index" class="attach-chip" :title="`${file.mime} · ${file.size} B`">
-            {{ file.name }}
-            <button type="button" :aria-label="tr('移除附件','Remove attachment')" :title="tr('移除','Remove')" @click="removeAttachment(index)">×</button>
-          </span>
-          <span v-if="attachError" class="attach-error">{{ attachError }}</span>
-        </div>
+        <input ref="fileInput" type="file" multiple hidden @change="onFilesPicked" />
         <div ref="composerInput" class="composer-input">
           <Teleport to="body">
             <div v-if="slashOpen" class="slash-menu" :style="slashMenuStyle" role="listbox" :aria-label="tr('技能与命令','Skills and commands')">
@@ -508,15 +497,17 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
             <span v-if="attachError" class="attach-error">{{ attachError }}</span>
           </div>
           <textarea v-model="draft" :disabled="busy || session?.state === 'archived'" :placeholder="session?.state === 'archived' ? '恢复会话后可以继续对话' : '给 Agent 发消息…（Enter 发送，Shift+Enter 换行，可 Ctrl+V 粘贴图片/文件）'" aria-label="给 Agent 发消息" @keydown="onComposerKey" @paste="onPaste" />
-          <button v-if="active?.kind !== 'agent'" type="button" class="attach-fly" :disabled="busy || uploading || session?.state === 'archived'" :aria-label="tr('添加附件','Add attachment')" :title="uploading ? tr('上传中…','Uploading…') : tr('添加附件（也可 Ctrl+V 粘贴）','Attach (or Ctrl+V to paste)')" @click="pickFiles">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16.5 6.5 8.9 14.1a2.5 2.5 0 0 0 3.5 3.5l7.6-7.6a4.5 4.5 0 0 0-6.4-6.4l-8.3 8.3a6.5 6.5 0 0 0 9.2 9.2l5.6-5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <button v-if="active?.kind !== 'agent'" type="submit" class="send-fly" :disabled="busy || !!active || !draft.trim() || session?.state === 'archived'" :aria-label="tr('发送','Send')" :title="tr('发送','Send')">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.6 11.2 20.4 4l-7.1 16.4-2.5-6.8-7.2-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m10.8 13.6 3.4-3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-          </button>
-          <button v-else type="button" class="send-fly stop" @click="stop" :aria-label="tr('停止','Stop')" :title="tr('停止','Stop')">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>
-          </button>
+          <div class="composer-actions">
+            <button type="button" class="attach-fly" :disabled="!!active || busy || uploading || session?.state === 'archived'" :aria-label="tr('添加附件','Add attachment')" :title="uploading ? tr('上传中…','Uploading…') : tr('添加附件（也可 Ctrl+V 粘贴）','Attach (or Ctrl+V to paste)')" @click="pickFiles">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16.5 6.5 8.9 14.1a2.5 2.5 0 0 0 3.5 3.5l7.6-7.6a4.5 4.5 0 0 0-6.4-6.4l-8.3 8.3a6.5 6.5 0 0 0 9.2 9.2l5.6-5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button v-if="active?.kind !== 'agent'" type="submit" class="send-fly" :disabled="busy || !!active || !draft.trim() || session?.state === 'archived'" :aria-label="tr('发送','Send')" :title="tr('发送','Send')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.6 11.2 20.4 4l-7.1 16.4-2.5-6.8-7.2-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m10.8 13.6 3.4-3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </button>
+            <button v-else type="button" class="send-fly stop" @click="stop" :aria-label="tr('停止','Stop')" :title="tr('停止','Stop')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>
+            </button>
+          </div>
         </div>
         <footer><AppSelect v-model="mode" :disabled="busy" :aria-label="tr('Agent 模式','Agent mode')" :options="[{value:'general',label:tr('通用 Agent','General Agent')},{value:'code',label:tr('编程 Agent','Coding Agent')},{value:'research',label:tr('调研 Agent','Research Agent')}]" /><button type="button" @click="hostOpen=!hostOpen">{{ tr('宿主机','Host') }}</button><button type="button" :disabled="!session || !!active || busy || session.state === 'archived'" @click="compact">/compact</button><span class="muted">{{ active?.kind === 'compact' ? tr('上下文压缩中…','Compacting…') : store.onlineCount ? tr('在当前会话中继续','Continue this session') : tr('执行器离线','Executor offline') }}</span></footer>
       </form>
@@ -666,7 +657,7 @@ button.subagent-card-head>strong{font-weight:700}
 /* ---- composer ---- */
 .composer{flex-shrink:0;margin:0 20px 18px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-lowest);overflow:visible;box-shadow:var(--shadow-1)}
 .composer-input{position:relative}
-.composer-input textarea{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 64px 15px 60px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}
+.composer-input textarea{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 112px 15px 16px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}
 .composer-input textarea:focus{box-shadow:none;border:0}
 .slash-menu{position:fixed;z-index:10000;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:14px;box-shadow:var(--shadow-3);padding:6px;max-height:min(320px,42vh);overflow:auto}
 .slash-item{display:flex;align-items:baseline;gap:10px;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:var(--md-on-surface);cursor:pointer}
@@ -674,7 +665,8 @@ button.subagent-card-head>strong{font-weight:700}
 .slash-name{flex:none;font-family:var(--code-font);font-weight:650;font-size:13px;color:var(--md-primary)}
 .slash-desc{font-size:12px;color:var(--md-on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .attach-chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px 0}
-.attach-fly{position:absolute !important;left:10px !important;bottom:10px !important;z-index:2;width:42px !important;height:42px !important;aspect-ratio:1/1;display:grid !important;place-items:center;border:0 !important;border-radius:50% !important;padding:0 !important;margin:0 !important;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+.composer-actions{position:absolute;right:10px;bottom:10px;z-index:2;display:flex;align-items:center;gap:8px}
+.attach-fly{width:42px;height:42px;flex:none;aspect-ratio:1/1;display:grid;place-items:center;border:0;border-radius:50%;padding:0;margin:0;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 .attach-fly svg{width:18px;height:18px}
 .attach-fly:hover:not(:disabled){filter:brightness(1.05)}
 .attach-fly:disabled{opacity:.5;cursor:default}
@@ -682,7 +674,7 @@ button.subagent-card-head>strong{font-weight:700}
 .attach-chip button{border:0;background:transparent;cursor:pointer;font-size:14px;line-height:1;padding:0 4px;color:var(--md-on-surface-variant)}
 .attach-chip button:hover{color:var(--md-error)}
 .attach-error{font-size:12px;color:var(--md-error)}
-.send-fly{position:absolute !important;right:10px !important;bottom:10px !important;z-index:2;width:42px !important;height:42px !important;aspect-ratio:1/1;display:grid !important;place-items:center;border:0 !important;border-radius:50% !important;padding:0 !important;margin:0 !important;background:var(--md-primary);color:var(--md-on-primary,#fff);box-shadow:0 2px 10px color-mix(in srgb,var(--md-primary) 38%,transparent)}
+.send-fly{width:42px;height:42px;flex:none;aspect-ratio:1/1;display:grid;place-items:center;border:0;border-radius:50%;padding:0;margin:0;background:var(--md-primary);color:var(--md-on-primary,#fff);box-shadow:0 2px 10px color-mix(in srgb,var(--md-primary) 38%,transparent)}
 .send-fly svg{width:20px;height:20px}
 .send-fly:hover:not(:disabled){filter:brightness(1.08)}
 .send-fly:disabled{background:var(--md-surface-container);color:var(--md-on-surface-variant);opacity:.7;box-shadow:none}
