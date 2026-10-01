@@ -252,6 +252,17 @@ const sessions = computed(() => store.sessions.filter(item =>
 const turns = computed(() => store.tasks.filter(item => item.kind === 'agent' && item.session_id === selectedId.value)
   .sort((a,b) => (a.started_at || '').localeCompare(b.started_at || '') || a.task_id.localeCompare(b.task_id)))
 const active = computed(() => store.tasks.find(item => item.session_id===selectedId.value && ['agent','compact'].includes(item.kind || '') && ['running','pending'].includes(item.state)))
+const todos = computed<Array<{ content: string; status: string }>>(() => {
+  const rows = store.tasks
+    .filter(item => item.session_id === selectedId.value && item.kind === 'tool' && (item.prompt || '').trim() === 'todowrite')
+    .sort((a, b) => (a.started_at || '').localeCompare(b.started_at || '') || a.task_id.localeCompare(b.task_id))
+  const last = rows[rows.length - 1]
+  if (!last) return []
+  const parse = (raw?: string): any[] => { try { const value = JSON.parse(raw || ''); return Array.isArray(value?.todos) ? value.todos : [] } catch { return [] } }
+  const list = parse(last.result).length ? parse(last.result) : parse(last.args)
+  return list.filter((item: any) => item && typeof item.content === 'string' && item.status !== 'cancelled')
+})
+const todoDone = computed(() => todos.value.filter(item => item.status === 'completed').length)
 const contextSummary = computed(() => {
   const done = store.tasks.filter(item => item.kind === 'compact' && item.session_id === selectedId.value && item.state === 'done' && (item.result || '').trim())
   return done.length ? done.reduce((latest, item) => (item.started_at || '') >= (latest.started_at || '') ? item : latest) : null
@@ -470,6 +481,15 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
         </article>
         </template>
       </div>
+      <section v-if="todos.length" class="todo-panel" :aria-label="tr('待办清单','Todo list')">
+        <header><strong>{{ tr('待办','Todo') }}</strong><span>{{ todoDone }}/{{ todos.length }}</span></header>
+        <ul>
+          <li v-for="(item, index) in todos" :key="index" :class="item.status">
+            <span class="todo-mark" aria-hidden="true">{{ item.status === 'completed' ? '✓' : item.status === 'in_progress' ? '◐' : '○' }}</span>
+            <span class="todo-text">{{ item.content }}</span>
+          </li>
+        </ul>
+      </section>
       <form v-if="!activeSub" class="composer" @submit.prevent="send">
         <div v-if="compactNotice" class="compact-notice">{{ compactNotice }}</div>
         <div class="execution-options">
@@ -653,6 +673,17 @@ button.subagent-card-head>strong{font-weight:700}
 .sub-view-header p{margin:0;max-width:520px}
 .sub-view-header>span{margin-left:auto;font-weight:650;font-size:12px}
 .sub-view-body{min-height:120px}
+
+/* ---- todo panel ---- */
+.todo-panel{flex-shrink:0;margin:0 20px 10px;padding:10px 14px;border:1px solid var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-low);max-height:180px;overflow:auto}
+.todo-panel>header{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;letter-spacing:.03em;color:var(--md-on-surface-variant);text-transform:uppercase}
+.todo-panel>header span{font-weight:600;color:var(--md-primary)}
+.todo-panel ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.todo-panel li{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:var(--md-on-surface)}
+.todo-panel li.completed .todo-text{text-decoration:line-through;color:var(--md-on-surface-variant)}
+.todo-panel li.in_progress .todo-text{font-weight:600}
+.todo-mark{flex:none;width:16px;text-align:center;color:var(--md-primary)}
+.todo-panel li.completed .todo-mark{color:var(--md-success,#3ba55c)}
 
 /* ---- composer ---- */
 .composer{flex-shrink:0;margin:0 20px 18px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-lowest);overflow:visible;box-shadow:var(--shadow-1)}
