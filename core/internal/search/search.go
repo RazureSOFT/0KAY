@@ -40,7 +40,7 @@ var (
 	reSpaces  = regexp.MustCompile(`[ \t]+`)
 	reBlankLn = regexp.MustCompile(`\n{2,}`)
 
-	reDDG = regexp.MustCompile(`(?is)<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>`)
+	reDDG     = regexp.MustCompile(`(?is)<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>`)
 	reDDGSnip = regexp.MustCompile(`(?is)class="result__snippet"[^>]*>(.*?)</(?:a|td|div)>`)
 	reBing    = regexp.MustCompile(`(?is)<h2[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>`)
 	re360Item = regexp.MustCompile(`(?is)<h3[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>`)

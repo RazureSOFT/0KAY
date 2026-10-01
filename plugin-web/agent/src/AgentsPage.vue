@@ -723,7 +723,7 @@ button.subagent-card-head>strong{font-weight:700}
 .composer .todo-panel{border-radius:28px 28px 0 0}
 
 /* ---- context usage ring ---- */
-.ctx-usage{position:relative;display:inline-flex;align-items:center;flex:none;outline:none}
+.ctx-usage{position:relative;display:inline-flex;align-items:center;flex:none;outline:none;order:99;margin-left:6px}
 .ctx-ring{width:22px;height:22px;transform:rotate(-90deg)}
 .ctx-track{fill:none;stroke:var(--md-outline-variant);stroke-width:2.5}
 .ctx-fill{fill:none;stroke:var(--md-primary);stroke-width:2.5;stroke-linecap:round;transition:stroke-dashoffset .35s cubic-bezier(.2,0,0,1)}
