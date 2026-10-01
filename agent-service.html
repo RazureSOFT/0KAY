@@ -127,7 +127,7 @@ tbody tr:hover td{background:color-mix(in srgb, var(--md-primary) 5%, transparen
     <div>MIT · © 2026 RazureSOFT</div>
   </div>
 </aside>
-<main class="article" data-page="agent-service"><h1>Agent Service</h1><p>The independent <code>0KAY-agent</code> repository exposes <code>agent.v1.AgentService</code> to Core</p><p>and registers itself with <code>agent</code> plus <code>executor:&lt;uuid&gt;</code> capabilities and</p><p><code>requires:mocr</code>. All model calls go through mocr.</p><h2><code>ExecuteTask</code></h2><p>Runs a task to completion:</p><pre><code>{
+<main class="article" data-page="agent-service"><h1>Agent Service</h1><p>The independent <code>0KAY-agent</code> repository exposes <code>agent.v1.AgentService</code> to Core</p><p>and registers itself with <code>agent</code> plus <code>executor:&lt;uuid&gt;</code> capabilities and</p><p><code>requires:mocr</code>. All model calls go through mocr.</p><p>It registers over Core's <code>core.v1.PluginService.Register</code> and, when</p><p><code>CORE_PLUGIN_REGISTRATION_TOKEN</code> is set, forwards that value as the</p><p><code>x-0kay-registration-token</code> gRPC metadata. Attributed Core HTTP/egress calls</p><p>carry <code>X-0KAY-Plugin: agent</code> + the service token (falling back to a</p><p><code>CORE_API_TOKEN</code> bearer).</p><h2><code>ExecuteTask</code></h2><p>Runs a task to completion:</p><pre><code>{
   &quot;task_id&quot;: &quot;task_123&quot;,
   &quot;prompt&quot;: &quot;Inspect the repository and implement the requested change.&quot;,
   &quot;agent_type&quot;: &quot;code&quot;,
