@@ -38,8 +38,8 @@ protobuf contracts and can be installed, updated or disabled independently.
 ```sh
 # install the package manager, then the platform and the agent
 npm install -g ./pm
-0kay-pm install @razuresoft/0kay@0.1.1
-0kay-pm install @razuresoft/0kay-agent@0.1.1
+0kay-pm install @razuresoft/0kay@0.1.2
+0kay-pm install @razuresoft/0kay-agent@0.1.2
 ```
 
 Installing the platform builds Core, mocr, LIFE, the WebUI and the plugin web
@@ -59,5 +59,5 @@ and starts each component after a successful build. See
 
 - The running implementation is the behavioral authority. This documentation
   describes the public plugin boundary and does not promise private helpers.
-- The platform release version is `0.1.1` (`core/internal/version`, every
+- The platform release version is `0.1.2` (`core/internal/version`, every
   `manifest.json` and every Git tag).

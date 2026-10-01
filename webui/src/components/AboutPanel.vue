@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { apiGet, apiPost, ApiError } from '../api'
 
 const { t } = useI18n()
-const currentVersion = ref('0.1.1')
+const currentVersion = ref('0.1.2')
 
 type Contributor = { login: string; avatar_url?: string; html_url?: string; contributions?: number }
 const contributors = ref<Contributor[]>([])

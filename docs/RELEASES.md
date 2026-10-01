@@ -3,7 +3,7 @@
 ## Repositories
 
 The platform is split across independent repositories, each with its own
-`v0.1.1` release:
+`v0.1.2` release:
 
 | Repository | Contents |
 |---|---|
@@ -13,15 +13,15 @@ The platform is split across independent repositories, each with its own
 | `RazureSOFT/0KAY-pm` | Package manager CLI |
 | `razureink/0KAY-minecraft` | Minecraft companion bot plugin |
 
-All modules share the release tag `v0.1.1`. The tag always points at the current
-`main` commit, so `@0.1.1` and `main` currently resolve to the same source.
+All modules share the release tag `v0.1.2`. The tag always points at the current
+`main` commit, so `@0.1.2` and `main` currently resolve to the same source.
 
 ## Install
 
 ```sh
 npm install -g ./pm                       # install the CLI
-0kay-pm install @razuresoft/0kay@0.1.1     # platform (Core, mocr, LIFE, WebUI, plugin UIs)
-0kay-pm install @razuresoft/0kay-agent@0.1.1
+0kay-pm install @razuresoft/0kay@0.1.2     # platform (Core, mocr, LIFE, WebUI, plugin UIs)
+0kay-pm install @razuresoft/0kay-agent@0.1.2
 ```
 
 Each installable module declares its identity, version, build commands and
@@ -40,7 +40,7 @@ without git; Go, Node.js and Python are still build prerequisites.
 ## Update
 
 ```sh
-0kay-pm update @razuresoft/0kay-agent@0.1.1
+0kay-pm update @razuresoft/0kay-agent@0.1.2
 0kay-pm start @razuresoft/0kay-agent
 ```
 
@@ -68,7 +68,7 @@ Core exposes:
 ```json
 // POST /api/update/apply
 // {"plugin": "core"}            → beta: sync main
-// {"plugin": "agent", "version":"0.1.1"} → pinned release
+// {"plugin": "agent", "version":"0.1.2"} → pinned release
 {"plugin":"core","package":"@razuresoft/0kay-core","mode":"source",
  "status":"running","started":"2026-09-26T05:42:52Z"}
 ```

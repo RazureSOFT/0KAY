@@ -15,7 +15,7 @@ from core.v1 import core_pb2, core_pb2_grpc
 from plugin.v1 import plugin_pb2
 
 
-def _manifest_version(fallback: str = "0.1.1") -> str:
+def _manifest_version(fallback: str = "0.1.2") -> str:
     """Read the plugin version from manifest.json in the working directory."""
     try:
         manifest = os.path.join(os.path.dirname(__file__), '..', '..', 'manifest.json')

@@ -3,6 +3,34 @@
 All notable changes to 0KAY are documented here. Releases are tagged `v<version>`
 and every module manifest carries the same version.
 
+## 0.1.2
+
+### Core
+
+- Plugin identity fails closed when its token secret is unavailable; re-registering
+  a name replaces its registry row instead of duplicating it.
+- Opt-in `CORE_PLUGIN_REGISTRATION_TOKEN`: non-builtin plugins must present the
+  shared secret (`x-0kay-registration-token`) at gRPC registration.
+- `GET /api/providers/credentials` is machine-only — a browser session cookie is
+  no longer accepted, so a plugin WebUI bundle cannot read plaintext keys.
+- SSRF guard (`netguard`) for the provider model fetch and plugin egress:
+  metadata/link-local/CGNAT are always blocked, redirects re-checked;
+  `CORE_SSRF_STRICT=1` also blocks loopback/RFC1918.
+- Failed PIN/token attempts are rate-limited (5 → 15-minute lockout, `429`).
+- GitHub-proxy and Windows update-script inputs are validated.
+
+### LIFE
+
+- An empty memory scope now means public-only; admin queries use `"*"`.
+
+### WebUI
+
+- Heavy vendor/Live2D/markdown chunks are split out of the main bundle.
+
+### CI
+
+- `go test -race` and the LIFE test suite run in CI.
+
 ## 0.1.1
 
 ### Core
