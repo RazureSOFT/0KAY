@@ -367,10 +367,13 @@ func (s *Store) pinCookieValid(value string) bool {
 }
 
 // sensitiveRequest reports whether a request targets an action a configured PIN
-// must protect: provider/secret/model writes and reads, update and plugin
-// lifecycle, settings values, Live2D file writes.
+// must protect: provider/secret/model writes, update and plugin lifecycle,
+// setting changes, Live2D file writes. Reads are authenticated by the session
+// gate but are not re-confirmed, or the WebUI (which loads settings sections on
+// most pages) would prompt for the PIN on every navigation.
 func sensitiveRequest(r *http.Request) bool {
 	path, method := r.URL.Path, r.Method
+	read := method == http.MethodGet || method == http.MethodHead
 	switch {
 	case path == "/api/providers":
 		return method == http.MethodPost || method == http.MethodPut
@@ -385,9 +388,9 @@ func sensitiveRequest(r *http.Request) bool {
 	case strings.HasPrefix(path, "/api/plugins/") && method == http.MethodPatch:
 		return true
 	case path == "/api/security/pin":
-		return method != http.MethodGet && method != http.MethodHead
+		return !read
 	case strings.HasPrefix(path, "/api/settings/"):
-		return true
+		return !read
 	case strings.HasPrefix(path, "/api/live2d"):
 		return method == http.MethodPost || method == http.MethodDelete
 	}

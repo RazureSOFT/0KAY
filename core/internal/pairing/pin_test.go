@@ -427,6 +427,50 @@ func TestPINBruteForceLockout(t *testing.T) {
 	}
 }
 
+// Reading settings must not ask for the PIN: the WebUI loads all sections on
+// most pages, so gating reads made the browser prompt on every navigation.
+// Fetching the values needs a session; changing them still needs the PIN.
+func TestSettingsReadsAreNotPINGated(t *testing.T) {
+	s, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPIN("424242"); err != nil {
+		t.Fatal(err)
+	}
+	handler := s.HTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+
+	login := httptest.NewRequest(http.MethodPost, "/api/auth/session", strings.NewReader(`{"pin":"424242"}`))
+	login.RemoteAddr = "192.168.1.50:1234"
+	lw := httptest.NewRecorder()
+	handler.ServeHTTP(lw, login)
+	if lw.Code != http.StatusOK {
+		t.Fatalf("login: %d %s", lw.Code, lw.Body.String())
+	}
+	cookies := lw.Result().Cookies()
+
+	call := func(method, path string) int {
+		req := httptest.NewRequest(method, path, strings.NewReader("{}"))
+		req.RemoteAddr = "192.168.1.50:1234"
+		for _, c := range cookies {
+			req.AddCookie(c)
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		return w.Code
+	}
+
+	if code := call(http.MethodGet, "/api/settings/sections?values=1"); code != http.StatusOK {
+		t.Fatalf("settings sections read = %d, want 200", code)
+	}
+	if code := call(http.MethodGet, "/api/settings/life"); code != http.StatusOK {
+		t.Fatalf("settings section read = %d, want 200", code)
+	}
+	if code := call(http.MethodPost, "/api/settings/life"); code != http.StatusForbidden {
+		t.Fatalf("settings write without PIN = %d, want 403", code)
+	}
+}
+
 // A request that carries both an invalid new PIN and a switch change must be
 // rejected atomically: reporting 400 while still persisting the switch is a
 // silent partial write (the probe that found it used {"pin":"bad","enabled":false}).
