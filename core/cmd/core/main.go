@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -292,6 +293,14 @@ func registerStdioProviders(runner *stdioprovider.Runner, store *providers.Store
 			log.Printf("[stdio] start provider %s: %v", spec.ID, err)
 			continue
 		}
+		models := spec.Models
+		if discovered := discoverStdioModels(runner, spec.ID, spec.Route); len(discovered) > 0 {
+			models = discovered
+		}
+		defaultModel := spec.DefaultModel
+		if defaultModel == "" && len(models) > 0 {
+			defaultModel = models[0]
+		}
 		baseURL := fmt.Sprintf("http://127.0.0.1:%s/api/stdio-provider/%s%s", port, spec.ID, spec.Route)
 		if err := store.Upsert(providers.ProviderConfig{
 			ID:           spec.ID,
@@ -299,16 +308,46 @@ func registerStdioProviders(runner *stdioprovider.Runner, store *providers.Store
 			Name:         spec.Name,
 			BaseURL:      baseURL,
 			APIKey:       "stdio-local",
-			Models:       spec.Models,
-			DefaultModel: spec.DefaultModel,
+			Models:       models,
+			DefaultModel: defaultModel,
 			Enabled:      true,
 			Format:       "openai",
 		}); err != nil {
 			log.Printf("[stdio] register provider %s: %v", spec.ID, err)
 			continue
 		}
-		log.Printf("[stdio] hosting provider %q for %s at %s", spec.ID, spec.Package, baseURL)
+		log.Printf("[stdio] hosting provider %q for %s at %s (%d models)", spec.ID, spec.Package, baseURL, len(models))
 	}
+}
+
+// discoverStdioModels asks a freshly-started stdio provider for its model list
+// (GET <route>/models) so dynamic catalogs register without a manifest list.
+func discoverStdioModels(runner *stdioprovider.Runner, id, route string) []string {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	status, _, chunks, err := runner.Do(ctx, id, http.MethodGet, route+"/models", map[string]string{"Accept": "application/json"}, nil)
+	if err != nil || status != http.StatusOK {
+		return nil
+	}
+	var buf []byte
+	for chunk := range chunks {
+		buf = append(buf, chunk...)
+	}
+	var payload struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if json.Unmarshal(buf, &payload) != nil {
+		return nil
+	}
+	models := make([]string, 0, len(payload.Data))
+	for _, m := range payload.Data {
+		if m.ID != "" {
+			models = append(models, m.ID)
+		}
+	}
+	return models
 }
 
 // registerUpdateSettings contributes the updates panel preferences. The section
