@@ -2,29 +2,24 @@
  * 0KAY DeepSeek TTS service.
  *
  * A tiny loopback HTTP endpoint that LIFE (and the Core `/api/tts` proxy) call
- * to turn text into speech. It wraps the `deepseek-tts-api` CLI (`dstts`),
- * which synthesizes audio through DeepSeek's web "read aloud" feature.
+ * to turn text into speech. Synthesis is done in-process by the vendored
+ * DeepSeek web-TTS client (see src/deepseek/) — no external CLI and no
+ * third-party runtime dependency.
  *
  *   POST /            {"text":"...","voice":"mira"} -> audio/wav bytes
  *   GET  /health      -> {"ok":true,...}
  *
  * Env:
- *   DEEPSEEK_TTS_PORT   listen port            (default 8792)
- *   DEEPSEEK_TTS_HOST   bind address           (default 127.0.0.1)
- *   DSTTS_BIN           CLI to run             (default "dstts"; e.g. "npx github:Eyeing0721/deepseek-tts-api")
- *   DSTTS_VOICE         default voice          (default "mira")
- *   DS_TOKEN            DeepSeek userToken     (required for synthesis)
- *   OKAY_TTS_AUTOREGISTER  "1" sets LIFE tts_endpoint on start (default on)
+ *   DEEPSEEK_TTS_PORT      listen port        (default 8792)
+ *   DEEPSEEK_TTS_HOST      bind address       (default 127.0.0.1)
+ *   DSTTS_VOICE            default voice      (default "mira")
+ *   DS_TOKEN               DeepSeek userToken (fallback; the Settings value wins)
+ *   OKAY_TTS_AUTOREGISTER  "0" disables pointing LIFE at this service on start
  */
 
 import http from 'node:http'
-import os from 'node:os'
-import path from 'node:path'
-import crypto from 'node:crypto'
-import { spawn } from 'node:child_process'
-import { readFile, rm } from 'node:fs/promises'
-import { setTimeout as delay } from 'node:timers/promises'
 import { registerWithCore, getSettings } from './register.mjs'
+import { say, pcmToWav } from './deepseek/index.mjs'
 
 const PORT = Number(process.env.DEEPSEEK_TTS_PORT || 8792)
 const HOST = process.env.DEEPSEEK_TTS_HOST || '127.0.0.1'
@@ -34,40 +29,11 @@ const MAX_TEXT = 600
 
 const log = (m) => console.log(`[deepseek-tts] ${m}`)
 
-/** Split DSTTS_BIN so "npx github:..." works; extra args allowed. */
-function dstrtsCommand() {
-  const bin = process.env.DSTTS_BIN || 'dstts'
-  return bin.split(/\s+/).filter(Boolean)
-}
-
-function synth(text, voice, token) {
-  return new Promise((resolve, reject) => {
-    const [cmd, ...prefix] = dstrtsCommand()
-    const out = path.join(os.tmpdir(), `0kay-tts-${crypto.randomBytes(8).toString('hex')}.wav`)
-    const args = [...prefix, 'say', text, '--voice', voice || DEFAULT_VOICE, '-o', out]
-    const child = spawn(cmd, args, {
-      env: { ...process.env, DS_TOKEN: token || process.env.DS_TOKEN || '' },
-      windowsHide: true,
-      stdio: ['ignore', 'ignore', 'pipe'],
-    })
-    let stderr = ''
-    child.stderr?.on('data', (d) => { stderr += String(d) })
-    const timer = setTimeout(() => { try { child.kill() } catch { /* ignore */ } }, 90000)
-    child.once('error', (err) => { clearTimeout(timer); reject(err) })
-    child.once('close', async (code) => {
-      clearTimeout(timer)
-      try {
-        if (code !== 0) throw new Error(`dstts exited ${code}: ${stderr.trim().slice(-200)}`)
-        const audio = await readFile(out)
-        if (!audio.length) throw new Error('empty audio')
-        resolve(audio)
-      } catch (error) {
-        reject(error)
-      } finally {
-        rm(out, { force: true }).catch(() => {})
-      }
-    })
-  })
+/** Synthesize text to a WAV buffer using the vendored DeepSeek client. */
+async function synthesize(text, voice, token) {
+  const result = await say({ text, voice, token, format: 'pcm' })
+  if (!result?.audio || !result.audio.length) throw new Error('empty audio')
+  return pcmToWav(result.audio)
 }
 
 function readBody(req) {
@@ -121,12 +87,12 @@ const server = http.createServer(async (req, res) => {
   if (!settingEnabled(settings.enabled)) return json(res, 503, { error: 'TTS disabled in settings' })
   if (!token) return json(res, 503, { error: 'DeepSeek userToken not set (Settings → DeepSeek TTS)' })
   try {
-    const audio = await synth(text.slice(0, MAX_TEXT), voice, token)
+    const audio = await synthesize(text.slice(0, MAX_TEXT), voice, token)
     res.writeHead(200, { 'Content-Type': 'audio/wav', 'Content-Length': audio.length, 'Cache-Control': 'no-store' })
     res.end(audio)
   } catch (error) {
-    log(`synth failed: ${error.message}`)
-    json(res, 502, { error: error.message })
+    log(`synth failed: ${error?.message || error}`)
+    json(res, 502, { error: String(error?.message || error) })
   }
 })
 
@@ -139,7 +105,6 @@ server.listen(PORT, HOST, () => {
   }
 })
 
-// graceful shutdown
 for (const signal of ['SIGINT', 'SIGTERM']) {
-  process.on(signal, () => { server.close(() => process.exit(0)); delay(500).then(() => process.exit(0)) })
+  process.on(signal, () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 500) })
 }

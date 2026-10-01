@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Local DeepSeek TTS HTTP service for 0KAY (LIFE voice + WebUI lip-sync).",
   "scripts": {
-    "start": "node src/server.mjs"
+    "start": "node src/server.mjs",
+    "test": "node --test test"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.14.5",
