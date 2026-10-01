@@ -38,6 +38,7 @@ package identity, version, build and run commands. The file is consumed by
 | `dependencies` | string[] / no | Packages pm installs recursively; version ranges are not supported yet |
 | `requires` | string[] / no | Runtime dependency hints; pm does not install, wait for readiness or register capabilities from these |
 | `permissions` | object / no | Declared API + egress permissions (below). Enforced by Core at runtime |
+| `capabilities` | object / no | Declared contributions: commands / skills / hooks / mcpServers / agents (below) |
 | `modules` | string[] / no | Sub-manifest paths (relative to the repo root) used by an umbrella package |
 | `repositories` | object[] / no | External sub-repository declarations, each `{path, package, url}` |
 | `ui` | object / no | Optional plugin WebUI build/publish config (below) |
@@ -131,6 +132,34 @@ and `Host` cannot be overridden):
 
 The gRPC equivalent is `core.v1.CoreService/Egress`. A blocked host returns
 `502 {"code":"egress_failed"}`. Both require a plugin identity.
+
+### 0.1.2 Declared capabilities (everything is a plugin)
+
+A package may also contribute behaviours (DeepSeek-Harness-style "everything is
+a plugin"). Core aggregates every installed package's declarations and serves
+them at `GET /api/plugins/capabilities`:
+
+```json
+{
+  "capabilities": {
+    "commands":   [{ "name": "review", "description": "...", "prompt": "..." }],
+    "skills":     ["skills/review"],
+    "hooks":      [{ "event": "tool.before", "command": ["node", "hook.js"] }],
+    "mcpServers": [{ "id": "fs", "transport": "stdio", "command": "npx", "args": ["-y", "..."] }],
+    "agents":     [{ "name": "reviewer", "description": "...", "prompt": "..." }]
+  }
+}
+```
+
+- `commands` / `agents` — prompt templates (`name` + `prompt` required).
+- `skills` — directories inside the package; Core resolves them to absolute
+  paths and the Agent loads them into its skill registry.
+- `hooks` — lifecycle hooks (`event` + `command` argv).
+- `mcpServers` — MCP server configs merged into the shared MCP list; a
+  user-configured server with the same `id` wins.
+
+Consumers: the Agent merges `mcpServers` and loads `skills`; `commands`,
+`hooks` and `agents` are exposed for the WebUI / L.I.F.E. to consume.
 
 ### 0.2 Umbrella packages and sub-repositories
 

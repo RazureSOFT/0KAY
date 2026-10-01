@@ -70,6 +70,18 @@ func (g *Gateway) handlePluginUninstall(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusAccepted, state)
 }
 
+// handlePluginCapabilities reports the capabilities contributed by installed
+// packages (commands/skills/hooks/mcp_servers/agents), aggregated from their
+// manifests so Agent, L.I.F.E. and the WebUI can consume them.
+//
+//	GET /api/plugins/capabilities
+func (g *Gateway) handlePluginCapabilities(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
+	writeJSON(w, http.StatusOK, update.PluginContributions())
+}
+
 // handlePluginInstalled lists packages already installed via 0kay-pm, so the
 // marketplace can mark them as installed.
 //

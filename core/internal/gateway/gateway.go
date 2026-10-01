@@ -257,6 +257,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("GET /api/plugins/install/status", g.handlePluginInstallStatus)
 	mux.HandleFunc("POST /api/plugins/uninstall", g.handlePluginUninstall)
 	mux.HandleFunc("GET /api/plugins/installed", g.handlePluginInstalled)
+	mux.HandleFunc("GET /api/plugins/capabilities", g.handlePluginCapabilities)
 	// pm plugin: the single install/update entry point. The marketplace, the
 	// Settings "plugin updates" panel and the About "0kay update" panel all call
 	// these; the legacy /api/plugins/{install,uninstall,installed,install/status}
