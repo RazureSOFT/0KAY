@@ -119,6 +119,12 @@ func (s *Store) enforceLoginLimit(w http.ResponseWriter, r *http.Request) bool {
 // PinHeader carries the access PIN on a sensitive request.
 const PinHeader = "X-0kay-Pin"
 
+// PageHeader reports which WebUI route a request came from. It lets Core honour
+// the optional per-page scope: a request from a route the owner did not mark as
+// protected skips the PIN. A missing header is treated as "unknown" and stays
+// strict, so a client cannot opt out by simply dropping it.
+const PageHeader = "X-0kay-Page"
+
 // pinLength is the exact number of digits an access PIN has.
 const pinLength = 6
 
@@ -136,9 +142,15 @@ func validPIN(pin string) bool {
 }
 
 // pinFile is the on-disk security.json shape.
+//
+// Enabled/LoginEnabled are pointers so an omitted field keeps the default
+// (on) instead of silently turning protection off on an older file.
 type pinFile struct {
-	Salt string `json:"salt"`
-	Hash string `json:"hash"`
+	Salt         string   `json:"salt"`
+	Hash         string   `json:"hash"`
+	Enabled      *bool    `json:"enabled,omitempty"`
+	LoginEnabled *bool    `json:"login_enabled,omitempty"`
+	Pages        []string `json:"pages,omitempty"`
 }
 
 func (s *Store) securityPath() string {
@@ -161,6 +173,10 @@ func (s *Store) loadPIN() {
 	if json.Unmarshal(raw, &saved) != nil {
 		return
 	}
+	// Scope flags live next to the PIN and apply even when no PIN is set.
+	s.pinEnabled = saved.Enabled == nil || *saved.Enabled
+	s.loginEnabled = saved.LoginEnabled == nil || *saved.LoginEnabled
+	s.pinPages = saved.Pages
 	salt, err1 := hex.DecodeString(saved.Salt)
 	hash, err2 := hex.DecodeString(saved.Hash)
 	if err1 != nil || err2 != nil || len(salt) == 0 || len(hash) == 0 {
@@ -174,6 +190,65 @@ func (s *Store) HasPIN() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return len(s.pinHash) > 0
+}
+
+// PinEnabled reports whether the PIN is enforced. Turning it off keeps the PIN
+// stored, so it can be switched back on without setting a new one.
+func (s *Store) PinEnabled() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.pinEnabled
+}
+
+// LoginEnabled reports whether HTTP callers must present a paired-device token,
+// the API token, or a session cookie. Turning it off opens the API to every
+// caller that can reach Core (intended for a loopback-only deployment).
+func (s *Store) LoginEnabled() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.loginEnabled
+}
+
+// PinPages returns the routes that require the PIN when entered. An empty list
+// keeps the historical behaviour: only sensitive actions ask for it.
+func (s *Store) PinPages() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.pinPages) == 0 {
+		return nil
+	}
+	return append([]string(nil), s.pinPages...)
+}
+
+// SetSecurityPrefs persists the PIN/login switches and the per-page scope.
+// A nil argument leaves that value untouched.
+func (s *Store) SetSecurityPrefs(pinEnabled, loginEnabled *bool, pages *[]string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if pinEnabled != nil {
+		s.pinEnabled = *pinEnabled
+	}
+	if loginEnabled != nil {
+		s.loginEnabled = *loginEnabled
+	}
+	if pages != nil {
+		s.pinPages = append([]string(nil), *pages...)
+	}
+	return s.saveSecurityLocked()
+}
+
+// securityState is the GET /api/security/pin payload.
+func (s *Store) securityState() map[string]interface{} {
+	pages := s.PinPages()
+	if pages == nil {
+		pages = []string{}
+	}
+	return map[string]interface{}{
+		"configured":    s.HasPIN(),
+		"enabled":       s.PinEnabled(),
+		"login_enabled": s.LoginEnabled(),
+		"pages":         pages,
+	}
 }
 
 // SetPIN hashes and persists a new PIN. An empty PIN clears it.
@@ -197,7 +272,14 @@ func (s *Store) SetPIN(pin string) error {
 }
 
 func (s *Store) saveSecurityLocked() error {
-	raw, err := json.Marshal(pinFile{Salt: hex.EncodeToString(s.pinSalt), Hash: hex.EncodeToString(s.pinHash)})
+	enabled, login := s.pinEnabled, s.loginEnabled
+	raw, err := json.Marshal(pinFile{
+		Salt:         hex.EncodeToString(s.pinSalt),
+		Hash:         hex.EncodeToString(s.pinHash),
+		Enabled:      &enabled,
+		LoginEnabled: &login,
+		Pages:        s.pinPages,
+	})
 	if err != nil {
 		return err
 	}
@@ -287,11 +369,46 @@ func looksLikeBrowser(r *http.Request) bool {
 		r.Header.Get("Referer") != ""
 }
 
-// pinSatisfied reports whether a sensitive request may proceed: no PIN is set,
-// the caller is a trusted *machine* client, uses a machine credential, or
-// presents the PIN header. Browser callers from loopback are not exempt.
+// pageExempt reports whether the request came from a route the owner did not
+// mark as protected. It only applies once a scope is configured (PinPages is
+// non-empty); an unknown or missing route stays protected.
+func (s *Store) pageExempt(r *http.Request) bool {
+	pages := s.PinPages()
+	if len(pages) == 0 {
+		return false
+	}
+	page := strings.TrimSpace(r.Header.Get(PageHeader))
+	if page == "" {
+		return false
+	}
+	if i := strings.IndexByte(page, '?'); i >= 0 {
+		page = page[:i]
+	}
+	page = strings.TrimSuffix(page, "/")
+	if page == "" {
+		page = "/"
+	}
+	for _, listed := range pages {
+		entry := strings.TrimSuffix(strings.TrimSpace(listed), "/")
+		if entry == "" {
+			entry = "/"
+		}
+		if entry == page || strings.HasPrefix(page, entry+"/") {
+			return false
+		}
+	}
+	return true
+}
+
+// pinSatisfied reports whether a sensitive request may proceed: the PIN is off
+// or unset, the request came from an unscoped route, the caller is a trusted
+// *machine* client, uses a machine credential, or presents the PIN header.
+// Browser callers from loopback are not exempt.
 func (s *Store) pinSatisfied(r *http.Request) bool {
-	if !s.HasPIN() {
+	if !s.HasPIN() || !s.PinEnabled() {
+		return true
+	}
+	if s.pageExempt(r) {
 		return true
 	}
 	if s.trustedPeer(r.RemoteAddr) && !looksLikeBrowser(r) {
@@ -345,15 +462,20 @@ func (s *Store) seedPIN(existingInstall bool) {
 	log.Printf("==============================================================")
 }
 
-// handlePIN serves GET/POST/PUT/DELETE /api/security/pin.
+// handlePIN serves GET/POST/PUT/DELETE /api/security/pin. The route doubles as
+// the security-settings endpoint: besides the PIN itself it stores the two
+// master switches and the per-page scope.
 //
-//	GET    -> {configured: bool}   (no secret)
-//	POST   {"pin": "..."}          set/replace; needs the current PIN unless trusted
-//	DELETE                         clear (requires being signed in)
+//	GET    -> {configured, enabled, login_enabled, pages}   (no secret)
+//	POST   {"pin": "...", "current": "..."}                 set/replace the PIN
+//	POST   {"enabled": bool, "login_enabled": bool, "pages": [...]}  change the scope
+//	DELETE                                                  clear the PIN
+//
+// Both writes need the current PIN unless the caller is a trusted peer.
 func (s *Store) handlePIN(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet, http.MethodHead:
-		writeJSON(w, http.StatusOK, map[string]interface{}{"configured": s.HasPIN()})
+		writeJSON(w, http.StatusOK, s.securityState())
 	case http.MethodPost, http.MethodPut:
 		if ok, _ := s.authorized(r); !ok {
 			writeErr(w, http.StatusUnauthorized, "unauthenticated", "sign in first")
@@ -363,11 +485,20 @@ func (s *Store) handlePIN(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var body struct {
-			Pin     string `json:"pin"`
-			Current string `json:"current"`
+			Pin          string    `json:"pin"`
+			Current      string    `json:"current"`
+			Enabled      *bool     `json:"enabled"`
+			LoginEnabled *bool     `json:"login_enabled"`
+			Pages        *[]string `json:"pages"`
 		}
 		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
 			writeErr(w, http.StatusBadRequest, "bad_request", "invalid request")
+			return
+		}
+		wantsPin := strings.TrimSpace(body.Pin) != ""
+		wantsPrefs := body.Enabled != nil || body.LoginEnabled != nil || body.Pages != nil
+		if !wantsPin && !wantsPrefs {
+			writeErr(w, http.StatusBadRequest, "bad_request", "nothing to update")
 			return
 		}
 		if s.HasPIN() && !s.trustedPeer(r.RemoteAddr) {
@@ -381,16 +512,26 @@ func (s *Store) handlePIN(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		if err := s.SetPIN(body.Pin); err != nil {
-			writeErr(w, http.StatusBadRequest, "invalid_pin", err.Error())
-			return
+		if wantsPrefs {
+			if err := s.SetSecurityPrefs(body.Enabled, body.LoginEnabled, body.Pages); err != nil {
+				writeErr(w, http.StatusInternalServerError, "internal", err.Error())
+				return
+			}
+		}
+		if wantsPin {
+			if err := s.SetPIN(body.Pin); err != nil {
+				writeErr(w, http.StatusBadRequest, "invalid_pin", err.Error())
+				return
+			}
 		}
 		s.loginSucceeded(remoteHost(r))
-		http.SetCookie(w, &http.Cookie{
-			Name: SessionCookie, Value: s.pinCookieValue(), Path: "/",
-			MaxAge: 30 * 24 * 3600, HttpOnly: true, SameSite: http.SameSiteStrictMode, Secure: s.secureCookie(r),
-		})
-		writeJSON(w, http.StatusOK, map[string]interface{}{"configured": s.HasPIN()})
+		if wantsPin {
+			http.SetCookie(w, &http.Cookie{
+				Name: SessionCookie, Value: s.pinCookieValue(), Path: "/",
+				MaxAge: 30 * 24 * 3600, HttpOnly: true, SameSite: http.SameSiteStrictMode, Secure: s.secureCookie(r),
+			})
+		}
+		writeJSON(w, http.StatusOK, s.securityState())
 	case http.MethodDelete:
 		if ok, _ := s.authorized(r); !ok {
 			writeErr(w, http.StatusUnauthorized, "unauthenticated", "sign in first")
@@ -400,7 +541,7 @@ func (s *Store) handlePIN(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]interface{}{"configured": false})
+		writeJSON(w, http.StatusOK, s.securityState())
 	default:
 		w.Header().Set("Allow", "GET, HEAD, POST, PUT, DELETE, OPTIONS")
 		writeErr(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")

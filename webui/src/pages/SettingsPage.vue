@@ -14,6 +14,7 @@ import ProviderPanel from '../components/ProviderPanel.vue'
 import GeneralPanel from '../components/GeneralPanel.vue'
 import PersonaPanel from '../components/PersonaPanel.vue'
 import PermissionsPanel from '../components/PermissionsPanel.vue'
+import SecurityPanel from '../components/SecurityPanel.vue'
 import McpPanel from '../components/McpPanel.vue'
 import DangerPanel from '../components/DangerPanel.vue'
 import PluginModulePane from '../components/PluginModulePane.vue'
@@ -485,6 +486,9 @@ function save() {
             </div>
           </div>
         </div>
+
+        <!-- Security — PIN / login switches and the per-page scope -->
+        <SecurityPanel v-else-if="activeTab === 'security'" />
 
         <!-- Permissions — shell pane; fields/labels from life.patch when present -->
           <PermissionsPanel v-else-if="activeTab === 'permissions'" />

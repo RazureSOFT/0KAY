@@ -22,7 +22,23 @@
     "savePin": "Save PIN",
     "pinWrong": "Incorrect PIN",
     "useToken": "Use a token",
-    "usePin": "Use PIN"
+    "usePin": "Use PIN",
+    "pinGuardHint": "This page is marked as protected — enter the PIN to keep using it."
+  },
+  "security": {
+    "desc": "Switches for the PIN and the sign-in gate, plus which pages ask for the PIN.",
+    "pinSwitch": "PIN protection",
+    "pinSwitchHelp": "Off means no PIN prompt anywhere. The stored PIN is kept, so you can switch it back on.",
+    "loginSwitch": "Sign-in gate",
+    "loginSwitchHelp": "Off lets anyone who can reach Core call the API without a paired-device token. Only do this on a loopback-only setup.",
+    "pinSet": "A 6-digit PIN is set",
+    "pinUnset": "No PIN set",
+    "pageCount": "{n} selected",
+    "changePin": "Change PIN",
+    "removePin": "Delete PIN",
+    "removePinConfirm": "This removes the stored access PIN from this machine. Continue?",
+    "pages": "Pages that ask for the PIN",
+    "pagesHelp": "Ticked pages challenge on entry. With none ticked, only sensitive actions (settings, plugins, providers) ask."
   },
   "minecraftConsent": {
     "title": "Minecraft bot needs approval",
@@ -271,6 +287,7 @@
       "models": "Models",
       "persona": "Persona",
       "live2d": "Live2D",
+      "security": "Security",
       "permissions": "Permissions",
       "danger": "Danger",
       "updates": "Plugin updates",
