@@ -290,6 +290,8 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/agent/inbox", g.handleAgentInbox)
 	mux.HandleFunc("/api/agent/host", g.handleAgentWorkspace)
 	mux.HandleFunc("/api/agent/compact", g.handleAgentCompact)
+	mux.HandleFunc("GET /api/agent/context", g.handleAgentContext)
+	mux.HandleFunc("GET /api/agent/context/search", g.handleAgentContextSearch)
 	mux.HandleFunc("/api/skills", g.handleSkills)
 	mux.HandleFunc("/api/skills/{name...}", g.handleSkills)
 	mux.HandleFunc("/api/tasks/cancel", g.handleTaskCancel)

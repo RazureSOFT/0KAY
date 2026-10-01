@@ -164,6 +164,14 @@ func (g *Gateway) handleAgentMessage(w http.ResponseWriter, r *http.Request) {
 		badRequest(w, "invalid permission mode")
 		return
 	}
+	// Auto-compact (opencode-style): when the live context approaches the
+	// threshold, fold it before dispatching. Best effort — a failure must not
+	// block the turn.
+	if g.sessionContextTokens(body.SessionID) >= autoCompactTokens() {
+		if _, err := g.compactSession(r.Context(), body.SessionID, body.ModelID); err != nil {
+			fmt.Printf("[agent] auto-compact skipped for %s: %v\n", body.SessionID, err)
+		}
+	}
 	// Carry an earlier /compact summary into this turn: the agent has no
 	// cross-turn memory, so without prepending it the summary would be cosmetic.
 	if summary := g.latestCompactSummary(body.SessionID); summary != "" {

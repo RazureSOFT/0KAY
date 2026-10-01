@@ -191,7 +191,7 @@ async function compact() {
   const target=selectedId.value
   busy.value=true;error.value='';compactNotice.value='正在压缩上下文…'
   try {
-    const response=await fetch('/api/agent/compact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:target})})
+    const response=await fetch('/api/agent/compact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:target,model_id:modelId.value})})
     if(!response.ok) throw new Error(await response.text())
     await response.json();await store.fetchAgents()
     compactNotice.value='上下文已压缩。后续消息使用摘要；原始对话和工具记录仍然保留。';if(draft.value.trim()==='/compact') draft.value=''
