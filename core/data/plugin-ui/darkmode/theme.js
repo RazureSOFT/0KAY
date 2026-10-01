@@ -16,9 +16,12 @@
 ;(function () {
   var STORE_KEY = '0kay_theme_mode'
   var SCHEDULE_KEY = '0kay_theme_schedule'
+  var ACCENT_KEY = '0kay_theme_accent'
   var STYLE_ID = '0kay-darkmode-style'
+  var ACCENT_STYLE_ID = '0kay-darkmode-accent-style'
   var WIPE_ID = '0kay-theme-wipe'
   var MODES = ['auto', 'light', 'dark', 'schedule']
+  var ACCENTS = ['default', 'red']
   var DEFAULT_SCHEDULE = { darkFrom: '19:00', darkUntil: '07:00' }
   var FADE_MS = 560
   var SURFACE = { light: '#fbf8ff', dark: '#14161d' }
@@ -140,6 +143,78 @@ html[data-theme="dark"] .energy-fill,
 html[data-theme="dark"] .emotion-fill{filter:brightness(1.25) saturate(.9)}
 `
 
+  var RED_CSS = `
+/* ============ 0KAY red accent (plugin: darkmode, flavor "red") ============ */
+/* Deep-crimson flavor in the spirit of the CodeBuddy red editor theme:
+   maroon-tinted surfaces with a soft red primary, in both light and dark. */
+
+/* --- light mode: keep the bright surfaces, swap the accents to red --- */
+html[data-theme="light"][data-flavor="red"]{
+  --md-primary:#a33830;
+  --md-on-primary:#ffffff;
+  --md-primary-container:#ffdad6;
+  --md-on-primary-container:#410002;
+  --md-primary-fixed:#ffdad6;
+  --md-secondary:#8a5550;
+  --md-secondary-container:#ffdad6;
+  --md-on-secondary-container:#410002;
+  --md-inverse-primary:#ffb4ab;
+}
+
+/* --- dark mode: full maroon palette (surfaces included) --- */
+html[data-theme="dark"][data-flavor="red"]{
+  --md-primary:#ffb4ab;
+  --md-on-primary:#5c0f0f;
+  --md-primary-container:#7f1d18;
+  --md-on-primary-container:#ffdad6;
+  --md-primary-fixed:#ffdad6;
+  --md-secondary:#d9bcba;
+  --md-on-secondary:#3c1616;
+  --md-secondary-container:#55302e;
+  --md-on-secondary-container:#ffdad6;
+  --md-tertiary:#e6c1a2;
+  --md-on-tertiary:#33241a;
+  --md-tertiary-container:#4d3728;
+  --md-on-tertiary-container:#ffdcc0;
+  --md-surface:#1d1212;
+  --md-surface-dim:#1d1212;
+  --md-surface-bright:#3d2424;
+  --md-surface-container-lowest:#160c0c;
+  --md-surface-container-low:#241414;
+  --md-surface-container:#2a1919;
+  --md-surface-container-high:#371f1f;
+  --md-surface-container-highest:#442626;
+  --md-on-surface:#eedcdc;
+  --md-on-surface-variant:#d8bcbc;
+  --md-outline:#a58585;
+  --md-outline-variant:#5e3a3a;
+  --md-inverse-surface:#eedcdc;
+  --md-inverse-on-surface:#2a1919;
+  --md-inverse-primary:#a33830;
+
+  /* legacy aliases, warm-tinted to match */
+  --brand-hover:#e5c5c2;
+  --brand-active:#f2d5d2;
+  --neutral-gray-50:#d4c2c0;
+  --neutral-gray-60:#b8a09e;
+  --neutral-gray-70:#eedcdc;
+  --neutral-gray-80:#f5e7e6;
+  --neutral-gray-90:#faf0ef;
+  --neutral-gray-100:#ffffff;
+}
+
+/* --- the dark sheet's hard-coded blue bits, re-tinted --- */
+html[data-theme="dark"][data-flavor="red"] #app select:not([multiple]){
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='m6 9 6 6 6-6' stroke='%23d8bcbc' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+html[data-theme="dark"][data-flavor="red"] #app .stage-viewport{
+  background:
+    radial-gradient(circle at 30% 20%,color-mix(in srgb,var(--mood,#6750A4) 26%,transparent),transparent 55%),
+    radial-gradient(circle at 70% 80%,color-mix(in srgb,var(--mood,#6750A4) 14%,transparent),transparent 50%),
+    linear-gradient(180deg,#2b1414 0%,#1d1212 55%,#7f1d1833 100%);
+}
+`
+
   // Transition layer: while `html.0kay-theme-fade` is present (roughly one
   // FADE_MS window around a switch) every surface interpolates its colours so
   // the theme change reads as a gradient rather than a hard flip. A fixed
@@ -216,6 +291,18 @@ html.0kay-theme-fade *::after{
     try { localStorage.setItem(SCHEDULE_KEY, JSON.stringify(schedule)) } catch (e) { /* ignore */ }
   }
 
+  function readAccent() {
+    try {
+      var v = localStorage.getItem(ACCENT_KEY)
+      if (v && ACCENTS.indexOf(v) >= 0) return v
+    } catch (e) { /* private mode / storage disabled */ }
+    return 'default'
+  }
+
+  function writeAccent(accent) {
+    try { localStorage.setItem(ACCENT_KEY, accent) } catch (e) { /* ignore */ }
+  }
+
   /** "HH:MM" -> minutes since midnight. */
   function toMinutes(hhmm) {
     var p = String(hhmm || '').split(':')
@@ -254,6 +341,26 @@ html.0kay-theme-fade *::after{
       document.head.appendChild(el)
     }
     if (el.textContent !== SHEET_CSS) el.textContent = SHEET_CSS
+  }
+
+  /** Install the accent sheet once; it only activates under [data-flavor="red"]. */
+  function ensureAccentSheet() {
+    if (typeof document === 'undefined') return
+    var el = document.getElementById(ACCENT_STYLE_ID)
+    if (!el) {
+      el = document.createElement('style')
+      el.id = ACCENT_STYLE_ID
+      document.head.appendChild(el)
+    }
+    if (el.textContent !== RED_CSS) el.textContent = RED_CSS
+  }
+
+  function applyAccent(accent) {
+    if (typeof document === 'undefined') return
+    ensureAccentSheet()
+    var root = document.documentElement
+    var next = ACCENTS.indexOf(accent) >= 0 ? accent : 'default'
+    if (root.dataset.flavor !== next) root.dataset.flavor = next
   }
 
   function prefersReduced() {
@@ -333,9 +440,10 @@ html.0kay-theme-fade *::after{
     if (readMode() === 'schedule') apply('schedule', true)
   }
 
-  /** Idempotent: apply the saved mode and follow OS / schedule automatically. */
+  /** Idempotent: apply the saved mode + accent and follow OS / schedule automatically. */
   function install() {
     apply(readMode(), false)
+    applyAccent(readAccent())
     listen()
     if (!scheduleTimer) scheduleTimer = setInterval(tick, 30000)
   }
@@ -357,6 +465,13 @@ html.0kay-theme-fade *::after{
       var until = schedule && schedule.darkUntil ? schedule.darkUntil : DEFAULT_SCHEDULE.darkUntil
       writeSchedule({ darkFrom: from, darkUntil: until })
       if (readMode() === 'schedule') apply('schedule', true)
+    },
+    getAccent: readAccent,
+    setAccent: function (accent) {
+      var a = ACCENTS.indexOf(accent) >= 0 ? accent : 'default'
+      writeAccent(a)
+      applyAccent(a)
+      return a
     },
     apply: apply,
     install: install,

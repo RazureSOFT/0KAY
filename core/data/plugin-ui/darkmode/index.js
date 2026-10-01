@@ -66,6 +66,9 @@ const CSS = `
 }
 .dm-note b{color:var(--md-on-surface)}
 
+.dm-section{margin:clamp(14px,1.8vw,22px) 0 12px;font-size:18px;font-weight:750;color:var(--md-on-surface)}
+#app .dm .dm-grid{margin-bottom:16px}
+
 .dm-times{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px}
 .dm-time{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--md-on-surface-variant)}
 .dm-time input{
@@ -103,6 +106,11 @@ const LABELS = {
     scheduleDesc: '到点自动切换深浅色',
     darkFrom: '深色开始',
     darkUntil: '深色结束',
+    accentTitle: '配色',
+    accentDefault: '经典蓝',
+    accentDefaultDesc: '默认的蓝灰点缀',
+    accentRed: '绯红',
+    accentRedDesc: '暗红黑底的编辑器风主题',
     current: '当前生效：',
     note: '外观偏好保存在本机浏览器（localStorage），不会上传到服务端。删掉 core/data/ui/darkmode.patch 即恢复默认浅色。',
     on: '✓',
@@ -121,6 +129,11 @@ const LABELS = {
     scheduleDesc: 'Switch automatically at set times',
     darkFrom: 'Dark from',
     darkUntil: 'Dark until',
+    accentTitle: 'Accent',
+    accentDefault: 'Classic blue',
+    accentDefaultDesc: 'The default blue-grey accents',
+    accentRed: 'Crimson',
+    accentRedDesc: 'Deep-red editor-style dark theme',
     current: 'Active now: ',
     note: 'The preference is stored in this browser (localStorage) and never sent to the server. Remove core/data/ui/darkmode.patch to go back to light.',
     on: '✓',
@@ -139,6 +152,11 @@ const LABELS = {
     scheduleDesc: '設定した時刻で自動切替',
     darkFrom: 'ダーク開始',
     darkUntil: 'ダーク終了',
+    accentTitle: 'カラー',
+    accentDefault: 'クラシックブルー',
+    accentDefaultDesc: '既定の青系の差し色',
+    accentRed: 'クリムゾン',
+    accentRedDesc: '深紅のエディタ風テーマ',
     current: '現在の適用: ',
     note: '設定はこのブラウザ（localStorage）に保存され、サーバーへ送信されません。core/data/ui/darkmode.patch を削除すると既定のライトに戻ります。',
     on: '✓',
@@ -163,6 +181,11 @@ const SWATCH = {
   schedule: ['#f8f9fb', '#2c3760', '#14161d'],
 }
 
+const ACCENT_SWATCH = {
+  default: ['#4d5d91', '#b3c0ea', '#1e212a'],
+  red: ['#7f1d18', '#ffb4ab', '#1d1212'],
+}
+
 export default {
   name: 'DarkModePage',
   setup() {
@@ -173,6 +196,7 @@ export default {
     const mode = ref(theme ? theme.getMode() : 'auto')
     const active = ref(theme ? theme.resolved() : 'light')
     const sched = ref(theme && theme.getSchedule ? theme.getSchedule() : { darkFrom: '19:00', darkUntil: '07:00' })
+    const accent = ref(theme && theme.getAccent ? theme.getAccent() : 'default')
 
     function choose(next) {
       mode.value = next
@@ -181,6 +205,10 @@ export default {
         theme.setSchedule({ darkFrom: sched.value.darkFrom, darkUntil: sched.value.darkUntil })
         active.value = theme.resolved()
       }
+    }
+
+    function chooseAccent(next) {
+      accent.value = theme && theme.setAccent ? theme.setAccent(next) : next
     }
 
     function onScheduleChange() {
@@ -213,6 +241,11 @@ export default {
       { id: 'schedule', title: t.schedule, desc: t.scheduleDesc },
     ])
 
+    const accents = computed(() => [
+      { id: 'default', title: t.accentDefault, desc: t.accentDefaultDesc },
+      { id: 'red', title: t.accentRed, desc: t.accentRedDesc },
+    ])
+
     return () =>
       h('div', { class: 'dm' }, [
         h('header', { class: 'dm-head' }, [
@@ -233,6 +266,24 @@ export default {
             h('span', { class: 'dm-card-title' }, o.title),
             h('span', { class: 'dm-card-desc' }, o.desc),
             h('span', { class: 'dm-swatch' }, SWATCH[o.id].map((c, i) =>
+              h('i', { key: i, style: 'background:' + c }),
+            )),
+          ]),
+        )),
+
+        h('h2', { class: 'dm-section' }, t.accentTitle),
+        h('div', { class: 'dm-grid' }, accents.value.map((o) =>
+          h('button', {
+            key: o.id,
+            type: 'button',
+            class: 'dm-card' + (accent.value === o.id ? ' on' : ''),
+            'aria-pressed': accent.value === o.id,
+            onClick: () => chooseAccent(o.id),
+          }, [
+            h('span', { class: 'dm-check' }, t.on),
+            h('span', { class: 'dm-card-title' }, o.title),
+            h('span', { class: 'dm-card-desc' }, o.desc),
+            h('span', { class: 'dm-swatch' }, ACCENT_SWATCH[o.id].map((c, i) =>
               h('i', { key: i, style: 'background:' + c }),
             )),
           ]),

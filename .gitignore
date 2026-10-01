@@ -11,6 +11,8 @@ buf.exe
 /minecraft/
 # 0kay-free-model remains an independent repository.
 /free-model/
+# 0kay-deepseek-web remains an independent repository (razureink/0KAY-deepseek-web).
+/deepseek-web/
 node_modules
 core/data/tasks.json
 core/data/tasks.json.journal
