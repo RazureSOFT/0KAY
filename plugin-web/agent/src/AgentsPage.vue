@@ -121,6 +121,23 @@ const slashOpen = computed(() => !slashSuppressed.value && slashItems.value.leng
 const slashIndex = ref(0)
 watch(slashItems, () => { slashIndex.value = 0 })
 watch(slashQuery, query => { slashSuppressed.value = false; if (query !== null) void fetchSkills() })
+// The composer column clips its overflow, so the menu is teleported to <body>
+// and positioned above the input from its bounding rect.
+const composerInput = ref<HTMLElement | null>(null)
+const slashMenuStyle = ref<Record<string, string>>({})
+function positionSlashMenu() {
+  const rect = composerInput.value?.getBoundingClientRect()
+  if (!rect) return
+  slashMenuStyle.value = {
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+    bottom: `${Math.max(8, window.innerHeight - rect.top + 8)}px`,
+  }
+}
+const onViewportChange = () => { if (slashOpen.value) positionSlashMenu() }
+watch(slashOpen, open => { if (open) void nextTick(positionSlashMenu) })
+onMounted(() => { window.addEventListener('resize', onViewportChange); window.addEventListener('scroll', onViewportChange, true) })
+onUnmounted(() => { window.removeEventListener('resize', onViewportChange); window.removeEventListener('scroll', onViewportChange, true) })
 function applySlash(item: { name: string }) {
   draft.value = '/' + item.name + ' '
   slashSuppressed.value = true
@@ -474,13 +491,15 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
           </span>
           <span v-if="attachError" class="attach-error">{{ attachError }}</span>
         </div>
-        <div class="composer-input">
-          <div v-if="slashOpen" class="slash-menu" role="listbox" :aria-label="tr('技能与命令','Skills and commands')">
-            <button v-for="(item, index) in slashItems" :key="item.name" type="button" class="slash-item" :class="{ active: index === slashIndex }" role="option" :aria-selected="index === slashIndex" @mousedown.prevent="applySlash(item)" @mouseenter="slashIndex = index">
-              <span class="slash-name">/{{ item.name }}</span>
-              <span class="slash-desc">{{ item.description }}</span>
-            </button>
-          </div>
+        <div ref="composerInput" class="composer-input">
+          <Teleport to="body">
+            <div v-if="slashOpen" class="slash-menu" :style="slashMenuStyle" role="listbox" :aria-label="tr('技能与命令','Skills and commands')">
+              <button v-for="(item, index) in slashItems" :key="item.name" type="button" class="slash-item" :class="{ active: index === slashIndex }" role="option" :aria-selected="index === slashIndex" @mousedown.prevent="applySlash(item)" @mouseenter="slashIndex = index">
+                <span class="slash-name">/{{ item.name }}</span>
+                <span class="slash-desc">{{ item.description }}</span>
+              </button>
+            </div>
+          </Teleport>
           <div v-if="attachments.length || attachError" class="attach-chips">
             <span v-for="(file, index) in attachments" :key="index" class="attach-chip" :title="`${file.mime} · ${file.size} B`">
               {{ file.name }}
@@ -649,7 +668,7 @@ button.subagent-card-head>strong{font-weight:700}
 .composer-input{position:relative}
 .composer-input textarea{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 64px 15px 60px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}
 .composer-input textarea:focus{box-shadow:none;border:0}
-.slash-menu{position:absolute;left:10px;right:10px;bottom:100%;margin-bottom:8px;z-index:20;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:14px;box-shadow:var(--shadow-3);padding:6px;max-height:min(320px,42vh);overflow:auto}
+.slash-menu{position:fixed;z-index:10000;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:14px;box-shadow:var(--shadow-3);padding:6px;max-height:min(320px,42vh);overflow:auto}
 .slash-item{display:flex;align-items:baseline;gap:10px;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:var(--md-on-surface);cursor:pointer}
 .slash-item.active{background:var(--md-secondary-container)}
 .slash-name{flex:none;font-family:var(--code-font);font-weight:650;font-size:13px;color:var(--md-primary)}
