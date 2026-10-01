@@ -24,7 +24,6 @@ services:
       - CORE_HTTP_PORT=8080
       - CORE_BIND_HOST=0.0.0.0
       - MOCR_ADDRESS=mocr:50052
-      - SEARXNG_URL=http://searxng:8080
       # Trust only the compose network; host/LAN callers need CORE_API_TOKEN or pairing.
       - CORE_TRUSTED_NETWORKS=172.28.0.0/16
       - CORE_API_TOKEN=${CORE_API_TOKEN:-}
@@ -71,7 +70,6 @@ services:
       - CORE_HTTP_ADDR=http://core:8080
       - LIFE_ADDRESS=life:50053
       - LIFE_DATA_DIR=/app/data/life
-      - SEARXNG_URL=http://searxng:8080
       - CORE_API_TOKEN=${CORE_API_TOKEN:-}
       - CORE_PLUGIN_REGISTRATION_TOKEN=${CORE_PLUGIN_REGISTRATION_TOKEN:-}
     volumes:
@@ -98,7 +96,6 @@ services:
       - AGENT_ADDRESS=agent:50054
       - AGENT_DATA_DIR=/app/data/agent
       - MOCR_ADDRESS=mocr:50052
-      - SEARXNG_URL=http://searxng:8080
       - CORE_API_TOKEN=${CORE_API_TOKEN:-}
       - CORE_PLUGIN_REGISTRATION_TOKEN=${CORE_PLUGIN_REGISTRATION_TOKEN:-}
     depends_on:
@@ -106,30 +103,10 @@ services:
     volumes:
       - agent-data:/app/data/agent
 
-  # SearXNG - meta-search (JSON API for life SearchTool)
-  searxng:
-    image: searxng/searxng:latest
-    container_name: 0kay-searxng
-    ports:
-      - "127.0.0.1:8888:8080"
-    environment:
-      - SEARXNG_BASE_URL=http://searxng:8080/
-      - SEARXNG_SECRET=${SEARXNG_SECRET:-0kay-local-searxng}
-    cap_drop:
-      - ALL
-    cap_add:
-      - CHOWN
-      - SETGID
-      - SETUID
-    volumes:
-      - searxng-data:/etc/searxng
-    restart: unless-stopped
-
 volumes:
   core-data:
   life-data:
   agent-data:
-  searxng-data:
 
 networks:
   default:

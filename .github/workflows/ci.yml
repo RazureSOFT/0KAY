@@ -67,10 +67,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e "./life[dev]"
-      - name: Syntax check LIFE and searxng
+      - name: Syntax check LIFE
         run: |
           python -m compileall -q life/src
-          python -m py_compile searxng/server.py
       - name: L.I.F.E unit tests
         working-directory: life
         run: python -m pytest tests -q

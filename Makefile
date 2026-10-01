@@ -57,14 +57,6 @@ dev-life:
 dev-agent:
 	cd agent && npm run dev
 
-# Local SearXNG-compatible search (no Docker required)
-dev-searxng:
-	python searxng/server.py
-
-# With Docker (full SearXNG)
-dev-searxng-docker:
-	docker compose up -d searxng
-
 # Install Go dependencies
 deps-go:
 	cd core && go mod tidy
