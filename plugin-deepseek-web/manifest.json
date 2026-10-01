@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "name": "@razuresoft/0kay-deepseek-web",
+  "version": "0.1.0",
+  "description": "DeepSeek 网页版（chat.deepseek.com 登录态，无需 API Key）作为 OpenAI 兼容的 0KAY provider。请求/PoW/SSE 流程移植自 cv-superding/dsh-deepseek-web-login（Apache-2.0）。",
+  "repository": "https://github.com/RazureSOFT/0KAY.git",
+  "install": [],
+  "start": ["node", "src/server.mjs"],
+  "ports": { "http": 8792 },
+  "permissions": {
+    "api": { "requires": ["POST /api/providers"] },
+    "egress": ["chat.deepseek.com", "fe-static.deepseek.com", "*.deepseek.com"]
+  }
+}
