@@ -19,6 +19,7 @@ import (
 	"0kay/core/internal/registry"
 	"0kay/core/internal/server"
 	"0kay/core/internal/settings"
+	"0kay/core/internal/stdioprovider"
 	"0kay/core/internal/update"
 	"0kay/core/internal/version"
 	corev1 "0kay/gen/core/v1"
@@ -124,6 +125,12 @@ func main() {
 
 	// Built-in plugins managed by Core (WebUI + local SearXNG when present)
 	registerBuiltins(reg, setStore)
+
+	// Provider-adapter plugins: host manifest-declared stdio providers as child
+	// processes and expose them on Core's own HTTP port (no extra port).
+	stdioRunner := stdioprovider.NewRunner()
+	gw.SetStdioRunner(stdioRunner)
+	registerStdioProviders(stdioRunner, provStore, cfg.HTTPAddr())
 
 	// Start heartbeat checker
 	go startHeartbeatChecker(reg, cfg)
@@ -267,6 +274,41 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 	// Web search is built into Core now (no standalone searxng plugin/process):
 	// the engine preference is a core-owned settings section.
 	registerSearchSettings(setStore)
+}
+
+// registerStdioProviders spawns each installed package's manifest-declared
+// stdio provider and registers it with the provider store, pointed at Core's
+// own HTTP route (so the plugin opens no port).
+func registerStdioProviders(runner *stdioprovider.Runner, store *providers.Store, httpAddr string) {
+	if store == nil {
+		return
+	}
+	_, port, err := net.SplitHostPort(httpAddr)
+	if err != nil || port == "" {
+		port = "8080"
+	}
+	for _, spec := range update.ProviderSpecs() {
+		if err := runner.Start(spec.ID, spec.Dir, spec.Command); err != nil {
+			log.Printf("[stdio] start provider %s: %v", spec.ID, err)
+			continue
+		}
+		baseURL := fmt.Sprintf("http://127.0.0.1:%s/api/stdio-provider/%s%s", port, spec.ID, spec.Route)
+		if err := store.Upsert(providers.ProviderConfig{
+			ID:           spec.ID,
+			Provider:     "custom",
+			Name:         spec.Name,
+			BaseURL:      baseURL,
+			APIKey:       "stdio-local",
+			Models:       spec.Models,
+			DefaultModel: spec.DefaultModel,
+			Enabled:      true,
+			Format:       "openai",
+		}); err != nil {
+			log.Printf("[stdio] register provider %s: %v", spec.ID, err)
+			continue
+		}
+		log.Printf("[stdio] hosting provider %q for %s at %s", spec.ID, spec.Package, baseURL)
+	}
 }
 
 // registerUpdateSettings contributes the updates panel preferences. The section

@@ -20,6 +20,7 @@ import (
 	"0kay/core/internal/registry"
 	"0kay/core/internal/server"
 	"0kay/core/internal/settings"
+	"0kay/core/internal/stdioprovider"
 	corev1 "0kay/gen/core/v1"
 	lifev1 "0kay/gen/life/v1"
 
@@ -51,6 +52,8 @@ type Gateway struct {
 	settingsStore *settings.Store
 	// uiPatches holds WebUI extension *.patch files (nav/router/status).
 	uiPatches *uiPatchStore
+	// stdio hosts provider-adapter plugins as child processes (no port).
+	stdio *stdioprovider.Runner
 }
 
 // LocalCore is the subset of CoreServiceServer the gateway needs.
@@ -225,6 +228,11 @@ func (g *Gateway) SetSettingsStore(s *settings.Store) {
 	g.settingsStore = s
 }
 
+// SetStdioRunner wires the stdio provider runner.
+func (g *Gateway) SetStdioRunner(r *stdioprovider.Runner) {
+	g.stdio = r
+}
+
 // ProviderStore exposes the store for CallMocr credential resolution.
 func (g *Gateway) ProviderStore() *providers.Store {
 	return g.providerStore
@@ -311,6 +319,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/net/egress", g.handleEgress)
 	mux.HandleFunc("/api/tools", g.handleTools)
 	mux.HandleFunc("/api/search", g.handleSearch)
+	mux.HandleFunc("/api/stdio-provider/{id}/{path...}", g.handleStdioProvider)
 	mux.Handle("/live2d/models/", http.StripPrefix("/live2d/models/", http.FileServer(http.Dir(live2DRoot()))))
 	mux.HandleFunc("/api/tasks", g.handleTasks)
 	mux.HandleFunc("/api/tasks/events", g.handleTaskEvents)
