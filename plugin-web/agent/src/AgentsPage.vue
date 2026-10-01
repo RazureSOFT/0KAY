@@ -85,7 +85,55 @@ function rememberEditor(id = selectedId.value) {
 }
 function closeBrowser() { browseRequest++;browserOpen.value=false;browserBusy.value=false }
 function onEscape(event: KeyboardEvent) {if(event.key==='Escape' && browserOpen.value) closeBrowser()}
+// Slash menu: typing "/" offers the agent's skills (the agent resolves
+// "/<skill> <request>") plus built-in commands.
+const skills = ref<Array<{ name: string; description: string; tags?: string[]; source?: string }>>([])
+let skillsLoaded = false
+async function fetchSkills() {
+  if (skillsLoaded) return
+  skillsLoaded = true
+  try {
+    const response = await fetch('/api/skills')
+    const data = await response.json()
+    const list = data?.result?.skills ?? data?.skills
+    if (Array.isArray(list)) skills.value = list
+    else skillsLoaded = false
+  } catch { skillsLoaded = false }
+}
+const slashCommands = [{ name: 'compact', description: tr('压缩当前会话上下文','Compact the session context') }]
+const slashQuery = computed(() => { const match = /^\/([^\s]*)$/.exec(draft.value); return match ? match[1].toLowerCase() : null })
+const slashItems = computed(() => {
+  const query = slashQuery.value
+  if (query === null) return [] as Array<{ name: string; description: string }>
+  const all = [
+    ...slashCommands,
+    ...skills.value.map(skill => ({ name: skill.name, description: skill.description || '' })),
+  ]
+  const seen = new Set<string>()
+  return all.filter(item => {
+    if (seen.has(item.name) || !item.name.toLowerCase().startsWith(query)) return false
+    seen.add(item.name)
+    return true
+  }).slice(0, 8)
+})
+const slashSuppressed = ref(false)
+const slashOpen = computed(() => !slashSuppressed.value && slashItems.value.length > 0)
+const slashIndex = ref(0)
+watch(slashItems, () => { slashIndex.value = 0 })
+watch(slashQuery, query => { slashSuppressed.value = false; if (query !== null) void fetchSkills() })
+function applySlash(item: { name: string }) {
+  draft.value = '/' + item.name + ' '
+  slashSuppressed.value = true
+  nextTick(() => (document.querySelector('.composer-input textarea') as HTMLTextAreaElement | null)?.focus())
+}
 function onComposerKey(event: KeyboardEvent) {
+  if (slashOpen.value) {
+    const count = slashItems.value.length
+    if (event.key === 'ArrowDown') { event.preventDefault(); slashIndex.value = (Math.min(slashIndex.value, count - 1) + 1) % count; return }
+    if (event.key === 'ArrowUp') { event.preventDefault(); slashIndex.value = (Math.min(slashIndex.value, count - 1) - 1 + count) % count; return }
+    if (event.key === 'Enter' || event.key === 'Tab') { event.preventDefault(); applySlash(slashItems.value[Math.min(slashIndex.value, count - 1)]); return }
+    if (event.key === 'Escape') { event.preventDefault(); slashSuppressed.value = true; return }
+  }
   if(event.key==='Enter' && !event.shiftKey && !event.isComposing && event.keyCode!==229) {event.preventDefault();void send()}
 }
 function onTranscriptScroll() {
@@ -427,6 +475,12 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
           <span v-if="attachError" class="attach-error">{{ attachError }}</span>
         </div>
         <div class="composer-input">
+          <div v-if="slashOpen" class="slash-menu" role="listbox" :aria-label="tr('技能与命令','Skills and commands')">
+            <button v-for="(item, index) in slashItems" :key="item.name" type="button" class="slash-item" :class="{ active: index === slashIndex }" role="option" :aria-selected="index === slashIndex" @mousedown.prevent="applySlash(item)" @mouseenter="slashIndex = index">
+              <span class="slash-name">/{{ item.name }}</span>
+              <span class="slash-desc">{{ item.description }}</span>
+            </button>
+          </div>
           <div v-if="attachments.length || attachError" class="attach-chips">
             <span v-for="(file, index) in attachments" :key="index" class="attach-chip" :title="`${file.mime} · ${file.size} B`">
               {{ file.name }}
@@ -591,10 +645,15 @@ button.subagent-card-head>strong{font-weight:700}
 .sub-view-body{min-height:120px}
 
 /* ---- composer ---- */
-.composer{flex-shrink:0;margin:0 20px 18px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-lowest);overflow:hidden;box-shadow:var(--shadow-1)}
+.composer{flex-shrink:0;margin:0 20px 18px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-lowest);overflow:visible;box-shadow:var(--shadow-1)}
 .composer-input{position:relative}
 .composer-input textarea{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 64px 15px 60px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}
 .composer-input textarea:focus{box-shadow:none;border:0}
+.slash-menu{position:absolute;left:10px;right:10px;bottom:100%;margin-bottom:8px;z-index:20;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:14px;box-shadow:var(--shadow-3);padding:6px;max-height:min(320px,42vh);overflow:auto}
+.slash-item{display:flex;align-items:baseline;gap:10px;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:var(--md-on-surface);cursor:pointer}
+.slash-item.active{background:var(--md-secondary-container)}
+.slash-name{flex:none;font-family:var(--code-font);font-weight:650;font-size:13px;color:var(--md-primary)}
+.slash-desc{font-size:12px;color:var(--md-on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .attach-chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px 0}
 .attach-fly{position:absolute !important;left:10px !important;bottom:10px !important;z-index:2;width:42px !important;height:42px !important;aspect-ratio:1/1;display:grid !important;place-items:center;border:0 !important;border-radius:50% !important;padding:0 !important;margin:0 !important;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 .attach-fly svg{width:18px;height:18px}
