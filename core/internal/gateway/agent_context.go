@@ -11,7 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"0kay/core/internal/pairing"
 	"0kay/core/internal/server"
+	agentv1 "0kay/gen/agent/v1"
 	lifev1 "0kay/gen/life/v1"
 	mocrv1 "0kay/gen/mocr/v1"
 )
@@ -271,13 +273,46 @@ func (g *Gateway) handleAgentContext(w http.ResponseWriter, r *http.Request) {
 		badRequest(w, "session_id required")
 		return
 	}
-	blocks := g.compactBlocks(sessionID)
+	tokens := g.sessionContextTokens(sessionID)
+	window := agentContextWindow()
+	breakdown := map[string]any{"window": window, "system": 0, "tools": 0, "skills": 0, "mcp": 0, "conversation": tokens, "used": tokens}
+	// Ask the live agent to split the stable parts (system/tools/skills/mcp).
+	if agents := g.registry.GetAgents(true); len(agents) > 0 {
+		agent := agents[0]
+		if conn, err := g.dial(agent.Address); err == nil {
+			args, _ := json.Marshal(map[string]any{"conversation_tokens": tokens, "window": window})
+			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+			res, err := agentv1.NewAgentServiceClient(conn).RunDirect(pairing.CallbackContext(ctx, agent.Address), &agentv1.RunDirectRequest{Tool: "context_usage", Args: string(args)})
+			cancel()
+			if err == nil && res.Success {
+				var parsed map[string]any
+				if json.Unmarshal([]byte(res.Result), &parsed) == nil && len(parsed) > 0 {
+					breakdown = parsed
+					if value, ok := parsed["window"].(float64); ok && value > 0 {
+						window = int(value)
+					}
+					if value, ok := parsed["used"].(float64); ok {
+						tokens = int(value)
+					}
+				}
+			}
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"summary":   g.latestCompactSummary(sessionID),
-		"tokens":    g.sessionContextTokens(sessionID),
+		"tokens":    tokens,
+		"window":    window,
 		"threshold": autoCompactTokens(),
-		"blocks":    blocks,
+		"breakdown": breakdown,
+		"blocks":    g.compactBlocks(sessionID),
 	})
+}
+
+func agentContextWindow() int {
+	if value, err := strconv.Atoi(strings.TrimSpace(os.Getenv("AGENT_CONTEXT_WINDOW"))); err == nil && value > 0 {
+		return value
+	}
+	return 128000
 }
 
 // handleAgentContextSearch GET /api/agent/context/search?session_id=&q=… —
