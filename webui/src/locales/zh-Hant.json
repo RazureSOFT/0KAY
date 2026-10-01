@@ -38,7 +38,7 @@
     "removePin": "清除 PIN",
     "removePinConfirm": "刪除後本機不再保存存取 PIN，確定繼續？",
     "pages": "進入時需要驗證的頁面",
-    "pagesHelp": "勾選的頁面進入時要先輸入 PIN；都不勾則只在改設定、裝外掛等敏感操作時驗證。"
+    "pagesHelp": "勾選的頁面在分頁首次進入時要求輸入 PIN，解鎖後本分頁內不再重複詢問；改設定、裝外掛等敏感操作始終需要驗證。"
   },
   "minecraftConsent": {
     "title": "Minecraft 機器人請求批准",

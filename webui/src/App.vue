@@ -13,7 +13,7 @@ import AppSelect from './components/AppSelect.vue'
 import LifeApprovalDialog from './components/LifeApprovalDialog.vue'
 import MinecraftConsentDialog from './components/MinecraftConsentDialog.vue'
 import { setLanguage, getLanguage, LOCALES } from './i18n'
-import { authRequired, submitLogin, cancelLogin, pinRequired, submitPin, cancelPin, verifyPin, pinConfigured, pinSetupRequired, setPin, pinGuard, pinUnlocked, pinPages, pinEnabled, setCurrentPage, pageRequiresPin, requirePagePin } from './auth'
+import { authRequired, submitLogin, cancelLogin, pinRequired, submitPin, cancelPin, verifyPin, pinConfigured, pinSetupRequired, setPin, pinGuard, pinUnlocked, pinPages, pinEnabled, pageRequiresPin, requirePagePin } from './auth'
 import PinInput from './components/PinInput.vue'
 
 const { t } = useI18n()
@@ -81,9 +81,10 @@ function isActive(item: { id: string; to?: string }) {
 }
 
 // --- per-page PIN guard ----------------------------------------------------
-// Core sees the current route on every API call (X-0kay-Page), so the scope set
-// in 设置 › 安全 also relaxes the server-side check. Here we only challenge on
-// entry: routes ticked in that list ask for the PIN before they are usable.
+// Purely a WebUI convenience: routes ticked in 设置 › 安全 challenge on entry.
+// Core does not trust this scope — sensitive actions always re-check the PIN —
+// so this guard only decides when to prompt before a page is usable. The
+// challenge fires once per tab; pinUnlocked stays true afterwards.
 watch(
   () => [
     route.path,
@@ -93,7 +94,6 @@ watch(
     pinUnlocked.value,
   ],
   () => {
-    setCurrentPage(route.path)
     if (pinUnlocked.value || pinRequired.value) return
     // Never stack the prompt on top of the wizard, the login or the PIN setup.
     if (!wizard.isCompleted || pinSetupRequired.value || authRequired.value) return

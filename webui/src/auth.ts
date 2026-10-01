@@ -51,12 +51,6 @@ export const pinSetupRequired = ref(false)
 
 /** PIN kept in memory for this tab and sent as X-0kay-Pin on API requests. */
 let pinValue = ''
-/** Route the UI is on, sent as X-0kay-Page so Core can honour the scope. */
-let currentPage = '/'
-
-export function setCurrentPage(path: string): void {
-  currentPage = path || '/'
-}
 
 function normalize(path: string): string {
   const clean = (path || '/').split('?')[0].replace(/\/+$/, '')
@@ -131,7 +125,7 @@ function canReplay(init?: RequestInit): boolean {
   return !(init?.body instanceof ReadableStream)
 }
 
-/** Inject the in-memory PIN (and the current route) on our own API requests. */
+/** Inject the in-memory PIN on our own API requests. */
 function withApiHeaders(input: RequestInfo | URL, init?: RequestInit): RequestInit | undefined {
   const url = apiUrl(input)
   const isApi = url.startsWith('/api/') || (() => {
@@ -143,9 +137,6 @@ function withApiHeaders(input: RequestInfo | URL, init?: RequestInit): RequestIn
   if (!isApi) return init
   const headers = new Headers(init?.headers)
   if (pinValue && !headers.has('X-0kay-Pin')) headers.set('X-0kay-Pin', pinValue)
-  // Tells Core which page the call came from so a scoped PIN can skip routes
-  // the owner left unprotected.
-  if (!headers.has('X-0kay-Page')) headers.set('X-0kay-Page', currentPage)
   return { ...(init || {}), headers }
 }
 

@@ -38,7 +38,7 @@
     "removePin": "清除 PIN",
     "removePinConfirm": "删除后本机不再保存访问 PIN，确定继续？",
     "pages": "进入时需要验证的页面",
-    "pagesHelp": "勾中的页面进入时要先输入 PIN；都不勾则只在改设置、装插件等敏感操作时验证。"
+    "pagesHelp": "勾中的页面在标签页首次进入时要求输入 PIN，解锁后本标签页内不再重复询问；改设置、装插件等敏感操作始终需要验证。"
   },
   "minecraftConsent": {
     "title": "Minecraft 机器人请求批准",

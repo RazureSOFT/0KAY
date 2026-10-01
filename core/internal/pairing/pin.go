@@ -119,12 +119,6 @@ func (s *Store) enforceLoginLimit(w http.ResponseWriter, r *http.Request) bool {
 // PinHeader carries the access PIN on a sensitive request.
 const PinHeader = "X-0kay-Pin"
 
-// PageHeader reports which WebUI route a request came from. It lets Core honour
-// the optional per-page scope: a request from a route the owner did not mark as
-// protected skips the PIN. A missing header is treated as "unknown" and stays
-// strict, so a client cannot opt out by simply dropping it.
-const PageHeader = "X-0kay-Page"
-
 // pinLength is the exact number of digits an access PIN has.
 const pinLength = 6
 
@@ -235,6 +229,52 @@ func (s *Store) SetSecurityPrefs(pinEnabled, loginEnabled *bool, pages *[]string
 		s.pinPages = append([]string(nil), *pages...)
 	}
 	return s.saveSecurityLocked()
+}
+
+// updateSecurity applies a new PIN and/or the master switches in one locked,
+// all-or-nothing step: a rejected PIN is reported before any field is changed
+// or written, so an invalid request can never leave the switches half-applied.
+// A nil argument leaves that value untouched; a non-nil empty PIN clears it.
+func (s *Store) updateSecurity(pin *string, pinEnabled, loginEnabled *bool, pages *[]string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var salt, hash []byte
+	if pin != nil {
+		value := strings.TrimSpace(*pin)
+		if value != "" {
+			if !validPIN(value) {
+				return fmt.Errorf("PIN must be exactly %d digits", pinLength)
+			}
+			salt = make([]byte, 16)
+			if _, err := rand.Read(salt); err != nil {
+				return err
+			}
+			hash = s.hashPIN(value, salt)
+		}
+	}
+	if pinEnabled != nil {
+		s.pinEnabled = *pinEnabled
+	}
+	if loginEnabled != nil {
+		s.loginEnabled = *loginEnabled
+	}
+	if pages != nil {
+		s.pinPages = append([]string(nil), *pages...)
+	}
+	if pin != nil {
+		s.pinSalt, s.pinHash = salt, hash
+	}
+	return s.saveSecurityLocked()
+}
+
+// allowLoginOff is the explicit escape hatch for disabling the sign-in gate
+// while LAN mode is on.
+func allowLoginOff() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("CORE_ALLOW_LOGIN_OFF"))) {
+	case "1", "true", "yes":
+		return true
+	}
+	return false
 }
 
 // securityState is the GET /api/security/pin payload.
@@ -369,46 +409,15 @@ func looksLikeBrowser(r *http.Request) bool {
 		r.Header.Get("Referer") != ""
 }
 
-// pageExempt reports whether the request came from a route the owner did not
-// mark as protected. It only applies once a scope is configured (PinPages is
-// non-empty); an unknown or missing route stays protected.
-func (s *Store) pageExempt(r *http.Request) bool {
-	pages := s.PinPages()
-	if len(pages) == 0 {
-		return false
-	}
-	page := strings.TrimSpace(r.Header.Get(PageHeader))
-	if page == "" {
-		return false
-	}
-	if i := strings.IndexByte(page, '?'); i >= 0 {
-		page = page[:i]
-	}
-	page = strings.TrimSuffix(page, "/")
-	if page == "" {
-		page = "/"
-	}
-	for _, listed := range pages {
-		entry := strings.TrimSuffix(strings.TrimSpace(listed), "/")
-		if entry == "" {
-			entry = "/"
-		}
-		if entry == page || strings.HasPrefix(page, entry+"/") {
-			return false
-		}
-	}
-	return true
-}
-
 // pinSatisfied reports whether a sensitive request may proceed: the PIN is off
-// or unset, the request came from an unscoped route, the caller is a trusted
-// *machine* client, uses a machine credential, or presents the PIN header.
-// Browser callers from loopback are not exempt.
+// or unset, the caller is a trusted *machine* client, uses a machine credential,
+// or presents the PIN header. Browser callers from loopback are not exempt.
+//
+// The per-page scope in PinPages is a WebUI convenience only: X-0kay-Page is
+// client-asserted and cannot be verified, so it must never relax this server
+// check. Scoped pages are challenged by the frontend route guard instead.
 func (s *Store) pinSatisfied(r *http.Request) bool {
 	if !s.HasPIN() || !s.PinEnabled() {
-		return true
-	}
-	if s.pageExempt(r) {
 		return true
 	}
 	if s.trustedPeer(r.RemoteAddr) && !looksLikeBrowser(r) {
@@ -512,15 +521,25 @@ func (s *Store) handlePIN(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		if wantsPrefs {
-			if err := s.SetSecurityPrefs(body.Enabled, body.LoginEnabled, body.Pages); err != nil {
-				writeErr(w, http.StatusInternalServerError, "internal", err.Error())
-				return
-			}
+		// Opening the API to the whole LAN is a deliberate, dangerous change:
+		// refuse it while LAN mode is on unless the operator opts in.
+		if s.enforce && body.LoginEnabled != nil && !*body.LoginEnabled && !allowLoginOff() {
+			writeErr(w, http.StatusBadRequest, "lan_login_required",
+				"the sign-in gate cannot be disabled while LAN mode is on (set CORE_ALLOW_LOGIN_OFF=1 to override)")
+			return
 		}
+		var pinArg *string
 		if wantsPin {
-			if err := s.SetPIN(body.Pin); err != nil {
-				writeErr(w, http.StatusBadRequest, "invalid_pin", err.Error())
+			pin := body.Pin
+			pinArg = &pin
+		}
+		if wantsPin || wantsPrefs {
+			if err := s.updateSecurity(pinArg, body.Enabled, body.LoginEnabled, body.Pages); err != nil {
+				if wantsPin {
+					writeErr(w, http.StatusBadRequest, "invalid_pin", err.Error())
+					return
+				}
+				writeErr(w, http.StatusInternalServerError, "internal", err.Error())
 				return
 			}
 		}

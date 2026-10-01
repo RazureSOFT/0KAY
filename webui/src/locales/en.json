@@ -38,7 +38,7 @@
     "removePin": "Delete PIN",
     "removePinConfirm": "This removes the stored access PIN from this machine. Continue?",
     "pages": "Pages that ask for the PIN",
-    "pagesHelp": "Ticked pages challenge on entry. With none ticked, only sensitive actions (settings, plugins, providers) ask."
+    "pagesHelp": "Ticked pages ask for the PIN when you first open them in a tab; once unlocked, that tab stays unlocked. Sensitive actions (settings, plugins, providers) always ask."
   },
   "minecraftConsent": {
     "title": "Minecraft bot needs approval",

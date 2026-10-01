@@ -128,7 +128,7 @@ async function onRemovePin() {
     <h2>{{ t('settings.tabs.security') }}</h2>
     <p class="card-desc">{{ t('security.desc') }}</p>
 
-    <div class="sec-block">
+    <div class="sec-stack">
       <label class="toggle-label">
         <input
           type="checkbox"
@@ -142,9 +142,7 @@ async function onRemovePin() {
           <small class="helper-text">{{ t('security.pinSwitchHelp') }}</small>
         </span>
       </label>
-    </div>
 
-    <div class="sec-block">
       <label class="toggle-label">
         <input
           type="checkbox"
@@ -158,65 +156,65 @@ async function onRemovePin() {
           <small class="helper-text">{{ t('security.loginSwitchHelp') }}</small>
         </span>
       </label>
-    </div>
 
-    <div class="sec-block">
-      <div class="sec-block-head">
-        <strong>{{ pinConfigured ? t('security.changePin') : t('auth.setupTitle') }}</strong>
-        <span class="sec-state" :class="{ on: pinConfigured }">
-          {{ pinConfigured ? t('security.pinSet') : t('security.pinUnset') }}
-        </span>
-      </div>
-      <div class="pin-row">
-        <div class="pin-field">
-          <label class="pin-label">{{ t('auth.pinNew') }}</label>
-          <PinInput v-model="newPin" />
-        </div>
-        <div class="pin-field">
-          <label class="pin-label">{{ t('auth.pinConfirm') }}</label>
-          <PinInput v-model="confirmPin" @complete="onChangePin" />
-        </div>
-      </div>
-      <div class="actions-row">
-        <button class="btn btn-primary" type="button" :disabled="busy" @click="onChangePin">
-          {{ t('auth.savePin') }}
-        </button>
-        <button
-          v-if="pinConfigured"
-          class="btn btn-tonal"
-          type="button"
-          :disabled="busy"
-          @click="onRemovePin"
-        >
-          {{ t('security.removePin') }}
-        </button>
-      </div>
-    </div>
-
-    <div class="sec-block">
-      <div class="sec-block-head">
-        <strong>{{ t('security.pages') }}</strong>
-        <span class="sec-state">{{ t('security.pageCount', { n: pinPages.length }) }}</span>
-      </div>
-      <p class="helper-text">{{ t('security.pagesHelp') }}</p>
-      <div class="page-list">
-        <label v-for="page in pages" :key="page.path" class="toggle-label page-toggle">
-          <input
-            type="checkbox"
-            :checked="pinPages.includes(page.path)"
-            :disabled="busy"
-            @change="onTogglePage(page.path, ($event.target as HTMLInputElement).checked)"
-          />
-          <span class="toggle-slider"></span>
-          <span class="page-name">
-            {{ page.label }}
-            <code>{{ page.path }}</code>
+      <section class="sec-card">
+        <div class="sec-card-head">
+          <strong>{{ pinConfigured ? t('security.changePin') : t('auth.setupTitle') }}</strong>
+          <span class="sec-chip" :class="{ on: pinConfigured }">
+            {{ pinConfigured ? t('security.pinSet') : t('security.pinUnset') }}
           </span>
-        </label>
-      </div>
+        </div>
+        <div class="sec-pin-grid">
+          <div class="sec-pin-col">
+            <span class="sec-pin-label">{{ t('auth.pinNew') }}</span>
+            <PinInput v-model="newPin" />
+          </div>
+          <div class="sec-pin-col">
+            <span class="sec-pin-label">{{ t('auth.pinConfirm') }}</span>
+            <PinInput v-model="confirmPin" @complete="onChangePin" />
+          </div>
+        </div>
+        <div class="sec-actions">
+          <button class="btn btn-primary" type="button" :disabled="busy" @click="onChangePin">
+            {{ t('auth.savePin') }}
+          </button>
+          <button
+            v-if="pinConfigured"
+            class="btn btn-tonal"
+            type="button"
+            :disabled="busy"
+            @click="onRemovePin"
+          >
+            {{ t('security.removePin') }}
+          </button>
+        </div>
+      </section>
+
+      <section class="sec-card">
+        <div class="sec-card-head">
+          <strong>{{ t('security.pages') }}</strong>
+          <span class="sec-chip">{{ t('security.pageCount', { n: pinPages.length }) }}</span>
+        </div>
+        <p class="helper-text">{{ t('security.pagesHelp') }}</p>
+        <div class="page-list">
+          <label v-for="page in pages" :key="page.path" class="page-item">
+            <input
+              type="checkbox"
+              :checked="pinPages.includes(page.path)"
+              :disabled="busy"
+              @change="onTogglePage(page.path, ($event.target as HTMLInputElement).checked)"
+            />
+            <span class="toggle-slider"></span>
+            <span class="page-text">
+              <span class="page-name">{{ page.label }}</span>
+              <code>{{ page.path }}</code>
+            </span>
+          </label>
+        </div>
+      </section>
     </div>
 
-    <p v-if="msg" class="helper-text">{{ msg }}</p>
+    <p v-if="msg" class="helper-text sec-msg">{{ msg }}</p>
     <p v-if="error" class="sec-error">{{ error }}</p>
   </div>
 </template>
@@ -224,72 +222,144 @@ async function onRemovePin() {
 <style scoped>
 .security-panel { max-width: 920px; }
 
-.sec-block {
-  margin-bottom: 26px;
-  padding-bottom: 22px;
-  border-bottom: 1px solid color-mix(in srgb, var(--md-outline-variant) 45%, transparent);
-}
-.sec-block:last-of-type { border-bottom: 0; padding-bottom: 0; }
-
-.sec-block-head {
+/* Uniform card stack: the switches reuse the global .toggle-label card, so
+   every section below shares the same border/radius/surface tokens. */
+.sec-stack {
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.sec-card {
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--md-outline-variant) 60%, transparent);
+  border-radius: 22px;
+  background: var(--md-surface-container-lowest);
+}
+
+.sec-card-head {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
-.sec-block-head strong { font-size: 15px; font-weight: 700; }
-.sec-state {
+.sec-card-head strong { font-size: 15px; font-weight: 700; }
+
+.sec-chip {
   flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
   color: var(--md-on-surface-variant);
+  background: var(--md-surface-container);
 }
-.sec-state.on { color: var(--md-primary); }
+.sec-chip.on {
+  color: color-mix(in srgb, var(--md-primary) 80%, var(--md-on-surface));
+  background: color-mix(in srgb, var(--md-primary) 12%, transparent);
+}
 
-.sec-block .helper-text { margin-bottom: 12px; }
-.sec-block .sec-block-head + .pin-row { margin-top: 12px; }
-/* Inside a switch card the help line sits under the title, not after the card. */
-#app .security-panel .toggle-label .helper-text { margin-bottom: 0; }
+.sec-card > .helper-text { margin: 2px 0 12px; }
 
-/* PIN entry — the wizard's .pin-row/.pin-field styles are scoped to it, so the
-   layout has to be declared here or the boxes stretch to the full card width. */
-.pin-row {
+/* Each PIN group sits in its own tinted inset, so the new-PIN and confirm
+   boxes never share a row or overlap. Scoped names avoid the wizard's
+   #app .pin-row rules entirely. */
+.sec-pin-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 16px;
-  max-width: 620px;
+  gap: 14px 20px;
+  max-width: 720px;
+  margin-top: 12px;
 }
-.pin-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.pin-label {
-  display: block;
+.sec-pin-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 14px 14px;
+  border-radius: 16px;
+  background: var(--md-surface-container-low);
+}
+.sec-pin-label {
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
   color: var(--md-on-surface-variant);
 }
 
+.sec-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+/* Page scope: light rows inside the card instead of nested cards. */
 .page-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 10px;
+  gap: 6px;
 }
-/* The global switch card rule is #app-scoped, so matching it needs the same head. */
-#app .security-panel .page-toggle { padding: 12px 14px; gap: 12px; border-radius: 18px; }
-.page-name { font-size: 13px; font-weight: 600; }
-.page-name code {
-  display: block;
-  margin-top: 2px;
+.page-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background-color 160ms;
+}
+.page-item:hover { background: var(--md-surface-container); }
+.page-item:has(input:checked) {
+  background: color-mix(in srgb, var(--md-primary) 8%, transparent);
+}
+.page-item input { position: absolute; opacity: 0; width: 0; height: 0; }
+.page-item .toggle-slider { width: 44px; height: 26px; }
+.page-item .toggle-slider::after {
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+}
+.page-item input:checked + .toggle-slider {
+  background: var(--md-primary);
+  border-color: var(--md-primary);
+}
+.page-item input:checked + .toggle-slider::after {
+  left: 25px;
+  background: var(--md-on-primary);
+  color: var(--md-primary);
+}
+.page-item input:focus-visible + .toggle-slider {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-primary) 22%, transparent);
+}
+.page-text {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.page-name {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--md-on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.page-text code {
   font-size: 11px;
-  font-weight: 500;
   color: var(--md-on-surface-variant);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+.sec-msg { margin-top: 12px; }
 .sec-error { color: var(--md-error); font-size: 12.5px; margin-top: 8px; }
 
-@media (max-width: 720px) {
-  .pin-row { grid-template-columns: 1fr; }
+@media (max-width: 640px) {
+  .sec-pin-grid { grid-template-columns: 1fr; }
 }
 </style>
