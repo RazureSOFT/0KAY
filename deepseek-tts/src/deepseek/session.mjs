@@ -181,8 +181,28 @@ export async function fetchMessages({
   return { messages, cacheControl: data.biz_data.cache_control ?? null, raw: json };
 }
 
-/** 取消息的正文（服务端一般是 string，但别假定）。 */
+/**
+ * 取消息的正文。
+ *
+ * 2026-10 起服务端改了 history_messages 的形状：正文不再挂在消息顶层的
+ * content/text 上，而是放进 `fragments[]`（`{id,type,content,...}`），用户那条是
+ * type=REQUEST、模型那条是 type=RESPONSE（中间可能夹着 THINK/搜索片段）。
+ * 旧形状（顶层 content/text）也一并认，免得服务端来回横跳。
+ */
+const TEXT_FRAGMENT_TYPES = new Set(['RESPONSE', 'REQUEST', 'TEXT', 'CONTENT']);
+
 export function messageText(m) {
+  const fragments = m?.fragments;
+  if (Array.isArray(fragments) && fragments.length) {
+    const withText = fragments.filter((f) => f && typeof f.content === 'string');
+    // 优先挑正文片段，把思考/搜索那些排除掉；一个都没有再退回全部片段。
+    const preferred = withText.filter((f) =>
+      TEXT_FRAGMENT_TYPES.has(String(f.type ?? '').toUpperCase()),
+    );
+    const chosen = preferred.length ? preferred : withText;
+    const text = chosen.map((f) => f.content).join('');
+    if (text) return text;
+  }
   const c = m?.content ?? m?.text;
   if (typeof c === 'string') return c;
   if (c === null || c === undefined) return '';
