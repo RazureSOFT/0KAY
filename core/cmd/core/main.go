@@ -59,8 +59,8 @@ func main() {
 	// First-party platform plugins bypass the manifest permission allow-lists
 	// (their egress is fully permitted). Third-party plugins are enforced.
 	reg.SetTrusted([]string{
-		"webui", "agent", "life", "mocr", "mcp", "searxng", "minecraft",
-		"pm", "0kay-pm", "fluentui", "free-model", "marketplace",
+		"webui", "agent", "life", "mocr", "mcp", "minecraft",
+		"pm", "0kay-pm", "fluentui", "liquidglass", "free-model", "marketplace",
 	})
 
 	// GitHub mirror for plugin/update fetches (Settings → Plugin updates).
@@ -264,23 +264,9 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 		}
 	}
 
-	// Optional: local SearXNG (searxng service) if enabled
-	if os.Getenv("SEARXNG_ENABLED") == "1" || os.Getenv("SEARXNG_URL") != "" {
-		searxAddr := os.Getenv("SEARXNG_URL")
-		if searxAddr == "" {
-			searxAddr = "http://127.0.0.1:8888"
-		}
-		if _, err := reg.RegisterBuiltin(&pluginv1.PluginInfo{
-			Name:        "searxng",
-			Version:     version.Version,
-			Description: "SearXNG meta-search engine (local)",
-			Author:      "0kay",
-			PluginType:  pluginv1.PluginType_PLUGIN_TYPE_TOOL,
-		}, []string{"search"}, searxAddr); err != nil {
-			log.Printf("register searxng builtin: %v", err)
-		}
-		registerSearxngSettings(setStore)
-	}
+	// Web search is built into Core now (no standalone searxng plugin/process):
+	// the engine preference is a core-owned settings section.
+	registerSearchSettings(setStore)
 }
 
 // registerUpdateSettings contributes the updates panel preferences. The section
@@ -335,23 +321,23 @@ func registerMcpSettings(setStore *settings.Store) {
 	})
 }
 
-// registerSearxngSettings contributes the engine picker under Settings.
-func registerSearxngSettings(setStore *settings.Store) {
+// registerSearchSettings contributes the built-in web-search engine picker.
+// Search runs inside Core (no standalone service or port).
+func registerSearchSettings(setStore *settings.Store) {
 	setStore.RegisterSection(settings.Section{
-		ID:          "searxng",
+		ID:          "search",
 		Label:       "搜索",
 		Icon:        "search",
 		Order:       80,
-		Description: "SearXNG 元搜索引擎设置",
-		PluginName:  "searxng",
+		Description: "内置网页搜索（Core 原生长能力，无需独立服务/端口）",
 		Fields: []settings.Field{
 			{
 				Key:          "engine",
 				Type:         "select",
 				Label:        "搜索引擎",
 				DefaultValue: "cnbing",
-				Options:      []string{"cnbing", "bing", "so360", "duckduckgo", "marginalia"},
-				Help:         "默认 cnbing（中国区 Bing）；可切换 bing / 360 搜索 / duckduckgo / marginalia",
+				Options:      []string{"cnbing", "bing", "so360", "duckduckgo"},
+				Help:         "默认 cnbing（中国区 Bing）；可切换 bing / 360 搜索 / duckduckgo",
 			},
 		},
 	})

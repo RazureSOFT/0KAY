@@ -45,7 +45,7 @@ func TestComponentForPackage(t *testing.T) {
 }
 
 func TestEverySourceComponentIsAddressable(t *testing.T) {
-	for _, name := range []string{"core", "mocr", "life", "agent", "webui", "searxng", "mcp", "minecraft", "pm"} {
+	for _, name := range []string{"core", "mocr", "life", "agent", "webui", "mcp", "minecraft", "pm"} {
 		if _, ok := PackageFor(name); !ok {
 			t.Errorf("PackageFor(%q) not defined", name)
 		}

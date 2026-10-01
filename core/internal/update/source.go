@@ -24,7 +24,7 @@ type sourcePlan struct {
 // componentSubdir maps a plugin name to its directory inside the source tree.
 func componentSubdir(plugin string) (string, bool) {
 	switch plugin {
-	case "core", "mocr", "life", "agent", "webui", "searxng", "mcp", "minecraft", "pm":
+	case "core", "mocr", "life", "agent", "webui", "mcp", "minecraft", "pm":
 		return plugin, true
 	}
 	return "", false
@@ -43,8 +43,6 @@ func componentPort(plugin string) int {
 		return 50054
 	case "webui":
 		return 3000
-	case "searxng":
-		return 8888
 	case "minecraft":
 		return 8765
 	}
@@ -113,7 +111,6 @@ var platformComponents = map[string]struct {
 	"@razuresoft/0kay-webui":     {"webui", "https://github.com/RazureSOFT/0KAY.git"},
 	"@razuresoft/0kay-life":      {"life", "https://github.com/RazureSOFT/0KAY.git"},
 	"@razuresoft/0kay-mocr":      {"mocr", "https://github.com/RazureSOFT/0KAY.git"},
-	"@razuresoft/0kay-searxng":   {"searxng", "https://github.com/RazureSOFT/0KAY.git"},
 	"@razuresoft/0kay-pm":        {"pm", "https://github.com/RazureSOFT/0KAY-pm.git"},
 	"@razuresoft/0kay-agent":     {"agent", "https://github.com/RazureSOFT/0KAY-agent.git"},
 	"@razuresoft/0kay-mcp":       {"mcp", "https://github.com/RazureSOFT/0KAY-mcp.git"},

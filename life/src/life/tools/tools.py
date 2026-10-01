@@ -379,74 +379,28 @@ class SearchTool(Tool):
 
         import os
 
-        # Prefer local SearXNG (self-hosted), then external SEARXNG_URL, then DDG.
-        searx = (os.environ.get("SEARXNG_URL") or "http://127.0.0.1:8888").rstrip("/")
-        ddg = os.environ.get("SEARCH_DDG", "1") == "1"
+        from life.http_auth import auth_headers
 
-        async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
-            # 1) Local/remote SearXNG
-            if searx:
-                try:
-                    resp = await client.get(
-                        f"{searx}/search",
-                        params={"q": query, "format": "json"},
-                        headers={"Accept": "application/json"},
-                    )
-                    resp.raise_for_status()
-                    payload = resp.json()
-                    results = []
-                    for r in payload.get("results", [])[: max(1, int(num_results))]:
-                        results.append({
-                            "title": r.get("title", ""),
-                            "url": r.get("url", ""),
-                            "snippet": r.get("content", ""),
-                        })
-                    if results:
-                        return ToolResult(
-                            success=True,
-                            data={"results": results, "query": query, "engine": "searxng"},
-                        )
-                except Exception:
-                    pass  # fall through to DDG
-
-            # 2) DuckDuckGo fallback
-            if ddg:
-                try:
-                    resp = await client.post(
-                        "https://html.duckduckgo.com/html/",
-                        data={"q": query},
-                        headers={"User-Agent": "0kay-life/0.1"},
-                    )
-                    resp.raise_for_status()
-                    results = []
-                    import re
-                    blocks = re.findall(
-                        r'<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>.*?'
-                        r'(?:class="result__snippet"[^>]*>(.*?)</(?:a|td)>)?',
-                        resp.text,
-                        flags=re.S,
-                    )
-                    for href, title, snippet in blocks[: max(1, int(num_results))]:
-                        title = re.sub(r"<[^>]+>", "", title or "").strip()
-                        snippet = re.sub(r"<[^>]+>", "", snippet or "").strip()
-                        if "uddg=" in href:
-                            from urllib.parse import parse_qs, urlparse, unquote
-                            qs = parse_qs(urlparse(href).query)
-                            href = unquote(qs.get("uddg", [href])[0])
-                        results.append({"title": title, "url": href, "snippet": snippet})
-                    if results:
-                        return ToolResult(
-                            success=True,
-                            data={"results": results, "query": query, "engine": "duckduckgo"},
-                        )
-                except Exception as e:
-                    return ToolResult(success=False, data=None, error=str(e) or "search failed")
-
-            return ToolResult(
-                success=False,
-                data=None,
-                error=f"search failed (searx={searx or 'off'}, ddg={'on' if ddg else 'off'})",
-            )
+        # Search is a built-in Core capability now (no standalone SearXNG service).
+        base = (os.environ.get("CORE_HTTP_ADDR") or os.environ.get("CORE_HTTP") or "http://127.0.0.1:8080").rstrip("/")
+        limit = max(1, int(num_results))
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                response = await client.get(
+                    f"{base}/api/search",
+                    params={"q": query, "n": limit},
+                    headers=auth_headers(),
+                )
+            if response.status_code != 200:
+                return ToolResult(False, None, f"搜索失败（HTTP {response.status_code}）")
+            payload = response.json()
+            results = [
+                {"title": r.get("title", ""), "url": r.get("url", ""), "snippet": r.get("snippet", "")}
+                for r in (payload.get("results") or [])[:limit]
+            ]
+            return ToolResult(True, {"results": results, "query": query, "engine": payload.get("engine", "core")})
+        except Exception as error:  # noqa: BLE001
+            return ToolResult(False, None, str(error) or "search failed")
 
 
 class UseAgentTool(Tool):

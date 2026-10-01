@@ -141,7 +141,7 @@ func numeric(part string) int {
 // The second result reports whether the plugin ships in a known repository.
 func RepositoryFor(plugin string) (owner, repo string, known bool) {
 	switch plugin {
-	case "mocr", "life", "webui", "mcp", "searxng", "core":
+	case "mocr", "life", "webui", "mcp", "core":
 		return ownerUmbrella, repoUmbrella, true
 	case "agent":
 		return ownerUmbrella, repoAgent, true

@@ -48,8 +48,6 @@ func PackageFor(plugin string) (string, bool) {
 		return "@razuresoft/0kay-minecraft", true
 	case "pm":
 		return "@razuresoft/0kay-pm", true
-	case "searxng":
-		return "@razuresoft/0kay-searxng", true
 	}
 	return "", false
 }
