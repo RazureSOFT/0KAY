@@ -133,6 +133,10 @@ func main() {
 	gw.SetStdioRunner(stdioRunner)
 	registerStdioProviders(stdioRunner, provStore, cfg.HTTPAddr())
 
+	// Settings sections declared by installed packages (used by stdio plugins,
+	// which have no gRPC registration channel).
+	registerPluginSettings(setStore)
+
 	// Start heartbeat checker
 	go startHeartbeatChecker(reg, cfg)
 
@@ -360,6 +364,32 @@ func queryStdioModels(runner *stdioprovider.Runner, id, route string) []string {
 		}
 	}
 	return models
+}
+
+// registerPluginSettings registers settings sections declared by installed
+// packages in their manifest `settings` block.
+func registerPluginSettings(setStore *settings.Store) {
+	if setStore == nil {
+		return
+	}
+	for _, spec := range update.PluginSettingsSpecs() {
+		fields := make([]settings.Field, 0, len(spec.Fields))
+		for _, f := range spec.Fields {
+			fields = append(fields, settings.Field{
+				Key: f.Key, Type: f.Type, Label: f.Label,
+				DefaultValue: f.DefaultValue, Help: f.Help, Options: f.Options,
+			})
+		}
+		setStore.RegisterSection(settings.Section{
+			ID:          spec.ID,
+			Label:       spec.Label,
+			Icon:        spec.Icon,
+			Order:       int32(spec.Order),
+			Description: spec.Description,
+			Fields:      fields,
+			PluginName:  spec.ID,
+		})
+	}
 }
 
 // registerUpdateSettings contributes the updates panel preferences. The section

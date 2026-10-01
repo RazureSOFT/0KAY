@@ -40,6 +40,7 @@ package identity, version, build and run commands. The file is consumed by
 | `permissions` | object / no | Declared API + egress permissions (below). Enforced by Core at runtime |
 | `capabilities` | object / no | Declared contributions: commands / skills / hooks / mcpServers / agents (below) |
 | `provider` | object / no | Declares an OpenAI-compatible model provider Core hosts over stdio (below) |
+| `settings` | object / no | Declares a WebUI Settings section Core registers for the package (below) |
 | `modules` | string[] / no | Sub-manifest paths (relative to the repo root) used by an umbrella package |
 | `repositories` | object[] / no | External sub-repository declarations, each `{path, package, url}` |
 | `ui` | object / no | Optional plugin WebUI build/publish config (below) |
@@ -203,6 +204,27 @@ slow child never blocks startup), and proxies through
 `GET/POST /api/stdio-provider/{id}/{path...}`. After installing a package that
 declares `provider`, **restart Core** so the child is spawned. The `free-model`
 and `deepseek-web` provider plugins run this way with no listening port.
+
+A provider package can also declare a **`settings`** section that Core registers
+so the WebUI renders a configuration panel (it has no gRPC registration channel):
+
+```json
+"settings": {
+  "id": "deepseek-web",
+  "label": "DeepSeek Web",
+  "icon": "cloud",
+  "order": 82,
+  "description": "DeepSeek web login provider settings",
+  "fields": [
+    { "key": "token", "type": "text", "label": "Bearer Token", "default_value": "", "help": "..." },
+    { "key": "auth_file", "type": "text", "label": "Credential file", "default_value": "", "help": "..." }
+  ]
+}
+```
+
+`fields` uses the same `settings.Field` shape as gRPC-contributed sections
+(bool/number/text/select). Core registers the section from every installed
+manifest at boot; the plugin reads its values back with `GET /api/settings/<id>`.
 
 ### 0.2 Umbrella packages and sub-repositories
 
