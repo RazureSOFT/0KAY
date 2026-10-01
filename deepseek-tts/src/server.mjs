@@ -20,6 +20,7 @@
 import http from 'node:http'
 import { registerWithCore, getSettings } from './register.mjs'
 import { say, pcmToWav } from './deepseek/index.mjs'
+import { createSerialQueue } from './serial.mjs'
 
 const PORT = Number(process.env.DEEPSEEK_TTS_PORT || 8792)
 const HOST = process.env.DEEPSEEK_TTS_HOST || '127.0.0.1'
@@ -29,11 +30,38 @@ const MAX_TEXT = 600
 
 const log = (m) => console.log(`[deepseek-tts] ${m}`)
 
-/** Synthesize text to a WAV buffer using the vendored DeepSeek client. */
+const enqueueSynth = createSerialQueue()
+
+/** DeepSeek 并发时会 1006 零帧，这类错重试一下通常就好。 */
+const TRANSIENT_SYNTH = /1006|零帧|0 帧|ticket|websocket/i
+
+/**
+ * Synthesize text to a WAV buffer using the vendored DeepSeek client.
+ *
+ * DeepSeek 不允许多路朗读会话并发，所以先用串行队列把请求排开；对偶发的
+ * 1006/零帧再重试两次。
+ */
 async function synthesize(text, voice, token) {
-  const result = await say({ text, voice, token, format: 'pcm' })
-  if (!result?.audio || !result.audio.length) throw new Error('empty audio')
-  return pcmToWav(result.audio)
+  return enqueueSynth(async () => {
+    let lastError
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const result = await say({ text, voice, token, format: 'pcm' })
+        if (!result?.audio || !result.audio.length) throw new Error('empty audio')
+        return pcmToWav(result.audio)
+      } catch (error) {
+        lastError = error
+        const message = String(error?.message || error)
+        if (attempt < 2 && TRANSIENT_SYNTH.test(message)) {
+          log(`synth transient error, retry ${attempt + 1}: ${message}`)
+          await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)))
+          continue
+        }
+        throw error
+      }
+    }
+    throw lastError
+  })
 }
 
 function readBody(req) {
