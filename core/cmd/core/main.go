@@ -293,37 +293,49 @@ func registerStdioProviders(runner *stdioprovider.Runner, store *providers.Store
 			log.Printf("[stdio] start provider %s: %v", spec.ID, err)
 			continue
 		}
-		models := spec.Models
-		if discovered := discoverStdioModels(runner, spec.ID, spec.Route); len(discovered) > 0 {
-			models = discovered
-		}
-		defaultModel := spec.DefaultModel
-		if defaultModel == "" && len(models) > 0 {
-			defaultModel = models[0]
-		}
-		baseURL := fmt.Sprintf("http://127.0.0.1:%s/api/stdio-provider/%s%s", port, spec.ID, spec.Route)
-		if err := store.Upsert(providers.ProviderConfig{
-			ID:           spec.ID,
-			Provider:     "custom",
-			Name:         spec.Name,
-			BaseURL:      baseURL,
-			APIKey:       "stdio-local",
-			Models:       models,
-			DefaultModel: defaultModel,
-			Enabled:      true,
-			Format:       "openai",
-		}); err != nil {
-			log.Printf("[stdio] register provider %s: %v", spec.ID, err)
-			continue
-		}
-		log.Printf("[stdio] hosting provider %q for %s at %s (%d models)", spec.ID, spec.Package, baseURL, len(models))
+		go registerOneStdioProvider(runner, store, port, spec)
 	}
 }
 
-// discoverStdioModels asks a freshly-started stdio provider for its model list
-// (GET <route>/models) so dynamic catalogs register without a manifest list.
-func discoverStdioModels(runner *stdioprovider.Runner, id, route string) []string {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+// registerOneStdioProvider discovers a provider's models (retrying while the
+// child warms up) and registers it with the provider store. Runs in the
+// background so Core startup is never blocked by a slow plugin.
+func registerOneStdioProvider(runner *stdioprovider.Runner, store *providers.Store, port string, spec update.ProviderSpec) {
+	models := spec.Models
+	for attempt := 0; attempt < 36 && len(models) == 0; attempt++ {
+		if attempt > 0 {
+			time.Sleep(5 * time.Second)
+		}
+		models = queryStdioModels(runner, spec.ID, spec.Route)
+	}
+	if len(models) == 0 {
+		models = spec.Models
+	}
+	defaultModel := spec.DefaultModel
+	if defaultModel == "" && len(models) > 0 {
+		defaultModel = models[0]
+	}
+	baseURL := fmt.Sprintf("http://127.0.0.1:%s/api/stdio-provider/%s%s", port, spec.ID, spec.Route)
+	if err := store.Upsert(providers.ProviderConfig{
+		ID:           spec.ID,
+		Provider:     "custom",
+		Name:         spec.Name,
+		BaseURL:      baseURL,
+		APIKey:       "stdio-local",
+		Models:       models,
+		DefaultModel: defaultModel,
+		Enabled:      true,
+		Format:       "openai",
+	}); err != nil {
+		log.Printf("[stdio] register provider %s: %v", spec.ID, err)
+		return
+	}
+	log.Printf("[stdio] hosting provider %q for %s at %s (%d models)", spec.ID, spec.Package, baseURL, len(models))
+}
+
+// queryStdioModels asks a running stdio provider for its model list.
+func queryStdioModels(runner *stdioprovider.Runner, id, route string) []string {
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
 	status, _, chunks, err := runner.Do(ctx, id, http.MethodGet, route+"/models", map[string]string{"Accept": "application/json"}, nil)
 	if err != nil || status != http.StatusOK {
