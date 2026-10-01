@@ -45,6 +45,78 @@ let dragging = false
 let dragPointerId: number | null = null
 let dragOffset = { x: 0, y: 0 }
 
+// --- lip sync: drive the mouth while a TTS clip plays ---
+let audioEl: HTMLAudioElement | null = null
+let audioCtx: AudioContext | null = null
+let analyser: AnalyserNode | null = null
+let audioData: Uint8Array | null = null
+let speaking = false
+let mouthSmoothed = 0
+
+function setMouth(value: number) {
+  const core = live2dModel?.internalModel?.coreModel
+  if (!core) return
+  const v = clamp(value, 0, 1)
+  try {
+    if (typeof core.setParameterValueById === 'function') core.setParameterValueById('ParamMouthOpenY', v)
+    else if (typeof core.setParamFloat === 'function') core.setParamFloat('ParamMouthOpenY', v)
+  } catch { /* model lacks the parameter */ }
+}
+
+function onBeforeModelUpdate() {
+  if (!speaking) { if (mouthSmoothed !== 0) { mouthSmoothed = 0; setMouth(0) } return }
+  if (analyser && audioData) {
+    analyser.getByteTimeDomainData(audioData)
+    let sum = 0
+    for (let i = 0; i < audioData.length; i++) { const d = (audioData[i] - 128) / 128; sum += d * d }
+    const rms = Math.sqrt(sum / audioData.length)
+    const target = clamp(rms * 3.4, 0, 1)
+    mouthSmoothed = mouthSmoothed * 0.35 + target * 0.65
+    setMouth(mouthSmoothed)
+  } else {
+    setMouth(0.6)
+  }
+}
+
+async function speak(url: string) {
+  if (!url || !live2dModel) return
+  try {
+    if (!audioEl) {
+      audioEl = new Audio()
+      audioEl.crossOrigin = 'anonymous'
+      audioEl.addEventListener('ended', () => { speaking = false; mouthSmoothed = 0; setMouth(0) })
+    }
+    audioEl.src = url
+    if (!audioCtx) {
+      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+      if (Ctx) {
+        audioCtx = new Ctx()
+        analyser = audioCtx.createAnalyser()
+        analyser.fftSize = 1024
+        audioData = new Uint8Array(analyser.fftSize)
+        const source = audioCtx.createMediaElementSource(audioEl)
+        source.connect(analyser)
+        analyser.connect(audioCtx.destination)
+      }
+    }
+    await audioCtx?.resume().catch(() => {})
+    speaking = true
+    await audioEl.play().catch(() => { speaking = false })
+  } catch { speaking = false }
+}
+
+function stopSpeaking() {
+  speaking = false
+  mouthSmoothed = 0
+  setMouth(0)
+  try { audioEl?.pause() } catch { /* ignore */ }
+}
+
+function onLive2DSpeak(event: Event) {
+  const url = (event as CustomEvent<{ url?: string }>).detail?.url
+  if (url) void speak(url)
+}
+
 const TRANSFORM_KEY_PREFIX = '0kay.web.live2d.transform.'
 
 function libsReady(): boolean {
@@ -431,6 +503,7 @@ async function loadModel() {
     model.anchor?.set?.(0.5, 0.5)
     pixiApp.stage.addChild(model)
     fitModel()
+    try { model.internalModel?.on?.('beforeModelUpdate', onBeforeModelUpdate) } catch { /* optional */ }
     loadState.value = 'ok'
     refreshFocusFromLastPointer()
 
@@ -461,6 +534,8 @@ function scheduleReload() {
 
 onMounted(async () => {
   window.addEventListener('live2d-models-changed',loadModelList)
+  window.addEventListener('live2d-speak',onLive2DSpeak as EventListener)
+  ;(window as unknown as { __0KAY_LIVE2D__?: unknown }).__0KAY_LIVE2D__ = { speak, stop: stopSpeaking }
   try {
     const response=await fetch('/api/settings/live2d')
     if(response.ok) {const {values}=await response.json();if(values && typeof values.enabled==='boolean')wizard.live2d.enabled=values.enabled;if(values && typeof values.model_url==='string')wizard.live2d.modelUrl=values.model_url}
@@ -472,6 +547,10 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('live2d-models-changed',loadModelList)
+  window.removeEventListener('live2d-speak',onLive2DSpeak as EventListener)
+  stopSpeaking()
+  try { audioCtx?.close() } catch { /* ignore */ }
+  audioCtx = null
   loadToken++
   cancelAnimationFrame(rafId)
   disposeApp()
