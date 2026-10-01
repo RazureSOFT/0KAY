@@ -1,0 +1,2 @@
+[deepseek-tts] listening on http://127.0.0.1:8792 -> http://127.0.0.1:8792/
+[deepseek-tts] DS_TOKEN is not set; synthesis is disabled and LIFE tts_endpoint is not registered

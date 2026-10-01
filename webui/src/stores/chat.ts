@@ -42,6 +42,7 @@ export const useChatStore = defineStore('chat', () => {
   } | null>(null)
   const contextSummary = ref('')
   const compacting = ref(false)
+  const voiceEnabled = ref(localStorage.getItem('0kay.voice') === '1')
 
   let ws: WebSocket | null = null
   let messageIdCounter = 0
@@ -451,6 +452,32 @@ export const useChatStore = defineStore('chat', () => {
       // Stream ended without done — treat as complete
       isTyping.value = false
     }
+    void speakMessage(requestId)
+  }
+
+  function setVoiceEnabled(value: boolean) {
+    voiceEnabled.value = value
+    try { localStorage.setItem('0kay.voice', value ? '1' : '0') } catch { /* ignore */ }
+  }
+
+  // Speak the finished assistant reply through Core's /api/tts and hand the audio
+  // to the Live2D stage (live2d-speak) for lip-sync. Best effort.
+  async function speakMessage(requestId: string) {
+    if (!voiceEnabled.value) return
+    const message = messages.value.find((m) => m.role === 'assistant' && m.requestId === requestId)
+    const text = (message?.content || '').trim()
+    if (!text) return
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.slice(0, 600) }),
+      })
+      if (!res.ok) return
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      window.dispatchEvent(new CustomEvent('live2d-speak', { detail: { url, text } }))
+    } catch { /* voice is best effort */ }
   }
 
   function abortActiveSse() {
@@ -507,7 +534,9 @@ export const useChatStore = defineStore('chat', () => {
     contextTokens,
     contextSummary,
     compacting,
+    voiceEnabled,
     lastMessage,
+    setVoiceEnabled,
     connect,
     sendMessage,
     uploadImage,

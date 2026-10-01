@@ -1,0 +1,7 @@
+{
+  "name": "@razuresoft/0kay-deepseek-tts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local DeepSeek TTS HTTP service for 0KAY (LIFE voice + WebUI lip-sync)."
+}

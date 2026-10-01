@@ -274,6 +274,9 @@ watch(
           {{ t('chat.connected') }}
         </span>
         <span class="hint">上下文约 {{ chatStore.contextTokens.toLocaleString() }} tokens</span>
+        <button class="context-btn" type="button" :class="{ active: chatStore.voiceEnabled }" :title="chatStore.voiceEnabled ? '关闭语音朗读' : '开启语音朗读（Live2D 口型同步）'" @click="chatStore.setVoiceEnabled(!chatStore.voiceEnabled)">
+          {{ chatStore.voiceEnabled ? '🔊 语音开' : '🔇 语音关' }}
+        </button>
         <button class="context-btn" type="button" :disabled="chatStore.messages.length === 0" @click="downloadHistory">
           {{ t('chat.download') }}
         </button>
