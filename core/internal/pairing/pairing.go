@@ -66,6 +66,14 @@ type Store struct {
 	// credential (paired-device token or CORE_API_TOKEN).
 	pinSalt []byte
 	pinHash []byte
+	// pinEnabled/loginEnabled are the owner-facing master switches stored in
+	// security.json (both default to on). Disabling the PIN keeps it stored;
+	// disabling login opens the HTTP API to any caller that can reach Core.
+	pinEnabled   bool
+	loginEnabled bool
+	// pinPages scopes verification to these WebUI routes. Empty keeps the
+	// historical behaviour (sensitive actions only).
+	pinPages []string
 	// logins throttles failed credential attempts (PIN/token) per remote host so
 	// the 6-digit PIN cannot be brute-forced.
 	logins map[string]*loginAttempt
@@ -106,7 +114,7 @@ func New(directory string) (*Store, error) {
 		return nil, err
 	}
 	name, _ := os.Hostname()
-	s := &Store{Name: name, path: filepath.Join(directory, "paired_devices.json"), Devices: map[string]Device{}, requests: map[string]*Request{}, addresses: map[string]string{}, logins: map[string]*loginAttempt{}, enforce: os.Getenv("CORE_LAN_ENABLED") == "1", trusted: trustedNetworks(os.Getenv("CORE_TRUSTED_NETWORKS"))}
+	s := &Store{Name: name, path: filepath.Join(directory, "paired_devices.json"), Devices: map[string]Device{}, requests: map[string]*Request{}, addresses: map[string]string{}, logins: map[string]*loginAttempt{}, enforce: os.Getenv("CORE_LAN_ENABLED") == "1", trusted: trustedNetworks(os.Getenv("CORE_TRUSTED_NETWORKS")), pinEnabled: true, loginEnabled: true}
 	existingInstall := false
 	if data, err := os.ReadFile(s.path); err == nil {
 		existingInstall = true
@@ -230,9 +238,19 @@ func bearerToken(header string) string {
 // authorized reports whether the caller may reach the API and names the method
 // that satisfied the check. Trusted (loopback / CORE_TRUSTED_NETWORKS) callers
 // always pass; everyone else needs a paired-device token, the API token, or the
-// session cookie minted by POST /api/auth/session.
+// session cookie minted by POST /api/auth/session. Turning login off in the
+// security settings short-circuits the whole gate.
 func (s *Store) authorized(r *http.Request) (bool, string) {
+	if !s.LoginEnabled() {
+		return true, "open"
+	}
 	if s.trustedPeer(r.RemoteAddr) {
+		// A browser tab holding no session has to prove the PIN even over
+		// loopback: the sign-in overlay is dismissible, so the gate has to hold
+		// server-side or "not now" would hand over the whole API.
+		if s.HasPIN() && s.PinEnabled() && looksLikeBrowser(r) {
+			return s.browserSession(r)
+		}
 		return true, "trusted"
 	}
 	if token := bearerToken(r.Header.Get("Authorization")); token != "" && (s.valid(token) || apiToken(token)) {
@@ -249,6 +267,19 @@ func (s *Store) authorized(r *http.Request) (bool, string) {
 // ValidMachineToken reports whether token is a paired-device token or the
 // shared CORE_API_TOKEN. It is used to gate endpoints that must not be reached
 // by a browser session (e.g. the plaintext credential export).
+// browserSession reports whether a browser caller carries a usable session
+// cookie (a paired-device token, the API token, or a PIN session).
+func (s *Store) browserSession(r *http.Request) (bool, string) {
+	cookie, err := r.Cookie(SessionCookie)
+	if err != nil || cookie.Value == "" {
+		return false, ""
+	}
+	if s.valid(cookie.Value) || apiToken(cookie.Value) || s.pinCookieValid(cookie.Value) {
+		return true, "cookie"
+	}
+	return false, ""
+}
+
 func (s *Store) ValidMachineToken(token string) bool {
 	if token == "" {
 		return false
@@ -311,9 +342,12 @@ func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet, http.MethodHead:
 		ok, method := s.authorized(r)
 		requires := !s.trustedPeer(r.RemoteAddr)
+		if !s.LoginEnabled() {
+			requires = false
+		}
 		// A browser is prompted for the PIN even over loopback; machine clients
 		// (LIFE / agent / scripts) stay exempt.
-		if s.HasPIN() && looksLikeBrowser(r) {
+		if s.HasPIN() && s.PinEnabled() && looksLikeBrowser(r) {
 			requires = true
 			if _, err := r.Cookie(SessionCookie); err != nil {
 				ok, method = false, ""
@@ -374,10 +408,14 @@ func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 			// credential that was just accepted.
 			ok, method = true, "cookie"
 		}
+		requires := !s.trustedPeer(r.RemoteAddr)
+		if !s.LoginEnabled() {
+			requires = false
+		}
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"authenticated": ok,
 			"method":        method,
-			"requires_auth": !s.trustedPeer(r.RemoteAddr),
+			"requires_auth": requires,
 			"core_id":       s.ID,
 		})
 	case http.MethodDelete:

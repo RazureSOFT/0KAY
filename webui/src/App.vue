@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useWizardStore } from './stores/wizard'
@@ -13,7 +13,7 @@ import AppSelect from './components/AppSelect.vue'
 import LifeApprovalDialog from './components/LifeApprovalDialog.vue'
 import MinecraftConsentDialog from './components/MinecraftConsentDialog.vue'
 import { setLanguage, getLanguage, LOCALES } from './i18n'
-import { authRequired, submitLogin, cancelLogin, pinRequired, submitPin, cancelPin, verifyPin, pinConfigured, pinSetupRequired, setPin } from './auth'
+import { authRequired, submitLogin, cancelLogin, pinRequired, submitPin, cancelPin, verifyPin, pinConfigured, pinSetupRequired, setPin, pinGuard, pinUnlocked, pinPages, pinEnabled, pageRequiresPin, requirePagePin } from './auth'
 import PinInput from './components/PinInput.vue'
 
 const { t } = useI18n()
@@ -79,6 +79,28 @@ function isActive(item: { id: string; to?: string }) {
   }
   return route.name === item.id
 }
+
+// --- per-page PIN guard ----------------------------------------------------
+// Purely a WebUI convenience: routes ticked in 设置 › 安全 challenge on entry.
+// Core does not trust this scope — sensitive actions always re-check the PIN —
+// so this guard only decides when to prompt before a page is usable. The
+// challenge fires once per tab; pinUnlocked stays true afterwards.
+watch(
+  () => [
+    route.path,
+    pinConfigured.value,
+    pinEnabled.value,
+    pinPages.value.join('\u0000'),
+    pinUnlocked.value,
+  ],
+  () => {
+    if (pinUnlocked.value || pinRequired.value) return
+    // Never stack the prompt on top of the wizard, the login or the PIN setup.
+    if (!wizard.isCompleted || pinSetupRequired.value || authRequired.value) return
+    if (pageRequiresPin(route.path)) requirePagePin()
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   wizard.loadFromStorage()
@@ -150,7 +172,14 @@ async function onAuthSubmit() {
   }
 }
 
+/**
+ * A configured + enabled PIN is a real gate, not a convenience prompt: Core
+ * rejects browser callers without a session, so there is nothing to "skip".
+ */
+const pinGate = computed(() => pinConfigured.value && pinEnabled.value)
+
 function onAuthCancel() {
+  if (pinGate.value) return
   resetAuth()
   cancelLogin()
 }
@@ -273,7 +302,7 @@ async function onSetupSubmit() {
           <button type="button" class="auth-secondary" @click="pinConfigured && toggleAuthMode()">
             {{ pinConfigured && !useTokenInput ? t('auth.useToken') : t('auth.usePin') }}
           </button>
-          <button type="button" class="auth-secondary" @click="onAuthCancel">{{ t('auth.cancel') }}</button>
+          <button v-if="!pinGate" type="button" class="auth-secondary" @click="onAuthCancel">{{ t('auth.cancel') }}</button>
           <button v-if="!pinConfigured || useTokenInput" type="submit" class="auth-primary" :disabled="authBusy">{{ t('auth.submit') }}</button>
         </footer>
       </form>
@@ -292,8 +321,9 @@ async function onSetupSubmit() {
         <p class="auth-hint">{{ t('auth.pinHint') }}</p>
         <PinInput v-model="pinInput" :invalid="pinInvalid" autofocus @complete="onPinSubmit" />
         <p v-if="pinError" role="alert" class="auth-error">{{ pinError }}</p>
+        <p v-if="pinGuard" class="auth-hint">{{ t('auth.pinGuardHint') }}</p>
         <footer class="auth-actions">
-          <button type="button" class="auth-secondary" @click="onPinCancel">{{ t('auth.cancel') }}</button>
+          <button v-if="!pinGuard" type="button" class="auth-secondary" @click="onPinCancel">{{ t('auth.cancel') }}</button>
         </footer>
       </form>
     </div>

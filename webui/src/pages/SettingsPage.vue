@@ -14,6 +14,7 @@ import ProviderPanel from '../components/ProviderPanel.vue'
 import GeneralPanel from '../components/GeneralPanel.vue'
 import PersonaPanel from '../components/PersonaPanel.vue'
 import PermissionsPanel from '../components/PermissionsPanel.vue'
+import SecurityPanel from '../components/SecurityPanel.vue'
 import McpPanel from '../components/McpPanel.vue'
 import DangerPanel from '../components/DangerPanel.vue'
 import PluginModulePane from '../components/PluginModulePane.vue'
@@ -328,6 +329,8 @@ function save() {
             <svg v-else-if="tab.icon === 'info'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 11v5M12 7.5v.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             <!-- download / updates -->
             <svg v-else-if="tab.icon === 'download'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <!-- shield / security -->
+            <svg v-else-if="tab.icon === 'shield'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.2-2.8 7.6-7 9-4.2-1.4-7-4.8-7-9V6l7-3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <!-- lock / permissions -->
             <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </span>
@@ -485,6 +488,9 @@ function save() {
             </div>
           </div>
         </div>
+
+        <!-- Security — PIN / login switches and the per-page scope -->
+        <SecurityPanel v-else-if="activeTab === 'security'" />
 
         <!-- Permissions — shell pane; fields/labels from life.patch when present -->
           <PermissionsPanel v-else-if="activeTab === 'permissions'" />
