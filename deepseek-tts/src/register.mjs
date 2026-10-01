@@ -45,6 +45,7 @@ const SECTION = {
     { key: 'enabled', type: 'bool', label: '启用语音合成', defaultValue: 'true', help: '关闭后 /api/tts 会拒绝合成' },
     { key: 'voice', type: 'select', label: '音色', defaultValue: 'mira', options: ['mira', 'echo', 'stella', 'tide'], help: 'mira/echo 支持 29 种语言，stella/tide 支持 10 种' },
     { key: 'token', type: 'text', label: 'DeepSeek userToken', defaultValue: '', help: 'chat.deepseek.com 的 64 位 userToken；仅本地存储' },
+    { key: 'test', type: 'test', label: '测试语音', help: '合成一句示例并播放（需先保存 userToken）' },
   ],
 }
 

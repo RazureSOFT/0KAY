@@ -334,6 +334,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/providers/defaults", g.handleProviderDefaults)
 	mux.HandleFunc("/api/settings/sections", g.handleSettingsSections)
 	mux.HandleFunc("/api/settings/", g.handleSettingsSection)
+	mux.HandleFunc("POST /api/settings/{id}/test", g.handleSettingsTest)
 	mux.HandleFunc("/ws", g.handleWebSocket)
 
 	return logMiddleware(g.pluginGuard(mux))

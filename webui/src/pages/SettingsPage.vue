@@ -60,6 +60,31 @@ const uploadMsg = ref('')
 /** Plugin section draft values */
 const sectionDrafts = ref<Record<string, Record<string, unknown>>>({})
 const sectionMsg = ref('')
+const sectionTesting = ref(false)
+const sectionTestMsg = ref('')
+
+/** Run a plugin section's backend test; play the returned audio sample. */
+async function testPluginSection(id: string) {
+  sectionTesting.value = true
+  sectionTestMsg.value = ''
+  try {
+    const res = await fetch(`/api/settings/${id}/test`, { method: 'POST' })
+    const contentType = res.headers.get('content-type') || ''
+    if (res.ok && contentType.startsWith('audio')) {
+      const url = URL.createObjectURL(await res.blob())
+      try { await new Audio(url).play() } catch { /* autoplay may be blocked */ }
+      window.dispatchEvent(new CustomEvent('live2d-speak', { detail: { url } }))
+      sectionTestMsg.value = '测试成功，正在播放…'
+    } else {
+      const data: { error?: string } = await res.json().catch(() => ({}))
+      sectionTestMsg.value = data.error || `HTTP ${res.status}`
+    }
+  } catch (error: unknown) {
+    sectionTestMsg.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    sectionTesting.value = false
+  }
+}
 
 const { tabMeta, isBuiltinTab, isPluginSection, tabLabel, fieldLabel, fieldHelp, pluginSection } = useSettingsMeta()
 
@@ -504,6 +529,16 @@ function save() {
             <template v-else-if="f.type === 'select'">
               <label>{{ f.label }}</label>
               <AppSelect class="input" :aria-label="f.label" :model-value="String(sectionDrafts[activeTab]?.[f.key] ?? '')" :options="f.options || []" @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }" />
+              <p v-if="f.help" class="helper-text">{{ f.help }}</p>
+            </template>
+            <template v-else-if="f.type === 'test'">
+              <label>{{ f.label }}</label>
+              <div class="actions-row">
+                <button class="btn btn-tonal" type="button" :disabled="sectionTesting" @click="testPluginSection(activeTab)">
+                  {{ sectionTesting ? t('settings.testing') : (f.label || '测试') }}
+                </button>
+                <span v-if="sectionTestMsg" class="helper-text">{{ sectionTestMsg }}</span>
+              </div>
               <p v-if="f.help" class="helper-text">{{ f.help }}</p>
             </template>
             <template v-else>
