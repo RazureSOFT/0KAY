@@ -1,24 +1,22 @@
-# 0KAY - Modular AI Agent Platform
+# 0KAY
 
-A local-first AI platform with Core orchestration, a persona plugin, a model gateway, a WebUI, and an independent Agent repository.
+0KAY is a local-first AI agent platform. Core (Go) is the gateway and scheduler;
+the services around it handle model selection, the persona, and task execution.
+A web UI ships with it, and the agent runtime lives in its own repository.
 
 ## Screenshots
 
-| 对话 | 通用设置 | 供应商设置 |
+| Chat | General settings | Provider settings |
 |---|---|---|
-| ![对话](assets/chat.png) | ![通用设置](assets/settings-general.png) | ![供应商设置](assets/settings-provider.png) |
+| ![Chat](assets/chat.png) | ![General settings](assets/settings-general.png) | ![Provider settings](assets/settings-provider.png) |
 
-All screenshots are real captures of the running WebUI (`webui`, Vite dev server),
-not mockups.
+Captured from the running WebUI (`webui`, Vite dev server).
 
 ## Documentation
 
-- [Architecture](ARCHITECTURE.md) - component boundaries, communication, data flow, and UI patches.
-- [Runtime Contracts](RUNTIME_CONTRACTS.md) - task identity, session scope, approvals, callbacks, and persistence rules.
-- [Model Catalog](MODEL_CATALOG.md) - official model references and fallback model IDs.
-
-Repository documentation uses Markdown. Runtime chat output remains ordinary
-persona text unless the user explicitly requests formatted code or technical output.
+- [Architecture](ARCHITECTURE.md): component boundaries, communication, data flow, UI patches.
+- [Runtime Contracts](RUNTIME_CONTRACTS.md): task identity, session scope, approvals, callbacks, persistence.
+- [Model Catalog](MODEL_CATALOG.md): model references and fallback IDs.
 
 ## Architecture
 
@@ -43,136 +41,117 @@ QQ/OneBot ──WebSocket───────┤
 ## Components
 
 ### Core (Go)
-- API Gateway (HTTP + WebSocket)
-- Plugin Registry & Service Discovery
-- Task Scheduling
+Gateway (HTTP and WebSocket), plugin registry and service discovery, task scheduling.
 
 ### mocr (Go)
-- Model Selection (think_model + output_model)
-- Streaming Generation
+Model selection (think model plus output model) and streaming generation.
 
 ### L.I.F.E (Python)
-- Persona-driven responses
-- Emotion system (valence, arousal, connection, irritation)
-- Memory system (working, short-term, long-term)
-- Circadian rhythm (mental energy, sleep/wake)
-- Tools (getmail, useagent, search)
+Persona replies; emotion (valence, arousal, connection, irritation); memory
+(working, short-term, long-term); a sleep/wake rhythm; and tools for mail,
+agents, and search.
 
-### Agent (TypeScript, independent repository)
-- Task execution engine
-- Tool usage (filesystem, shell)
-- Core-scheduled via gRPC
+### Agent (TypeScript, separate repository)
+Task execution and tools (filesystem, shell), scheduled by Core over gRPC.
 
-## Quick Start
+## Quick start
 
 Plugin API reference: [docs/PLUGIN_API.md](docs/PLUGIN_API.md).
 Modular installation and LAN pairing: [pm/README.md](pm/README.md).
-Install the local CLI with `npm install -g ./pm`; package manifests live at the
-repository root and in each module. GitHub/npm distribution requires publishing
-the current manifests and package first.
+To use the local CLI, `npm install -g ./pm`; package manifests live at the
+repository root and in each module. Publishing to GitHub or npm requires those
+manifests and the package to be published first.
 
 ### Agent permissions
 
-The composer defaults to **Normal (approve every tool call)**. Tool requests are
-held by the executor until the user allows or denies that exact call. Child
-agents inherit the mode. **Full access** is an explicit per-turn setting and
-automatically executes enabled tools. Direct LIFE/MCP/computer tool calls also
-require approval. Read-only workspace browsing and explicit GUI folder creation
-are user operations. Approval expires after ten minutes or on task cancellation.
+The composer starts in Normal mode, where every tool call waits for approval.
+Child agents inherit the mode. Full access is set per turn and runs enabled
+tools without asking. Calls to LIFE, MCP, and computer tools still need
+approval; browsing the workspace and creating a GUI folder do not. An approval
+expires after ten minutes or when the task is cancelled.
 
-Services bind to loopback by default. Docker exposes backend ports on host
-loopback only. `CORE_BIND_HOST`, `AGENT_BIND_HOST`, `MOCR_BIND_HOST`, and
-`LIFE_BIND_HOST` explicitly override this for trusted service networks. For an
-externally exposed HTTP deployment use an authenticated reverse proxy; optional
-`CORE_API_TOKEN` enforces a bearer token on Core HTTP requests. Browsers can
-trade a token for an HttpOnly `0kay_session` cookie through
-`POST /api/auth/session`, so EventSource and WebSocket clients authenticate
-too. Foreign browser origins are denied unless included in
-`CORE_ALLOWED_ORIGINS`, and requests with an unexpected `Host` header are
-rejected (DNS-rebinding guard). Provider API keys are never returned by
-`GET /api/providers`; only the service-only `GET /api/providers/credentials`
-returns plaintext.
+### Security
 
-`agent/` is maintained in an independent repository. On a fresh clone, run
+Services bind to loopback by default, and Docker publishes backend ports on host
+loopback only. Set `CORE_BIND_HOST`, `AGENT_BIND_HOST`, `MOCR_BIND_HOST`, or
+`LIFE_BIND_HOST` to override this on a trusted service network. To expose HTTP
+externally, put an authenticated reverse proxy in front. `CORE_API_TOKEN` makes
+Core require a bearer token, and a browser can exchange it for an HttpOnly
+`0kay_session` cookie at `POST /api/auth/session`, which also authenticates
+EventSource and WebSocket clients. Requests from origins outside
+`CORE_ALLOWED_ORIGINS` are denied, and an unexpected `Host` header is rejected
+to block DNS rebinding. `GET /api/providers` never returns provider API keys;
+only the service-only `GET /api/providers/credentials` does.
+
+### Agent repository
+
+`agent/` is maintained in its own repository. On a fresh clone, run
 `powershell -File bootstrap.ps1` to check out the revision recorded in
-`dependencies.json`. Existing Agent worktrees are never overwritten.
-When releasing coordinated changes, commit/publish Agent first and update its
-revision in `dependencies.json` in the platform release. The manifest currently
-records the baseline commit; uncommitted Agent fixes must be published before
-that revision can represent a release containing them.
+`dependencies.json`; existing agent worktrees are left untouched. For a
+coordinated release, publish agent first and update its revision in
+`dependencies.json`. That file records the baseline commit, so an uncommitted
+agent fix is not part of a release until it is published.
 
-Local validation:
+### Local validation
 
 ```powershell
 python -B -m unittest discover -s life/tests -v
-# In agent/: npm test; npx tsc --noEmit
-# In core/ and mocr/: go test ./...
+# agent/: npm test; npx tsc --noEmit
+# core/ and mocr/: go test ./...
 ```
 
-### Using Docker Compose
+### Docker Compose
 
 ```bash
-# Start all services
-docker-compose up -d
-
-# Check status
-docker-compose ps
-
-# View logs
-docker-compose logs -f
-
-# Stop
-docker-compose down
+docker-compose up -d      # start all services
+docker-compose ps         # check status
+docker-compose logs -f    # view logs
+docker-compose down       # stop
 ```
 
-### Development
+### Running services
 
 ```bash
-# Generate protobuf code
-make proto
-
-# Run individual services
-make dev-core    # Core on :50051 (gRPC) + :8080 (HTTP)
-make dev-mocr    # mocr on :50052
-make dev-life    # L.I.F.E on :50053
-make dev-agent   # Agent on :50054
+make proto     # generate protobuf code
+make dev-core  # Core on :50051 (gRPC) and :8080 (HTTP)
+make dev-mocr  # mocr on :50052
+make dev-life  # L.I.F.E on :50053
+make dev-agent # Agent on :50054
 ```
 
-## API Endpoints
+## API endpoints
 
-### Core HTTP Gateway
+### Core HTTP gateway
 
-- `GET /health` - Health check
-- `GET /api/plugins` - List plugins
-- `POST /api/chat` - Chat (sync/streaming)
-- `WS /ws` - WebSocket real-time
+- `GET /health`: health check
+- `GET /api/plugins`: list plugins
+- `POST /api/chat`: chat, sync or streaming
+- `WS /ws`: WebSocket
 
-### gRPC Services
+### gRPC services
 
-- `core.v1.PluginService` - Plugin registration
-- `core.v1.CoreService` - mocr/Agent dispatch
-- `mocr.v1.MocrService` - Model selection
-- `life.v1.LifeService` - Persona callbacks
+- `core.v1.PluginService`: plugin registration
+- `core.v1.CoreService`: mocr and agent dispatch
+- `mocr.v1.MocrService`: model selection
+- `life.v1.LifeService`: persona callbacks
 
-## Development
-
-### Prerequisites
+## Requirements
 
 - Go 1.27+
 - Python 3.10+
 - Node.js 22+
-- Docker & Docker Compose
+- Docker and Docker Compose
 
-### Project Structure
+### Project structure
 
 ```
 0kay/
-├── proto/          # Protobuf definitions
-├── core/           # Go - API Gateway
-├── mocr/           # Go - Model Selector
-├── life/           # Python - Persona Plugin
-├── agent/          # TypeScript - Task Engine
-├── gen/            # Generated code
+├── proto/          # protobuf definitions
+├── core/           # Go, gateway
+├── mocr/           # Go, model selector
+├── life/           # Python, persona plugin
+├── agent/          # TypeScript, task engine
+├── gen/            # generated code
 ├── docker-compose.yml
 └── Makefile
 ```
