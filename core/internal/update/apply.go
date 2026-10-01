@@ -6,10 +6,21 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 )
+
+// Package names and versions are interpolated into shell/batch update scripts,
+// so they are restricted to a conservative character set before use.
+var (
+	pmPackagePattern = regexp.MustCompile(`^[@a-zA-Z0-9._/+:-]+$`)
+	pmVersionPattern = regexp.MustCompile(`^[a-zA-Z0-9._+-]+$`)
+)
+
+func validPMPackage(pkg string) bool { return pmPackagePattern.MatchString(pkg) }
+func validPMVersion(ver string) bool { return pmVersionPattern.MatchString(ver) }
 
 // Update scripts print these markers so status survives a Core restart
 // (the file, not process memory, is the source of truth).
@@ -157,11 +168,17 @@ func Start(plugin, version string) (ApplyState, error) {
 
 // startPM runs 0kay-pm stop/update/start (optionally pinned to a release tag).
 func startPM(dir, plugin, pkg, version string) (ApplyState, error) {
+	if !validPMPackage(pkg) {
+		return ApplyState{Status: "idle"}, fmt.Errorf("invalid package name %q", pkg)
+	}
+	ver := strings.TrimPrefix(strings.TrimSpace(version), "v")
+	if ver != "" && !validPMVersion(ver) {
+		return ApplyState{Status: "idle"}, fmt.Errorf("invalid version %q", version)
+	}
 	pm, err := PMCommand()
 	if err != nil {
 		return ApplyState{Status: "idle"}, err
 	}
-	ver := strings.TrimPrefix(strings.TrimSpace(version), "v")
 	target := pkg
 	if ver != "" {
 		target = pkg + "@" + ver

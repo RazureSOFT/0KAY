@@ -1,6 +1,9 @@
 package update
 
-import "strings"
+import (
+	"log"
+	"strings"
+)
 
 // githubProxy is the global GitHub mirror/reverse-proxy prefix (for example
 // "https://gh-proxy.com"). Empty means direct access.
@@ -14,7 +17,16 @@ func SetGitHubProxy(proxy string) {
 	proxy = strings.TrimSpace(proxy)
 	proxy = strings.TrimSuffix(proxy, "https://github.com")
 	proxy = strings.TrimSuffix(proxy, "http://github.com")
-	githubProxy = strings.TrimRight(proxy, "/")
+	proxy = strings.TrimRight(proxy, "/")
+	// The value is embedded in generated shell/batch scripts; reject anything
+	// that could break out of a quoted argument (quotes, whitespace, control
+	// characters). A valid proxy prefix is a bare URL with neither.
+	if strings.ContainsAny(proxy, "\"'` \t\r\n") {
+		log.Printf("ignoring invalid GitHub proxy value")
+		githubProxy = ""
+		return
+	}
+	githubProxy = proxy
 }
 
 // GitHubProxy returns the configured mirror prefix ("" when disabled).

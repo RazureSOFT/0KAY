@@ -35,7 +35,9 @@ Keep request/response fields backward-compatible and document state transitions.
 
 Bind a loopback address, add the generated service implementation and register
 with Core only after the server is ready. Read your own version from
-`manifest.json` and set it on `plugin_info.version`.
+`manifest.json` and set it on `plugin_info.version`. If the operator sets
+`CORE_PLUGIN_REGISTRATION_TOKEN`, forward it on the `Register` call as the
+`x-0kay-registration-token` metadata value, or Core rejects the registration.
 
 ## 3. Register capabilities
 
@@ -82,7 +84,7 @@ example — is in [WebUI Custom Pages](custom-pages.md).
 | Entry export | `export default` Vue component |
 | Vue import | Bare `import { h, ref, … } from 'vue'` via the WebUI importmap → host bridge (`window.__0KAY_VUE__`) |
 | Forbidden imports | Host `vue-router`, pinia, vue-i18n, private stores |
-| API | Same-origin `fetch('/api/…')` |
+| API | Same-origin `fetch('/api/…')` — but `GET /api/providers/credentials` is machine-only and rejects cookie-only (even same-origin) callers |
 | Cache | Entry `no-cache`; hashed `*-*.{js,css}` immutable |
 
 ## 6. Heartbeat and shutdown

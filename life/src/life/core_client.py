@@ -329,7 +329,9 @@ class CoreClient:
                     description='由 LIFE 管理的 Live2D 显示、模型选择、上传与删除',
                     fields=[_pb.SettingsField(key='enabled',type='bool',label='启用 Live2D',default_value='true'),
                             _pb.SettingsField(key='model_url',type='text',label='当前模型 URL',default_value='')]))
-            resp = self._plugin_stub.Register(request, timeout=5)
+            reg_token = os.environ.get("CORE_PLUGIN_REGISTRATION_TOKEN", "").strip()
+            registration_metadata = (("x-0kay-registration-token", reg_token),) if reg_token else None
+            resp = self._plugin_stub.Register(request, timeout=5, metadata=registration_metadata)
             if resp.success:
                 self.plugin_id = resp.plugin_id
                 try:

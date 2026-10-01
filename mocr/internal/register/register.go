@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -127,6 +129,9 @@ func Start(ctx context.Context, opts Options) {
 		register := func() bool {
 			cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
+			if token := strings.TrimSpace(os.Getenv("CORE_PLUGIN_REGISTRATION_TOKEN")); token != "" {
+				cctx = metadata.AppendToOutgoingContext(cctx, "x-0kay-registration-token", token)
+			}
 			resp, err := client.Register(cctx, &corev1.RegisterRequest{
 				PluginInfo: &pluginv1.PluginInfo{
 					Name:        opts.PluginName,

@@ -9,11 +9,112 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 )
+
+// loginMaxFailures is how many failed PIN/token attempts a host may make before
+// it is locked out for loginLockout.
+const (
+	loginMaxFailures = 5
+	loginLockout     = 15 * time.Minute
+)
+
+// loginAttempt tracks consecutive credential failures for one remote host.
+type loginAttempt struct {
+	fails    int
+	until    time.Time
+	lastSeen time.Time
+}
+
+// remoteHost is the lockout key: the client IP without its ephemeral port.
+// IPv6 is grouped by /64 so an attacker cannot rotate through a routed prefix.
+func remoteHost(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return host
+	}
+	if ip4 := ip.To4(); ip4 != nil {
+		return ip4.String()
+	}
+	return ip.Mask(net.CIDRMask(64, 128)).String() + "/64"
+}
+
+// loginBlocked reports whether a host is currently locked out.
+func (s *Store) loginBlocked(host string) (bool, time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	attempt := s.logins[host]
+	if attempt == nil {
+		return false, 0
+	}
+	if attempt.until.IsZero() {
+		return false, 0
+	}
+	if time.Now().Before(attempt.until) {
+		return true, time.Until(attempt.until)
+	}
+	delete(s.logins, host)
+	return false, 0
+}
+
+// loginFailed records a rejected credential and locks the host out once the
+// failure budget is spent.
+func (s *Store) loginFailed(host string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now()
+	if len(s.logins) > 4096 {
+		// Evict by age regardless of lock state so IP-rotating abusers cannot
+		// grow the map without bound.
+		for key, attempt := range s.logins {
+			if now.Sub(attempt.lastSeen) > loginLockout {
+				delete(s.logins, key)
+			}
+		}
+	}
+	attempt := s.logins[host]
+	if attempt == nil {
+		attempt = &loginAttempt{}
+		s.logins[host] = attempt
+	}
+	attempt.fails++
+	attempt.lastSeen = now
+	if attempt.fails >= loginMaxFailures {
+		attempt.fails = 0
+		attempt.until = now.Add(loginLockout)
+	}
+}
+
+// loginSucceeded clears the failure budget for a host.
+func (s *Store) loginSucceeded(host string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.logins, host)
+}
+
+// enforceLoginLimit writes a 429 and returns true when host is locked out.
+func (s *Store) enforceLoginLimit(w http.ResponseWriter, r *http.Request) bool {
+	host := remoteHost(r)
+	blocked, wait := s.loginBlocked(host)
+	if !blocked {
+		return false
+	}
+	seconds := int(wait.Seconds()) + 1
+	w.Header().Set("Retry-After", strconv.Itoa(seconds))
+	writeErr(w, http.StatusTooManyRequests, "too_many_attempts",
+		fmt.Sprintf("too many failed attempts; retry in %d seconds", seconds))
+	return true
+}
 
 // PinHeader carries the access PIN on a sensitive request.
 const PinHeader = "X-0kay-Pin"
@@ -258,6 +359,9 @@ func (s *Store) handlePIN(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusUnauthorized, "unauthenticated", "sign in first")
 			return
 		}
+		if s.enforceLoginLimit(w, r) {
+			return
+		}
 		var body struct {
 			Pin     string `json:"pin"`
 			Current string `json:"current"`
@@ -272,6 +376,7 @@ func (s *Store) handlePIN(w http.ResponseWriter, r *http.Request) {
 				current = r.Header.Get(PinHeader)
 			}
 			if !s.PinValid(current) {
+				s.loginFailed(remoteHost(r))
 				writeErr(w, http.StatusForbidden, "pin_required", "current PIN required")
 				return
 			}
@@ -280,6 +385,7 @@ func (s *Store) handlePIN(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusBadRequest, "invalid_pin", err.Error())
 			return
 		}
+		s.loginSucceeded(remoteHost(r))
 		http.SetCookie(w, &http.Cookie{
 			Name: SessionCookie, Value: s.pinCookieValue(), Path: "/",
 			MaxAge: 30 * 24 * 3600, HttpOnly: true, SameSite: http.SameSiteStrictMode, Secure: s.secureCookie(r),

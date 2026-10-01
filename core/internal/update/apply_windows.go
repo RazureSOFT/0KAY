@@ -16,7 +16,18 @@ import (
 const createNoWindow = 0x08000000
 
 func winQuote(value string) string {
-	return `"` + strings.ReplaceAll(value, `"`, `""`) + `"`
+	// cmd.exe does not use backslash escapes: an embedded quote is doubled and
+	// `%` is neutralised (doubled) so it cannot trigger variable expansion. New
+	// lines are stripped so a value cannot break out of the command line.
+	value = winEnvValue(value)
+	return `"` + value + `"`
+}
+
+// winEnvValue makes a value safe to embed inside a quoted `set`/`call` line.
+func winEnvValue(value string) string {
+	value = strings.ReplaceAll(value, "%", "%%")
+	value = strings.ReplaceAll(value, `"`, `""`)
+	return strings.NewReplacer("\r", "", "\n", "").Replace(value)
 }
 
 // winEnvLines renders the git mirror environment for a batch script (empty when
@@ -24,7 +35,7 @@ func winQuote(value string) string {
 func winEnvLines() string {
 	var b strings.Builder
 	for _, kv := range processProxyEnv() {
-		fmt.Fprintf(&b, "set \"%s=%s\"\r\n", kv[0], strings.ReplaceAll(kv[1], "%", "%%"))
+		fmt.Fprintf(&b, "set \"%s=%s\"\r\n", kv[0], winEnvValue(kv[1]))
 	}
 	return b.String()
 }
@@ -138,7 +149,7 @@ func writeSourceUpdater(dir string, plan sourcePlan) (string, string, error) {
 	fmt.Fprintf(&b, "if errorlevel 1 (echo %s & exit /b 1)\r\n", markerFailed)
 	fmt.Fprintf(&b, "cd /d %s\r\n", winQuote(plan.Dir))
 	for key, value := range plan.Env {
-		fmt.Fprintf(&b, "set \"%s=%s\"\r\n", key, strings.ReplaceAll(value, "%", "%%"))
+		fmt.Fprintf(&b, "set \"%s=%s\"\r\n", key, winEnvValue(value))
 	}
 	for _, cmd := range plan.Build {
 		fmt.Fprintf(&b, "%s\r\n", joinArgsWin(cmd))
@@ -149,7 +160,9 @@ func writeSourceUpdater(dir string, plan sourcePlan) (string, string, error) {
 		b.WriteString("ping -n 2 127.0.0.1 >nul\r\n")
 	}
 	if len(plan.Start) > 0 {
-		fmt.Fprintf(&b, "powershell -NoProfile -NonInteractive -WindowStyle Hidden -Command \"%s\"\r\n", winStartCommand(plan))
+		// The command is embedded in a cmd line, so `%` must be neutralised too.
+		ps := strings.ReplaceAll(winStartCommand(plan), "%", "%%")
+		fmt.Fprintf(&b, "powershell -NoProfile -NonInteractive -WindowStyle Hidden -Command \"%s\"\r\n", ps)
 	}
 	fmt.Fprintf(&b, "echo %s\r\n", markerDone)
 	if err := os.WriteFile(script, []byte(b.String()), 0o644); err != nil {

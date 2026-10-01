@@ -98,10 +98,26 @@ Authorization: Bearer <service token>
 ```
 
 The token is derived from a persisted per-install key, so it survives Core
-restarts. An attributed call with a bad token is rejected (`401`), and a
-non-builtin plugin may only reach APIs it declared. Machine calls to an API a
-third-party plugin declared must be attributed; browser/owner traffic (session
-cookie) is unaffected.
+restarts. Identity **fails closed** if that key is unavailable, and
+re-registering a name replaces its previous registry row. An attributed call with
+a bad token is rejected (`401`), and a non-builtin plugin may only reach APIs it
+declared. Machine calls to an API a third-party plugin declared must be
+attributed; browser/owner traffic (session cookie) is unaffected.
+
+Some endpoints are **machine-only** and refuse a browser session even when it is
+same-origin — notably `GET /api/providers/credentials`. Call them with the
+plugin identity headers above (or a paired-device / `CORE_API_TOKEN` bearer);
+a cookie-only call returns `403 {"code":"machine_credential_required"}`.
+
+#### Registration token (opt-in hardening)
+
+When Core is configured with `CORE_PLUGIN_REGISTRATION_TOKEN`, every non-builtin
+plugin must send the same value on the gRPC `Register` call as the
+`x-0kay-registration-token` metadata key (an `authorization: Bearer <token>` is
+also accepted). Otherwise registration is rejected with
+`PermissionDenied`. LIFE, Agent and mocr read `CORE_PLUGIN_REGISTRATION_TOKEN`
+from the environment and forward it; third-party plugins should do the same when
+the operator enables it. Leave it unset to keep the network-trust model.
 
 #### Egress proxy
 

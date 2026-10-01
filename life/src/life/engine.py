@@ -1852,7 +1852,8 @@ class LifeEngine:
             return
 
         def _recent():
-            return self.memory.recall("Minecraft 服务器 玩家 聊天 一起玩 挖矿 建筑", top_k=20, scope="")
+            # Internal learning loop: consider every scope, then filter by tag.
+            return self.memory.recall("Minecraft 服务器 玩家 聊天 一起玩 挖矿 建筑", top_k=20, scope="*")
 
         try:
             records = await asyncio.to_thread(_recent)

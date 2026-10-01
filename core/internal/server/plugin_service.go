@@ -11,6 +11,7 @@ import (
 	corev1 "0kay/gen/core/v1"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -38,8 +39,23 @@ func (s *PluginServiceServer) Register(ctx context.Context, req *corev1.Register
 		}, nil
 	}
 
-	pluginID, err := s.registry.Register(req.PluginInfo, req.Capabilities, req.Address)
+	// Non-builtin plugins may be required to present a shared registration
+	// secret (CORE_PLUGIN_REGISTRATION_TOKEN); built-ins bypass it. The secret
+	// travels in the x-0kay-registration-token metadata, falling back to the
+	// Authorization bearer for compatibility.
+	registrationToken := ""
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		if values := md.Get("x-0kay-registration-token"); len(values) > 0 {
+			registrationToken = strings.TrimSpace(values[0])
+		} else if values := md.Get("authorization"); len(values) > 0 {
+			registrationToken = strings.TrimPrefix(values[0], "Bearer ")
+		}
+	}
+	pluginID, err := s.registry.RegisterAuthenticated(req.PluginInfo, req.Capabilities, req.Address, registrationToken)
 	if err != nil {
+		if _, ok := status.FromError(err); ok {
+			return nil, err
+		}
 		return nil, status.Errorf(codes.Internal, "failed to register plugin: %v", err)
 	}
 	if pairing.Default != nil {

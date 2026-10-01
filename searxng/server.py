@@ -26,6 +26,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
 PORT = int(os.environ.get("SEARXNG_PORT", "8888"))
+# Requests are simple q= forms; cap the body so a local client cannot exhaust memory.
+MAX_BODY_BYTES = 64 * 1024
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
 
@@ -467,7 +469,13 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         # SearXNG clients sometimes POST form q=
-        length = int(self.headers.get("Content-Length") or 0)
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = 0
+        if length < 0 or length > MAX_BODY_BYTES:
+            self._json(413, {"error": "request too large"})
+            return
         raw = self.rfile.read(length) if length else b""
         form = urllib.parse.parse_qs(raw.decode("utf-8", errors="replace"))
         q = (form.get("q") or [""])[0].strip()

@@ -66,6 +66,9 @@ type Store struct {
 	// credential (paired-device token or CORE_API_TOKEN).
 	pinSalt []byte
 	pinHash []byte
+	// logins throttles failed credential attempts (PIN/token) per remote host so
+	// the 6-digit PIN cannot be brute-forced.
+	logins map[string]*loginAttempt
 }
 
 var Default *Store
@@ -103,7 +106,7 @@ func New(directory string) (*Store, error) {
 		return nil, err
 	}
 	name, _ := os.Hostname()
-	s := &Store{Name: name, path: filepath.Join(directory, "paired_devices.json"), Devices: map[string]Device{}, requests: map[string]*Request{}, addresses: map[string]string{}, enforce: os.Getenv("CORE_LAN_ENABLED") == "1", trusted: trustedNetworks(os.Getenv("CORE_TRUSTED_NETWORKS"))}
+	s := &Store{Name: name, path: filepath.Join(directory, "paired_devices.json"), Devices: map[string]Device{}, requests: map[string]*Request{}, addresses: map[string]string{}, logins: map[string]*loginAttempt{}, enforce: os.Getenv("CORE_LAN_ENABLED") == "1", trusted: trustedNetworks(os.Getenv("CORE_TRUSTED_NETWORKS"))}
 	existingInstall := false
 	if data, err := os.ReadFile(s.path); err == nil {
 		existingInstall = true
@@ -243,6 +246,16 @@ func (s *Store) authorized(r *http.Request) (bool, string) {
 	return false, ""
 }
 
+// ValidMachineToken reports whether token is a paired-device token or the
+// shared CORE_API_TOKEN. It is used to gate endpoints that must not be reached
+// by a browser session (e.g. the plaintext credential export).
+func (s *Store) ValidMachineToken(token string) bool {
+	if token == "" {
+		return false
+	}
+	return s.valid(token) || apiToken(token)
+}
+
 // secureCookie reports whether the session cookie may carry the Secure flag.
 //
 // The cookie value is the bearer token itself, so it must not travel in clear
@@ -314,6 +327,9 @@ func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 			"lan_enabled":   s.enforce,
 		})
 	case http.MethodPost:
+		if s.enforceLoginLimit(w, r) {
+			return
+		}
 		var body struct {
 			Token string `json:"token"`
 			Pin   string `json:"pin"`
@@ -324,15 +340,20 @@ func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 		}
 		token := strings.TrimSpace(body.Token)
 		pin := strings.TrimSpace(body.Pin)
+		host := remoteHost(r)
 		cookie := ""
 		switch {
 		case pin != "" && s.PinValid(pin), token != "" && s.PinValid(token):
 			cookie = s.pinCookieValue()
+			s.loginSucceeded(host)
 		case token != "" && (s.valid(token) || apiToken(token)):
 			cookie = token
+			s.loginSucceeded(host)
 		case token == "" && pin == "" && s.trustedPeer(r.RemoteAddr):
 			// Trusted caller opening a session without a credential.
+			s.loginSucceeded(host)
 		default:
+			s.loginFailed(host)
 			writeErr(w, http.StatusUnauthorized, "unauthenticated", "invalid token or PIN")
 			return
 		}

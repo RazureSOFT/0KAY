@@ -270,10 +270,16 @@ func (s *Store) Snapshot() File {
 func (s *Store) SnapshotRaw() File {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	providers := make([]ProviderConfig, len(s.data.Providers))
+	for i, p := range s.data.Providers {
+		p.Models = append([]string(nil), p.Models...)
+		p.DisabledModels = append([]string(nil), p.DisabledModels...)
+		providers[i] = p
+	}
 	return File{
 		DefaultProviderID: s.data.DefaultProviderID,
 		DefaultModel:      s.data.DefaultModel,
-		Providers:         append([]ProviderConfig{}, s.data.Providers...),
+		Providers:         providers,
 	}
 }
 
@@ -302,6 +308,10 @@ func redactFile(f File) File {
 }
 
 func redactProvider(p ProviderConfig) ProviderConfig {
+	// Deep-copy the slices so a caller mutating the redacted snapshot cannot
+	// touch the store's backing arrays (and vice versa under -race).
+	p.Models = append([]string(nil), p.Models...)
+	p.DisabledModels = append([]string(nil), p.DisabledModels...)
 	if p.APIKey != "" {
 		p.APIKeyMasked = MaskKey(p.APIKey)
 	}

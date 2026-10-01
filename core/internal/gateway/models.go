@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"0kay/core/internal/netguard"
 	"0kay/core/internal/providers"
 )
 
@@ -106,9 +107,13 @@ func (g *Gateway) resolveModelAPIKey(req ModelsRequest) string {
 }
 
 // modelClient bounds provider model-list requests so a slow provider cannot hang
-// the gateway. The base URL is user supplied, so it is validated and responses
-// are size limited.
-var modelClient = &http.Client{Timeout: 15 * time.Second}
+// the gateway. The base URL is user supplied, so it is validated, dials are
+// guarded against SSRF (metadata/link-local, strict mode adds loopback/private),
+// and responses are size limited.
+var modelClient = &http.Client{
+	Timeout:   15 * time.Second,
+	Transport: netguard.Transport(netguard.Strict()),
+}
 
 const maxModelsResponseBytes = 1 << 20
 
@@ -165,6 +170,9 @@ func fetchModelsFromProvider(format, baseURL, apiKey string) ([]string, error) {
 	modelsURL := catalogURL(baseURL)
 
 	if err := validateModelsURL(modelsURL); err != nil {
+		return nil, err
+	}
+	if err := netguard.CheckURL(modelsURL, netguard.Strict()); err != nil {
 		return nil, err
 	}
 

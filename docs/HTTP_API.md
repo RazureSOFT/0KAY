@@ -19,6 +19,10 @@ Every `/api/*` route (including `/health`) is behind one gate:
   cookie minted by `POST /api/auth/session`.
 - Failure returns `401` with `WWW-Authenticate: Bearer realm="0kay"` and the
   JSON error envelope with code `unauthenticated`.
+- When an access PIN is configured, sensitive routes additionally require the
+  PIN (`X-0kay-Pin` header, or a `pin:` session cookie). Failed PIN/token
+  attempts are throttled per client: 5 failures lock the client out for 15
+  minutes and return `429 too_many_attempts` with `Retry-After`.
 
 `/api/auth/session` runs ahead of the gate so an unauthenticated browser can
 discover that a credential is required and supply one:
@@ -329,7 +333,7 @@ emotion: {valence, arousal, connection, irritation}, mental_energy}`. Events:
 | POST, PUT | `/api/providers` | Upsert `{provider}` or replace `{providers, default_provider_id, default_model}` |
 | DELETE | `/api/providers/{id}` | Remove one provider → snapshot |
 | DELETE | `/api/providers/delete?id=` | Legacy alias for the path form |
-| GET | `/api/providers/credentials` | **Plaintext** catalog (legacy `GET /api/providers` shape) + `?id=` for one |
+| GET | `/api/providers/credentials` | **Plaintext** catalog (legacy `GET /api/providers` shape) + `?id=` for one. Machine-only (see below) |
 | GET | `/api/providers/defaults` | `{default_provider_id, default_model}` |
 | POST, PUT | `/api/providers/defaults` | Set defaults → echoed back |
 | POST | `/api/run` | `RunDirect` (60 s) → `{success, result, error}` |
@@ -352,9 +356,18 @@ display.
 (first 4 + 12 `*` + last 4; fully masked for keys ≤ 8 chars). Sending an empty
 or masked `api_key` back in an upsert preserves the stored secret, and a mask is
 never written to disk. Only `GET /api/providers/credentials` returns plaintext;
-it requires authentication and rejects cross-site browser reads
-(`Sec-Fetch-Site: cross-site` → `403 cross_site_denied`). It exists for the
-in-repo services (LIFE / Agent / mocr) that must forward a key upstream.
+it is **restricted to machine callers**: the request must carry a valid plugin
+identity (`X-0KAY-Plugin` + service token) or a paired-device / `CORE_API_TOKEN`
+bearer. A browser session cookie is not sufficient — even same-origin — so an
+in-origin plugin WebUI bundle cannot read keys (`403 machine_credential_required`).
+Cross-site reads are rejected first (`Sec-Fetch-Site: cross-site` →
+`403 cross_site_denied`). It exists for the in-repo services (LIFE / Agent /
+mocr) that must forward a key upstream.
+
+The provider model fetch (`POST /api/models/fetch`) and the plugin egress proxy
+(`POST /api/net/egress`) run through Core's SSRF guard: link-local/metadata,
+CGNAT/reserved and (with `CORE_SSRF_STRICT=1`) loopback/private targets are
+refused, and every redirect is re-checked.
 
 `POST /api/models/fetch` resolves the key server-side: when `api_key` is empty
 or masked it looks the provider up by `id`, then by `(provider, base_url)`. A
@@ -484,9 +497,9 @@ see [Authentication](#authentication).
 
 | Plugin | Calls | Auth |
 |---|---|---|
-| mocr | `GET /api/models`, `GET /api/settings/provider`, `GET /api/providers/credentials`, `POST /api/usage/record` | Bearer on `providers/credentials` and `usage/record` |
-| LIFE | `GET /api/settings/life`, `GET /api/providers/credentials`, `POST /api/tasks` | Bearer on `providers/credentials` and `tasks` (if token set) |
-| Agent | `GET /api/settings/agent`, `GET /api/providers/credentials`, `POST /api/tasks` | `Authorization: Bearer ${CORE_PAIR_TOKEN\|\|CORE_API_TOKEN}`; TLS via `CORE_TLS_CA`/`CORE_TLS_NAME` |
+| mocr | `GET /api/models`, `GET /api/settings/provider`, `GET /api/providers/credentials`, `POST /api/usage/record` | `X-0KAY-Plugin: mocr` + `Authorization: Bearer <service token>` (falls back to `CORE_API_TOKEN`) |
+| LIFE | `GET /api/settings/life`, `GET /api/providers/credentials`, `POST /api/tasks` | plugin identity (`X-0KAY-Plugin: life` + service token), else `CORE_PAIR_TOKEN`/`CORE_API_TOKEN` |
+| Agent | `GET /api/settings/agent`, `GET /api/providers/credentials`, `POST /api/tasks` | `X-0KAY-Plugin: agent` + service token, else `CORE_PAIR_TOKEN`/`CORE_API_TOKEN`; TLS via `CORE_TLS_CA`/`CORE_TLS_NAME` |
 | Minecraft | `POST /api/chat`, `POST /api/tasks` | Bearer when `CORE_API_TOKEN` is set |
 
 `GET /api/providers/credentials` is fetched per request (no caching) so provider

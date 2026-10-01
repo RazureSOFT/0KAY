@@ -22,6 +22,19 @@ const sameOrigin = (proxy: any) => {
 
 export default defineConfig({
   plugins: [vue()],
+  build: {
+    rollupOptions: {
+      output: {
+        // Keep the heavy Live2D/WebGL runtime and vendor code out of the main
+        // chunk so the app shell stays small and cacheable.
+        manualChunks: {
+          pixi: ['pixi.js', 'pixi-live2d-display'],
+          vendor: ['vue', 'vue-router', 'pinia', 'vue-i18n'],
+          markdown: ['marked', 'dompurify'],
+        },
+      },
+    },
+  },
   server: {
     host: webuiHost,
     port: webuiPort,

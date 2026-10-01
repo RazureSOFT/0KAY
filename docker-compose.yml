@@ -28,6 +28,10 @@ services:
       # Trust only the compose network; host/LAN callers need CORE_API_TOKEN or pairing.
       - CORE_TRUSTED_NETWORKS=172.28.0.0/16
       - CORE_API_TOKEN=${CORE_API_TOKEN:-}
+      # When set, every non-builtin plugin must present this shared secret at
+      # registration (defends against name impersonation). Leave unset to keep
+      # the network-trust model.
+      - CORE_PLUGIN_REGISTRATION_TOKEN=${CORE_PLUGIN_REGISTRATION_TOKEN:-}
     volumes:
       - core-data:/app/data
     healthcheck:
@@ -50,6 +54,7 @@ services:
       - CORE_HTTP_ADDR=http://core:8080
       - MOCR_ADDRESS=mocr:50052
       - CORE_API_TOKEN=${CORE_API_TOKEN:-}
+      - CORE_PLUGIN_REGISTRATION_TOKEN=${CORE_PLUGIN_REGISTRATION_TOKEN:-}
 
   # L.I.F.E - Persona Plugin
   life:
@@ -68,6 +73,7 @@ services:
       - LIFE_DATA_DIR=/app/data/life
       - SEARXNG_URL=http://searxng:8080
       - CORE_API_TOKEN=${CORE_API_TOKEN:-}
+      - CORE_PLUGIN_REGISTRATION_TOKEN=${CORE_PLUGIN_REGISTRATION_TOKEN:-}
     volumes:
       - life-data:/app/data/life
     depends_on:
@@ -94,6 +100,7 @@ services:
       - MOCR_ADDRESS=mocr:50052
       - SEARXNG_URL=http://searxng:8080
       - CORE_API_TOKEN=${CORE_API_TOKEN:-}
+      - CORE_PLUGIN_REGISTRATION_TOKEN=${CORE_PLUGIN_REGISTRATION_TOKEN:-}
     depends_on:
       - core
     volumes:

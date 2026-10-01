@@ -49,6 +49,52 @@ func TestPluginTokenAndAuthenticate(t *testing.T) {
 	}
 }
 
+func TestReregisterReplacesByName(t *testing.T) {
+	r := NewRegistry()
+	r.SetSecret([]byte("reregister-secret-0123456789abcdef"))
+	a, err := r.Register(&pluginv1.PluginInfo{Name: "life"}, []string{"life"}, "127.0.0.1:50053")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := r.Register(&pluginv1.PluginInfo{Name: "life"}, []string{"life"}, "127.0.0.1:60053")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a != b {
+		t.Fatal("re-registering a name must reuse the same plugin id")
+	}
+	if len(r.GetAllPlugins()) != 1 {
+		t.Fatal("re-register must not leave a duplicate row")
+	}
+}
+
+func TestAuthenticateFailsClosedWithoutSecret(t *testing.T) {
+	r := NewRegistry()
+	// No SetSecret: plugin identity is disabled, so attributed calls must not
+	// authenticate rather than accepting any token.
+	if _, err := r.Register(&pluginv1.PluginInfo{Name: "life"}, []string{"life"}, "127.0.0.1:50053"); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := r.Authenticate("life", "anything"); ok {
+		t.Fatal("Authenticate must fail closed when no secret is configured")
+	}
+}
+
+func TestRegistrationTokenGate(t *testing.T) {
+	r := NewRegistry()
+	r.SetRegistrationToken("s3cret")
+	info := &pluginv1.PluginInfo{Name: "x"}
+	if _, err := r.RegisterAuthenticated(info, []string{"tool"}, "127.0.0.1:1", ""); err == nil {
+		t.Fatal("expected registration to be rejected without the token")
+	}
+	if _, err := r.RegisterAuthenticated(info, []string{"tool"}, "127.0.0.1:1", "wrong"); err == nil {
+		t.Fatal("expected registration to be rejected with a wrong token")
+	}
+	if _, err := r.RegisterAuthenticated(info, []string{"tool"}, "127.0.0.1:1", "s3cret"); err != nil {
+		t.Fatalf("registration with the token failed: %v", err)
+	}
+}
+
 func TestIsTrusted(t *testing.T) {
 	r := NewRegistry()
 	r.SetTrusted([]string{"agent", "life"})

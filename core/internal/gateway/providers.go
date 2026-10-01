@@ -4,8 +4,28 @@ import (
 	"net/http"
 	"strings"
 
+	"0kay/core/internal/pairing"
 	"0kay/core/internal/providers"
 )
+
+// machineCredential reports whether the request carries a non-browser machine
+// credential: a validated plugin identity/service token, or a paired-device /
+// shared API token in the Authorization header. Browser session cookies do not
+// count, so an in-origin plugin bundle cannot read plaintext credentials.
+func (g *Gateway) machineCredential(r *http.Request) bool {
+	token := bearerToken(r.Header.Get("Authorization"))
+	if token == "" {
+		return false
+	}
+	if name := strings.TrimSpace(r.Header.Get(PluginHeader)); name != "" {
+		if g.registry == nil {
+			return false
+		}
+		_, ok := g.registry.Authenticate(name, token)
+		return ok
+	}
+	return pairing.Default != nil && pairing.Default.ValidMachineToken(token)
+}
 
 func (g *Gateway) handleProviders(w http.ResponseWriter, r *http.Request) {
 	if g.providerStore == nil {
@@ -87,6 +107,14 @@ func (g *Gateway) handleProviderCredentials(w http.ResponseWriter, r *http.Reque
 	}
 	if strings.EqualFold(r.Header.Get("Sec-Fetch-Site"), "cross-site") {
 		writeErr(w, http.StatusForbidden, "cross_site_denied", "cross-site credential reads are not allowed")
+		return
+	}
+	// Only in-process machine clients may read plaintext keys. A browser session
+	// cookie is not enough: otherwise a plugin's WebUI bundle, which runs in the
+	// owner's origin, could exfiltrate every provider credential.
+	if !g.machineCredential(r) {
+		writeErr(w, http.StatusForbidden, "machine_credential_required",
+			"a plugin identity or machine token is required to read credentials")
 		return
 	}
 	snap := g.providerStore.SnapshotRaw()

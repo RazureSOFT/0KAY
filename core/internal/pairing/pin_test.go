@@ -163,3 +163,29 @@ func TestNodeFetchIsNotABrowser(t *testing.T) {
 		}
 	}
 }
+
+// A remote host must not be able to brute-force the 6-digit PIN.
+func TestPINBruteForceLockout(t *testing.T) {
+	s, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPIN("424242"); err != nil {
+		t.Fatal(err)
+	}
+	attempt := func(pin string) int {
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/session", strings.NewReader(`{"pin":"`+pin+`"}`))
+		req.RemoteAddr = "203.0.113.9:5000"
+		rec := httptest.NewRecorder()
+		s.handleSession(rec, req)
+		return rec.Code
+	}
+	for i := 0; i < loginMaxFailures; i++ {
+		if code := attempt("000000"); code != http.StatusUnauthorized {
+			t.Fatalf("attempt %d = %d, want 401", i, code)
+		}
+	}
+	if code := attempt("424242"); code != http.StatusTooManyRequests {
+		t.Fatalf("after lockout = %d, want 429", code)
+	}
+}

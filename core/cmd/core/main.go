@@ -53,6 +53,9 @@ func main() {
 	} else {
 		reg.SetSecret(secret)
 	}
+	// Optional shared secret non-builtin plugins must present at registration.
+	// Unset keeps the historic network-trust model; set it on exposed cores.
+	reg.SetRegistrationToken(os.Getenv("CORE_PLUGIN_REGISTRATION_TOKEN"))
 	// First-party platform plugins bypass the manifest permission allow-lists
 	// (their egress is fully permitted). Third-party plugins are enforced.
 	reg.SetTrusted([]string{

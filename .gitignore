@@ -25,6 +25,9 @@ buf-win.exe
 /_site/
 /data/
 core/data/updates/
+# FluentUI is a patch-only plugin installed by 0kay-pm into core/data/ui; the
+# built-in patches are tracked, this one is a runtime artifact.
+core/data/ui/fluentui.patch
 webui/scripts/shots/
 webui/scripts/skills-ui.png
 

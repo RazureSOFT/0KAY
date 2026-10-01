@@ -14,10 +14,16 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"0kay/core/internal/netguard"
 )
 
 // maxResponseBytes caps a proxied response body.
 const maxResponseBytes = 32 << 20
+
+// guardedTransport is reused across egress calls so connections are pooled; its
+// dialer refuses metadata/link-local (and, in strict mode, private) addresses.
+var guardedTransport = netguard.Transport(netguard.Strict())
 
 // Request is a plugin's outbound HTTP request.
 type Request struct {
@@ -111,19 +117,26 @@ func Do(ctx context.Context, req Request, allowlist []string) (Response, error) 
 	if !HostAllowed(allowlist, parsed) {
 		return Response{}, fmt.Errorf("egress to %q is not permitted", parsed.Host)
 	}
+	if err := netguard.CheckURL(parsed.String(), netguard.Strict()); err != nil {
+		return Response{}, err
+	}
 
 	timeout := req.Timeout
 	if timeout <= 0 {
 		timeout = 60 * time.Second
 	}
 	client := &http.Client{
-		Timeout: timeout,
+		Timeout:   timeout,
+		Transport: guardedTransport,
 		CheckRedirect: func(next *http.Request, via []*http.Request) error {
 			if len(via) >= 10 {
 				return fmt.Errorf("too many redirects")
 			}
 			if !HostAllowed(allowlist, next.URL) {
 				return fmt.Errorf("redirect to %q is not permitted", next.URL.Host)
+			}
+			if err := netguard.CheckURL(next.URL.String(), netguard.Strict()); err != nil {
+				return err
 			}
 			return nil
 		},

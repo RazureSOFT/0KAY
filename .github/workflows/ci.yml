@@ -23,12 +23,14 @@ jobs:
           test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
           go vet ./...
           go test ./...
+          go test -race ./...
       - name: Lint, vet and test mocr
         working-directory: mocr
         run: |
           test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
           go vet ./...
           go test ./...
+          go test -race ./...
 
   webui:
     runs-on: ubuntu-latest
@@ -59,7 +61,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: pip
+          cache-dependency-path: life/pyproject.toml
+      - name: Install L.I.F.E
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "./life[dev]"
       - name: Syntax check LIFE and searxng
         run: |
           python -m compileall -q life/src
           python -m py_compile searxng/server.py
+      - name: L.I.F.E unit tests
+        working-directory: life
+        run: python -m pytest tests -q

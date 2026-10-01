@@ -273,6 +273,22 @@ class LongTermMemory:
         return [(r[0], r[1], r[2]) for r in self.relations if memory_id in (r[0], r[2])]
 
 
+def _scope_visible(stored: object, scope: str) -> bool:
+    """Whether a memory with `stored` scope is visible to `scope`.
+
+    An empty scope means "public only" — private (session-scoped) facts must be
+    requested explicitly, so a caller that forgets to pass a session scope can
+    never recall another session's private conversation. Use "*" for an explicit
+    all-scopes (admin) query.
+    """
+    value = str(stored or "public")
+    if scope == "*":
+        return True
+    if not scope:
+        return value == "public"
+    return value in ("public", scope)
+
+
 def synchronized(method):
     @wraps(method)
     def locked(self, *args, **kwargs):
@@ -703,7 +719,7 @@ class MemorySystem:
         qvector = self._vector(query)
         vector: list[tuple[str, float]] = []
         allowed = {m.id for m in self.short_term.memories + self.long_term.memories
-                   if not scope or m.metadata.get("scope", "public") in ("public", scope)}
+                   if _scope_visible(m.metadata.get("scope"), scope)}
         for memory_id, doc in docs.items():
             if memory_id not in allowed:
                 continue
@@ -852,7 +868,8 @@ class MemorySystem:
             wanted = set(fact_ids)
             targets = [m for m in self.short_term.memories + self.long_term.memories if m.id in wanted]
         elif (query or "").strip():
-            targets = self.recall(query, top_k=max(1, min(int(limit), 20)))
+            # Admin curation acts across every scope, not just public facts.
+            targets = self.recall(query, top_k=max(1, min(int(limit), 20)), scope="*")
         for memory in targets:
             memory.strength = min(1.0, memory.strength + 0.15)
             memory.recall_count += 1

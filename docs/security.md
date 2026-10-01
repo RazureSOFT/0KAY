@@ -34,6 +34,38 @@
   deployment hardening step, not the enforcement boundary.
 - The per-plugin service-token key lives at `CORE_DATA_DIR/plugin-token.key`
   (never commit it); tokens are derived (HMAC) and stable across restarts.
+  Plugin identity fails closed when that secret is unavailable, and re-registering
+  a plugin name replaces its previous row rather than duplicating it.
+- **Registration token (opt-in).** Set `CORE_PLUGIN_REGISTRATION_TOKEN` on Core
+  and on every plugin to require each non-builtin plugin to present the shared
+  secret at registration (gRPC metadata `x-0kay-registration-token`). This closes
+  name-impersonation on an exposed Core. Unset keeps the historic network-trust
+  model. LIFE / Agent / mocr forward the value automatically.
+
+## Credentials, sessions and the access PIN
+
+- `GET /api/providers/credentials` returns **plaintext** provider keys and is
+  restricted to machine callers: it requires a valid plugin identity
+  (`X-0KAY-Plugin` + service token) or a paired-device / `CORE_API_TOKEN`
+  bearer. A browser session cookie is not accepted, so an in-origin plugin WebUI
+  bundle cannot exfiltrate credentials. Cross-site reads are rejected outright.
+- The WebUI authenticates with an HttpOnly `0kay_session` cookie; the PIN is
+  kept in memory only and sent as `X-0kay-Pin` on sensitive requests.
+- Failed PIN/token attempts are rate-limited per client (5 failures → 15-minute
+  lockout, `429 too_many_attempts`). IPv6 clients are keyed by `/64` so a routed
+  prefix cannot rotate around the limit.
+
+## Outbound request guard (SSRF)
+
+- Core's outbound HTTP (the provider model fetch and the plugin egress proxy)
+  runs through a guarded transport (`core/internal/netguard`). It refuses
+  link-local/metadata addresses (`169.254.0.0/16`, `fd00:ec2::254`, known
+  metadata hostnames), CGNAT (`100.64.0.0/10`, including Alibaba Cloud's
+  `100.100.100.200`), benchmark/reserved ranges, and settles DNS once at dial
+  time so a name cannot rebind to a blocked address. Every redirect is re-checked.
+- Private and loopback targets stay reachable by default so local model servers
+  (Ollama, LM Studio, …) keep working. Set `CORE_SSRF_STRICT=1` to also block
+  loopback and RFC1918 ranges.
 
 ## Updates and the package manager
 

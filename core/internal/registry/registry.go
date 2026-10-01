@@ -44,6 +44,10 @@ type Registry struct {
 	disabled map[string]bool // plugin name -> disabled by admin
 	// secret derives each plugin's service token (HMAC). Empty disables tokens.
 	secret []byte
+	// registrationToken, when set, must be presented by non-builtin plugins at
+	// registration (CORE_PLUGIN_REGISTRATION_TOKEN). Empty keeps the historic
+	// network-trust model for backward compatibility.
+	registrationToken string
 	// trusted holds first-party plugin names exempt from the manifest permission
 	// checks (they ship with the platform).
 	trusted map[string]bool
@@ -97,6 +101,30 @@ func (r *Registry) SetSecret(secret []byte) {
 	r.secret = append([]byte(nil), secret...)
 }
 
+// SetRegistrationToken installs the shared secret non-builtin plugins must
+// present at registration. Empty disables the check.
+func (r *Registry) SetRegistrationToken(token string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.registrationToken = strings.TrimSpace(token)
+}
+
+// RegisterAuthenticated registers a plugin after checking the shared
+// registration secret (when one is configured). Built-in registrations bypass
+// it via RegisterBuiltin.
+func (r *Registry) RegisterAuthenticated(info *pluginv1.PluginInfo, capabilities []string, address, token string) (string, error) {
+	if info == nil || info.Name == "" {
+		return "", status.Error(codes.InvalidArgument, "plugin name is required")
+	}
+	r.mu.RLock()
+	required := r.registrationToken
+	r.mu.RUnlock()
+	if required != "" && subtle.ConstantTimeCompare([]byte(required), []byte(token)) != 1 {
+		return "", status.Error(codes.PermissionDenied, "plugin registration token required")
+	}
+	return r.Register(info, capabilities, address)
+}
+
 // Token returns the stable service token for a plugin id. It is issued to the
 // plugin at registration and verified on every attributed HTTP/egress call.
 func (r *Registry) Token(pluginID string) string {
@@ -142,26 +170,26 @@ func (r *Registry) FindByID(id string) (*PluginInstance, bool) {
 	return nil, false
 }
 
-// Authenticate resolves a plugin name + service token to its instance. An empty
-// token only matches when the registry has no secret (tokens disabled).
+// Authenticate resolves a plugin name + service token to its instance. It
+// fails closed: when no token secret is configured, attributed calls are not
+// accepted (Core always provisions a secret, so this only happens on fault).
 func (r *Registry) Authenticate(name, token string) (*PluginInstance, bool) {
 	if name == "" {
 		return nil, false
 	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+	if len(r.secret) == 0 {
+		return nil, false
+	}
 	for _, p := range r.plugins {
 		if p.Info == nil || p.Info.Name != name {
 			continue
 		}
 		expected := r.tokenLocked(p.PluginID)
-		if expected == "" {
+		if expected != "" && subtle.ConstantTimeCompare([]byte(expected), []byte(token)) == 1 {
 			return snapshot(p), true
 		}
-		if subtle.ConstantTimeCompare([]byte(expected), []byte(token)) == 1 {
-			return snapshot(p), true
-		}
-		return nil, false
 	}
 	return nil, false
 }
@@ -256,7 +284,10 @@ func (r *Registry) Register(info *pluginv1.PluginInfo, capabilities []string, ad
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// Replace any existing instance with the same name (keep its plugin_id).
+	// Replace any existing instance with the same name (keep its plugin_id) so a
+	// restart does not leave a duplicate row. Executors ARE distinct per
+	// executor capability; a plain agent is distinct per address so multiple
+	// agent hosts can co-exist.
 	identity := info.Name
 	for _, capability := range capabilities {
 		if strings.HasPrefix(capability, "executor:") {
