@@ -164,6 +164,11 @@ func (g *Gateway) handleAgentMessage(w http.ResponseWriter, r *http.Request) {
 		badRequest(w, "invalid permission mode")
 		return
 	}
+	// Carry an earlier /compact summary into this turn: the agent has no
+	// cross-turn memory, so without prepending it the summary would be cosmetic.
+	if summary := g.latestCompactSummary(body.SessionID); summary != "" {
+		body.Prompt = "Summary of earlier context in this session (carry it forward):\n" + summary + "\n\n---\n\n" + body.Prompt
+	}
 	metadata := map[string]string{"session_id": body.SessionID, "executor_id": body.ExecutorID, "workdir": body.Workdir, "model_id": body.ModelID, "thinking_intensity": body.Intensity, "permission_mode": body.Permission, "language": body.Language}
 	if encoded := encodeAttachments(body.Attachments); encoded != "" {
 		metadata["attachments"] = encoded
@@ -178,6 +183,23 @@ func (g *Gateway) handleAgentMessage(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusServiceUnavailable
 	}
 	writeJSON(w, status, map[string]interface{}{"task_id": response.TaskId, "accepted": response.Accepted, "message": response.Message})
+}
+
+// latestCompactSummary returns the most recent successful /compact summary for
+// a session ("" when none). ListTasks is ordered newest-first.
+func (g *Gateway) latestCompactSummary(sessionID string) string {
+	if g.localCore == nil || sessionID == "" {
+		return ""
+	}
+	for _, task := range g.localCore.ListTasks() {
+		if task["session_id"] != sessionID || task["kind"] != "compact" || task["state"] != "done" {
+			continue
+		}
+		if result, _ := task["result"].(string); strings.TrimSpace(result) != "" {
+			return result
+		}
+	}
+	return ""
 }
 
 // handleTaskCancel POST /api/tasks/cancel {"task_id": …} — legacy alias for
