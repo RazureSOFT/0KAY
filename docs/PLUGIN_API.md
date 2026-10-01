@@ -62,7 +62,7 @@ started inside `agent/`.
 
 A package declares what it calls, what it exposes and where it may reach on the
 network. Core enforces these at runtime; **first-party platform plugins**
-(`webui`, `agent`, `life`, `mocr`, `mcp`, `searxng`, `minecraft`, `pm` and the
+(`webui`, `agent`, `life`, `mocr`, `mcp`, `minecraft`, `pm` and the
 themes) and Core-registered builtins are exempt (full access). Third-party
 plugins are denied anything they did not declare.
 
@@ -76,7 +76,7 @@ plugins are denied anything they did not declare.
       "requires": ["GET /api/models", "POST /api/net/egress"],
       "exposes":  ["agent.v1.AgentService/ExecuteTask"]
     },
-    "egress": ["api.open-meteo.com", "127.0.0.1:8888"]
+    "egress": ["api.open-meteo.com", "api.example.com"]
   }
 }
 ```
@@ -295,7 +295,7 @@ deprecated aliases for the same Core handlers.
 
 `check-plugins` reports **every installed component**, not just running plugins:
 registered services plus platform components in the source checkout (`core`,
-`webui`, `life`, `mocr`, `agent`, `searxng`, `mcp`, `minecraft`, `pm`) and
+`webui`, `life`, `mocr`, `agent`, `mcp`, `minecraft`, `pm`) and
 third-party plugins installed through 0kay-pm, which appear under their package
 name. `can_update` is true whenever `apply` accepts the id.
 

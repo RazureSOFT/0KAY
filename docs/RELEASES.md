@@ -114,7 +114,7 @@ empty for direct GitHub access.
   an update button for components it can update.
 - `check-plugins` lists **every installed component**, not only running plugins:
   registered plugin services, platform components present in the source checkout
-  (`core`, `webui`, `life`, `mocr`, `agent`, `searxng`, `mcp`, `minecraft`, `pm`)
+  (`core`, `webui`, `life`, `mocr`, `agent`, `mcp`, `minecraft`, `pm`)
   and third-party plugins installed through 0kay-pm, which appear under their
   package name. A component whose manifest declares no `start` command (`mcp`,
   `pm`) is synced/built without a restart.

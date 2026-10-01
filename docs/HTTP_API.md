@@ -188,7 +188,7 @@ Served from `$CORE_DATA_DIR/plugin-ui/{name}` (default `data/plugin-ui/{name}`).
   `source` (git pull + rebuild + restart). See [Releases](RELEASES.md).
 - `check-plugins` lists **every installed component**, not only currently
   running plugins: registered plugin services, platform components found in the
-  source checkout (`core`, `webui`, `life`, `mocr`, `agent`, `searxng`, `mcp`,
+  source checkout (`core`, `webui`, `life`, `mocr`, `agent`, `mcp`,
   `minecraft`, `pm`) and third-party plugins installed through 0kay-pm (listed
   by their package name). `can_update` is true whenever `apply` can handle it.
 - `apply` with no `version` syncs the latest source (or runs `0kay-pm update`)

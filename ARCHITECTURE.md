@@ -3,7 +3,7 @@
 > 执行状态、会话隔离、记忆存储与部署的最新实现约定见 [RUNTIME_CONTRACTS.md](RUNTIME_CONTRACTS.md)。旧有聊天镜像和技能预取描述以该文档及当前代码为准。
 
 > 本文描述 0KAY 平台的组件划分、通信边界、数据流与扩展机制。
-> `core/`、`mocr/`、`life/`、`webui/`、`searxng/`、`proto/`、`gen/` 和 `mcp/` 位于 umbrella 仓库；`agent/` 保持在独立的 `0KAY-agent` 仓库。
+> `core/`、`mocr/`、`life/`、`webui/`、`proto/`、`gen/` 和 `mcp/` 位于 umbrella 仓库；`agent/` 保持在独立的 `0KAY-agent` 仓库。
 
 ## 文档约定
 
@@ -40,9 +40,9 @@
              ▲                               │
              │ HTTP (optional)               │
    ┌─────────┴─────────┐         ┌───────────┼───────────┬──────────┐
-   │ SearXNG :8888     │         ▼           ▼           ▼          │
-   │ (meta search)     │    mocr :50052  life :50053  agent :50054   │
-   │ cnbing/bing/...   │    (Go model     (Python     (TS task      │
+   │ Core /api/search  │         ▼           ▼           ▼          │
+   │ (built-in search) │    mocr :50052  life :50053  agent :50054   │
+   │ cnbing/bing/so360 │    (Go model     (Python     (TS task      │
    └───────────────────┘     gateway)     persona)    engine)       │
                                                           │
                                                           ▼
@@ -75,14 +75,15 @@
 
 - **Plugin Registry** — 插件注册与生命周期；`disabled_plugins.json` 控制启停
 - **Providers Store** — `core/data/providers.json`：多供应商、模型目录、`disabled_models`、默认模型
-- **Settings Store** — `core/data/settings.json` + 插件贡献的 section（agent / life / mocr / searxng…）
+- **Settings Store** — `core/data/settings.json` + 插件贡献的 section（agent / life / mocr / mcp…）
 - **UI Patch Store** — 扫描 `CORE_DATA_DIR/ui/*.patch` 与 `webui/patches/*.patch`，展平后下发给 WebUI；原生页静态资源在 `CORE_DATA_DIR/plugin-ui/{name}/`
 - **State / Health** — `/health` 聚合插件心跳；`/api/state` 合并 Core + L.I.F.E 情绪状态
 
 **内置插件注册**（`registerBuiltins`）：
 
 - `webui` — 指向 `http://127.0.0.1:3000`
-- `searxng` — 当 `SEARXNG_ENABLED=1` 或设置了 `SEARXNG_URL` 时注册，并贡献引擎设置项
+- `pm` — 包管理器（安装/更新），暴露 `/api/plugins/pm/*`
+- 网页搜索已内联进 Core（`/api/search`），不再是独立插件/端口
 
 ### 2.2 mocr（Go）— 模型网关
 
@@ -128,16 +129,15 @@
   - `registerPatchRoutes()` 把 patch 里的 `router` 项注册进 vue-router
   - `component: "agents"` 映射到内置 `AgentsPage`
   - 首屏 race：patch 未就绪时落在 catch-all，加载后 `router.replace` 重解析
-- 设置页多 tab：通用 / 供应商 / 人设 / Live2D / 权限 / 危险区 + 插件段（agent、searxng…）
+- 设置页多 tab：通用 / 供应商 / 人设 / Live2D / 权限 / 危险区 + 插件段（agent、mcp…）
 - 供应商面板：logo（`/providers/*.svg`）、编辑表单、**模型列表 + 开关合并卡片**、获取模型列表（显示 `source=api|fallback`）
 
-### 2.6 SearXNG（Python）— 元搜索
+### 2.6 搜索（Core 内置）
 
-- HTTP `:8888`
-- 引擎：`cnbing`（中文 Bing，`zh-CN`/`mkt=zh-CN`）、`bing`、`duckduckgo`、`marginalia`
-- 默认 **cnbing**；顺序：preferred 在前，其余作 fallback
-- 偏好读取：Core `/api/settings/searxng` → 环境变量 `SEARXNG_ENGINE` → 内置默认
-- UI：侧栏「搜索」由 `searxng-nav` patch 注入 iframe 路由 `/search`
+- 无独立进程/端口；`core/internal/search` 在 Core 内抓取引擎
+- 引擎：`cnbing`（中文 Bing）、`bing`、`so360`、`duckduckgo`
+- 默认 **cnbing**；偏好读取：Core `/api/settings/search` → 内置默认
+- `GET/POST /api/search`；Agent 的 `websearch` 与 L.I.F.E 的 `SearchTool` 都调它
 
 ---
 
@@ -151,8 +151,7 @@
 | Core → LIFE / Agent / mocr | gRPC | 转发、选型、任务、权限同步 |
 | LIFE / Agent → Core | gRPC | 注册、心跳、上报 |
 | Agent → mocr | gRPC | ChooseModels + 推理 |
-| Core → SearXNG | HTTP | （可选）搜索代理 / 设置回读 |
-| WebUI iframe → SearXNG | HTTP | `/search` 内嵌页 |
+| Agent / LIFE → Core | HTTP | 内置搜索 `/api/search`、出网代理、工具目录 |
 
 **Protobuf** 定义在 `proto/`（Buf/手写生成物在 `gen/`）。Agent 用 `@grpc/proto-loader` 动态加载同一套 proto。
 
@@ -277,7 +276,6 @@ tags: a b c
 | mocr gRPC | 50052 | Go | `mocr/cmd/mocr` → `mocr.exe` |
 | L.I.F.E gRPC | 50053 | Python | `python -m life.main`（cwd `life/src`） |
 | Agent gRPC | 50054 | Node | `node agent/dist/index.js` |
-| SearXNG | 8888 | Python | `searxng/server.py` |
 | WebUI | 3000 | Vite | `webui`（`npm run dev` / 静态托管 dist） |
 | CDP（测试） | 9333 | Edge | 可选，用于 `webui/scripts/cdp-*.cjs` |
 
@@ -290,7 +288,7 @@ tags: a b c
 ```
 0KAY/
 ├── core/                 # Go 编排中枢
-│   ├── cmd/core/         # main、内置插件、searxng 设置
+│   ├── cmd/core/         # main、内置插件、搜索设置
 │   ├── internal/gateway/ # HTTP、providers、settings、ui_patches、state
 │   └── data/             # providers.json、settings.json、disabled_plugins.json、ui/*.patch
 ├── mocr/                 # Go 模型网关
@@ -305,7 +303,6 @@ tags: a b c
 │   ├── src/pages|stores|router|locales
 │   ├── patches/          # 随仓库的 *.patch
 │   └── scripts/          # api-check / cdp-* 验证脚本
-├── searxng/              # 元搜索兼容层
 ├── proto/                # 共享 Protobuf
 └── gen/                  # 生成代码（go / python …）
 ```
