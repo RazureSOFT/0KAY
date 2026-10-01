@@ -40,6 +40,25 @@ function displayName(p: ProviderConfig): string {
 function logo(p: ProviderConfig): string {
   return preset(p.provider)?.logo || ''
 }
+const modelTypeOptions = [
+  { value: 'chat', label: 'Chat 对话' },
+  { value: 'embedding', label: 'Embedding 向量' },
+  { value: 'rerank', label: 'Rerank 重排' },
+  { value: 'vision', label: 'Vision 视觉' },
+  { value: 'tts', label: 'TTS 语音' },
+  { value: 'image', label: 'Image 图像' },
+  { value: 'audio', label: 'Audio 音频' },
+]
+function modelTypeOf(m: string): string {
+  return (edit.value?.model_types || {})[m] || 'chat'
+}
+function setModelType(m: string, type: string) {
+  if (!edit.value) return
+  const map = { ...(edit.value.model_types || {}) }
+  if (!type || type === 'chat') delete map[m]
+  else map[m] = type
+  edit.value.model_types = map
+}
 function enabledModels(p: ProviderConfig): string[] {
   const disabled = new Set(p.disabled_models || [])
   return p.models.filter(m => !disabled.has(m))
@@ -105,6 +124,7 @@ function startAdd() {
     default_model: '',
     enabled: true,
     format: '',
+    model_types: {},
   }
   editorError.value = ''
   editorProbe.value = { state: 'idle' }
@@ -123,6 +143,7 @@ function startEdit(p: ProviderConfig) {
     models: [...p.models],
     disabled_models: [...(p.disabled_models || [])],
     format: p.format || '',
+    model_types: { ...(p.model_types || {}) },
   }
   // The catalog is redacted (api_key blank, api_key_masked present): remember a
   // key already exists so the blank field can be explained and preserved.
@@ -369,6 +390,15 @@ const providerTypeOptions = computed(() =>
         <div v-if="edit.models.length" class="pp-models">
           <div v-for="m in filteredModels" :key="m" class="pp-model" :class="{ off: (edit.disabled_models || []).includes(m) }">
             <span class="pp-model-name" :title="m">{{ m }}</span>
+            <select
+              class="pp-type"
+              :value="modelTypeOf(m)"
+              :class="{ tagged: modelTypeOf(m) !== 'chat' }"
+              title="模型类型"
+              @change="setModelType(m, ($event.target as HTMLSelectElement).value)"
+            >
+              <option v-for="opt in modelTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
             <button
               v-if="edit.default_model !== m"
               class="pp-star"
@@ -515,6 +545,8 @@ const providerTypeOptions = computed(() =>
 .pp-star:hover { background: var(--md-surface-container); color: var(--md-primary); }
 .pp-star.on { color: #e0a800; cursor: default; }
 .pp-switch { flex: none; width: 40px; height: 22px; accent-color: var(--md-primary); cursor: pointer; }
+.pp-type { flex: none; height: 28px; max-width: 132px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--md-outline-variant); background: var(--md-surface-container-low); color: var(--md-on-surface-variant); font-size: 12px; cursor: pointer; }
+.pp-type.tagged { border-color: color-mix(in srgb, var(--md-primary) 55%, var(--md-outline-variant)); color: var(--md-primary); font-weight: 650; }
 
 .pp-error { color: var(--md-error); margin: 0; }
 .pp-editor-actions { display: flex; gap: 10px; }

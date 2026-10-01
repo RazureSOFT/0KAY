@@ -24,7 +24,7 @@ import crypto from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { readFile, rm } from 'node:fs/promises'
 import { setTimeout as delay } from 'node:timers/promises'
-import { registerWithCore } from './register.mjs'
+import { registerWithCore, getSettings } from './register.mjs'
 
 const PORT = Number(process.env.DEEPSEEK_TTS_PORT || 8792)
 const HOST = process.env.DEEPSEEK_TTS_HOST || '127.0.0.1'
@@ -40,13 +40,13 @@ function dstrtsCommand() {
   return bin.split(/\s+/).filter(Boolean)
 }
 
-function synth(text, voice) {
+function synth(text, voice, token) {
   return new Promise((resolve, reject) => {
     const [cmd, ...prefix] = dstrtsCommand()
     const out = path.join(os.tmpdir(), `0kay-tts-${crypto.randomBytes(8).toString('hex')}.wav`)
     const args = [...prefix, 'say', text, '--voice', voice || DEFAULT_VOICE, '-o', out]
     const child = spawn(cmd, args, {
-      env: { ...process.env },
+      env: { ...process.env, DS_TOKEN: token || process.env.DS_TOKEN || '' },
       windowsHide: true,
       stdio: ['ignore', 'ignore', 'pipe'],
     })
@@ -90,28 +90,38 @@ function json(res, status, value) {
   res.end(body)
 }
 
+function settingEnabled(value) {
+  if (value === undefined || value === null || value === '') return true
+  return !(value === false || value === 'false' || value === '0' || value === 0)
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || '/', 'http://localhost')
+  const settings = await getSettings()
+  const token = String(settings.token || process.env.DS_TOKEN || '')
+  const settingsVoice = String(settings.voice || DEFAULT_VOICE)
+
   if (req.method === 'GET' && (url.pathname === '/health' || url.pathname === '/')) {
-    return json(res, 200, { ok: true, service: 'deepseek-tts', voice: DEFAULT_VOICE, token: !!process.env.DS_TOKEN })
+    return json(res, 200, { ok: true, service: 'deepseek-tts', voice: settingsVoice, token: !!token, enabled: settingEnabled(settings.enabled) })
   }
   if (req.method !== 'POST' || (url.pathname !== '/' && url.pathname !== '/tts')) {
     return json(res, 404, { error: 'not found' })
   }
   let text = ''
-  let voice = DEFAULT_VOICE
+  let voice = settingsVoice
   try {
     const raw = await readBody(req)
     const body = raw ? JSON.parse(raw) : {}
     text = String(body.text || '').trim()
-    voice = String(body.voice || DEFAULT_VOICE).trim() || DEFAULT_VOICE
+    voice = String(body.voice || settingsVoice).trim() || settingsVoice
   } catch (error) {
     return json(res, 400, { error: `bad request: ${error.message}` })
   }
   if (!text) return json(res, 400, { error: 'text is required' })
-  if (!process.env.DS_TOKEN) return json(res, 503, { error: 'DS_TOKEN not set' })
+  if (!settingEnabled(settings.enabled)) return json(res, 503, { error: 'TTS disabled in settings' })
+  if (!token) return json(res, 503, { error: 'DeepSeek userToken not set (Settings → DeepSeek TTS)' })
   try {
-    const audio = await synth(text.slice(0, MAX_TEXT), voice)
+    const audio = await synth(text.slice(0, MAX_TEXT), voice, token)
     res.writeHead(200, { 'Content-Type': 'audio/wav', 'Content-Length': audio.length, 'Cache-Control': 'no-store' })
     res.end(audio)
   } catch (error) {
@@ -122,10 +132,10 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
   log(`listening on http://${HOST}:${PORT} -> ${ENDPOINT}`)
-  if (!process.env.DS_TOKEN) {
-    log('DS_TOKEN is not set; synthesis is disabled and LIFE tts_endpoint is not registered')
-  } else if (process.env.OKAY_TTS_AUTOREGISTER !== '0') {
-    registerWithCore(ENDPOINT, log).catch((error) => log(`register failed: ${error.message}`))
+  try {
+    registerWithCore(ENDPOINT, log)
+  } catch (error) {
+    log(`register error: ${error.message}`)
   }
 })
 

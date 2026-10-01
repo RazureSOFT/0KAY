@@ -25,6 +25,10 @@ type ProviderConfig struct {
 	DisabledModels []string `json:"disabled_models,omitempty"`
 	DefaultModel   string   `json:"default_model"`
 	Enabled        bool     `json:"enabled"`
+	// ModelTypes tags individual models with a capability: "chat" (default),
+	// "embedding", "rerank", "vision", "tts", "image", "audio", ... Consumers
+	// (Agent/LIFE model pickers, tools) filter by type; empty means "chat".
+	ModelTypes map[string]string `json:"model_types,omitempty"`
 	// Format selects the wire protocol independently of the provider preset:
 	// "openai" (chat/completions) or "anthropic" (messages). Empty means infer
 	// from Provider/BaseURL, preserving the original behaviour.
@@ -75,6 +79,14 @@ func IsMasked(v, key string) bool {
 		return true
 	}
 	return strings.Trim(v, "*") == ""
+}
+
+// ModelType reports a model's capability (default "chat").
+func (p ProviderConfig) ModelType(modelID string) string {
+	if value := strings.TrimSpace(p.ModelTypes[modelID]); value != "" {
+		return strings.ToLower(value)
+	}
+	return "chat"
 }
 
 // IsModelEnabled reports whether a model is active on this provider.
@@ -274,6 +286,13 @@ func (s *Store) SnapshotRaw() File {
 	for i, p := range s.data.Providers {
 		p.Models = append([]string(nil), p.Models...)
 		p.DisabledModels = append([]string(nil), p.DisabledModels...)
+		if p.ModelTypes != nil {
+			types := make(map[string]string, len(p.ModelTypes))
+			for key, value := range p.ModelTypes {
+				types[key] = value
+			}
+			p.ModelTypes = types
+		}
 		providers[i] = p
 	}
 	return File{
@@ -312,6 +331,13 @@ func redactProvider(p ProviderConfig) ProviderConfig {
 	// touch the store's backing arrays (and vice versa under -race).
 	p.Models = append([]string(nil), p.Models...)
 	p.DisabledModels = append([]string(nil), p.DisabledModels...)
+	if p.ModelTypes != nil {
+		types := make(map[string]string, len(p.ModelTypes))
+		for key, value := range p.ModelTypes {
+			types[key] = value
+		}
+		p.ModelTypes = types
+	}
 	if p.APIKey != "" {
 		p.APIKeyMasked = MaskKey(p.APIKey)
 	}
@@ -516,6 +542,9 @@ type CatalogEntry struct {
 	ProviderID       string `json:"provider_id,omitempty"`
 	ProviderName     string `json:"provider_name,omitempty"`
 	SupportsThinking bool   `json:"supports_thinking"`
+	// Type is the model capability: "chat" (default), "embedding", "rerank",
+	// "vision", "tts", "image", "audio", ...
+	Type string `json:"type"`
 }
 
 // Catalog returns the enabled model catalog (deduped by model id).
@@ -539,6 +568,7 @@ func (s *Store) Catalog() []CatalogEntry {
 				ProviderID:       p.ID,
 				ProviderName:     p.Name,
 				SupportsThinking: thinking,
+				Type:             p.ModelType(m),
 			})
 		}
 	}

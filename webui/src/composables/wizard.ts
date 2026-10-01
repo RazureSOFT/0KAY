@@ -23,6 +23,8 @@ export interface ProviderConfig {
   enabled: boolean
   /** Wire protocol override: 'openai' | 'anthropic' | '' (infer from preset). */
   format?: string
+  /** Model capability per model id: 'chat' (default), 'embedding', 'rerank', 'vision', 'tts', 'image', 'audio'. */
+  model_types?: Record<string, string>
 }
 
 export interface PersonaConfig {
