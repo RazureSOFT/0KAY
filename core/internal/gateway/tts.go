@@ -21,6 +21,10 @@ func (g *Gateway) ttsEndpoint() string {
 		return value
 	}
 	if g.settingsStore != nil {
+		// The DeepSeek TTS plugin records its own URL in its settings section.
+		if value, ok := g.settingsStore.GetValues("deepseek-tts")["endpoint"].(string); ok && strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
 		if value, ok := g.settingsStore.GetValues("life")["tts_endpoint"].(string); ok && strings.TrimSpace(value) != "" {
 			return strings.TrimSpace(value)
 		}

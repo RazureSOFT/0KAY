@@ -62,6 +62,21 @@ export async function getSettings() {
   return settingsCache.values
 }
 
+/** Persist a value into one of our own settings sections. */
+async function postSectionValues(id, values, log) {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    try {
+      const res = await fetch(`${coreHttpBase()}/api/settings/${id}`, {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify({ values }),
+      })
+      if (res.ok) return true
+    } catch { /* retry */ }
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+  }
+  log(`could not persist ${id} settings`)
+  return false
+}
+
 /** Best-effort: point LIFE at this service when it has no TTS endpoint yet. */
 async function registerTtsEndpoint(endpoint, log) {
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -109,9 +124,10 @@ export function registerWithCore(endpoint, log = () => {}) {
         author: '0kay',
         pluginType: 'PLUGIN_TYPE_SERVICE',
         permissions: {
-          api: {
-            requires: [`GET /api/settings/${SECTION.id}`, 'GET /api/settings/life', 'POST /api/settings/life'],
-          },
+          apiRequires: [
+            `GET /api/settings/${SECTION.id}`, `POST /api/settings/${SECTION.id}`,
+            'GET /api/settings/life', 'POST /api/settings/life',
+          ],
           egress: ['chat.deepseek.com', '*.deepseek.com'],
         },
       },
@@ -139,7 +155,11 @@ export function registerWithCore(endpoint, log = () => {}) {
 
   ;(async () => {
     for (let i = 0; i < 10 && !pluginId; i++) { if (await register()) break; await new Promise((r) => setTimeout(r, 2000)) }
-    if (pluginId && process.env.OKAY_TTS_AUTOREGISTER !== '0') await registerTtsEndpoint(endpoint, log)
+    if (!pluginId) return
+    // Record our own endpoint so Core's /api/tts and the settings test work
+    // without depending on LIFE.
+    await postSectionValues(SECTION.id, { endpoint }, log)
+    if (process.env.OKAY_TTS_AUTOREGISTER !== '0') await registerTtsEndpoint(endpoint, log)
   })()
 
   return () => { clearInterval(timer) }
