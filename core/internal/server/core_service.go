@@ -1018,6 +1018,110 @@ func (s *CoreServiceServer) ListPluginTools(ctx context.Context, req *corev1.Lis
 	return &corev1.ListPluginToolsResponse{Tools: out}, nil
 }
 
+// callContextTool serves Core-native session-context tools in-process.
+func (s *CoreServiceServer) callContextTool(req *corev1.CallPluginToolRequest) *corev1.CallPluginToolResponse {
+	var args map[string]any
+	_ = json.Unmarshal([]byte(req.ArgsJson), &args)
+	sessionID := strings.TrimSpace(req.SessionId)
+	switch req.Tool {
+	case "session_context_search":
+		query := strings.ToLower(strings.TrimSpace(fmt.Sprint(args["query"])))
+		if sessionID == "" || query == "" {
+			return &corev1.CallPluginToolResponse{Error: "session and query are required"}
+		}
+		payload, _ := json.Marshal(map[string]any{"matches": s.searchSessionContext(sessionID, query)})
+		return &corev1.CallPluginToolResponse{Success: true, Result: string(payload)}
+	case "session_context_decompress":
+		id := strings.TrimSpace(fmt.Sprint(args["id"]))
+		content, err := s.decompressSessionContext(sessionID, id)
+		if err != nil {
+			return &corev1.CallPluginToolResponse{Error: err.Error()}
+		}
+		payload, _ := json.Marshal(map[string]any{"id": id, "content": content})
+		return &corev1.CallPluginToolResponse{Success: true, Result: string(payload)}
+	}
+	return &corev1.CallPluginToolResponse{Error: "unknown context tool " + req.Tool}
+}
+
+// searchSessionContext greps a session's turns and compressed summaries.
+func (s *CoreServiceServer) searchSessionContext(sessionID, query string) []map[string]any {
+	const snippet = 240
+	out := []map[string]any{}
+	for _, task := range s.ListTasks() {
+		if task["session_id"] != sessionID {
+			continue
+		}
+		kind, _ := task["kind"].(string)
+		if kind != "agent" && kind != "compact" {
+			continue
+		}
+		content := fmt.Sprint(task["prompt"]) + "\n" + fmt.Sprint(task["result"])
+		index := strings.Index(strings.ToLower(content), query)
+		if index < 0 {
+			continue
+		}
+		start := index - snippet/2
+		if start < 0 {
+			start = 0
+		}
+		end := start + snippet
+		if end > len(content) {
+			end = len(content)
+		}
+		out = append(out, map[string]any{
+			"id":      task["task_id"],
+			"kind":    kind,
+			"state":   task["state"],
+			"snippet": content[start:end],
+		})
+		if len(out) >= 20 {
+			break
+		}
+	}
+	return out
+}
+
+// decompressSessionContext returns the full text of a folded block or one turn.
+func (s *CoreServiceServer) decompressSessionContext(sessionID, id string) (string, error) {
+	if id == "" {
+		return "", fmt.Errorf("id is required")
+	}
+	byID := map[string]map[string]any{}
+	var target map[string]any
+	for _, task := range s.ListTasks() {
+		if task["session_id"] != sessionID {
+			continue
+		}
+		tid, _ := task["task_id"].(string)
+		byID[tid] = task
+		if tid == id {
+			target = task
+		}
+	}
+	if target == nil {
+		return "", fmt.Errorf("id %q not found in this session", id)
+	}
+	if kind, _ := target["kind"].(string); kind == "compact" {
+		var meta struct {
+			IDs []string `json:"ids"`
+		}
+		if raw, _ := target["args"].(string); raw != "" {
+			_ = json.Unmarshal([]byte(raw), &meta)
+		}
+		var b strings.Builder
+		for _, fid := range meta.IDs {
+			if t := byID[fid]; t != nil {
+				fmt.Fprintf(&b, "## %s\nuser: %v\nassistant: %v\n\n", fid, t["prompt"], t["result"])
+			}
+		}
+		if b.Len() == 0 {
+			return fmt.Sprint(target["result"]), nil
+		}
+		return b.String(), nil
+	}
+	return fmt.Sprintf("user: %v\nassistant: %v\n", target["prompt"], target["result"]), nil
+}
+
 // CallPluginTool routes a tool call to the owning plugin's ToolService.
 func (s *CoreServiceServer) CallPluginTool(ctx context.Context, req *corev1.CallPluginToolRequest) (*corev1.CallPluginToolResponse, error) {
 	if strings.TrimSpace(req.Tool) == "" {
@@ -1026,6 +1130,10 @@ func (s *CoreServiceServer) CallPluginTool(ctx context.Context, req *corev1.Call
 	info, _, ok := s.registry.ToolOwner(req.Tool)
 	if !ok {
 		return &corev1.CallPluginToolResponse{Error: "unknown tool " + req.Tool}, nil
+	}
+	// Core-native session-context tools are served in-process (no plugin process).
+	if info.Info != nil && info.Info.GetName() == "context" {
+		return s.callContextTool(req), nil
 	}
 	if info.Address == "" {
 		return &corev1.CallPluginToolResponse{Error: "plugin " + info.Info.GetName() + " has no address"}, nil

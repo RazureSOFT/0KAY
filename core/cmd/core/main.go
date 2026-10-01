@@ -253,6 +253,33 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 		log.Printf("register pm builtin: %v", err)
 	}
 
+	// Core-native session-context tools: folded-history search/decompress served
+	// in-process (CoreServiceServer.callContextTool). Exposed to the Agent so the
+	// model can recall what /compact folded away.
+	if _, err := reg.RegisterBuiltin(&pluginv1.PluginInfo{
+		Name:        "context",
+		Version:     version.Version,
+		Description: "Core-native session context tools (compressed history search / decompress)",
+		Author:      "0kay",
+		PluginType:  pluginv1.PluginType_PLUGIN_TYPE_TOOL,
+		Tools: []*pluginv1.PluginTool{
+			{
+				Name:           "session_context_search",
+				Description:    "Keyword search over this session's earlier turns and compressed summaries; use it to recall details that were folded away.",
+				Scopes:         []string{"agent"},
+				ParametersJson: `{"type":"object","required":["query"],"properties":{"query":{"type":"string","description":"keywords to find"}}}`,
+			},
+			{
+				Name:           "session_context_decompress",
+				Description:    "Return the full text behind an id from session_context_search (an earlier turn or a compressed block).",
+				Scopes:         []string{"agent"},
+				ParametersJson: `{"type":"object","required":["id"],"properties":{"id":{"type":"string","description":"a turn id or block id returned by session_context_search"}}}`,
+			},
+		},
+	}, []string{"context"}, ""); err != nil {
+		log.Printf("register context builtin: %v", err)
+	}
+
 	// MCP server configuration is core-owned: the 0kay-mcp package is a client
 	// library with no process, so Core stores the shared server list and Agent /
 	// L.I.F.E. read it back (`GET /api/settings/mcp`).

@@ -91,6 +91,7 @@ func (g *Gateway) compactSession(ctx context.Context, sessionID, modelID string)
 	}
 	tasks := g.localCore.ListTasks()
 	history := []map[string]string{}
+	foldedIDs := []string{}
 	fromID, toID := "", ""
 	for i := len(tasks) - 1; i >= 0; i-- {
 		task := tasks[i]
@@ -114,6 +115,7 @@ func (g *Gateway) compactSession(ctx context.Context, sessionID, modelID string)
 					toID = id
 				}
 				fromID = id
+				foldedIDs = append(foldedIDs, id)
 			}
 		}
 	}
@@ -123,7 +125,7 @@ func (g *Gateway) compactSession(ctx context.Context, sessionID, modelID string)
 	transcript := transcriptFromHistory(history)
 
 	id := fmt.Sprintf("compact:%d", time.Now().UnixNano())
-	args, _ := json.Marshal(map[string]string{"model": strings.TrimSpace(modelID), "from": fromID, "to": toID})
+	args, _ := json.Marshal(map[string]any{"model": strings.TrimSpace(modelID), "from": fromID, "to": toID, "ids": foldedIDs})
 	event := server.TaskEvent{TaskID: id, SessionID: sessionID, CallerID: "webui", Kind: "compact", Prompt: "/compact", State: "running", Args: string(args)}
 	if err := g.localCore.RecordTask(event); err != nil {
 		return "", err

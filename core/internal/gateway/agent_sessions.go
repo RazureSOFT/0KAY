@@ -175,7 +175,7 @@ func (g *Gateway) handleAgentMessage(w http.ResponseWriter, r *http.Request) {
 	// Carry an earlier /compact summary into this turn: the agent has no
 	// cross-turn memory, so without prepending it the summary would be cosmetic.
 	if summary := g.latestCompactSummary(body.SessionID); summary != "" {
-		body.Prompt = "Summary of earlier context in this session (carry it forward):\n" + summary + "\n\n---\n\n" + body.Prompt
+		body.Prompt = "Summary of earlier context in this session (carry it forward). If you need exact details that were folded away, call session_context_search with keywords and then session_context_decompress with a returned id.\n" + summary + "\n\n---\n\n" + body.Prompt
 	}
 	metadata := map[string]string{"session_id": body.SessionID, "executor_id": body.ExecutorID, "workdir": body.Workdir, "model_id": body.ModelID, "thinking_intensity": body.Intensity, "permission_mode": body.Permission, "language": body.Language}
 	if encoded := encodeAttachments(body.Attachments); encoded != "" {

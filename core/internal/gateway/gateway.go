@@ -320,6 +320,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/files", g.handleFiles)
 	mux.HandleFunc("/api/net/egress", g.handleEgress)
 	mux.HandleFunc("/api/tools", g.handleTools)
+	mux.HandleFunc("/api/tools/", g.handleTools)
 	mux.HandleFunc("/api/search", g.handleSearch)
 	mux.HandleFunc("/api/stdio-provider/{id}/{path...}", g.handleStdioProvider)
 	mux.Handle("/live2d/models/", http.StripPrefix("/live2d/models/", http.FileServer(http.Dir(live2DRoot()))))
