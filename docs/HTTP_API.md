@@ -388,6 +388,24 @@ refused, and every redirect is re-checked.
 or masked it looks the provider up by `id`, then by `(provider, base_url)`. A
 masked key is never forwarded to the provider's model endpoint.
 
+### Stdio-hosted provider plugins
+
+A package whose manifest declares a `provider` block (see
+[PLUGIN_API.md](PLUGIN_API.md) §0.1.3) gets its provider **hosted by Core as a
+stdio child process — no plugin port**. Core spawns the declared command at
+boot, registers the provider with `base_url =
+http://127.0.0.1:<core-http-port>/api/stdio-provider/<id><route>`, and forwards
+each request to the child over newline-delimited JSON on stdin/stdout.
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET, POST | `/api/stdio-provider/{id}/{path…}` | Proxy to the stdio-hosted provider `id` (e.g. `/api/stdio-provider/opencode-free/v1/chat/completions`) |
+
+The provider's models come from the manifest `models` list, or — when omitted —
+are discovered from the child's `GET <route>/models`. Registration runs in the
+background so a slow child never blocks Core startup. Restart Core after
+installing a package that declares a provider.
+
 ## 9. LIFE
 
 | Method | Path | Purpose |

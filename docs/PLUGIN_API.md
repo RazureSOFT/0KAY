@@ -39,6 +39,7 @@ package identity, version, build and run commands. The file is consumed by
 | `requires` | string[] / no | Runtime dependency hints; pm does not install, wait for readiness or register capabilities from these |
 | `permissions` | object / no | Declared API + egress permissions (below). Enforced by Core at runtime |
 | `capabilities` | object / no | Declared contributions: commands / skills / hooks / mcpServers / agents (below) |
+| `provider` | object / no | Declares an OpenAI-compatible model provider Core hosts over stdio (below) |
 | `modules` | string[] / no | Sub-manifest paths (relative to the repo root) used by an umbrella package |
 | `repositories` | object[] / no | External sub-repository declarations, each `{path, package, url}` |
 | `ui` | object / no | Optional plugin WebUI build/publish config (below) |
@@ -160,6 +161,48 @@ them at `GET /api/plugins/capabilities`:
 
 Consumers: the Agent merges `mcpServers` and loads `skills`; `commands`,
 `hooks` and `agents` are exposed for the WebUI / L.I.F.E. to consume.
+
+### 0.1.3 Provider hosting over stdio
+
+A package can contribute an OpenAI-compatible **model provider without opening a
+port**. Core spawns the declared command as a child process and forwards each
+request over newline-delimited JSON on stdin/stdout, exposing it on Core's own
+HTTP port:
+
+```json
+"provider": {
+  "id": "deepseek-web",
+  "name": "DeepSeek Web",
+  "route": "/v1",
+  "stdio": ["node", "src/stdio.mjs"],
+  "models": ["deepseek-web-chat", "deepseek-web-reasoner"]
+}
+```
+
+- `id` — provider id shown to mocr / the WebUI.
+- `name` — display name.
+- `route` — sub-path the plugin serves (default `/v1`); Core registers the
+  provider `base_url` as
+  `http://127.0.0.1:<core-http-port>/api/stdio-provider/<id><route>`.
+- `stdio` — the argv Core runs (cwd = the package root).
+- `models` — optional fallback ids; when omitted, Core discovers them from the
+  child's `GET <route>/models`.
+
+Protocol (one JSON object per line):
+
+```
+Core → child: {"id","method","url","headers","body"}
+child → Core: {"id","type":"head","status","headers"}
+              {"id","type":"chunk","data"}   (repeatable; SSE/body bytes)
+              {"id","type":"end"}
+              {"id","type":"error","error"}
+```
+
+Core starts these children at boot, registers the provider **asynchronously** (a
+slow child never blocks startup), and proxies through
+`GET/POST /api/stdio-provider/{id}/{path...}`. After installing a package that
+declares `provider`, **restart Core** so the child is spawned. The `free-model`
+and `deepseek-web` provider plugins run this way with no listening port.
 
 ### 0.2 Umbrella packages and sub-repositories
 
@@ -462,6 +505,7 @@ The full per-endpoint request/response, auth and query details are in the
 | /api/plugins/{name}/ui/{path…} | GET plugin ESM/static assets (404 when disabled) |
 | /api/net/egress | POST plugin outbound HTTP proxy (declared egress allow-list) |
 | /api/tools | GET plugin tool catalog (`?scope=agent\|life`); POST `/api/tools/call` to invoke |
+| /api/stdio-provider/{id}/{path…} | proxy to a stdio-hosted provider plugin (no plugin port) |
 | /ws | WebSocket notifications and legacy chat |
 
 TaskEvent: task_id/caller_id/session_id/parent_id/kind/prompt/state/result/error.
