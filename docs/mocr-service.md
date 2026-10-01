@@ -13,7 +13,8 @@ thinking requirements, token budget and the current Core provider catalog
 Auto-switch resolves candidate credentials from
 `GET /api/providers/credentials` (the redacted `GET /api/providers` no longer
 carries keys); the lookup runs per request so newly added providers are usable
-immediately.
+immediately. That endpoint is machine-only, so mocr attributes the call with
+`X-0KAY-Plugin: mocr` + its service token, falling back to `CORE_API_TOKEN`.
 
 Selection strategies (Settings → **模型**) are `auto` (difficulty + cost),
 `quality`, `cost` and `pinned` (use the configured default model only).

@@ -4,6 +4,12 @@ The independent `0KAY-agent` repository exposes `agent.v1.AgentService` to Core
 and registers itself with `agent` plus `executor:<uuid>` capabilities and
 `requires:mocr`. All model calls go through mocr.
 
+It registers over Core's `core.v1.PluginService.Register` and, when
+`CORE_PLUGIN_REGISTRATION_TOKEN` is set, forwards that value as the
+`x-0kay-registration-token` gRPC metadata. Attributed Core HTTP/egress calls
+carry `X-0KAY-Plugin: agent` + the service token (falling back to a
+`CORE_API_TOKEN` bearer).
+
 ## `ExecuteTask`
 
 Runs a task to completion:

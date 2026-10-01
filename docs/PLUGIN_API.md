@@ -309,6 +309,16 @@ withheld and become available once the dependency recovers. Heartbeat every
 ~10 seconds; 30 seconds without a heartbeat marks the plugin unhealthy. The
 registration id is stable and independent of start order.
 
+**Registration token (opt-in).** When Core is configured with
+`CORE_PLUGIN_REGISTRATION_TOKEN`, every non-builtin plugin must attach the same
+value to `Register` as the `x-0kay-registration-token` gRPC metadata key (an
+`authorization: Bearer <token>` is also accepted); otherwise Core rejects the
+call with `PermissionDenied`. LIFE, Agent and the Minecraft plugin read the
+variable from the environment and forward it. Plugin identity fails closed: if
+Core cannot load its token secret, attributed HTTP/egress calls are rejected,
+and a re-registration of a name replaces its previous registry row (same stable
+id) rather than duplicating it.
+
 Settings registration uses
 `SettingsSection{id,label,icon,order,description,fields}` and
 `SettingsField{key,type,label,default_value,options,help}` where `type` is

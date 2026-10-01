@@ -60,6 +60,18 @@ apply their own loopback/Origin rules instead.
   `Access-Control-Allow-Credentials: true` and `Vary: Origin`.
 - `OPTIONS` preflight returns `204` empty body before token validation.
 
+### Security environment variables
+
+| Variable | Effect |
+|---|---|
+| `CORE_API_TOKEN` | Shared bearer token accepted for every `/api/*` route. |
+| `CORE_PIN` | Seeds the 6-digit access PIN on first run (otherwise one is generated and logged). |
+| `CORE_COOKIE_SECURE` | Forces the session-cookie `Secure` flag on (`1`) or off (`0`); otherwise inferred from TLS / trusted-proxy `X-Forwarded-Proto`. |
+| `CORE_TRUSTED_NETWORKS` | Comma-separated CIDRs treated like loopback (no per-request credential). |
+| `CORE_ALLOWED_HOSTS`, `CORE_ALLOWED_ORIGINS` | Host / DNS-rebinding and CORS allow-lists. |
+| `CORE_PLUGIN_REGISTRATION_TOKEN` | Opt-in shared secret every non-builtin plugin must present at gRPC registration (`x-0kay-registration-token` metadata). |
+| `CORE_SSRF_STRICT` | `1` also blocks loopback/RFC1918 for the provider model fetch and plugin egress; metadata/link-local/CGNAT are always blocked. |
+
 ### Errors
 
 Every failure (except SSE bodies, which report errors as `event: error`) uses
@@ -73,7 +85,10 @@ one envelope, always `application/json`:
 mismatches return `405` with `Allow`. Common codes: `bad_request`,
 `unauthenticated`, `forbidden`, `not_found`, `method_not_allowed`,
 `section_disabled`, `upstream_error`, `unavailable`, `host_not_allowed`,
-`origin_not_allowed`, `cross_site_denied`.
+`origin_not_allowed`, `cross_site_denied`, `machine_credential_required`
+(`403`, browser session used on a machine-only endpoint), `pin_required`,
+`too_many_attempts` (`429`, PIN/token lockout), `plugin_identity_required`,
+`api_not_permitted`.
 
 `POST /api/usage/record` still answers `204` with an empty body on success.
 

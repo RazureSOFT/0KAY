@@ -4,6 +4,12 @@ L.I.F.E exposes `life.v1.LifeService` and owns persona, emotion, memory,
 companion domains, OneBot integration and LIFE-registered WebUI surfaces. It is a
 `PLUGIN_TYPE_PERSONA` plugin with `requires:mocr`.
 
+It registers with Core over gRPC and, when `CORE_PLUGIN_REGISTRATION_TOKEN` is
+set, forwards that value as the `x-0kay-registration-token` metadata. Its Core
+HTTP calls (including the machine-only `GET /api/providers/credentials`) are
+attributed with `X-0KAY-Plugin: life` + the service token, falling back to
+`CORE_PAIR_TOKEN` / `CORE_API_TOKEN`.
+
 ## `OnUserMessage`
 
 Server-streaming entry point for WebUI, OneBot and other adapters.
