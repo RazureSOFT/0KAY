@@ -276,21 +276,16 @@ async function fetchContextUsage() {
 }
 let ctxTimer: ReturnType<typeof setTimeout> | null = null
 function scheduleContextUsage() { if (ctxTimer) clearTimeout(ctxTimer); ctxTimer = setTimeout(() => void fetchContextUsage(), 800) }
-const ctxCirc = 2 * Math.PI * 8
-const ctxFraction = computed(() => Math.max(0, Math.min(1, (contextUsage.value?.tokens || 0) / Math.max(1, contextUsage.value?.window || 1))))
-const ctxPercent = computed(() => Math.round(ctxFraction.value * 1000) / 10)
-const ctxOffset = computed(() => ctxCirc * (1 - ctxFraction.value))
 const fmtK = (value?: number) => `${Math.round(((value || 0) / 1000) * 10) / 10}K`
 const ctxRows = computed(() => {
   const breakdown = contextUsage.value?.breakdown || {}
-  const window = Math.max(1, contextUsage.value?.window || 1)
-  const pct = (value: unknown) => Math.round(((Number(value) || 0) / window) * 1000) / 10
+  const k = (value: unknown) => fmtK(Number(value) || 0)
   return [
-    { key: 'system', label: tr('系统提示', 'System Prompt'), pct: pct(breakdown.system) },
-    { key: 'tools', label: tr('工具', 'Tools'), pct: pct(breakdown.tools) },
-    { key: 'conversation', label: tr('对话', 'Conversation'), pct: pct(breakdown.conversation) },
-    { key: 'mcp', label: 'MCP', pct: pct(breakdown.mcp) },
-    { key: 'skills', label: tr('技能', 'Skills'), pct: pct(breakdown.skills) },
+    { key: 'system', label: tr('系统提示', 'System Prompt'), value: k(breakdown.system) },
+    { key: 'tools', label: tr('工具', 'Tools'), value: k(breakdown.tools) },
+    { key: 'conversation', label: tr('对话', 'Conversation'), value: k(breakdown.conversation) },
+    { key: 'mcp', label: 'MCP', value: k(breakdown.mcp) },
+    { key: 'skills', label: tr('技能', 'Skills'), value: k(breakdown.skills) },
   ]
 })
 const contextSummary = computed(() => {
@@ -565,7 +560,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
             </button>
           </div>
         </div>
-        <footer><div v-if="contextUsage" class="ctx-usage" tabindex="0" :aria-label="tr('上下文用量','Context usage')"><svg class="ctx-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="ctx-track" cx="10" cy="10" r="8"/><circle class="ctx-fill" cx="10" cy="10" r="8" :stroke-dasharray="ctxCirc" :stroke-dashoffset="ctxOffset"/></svg><div class="ctx-tip" role="tooltip"><strong>{{ tr('上下文用量','Context Usage') }}</strong><div class="ctx-used"><b>{{ ctxPercent }}%</b><span>{{ tr('已用','Used') }}</span></div><div class="ctx-sub">{{ fmtK(contextUsage.tokens) }} / {{ fmtK(contextUsage.window) }}</div><div class="ctx-row" v-for="row in ctxRows" :key="row.key"><span>{{ row.label }}</span><span>{{ row.pct }}%</span></div></div></div><button type="button" class="options-toggle" :class="{open: optionsOpen}" :aria-expanded="optionsOpen" @click="optionsOpen=!optionsOpen">{{ optionsOpen ? tr('收起','Less') : tr('设置','Settings') }}</button><AppSelect v-model="mode" :disabled="busy" :aria-label="tr('Agent 模式','Agent mode')" :options="[{value:'general',label:tr('通用 Agent','General Agent')},{value:'code',label:tr('编程 Agent','Coding Agent')},{value:'research',label:tr('调研 Agent','Research Agent')},{value:'science',label:tr('科学 Agent','Science Agent')}]" /><button type="button" @click="hostOpen=!hostOpen">{{ tr('宿主机','Host') }}</button><button type="button" :disabled="!session || !!active || busy || session.state === 'archived'" @click="compact">/compact</button><span class="muted">{{ active?.kind === 'compact' ? tr('上下文压缩中…','Compacting…') : store.onlineCount ? tr('在当前会话中继续','Continue this session') : tr('执行器离线','Executor offline') }}</span></footer>
+        <footer><div v-if="contextUsage" class="ctx-usage" tabindex="0" :aria-label="tr('上下文用量','Context usage')"><svg class="ctx-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="ctx-track" cx="10" cy="10" r="8"/></svg><span class="ctx-value">{{ fmtK(contextUsage.tokens) }}</span><div class="ctx-tip" role="tooltip"><strong>{{ tr('上下文用量','Context Usage') }}</strong><div class="ctx-used"><b>{{ fmtK(contextUsage.tokens) }}</b><span>{{ tr('已用','Used') }}</span></div><div class="ctx-row" v-for="row in ctxRows" :key="row.key"><span>{{ row.label }}</span><span>{{ row.value }}</span></div></div></div><button type="button" class="options-toggle" :class="{open: optionsOpen}" :aria-expanded="optionsOpen" @click="optionsOpen=!optionsOpen">{{ optionsOpen ? tr('收起','Less') : tr('设置','Settings') }}</button><AppSelect v-model="mode" :disabled="busy" :aria-label="tr('Agent 模式','Agent mode')" :options="[{value:'general',label:tr('通用 Agent','General Agent')},{value:'code',label:tr('编程 Agent','Coding Agent')},{value:'research',label:tr('调研 Agent','Research Agent')},{value:'science',label:tr('科学 Agent','Science Agent')}]" /><button type="button" @click="hostOpen=!hostOpen">{{ tr('宿主机','Host') }}</button><button type="button" :disabled="!session || !!active || busy || session.state === 'archived'" @click="compact">/compact</button><span class="muted">{{ active?.kind === 'compact' ? tr('上下文压缩中…','Compacting…') : store.onlineCount ? tr('在当前会话中继续','Continue this session') : tr('执行器离线','Executor offline') }}</span></footer>
       </form>
     </section>
     <div v-if="browserOpen" class="directory-backdrop" @click.self="closeBrowser"><section class="directory-dialog" role="dialog" aria-modal="true" aria-label="选择工作区目录"><header><h2>选择 {{ executor?.host?.hostname || '执行器' }} 的工作区</h2><button @click="closeBrowser">关闭</button></header><div class="directory-roots"><button v-for="root in directory.roots" :key="root" :disabled="browserBusy" @click="browse(root)">{{ root }}</button><button :disabled="browserBusy" @click="browse(executor?.host?.workdir || '')">默认目录</button></div><code>{{ directory.path }}</code><form class="new-folder" @submit.prevent="createFolder"><input v-model="folderName" placeholder="新文件夹名称" aria-label="新文件夹名称" :disabled="browserBusy"/><button :disabled="browserBusy || !folderName.trim() || !directory.path">新建文件夹</button></form><p v-if="browserError" class="error">{{ browserError }}</p><p v-if="browserBusy">正在读取目录…</p><div v-else class="directory-list"><button v-if="directory.parent!==directory.path" @click="browse(directory.parent)">上一级</button><button v-for="folder in directory.directories" :key="folder.path" @click="browse(folder.path)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ folder.name }}</button><p v-if="!directory.directories.length" class="muted">没有子目录</p></div><footer><button :disabled="browserBusy || !!browserError || !directory.path" @click="selectDirectory">选择当前目录</button></footer></section></div>
@@ -724,10 +719,10 @@ button.subagent-card-head>strong{font-weight:700}
 .composer .todo-panel{border-radius:28px 28px 0 0}
 
 /* ---- context usage ring ---- */
-.ctx-usage{position:relative;display:inline-flex;align-items:center;flex:none;outline:none;order:99;margin-left:6px}
-.ctx-ring{width:22px;height:22px;transform:rotate(-90deg)}
-.ctx-track{fill:none;stroke:var(--md-outline-variant);stroke-width:2.5}
-.ctx-fill{fill:none;stroke:var(--md-primary);stroke-width:2.5;stroke-linecap:round;transition:stroke-dashoffset .35s cubic-bezier(.2,0,0,1)}
+.ctx-usage{position:relative;display:inline-flex;align-items:center;gap:6px;flex:none;outline:none;order:99;margin-left:6px;cursor:default}
+.ctx-ring{width:20px;height:20px;flex:none}
+.ctx-track{fill:none;stroke:var(--md-primary);stroke-width:2.2;opacity:.85}
+.ctx-value{font-size:11px;color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums}
 .ctx-tip{position:absolute;bottom:calc(100% + 12px);right:0;left:auto;transform:translateY(4px);z-index:60;width:max-content;min-width:216px;max-width:280px;padding:12px 14px;border-radius:14px;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);box-shadow:var(--shadow-3);color:var(--md-on-surface);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .16s,transform .16s,visibility .16s;font-size:12px;text-align:left}
 .ctx-usage:hover .ctx-tip,.ctx-usage:focus-visible .ctx-tip,.ctx-usage:focus-within .ctx-tip{opacity:1;visibility:visible;transform:translateY(0)}
 .ctx-tip strong{display:block;font-size:12px;font-weight:750;margin-bottom:8px}
