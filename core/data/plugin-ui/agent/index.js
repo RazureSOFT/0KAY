@@ -1,7 +1,7 @@
 var xr = Object.defineProperty;
 var Sr = (n, e, t) => e in n ? xr(n, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : n[e] = t;
-var re = (n, e, t) => Sr(n, typeof e != "symbol" ? e + "" : e, t);
-import { reactive as Tr, defineComponent as Gt, computed as Y, openBlock as v, createElementBlock as b, ref as O, onMounted as pn, onUnmounted as hn, normalizeClass as ce, createElementVNode as o, toDisplayString as g, createCommentVNode as I, Fragment as le, renderList as ke, withModifiers as Pe, watch as Te, nextTick as Ke, mergeProps as Ar, unref as ie, createBlock as St, Teleport as jn, createVNode as Fe, Transition as Qs, withCtx as Js, normalizeStyle as Vt, withDirectives as un, vModelText as zn, withKeys as Bt, createTextVNode as Re, vModelCheckbox as Er } from "vue";
+var ne = (n, e, t) => Sr(n, typeof e != "symbol" ? e + "" : e, t);
+import { reactive as Tr, defineComponent as qt, computed as G, openBlock as m, createElementBlock as b, ref as O, onMounted as fn, onUnmounted as gn, normalizeClass as oe, createElementVNode as o, toDisplayString as g, createCommentVNode as I, Fragment as se, renderList as ke, withModifiers as Me, watch as Te, nextTick as Qe, mergeProps as Ar, unref as ie, createBlock as Et, Teleport as Hn, createVNode as Be, Transition as Qs, withCtx as Js, normalizeStyle as Wt, withDirectives as dn, vModelText as Mn, withKeys as Ut, createTextVNode as Re, vModelCheckbox as Er } from "vue";
 function Rr() {
   const n = Tr({
     agents: [],
@@ -16,13 +16,13 @@ function Rr() {
   let c = null, i = !1;
   function k(C) {
     C.reset && a.clear();
-    for (const B of C.removed || []) a.delete(B);
-    for (const B of C.tasks || []) a.set(B.task_id, B);
+    for (const M of C.removed || []) a.delete(M);
+    for (const M of C.tasks || []) a.set(M.task_id, M);
     r = C.cursor || "";
-    const z = [...a.values()].sort((B, te) => (te.started_at || "").localeCompare(B.started_at || "") || B.task_id.localeCompare(te.task_id));
-    n.tasks = z.filter((B) => B.kind !== "agent_session"), n.sessions = z.filter((B) => B.kind === "agent_session");
+    const F = [...a.values()].sort((M, ue) => (ue.started_at || "").localeCompare(M.started_at || "") || M.task_id.localeCompare(ue.task_id));
+    n.tasks = F.filter((M) => M.kind !== "agent_session"), n.sessions = F.filter((M) => M.kind === "agent_session");
   }
-  function y() {
+  function _() {
     c?.close(), i = !1, c = new EventSource(`/api/tasks/events?cursor=${encodeURIComponent(r)}`), c.onopen = () => {
       i = !0;
     }, c.onerror = () => {
@@ -45,8 +45,8 @@ function Rr() {
     try {
       const C = await fetch("/api/agents", { signal: AbortSignal.timeout(8e3) });
       if (!C.ok) throw new Error(`HTTP ${C.status}`);
-      const z = await C.json();
-      n.agents = z.agents || [], n.onlineCount = z.online_count ?? n.agents.length;
+      const F = await C.json();
+      n.agents = F.agents || [], n.onlineCount = F.online_count ?? n.agents.length;
     } catch (C) {
       n.error = C.message || "failed";
     }
@@ -54,16 +54,16 @@ function Rr() {
       try {
         const C = await fetch(`/api/tasks?incremental=1&cursor=${encodeURIComponent(r)}`, { signal: AbortSignal.timeout(8e3) });
         if (!C.ok) throw new Error(`任务记录 HTTP ${C.status}`);
-        const z = await C.json();
-        k(z);
+        const F = await C.json();
+        k(F);
       } catch (C) {
         n.error = C.message || "无法刷新任务记录";
       }
     n.loading = !1;
   }
-  function D() {
+  function N() {
     S().then(() => {
-      e && y();
+      e && _();
     }), e && clearInterval(e), e = setInterval(() => {
       !document.hidden && !t && S();
     }, 2e3);
@@ -74,44 +74,44 @@ function Rr() {
   function L(C) {
     return !C.missing_dependencies?.length && (C.status === "PLUGIN_STATUS_HEALTHY" || C.status === "HEALTHY");
   }
-  async function Q(C) {
-    const z = await fetch("/api/agent/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: C }) });
-    if (!z.ok) throw new Error(await z.text());
-    const B = await z.json();
-    return await S(), B.session_id;
+  async function K(C) {
+    const F = await fetch("/api/agent/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: C }) });
+    if (!F.ok) throw new Error(await F.text());
+    const M = await F.json();
+    return await S(), M.session_id;
   }
-  async function M(C, z, B) {
-    const te = await fetch("/api/agent/sessions", { method: z === "delete" ? "DELETE" : "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: C, action: z, title: B }) });
-    if (!te.ok) throw new Error(await te.text());
+  async function z(C, F, M) {
+    const ue = await fetch("/api/agent/sessions", { method: F === "delete" ? "DELETE" : "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: C, action: F, title: M }) });
+    if (!ue.ok) throw new Error(await ue.text());
     await S();
   }
-  async function Z(C, z, B, te = {}) {
-    const ue = await fetch("/api/agent/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: C, prompt: z, agent_type: B, ...te }) }), F = await ue.text();
-    if (await S(), !ue.ok) {
-      let _ = F;
+  async function Y(C, F, M, ue = {}) {
+    const ce = await fetch("/api/agent/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: C, prompt: F, agent_type: M, ...ue }) }), B = await ce.text();
+    if (await S(), !ce.ok) {
+      let y = B;
       try {
-        _ = JSON.parse(F).message || F;
+        y = JSON.parse(B).message || B;
       } catch {
       }
-      throw new Error(_);
+      throw new Error(y);
     }
   }
-  async function ee(C) {
-    const z = await fetch("/api/tasks/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ task_id: C }) });
-    if (!z.ok) throw new Error(await z.text());
-    const B = await z.json();
-    if (!B.success) throw new Error(B.message);
+  async function le(C) {
+    const F = await fetch("/api/tasks/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ task_id: C }) });
+    if (!F.ok) throw new Error(await F.text());
+    const M = await F.json();
+    if (!M.success) throw new Error(M.message);
     await S();
   }
   return Object.assign(n, {
     fetchAgents: S,
-    connect: D,
+    connect: N,
     disconnect: U,
     isHealthy: L,
-    createSession: Q,
-    manageSession: M,
-    sendTask: Z,
-    cancelTask: ee
+    createSession: K,
+    manageSession: z,
+    sendTask: Y,
+    cancelTask: le
   });
 }
 const $r = Rr();
@@ -121,12 +121,12 @@ function Cr() {
 function os() {
   return { async: !1, breaks: !1, extensions: null, gfm: !0, hooks: null, pedantic: !1, renderer: null, silent: !1, tokenizer: null, walkTokens: null };
 }
-var At = os();
+var $t = os();
 function er(n) {
-  At = n;
+  $t = n;
 }
-var xt = { exec: () => null };
-function Ht(n) {
+var At = { exec: () => null };
+function Bt(n) {
   let e = [];
   return (t) => {
     let s = Math.max(0, Math.min(3, t - 1)), r = e[s];
@@ -136,7 +136,7 @@ function Ht(n) {
 function H(n, e = "") {
   let t = typeof n == "string" ? n : n.source, s = { replace: (r, a) => {
     let c = typeof a == "string" ? a : a.source;
-    return c = c.replace(xe.caret, "$1"), t = t.replace(r, c), s;
+    return c = c.replace(we.caret, "$1"), t = t.replace(r, c), s;
   }, getRegex: () => new RegExp(t, e) };
   return s;
 }
@@ -146,40 +146,40 @@ var Lr = ((n = "") => {
   } catch {
     return !1;
   }
-})(), xe = { codeRemoveIndent: /^(?: {0,3}\t| {1,4})/gm, outputLinkReplace: /\\([\[\]])/g, indentCodeCompensation: /^(\s+)(?:```)/, beginningSpace: /^\s+/, endingHash: /#$/, startingSpaceChar: /^ /, endingSpaceChar: / $/, endingSpaceTabChar: /[ \t]$/, nonSpaceChar: /[^ ]/, newLineCharGlobal: /\n/g, tabCharGlobal: /\t/g, leadingSpaceTab: /^[ \t]+/, multipleSpaceGlobal: /\s+/g, blankLine: /^[ \t]*$/, doubleBlankLine: /\n[ \t]*\n[ \t]*$/, blockquoteStart: /^ {0,3}>/, blockquoteSetextReplace: /\n {0,3}((?:=+|-+) *)(?=\n|$)/g, blockquoteSetextReplace2: /^ {0,3}>[ \t]?/gm, listReplaceNesting: /^ {1,4}(?=( {4})*[^ ])/g, listIsTask: /^\[[ xX]\] +\S/, listReplaceTask: /^\[[ xX]\] +/, listTaskCheckbox: /\[[ xX]\]/, anyLine: /\n.*\n/, hrefBrackets: /^<(.*)>$/, tableDelimiter: /[:|]/, tableAlignChars: /^\||\| *$/g, tableRowBlankLine: /\n[ \t]*$/, tableAlignRight: /^ *-+: *$/, tableAlignCenter: /^ *:-+: *$/, tableAlignLeft: /^ *:-+ *$/, startATag: /^<a /i, endATag: /^<\/a>/i, startPreScriptTag: /^<(pre|code|kbd|script)(\s|>)/i, endPreScriptTag: /^<\/(pre|code|kbd|script)(\s|>)/i, startAngleBracket: /^</, endAngleBracket: />$/, pedanticHrefTitle: /^([^'"]*[^\s])\s+(['"])(.*)\2/, unicodeAlphaNumeric: /[\p{L}\p{N}]/u, numericCharacterReference: /&#(?:(\d{1,7})|[Xx]([A-Fa-f0-9]{1,6}));/g, escapeTest: /[&<>"']/, escapeReplace: /[&<>"']/g, escapeTestNoEncode: /[<>"']|&(?!(#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/, escapeReplaceNoEncode: /[<>"']|&(?!(#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/g, caret: /(^|[^\[])\^/g, percentDecode: /%25/g, findPipe: /\|/g, splitPipe: / \|/, slashPipe: /\\\|/g, carriageReturn: /\r\n|\r/g, spaceLine: /^ +$/gm, notSpaceStart: /^\S*/, endingNewline: /\n$/, listItemRegex: (n) => new RegExp(`^( {0,3}${n})((?:[	 ][^\\n]*)?(?:\\n|$))`), nextBulletRegex: Ht((n) => new RegExp(`^ {0,${n}}(?:[*+-]|\\d{1,9}[.)])((?:[ 	][^\\n]*)?(?:\\n|$))`)), hrRegex: Ht((n) => new RegExp(`^ {0,${n}}((?:-[ 	]*){3,}|(?:_[ 	]*){3,}|(?:\\*[ 	]*){3,})(?:\\n+|$)`)), fencesBeginRegex: Ht((n) => new RegExp(`^ {0,${n}}(?:\`\`\`|~~~)`)), headingBeginRegex: Ht((n) => new RegExp(`^ {0,${n}}#`)), htmlBeginRegex: Ht((n) => new RegExp(`^ {0,${n}}(?:</?(?:${gn})(?: +|$|/?>)|<(?:script|pre|style|textarea|!--))`, "i")), blockquoteBeginRegex: Ht((n) => new RegExp(`^ {0,${n}}>`)) }, Ir = /^(?:[ \t]*(?:\n|$))+/, Or = /^((?: {4}| {0,3}\t)[^\n]+(?:\n(?:[ \t]*(?:\n|$))*)?)+/, Pr = /^ {0,3}(`{3,}(?=[^`\n]*(?:\n|$))|~{3,})([^\n]*)(?:\n|$)(?:|([\s\S]*?)(?:\n|$))(?: {0,3}\1[~`]* *(?=\n|$)|$)/, fn = /^ {0,3}((?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/, Dr = /^ {0,3}(#{1,6})(?=\s|$)(.*)(?:\n+|$)/, is = / {0,3}(?:[*+-]|\d{1,9}[.)])/, tr = /^(?!bull |blockCode|fences|blockquote|heading|html|table)((?:.|\n(?!\s*?\n|bull |fences|blockquote|heading|hr|html|table))+?)\n {0,3}(=+|-+) *(?:\n+|$)/, nr = H(tr).replace(/bull/g, is).replace(/blockCode/g, /(?: {4}| {0,3}\t)/).replace(/fences/g, / {0,3}(?:`{3,}|~{3,})/).replace(/blockquote/g, / {0,3}>/).replace(/heading/g, / {0,3}#{1,6}(?:\s|$)/).replace(/hr/g, / {0,3}(?:(?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/).replace(/html/g, / {0,3}<[^\n>]+>\n/).replace(/\|table/g, "").getRegex(), Nr = H(tr).replace(/bull/g, is).replace(/blockCode/g, /(?: {4}| {0,3}\t)/).replace(/fences/g, / {0,3}(?:`{3,}|~{3,})/).replace(/blockquote/g, / {0,3}>/).replace(/heading/g, / {0,3}#{1,6}(?:\s|$)/).replace(/hr/g, / {0,3}(?:(?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/).replace(/html/g, / {0,3}<[^\n>]+>\n/).replace(/table/g, / {0,3}\|?(?:[:\- ]*\|)+[\:\- ]*\n/).getRegex(), us = /^([^\n]+(?:\n(?!hr|heading|lheading|blockquote|fences|list|html|table|[ \t]+\n)[^\n]+)*)/, Mr = /^[^\n]+/, cs = /(?!\s*\])(?:\\[\s\S]|[^\[\]\\])+/, zr = H(/^ {0,3}\[(label)\]: *(?:\n[ \t]*)?([^<\s][^\s]*|<.*?>)(?:(?: +(?:\n[ \t]*)?| *\n[ \t]*)(title))? *(?:\n+|$)/).replace("label", cs).replace("title", /(?:"(?:\\"?|[^"\\])*"|'[^'\n]*(?:\n[^'\n]+)*\n?'|\([^()]*\))/).getRegex(), Fr = H(/^(bull)([ \t][^\n]*?)?(?:\n|$)/).replace(/bull/g, is).getRegex(), gn = "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul", ds = /<!--(?:-?>|[\s\S]*?(?:-->|$))/, Ur = H("^ {0,3}(?:<(script|pre|style|textarea)[\\s>][\\s\\S]*?(?:</\\1>[^\\n]*\\n*|$)|comment[^\\n]*(\\n+|$)|<\\?[\\s\\S]*?(?:\\?>[^\\n]*\\n*|$)|<![A-Z][\\s\\S]*?(?:>[^\\n]*\\n*|$)|<!\\[CDATA\\[[\\s\\S]*?(?:\\]\\]>[^\\n]*\\n*|$)|</?(tag)(?: +|\\n|/?>)[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$)|<(?!script|pre|style|textarea)([a-z][a-z0-9-]*)(?:attribute)*? */?>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$)|</(?!script|pre|style|textarea)[a-z][a-z0-9-]*\\s*>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$))", "i").replace("comment", ds).replace("tag", gn).replace("attribute", / +[a-zA-Z:_][\w.:-]*(?: *= *"[^"\n]*"| *= *'[^'\n]*'| *= *[^\s"'=<>`]+)?/).getRegex(), sr = (n) => H(us).replace("hr", fn).replace("heading", " {0,3}#{1,6}(?:\\s|$)").replace("|lheading", "").replace("|table", "").replace("blockquote", " {0,3}>").replace("fences", " {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)").replace("list", n).replace("html", "</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag", gn).getRegex(), Br = sr(/ {0,3}(?:[*+-]|1[.)])[ \t]+[^ \t\n]/), Hr = sr(/ {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]|\n|$)/), jr = H(/^( {0,3}> ?(paragraph|[^\n]*)(?:\n|$))+/).replace("paragraph", Hr).getRegex(), ps = { blockquote: jr, code: Or, def: zr, fences: Pr, heading: Dr, hr: fn, html: Ur, lheading: nr, list: Fr, newline: Ir, paragraph: Br, table: xt, text: Mr }, As = H("^ *([^\\n ].*)\\n {0,3}((?:\\| *)?:?-+:? *(?:\\| *:?-+:? *)*(?:\\| *)?)(?:\\n((?:(?! *\\n|hr|heading|blockquote|code|fences|list|html).*(?:\\n|$))*)\\n*|$)").replace("hr", fn).replace("heading", " {0,3}#{1,6}(?:\\s|$)").replace("blockquote", " {0,3}>").replace("code", "(?: {4}| {0,3}	)[^\\n]").replace("fences", " {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)").replace("list", " {0,3}(?:[*+-]|1[.)])[ \\t]").replace("html", "</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag", gn).getRegex(), Wr = { ...ps, lheading: Nr, table: As, paragraph: H(us).replace("hr", fn).replace("heading", " {0,3}#{1,6}(?:\\s|$)").replace("|lheading", "").replace("table", As).replace("blockquote", " {0,3}>").replace("fences", " {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)").replace("list", " {0,3}(?:[*+-]|1[.)])[ \\t]+[^ \\t\\n]").replace("html", "</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag", gn).getRegex() }, Vr = { ...ps, html: H(`^ *(?:comment *(?:\\n|\\s*$)|<(tag)[\\s\\S]+?</\\1> *(?:\\n{2,}|\\s*$)|<tag(?:"[^"]*"|'[^']*'|\\s[^'"/>\\s]*)*?/?> *(?:\\n{2,}|\\s*$))`).replace("comment", ds).replace(/tag/g, "(?!(?:a|em|strong|small|s|cite|q|dfn|abbr|data|time|code|var|samp|kbd|sub|sup|i|b|u|mark|ruby|rt|rp|bdi|bdo|span|br|wbr|ins|del|img)\\b)\\w+(?!:|[^\\w\\s@]*@)\\b").getRegex(), def: /^ *\[([^\]]+)\]: *<?([^\s>]+)>?(?: +(["(][^\n]+[")]))? *(?:\n+|$)/, heading: /^(#{1,6})(.*)(?:\n+|$)/, fences: xt, lheading: /^(.+?)\n {0,3}(=+|-+) *(?:\n+|$)/, paragraph: H(us).replace("hr", fn).replace("heading", ` *#{1,6} *[^
-]`).replace("lheading", nr).replace("|table", "").replace("blockquote", " {0,3}>").replace("|fences", "").replace("|list", "").replace("|html", "").replace("|tag", "").getRegex() }, qr = /^\\([!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~])/, Gr = /^(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/, rr = /^( {2,}|\\)\n(?!\s*$)[ \t]*/, Yr = /^(`+|[^`])(?:(?= {2,}\n)|[\s\S]*?(?:(?=[\\<!\[`*_]|\b_|$)|[^ ](?= {2,}\n)))/, nt = /[\p{P}\p{S}]/u, Yt = /[\s\p{P}\p{S}]/u, mn = /[^\s\p{P}\p{S}]/u, Zr = H(/^((?![*_])punctSpace)/, "u").replace(/punctSpace/g, Yt).getRegex(), Kr = /[\p{Pi}\p{Ps}"']/u, lr = /(?!~)[\p{P}\p{S}]/u, Xr = /(?!~)[\s\p{P}\p{S}]/u, Qr = /(?:[^\s\p{P}\p{S}]|~)/u, Jr = H(/link|precode-code|html/, "g").replace("link", /\[(?:[^\[\]`]|(?<a>`+)[^`]+\k<a>(?!`))*?\]\((?:\\[\s\S]|[^\\\(\)]|\((?:\\[\s\S]|[^\\\(\)])*\))*\)/).replace("precode-", Lr ? "(?<!`)()" : "(^^|[^`])").replace("code", /(?<b>`+)[^`]+\k<b>(?!`)/).replace("html", /<(?! )[^<>]*?>/).getRegex(), ar = /^(?:\*+(?:((?!\*)punct)|([^\s*]))?)|^_+(?:((?!_)punct)|([^\s_]))?/, el = H(ar, "u").replace(/punct/g, nt).getRegex(), tl = H(ar, "u").replace(/punct/g, lr).getRegex(), nl = /^(?:\*+(?:((?!\*)(?!openQuote)punct)|([^\s*]))?)|^_+(?:((?!_)(?!openQuote)punct)|([^\s_]))?/, sl = H(nl, "u").replace(/openQuote/g, Kr).replace(/punct/g, nt).getRegex(), or = "^[^_*]*?__[^_*]*?\\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\\*)punct(\\*+)(?=[\\s]|$)|notPunctSpace(\\*+)(?!\\*)(?=punctSpace|$)|(?!\\*)punctSpace(\\*+)(?=notPunctSpace)|[\\s](\\*+)(?!\\*)(?=punct)|(?!\\*)punct(\\*+)(?!\\*)(?=punct)|notPunctSpace(\\*+)(?=notPunctSpace)", rl = H(or, "gu").replace(/notPunctSpace/g, mn).replace(/punctSpace/g, Yt).replace(/punct/g, nt).getRegex(), ll = H(or, "gu").replace(/notPunctSpace/g, Qr).replace(/punctSpace/g, Xr).replace(/punct/g, lr).getRegex(), al = "^[^_*]*?__[^_*]*?\\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\\*)punct(\\*+)(?=[\\s]|$)|notPunctSpace(\\*+)(?!\\*)(?=punctSpace|$)|(?!\\*)[\\s](\\*+)(?=notPunctSpace)|[\\s](\\*+)(?!\\*)(?=punct)|(?!\\*)punct(\\*+)(?!\\*)(?=punct)|(?:(?!\\*)punct|notPunctSpace)(\\*+)(?!\\*)(?=notPunctSpace)", ol = H(al, "gu").replace(/notPunctSpace/g, mn).replace(/punctSpace/g, Yt).replace(/punct/g, nt).getRegex(), il = H("^[^_*]*?\\*\\*[^_*]*?_[^_*]*?(?=\\*\\*)|[^_]+(?=[^_])|(?!_)punct(_+)(?=[\\s]|$)|notPunctSpace(_+)(?!_)(?=punctSpace|$)|(?!_)punctSpace(_+)(?=notPunctSpace)|[\\s](_+)(?!_)(?=punct)|(?!_)punct(_+)(?!_)(?=punct)", "gu").replace(/notPunctSpace/g, mn).replace(/punctSpace/g, Yt).replace(/punct/g, nt).getRegex(), ul = "^[^_*]*?\\*\\*[^_*]*?_[^_*]*?(?=\\*\\*)|[^_]+(?=[^_])|(?!_)punct(_+)(?=[\\s]|$)|notPunctSpace(_+)(?!_)(?=punctSpace|$)|(?!_)[\\s](_+)(?=notPunctSpace)|[\\s](_+)(?!_)(?=punct)|(?!_)punct(_+)(?!_)(?=punct)|(?:(?!_)punct|notPunctSpace)(_+)(?!_)(?=notPunctSpace)", cl = H(ul, "gu").replace(/notPunctSpace/g, mn).replace(/punctSpace/g, Yt).replace(/punct/g, nt).getRegex(), dl = H(/^~~?(?:((?!~)punct)|[^\s~])/, "u").replace(/punct/g, nt).getRegex(), pl = "^[^~]+(?=[^~])|(?!~)punct(~~?)(?=[\\s]|$)|notPunctSpace(~~?)(?!~)(?=punctSpace|$)|(?!~)punctSpace(~~?)(?=notPunctSpace)|[\\s](~~?)(?!~)(?=punct)|(?!~)punct(~~?)(?!~)(?=punct)|notPunctSpace(~~?)(?=notPunctSpace)", hl = H(pl, "gu").replace(/notPunctSpace/g, mn).replace(/punctSpace/g, Yt).replace(/punct/g, nt).getRegex(), fl = H(/\\(punct)/, "gu").replace(/punct/g, nt).getRegex(), gl = H(/^<(scheme:[^\s\x00-\x1f<>]*|email)>/).replace("scheme", /[a-zA-Z][a-zA-Z0-9+.-]{1,31}/).replace("email", /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+(@)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+(?![-_])/).getRegex(), ml = H(ds).replace("(?:-->|$)", "-->").getRegex(), vl = H("^comment|^</[a-zA-Z][a-zA-Z0-9-]*\\s*>|^<[a-zA-Z][a-zA-Z0-9-]*(?:attribute)*?\\s*/?>|^<\\?[\\s\\S]*?\\?>|^<![a-zA-Z]+\\s[\\s\\S]*?>|^<!\\[CDATA\\[[\\s\\S]*?\\]\\]>").replace("comment", ml).replace("attribute", /\s+[a-zA-Z:_][\w.:-]*(?:\s*=\s*"[^"]*"|\s*=\s*'[^']*'|\s*=\s*[^\s"'=<>`]+)?/).getRegex(), ir = /\[(?:\\[\s\S]|[^\[\]\\])*\]/, Fn = H(/(?:\[(?:brackets|\\[\s\S]|[^\[\]\\])*\]|\\[\s\S]|`+(?!`)[^`]*?`+(?!`)|``+(?=\])|[^\[\]\\`])*?/).replace("brackets", ir).getRegex(), kl = H(/^!?\[(label)\]\(\s*(href)(?:(?:[ \t]+(?:\n[ \t]*)?|\n[ \t]*)(title))?\s*\)/).replace("label", Fn).replace("href", /<(?:\\.|[^\n<>\\])+>|[^ \t\n\x00-\x1f]+|(?=\))/).replace("title", /"(?:\\"?|[^"\\])*"|'(?:\\'?|[^'\\])*'|\((?:\\\)?|[^)\\])*\)/).getRegex(), bl = H(/^!?\[(label)\]\[(ref)\]/).replace("label", Fn).replace("ref", cs).getRegex(), yl = H(/^!?\[(ref)\](?:\[\])?/).replace("ref", cs).getRegex(), Es = /(?!\s*\])(?:\\[\s\S]|[^\[\]\\]){1,999}/, _l = H(/(?:[^\[\]\\`]*(?:\[(?:brackets|\\[\s\S]|[^\[\]\\])*\]|\\[\s\S]|`+(?!`)[^`]*?`+(?!`)|``+(?=\]))){0,999}?[^\[\]\\`]*?/).replace("brackets", ir).getRegex(), wl = H("reflink|nolink(?!\\()", "g").replace("reflink", H(/^!?\[(label)\]\[(ref)\]/).replace("label", _l).replace("ref", Es).getRegex()).replace("nolink", H(/^!?\[(ref)\](?:\[\])?/).replace("ref", Es).getRegex()).getRegex(), Rs = /[hH][tT][tT][pP][sS]?|[fF][tT][pP]/, xl = /[A-Za-z0-9._+-]+@[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![\w-])/, Sl = H(/(?:mailto:email|xmpp:email(?:\/[A-Za-z0-9@.]+)?)/).replace(/email/g, xl).getRegex(), hs = { _backpedal: xt, anyPunctuation: fl, autolink: gl, blockSkip: Jr, br: rr, code: Gr, del: xt, delLDelim: xt, delRDelim: xt, emStrongLDelim: el, emStrongRDelimAst: rl, emStrongRDelimUnd: il, escape: qr, link: kl, nolink: yl, punctuation: Zr, reflink: bl, reflinkSearch: wl, tag: vl, text: Yr, url: xt }, Tl = { ...hs, emStrongLDelim: sl, emStrongRDelimAst: ol, emStrongRDelimUnd: cl, link: H(/^!?\[(label)\]\((.*?)\)/).replace("label", Fn).getRegex(), reflink: H(/^!?\[(label)\]\s*\[([^\]]*)\]/).replace("label", Fn).getRegex() }, ns = { ...hs, emStrongRDelimAst: ll, emStrongLDelim: tl, delLDelim: dl, delRDelim: hl, url: H(/^emailProtocol|^((?:protocol):\/\/|www\.)(?:[a-zA-Z0-9\-]+\.?)+[^\s<]*|^email/).replace("emailProtocol", Sl).replace("protocol", Rs).replace("email", /[A-Za-z0-9._+-]+(@)[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![\w-])/).getRegex(), _backpedal: /(?:[^?!.,:;*_'"~()&]+|\([^)]*\)|&(?![a-zA-Z0-9]+;$)|[?!.,:;*_'"~)]+(?!$))+/, del: /^(~~?)(?=[^\s~])((?:\\[\s\S]|[^\\])*?(?:\\[\s\S]|[^\s~\\]))\1(?=[^~]|$)/, text: H(/^(?:[^a-zA-Z0-9](?=emailProtocol)|(`+|~+|[^`~])(?:(?=[`~])|(?= {2,}\n)|(?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@)|[\s\S]*?(?:(?=[\\<!\[`*~_]|\b_|protocol:\/\/|www\.|$)|[^ ](?= {2,}\n)|[^a-zA-Z0-9](?=emailProtocol)|[^a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-](?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@))))/).replace("protocol", Rs).replace(/emailProtocol/g, /(?:mailto|xmpp):/).getRegex() }, Al = { ...ns, br: H(rr).replace("{2,}", "*").getRegex(), text: H(ns.text).replace("\\b_", "\\b_| {2,}\\n").replace(/\{2,\}/g, "*").getRegex() }, Pn = { normal: ps, gfm: Wr, pedantic: Vr }, sn = { normal: hs, gfm: ns, breaks: Al, pedantic: Tl }, El = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }, $s = (n) => El[n];
-function Ie(n, e) {
+})(), we = { codeRemoveIndent: /^(?: {0,3}\t| {1,4})/gm, outputLinkReplace: /\\([\[\]])/g, indentCodeCompensation: /^(\s+)(?:```)/, beginningSpace: /^\s+/, endingHash: /#$/, startingSpaceChar: /^ /, endingSpaceChar: / $/, endingSpaceTabChar: /[ \t]$/, nonSpaceChar: /[^ ]/, newLineCharGlobal: /\n/g, tabCharGlobal: /\t/g, leadingSpaceTab: /^[ \t]+/, multipleSpaceGlobal: /\s+/g, blankLine: /^[ \t]*$/, doubleBlankLine: /\n[ \t]*\n[ \t]*$/, blockquoteStart: /^ {0,3}>/, blockquoteSetextReplace: /\n {0,3}((?:=+|-+) *)(?=\n|$)/g, blockquoteSetextReplace2: /^ {0,3}>[ \t]?/gm, listReplaceNesting: /^ {1,4}(?=( {4})*[^ ])/g, listIsTask: /^\[[ xX]\] +\S/, listReplaceTask: /^\[[ xX]\] +/, listTaskCheckbox: /\[[ xX]\]/, anyLine: /\n.*\n/, hrefBrackets: /^<(.*)>$/, tableDelimiter: /[:|]/, tableAlignChars: /^\||\| *$/g, tableRowBlankLine: /\n[ \t]*$/, tableAlignRight: /^ *-+: *$/, tableAlignCenter: /^ *:-+: *$/, tableAlignLeft: /^ *:-+ *$/, startATag: /^<a /i, endATag: /^<\/a>/i, startPreScriptTag: /^<(pre|code|kbd|script)(\s|>)/i, endPreScriptTag: /^<\/(pre|code|kbd|script)(\s|>)/i, startAngleBracket: /^</, endAngleBracket: />$/, pedanticHrefTitle: /^([^'"]*[^\s])\s+(['"])(.*)\2/, unicodeAlphaNumeric: /[\p{L}\p{N}]/u, numericCharacterReference: /&#(?:(\d{1,7})|[Xx]([A-Fa-f0-9]{1,6}));/g, escapeTest: /[&<>"']/, escapeReplace: /[&<>"']/g, escapeTestNoEncode: /[<>"']|&(?!(#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/, escapeReplaceNoEncode: /[<>"']|&(?!(#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/g, caret: /(^|[^\[])\^/g, percentDecode: /%25/g, findPipe: /\|/g, splitPipe: / \|/, slashPipe: /\\\|/g, carriageReturn: /\r\n|\r/g, spaceLine: /^ +$/gm, notSpaceStart: /^\S*/, endingNewline: /\n$/, listItemRegex: (n) => new RegExp(`^( {0,3}${n})((?:[	 ][^\\n]*)?(?:\\n|$))`), nextBulletRegex: Bt((n) => new RegExp(`^ {0,${n}}(?:[*+-]|\\d{1,9}[.)])((?:[ 	][^\\n]*)?(?:\\n|$))`)), hrRegex: Bt((n) => new RegExp(`^ {0,${n}}((?:-[ 	]*){3,}|(?:_[ 	]*){3,}|(?:\\*[ 	]*){3,})(?:\\n+|$)`)), fencesBeginRegex: Bt((n) => new RegExp(`^ {0,${n}}(?:\`\`\`|~~~)`)), headingBeginRegex: Bt((n) => new RegExp(`^ {0,${n}}#`)), htmlBeginRegex: Bt((n) => new RegExp(`^ {0,${n}}(?:</?(?:${vn})(?: +|$|/?>)|<(?:script|pre|style|textarea|!--))`, "i")), blockquoteBeginRegex: Bt((n) => new RegExp(`^ {0,${n}}>`)) }, Ir = /^(?:[ \t]*(?:\n|$))+/, Or = /^((?: {4}| {0,3}\t)[^\n]+(?:\n(?:[ \t]*(?:\n|$))*)?)+/, Pr = /^ {0,3}(`{3,}(?=[^`\n]*(?:\n|$))|~{3,})([^\n]*)(?:\n|$)(?:|([\s\S]*?)(?:\n|$))(?: {0,3}\1[~`]* *(?=\n|$)|$)/, mn = /^ {0,3}((?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/, Dr = /^ {0,3}(#{1,6})(?=\s|$)(.*)(?:\n+|$)/, is = / {0,3}(?:[*+-]|\d{1,9}[.)])/, tr = /^(?!bull |blockCode|fences|blockquote|heading|html|table)((?:.|\n(?!\s*?\n|bull |fences|blockquote|heading|hr|html|table))+?)\n {0,3}(=+|-+) *(?:\n+|$)/, nr = H(tr).replace(/bull/g, is).replace(/blockCode/g, /(?: {4}| {0,3}\t)/).replace(/fences/g, / {0,3}(?:`{3,}|~{3,})/).replace(/blockquote/g, / {0,3}>/).replace(/heading/g, / {0,3}#{1,6}(?:\s|$)/).replace(/hr/g, / {0,3}(?:(?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/).replace(/html/g, / {0,3}<[^\n>]+>\n/).replace(/\|table/g, "").getRegex(), Nr = H(tr).replace(/bull/g, is).replace(/blockCode/g, /(?: {4}| {0,3}\t)/).replace(/fences/g, / {0,3}(?:`{3,}|~{3,})/).replace(/blockquote/g, / {0,3}>/).replace(/heading/g, / {0,3}#{1,6}(?:\s|$)/).replace(/hr/g, / {0,3}(?:(?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/).replace(/html/g, / {0,3}<[^\n>]+>\n/).replace(/table/g, / {0,3}\|?(?:[:\- ]*\|)+[\:\- ]*\n/).getRegex(), us = /^([^\n]+(?:\n(?!hr|heading|lheading|blockquote|fences|list|html|table|[ \t]+\n)[^\n]+)*)/, Mr = /^[^\n]+/, cs = /(?!\s*\])(?:\\[\s\S]|[^\[\]\\])+/, zr = H(/^ {0,3}\[(label)\]: *(?:\n[ \t]*)?([^<\s][^\s]*|<.*?>)(?:(?: +(?:\n[ \t]*)?| *\n[ \t]*)(title))? *(?:\n+|$)/).replace("label", cs).replace("title", /(?:"(?:\\"?|[^"\\])*"|'[^'\n]*(?:\n[^'\n]+)*\n?'|\([^()]*\))/).getRegex(), Fr = H(/^(bull)([ \t][^\n]*?)?(?:\n|$)/).replace(/bull/g, is).getRegex(), vn = "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul", ds = /<!--(?:-?>|[\s\S]*?(?:-->|$))/, Ur = H("^ {0,3}(?:<(script|pre|style|textarea)[\\s>][\\s\\S]*?(?:</\\1>[^\\n]*\\n*|$)|comment[^\\n]*(\\n+|$)|<\\?[\\s\\S]*?(?:\\?>[^\\n]*\\n*|$)|<![A-Z][\\s\\S]*?(?:>[^\\n]*\\n*|$)|<!\\[CDATA\\[[\\s\\S]*?(?:\\]\\]>[^\\n]*\\n*|$)|</?(tag)(?: +|\\n|/?>)[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$)|<(?!script|pre|style|textarea)([a-z][a-z0-9-]*)(?:attribute)*? */?>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$)|</(?!script|pre|style|textarea)[a-z][a-z0-9-]*\\s*>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$))", "i").replace("comment", ds).replace("tag", vn).replace("attribute", / +[a-zA-Z:_][\w.:-]*(?: *= *"[^"\n]*"| *= *'[^'\n]*'| *= *[^\s"'=<>`]+)?/).getRegex(), sr = (n) => H(us).replace("hr", mn).replace("heading", " {0,3}#{1,6}(?:\\s|$)").replace("|lheading", "").replace("|table", "").replace("blockquote", " {0,3}>").replace("fences", " {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)").replace("list", n).replace("html", "</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag", vn).getRegex(), Br = sr(/ {0,3}(?:[*+-]|1[.)])[ \t]+[^ \t\n]/), Hr = sr(/ {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]|\n|$)/), jr = H(/^( {0,3}> ?(paragraph|[^\n]*)(?:\n|$))+/).replace("paragraph", Hr).getRegex(), ps = { blockquote: jr, code: Or, def: zr, fences: Pr, heading: Dr, hr: mn, html: Ur, lheading: nr, list: Fr, newline: Ir, paragraph: Br, table: At, text: Mr }, As = H("^ *([^\\n ].*)\\n {0,3}((?:\\| *)?:?-+:? *(?:\\| *:?-+:? *)*(?:\\| *)?)(?:\\n((?:(?! *\\n|hr|heading|blockquote|code|fences|list|html).*(?:\\n|$))*)\\n*|$)").replace("hr", mn).replace("heading", " {0,3}#{1,6}(?:\\s|$)").replace("blockquote", " {0,3}>").replace("code", "(?: {4}| {0,3}	)[^\\n]").replace("fences", " {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)").replace("list", " {0,3}(?:[*+-]|1[.)])[ \\t]").replace("html", "</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag", vn).getRegex(), Wr = { ...ps, lheading: Nr, table: As, paragraph: H(us).replace("hr", mn).replace("heading", " {0,3}#{1,6}(?:\\s|$)").replace("|lheading", "").replace("table", As).replace("blockquote", " {0,3}>").replace("fences", " {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)").replace("list", " {0,3}(?:[*+-]|1[.)])[ \\t]+[^ \\t\\n]").replace("html", "</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag", vn).getRegex() }, Vr = { ...ps, html: H(`^ *(?:comment *(?:\\n|\\s*$)|<(tag)[\\s\\S]+?</\\1> *(?:\\n{2,}|\\s*$)|<tag(?:"[^"]*"|'[^']*'|\\s[^'"/>\\s]*)*?/?> *(?:\\n{2,}|\\s*$))`).replace("comment", ds).replace(/tag/g, "(?!(?:a|em|strong|small|s|cite|q|dfn|abbr|data|time|code|var|samp|kbd|sub|sup|i|b|u|mark|ruby|rt|rp|bdi|bdo|span|br|wbr|ins|del|img)\\b)\\w+(?!:|[^\\w\\s@]*@)\\b").getRegex(), def: /^ *\[([^\]]+)\]: *<?([^\s>]+)>?(?: +(["(][^\n]+[")]))? *(?:\n+|$)/, heading: /^(#{1,6})(.*)(?:\n+|$)/, fences: At, lheading: /^(.+?)\n {0,3}(=+|-+) *(?:\n+|$)/, paragraph: H(us).replace("hr", mn).replace("heading", ` *#{1,6} *[^
+]`).replace("lheading", nr).replace("|table", "").replace("blockquote", " {0,3}>").replace("|fences", "").replace("|list", "").replace("|html", "").replace("|tag", "").getRegex() }, qr = /^\\([!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~])/, Gr = /^(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/, rr = /^( {2,}|\\)\n(?!\s*$)[ \t]*/, Yr = /^(`+|[^`])(?:(?= {2,}\n)|[\s\S]*?(?:(?=[\\<!\[`*_]|\b_|$)|[^ ](?= {2,}\n)))/, lt = /[\p{P}\p{S}]/u, Gt = /[\s\p{P}\p{S}]/u, kn = /[^\s\p{P}\p{S}]/u, Zr = H(/^((?![*_])punctSpace)/, "u").replace(/punctSpace/g, Gt).getRegex(), Kr = /[\p{Pi}\p{Ps}"']/u, lr = /(?!~)[\p{P}\p{S}]/u, Xr = /(?!~)[\s\p{P}\p{S}]/u, Qr = /(?:[^\s\p{P}\p{S}]|~)/u, Jr = H(/link|precode-code|html/, "g").replace("link", /\[(?:[^\[\]`]|(?<a>`+)[^`]+\k<a>(?!`))*?\]\((?:\\[\s\S]|[^\\\(\)]|\((?:\\[\s\S]|[^\\\(\)])*\))*\)/).replace("precode-", Lr ? "(?<!`)()" : "(^^|[^`])").replace("code", /(?<b>`+)[^`]+\k<b>(?!`)/).replace("html", /<(?! )[^<>]*?>/).getRegex(), ar = /^(?:\*+(?:((?!\*)punct)|([^\s*]))?)|^_+(?:((?!_)punct)|([^\s_]))?/, el = H(ar, "u").replace(/punct/g, lt).getRegex(), tl = H(ar, "u").replace(/punct/g, lr).getRegex(), nl = /^(?:\*+(?:((?!\*)(?!openQuote)punct)|([^\s*]))?)|^_+(?:((?!_)(?!openQuote)punct)|([^\s_]))?/, sl = H(nl, "u").replace(/openQuote/g, Kr).replace(/punct/g, lt).getRegex(), or = "^[^_*]*?__[^_*]*?\\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\\*)punct(\\*+)(?=[\\s]|$)|notPunctSpace(\\*+)(?!\\*)(?=punctSpace|$)|(?!\\*)punctSpace(\\*+)(?=notPunctSpace)|[\\s](\\*+)(?!\\*)(?=punct)|(?!\\*)punct(\\*+)(?!\\*)(?=punct)|notPunctSpace(\\*+)(?=notPunctSpace)", rl = H(or, "gu").replace(/notPunctSpace/g, kn).replace(/punctSpace/g, Gt).replace(/punct/g, lt).getRegex(), ll = H(or, "gu").replace(/notPunctSpace/g, Qr).replace(/punctSpace/g, Xr).replace(/punct/g, lr).getRegex(), al = "^[^_*]*?__[^_*]*?\\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\\*)punct(\\*+)(?=[\\s]|$)|notPunctSpace(\\*+)(?!\\*)(?=punctSpace|$)|(?!\\*)[\\s](\\*+)(?=notPunctSpace)|[\\s](\\*+)(?!\\*)(?=punct)|(?!\\*)punct(\\*+)(?!\\*)(?=punct)|(?:(?!\\*)punct|notPunctSpace)(\\*+)(?!\\*)(?=notPunctSpace)", ol = H(al, "gu").replace(/notPunctSpace/g, kn).replace(/punctSpace/g, Gt).replace(/punct/g, lt).getRegex(), il = H("^[^_*]*?\\*\\*[^_*]*?_[^_*]*?(?=\\*\\*)|[^_]+(?=[^_])|(?!_)punct(_+)(?=[\\s]|$)|notPunctSpace(_+)(?!_)(?=punctSpace|$)|(?!_)punctSpace(_+)(?=notPunctSpace)|[\\s](_+)(?!_)(?=punct)|(?!_)punct(_+)(?!_)(?=punct)", "gu").replace(/notPunctSpace/g, kn).replace(/punctSpace/g, Gt).replace(/punct/g, lt).getRegex(), ul = "^[^_*]*?\\*\\*[^_*]*?_[^_*]*?(?=\\*\\*)|[^_]+(?=[^_])|(?!_)punct(_+)(?=[\\s]|$)|notPunctSpace(_+)(?!_)(?=punctSpace|$)|(?!_)[\\s](_+)(?=notPunctSpace)|[\\s](_+)(?!_)(?=punct)|(?!_)punct(_+)(?!_)(?=punct)|(?:(?!_)punct|notPunctSpace)(_+)(?!_)(?=notPunctSpace)", cl = H(ul, "gu").replace(/notPunctSpace/g, kn).replace(/punctSpace/g, Gt).replace(/punct/g, lt).getRegex(), dl = H(/^~~?(?:((?!~)punct)|[^\s~])/, "u").replace(/punct/g, lt).getRegex(), pl = "^[^~]+(?=[^~])|(?!~)punct(~~?)(?=[\\s]|$)|notPunctSpace(~~?)(?!~)(?=punctSpace|$)|(?!~)punctSpace(~~?)(?=notPunctSpace)|[\\s](~~?)(?!~)(?=punct)|(?!~)punct(~~?)(?!~)(?=punct)|notPunctSpace(~~?)(?=notPunctSpace)", hl = H(pl, "gu").replace(/notPunctSpace/g, kn).replace(/punctSpace/g, Gt).replace(/punct/g, lt).getRegex(), fl = H(/\\(punct)/, "gu").replace(/punct/g, lt).getRegex(), gl = H(/^<(scheme:[^\s\x00-\x1f<>]*|email)>/).replace("scheme", /[a-zA-Z][a-zA-Z0-9+.-]{1,31}/).replace("email", /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+(@)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+(?![-_])/).getRegex(), ml = H(ds).replace("(?:-->|$)", "-->").getRegex(), vl = H("^comment|^</[a-zA-Z][a-zA-Z0-9-]*\\s*>|^<[a-zA-Z][a-zA-Z0-9-]*(?:attribute)*?\\s*/?>|^<\\?[\\s\\S]*?\\?>|^<![a-zA-Z]+\\s[\\s\\S]*?>|^<!\\[CDATA\\[[\\s\\S]*?\\]\\]>").replace("comment", ml).replace("attribute", /\s+[a-zA-Z:_][\w.:-]*(?:\s*=\s*"[^"]*"|\s*=\s*'[^']*'|\s*=\s*[^\s"'=<>`]+)?/).getRegex(), ir = /\[(?:\\[\s\S]|[^\[\]\\])*\]/, zn = H(/(?:\[(?:brackets|\\[\s\S]|[^\[\]\\])*\]|\\[\s\S]|`+(?!`)[^`]*?`+(?!`)|``+(?=\])|[^\[\]\\`])*?/).replace("brackets", ir).getRegex(), kl = H(/^!?\[(label)\]\(\s*(href)(?:(?:[ \t]+(?:\n[ \t]*)?|\n[ \t]*)(title))?\s*\)/).replace("label", zn).replace("href", /<(?:\\.|[^\n<>\\])+>|[^ \t\n\x00-\x1f]+|(?=\))/).replace("title", /"(?:\\"?|[^"\\])*"|'(?:\\'?|[^'\\])*'|\((?:\\\)?|[^)\\])*\)/).getRegex(), bl = H(/^!?\[(label)\]\[(ref)\]/).replace("label", zn).replace("ref", cs).getRegex(), yl = H(/^!?\[(ref)\](?:\[\])?/).replace("ref", cs).getRegex(), Es = /(?!\s*\])(?:\\[\s\S]|[^\[\]\\]){1,999}/, _l = H(/(?:[^\[\]\\`]*(?:\[(?:brackets|\\[\s\S]|[^\[\]\\])*\]|\\[\s\S]|`+(?!`)[^`]*?`+(?!`)|``+(?=\]))){0,999}?[^\[\]\\`]*?/).replace("brackets", ir).getRegex(), wl = H("reflink|nolink(?!\\()", "g").replace("reflink", H(/^!?\[(label)\]\[(ref)\]/).replace("label", _l).replace("ref", Es).getRegex()).replace("nolink", H(/^!?\[(ref)\](?:\[\])?/).replace("ref", Es).getRegex()).getRegex(), Rs = /[hH][tT][tT][pP][sS]?|[fF][tT][pP]/, xl = /[A-Za-z0-9._+-]+@[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![\w-])/, Sl = H(/(?:mailto:email|xmpp:email(?:\/[A-Za-z0-9@.]+)?)/).replace(/email/g, xl).getRegex(), hs = { _backpedal: At, anyPunctuation: fl, autolink: gl, blockSkip: Jr, br: rr, code: Gr, del: At, delLDelim: At, delRDelim: At, emStrongLDelim: el, emStrongRDelimAst: rl, emStrongRDelimUnd: il, escape: qr, link: kl, nolink: yl, punctuation: Zr, reflink: bl, reflinkSearch: wl, tag: vl, text: Yr, url: At }, Tl = { ...hs, emStrongLDelim: sl, emStrongRDelimAst: ol, emStrongRDelimUnd: cl, link: H(/^!?\[(label)\]\((.*?)\)/).replace("label", zn).getRegex(), reflink: H(/^!?\[(label)\]\s*\[([^\]]*)\]/).replace("label", zn).getRegex() }, ns = { ...hs, emStrongRDelimAst: ll, emStrongLDelim: tl, delLDelim: dl, delRDelim: hl, url: H(/^emailProtocol|^((?:protocol):\/\/|www\.)(?:[a-zA-Z0-9\-]+\.?)+[^\s<]*|^email/).replace("emailProtocol", Sl).replace("protocol", Rs).replace("email", /[A-Za-z0-9._+-]+(@)[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![\w-])/).getRegex(), _backpedal: /(?:[^?!.,:;*_'"~()&]+|\([^)]*\)|&(?![a-zA-Z0-9]+;$)|[?!.,:;*_'"~)]+(?!$))+/, del: /^(~~?)(?=[^\s~])((?:\\[\s\S]|[^\\])*?(?:\\[\s\S]|[^\s~\\]))\1(?=[^~]|$)/, text: H(/^(?:[^a-zA-Z0-9](?=emailProtocol)|(`+|~+|[^`~])(?:(?=[`~])|(?= {2,}\n)|(?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@)|[\s\S]*?(?:(?=[\\<!\[`*~_]|\b_|protocol:\/\/|www\.|$)|[^ ](?= {2,}\n)|[^a-zA-Z0-9](?=emailProtocol)|[^a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-](?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@))))/).replace("protocol", Rs).replace(/emailProtocol/g, /(?:mailto|xmpp):/).getRegex() }, Al = { ...ns, br: H(rr).replace("{2,}", "*").getRegex(), text: H(ns.text).replace("\\b_", "\\b_| {2,}\\n").replace(/\{2,\}/g, "*").getRegex() }, On = { normal: ps, gfm: Wr, pedantic: Vr }, ln = { normal: hs, gfm: ns, breaks: Al, pedantic: Tl }, El = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }, $s = (n) => El[n];
+function De(n, e) {
   if (e) {
-    if (xe.escapeTest.test(n)) return n.replace(xe.escapeReplace, $s);
-  } else if (xe.escapeTestNoEncode.test(n)) return n.replace(xe.escapeReplaceNoEncode, $s);
+    if (we.escapeTest.test(n)) return n.replace(we.escapeReplace, $s);
+  } else if (we.escapeTestNoEncode.test(n)) return n.replace(we.escapeReplaceNoEncode, $s);
   return n;
 }
 function Rl(n) {
-  return n.replace(xe.numericCharacterReference, (e, t, s) => {
+  return n.replace(we.numericCharacterReference, (e, t, s) => {
     let r = t === void 0 ? Number.parseInt(s, 16) : Number.parseInt(t, 10);
     return r === 0 || r > 1114111 || r >= 55296 && r <= 57343 ? "�" : String.fromCodePoint(r);
   });
 }
 function Cs(n) {
   try {
-    n = encodeURI(n).replace(xe.percentDecode, "%");
+    n = encodeURI(n).replace(we.percentDecode, "%");
   } catch {
     return null;
   }
   return n;
 }
 function Ls(n, e) {
-  let t = n.replace(xe.findPipe, (a, c, i) => {
-    let k = !1, y = c;
-    for (; --y >= 0 && i[y] === "\\"; ) k = !k;
+  let t = n.replace(we.findPipe, (a, c, i) => {
+    let k = !1, _ = c;
+    for (; --_ >= 0 && i[_] === "\\"; ) k = !k;
     return k ? "|" : " |";
-  }), s = t.split(xe.splitPipe), r = 0;
+  }), s = t.split(we.splitPipe), r = 0;
   if (s[0].trim() || s.shift(), s.length > 0 && !s.at(-1)?.trim() && s.pop(), e) if (s.length > e) s.splice(e);
   else for (; s.length < e; ) s.push("");
-  for (; r < s.length; r++) s[r] = s[r].trim().replace(xe.slashPipe, "|");
+  for (; r < s.length; r++) s[r] = s[r].trim().replace(we.slashPipe, "|");
   return s;
 }
-function ht(n, e, t) {
+function pt(n, e, t) {
   let s = n.length;
   if (s === 0) return "";
   let r = 0;
@@ -190,11 +190,11 @@ function ht(n, e, t) {
 function Is(n) {
   let e = n.split(`
 `), t = e.length - 1;
-  for (; t >= 0 && xe.blankLine.test(e[t]); ) t--;
+  for (; t >= 0 && we.blankLine.test(e[t]); ) t--;
   return e.length - t <= 2 ? n : e.slice(0, t + 1).join(`
 `);
 }
-function Un(n) {
+function Fn(n) {
   return n.trim().toLowerCase().toUpperCase().toLowerCase();
 }
 function $l(n, e) {
@@ -216,11 +216,11 @@ function Os(n, e = 0) {
 function Ps(n, e, t, s, r) {
   let a = e.href, c = e.title || null, i = n[1].replace(r.other.outputLinkReplace, "$1"), k = n[0].charAt(0) === "!";
   s.state.inLink = !0;
-  let y = s.state.linkEmitted, S = s.state.inRawBlock;
+  let _ = s.state.linkEmitted, S = s.state.inRawBlock;
   s.state.linkEmitted = !1;
-  let E = s.inlineTokens(i), D = s.state.linkEmitted;
-  if (s.state.linkEmitted = y, s.state.inLink = !1, !k) {
-    if (D) {
+  let E = s.inlineTokens(i), N = s.state.linkEmitted;
+  if (s.state.linkEmitted = _, s.state.inLink = !1, !k) {
+    if (N) {
       s.state.inRawBlock = S;
       return;
     }
@@ -264,12 +264,12 @@ function Ds(n, e, t, s) {
   }
   return !1;
 }
-var Bn = class {
+var Un = class {
   constructor(n) {
-    re(this, "options");
-    re(this, "rules");
-    re(this, "lexer");
-    this.options = n || At;
+    ne(this, "options");
+    ne(this, "rules");
+    ne(this, "lexer");
+    this.options = n || $t;
   }
   space(n) {
     let e = this.rules.block.newline.exec(n);
@@ -294,22 +294,22 @@ var Bn = class {
     if (e) {
       let t = e[2].trim();
       if (this.rules.other.endingHash.test(t)) {
-        let s = ht(t, "#");
+        let s = pt(t, "#");
         (this.options.pedantic || !s || this.rules.other.endingSpaceTabChar.test(s)) && (t = s.trim());
       }
-      return { type: "heading", raw: ht(e[0], `
+      return { type: "heading", raw: pt(e[0], `
 `), depth: e[1].length, text: t, tokens: this.lexer.inline(t) };
     }
   }
   hr(n) {
     let e = this.rules.block.hr.exec(n);
-    if (e) return { type: "hr", raw: ht(e[0], `
+    if (e) return { type: "hr", raw: pt(e[0], `
 `) };
   }
   blockquote(n) {
     let e = this.rules.block.blockquote.exec(n);
     if (e) {
-      let t = ht(e[0], `
+      let t = pt(e[0], `
 `).split(`
 `), s = "", r = "", a = [];
       for (; t.length > 0; ) {
@@ -318,32 +318,32 @@ var Bn = class {
         else if (!c) i.push(t[k]);
         else break;
         t = t.slice(k);
-        let y = i.join(`
-`), S = y.replace(this.rules.other.blockquoteSetextReplace, `
+        let _ = i.join(`
+`), S = _.replace(this.rules.other.blockquoteSetextReplace, `
     $1`).replace(this.rules.other.blockquoteSetextReplace2, "");
         s = s ? `${s}
-${y}` : y, r = r ? `${r}
+${_}` : _, r = r ? `${r}
 ${S}` : S;
         let E = this.lexer.state.top;
         if (this.lexer.state.top = !0, this.lexer.blockTokens(S, a, !0), this.lexer.state.top = E, t.length === 0) break;
-        let D = a.at(-1);
-        if (D?.type === "code") break;
-        if (D?.type === "blockquote") {
-          let U = D, L = t.join(`
-`), Q = U.raw + `
-` + L.replace(this.rules.other.blockquoteSetextReplace2, ""), M = this.blockquote(Q);
-          a[a.length - 1] = M;
-          let Z = Q.substring(M.raw.length).replace(/^\n/, ""), ee = Z ? Z.split(`
-`).length : 0, C = ee ? t.slice(0, -ee) : t;
+        let N = a.at(-1);
+        if (N?.type === "code") break;
+        if (N?.type === "blockquote") {
+          let U = N, L = t.join(`
+`), K = U.raw + `
+` + L.replace(this.rules.other.blockquoteSetextReplace2, ""), z = this.blockquote(K);
+          a[a.length - 1] = z;
+          let Y = K.substring(z.raw.length).replace(/^\n/, ""), le = Y ? Y.split(`
+`).length : 0, C = le ? t.slice(0, -le) : t;
           C.length > 0 && (s = `${s}
 ${C.join(`
-`)}`), r = r.substring(0, r.length - U.text.length) + M.text;
+`)}`), r = r.substring(0, r.length - U.text.length) + z.text;
           break;
-        } else if (D?.type === "list") {
-          let U = D, L = U.raw + `
+        } else if (N?.type === "list") {
+          let U = N, L = U.raw + `
 ` + t.join(`
-`), Q = this.list(L);
-          a[a.length - 1] = Q, s = s.substring(0, s.length - D.raw.length) + Q.raw, r = r.substring(0, r.length - U.raw.length) + Q.raw, t = L.substring(a.at(-1).raw.length).split(`
+`), K = this.list(L);
+          a[a.length - 1] = K, s = s.substring(0, s.length - N.raw.length) + K.raw, r = r.substring(0, r.length - U.raw.length) + K.raw, t = L.substring(a.at(-1).raw.length).split(`
 `);
           continue;
         }
@@ -358,44 +358,44 @@ ${C.join(`
       t = s ? `\\d{1,9}\\${t.slice(-1)}` : `\\${t}`, this.options.pedantic && (t = s ? t : "[*+-]");
       let a = this.rules.other.listItemRegex(t), c = !1;
       for (; n; ) {
-        let k = !1, y = "", S = "";
+        let k = !1, _ = "", S = "";
         if (!(e = a.exec(n)) || this.rules.block.hr.test(n)) break;
-        y = e[0], n = n.substring(y.length);
+        _ = e[0], n = n.substring(_.length);
         let E = e[2].split(`
-`, 1)[0], D = e[1].length, U = this.options.pedantic ? Os(E, D) : E.replace(this.rules.other.leadingSpaceTab, (Z) => Os(Z, D)), L = n.split(`
-`, 1)[0], Q = !U.trim(), M = 0;
-        if (this.options.pedantic ? (M = 2, S = U.trimStart()) : Q ? M = D + 1 : (M = U.search(this.rules.other.nonSpaceChar), M = M > 4 ? 1 : M, S = U.slice(M), M += D), Q && this.rules.other.blankLine.test(L) && (y += L + `
+`, 1)[0], N = e[1].length, U = this.options.pedantic ? Os(E, N) : E.replace(this.rules.other.leadingSpaceTab, (Y) => Os(Y, N)), L = n.split(`
+`, 1)[0], K = !U.trim(), z = 0;
+        if (this.options.pedantic ? (z = 2, S = U.trimStart()) : K ? z = N + 1 : (z = U.search(this.rules.other.nonSpaceChar), z = z > 4 ? 1 : z, S = U.slice(z), z += N), K && this.rules.other.blankLine.test(L) && (_ += L + `
 `, n = n.substring(L.length + 1), k = !0), !k) {
-          let Z = this.rules.other.nextBulletRegex(M), ee = this.rules.other.hrRegex(M), C = this.rules.other.fencesBeginRegex(M), z = this.rules.other.headingBeginRegex(M), B = this.rules.other.htmlBeginRegex(M), te = this.rules.other.blockquoteBeginRegex(M);
+          let Y = this.rules.other.nextBulletRegex(z), le = this.rules.other.hrRegex(z), C = this.rules.other.fencesBeginRegex(z), F = this.rules.other.headingBeginRegex(z), M = this.rules.other.htmlBeginRegex(z), ue = this.rules.other.blockquoteBeginRegex(z);
           for (; n; ) {
-            let ue = n.split(`
-`, 1)[0], F;
-            if (L = ue, this.options.pedantic ? (L = L.replace(this.rules.other.listReplaceNesting, "  "), F = L) : F = L.replace(this.rules.other.leadingSpaceTab, (_) => _.replace(this.rules.other.tabCharGlobal, "    ")), C.test(L) || z.test(L) || B.test(L) || te.test(L) || Z.test(L) || ee.test(L)) break;
-            if (F.search(this.rules.other.nonSpaceChar) >= M || !L.trim()) S += `
-` + F.slice(M);
+            let ce = n.split(`
+`, 1)[0], B;
+            if (L = ce, this.options.pedantic ? (L = L.replace(this.rules.other.listReplaceNesting, "  "), B = L) : B = L.replace(this.rules.other.leadingSpaceTab, (y) => y.replace(this.rules.other.tabCharGlobal, "    ")), C.test(L) || F.test(L) || M.test(L) || ue.test(L) || Y.test(L) || le.test(L)) break;
+            if (B.search(this.rules.other.nonSpaceChar) >= z || !L.trim()) S += `
+` + B.slice(z);
             else {
-              if (Q || U.replace(this.rules.other.tabCharGlobal, "    ").search(this.rules.other.nonSpaceChar) >= 4 || C.test(U) || z.test(U) || ee.test(U)) break;
+              if (K || U.replace(this.rules.other.tabCharGlobal, "    ").search(this.rules.other.nonSpaceChar) >= 4 || C.test(U) || F.test(U) || le.test(U)) break;
               S += `
 ` + L;
             }
-            Q = !L.trim(), y += ue + `
-`, n = n.substring(ue.length + 1), U = F.slice(M);
+            K = !L.trim(), _ += ce + `
+`, n = n.substring(ce.length + 1), U = B.slice(z);
           }
         }
-        r.loose || (c ? r.loose = !0 : this.rules.other.doubleBlankLine.test(y) && (c = !0)), r.items.push({ type: "list_item", raw: y, task: !!this.options.gfm && this.rules.other.listIsTask.test(S), loose: !1, text: S, tokens: [] }), r.raw += y;
+        r.loose || (c ? r.loose = !0 : this.rules.other.doubleBlankLine.test(_) && (c = !0)), r.items.push({ type: "list_item", raw: _, task: !!this.options.gfm && this.rules.other.listIsTask.test(S), loose: !1, text: S, tokens: [] }), r.raw += _;
       }
       let i = r.items.at(-1);
       if (i) i.raw = i.raw.trimEnd(), i.text = i.text.trimEnd();
       else return;
       r.raw = r.raw.trimEnd();
       for (let k of r.items) if (this.lexer.state.top = !1, k.tokens = this.lexer.blockTokens(k.text, []), !r.loose) {
-        let y = k.tokens.filter((E) => E.type === "space"), S = y.length > 0 && y.some((E) => this.rules.other.anyLine.test(E.raw));
+        let _ = k.tokens.filter((E) => E.type === "space"), S = _.length > 0 && _.some((E) => this.rules.other.anyLine.test(E.raw));
         r.loose = S;
       }
       for (let k of r.items) {
-        let y = k.tokens[0];
-        if (k.task && (y?.type === "text" || y?.type === "paragraph")) {
-          k.text = k.text.replace(this.rules.other.listReplaceTask, ""), y.raw = y.raw.replace(this.rules.other.listReplaceTask, ""), y.text = y.text.replace(this.rules.other.listReplaceTask, "");
+        let _ = k.tokens[0];
+        if (k.task && (_?.type === "text" || _?.type === "paragraph")) {
+          k.text = k.text.replace(this.rules.other.listReplaceTask, ""), _.raw = _.raw.replace(this.rules.other.listReplaceTask, ""), _.text = _.text.replace(this.rules.other.listReplaceTask, "");
           for (let E = this.lexer.inlineQueue.length - 1; E >= 0; E--) if (this.rules.other.listIsTask.test(this.lexer.inlineQueue[E].src)) {
             this.lexer.inlineQueue[E].src = this.lexer.inlineQueue[E].src.replace(this.rules.other.listReplaceTask, "");
             break;
@@ -409,7 +409,7 @@ ${C.join(`
       }
       if (r.loose) for (let k of r.items) {
         k.loose = !0;
-        for (let y of k.tokens) y.type === "text" && (y.type = "paragraph");
+        for (let _ of k.tokens) _.type === "text" && (_.type = "paragraph");
       }
       return r;
     }
@@ -424,8 +424,8 @@ ${C.join(`
   def(n) {
     let e = this.rules.block.def.exec(n);
     if (e) {
-      let t = Un(e[1]).replace(this.rules.other.multipleSpaceGlobal, " "), s = e[2] ? e[2].replace(this.rules.other.hrefBrackets, "$1").replace(this.rules.inline.anyPunctuation, "$1") : "", r = e[3] ? e[3].substring(1, e[3].length - 1).replace(this.rules.inline.anyPunctuation, "$1") : e[3];
-      return { type: "def", tag: t, raw: ht(e[0], `
+      let t = Fn(e[1]).replace(this.rules.other.multipleSpaceGlobal, " "), s = e[2] ? e[2].replace(this.rules.other.hrefBrackets, "$1").replace(this.rules.inline.anyPunctuation, "$1") : "", r = e[3] ? e[3].substring(1, e[3].length - 1).replace(this.rules.inline.anyPunctuation, "$1") : e[3];
+      return { type: "def", tag: t, raw: pt(e[0], `
 `), href: s, title: r };
     }
   }
@@ -433,7 +433,7 @@ ${C.join(`
     let e = this.rules.block.table.exec(n);
     if (!e || !this.rules.other.tableDelimiter.test(e[2])) return;
     let t = Ls(e[1]), s = e[2].replace(this.rules.other.tableAlignChars, "").split("|"), r = e[3]?.trim() ? e[3].replace(this.rules.other.tableRowBlankLine, "").split(`
-`) : [], a = { type: "table", raw: ht(e[0], `
+`) : [], a = { type: "table", raw: pt(e[0], `
 `), header: [], align: [], rows: [] };
     if (t.length === s.length) {
       for (let c of s) this.rules.other.tableAlignRight.test(c) ? a.align.push("right") : this.rules.other.tableAlignCenter.test(c) ? a.align.push("center") : this.rules.other.tableAlignLeft.test(c) ? a.align.push("left") : a.align.push(null);
@@ -446,7 +446,7 @@ ${C.join(`
     let e = this.rules.block.lheading.exec(n);
     if (e) {
       let t = e[1].trim();
-      return { type: "heading", raw: ht(e[0], `
+      return { type: "heading", raw: pt(e[0], `
 `), depth: e[2].charAt(0) === "=" ? 1 : 2, text: t, tokens: this.lexer.inline(t) };
     }
   }
@@ -478,7 +478,7 @@ ${C.join(`
       let s = e[2].trim();
       if (!this.options.pedantic && this.rules.other.startAngleBracket.test(s)) {
         if (!this.rules.other.endAngleBracket.test(s)) return;
-        let c = ht(s.slice(0, -1), "\\");
+        let c = pt(s.slice(0, -1), "\\");
         if ((s.length - c.length) % 2 === 0) return;
       } else {
         let c = $l(e[2], "()");
@@ -501,7 +501,7 @@ ${C.join(`
     if ((t = this.rules.inline.reflink.exec(n)) || (t = this.rules.inline.nolink.exec(n))) {
       let s = t[0].charAt(0) === "!" ? 2 : 1;
       if (!this.options.pedantic && Ds(n, t[1], s, this.rules)) return;
-      let r = (t[2] || t[1]).replace(this.rules.other.multipleSpaceGlobal, " "), a = e[Un(r)];
+      let r = (t[2] || t[1]).replace(this.rules.other.multipleSpaceGlobal, " "), a = e[Fn(r)];
       if (!a) {
         let c = t[0].charAt(0);
         return { type: "text", raw: c, text: c };
@@ -512,7 +512,7 @@ ${C.join(`
   emStrong(n, e, t = "") {
     let s = this.rules.inline.emStrongLDelim.exec(n);
     if (!(!s || !s[1] && !s[2] && !s[3] && !s[4] || s[4] && t.match(this.rules.other.unicodeAlphaNumeric)) && (!(s[1] || s[3]) || !t || this.rules.inline.punctuation.exec(t))) {
-      let r = [...s[0]].length - 1, a, c, i = r, k = 0, y = s[0][0], S = t === y, E = y === "*" ? this.rules.inline.emStrongRDelimAst : this.rules.inline.emStrongRDelimUnd;
+      let r = [...s[0]].length - 1, a, c, i = r, k = 0, _ = s[0][0], S = t === _, E = _ === "*" ? this.rules.inline.emStrongRDelimAst : this.rules.inline.emStrongRDelimUnd;
       for (E.lastIndex = 0, e = e.slice(-1 * n.length + r); (s = E.exec(e)) !== null; ) {
         if (a = s[1] || s[2] || s[3] || s[4] || s[5] || s[6], !a) continue;
         if (c = [...a].length, s[3] || s[4]) {
@@ -527,10 +527,10 @@ ${C.join(`
         }
         if (i -= c, i > 0) continue;
         c = Math.min(c, c + i + k);
-        let D = [...s[0]][0].length, U = n.slice(0, r + s.index + D + c);
+        let N = [...s[0]][0].length, U = n.slice(0, r + s.index + N + c);
         if (Math.min(r, c) % 2) {
-          let Q = U.slice(1, -1);
-          return { type: "em", raw: U, text: Q, tokens: this.lexer.inlineTokens(Q) };
+          let K = U.slice(1, -1);
+          return { type: "em", raw: U, text: K, tokens: this.lexer.inlineTokens(K) };
         }
         let L = U.slice(2, -2);
         return { type: "strong", raw: U, text: L, tokens: this.lexer.inlineTokens(L) };
@@ -560,7 +560,7 @@ ${C.join(`
         }
         if (i -= c, i > 0) continue;
         c = Math.min(c, c + i);
-        let y = [...s[0]][0].length, S = n.slice(0, r + s.index + y + c), E = S.slice(r, -r);
+        let _ = [...s[0]][0].length, S = n.slice(0, r + s.index + _ + c), E = S.slice(r, -r);
         return { type: "del", raw: S, text: E, tokens: this.lexer.inlineTokens(E) };
       }
     }
@@ -594,19 +594,19 @@ ${C.join(`
       return { type: "text", raw: e[0], text: t ? e[0] : Rl(e[0]), escaped: t };
     }
   }
-}, He = class ss {
+}, Ve = class ss {
   constructor(e) {
-    re(this, "tokens");
-    re(this, "options");
-    re(this, "state");
-    re(this, "inlineQueue");
-    re(this, "tokenizer");
-    this.tokens = [], this.tokens.links = /* @__PURE__ */ Object.create(null), this.options = e || At, this.options.tokenizer = this.options.tokenizer || new Bn(), this.tokenizer = this.options.tokenizer, this.tokenizer.options = this.options, this.tokenizer.lexer = this, this.inlineQueue = [], this.state = { inLink: !1, inRawBlock: !1, linkEmitted: !1, top: !0 };
-    let t = { other: xe, block: Pn.normal, inline: sn.normal };
-    this.options.pedantic ? (t.block = Pn.pedantic, t.inline = sn.pedantic) : this.options.gfm && (t.block = Pn.gfm, this.options.breaks ? t.inline = sn.breaks : t.inline = sn.gfm), this.tokenizer.rules = t;
+    ne(this, "tokens");
+    ne(this, "options");
+    ne(this, "state");
+    ne(this, "inlineQueue");
+    ne(this, "tokenizer");
+    this.tokens = [], this.tokens.links = /* @__PURE__ */ Object.create(null), this.options = e || $t, this.options.tokenizer = this.options.tokenizer || new Un(), this.tokenizer = this.options.tokenizer, this.tokenizer.options = this.options, this.tokenizer.lexer = this, this.inlineQueue = [], this.state = { inLink: !1, inRawBlock: !1, linkEmitted: !1, top: !0 };
+    let t = { other: we, block: On.normal, inline: ln.normal };
+    this.options.pedantic ? (t.block = On.pedantic, t.inline = ln.pedantic) : this.options.gfm && (t.block = On.gfm, this.options.breaks ? t.inline = ln.breaks : t.inline = ln.gfm), this.tokenizer.rules = t;
   }
   static get rules() {
-    return { block: Pn, inline: sn };
+    return { block: On, inline: ln };
   }
   static lex(e, t) {
     return new ss(t).lex(e);
@@ -615,7 +615,7 @@ ${C.join(`
     return new ss(t).inlineTokens(e);
   }
   lex(e) {
-    e = e.replace(xe.carriageReturn, `
+    e = e.replace(we.carriageReturn, `
 `), this.blockTokens(e, this.tokens);
     for (let t = 0; t < this.inlineQueue.length; t++) {
       let s = this.inlineQueue[t];
@@ -624,7 +624,7 @@ ${C.join(`
     return this.inlineQueue = [], this.tokens;
   }
   blockTokens(e, t = [], s = !1) {
-    this.tokenizer.lexer = this, this.options.pedantic && (e = e.replace(xe.tabCharGlobal, "    ").replace(xe.spaceLine, ""));
+    this.tokenizer.lexer = this, this.options.pedantic && (e = e.replace(we.tabCharGlobal, "    ").replace(we.spaceLine, ""));
     let r = 1 / 0;
     for (; e; ) {
       if (e.length < r) r = e.length;
@@ -693,9 +693,9 @@ ${C.join(`
       }
       let c = e;
       if (this.options.extensions?.startBlock) {
-        let i = 1 / 0, k = e.slice(1), y;
+        let i = 1 / 0, k = e.slice(1), _;
         this.options.extensions.startBlock.forEach((S) => {
-          y = S.call({ lexer: this }, k), typeof y == "number" && y >= 0 && (i = Math.min(i, y));
+          _ = S.call({ lexer: this }, k), typeof _ == "number" && _ >= 0 && (i = Math.min(i, _));
         }), i < 1 / 0 && i >= 0 && (c = e.substring(0, i + 1));
       }
       if (this.state.top && (a = this.tokenizer.paragraph(c))) {
@@ -731,7 +731,7 @@ ${C.join(`
     for (let s of e.matchAll(this.tokenizer.rules.inline.blockSkip)) if (t.test(s[0]) && e.charAt(s.index - 1) !== "!") return !0;
     for (let s of e.matchAll(this.tokenizer.rules.inline.reflinkSearch)) {
       let r = s[0], a = r.lastIndexOf("[");
-      if (!(r.charAt(0) === "!" || !Object.hasOwn(this.tokens.links, Un(r.slice(a + 1, -1)))) && !(a > 1 && this.linkInText(r.slice(1, a - 1)))) return !0;
+      if (!(r.charAt(0) === "!" || !Object.hasOwn(this.tokens.links, Fn(r.slice(a + 1, -1)))) && !(a > 1 && this.linkInText(r.slice(1, a - 1)))) return !0;
     }
     return !1;
   }
@@ -739,19 +739,19 @@ ${C.join(`
     this.tokenizer.lexer = this;
     let s = e;
     if (this.tokens.links && e.includes("[")) {
-      let i = this.tokenizer.rules.inline.reflinkSearch, k = (y) => {
-        let S = y.lastIndexOf("[");
-        if (!Object.hasOwn(this.tokens.links, Un(y.slice(S + 1, -1)))) return y;
-        if (S > 1 && y.charAt(0) !== "!") {
-          let E = y.slice(1, S - 1);
-          if (this.linkInText(E)) return "[" + E.replace(i, k) + "][" + "a".repeat(y.length - S - 2) + "]";
+      let i = this.tokenizer.rules.inline.reflinkSearch, k = (_) => {
+        let S = _.lastIndexOf("[");
+        if (!Object.hasOwn(this.tokens.links, Fn(_.slice(S + 1, -1)))) return _;
+        if (S > 1 && _.charAt(0) !== "!") {
+          let E = _.slice(1, S - 1);
+          if (this.linkInText(E)) return "[" + E.replace(i, k) + "][" + "a".repeat(_.length - S - 2) + "]";
         }
-        return "[" + "a".repeat(y.length - 2) + "]";
+        return "[" + "a".repeat(_.length - 2) + "]";
       };
       s = s.replace(i, k);
     }
-    s = s.replace(this.tokenizer.rules.inline.anyPunctuation, (i) => "+".repeat(i.length)), s = s.replace(this.tokenizer.rules.inline.blockSkip, (i, k, y) => {
-      let S = y ? y.length : 0;
+    s = s.replace(this.tokenizer.rules.inline.anyPunctuation, (i) => "+".repeat(i.length)), s = s.replace(this.tokenizer.rules.inline.blockSkip, (i, k, _) => {
+      let S = _ ? _.length : 0;
       return i.slice(0, S) + "[" + "a".repeat(i.length - S - 2) + "]";
     }), s = this.options.hooks?.emStrongMask?.call({ lexer: this }, s) ?? s;
     let r = !1, a = "", c = 1 / 0;
@@ -763,7 +763,7 @@ ${C.join(`
       }
       r || (a = ""), r = !1;
       let i;
-      if (this.options.extensions?.inline?.some((y) => (i = y.call({ lexer: this }, e, t)) ? (e = e.substring(i.raw.length), t.push(i), !0) : !1)) continue;
+      if (this.options.extensions?.inline?.some((_) => (i = _.call({ lexer: this }, e, t)) ? (e = e.substring(i.raw.length), t.push(i), !0) : !1)) continue;
       if (i = this.tokenizer.escape(e)) {
         e = e.substring(i.raw.length), t.push(i);
         continue;
@@ -778,8 +778,8 @@ ${C.join(`
       }
       if (i = this.tokenizer.reflink(e, this.tokens.links)) {
         e = e.substring(i.raw.length);
-        let y = t.at(-1);
-        i.type === "text" && y?.type === "text" ? (y.raw += i.raw, y.text += i.text) : t.push(i);
+        let _ = t.at(-1);
+        i.type === "text" && _?.type === "text" ? (_.raw += i.raw, _.text += i.text) : t.push(i);
         continue;
       }
       if (i = this.tokenizer.emStrong(e, s, a)) {
@@ -808,15 +808,15 @@ ${C.join(`
       }
       let k = e;
       if (this.options.extensions?.startInline) {
-        let y = 1 / 0, S = e.slice(1), E;
-        this.options.extensions.startInline.forEach((D) => {
-          E = D.call({ lexer: this }, S), typeof E == "number" && E >= 0 && (y = Math.min(y, E));
-        }), y < 1 / 0 && y >= 0 && (k = e.substring(0, y + 1));
+        let _ = 1 / 0, S = e.slice(1), E;
+        this.options.extensions.startInline.forEach((N) => {
+          E = N.call({ lexer: this }, S), typeof E == "number" && E >= 0 && (_ = Math.min(_, E));
+        }), _ < 1 / 0 && _ >= 0 && (k = e.substring(0, _ + 1));
       }
       if (i = this.tokenizer.inlineText(k)) {
         e = e.substring(i.raw.length), i.raw.slice(-1) !== "_" && (a = i.raw.slice(-1)), r = !0;
-        let y = t.at(-1);
-        y?.type === "text" ? (y.raw += i.raw, y.text += i.text) : t.push(i);
+        let _ = t.at(-1);
+        _?.type === "text" ? (_.raw += i.raw, _.text += i.text) : t.push(i);
         continue;
       }
       if (e) {
@@ -831,20 +831,20 @@ ${C.join(`
     if (this.options.silent) console.error(t);
     else throw new Error(t);
   }
-}, Hn = class {
+}, Bn = class {
   constructor(n) {
-    re(this, "options");
-    re(this, "parser");
-    this.options = n || At;
+    ne(this, "options");
+    ne(this, "parser");
+    this.options = n || $t;
   }
   space(n) {
     return "";
   }
   code({ text: n, lang: e, escaped: t }) {
-    let s = (e || "").match(xe.notSpaceStart)?.[0], r = n ? n.replace(xe.endingNewline, "") + `
+    let s = (e || "").match(we.notSpaceStart)?.[0], r = n ? n.replace(we.endingNewline, "") + `
 ` : "";
-    return s ? '<pre><code class="language-' + Ie(s) + '">' + (t ? r : Ie(r, !0)) + `</code></pre>
-` : "<pre><code>" + (t ? r : Ie(r, !0)) + `</code></pre>
+    return s ? '<pre><code class="language-' + De(s) + '">' + (t ? r : De(r, !0)) + `</code></pre>
+` : "<pre><code>" + (t ? r : De(r, !0)) + `</code></pre>
 `;
   }
   blockquote({ tokens: n }) {
@@ -922,7 +922,7 @@ ${n}</tr>
     return `<em>${this.parser.parseInline(n)}</em>`;
   }
   codespan({ text: n }) {
-    return `<code>${Ie(n, !0)}</code>`;
+    return `<code>${De(n, !0)}</code>`;
   }
   br(n) {
     return "<br>";
@@ -931,22 +931,22 @@ ${n}</tr>
     return `<del>${this.parser.parseInline(n)}</del>`;
   }
   link({ href: n, title: e, text: t, tokens: s, autolink: r }) {
-    let a = r ? Ie(t, !0) : this.parser.parseInline(s), c = Cs(n);
+    let a = r ? De(t, !0) : this.parser.parseInline(s), c = Cs(n);
     if (c === null) return a;
-    n = Ie(c, r);
+    n = De(c, r);
     let i = '<a href="' + n + '"';
-    return e && (i += ' title="' + Ie(e) + '"'), i += ">" + a + "</a>", i;
+    return e && (i += ' title="' + De(e) + '"'), i += ">" + a + "</a>", i;
   }
   image({ href: n, title: e, text: t, tokens: s }) {
     s && (t = this.parser.parseInline(s, this.parser.textRenderer));
     let r = Cs(n);
-    if (r === null) return Ie(t);
+    if (r === null) return De(t);
     n = r;
-    let a = `<img src="${Ie(n)}" alt="${Ie(t)}"`;
-    return e && (a += ` title="${Ie(e)}"`), a += ">", a;
+    let a = `<img src="${De(n)}" alt="${De(t)}"`;
+    return e && (a += ` title="${De(e)}"`), a += ">", a;
   }
   text(n) {
-    return "tokens" in n && n.tokens ? this.parser.parseInline(n.tokens) : "escaped" in n && n.escaped ? n.text : Ie(n.text);
+    return "tokens" in n && n.tokens ? this.parser.parseInline(n.tokens) : "escaped" in n && n.escaped ? n.text : De(n.text);
   }
 }, fs = class {
   strong({ text: n }) {
@@ -979,12 +979,12 @@ ${n}</tr>
   checkbox({ raw: n }) {
     return n;
   }
-}, je = class rs {
+}, qe = class rs {
   constructor(e) {
-    re(this, "options");
-    re(this, "renderer");
-    re(this, "textRenderer");
-    this.options = e || At, this.options.renderer = this.options.renderer || new Hn(), this.renderer = this.options.renderer, this.renderer.options = this.options, this.renderer.parser = this, this.textRenderer = new fs();
+    ne(this, "options");
+    ne(this, "renderer");
+    ne(this, "textRenderer");
+    this.options = e || $t, this.options.renderer = this.options.renderer || new Bn(), this.renderer = this.options.renderer, this.renderer.options = this.options, this.renderer.parser = this, this.textRenderer = new fs();
   }
   static parse(e, t) {
     return new rs(t).parse(e);
@@ -1130,11 +1130,11 @@ ${n}</tr>
     }
     return s;
   }
-}, Mn, cn = (Mn = class {
+}, Nn, pn = (Nn = class {
   constructor(n) {
-    re(this, "options");
-    re(this, "block");
-    this.options = n || At;
+    ne(this, "options");
+    ne(this, "block");
+    this.options = n || $t;
   }
   preprocess(n) {
     return n;
@@ -1149,23 +1149,23 @@ ${n}</tr>
     return n;
   }
   provideLexer(n = this.block) {
-    return n ? He.lex : He.lexInline;
+    return n ? Ve.lex : Ve.lexInline;
   }
   provideParser(n = this.block) {
-    return n ? je.parse : je.parseInline;
+    return n ? qe.parse : qe.parseInline;
   }
-}, re(Mn, "passThroughHooks", /* @__PURE__ */ new Set(["preprocess", "postprocess", "processAllTokens", "emStrongMask"])), re(Mn, "passThroughHooksRespectAsync", /* @__PURE__ */ new Set(["preprocess", "postprocess", "processAllTokens"])), Mn), Ll = class {
+}, ne(Nn, "passThroughHooks", /* @__PURE__ */ new Set(["preprocess", "postprocess", "processAllTokens", "emStrongMask"])), ne(Nn, "passThroughHooksRespectAsync", /* @__PURE__ */ new Set(["preprocess", "postprocess", "processAllTokens"])), Nn), Ll = class {
   constructor(...n) {
-    re(this, "defaults", os());
-    re(this, "options", this.setOptions);
-    re(this, "parse", this.parseMarkdown(!0));
-    re(this, "parseInline", this.parseMarkdown(!1));
-    re(this, "Parser", je);
-    re(this, "Renderer", Hn);
-    re(this, "TextRenderer", fs);
-    re(this, "Lexer", He);
-    re(this, "Tokenizer", Bn);
-    re(this, "Hooks", cn);
+    ne(this, "defaults", os());
+    ne(this, "options", this.setOptions);
+    ne(this, "parse", this.parseMarkdown(!0));
+    ne(this, "parseInline", this.parseMarkdown(!1));
+    ne(this, "Parser", qe);
+    ne(this, "Renderer", Bn);
+    ne(this, "TextRenderer", fs);
+    ne(this, "Lexer", Ve);
+    ne(this, "Tokenizer", Un);
+    ne(this, "Hooks", pn);
     this.use(...n);
   }
   walkTokens(n, e) {
@@ -1212,51 +1212,51 @@ ${n}</tr>
         }
         "childTokens" in r && r.childTokens && (e.childTokens[r.name] = r.childTokens);
       }), s.extensions = e), t.renderer) {
-        let r = this.defaults.renderer || new Hn(this.defaults);
+        let r = this.defaults.renderer || new Bn(this.defaults);
         for (let a in t.renderer) {
           if (!(a in r)) throw new Error(`renderer '${a}' does not exist`);
           if (["options", "parser"].includes(a)) continue;
           let c = a, i = t.renderer[c], k = r[c];
-          r[c] = (...y) => {
-            let S = i.apply(r, y);
-            return S === !1 && (S = k.apply(r, y)), S || "";
+          r[c] = (..._) => {
+            let S = i.apply(r, _);
+            return S === !1 && (S = k.apply(r, _)), S || "";
           };
         }
         s.renderer = r;
       }
       if (t.tokenizer) {
-        let r = this.defaults.tokenizer || new Bn(this.defaults);
+        let r = this.defaults.tokenizer || new Un(this.defaults);
         for (let a in t.tokenizer) {
           if (!(a in r)) throw new Error(`tokenizer '${a}' does not exist`);
           if (["options", "rules", "lexer"].includes(a)) continue;
           let c = a, i = t.tokenizer[c], k = r[c];
-          r[c] = (...y) => {
-            let S = i.apply(r, y);
-            return S === !1 && (S = k.apply(r, y)), S;
+          r[c] = (..._) => {
+            let S = i.apply(r, _);
+            return S === !1 && (S = k.apply(r, _)), S;
           };
         }
         s.tokenizer = r;
       }
       if (t.hooks) {
-        let r = this.defaults.hooks || new cn();
+        let r = this.defaults.hooks || new pn();
         for (let a in t.hooks) {
           if (!(a in r)) throw new Error(`hook '${a}' does not exist`);
           if (["options", "block"].includes(a)) continue;
           let c = a, i = t.hooks[c], k = r[c];
-          cn.passThroughHooks.has(a) ? r[c] = (y) => {
-            if (this.defaults.async && cn.passThroughHooksRespectAsync.has(a)) return (async () => {
-              let E = await i.call(r, y);
+          pn.passThroughHooks.has(a) ? r[c] = (_) => {
+            if (this.defaults.async && pn.passThroughHooksRespectAsync.has(a)) return (async () => {
+              let E = await i.call(r, _);
               return k.call(r, E);
             })();
-            let S = i.call(r, y);
+            let S = i.call(r, _);
             return k.call(r, S);
-          } : r[c] = (...y) => {
+          } : r[c] = (..._) => {
             if (this.defaults.async) return (async () => {
-              let E = await i.apply(r, y);
-              return E === !1 && (E = await k.apply(r, y)), E;
+              let E = await i.apply(r, _);
+              return E === !1 && (E = await k.apply(r, _)), E;
             })();
-            let S = i.apply(r, y);
-            return S === !1 && (S = k.apply(r, y)), S;
+            let S = i.apply(r, _);
+            return S === !1 && (S = k.apply(r, _)), S;
           };
         }
         s.hooks = r;
@@ -1275,10 +1275,10 @@ ${n}</tr>
     return this.defaults = { ...this.defaults, ...n }, this;
   }
   lexer(n, e) {
-    return He.lex(n, e ?? this.defaults);
+    return Ve.lex(n, e ?? this.defaults);
   }
   parser(n, e) {
-    return je.parse(n, e ?? this.defaults);
+    return qe.parse(n, e ?? this.defaults);
   }
   parseMarkdown(n) {
     return (e, t) => {
@@ -1287,16 +1287,16 @@ ${n}</tr>
       if (typeof e > "u" || e === null) return a(new Error("marked(): input parameter is undefined or null"));
       if (typeof e != "string") return a(new Error("marked(): input parameter is of type " + Object.prototype.toString.call(e) + ", string expected"));
       if (r.hooks && (r.hooks.options = r, r.hooks.block = n), r.async) return (async () => {
-        let c = r.hooks ? await r.hooks.preprocess(e) : e, i = await (r.hooks ? await r.hooks.provideLexer(n) : n ? He.lex : He.lexInline)(c, r), k = r.hooks ? await r.hooks.processAllTokens(i) : i;
+        let c = r.hooks ? await r.hooks.preprocess(e) : e, i = await (r.hooks ? await r.hooks.provideLexer(n) : n ? Ve.lex : Ve.lexInline)(c, r), k = r.hooks ? await r.hooks.processAllTokens(i) : i;
         r.walkTokens && await Promise.all(this.walkTokens(k, r.walkTokens));
-        let y = await (r.hooks ? await r.hooks.provideParser(n) : n ? je.parse : je.parseInline)(k, r);
-        return r.hooks ? await r.hooks.postprocess(y) : y;
+        let _ = await (r.hooks ? await r.hooks.provideParser(n) : n ? qe.parse : qe.parseInline)(k, r);
+        return r.hooks ? await r.hooks.postprocess(_) : _;
       })().catch(a);
       try {
         r.hooks && (e = r.hooks.preprocess(e));
-        let c = (r.hooks ? r.hooks.provideLexer(n) : n ? He.lex : He.lexInline)(e, r);
+        let c = (r.hooks ? r.hooks.provideLexer(n) : n ? Ve.lex : Ve.lexInline)(e, r);
         r.hooks && (c = r.hooks.processAllTokens(c)), r.walkTokens && this.walkTokens(c, r.walkTokens);
-        let i = (r.hooks ? r.hooks.provideParser(n) : n ? je.parse : je.parseInline)(c, r);
+        let i = (r.hooks ? r.hooks.provideParser(n) : n ? qe.parse : qe.parseInline)(c, r);
         return r.hooks && (i = r.hooks.postprocess(i)), i;
       } catch (c) {
         return a(c);
@@ -1307,45 +1307,45 @@ ${n}</tr>
     return (t) => {
       if (t.message += `
 Please report this to https://github.com/markedjs/marked.`, n) {
-        let s = "<p>An error occurred:</p><pre>" + Ie(t.message + "", !0) + "</pre>";
+        let s = "<p>An error occurred:</p><pre>" + De(t.message + "", !0) + "</pre>";
         return e ? Promise.resolve(s) : s;
       }
       if (e) return Promise.reject(t);
       throw t;
     };
   }
-}, Tt = new Ll();
-function ae(n, e) {
-  return Tt.parse(n, e);
+}, Rt = new Ll();
+function re(n, e) {
+  return Rt.parse(n, e);
 }
-ae.options = ae.setOptions = function(n) {
-  return Tt.setOptions(n), ae.defaults = Tt.defaults, er(ae.defaults), ae;
+re.options = re.setOptions = function(n) {
+  return Rt.setOptions(n), re.defaults = Rt.defaults, er(re.defaults), re;
 };
-ae.getDefaults = os;
-ae.defaults = At;
+re.getDefaults = os;
+re.defaults = $t;
 function Il(...n) {
-  return Tt.use(...n), ae.defaults = Tt.defaults, er(ae.defaults), ae;
+  return Rt.use(...n), re.defaults = Rt.defaults, er(re.defaults), re;
 }
-ae.use = Il;
-ae.walkTokens = function(n, e) {
-  return Tt.walkTokens(n, e);
+re.use = Il;
+re.walkTokens = function(n, e) {
+  return Rt.walkTokens(n, e);
 };
-ae.parseInline = Tt.parseInline;
-ae.Parser = je;
-ae.parser = je.parse;
-ae.Renderer = Hn;
-ae.TextRenderer = fs;
-ae.Lexer = He;
-ae.lexer = He.lex;
-ae.Tokenizer = Bn;
-ae.Hooks = cn;
-ae.parse = ae;
-ae.options;
-ae.setOptions;
-ae.walkTokens;
-ae.parseInline;
-je.parse;
-He.lex;
+re.parseInline = Rt.parseInline;
+re.Parser = qe;
+re.parser = qe.parse;
+re.Renderer = Bn;
+re.TextRenderer = fs;
+re.Lexer = Ve;
+re.lexer = Ve.lex;
+re.Tokenizer = Un;
+re.Hooks = pn;
+re.parse = re;
+re.options;
+re.setOptions;
+re.walkTokens;
+re.parseInline;
+qe.parse;
+Ve.lex;
 /*! @license DOMPurify 3.4.16 | (c) Cure53 and other contributors | Released under the Apache license 2.0 and Mozilla Public License 2.0 | github.com/cure53/DOMPurify/blob/3.4.16/LICENSE */
 function Ns(n, e) {
   (e == null || e > n.length) && (e = n.length);
@@ -1358,16 +1358,16 @@ function Ol(n) {
 function Pl(n, e) {
   var t = n == null ? null : typeof Symbol < "u" && n[Symbol.iterator] || n["@@iterator"];
   if (t != null) {
-    var s, r, a, c, i = [], k = !0, y = !1;
+    var s, r, a, c, i = [], k = !0, _ = !1;
     try {
       if (a = (t = t.call(n)).next, e !== 0) for (; !(k = (s = a.call(t)).done) && (i.push(s.value), i.length !== e); k = !0) ;
     } catch (S) {
-      y = !0, r = S;
+      _ = !0, r = S;
     } finally {
       try {
         if (!k && t.return != null && (c = t.return(), Object(c) !== c)) return;
       } finally {
-        if (y) throw r;
+        if (_) throw r;
       }
     }
     return i;
@@ -1389,7 +1389,7 @@ function Ml(n, e) {
   }
 }
 const ur = Object.entries, Ms = Object.setPrototypeOf, zl = Object.isFrozen, Fl = Object.getPrototypeOf, Ul = Object.getOwnPropertyDescriptor;
-let be = Object.freeze, _e = Object.seal, Wt = Object.create, cr = typeof Reflect < "u" && Reflect, ls = cr.apply, as = cr.construct;
+let be = Object.freeze, _e = Object.seal, jt = Object.create, cr = typeof Reflect < "u" && Reflect, ls = cr.apply, as = cr.construct;
 be || (be = function(e) {
   return e;
 });
@@ -1404,8 +1404,8 @@ as || (as = function(e) {
   for (var t = arguments.length, s = new Array(t > 1 ? t - 1 : 0), r = 1; r < t; r++) s[r - 1] = arguments[r];
   return new e(...s);
 });
-const wt = me(Array.prototype.forEach), Bl = me(Array.prototype.lastIndexOf), zs = me(Array.prototype.pop), rn = me(Array.prototype.push), Hl = me(Array.prototype.splice), qt = Array.isArray, dn = me(String.prototype.toLowerCase), Kn = me(String.prototype.toString), Fs = me(String.prototype.match), ln = me(String.prototype.replace), Us = me(String.prototype.indexOf), jl = me(String.prototype.trim), Wl = me(Number.prototype.toString), Vl = me(Boolean.prototype.toString), Bs = typeof BigInt > "u" ? null : me(BigInt.prototype.toString), Hs = typeof Symbol > "u" ? null : me(Symbol.prototype.toString), $e = me(Object.prototype.hasOwnProperty), an = me(Object.prototype.toString), Se = me(RegExp.prototype.test), ft = ql(TypeError);
-function me(n) {
+const Tt = ve(Array.prototype.forEach), Bl = ve(Array.prototype.lastIndexOf), zs = ve(Array.prototype.pop), an = ve(Array.prototype.push), Hl = ve(Array.prototype.splice), Vt = Array.isArray, hn = ve(String.prototype.toLowerCase), Kn = ve(String.prototype.toString), Fs = ve(String.prototype.match), on = ve(String.prototype.replace), Us = ve(String.prototype.indexOf), jl = ve(String.prototype.trim), Wl = ve(Number.prototype.toString), Vl = ve(Boolean.prototype.toString), Bs = typeof BigInt > "u" ? null : ve(BigInt.prototype.toString), Hs = typeof Symbol > "u" ? null : ve(Symbol.prototype.toString), $e = ve(Object.prototype.hasOwnProperty), un = ve(Object.prototype.toString), Se = ve(RegExp.prototype.test), ht = ql(TypeError);
+function ve(n) {
   return function(e) {
     e instanceof RegExp && (e.lastIndex = 0);
     for (var t = arguments.length, s = new Array(t > 1 ? t - 1 : 0), r = 1; r < t; r++) s[r - 1] = arguments[r];
@@ -1418,9 +1418,9 @@ function ql(n) {
     return as(n, t);
   };
 }
-function K(n, e) {
-  let t = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : dn;
-  if (Ms && Ms(n, null), !qt(e)) return n;
+function Z(n, e) {
+  let t = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : hn;
+  if (Ms && Ms(n, null), !Vt(e)) return n;
   let s = e.length;
   for (; s--; ) {
     let r = e[s];
@@ -1436,12 +1436,12 @@ function Gl(n) {
   for (let e = 0; e < n.length; e++) $e(n, e) || (n[e] = null);
   return n;
 }
-function Oe(n) {
-  const e = Wt(null);
+function Ne(n) {
+  const e = jt(null);
   for (const s of ur(n)) {
     var t = Nl(s, 2);
     const r = t[0], a = t[1];
-    $e(n, r) && (qt(a) ? e[r] = Gl(a) : a && typeof a == "object" && a.constructor === Object ? e[r] = Oe(a) : e[r] = a);
+    $e(n, r) && (Vt(a) ? e[r] = Gl(a) : a && typeof a == "object" && a.constructor === Object ? e[r] = Ne(a) : e[r] = a);
   }
   return e;
 }
@@ -1458,27 +1458,27 @@ function Yl(n) {
     case "symbol":
       return Hs ? Hs(n) : "Symbol()";
     case "undefined":
-      return an(n);
+      return un(n);
     case "function":
     case "object": {
-      if (n === null) return an(n);
-      const e = n, t = ze(e, "toString");
+      if (n === null) return un(n);
+      const e = n, t = Ue(e, "toString");
       if (typeof t == "function") {
         const s = t(e);
-        return typeof s == "string" ? s : an(s);
+        return typeof s == "string" ? s : un(s);
       }
-      return an(n);
+      return un(n);
     }
     default:
-      return an(n);
+      return un(n);
   }
 }
-function ze(n, e) {
+function Ue(n, e) {
   for (; n !== null; ) {
     const s = Ul(n, e);
     if (s) {
-      if (s.get) return me(s.get);
-      if (typeof s.value == "function") return me(s.value);
+      if (s.get) return ve(s.get);
+      if (typeof s.value == "function") return ve(s.value);
     }
     n = Fl(n);
   }
@@ -2125,13 +2125,13 @@ const js = be([
   "voffset",
   "width",
   "xmlns"
-]), Dn = be([
+]), Pn = be([
   "xlink:href",
   "xml:id",
   "xlink:title",
   "xml:space",
   "xmlns:xlink"
-]), Ql = _e(/{{[\w\W]*|^[\w\W]*}}/g), Jl = _e(/<%[\w\W]*|^[\w\W]*%>/g), ea = _e(/\${[\w\W]*/g), ta = _e(/^data-[\-\w.\u00B7-\uFFFF]+$/), na = _e(/^aria-[\-\w]+$/), Gs = _e(/^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i), sa = _e(/^(?:\w+script|data):/i), ra = _e(/[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g), la = _e(/^html$/i), aa = _e(/^[a-z][.\w]*(-[.\w]+)+$/i), Ys = _e(/<[/\w!]/g), Zs = _e(/<[/\w]/g), oa = _e(/<\/no(script|embed|frames)/i), ia = _e(/\/>/i), Le = {
+]), Ql = _e(/{{[\w\W]*|^[\w\W]*}}/g), Jl = _e(/<%[\w\W]*|^[\w\W]*%>/g), ea = _e(/\${[\w\W]*/g), ta = _e(/^data-[\-\w.\u00B7-\uFFFF]+$/), na = _e(/^aria-[\-\w]+$/), Gs = _e(/^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i), sa = _e(/^(?:\w+script|data):/i), ra = _e(/[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g), la = _e(/^html$/i), aa = _e(/^[a-z][.\w]*(-[.\w]+)+$/i), Ys = _e(/<[/\w!]/g), Zs = _e(/<[/\w]/g), oa = _e(/<\/no(script|embed|frames)/i), ia = _e(/\/>/i), Pe = {
   element: 1,
   attribute: 2,
   text: 3,
@@ -2153,9 +2153,9 @@ const js = be([
   "noframes",
   "plaintext",
   "noscript"
-], ua = be(K({}, dr)), ca = function() {
+], ua = be(Z({}, dr)), ca = function() {
   const n = {};
-  return wt(dr, (e) => {
+  return Tt(dr, (e) => {
     n[e] = _e(new RegExp("</" + e + "(?=[\\t\\n\\f\\r />])", "i"));
   }), be(n);
 }(), da = function() {
@@ -2190,70 +2190,70 @@ const js = be([
     uponSanitizeElement: [],
     uponSanitizeShadowNode: []
   };
-}, gt = function(e, t, s, r) {
-  return $e(e, t) && qt(e[t]) ? K(r.base ? Oe(r.base) : {}, e[t], r.transform) : s;
+}, ft = function(e, t, s, r) {
+  return $e(e, t) && Vt(e[t]) ? Z(r.base ? Ne(r.base) : {}, e[t], r.transform) : s;
 }, ts = function(e, t, s) {
   const r = $e(e, t) ? e[t] : void 0;
-  return r && typeof r == "object" ? Oe(r) : s();
+  return r && typeof r == "object" ? Ne(r) : s();
 };
 function pr() {
   let n = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : da();
   const e = (x) => pr(x);
-  if (e.version = "3.4.16", e.removed = [], !n || !n.document || n.document.nodeType !== Le.document || !n.Element)
+  if (e.version = "3.4.16", e.removed = [], !n || !n.document || n.document.nodeType !== Pe.document || !n.Element)
     return e.isSupported = !1, e;
   let t = n.document;
   const s = t, r = s.currentScript;
   n.DocumentFragment;
   const a = n.HTMLTemplateElement, c = n.Node, i = n.Element, k = n.NodeFilter;
   n.NamedNodeMap === void 0 && (n.NamedNodeMap || n.MozNamedAttrMap), n.HTMLFormElement;
-  const y = n.DOMParser, S = n.trustedTypes, E = i.prototype, D = ze(E, "cloneNode"), U = ze(E, "remove"), L = ze(E, "removeAttributeNode"), Q = ze(E, "nextSibling"), M = ze(E, "childNodes"), Z = ze(E, "parentNode"), ee = ze(E, "shadowRoot"), C = ze(E, "attributes"), z = c && c.prototype ? ze(c.prototype, "nodeType") : null, B = c && c.prototype ? ze(c.prototype, "nodeName") : null, te = c && c.prototype ? ze(c.prototype, "ownerDocument") : null, ue = function(l) {
-    return z ? z(l) : l.nodeType;
-  }, F = function(l) {
-    return B ? B(l) : l.nodeName;
+  const _ = n.DOMParser, S = n.trustedTypes, E = i.prototype, N = Ue(E, "cloneNode"), U = Ue(E, "remove"), L = Ue(E, "removeAttributeNode"), K = Ue(E, "nextSibling"), z = Ue(E, "childNodes"), Y = Ue(E, "parentNode"), le = Ue(E, "shadowRoot"), C = Ue(E, "attributes"), F = c && c.prototype ? Ue(c.prototype, "nodeType") : null, M = c && c.prototype ? Ue(c.prototype, "nodeName") : null, ue = c && c.prototype ? Ue(c.prototype, "ownerDocument") : null, ce = function(l) {
+    return F ? F(l) : l.nodeType;
+  }, B = function(l) {
+    return M ? M(l) : l.nodeName;
   };
   if (typeof a == "function") {
     const x = t.createElement("template");
     x.content && x.content.ownerDocument && (t = x.content.ownerDocument);
   }
-  let _, f = "", m, T = !1, R = 0;
-  const N = function() {
-    if (R > 0) throw ft('A configured TRUSTED_TYPES_POLICY callback (createHTML or createScriptURL) must not call DOMPurify.sanitize, as that causes infinite recursion. Do not pass a policy whose callbacks wrap DOMPurify as TRUSTED_TYPES_POLICY; see the "DOMPurify and Trusted Types" section of the README.');
-  }, X = function(l) {
-    N(), R++;
+  let y, f = "", v, T = !1, $ = 0;
+  const P = function() {
+    if ($ > 0) throw ht('A configured TRUSTED_TYPES_POLICY callback (createHTML or createScriptURL) must not call DOMPurify.sanitize, as that causes infinite recursion. Do not pass a policy whose callbacks wrap DOMPurify as TRUSTED_TYPES_POLICY; see the "DOMPurify and Trusted Types" section of the README.');
+  }, te = function(l) {
+    P(), $++;
     try {
-      return _.createHTML(l);
+      return y.createHTML(l);
     } finally {
-      R--;
+      $--;
     }
-  }, V = function(l) {
-    N(), R++;
+  }, j = function(l) {
+    P(), $++;
     try {
-      return _.createScriptURL(l);
+      return y.createScriptURL(l);
     } finally {
-      R--;
+      $--;
     }
-  }, ve = function() {
-    return T || (m = pa(S, r), T = !0), m;
-  }, st = t, Xe = st.implementation, Zt = st.createNodeIterator, Kt = st.createDocumentFragment, Et = st.getElementsByTagName, rt = s.importNode;
-  let J = Ks();
-  e.isSupported = typeof ur == "function" && typeof Z == "function" && Xe && Xe.createHTMLDocument !== void 0;
-  const vn = Ql, kn = Jl, Rt = ea, Wn = ta, Vn = na, bn = sa, lt = ra, $t = aa;
-  let mt = Gs, q = null;
-  const Ct = K({}, [
+  }, ge = function() {
+    return T || (v = pa(S, r), T = !0), v;
+  }, He = t, gt = He.implementation, at = He.createNodeIterator, bn = He.createDocumentFragment, Yt = He.getElementsByTagName, Ct = s.importNode;
+  let X = Ks();
+  e.isSupported = typeof ur == "function" && typeof Y == "function" && gt && gt.createHTMLDocument !== void 0;
+  const ot = Ql, yn = Jl, _n = ea, Lt = ta, jn = na, Wn = sa, Zt = ra, mt = aa;
+  let vt = Gs, Q = null;
+  const Ce = Z({}, [
     ...js,
     ...Xn,
     ...Qn,
     ...Jn,
     ...Ws
   ]);
-  let oe = null;
-  const Lt = K({}, [
+  let ae = null;
+  const It = Z({}, [
     ...Vs,
     ...es,
     ...qs,
-    ...Dn
+    ...Pn
   ]);
-  let Ae = Object.seal(Wt(null, {
+  let Le = Object.seal(jt(null, {
     tagNameCheck: {
       writable: !0,
       configurable: !1,
@@ -2272,8 +2272,8 @@ function pr() {
       enumerable: !0,
       value: !1
     }
-  })), at = null, yn = null;
-  const We = Object.seal(Wt(null, {
+  })), Ge = null, Kt = null;
+  const Ye = Object.seal(jt(null, {
     tagCheck: {
       writable: !0,
       configurable: !1,
@@ -2287,10 +2287,10 @@ function pr() {
       value: null
     }
   }));
-  let Qe = !0, Xt = !0, It = !1, Qt = !0, Ve = !1, j = !0, qe = !1, Ot = !1, vt = null, Pt = null, Dt = !1, Je = !1, ne = !1, ye = !1, Ge = !0, ot = !1;
-  const Ue = "user-content-";
-  let ge = !0, it = !1, de = {}, De = null;
-  const Jt = K({}, [
+  let wn = !0, Ze = !0, xn = !1, Ot = !0, je = !1, Je = !0, W = !1, Pt = !1, kt = null, bt = null, Xt = !1, et = !1, yt = !1, J = !1, xe = !0, Ke = !1;
+  const it = "user-content-";
+  let ze = !0, me = !1, We = {}, de = null;
+  const ut = Z({}, [
     "annotation-xml",
     "audio",
     "colgroup",
@@ -2318,8 +2318,8 @@ function pr() {
     "video",
     "xmp"
   ]);
-  let en = null;
-  const fe = K({}, [
+  let Qt = null;
+  const Jt = Z({}, [
     "audio",
     "video",
     "img",
@@ -2327,8 +2327,8 @@ function pr() {
     "image",
     "track"
   ]);
-  let kt = null;
-  const _n = K({}, [
+  let fe = null;
+  const _t = Z({}, [
     "alt",
     "class",
     "for",
@@ -2343,85 +2343,85 @@ function pr() {
     "value",
     "style",
     "xmlns"
-  ]), et = "http://www.w3.org/1998/Math/MathML", Ne = "http://www.w3.org/2000/svg", we = "http://www.w3.org/1999/xhtml";
-  let Ye = we, ut = !1, Nt = null;
-  const wn = K({}, [
-    et,
-    Ne,
-    we
-  ], Kn), xn = be([
+  ]), Dt = "http://www.w3.org/1998/Math/MathML", tt = "http://www.w3.org/2000/svg", ye = "http://www.w3.org/1999/xhtml";
+  let Ie = ye, wt = !1, ct = null;
+  const Sn = Z({}, [
+    Dt,
+    tt,
+    ye
+  ], Kn), en = be([
     "mi",
     "mo",
     "mn",
     "ms",
     "mtext"
   ]);
-  let tn = K({}, xn);
-  const Mt = be(["annotation-xml"]);
-  let Be = K({}, Mt);
-  const Sn = K({}, [
+  let tn = Z({}, en);
+  const Tn = be(["annotation-xml"]);
+  let xt = Z({}, Tn);
+  const nt = Z({}, [
     "title",
     "style",
     "font",
     "a",
     "script"
   ]);
-  let ct = null;
-  const qn = ["application/xhtml+xml", "text/html"], Tn = "text/html";
-  let pe = null, dt = null;
-  const An = t.createElement("form"), En = function(l) {
+  let dt = null;
+  const An = ["application/xhtml+xml", "text/html"], Vn = "text/html";
+  let pe = null, st = null;
+  const qn = t.createElement("form"), nn = function(l) {
     return l instanceof RegExp || l instanceof Function;
-  }, bt = function() {
+  }, sn = function() {
     let l = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {};
-    if (dt && dt === l) return;
-    (!l || typeof l != "object") && (l = {}), l = Oe(l), ct = qn.indexOf(l.PARSER_MEDIA_TYPE) === -1 ? Tn : l.PARSER_MEDIA_TYPE, pe = ct === "application/xhtml+xml" ? Kn : dn, q = gt(l, "ALLOWED_TAGS", Ct, { transform: pe }), oe = gt(l, "ALLOWED_ATTR", Lt, { transform: pe }), Nt = gt(l, "ALLOWED_NAMESPACES", wn, { transform: Kn }), kt = gt(l, "ADD_URI_SAFE_ATTR", _n, {
+    if (st && st === l) return;
+    (!l || typeof l != "object") && (l = {}), l = Ne(l), dt = An.indexOf(l.PARSER_MEDIA_TYPE) === -1 ? Vn : l.PARSER_MEDIA_TYPE, pe = dt === "application/xhtml+xml" ? Kn : hn, Q = ft(l, "ALLOWED_TAGS", Ce, { transform: pe }), ae = ft(l, "ALLOWED_ATTR", It, { transform: pe }), ct = ft(l, "ALLOWED_NAMESPACES", Sn, { transform: Kn }), fe = ft(l, "ADD_URI_SAFE_ATTR", _t, {
       transform: pe,
-      base: _n
-    }), en = gt(l, "ADD_DATA_URI_TAGS", fe, {
+      base: _t
+    }), Qt = ft(l, "ADD_DATA_URI_TAGS", Jt, {
       transform: pe,
-      base: fe
-    }), De = gt(l, "FORBID_CONTENTS", Jt, { transform: pe }), at = gt(l, "FORBID_TAGS", Oe({}), { transform: pe }), yn = gt(l, "FORBID_ATTR", Oe({}), { transform: pe }), de = $e(l, "USE_PROFILES") ? l.USE_PROFILES && typeof l.USE_PROFILES == "object" ? Oe(l.USE_PROFILES) : l.USE_PROFILES : !1, Qe = l.ALLOW_ARIA_ATTR !== !1, Xt = l.ALLOW_DATA_ATTR !== !1, It = l.ALLOW_UNKNOWN_PROTOCOLS || !1, Qt = l.ALLOW_SELF_CLOSE_IN_ATTR !== !1, Ve = l.SAFE_FOR_TEMPLATES || !1, j = l.SAFE_FOR_XML !== !1, qe = l.WHOLE_DOCUMENT || !1, Je = l.RETURN_DOM || !1, ne = l.RETURN_DOM_FRAGMENT || !1, ye = l.RETURN_TRUSTED_TYPE || !1, Dt = l.FORCE_BODY || !1, Ge = l.SANITIZE_DOM !== !1, ot = l.SANITIZE_NAMED_PROPS || !1, ge = l.KEEP_CONTENT !== !1, it = l.IN_PLACE || !1, mt = Zl(l.ALLOWED_URI_REGEXP) ? l.ALLOWED_URI_REGEXP : Gs, Ye = typeof l.NAMESPACE == "string" ? l.NAMESPACE : we, tn = ts(l, "MATHML_TEXT_INTEGRATION_POINTS", () => K({}, xn)), Be = ts(l, "HTML_INTEGRATION_POINTS", () => K({}, Mt));
-    const h = ts(l, "CUSTOM_ELEMENT_HANDLING", () => Wt(null));
-    if (Ae = Wt(null), $e(h, "tagNameCheck") && En(h.tagNameCheck) && (Ae.tagNameCheck = h.tagNameCheck), $e(h, "attributeNameCheck") && En(h.attributeNameCheck) && (Ae.attributeNameCheck = h.attributeNameCheck), $e(h, "allowCustomizedBuiltInElements") && typeof h.allowCustomizedBuiltInElements == "boolean" && (Ae.allowCustomizedBuiltInElements = h.allowCustomizedBuiltInElements), _e(Ae), Ve && (Xt = !1), ne && (Je = !0), de && (q = K({}, Ws), oe = Wt(null), de.html === !0 && (K(q, js), K(oe, Vs)), de.svg === !0 && (K(q, Xn), K(oe, es), K(oe, Dn)), de.svgFilters === !0 && (K(q, Qn), K(oe, es), K(oe, Dn)), de.mathMl === !0 && (K(q, Jn), K(oe, qs), K(oe, Dn))), We.tagCheck = null, We.attributeCheck = null, $e(l, "ADD_TAGS") && (typeof l.ADD_TAGS == "function" ? We.tagCheck = l.ADD_TAGS : qt(l.ADD_TAGS) && (q === Ct && (q = Oe(q)), K(q, l.ADD_TAGS, pe))), $e(l, "ADD_ATTR") && (typeof l.ADD_ATTR == "function" ? We.attributeCheck = l.ADD_ATTR : qt(l.ADD_ATTR) && (oe === Lt && (oe = Oe(oe)), K(oe, l.ADD_ATTR, pe))), $e(l, "ADD_FORBID_CONTENTS") && qt(l.ADD_FORBID_CONTENTS) && (De === Jt && (De = Oe(De)), K(De, l.ADD_FORBID_CONTENTS, pe)), ge && (q["#text"] = !0), qe && K(q, [
+      base: Jt
+    }), de = ft(l, "FORBID_CONTENTS", ut, { transform: pe }), Ge = ft(l, "FORBID_TAGS", Ne({}), { transform: pe }), Kt = ft(l, "FORBID_ATTR", Ne({}), { transform: pe }), We = $e(l, "USE_PROFILES") ? l.USE_PROFILES && typeof l.USE_PROFILES == "object" ? Ne(l.USE_PROFILES) : l.USE_PROFILES : !1, wn = l.ALLOW_ARIA_ATTR !== !1, Ze = l.ALLOW_DATA_ATTR !== !1, xn = l.ALLOW_UNKNOWN_PROTOCOLS || !1, Ot = l.ALLOW_SELF_CLOSE_IN_ATTR !== !1, je = l.SAFE_FOR_TEMPLATES || !1, Je = l.SAFE_FOR_XML !== !1, W = l.WHOLE_DOCUMENT || !1, et = l.RETURN_DOM || !1, yt = l.RETURN_DOM_FRAGMENT || !1, J = l.RETURN_TRUSTED_TYPE || !1, Xt = l.FORCE_BODY || !1, xe = l.SANITIZE_DOM !== !1, Ke = l.SANITIZE_NAMED_PROPS || !1, ze = l.KEEP_CONTENT !== !1, me = l.IN_PLACE || !1, vt = Zl(l.ALLOWED_URI_REGEXP) ? l.ALLOWED_URI_REGEXP : Gs, Ie = typeof l.NAMESPACE == "string" ? l.NAMESPACE : ye, tn = ts(l, "MATHML_TEXT_INTEGRATION_POINTS", () => Z({}, en)), xt = ts(l, "HTML_INTEGRATION_POINTS", () => Z({}, Tn));
+    const h = ts(l, "CUSTOM_ELEMENT_HANDLING", () => jt(null));
+    if (Le = jt(null), $e(h, "tagNameCheck") && nn(h.tagNameCheck) && (Le.tagNameCheck = h.tagNameCheck), $e(h, "attributeNameCheck") && nn(h.attributeNameCheck) && (Le.attributeNameCheck = h.attributeNameCheck), $e(h, "allowCustomizedBuiltInElements") && typeof h.allowCustomizedBuiltInElements == "boolean" && (Le.allowCustomizedBuiltInElements = h.allowCustomizedBuiltInElements), _e(Le), je && (Ze = !1), yt && (et = !0), We && (Q = Z({}, Ws), ae = jt(null), We.html === !0 && (Z(Q, js), Z(ae, Vs)), We.svg === !0 && (Z(Q, Xn), Z(ae, es), Z(ae, Pn)), We.svgFilters === !0 && (Z(Q, Qn), Z(ae, es), Z(ae, Pn)), We.mathMl === !0 && (Z(Q, Jn), Z(ae, qs), Z(ae, Pn))), Ye.tagCheck = null, Ye.attributeCheck = null, $e(l, "ADD_TAGS") && (typeof l.ADD_TAGS == "function" ? Ye.tagCheck = l.ADD_TAGS : Vt(l.ADD_TAGS) && (Q === Ce && (Q = Ne(Q)), Z(Q, l.ADD_TAGS, pe))), $e(l, "ADD_ATTR") && (typeof l.ADD_ATTR == "function" ? Ye.attributeCheck = l.ADD_ATTR : Vt(l.ADD_ATTR) && (ae === It && (ae = Ne(ae)), Z(ae, l.ADD_ATTR, pe))), $e(l, "ADD_FORBID_CONTENTS") && Vt(l.ADD_FORBID_CONTENTS) && (de === ut && (de = Ne(de)), Z(de, l.ADD_FORBID_CONTENTS, pe)), ze && (Q["#text"] = !0), W && Z(Q, [
       "html",
       "head",
       "body"
-    ]), q.table && (K(q, ["tbody"]), delete at.tbody), l.TRUSTED_TYPES_POLICY) {
-      if (typeof l.TRUSTED_TYPES_POLICY.createHTML != "function") throw ft('TRUSTED_TYPES_POLICY configuration option must provide a "createHTML" hook.');
-      if (typeof l.TRUSTED_TYPES_POLICY.createScriptURL != "function") throw ft('TRUSTED_TYPES_POLICY configuration option must provide a "createScriptURL" hook.');
-      const w = _;
-      _ = l.TRUSTED_TYPES_POLICY;
+    ]), Q.table && (Z(Q, ["tbody"]), delete Ge.tbody), l.TRUSTED_TYPES_POLICY) {
+      if (typeof l.TRUSTED_TYPES_POLICY.createHTML != "function") throw ht('TRUSTED_TYPES_POLICY configuration option must provide a "createHTML" hook.');
+      if (typeof l.TRUSTED_TYPES_POLICY.createScriptURL != "function") throw ht('TRUSTED_TYPES_POLICY configuration option must provide a "createScriptURL" hook.');
+      const w = y;
+      y = l.TRUSTED_TYPES_POLICY;
       try {
-        f = X("");
+        f = te("");
       } catch (A) {
-        throw _ = w, A;
+        throw y = w, A;
       }
-    } else l.TRUSTED_TYPES_POLICY === null ? (_ = void 0, f = "") : (_ === void 0 && (_ = ve()), _ && typeof f == "string" && (f = X("")));
-    be && be(l), dt = l;
-  }, u = K({}, [
+    } else l.TRUSTED_TYPES_POLICY === null ? (y = void 0, f = "") : (y === void 0 && (y = ge()), y && typeof f == "string" && (f = te("")));
+    be && be(l), st = l;
+  }, Nt = Z({}, [
     ...Xn,
     ...Qn,
     ...Kl
-  ]), p = K({}, [...Jn, ...Xl]), d = function(l, h, w) {
-    return h.namespaceURI === we ? l === "svg" : h.namespaceURI === et ? l === "svg" && (w === "annotation-xml" || tn[w]) : !!u[l];
-  }, $ = function(l, h, w) {
-    return h.namespaceURI === we ? l === "math" : h.namespaceURI === Ne ? l === "math" && Be[w] : !!p[l];
-  }, se = function(l, h, w) {
-    return h.namespaceURI === Ne && !Be[w] || h.namespaceURI === et && !tn[w] ? !1 : !p[l] && (Sn[l] || !u[l]);
-  }, yt = function(l) {
-    let h = Z(l);
+  ]), u = Z({}, [...Jn, ...Xl]), p = function(l, h, w) {
+    return h.namespaceURI === ye ? l === "svg" : h.namespaceURI === Dt ? l === "svg" && (w === "annotation-xml" || tn[w]) : !!Nt[l];
+  }, d = function(l, h, w) {
+    return h.namespaceURI === ye ? l === "math" : h.namespaceURI === tt ? l === "math" && xt[w] : !!u[l];
+  }, R = function(l, h, w) {
+    return h.namespaceURI === tt && !xt[w] || h.namespaceURI === Dt && !tn[w] ? !1 : !u[l] && (nt[l] || !Nt[l]);
+  }, ee = function(l) {
+    let h = Y(l);
     (!h || !h.tagName) && (h = {
-      namespaceURI: Ye,
+      namespaceURI: Ie,
       tagName: "template"
     });
-    const w = dn(l.tagName), A = dn(h.tagName);
-    return Nt[l.namespaceURI] ? l.namespaceURI === Ne ? d(w, h, A) : l.namespaceURI === et ? $(w, h, A) : l.namespaceURI === we ? se(w, h, A) : !!(ct === "application/xhtml+xml" && Nt[l.namespaceURI]) : !1;
-  }, pt = function(l) {
-    rn(e.removed, { element: l });
+    const w = hn(l.tagName), A = hn(h.tagName);
+    return ct[l.namespaceURI] ? l.namespaceURI === tt ? p(w, h, A) : l.namespaceURI === Dt ? d(w, h, A) : l.namespaceURI === ye ? R(w, h, A) : !!(dt === "application/xhtml+xml" && ct[l.namespaceURI]) : !1;
+  }, Ee = function(l) {
+    an(e.removed, { element: l });
     try {
-      Z(l).removeChild(l);
+      Y(l).removeChild(l);
     } catch {
-      if (U(l), !Z(l)) throw ft("a node selected for removal could not be detached from its tree and cannot be safely returned; refusing to sanitize in place");
+      if (U(l), !Y(l)) throw ht("a node selected for removal could not be detached from its tree and cannot be safely returned; refusing to sanitize in place");
     }
   }, ms = function(l, h, w) {
     try {
@@ -2432,32 +2432,32 @@ function pr() {
       } catch {
       }
     }
-  }, Rn = function(l) {
-    $n(l);
-    const h = M(l);
+  }, En = function(l) {
+    Rn(l);
+    const h = z(l);
     if (h) {
       const A = [];
-      wt(h, (P) => {
-        rn(A, P);
-      }), wt(A, (P) => {
+      Tt(h, (D) => {
+        an(A, D);
+      }), Tt(A, (D) => {
         try {
-          U(P);
+          U(D);
         } catch {
         }
       });
     }
     const w = C(l);
     if (w) for (let A = w.length - 1; A >= 0; --A) {
-      const P = w[A], W = P && P.name;
-      typeof W == "string" && ms(l, P, W);
+      const D = w[A], V = D && D.name;
+      typeof V == "string" && ms(l, D, V);
     }
-  }, _t = function(l, h, w) {
+  }, St = function(l, h, w) {
     if (!w) try {
       w = h.getAttributeNode(l);
     } catch {
       w = null;
     }
-    rn(e.removed, {
+    an(e.removed, {
       attribute: w || null,
       from: h
     });
@@ -2470,8 +2470,8 @@ function pr() {
       }
     }
     if (l === "is")
-      if (Je || ne) try {
-        pt(h);
+      if (et || yt) try {
+        Ee(h);
       } catch {
       }
       else try {
@@ -2482,155 +2482,155 @@ function pr() {
     const h = C(l);
     if (h)
       for (let w = h.length - 1; w >= 0; --w) {
-        const A = h[w], P = A && A.name;
-        typeof P != "string" || oe[pe(P)] || ms(l, A, P);
+        const A = h[w], D = A && A.name;
+        typeof D != "string" || ae[pe(D)] || ms(l, A, D);
       }
-  }, $n = function(l) {
+  }, Rn = function(l) {
     const h = [l];
     for (; h.length > 0; ) {
       const w = h.pop();
-      ue(w) === Le.element && mr(w);
-      const A = M(w);
-      if (A) for (let P = A.length - 1; P >= 0; --P) h.push(A[P]);
+      ce(w) === Pe.element && mr(w);
+      const A = z(w);
+      if (A) for (let D = A.length - 1; D >= 0; --D) h.push(A[D]);
     }
   }, vs = function(l, h) {
-    return j ? l === "patchsrc" ? !0 : l === "for" && h !== "label" && h !== "output" : !1;
+    return Je ? l === "patchsrc" ? !0 : l === "for" && h !== "label" && h !== "output" : !1;
   }, vr = function(l) {
-    if (!j) return;
+    if (!Je) return;
     const h = [l];
     for (; h.length > 0; ) {
-      const w = h.pop(), A = ue(w);
-      if (A === Le.processingInstruction || A === Le.comment && Se(Zs, w.data)) {
+      const w = h.pop(), A = ce(w);
+      if (A === Pe.processingInstruction || A === Pe.comment && Se(Zs, w.data)) {
         try {
           U(w);
         } catch {
         }
         continue;
       }
-      if (A === Le.element) {
-        const W = w, G = pe(F(w));
+      if (A === Pe.element) {
+        const V = w, q = pe(B(w));
         try {
-          W.hasAttribute && W.hasAttribute("patchsrc") && W.removeAttribute("patchsrc"), W.hasAttribute && W.hasAttribute("for") && vs("for", G) && W.removeAttribute("for");
+          V.hasAttribute && V.hasAttribute("patchsrc") && V.removeAttribute("patchsrc"), V.hasAttribute && V.hasAttribute("for") && vs("for", q) && V.removeAttribute("for");
         } catch {
         }
       }
-      const P = M(w);
-      if (P) for (let W = P.length - 1; W >= 0; --W) h.push(P[W]);
+      const D = z(w);
+      if (D) for (let V = D.length - 1; V >= 0; --V) h.push(D[V]);
     }
   }, ks = function(l) {
     let h = null, w = null;
-    if (Dt) l = "<remove></remove>" + l;
+    if (Xt) l = "<remove></remove>" + l;
     else {
-      const W = Fs(l, /^[\r\n\t ]+/);
-      w = W && W[0];
+      const V = Fs(l, /^[\r\n\t ]+/);
+      w = V && V[0];
     }
-    ct === "application/xhtml+xml" && Ye === we && (l = '<html xmlns="http://www.w3.org/1999/xhtml"><head></head><body>' + l + "</body></html>");
-    const A = _ ? X(l) : l;
-    if (Ye === we) try {
-      h = new y().parseFromString(A, ct);
+    dt === "application/xhtml+xml" && Ie === ye && (l = '<html xmlns="http://www.w3.org/1999/xhtml"><head></head><body>' + l + "</body></html>");
+    const A = y ? te(l) : l;
+    if (Ie === ye) try {
+      h = new _().parseFromString(A, dt);
     } catch {
     }
     if (!h || !h.documentElement) {
-      h = Xe.createDocument(Ye, "template", null);
+      h = gt.createDocument(Ie, "template", null);
       try {
-        h.documentElement.innerHTML = ut ? f : A;
+        h.documentElement.innerHTML = wt ? f : A;
       } catch {
       }
     }
-    const P = h.body || h.documentElement;
-    return l && w && P.insertBefore(t.createTextNode(w), P.childNodes[0] || null), Ye === we ? Et.call(h, qe ? "html" : "body")[0] : qe ? h.documentElement : P;
+    const D = h.body || h.documentElement;
+    return l && w && D.insertBefore(t.createTextNode(w), D.childNodes[0] || null), Ie === ye ? Yt.call(h, W ? "html" : "body")[0] : W ? h.documentElement : D;
   }, bs = function(l) {
-    const h = te ? te(l) : l.ownerDocument;
-    return Zt.call(h || l, l, k.SHOW_ELEMENT | k.SHOW_COMMENT | k.SHOW_TEXT | k.SHOW_PROCESSING_INSTRUCTION | k.SHOW_CDATA_SECTION, null);
-  }, Cn = function(l) {
-    return l = ln(l, vn, " "), l = ln(l, kn, " "), l = ln(l, Rt, " "), l;
+    const h = ue ? ue(l) : l.ownerDocument;
+    return at.call(h || l, l, k.SHOW_ELEMENT | k.SHOW_COMMENT | k.SHOW_TEXT | k.SHOW_PROCESSING_INSTRUCTION | k.SHOW_CDATA_SECTION, null);
+  }, $n = function(l) {
+    return l = on(l, ot, " "), l = on(l, yn, " "), l = on(l, _n, " "), l;
   }, Gn = function(l) {
     var h;
     l.normalize();
-    const w = te ? te(l) : l.ownerDocument, A = Zt.call(w || l, l, k.SHOW_TEXT | k.SHOW_COMMENT | k.SHOW_CDATA_SECTION | k.SHOW_PROCESSING_INSTRUCTION, null);
-    let P = A.nextNode();
-    for (; P; )
-      P.data = Cn(P.data), P = A.nextNode();
-    const W = (h = l.querySelectorAll) === null || h === void 0 ? void 0 : h.call(l, "template");
-    W && wt(W, (G) => {
-      zt(G.content) && Gn(G.content);
+    const w = ue ? ue(l) : l.ownerDocument, A = at.call(w || l, l, k.SHOW_TEXT | k.SHOW_COMMENT | k.SHOW_CDATA_SECTION | k.SHOW_PROCESSING_INSTRUCTION, null);
+    let D = A.nextNode();
+    for (; D; )
+      D.data = $n(D.data), D = A.nextNode();
+    const V = (h = l.querySelectorAll) === null || h === void 0 ? void 0 : h.call(l, "template");
+    V && Tt(V, (q) => {
+      Mt(q.content) && Gn(q.content);
     });
-  }, Ln = function(l) {
-    const h = B ? B(l) : null;
-    return typeof h != "string" || pe(h) !== "form" ? !1 : typeof l.nodeName != "string" || typeof l.textContent != "string" || typeof l.removeChild != "function" || l.attributes !== C(l) || typeof l.removeAttribute != "function" || typeof l.removeAttributeNode != "function" || typeof l.getAttributeNode != "function" || typeof l.setAttribute != "function" || typeof l.namespaceURI != "string" || typeof l.insertBefore != "function" || typeof l.hasChildNodes != "function" || l.nodeType !== z(l) || l.childNodes !== M(l);
-  }, zt = function(l) {
-    if (!z || typeof l != "object" || l === null) return !1;
+  }, Cn = function(l) {
+    const h = M ? M(l) : null;
+    return typeof h != "string" || pe(h) !== "form" ? !1 : typeof l.nodeName != "string" || typeof l.textContent != "string" || typeof l.removeChild != "function" || l.attributes !== C(l) || typeof l.removeAttribute != "function" || typeof l.removeAttributeNode != "function" || typeof l.getAttributeNode != "function" || typeof l.setAttribute != "function" || typeof l.namespaceURI != "string" || typeof l.insertBefore != "function" || typeof l.hasChildNodes != "function" || l.nodeType !== F(l) || l.childNodes !== z(l);
+  }, Mt = function(l) {
+    if (!F || typeof l != "object" || l === null) return !1;
     try {
-      return z(l) === Le.documentFragment;
+      return F(l) === Pe.documentFragment;
     } catch {
       return !1;
     }
-  }, nn = function(l) {
-    if (!z || typeof l != "object" || l === null) return !1;
+  }, rn = function(l) {
+    if (!F || typeof l != "object" || l === null) return !1;
     try {
-      return typeof z(l) == "number";
+      return typeof F(l) == "number";
     } catch {
       return !1;
     }
   };
-  function Ze(x, l, h) {
-    x.length !== 0 && wt(x, (w) => {
-      w.call(e, l, h, dt);
+  function Xe(x, l, h) {
+    x.length !== 0 && Tt(x, (w) => {
+      w.call(e, l, h, st);
     });
   }
   const kr = function(l, h) {
-    return !!(j && l.hasChildNodes() && !nn(l.firstElementChild) && Se(Ys, l.textContent) && Se(Ys, l.innerHTML) || j && l.namespaceURI === we && ua[h] && (nn(l.firstElementChild) || typeof l.textContent == "string" && Se(ca[h], l.textContent)) || l.nodeType === Le.processingInstruction || j && l.nodeType === Le.comment && Se(Zs, l.data));
-  }, In = function(l, h) {
+    return !!(Je && l.hasChildNodes() && !rn(l.firstElementChild) && Se(Ys, l.textContent) && Se(Ys, l.innerHTML) || Je && l.namespaceURI === ye && ua[h] && (rn(l.firstElementChild) || typeof l.textContent == "string" && Se(ca[h], l.textContent)) || l.nodeType === Pe.processingInstruction || Je && l.nodeType === Pe.comment && Se(Zs, l.data));
+  }, Ln = function(l, h) {
     if (l instanceof RegExp) return Se(l, h);
     if (l instanceof Function) {
-      for (var w = arguments.length, A = new Array(w > 2 ? w - 2 : 0), P = 2; P < w; P++) A[P - 2] = arguments[P];
+      for (var w = arguments.length, A = new Array(w > 2 ? w - 2 : 0), D = 2; D < w; D++) A[D - 2] = arguments[D];
       return !!l(h, ...A);
     }
     return !1;
   }, br = function(l, h, w) {
-    if (!at[h] && xs(h) && In(Ae.tagNameCheck, h)) return !1;
-    if (ge && !De[h]) {
-      const A = Z(l), P = M(l);
-      if (P && A) {
-        const W = P.length;
-        for (let G = W - 1; G >= 0; --G) {
-          const he = l === w ? D(P[G], !0) : P[G];
-          A.insertBefore(he, Q(l));
+    if (!Ge[h] && xs(h) && Ln(Le.tagNameCheck, h)) return !1;
+    if (ze && !de[h]) {
+      const A = Y(l), D = z(l);
+      if (D && A) {
+        const V = D.length;
+        for (let q = V - 1; q >= 0; --q) {
+          const he = l === w ? N(D[q], !0) : D[q];
+          A.insertBefore(he, K(l));
         }
       }
     }
-    return pt(l), !0;
+    return Ee(l), !0;
   }, ys = function(l, h, w, A) {
-    return l.length === 0 ? h : h === w || h === A ? Oe(h) : h;
-  }, Ft = function(l, h) {
-    return l === h || Z(l) !== null ? !1 : (it && $n(l), !0);
+    return l.length === 0 ? h : h === w || h === A ? Ne(h) : h;
+  }, zt = function(l, h) {
+    return l === h || Y(l) !== null ? !1 : (me && Rn(l), !0);
   }, _s = function(l, h) {
-    if (Ze(J.beforeSanitizeElements, l, null), Ft(l, h)) return !0;
-    if (Ln(l))
-      return pt(l), !0;
-    const w = pe(F(l));
-    if (q = ys(J.uponSanitizeElement, q, Ct, vt), Ze(J.uponSanitizeElement, l, {
+    if (Xe(X.beforeSanitizeElements, l, null), zt(l, h)) return !0;
+    if (Cn(l))
+      return Ee(l), !0;
+    const w = pe(B(l));
+    if (Q = ys(X.uponSanitizeElement, Q, Ce, kt), Xe(X.uponSanitizeElement, l, {
       tagName: w,
-      allowedTags: q
-    }), Ft(l, h)) return !0;
+      allowedTags: Q
+    }), zt(l, h)) return !0;
     if (kr(l, w))
-      return pt(l), !0;
-    if (at[w] || !(We.tagCheck instanceof Function && We.tagCheck(w)) && !q[w]) {
+      return Ee(l), !0;
+    if (Ge[w] || !(Ye.tagCheck instanceof Function && Ye.tagCheck(w)) && !Q[w]) {
       const A = br(l, w, h);
-      return A === !1 && (Ze(J.afterSanitizeElements, l, null), Ft(l, h)) ? !0 : A;
+      return A === !1 && (Xe(X.afterSanitizeElements, l, null), zt(l, h)) ? !0 : A;
     }
-    if (ue(l) === Le.element && !yt(l) || (w === "noscript" || w === "noembed" || w === "noframes") && Se(oa, l.innerHTML))
-      return pt(l), !0;
-    if (Ve && l.nodeType === Le.text) {
-      const A = Cn(l.textContent);
-      l.textContent !== A && (rn(e.removed, { element: l.cloneNode() }), l.textContent = A);
+    if (ce(l) === Pe.element && !ee(l) || (w === "noscript" || w === "noembed" || w === "noframes") && Se(oa, l.innerHTML))
+      return Ee(l), !0;
+    if (je && l.nodeType === Pe.text) {
+      const A = $n(l.textContent);
+      l.textContent !== A && (an(e.removed, { element: l.cloneNode() }), l.textContent = A);
     }
-    return Ze(J.afterSanitizeElements, l, null), Ft(l, h);
+    return Xe(X.afterSanitizeElements, l, null), zt(l, h);
   }, ws = function(l, h, w) {
-    if (yn[h] || vs(h, l) || Ge && (h === "id" || h === "name") && (w in t || w in An)) return !1;
-    const A = oe[h] || We.attributeCheck instanceof Function && We.attributeCheck(h, l);
-    return Xt && Se(Wn, h) || Qe && Se(Vn, h) ? !0 : A ? kt[h] || Se(mt, ln(w, lt, "")) || (h === "src" || h === "xlink:href" || h === "href") && l !== "script" && Us(w, "data:") === 0 && en[l] || It && !Se(bn, ln(w, lt, "")) ? !0 : !w : xs(l) && In(Ae.tagNameCheck, l) && In(Ae.attributeNameCheck, h, l) || h === "is" && Ae.allowCustomizedBuiltInElements && In(Ae.tagNameCheck, w);
-  }, yr = K({}, [
+    if (Kt[h] || vs(h, l) || xe && (h === "id" || h === "name") && (w in t || w in qn)) return !1;
+    const A = ae[h] || Ye.attributeCheck instanceof Function && Ye.attributeCheck(h, l);
+    return Ze && Se(Lt, h) || wn && Se(jn, h) ? !0 : A ? fe[h] || Se(vt, on(w, Zt, "")) || (h === "src" || h === "xlink:href" || h === "href") && l !== "script" && Us(w, "data:") === 0 && Qt[l] || xn && !Se(Wn, on(w, Zt, "")) ? !0 : !w : xs(l) && Ln(Le.tagNameCheck, l) && Ln(Le.attributeNameCheck, h, l) || h === "is" && Le.allowCustomizedBuiltInElements && Ln(Le.tagNameCheck, w);
+  }, yr = Z({}, [
     "annotation-xml",
     "color-profile",
     "font-face",
@@ -2640,72 +2640,72 @@ function pr() {
     "font-face-uri",
     "missing-glyph"
   ]), xs = function(l) {
-    return !yr[dn(l)] && Se($t, l);
+    return !yr[hn(l)] && Se(mt, l);
   }, _r = function(l, h, w, A) {
-    if (_ && typeof S == "object" && typeof S.getAttributeType == "function" && !w) switch (S.getAttributeType(l, h)) {
+    if (y && typeof S == "object" && typeof S.getAttributeType == "function" && !w) switch (S.getAttributeType(l, h)) {
       case "TrustedHTML":
-        return X(A);
+        return te(A);
       case "TrustedScriptURL":
-        return V(A);
+        return j(A);
     }
     return A;
   }, wr = function(l, h, w, A) {
     try {
-      return w ? l.setAttributeNS(w, h, A) : l.setAttribute(h, A), Ln(l) ? (pt(l), !1) : !0;
+      return w ? l.setAttributeNS(w, h, A) : l.setAttribute(h, A), Cn(l) ? (Ee(l), !1) : !0;
     } catch {
-      return _t(h, l), !1;
+      return St(h, l), !1;
     }
   }, Ss = function(l, h) {
-    if (Ze(J.beforeSanitizeAttributes, l, null), Ft(l, h)) return;
+    if (Xe(X.beforeSanitizeAttributes, l, null), zt(l, h)) return;
     const w = l.attributes;
-    if (!w || Ln(l)) return;
-    oe = ys(J.uponSanitizeAttribute, oe, Lt, Pt);
+    if (!w || Cn(l)) return;
+    ae = ys(X.uponSanitizeAttribute, ae, It, bt);
     const A = {
       attrName: "",
       attrValue: "",
       keepAttr: !0,
-      allowedAttributes: oe,
+      allowedAttributes: ae,
       forceKeepAttr: void 0
     };
-    let P = w.length;
-    const W = pe(l.nodeName);
-    for (; P--; ) {
-      const G = w[P], he = G.name, Me = G.namespaceURI, Ce = G.value, Ut = pe(he), Zn = Ce;
-      let Ee = he === "value" ? Zn : jl(Zn), Ts = !1;
-      if (A.attrName = Ut, A.attrValue = Ee, A.keepAttr = !0, A.forceKeepAttr = void 0, Ze(J.uponSanitizeAttribute, l, A), Ee = A.attrValue, ot && (Ut === "id" || Ut === "name") && Us(Ee, Ue) !== 0 && (_t(he, l, G), Ee = Ue + Ee, Ts = !0), j && Se(/((--!?|])>)|<\/(style|script|title|xmp|textarea|noscript|iframe|noembed|noframes)/i, Ee)) {
-        _t(he, l, G);
+    let D = w.length;
+    const V = pe(l.nodeName);
+    for (; D--; ) {
+      const q = w[D], he = q.name, Fe = q.namespaceURI, Oe = q.value, Ft = pe(he), Zn = Oe;
+      let Ae = he === "value" ? Zn : jl(Zn), Ts = !1;
+      if (A.attrName = Ft, A.attrValue = Ae, A.keepAttr = !0, A.forceKeepAttr = void 0, Xe(X.uponSanitizeAttribute, l, A), Ae = A.attrValue, Ke && (Ft === "id" || Ft === "name") && Us(Ae, it) !== 0 && (St(he, l, q), Ae = it + Ae, Ts = !0), Je && Se(/((--!?|])>)|<\/(style|script|title|xmp|textarea|noscript|iframe|noembed|noframes)/i, Ae)) {
+        St(he, l, q);
         continue;
       }
-      if (Ut === "attributename" && Fs(Ee, "href")) {
-        _t(he, l, G);
+      if (Ft === "attributename" && Fs(Ae, "href")) {
+        St(he, l, q);
         continue;
       }
       if (!A.forceKeepAttr) {
         if (!A.keepAttr) {
-          _t(he, l, G);
+          St(he, l, q);
           continue;
         }
-        if (!Qt && Se(ia, Ee)) {
-          _t(he, l, G);
+        if (!Ot && Se(ia, Ae)) {
+          St(he, l, q);
           continue;
         }
-        if (Ve && (Ee = Cn(Ee)), !ws(W, Ut, Ee)) {
-          _t(he, l, G);
+        if (je && (Ae = $n(Ae)), !ws(V, Ft, Ae)) {
+          St(he, l, q);
           continue;
         }
-        Ee = _r(W, Ut, Me, Ee), Ee !== Zn && wr(l, he, Me, Ee) && Ts && zs(e.removed);
+        Ae = _r(V, Ft, Fe, Ae), Ae !== Zn && wr(l, he, Fe, Ae) && Ts && zs(e.removed);
       }
     }
-    Ze(J.afterSanitizeAttributes, l, null), Ft(l, h);
-  }, On = function(l) {
+    Xe(X.afterSanitizeAttributes, l, null), zt(l, h);
+  }, In = function(l) {
     let h = null;
     const w = bs(l);
-    for (Ze(J.beforeSanitizeShadowDOM, l, null); h = w.nextNode(); )
-      if (Ze(J.uponSanitizeShadowNode, h, null), _s(h, l), Ss(h, l), zt(h.content) && On(h.content), ue(h) === Le.element) {
-        const A = ee(h);
-        zt(A) && (Yn(A), On(A));
+    for (Xe(X.beforeSanitizeShadowDOM, l, null); h = w.nextNode(); )
+      if (Xe(X.uponSanitizeShadowNode, h, null), _s(h, l), Ss(h, l), Mt(h.content) && In(h.content), ce(h) === Pe.element) {
+        const A = le(h);
+        Mt(A) && (Yn(A), In(A));
       }
-    Ze(J.afterSanitizeShadowDOM, l, null);
+    Xe(X.afterSanitizeShadowDOM, l, null);
   }, Yn = function(l) {
     const h = [{
       node: l,
@@ -2714,125 +2714,125 @@ function pr() {
     for (; h.length > 0; ) {
       const w = h.pop();
       if (w.shadow) {
-        On(w.shadow);
+        In(w.shadow);
         continue;
       }
-      const A = w.node, P = ue(A) === Le.element, W = M(A);
-      if (W) for (let G = W.length - 1; G >= 0; --G) h.push({
-        node: W[G],
+      const A = w.node, D = ce(A) === Pe.element, V = z(A);
+      if (V) for (let q = V.length - 1; q >= 0; --q) h.push({
+        node: V[q],
         shadow: null
       });
-      if (P) {
-        const G = B ? B(A) : null;
-        if (typeof G == "string" && pe(G) === "template") {
+      if (D) {
+        const q = M ? M(A) : null;
+        if (typeof q == "string" && pe(q) === "template") {
           const he = A.content;
-          zt(he) && h.push({
+          Mt(he) && h.push({
             node: he,
             shadow: null
           });
         }
       }
-      if (P) {
-        const G = ee(A);
-        zt(G) && h.push({
+      if (D) {
+        const q = le(A);
+        Mt(q) && h.push({
           node: null,
-          shadow: G
+          shadow: q
         }, {
-          node: G,
+          node: q,
           shadow: null
         });
       }
     }
   };
   return e.sanitize = function(x) {
-    let l = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {}, h = null, w = null, A = null, P = null;
-    if (ut = !x, ut && (x = "<!-->"), typeof x != "string" && !nn(x) && (x = Yl(x), typeof x != "string"))
-      throw ft("dirty is not a string, aborting");
+    let l = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : {}, h = null, w = null, A = null, D = null;
+    if (wt = !x, wt && (x = "<!-->"), typeof x != "string" && !rn(x) && (x = Yl(x), typeof x != "string"))
+      throw ht("dirty is not a string, aborting");
     if (!e.isSupported) return x;
-    Ot ? (q = vt, oe = Pt) : bt(l), (J.uponSanitizeElement.length > 0 || J.uponSanitizeAttribute.length > 0) && (q = Oe(q)), J.uponSanitizeAttribute.length > 0 && (oe = Oe(oe)), e.removed = [];
-    const W = it && typeof x != "string" && nn(x);
-    if (W) {
+    Pt ? (Q = kt, ae = bt) : sn(l), (X.uponSanitizeElement.length > 0 || X.uponSanitizeAttribute.length > 0) && (Q = Ne(Q)), X.uponSanitizeAttribute.length > 0 && (ae = Ne(ae)), e.removed = [];
+    const V = me && typeof x != "string" && rn(x);
+    if (V) {
       vr(x);
-      const Me = F(x);
-      if (typeof Me == "string") {
-        const Ce = pe(Me);
-        if (!q[Ce] || at[Ce])
-          throw Rn(x), ft("root node is forbidden and cannot be sanitized in-place");
+      const Fe = B(x);
+      if (typeof Fe == "string") {
+        const Oe = pe(Fe);
+        if (!Q[Oe] || Ge[Oe])
+          throw En(x), ht("root node is forbidden and cannot be sanitized in-place");
       }
-      if (Ln(x))
-        throw Rn(x), ft("root node is clobbered and cannot be sanitized in-place");
+      if (Cn(x))
+        throw En(x), ht("root node is clobbered and cannot be sanitized in-place");
       try {
         Yn(x);
-      } catch (Ce) {
-        throw Rn(x), Ce;
+      } catch (Oe) {
+        throw En(x), Oe;
       }
-    } else if (nn(x))
-      h = ks("<!---->"), w = h.ownerDocument.importNode(x, !0), w.nodeType === Le.element && w.nodeName === "BODY" || w.nodeName === "HTML" ? h = w : h.appendChild(w), Yn(h);
+    } else if (rn(x))
+      h = ks("<!---->"), w = h.ownerDocument.importNode(x, !0), w.nodeType === Pe.element && w.nodeName === "BODY" || w.nodeName === "HTML" ? h = w : h.appendChild(w), Yn(h);
     else {
-      if (!Je && !Ve && !qe && x.indexOf("<") === -1) return _ && ye ? X(x) : x;
-      if (h = ks(x), !h) return Je ? null : ye ? f : "";
+      if (!et && !je && !W && x.indexOf("<") === -1) return y && J ? te(x) : x;
+      if (h = ks(x), !h) return et ? null : J ? f : "";
     }
-    h && Dt && pt(h.firstChild);
-    const G = W ? x : h;
+    h && Xt && Ee(h.firstChild);
+    const q = V ? x : h;
     try {
-      const Me = bs(G);
-      for (; A = Me.nextNode(); )
-        _s(A, G), Ss(A, G), zt(A.content) && On(A.content);
-    } catch (Me) {
-      throw W && (Rn(x), wt(e.removed, (Ce) => {
-        Ce.element && $n(Ce.element);
-      })), Me;
+      const Fe = bs(q);
+      for (; A = Fe.nextNode(); )
+        _s(A, q), Ss(A, q), Mt(A.content) && In(A.content);
+    } catch (Fe) {
+      throw V && (En(x), Tt(e.removed, (Oe) => {
+        Oe.element && Rn(Oe.element);
+      })), Fe;
     }
-    if (W) {
-      let Me = !1;
-      if (wt(e.removed, (Ce) => {
-        Ce.element && (Ce.element === x && (Me = !0), $n(Ce.element));
-      }), Me) throw ft("a node selected for removal could not be safely returned; refusing to sanitize in place");
-      return Ve && Gn(x), x;
+    if (V) {
+      let Fe = !1;
+      if (Tt(e.removed, (Oe) => {
+        Oe.element && (Oe.element === x && (Fe = !0), Rn(Oe.element));
+      }), Fe) throw ht("a node selected for removal could not be safely returned; refusing to sanitize in place");
+      return je && Gn(x), x;
     }
-    if (Je) {
-      if (Ve && Gn(h), ne)
-        for (P = Kt.call(h.ownerDocument); h.firstChild; ) P.appendChild(h.firstChild);
-      else P = h;
-      return (oe.shadowroot || oe.shadowrootmode) && (P = rt.call(s, P, !0)), P;
+    if (et) {
+      if (je && Gn(h), yt)
+        for (D = bn.call(h.ownerDocument); h.firstChild; ) D.appendChild(h.firstChild);
+      else D = h;
+      return (ae.shadowroot || ae.shadowrootmode) && (D = Ct.call(s, D, !0)), D;
     }
-    let he = qe ? h.outerHTML : h.innerHTML;
-    return qe && q["!doctype"] && h.ownerDocument && h.ownerDocument.doctype && h.ownerDocument.doctype.name && Se(la, h.ownerDocument.doctype.name) && (he = "<!DOCTYPE " + h.ownerDocument.doctype.name + `>
-` + he), Ve && (he = Cn(he)), _ && ye ? X(he) : he;
+    let he = W ? h.outerHTML : h.innerHTML;
+    return W && Q["!doctype"] && h.ownerDocument && h.ownerDocument.doctype && h.ownerDocument.doctype.name && Se(la, h.ownerDocument.doctype.name) && (he = "<!DOCTYPE " + h.ownerDocument.doctype.name + `>
+` + he), je && (he = $n(he)), y && J ? te(he) : he;
   }, e.setConfig = function() {
     let x = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {};
-    bt(x), Ot = !0, vt = q, Pt = oe;
+    sn(x), Pt = !0, kt = Q, bt = ae;
   }, e.clearConfig = function() {
-    dt = null, Ot = !1, vt = null, Pt = null, _ = m, f = "";
+    st = null, Pt = !1, kt = null, bt = null, y = v, f = "";
   }, e.isValidAttribute = function(x, l, h) {
-    dt || bt({});
+    st || sn({});
     const w = pe(x), A = pe(l);
     return ws(w, A, h);
   }, e.addHook = function(x, l) {
-    typeof l == "function" && $e(J, x) && rn(J[x], l);
+    typeof l == "function" && $e(X, x) && an(X[x], l);
   }, e.removeHook = function(x, l) {
-    if ($e(J, x)) {
+    if ($e(X, x)) {
       if (l !== void 0) {
-        const h = Bl(J[x], l);
-        return h === -1 ? void 0 : Hl(J[x], h, 1)[0];
+        const h = Bl(X[x], l);
+        return h === -1 ? void 0 : Hl(X[x], h, 1)[0];
       }
-      return zs(J[x]);
+      return zs(X[x]);
     }
   }, e.removeHooks = function(x) {
-    $e(J, x) && (J[x] = []);
+    $e(X, x) && (X[x] = []);
   }, e.removeAllHooks = function() {
-    J = Ks();
+    X = Ks();
   }, e;
 }
 var ha = pr();
-const fa = ["innerHTML"], ga = /* @__PURE__ */ Gt({
+const fa = ["innerHTML"], ga = /* @__PURE__ */ qt({
   __name: "MarkdownContent",
   props: {
     content: {}
   },
   setup(n) {
-    const e = n, t = Y(() => ha.sanitize(ae.parse(e.content, { async: !1, breaks: !0 })));
-    return (s, r) => (v(), b("div", {
+    const e = n, t = G(() => ha.sanitize(re.parse(e.content, { async: !1, breaks: !0 })));
+    return (s, r) => (m(), b("div", {
       class: "markdown-content",
       innerHTML: t.value
     }, null, 8, fa));
@@ -2842,14 +2842,14 @@ const fa = ["innerHTML"], ga = /* @__PURE__ */ Gt({
   for (const [s, r] of e)
     t[s] = r;
   return t;
-}, on = /* @__PURE__ */ gs(ga, [["__scopeId", "data-v-ef377647"]]);
+}, cn = /* @__PURE__ */ gs(ga, [["__scopeId", "data-v-ef377647"]]);
 function hr() {
   const n = localStorage.getItem("0kay_lang");
   return n === "en" || n === "zh" ? n : navigator.language.startsWith("zh") ? "zh" : "en";
 }
-const tt = O(hr());
+const rt = O(hr());
 function ma() {
-  tt.value = hr();
+  rt.value = hr();
 }
 const va = { class: "tool-kind" }, ka = { class: "tool-summary" }, ba = {
   key: 0,
@@ -2893,35 +2893,35 @@ const va = { class: "tool-kind" }, ka = { class: "tool-summary" }, ba = {
 }, Ga = {
   key: 3,
   class: "tool-error"
-}, Ya = /* @__PURE__ */ Gt({
+}, Ya = /* @__PURE__ */ qt({
   __name: "ToolStepCard",
   props: {
     step: {},
     formatError: { type: Function }
   },
   setup(n) {
-    const e = n, t = (_, f) => tt.value === "en" ? f : _, s = O(!1), r = O(!1), a = Y(() => (e.step.prompt || "").trim() || "tool"), c = Y(() => ["websearch", "web_search", "search"].includes(a.value)), i = Y(() => {
+    const e = n, t = (y, f) => rt.value === "en" ? f : y, s = O(!1), r = O(!1), a = G(() => (e.step.prompt || "").trim() || "tool"), c = G(() => ["websearch", "web_search", "search"].includes(a.value)), i = G(() => {
       if (!e.step.args) return null;
       try {
-        const _ = JSON.parse(e.step.args);
-        return _ && typeof _ == "object" && !Array.isArray(_) ? _ : null;
+        const y = JSON.parse(e.step.args);
+        return y && typeof y == "object" && !Array.isArray(y) ? y : null;
       } catch {
         return null;
       }
-    }), k = Y(() => {
+    }), k = G(() => {
       if (!e.step.result) return null;
       try {
         return JSON.parse(e.step.result);
       } catch {
         return e.step.result;
       }
-    }), y = Y(() => {
-      const _ = k.value;
-      return !_ || typeof _ != "object" || Array.isArray(_) ? null : _.data !== void 0 && _.data !== null && typeof _.data == "object" && !Array.isArray(_.data) ? _.data : "success" in _ ? null : _;
-    }), S = Y(() => {
-      const _ = y.value;
-      return !_ || typeof _.base64 != "string" || typeof _.mime != "string" || !_.mime.startsWith("image/") ? null : { src: `data:${_.mime};base64,${_.base64}`, width: _.width, height: _.height, path: _.path };
-    }), E = Y(() => {
+    }), _ = G(() => {
+      const y = k.value;
+      return !y || typeof y != "object" || Array.isArray(y) ? null : y.data !== void 0 && y.data !== null && typeof y.data == "object" && !Array.isArray(y.data) ? y.data : "success" in y ? null : y;
+    }), S = G(() => {
+      const y = _.value;
+      return !y || typeof y.base64 != "string" || typeof y.mime != "string" || !y.mime.startsWith("image/") ? null : { src: `data:${y.mime};base64,${y.base64}`, width: y.width, height: y.height, path: y.path };
+    }), E = G(() => {
       switch (a.value) {
         case "websearch":
         case "web_search":
@@ -2950,128 +2950,128 @@ const va = { class: "tool-kind" }, ka = { class: "tool-summary" }, ba = {
         default:
           return t("工具", "Tool");
       }
-    }), D = (_) => (tt.value === "en" ? { pending: "Queued", running: "Running", done: "Completed", failed: "Failed", cancelled: "Stopped" } : { pending: "等待执行", running: "执行中", done: "完成", failed: "失败", cancelled: "已停止" })[_] || _;
-    function U(_) {
-      let f = 0, m = 0;
-      for (const T of String(_ || "").split(`
+    }), N = (y) => (rt.value === "en" ? { pending: "Queued", running: "Running", done: "Completed", failed: "Failed", cancelled: "Stopped" } : { pending: "等待执行", running: "执行中", done: "完成", failed: "失败", cancelled: "已停止" })[y] || y;
+    function U(y) {
+      let f = 0, v = 0;
+      for (const T of String(y || "").split(`
 `))
-        T.startsWith("---") || T.startsWith("+++") || (T.startsWith("+") ? f++ : T.startsWith("-") && m++);
-      return { added: f, removed: m };
+        T.startsWith("---") || T.startsWith("+++") || (T.startsWith("+") ? f++ : T.startsWith("-") && v++);
+      return { added: f, removed: v };
     }
-    const L = Y(() => {
-      const _ = a.value, f = y.value;
+    const L = G(() => {
+      const y = a.value, f = _.value;
       if (!f) return "";
-      if (_ === "write") return typeof f.lines == "number" ? `+${f.lines} ${t("行", "lines")}` : "";
-      if (_ === "edit") {
-        const { added: m, removed: T } = U(f.diff);
-        return m || T ? `+${m} −${T}` : "";
+      if (y === "write") return typeof f.lines == "number" ? `+${f.lines} ${t("行", "lines")}` : "";
+      if (y === "edit") {
+        const { added: v, removed: T } = U(f.diff);
+        return v || T ? `+${v} −${T}` : "";
       }
-      if (_ === "apply_patch" && Array.isArray(f.files)) {
-        let m = 0, T = 0;
-        for (const R of f.files) {
-          const N = U(R?.diff);
-          m += N.added, T += N.removed;
+      if (y === "apply_patch" && Array.isArray(f.files)) {
+        let v = 0, T = 0;
+        for (const $ of f.files) {
+          const P = U($?.diff);
+          v += P.added, T += P.removed;
         }
-        return m || T ? `+${m} −${T}` : "";
+        return v || T ? `+${v} −${T}` : "";
       }
       return "";
     });
-    function Q(_, f) {
-      const m = [];
-      let T = null, R = 0, N = 0;
-      const X = (V) => {
-        T || (T = { path: f, lines: [] }, m.push(T)), T.lines.push(V);
+    function K(y, f) {
+      const v = [];
+      let T = null, $ = 0, P = 0;
+      const te = (j) => {
+        T || (T = { path: f, lines: [] }, v.push(T)), T.lines.push(j);
       };
-      for (const V of String(_ || "").split(`
+      for (const j of String(y || "").split(`
 `)) {
-        if (V.startsWith("+++ ")) {
-          const ve = V.slice(4).split("	")[0].trim().replace(/^[ab]\//, "");
-          T = { path: ve === "/dev/null" ? f : ve, lines: [] }, m.push(T);
+        if (j.startsWith("+++ ")) {
+          const ge = j.slice(4).split("	")[0].trim().replace(/^[ab]\//, "");
+          T = { path: ge === "/dev/null" ? f : ge, lines: [] }, v.push(T);
           continue;
         }
-        if (!V.startsWith("--- ")) {
-          if (V.startsWith("diff --git")) {
-            T || (T = { path: f, lines: [] }, m.push(T));
+        if (!j.startsWith("--- ")) {
+          if (j.startsWith("diff --git")) {
+            T || (T = { path: f, lines: [] }, v.push(T));
             continue;
           }
-          if (V.startsWith("@@")) {
-            const ve = /@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(V);
-            ve && (R = parseInt(ve[1], 10), N = parseInt(ve[2], 10)), X({ kind: "hunk", oldNo: "", newNo: "", text: V });
+          if (j.startsWith("@@")) {
+            const ge = /@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(j);
+            ge && ($ = parseInt(ge[1], 10), P = parseInt(ge[2], 10)), te({ kind: "hunk", oldNo: "", newNo: "", text: j });
             continue;
           }
-          if (/^(index |new file|deleted file|old mode|new mode|similarity |rename |copy )/.test(V)) {
-            X({ kind: "meta", oldNo: "", newNo: "", text: V });
+          if (/^(index |new file|deleted file|old mode|new mode|similarity |rename |copy )/.test(j)) {
+            te({ kind: "meta", oldNo: "", newNo: "", text: j });
             continue;
           }
-          if (V.startsWith("+")) {
-            X({ kind: "add", oldNo: "", newNo: String(N++), text: V.slice(1) });
+          if (j.startsWith("+")) {
+            te({ kind: "add", oldNo: "", newNo: String(P++), text: j.slice(1) });
             continue;
           }
-          if (V.startsWith("-")) {
-            X({ kind: "del", oldNo: String(R++), newNo: "", text: V.slice(1) });
+          if (j.startsWith("-")) {
+            te({ kind: "del", oldNo: String($++), newNo: "", text: j.slice(1) });
             continue;
           }
-          if (V.startsWith("\\")) {
-            X({ kind: "meta", oldNo: "", newNo: "", text: V });
+          if (j.startsWith("\\")) {
+            te({ kind: "meta", oldNo: "", newNo: "", text: j });
             continue;
           }
-          X({ kind: "ctx", oldNo: String(R++), newNo: String(N++), text: V });
+          te({ kind: "ctx", oldNo: String($++), newNo: String(P++), text: j });
         }
       }
-      return m;
+      return v;
     }
-    const M = Y(() => {
-      const _ = a.value, f = y.value, m = i.value;
-      if (_ === "edit" && f) return Q(String(f.diff || ""), String(m?.filePath || f.path || ""));
-      if (_ === "apply_patch") {
+    const z = G(() => {
+      const y = a.value, f = _.value, v = i.value;
+      if (y === "edit" && f) return K(String(f.diff || ""), String(v?.filePath || f.path || ""));
+      if (y === "apply_patch") {
         const T = [];
         if (Array.isArray(f?.files)) {
-          for (const R of f.files) {
-            const N = Q(String(R?.diff || ""), String(R?.path || ""));
-            N.length ? T.push(...N) : T.push({ path: String(R?.path || ""), lines: [] });
+          for (const $ of f.files) {
+            const P = K(String($?.diff || ""), String($?.path || ""));
+            P.length ? T.push(...P) : T.push({ path: String($?.path || ""), lines: [] });
           }
           return T;
         }
-        if (Array.isArray(m?.patches)) {
-          const R = m.patches.map((N) => String(N?.patch ?? N?.diff ?? N?.text ?? "")).join(`
+        if (Array.isArray(v?.patches)) {
+          const $ = v.patches.map((P) => String(P?.patch ?? P?.diff ?? P?.text ?? "")).join(`
 `);
-          return Q(R, "");
+          return K($, "");
         }
         return T;
       }
       return [];
     });
-    function Z(_) {
-      const f = _.lines || [], m = f.filter((R) => R.kind === "add").length, T = f.filter((R) => R.kind === "del").length;
-      return m || T ? `+${m} −${T}` : "";
+    function Y(y) {
+      const f = y.lines || [], v = f.filter(($) => $.kind === "add").length, T = f.filter(($) => $.kind === "del").length;
+      return v || T ? `+${v} −${T}` : "";
     }
-    const ee = Y(() => {
-      const _ = a.value, f = i.value, m = y.value, T = (R, N = 160) => (R || "").length > N ? `${R.slice(0, N)}…` : R || "";
+    const le = G(() => {
+      const y = a.value, f = i.value, v = _.value, T = ($, P = 160) => ($ || "").length > P ? `${$.slice(0, P)}…` : $ || "";
       if (c.value) {
-        const R = T(String(m?.query ?? f?.query ?? "")), N = Array.isArray(m?.results) ? m.results.length : 0;
-        return R + (N ? ` · ${N} ${t("条结果", "results")}` : "");
+        const $ = T(String(v?.query ?? f?.query ?? "")), P = Array.isArray(v?.results) ? v.results.length : 0;
+        return $ + (P ? ` · ${P} ${t("条结果", "results")}` : "");
       }
-      if (_ === "bash") {
-        const R = T(String(f?.command ?? "")), N = m && m.exitCode !== void 0 && e.step.state !== "running" ? ` · ${t("退出码", "exit")} ${m.exitCode}` : "";
-        return R + N;
+      if (y === "bash") {
+        const $ = T(String(f?.command ?? "")), P = v && v.exitCode !== void 0 && e.step.state !== "running" ? ` · ${t("退出码", "exit")} ${v.exitCode}` : "";
+        return $ + P;
       }
-      if (_ === "webfetch")
-        return T(String(m?.url ?? f?.url ?? "")) + (m?.status !== void 0 && m?.status !== null ? ` · HTTP ${m.status}` : "");
-      if (_ === "read" || _ === "write") return T(String(m?.path ?? f?.filePath ?? ""));
-      if (_ === "edit") return T(String(f?.filePath ?? m?.path ?? ""));
-      if (_ === "apply_patch") {
-        const R = Array.isArray(f?.patches) ? f.patches.map((N) => N?.filePath).filter(Boolean) : Array.isArray(m?.files) ? m.files.map((N) => N?.path).filter(Boolean) : [];
-        return T(R.join(", "));
+      if (y === "webfetch")
+        return T(String(v?.url ?? f?.url ?? "")) + (v?.status !== void 0 && v?.status !== null ? ` · HTTP ${v.status}` : "");
+      if (y === "read" || y === "write") return T(String(v?.path ?? f?.filePath ?? ""));
+      if (y === "edit") return T(String(f?.filePath ?? v?.path ?? ""));
+      if (y === "apply_patch") {
+        const $ = Array.isArray(f?.patches) ? f.patches.map((P) => P?.filePath).filter(Boolean) : Array.isArray(v?.files) ? v.files.map((P) => P?.path).filter(Boolean) : [];
+        return T($.join(", "));
       }
-      if (_ === "todowrite") {
-        const R = Array.isArray(f?.todos) ? f.todos : Array.isArray(m?.todos) ? m.todos : [];
-        if (!R.length) return T(String(e.step.args || ""));
-        const N = R.length, X = R.filter((ve) => ve?.status === "completed").length, V = R.filter((ve) => ve?.status === "in_progress").length;
-        return `${N} ${t("项", "items")} · ${t("完成", "done")} ${X}${V ? ` · ${t("进行中", "running")} ${V}` : ""}`;
+      if (y === "todowrite") {
+        const $ = Array.isArray(f?.todos) ? f.todos : Array.isArray(v?.todos) ? v.todos : [];
+        if (!$.length) return T(String(e.step.args || ""));
+        const P = $.length, te = $.filter((ge) => ge?.status === "completed").length, j = $.filter((ge) => ge?.status === "in_progress").length;
+        return `${P} ${t("项", "items")} · ${t("完成", "done")} ${te}${j ? ` · ${t("进行中", "running")} ${j}` : ""}`;
       }
-      if (_ === "computeruse") {
-        const R = String(f?.action ?? m?.action ?? ""), N = f && f.x !== void 0 ? ` (${f.x}, ${f.y})` : "", X = m?.width && m?.height ? ` · ${m.width}×${m.height}` : "", V = Array.isArray(m?.windows) ? ` · ${m.windows.length} ${t("个窗口", "windows")}` : "";
-        return T(`${R}${N}${X}${V}`);
+      if (y === "computeruse") {
+        const $ = String(f?.action ?? v?.action ?? ""), P = f && f.x !== void 0 ? ` (${f.x}, ${f.y})` : "", te = v?.width && v?.height ? ` · ${v.width}×${v.height}` : "", j = Array.isArray(v?.windows) ? ` · ${v.windows.length} ${t("个窗口", "windows")}` : "";
+        return T(`${$}${P}${te}${j}`);
       }
       if (f && Object.keys(f).length)
         try {
@@ -3079,109 +3079,109 @@ const va = { class: "tool-kind" }, ka = { class: "tool-summary" }, ba = {
         } catch {
         }
       return T(String(e.step.args || ""));
-    }), C = Y(() => String(y.value?.query ?? i.value?.query ?? e.step.args ?? "")), z = Y(() => Array.isArray(y.value?.results) ? y.value.results : []), B = Y(() => typeof k.value == "string" ? k.value : k.value === null && e.step.result ? e.step.result : ""), te = Y(() => {
-      const _ = a.value, f = y.value;
-      if (_ === "computeruse" && S.value) return [];
-      if (_ === "bash" && f) {
+    }), C = G(() => String(_.value?.query ?? i.value?.query ?? e.step.args ?? "")), F = G(() => Array.isArray(_.value?.results) ? _.value.results : []), M = G(() => typeof k.value == "string" ? k.value : k.value === null && e.step.result ? e.step.result : ""), ue = G(() => {
+      const y = a.value, f = _.value;
+      if (y === "computeruse" && S.value) return [];
+      if (y === "bash" && f) {
         const T = [{ label: t("工作目录", "cwd"), text: String(f.cwd || "") }];
         return f.stdout && T.push({ label: "stdout", text: String(f.stdout), mono: !0 }), f.stderr && T.push({ label: "stderr", text: String(f.stderr), mono: !0 }), !f.stdout && !f.stderr && T.push({ label: "", text: t("（无输出）", "(no output)") }), T;
       }
-      if (_ === "write" && f) {
+      if (y === "write" && f) {
         const T = [{ label: t("文件", "File"), text: String(f.path || "") }];
         return T.push({ label: t("内容", "Content"), text: `${typeof f.lines == "number" ? f.lines : "—"} ${t("行", "lines")}${f.created ? ` · ${t("新建文件", "created")}` : ""} · ${f.bytes ?? "—"} B` }), T;
       }
-      if (_ === "edit" || _ === "apply_patch") return [];
-      if (_ === "read" && f) {
+      if (y === "edit" || y === "apply_patch") return [];
+      if (y === "read" && f) {
         const T = [{ label: t("文件", "File"), text: String(f.path || "") }];
         return T.push({ label: `${t("第", "line")} ${f.offset ?? "—"} ${t("行起", "onward")}`, text: String(f.content || ""), mono: !0 }), T;
       }
-      if (_ === "webfetch" && f)
+      if (y === "webfetch" && f)
         return [
           { label: "URL", text: String(f.url || "") },
           { label: t("内容", "Content"), text: String(f.content || ""), mono: !0 }
         ];
-      const m = e.step.result;
-      if (!m) return [];
+      const v = e.step.result;
+      if (!v) return [];
       try {
         return [{ label: "JSON", text: JSON.stringify(k.value, null, 2), mono: !0 }];
       } catch {
-        return [{ label: "", text: String(m), mono: !0 }];
+        return [{ label: "", text: String(v), mono: !0 }];
       }
     });
-    function ue() {
+    function ce() {
       if (c.value) {
         r.value = !r.value;
         return;
       }
       s.value = !s.value;
     }
-    function F(_) {
-      _.key === "Escape" && r.value && (r.value = !1);
+    function B(y) {
+      y.key === "Escape" && r.value && (r.value = !1);
     }
-    return pn(() => window.addEventListener("keydown", F)), hn(() => window.removeEventListener("keydown", F)), (_, f) => (v(), b("div", {
-      class: ce(["tool-card", { expanded: s.value }])
+    return fn(() => window.addEventListener("keydown", B)), gn(() => window.removeEventListener("keydown", B)), (y, f) => (m(), b("div", {
+      class: oe(["tool-card", { expanded: s.value }])
     }, [
       o("button", {
         type: "button",
         class: "tool-card-head",
-        onClick: ue
+        onClick: ce
       }, [
         o("span", {
-          class: ce(["tool-dot", n.step.state])
+          class: oe(["tool-dot", n.step.state])
         }, "●", 2),
         o("strong", va, g(E.value), 1),
-        o("span", ka, g(ee.value), 1),
-        L.value ? (v(), b("small", ba, g(L.value), 1)) : I("", !0),
-        o("small", ya, g(D(n.step.state)), 1),
+        o("span", ka, g(le.value), 1),
+        L.value ? (m(), b("small", ba, g(L.value), 1)) : I("", !0),
+        o("small", ya, g(N(n.step.state)), 1),
         f[2] || (f[2] = o("span", {
           class: "tool-chevron",
           "aria-hidden": "true"
         }, "▸", -1))
       ]),
-      s.value && !c.value ? (v(), b("div", _a, [
-        n.step.state === "running" && !te.value.length && !M.value.length && !S.value ? (v(), b("p", wa, g(t("执行中…", "Running…")), 1)) : I("", !0),
-        S.value ? (v(), b("figure", xa, [
+      s.value && !c.value ? (m(), b("div", _a, [
+        n.step.state === "running" && !ue.value.length && !z.value.length && !S.value ? (m(), b("p", wa, g(t("执行中…", "Running…")), 1)) : I("", !0),
+        S.value ? (m(), b("figure", xa, [
           o("img", {
             src: S.value.src,
             alt: t("屏幕截图", "Screenshot")
           }, null, 8, Sa),
           o("figcaption", null, g(S.value.width && S.value.height ? `${S.value.width}×${S.value.height} · ` : "") + g(S.value.path), 1)
         ])) : I("", !0),
-        M.value.length ? (v(), b("div", Ta, [
-          (v(!0), b(le, null, ke(M.value, (m, T) => (v(), b("div", {
+        z.value.length ? (m(), b("div", Ta, [
+          (m(!0), b(se, null, ke(z.value, (v, T) => (m(), b("div", {
             key: T,
             class: "diff-file"
           }, [
             o("div", Aa, [
               o("span", {
                 class: "diff-file-path",
-                title: m.path
-              }, g(m.path || "—"), 9, Ea),
-              Z(m) ? (v(), b("span", Ra, g(Z(m)), 1)) : I("", !0)
+                title: v.path
+              }, g(v.path || "—"), 9, Ea),
+              Y(v) ? (m(), b("span", Ra, g(Y(v)), 1)) : I("", !0)
             ]),
             o("div", $a, [
-              (v(!0), b(le, null, ke(m.lines, (R, N) => (v(), b("div", {
-                key: N,
-                class: ce(["diff-line", R.kind])
+              (m(!0), b(se, null, ke(v.lines, ($, P) => (m(), b("div", {
+                key: P,
+                class: oe(["diff-line", $.kind])
               }, [
-                o("span", Ca, g(R.oldNo), 1),
-                o("span", La, g(R.newNo), 1),
-                o("span", Ia, g(R.kind === "add" ? "+" : R.kind === "del" ? "-" : ""), 1),
-                o("span", Oa, g(R.text), 1)
+                o("span", Ca, g($.oldNo), 1),
+                o("span", La, g($.newNo), 1),
+                o("span", Ia, g($.kind === "add" ? "+" : $.kind === "del" ? "-" : ""), 1),
+                o("span", Oa, g($.text), 1)
               ], 2))), 128))
             ])
           ]))), 128))
-        ])) : S.value ? I("", !0) : (v(!0), b(le, { key: 3 }, ke(te.value, (m, T) => (v(), b(le, { key: T }, [
-          m.label ? (v(), b("small", Pa, g(m.label), 1)) : I("", !0),
-          m.mono ? (v(), b("pre", Da, g(m.text), 1)) : (v(), b("p", Na, g(m.text), 1))
+        ])) : S.value ? I("", !0) : (m(!0), b(se, { key: 3 }, ke(ue.value, (v, T) => (m(), b(se, { key: T }, [
+          v.label ? (m(), b("small", Pa, g(v.label), 1)) : I("", !0),
+          v.mono ? (m(), b("pre", Da, g(v.text), 1)) : (m(), b("p", Na, g(v.text), 1))
         ], 64))), 128)),
-        !te.value.length && !M.value.length && !S.value && n.step.state !== "running" && !n.step.error ? (v(), b("p", Ma, g(t("执行完成，无输出", "Completed with no output")), 1)) : I("", !0),
-        n.step.error ? (v(), b("p", za, g(n.formatError?.(n.step.error) || n.step.error), 1)) : I("", !0)
+        !ue.value.length && !z.value.length && !S.value && n.step.state !== "running" && !n.step.error ? (m(), b("p", Ma, g(t("执行完成，无输出", "Completed with no output")), 1)) : I("", !0),
+        n.step.error ? (m(), b("p", za, g(n.formatError?.(n.step.error) || n.step.error), 1)) : I("", !0)
       ])) : I("", !0),
-      r.value ? (v(), b("div", {
+      r.value ? (m(), b("div", {
         key: 1,
         class: "tool-dialog-backdrop",
-        onClick: f[1] || (f[1] = Pe((m) => r.value = !1, ["self"]))
+        onClick: f[1] || (f[1] = Me((v) => r.value = !1, ["self"]))
       }, [
         o("section", {
           class: "tool-dialog",
@@ -3196,7 +3196,7 @@ const va = { class: "tool-kind" }, ka = { class: "tool-summary" }, ba = {
               class: "tool-dialog-close",
               "aria-label": t("关闭", "Close"),
               title: t("关闭", "Close"),
-              onClick: f[0] || (f[0] = (m) => r.value = !1)
+              onClick: f[0] || (f[0] = (v) => r.value = !1)
             }, [...f[3] || (f[3] = [
               o("svg", {
                 width: "18",
@@ -3214,18 +3214,18 @@ const va = { class: "tool-kind" }, ka = { class: "tool-summary" }, ba = {
               ], -1)
             ])], 8, Ua)
           ]),
-          n.step.state === "running" ? (v(), b("p", Ba, g(t("搜索中…", "Searching…")), 1)) : z.value.length ? (v(), b("ol", Ha, [
-            (v(!0), b(le, null, ke(z.value, (m, T) => (v(), b("li", { key: T }, [
+          n.step.state === "running" ? (m(), b("p", Ba, g(t("搜索中…", "Searching…")), 1)) : F.value.length ? (m(), b("ol", Ha, [
+            (m(!0), b(se, null, ke(F.value, (v, T) => (m(), b("li", { key: T }, [
               o("a", {
-                href: m.url,
+                href: v.url,
                 target: "_blank",
                 rel: "noopener noreferrer"
-              }, g(m.title || m.url), 9, ja),
-              m.snippet ? (v(), b("p", Wa, g(m.snippet), 1)) : I("", !0),
-              m.title && m.url ? (v(), b("small", Va, g(m.url), 1)) : I("", !0)
+              }, g(v.title || v.url), 9, ja),
+              v.snippet ? (m(), b("p", Wa, g(v.snippet), 1)) : I("", !0),
+              v.title && v.url ? (m(), b("small", Va, g(v.url), 1)) : I("", !0)
             ]))), 128))
-          ])) : (v(), b("p", qa, g(B.value || t("没有找到相关结果。", "No relevant results found.")), 1)),
-          n.step.error ? (v(), b("p", Ga, g(n.formatError?.(n.step.error) || n.step.error), 1)) : I("", !0)
+          ])) : (m(), b("p", qa, g(M.value || t("没有找到相关结果。", "No relevant results found.")), 1)),
+          n.step.error ? (m(), b("p", Ga, g(n.formatError?.(n.step.error) || n.step.error), 1)) : I("", !0)
         ], 8, Fa)
       ])) : I("", !0)
     ], 2));
@@ -3248,7 +3248,7 @@ const Za = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
 }, so = {
   key: 1,
   class: "app-select-empty"
-}, Nn = /* @__PURE__ */ Gt({
+}, Dn = /* @__PURE__ */ qt({
   inheritAttrs: !1,
   __name: "AppSelect",
   props: {
@@ -3261,34 +3261,34 @@ const Za = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
   },
   emits: ["update:modelValue", "change", "focus", "open"],
   setup(n, { emit: e }) {
-    const t = n, s = e, r = O(null), a = O(null), c = O(null), i = O(!1), k = O(-1), y = O({}), S = O(!1), E = O(""), D = fr("select"), U = Y(() => t.options.map((f) => typeof f == "string" ? { value: f, label: f } : f)), L = Y(() => {
+    const t = n, s = e, r = O(null), a = O(null), c = O(null), i = O(!1), k = O(-1), _ = O({}), S = O(!1), E = O(""), N = fr("select"), U = G(() => t.options.map((f) => typeof f == "string" ? { value: f, label: f } : f)), L = G(() => {
       if (!t.searchable || !E.value.trim()) return U.value;
       const f = E.value.trim().toLocaleLowerCase();
-      return U.value.filter((m) => m.label.toLocaleLowerCase().includes(f) || m.value.toLocaleLowerCase().includes(f));
-    }), Q = Y(() => U.value.find((f) => f.value === t.modelValue)?.label || t.modelValue || t.placeholder);
-    let M = "", Z = 0;
-    function ee() {
+      return U.value.filter((v) => v.label.toLocaleLowerCase().includes(f) || v.value.toLocaleLowerCase().includes(f));
+    }), K = G(() => U.value.find((f) => f.value === t.modelValue)?.label || t.modelValue || t.placeholder);
+    let z = "", Y = 0;
+    function le() {
       const f = r.value?.getBoundingClientRect();
       if (!f) return;
-      const m = window.visualViewport?.height || innerHeight, T = window.visualViewport?.width || innerWidth, R = m - f.bottom - 10, N = f.top - 10;
-      S.value = R < Math.min(280, L.value.length * 46 + 58) && N > R;
-      const X = Math.max(48, Math.min(340, S.value ? N : R)), V = Math.min(Math.max(f.width, 220), T - 16);
-      y.value = { position: "fixed", left: `${Math.max(8, Math.min(f.left, T - V - 8))}px`, width: `${V}px`, maxHeight: `${X}px`, ...S.value ? { bottom: `${m - f.top + 8}px` } : { top: `${f.bottom + 8}px` } };
+      const v = window.visualViewport?.height || innerHeight, T = window.visualViewport?.width || innerWidth, $ = v - f.bottom - 10, P = f.top - 10;
+      S.value = $ < Math.min(280, L.value.length * 46 + 58) && P > $;
+      const te = Math.max(48, Math.min(340, S.value ? P : $)), j = Math.min(Math.max(f.width, 220), T - 16);
+      _.value = { position: "fixed", left: `${Math.max(8, Math.min(f.left, T - j - 8))}px`, width: `${j}px`, maxHeight: `${te}px`, ...S.value ? { bottom: `${v - f.top + 8}px` } : { top: `${f.bottom + 8}px` } };
     }
     function C(f = !1) {
-      i.value = !1, E.value = "", M = "", f && r.value?.focus();
+      i.value = !1, E.value = "", z = "", f && r.value?.focus();
     }
-    async function z() {
-      t.disabled || i.value || (i.value = !0, E.value = "", k.value = L.value.findIndex((f) => f.value === t.modelValue && !f.disabled), k.value < 0 && (k.value = L.value.findIndex((f) => !f.disabled)), ee(), s("open"), await Ke(), t.searchable && c.value?.focus(), B());
+    async function F() {
+      t.disabled || i.value || (i.value = !0, E.value = "", k.value = L.value.findIndex((f) => f.value === t.modelValue && !f.disabled), k.value < 0 && (k.value = L.value.findIndex((f) => !f.disabled)), le(), s("open"), await Qe(), t.searchable && c.value?.focus(), M());
     }
-    function B() {
+    function M() {
       a.value?.querySelector(`[data-index="${k.value}"]`)?.scrollIntoView({ block: "nearest" });
     }
-    function te(f) {
-      const m = L.value[f];
-      !m || m.disabled || (s("update:modelValue", m.value), s("change", m.value), C(!0));
+    function ue(f) {
+      const v = L.value[f];
+      !v || v.disabled || (s("update:modelValue", v.value), s("change", v.value), C(!0));
     }
-    async function ue(f) {
+    async function ce(f) {
       if (!(t.disabled || f.isComposing)) {
         if (f.key === "Tab") {
           C();
@@ -3301,46 +3301,46 @@ const Za = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
         if (["ArrowDown", "ArrowUp", "Home", "End", "Enter", " "].includes(f.key)) {
           if (t.searchable && f.key === " ") return;
           if (f.preventDefault(), !i.value) {
-            await z();
+            await F();
             return;
           }
           if (f.key === "Enter") {
-            te(k.value);
+            ue(k.value);
             return;
           }
-          const m = L.value.map((R, N) => R.disabled ? -1 : N).filter((R) => R >= 0);
-          if (!m.length) return;
-          const T = m.indexOf(k.value);
-          k.value = f.key === "Home" ? m[0] : f.key === "End" ? m[m.length - 1] : m[(T + (f.key === "ArrowDown" ? 1 : -1) + m.length) % m.length], await Ke(), B();
+          const v = L.value.map(($, P) => $.disabled ? -1 : P).filter(($) => $ >= 0);
+          if (!v.length) return;
+          const T = v.indexOf(k.value);
+          k.value = f.key === "Home" ? v[0] : f.key === "End" ? v[v.length - 1] : v[(T + (f.key === "ArrowDown" ? 1 : -1) + v.length) % v.length], await Qe(), M();
           return;
         }
         if (!t.searchable && f.key.length === 1 && !f.ctrlKey && !f.metaKey && !f.altKey) {
-          await z();
-          const m = Date.now();
-          M = m - Z > 700 ? f.key : M + f.key, Z = m;
-          const T = L.value.findIndex((R) => !R.disabled && R.label.toLocaleLowerCase().startsWith(M.toLocaleLowerCase()));
-          T >= 0 && (k.value = T, await Ke(), B());
+          await F();
+          const v = Date.now();
+          z = v - Y > 700 ? f.key : z + f.key, Y = v;
+          const T = L.value.findIndex(($) => !$.disabled && $.label.toLocaleLowerCase().startsWith(z.toLocaleLowerCase()));
+          T >= 0 && (k.value = T, await Qe(), M());
         }
       }
     }
-    function F(f) {
-      const m = f.target;
-      !r.value?.contains(m) && !a.value?.contains(m) && C();
+    function B(f) {
+      const v = f.target;
+      !r.value?.contains(v) && !a.value?.contains(v) && C();
     }
-    function _(f) {
-      i.value && (!(f.target instanceof Node) || !a.value?.contains(f.target)) && ee();
+    function y(f) {
+      i.value && (!(f.target instanceof Node) || !a.value?.contains(f.target)) && le();
     }
     return Te(() => t.disabled, (f) => {
       f && C();
     }), Te(L, () => {
-      i.value && (k.value >= L.value.length && (k.value = L.value.findIndex((f) => !f.disabled)), Ke(ee));
+      i.value && (k.value >= L.value.length && (k.value = L.value.findIndex((f) => !f.disabled)), Qe(le));
     }), Te(E, () => {
-      i.value && (k.value = L.value.findIndex((f) => !f.disabled), Ke(B));
-    }), pn(() => {
-      document.addEventListener("pointerdown", F, !0), window.addEventListener("resize", ee), window.addEventListener("scroll", _, !0);
-    }), hn(() => {
-      document.removeEventListener("pointerdown", F, !0), window.removeEventListener("resize", ee), window.removeEventListener("scroll", _, !0);
-    }), (f, m) => (v(), b("div", Ar(f.$attrs, {
+      i.value && (k.value = L.value.findIndex((f) => !f.disabled), Qe(M));
+    }), fn(() => {
+      document.addEventListener("pointerdown", B, !0), window.addEventListener("resize", le), window.addEventListener("scroll", y, !0);
+    }), gn(() => {
+      document.removeEventListener("pointerdown", B, !0), window.removeEventListener("resize", le), window.removeEventListener("scroll", y, !0);
+    }), (f, v) => (m(), b("div", Ar(f.$attrs, {
       class: ["app-select", { "is-disabled": n.disabled, "is-open": i.value }]
     }), [
       o("button", {
@@ -3351,23 +3351,23 @@ const Za = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
         role: "combobox",
         "aria-haspopup": "listbox",
         "aria-expanded": i.value,
-        "aria-controls": i.value ? ie(D) : void 0,
-        "aria-activedescendant": i.value && k.value >= 0 ? `${ie(D)}-${k.value}` : void 0,
+        "aria-controls": i.value ? ie(N) : void 0,
+        "aria-activedescendant": i.value && k.value >= 0 ? `${ie(N)}-${k.value}` : void 0,
         "aria-label": n.ariaLabel,
         disabled: n.disabled,
-        onClick: m[0] || (m[0] = (T) => i.value ? C() : z()),
-        onKeydown: ue,
-        onFocus: m[1] || (m[1] = (T) => s("focus", T))
+        onClick: v[0] || (v[0] = (T) => i.value ? C() : F()),
+        onKeydown: ce,
+        onFocus: v[1] || (v[1] = (T) => s("focus", T))
       }, [
-        o("span", Ka, g(Q.value), 1),
+        o("span", Ka, g(K.value), 1),
         o("span", Xa, [
-          (v(), b("svg", {
-            class: ce({ "is-open": i.value }),
+          (m(), b("svg", {
+            class: oe({ "is-open": i.value }),
             width: "18",
             height: "18",
             viewBox: "0 0 24 24",
             fill: "none"
-          }, [...m[4] || (m[4] = [
+          }, [...v[4] || (v[4] = [
             o("path", {
               d: "m6 9 6 6 6-6",
               stroke: "currentColor",
@@ -3378,23 +3378,23 @@ const Za = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
           ])], 2))
         ])
       ], 40, Za),
-      (v(), St(jn, { to: "body" }, [
-        Fe(Qs, { name: "select-menu" }, {
+      (m(), Et(Hn, { to: "body" }, [
+        Be(Qs, { name: "select-menu" }, {
           default: Js(() => [
-            i.value ? (v(), b("div", {
+            i.value ? (m(), b("div", {
               key: 0,
-              id: ie(D),
+              id: ie(N),
               ref_key: "menu",
               ref: a,
-              class: ce(["app-select-menu", { "opens-up": S.value }]),
-              style: Vt(y.value),
+              class: oe(["app-select-menu", { "opens-up": S.value }]),
+              style: Wt(_.value),
               role: "listbox",
               "aria-label": n.ariaLabel || "选项",
-              onPointerdown: m[3] || (m[3] = Pe(() => {
+              onPointerdown: v[3] || (v[3] = Me(() => {
               }, ["prevent"]))
             }, [
-              n.searchable ? (v(), b("label", Ja, [
-                m[5] || (m[5] = o("svg", {
+              n.searchable ? (m(), b("label", Ja, [
+                v[5] || (v[5] = o("svg", {
                   width: "16",
                   height: "16",
                   viewBox: "0 0 24 24",
@@ -3415,30 +3415,30 @@ const Za = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
                     "stroke-linecap": "round"
                   })
                 ], -1)),
-                un(o("input", {
+                dn(o("input", {
                   ref_key: "searchInput",
                   ref: c,
-                  "onUpdate:modelValue": m[2] || (m[2] = (T) => E.value = T),
+                  "onUpdate:modelValue": v[2] || (v[2] = (T) => E.value = T),
                   type: "text",
-                  placeholder: ie(tt) === "en" ? "Search…" : "搜索…",
-                  onKeydown: ue
+                  placeholder: ie(rt) === "en" ? "Search…" : "搜索…",
+                  onKeydown: ce
                 }, null, 40, eo), [
-                  [zn, E.value]
+                  [Mn, E.value]
                 ])
               ])) : I("", !0),
-              (v(!0), b(le, null, ke(L.value, (T, R) => (v(), b("div", {
-                id: `${ie(D)}-${R}`,
-                key: `${T.value}:${R}`,
+              (m(!0), b(se, null, ke(L.value, (T, $) => (m(), b("div", {
+                id: `${ie(N)}-${$}`,
+                key: `${T.value}:${$}`,
                 role: "option",
                 "aria-selected": T.value === n.modelValue,
                 "aria-disabled": !!T.disabled,
-                "data-index": R,
-                class: ce(["app-select-option", { highlighted: k.value === R, selected: T.value === n.modelValue, disabled: T.disabled }]),
-                onPointermove: (N) => !T.disabled && (k.value = R),
-                onClick: Pe((N) => te(R), ["stop"])
+                "data-index": $,
+                class: oe(["app-select-option", { highlighted: k.value === $, selected: T.value === n.modelValue, disabled: T.disabled }]),
+                onPointermove: (P) => !T.disabled && (k.value = $),
+                onClick: Me((P) => ue($), ["stop"])
               }, [
                 o("span", null, g(T.label), 1),
-                T.value === n.modelValue ? (v(), b("span", no, [...m[6] || (m[6] = [
+                T.value === n.modelValue ? (m(), b("span", no, [...v[6] || (v[6] = [
                   o("svg", {
                     width: "16",
                     height: "16",
@@ -3455,7 +3455,7 @@ const Za = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
                   ], -1)
                 ])])) : I("", !0)
               ], 42, to))), 128)),
-              L.value.length ? I("", !0) : (v(), b("div", so, g(ie(tt) === "en" ? "No matches" : "没有匹配项"), 1))
+              L.value.length ? I("", !0) : (m(), b("div", so, g(ie(rt) === "en" ? "No matches" : "没有匹配项"), 1))
             ], 46, Qa)) : I("", !0)
           ]),
           _: 1
@@ -3470,7 +3470,7 @@ const Za = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
   key: 0,
   class: "energy-wave",
   "aria-hidden": "true"
-}, co = { class: "thinking-stops" }, po = ["aria-pressed", "onClick"], ho = { class: "thinking-provider-note" }, fo = /* @__PURE__ */ Gt({
+}, co = { class: "thinking-stops" }, po = ["aria-pressed", "onClick"], ho = { class: "thinking-provider-note" }, fo = /* @__PURE__ */ qt({
   __name: "ThinkingSlider",
   props: {
     modelValue: {},
@@ -3478,77 +3478,77 @@ const Za = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
   },
   emits: ["update:modelValue"],
   setup(n, { emit: e }) {
-    const t = Y(() => tt.value === "en"), s = n, r = e, a = Y(() => [{ value: 0, label: t.value ? "Off" : "关闭思考" }, { value: 20, label: t.value ? "Low" : "低" }, { value: 50, label: t.value ? "Medium" : "中" }, { value: 75, label: t.value ? "High" : "高" }, { value: 100, label: t.value ? "Max" : "最高" }]), c = Y(() => s.modelValue === 0 ? 0 : s.modelValue < 35 ? 1 : s.modelValue < 62.5 ? 2 : s.modelValue < 87.5 ? 3 : 4), i = O(!1), k = O({}), y = O(null), S = O(null), E = O(null), D = O(c.value * 25), U = O(!1), L = Y(() => c.value === 4), Q = fr("thinking");
-    let M;
+    const t = G(() => rt.value === "en"), s = n, r = e, a = G(() => [{ value: 0, label: t.value ? "Off" : "关闭思考" }, { value: 20, label: t.value ? "Low" : "低" }, { value: 50, label: t.value ? "Medium" : "中" }, { value: 75, label: t.value ? "High" : "高" }, { value: 100, label: t.value ? "Max" : "最高" }]), c = G(() => s.modelValue === 0 ? 0 : s.modelValue < 35 ? 1 : s.modelValue < 62.5 ? 2 : s.modelValue < 87.5 ? 3 : 4), i = O(!1), k = O({}), _ = O(null), S = O(null), E = O(null), N = O(c.value * 25), U = O(!1), L = G(() => c.value === 4), K = fr("thinking");
+    let z;
     Te(() => s.modelValue, () => {
-      i.value || (D.value = c.value * 25);
-    }), Te(L, (F, _) => {
-      F && !_ && (U.value = !0, clearTimeout(M), M = setTimeout(() => U.value = !1, 900));
-    }), Te(() => s.disabled, (F) => {
-      F && (i.value = !1);
+      i.value || (N.value = c.value * 25);
+    }), Te(L, (B, y) => {
+      B && !y && (U.value = !0, clearTimeout(z), z = setTimeout(() => U.value = !1, 900));
+    }), Te(() => s.disabled, (B) => {
+      B && (i.value = !1);
     });
-    function Z() {
-      const F = y.value?.getBoundingClientRect();
-      if (!F) return;
-      const _ = Math.min(352, innerWidth - 16), f = 236, m = F.top >= f + 8 || innerHeight - F.bottom < f;
-      k.value = { left: `${Math.max(8, Math.min(F.left, innerWidth - _ - 8))}px`, width: `${_}px`, ...m ? { bottom: `${innerHeight - F.top + 8}px` } : { top: `${F.bottom + 8}px` } };
+    function Y() {
+      const B = _.value?.getBoundingClientRect();
+      if (!B) return;
+      const y = Math.min(352, innerWidth - 16), f = 236, v = B.top >= f + 8 || innerHeight - B.bottom < f;
+      k.value = { left: `${Math.max(8, Math.min(B.left, innerWidth - y - 8))}px`, width: `${y}px`, ...v ? { bottom: `${innerHeight - B.top + 8}px` } : { top: `${B.bottom + 8}px` } };
     }
-    async function ee() {
-      s.disabled || (i.value = !i.value, i.value && (D.value = c.value * 25, Z(), await Ke(), E.value?.focus()));
+    async function le() {
+      s.disabled || (i.value = !i.value, i.value && (N.value = c.value * 25, Y(), await Qe(), E.value?.focus()));
     }
     function C() {
-      i.value = !1, y.value?.focus();
+      i.value = !1, _.value?.focus();
     }
-    function z(F) {
-      D.value = Number(F.target.value), r("update:modelValue", a.value[Math.round(D.value / 25)].value);
+    function F(B) {
+      N.value = Number(B.target.value), r("update:modelValue", a.value[Math.round(N.value / 25)].value);
     }
-    function B(F) {
-      D.value = F * 25, r("update:modelValue", a.value[F].value);
+    function M(B) {
+      N.value = B * 25, r("update:modelValue", a.value[B].value);
     }
-    function te(F) {
-      const _ = F.target;
-      !y.value?.contains(_) && !S.value?.contains(_) && (i.value = !1);
+    function ue(B) {
+      const y = B.target;
+      !_.value?.contains(y) && !S.value?.contains(y) && (i.value = !1);
     }
-    function ue(F) {
-      i.value && (!(F.target instanceof Node) || !S.value?.contains(F.target)) && Z();
+    function ce(B) {
+      i.value && (!(B.target instanceof Node) || !S.value?.contains(B.target)) && Y();
     }
-    return pn(() => {
-      document.addEventListener("pointerdown", te, !0), window.addEventListener("resize", Z), window.addEventListener("scroll", ue, !0);
-    }), hn(() => {
-      clearTimeout(M), document.removeEventListener("pointerdown", te, !0), window.removeEventListener("resize", Z), window.removeEventListener("scroll", ue, !0);
-    }), (F, _) => (v(), b("div", {
-      class: ce(["thinking-control", { full: L.value, pulse: U.value }])
+    return fn(() => {
+      document.addEventListener("pointerdown", ue, !0), window.addEventListener("resize", Y), window.addEventListener("scroll", ce, !0);
+    }), gn(() => {
+      clearTimeout(z), document.removeEventListener("pointerdown", ue, !0), window.removeEventListener("resize", Y), window.removeEventListener("scroll", ce, !0);
+    }), (B, y) => (m(), b("div", {
+      class: oe(["thinking-control", { full: L.value, pulse: U.value }])
     }, [
       o("span", ro, g(t.value ? "Thinking effort" : "思考强度"), 1),
       o("button", {
         ref_key: "trigger",
-        ref: y,
+        ref: _,
         type: "button",
         class: "thinking-trigger",
         disabled: n.disabled,
         "aria-label": "思考强度",
         "aria-haspopup": "dialog",
         "aria-expanded": i.value,
-        "aria-controls": i.value ? ie(Q) : void 0,
-        onClick: ee,
-        onKeydown: Bt(C, ["esc"])
+        "aria-controls": i.value ? ie(K) : void 0,
+        onClick: le,
+        onKeydown: Ut(C, ["esc"])
       }, [
         o("span", null, g(L.value ? "✦ " : "") + g(a.value[c.value].label), 1),
-        _[5] || (_[5] = o("span", { "aria-hidden": "true" }, "⌄", -1))
+        y[5] || (y[5] = o("span", { "aria-hidden": "true" }, "⌄", -1))
       ], 40, lo),
-      (v(), St(jn, { to: "body" }, [
-        Fe(Qs, { name: "thinking-menu" }, {
+      (m(), Et(Hn, { to: "body" }, [
+        Be(Qs, { name: "thinking-menu" }, {
           default: Js(() => [
-            i.value ? (v(), b("section", {
+            i.value ? (m(), b("section", {
               key: 0,
-              id: ie(Q),
+              id: ie(K),
               ref_key: "panel",
               ref: S,
-              class: ce(["thinking-popover", { full: L.value, pulse: U.value }]),
-              style: Vt(k.value),
+              class: oe(["thinking-popover", { full: L.value, pulse: U.value }]),
+              style: Wt(k.value),
               role: "dialog",
               "aria-label": "调整思考强度",
-              onKeydown: Bt(Pe(C, ["prevent", "stop"]), ["esc"])
+              onKeydown: Ut(Me(C, ["prevent", "stop"]), ["esc"])
             }, [
               o("header", null, [
                 o("strong", null, g(t.value ? "Thinking effort" : "思考强度"), 1),
@@ -3556,14 +3556,14 @@ const Za = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
               ]),
               o("div", {
                 class: "thinking-track",
-                style: Vt({ "--intensity": `${D.value}%` })
+                style: Wt({ "--intensity": `${N.value}%` })
               }, [
                 o("div", oo, [
-                  _[6] || (_[6] = o("div", { class: "thinking-fill" }, null, -1)),
-                  (v(!0), b(le, null, ke(a.value, (f, m) => (v(), b("span", {
-                    key: m,
-                    class: ce(["thinking-tick", { passed: D.value >= m * 25 }]),
-                    style: Vt({ left: `${m * 25}%` })
+                  y[6] || (y[6] = o("div", { class: "thinking-fill" }, null, -1)),
+                  (m(!0), b(se, null, ke(a.value, (f, v) => (m(), b("span", {
+                    key: v,
+                    class: oe(["thinking-tick", { passed: N.value >= v * 25 }]),
+                    style: Wt({ left: `${v * 25}%` })
                   }, null, 6))), 128))
                 ]),
                 o("input", {
@@ -3573,27 +3573,27 @@ const Za = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
                   min: "0",
                   max: "100",
                   step: "0.1",
-                  value: D.value,
+                  value: N.value,
                   "aria-label": "思考强度滑块",
                   "aria-valuetext": a.value[c.value].label,
-                  onInput: z,
-                  onChange: _[0] || (_[0] = (f) => D.value = c.value * 25),
+                  onInput: F,
+                  onChange: y[0] || (y[0] = (f) => N.value = c.value * 25),
                   onKeydown: [
-                    _[1] || (_[1] = Bt(Pe((f) => B(0), ["prevent"]), ["home"])),
-                    _[2] || (_[2] = Bt(Pe((f) => B(4), ["prevent"]), ["end"])),
-                    _[3] || (_[3] = Bt(Pe((f) => B(Math.min(4, c.value + 1)), ["prevent"]), ["arrow-right"])),
-                    _[4] || (_[4] = Bt(Pe((f) => B(Math.max(0, c.value - 1)), ["prevent"]), ["arrow-left"]))
+                    y[1] || (y[1] = Ut(Me((f) => M(0), ["prevent"]), ["home"])),
+                    y[2] || (y[2] = Ut(Me((f) => M(4), ["prevent"]), ["end"])),
+                    y[3] || (y[3] = Ut(Me((f) => M(Math.min(4, c.value + 1)), ["prevent"]), ["arrow-right"])),
+                    y[4] || (y[4] = Ut(Me((f) => M(Math.max(0, c.value - 1)), ["prevent"]), ["arrow-left"]))
                   ]
                 }, null, 40, io),
-                L.value ? (v(), b("span", uo)) : I("", !0)
+                L.value ? (m(), b("span", uo)) : I("", !0)
               ], 4),
               o("div", co, [
-                (v(!0), b(le, null, ke(a.value, (f, m) => (v(), b("button", {
+                (m(!0), b(se, null, ke(a.value, (f, v) => (m(), b("button", {
                   key: f.value,
                   type: "button",
-                  class: ce({ selected: c.value === m }),
-                  "aria-pressed": c.value === m,
-                  onClick: (T) => B(m)
+                  class: oe({ selected: c.value === v }),
+                  "aria-pressed": c.value === v,
+                  onClick: (T) => M(v)
                 }, g(f.label), 11, po))), 128))
               ]),
               o("p", null, g(t.value ? c.value === 0 ? "Disable model reasoning" : L.value ? "Maximum effort" : "Drag to adjust; release to snap to a level" : c.value === 0 ? "不启用模型思考模式" : L.value ? "全力思考 · 已达到最高档" : "拖动滑块调整，松开后定位到对应档位"), 1),
@@ -3605,28 +3605,28 @@ const Za = ["aria-expanded", "aria-controls", "aria-activedescendant", "aria-lab
       ]))
     ], 2));
   }
-}), jt = O(null);
+}), Ht = O(null);
 function gr() {
   function n(t) {
     const s = typeof t == "string" ? { message: t } : t;
-    return jt.value && jt.value.resolve(!1), new Promise((r) => {
-      jt.value = { options: s, resolve: r };
+    return Ht.value && Ht.value.resolve(!1), new Promise((r) => {
+      Ht.value = { options: s, resolve: r };
     });
   }
   function e(t) {
-    const s = jt.value;
-    jt.value = null, s?.resolve(t);
+    const s = Ht.value;
+    Ht.value = null, s?.resolve(t);
   }
-  return { confirmState: jt, confirm: n, settle: e };
+  return { confirmState: Ht, confirm: n, settle: e };
 }
-const go = /* @__PURE__ */ Gt({
+const go = /* @__PURE__ */ qt({
   __name: "ConfirmDialog",
   setup(n) {
     const { confirmState: e, settle: t } = gr(), s = O(null), r = O(null);
     let a = null;
-    const c = () => (document.documentElement.lang || "").startsWith("en"), i = () => e.value?.options.title || (c() ? "Confirm" : "请确认"), k = () => e.value?.options.confirmLabel || (c() ? "Confirm" : "确认"), y = () => e.value?.options.cancelLabel || (c() ? "Cancel" : "取消");
+    const c = () => (document.documentElement.lang || "").startsWith("en"), i = () => e.value?.options.title || (c() ? "Confirm" : "请确认"), k = () => e.value?.options.confirmLabel || (c() ? "Confirm" : "确认"), _ = () => e.value?.options.cancelLabel || (c() ? "Cancel" : "取消");
     Te(() => !!e.value, async (E) => {
-      E ? (a = document.activeElement, await Ke(), s.value?.focus(), r.value?.focus()) : (s.value = null, a?.focus?.());
+      E ? (a = document.activeElement, await Qe(), s.value?.focus(), r.value?.focus()) : (s.value = null, a?.focus?.());
     });
     function S(E) {
       if (!e.value) return;
@@ -3635,17 +3635,17 @@ const go = /* @__PURE__ */ Gt({
         return;
       }
       if (E.key !== "Tab" || !s.value) return;
-      const D = [...s.value.querySelectorAll("button:not(:disabled)")];
-      if (!D.length) return;
-      const U = D[0], L = D[D.length - 1];
+      const N = [...s.value.querySelectorAll("button:not(:disabled)")];
+      if (!N.length) return;
+      const U = N[0], L = N[N.length - 1];
       E.shiftKey && document.activeElement === U ? (E.preventDefault(), L.focus()) : !E.shiftKey && document.activeElement === L && (E.preventDefault(), U.focus());
     }
-    return (E, D) => (v(), St(jn, { to: "body" }, [
-      ie(e) ? (v(), b("div", {
+    return (E, N) => (m(), Et(Hn, { to: "body" }, [
+      ie(e) ? (m(), b("div", {
         key: 0,
         class: "confirm-scrim",
         role: "presentation",
-        onClick: D[2] || (D[2] = Pe((U) => ie(t)(!1), ["self"])),
+        onClick: N[2] || (N[2] = Me((U) => ie(t)(!1), ["self"])),
         onKeydown: S
       }, [
         o("section", {
@@ -3663,12 +3663,12 @@ const go = /* @__PURE__ */ Gt({
               ref_key: "cancelBtn",
               ref: r,
               type: "button",
-              onClick: D[0] || (D[0] = (U) => ie(t)(!1))
-            }, g(y()), 513),
+              onClick: N[0] || (N[0] = (U) => ie(t)(!1))
+            }, g(_()), 513),
             o("button", {
               type: "button",
-              class: ce(["confirm-primary", { danger: ie(e).options.danger !== !1 }]),
-              onClick: D[1] || (D[1] = (U) => ie(t)(!0))
+              class: oe(["confirm-primary", { danger: ie(e).options.danger !== !1 }]),
+              onClick: N[1] || (N[1] = (U) => ie(t)(!0))
             }, g(k()), 3)
           ])
         ], 512)
@@ -3770,7 +3770,7 @@ const go = /* @__PURE__ */ Gt({
   class: "todo-mark",
   "aria-hidden": "true"
 }, Ii = { class: "todo-text" }, Oi = {
-  key: 0,
+  key: 1,
   class: "compact-notice"
 }, Pi = { class: "execution-options" }, Di = ["disabled", "title"], Ni = ["aria-label"], Mi = ["aria-selected", "onMousedown", "onMouseenter"], zi = { class: "slash-name" }, Fi = { class: "slash-desc" }, Ui = {
   key: 0,
@@ -3778,41 +3778,41 @@ const go = /* @__PURE__ */ Gt({
 }, Bi = ["title"], Hi = ["aria-label", "title", "onClick"], ji = {
   key: 0,
   class: "attach-error"
-}, Wi = ["disabled", "placeholder"], Vi = { class: "composer-actions" }, qi = ["disabled", "aria-label", "title"], Gi = ["disabled", "aria-label", "title"], Yi = ["aria-label", "title"], Zi = ["disabled"], Ki = { class: "muted" }, Xi = {
+}, Wi = ["disabled", "placeholder"], Vi = { class: "composer-actions" }, qi = ["disabled", "aria-label", "title"], Gi = ["disabled", "aria-label", "title"], Yi = ["aria-label", "title"], Zi = ["aria-expanded"], Ki = ["disabled"], Xi = { class: "muted" }, Qi = {
   class: "directory-dialog",
   role: "dialog",
   "aria-modal": "true",
   "aria-label": "选择工作区目录"
-}, Qi = { class: "directory-roots" }, Ji = ["disabled", "onClick"], eu = ["disabled"], tu = ["disabled"], nu = ["disabled"], su = {
+}, Ji = { class: "directory-roots" }, eu = ["disabled", "onClick"], tu = ["disabled"], nu = ["disabled"], su = ["disabled"], ru = {
   key: 0,
   class: "error"
-}, ru = { key: 1 }, lu = {
+}, lu = { key: 1 }, au = {
   key: 2,
   class: "directory-list"
-}, au = ["onClick"], ou = {
+}, ou = ["onClick"], iu = {
   key: 1,
   class: "muted"
-}, iu = ["disabled"], uu = /* @__PURE__ */ Gt({
+}, uu = ["disabled"], cu = /* @__PURE__ */ qt({
   __name: "AgentsPage",
   setup(n) {
-    const e = (u, p) => tt.value === "en" ? p : u, { confirm: t } = gr(), s = Cr(), r = O(localStorage.getItem("0kay.agent.selected") || ""), a = O(""), c = O([]), i = O(!1), k = O(""), y = O(null);
+    const e = (u, p) => rt.value === "en" ? p : u, { confirm: t } = gr(), s = Cr(), r = O(localStorage.getItem("0kay.agent.selected") || ""), a = O(""), c = O([]), i = O(!1), k = O(""), _ = O(null);
     function S() {
-      y.value?.click();
+      _.value?.click();
     }
     function E(u) {
       c.value.splice(u, 1);
     }
-    async function D(u) {
+    async function N(u) {
       if (u.length) {
         i.value = !0, k.value = "";
         try {
           for (const p of u) {
             const d = new FormData();
             d.append("file", p);
-            const $ = await fetch("/api/files", { method: "POST", body: d });
-            if (!$.ok) throw new Error(await $.text());
-            const se = await $.json();
-            c.value.push({ name: se.name || p.name, url: se.url, mime: se.mime || p.type || "application/octet-stream", size: se.size ?? p.size });
+            const R = await fetch("/api/files", { method: "POST", body: d });
+            if (!R.ok) throw new Error(await R.text());
+            const ee = await R.json();
+            c.value.push({ name: ee.name || p.name, url: ee.url, mime: ee.mime || p.type || "application/octet-stream", size: ee.size ?? p.size });
           }
         } catch (p) {
           k.value = p.message;
@@ -3823,251 +3823,251 @@ const go = /* @__PURE__ */ Gt({
     }
     async function U(u) {
       const p = u.target, d = Array.from(p.files || []);
-      p.value = "", await D(d);
+      p.value = "", await N(d);
     }
     function L(u) {
       const p = Array.from(u.clipboardData?.files || []);
-      p.length && (u.preventDefault(), D(p));
+      p.length && (u.preventDefault(), N(p));
     }
-    const Q = O(""), M = O("all"), Z = O("general"), ee = O(""), C = O(""), z = O(50);
-    function B(u) {
+    const K = O(""), z = O("all"), Y = O("general"), le = O(!1), C = O(""), F = O(""), M = O(50);
+    function ue(u) {
       const p = { off: 0, low: 20, medium: 50, high: 75, max: 100 };
       if (typeof u == "string" && u in p) return p[u];
       const d = Number(u ?? 50);
       return Number.isFinite(d) ? Math.max(0, Math.min(100, d)) : 50;
     }
-    const te = O("MOCR"), ue = O("normal"), F = O("");
-    async function _() {
-      if (!(!F.value.trim() || !j.value || R.value)) {
-        R.value = !0, N.value = "";
+    const ce = O("MOCR"), B = O("normal"), y = O("");
+    async function f() {
+      if (!(!y.value.trim() || !W.value || P.value)) {
+        P.value = !0, te.value = "";
         try {
-          const u = await fetch(`/api/agent/workspace?executor_id=${encodeURIComponent(j.value.plugin_id)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: X.value.path, name: F.value.trim() }) });
+          const u = await fetch(`/api/agent/workspace?executor_id=${encodeURIComponent(W.value.plugin_id)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: j.value.path, name: y.value.trim() }) });
           if (!u.ok) throw new Error(await u.text());
           const p = await u.json();
-          F.value = "", await Qe(p.path);
+          y.value = "", await Ze(p.path);
         } catch (u) {
-          N.value = u.message;
+          te.value = u.message;
         } finally {
-          R.value = !1;
+          P.value = !1;
         }
       }
     }
-    const f = O([]), m = O(!1), T = O(!1), R = O(!1), N = O(""), X = O({ path: "", parent: "", roots: [], directories: [] }), V = O(null), ve = O("");
-    let st = null, Xe = 0, Zt = "", Kt = !1;
-    const Et = O(!0);
-    function rt(u = r.value) {
+    const v = O([]), T = O(!1), $ = O(!1), P = O(!1), te = O(""), j = O({ path: "", parent: "", roots: [], directories: [] }), ge = O(null), He = O("");
+    let gt = null, at = 0, bn = "", Yt = !1;
+    const Ct = O(!0);
+    function X(u = r.value) {
       try {
-        localStorage.setItem(`0kay.agent.editor:${u}`, JSON.stringify({ draft: a.value, mode: Z.value, ...Je() }));
+        localStorage.setItem(`0kay.agent.editor:${u}`, JSON.stringify({ draft: a.value, mode: Y.value, ...yt() }));
       } catch {
       }
     }
-    function J() {
-      Xe++, T.value = !1, R.value = !1;
+    function ot() {
+      at++, $.value = !1, P.value = !1;
     }
-    function vn(u) {
-      u.key === "Escape" && T.value && J();
+    function yn(u) {
+      u.key === "Escape" && $.value && ot();
     }
-    const kn = O([]);
-    let Rt = !1;
-    async function Wn() {
-      if (!Rt) {
-        Rt = !0;
+    const _n = O([]);
+    let Lt = !1;
+    async function jn() {
+      if (!Lt) {
+        Lt = !0;
         try {
           const p = await (await fetch("/api/skills")).json(), d = p?.result?.skills ?? p?.skills;
-          Array.isArray(d) ? kn.value = d : Rt = !1;
+          Array.isArray(d) ? _n.value = d : Lt = !1;
         } catch {
-          Rt = !1;
+          Lt = !1;
         }
       }
     }
-    const Vn = [{ name: "compact", description: e("压缩当前会话上下文", "Compact the session context") }], bn = Y(() => {
+    const Wn = [{ name: "compact", description: e("压缩当前会话上下文", "Compact the session context") }], Zt = G(() => {
       const u = /^\/([^\s]*)$/.exec(a.value);
       return u ? u[1].toLowerCase() : null;
-    }), lt = Y(() => {
-      const u = bn.value;
+    }), mt = G(() => {
+      const u = Zt.value;
       if (u === null) return [];
       const p = [
-        ...Vn,
-        ...kn.value.map(($) => ({ name: $.name, description: $.description || "" }))
+        ...Wn,
+        ..._n.value.map((R) => ({ name: R.name, description: R.description || "" }))
       ], d = /* @__PURE__ */ new Set();
-      return p.filter(($) => d.has($.name) || !$.name.toLowerCase().startsWith(u) ? !1 : (d.add($.name), !0)).slice(0, 8);
-    }), $t = O(!1), mt = Y(() => !$t.value && lt.value.length > 0), q = O(0);
-    Te(lt, () => {
-      q.value = 0;
-    }), Te(bn, (u) => {
-      $t.value = !1, u !== null && Wn();
+      return p.filter((R) => d.has(R.name) || !R.name.toLowerCase().startsWith(u) ? !1 : (d.add(R.name), !0)).slice(0, 8);
+    }), vt = O(!1), Q = G(() => !vt.value && mt.value.length > 0), Ce = O(0);
+    Te(mt, () => {
+      Ce.value = 0;
+    }), Te(Zt, (u) => {
+      vt.value = !1, u !== null && jn();
     });
-    const Ct = O(null), oe = O({});
-    function Lt() {
-      const u = Ct.value?.getBoundingClientRect();
-      u && (oe.value = {
+    const ae = O(null), It = O({});
+    function Le() {
+      const u = ae.value?.getBoundingClientRect();
+      u && (It.value = {
         left: `${u.left}px`,
         width: `${u.width}px`,
         bottom: `${Math.max(8, window.innerHeight - u.top + 8)}px`
       });
     }
-    const Ae = () => {
-      mt.value && Lt();
+    const Ge = () => {
+      Q.value && Le();
     };
-    Te(mt, (u) => {
-      u && Ke(Lt);
-    }), pn(() => {
-      window.addEventListener("resize", Ae), window.addEventListener("scroll", Ae, !0);
-    }), hn(() => {
-      window.removeEventListener("resize", Ae), window.removeEventListener("scroll", Ae, !0);
+    Te(Q, (u) => {
+      u && Qe(Le);
+    }), fn(() => {
+      window.addEventListener("resize", Ge), window.addEventListener("scroll", Ge, !0);
+    }), gn(() => {
+      window.removeEventListener("resize", Ge), window.removeEventListener("scroll", Ge, !0);
     });
-    function at(u) {
-      a.value = "/" + u.name + " ", $t.value = !0, Ke(() => document.querySelector(".composer-input textarea")?.focus());
+    function Kt(u) {
+      a.value = "/" + u.name + " ", vt.value = !0, Qe(() => document.querySelector(".composer-input textarea")?.focus());
     }
-    function yn(u) {
-      if (mt.value) {
-        const p = lt.value.length;
+    function Ye(u) {
+      if (Q.value) {
+        const p = mt.value.length;
         if (u.key === "ArrowDown") {
-          u.preventDefault(), q.value = (Math.min(q.value, p - 1) + 1) % p;
+          u.preventDefault(), Ce.value = (Math.min(Ce.value, p - 1) + 1) % p;
           return;
         }
         if (u.key === "ArrowUp") {
-          u.preventDefault(), q.value = (Math.min(q.value, p - 1) - 1 + p) % p;
+          u.preventDefault(), Ce.value = (Math.min(Ce.value, p - 1) - 1 + p) % p;
           return;
         }
         if (u.key === "Enter" || u.key === "Tab") {
-          u.preventDefault(), at(lt.value[Math.min(q.value, p - 1)]);
+          u.preventDefault(), Kt(mt.value[Math.min(Ce.value, p - 1)]);
           return;
         }
         if (u.key === "Escape") {
-          u.preventDefault(), $t.value = !0;
+          u.preventDefault(), vt.value = !0;
           return;
         }
       }
-      u.key === "Enter" && !u.shiftKey && !u.isComposing && u.keyCode !== 229 && (u.preventDefault(), An());
+      u.key === "Enter" && !u.shiftKey && !u.isComposing && u.keyCode !== 229 && (u.preventDefault(), nn());
     }
-    function We() {
-      const u = it.value;
-      u && (Et.value = u.scrollHeight - u.scrollTop - u.clientHeight < 100);
+    function wn() {
+      const u = We.value;
+      u && (Ct.value = u.scrollHeight - u.scrollTop - u.clientHeight < 100);
     }
-    async function Qe(u = "") {
-      if (!j.value) {
-        ye.value = "请先选择在线执行器";
+    async function Ze(u = "") {
+      if (!W.value) {
+        xe.value = "请先选择在线执行器";
         return;
       }
-      const p = ++Xe;
-      Zt = j.value.plugin_id, T.value = !0, R.value = !0, N.value = "";
+      const p = ++at;
+      bn = W.value.plugin_id, $.value = !0, P.value = !0, te.value = "";
       try {
-        const d = await fetch(`/api/agent/workspace?${new URLSearchParams({ executor_id: j.value.plugin_id, path: u })}`);
+        const d = await fetch(`/api/agent/workspace?${new URLSearchParams({ executor_id: W.value.plugin_id, path: u })}`);
         if (!d.ok) throw new Error(await d.text());
-        const $ = await d.json();
-        p === Xe && (X.value = $);
+        const R = await d.json();
+        p === at && (j.value = R);
       } catch (d) {
-        p === Xe && (N.value = d.message);
+        p === at && (te.value = d.message);
       } finally {
-        p === Xe && (R.value = !1);
+        p === at && (P.value = !1);
       }
     }
-    function Xt() {
-      !j.value || j.value.plugin_id !== Zt || R.value || N.value || (ee.value = j.value.plugin_id, C.value = X.value.path, T.value = !1);
+    function xn() {
+      !W.value || W.value.plugin_id !== bn || P.value || te.value || (C.value = W.value.plugin_id, F.value = j.value.path, $.value = !1);
     }
-    async function It() {
-      if (!m.value || !j.value || Kt || document.hidden) return;
-      Kt = !0;
-      const u = j.value.plugin_id;
+    async function Ot() {
+      if (!T.value || !W.value || Yt || document.hidden) return;
+      Yt = !0;
+      const u = W.value.plugin_id;
       try {
         const p = await fetch(`/api/agent/host?executor_id=${encodeURIComponent(u)}`);
         if (!p.ok) throw new Error();
         const d = await p.json();
-        j.value?.plugin_id === u && (V.value = d);
+        W.value?.plugin_id === u && (ge.value = d);
       } catch {
-        j.value?.plugin_id === u && (V.value = null);
+        W.value?.plugin_id === u && (ge.value = null);
       } finally {
-        Kt = !1;
+        Yt = !1;
       }
     }
-    async function Qt() {
-      if (!de.value || fe.value || ne.value || de.value.state === "archived") return;
+    async function je() {
+      if (!de.value || fe.value || J.value || de.value.state === "archived") return;
       const u = r.value;
-      ne.value = !0, ye.value = "", ve.value = "正在压缩上下文…";
+      J.value = !0, xe.value = "", He.value = "正在压缩上下文…";
       try {
         const p = await fetch("/api/agent/compact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: u }) });
         if (!p.ok) throw new Error(await p.text());
-        await p.json(), await s.fetchAgents(), ve.value = "上下文已压缩。后续消息使用摘要；原始对话和工具记录仍然保留。", a.value.trim() === "/compact" && (a.value = "");
+        await p.json(), await s.fetchAgents(), He.value = "上下文已压缩。后续消息使用摘要；原始对话和工具记录仍然保留。", a.value.trim() === "/compact" && (a.value = "");
       } catch (p) {
-        ye.value = p.message, ve.value = "";
+        xe.value = p.message, He.value = "";
       } finally {
-        ne.value = !1;
+        J.value = !1;
       }
     }
-    const Ve = (u) => ({ background: `conic-gradient(var(--md-primary) ${Math.max(0, Math.min(100, u))}%, var(--md-outline-variant) 0)` }), j = Y(() => ee.value ? s.agents.find((u) => u.plugin_id === ee.value) : s.agents.find((u) => s.isHealthy(u))), qe = (u) => u === void 0 ? "—" : `${(u / 1024 ** 3).toFixed(1)} GiB`;
-    function Ot() {
+    const Je = (u) => ({ background: `conic-gradient(var(--md-primary) ${Math.max(0, Math.min(100, u))}%, var(--md-outline-variant) 0)` }), W = G(() => C.value ? s.agents.find((u) => u.plugin_id === C.value) : s.agents.find((u) => s.isHealthy(u))), Pt = (u) => u === void 0 ? "—" : `${(u / 1024 ** 3).toFixed(1)} GiB`;
+    function kt() {
       try {
         const u = JSON.parse(localStorage.getItem(`0kay.agent.editor:${r.value}`) || localStorage.getItem(`0kay.agent.options:${r.value}`) || "{}");
-        ee.value = u.executor_id || "", C.value = u.workdir || "", z.value = B(u.thinking_intensity), te.value = u.model_id || "MOCR", ue.value = u.permission_mode === "full_access" ? "full_access" : "normal", a.value = u.draft || "", Z.value = u.mode || "general";
+        C.value = u.executor_id || "", F.value = u.workdir || "", M.value = ue(u.thinking_intensity), ce.value = u.model_id || "MOCR", B.value = u.permission_mode === "full_access" ? "full_access" : "normal", a.value = u.draft || "", Y.value = u.mode || "general";
       } catch {
-        ee.value = "", C.value = "", z.value = 50, te.value = "MOCR", a.value = "", Z.value = "general";
+        C.value = "", F.value = "", M.value = 50, ce.value = "MOCR", a.value = "", Y.value = "general";
       }
     }
-    const vt = O({});
-    function Pt(u) {
-      return `${u.provider_name || (u.provider_id ? vt.value[u.provider_id] : "") || u.provider_id || u.provider}/${u.id}`;
+    const bt = O({});
+    function Xt(u) {
+      return `${u.provider_name || (u.provider_id ? bt.value[u.provider_id] : "") || u.provider_id || u.provider}/${u.id}`;
     }
-    async function Dt() {
+    async function et() {
       try {
         const u = await fetch("/api/models");
         if (!u.ok) throw new Error(`模型目录 HTTP ${u.status}`);
-        f.value = (await u.json()).models || [];
+        v.value = (await u.json()).models || [];
       } catch (u) {
-        ye.value = u.message;
+        xe.value = u.message;
       }
       try {
         const u = await fetch("/api/providers");
         if (u.ok) {
           const p = (await u.json()).providers || [], d = {};
-          for (const $ of p) $.name && $.id && (d[$.id] = $.name);
-          vt.value = d;
+          for (const R of p) R.name && R.id && (d[R.id] = R.name);
+          bt.value = d;
         }
       } catch {
       }
     }
-    function Je() {
-      const u = z.value === 0 ? "off" : z.value < 35 ? "low" : z.value < 62.5 ? "medium" : z.value < 87.5 ? "high" : "max";
-      return { executor_id: ee.value, workdir: C.value.trim(), thinking_intensity: u, model_id: te.value, permission_mode: ue.value, language: tt.value };
+    function yt() {
+      const u = M.value === 0 ? "off" : M.value < 35 ? "low" : M.value < 62.5 ? "medium" : M.value < 87.5 ? "high" : "max";
+      return { executor_id: C.value, workdir: F.value.trim(), thinking_intensity: u, model_id: ce.value, permission_mode: B.value, language: rt.value };
     }
-    const ne = O(!1), ye = O(""), Ge = O(!1), ot = O(!1), Ue = O([]), ge = Y(() => Ue.value[Ue.value.length - 1] || null), it = O(null), de = Y(() => s.sessions.find((u) => u.session_id === r.value)), De = (u) => u.caller_id !== "webui", Jt = Y(() => s.sessions.filter((u) => (ot.value ? u.state === "archived" : u.state !== "archived") && (M.value === "all" || (M.value === "life" ? De(u) : !De(u))) && (u.prompt || "").toLowerCase().includes(Q.value.toLowerCase()))), en = Y(() => s.tasks.filter((u) => u.kind === "agent" && u.session_id === r.value).sort((u, p) => (u.started_at || "").localeCompare(p.started_at || "") || u.task_id.localeCompare(p.task_id))), fe = Y(() => s.tasks.find((u) => u.session_id === r.value && ["agent", "compact"].includes(u.kind || "") && ["running", "pending"].includes(u.state))), kt = Y(() => {
-      const u = s.tasks.filter((se) => se.session_id === r.value && se.kind === "tool" && (se.prompt || "").trim() === "todowrite").sort((se, yt) => (se.started_at || "").localeCompare(yt.started_at || "") || se.task_id.localeCompare(yt.task_id)), p = u[u.length - 1];
+    const J = O(!1), xe = O(""), Ke = O(!1), it = O(!1), ze = O([]), me = G(() => ze.value[ze.value.length - 1] || null), We = O(null), de = G(() => s.sessions.find((u) => u.session_id === r.value)), ut = (u) => u.caller_id !== "webui", Qt = G(() => s.sessions.filter((u) => (it.value ? u.state === "archived" : u.state !== "archived") && (z.value === "all" || (z.value === "life" ? ut(u) : !ut(u))) && (u.prompt || "").toLowerCase().includes(K.value.toLowerCase()))), Jt = G(() => s.tasks.filter((u) => u.kind === "agent" && u.session_id === r.value).sort((u, p) => (u.started_at || "").localeCompare(p.started_at || "") || u.task_id.localeCompare(p.task_id))), fe = G(() => s.tasks.find((u) => u.session_id === r.value && ["agent", "compact"].includes(u.kind || "") && ["running", "pending"].includes(u.state))), _t = G(() => {
+      const u = s.tasks.filter((ee) => ee.session_id === r.value && ee.kind === "tool" && (ee.prompt || "").trim() === "todowrite").sort((ee, Ee) => (ee.started_at || "").localeCompare(Ee.started_at || "") || ee.task_id.localeCompare(Ee.task_id)), p = u[u.length - 1];
       if (!p) return [];
-      const d = (se) => {
+      const d = (ee) => {
         try {
-          const yt = JSON.parse(se || "");
-          return Array.isArray(yt?.todos) ? yt.todos : [];
+          const Ee = JSON.parse(ee || "");
+          return Array.isArray(Ee?.todos) ? Ee.todos : [];
         } catch {
           return [];
         }
       };
-      return (d(p.result).length ? d(p.result) : d(p.args)).filter((se) => se && typeof se.content == "string" && se.status !== "cancelled");
-    }), _n = Y(() => kt.value.filter((u) => u.status === "completed").length), et = Y(() => {
+      return (d(p.result).length ? d(p.result) : d(p.args)).filter((ee) => ee && typeof ee.content == "string" && ee.status !== "cancelled");
+    }), Dt = G(() => _t.value.filter((u) => u.status === "completed").length), tt = G(() => {
       const u = s.tasks.filter((p) => p.kind === "compact" && p.session_id === r.value && p.state === "done" && (p.result || "").trim());
       return u.length ? u.reduce((p, d) => (d.started_at || "") >= (p.started_at || "") ? d : p) : null;
-    }), Ne = (u) => (tt.value === "en" ? { pending: "Queued", running: "Running", done: "Completed", failed: "Failed", cancelled: "Stopped" } : { pending: "等待执行", running: "执行中", done: "完成", failed: "失败", cancelled: "已停止" })[u] || u, we = (u) => u ? new Date(u).toLocaleString() : "";
-    function Ye(u) {
+    }), ye = (u) => (rt.value === "en" ? { pending: "Queued", running: "Running", done: "Completed", failed: "Failed", cancelled: "Stopped" } : { pending: "等待执行", running: "执行中", done: "完成", failed: "失败", cancelled: "已停止" })[u] || u, Ie = (u) => u ? new Date(u).toLocaleString() : "";
+    function wt(u) {
       return s.tasks.filter((p) => p.task_id !== u.task_id && p.session_id === u.session_id && p.parent_id === u.task_id).sort((p, d) => (p.started_at || "").localeCompare(d.started_at || "") || p.task_id.localeCompare(d.task_id));
     }
-    function ut(u) {
+    function ct(u) {
       return u ? s.tasks.filter((p) => p.task_id !== u.task_id && p.session_id === u.session_id && p.parent_id === u.task_id).sort((p, d) => (p.started_at || "").localeCompare(d.started_at || "") || p.task_id.localeCompare(d.task_id)) : [];
     }
-    function Nt(u) {
+    function Sn(u) {
       const p = [];
-      for (const d of Ye(u))
-        p.push(d), d.kind === "subagent" && p.push(...Nt({ ...d, session_id: u.session_id }));
+      for (const d of wt(u))
+        p.push(d), d.kind === "subagent" && p.push(...Sn({ ...d, session_id: u.session_id }));
       return p;
     }
-    function wn(u) {
-      Ue.value = [...Ue.value, u];
-    }
-    function xn() {
-      Ue.value = Ue.value.slice(0, -1);
+    function en(u) {
+      ze.value = [...ze.value, u];
     }
     function tn() {
-      Ue.value = [];
+      ze.value = ze.value.slice(0, -1);
     }
-    function Mt(u) {
+    function Tn() {
+      ze.value = [];
+    }
+    function xt(u) {
       if (!u?.result) return "";
       let p = u.result;
       try {
@@ -4075,22 +4075,22 @@ const go = /* @__PURE__ */ Gt({
         typeof d == "string" ? p = d : d && typeof d.result == "string" && (p = d.result);
       } catch {
       }
-      return !p.trim() || ut(u).some((d) => d.kind === "think" && (d.result || "").trim() === p.trim()) ? "" : p;
+      return !p.trim() || ct(u).some((d) => d.kind === "think" && (d.result || "").trim() === p.trim()) ? "" : p;
     }
-    function Be(u) {
+    function nt(u) {
       return u ? /User denied permission for task/i.test(u) ? e("你拒绝了这次子 Agent 调用", "You denied this sub-agent call") : /User denied permission for (\S+)/i.test(u) ? e(`你拒绝了 ${RegExp.$1} 权限`, `You denied permission for ${RegExp.$1}`) : /Permission request expired/i.test(u) ? e("权限请求已超时", "Permission request expired") : u : "";
     }
-    function Sn(u) {
+    function dt(u) {
       return u.kind === "subagent" ? e("子 Agent", "Subagent") : u.kind === "tool" ? e("工具", "Tool") : u.kind === "think" ? e("模型", "Model") : u.kind || e("步骤", "Step");
     }
-    function ct(u) {
-      return ut(u).length;
+    function An(u) {
+      return ct(u).length;
     }
-    function qn(u) {
-      return Nt(u).some((p) => p.kind === "think" && p.result?.trim() === u.result?.trim());
+    function Vn(u) {
+      return Sn(u).some((p) => p.kind === "think" && p.result?.trim() === u.result?.trim());
     }
-    async function Tn(u) {
-      if (!de.value || ne.value || u === "delete" && !await t({
+    async function pe(u) {
+      if (!de.value || J.value || u === "delete" && !await t({
         title: e("删除会话", "Delete session"),
         message: e("永久删除此会话及其中的消息和工具记录？", "Permanently delete this session and its messages and tool records?"),
         confirmLabel: e("永久删除", "Delete"),
@@ -4098,83 +4098,83 @@ const go = /* @__PURE__ */ Gt({
       }))
         return;
       const p = r.value;
-      ne.value = !0;
+      J.value = !0;
       try {
-        rt(p), await s.manageSession(p, u), u === "delete" && (localStorage.removeItem(`0kay.agent.editor:${p}`), localStorage.removeItem(`0kay.agent.options:${p}`)), u !== "restore" ? (r.value = "", localStorage.removeItem("0kay.agent.selected")) : ot.value = !1;
+        X(p), await s.manageSession(p, u), u === "delete" && (localStorage.removeItem(`0kay.agent.editor:${p}`), localStorage.removeItem(`0kay.agent.options:${p}`)), u !== "restore" ? (r.value = "", localStorage.removeItem("0kay.agent.selected")) : it.value = !1;
       } catch (d) {
-        ye.value = d.message;
+        xe.value = d.message;
       } finally {
-        ne.value = !1;
+        J.value = !1;
       }
     }
-    function pe(u) {
-      ne.value || (rt(), r.value = u, Ge.value = !1, localStorage.setItem("0kay.agent.selected", u));
+    function st(u) {
+      J.value || (X(), r.value = u, Ke.value = !1, localStorage.setItem("0kay.agent.selected", u));
     }
-    async function dt() {
-      ne.value = !0, ye.value = "";
+    async function qn() {
+      J.value = !0, xe.value = "";
       try {
         const u = await s.createSession("新对话");
-        rt(), r.value = u, localStorage.setItem("0kay.agent.selected", u), Ge.value = !1, ot.value = !1;
+        X(), r.value = u, localStorage.setItem("0kay.agent.selected", u), Ke.value = !1, it.value = !1;
       } catch (u) {
-        ye.value = u.message;
+        xe.value = u.message;
       } finally {
-        ne.value = !1;
+        J.value = !1;
       }
     }
-    async function An() {
+    async function nn() {
       if (a.value.trim() === "/compact") {
-        await Qt();
+        await je();
         return;
       }
       const u = c.value.length > 0;
-      if (!(!a.value.trim() && !u || ne.value || fe.value || de.value?.state === "archived")) {
-        ne.value = !0, ye.value = "";
+      if (!(!a.value.trim() && !u || J.value || fe.value || de.value?.state === "archived")) {
+        J.value = !0, xe.value = "";
         try {
-          const p = Je(), d = a.value.trim() || e("请查看我上传的附件。", "Please review the attached files."), $ = Z.value;
+          const p = yt(), d = a.value.trim() || e("请查看我上传的附件。", "Please review the attached files."), R = Y.value;
           if (!de.value) {
-            const se = await s.createSession(d.slice(0, 60));
-            localStorage.setItem(`0kay.agent.editor:${se}`, JSON.stringify({ ...p, draft: d, mode: $ })), r.value = se, localStorage.setItem("0kay.agent.selected", se);
+            const ee = await s.createSession(d.slice(0, 60));
+            localStorage.setItem(`0kay.agent.editor:${ee}`, JSON.stringify({ ...p, draft: d, mode: R })), r.value = ee, localStorage.setItem("0kay.agent.selected", ee);
           }
-          rt(), u && (p.attachments = c.value.map((se) => ({ ...se }))), await s.sendTask(r.value, d, $, p), a.value = "", c.value = [], k.value = "", rt(), Et.value = !0, await bt();
+          X(), u && (p.attachments = c.value.map((ee) => ({ ...ee }))), await s.sendTask(r.value, d, R, p), a.value = "", c.value = [], k.value = "", X(), Ct.value = !0, await Nt();
         } catch (p) {
-          ye.value = p.message;
+          xe.value = p.message;
         } finally {
-          ne.value = !1;
+          J.value = !1;
         }
       }
     }
-    async function En() {
+    async function sn() {
       if (!(!fe.value || fe.value.kind !== "agent"))
         try {
           await s.cancelTask(fe.value.task_id);
         } catch (u) {
-          ye.value = u.message;
+          xe.value = u.message;
         }
     }
-    async function bt() {
-      await Ke(), Et.value && it.value?.scrollTo({ top: it.value.scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    async function Nt() {
+      await Qe(), Ct.value && We.value?.scrollTo({ top: We.value.scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
     }
-    return Te(() => s.tasks.filter((u) => u.session_id === r.value).map((u) => `${u.task_id}:${u.state}:${u.result?.length}`).join("|"), bt), Te(r, () => {
-      Et.value = !0, bt(), J(), tn(), ye.value = "";
-    }), Te(r, Ot), Te(ee, () => {
-      V.value = null, C.value = "", J(), It();
-    }, { flush: "sync" }), Te(m, It), Te(r, () => {
-      ve.value = "";
-    }), pn(() => {
-      ma(), s.connect(), Ot(), Dt(), st = setInterval(It, 5e3), window.addEventListener("keydown", vn);
-    }), hn(() => {
-      rt(), J(), s.disconnect(), st && clearInterval(st), window.removeEventListener("keydown", vn);
-    }), (u, p) => (v(), b(le, null, [
+    return Te(() => s.tasks.filter((u) => u.session_id === r.value).map((u) => `${u.task_id}:${u.state}:${u.result?.length}`).join("|"), Nt), Te(r, () => {
+      Ct.value = !0, Nt(), ot(), Tn(), xe.value = "";
+    }), Te(r, kt), Te(C, () => {
+      ge.value = null, F.value = "", ot(), Ot();
+    }, { flush: "sync" }), Te(T, Ot), Te(r, () => {
+      He.value = "";
+    }), fn(() => {
+      ma(), s.connect(), kt(), et(), gt = setInterval(Ot, 5e3), window.addEventListener("keydown", yn);
+    }), gn(() => {
+      X(), ot(), s.disconnect(), gt && clearInterval(gt), window.removeEventListener("keydown", yn);
+    }), (u, p) => (m(), b(se, null, [
       o("main", mo, [
         o("aside", vo, [
           o("header", null, [
-            p[19] || (p[19] = o("h1", null, "Agent", -1)),
+            p[20] || (p[20] = o("h1", null, "Agent", -1)),
             o("button", {
-              onClick: dt,
-              disabled: ne.value,
+              onClick: qn,
+              disabled: J.value,
               title: e("新建会话", "New session")
             }, [
-              p[18] || (p[18] = o("svg", {
+              p[19] || (p[19] = o("svg", {
                 width: "15",
                 height: "15",
                 viewBox: "0 0 24 24",
@@ -4193,14 +4193,14 @@ const go = /* @__PURE__ */ Gt({
           ]),
           o("div", bo, [
             o("i", {
-              class: ce({ online: ie(s).onlineCount > 0 })
+              class: oe({ online: ie(s).onlineCount > 0 })
             }, null, 2),
             Re(g(ie(s).onlineCount) + " " + g(e("个执行器在线", "executors online")) + " ", 1),
             o("button", {
               onClick: p[0] || (p[0] = (d) => ie(s).fetchAgents()),
               title: e("刷新", "Refresh"),
               "aria-label": "refresh"
-            }, [...p[20] || (p[20] = [
+            }, [...p[21] || (p[21] = [
               o("svg", {
                 width: "14",
                 height: "14",
@@ -4218,183 +4218,183 @@ const go = /* @__PURE__ */ Gt({
               ], -1)
             ])], 8, yo)
           ]),
-          un(o("input", {
-            "onUpdate:modelValue": p[1] || (p[1] = (d) => Q.value = d),
+          dn(o("input", {
+            "onUpdate:modelValue": p[1] || (p[1] = (d) => K.value = d),
             placeholder: e("搜索会话…", "Search sessions…"),
             "aria-label": e("搜索会话", "Search sessions")
           }, null, 8, _o), [
-            [zn, Q.value]
+            [Mn, K.value]
           ]),
           o("nav", wo, [
-            (v(!0), b(le, null, ke([{ id: "all", label: e("全部", "All") }, { id: "life", label: e("LIFE 发起", "From LIFE") }, { id: "user", label: e("我的对话", "My chats") }], (d) => (v(), b("button", {
+            (m(!0), b(se, null, ke([{ id: "all", label: e("全部", "All") }, { id: "life", label: e("LIFE 发起", "From LIFE") }, { id: "user", label: e("我的对话", "My chats") }], (d) => (m(), b("button", {
               key: d.id,
-              class: ce({ chosen: M.value === d.id }),
-              onClick: ($) => M.value = d.id
+              class: oe({ chosen: z.value === d.id }),
+              onClick: (R) => z.value = d.id
             }, g(d.label), 11, xo))), 128))
           ]),
           o("label", So, [
-            un(o("input", {
-              "onUpdate:modelValue": p[2] || (p[2] = (d) => ot.value = d),
+            dn(o("input", {
+              "onUpdate:modelValue": p[2] || (p[2] = (d) => it.value = d),
               type: "checkbox"
             }, null, 512), [
-              [Er, ot.value]
+              [Er, it.value]
             ]),
             Re(" " + g(e("显示已归档会话", "Show archived sessions")), 1)
           ]),
           o("div", To, [
-            (v(!0), b(le, null, ke(Jt.value, (d) => (v(), b("button", {
+            (m(!0), b(se, null, ke(Qt.value, (d) => (m(), b("button", {
               key: d.task_id,
-              class: ce(["session-card", { selected: r.value === d.session_id && !Ge.value }]),
-              disabled: ne.value,
-              onClick: ($) => pe(d.session_id)
+              class: oe(["session-card", { selected: r.value === d.session_id && !Ke.value }]),
+              disabled: J.value,
+              onClick: (R) => st(d.session_id)
             }, [
-              o("span", Eo, g(De(d) ? "LIFE → Agent" : e("你 ↔ Agent", "You ↔ Agent")), 1),
+              o("span", Eo, g(ut(d) ? "LIFE → Agent" : e("你 ↔ Agent", "You ↔ Agent")), 1),
               o("strong", null, g(d.prompt || "未命名会话"), 1),
-              o("small", null, g(we(d.started_at)), 1)
+              o("small", null, g(Ie(d.started_at)), 1)
             ], 10, Ao))), 128)),
-            Jt.value.length ? I("", !0) : (v(), b("p", Ro, g(e("暂无会话。直接发送消息，或等待 LIFE 委派工作。", "No sessions yet. Send a message or wait for LIFE to delegate work.")), 1))
+            Qt.value.length ? I("", !0) : (m(), b("p", Ro, g(e("暂无会话。直接发送消息，或等待 LIFE 委派工作。", "No sessions yet. Send a message or wait for LIFE to delegate work.")), 1))
           ]),
           o("button", {
-            class: ce(["ledger-button", { chosen: Ge.value }]),
-            onClick: p[3] || (p[3] = (d) => Ge.value = !0)
+            class: oe(["ledger-button", { chosen: Ke.value }]),
+            onClick: p[3] || (p[3] = (d) => Ke.value = !0)
           }, g(e("全部任务记录", "All task records")) + " · " + g(ie(s).tasks.length), 3)
         ]),
-        Ge.value ? (v(), b("section", $o, [
+        Ke.value ? (m(), b("section", $o, [
           o("header", null, [
             o("h2", null, g(e("全部任务记录", "All task records")), 1),
             o("button", {
-              onClick: p[4] || (p[4] = (d) => Ge.value = !1)
+              onClick: p[4] || (p[4] = (d) => Ke.value = !1)
             }, g(e("返回会话", "Back to chat")), 1)
           ]),
           o("p", Co, g(e("包括 LIFE 对话、模型调用、Agent 执行及工具活动。", "LIFE conversations, model calls, Agent execution and tool activity.")), 1),
-          (v(!0), b(le, null, ke(ie(s).tasks, (d) => (v(), b("article", {
+          (m(!0), b(se, null, ke(ie(s).tasks, (d) => (m(), b("article", {
             key: d.task_id,
             class: "ledger-entry"
           }, [
             o("div", null, [
               o("span", null, g(d.kind || "agent"), 1),
               o("span", {
-                class: ce(d.state)
-              }, g(Ne(d.state)), 3),
-              o("small", null, g(we(d.started_at)), 1)
+                class: oe(d.state)
+              }, g(ye(d.state)), 3),
+              o("small", null, g(Ie(d.started_at)), 1)
             ]),
             o("p", null, g(d.prompt), 1),
-            ie(s).sessions.some(($) => $.session_id === d.session_id) ? (v(), b("button", {
+            ie(s).sessions.some((R) => R.session_id === d.session_id) ? (m(), b("button", {
               key: 0,
-              onClick: ($) => pe(d.session_id)
+              onClick: (R) => st(d.session_id)
             }, "打开所属会话", 8, Lo)) : I("", !0),
             o("details", null, [
-              p[21] || (p[21] = o("summary", null, "详情", -1)),
+              p[22] || (p[22] = o("summary", null, "详情", -1)),
               o("code", null, g(d.task_id), 1),
               o("pre", null, g(d.result || d.error || "等待结果"), 1)
             ])
           ]))), 128))
-        ])) : (v(), b("section", Io, [
+        ])) : (m(), b("section", Io, [
           o("header", Oo, [
             o("div", null, [
               o("h2", null, g(de.value?.prompt || "与 Agent 对话"), 1),
-              o("p", null, g(de.value && De(de.value) ? "LIFE 发起的工作会话 · 你可以查看过程，也可以直接继续对话" : "持续对话 · 编程、调研与工具执行"), 1)
+              o("p", null, g(de.value && ut(de.value) ? "LIFE 发起的工作会话 · 你可以查看过程，也可以直接继续对话" : "持续对话 · 编程、调研与工具执行"), 1)
             ]),
-            fe.value ? (v(), b("span", Po, "正在执行")) : I("", !0),
-            de.value ? (v(), b("div", Do, [
+            fe.value ? (m(), b("span", Po, "正在执行")) : I("", !0),
+            de.value ? (m(), b("div", Do, [
               o("button", {
                 disabled: !!fe.value,
-                onClick: p[5] || (p[5] = (d) => Tn(de.value.state === "archived" ? "restore" : "archive"))
+                onClick: p[5] || (p[5] = (d) => pe(de.value.state === "archived" ? "restore" : "archive"))
               }, g(de.value.state === "archived" ? "恢复" : "归档"), 9, No),
               o("button", {
                 disabled: !!fe.value,
-                onClick: p[6] || (p[6] = (d) => Tn("delete"))
+                onClick: p[6] || (p[6] = (d) => pe("delete"))
               }, "删除", 8, Mo)
             ])) : I("", !0)
           ]),
-          ye.value || ie(s).error ? (v(), b("div", zo, g(ye.value || ie(s).error), 1)) : I("", !0),
-          m.value ? (v(), b("section", Fo, [
-            j.value ? (v(), b(le, { key: 0 }, [
-              o("strong", null, g(j.value.host?.hostname || j.value.name), 1),
+          xe.value || ie(s).error ? (m(), b("div", zo, g(xe.value || ie(s).error), 1)) : I("", !0),
+          T.value ? (m(), b("section", Fo, [
+            W.value ? (m(), b(se, { key: 0 }, [
+              o("strong", null, g(W.value.host?.hostname || W.value.name), 1),
               o("span", {
-                class: ce(ie(s).isHealthy(j.value) ? "done" : "failed")
-              }, g(ie(s).isHealthy(j.value) ? "在线" : "离线"), 3),
+                class: oe(ie(s).isHealthy(W.value) ? "done" : "failed")
+              }, g(ie(s).isHealthy(W.value) ? "在线" : "离线"), 3),
               o("div", Uo, [
-                (v(!0), b(le, null, ke([{ label: "CPU 占用", value: V.value?.cpu_percent }, { label: "内存占用", value: V.value?.memory_percent }], (d) => (v(), b("div", {
+                (m(!0), b(se, null, ke([{ label: "CPU 占用", value: ge.value?.cpu_percent }, { label: "内存占用", value: ge.value?.memory_percent }], (d) => (m(), b("div", {
                   key: d.label,
                   class: "usage-metric"
                 }, [
                   o("div", {
                     class: "usage-ring",
-                    style: Vt(Ve(d.value || 0))
+                    style: Wt(Je(d.value || 0))
                   }, [
                     o("b", null, g(d.value === void 0 ? "—" : `${d.value.toFixed(1)}%`), 1)
                   ], 4),
                   o("span", null, g(d.label), 1)
                 ]))), 128)),
-                o("small", null, g(V.value ? `采样时间：${we(V.value.sampled_at)}` : "等待宿主机实时采样"), 1)
+                o("small", null, g(ge.value ? `采样时间：${Ie(ge.value.sampled_at)}` : "等待宿主机实时采样"), 1)
               ]),
               o("dl", null, [
                 o("div", null, [
-                  p[22] || (p[22] = o("dt", null, "执行器地址", -1)),
-                  o("dd", null, g(j.value.address), 1)
+                  p[23] || (p[23] = o("dt", null, "执行器地址", -1)),
+                  o("dd", null, g(W.value.address), 1)
                 ]),
                 o("div", null, [
-                  p[23] || (p[23] = o("dt", null, "系统 / 架构", -1)),
-                  o("dd", null, g(j.value.host?.os || "—") + " / " + g(j.value.host?.arch || "—"), 1)
+                  p[24] || (p[24] = o("dt", null, "系统 / 架构", -1)),
+                  o("dd", null, g(W.value.host?.os || "—") + " / " + g(W.value.host?.arch || "—"), 1)
                 ]),
                 o("div", null, [
-                  p[24] || (p[24] = o("dt", null, "CPU", -1)),
-                  o("dd", null, g(j.value.host?.cpu_model || "—") + " · " + g(j.value.host?.cpu_cores || "—") + " 核", 1)
+                  p[25] || (p[25] = o("dt", null, "CPU", -1)),
+                  o("dd", null, g(W.value.host?.cpu_model || "—") + " · " + g(W.value.host?.cpu_cores || "—") + " 核", 1)
                 ]),
                 o("div", null, [
-                  p[25] || (p[25] = o("dt", null, "可用 / 总内存", -1)),
-                  o("dd", null, g(qe(j.value.host?.memory_available_bytes)) + " / " + g(qe(j.value.host?.memory_total_bytes)), 1)
+                  p[26] || (p[26] = o("dt", null, "可用 / 总内存", -1)),
+                  o("dd", null, g(Pt(W.value.host?.memory_available_bytes)) + " / " + g(Pt(W.value.host?.memory_total_bytes)), 1)
                 ]),
                 o("div", null, [
-                  p[26] || (p[26] = o("dt", null, "活跃任务", -1)),
-                  o("dd", null, g(j.value.active_tasks), 1)
+                  p[27] || (p[27] = o("dt", null, "活跃任务", -1)),
+                  o("dd", null, g(W.value.active_tasks), 1)
                 ]),
                 o("div", null, [
-                  p[27] || (p[27] = o("dt", null, "距上次心跳", -1)),
-                  o("dd", null, g(j.value.last_heartbeat_age_seconds) + " 秒", 1)
+                  p[28] || (p[28] = o("dt", null, "距上次心跳", -1)),
+                  o("dd", null, g(W.value.last_heartbeat_age_seconds) + " 秒", 1)
                 ]),
                 o("div", null, [
-                  p[28] || (p[28] = o("dt", null, "默认工作目录", -1)),
-                  o("dd", null, g(j.value.host?.workdir || "—"), 1)
+                  p[29] || (p[29] = o("dt", null, "默认工作目录", -1)),
+                  o("dd", null, g(W.value.host?.workdir || "—"), 1)
                 ])
               ])
-            ], 64)) : (v(), b("p", Bo, "没有可用的执行器宿主机信息。"))
+            ], 64)) : (m(), b("p", Bo, "没有可用的执行器宿主机信息。"))
           ])) : I("", !0),
           o("div", {
             ref_key: "transcript",
-            ref: it,
+            ref: We,
             class: "transcript",
-            onScrollPassive: We
+            onScrollPassive: wn
           }, [
-            ge.value ? (v(), b("div", Ho, [
+            me.value ? (m(), b("div", Ho, [
               o("header", jo, [
                 o("button", {
                   type: "button",
-                  onClick: xn
-                }, "← " + g(Ue.value.length > 1 ? e("返回上一层", "Back one level") : e("返回会话", "Back to chat")), 1),
+                  onClick: tn
+                }, "← " + g(ze.value.length > 1 ? e("返回上一层", "Back one level") : e("返回会话", "Back to chat")), 1),
                 o("div", null, [
                   o("h3", null, g(e("子 Agent", "Subagent")), 1),
-                  o("p", Wo, g(ge.value.prompt), 1)
+                  o("p", Wo, g(me.value.prompt), 1)
                 ]),
                 o("span", {
-                  class: ce(ge.value.state)
-                }, g(Ne(ge.value.state)), 3)
+                  class: oe(me.value.state)
+                }, g(ye(me.value.state)), 3)
               ]),
               o("div", Vo, [
                 o("div", qo, [
                   o("div", Go, [
                     o("b", null, g(e("父 Agent", "Parent agent")), 1),
-                    o("time", null, g(we(ge.value.started_at)), 1)
+                    o("time", null, g(Ie(me.value.started_at)), 1)
                   ]),
-                  o("div", Yo, g(ge.value.prompt), 1)
+                  o("div", Yo, g(me.value.prompt), 1)
                 ]),
-                (v(!0), b(le, null, ke(ut(ge.value), (d) => (v(), b(le, {
+                (m(!0), b(se, null, ke(ct(me.value), (d) => (m(), b(se, {
                   key: d.task_id
                 }, [
-                  d.kind === "think" && (d.result || d.reasoning || d.state === "running" || d.error) ? (v(), b("div", Zo, [
-                    d.prompt ? (v(), b("small", Ko, g(d.prompt), 1)) : I("", !0),
-                    d.reasoning ? (v(), b("details", {
+                  d.kind === "think" && (d.result || d.reasoning || d.state === "running" || d.error) ? (m(), b("div", Zo, [
+                    d.prompt ? (m(), b("small", Ko, g(d.prompt), 1)) : I("", !0),
+                    d.reasoning ? (m(), b("details", {
                       key: 1,
                       class: "think-chain",
                       open: d.state === "running" && !d.result
@@ -4402,249 +4402,253 @@ const go = /* @__PURE__ */ Gt({
                       o("summary", null, g(e("思维链", "Reasoning")), 1),
                       o("pre", null, g(d.reasoning), 1)
                     ], 8, Xo)) : I("", !0),
-                    d.result ? (v(), b(le, { key: 2 }, [
-                      Fe(on, {
+                    d.result ? (m(), b(se, { key: 2 }, [
+                      Be(cn, {
                         content: d.result
                       }, null, 8, ["content"]),
-                      d.state === "running" ? (v(), b("span", Qo, " ▍")) : I("", !0)
-                    ], 64)) : d.state === "running" ? (v(), b("small", Jo, g(e("子 Agent 正在生成回复…", "Subagent is drafting a reply…")), 1)) : I("", !0),
-                    d.error ? (v(), b("p", ei, g(Be(d.error)), 1)) : I("", !0)
-                  ])) : d.kind === "subagent" ? (v(), b("div", ti, [
+                      d.state === "running" ? (m(), b("span", Qo, " ▍")) : I("", !0)
+                    ], 64)) : d.state === "running" ? (m(), b("small", Jo, g(e("子 Agent 正在生成回复…", "Subagent is drafting a reply…")), 1)) : I("", !0),
+                    d.error ? (m(), b("p", ei, g(nt(d.error)), 1)) : I("", !0)
+                  ])) : d.kind === "subagent" ? (m(), b("div", ti, [
                     o("button", {
                       type: "button",
                       class: "subagent-card-head",
-                      onClick: ($) => wn(d)
+                      onClick: (R) => en(d)
                     }, [
                       o("span", {
-                        class: ce(d.state)
+                        class: oe(d.state)
                       }, "●", 2),
                       o("strong", null, g(e("子 Agent", "Subagent")), 1),
                       o("span", si, g(d.prompt), 1),
-                      o("small", null, g(Ne(d.state)), 1),
-                      p[29] || (p[29] = o("span", {
+                      o("small", null, g(ye(d.state)), 1),
+                      p[30] || (p[30] = o("span", {
                         class: "subagent-chevron",
                         "aria-hidden": "true"
                       }, "▸", -1))
                     ], 8, ni)
-                  ])) : d.kind === "tool" ? (v(), St(Xs, {
+                  ])) : d.kind === "tool" ? (m(), Et(Xs, {
                     key: 2,
                     step: d,
-                    "format-error": Be
-                  }, null, 8, ["step"])) : d.kind !== "think" ? (v(), b("details", ri, [
+                    "format-error": nt
+                  }, null, 8, ["step"])) : d.kind !== "think" ? (m(), b("details", ri, [
                     o("summary", null, [
                       o("span", {
-                        class: ce(d.state)
+                        class: oe(d.state)
                       }, "●", 2),
-                      Re(" " + g(Sn(d)) + " · " + g(d.prompt) + " ", 1),
-                      o("small", null, g(Ne(d.state)), 1)
+                      Re(" " + g(dt(d)) + " · " + g(d.prompt) + " ", 1),
+                      o("small", null, g(ye(d.state)), 1)
                     ]),
                     o("pre", null, g(d.result || d.error || (d.state === "running" ? "执行中…" : "执行完成，无输出")), 1)
                   ])) : I("", !0)
                 ], 64))), 128)),
-                Mt(ge.value) ? (v(), b("div", li, [
-                  Fe(on, {
-                    content: Mt(ge.value)
+                xt(me.value) ? (m(), b("div", li, [
+                  Be(cn, {
+                    content: xt(me.value)
                   }, null, 8, ["content"])
                 ])) : I("", !0),
-                ge.value.error ? (v(), b("p", ai, g(Be(ge.value.error)), 1)) : I("", !0),
-                !ut(ge.value).length && !Mt(ge.value) && !ge.value.error ? (v(), b("p", oi, g(ge.value.state === "running" ? e("子 Agent 正在执行…", "Subagent is running…") : e("没有子步骤记录", "No child steps recorded")), 1)) : I("", !0)
+                me.value.error ? (m(), b("p", ai, g(nt(me.value.error)), 1)) : I("", !0),
+                !ct(me.value).length && !xt(me.value) && !me.value.error ? (m(), b("p", oi, g(me.value.state === "running" ? e("子 Agent 正在执行…", "Subagent is running…") : e("没有子步骤记录", "No child steps recorded")), 1)) : I("", !0)
               ])
-            ])) : (v(), b(le, { key: 1 }, [
-              !en.value.length && !et.value ? (v(), b("div", ii, [...p[30] || (p[30] = [
+            ])) : (m(), b(se, { key: 1 }, [
+              !Jt.value.length && !tt.value ? (m(), b("div", ii, [...p[31] || (p[31] = [
                 o("h2", null, "想让 Agent 帮你做什么？", -1),
                 o("p", null, "直接描述目标，Agent 会在这个会话里回复并使用工具完成工作。", -1),
                 o("p", null, "左侧的「LIFE 发起」会话可以查看 LIFE 与 Agent 的交流，也支持你继续提问。", -1)
               ])])) : I("", !0),
-              et.value ? (v(), b("article", ui, [
+              tt.value ? (m(), b("article", ui, [
                 o("div", ci, [
                   o("strong", null, g(e("上下文摘要", "Context summary")), 1),
-                  o("time", null, g(we(et.value.started_at)), 1)
+                  o("time", null, g(Ie(tt.value.started_at)), 1)
                 ]),
-                Fe(on, {
-                  content: et.value.result || ""
+                Be(cn, {
+                  content: tt.value.result || ""
                 }, null, 8, ["content"])
               ])) : I("", !0),
-              (v(!0), b(le, null, ke(en.value, (d) => (v(), b("article", {
+              (m(!0), b(se, null, ke(Jt.value, (d) => (m(), b("article", {
                 key: d.task_id,
                 class: "turn"
               }, [
                 o("div", di, [
                   o("div", pi, [
-                    o("b", null, g(De(d) ? "LIFE" : "你"), 1),
-                    o("time", null, g(we(d.started_at)), 1)
+                    o("b", null, g(ut(d) ? "LIFE" : "你"), 1),
+                    o("time", null, g(Ie(d.started_at)), 1)
                   ]),
                   o("div", hi, g(d.prompt?.replace(/^\[thinking_intensity=\w+\]\s*/, "")), 1)
                 ]),
                 o("div", fi, [
                   o("div", gi, [
-                    p[31] || (p[31] = o("b", null, "Agent", -1)),
+                    p[32] || (p[32] = o("b", null, "Agent", -1)),
                     o("span", {
-                      class: ce(d.state)
-                    }, g(Ne(d.state)), 3)
+                      class: oe(d.state)
+                    }, g(ye(d.state)), 3)
                   ]),
-                  Ye(d).length ? (v(), b("div", mi, [
-                    (v(!0), b(le, null, ke(Ye(d), ($) => (v(), b(le, {
-                      key: $.task_id
+                  wt(d).length ? (m(), b("div", mi, [
+                    (m(!0), b(se, null, ke(wt(d), (R) => (m(), b(se, {
+                      key: R.task_id
                     }, [
-                      $.kind === "think" && ($.result || $.reasoning || $.state === "running" || $.error) ? (v(), b("div", vi, [
-                        $.prompt ? (v(), b("small", ki, g($.prompt), 1)) : I("", !0),
-                        $.reasoning ? (v(), b("details", {
+                      R.kind === "think" && (R.result || R.reasoning || R.state === "running" || R.error) ? (m(), b("div", vi, [
+                        R.prompt ? (m(), b("small", ki, g(R.prompt), 1)) : I("", !0),
+                        R.reasoning ? (m(), b("details", {
                           key: 1,
                           class: "think-chain",
-                          open: $.state === "running" && !$.result
+                          open: R.state === "running" && !R.result
                         }, [
                           o("summary", null, g(e("思维链", "Reasoning")), 1),
-                          o("pre", null, g($.reasoning), 1)
+                          o("pre", null, g(R.reasoning), 1)
                         ], 8, bi)) : I("", !0),
-                        $.result ? (v(), b(le, { key: 2 }, [
-                          Fe(on, {
-                            content: $.result
+                        R.result ? (m(), b(se, { key: 2 }, [
+                          Be(cn, {
+                            content: R.result
                           }, null, 8, ["content"]),
-                          $.state === "running" ? (v(), b("span", yi, " ▍")) : I("", !0)
-                        ], 64)) : $.state === "running" ? (v(), b("small", _i, "Agent 正在生成回复…")) : I("", !0),
-                        $.error ? (v(), b("p", wi, g(Be($.error)), 1)) : I("", !0)
-                      ])) : $.kind === "subagent" ? (v(), b("div", xi, [
+                          R.state === "running" ? (m(), b("span", yi, " ▍")) : I("", !0)
+                        ], 64)) : R.state === "running" ? (m(), b("small", _i, "Agent 正在生成回复…")) : I("", !0),
+                        R.error ? (m(), b("p", wi, g(nt(R.error)), 1)) : I("", !0)
+                      ])) : R.kind === "subagent" ? (m(), b("div", xi, [
                         o("button", {
                           type: "button",
                           class: "subagent-card-head",
-                          onClick: (se) => wn($)
+                          onClick: (ee) => en(R)
                         }, [
                           o("span", {
-                            class: ce($.state)
+                            class: oe(R.state)
                           }, "●", 2),
                           o("strong", null, g(e("子 Agent", "Subagent")), 1),
-                          o("span", Ti, g($.prompt), 1),
+                          o("span", Ti, g(R.prompt), 1),
                           o("small", null, [
-                            Re(g(Ne($.state)), 1),
-                            ct($) ? (v(), b(le, { key: 0 }, [
-                              Re(" · " + g(ct($)) + " " + g(e("步", "steps")), 1)
+                            Re(g(ye(R.state)), 1),
+                            An(R) ? (m(), b(se, { key: 0 }, [
+                              Re(" · " + g(An(R)) + " " + g(e("步", "steps")), 1)
                             ], 64)) : I("", !0)
                           ]),
-                          p[32] || (p[32] = o("span", {
+                          p[33] || (p[33] = o("span", {
                             class: "subagent-chevron",
                             "aria-hidden": "true"
                           }, "▸", -1))
                         ], 8, Si),
-                        $.error ? (v(), b("p", Ai, g(Be($.error)), 1)) : I("", !0)
-                      ])) : $.kind === "tool" ? (v(), St(Xs, {
+                        R.error ? (m(), b("p", Ai, g(nt(R.error)), 1)) : I("", !0)
+                      ])) : R.kind === "tool" ? (m(), Et(Xs, {
                         key: 2,
-                        step: $,
-                        "format-error": Be
-                      }, null, 8, ["step"])) : $.kind !== "think" ? (v(), b("details", Ei, [
+                        step: R,
+                        "format-error": nt
+                      }, null, 8, ["step"])) : R.kind !== "think" ? (m(), b("details", Ei, [
                         o("summary", null, [
                           o("span", {
-                            class: ce($.state)
+                            class: oe(R.state)
                           }, "●", 2),
-                          Re(" " + g(Sn($)) + " · " + g($.prompt) + " ", 1),
-                          o("small", null, g(Ne($.state)), 1)
+                          Re(" " + g(dt(R)) + " · " + g(R.prompt) + " ", 1),
+                          o("small", null, g(ye(R.state)), 1)
                         ]),
-                        o("pre", null, g($.result || $.error || ($.state === "running" ? "执行中…" : "执行完成，无输出")), 1)
+                        o("pre", null, g(R.result || R.error || (R.state === "running" ? "执行中…" : "执行完成，无输出")), 1)
                       ])) : I("", !0)
                     ], 64))), 128))
                   ])) : I("", !0),
-                  d.result && !qn(d) ? (v(), St(on, {
+                  d.result && !Vn(d) ? (m(), Et(cn, {
                     key: 1,
                     content: d.result
                   }, null, 8, ["content"])) : I("", !0),
-                  d.error ? (v(), b("div", Ri, g(Be(d.error)), 1)) : I("", !0),
-                  ["running", "pending"].includes(d.state) ? (v(), b("p", $i, "Agent 正在处理，执行过程会自动更新…")) : I("", !0)
+                  d.error ? (m(), b("div", Ri, g(nt(d.error)), 1)) : I("", !0),
+                  ["running", "pending"].includes(d.state) ? (m(), b("p", $i, "Agent 正在处理，执行过程会自动更新…")) : I("", !0)
                 ])
               ]))), 128))
             ], 64))
           ], 544),
-          kt.value.length ? (v(), b("section", {
+          me.value ? I("", !0) : (m(), b("form", {
             key: 2,
-            class: "todo-panel",
-            "aria-label": e("待办清单", "Todo list")
-          }, [
-            o("header", null, [
-              o("strong", null, g(e("待办", "Todo")), 1),
-              o("span", null, g(_n.value) + "/" + g(kt.value.length), 1)
-            ]),
-            o("ul", null, [
-              (v(!0), b(le, null, ke(kt.value, (d, $) => (v(), b("li", {
-                key: $,
-                class: ce(d.status)
-              }, [
-                o("span", Li, g(d.status === "completed" ? "✓" : d.status === "in_progress" ? "◐" : "○"), 1),
-                o("span", Ii, g(d.content), 1)
-              ], 2))), 128))
-            ])
-          ], 8, Ci)) : I("", !0),
-          ge.value ? I("", !0) : (v(), b("form", {
-            key: 3,
             class: "composer",
-            onSubmit: Pe(An, ["prevent"])
+            onSubmit: Me(nn, ["prevent"])
           }, [
-            ve.value ? (v(), b("div", Oi, g(ve.value), 1)) : I("", !0),
-            o("div", Pi, [
-              o("label", null, [
-                Re(g(e("权限", "Permissions")), 1),
-                Fe(Nn, {
-                  modelValue: ue.value,
-                  "onUpdate:modelValue": p[7] || (p[7] = (d) => ue.value = d),
-                  "aria-label": e("权限", "Permissions"),
-                  disabled: !!fe.value || ne.value,
-                  options: [{ value: "normal", label: e("Normal · 全部审批", "Normal · Ask every time") }, { value: "full_access", label: e("Full access · 自动执行", "Full access · Auto execute") }]
-                }, null, 8, ["modelValue", "aria-label", "disabled", "options"])
+            _t.value.length ? (m(), b("section", {
+              key: 0,
+              class: "todo-panel",
+              "aria-label": e("待办清单", "Todo list")
+            }, [
+              o("header", null, [
+                o("strong", null, g(e("待办", "Todo")), 1),
+                o("span", null, g(Dt.value) + "/" + g(_t.value.length), 1)
               ]),
-              o("label", null, [
-                Re(g(e("执行器", "Executor")), 1),
-                Fe(Nn, {
-                  modelValue: ee.value,
-                  "onUpdate:modelValue": p[8] || (p[8] = (d) => ee.value = d),
-                  "aria-label": e("执行器", "Executor"),
-                  disabled: !!fe.value || ne.value,
-                  options: [{ value: "", label: e("自动选择在线执行器", "Automatic executor") }, ...ie(s).agents.map((d) => ({ value: d.plugin_id, label: `${d.host?.hostname || d.name} · ${d.plugin_id}`, disabled: !ie(s).isHealthy(d) }))]
-                }, null, 8, ["modelValue", "aria-label", "disabled", "options"])
-              ]),
-              o("label", null, [
-                Re(g(e("工作区", "Workspace")), 1),
-                o("button", {
-                  type: "button",
-                  class: "workspace-select",
-                  disabled: !!fe.value || ne.value || !j.value,
-                  title: C.value || j.value?.host?.workdir,
-                  onClick: p[9] || (p[9] = (d) => Qe(C.value || j.value?.host?.workdir || ""))
+              o("ul", null, [
+                (m(!0), b(se, null, ke(_t.value, (d, R) => (m(), b("li", {
+                  key: R,
+                  class: oe(d.status)
                 }, [
-                  p[33] || (p[33] = o("svg", {
-                    width: "14",
-                    height: "14",
-                    viewBox: "0 0 24 24",
-                    fill: "none",
-                    "aria-hidden": "true"
-                  }, [
-                    o("path", {
-                      d: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z",
-                      stroke: "currentColor",
-                      "stroke-width": "1.7",
-                      "stroke-linejoin": "round"
-                    })
-                  ], -1)),
-                  Re(" " + g(C.value || e("选择目录…", "Select folder…")), 1)
-                ], 8, Di)
-              ]),
-              Fe(fo, {
-                modelValue: z.value,
-                "onUpdate:modelValue": p[10] || (p[10] = (d) => z.value = d),
-                disabled: !!fe.value || ne.value
-              }, null, 8, ["modelValue", "disabled"]),
-              o("label", null, [
-                Re(g(e("模型", "Model")), 1),
-                Fe(Nn, {
-                  modelValue: te.value,
-                  "onUpdate:modelValue": p[11] || (p[11] = (d) => te.value = d),
-                  searchable: "",
-                  "aria-label": e("模型", "Model"),
-                  disabled: !!fe.value || ne.value,
-                  onOpen: Dt,
-                  options: [{ value: "MOCR", label: e("MOCR · 自动选型", "MOCR · Automatic") }, ...f.value.map((d) => ({ value: d.id, label: Pt(d) }))]
-                }, null, 8, ["modelValue", "aria-label", "disabled", "options"])
+                  o("span", Li, g(d.status === "completed" ? "✓" : d.status === "in_progress" ? "◐" : "○"), 1),
+                  o("span", Ii, g(d.content), 1)
+                ], 2))), 128))
               ])
-            ]),
+            ], 8, Ci)) : I("", !0),
+            He.value ? (m(), b("div", Oi, g(He.value), 1)) : I("", !0),
+            o("div", {
+              class: oe(["options-collapse", { open: le.value }])
+            }, [
+              o("div", Pi, [
+                o("label", null, [
+                  Re(g(e("权限", "Permissions")), 1),
+                  Be(Dn, {
+                    modelValue: B.value,
+                    "onUpdate:modelValue": p[7] || (p[7] = (d) => B.value = d),
+                    "aria-label": e("权限", "Permissions"),
+                    disabled: !!fe.value || J.value,
+                    options: [{ value: "normal", label: e("Normal · 全部审批", "Normal · Ask every time") }, { value: "full_access", label: e("Full access · 自动执行", "Full access · Auto execute") }]
+                  }, null, 8, ["modelValue", "aria-label", "disabled", "options"])
+                ]),
+                o("label", null, [
+                  Re(g(e("执行器", "Executor")), 1),
+                  Be(Dn, {
+                    modelValue: C.value,
+                    "onUpdate:modelValue": p[8] || (p[8] = (d) => C.value = d),
+                    "aria-label": e("执行器", "Executor"),
+                    disabled: !!fe.value || J.value,
+                    options: [{ value: "", label: e("自动选择在线执行器", "Automatic executor") }, ...ie(s).agents.map((d) => ({ value: d.plugin_id, label: `${d.host?.hostname || d.name} · ${d.plugin_id}`, disabled: !ie(s).isHealthy(d) }))]
+                  }, null, 8, ["modelValue", "aria-label", "disabled", "options"])
+                ]),
+                o("label", null, [
+                  Re(g(e("工作区", "Workspace")), 1),
+                  o("button", {
+                    type: "button",
+                    class: "workspace-select",
+                    disabled: !!fe.value || J.value || !W.value,
+                    title: F.value || W.value?.host?.workdir,
+                    onClick: p[9] || (p[9] = (d) => Ze(F.value || W.value?.host?.workdir || ""))
+                  }, [
+                    p[34] || (p[34] = o("svg", {
+                      width: "14",
+                      height: "14",
+                      viewBox: "0 0 24 24",
+                      fill: "none",
+                      "aria-hidden": "true"
+                    }, [
+                      o("path", {
+                        d: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z",
+                        stroke: "currentColor",
+                        "stroke-width": "1.7",
+                        "stroke-linejoin": "round"
+                      })
+                    ], -1)),
+                    Re(" " + g(F.value || e("选择目录…", "Select folder…")), 1)
+                  ], 8, Di)
+                ]),
+                Be(fo, {
+                  modelValue: M.value,
+                  "onUpdate:modelValue": p[10] || (p[10] = (d) => M.value = d),
+                  disabled: !!fe.value || J.value
+                }, null, 8, ["modelValue", "disabled"]),
+                o("label", null, [
+                  Re(g(e("模型", "Model")), 1),
+                  Be(Dn, {
+                    modelValue: ce.value,
+                    "onUpdate:modelValue": p[11] || (p[11] = (d) => ce.value = d),
+                    searchable: "",
+                    "aria-label": e("模型", "Model"),
+                    disabled: !!fe.value || J.value,
+                    onOpen: et,
+                    options: [{ value: "MOCR", label: e("MOCR · 自动选型", "MOCR · Automatic") }, ...v.value.map((d) => ({ value: d.id, label: Xt(d) }))]
+                  }, null, 8, ["modelValue", "aria-label", "disabled", "options"])
+                ])
+              ])
+            ], 2),
             o("input", {
               ref_key: "fileInput",
-              ref: y,
+              ref: _,
               type: "file",
               multiple: "",
               hidden: "",
@@ -4652,34 +4656,34 @@ const go = /* @__PURE__ */ Gt({
             }, null, 544),
             o("div", {
               ref_key: "composerInput",
-              ref: Ct,
+              ref: ae,
               class: "composer-input"
             }, [
-              (v(), St(jn, { to: "body" }, [
-                mt.value ? (v(), b("div", {
+              (m(), Et(Hn, { to: "body" }, [
+                Q.value ? (m(), b("div", {
                   key: 0,
                   class: "slash-menu",
-                  style: Vt(oe.value),
+                  style: Wt(It.value),
                   role: "listbox",
                   "aria-label": e("技能与命令", "Skills and commands")
                 }, [
-                  (v(!0), b(le, null, ke(lt.value, (d, $) => (v(), b("button", {
+                  (m(!0), b(se, null, ke(mt.value, (d, R) => (m(), b("button", {
                     key: d.name,
                     type: "button",
-                    class: ce(["slash-item", { active: $ === q.value }]),
+                    class: oe(["slash-item", { active: R === Ce.value }]),
                     role: "option",
-                    "aria-selected": $ === q.value,
-                    onMousedown: Pe((se) => at(d), ["prevent"]),
-                    onMouseenter: (se) => q.value = $
+                    "aria-selected": R === Ce.value,
+                    onMousedown: Me((ee) => Kt(d), ["prevent"]),
+                    onMouseenter: (ee) => Ce.value = R
                   }, [
                     o("span", zi, "/" + g(d.name), 1),
                     o("span", Fi, g(d.description), 1)
                   ], 42, Mi))), 128))
                 ], 12, Ni)) : I("", !0)
               ])),
-              c.value.length || k.value ? (v(), b("div", Ui, [
-                (v(!0), b(le, null, ke(c.value, (d, $) => (v(), b("span", {
-                  key: $,
+              c.value.length || k.value ? (m(), b("div", Ui, [
+                (m(!0), b(se, null, ke(c.value, (d, R) => (m(), b("span", {
+                  key: R,
                   class: "attach-chip",
                   title: `${d.mime} · ${d.size} B`
                 }, [
@@ -4688,30 +4692,30 @@ const go = /* @__PURE__ */ Gt({
                     type: "button",
                     "aria-label": e("移除附件", "Remove attachment"),
                     title: e("移除", "Remove"),
-                    onClick: (se) => E($)
+                    onClick: (ee) => E(R)
                   }, "×", 8, Hi)
                 ], 8, Bi))), 128)),
-                k.value ? (v(), b("span", ji, g(k.value), 1)) : I("", !0)
+                k.value ? (m(), b("span", ji, g(k.value), 1)) : I("", !0)
               ])) : I("", !0),
-              un(o("textarea", {
+              dn(o("textarea", {
                 "onUpdate:modelValue": p[12] || (p[12] = (d) => a.value = d),
-                disabled: ne.value || de.value?.state === "archived",
+                disabled: J.value || de.value?.state === "archived",
                 placeholder: de.value?.state === "archived" ? "恢复会话后可以继续对话" : "给 Agent 发消息…（Enter 发送，Shift+Enter 换行，可 Ctrl+V 粘贴图片/文件）",
                 "aria-label": "给 Agent 发消息",
-                onKeydown: yn,
+                onKeydown: Ye,
                 onPaste: L
               }, null, 40, Wi), [
-                [zn, a.value]
+                [Mn, a.value]
               ]),
               o("div", Vi, [
                 o("button", {
                   type: "button",
                   class: "attach-fly",
-                  disabled: !!fe.value || ne.value || i.value || de.value?.state === "archived",
+                  disabled: !!fe.value || J.value || i.value || de.value?.state === "archived",
                   "aria-label": e("添加附件", "Add attachment"),
                   title: i.value ? e("上传中…", "Uploading…") : e("添加附件（也可 Ctrl+V 粘贴）", "Attach (or Ctrl+V to paste)"),
                   onClick: S
-                }, [...p[34] || (p[34] = [
+                }, [...p[35] || (p[35] = [
                   o("svg", {
                     width: "18",
                     height: "18",
@@ -4728,14 +4732,14 @@ const go = /* @__PURE__ */ Gt({
                     })
                   ], -1)
                 ])], 8, qi),
-                fe.value?.kind !== "agent" ? (v(), b("button", {
+                fe.value?.kind !== "agent" ? (m(), b("button", {
                   key: 0,
                   type: "submit",
                   class: "send-fly",
-                  disabled: ne.value || !!fe.value || !a.value.trim() || de.value?.state === "archived",
+                  disabled: J.value || !!fe.value || !a.value.trim() || de.value?.state === "archived",
                   "aria-label": e("发送", "Send"),
                   title: e("发送", "Send")
-                }, [...p[35] || (p[35] = [
+                }, [...p[36] || (p[36] = [
                   o("svg", {
                     width: "20",
                     height: "20",
@@ -4756,14 +4760,14 @@ const go = /* @__PURE__ */ Gt({
                       "stroke-linecap": "round"
                     })
                   ], -1)
-                ])], 8, Gi)) : (v(), b("button", {
+                ])], 8, Gi)) : (m(), b("button", {
                   key: 1,
                   type: "button",
                   class: "send-fly stop",
-                  onClick: En,
+                  onClick: sn,
                   "aria-label": e("停止", "Stop"),
                   title: e("停止", "Stop")
-                }, [...p[36] || (p[36] = [
+                }, [...p[37] || (p[37] = [
                   o("svg", {
                     width: "18",
                     height: "18",
@@ -4784,75 +4788,81 @@ const go = /* @__PURE__ */ Gt({
               ])
             ], 512),
             o("footer", null, [
-              Fe(Nn, {
-                modelValue: Z.value,
-                "onUpdate:modelValue": p[13] || (p[13] = (d) => Z.value = d),
-                disabled: ne.value,
+              o("button", {
+                type: "button",
+                class: oe(["options-toggle", { open: le.value }]),
+                "aria-expanded": le.value,
+                onClick: p[13] || (p[13] = (d) => le.value = !le.value)
+              }, g(le.value ? e("收起", "Less") : e("设置", "Settings")), 11, Zi),
+              Be(Dn, {
+                modelValue: Y.value,
+                "onUpdate:modelValue": p[14] || (p[14] = (d) => Y.value = d),
+                disabled: J.value,
                 "aria-label": e("Agent 模式", "Agent mode"),
                 options: [{ value: "general", label: e("通用 Agent", "General Agent") }, { value: "code", label: e("编程 Agent", "Coding Agent") }, { value: "research", label: e("调研 Agent", "Research Agent") }, { value: "science", label: e("科学 Agent", "Science Agent") }]
               }, null, 8, ["modelValue", "disabled", "aria-label", "options"]),
               o("button", {
                 type: "button",
-                onClick: p[14] || (p[14] = (d) => m.value = !m.value)
+                onClick: p[15] || (p[15] = (d) => T.value = !T.value)
               }, g(e("宿主机", "Host")), 1),
               o("button", {
                 type: "button",
-                disabled: !de.value || !!fe.value || ne.value || de.value.state === "archived",
-                onClick: Qt
-              }, "/compact", 8, Zi),
-              o("span", Ki, g(fe.value?.kind === "compact" ? e("上下文压缩中…", "Compacting…") : ie(s).onlineCount ? e("在当前会话中继续", "Continue this session") : e("执行器离线", "Executor offline")), 1)
+                disabled: !de.value || !!fe.value || J.value || de.value.state === "archived",
+                onClick: je
+              }, "/compact", 8, Ki),
+              o("span", Xi, g(fe.value?.kind === "compact" ? e("上下文压缩中…", "Compacting…") : ie(s).onlineCount ? e("在当前会话中继续", "Continue this session") : e("执行器离线", "Executor offline")), 1)
             ])
           ], 32))
         ])),
-        T.value ? (v(), b("div", {
+        $.value ? (m(), b("div", {
           key: 2,
           class: "directory-backdrop",
-          onClick: Pe(J, ["self"])
+          onClick: Me(ot, ["self"])
         }, [
-          o("section", Xi, [
+          o("section", Qi, [
             o("header", null, [
-              o("h2", null, "选择 " + g(j.value?.host?.hostname || "执行器") + " 的工作区", 1),
-              o("button", { onClick: J }, "关闭")
+              o("h2", null, "选择 " + g(W.value?.host?.hostname || "执行器") + " 的工作区", 1),
+              o("button", { onClick: ot }, "关闭")
             ]),
-            o("div", Qi, [
-              (v(!0), b(le, null, ke(X.value.roots, (d) => (v(), b("button", {
+            o("div", Ji, [
+              (m(!0), b(se, null, ke(j.value.roots, (d) => (m(), b("button", {
                 key: d,
-                disabled: R.value,
-                onClick: ($) => Qe(d)
-              }, g(d), 9, Ji))), 128)),
+                disabled: P.value,
+                onClick: (R) => Ze(d)
+              }, g(d), 9, eu))), 128)),
               o("button", {
-                disabled: R.value,
-                onClick: p[15] || (p[15] = (d) => Qe(j.value?.host?.workdir || ""))
-              }, "默认目录", 8, eu)
+                disabled: P.value,
+                onClick: p[16] || (p[16] = (d) => Ze(W.value?.host?.workdir || ""))
+              }, "默认目录", 8, tu)
             ]),
-            o("code", null, g(X.value.path), 1),
+            o("code", null, g(j.value.path), 1),
             o("form", {
               class: "new-folder",
-              onSubmit: Pe(_, ["prevent"])
+              onSubmit: Me(f, ["prevent"])
             }, [
-              un(o("input", {
-                "onUpdate:modelValue": p[16] || (p[16] = (d) => F.value = d),
+              dn(o("input", {
+                "onUpdate:modelValue": p[17] || (p[17] = (d) => y.value = d),
                 placeholder: "新文件夹名称",
                 "aria-label": "新文件夹名称",
-                disabled: R.value
-              }, null, 8, tu), [
-                [zn, F.value]
+                disabled: P.value
+              }, null, 8, nu), [
+                [Mn, y.value]
               ]),
               o("button", {
-                disabled: R.value || !F.value.trim() || !X.value.path
-              }, "新建文件夹", 8, nu)
+                disabled: P.value || !y.value.trim() || !j.value.path
+              }, "新建文件夹", 8, su)
             ], 32),
-            N.value ? (v(), b("p", su, g(N.value), 1)) : I("", !0),
-            R.value ? (v(), b("p", ru, "正在读取目录…")) : (v(), b("div", lu, [
-              X.value.parent !== X.value.path ? (v(), b("button", {
+            te.value ? (m(), b("p", ru, g(te.value), 1)) : I("", !0),
+            P.value ? (m(), b("p", lu, "正在读取目录…")) : (m(), b("div", au, [
+              j.value.parent !== j.value.path ? (m(), b("button", {
                 key: 0,
-                onClick: p[17] || (p[17] = (d) => Qe(X.value.parent))
+                onClick: p[18] || (p[18] = (d) => Ze(j.value.parent))
               }, "上一级")) : I("", !0),
-              (v(!0), b(le, null, ke(X.value.directories, (d) => (v(), b("button", {
+              (m(!0), b(se, null, ke(j.value.directories, (d) => (m(), b("button", {
                 key: d.path,
-                onClick: ($) => Qe(d.path)
+                onClick: (R) => Ze(d.path)
               }, [
-                p[37] || (p[37] = o("svg", {
+                p[38] || (p[38] = o("svg", {
                   width: "14",
                   height: "14",
                   viewBox: "0 0 24 24",
@@ -4867,24 +4877,24 @@ const go = /* @__PURE__ */ Gt({
                   })
                 ], -1)),
                 Re(" " + g(d.name), 1)
-              ], 8, au))), 128)),
-              X.value.directories.length ? I("", !0) : (v(), b("p", ou, "没有子目录"))
+              ], 8, ou))), 128)),
+              j.value.directories.length ? I("", !0) : (m(), b("p", iu, "没有子目录"))
             ])),
             o("footer", null, [
               o("button", {
-                disabled: R.value || !!N.value || !X.value.path,
-                onClick: Xt
-              }, "选择当前目录", 8, iu)
+                disabled: P.value || !!te.value || !j.value.path,
+                onClick: xn
+              }, "选择当前目录", 8, uu)
             ])
           ])
         ])) : I("", !0)
       ]),
-      Fe(go)
+      Be(go)
     ], 64));
   }
-}), pu = /* @__PURE__ */ gs(uu, [["__scopeId", "data-v-6aabaf01"]]);
+}), hu = /* @__PURE__ */ gs(cu, [["__scopeId", "data-v-18491eb8"]]);
 export {
-  pu as default
+  hu as default
 };
 
-;(()=>{if(typeof document!=='undefined'&&!document.getElementById('agent-plugin-style')){const s=document.createElement('style');s.id='agent-plugin-style';s.textContent=".markdown-content[data-v-ef377647]{line-height:1.75;overflow-wrap:anywhere;font-size:14px}.markdown-content[data-v-ef377647] pre{padding:16px;background:var(--md-surface-container);border-radius:8px;overflow:auto;white-space:pre;line-height:1.5}.markdown-content[data-v-ef377647] code{font-family:monospace;background:var(--md-surface-container);padding:2px 4px;border-radius:4px}.markdown-content[data-v-ef377647] pre code{padding:0;background:none}.markdown-content[data-v-ef377647] table{display:block;overflow:auto;border-collapse:collapse;margin:12px 0}.markdown-content[data-v-ef377647] th,.markdown-content[data-v-ef377647] td{border:1px solid var(--md-outline-variant);padding:8px 12px}.markdown-content[data-v-ef377647] blockquote{border-left:3px solid var(--md-outline);margin:12px 0;padding-left:14px;color:var(--md-on-surface-variant)}.markdown-content[data-v-ef377647] ul,.markdown-content[data-v-ef377647] ol{padding-left:24px}.markdown-content[data-v-ef377647] a{color:var(--md-primary);text-decoration:underline}.markdown-content[data-v-ef377647] img{max-width:100%}.markdown-content[data-v-ef377647] h1,.markdown-content[data-v-ef377647] h2,.markdown-content[data-v-ef377647] h3{margin:16px 0 8px}.tool-card[data-v-f13fbd25]{--code-font:ui-monospace,\"Cascadia Code\",\"JetBrains Mono\",Consolas,\"SFMono-Regular\",Menlo,monospace;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container);margin:8px 0;overflow:hidden}button.tool-card-head[data-v-f13fbd25]{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;border-radius:0;background:transparent;padding:10px 12px;cursor:pointer;font-size:13px}.tool-kind[data-v-f13fbd25]{flex-shrink:0;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--md-on-surface)}.tool-summary[data-v-f13fbd25]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--code-font);font-size:13px;color:var(--md-on-surface)}.tool-stat[data-v-f13fbd25]{flex-shrink:0;font-size:12px;font-weight:600;color:var(--md-primary);border:1px solid var(--md-outline-variant);border-radius:999px;padding:1px 8px}.tool-state[data-v-f13fbd25]{flex-shrink:0;font-size:13px;color:var(--md-on-surface-variant)}.tool-chevron[data-v-f13fbd25]{flex-shrink:0;color:var(--md-on-surface-variant);font-size:12px;transition:transform .15s}.tool-card.expanded .tool-chevron[data-v-f13fbd25]{transform:rotate(90deg)}.tool-dot[data-v-f13fbd25]{font-size:9px}.tool-dot.running[data-v-f13fbd25],.tool-dot.pending[data-v-f13fbd25]{color:#b88412}.tool-dot.failed[data-v-f13fbd25]{color:var(--md-error,#c44)}.tool-dot.done[data-v-f13fbd25]{color:#3a6}.tool-dot.cancelled[data-v-f13fbd25]{color:var(--md-on-surface-variant)}.tool-card-body[data-v-f13fbd25]{padding:4px 12px 12px;border-top:1px solid var(--md-outline-variant);display:flex;flex-direction:column;gap:6px}.tool-section-label[data-v-f13fbd25]{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--md-on-surface-variant);margin-top:4px}.tool-card-body pre[data-v-f13fbd25]{margin:0;max-height:340px;overflow:auto;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:8px;padding:8px 10px;font-family:var(--code-font);font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.tool-shot[data-v-f13fbd25]{margin:0;display:flex;flex-direction:column;gap:6px}.tool-shot img[data-v-f13fbd25]{width:100%;border-radius:12px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-lowest);display:block}.tool-shot figcaption[data-v-f13fbd25]{font-family:var(--code-font);font-size:11.5px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.tool-section-text[data-v-f13fbd25]{margin:0;font-size:13px;overflow-wrap:anywhere}.tool-error[data-v-f13fbd25]{background:var(--md-error-container);padding:8px 12px;border-radius:8px;margin:0;font-size:12px;overflow-wrap:anywhere}.muted[data-v-f13fbd25]{font-size:12px;color:var(--md-on-surface-variant);margin:0}.tool-dialog-backdrop[data-v-f13fbd25]{position:fixed;inset:0;background:#0008;z-index:1050;display:grid;place-items:center;padding:20px}.tool-dialog[data-v-f13fbd25]{background:var(--md-surface);color:var(--md-on-surface);border:1px solid var(--md-outline-variant);border-radius:16px;padding:18px 20px;width:min(680px,100%);max-height:82vh;overflow:auto;display:flex;flex-direction:column;gap:12px}.tool-dialog header[data-v-f13fbd25]{display:flex;align-items:center;justify-content:space-between;gap:12px}.tool-dialog h4[data-v-f13fbd25]{margin:0;font-size:15px;overflow-wrap:anywhere;flex:1;min-width:0}#app .tool-dialog-close[data-v-f13fbd25],.tool-dialog-close[data-v-f13fbd25]{flex-shrink:0;width:40px;height:40px;min-height:0;padding:0;border:none;border-radius:50%;background:transparent;color:var(--md-on-surface-variant);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background var(--transition-fast),color var(--transition-fast)}#app .tool-dialog-close[data-v-f13fbd25]:hover,.tool-dialog-close[data-v-f13fbd25]:hover{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent);box-shadow:none;filter:none;color:var(--md-on-surface)}#app .tool-dialog-close[data-v-f13fbd25]:active,.tool-dialog-close[data-v-f13fbd25]:active{background:color-mix(in srgb,var(--md-on-surface) 12%,transparent);border-radius:50%}.tool-search-results[data-v-f13fbd25]{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:14px}.tool-search-results a[data-v-f13fbd25]{color:var(--md-primary);font-size:14px;font-weight:500;text-decoration:none}.tool-search-results a[data-v-f13fbd25]:hover{text-decoration:underline}.tool-search-results p[data-v-f13fbd25]{margin:4px 0 0;font-size:13px;line-height:1.65;color:var(--md-on-surface)}.tool-search-results small[data-v-f13fbd25]{display:block;margin-top:2px;font-size:12px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.tool-card[data-v-f13fbd25]{border-radius:16px;border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent);background:var(--md-surface-container);transition:box-shadow .22s,background-color .2s}.tool-card[data-v-f13fbd25]:hover{box-shadow:var(--shadow-1)}button.tool-card-head[data-v-f13fbd25]{padding:12px 15px;gap:10px;min-height:46px;border-radius:0}button.tool-card-head[data-v-f13fbd25]:hover{background:var(--md-secondary-container)}.tool-kind[data-v-f13fbd25]{font-weight:700;letter-spacing:.06em}.tool-stat[data-v-f13fbd25]{border-color:color-mix(in srgb,var(--md-primary) 30%,transparent);background:color-mix(in srgb,var(--md-primary) 10%,transparent)}.tool-chevron[data-v-f13fbd25]{width:22px;height:22px;display:inline-grid;place-items:center;border-radius:50%;background:var(--md-surface-container-high);transition:transform .3s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .16s}.tool-card-body[data-v-f13fbd25]{padding:8px 15px 15px;gap:8px;border-top-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}.tool-card-body pre[data-v-f13fbd25]{border-radius:14px;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}.tool-section-label[data-v-f13fbd25]{font-weight:700}.diff-wrap[data-v-f13fbd25]{display:flex;flex-direction:column;gap:10px}.diff-file[data-v-f13fbd25]{border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);border-radius:14px;overflow:hidden;background:var(--md-surface-container-lowest)}.diff-file-head[data-v-f13fbd25]{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--md-surface-container);font-size:11.5px;font-weight:650}.diff-file-path[data-v-f13fbd25]{font-family:var(--code-font);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.diff-file-stat[data-v-f13fbd25]{flex:none;font-family:var(--code-font);color:var(--md-on-surface-variant)}.diff-body[data-v-f13fbd25]{max-height:360px;overflow:auto;font-family:var(--code-font);font-size:12px;line-height:1.55;padding:4px 0}.diff-line[data-v-f13fbd25]{display:grid;grid-template-columns:40px 40px 18px 1fr;white-space:pre;min-width:max-content}.diff-no[data-v-f13fbd25]{text-align:right;padding:0 6px;color:var(--md-on-surface-variant);opacity:.6;user-select:none;font-variant-numeric:tabular-nums}.diff-sign[data-v-f13fbd25]{text-align:center;user-select:none;opacity:.9}.diff-text[data-v-f13fbd25]{padding-right:12px}.diff-line.add[data-v-f13fbd25]{background:color-mix(in srgb,#2ea043 20%,transparent);color:#116329}.diff-line.del[data-v-f13fbd25]{background:color-mix(in srgb,#cf222e 18%,transparent);color:#82071e}.diff-line.add .diff-sign[data-v-f13fbd25]{color:#116329;font-weight:700}.diff-line.del .diff-sign[data-v-f13fbd25]{color:#cf222e;font-weight:700}.diff-line.hunk[data-v-f13fbd25]{background:var(--md-surface-container);color:var(--md-on-surface-variant)}.diff-line.meta[data-v-f13fbd25]{color:var(--md-on-surface-variant);opacity:.75}@media (prefers-color-scheme: dark){.diff-line.add[data-v-f13fbd25],.diff-line.add .diff-sign[data-v-f13fbd25]{color:#7ee787}.diff-line.del[data-v-f13fbd25],.diff-line.del .diff-sign[data-v-f13fbd25]{color:#ffa198}}#app .app-select{min-width:0;position:relative;font-size:inherit}#app .app-select.input{padding:0;border:0;min-height:0;background:transparent}#app .app-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:0 14px 0 16px;border:1px solid transparent;border-radius:16px;background-color:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;font-size:15px;text-align:left;cursor:pointer;box-shadow:none;transition:background-color .18s,border-color .18s,box-shadow .2s,border-radius .34s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .app-select-trigger:hover:not(:disabled){background-color:var(--md-surface-container-highest)}#app .app-select-trigger[aria-expanded=true],#app .app-select-trigger:focus-visible{border-color:var(--md-primary);background-color:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent);outline:none}#app .app-select-trigger:disabled{opacity:.5;cursor:not-allowed}.app-select-value{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.app-select-chevron{flex-shrink:0;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;color:var(--md-on-surface-variant);transition:transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .16s}#app .app-select-trigger:hover .app-select-chevron{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent)}.app-select-chevron svg{transition:transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}.app-select-chevron svg.is-open{transform:rotate(180deg)}.app-select-menu{position:fixed;z-index:10000;overflow-y:auto;overscroll-behavior:contain;padding:8px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:24px;background:var(--md-surface-container-low);color:var(--md-on-surface);box-shadow:0 18px 50px -12px color-mix(in srgb,var(--md-scrim,#000) 45%,transparent),0 4px 14px -4px #16244026;font-family:var(--font-family);font-size:14px;transform-origin:top}.app-select-menu.opens-up{transform-origin:bottom}.app-select-option{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:46px;padding:0 14px;border-radius:14px;cursor:pointer;overflow-wrap:anywhere;line-height:1.4;color:var(--md-on-surface);transition:background-color .14s,border-radius .3s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),color .14s}.app-select-option>span{min-width:0}.app-select-check{flex-shrink:0;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;color:var(--md-primary)}.app-select-option.highlighted{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent)}.app-select-option.selected{background:var(--md-primary-container);color:var(--md-on-primary-container);font-weight:650}.app-select-option.selected .app-select-check{background:var(--md-primary);color:var(--md-on-primary)}.app-select-option.selected.highlighted{background:color-mix(in srgb,var(--md-primary-container) 88%,var(--md-primary) 12%)}.app-select-option.disabled{opacity:.4;cursor:not-allowed}.app-select-search{position:sticky;top:-8px;z-index:1;display:flex;align-items:center;gap:10px;margin:-8px -8px 8px;padding:13px 16px;background:var(--md-surface-container-low);border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:24px 24px 0 0;color:var(--md-on-surface-variant)}.app-select-search input{flex:1;min-width:0;border:0;background:transparent;padding:0;font:inherit;color:var(--md-on-surface);outline:none}.app-select-empty{padding:18px;color:var(--md-on-surface-variant);text-align:center;font-size:13px}.select-menu-enter-active{transition:opacity .18s var(--ease-emphasized,cubic-bezier(.2,0,0,1)),transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}.select-menu-leave-active{transition:opacity .13s,transform .13s}.select-menu-enter-from,.select-menu-leave-to{opacity:0;transform:translateY(-6px) scale(.97)}.thinking-control{min-width:110px;flex:1;display:flex;flex-direction:column;gap:5px}.thinking-caption{font-size:12px}#app .thinking-trigger{display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:9px 12px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);font-size:12px;border-radius:9px}.thinking-popover{position:fixed;z-index:10000;padding:16px;border-radius:14px;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);box-shadow:0 10px 32px #16244026;color:var(--md-on-surface);font-family:var(--font-family)}.thinking-popover header{display:flex;justify-content:space-between;gap:12px;font-size:13px}.thinking-popover output{color:var(--md-primary);font-weight:600}.thinking-track{position:relative;padding:22px 4px 16px;display:flex;align-items:center}.thinking-track input{appearance:none;-webkit-appearance:none;width:100%;height:5px;padding:0;margin:0;border:0;border-radius:5px;background:linear-gradient(to right,var(--md-primary) var(--intensity),var(--md-outline-variant) var(--intensity));cursor:pointer;z-index:1}.thinking-track input::-webkit-slider-thumb{appearance:none;width:17px;height:17px;border-radius:50%;background:var(--md-primary);border:2px solid var(--md-surface);box-shadow:0 1px 4px #24345d40}.thinking-track input::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--md-primary);border:2px solid var(--md-surface)}.thinking-track input:focus-visible{outline:2px solid var(--md-primary);outline-offset:7px}.thinking-stops{display:flex;justify-content:space-between;gap:3px}.thinking-stops button{font:inherit;font-size:12px;border:0;background:transparent;color:var(--md-on-surface-variant);padding:6px 5px;border-radius:6px;cursor:pointer}.thinking-stops button.selected{background:var(--md-primary-container);color:var(--md-primary);font-weight:700}.thinking-popover p{font-size:12px;line-height:1.5;color:var(--md-on-surface-variant);margin:12px 0 0}.thinking-control.full .thinking-trigger,.thinking-popover.full{--md-primary:#a050db;border-color:#a050db88;box-shadow:0 0 16px #a050db25}.thinking-popover.full .energy-wave{position:absolute;inset:14px 0 8px;pointer-events:none;border-radius:20px;box-shadow:0 0 12px #a050db66}.thinking-popover.pulse,.thinking-control.pulse .thinking-trigger{animation:thinking-boost .85s ease-out}.thinking-popover.pulse .energy-wave{animation:thinking-wave .85s ease-out}@keyframes thinking-boost{0%{box-shadow:0 0 #a050db66}45%{box-shadow:0 0 0 5px #a050db20,0 0 30px #a050db40}to{box-shadow:0 0 16px #a050db25}}@keyframes thinking-wave{0%{transform:scale(.95);opacity:1}to{transform:scale(1.15,2);opacity:0}}.thinking-menu-enter-active,.thinking-menu-leave-active{transition:opacity .13s,transform .13s}.thinking-menu-enter-from,.thinking-menu-leave-to{opacity:0;transform:translateY(4px)}@media (prefers-reduced-motion:reduce){.thinking-popover.pulse,.thinking-control.pulse .thinking-trigger,.thinking-popover.pulse .energy-wave{animation:none}}.thinking-popover{padding:20px;border-radius:28px;background:var(--md-surface-container-low);border-color:transparent;box-shadow:0 8px 28px #24345d24}.thinking-popover header{align-items:center;font-size:14px;min-height:30px}.thinking-popover output{padding:6px 12px;border-radius:999px;background:var(--md-primary-container);font-size:12px}.thinking-track{height:68px;padding:0;margin:12px 0 0;isolation:isolate}.thinking-capsule{position:absolute;left:5px;right:5px;height:28px;border-radius:999px;background:var(--md-primary-container);overflow:hidden;pointer-events:none}.thinking-fill{height:100%;width:var(--intensity);background:var(--md-primary);border-radius:999px}.thinking-tick{position:absolute;top:50%;width:4px;height:4px;border-radius:50%;background:var(--md-primary);transform:translate(-50%,-50%)}.thinking-tick:first-of-type{left:8px!important}.thinking-tick:last-of-type{left:calc(100% - 8px)!important}.thinking-tick.passed{background:var(--md-on-primary)}.thinking-track input{position:relative;height:48px;background:transparent;border-radius:999px;touch-action:pan-y}.thinking-track input::-webkit-slider-runnable-track{height:28px;background:transparent;border-radius:999px}.thinking-track input::-webkit-slider-thumb{width:10px;height:44px;margin-top:-8px;border-radius:999px;border:0;background:var(--md-primary);box-shadow:0 0 0 5px var(--md-surface-container-low);transition:width .14s,height .14s,margin-top .14s}.thinking-track input:active::-webkit-slider-thumb{width:6px;height:48px;margin-top:-10px}.thinking-track input::-moz-range-track{height:28px;background:transparent;border-radius:999px}.thinking-track input::-moz-range-thumb{width:10px;height:44px;border:0;border-radius:999px;background:var(--md-primary);box-shadow:0 0 0 5px var(--md-surface-container-low)}.thinking-track input:active::-moz-range-thumb{width:6px;height:48px}.thinking-track input:focus-visible{outline-offset:3px}.thinking-stops{align-items:center;gap:2px;margin-top:2px}.thinking-stops button{border-radius:999px;min-height:30px;padding:6px 9px;transition:background-color .16s,color .16s}.thinking-popover.full{background:color-mix(in srgb,var(--md-surface-container-low) 93%,#a050db);border-color:#a050db55}.thinking-popover.full .thinking-fill{background:linear-gradient(90deg,#7255c8,#ad50d6)}.thinking-popover.full .energy-wave{inset:18px 5px;border-radius:999px;z-index:-1}.thinking-popover p{margin-top:12px}.thinking-popover.full{box-shadow:0 8px 28px #24345d24,0 0 34px #a050db33;border-color:#a050db77}.thinking-popover.full .energy-wave{position:absolute;inset:-3px 4px;border-radius:999px;z-index:-1;background:radial-gradient(70% 120% at 100% 50%,#c56bffbb,transparent 68%),radial-gradient(50% 120% at 0% 50%,#6b8cffaa,transparent 70%);filter:blur(7px);animation:thunder-glow 1.7s ease-in-out infinite}@keyframes thunder-glow{0%,to{opacity:.5;transform:scale(1)}45%{opacity:1;transform:scale(1.03)}}.thinking-popover.full .thinking-capsule{box-shadow:0 0 0 1px #a050db66,0 0 26px #a050db55}.thinking-popover.full .thinking-fill{background:linear-gradient(90deg,#6b8cff,#a050db,#e0a3ff,#a050db);background-size:280% 100%;animation:thunder-flow 2.6s linear infinite}@keyframes thunder-flow{to{background-position:280% 0}}.thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}.thinking-control.full .thinking-trigger span:first-child{animation:thunder-flicker 2s steps(1,end) infinite}@keyframes thunder-flicker{0%,90%,to{opacity:1}92%{opacity:.35}94%{opacity:1}96%{opacity:.5}}#app .thinking-control .thinking-trigger{min-height:52px;padding:0 14px 0 16px;border:1px solid transparent;border-radius:16px;background:var(--md-surface-container-high);color:var(--md-on-surface);font-size:13px;font-weight:500;align-items:center;transition:background-color .18s,border-color .18s,box-shadow .2s,border-radius .34s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .thinking-control .thinking-trigger:hover{background:var(--md-surface-container-highest)}#app .thinking-control .thinking-trigger[aria-expanded=true]{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}#app .thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}.thinking-caption{font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--md-on-surface-variant)}.confirm-scrim{position:fixed;inset:0;z-index:13000;background:#21173566;backdrop-filter:blur(6px);display:grid;place-items:center;padding:20px}.confirm-dialog{width:min(440px,100%);background:var(--md-surface-container-high, var(--md-surface, #fff));color:var(--md-on-surface);border:1px solid var(--md-outline-variant, transparent);border-radius:28px;padding:28px;box-shadow:0 24px 70px #18132d33;outline:none}.confirm-dialog h2{margin:0 0 10px;font-size:22px;font-weight:650}.confirm-dialog p{margin:0;font-size:14px;line-height:1.65;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.confirm-dialog footer{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}.confirm-dialog footer button{border:0;border-radius:999px;padding:12px 22px;font:inherit;font-weight:600;cursor:pointer;background:var(--md-secondary-container, #e7e0ec);color:var(--md-on-secondary-container, #1d1b20)}.confirm-dialog footer .confirm-primary{background:var(--md-primary, #6750a4);color:var(--md-on-primary, #fff)}.confirm-dialog footer .confirm-primary.danger{background:var(--md-error, #b3261e);color:var(--md-on-error, #fff)}.confirm-dialog footer button:focus-visible{outline:3px solid var(--md-primary);outline-offset:3px}.workspace[data-v-6aabaf01]{--code-font:ui-monospace,\"Cascadia Code\",\"JetBrains Mono\",Consolas,\"SFMono-Regular\",Menlo,monospace;display:flex;height:100%;min-height:0;background:var(--md-surface);color:var(--md-on-surface)}button[data-v-6aabaf01],input[data-v-6aabaf01],textarea[data-v-6aabaf01],select[data-v-6aabaf01]{font:inherit;color:inherit;border:1px solid var(--md-outline-variant);border-radius:9px;background:var(--md-surface-container-lowest);padding:9px 12px}button[data-v-6aabaf01]{cursor:pointer;transition:background .15s,box-shadow .15s,filter .15s}button[data-v-6aabaf01]:disabled{opacity:.45;cursor:default}button[data-v-6aabaf01]:hover:not(:disabled){background:var(--md-secondary-container);box-shadow:none}input[data-v-6aabaf01]:focus,textarea[data-v-6aabaf01]:focus,select[data-v-6aabaf01]:focus{outline:none;border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent)}input[type=checkbox][data-v-6aabaf01]{width:auto;accent-color:var(--md-primary)}.sessions[data-v-6aabaf01]{width:284px;flex-shrink:0;border-right:1px solid var(--md-outline-variant);padding:20px 16px;display:flex;flex-direction:column;gap:14px;background:var(--md-surface-container-low)}.sessions header[data-v-6aabaf01]{display:flex;align-items:center;justify-content:space-between;gap:12px}.sessions h1[data-v-6aabaf01]{font-size:22px;font-weight:650;letter-spacing:-.01em;margin:0}.sessions header>button[data-v-6aabaf01]{height:34px;padding:0 13px;border:0;border-radius:9px;background:var(--md-primary);color:var(--md-on-primary,#fff);font:600 13px/1 inherit}.sessions header>button[data-v-6aabaf01]:hover:not(:disabled){background:var(--md-primary);filter:brightness(1.08);box-shadow:var(--shadow-1)}.sessions>input[data-v-6aabaf01]{border-radius:10px;background:var(--md-surface-container-lowest)}.connection[data-v-6aabaf01]{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--md-on-surface-variant)}.connection button[data-v-6aabaf01]{margin-left:auto;padding:3px 9px;border-radius:8px;font-size:13px}.connection i[data-v-6aabaf01]{width:8px;height:8px;border-radius:50%;background:var(--md-outline);box-shadow:0 0 0 3px var(--md-surface-container-high)}.connection i.online[data-v-6aabaf01]{background:var(--md-success);box-shadow:0 0 0 3px var(--md-success-container)}.filter-bar[data-v-6aabaf01]{display:flex;gap:3px;padding:4px;border-radius:999px;background:var(--md-surface-container-high)}.filter-bar button[data-v-6aabaf01]{flex:1;font-size:12px;font-weight:500;padding:7px 4px;border:0;border-radius:999px;background:transparent;color:var(--md-on-surface-variant);box-shadow:none}.filter-bar button[data-v-6aabaf01]:hover:not(:disabled){background:transparent;color:var(--md-on-surface)}.filter-bar button.chosen[data-v-6aabaf01]{background:var(--md-surface-container-lowest);color:var(--md-primary);font-weight:650;box-shadow:var(--shadow-1)}.sessions label input[data-v-6aabaf01]{margin-right:6px}.session-list[data-v-6aabaf01]{overflow-y:auto;flex:1;min-height:0;margin:0 -4px;padding:0 4px}.session-card[data-v-6aabaf01]{display:flex;flex-direction:column;width:100%;text-align:left;gap:6px;margin-bottom:8px;padding:12px 13px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest)}.session-card[data-v-6aabaf01]:hover:not(:disabled){background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-primary) 40%,var(--md-outline-variant));box-shadow:var(--shadow-1)}.session-card.selected[data-v-6aabaf01]{background:var(--md-secondary-container);border-color:transparent;border-radius:12px 12px 12px 4px}.session-card.selected[data-v-6aabaf01]:hover{background:var(--md-secondary-container)}.session-card strong[data-v-6aabaf01]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;font-weight:600;font-size:14px}.origin[data-v-6aabaf01],small[data-v-6aabaf01],.sessions .muted[data-v-6aabaf01]{font-size:12px;color:var(--md-on-surface-variant)}.origin[data-v-6aabaf01]{font-weight:600;letter-spacing:.02em}.ledger-button[data-v-6aabaf01]{text-align:left;border-radius:10px;background:var(--md-surface-container-lowest);font-size:13px;font-weight:550}.ledger-button.chosen[data-v-6aabaf01]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.ledger[data-v-6aabaf01]{flex:1;overflow-y:auto;padding:var(--space-xl)}.ledger>header[data-v-6aabaf01]{margin-bottom:8px}.ledger>header h2[data-v-6aabaf01]{font-size:18px;font-weight:650}.ledger-entry[data-v-6aabaf01]{border:1px solid var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-lowest);padding:14px 16px;margin:10px 0;box-shadow:var(--shadow-1)}.ledger-entry>div[data-v-6aabaf01]{display:flex;align-items:center;gap:10px;font-size:12px}.ledger-entry>div>span[data-v-6aabaf01]:first-child{font-family:var(--code-font);background:var(--md-surface-container);padding:3px 8px;border-radius:6px;font-weight:600}.ledger-entry>div small[data-v-6aabaf01]{margin-left:auto}.ledger-entry>p[data-v-6aabaf01]{margin:8px 0;font-size:14px;line-height:1.6;overflow-wrap:anywhere}.ledger-entry details[data-v-6aabaf01]{margin-top:8px;border-radius:10px;background:var(--md-surface-container);padding:8px 12px;font-size:12px}.ledger-entry summary[data-v-6aabaf01]{cursor:pointer;color:var(--md-on-surface-variant)}.ledger-entry pre[data-v-6aabaf01]{margin:8px 0 0;max-height:300px}.conversation[data-v-6aabaf01]{display:flex;flex:1;min-width:0;flex-direction:column;min-height:0}.conversation-header[data-v-6aabaf01]{display:flex;align-items:flex-start;gap:14px}.conversation-header>div[data-v-6aabaf01]:first-child{flex:1;min-width:0}.conversation-header h2[data-v-6aabaf01]{font-size:17px;font-weight:650;margin:0}.conversation-header p[data-v-6aabaf01]{margin:6px 0 0;color:var(--md-on-surface-variant);font-size:13px}.session-actions[data-v-6aabaf01]{display:flex;gap:8px;flex-shrink:0}.session-actions button[data-v-6aabaf01]{height:32px;padding:0 13px;border-radius:9px;font-size:13px;font-weight:550;background:var(--md-surface-container-lowest)}.running[data-v-6aabaf01]{color:#b88412;font-weight:650;font-size:12px}.failed[data-v-6aabaf01]{color:var(--md-error)}.done[data-v-6aabaf01]{color:var(--md-success);font-weight:600;font-size:12px}.cancelled[data-v-6aabaf01],.muted[data-v-6aabaf01]{color:var(--md-on-surface-variant)}.muted[data-v-6aabaf01]{font-size:12px;line-height:1.6}.error[data-v-6aabaf01]{background:var(--md-error-container);color:#410e0b;padding:11px 16px;border-radius:12px;margin:8px 0;font-size:13px;overflow-wrap:anywhere}.transcript[data-v-6aabaf01]{flex:1;overflow-y:auto;padding:26px 28px;min-height:0}.context-summary[data-v-6aabaf01]{max-width:920px;margin:0 auto 22px;padding:14px 18px;border:1px dashed var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-low)}.context-summary-head[data-v-6aabaf01]{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.context-summary-head strong[data-v-6aabaf01]{font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--md-primary)}.context-summary-head time[data-v-6aabaf01]{font-size:12px;opacity:.75}.welcome[data-v-6aabaf01]{max-width:660px;margin:70px auto 0;text-align:center;color:var(--md-on-surface-variant);line-height:1.8}.welcome[data-v-6aabaf01]:before{content:\"\";display:block;width:64px;height:64px;margin:0 auto 20px;border-radius:20px;background:var(--md-primary-container);background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 24 24' fill='none' stroke='%234d5d91' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z'/%3E%3Cpath d='M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:center}.welcome h2[data-v-6aabaf01]{color:var(--md-on-surface);font-size:24px;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}.welcome p[data-v-6aabaf01]{margin:6px 0;font-size:14px}.turn[data-v-6aabaf01]{max-width:920px;margin:0 auto 30px;display:flex;flex-direction:column;gap:10px}.bubble[data-v-6aabaf01]{padding:15px 19px;font-size:14px}.bubble.user[data-v-6aabaf01]{align-self:flex-end;max-width:82%;background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:16px 16px 4px}.bubble.agent[data-v-6aabaf01]{align-self:flex-start;max-width:100%;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:16px 16px 16px 4px;box-shadow:var(--shadow-1)}.bubble .message-head[data-v-6aabaf01]{display:flex;align-items:center;gap:14px;margin-bottom:10px;font-size:12px}.bubble .message-head b[data-v-6aabaf01]{font-weight:700}.bubble .message-head time[data-v-6aabaf01]{margin-left:auto;opacity:.75;font-size:12px}.bubble .message-head span[data-v-6aabaf01]{margin-left:auto}.bubble.user .message-head[data-v-6aabaf01]{margin-bottom:7px;opacity:.85}.message-text[data-v-6aabaf01]{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:14px}.bubble.agent[data-v-6aabaf01] p{margin:.4em 0}.bubble.agent[data-v-6aabaf01] pre{max-height:420px}.agent-speech[data-v-6aabaf01]{margin:6px 0;padding:2px 0;line-height:1.7}.model-annotation[data-v-6aabaf01]{display:block;font-size:12px;opacity:.7;margin-bottom:4px;font-family:var(--code-font)}.think-chain[data-v-6aabaf01]{margin:2px 0 8px;border:0;border-radius:10px;background:var(--md-surface-container-low);overflow:hidden}.think-chain>summary[data-v-6aabaf01]{display:inline-flex;align-items:center;gap:5px;cursor:pointer;list-style:none;padding:3px 10px;font-size:11px;font-weight:600;letter-spacing:.03em;color:var(--md-on-surface-variant);user-select:none;border-radius:999px;background:var(--md-surface-container)}.think-chain>summary[data-v-6aabaf01]::-webkit-details-marker{display:none}.think-chain>summary[data-v-6aabaf01]:before{content:\"▸\";display:inline-block;transition:transform .15s}.think-chain[open]>summary[data-v-6aabaf01]:before{transform:rotate(90deg)}.think-chain>pre[data-v-6aabaf01]{margin:0;padding:6px 10px 8px;max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--code-font);font-size:11.5px;line-height:1.55;color:var(--md-on-surface-variant)}.agent-speech[data-v-6aabaf01] p{margin:.45em 0}.agent-speech[data-v-6aabaf01] pre{background:var(--md-surface-container);border:1px solid var(--md-outline-variant);border-radius:10px;padding:12px 14px;max-height:460px;overflow:auto;font-size:13px}.agent-speech[data-v-6aabaf01] code{font-family:var(--code-font)}.agent-speech[data-v-6aabaf01] ul{padding-left:20px;margin:.4em 0}.steps[data-v-6aabaf01]{display:flex;flex-direction:column;gap:8px;margin:12px 0 14px}.steps details[data-v-6aabaf01]{border-radius:12px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);padding:10px 14px}.steps summary[data-v-6aabaf01]{cursor:pointer;font-size:13px;font-weight:550}.steps summary small[data-v-6aabaf01]{margin-left:10px;font-weight:600}.steps summary[data-v-6aabaf01]::marker{color:var(--md-on-surface-variant)}.steps details pre[data-v-6aabaf01]{margin:10px 0 0;font-family:var(--code-font);font-size:13px;white-space:pre-wrap;max-height:400px}pre[data-v-6aabaf01]{max-height:450px;overflow:auto;font-family:var(--code-font)}.subagent-card[data-v-6aabaf01]{border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest);overflow:hidden;box-shadow:var(--shadow-1)}button.subagent-card-head[data-v-6aabaf01]{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:0;border-radius:0;background:transparent;padding:11px 14px;font-size:13px}button.subagent-card-head[data-v-6aabaf01]:hover:not(:disabled){background:var(--md-secondary-container);box-shadow:none}button.subagent-card-head>span[data-v-6aabaf01]:first-child{color:var(--md-primary)}button.subagent-card-head>strong[data-v-6aabaf01]{font-weight:700}.subagent-prompt[data-v-6aabaf01]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--md-on-surface)}.subagent-card small[data-v-6aabaf01]{font-weight:600}.subagent-chevron[data-v-6aabaf01]{color:var(--md-on-surface-variant);font-size:12px}.subagent-card-error[data-v-6aabaf01]{margin:0 10px 10px;padding:8px 12px;font-size:12px}.subagent-card.nested[data-v-6aabaf01]{margin:6px 0;box-shadow:none}.sub-view[data-v-6aabaf01]{max-width:900px;margin:0 auto}.sub-view-header[data-v-6aabaf01]{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--md-outline-variant)}.sub-view-header button[data-v-6aabaf01]{flex-shrink:0;border-radius:9px;font-size:13px;font-weight:550;background:var(--md-surface-container-lowest)}.sub-view-header h3[data-v-6aabaf01]{margin:0 0 4px;font-size:16px;font-weight:650}.sub-view-header p[data-v-6aabaf01]{margin:0;max-width:520px}.sub-view-header>span[data-v-6aabaf01]{margin-left:auto;font-weight:650;font-size:12px}.sub-view-body[data-v-6aabaf01]{min-height:120px}.todo-panel[data-v-6aabaf01]{flex-shrink:0;margin:0 20px 10px;padding:10px 14px;border:1px solid var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-low);max-height:180px;overflow:auto}.todo-panel>header[data-v-6aabaf01]{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;letter-spacing:.03em;color:var(--md-on-surface-variant);text-transform:uppercase}.todo-panel>header span[data-v-6aabaf01]{font-weight:600;color:var(--md-primary)}.todo-panel ul[data-v-6aabaf01]{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}.todo-panel li[data-v-6aabaf01]{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:var(--md-on-surface)}.todo-panel li.completed .todo-text[data-v-6aabaf01]{text-decoration:line-through;color:var(--md-on-surface-variant)}.todo-panel li.in_progress .todo-text[data-v-6aabaf01]{font-weight:600}.todo-mark[data-v-6aabaf01]{flex:none;width:16px;text-align:center;color:var(--md-primary)}.todo-panel li.completed .todo-mark[data-v-6aabaf01]{color:var(--md-success,#3ba55c)}.composer[data-v-6aabaf01]{flex-shrink:0;margin:0 20px 18px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-lowest);overflow:visible;box-shadow:var(--shadow-1)}.composer-input[data-v-6aabaf01]{position:relative}.composer-input textarea[data-v-6aabaf01]{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 112px 15px 16px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}.composer-input textarea[data-v-6aabaf01]:focus{box-shadow:none;border:0}.slash-menu[data-v-6aabaf01]{position:fixed;z-index:10000;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:14px;box-shadow:var(--shadow-3);padding:6px;max-height:min(320px,42vh);overflow:auto}.slash-item[data-v-6aabaf01]{display:flex;align-items:baseline;gap:10px;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:var(--md-on-surface);cursor:pointer}.slash-item.active[data-v-6aabaf01]{background:var(--md-secondary-container)}.slash-name[data-v-6aabaf01]{flex:none;font-family:var(--code-font);font-weight:650;font-size:13px;color:var(--md-primary)}.slash-desc[data-v-6aabaf01]{font-size:12px;color:var(--md-on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.attach-chips[data-v-6aabaf01]{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px 0}.composer-actions[data-v-6aabaf01]{position:absolute;right:10px;bottom:10px;z-index:2;display:flex;align-items:center;gap:8px}.attach-fly[data-v-6aabaf01]{width:42px;height:42px;flex:none;aspect-ratio:1/1;display:grid;place-items:center;border:0;border-radius:50%;padding:0;margin:0;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.attach-fly svg[data-v-6aabaf01]{width:18px;height:18px}.attach-fly[data-v-6aabaf01]:hover:not(:disabled){filter:brightness(1.05)}.attach-fly[data-v-6aabaf01]:disabled{opacity:.5;cursor:default}.attach-chip[data-v-6aabaf01]{display:inline-flex;align-items:center;gap:6px;max-width:220px;font-size:12px;padding:4px 6px 4px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attach-chip button[data-v-6aabaf01]{border:0;background:transparent;cursor:pointer;font-size:14px;line-height:1;padding:0 4px;color:var(--md-on-surface-variant)}.attach-chip button[data-v-6aabaf01]:hover{color:var(--md-error)}.attach-error[data-v-6aabaf01]{font-size:12px;color:var(--md-error)}.send-fly[data-v-6aabaf01]{width:42px;height:42px;flex:none;aspect-ratio:1/1;display:grid;place-items:center;border:0;border-radius:50%;padding:0;margin:0;background:var(--md-primary);color:var(--md-on-primary,#fff);box-shadow:0 2px 10px color-mix(in srgb,var(--md-primary) 38%,transparent)}.send-fly svg[data-v-6aabaf01]{width:20px;height:20px}.send-fly[data-v-6aabaf01]:hover:not(:disabled){filter:brightness(1.08)}.send-fly[data-v-6aabaf01]:disabled{background:var(--md-surface-container);color:var(--md-on-surface-variant);opacity:.7;box-shadow:none}.send-fly.stop[data-v-6aabaf01]{background:var(--md-error);color:#fff;box-shadow:0 2px 10px color-mix(in srgb,var(--md-error) 40%,transparent)}.compact-notice[data-v-6aabaf01]{font-size:12px;padding:10px 16px;color:var(--md-primary);background:var(--md-primary-container);border-radius:10px;margin:10px 16px 0}.execution-options[data-v-6aabaf01]{display:flex;gap:10px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid var(--md-outline-variant);align-items:end}.execution-options label[data-v-6aabaf01]{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--md-on-surface-variant);flex:1;min-width:130px}.execution-options[data-v-6aabaf01] .app-select-trigger,.execution-options .workspace-select[data-v-6aabaf01]{width:100%;font-size:13px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--md-on-surface);min-height:36px;border-radius:10px;background:var(--md-surface-container);border-color:transparent;text-align:left}.workspace-select[data-v-6aabaf01]{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block}.composer footer[data-v-6aabaf01]{display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap;border-top:1px solid var(--md-outline-variant)}.composer footer>select[data-v-6aabaf01],.composer footer>.app-select[data-v-6aabaf01]{font-size:13px;border-radius:10px;min-height:34px}.composer footer .muted[data-v-6aabaf01]{flex:1;min-width:120px}.composer footer>button[data-v-6aabaf01]{font-size:13px;font-weight:600;border-radius:9px;min-height:34px}.host-panel>strong[data-v-6aabaf01]{font-size:14px}.host-panel dl[data-v-6aabaf01]{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;font-size:12px}.host-panel dt[data-v-6aabaf01]{color:var(--md-on-surface-variant);font-weight:600}.host-panel dd[data-v-6aabaf01]{margin:4px 0 0;overflow-wrap:anywhere}.usage-rings[data-v-6aabaf01]{display:flex;align-items:center;gap:24px;padding:14px 0;flex-wrap:wrap}.usage-metric[data-v-6aabaf01]{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px}.usage-ring[data-v-6aabaf01]{width:88px;height:88px;border-radius:50%;display:grid;place-items:center}.usage-ring b[data-v-6aabaf01]{width:68px;height:68px;border-radius:50%;background:var(--md-surface-container-lowest);display:grid;place-items:center;font-size:15px;font-weight:650;box-shadow:var(--shadow-1)}.new-folder[data-v-6aabaf01]{display:flex;gap:8px}.new-folder input[data-v-6aabaf01]{flex:1;min-width:0}.directory-backdrop[data-v-6aabaf01]{position:fixed;inset:0;background:#14111acc;z-index:1000;display:grid;place-items:center;padding:20px}.directory-dialog[data-v-6aabaf01]{background:var(--md-surface);border:1px solid var(--md-outline-variant);border-radius:20px;padding:22px;width:min(680px,100%);display:flex;flex-direction:column;gap:14px;max-height:85vh;box-shadow:var(--shadow-4)}.directory-dialog>header[data-v-6aabaf01]{gap:12px}.directory-dialog>header h2[data-v-6aabaf01]{font-size:16px;font-weight:650}.directory-list[data-v-6aabaf01]{overflow:auto;min-height:180px;display:flex;flex-direction:column;gap:6px}.directory-list button[data-v-6aabaf01]{text-align:left;border-radius:10px;background:var(--md-surface-container-low);font-size:13px}.directory-roots[data-v-6aabaf01]{display:flex;gap:8px;flex-wrap:wrap}.directory-roots button[data-v-6aabaf01]{border-radius:999px;font-size:12px;padding:6px 12px}.directory-dialog code[data-v-6aabaf01]{overflow-wrap:anywhere;font-size:12px;background:var(--md-surface-container);padding:8px 10px;border-radius:8px}.directory-dialog>footer[data-v-6aabaf01]{display:flex;justify-content:flex-end}.directory-dialog>footer button[data-v-6aabaf01]{background:var(--md-primary);color:var(--md-on-primary,#fff);border-color:transparent;font-weight:600}.permission-request[data-v-6aabaf01]{margin:12px;padding:16px;border-radius:16px;background:var(--md-tertiary-container)}.permission-request small[data-v-6aabaf01]{display:block;margin:8px 0}.permission-request pre[data-v-6aabaf01]{max-height:160px;overflow:auto}.permission-request>div[data-v-6aabaf01]{display:flex;justify-content:flex-end;gap:8px}#app .workspace[data-v-6aabaf01]{gap:12px;padding-left:6px;background:var(--md-surface-container)}#app .workspace .sessions[data-v-6aabaf01]{width:296px;gap:14px;padding:18px 14px;border:0;border-radius:28px;background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}#app .workspace .sessions h1[data-v-6aabaf01]{font-size:24px;font-weight:800;letter-spacing:-.02em}#app .workspace .sessions header>button[data-v-6aabaf01]{height:40px;padding:0 16px;border:0;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary,#fff);font:700 13px/1 inherit;display:inline-flex;align-items:center;gap:7px;box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 30%,transparent)}#app .workspace .sessions header>button[data-v-6aabaf01]:hover:not(:disabled){background:var(--md-primary);filter:brightness(1.06);box-shadow:0 8px 20px color-mix(in srgb,var(--md-primary) 34%,transparent)}#app .workspace .sessions>input[data-v-6aabaf01]{min-height:48px;padding:0 16px;border:1px solid transparent;border-radius:16px;background:var(--md-surface-container-high);color:var(--md-on-surface);font-size:14px}#app .workspace .sessions>input[data-v-6aabaf01]:focus{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}#app .workspace .filter-bar[data-v-6aabaf01]{padding:5px;border-radius:999px;background:var(--md-surface-container-high)}#app .workspace .filter-bar button[data-v-6aabaf01]{border-radius:999px;padding:8px 4px;font-weight:600}#app .workspace .filter-bar button.chosen[data-v-6aabaf01]{background:var(--md-primary);color:var(--md-on-primary,#fff);font-weight:700;box-shadow:var(--shadow-1)}#app .workspace .filter-bar button.chosen[data-v-6aabaf01]:hover:not(:disabled){background:var(--md-primary);color:var(--md-on-primary,#fff)}#app .workspace .session-list[data-v-6aabaf01]{margin:0 -2px;padding:0 2px}#app .workspace .session-card[data-v-6aabaf01]{gap:5px;margin-bottom:8px;padding:13px 15px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);border-radius:18px;background:var(--md-surface-container-lowest);transition:transform .26s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .2s,border-color .2s,box-shadow .22s,border-radius .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .workspace .session-card[data-v-6aabaf01]:hover:not(:disabled){transform:translateY(-2px);box-shadow:var(--shadow-1);border-color:color-mix(in srgb,var(--md-primary) 35%,var(--md-outline-variant))}#app .workspace .session-card.selected[data-v-6aabaf01]{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent;border-radius:20px 20px 20px 7px;box-shadow:var(--shadow-1)}#app .workspace .session-card .origin[data-v-6aabaf01]{font-weight:700;letter-spacing:.05em;text-transform:uppercase;font-size:12px;color:var(--md-primary)}#app .workspace .session-card.selected .origin[data-v-6aabaf01]{color:var(--md-on-secondary-container);opacity:.75}#app .workspace .ledger-button[data-v-6aabaf01]{min-height:44px;border-radius:16px;font-weight:650;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}#app .workspace .ledger-button.chosen[data-v-6aabaf01]{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent}#app .workspace .ledger-entry[data-v-6aabaf01]{border-radius:20px;border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);background:var(--md-surface-container-lowest);box-shadow:var(--shadow-1)}#app .workspace .conversation[data-v-6aabaf01]{background:var(--md-surface);border-radius:30px;overflow:hidden;box-shadow:var(--shadow-1)}#app .workspace .conversation-header[data-v-6aabaf01]{padding:20px 26px 16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent)}#app .workspace .conversation-header h2[data-v-6aabaf01]{font-size:20px;font-weight:750;letter-spacing:-.01em}#app .workspace .session-actions button[data-v-6aabaf01]{height:36px;padding:0 15px;border-radius:999px;background:var(--md-surface-container-high);border-color:transparent;font-weight:650}#app .workspace .session-actions button[data-v-6aabaf01]:hover:not(:disabled){background:var(--md-surface-container-highest);box-shadow:none}#app .workspace .running[data-v-6aabaf01]{color:#b88412;background:color-mix(in srgb,#B88412 14%,transparent);padding:4px 11px;border-radius:999px;font-weight:700}#app .workspace .transcript[data-v-6aabaf01]{padding:28px 30px}#app .workspace .welcome[data-v-6aabaf01]{margin:64px auto 0}#app .workspace .welcome[data-v-6aabaf01]:before{width:76px;height:76px;border-radius:26px 26px 26px 10px;background-color:var(--md-primary-container);background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 24 24' fill='none' stroke='%235944c6' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z'/%3E%3Cpath d='M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z'/%3E%3C/svg%3E\");background-size:34px 34px}#app .workspace .welcome h2[data-v-6aabaf01]{font-size:26px;font-weight:800;letter-spacing:-.02em}#app .workspace .turn[data-v-6aabaf01]{gap:12px;margin-bottom:32px}#app .workspace .bubble[data-v-6aabaf01]{padding:16px 20px;font-size:15px;line-height:1.7}#app .workspace .bubble.user[data-v-6aabaf01]{background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:24px 24px 8px;box-shadow:var(--shadow-1);max-width:82%}#app .workspace .bubble.agent[data-v-6aabaf01]{background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);border-radius:8px 24px 24px;box-shadow:var(--shadow-1);max-width:100%}#app .workspace .bubble .message-head b[data-v-6aabaf01]{font-weight:750}#app .workspace .steps[data-v-6aabaf01]{gap:9px;margin:14px 0}#app .workspace .steps details[data-v-6aabaf01]{border-radius:16px;background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);padding:11px 15px}#app .workspace .subagent-card[data-v-6aabaf01]{border-radius:18px;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);box-shadow:var(--shadow-1)}#app .workspace button.subagent-card-head[data-v-6aabaf01]{padding:12px 15px}#app .workspace button.subagent-card-head[data-v-6aabaf01]:hover:not(:disabled){background:var(--md-secondary-container)}#app .workspace .sub-view-header[data-v-6aabaf01]{padding-bottom:16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent)}#app .workspace .sub-view-header button[data-v-6aabaf01]{border-radius:999px;background:var(--md-surface-container-high);border-color:transparent;font-weight:650}#app .workspace .agent-speech[data-v-6aabaf01] pre{border-radius:16px;background:var(--md-surface-container);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}#app .workspace .composer[data-v-6aabaf01]{margin:0 22px 20px;border-radius:28px;overflow:hidden;background:var(--md-surface-container-lowest);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);box-shadow:var(--shadow-2)}#app .workspace .composer[data-v-6aabaf01]:focus-within{border-color:color-mix(in srgb,var(--md-primary) 55%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent),var(--shadow-2)}#app .workspace .execution-options[data-v-6aabaf01]{padding:12px 16px;gap:10px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}#app .workspace .execution-options label[data-v-6aabaf01]{font-weight:700;letter-spacing:.05em}#app .workspace .execution-options .workspace-select[data-v-6aabaf01]{min-height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high);font-size:13px}#app .workspace .execution-options[data-v-6aabaf01] .app-select-trigger,#app .workspace .composer footer[data-v-6aabaf01] .app-select-trigger{min-height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high);font-size:13px}#app .workspace .composer-input textarea[data-v-6aabaf01]{border-radius:0;background:transparent}#app .workspace .send-fly[data-v-6aabaf01]{width:46px!important;height:46px!important;border-radius:50%!important;box-shadow:0 8px 22px color-mix(in srgb,var(--md-primary) 34%,transparent)}#app .workspace .composer footer[data-v-6aabaf01]{border-top:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);padding:12px 16px}#app .workspace .composer footer>button[data-v-6aabaf01]{border-radius:999px;min-height:36px;padding-inline:15px;background:var(--md-surface-container-high);border-color:transparent}#app .workspace .host-panel[data-v-6aabaf01]{margin:0 22px 10px;border-radius:24px;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}#app .workspace .usage-ring b[data-v-6aabaf01]{background:var(--md-surface-container-lowest)}#app .workspace .directory-dialog[data-v-6aabaf01]{border-radius:32px;border-color:transparent;box-shadow:var(--shadow-4);background:var(--md-surface-container-low)}#app .workspace .directory-list button[data-v-6aabaf01]{background:var(--md-surface-container-lowest);border-color:transparent;border-radius:16px;min-height:46px}#app .workspace .directory-list button[data-v-6aabaf01]:hover:not(:disabled){background:var(--md-secondary-container)}#app .workspace .directory-roots button[data-v-6aabaf01]{background:var(--md-surface-container-high);border-color:transparent}@media (max-width:800px){.sessions[data-v-6aabaf01]{width:214px;padding:12px 10px}.transcript[data-v-6aabaf01]{padding:14px}.composer[data-v-6aabaf01]{margin:0 12px 12px}.composer footer .muted[data-v-6aabaf01]{display:none}.conversation-header[data-v-6aabaf01]{padding:14px 16px}.welcome[data-v-6aabaf01]{margin:30px auto 0}.turn[data-v-6aabaf01]{margin-bottom:22px}}@media (max-width:560px){.workspace[data-v-6aabaf01]{flex-direction:column}.sessions[data-v-6aabaf01]{width:100%;max-height:230px;border-right:0;border-bottom:1px solid var(--md-outline-variant)}.sessions>input[data-v-6aabaf01],.filter-bar[data-v-6aabaf01],.connection[data-v-6aabaf01]{display:none}.session-list[data-v-6aabaf01]{display:flex;gap:6px;overflow-x:auto}.session-card[data-v-6aabaf01]{min-width:160px;width:160px;margin-bottom:0}.ledger-button[data-v-6aabaf01]{padding:5px;font-size:12px}}\n";document.head.appendChild(s)}})();
+;(()=>{if(typeof document!=='undefined'&&!document.getElementById('agent-plugin-style')){const s=document.createElement('style');s.id='agent-plugin-style';s.textContent=".markdown-content[data-v-ef377647]{line-height:1.75;overflow-wrap:anywhere;font-size:14px}.markdown-content[data-v-ef377647] pre{padding:16px;background:var(--md-surface-container);border-radius:8px;overflow:auto;white-space:pre;line-height:1.5}.markdown-content[data-v-ef377647] code{font-family:monospace;background:var(--md-surface-container);padding:2px 4px;border-radius:4px}.markdown-content[data-v-ef377647] pre code{padding:0;background:none}.markdown-content[data-v-ef377647] table{display:block;overflow:auto;border-collapse:collapse;margin:12px 0}.markdown-content[data-v-ef377647] th,.markdown-content[data-v-ef377647] td{border:1px solid var(--md-outline-variant);padding:8px 12px}.markdown-content[data-v-ef377647] blockquote{border-left:3px solid var(--md-outline);margin:12px 0;padding-left:14px;color:var(--md-on-surface-variant)}.markdown-content[data-v-ef377647] ul,.markdown-content[data-v-ef377647] ol{padding-left:24px}.markdown-content[data-v-ef377647] a{color:var(--md-primary);text-decoration:underline}.markdown-content[data-v-ef377647] img{max-width:100%}.markdown-content[data-v-ef377647] h1,.markdown-content[data-v-ef377647] h2,.markdown-content[data-v-ef377647] h3{margin:16px 0 8px}.tool-card[data-v-f13fbd25]{--code-font:ui-monospace,\"Cascadia Code\",\"JetBrains Mono\",Consolas,\"SFMono-Regular\",Menlo,monospace;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container);margin:8px 0;overflow:hidden}button.tool-card-head[data-v-f13fbd25]{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;border-radius:0;background:transparent;padding:10px 12px;cursor:pointer;font-size:13px}.tool-kind[data-v-f13fbd25]{flex-shrink:0;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--md-on-surface)}.tool-summary[data-v-f13fbd25]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--code-font);font-size:13px;color:var(--md-on-surface)}.tool-stat[data-v-f13fbd25]{flex-shrink:0;font-size:12px;font-weight:600;color:var(--md-primary);border:1px solid var(--md-outline-variant);border-radius:999px;padding:1px 8px}.tool-state[data-v-f13fbd25]{flex-shrink:0;font-size:13px;color:var(--md-on-surface-variant)}.tool-chevron[data-v-f13fbd25]{flex-shrink:0;color:var(--md-on-surface-variant);font-size:12px;transition:transform .15s}.tool-card.expanded .tool-chevron[data-v-f13fbd25]{transform:rotate(90deg)}.tool-dot[data-v-f13fbd25]{font-size:9px}.tool-dot.running[data-v-f13fbd25],.tool-dot.pending[data-v-f13fbd25]{color:#b88412}.tool-dot.failed[data-v-f13fbd25]{color:var(--md-error,#c44)}.tool-dot.done[data-v-f13fbd25]{color:#3a6}.tool-dot.cancelled[data-v-f13fbd25]{color:var(--md-on-surface-variant)}.tool-card-body[data-v-f13fbd25]{padding:4px 12px 12px;border-top:1px solid var(--md-outline-variant);display:flex;flex-direction:column;gap:6px}.tool-section-label[data-v-f13fbd25]{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--md-on-surface-variant);margin-top:4px}.tool-card-body pre[data-v-f13fbd25]{margin:0;max-height:340px;overflow:auto;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:8px;padding:8px 10px;font-family:var(--code-font);font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.tool-shot[data-v-f13fbd25]{margin:0;display:flex;flex-direction:column;gap:6px}.tool-shot img[data-v-f13fbd25]{width:100%;border-radius:12px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-lowest);display:block}.tool-shot figcaption[data-v-f13fbd25]{font-family:var(--code-font);font-size:11.5px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.tool-section-text[data-v-f13fbd25]{margin:0;font-size:13px;overflow-wrap:anywhere}.tool-error[data-v-f13fbd25]{background:var(--md-error-container);padding:8px 12px;border-radius:8px;margin:0;font-size:12px;overflow-wrap:anywhere}.muted[data-v-f13fbd25]{font-size:12px;color:var(--md-on-surface-variant);margin:0}.tool-dialog-backdrop[data-v-f13fbd25]{position:fixed;inset:0;background:#0008;z-index:1050;display:grid;place-items:center;padding:20px}.tool-dialog[data-v-f13fbd25]{background:var(--md-surface);color:var(--md-on-surface);border:1px solid var(--md-outline-variant);border-radius:16px;padding:18px 20px;width:min(680px,100%);max-height:82vh;overflow:auto;display:flex;flex-direction:column;gap:12px}.tool-dialog header[data-v-f13fbd25]{display:flex;align-items:center;justify-content:space-between;gap:12px}.tool-dialog h4[data-v-f13fbd25]{margin:0;font-size:15px;overflow-wrap:anywhere;flex:1;min-width:0}#app .tool-dialog-close[data-v-f13fbd25],.tool-dialog-close[data-v-f13fbd25]{flex-shrink:0;width:40px;height:40px;min-height:0;padding:0;border:none;border-radius:50%;background:transparent;color:var(--md-on-surface-variant);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background var(--transition-fast),color var(--transition-fast)}#app .tool-dialog-close[data-v-f13fbd25]:hover,.tool-dialog-close[data-v-f13fbd25]:hover{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent);box-shadow:none;filter:none;color:var(--md-on-surface)}#app .tool-dialog-close[data-v-f13fbd25]:active,.tool-dialog-close[data-v-f13fbd25]:active{background:color-mix(in srgb,var(--md-on-surface) 12%,transparent);border-radius:50%}.tool-search-results[data-v-f13fbd25]{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:14px}.tool-search-results a[data-v-f13fbd25]{color:var(--md-primary);font-size:14px;font-weight:500;text-decoration:none}.tool-search-results a[data-v-f13fbd25]:hover{text-decoration:underline}.tool-search-results p[data-v-f13fbd25]{margin:4px 0 0;font-size:13px;line-height:1.65;color:var(--md-on-surface)}.tool-search-results small[data-v-f13fbd25]{display:block;margin-top:2px;font-size:12px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.tool-card[data-v-f13fbd25]{border-radius:16px;border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent);background:var(--md-surface-container);transition:box-shadow .22s,background-color .2s}.tool-card[data-v-f13fbd25]:hover{box-shadow:var(--shadow-1)}button.tool-card-head[data-v-f13fbd25]{padding:12px 15px;gap:10px;min-height:46px;border-radius:0}button.tool-card-head[data-v-f13fbd25]:hover{background:var(--md-secondary-container)}.tool-kind[data-v-f13fbd25]{font-weight:700;letter-spacing:.06em}.tool-stat[data-v-f13fbd25]{border-color:color-mix(in srgb,var(--md-primary) 30%,transparent);background:color-mix(in srgb,var(--md-primary) 10%,transparent)}.tool-chevron[data-v-f13fbd25]{width:22px;height:22px;display:inline-grid;place-items:center;border-radius:50%;background:var(--md-surface-container-high);transition:transform .3s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .16s}.tool-card-body[data-v-f13fbd25]{padding:8px 15px 15px;gap:8px;border-top-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}.tool-card-body pre[data-v-f13fbd25]{border-radius:14px;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}.tool-section-label[data-v-f13fbd25]{font-weight:700}.diff-wrap[data-v-f13fbd25]{display:flex;flex-direction:column;gap:10px}.diff-file[data-v-f13fbd25]{border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);border-radius:14px;overflow:hidden;background:var(--md-surface-container-lowest)}.diff-file-head[data-v-f13fbd25]{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--md-surface-container);font-size:11.5px;font-weight:650}.diff-file-path[data-v-f13fbd25]{font-family:var(--code-font);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.diff-file-stat[data-v-f13fbd25]{flex:none;font-family:var(--code-font);color:var(--md-on-surface-variant)}.diff-body[data-v-f13fbd25]{max-height:360px;overflow:auto;font-family:var(--code-font);font-size:12px;line-height:1.55;padding:4px 0}.diff-line[data-v-f13fbd25]{display:grid;grid-template-columns:40px 40px 18px 1fr;white-space:pre;min-width:max-content}.diff-no[data-v-f13fbd25]{text-align:right;padding:0 6px;color:var(--md-on-surface-variant);opacity:.6;user-select:none;font-variant-numeric:tabular-nums}.diff-sign[data-v-f13fbd25]{text-align:center;user-select:none;opacity:.9}.diff-text[data-v-f13fbd25]{padding-right:12px}.diff-line.add[data-v-f13fbd25]{background:color-mix(in srgb,#2ea043 20%,transparent);color:#116329}.diff-line.del[data-v-f13fbd25]{background:color-mix(in srgb,#cf222e 18%,transparent);color:#82071e}.diff-line.add .diff-sign[data-v-f13fbd25]{color:#116329;font-weight:700}.diff-line.del .diff-sign[data-v-f13fbd25]{color:#cf222e;font-weight:700}.diff-line.hunk[data-v-f13fbd25]{background:var(--md-surface-container);color:var(--md-on-surface-variant)}.diff-line.meta[data-v-f13fbd25]{color:var(--md-on-surface-variant);opacity:.75}@media (prefers-color-scheme: dark){.diff-line.add[data-v-f13fbd25],.diff-line.add .diff-sign[data-v-f13fbd25]{color:#7ee787}.diff-line.del[data-v-f13fbd25],.diff-line.del .diff-sign[data-v-f13fbd25]{color:#ffa198}}#app .app-select{min-width:0;position:relative;font-size:inherit}#app .app-select.input{padding:0;border:0;min-height:0;background:transparent}#app .app-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:0 14px 0 16px;border:1px solid transparent;border-radius:16px;background-color:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;font-size:15px;text-align:left;cursor:pointer;box-shadow:none;transition:background-color .18s,border-color .18s,box-shadow .2s,border-radius .34s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .app-select-trigger:hover:not(:disabled){background-color:var(--md-surface-container-highest)}#app .app-select-trigger[aria-expanded=true],#app .app-select-trigger:focus-visible{border-color:var(--md-primary);background-color:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent);outline:none}#app .app-select-trigger:disabled{opacity:.5;cursor:not-allowed}.app-select-value{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.app-select-chevron{flex-shrink:0;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;color:var(--md-on-surface-variant);transition:transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .16s}#app .app-select-trigger:hover .app-select-chevron{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent)}.app-select-chevron svg{transition:transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}.app-select-chevron svg.is-open{transform:rotate(180deg)}.app-select-menu{position:fixed;z-index:10000;overflow-y:auto;overscroll-behavior:contain;padding:8px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:24px;background:var(--md-surface-container-low);color:var(--md-on-surface);box-shadow:0 18px 50px -12px color-mix(in srgb,var(--md-scrim,#000) 45%,transparent),0 4px 14px -4px #16244026;font-family:var(--font-family);font-size:14px;transform-origin:top}.app-select-menu.opens-up{transform-origin:bottom}.app-select-option{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:46px;padding:0 14px;border-radius:14px;cursor:pointer;overflow-wrap:anywhere;line-height:1.4;color:var(--md-on-surface);transition:background-color .14s,border-radius .3s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),color .14s}.app-select-option>span{min-width:0}.app-select-check{flex-shrink:0;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;color:var(--md-primary)}.app-select-option.highlighted{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent)}.app-select-option.selected{background:var(--md-primary-container);color:var(--md-on-primary-container);font-weight:650}.app-select-option.selected .app-select-check{background:var(--md-primary);color:var(--md-on-primary)}.app-select-option.selected.highlighted{background:color-mix(in srgb,var(--md-primary-container) 88%,var(--md-primary) 12%)}.app-select-option.disabled{opacity:.4;cursor:not-allowed}.app-select-search{position:sticky;top:-8px;z-index:1;display:flex;align-items:center;gap:10px;margin:-8px -8px 8px;padding:13px 16px;background:var(--md-surface-container-low);border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:24px 24px 0 0;color:var(--md-on-surface-variant)}.app-select-search input{flex:1;min-width:0;border:0;background:transparent;padding:0;font:inherit;color:var(--md-on-surface);outline:none}.app-select-empty{padding:18px;color:var(--md-on-surface-variant);text-align:center;font-size:13px}.select-menu-enter-active{transition:opacity .18s var(--ease-emphasized,cubic-bezier(.2,0,0,1)),transform .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}.select-menu-leave-active{transition:opacity .13s,transform .13s}.select-menu-enter-from,.select-menu-leave-to{opacity:0;transform:translateY(-6px) scale(.97)}.thinking-control{min-width:110px;flex:1;display:flex;flex-direction:column;gap:5px}.thinking-caption{font-size:12px}#app .thinking-trigger{display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:9px 12px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);font-size:12px;border-radius:9px}.thinking-popover{position:fixed;z-index:10000;padding:16px;border-radius:14px;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);box-shadow:0 10px 32px #16244026;color:var(--md-on-surface);font-family:var(--font-family)}.thinking-popover header{display:flex;justify-content:space-between;gap:12px;font-size:13px}.thinking-popover output{color:var(--md-primary);font-weight:600}.thinking-track{position:relative;padding:22px 4px 16px;display:flex;align-items:center}.thinking-track input{appearance:none;-webkit-appearance:none;width:100%;height:5px;padding:0;margin:0;border:0;border-radius:5px;background:linear-gradient(to right,var(--md-primary) var(--intensity),var(--md-outline-variant) var(--intensity));cursor:pointer;z-index:1}.thinking-track input::-webkit-slider-thumb{appearance:none;width:17px;height:17px;border-radius:50%;background:var(--md-primary);border:2px solid var(--md-surface);box-shadow:0 1px 4px #24345d40}.thinking-track input::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--md-primary);border:2px solid var(--md-surface)}.thinking-track input:focus-visible{outline:2px solid var(--md-primary);outline-offset:7px}.thinking-stops{display:flex;justify-content:space-between;gap:3px}.thinking-stops button{font:inherit;font-size:12px;border:0;background:transparent;color:var(--md-on-surface-variant);padding:6px 5px;border-radius:6px;cursor:pointer}.thinking-stops button.selected{background:var(--md-primary-container);color:var(--md-primary);font-weight:700}.thinking-popover p{font-size:12px;line-height:1.5;color:var(--md-on-surface-variant);margin:12px 0 0}.thinking-control.full .thinking-trigger,.thinking-popover.full{--md-primary:#a050db;border-color:#a050db88;box-shadow:0 0 16px #a050db25}.thinking-popover.full .energy-wave{position:absolute;inset:14px 0 8px;pointer-events:none;border-radius:20px;box-shadow:0 0 12px #a050db66}.thinking-popover.pulse,.thinking-control.pulse .thinking-trigger{animation:thinking-boost .85s ease-out}.thinking-popover.pulse .energy-wave{animation:thinking-wave .85s ease-out}@keyframes thinking-boost{0%{box-shadow:0 0 #a050db66}45%{box-shadow:0 0 0 5px #a050db20,0 0 30px #a050db40}to{box-shadow:0 0 16px #a050db25}}@keyframes thinking-wave{0%{transform:scale(.95);opacity:1}to{transform:scale(1.15,2);opacity:0}}.thinking-menu-enter-active,.thinking-menu-leave-active{transition:opacity .13s,transform .13s}.thinking-menu-enter-from,.thinking-menu-leave-to{opacity:0;transform:translateY(4px)}@media (prefers-reduced-motion:reduce){.thinking-popover.pulse,.thinking-control.pulse .thinking-trigger,.thinking-popover.pulse .energy-wave{animation:none}}.thinking-popover{padding:20px;border-radius:28px;background:var(--md-surface-container-low);border-color:transparent;box-shadow:0 8px 28px #24345d24}.thinking-popover header{align-items:center;font-size:14px;min-height:30px}.thinking-popover output{padding:6px 12px;border-radius:999px;background:var(--md-primary-container);font-size:12px}.thinking-track{height:68px;padding:0;margin:12px 0 0;isolation:isolate}.thinking-capsule{position:absolute;left:5px;right:5px;height:28px;border-radius:999px;background:var(--md-primary-container);overflow:hidden;pointer-events:none}.thinking-fill{height:100%;width:var(--intensity);background:var(--md-primary);border-radius:999px}.thinking-tick{position:absolute;top:50%;width:4px;height:4px;border-radius:50%;background:var(--md-primary);transform:translate(-50%,-50%)}.thinking-tick:first-of-type{left:8px!important}.thinking-tick:last-of-type{left:calc(100% - 8px)!important}.thinking-tick.passed{background:var(--md-on-primary)}.thinking-track input{position:relative;height:48px;background:transparent;border-radius:999px;touch-action:pan-y}.thinking-track input::-webkit-slider-runnable-track{height:28px;background:transparent;border-radius:999px}.thinking-track input::-webkit-slider-thumb{width:10px;height:44px;margin-top:-8px;border-radius:999px;border:0;background:var(--md-primary);box-shadow:0 0 0 5px var(--md-surface-container-low);transition:width .14s,height .14s,margin-top .14s}.thinking-track input:active::-webkit-slider-thumb{width:6px;height:48px;margin-top:-10px}.thinking-track input::-moz-range-track{height:28px;background:transparent;border-radius:999px}.thinking-track input::-moz-range-thumb{width:10px;height:44px;border:0;border-radius:999px;background:var(--md-primary);box-shadow:0 0 0 5px var(--md-surface-container-low)}.thinking-track input:active::-moz-range-thumb{width:6px;height:48px}.thinking-track input:focus-visible{outline-offset:3px}.thinking-stops{align-items:center;gap:2px;margin-top:2px}.thinking-stops button{border-radius:999px;min-height:30px;padding:6px 9px;transition:background-color .16s,color .16s}.thinking-popover.full{background:color-mix(in srgb,var(--md-surface-container-low) 93%,#a050db);border-color:#a050db55}.thinking-popover.full .thinking-fill{background:linear-gradient(90deg,#7255c8,#ad50d6)}.thinking-popover.full .energy-wave{inset:18px 5px;border-radius:999px;z-index:-1}.thinking-popover p{margin-top:12px}.thinking-popover.full{box-shadow:0 8px 28px #24345d24,0 0 34px #a050db33;border-color:#a050db77}.thinking-popover.full .energy-wave{position:absolute;inset:-3px 4px;border-radius:999px;z-index:-1;background:radial-gradient(70% 120% at 100% 50%,#c56bffbb,transparent 68%),radial-gradient(50% 120% at 0% 50%,#6b8cffaa,transparent 70%);filter:blur(7px);animation:thunder-glow 1.7s ease-in-out infinite}@keyframes thunder-glow{0%,to{opacity:.5;transform:scale(1)}45%{opacity:1;transform:scale(1.03)}}.thinking-popover.full .thinking-capsule{box-shadow:0 0 0 1px #a050db66,0 0 26px #a050db55}.thinking-popover.full .thinking-fill{background:linear-gradient(90deg,#6b8cff,#a050db,#e0a3ff,#a050db);background-size:280% 100%;animation:thunder-flow 2.6s linear infinite}@keyframes thunder-flow{to{background-position:280% 0}}.thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}.thinking-control.full .thinking-trigger span:first-child{animation:thunder-flicker 2s steps(1,end) infinite}@keyframes thunder-flicker{0%,90%,to{opacity:1}92%{opacity:.35}94%{opacity:1}96%{opacity:.5}}#app .thinking-control .thinking-trigger{min-height:52px;padding:0 14px 0 16px;border:1px solid transparent;border-radius:16px;background:var(--md-surface-container-high);color:var(--md-on-surface);font-size:13px;font-weight:500;align-items:center;transition:background-color .18s,border-color .18s,box-shadow .2s,border-radius .34s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .thinking-control .thinking-trigger:hover{background:var(--md-surface-container-highest)}#app .thinking-control .thinking-trigger[aria-expanded=true]{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}#app .thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}.thinking-caption{font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--md-on-surface-variant)}.confirm-scrim{position:fixed;inset:0;z-index:13000;background:#21173566;backdrop-filter:blur(6px);display:grid;place-items:center;padding:20px}.confirm-dialog{width:min(440px,100%);background:var(--md-surface-container-high, var(--md-surface, #fff));color:var(--md-on-surface);border:1px solid var(--md-outline-variant, transparent);border-radius:28px;padding:28px;box-shadow:0 24px 70px #18132d33;outline:none}.confirm-dialog h2{margin:0 0 10px;font-size:22px;font-weight:650}.confirm-dialog p{margin:0;font-size:14px;line-height:1.65;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.confirm-dialog footer{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}.confirm-dialog footer button{border:0;border-radius:999px;padding:12px 22px;font:inherit;font-weight:600;cursor:pointer;background:var(--md-secondary-container, #e7e0ec);color:var(--md-on-secondary-container, #1d1b20)}.confirm-dialog footer .confirm-primary{background:var(--md-primary, #6750a4);color:var(--md-on-primary, #fff)}.confirm-dialog footer .confirm-primary.danger{background:var(--md-error, #b3261e);color:var(--md-on-error, #fff)}.confirm-dialog footer button:focus-visible{outline:3px solid var(--md-primary);outline-offset:3px}.workspace[data-v-18491eb8]{--code-font:ui-monospace,\"Cascadia Code\",\"JetBrains Mono\",Consolas,\"SFMono-Regular\",Menlo,monospace;display:flex;height:100%;min-height:0;background:var(--md-surface);color:var(--md-on-surface)}button[data-v-18491eb8],input[data-v-18491eb8],textarea[data-v-18491eb8],select[data-v-18491eb8]{font:inherit;color:inherit;border:1px solid var(--md-outline-variant);border-radius:9px;background:var(--md-surface-container-lowest);padding:9px 12px}button[data-v-18491eb8]{cursor:pointer;transition:background .15s,box-shadow .15s,filter .15s}button[data-v-18491eb8]:disabled{opacity:.45;cursor:default}button[data-v-18491eb8]:hover:not(:disabled){background:var(--md-secondary-container);box-shadow:none}input[data-v-18491eb8]:focus,textarea[data-v-18491eb8]:focus,select[data-v-18491eb8]:focus{outline:none;border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent)}input[type=checkbox][data-v-18491eb8]{width:auto;accent-color:var(--md-primary)}.sessions[data-v-18491eb8]{width:284px;flex-shrink:0;border-right:1px solid var(--md-outline-variant);padding:20px 16px;display:flex;flex-direction:column;gap:14px;background:var(--md-surface-container-low)}.sessions header[data-v-18491eb8]{display:flex;align-items:center;justify-content:space-between;gap:12px}.sessions h1[data-v-18491eb8]{font-size:22px;font-weight:650;letter-spacing:-.01em;margin:0}.sessions header>button[data-v-18491eb8]{height:34px;padding:0 13px;border:0;border-radius:9px;background:var(--md-primary);color:var(--md-on-primary,#fff);font:600 13px/1 inherit}.sessions header>button[data-v-18491eb8]:hover:not(:disabled){background:var(--md-primary);filter:brightness(1.08);box-shadow:var(--shadow-1)}.sessions>input[data-v-18491eb8]{border-radius:10px;background:var(--md-surface-container-lowest)}.connection[data-v-18491eb8]{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--md-on-surface-variant)}.connection button[data-v-18491eb8]{margin-left:auto;padding:3px 9px;border-radius:8px;font-size:13px}.connection i[data-v-18491eb8]{width:8px;height:8px;border-radius:50%;background:var(--md-outline);box-shadow:0 0 0 3px var(--md-surface-container-high)}.connection i.online[data-v-18491eb8]{background:var(--md-success);box-shadow:0 0 0 3px var(--md-success-container)}.filter-bar[data-v-18491eb8]{display:flex;gap:3px;padding:4px;border-radius:999px;background:var(--md-surface-container-high)}.filter-bar button[data-v-18491eb8]{flex:1;font-size:12px;font-weight:500;padding:7px 4px;border:0;border-radius:999px;background:transparent;color:var(--md-on-surface-variant);box-shadow:none}.filter-bar button[data-v-18491eb8]:hover:not(:disabled){background:transparent;color:var(--md-on-surface)}.filter-bar button.chosen[data-v-18491eb8]{background:var(--md-surface-container-lowest);color:var(--md-primary);font-weight:650;box-shadow:var(--shadow-1)}.sessions label input[data-v-18491eb8]{margin-right:6px}.session-list[data-v-18491eb8]{overflow-y:auto;flex:1;min-height:0;margin:0 -4px;padding:0 4px}.session-card[data-v-18491eb8]{display:flex;flex-direction:column;width:100%;text-align:left;gap:6px;margin-bottom:8px;padding:12px 13px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest)}.session-card[data-v-18491eb8]:hover:not(:disabled){background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-primary) 40%,var(--md-outline-variant));box-shadow:var(--shadow-1)}.session-card.selected[data-v-18491eb8]{background:var(--md-secondary-container);border-color:transparent;border-radius:12px 12px 12px 4px}.session-card.selected[data-v-18491eb8]:hover{background:var(--md-secondary-container)}.session-card strong[data-v-18491eb8]{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;font-weight:600;font-size:14px}.origin[data-v-18491eb8],small[data-v-18491eb8],.sessions .muted[data-v-18491eb8]{font-size:12px;color:var(--md-on-surface-variant)}.origin[data-v-18491eb8]{font-weight:600;letter-spacing:.02em}.ledger-button[data-v-18491eb8]{text-align:left;border-radius:10px;background:var(--md-surface-container-lowest);font-size:13px;font-weight:550}.ledger-button.chosen[data-v-18491eb8]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.ledger[data-v-18491eb8]{flex:1;overflow-y:auto;padding:var(--space-xl)}.ledger>header[data-v-18491eb8]{margin-bottom:8px}.ledger>header h2[data-v-18491eb8]{font-size:18px;font-weight:650}.ledger-entry[data-v-18491eb8]{border:1px solid var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-lowest);padding:14px 16px;margin:10px 0;box-shadow:var(--shadow-1)}.ledger-entry>div[data-v-18491eb8]{display:flex;align-items:center;gap:10px;font-size:12px}.ledger-entry>div>span[data-v-18491eb8]:first-child{font-family:var(--code-font);background:var(--md-surface-container);padding:3px 8px;border-radius:6px;font-weight:600}.ledger-entry>div small[data-v-18491eb8]{margin-left:auto}.ledger-entry>p[data-v-18491eb8]{margin:8px 0;font-size:14px;line-height:1.6;overflow-wrap:anywhere}.ledger-entry details[data-v-18491eb8]{margin-top:8px;border-radius:10px;background:var(--md-surface-container);padding:8px 12px;font-size:12px}.ledger-entry summary[data-v-18491eb8]{cursor:pointer;color:var(--md-on-surface-variant)}.ledger-entry pre[data-v-18491eb8]{margin:8px 0 0;max-height:300px}.conversation[data-v-18491eb8]{display:flex;flex:1;min-width:0;flex-direction:column;min-height:0}.conversation-header[data-v-18491eb8]{display:flex;align-items:flex-start;gap:14px}.conversation-header>div[data-v-18491eb8]:first-child{flex:1;min-width:0}.conversation-header h2[data-v-18491eb8]{font-size:17px;font-weight:650;margin:0}.conversation-header p[data-v-18491eb8]{margin:6px 0 0;color:var(--md-on-surface-variant);font-size:13px}.session-actions[data-v-18491eb8]{display:flex;gap:8px;flex-shrink:0}.session-actions button[data-v-18491eb8]{height:32px;padding:0 13px;border-radius:9px;font-size:13px;font-weight:550;background:var(--md-surface-container-lowest)}.running[data-v-18491eb8]{color:#b88412;font-weight:650;font-size:12px}.failed[data-v-18491eb8]{color:var(--md-error)}.done[data-v-18491eb8]{color:var(--md-success);font-weight:600;font-size:12px}.cancelled[data-v-18491eb8],.muted[data-v-18491eb8]{color:var(--md-on-surface-variant)}.muted[data-v-18491eb8]{font-size:12px;line-height:1.6}.error[data-v-18491eb8]{background:var(--md-error-container);color:#410e0b;padding:11px 16px;border-radius:12px;margin:8px 0;font-size:13px;overflow-wrap:anywhere}.transcript[data-v-18491eb8]{flex:1;overflow-y:auto;padding:26px 28px;min-height:0}.context-summary[data-v-18491eb8]{max-width:920px;margin:0 auto 22px;padding:14px 18px;border:1px dashed var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-low)}.context-summary-head[data-v-18491eb8]{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.context-summary-head strong[data-v-18491eb8]{font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--md-primary)}.context-summary-head time[data-v-18491eb8]{font-size:12px;opacity:.75}.welcome[data-v-18491eb8]{max-width:660px;margin:70px auto 0;text-align:center;color:var(--md-on-surface-variant);line-height:1.8}.welcome[data-v-18491eb8]:before{content:\"\";display:block;width:64px;height:64px;margin:0 auto 20px;border-radius:20px;background:var(--md-primary-container);background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 24 24' fill='none' stroke='%234d5d91' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z'/%3E%3Cpath d='M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:center}.welcome h2[data-v-18491eb8]{color:var(--md-on-surface);font-size:24px;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}.welcome p[data-v-18491eb8]{margin:6px 0;font-size:14px}.turn[data-v-18491eb8]{max-width:920px;margin:0 auto 30px;display:flex;flex-direction:column;gap:10px}.bubble[data-v-18491eb8]{padding:15px 19px;font-size:14px}.bubble.user[data-v-18491eb8]{align-self:flex-end;max-width:82%;background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:16px 16px 4px}.bubble.agent[data-v-18491eb8]{align-self:flex-start;max-width:100%;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:16px 16px 16px 4px;box-shadow:var(--shadow-1)}.bubble .message-head[data-v-18491eb8]{display:flex;align-items:center;gap:14px;margin-bottom:10px;font-size:12px}.bubble .message-head b[data-v-18491eb8]{font-weight:700}.bubble .message-head time[data-v-18491eb8]{margin-left:auto;opacity:.75;font-size:12px}.bubble .message-head span[data-v-18491eb8]{margin-left:auto}.bubble.user .message-head[data-v-18491eb8]{margin-bottom:7px;opacity:.85}.message-text[data-v-18491eb8]{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:14px}.bubble.agent[data-v-18491eb8] p{margin:.4em 0}.bubble.agent[data-v-18491eb8] pre{max-height:420px}.agent-speech[data-v-18491eb8]{margin:6px 0;padding:2px 0;line-height:1.7}.model-annotation[data-v-18491eb8]{display:block;font-size:12px;opacity:.7;margin-bottom:4px;font-family:var(--code-font)}.think-chain[data-v-18491eb8]{margin:2px 0 8px;border:0;border-radius:10px;background:var(--md-surface-container-low);overflow:hidden}.think-chain>summary[data-v-18491eb8]{display:inline-flex;align-items:center;gap:5px;cursor:pointer;list-style:none;padding:3px 10px;font-size:11px;font-weight:600;letter-spacing:.03em;color:var(--md-on-surface-variant);user-select:none;border-radius:999px;background:var(--md-surface-container)}.think-chain>summary[data-v-18491eb8]::-webkit-details-marker{display:none}.think-chain>summary[data-v-18491eb8]:before{content:\"▸\";display:inline-block;transition:transform .15s}.think-chain[open]>summary[data-v-18491eb8]:before{transform:rotate(90deg)}.think-chain>pre[data-v-18491eb8]{margin:0;padding:6px 10px 8px;max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--code-font);font-size:11.5px;line-height:1.55;color:var(--md-on-surface-variant)}.agent-speech[data-v-18491eb8] p{margin:.45em 0}.agent-speech[data-v-18491eb8] pre{background:var(--md-surface-container);border:1px solid var(--md-outline-variant);border-radius:10px;padding:12px 14px;max-height:460px;overflow:auto;font-size:13px}.agent-speech[data-v-18491eb8] code{font-family:var(--code-font)}.agent-speech[data-v-18491eb8] ul{padding-left:20px;margin:.4em 0}.steps[data-v-18491eb8]{display:flex;flex-direction:column;gap:8px;margin:12px 0 14px}.steps details[data-v-18491eb8]{border-radius:12px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);padding:10px 14px}.steps summary[data-v-18491eb8]{cursor:pointer;font-size:13px;font-weight:550}.steps summary small[data-v-18491eb8]{margin-left:10px;font-weight:600}.steps summary[data-v-18491eb8]::marker{color:var(--md-on-surface-variant)}.steps details pre[data-v-18491eb8]{margin:10px 0 0;font-family:var(--code-font);font-size:13px;white-space:pre-wrap;max-height:400px}pre[data-v-18491eb8]{max-height:450px;overflow:auto;font-family:var(--code-font)}.subagent-card[data-v-18491eb8]{border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest);overflow:hidden;box-shadow:var(--shadow-1)}button.subagent-card-head[data-v-18491eb8]{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:0;border-radius:0;background:transparent;padding:11px 14px;font-size:13px}button.subagent-card-head[data-v-18491eb8]:hover:not(:disabled){background:var(--md-secondary-container);box-shadow:none}button.subagent-card-head>span[data-v-18491eb8]:first-child{color:var(--md-primary)}button.subagent-card-head>strong[data-v-18491eb8]{font-weight:700}.subagent-prompt[data-v-18491eb8]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--md-on-surface)}.subagent-card small[data-v-18491eb8]{font-weight:600}.subagent-chevron[data-v-18491eb8]{color:var(--md-on-surface-variant);font-size:12px}.subagent-card-error[data-v-18491eb8]{margin:0 10px 10px;padding:8px 12px;font-size:12px}.subagent-card.nested[data-v-18491eb8]{margin:6px 0;box-shadow:none}.sub-view[data-v-18491eb8]{max-width:900px;margin:0 auto}.sub-view-header[data-v-18491eb8]{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--md-outline-variant)}.sub-view-header button[data-v-18491eb8]{flex-shrink:0;border-radius:9px;font-size:13px;font-weight:550;background:var(--md-surface-container-lowest)}.sub-view-header h3[data-v-18491eb8]{margin:0 0 4px;font-size:16px;font-weight:650}.sub-view-header p[data-v-18491eb8]{margin:0;max-width:520px}.sub-view-header>span[data-v-18491eb8]{margin-left:auto;font-weight:650;font-size:12px}.sub-view-body[data-v-18491eb8]{min-height:120px}.todo-panel[data-v-18491eb8]{padding:12px 16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);background:var(--md-surface-container-low);max-height:170px;overflow:auto;animation:panel-in-18491eb8 .22s cubic-bezier(.2,0,0,1) both}.todo-panel>header[data-v-18491eb8]{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant);text-transform:uppercase}.todo-panel>header span[data-v-18491eb8]{font-weight:700;color:var(--md-primary)}.todo-panel ul[data-v-18491eb8]{list-style:none;margin:9px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}.todo-panel li[data-v-18491eb8]{display:flex;align-items:flex-start;gap:9px;font-size:13px;line-height:1.5;color:var(--md-on-surface);animation:panel-in-18491eb8 .22s ease both;transition:opacity .2s,color .2s}.todo-panel li.completed[data-v-18491eb8]{opacity:.6}.todo-panel li.completed .todo-text[data-v-18491eb8]{text-decoration:line-through}.todo-panel li.in_progress .todo-text[data-v-18491eb8]{font-weight:650}.todo-mark[data-v-18491eb8]{flex:none;width:16px;text-align:center;color:var(--md-primary);transition:color .2s,transform .2s}.todo-panel li.completed .todo-mark[data-v-18491eb8]{color:var(--md-success,#3ba55c)}.composer[data-v-18491eb8]{flex-shrink:0;margin:0 20px 18px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-lowest);overflow:visible;box-shadow:var(--shadow-1)}.composer-input[data-v-18491eb8]{position:relative}.composer-input textarea[data-v-18491eb8]{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 112px 15px 16px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}.composer-input textarea[data-v-18491eb8]:focus{box-shadow:none;border:0}.slash-menu[data-v-18491eb8]{position:fixed;z-index:10000;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:14px;box-shadow:var(--shadow-3);padding:6px;max-height:min(320px,42vh);overflow:auto}.slash-item[data-v-18491eb8]{display:flex;align-items:baseline;gap:10px;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:var(--md-on-surface);cursor:pointer}.slash-item.active[data-v-18491eb8]{background:var(--md-secondary-container)}.slash-name[data-v-18491eb8]{flex:none;font-family:var(--code-font);font-weight:650;font-size:13px;color:var(--md-primary)}.slash-desc[data-v-18491eb8]{font-size:12px;color:var(--md-on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.attach-chips[data-v-18491eb8]{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px 0}.composer-actions[data-v-18491eb8]{position:absolute;right:10px;bottom:10px;z-index:2;display:flex;align-items:center;gap:8px}.attach-fly[data-v-18491eb8]{width:42px;height:42px;flex:none;aspect-ratio:1/1;display:grid;place-items:center;border:0;border-radius:50%;padding:0;margin:0;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.attach-fly svg[data-v-18491eb8]{width:18px;height:18px}.attach-fly[data-v-18491eb8]:hover:not(:disabled){filter:brightness(1.05)}.attach-fly[data-v-18491eb8]:disabled{opacity:.5;cursor:default}.attach-chip[data-v-18491eb8]{display:inline-flex;align-items:center;gap:6px;max-width:220px;font-size:12px;padding:4px 6px 4px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attach-chip button[data-v-18491eb8]{border:0;background:transparent;cursor:pointer;font-size:14px;line-height:1;padding:0 4px;color:var(--md-on-surface-variant)}.attach-chip button[data-v-18491eb8]:hover{color:var(--md-error)}.attach-error[data-v-18491eb8]{font-size:12px;color:var(--md-error)}.send-fly[data-v-18491eb8]{width:42px;height:42px;flex:none;aspect-ratio:1/1;display:grid;place-items:center;border:0;border-radius:50%;padding:0;margin:0;background:var(--md-primary);color:var(--md-on-primary,#fff);box-shadow:0 2px 10px color-mix(in srgb,var(--md-primary) 38%,transparent)}.send-fly svg[data-v-18491eb8]{width:20px;height:20px}.send-fly[data-v-18491eb8]:hover:not(:disabled){filter:brightness(1.08)}.send-fly[data-v-18491eb8]:disabled{background:var(--md-surface-container);color:var(--md-on-surface-variant);opacity:.7;box-shadow:none}.send-fly.stop[data-v-18491eb8]{background:var(--md-error);color:#fff;box-shadow:0 2px 10px color-mix(in srgb,var(--md-error) 40%,transparent)}.compact-notice[data-v-18491eb8]{font-size:12px;padding:10px 16px;color:var(--md-primary);background:var(--md-primary-container);border-radius:10px;margin:10px 16px 0}.options-collapse[data-v-18491eb8]{max-height:0;overflow:hidden;transition:max-height .3s cubic-bezier(.2,0,0,1)}.options-collapse.open[data-v-18491eb8]{max-height:360px}.options-toggle[data-v-18491eb8]{display:inline-flex;align-items:center;gap:6px;transition:background-color .18s,color .18s}.options-toggle.open[data-v-18491eb8]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.execution-options[data-v-18491eb8]{display:flex;gap:10px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid var(--md-outline-variant);align-items:end}.execution-options label[data-v-18491eb8]{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--md-on-surface-variant);flex:1;min-width:130px}.execution-options[data-v-18491eb8] .app-select-trigger,.execution-options .workspace-select[data-v-18491eb8]{width:100%;font-size:13px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--md-on-surface);min-height:36px;border-radius:10px;background:var(--md-surface-container);border-color:transparent;text-align:left}.workspace-select[data-v-18491eb8]{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block}.composer footer[data-v-18491eb8]{display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap;border-top:1px solid var(--md-outline-variant)}.composer footer>select[data-v-18491eb8],.composer footer>.app-select[data-v-18491eb8]{font-size:13px;border-radius:10px;min-height:34px}.composer footer .muted[data-v-18491eb8]{flex:1;min-width:120px}.composer footer>button[data-v-18491eb8]{font-size:13px;font-weight:600;border-radius:9px;min-height:34px}.host-panel>strong[data-v-18491eb8]{font-size:14px}.host-panel dl[data-v-18491eb8]{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;font-size:12px}.host-panel dt[data-v-18491eb8]{color:var(--md-on-surface-variant);font-weight:600}.host-panel dd[data-v-18491eb8]{margin:4px 0 0;overflow-wrap:anywhere}.usage-rings[data-v-18491eb8]{display:flex;align-items:center;gap:24px;padding:14px 0;flex-wrap:wrap}.usage-metric[data-v-18491eb8]{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px}.usage-ring[data-v-18491eb8]{width:88px;height:88px;border-radius:50%;display:grid;place-items:center}.usage-ring b[data-v-18491eb8]{width:68px;height:68px;border-radius:50%;background:var(--md-surface-container-lowest);display:grid;place-items:center;font-size:15px;font-weight:650;box-shadow:var(--shadow-1)}.new-folder[data-v-18491eb8]{display:flex;gap:8px}.new-folder input[data-v-18491eb8]{flex:1;min-width:0}.directory-backdrop[data-v-18491eb8]{position:fixed;inset:0;background:#14111acc;z-index:1000;display:grid;place-items:center;padding:20px}.directory-dialog[data-v-18491eb8]{background:var(--md-surface);border:1px solid var(--md-outline-variant);border-radius:20px;padding:22px;width:min(680px,100%);display:flex;flex-direction:column;gap:14px;max-height:85vh;box-shadow:var(--shadow-4)}.directory-dialog>header[data-v-18491eb8]{gap:12px}.directory-dialog>header h2[data-v-18491eb8]{font-size:16px;font-weight:650}.directory-list[data-v-18491eb8]{overflow:auto;min-height:180px;display:flex;flex-direction:column;gap:6px}.directory-list button[data-v-18491eb8]{text-align:left;border-radius:10px;background:var(--md-surface-container-low);font-size:13px}.directory-roots[data-v-18491eb8]{display:flex;gap:8px;flex-wrap:wrap}.directory-roots button[data-v-18491eb8]{border-radius:999px;font-size:12px;padding:6px 12px}.directory-dialog code[data-v-18491eb8]{overflow-wrap:anywhere;font-size:12px;background:var(--md-surface-container);padding:8px 10px;border-radius:8px}.directory-dialog>footer[data-v-18491eb8]{display:flex;justify-content:flex-end}.directory-dialog>footer button[data-v-18491eb8]{background:var(--md-primary);color:var(--md-on-primary,#fff);border-color:transparent;font-weight:600}.permission-request[data-v-18491eb8]{margin:12px;padding:16px;border-radius:16px;background:var(--md-tertiary-container)}.permission-request small[data-v-18491eb8]{display:block;margin:8px 0}.permission-request pre[data-v-18491eb8]{max-height:160px;overflow:auto}.permission-request>div[data-v-18491eb8]{display:flex;justify-content:flex-end;gap:8px}#app .workspace[data-v-18491eb8]{gap:12px;padding-left:6px;background:var(--md-surface-container)}#app .workspace .sessions[data-v-18491eb8]{width:296px;gap:14px;padding:18px 14px;border:0;border-radius:28px;background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}#app .workspace .sessions h1[data-v-18491eb8]{font-size:24px;font-weight:800;letter-spacing:-.02em}#app .workspace .sessions header>button[data-v-18491eb8]{height:40px;padding:0 16px;border:0;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary,#fff);font:700 13px/1 inherit;display:inline-flex;align-items:center;gap:7px;box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 30%,transparent)}#app .workspace .sessions header>button[data-v-18491eb8]:hover:not(:disabled){background:var(--md-primary);filter:brightness(1.06);box-shadow:0 8px 20px color-mix(in srgb,var(--md-primary) 34%,transparent)}#app .workspace .sessions>input[data-v-18491eb8]{min-height:48px;padding:0 16px;border:1px solid transparent;border-radius:16px;background:var(--md-surface-container-high);color:var(--md-on-surface);font-size:14px}#app .workspace .sessions>input[data-v-18491eb8]:focus{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}#app .workspace .filter-bar[data-v-18491eb8]{padding:5px;border-radius:999px;background:var(--md-surface-container-high)}#app .workspace .filter-bar button[data-v-18491eb8]{border-radius:999px;padding:8px 4px;font-weight:600}#app .workspace .filter-bar button.chosen[data-v-18491eb8]{background:var(--md-primary);color:var(--md-on-primary,#fff);font-weight:700;box-shadow:var(--shadow-1)}#app .workspace .filter-bar button.chosen[data-v-18491eb8]:hover:not(:disabled){background:var(--md-primary);color:var(--md-on-primary,#fff)}#app .workspace .session-list[data-v-18491eb8]{margin:0 -2px;padding:0 2px}#app .workspace .session-card[data-v-18491eb8]{gap:5px;margin-bottom:8px;padding:13px 15px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);border-radius:18px;background:var(--md-surface-container-lowest);transition:transform .26s var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color .2s,border-color .2s,box-shadow .22s,border-radius .32s var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}#app .workspace .session-card[data-v-18491eb8]:hover:not(:disabled){transform:translateY(-2px);box-shadow:var(--shadow-1);border-color:color-mix(in srgb,var(--md-primary) 35%,var(--md-outline-variant))}#app .workspace .session-card.selected[data-v-18491eb8]{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent;border-radius:20px 20px 20px 7px;box-shadow:var(--shadow-1)}#app .workspace .session-card .origin[data-v-18491eb8]{font-weight:700;letter-spacing:.05em;text-transform:uppercase;font-size:12px;color:var(--md-primary)}#app .workspace .session-card.selected .origin[data-v-18491eb8]{color:var(--md-on-secondary-container);opacity:.75}#app .workspace .ledger-button[data-v-18491eb8]{min-height:44px;border-radius:16px;font-weight:650;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}#app .workspace .ledger-button.chosen[data-v-18491eb8]{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent}#app .workspace .ledger-entry[data-v-18491eb8]{border-radius:20px;border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);background:var(--md-surface-container-lowest);box-shadow:var(--shadow-1)}#app .workspace .conversation[data-v-18491eb8]{background:var(--md-surface);border-radius:30px;overflow:hidden;box-shadow:var(--shadow-1)}#app .workspace .conversation-header[data-v-18491eb8]{padding:20px 26px 16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent)}#app .workspace .conversation-header h2[data-v-18491eb8]{font-size:20px;font-weight:750;letter-spacing:-.01em}#app .workspace .session-actions button[data-v-18491eb8]{height:36px;padding:0 15px;border-radius:999px;background:var(--md-surface-container-high);border-color:transparent;font-weight:650}#app .workspace .session-actions button[data-v-18491eb8]:hover:not(:disabled){background:var(--md-surface-container-highest);box-shadow:none}#app .workspace .running[data-v-18491eb8]{color:#b88412;background:color-mix(in srgb,#B88412 14%,transparent);padding:4px 11px;border-radius:999px;font-weight:700}#app .workspace .transcript[data-v-18491eb8]{padding:28px 30px}#app .workspace .welcome[data-v-18491eb8]{margin:64px auto 0}#app .workspace .welcome[data-v-18491eb8]:before{width:76px;height:76px;border-radius:26px 26px 26px 10px;background-color:var(--md-primary-container);background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 24 24' fill='none' stroke='%235944c6' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z'/%3E%3Cpath d='M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z'/%3E%3C/svg%3E\");background-size:34px 34px}#app .workspace .welcome h2[data-v-18491eb8]{font-size:26px;font-weight:800;letter-spacing:-.02em}#app .workspace .turn[data-v-18491eb8]{gap:12px;margin-bottom:32px}#app .workspace .bubble[data-v-18491eb8]{padding:16px 20px;font-size:15px;line-height:1.7}#app .workspace .bubble.user[data-v-18491eb8]{background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:24px 24px 8px;box-shadow:var(--shadow-1);max-width:82%}#app .workspace .bubble.agent[data-v-18491eb8]{background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);border-radius:8px 24px 24px;box-shadow:var(--shadow-1);max-width:100%}#app .workspace .bubble .message-head b[data-v-18491eb8]{font-weight:750}#app .workspace .steps[data-v-18491eb8]{gap:9px;margin:14px 0}#app .workspace .steps details[data-v-18491eb8]{border-radius:16px;background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);padding:11px 15px}#app .workspace .subagent-card[data-v-18491eb8]{border-radius:18px;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);box-shadow:var(--shadow-1)}#app .workspace button.subagent-card-head[data-v-18491eb8]{padding:12px 15px}#app .workspace button.subagent-card-head[data-v-18491eb8]:hover:not(:disabled){background:var(--md-secondary-container)}#app .workspace .sub-view-header[data-v-18491eb8]{padding-bottom:16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent)}#app .workspace .sub-view-header button[data-v-18491eb8]{border-radius:999px;background:var(--md-surface-container-high);border-color:transparent;font-weight:650}#app .workspace .agent-speech[data-v-18491eb8] pre{border-radius:16px;background:var(--md-surface-container);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}#app .workspace .composer[data-v-18491eb8]{margin:0 22px 20px;border-radius:28px;overflow:hidden;background:var(--md-surface-container-lowest);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);box-shadow:var(--shadow-2)}#app .workspace .composer[data-v-18491eb8]:focus-within{border-color:color-mix(in srgb,var(--md-primary) 55%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent),var(--shadow-2)}#app .workspace .execution-options[data-v-18491eb8]{padding:12px 16px;gap:10px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}#app .workspace .execution-options label[data-v-18491eb8]{font-weight:700;letter-spacing:.05em}#app .workspace .execution-options .workspace-select[data-v-18491eb8]{min-height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high);font-size:13px}#app .workspace .execution-options[data-v-18491eb8] .app-select-trigger,#app .workspace .composer footer[data-v-18491eb8] .app-select-trigger{min-height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high);font-size:13px}#app .workspace .composer-input textarea[data-v-18491eb8]{border-radius:0;background:transparent}#app .workspace .send-fly[data-v-18491eb8]{width:46px!important;height:46px!important;border-radius:50%!important;box-shadow:0 8px 22px color-mix(in srgb,var(--md-primary) 34%,transparent)}#app .workspace .composer footer[data-v-18491eb8]{border-top:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);padding:12px 16px}#app .workspace .composer footer>button[data-v-18491eb8]{border-radius:999px;min-height:36px;padding-inline:15px;background:var(--md-surface-container-high);border-color:transparent}#app .workspace .host-panel[data-v-18491eb8]{margin:0 22px 10px;border-radius:24px;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}#app .workspace .usage-ring b[data-v-18491eb8]{background:var(--md-surface-container-lowest)}#app .workspace .directory-dialog[data-v-18491eb8]{border-radius:32px;border-color:transparent;box-shadow:var(--shadow-4);background:var(--md-surface-container-low)}#app .workspace .directory-list button[data-v-18491eb8]{background:var(--md-surface-container-lowest);border-color:transparent;border-radius:16px;min-height:46px}#app .workspace .directory-list button[data-v-18491eb8]:hover:not(:disabled){background:var(--md-secondary-container)}#app .workspace .directory-roots button[data-v-18491eb8]{background:var(--md-surface-container-high);border-color:transparent}@keyframes turn-in-18491eb8{0%{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}@keyframes panel-in-18491eb8{0%{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}@keyframes caret-blink-18491eb8{0%,to{opacity:1}50%{opacity:.2}}@keyframes soft-pulse-18491eb8{0%,to{opacity:1}50%{opacity:.5}}.turn[data-v-18491eb8]{animation:turn-in-18491eb8 .28s cubic-bezier(.2,0,0,1) both}#app .workspace .agent-speech .running[data-v-18491eb8]{animation:caret-blink-18491eb8 1s steps(1,end) infinite;color:var(--md-primary)}#app .workspace .conversation-header .running[data-v-18491eb8]{animation:soft-pulse-18491eb8 1.6s ease-in-out infinite}@media (prefers-reduced-motion: reduce){[data-v-18491eb8],[data-v-18491eb8] *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}@media (max-width:800px){.sessions[data-v-18491eb8]{width:214px;padding:12px 10px}.transcript[data-v-18491eb8]{padding:14px}.composer[data-v-18491eb8]{margin:0 12px 12px}.composer footer .muted[data-v-18491eb8]{display:none}.conversation-header[data-v-18491eb8]{padding:14px 16px}.welcome[data-v-18491eb8]{margin:30px auto 0}.turn[data-v-18491eb8]{margin-bottom:22px}}@media (max-width:560px){.workspace[data-v-18491eb8]{flex-direction:column}.sessions[data-v-18491eb8]{width:100%;max-height:230px;border-right:0;border-bottom:1px solid var(--md-outline-variant)}.sessions>input[data-v-18491eb8],.filter-bar[data-v-18491eb8],.connection[data-v-18491eb8]{display:none}.session-list[data-v-18491eb8]{display:flex;gap:6px;overflow-x:auto}.session-card[data-v-18491eb8]{min-width:160px;width:160px;margin-bottom:0}.ledger-button[data-v-18491eb8]{padding:5px;font-size:12px}}\n";document.head.appendChild(s)}})();

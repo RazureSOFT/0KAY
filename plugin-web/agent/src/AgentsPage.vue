@@ -50,6 +50,7 @@ function onPaste(event: ClipboardEvent) {
 const search = ref('')
 const source = ref('all')
 const mode = ref('general')
+const optionsOpen = ref(false)
 const executorId = ref('')
 const workdir = ref('')
 const intensity = ref(50)
@@ -481,23 +482,25 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
         </article>
         </template>
       </div>
-      <section v-if="todos.length" class="todo-panel" :aria-label="tr('待办清单','Todo list')">
-        <header><strong>{{ tr('待办','Todo') }}</strong><span>{{ todoDone }}/{{ todos.length }}</span></header>
-        <ul>
-          <li v-for="(item, index) in todos" :key="index" :class="item.status">
-            <span class="todo-mark" aria-hidden="true">{{ item.status === 'completed' ? '✓' : item.status === 'in_progress' ? '◐' : '○' }}</span>
-            <span class="todo-text">{{ item.content }}</span>
-          </li>
-        </ul>
-      </section>
       <form v-if="!activeSub" class="composer" @submit.prevent="send">
+        <section v-if="todos.length" class="todo-panel" :aria-label="tr('待办清单','Todo list')">
+          <header><strong>{{ tr('待办','Todo') }}</strong><span>{{ todoDone }}/{{ todos.length }}</span></header>
+          <ul>
+            <li v-for="(item, index) in todos" :key="index" :class="item.status">
+              <span class="todo-mark" aria-hidden="true">{{ item.status === 'completed' ? '✓' : item.status === 'in_progress' ? '◐' : '○' }}</span>
+              <span class="todo-text">{{ item.content }}</span>
+            </li>
+          </ul>
+        </section>
         <div v-if="compactNotice" class="compact-notice">{{ compactNotice }}</div>
+        <div class="options-collapse" :class="{ open: optionsOpen }">
         <div class="execution-options">
           <label>{{ tr('权限','Permissions') }}<AppSelect v-model="permissionMode" :aria-label="tr('权限','Permissions')" :disabled="!!active || busy" :options="[{value:'normal',label:tr('Normal · 全部审批','Normal · Ask every time')},{value:'full_access',label:tr('Full access · 自动执行','Full access · Auto execute')}]" /></label>
           <label>{{ tr('执行器','Executor') }}<AppSelect v-model="executorId" :aria-label="tr('执行器','Executor')" :disabled="!!active || busy" :options="[{value:'',label:tr('自动选择在线执行器','Automatic executor')},...store.agents.map(agent=>({value:agent.plugin_id,label:`${agent.host?.hostname || agent.name} · ${agent.plugin_id}`,disabled:!store.isHealthy(agent)}))]" /></label>
           <label>{{ tr('工作区','Workspace') }}<button type="button" class="workspace-select" :disabled="!!active || busy || !executor" :title="workdir || executor?.host?.workdir" @click="browse(workdir || executor?.host?.workdir || '')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ workdir || tr('选择目录…','Select folder…') }}</button></label>
           <ThinkingSlider v-model="intensity" :disabled="!!active || busy" />
           <label>{{ tr('模型','Model') }}<AppSelect v-model="modelId" searchable :aria-label="tr('模型','Model')" :disabled="!!active || busy" @open="fetchModels" :options="[{value:'MOCR',label:tr('MOCR · 自动选型','MOCR · Automatic')},...models.map(model=>({value:model.id,label:modelLabel(model)}))]" /></label>
+        </div>
         </div>
         <input ref="fileInput" type="file" multiple hidden @change="onFilesPicked" />
         <div ref="composerInput" class="composer-input">
@@ -529,7 +532,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
             </button>
           </div>
         </div>
-        <footer><AppSelect v-model="mode" :disabled="busy" :aria-label="tr('Agent 模式','Agent mode')" :options="[{value:'general',label:tr('通用 Agent','General Agent')},{value:'code',label:tr('编程 Agent','Coding Agent')},{value:'research',label:tr('调研 Agent','Research Agent')},{value:'science',label:tr('科学 Agent','Science Agent')}]" /><button type="button" @click="hostOpen=!hostOpen">{{ tr('宿主机','Host') }}</button><button type="button" :disabled="!session || !!active || busy || session.state === 'archived'" @click="compact">/compact</button><span class="muted">{{ active?.kind === 'compact' ? tr('上下文压缩中…','Compacting…') : store.onlineCount ? tr('在当前会话中继续','Continue this session') : tr('执行器离线','Executor offline') }}</span></footer>
+        <footer><button type="button" class="options-toggle" :class="{open: optionsOpen}" :aria-expanded="optionsOpen" @click="optionsOpen=!optionsOpen">{{ optionsOpen ? tr('收起','Less') : tr('设置','Settings') }}</button><AppSelect v-model="mode" :disabled="busy" :aria-label="tr('Agent 模式','Agent mode')" :options="[{value:'general',label:tr('通用 Agent','General Agent')},{value:'code',label:tr('编程 Agent','Coding Agent')},{value:'research',label:tr('调研 Agent','Research Agent')},{value:'science',label:tr('科学 Agent','Science Agent')}]" /><button type="button" @click="hostOpen=!hostOpen">{{ tr('宿主机','Host') }}</button><button type="button" :disabled="!session || !!active || busy || session.state === 'archived'" @click="compact">/compact</button><span class="muted">{{ active?.kind === 'compact' ? tr('上下文压缩中…','Compacting…') : store.onlineCount ? tr('在当前会话中继续','Continue this session') : tr('执行器离线','Executor offline') }}</span></footer>
       </form>
     </section>
     <div v-if="browserOpen" class="directory-backdrop" @click.self="closeBrowser"><section class="directory-dialog" role="dialog" aria-modal="true" aria-label="选择工作区目录"><header><h2>选择 {{ executor?.host?.hostname || '执行器' }} 的工作区</h2><button @click="closeBrowser">关闭</button></header><div class="directory-roots"><button v-for="root in directory.roots" :key="root" :disabled="browserBusy" @click="browse(root)">{{ root }}</button><button :disabled="browserBusy" @click="browse(executor?.host?.workdir || '')">默认目录</button></div><code>{{ directory.path }}</code><form class="new-folder" @submit.prevent="createFolder"><input v-model="folderName" placeholder="新文件夹名称" aria-label="新文件夹名称" :disabled="browserBusy"/><button :disabled="browserBusy || !folderName.trim() || !directory.path">新建文件夹</button></form><p v-if="browserError" class="error">{{ browserError }}</p><p v-if="browserBusy">正在读取目录…</p><div v-else class="directory-list"><button v-if="directory.parent!==directory.path" @click="browse(directory.parent)">上一级</button><button v-for="folder in directory.directories" :key="folder.path" @click="browse(folder.path)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ folder.name }}</button><p v-if="!directory.directories.length" class="muted">没有子目录</p></div><footer><button :disabled="browserBusy || !!browserError || !directory.path" @click="selectDirectory">选择当前目录</button></footer></section></div>
@@ -675,14 +678,15 @@ button.subagent-card-head>strong{font-weight:700}
 .sub-view-body{min-height:120px}
 
 /* ---- todo panel ---- */
-.todo-panel{flex-shrink:0;margin:0 20px 10px;padding:10px 14px;border:1px solid var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-low);max-height:180px;overflow:auto}
-.todo-panel>header{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;letter-spacing:.03em;color:var(--md-on-surface-variant);text-transform:uppercase}
-.todo-panel>header span{font-weight:600;color:var(--md-primary)}
-.todo-panel ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
-.todo-panel li{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:var(--md-on-surface)}
-.todo-panel li.completed .todo-text{text-decoration:line-through;color:var(--md-on-surface-variant)}
-.todo-panel li.in_progress .todo-text{font-weight:600}
-.todo-mark{flex:none;width:16px;text-align:center;color:var(--md-primary)}
+.todo-panel{padding:12px 16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);background:var(--md-surface-container-low);max-height:170px;overflow:auto;animation:panel-in .22s cubic-bezier(.2,0,0,1) both}
+.todo-panel>header{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant);text-transform:uppercase}
+.todo-panel>header span{font-weight:700;color:var(--md-primary)}
+.todo-panel ul{list-style:none;margin:9px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.todo-panel li{display:flex;align-items:flex-start;gap:9px;font-size:13px;line-height:1.5;color:var(--md-on-surface);animation:panel-in .22s ease both;transition:opacity .2s,color .2s}
+.todo-panel li.completed{opacity:.6}
+.todo-panel li.completed .todo-text{text-decoration:line-through}
+.todo-panel li.in_progress .todo-text{font-weight:650}
+.todo-mark{flex:none;width:16px;text-align:center;color:var(--md-primary);transition:color .2s,transform .2s}
 .todo-panel li.completed .todo-mark{color:var(--md-success,#3ba55c)}
 
 /* ---- composer ---- */
@@ -711,6 +715,10 @@ button.subagent-card-head>strong{font-weight:700}
 .send-fly:disabled{background:var(--md-surface-container);color:var(--md-on-surface-variant);opacity:.7;box-shadow:none}
 .send-fly.stop{background:var(--md-error);color:#fff;box-shadow:0 2px 10px color-mix(in srgb,var(--md-error) 40%,transparent)}
 .compact-notice{font-size:12px;padding:10px 16px;color:var(--md-primary);background:var(--md-primary-container);border-radius:10px;margin:10px 16px 0}
+.options-collapse{max-height:0;overflow:hidden;transition:max-height .3s cubic-bezier(.2,0,0,1)}
+.options-collapse.open{max-height:360px}
+.options-toggle{display:inline-flex;align-items:center;gap:6px;transition:background-color .18s,color .18s}
+.options-toggle.open{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 .execution-options{display:flex;gap:10px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid var(--md-outline-variant);align-items:end}
 .execution-options label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--md-on-surface-variant);flex:1;min-width:130px}
 .execution-options :deep(.app-select-trigger),.execution-options .workspace-select{width:100%;font-size:13px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--md-on-surface);min-height:36px;border-radius:10px;background:var(--md-surface-container);border-color:transparent;text-align:left}
@@ -868,6 +876,16 @@ button.subagent-card-head>strong{font-weight:700}
 #app .workspace .directory-roots button{background:var(--md-surface-container-high);border-color:transparent}
 
 /* ---- responsive ---- */
+/* ---- motion (restrained) ---- */
+@keyframes turn-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes panel-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes caret-blink{0%,100%{opacity:1}50%{opacity:.2}}
+@keyframes soft-pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.turn{animation:turn-in .28s cubic-bezier(.2,0,0,1) both}
+#app .workspace .agent-speech .running{animation:caret-blink 1s steps(1,end) infinite;color:var(--md-primary)}
+#app .workspace .conversation-header .running{animation:soft-pulse 1.6s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){*,:deep(*){animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}}
+
 @media(max-width:800px){.sessions{width:214px;padding:12px 10px}.transcript{padding:14px}.composer{margin:0 12px 12px}.composer footer .muted{display:none}.conversation-header{padding:14px 16px}.welcome{margin:30px auto 0}.turn{margin-bottom:22px}}
 @media(max-width:560px){.workspace{flex-direction:column}.sessions{width:100%;max-height:230px;border-right:0;border-bottom:1px solid var(--md-outline-variant)}.sessions>input,.filter-bar,.connection{display:none}.session-list{display:flex;gap:6px;overflow-x:auto}.session-card{min-width:160px;width:160px;margin-bottom:0}.ledger-button{padding:5px;font-size:12px}}
 </style>
