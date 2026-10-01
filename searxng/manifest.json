@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "@razuresoft/0kay-searxng",
-  "version": "0.1.1",
+  "version": "0.1.2",
     "description": "Optional local search service; run with Python 3.10+.",
   "install": [],
   "start": ["python", "server.py"],
