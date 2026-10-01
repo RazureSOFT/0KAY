@@ -270,7 +270,7 @@ const contextUsage = ref<{ tokens?: number; window?: number; breakdown?: Record<
 async function fetchContextUsage() {
   if (!selectedId.value) { contextUsage.value = null; return }
   try {
-    const response = await fetch(`/api/agent/context?session_id=${encodeURIComponent(selectedId.value)}`)
+    const response = await fetch(`/api/agent/context?session_id=${encodeURIComponent(selectedId.value)}&model_id=${encodeURIComponent(modelId.value)}`)
     if (response.ok) contextUsage.value = await response.json()
   } catch { /* offline */ }
 }
@@ -410,6 +410,7 @@ async function scrollBottom() { await nextTick(); if(followLatest.value) transcr
 watch(() => store.tasks.filter(item=>item.session_id===selectedId.value).map(item => `${item.task_id}:${item.state}:${item.result?.length}`).join('|'), scrollBottom)
 watch(() => store.tasks.filter(item => item.session_id === selectedId.value).map(item => `${item.task_id}:${item.state}:${item.result?.length}`).join('|'), scheduleContextUsage)
 watch(selectedId, () => { void fetchContextUsage() })
+watch(modelId, () => { void fetchContextUsage() })
 onMounted(() => { void fetchContextUsage() })
 watch(selectedId, () => { followLatest.value=true;void scrollBottom();closeBrowser();clearSubs();error.value='' })
 watch(selectedId, loadOptions)
@@ -727,8 +728,8 @@ button.subagent-card-head>strong{font-weight:700}
 .ctx-ring{width:22px;height:22px;transform:rotate(-90deg)}
 .ctx-track{fill:none;stroke:var(--md-outline-variant);stroke-width:2.5}
 .ctx-fill{fill:none;stroke:var(--md-primary);stroke-width:2.5;stroke-linecap:round;transition:stroke-dashoffset .35s cubic-bezier(.2,0,0,1)}
-.ctx-tip{position:absolute;bottom:calc(100% + 12px);left:50%;transform:translate(-50%,4px);z-index:60;min-width:216px;padding:12px 14px;border-radius:14px;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);box-shadow:var(--shadow-3);color:var(--md-on-surface);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .16s,transform .16s,visibility .16s;font-size:12px;text-align:left}
-.ctx-usage:hover .ctx-tip,.ctx-usage:focus-visible .ctx-tip,.ctx-usage:focus-within .ctx-tip{opacity:1;visibility:visible;transform:translate(-50%,0)}
+.ctx-tip{position:absolute;bottom:calc(100% + 12px);right:0;left:auto;transform:translateY(4px);z-index:60;width:max-content;min-width:216px;max-width:280px;padding:12px 14px;border-radius:14px;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);box-shadow:var(--shadow-3);color:var(--md-on-surface);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .16s,transform .16s,visibility .16s;font-size:12px;text-align:left}
+.ctx-usage:hover .ctx-tip,.ctx-usage:focus-visible .ctx-tip,.ctx-usage:focus-within .ctx-tip{opacity:1;visibility:visible;transform:translateY(0)}
 .ctx-tip strong{display:block;font-size:12px;font-weight:750;margin-bottom:8px}
 .ctx-used{display:flex;align-items:baseline;gap:6px}
 .ctx-used b{font-size:22px;font-weight:800;color:var(--md-primary);line-height:1}
@@ -890,6 +891,7 @@ button.subagent-card-head>strong{font-weight:700}
 
 /* composer */
 #app .workspace .composer{
+  position:relative;z-index:5;
   margin:0 22px 20px;border-radius:28px;overflow:visible;
   background:var(--md-surface-container-lowest);
   border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);

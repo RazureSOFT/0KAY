@@ -274,7 +274,7 @@ func (g *Gateway) handleAgentContext(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tokens := g.sessionContextTokens(sessionID)
-	window := agentContextWindow()
+	window := modelContextWindow(strings.TrimSpace(r.URL.Query().Get("model_id")))
 	breakdown := map[string]any{"window": window, "system": 0, "tools": 0, "skills": 0, "mcp": 0, "conversation": tokens, "used": tokens}
 	// Ask the live agent to split the stable parts (system/tools/skills/mcp).
 	if agents := g.registry.GetAgents(true); len(agents) > 0 {
@@ -308,9 +308,47 @@ func (g *Gateway) handleAgentContext(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func agentContextWindow() int {
+// modelWindow is one entry of the built-in context-window table.
+type modelWindow struct {
+	match  string
+	window int
+}
+
+// modelWindowTable maps a model-id substring to its context window (tokens).
+// Order matters: the first matching entry wins, so put more specific patterns
+// first. Override the whole thing with AGENT_CONTEXT_WINDOW.
+var modelWindowTable = []modelWindow{
+	{"gpt-4.1", 1000000},
+	{"gpt-5", 400000},
+	{"o3", 200000},
+	{"o4", 200000},
+	{"claude", 200000},
+	{"gemini", 1000000},
+	{"kimi", 256000},
+	{"grok", 131072},
+	{"qwen", 131072},
+	{"glm", 128000},
+	{"deepseek", 128000},
+	{"llama", 128000},
+	{"mistral", 128000},
+	{"muse-spark", 128000},
+}
+
+// modelContextWindow resolves the context window for a model id. It is a
+// best-effort table (providers do not report the window uniformly) and can be
+// overridden globally with AGENT_CONTEXT_WINDOW.
+func modelContextWindow(modelID string) int {
 	if value, err := strconv.Atoi(strings.TrimSpace(os.Getenv("AGENT_CONTEXT_WINDOW"))); err == nil && value > 0 {
 		return value
+	}
+	id := strings.ToLower(strings.TrimSpace(modelID))
+	if id == "" {
+		return 128000
+	}
+	for _, entry := range modelWindowTable {
+		if strings.Contains(id, entry.match) {
+			return entry.window
+		}
 	}
 	return 128000
 }
