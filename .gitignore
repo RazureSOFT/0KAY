@@ -13,6 +13,8 @@ buf.exe
 /free-model/
 # 0kay-deepseek-web remains an independent repository (razureink/0KAY-deepseek-web).
 /deepseek-web/
+# 0kay-deepseek-tts remains an independent repository (razureink/0KAY-deepseek-tts).
+/deepseek-tts/
 node_modules
 core/data/tasks.json
 core/data/tasks.json.journal
@@ -32,8 +34,6 @@ core/data/updates/
 core/data/ui/fluentui.patch
 webui/scripts/shots/
 webui/scripts/skills-ui.png
-# Plugin runtime logs
-deepseek-tts/out.log
 
 # Live2D models are large binary assets; they are not tracked or pushed.
 webui/public/live2d/models/
