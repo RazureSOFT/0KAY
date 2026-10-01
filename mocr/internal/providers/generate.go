@@ -85,6 +85,9 @@ type GenerateOptions struct {
 	ToolChoice    string
 	// OnToolCall is invoked for each tool call the model requests.
 	OnToolCall func(ToolCall) bool
+	// OnThinking is invoked for each streamed reasoning/thinking delta; return
+	// false to stop. Nil means reasoning is only reported in FinishInfo.
+	OnThinking StreamFunc
 }
 
 // StreamFunc receives text chunks; return false to stop.
@@ -480,6 +483,9 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 		for _, c := range chunk.Choices {
 			if c.Delta.ReasoningContent != "" {
 				reasoningAcc.WriteString(c.Delta.ReasoningContent)
+				if opts.OnThinking != nil && !opts.OnThinking(c.Delta.ReasoningContent) {
+					return &FinishInfo{FinishReason: "stop", PromptTokens: pt, OutputTokens: ot, ToolCalls: sortedToolCalls(toolAcc), ReasoningContent: reasoningAcc.String()}, nil
+				}
 			}
 			if c.Delta.Content != "" {
 				if !onChunk(c.Delta.Content) {
@@ -761,6 +767,7 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 	// current tool_use block being streamed
 	var curCall *ToolCall
 	var calls []ToolCall
+	var reasoning strings.Builder
 
 	for scanner.Scan() {
 		idle.Reset(streamIdleTimeout())
@@ -789,6 +796,7 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 			Delta struct {
 				Type        string `json:"type"`
 				Text        string `json:"text"`
+				Thinking    string `json:"thinking"`
 				PartialJSON string `json:"partial_json"`
 				StopReason  string `json:"stop_reason"`
 			} `json:"delta"`
@@ -818,11 +826,17 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 				curCall = &ToolCall{ID: evt.ContentBlock.ID, Name: evt.ContentBlock.Name}
 			}
 		case "content_block_delta":
-			if evt.Delta.Type == "input_json_delta" && curCall != nil {
+			switch {
+			case evt.Delta.Type == "input_json_delta" && curCall != nil:
 				curCall.Arguments += evt.Delta.PartialJSON
-			} else if evt.Delta.Text != "" {
+			case evt.Delta.Type == "thinking_delta" && evt.Delta.Thinking != "":
+				reasoning.WriteString(evt.Delta.Thinking)
+				if opts.OnThinking != nil && !opts.OnThinking(evt.Delta.Thinking) {
+					return &FinishInfo{FinishReason: "stop", PromptTokens: pt, OutputTokens: ot, ToolCalls: calls, ReasoningContent: reasoning.String()}, nil
+				}
+			case evt.Delta.Text != "":
 				if !onChunk(evt.Delta.Text) {
-					return &FinishInfo{FinishReason: "stop", PromptTokens: pt, OutputTokens: ot, ToolCalls: calls}, nil
+					return &FinishInfo{FinishReason: "stop", PromptTokens: pt, OutputTokens: ot, ToolCalls: calls, ReasoningContent: reasoning.String()}, nil
 				}
 			}
 		case "content_block_stop":
@@ -843,7 +857,7 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 		return nil, fmt.Errorf("provider stream ended without stop_reason")
 	}
 	emitTools(opts, calls)
-	return &FinishInfo{FinishReason: finish, PromptTokens: pt, OutputTokens: ot, ToolCalls: calls}, nil
+	return &FinishInfo{FinishReason: finish, PromptTokens: pt, OutputTokens: ot, ToolCalls: calls, ReasoningContent: reasoning.String()}, nil
 }
 
 // Ensure time is referenced if needed later.

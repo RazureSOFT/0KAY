@@ -258,6 +258,7 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 	// Model/credentials actually in use (swapped on auto-switch).
 	curModel, curProvider, curBaseURL, curKey := req.ModelId, req.Provider, req.BaseUrl, req.ApiKey
 
+	thinkingChunks := 0
 	buildOpts := func(r *mocrv1.GenerateRequest) prov.GenerateOptions {
 		opts := prov.GenerateOptions{
 			Provider:      curProvider,
@@ -286,6 +287,12 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 		}
 		if opts.MaxTokens <= 0 {
 			opts.MaxTokens = 1024
+		}
+		// Stream reasoning/thinking deltas live so the UI can show the chain
+		// while the model is thinking, then collapse it when the answer starts.
+		opts.OnThinking = func(delta string) bool {
+			thinkingChunks++
+			return stream.Send(&mocrv1.GenerateResponse{ThinkingContent: delta}) == nil
 		}
 		return opts
 	}
@@ -326,6 +333,7 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 		for try := 0; try < innerTries; try++ {
 			fullText.Reset()
 			chunks = 0
+			thinkingChunks = 0
 			info, err = prov.Generate(ctx, buildOpts(req), func(chunk string) bool {
 				chunks++
 				fullText.WriteString(chunk)
@@ -334,7 +342,7 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 				}
 				return true
 			})
-			if err == nil || chunks > 0 || try+1 >= innerTries || !prov.IsRetryable(err) {
+			if err == nil || chunks > 0 || thinkingChunks > 0 || try+1 >= innerTries || !prov.IsRetryable(err) {
 				break
 			}
 			backoff := time.Duration(400*(1<<try)) * time.Millisecond
@@ -358,8 +366,8 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 			sawEmpty = true
 			continue
 		}
-		if chunks > 0 {
-			// Content was already streamed — retrying would duplicate output.
+		if chunks > 0 || thinkingChunks > 0 {
+			// Content/thinking was already streamed — retrying would duplicate output.
 			log.Printf("[mocr] provider failed mid-stream model=%s: %v", curModel, err)
 			return status.Error(codes.Unavailable, "provider error: "+err.Error())
 		}
