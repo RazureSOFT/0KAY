@@ -362,7 +362,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
           <div class="sub-view-body">
             <div class="bubble user"><div class="message-head"><b>{{ tr('父 Agent', 'Parent agent') }}</b><time>{{ time(activeSub.started_at) }}</time></div><div class="message-text">{{ activeSub.prompt }}</div></div>
             <template v-for="step in childSteps(activeSub)" :key="step.task_id">
-              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="step.prompt" class="muted model-annotation">{{ step.prompt }}</small><template v-if="step.result"><MarkdownContent :content="step.result" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">{{ tr('子 Agent 正在生成回复…', 'Subagent is drafting a reply…') }}</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p><details v-if="step.reasoning" class="think-chain" :open="step.state === 'running'"><summary>{{ tr('思维链', 'Reasoning') }}</summary><pre>{{ step.reasoning }}</pre></details></div>
+              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="step.prompt" class="muted model-annotation">{{ step.prompt }}</small><details v-if="step.reasoning" class="think-chain" :open="step.state === 'running'"><summary>{{ tr('思维链', 'Reasoning') }}</summary><pre>{{ step.reasoning }}</pre></details><template v-if="step.result"><MarkdownContent :content="step.result" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">{{ tr('子 Agent 正在生成回复…', 'Subagent is drafting a reply…') }}</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
               <div v-else-if="step.kind === 'subagent'" class="subagent-card nested">
                 <button type="button" class="subagent-card-head" @click="openSub(step)"><span :class="step.state">●</span><strong>{{ tr('子 Agent', 'Subagent') }}</strong><span class="subagent-prompt">{{ step.prompt }}</span><small>{{ stateName(step.state) }}</small><span class="subagent-chevron" aria-hidden="true">▸</span></button>
               </div>
@@ -384,7 +384,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
           <div class="bubble user"><div class="message-head"><b>{{ isLife(turn) ? 'LIFE' : '你' }}</b><time>{{ time(turn.started_at) }}</time></div><div class="message-text">{{ turn.prompt?.replace(/^\[thinking_intensity=\w+\]\s*/, '') }}</div></div>
           <div class="bubble agent"><div class="message-head"><b>Agent</b><span :class="turn.state">{{ stateName(turn.state) }}</span></div>
             <div v-if="steps(turn).length" class="steps"><template v-for="step in steps(turn)" :key="step.task_id">
-              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="step.prompt" class="muted model-annotation">{{ step.prompt }}</small><template v-if="step.result"><MarkdownContent :content="step.result" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">Agent 正在生成回复…</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p><details v-if="step.reasoning" class="think-chain" :open="step.state === 'running'"><summary>{{ tr('思维链', 'Reasoning') }}</summary><pre>{{ step.reasoning }}</pre></details></div>
+              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="step.prompt" class="muted model-annotation">{{ step.prompt }}</small><details v-if="step.reasoning" class="think-chain" :open="step.state === 'running'"><summary>{{ tr('思维链', 'Reasoning') }}</summary><pre>{{ step.reasoning }}</pre></details><template v-if="step.result"><MarkdownContent :content="step.result" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">Agent 正在生成回复…</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
               <div v-else-if="step.kind === 'subagent'" class="subagent-card">
                 <button type="button" class="subagent-card-head" @click="openSub(step)">
                   <span :class="step.state">●</span>
@@ -549,12 +549,12 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 /* agent speech / markdown inside response */
 .agent-speech{margin:6px 0;padding:2px 0;line-height:1.7}
 .model-annotation{display:block;font-size:12px;opacity:.7;margin-bottom:4px;font-family:var(--code-font)}
-.think-chain{margin-top:8px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-low);overflow:hidden}
-.think-chain>summary{cursor:pointer;list-style:none;padding:7px 12px;font-size:12px;font-weight:650;letter-spacing:.04em;color:var(--md-on-surface-variant);user-select:none}
+.think-chain{margin:2px 0 8px;border:0;border-radius:10px;background:var(--md-surface-container-low);overflow:hidden}
+.think-chain>summary{display:inline-flex;align-items:center;gap:5px;cursor:pointer;list-style:none;padding:3px 10px;font-size:11px;font-weight:600;letter-spacing:.03em;color:var(--md-on-surface-variant);user-select:none;border-radius:999px;background:var(--md-surface-container)}
 .think-chain>summary::-webkit-details-marker{display:none}
-.think-chain>summary::before{content:'▸';display:inline-block;margin-right:6px;transition:transform .15s}
+.think-chain>summary::before{content:'▸';display:inline-block;transition:transform .15s}
 .think-chain[open]>summary::before{transform:rotate(90deg)}
-.think-chain>pre{margin:0;padding:0 12px 10px;max-height:320px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--code-font);font-size:12px;line-height:1.6;color:var(--md-on-surface-variant)}
+.think-chain>pre{margin:0;padding:6px 10px 8px;max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--code-font);font-size:11.5px;line-height:1.55;color:var(--md-on-surface-variant)}
 .agent-speech :deep(p){margin:.45em 0}
 .agent-speech :deep(pre){background:var(--md-surface-container);border:1px solid var(--md-outline-variant);border-radius:10px;padding:12px 14px;max-height:460px;overflow:auto;font-size:13px}
 .agent-speech :deep(code){font-family:var(--code-font)}
