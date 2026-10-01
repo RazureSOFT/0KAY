@@ -103,12 +103,38 @@ async function checkUpdates() {
 
 async function fetchContributors() {
   try {
-    const res = await fetch('https://api.github.com/repos/RazureSOFT/0KAY/contributors?per_page=100', {
-      headers: { Accept: 'application/vnd.github+json' },
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const data = await res.json()
-    contributors.value = Array.isArray(data) ? data : []
+    // GitHub's /contributors ranking is cached server-side and can lag for
+    // hours. Merge it with the authors of recent commits on the default branch
+    // so a just-pushed contributor shows up immediately (bot accounts skipped);
+    // duplicates are de-duplicated by login.
+    const headers = { Accept: 'application/vnd.github+json' }
+    const [listRes, commitsRes] = await Promise.all([
+      fetch('https://api.github.com/repos/RazureSOFT/0KAY/contributors?per_page=100', { headers }),
+      fetch('https://api.github.com/repos/RazureSOFT/0KAY/commits?sha=main&per_page=100', { headers }),
+    ])
+    if (!listRes.ok) throw new Error(`HTTP ${listRes.status}`)
+    const byLogin = new Map<string, Contributor>()
+    const listed = await listRes.json()
+    for (const c of Array.isArray(listed) ? listed : []) {
+      if (c?.login) byLogin.set(c.login, c)
+    }
+    if (commitsRes.ok) {
+      const commits = await commitsRes.json()
+      for (const item of Array.isArray(commits) ? commits : []) {
+        const author = item?.author
+        if (!author?.login || author.login.endsWith('[bot]')) continue
+        if (byLogin.has(author.login)) continue
+        byLogin.set(author.login, {
+          login: author.login,
+          avatar_url: author.avatar_url,
+          html_url: author.html_url,
+          contributions: 0,
+        })
+      }
+    }
+    contributors.value = [...byLogin.values()].sort(
+      (a, b) => (b.contributions || 0) - (a.contributions || 0) || a.login.localeCompare(b.login),
+    )
   } catch (error: unknown) {
     contributorsError.value = error instanceof Error ? error.message : String(error)
     contributors.value = []
