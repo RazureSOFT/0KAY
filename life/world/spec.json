@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "feature_schema_version": 2,
+  "density_modes": ["off", "texture", "full"],
+  "actor_slots": 8,
+  "plot_slots": 5,
+  "state_groups": [
+    {
+      "group": "circadian",
+      "source": "circadian/circadian.py",
+      "features": [
+        { "name": "energy_norm", "min": 0, "max": 1, "from": "circadian.energy/100" },
+        { "name": "hunger_norm", "min": 0, "max": 1, "from": "circadian.hunger/100" },
+        { "name": "health_norm", "min": 0, "max": 1, "from": "circadian.health/100" },
+        { "name": "sleeping", "min": 0, "max": 1, "from": "circadian.sleeping?1:0", "invariant": "binary" }
+      ]
+    },
+    {
+      "group": "mood",
+      "source": "emotion/emotion.py",
+      "features": [
+        { "name": "valence_norm", "min": 0, "max": 1, "from": "(valence+1)/2" },
+        { "name": "arousal", "min": 0, "max": 1, "from": "mood.arousal" },
+        { "name": "connection", "min": 0, "max": 1, "from": "mood.connection" },
+        { "name": "irritation", "min": 0, "max": 1, "from": "mood.irritation" }
+      ]
+    },
+    {
+      "group": "actors",
+      "source": "world/cast.json",
+      "pattern": {
+        "prefix": "actor_{i}_",
+        "count": 8,
+        "fields": [
+          { "suffix": "affinity", "min": 0, "max": 1 },
+          { "suffix": "warmth", "min": 0, "max": 1 },
+          { "suffix": "tension", "min": 0, "max": 1 },
+          { "suffix": "recency", "min": 0, "max": 1, "from": "exp(-last_contact_days/7)" }
+        ]
+      }
+    },
+    {
+      "group": "plots",
+      "source": "world/cast.json",
+      "pattern": {
+        "prefix": "plot_{i}_",
+        "count": 5,
+        "fields": [
+          { "suffix": "progress", "min": 0, "max": 1 },
+          { "suffix": "tension", "min": 0, "max": 1 }
+        ]
+      }
+    },
+    {
+      "group": "ledger",
+      "source": "world/ledger_rules.py",
+      "features": [
+        { "name": "obligations_norm", "min": 0, "max": 1, "from": "min(open_obligations/10,1)" },
+        { "name": "days_since_salient_norm", "min": 0, "max": 1, "from": "exp(-days/7)" },
+        { "name": "drama_budget", "min": 0, "max": 1, "from": "ledger.drama_budget" },
+        { "name": "due_soon_norm", "min": 0, "max": 1, "from": "min(due_soon/5,1)" }
+      ]
+    },
+    {
+      "group": "world",
+      "source": "environment.py",
+      "features": [
+        { "name": "temperature_norm", "min": 0, "max": 1, "from": "(T+30)/75" },
+        { "name": "raining", "min": 0, "max": 1, "from": "world.raining?1:0", "invariant": "binary" },
+        { "name": "season_sin", "min": -1, "max": 1, "from": "sin(2*pi*season/4)" },
+        { "name": "season_cos", "min": -1, "max": 1, "from": "cos(2*pi*season/4)" },
+        { "name": "hour_sin", "min": -1, "max": 1, "from": "sin(2*pi*hour/24)" },
+        { "name": "hour_cos", "min": -1, "max": 1, "from": "cos(2*pi*hour/24)" }
+      ]
+    },
+    {
+      "group": "agenda",
+      "source": "companion.py",
+      "features": [
+        { "name": "agenda_count_norm", "min": 0, "max": 1, "from": "min(count/8,1)" },
+        { "name": "agenda_remaining_norm", "min": 0, "max": 1, "from": "min(remaining/8,1)" },
+        { "name": "weekday_sin", "min": -1, "max": 1, "from": "sin(2*pi*weekday/7)" },
+        { "name": "weekday_cos", "min": -1, "max": 1, "from": "cos(2*pi*weekday/7)" }
+      ]
+    },
+    {
+      "group": "somatic",
+      "source": "cognition/somatic.py",
+      "features": [
+        { "name": "somatization_index", "min": 0, "max": 1, "from": "somatic.index" },
+        { "name": "health_anxiety", "min": 0, "max": 1, "from": "somatic.health_anxiety" },
+        { "name": "somatic_burden", "min": 0, "max": 1, "from": "somatic.burden" }
+      ]
+    },
+    {
+      "group": "meta",
+      "features": [
+        { "name": "density", "min": 0, "max": 1, "from": "settings.world_density -> 0/0.5/1" }
+      ]
+    }
+  ],
+  "event_schema": {
+    "required": ["template_id", "bindings", "time", "intensity", "source"],
+    "fields": {
+      "template_id": { "type": "string" },
+      "bindings": { "type": "object", "note": "slots -> actor_id/place; only cast members and known places" },
+      "time": { "type": "string", "note": "ISO-8601" },
+      "intensity": { "type": "integer", "min": 1, "max": 5 },
+      "source": { "type": "string", "enum": ["policy", "prior", "user", "schedule", "echo"] },
+      "notable": { "type": "boolean", "note": "false permitted: 'nothing_notable'" }
+    },
+    "constraints": [
+      "intensity>=3 events <= 1 per rolling 7 days",
+      "bindings may only reference cast members and known places",
+      "source=echo iff the event resolves/echoes a prior obligation"
+    ]
+  },
+  "ledger_schema": {
+    "obligation": { "id": "string", "actor_id": "string", "text": "string", "due_at": "string|null", "status": "open|done|expired", "created_at": "string" },
+    "plot": { "id": "string", "progress": "float[0,1]", "tension": "float[0,1]", "updated_at": "string" },
+    "mood_residual": { "valence": "float[-1,1]", "irritation": "float[0,1]", "source_event": "string", "created_at": "string" },
+    "relationship_delta": { "actor_id": "string", "delta": "float[-1,1]", "reason": "string", "created_at": "string" }
+  },
+  "invariants": [
+    "every state feature stays within [min,max] after ledger execution",
+    "intensity>=3 events <= 1 per rolling 7 days",
+    "an open obligation produces an echo/resolution event within obligation_echo_days",
+    "30-day rolling event-type entropy >= prior_entropy_ratio_min * prior entropy",
+    "drama_budget >= 0 (clamped); high-drama events cannot fire below drama_floor"
+  ]
+}

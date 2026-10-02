@@ -1,0 +1,15 @@
+{
+  "cast": 6,
+  "templates": 300,
+  "steps": {
+    "trivia": 210,
+    "small": 75,
+    "shareable": 12,
+    "upset": 3
+  },
+  "review": {
+    "issues": [],
+    "pass_rate": 1.0,
+    "total": 300
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "actors": [
+    {
+      "id": "a0",
+      "name": "林小满",
+      "role": "friend",
+      "affinity": 0.746,
+      "warmth": 0.665,
+      "tension": 0.063,
+      "recent": "最近没什么特别的事"
+    },
+    {
+      "id": "a1",
+      "name": "阿哲",
+      "role": "friend",
+      "affinity": 0.541,
+      "warmth": 0.579,
+      "tension": 0.061,
+      "recent": "最近没什么特别的事"
+    },
+    {
+      "id": "a2",
+      "name": "陈姐",
+      "role": "colleague",
+      "affinity": 0.724,
+      "warmth": 0.506,
+      "tension": 0.071,
+      "recent": "最近没什么特别的事"
+    },
+    {
+      "id": "a3",
+      "name": "王工",
+      "role": "colleague",
+      "affinity": 0.654,
+      "warmth": 0.718,
+      "tension": 0.076,
+      "recent": "最近没什么特别的事"
+    },
+    {
+      "id": "a4",
+      "name": "妈妈",
+      "role": "family",
+      "affinity": 0.549,
+      "warmth": 0.665,
+      "tension": 0.093,
+      "recent": "最近没什么特别的事"
+    },
+    {
+      "id": "a5",
+      "name": "表妹",
+      "role": "family",
+      "affinity": 0.538,
+      "warmth": 0.718,
+      "tension": 0.147,
+      "recent": "最近没什么特别的事"
+    }
+  ],
+  "places": [
+    "楼下便利店",
+    "常去的咖啡馆",
+    "公司",
+    "公园",
+    "菜市场",
+    "书店",
+    "健身房",
+    "地铁站",
+    "家",
+    "阳台",
+    "电影院",
+    "体育馆",
+    "美术馆"
+  ],
+  "plots": [
+    {
+      "id": "p0",
+      "title": "想学做一道新菜",
+      "progress": 0.1,
+      "tension": 0.2
+    },
+    {
+      "id": "p1",
+      "title": "和林小满约好一起去看展",
+      "progress": 0.0,
+      "tension": 0.1
+    },
+    {
+      "id": "p2",
+      "title": "推进一个想做的小项目",
+      "progress": 0.3,
+      "tension": 0.4
+    },
+    {
+      "id": "p3",
+      "title": "重新开始跑步",
+      "progress": 0.0,
+      "tension": 0.1
+    }
+  ],
+  "persona": "",
+  "premise": ""
+}

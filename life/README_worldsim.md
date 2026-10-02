@@ -19,8 +19,11 @@ executable acceptance gate in `world/gates.py`.
 3. **Residual structure**: `event distribution = softmax(prior_logits + W @ x)`,
    `W` initialised to 0 (untrained == prior rules exactly). Incremental head is
    ridge regression, each output `tanh`-bounded.
-4. `life.worldsim.features.build_features` is the **single** feature code path
-   shared by training and runtime.
+4. `world.features.build_features` is the **single** feature code path
+   shared by training and runtime. It lives in the `world` package (with
+   `world.policy` / `world.assets`) so that `world` never imports `life` —
+   `life.worldsim` depends on `world` one-way. `life/worldsim/{features,policy,
+   assets}.py` are thin re-export shims kept for import-path compatibility.
 5. Everything hangs behind the `world_density` setting (`off`/`texture`/`full`,
    default **off**) using the existing `SETTING_DEFAULTS` + `validate_setting`.
 6. Offline LLM calls are cached by prompt `sha256` under `data/teacher/cache/`;
@@ -32,14 +35,15 @@ executable acceptance gate in `world/gates.py`.
 
 Verified against the code; notes where the task description differed:
 
-- `engine.py`: turn orchestration in `_process_turn`; `enqueue_reflection` is
-  called at the end of a turn; `_reflect` extracts durable facts.
-  **Discrepancy:** `_cognition_settle` still exists but is *no longer called by
-  the turn path* since the Phase 2 real-feedback change — the turn is settled
-  later by `_receive_feedback` (delayed reward). Kept for tests/back-compat.
-- `companion.py`: `SETTING_DEFAULTS` / `CONFIG_SCHEMA` / `validate_setting`
+- `engine/legacy.py`: turn orchestration in `_process_turn`; `enqueue_reflection`
+  is called at the end of a turn; `_reflect` extracts durable facts.
+  **Note:** `_cognition_settle` is not called by the turn path (the turn is
+  settled later by `_receive_feedback`, delayed reward) but it *is* the direct
+  terminal-credit entry point and is exercised by `tests/test_cognition_*.py`.
+- `companion/legacy.py`: `SETTING_DEFAULTS` / `CONFIG_SCHEMA` / `validate_setting`
   (+`CHOICE_SETS`) as expected; `world_knowledge` table + `upsert_world_knowledge`
   /`list_world_knowledge`; `personal_goals`; `proactive_candidates`.
+  (`goal_list` / `goal_log` tools let THINK inspect and advance `personal_goals`.)
 - `memory/memory.py`: `remember_episode` gates on `|pe| > theta_pe or n > theta_n`
   via `_thresholds()` (now fed the live cognition config).
 - `diary.py`: **Discrepancy:** `quality_issues` is a *module-level function*
@@ -53,16 +57,16 @@ Verified against the code; notes where the task description differed:
 
 ## Stage status
 
-- **S0 — spec + gates: DONE.** `world/spec.json` (65 normalized features across
+- **S0 — spec + gates: DONE.** `world/spec.json` (68 normalized features across
   circadian/mood/actors/plots/ledger/world/agenda/meta), event + ledger schemas,
   invariants; `world/gates.py` (all gate functions + thresholds);
-  `life/worldsim/features.py` (shared builder). Gate: `pytest tests/worldsim/test_spec.py`.
+  `world/features.py` (shared builder). Gate: `pytest tests/worldsim/test_spec.py`.
 - **S1 — assets: DONE (offline).** `world/generate_assets.py` deterministically
   builds `world/cast.json` (6 actors / 8 places / 4 plots) and
   `world/templates.jsonl` (300 templates: trivia 210 / small 75 / shareable 12 /
   upset 3, exact `template_dist`), plus `world/ledger_rules.py` (clamp/cooldown/
   daily-cap/drama-budget). `life/worldsim/llm_cache.py` (sha256 cache) and
-  `life/worldsim/assets.py` (validators) added. An optional ``llm`` callable
+  `world/assets.py` (validators) added. An optional ``llm`` callable
   enriches/reviews; the offline default is the schema+duplicate review
   (pass_rate 1.0) and the persona/settings defaults are conservative.
   Gate: `pytest tests/worldsim/test_assets.py` (13 worldsim tests total).
