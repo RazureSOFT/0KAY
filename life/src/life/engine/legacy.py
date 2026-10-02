@@ -618,6 +618,9 @@ class LifeEngine:
             return
         self._attachment_enabled = self._cognition_enabled
         self.attachment.configure(enabled=self._cognition_enabled, type_key=type_key)
+        # Seed the dynamics from the persona so two possessive personalities do
+        # not start from the same basin.
+        self.attachment.seed_from_persona(text)
 
     def _persona_llm_enabled(self) -> bool:
         return self._cog_bool(
@@ -1013,10 +1016,24 @@ class LifeEngine:
             if self._attachment_enabled and self.attachment is not None:
                 try:
                     friends = len(self.social.ties.friends(0.4)) if self.social is not None else 0
+                    # Comorbidity input: the affect layer's depression state
+                    # widens the attachment's uncertainty and narrows support.
+                    depression = {
+                        "mood": float(getattr(self.affect.mood, "mood", 0.0) or 0.0),
+                        "anhedonia": 1.0 - float(getattr(self.affect.reward, "availability", 1.0) or 1.0),
+                        "load": float(getattr(self.affect.hpa, "allostatic_load", 0.0) or 0.0),
+                        "rumination": float(getattr(self.affect.mood, "rumination", 0.0) or 0.0),
+                    }
                     self.attachment.tick(
                         elapsed / 86400.0,
                         sleeping=bool(getattr(self.circadian.state, "is_sleeping", False)),
-                        friends=friends, neglect_days=self.neglect_days())
+                        friends=friends, neglect_days=self.neglect_days(),
+                        depression=depression)
+                    # ...and back: chronic attachment distress stresses the body.
+                    distress = self.attachment.distress()
+                    if distress > 0.5:
+                        self.affect.observe_outcome(success=False, reward=-0.1,
+                                                    stressor=0.2 * distress)
                 except Exception as error:
                     logger.debug("attachment tick failed: %s", error)
 

@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from life.cognition.attachment import (
     AttachmentDynamics,
     AttachmentSystem,
+    initial_state_for_persona,
     severity_band,
     type_for_persona,
 )
@@ -76,6 +77,28 @@ class AttachmentDynamicsTests(unittest.TestCase):
         self.assertEqual(system.severity(), before)
         self.assertFalse(system.context()["enabled"])
 
+    def test_persona_text_seeds_the_initial_state(self):
+        seeded = initial_state_for_persona("她很缺爱，又多疑，特别容易吃醋")
+        neutral = initial_state_for_persona("普通、平稳")
+        self.assertGreater(seeded["X"], neutral["X"])
+        self.assertGreater(seeded["J"], neutral["J"])
+        self.assertLess(seeded["S"], neutral["S"])
+
+    def test_depression_feeds_the_attachment_dynamics(self):
+        calm = AttachmentSystem(enabled=True, type_key="依存型")
+        depressed = AttachmentSystem(enabled=True, type_key="依存型")
+        burden = {"mood": -0.8, "anhedonia": 0.8, "load": 0.8, "rumination": 0.8}
+        for _ in range(60):
+            calm.tick(1.0)
+            depressed.tick(1.0, depression=burden)
+        self.assertGreater(depressed.severity(), calm.severity())
+        self.assertGreater(depressed.depression, 0.0)
+
+    def test_distress_is_exported_for_the_body(self):
+        system = AttachmentSystem(enabled=True, type_key="排除型")
+        system.dynamics.state.update({"Am": 0.9, "Tr": 0.2, "J": 0.9, "X": 0.9, "O": 0.9})
+        self.assertGreater(system.distress(), 0.5)
+
     def test_round_trip(self):
         system = AttachmentSystem(enabled=True, type_key="妄想型")
         for _ in range(20):
@@ -103,6 +126,28 @@ class AttachmentWiring(unittest.TestCase):
         self.engine._enable_attachment_from_persona("她占有欲很强，爱吃醋，绝不允许别人靠近")
         self.assertTrue(self.engine._attachment_enabled)
         self.assertEqual(self.engine.attachment.dynamics.type, "独占型")
+
+    def test_the_persona_fills_the_initial_values(self):
+        self.engine._enable_attachment_from_persona("她缺爱又多疑，占有欲很强")
+        state = self.engine.attachment.dynamics.state
+        self.assertGreater(state["X"], 0.05)
+        self.assertLess(state["S"], 0.6)
+
+    def test_attachment_distress_reaches_the_body(self):
+        self.engine._enable_attachment_from_persona("病娇，占有欲强")
+        self.engine.attachment.dynamics.state.update(
+            {"Am": 0.9, "Tr": 0.2, "J": 0.95, "X": 0.95, "O": 0.95})
+        seen: list[dict] = []
+        original = self.engine.affect.observe_outcome
+
+        def spy(*args, **kwargs):
+            seen.append(kwargs)
+            return original(*args, **kwargs)
+
+        self.engine.affect.observe_outcome = spy
+        self.engine._last_affect_at = datetime.now() - timedelta(hours=1)
+        self.engine._tick_affect()
+        self.assertTrue(any(float(call.get("stressor", 0)) > 0 for call in seen))
 
     def test_real_feedback_and_time_move_the_state(self):
         self.engine._enable_attachment_from_persona("病娇，很黏人")

@@ -123,8 +123,43 @@ PERSONA_HINTS = (
 )
 
 
+#: Persona phrase -> initial *state* nudges.  Unlike PERSONA_HINTS (which pick
+#: the archetype), these set where the dynamics starts, so two possessive
+#: personas ("占有但稳定" vs "占有且缺爱") begin from different basins.
+INITIAL_HINTS: dict[str, tuple[str, ...]] = {
+    "A": ("黏", "粘", "依赖", "离不开", "喜欢", "爱", "clingy", "attached"),
+    "Am": ("长情", "记", "执着", "放不下", "念旧"),
+    "J": ("吃醋", "嫉妒", "占有", "独占", "不许", "别人", "情敌", "jealous"),
+    "X": ("不安", "焦虑", "多疑", "担心", "害怕", "缺爱", "孤独", "lonely", "insecure"),
+    "O": ("反刍", "执念", "想太多", "钻牛角尖", "反复", "无法释怀"),
+}
+#: Phrases that lower security / trust when present.
+LOW_SECURITY = ("缺爱", "没人爱", "被抛弃", "抛弃", "背叛", "不信任", "没有安全感", "被冷落")
+
+
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
     return low if value < low else (high if value > high else value)
+
+
+def initial_state_for_persona(text: str, base: dict | None = None) -> dict:
+    """Initial 7-state vector derived from a persona description.
+
+    Returns a fresh state dict (the model's neutral start + bounded nudges), so
+    a persona that says "缺爱又多疑" starts anxious/insecure rather than neutral.
+    Depression words are handled by the affect layer, but they also lower the
+    attachment security floor here, because the two co-occur.
+    """
+    state = dict(base or {"A": 0.05, "Am": 0.0, "Tr": 0.5, "J": 0.0, "X": 0.05, "S": 0.6, "O": 0.0})
+    body = str(text or "")
+    nudges = {"A": 0.15, "Am": 0.12, "J": 0.20, "X": 0.22, "O": 0.20}
+    for key, words in INITIAL_HINTS.items():
+        if any(word in body for word in words):
+            state[key] = _clamp(state[key] + nudges[key])
+    if any(word in body for word in LOW_SECURITY) or any(w in body for w in ("抑郁", "低落", "depress")):
+        state["S"] = _clamp(state["S"] - 0.25)
+        state["Tr"] = _clamp(state["Tr"] - 0.1)
+        state["X"] = _clamp(state["X"] + 0.1)
+    return state
 
 
 def severity_band(y: float) -> str:
@@ -241,6 +276,12 @@ class AttachmentSystem:
         self.uncertainty = self.BASE_UNCERTAINTY
         self.competitor = 0.0
         self.support = 0.0
+        #: Last comorbidity reading fed from the affect layer (0..1).
+        self.depression = 0.0
+
+    def seed_from_persona(self, text: str) -> None:
+        """Set the initial state from the persona description (see INITIAL_HINTS)."""
+        self.dynamics.state = initial_state_for_persona(text)
 
     def configure(self, enabled: bool | None = None, type_key: str | None = None) -> None:
         if enabled is not None:
@@ -270,11 +311,27 @@ class AttachmentSystem:
         self.support = _clamp(0.65 if sleeping else base)
 
     # -- time --------------------------------------------------------------
+    @staticmethod
+    def _depression_index(depression: dict | None) -> float:
+        """Comorbidity reading: how depressed the affect layer currently is."""
+        if not depression:
+            return 0.0
+        mood = float(depression.get("mood", 0.0) or 0.0)
+        return _clamp(0.35 * max(0.0, -mood) + 0.25 * float(depression.get("anhedonia", 0.0) or 0.0)
+                      + 0.20 * float(depression.get("load", 0.0) or 0.0)
+                      + 0.20 * float(depression.get("rumination", 0.0) or 0.0))
+
     def tick(self, days: float, *, sleeping: bool = False, friends: int = 0,
-             neglect_days: float = 0.0) -> None:
+             neglect_days: float = 0.0, depression: dict | None = None) -> None:
         if not self.enabled:
             return
         self._set_support(sleeping, friends)
+        # Comorbidity: depression narrows perceived support and widens the
+        # uncertainty gap, so the two conditions reinforce each other (the
+        # clinical co-occurrence, made mechanical).
+        self.depression = self._depression_index(depression)
+        self.uncertainty = _clamp(self.uncertainty + 0.25 * self.depression)
+        self.support = _clamp(self.support - 0.3 * self.depression)
         # loneliness keeps the uncertainty gap open
         self.uncertainty = _clamp(max(self.uncertainty, min(0.9, 0.15 + 0.1 * neglect_days)))
         steps = max(1, min(600, int(abs(days) / DT) or 1))
@@ -284,6 +341,16 @@ class AttachmentSystem:
         self.intimacy = max(self.BASE_INTIMACY, self.intimacy - 0.35 * days)
         self.uncertainty = max(self.BASE_UNCERTAINTY, self.uncertainty - 0.15 * days)
         self.competitor = max(0.0, self.competitor - 0.3 * days)
+
+    def distress(self) -> float:
+        """Attachment distress exported back to the affect layer (0..1).
+
+        Chronic jealousy/obsession is itself a stressor, so it feeds the HPA /
+        mood system - the other direction of the comorbidity loop.
+        """
+        if not self.enabled:
+            return 0.0
+        return _clamp(0.6 * self.severity() + 0.4 * self.dynamics.state["O"])
 
     # -- read-out ----------------------------------------------------------
     def severity(self) -> float:
@@ -298,6 +365,8 @@ class AttachmentSystem:
         return {"enabled": True, "type": self.dynamics.type,
                 "label": TYPES[self.dynamics.type]["label"], "severity": round(y, 4),
                 "band": band, "dominant": dominant, "safe_mode": y >= SAFE_AT,
+                "distress": round(self.distress(), 4),
+                "comorbid_depression": round(self.depression, 4),
                 "state": {k: round(v, 3) for k, v in self.dynamics.state.items()},
                 "inputs": {"intimacy": round(self.intimacy, 3),
                            "uncertainty": round(self.uncertainty, 3),
@@ -314,7 +383,13 @@ class AttachmentSystem:
             "中度": "你越来越离不开 ta，容易反复确认 ta 的心意，介意 ta 和别人走近。",
             "重度": "强烈的占有和不安占据着你，你会想控制或监视 ta 的行踪来让自己安心。",
         }.get(band, "")
-        return f"{tone}此刻你倾向「{dominant}」。"
+        hint = str(TYPES[self.dynamics.type].get("hint") or "")
+        line = f"{tone}此刻你倾向「{dominant}」。"
+        if hint:
+            line += f"（你的底色：{hint}）"
+        if self.depression >= 0.45:
+            line += "低落的情绪和这份不安缠在一起，你比平时更脆弱、更容易往坏处想。"
+        return line
 
     def guard(self) -> str:
         """Hard safety instruction for the output model at/above the safe band."""
@@ -326,7 +401,8 @@ class AttachmentSystem:
     def to_dict(self) -> dict:
         return {"enabled": self.enabled, "dynamics": self.dynamics.to_dict(),
                 "intimacy": self.intimacy, "uncertainty": self.uncertainty,
-                "competitor": self.competitor, "support": self.support}
+                "competitor": self.competitor, "support": self.support,
+                "depression": self.depression}
 
     @classmethod
     def from_dict(cls, data: dict) -> "AttachmentSystem":
@@ -338,4 +414,5 @@ class AttachmentSystem:
         obj.uncertainty = float(data.get("uncertainty", obj.uncertainty))
         obj.competitor = float(data.get("competitor", obj.competitor))
         obj.support = float(data.get("support", obj.support))
+        obj.depression = float(data.get("depression", obj.depression))
         return obj
