@@ -114,15 +114,24 @@ class TraitModel:
 
     # -- self side ---------------------------------------------------------
     def set_self(self, evidence: dict | None = None, breadth: int = 0,
-                 values: dict | None = None) -> dict[str, float]:
+                 values: dict | None = None,
+                 axes_override: dict | None = None) -> dict[str, float]:
         """Derive the character's own axes from its persona.
 
         ``evidence`` is ``PersonaTraits.evidence`` (dimension -> matched
-        keywords); ``values`` is the learned values profile.  Unmentioned
-        dimensions leave the axis at neutral, so a thin persona does not invent
-        a personality.
+        keywords); ``values`` is the learned values profile; ``axes_override``
+        is an explicit [0, 1] vector from the persona's character/relationship
+        style (see :meth:`PersonaTraits.axis_vector`).  Unmentioned dimensions
+        leave the axis at neutral, so a thin persona does not invent a
+        personality.
         """
         axes = {axis: 0.5 for axis in AXES}
+        for axis, value in (axes_override or {}).items():
+            if axis in axes:
+                try:
+                    axes[axis] = _clamp(float(value))
+                except (TypeError, ValueError):
+                    continue
         hints = {
             "positive_affect": {"warmth": 0.15, "humor": 0.12, "openness": 0.08, "curiosity": 0.05},
             "depressive": {"warmth": -0.05, "humor": -0.12, "openness": -0.05, "risk": -0.08},

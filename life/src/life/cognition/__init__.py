@@ -121,6 +121,16 @@ from .attachment import (
     severity_band as attachment_severity_band,
     type_for_persona as attachment_type_for_persona,
 )
+from .persona_style import (
+    CHARACTER_TYPES,
+    RELATIONSHIP_TYPES,
+    character_options,
+    classify_character,
+    classify_relationship,
+    relationship_attachment_type,
+    relationship_is_pathological,
+    relationship_options,
+)
 
 __all__ = [
     "ACTION_GUIDANCE",
@@ -188,6 +198,15 @@ __all__ = [
     "parse_persona",
     "persona_summary",
     "refine_persona_with_llm",
+    # --- persona style: character archetypes + relationship styles ---
+    "CHARACTER_TYPES",
+    "RELATIONSHIP_TYPES",
+    "character_options",
+    "classify_character",
+    "classify_relationship",
+    "relationship_attachment_type",
+    "relationship_is_pathological",
+    "relationship_options",
     # --- third wave: language acquisition + the language-thought interface ---
     "FRAMING_MODES",
     "LanguageConfig",

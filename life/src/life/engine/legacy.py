@@ -95,9 +95,15 @@ try:
         PERSONA_JSON_CONTRACT,
         AttachmentSystem,
         attachment_type_for_persona,
+        character_options,
+        classify_character,
+        classify_relationship,
         initial_state_for_persona,
+        relationship_options,
         PersonaTraits,
         RelatingSystem,
+        relationship_attachment_type,
+        relationship_is_pathological,
         SelfhoodConfig,
         SelfhoodSystem,
         SocialConfig,
@@ -575,7 +581,7 @@ class LifeEngine:
         else:
             attachment_enabled = self._cognition_enabled and restored
         attachment_type = str(get("cog_attachment_type") or "").strip()
-        persona_type = attachment_type_for_persona(persona_text) if persona_text else ""
+        persona_type = self._persona_attachment_type(persona_text) if persona_text else ""
         if persona_type:
             attachment_enabled = self._cognition_enabled
             attachment_type = attachment_type or persona_type
@@ -635,6 +641,21 @@ class LifeEngine:
         traits.apply(self.affect.config, self.affect.somatic, self.circadian)
         self._persona_traits = traits
 
+    @staticmethod
+    def _persona_attachment_type(text: str) -> str:
+        """The pathological attachment archetype a persona implies, or "".
+
+        Only the **pathological** relationship family (病娇族) may switch the
+        yandere ODE on: a persona read as a healthy style (安全/焦虑/回避/...)
+        returns "" even though it shares words like "依赖" with the ODE lexicon.
+        """
+        rel = classify_relationship(text)
+        if rel.get("pathological"):
+            return relationship_attachment_type(rel["key"]) or attachment_type_for_persona(text)
+        if rel.get("key"):
+            return ""
+        return attachment_type_for_persona(text)
+
     def _enable_attachment_from_persona(self, text: str) -> None:
         """Turn on the attachment circuit from a possessive/yandere persona."""
         if self.attachment is None:
@@ -643,7 +664,7 @@ class LifeEngine:
             # An owner-tuned override wins over the keyword lexicon.
             type_key = str(self._attachment_override["type"])
         else:
-            type_key = attachment_type_for_persona(text)
+            type_key = self._persona_attachment_type(text)
         if not type_key:
             return
         self._attachment_enabled = self._cognition_enabled
@@ -811,12 +832,25 @@ class LifeEngine:
                     traits, source = refined, "llm"
             except Exception as error:
                 logger.debug("persona analyze llm failed: %s", error)
-        att_type = attachment_type_for_persona(text)
+        att_type = self._persona_attachment_type(text)
+        character = classify_character(text)
+        relationship = classify_relationship(text)
         return {
             "source": source,
             "traits": traits.to_dict(),
+            "character": {"key": traits.character or character.get("key", ""),
+                          "label": character.get("label", ""),
+                          "evidence": character.get("evidence", []),
+                          "expression": traits.expression or ""},
+            "relationship": {"key": traits.relationship or relationship.get("key", ""),
+                             "label": relationship.get("label", ""),
+                             "family": relationship.get("family", ""),
+                             "pathological": relationship.get("pathological", False),
+                             "evidence": relationship.get("evidence", [])},
             "attachment": {"type": att_type,
                            "initial": initial_state_for_persona(text) if att_type else {}},
+            "options": {"character": character_options(),
+                        "relationship": relationship_options()},
             "applied": traits.present,
         }
 
@@ -833,9 +867,15 @@ class LifeEngine:
             "persona_traits_override": json.dumps(payload.get("traits") or {}, ensure_ascii=False),
             "attachment_override": json.dumps(attachment, ensure_ascii=False),
         }
-        if attachment.get("type"):
-            settings["cog_attachment_enabled"] = "1"
-            settings["cog_attachment_type"] = str(attachment["type"])
+        # The attachment ODE is only for the pathological family (病娇族).  Set
+        # the switch both ways so switching a persona to a healthy style (安全/
+        # 回避/...) actually turns a previously-saved circuit back off.
+        if "attachment" in payload:
+            if attachment.get("type"):
+                settings["cog_attachment_enabled"] = "1"
+                settings["cog_attachment_type"] = str(attachment["type"])
+            else:
+                settings["cog_attachment_enabled"] = "0"
         result = self.companion.set_settings(settings)
         self.apply_cognition_settings()
         return {"saved": True, "rejected": result.get("rejected", [])}
@@ -1568,7 +1608,12 @@ class LifeEngine:
         digest = getattr(self, "_persona_digest", None) or ""
         if digest and getattr(self, "_relating_self_digest", None) == digest:
             return
-        evidence = getattr(getattr(self, "_persona_traits", None), "evidence", None) or {}
+        traits = getattr(self, "_persona_traits", None)
+        evidence = getattr(traits, "evidence", None) or {}
+        try:
+            axes_override = traits.axis_vector() if traits is not None else None
+        except Exception:
+            axes_override = None
         breadth = 0
         try:
             breadth = int(self.selfhood.persona.breadth) if self.selfhood is not None else 0
@@ -1578,7 +1623,8 @@ class LifeEngine:
             values = self.companion.get_values()
         except Exception:
             values = {}
-        self.relating.traits.set_self(evidence=evidence, breadth=breadth, values=values)
+        self.relating.traits.set_self(evidence=evidence, breadth=breadth, values=values,
+                                      axes_override=axes_override)
         # Publish self into the ties model so `homophily` compares real vectors.
         if self.social is not None:
             try:
