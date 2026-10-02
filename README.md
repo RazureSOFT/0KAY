@@ -73,19 +73,23 @@ docker-compose down       # stop
 ### Package manager (recommended)
 
 ```sh
-# install the 0kay-pm CLI (Node.js 22+; git is not required)
+# Standalone repository install (recommended, no git involved)
 npm install -g https://codeload.github.com/RazureSOFT/0KAY-pm/tar.gz/main
-# ...or from this checkout:
+
+# Or from a local checkout
 npm install -g ./pm
 
-0kay-pm install @razuresoft/0kay@0.1.2        # Core, mocr, L.I.F.E, WebUI
-0kay-pm install @razuresoft/0kay-agent@0.1.2  # the task agent
+0kay-pm discover
+0kay-pm install @razuresoft/0kay-agent
+0kay-pm install @razuresoft/0kay
+0kay-pm update @razuresoft/0kay-agent
+0kay-pm start @razuresoft/0kay
 ```
 
 `0kay-pm install` builds each module and starts it as a background service
 (systemd user unit / LaunchAgent / logon task), so there is nothing else to run
-afterwards. Manage them with `0kay-pm status <package>` and
-`0kay-pm stop <package>`.
+afterwards. Pin a release with `@0.1.2`, check with `0kay-pm status <package>`,
+and stop with `0kay-pm stop <package>`.
 
 ### From source (development)
 

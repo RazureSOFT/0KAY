@@ -60,18 +60,22 @@ docker-compose down       # 停止
 ### 包管理器安装（推荐）
 
 ```sh
-# 安装 0kay-pm 命令行工具（Node.js 22+，不需要 git）
+# 独立仓库安装（推荐，不需要 git）
 npm install -g https://codeload.github.com/RazureSOFT/0KAY-pm/tar.gz/main
-# ……或者从本仓库安装：
+
+# 或从本地检出安装
 npm install -g ./pm
 
-0kay-pm install @razuresoft/0kay@0.1.2        # Core、mocr、L.I.F.E、WebUI
-0kay-pm install @razuresoft/0kay-agent@0.1.2  # 任务 Agent
+0kay-pm discover
+0kay-pm install @razuresoft/0kay-agent
+0kay-pm install @razuresoft/0kay
+0kay-pm update @razuresoft/0kay-agent
+0kay-pm start @razuresoft/0kay
 ```
 
 `0kay-pm install` 会构建每个模块并把它作为**后台服务**启动（Linux systemd user
 unit / macOS LaunchAgent / Windows 登录任务），所以之后**不需要**再手动运行任何东西。
-用 `0kay-pm status <包名>` 查看状态、`0kay-pm stop <包名>` 停止。
+可加 `@0.1.2` 固定版本；用 `0kay-pm status <包名>` 查看状态、`0kay-pm stop <包名>` 停止。
 
 ### 从源码运行（开发）
 
