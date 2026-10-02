@@ -58,6 +58,8 @@ function createStore() {
   const taskCache = new Map<string, TaskRow>()
   let taskEvents: EventSource | null = null
   let streaming = false
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  let reconnectDelay = 1000
 
   function applyTasks(tdata: any) {
     if (tdata.reset) taskCache.clear()
@@ -70,12 +72,23 @@ function createStore() {
   }
 
   function streamTasks() {
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
     taskEvents?.close()
     streaming = false
     taskEvents = new EventSource(`/api/tasks/events?cursor=${encodeURIComponent(taskCursor)}`)
-    taskEvents.onopen = () => { streaming = true }
-    taskEvents.onerror = () => { streaming = false }
-    taskEvents.addEventListener('tasks', (event) => { try { applyTasks(JSON.parse((event as MessageEvent).data)) } catch { streaming = false } })
+    taskEvents.onopen = () => { streaming = true; reconnectDelay = 1000 }
+    // The SSE stream can drop (proxy idle timeout, Core restart). Reconnect
+    // with bounded backoff instead of silently degrading to 2s polling forever.
+    const scheduleReconnect = () => {
+      streaming = false
+      taskEvents?.close()
+      taskEvents = null
+      if (reconnectTimer) return
+      reconnectTimer = setTimeout(() => { reconnectTimer = null; streamTasks() }, reconnectDelay)
+      reconnectDelay = Math.min(reconnectDelay * 2, 30000)
+    }
+    taskEvents.onerror = scheduleReconnect
+    taskEvents.addEventListener('tasks', (event) => { try { applyTasks(JSON.parse((event as MessageEvent).data)) } catch { /* keep the stream open */ } })
   }
 
   function fetchAgents(): Promise<void> {
@@ -117,6 +130,7 @@ function createStore() {
   }
 
   function disconnect() {
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
     taskEvents?.close()
     taskEvents = null
     streaming = false

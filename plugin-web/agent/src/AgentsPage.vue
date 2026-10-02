@@ -727,6 +727,14 @@ async function treeReload(dirPath = '') {
   catch (e: any) { treeError.value = e?.message || 'load failed' }
   finally { treeLoading.value = false }
 }
+let treeRefreshTimer: ReturnType<typeof setTimeout> | null = null
+// The agent writes files under the workspace; reflect them without making the
+// user close and reopen the tree.
+function refreshTreeSoon() {
+  if (!treeOpen.value) return
+  if (treeRefreshTimer) clearTimeout(treeRefreshTimer)
+  treeRefreshTimer = setTimeout(() => { treeRefreshTimer = null; void treeReload(treeRootPathFor()) }, 800)
+}
 async function treeToggle(row: TreeRow) {
   const idx = treeRows.value.indexOf(row)
   if (idx < 0) return
@@ -948,6 +956,7 @@ function onMoveChange(item: TaskRow, event: Event) { const value = (event.target
 const turns = computed(() => store.tasks.filter(item => item.kind === 'agent' && item.session_id === selectedId.value)
   .sort((a,b) => (a.started_at || '').localeCompare(b.started_at || '') || a.task_id.localeCompare(b.task_id)))
 const active = computed(() => store.tasks.find(item => item.session_id===selectedId.value && ['agent','compact'].includes(item.kind || '') && ['running','pending'].includes(item.state)))
+const runningTasks = computed(() => store.tasks.filter(item => item.session_id === selectedId.value && ['running', 'pending'].includes(item.state) && ['agent', 'compact', 'tool', 'subagent'].includes(item.kind || '')))
 const todos = computed<Array<{ content: string; status: string }>>(() => {
   const rows = store.tasks
     .filter(item => item.session_id === selectedId.value && item.kind === 'tool' && (item.prompt || '').trim() === 'todowrite')
@@ -1102,6 +1111,13 @@ async function stop() {
   if (!active.value || active.value.kind!=='agent') return
   try { await store.cancelTask(active.value.task_id) } catch (e: any) { error.value = e.message }
 }
+async function stopAll() {
+  const ids = runningTasks.value.map(item => item.task_id)
+  if (!ids.length) return
+  const results = await Promise.allSettled(ids.map(id => store.cancelTask(id)))
+  const failed = results.find(r => r.status === 'rejected') as PromiseRejectedResult | undefined
+  if (failed) error.value = failed.reason?.message || String(failed.reason)
+}
 async function scrollBottom() { await nextTick(); if(followLatest.value) transcript.value?.scrollTo({top:transcript.value.scrollHeight,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}) }
 
 // --- auto-open windows while the agent works in the selected session ---
@@ -1148,6 +1164,7 @@ function considerStep(step: TaskRow) {
     const path = editedPaths(step).map(absolutePath).find(Boolean)
     if (path) { handledSteps.add(step.task_id); void openFilePreview(path) }
     else if (['done', 'failed', 'cancelled'].includes(step.state)) handledSteps.add(step.task_id)
+    refreshTreeSoon()
     return
   }
   handledSteps.add(step.task_id)
@@ -1302,7 +1319,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
               <div v-else-if="step.kind === 'subagent'" class="subagent-card nested">
                 <button type="button" class="subagent-card-head" @click="openSub(step)"><span :class="step.state">●</span><strong>{{ tr('子 Agent', 'Subagent') }}</strong><span class="subagent-prompt">{{ step.prompt }}</span><small>{{ stateName(step.state) }}</small><span class="subagent-chevron" aria-hidden="true">▸</span></button>
               </div>
-              <ToolStepCard v-else-if="step.kind === 'tool'" :step="step" :format-error="friendlyError" />
+              <ToolStepCard v-else-if="step.kind === 'tool'" :step="step" :format-error="friendlyError" @open="(path) => openFilePreview(path, { confirmDiscard: true })" />
               <details v-else-if="step.kind !== 'think'"><summary><span :class="step.state">●</span> {{ stepLabel(step) }} · {{ step.prompt }} <small>{{ stateName(step.state) }}</small></summary><pre>{{ step.result || step.error || (step.state === 'running' ? '执行中…' : '执行完成，无输出') }}</pre></details>
             </template>
             <div v-if="subFinal(activeSub)" class="agent-speech"><MarkdownContent :content="subFinal(activeSub)" /></div>
@@ -1331,7 +1348,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
                 </button>
                 <p v-if="step.error" class="error subagent-card-error">{{ friendlyError(step.error) }}</p>
               </div>
-              <ToolStepCard v-else-if="step.kind === 'tool'" :step="step" :format-error="friendlyError" />
+              <ToolStepCard v-else-if="step.kind === 'tool'" :step="step" :format-error="friendlyError" @open="(path) => openFilePreview(path, { confirmDiscard: true })" />
               <details v-else-if="step.kind !== 'think'"><summary><span :class="step.state">●</span> {{ stepLabel(step) }} · {{ step.prompt }} <small>{{ stateName(step.state) }}</small></summary><pre>{{ step.result || step.error || (step.state === 'running' ? '执行中…' : '执行完成，无输出') }}</pre></details>
             </template></div>
             <MarkdownContent v-if="turn.result && !hasFinalReply(turn)" :content="turn.result" />
@@ -1394,6 +1411,9 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
             </button>
             <button v-else type="button" class="send-fly stop" @click="stop" :aria-label="tr('停止','Stop')" :title="tr('停止','Stop')">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>
+            </button>
+            <button v-if="runningTasks.length > 1" type="button" class="send-fly stop-all" @click="stopAll" :aria-label="tr('停止全部','Stop all')" :title="tr('停止全部','Stop all')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="8" width="14" height="9" rx="2" fill="currentColor"/><path d="M8 5h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             </button>
           </div>
         </div>
@@ -1464,7 +1484,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
       <div class="browser-toolbar" @pointerdown="onTreeDown">
         <span class="browser-grab" aria-hidden="true">⠿</span>
         <strong class="tree-title">{{ tr('项目树','Project tree') }}</strong>
-        <button type="button" :title="tr('回到工作区根目录','Workspace root')" @click="treeReload('')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 11l8-7 8 7M6 10v9h12v-9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button type="button" :title="tr('回到工作区根目录','Workspace root')" @click="treeReload(treeRootPathFor())"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 11l8-7 8 7M6 10v9h12v-9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button type="button" :title="tr('刷新','Refresh')" @click="treeReload(treeRootPath)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button type="button" :title="tr('关闭','Close')" @click="treeOpen=false"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
       </div>

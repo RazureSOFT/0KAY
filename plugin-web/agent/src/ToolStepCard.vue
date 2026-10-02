@@ -4,10 +4,13 @@ import type { TaskRow } from './store'
 import { locale } from './locale'
 
 const props = defineProps<{ step: TaskRow; formatError?: (message?: string) => string }>()
+const emit = defineEmits<{ open: [path: string] }>()
 const tr = (zh: string, en: string) => (locale.value === 'en' ? en : zh)
 
 const open = ref(false)
 const searchOpen = ref(false)
+const copied = ref(false)
+let copyTimer: ReturnType<typeof setTimeout> | null = null
 
 const tool = computed(() => (props.step.prompt || '').trim() || 'tool')
 const isSearch = computed(() => ['websearch', 'web_search', 'search', 'papersearch', 'apidocsearch', 'apidoc_search'].includes(tool.value))
@@ -43,6 +46,28 @@ const screenshot = computed<{ src: string; width?: number; height?: number; path
   if (!d || typeof d.base64 !== 'string' || typeof d.mime !== 'string' || !d.mime.startsWith('image/')) return null
   return { src: `data:${d.mime};base64,${d.base64}`, width: d.width, height: d.height, path: d.path }
 })
+
+// Files a tool produced and that the WebUI can open (research figures/docx,
+// document, slides). Kept separate from the raw JSON dump.
+const producedFiles = computed<string[]>(() => {
+  const out: string[] = []
+  const add = (value: unknown) => { if (typeof value === 'string' && value && !out.includes(value)) out.push(value) }
+  const name = tool.value
+  if (name === 'document' || name === 'slides') add(inner.value?.path)
+  add(inner.value?.file)
+  if (Array.isArray(inner.value?.files)) inner.value.files.forEach((file: any) => add(typeof file === 'string' ? file : file?.path))
+  return out
+})
+const fileName = (value: string) => String(value || '').split(/[\\/]/).pop() || value
+
+async function copyResult() {
+  const text = props.step.result || ''
+  if (!text) return
+  try { await navigator.clipboard.writeText(text) } catch { /* clipboard unavailable */ }
+  copied.value = true
+  if (copyTimer) clearTimeout(copyTimer)
+  copyTimer = setTimeout(() => { copied.value = false }, 1500)
+}
 
 const label = computed(() => {
   switch (tool.value) {
@@ -246,6 +271,8 @@ interface Section { label: string; text: string; mono?: boolean }
 const sections = computed<Section[]>(() => {
   const name = tool.value
   const d = inner.value
+  // Produced files are shown as open buttons, not as a raw JSON dump.
+  if (['document', 'slides', 'research'].includes(name) && producedFiles.value.length) return []
   if (name === 'computeruse' && screenshot.value) return []
   if (name === 'bash' && d) {
     const out: Section[] = [{ label: tr('工作目录', 'cwd'), text: String(d.cwd || '') }]
@@ -287,7 +314,7 @@ function onKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape' && searchOpen.value) searchOpen.value = false
 }
 onMounted(() => window.addEventListener('keydown', onKeydown))
-onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+onUnmounted(() => { window.removeEventListener('keydown', onKeydown); if (copyTimer) clearTimeout(copyTimer) })
 </script>
 
 <template>
@@ -301,6 +328,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       <span class="tool-chevron" aria-hidden="true">▸</span>
     </button>
     <div v-if="open && !isSearch" class="tool-card-body">
+      <div v-if="producedFiles.length || step.result" class="tool-body-actions">
+        <button v-for="(file, index) in producedFiles" :key="index" type="button" class="tool-open" :title="file" @click="emit('open', file)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 3h7v7M21 3l-9 9M5 5h6M5 5v14h14v-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          {{ tr('打开', 'Open') }} · {{ fileName(file) }}
+        </button>
+        <button type="button" class="tool-copy" :disabled="!step.result" @click="copyResult">{{ copied ? tr('已复制', 'Copied') : tr('复制', 'Copy') }}</button>
+      </div>
       <p v-if="step.state === 'running' && !sections.length && !diffFiles.length && !screenshot" class="muted">{{ tr('执行中…', 'Running…') }}</p>
       <figure v-if="screenshot" class="tool-shot">
         <img :src="screenshot.src" :alt="tr('屏幕截图', 'Screenshot')" />
@@ -358,6 +392,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <a :href="item.url" target="_blank" rel="noopener noreferrer">{{ item.title || item.url }}</a>
             <p v-if="item.snippet">{{ item.snippet }}</p>
             <small v-if="item.title && item.url">{{ item.url }}</small>
+            <span v-if="item.source" class="tool-search-source">{{ item.source }}</span>
           </li>
         </ol>
         <p v-else class="muted">{{ searchFallback || tr('没有找到相关结果。', 'No relevant results found.') }}</p>
@@ -405,6 +440,12 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .tool-search-results a:hover{text-decoration:underline}
 .tool-search-results p{margin:4px 0 0;font-size:13px;line-height:1.65;color:var(--md-on-surface)}
 .tool-search-results small{display:block;margin-top:2px;font-size:12px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}
+.tool-search-source{display:inline-block;margin-top:4px;padding:1px 7px;border-radius:999px;background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);font-size:11px;color:var(--md-on-surface-variant)}
+.tool-body-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.tool-body-actions button{font:inherit;font-size:12px;display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:5px 10px;border-radius:999px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);background:var(--md-surface-container-low);color:var(--md-on-surface);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:background-color 160ms}
+.tool-body-actions button:hover{background:var(--md-secondary-container)}
+.tool-body-actions .tool-copy{margin-left:auto}
+.tool-body-actions button svg{flex:none;color:var(--md-primary)}
 
 /* Material 3 Expressive polish */
 .tool-card{border-radius:16px;border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent);background:var(--md-surface-container);transition:box-shadow 220ms,background-color 200ms}
