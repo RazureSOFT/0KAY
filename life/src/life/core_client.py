@@ -8,6 +8,10 @@ from typing import Optional
 
 import grpc
 
+from .logging_setup import get_logger
+
+log = get_logger("core_client")
+
 # Add gen/python to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'gen', 'python'))
 
@@ -62,20 +66,43 @@ class CoreClient:
         self.plugin_id: Optional[str] = None
         self._connected = False
 
-    def connect(self) -> bool:
-        """Open channel and create stubs."""
-        try:
-            self._channel = grpc.insecure_channel(self.address)
-            # Wait briefly for channel to be ready
-            grpc.channel_ready_future(self._channel).result(timeout=3)
-            self._plugin_stub = core_pb2_grpc.PluginServiceStub(self._channel)
-            self._core_stub = core_pb2_grpc.CoreServiceStub(self._channel)
-            self._connected = True
-            return True
-        except Exception as e:
-            print(f"[LIFE-Core] Failed to connect to Core at {self.address}: {e}")
-            self._connected = False
-            return False
+    def connect(self, attempts: int = 3) -> bool:
+        """Open channel and create stubs, retrying with bounded backoff.
+
+        Core may be restarting (this plugin re-registers on heartbeat failure),
+        so a single failed attempt must not permanently mark us disconnected.
+        Bounded so a down Core cannot stall a caller indefinitely.
+
+        Security note: this uses ``grpc.insecure_channel``, so the registration
+        token and prompts travel in plaintext.  It is therefore only safe when
+        ``CORE_ADDRESS`` points at a loopback/local Core; do not point it at a
+        remote host without adding TLS (``secure_channel`` + Core's CA).
+        """
+        attempts = max(1, int(attempts))
+        last_error: Optional[Exception] = None
+        for attempt in range(1, attempts + 1):
+            try:
+                self._channel = grpc.insecure_channel(self.address)
+                # Wait briefly for channel to be ready
+                grpc.channel_ready_future(self._channel).result(timeout=3)
+                self._plugin_stub = core_pb2_grpc.PluginServiceStub(self._channel)
+                self._core_stub = core_pb2_grpc.CoreServiceStub(self._channel)
+                self._connected = True
+                return True
+            except Exception as e:
+                last_error = e
+                log.warning("Core connect attempt %d/%d to %s failed: %s", attempt, attempts, self.address, e)
+                if self._channel is not None:
+                    try:
+                        self._channel.close()
+                    except Exception:  # pragma: no cover - best-effort cleanup
+                        pass
+                    self._channel = None
+                if attempt < attempts:
+                    time.sleep(min(0.5 * (2 ** (attempt - 1)), 2.0))
+        self._connected = False
+        log.error("Failed to connect to Core at %s: %s", self.address, last_error)
+        return False
 
     def close(self):
         if self._channel:
@@ -234,8 +261,8 @@ class CoreClient:
                             key="mail_require_approval",
                             type="bool",
                             label="邮件操作需弹窗确认",
-                            default_value="false",
-                            help="开启后，L.I.F.E 读取或发送邮件前会先在 WebUI 弹窗询问是否允许（默认关闭）",
+                            default_value="true",
+                            help="开启后，L.I.F.E 读取或发送邮件前会先在 WebUI 弹窗询问是否允许（默认开启）",
                         ),
                         _pb.SettingsField(
                             key="mail_auto_approve_all",
@@ -339,13 +366,13 @@ class CoreClient:
                     set_identity("life", resp.service_token)
                 except Exception:
                     pass
-                print(f"[LIFE-Core] Registered with Core: plugin_id={self.plugin_id}")
+                log.info("Registered with Core: plugin_id=%s", self.plugin_id)
                 return True
             else:
-                print(f"[LIFE-Core] Registration rejected: {resp.message}")
+                log.warning("Registration rejected: %s", resp.message)
                 return False
         except Exception as e:
-            print(f"[LIFE-Core] Registration failed: {e}")
+            log.error("Registration failed: %s", e)
             return False
 
     def heartbeat(self, active_tasks: int = 0) -> bool:
@@ -364,7 +391,7 @@ class CoreClient:
                 self.plugin_id = None
             return resp.ok
         except Exception as e:
-            print(f"[LIFE-Core] Heartbeat failed: {e}")
+            log.warning("Heartbeat failed: %s", e)
             # Try to re-register
             self.plugin_id = None
             return False
@@ -395,7 +422,7 @@ class CoreClient:
                 "online_count": resp.online_count,
             }
         except Exception as e:
-            print(f"[LIFE-Core] ListAgents failed: {e}")
+            log.warning("ListAgents failed: %s", e)
             return {"agents": [], "online_count": 0}
 
     def use_agent(
@@ -433,7 +460,7 @@ class CoreClient:
                 "message": resp.message,
             }
         except Exception as e:
-            print(f"[LIFE-Core] UseAgent failed: {e}")
+            log.warning("UseAgent failed: %s", e)
             return {"accepted": False, "task_id": task_id, "message": str(e)}
 
     def run_agent_tool(self, tool: str, args: dict, session_id: str = "") -> dict:

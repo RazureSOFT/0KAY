@@ -3,11 +3,65 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Optional
+import ipaddress
 import json
+import socket
 import uuid
 import asyncio
+from urllib.parse import urlsplit
 
 import httpx
+
+
+def _env_flag(name: str) -> bool:
+    """True when the named environment variable is an explicit opt-in."""
+    import os
+    return str(os.getenv(name, "")).strip().lower() in ("1", "true", "yes", "on")
+
+
+def assert_public_host(host: str, port: int = 0, allow_env: str = "") -> str:
+    """SSRF guard for a bare host target: reject hosts resolving to private IPs.
+
+    ``allow_env`` names an environment variable that opts the caller out of the
+    check (e.g. ``LIFE_MAIL_ALLOW_PRIVATE`` for a self-hosted LAN mail server).
+    The opt-out only skips the *private-address* rule; an unresolvable host is
+    still an error, so the exemption cannot be used to disable validation
+    wholesale.
+    """
+    host = str(host or "").strip()
+    if not host:
+        raise ValueError("host is required")
+    try:
+        infos = socket.getaddrinfo(host, int(port or 0), proto=socket.IPPROTO_TCP)
+    except socket.gaierror as error:
+        raise ValueError(f"cannot resolve host: {error}") from error
+    # The opt-out skips only the private-address rule; a host that does not
+    # resolve is still rejected, so the exemption cannot disable validation.
+    if allow_env and _env_flag(allow_env):
+        return host
+    for info in infos:
+        address = ipaddress.ip_address(info[4][0])
+        if not address.is_global:
+            raise ValueError(f"blocked non-public address {address}")
+    return host
+
+
+def _assert_public_http_url(url: str, allow_env: str = "") -> str:
+    """SSRF guard: allow only http(s) URLs whose host resolves to a public IP.
+
+    Returns the URL unchanged when it is safe to fetch, otherwise raises
+    ``ValueError``.  Callers that follow redirects must re-validate every hop,
+    because a public URL can 302 into the private network.
+    """
+    parts = urlsplit(str(url or "").strip())
+    if parts.scheme not in ("http", "https"):
+        raise ValueError("only http/https URLs are allowed")
+    host = parts.hostname
+    if not host:
+        raise ValueError("URL has no host")
+    port = parts.port or (443 if parts.scheme == "https" else 80)
+    assert_public_host(host, port, allow_env)
+    return url
 
 
 @dataclass
@@ -34,7 +88,7 @@ class RuntimeToolConfig:
     mail_smtp_password: str = ""
     mail_from: str = ""
     mail_from_name: str = "0KAY"
-    mail_require_approval: bool = False
+    mail_require_approval: bool = True
     mail_auto_approve_all: bool = False
     mcp_enabled: bool = True
     onebot_enabled: bool = False
@@ -50,6 +104,9 @@ def _imap_credentials(config: "RuntimeToolConfig"):
     password = config.mail_imap_password or os.environ.get("IMAP_PASSWORD", "")
     port = int(config.mail_imap_port or os.environ.get("IMAP_PORT") or 993)
     use_ssl = getattr(config, "mail_imap_ssl", True)
+    # Every IMAP path funnels through here, so the SSRF rule lives here too.
+    if host:
+        assert_public_host(host, port, "LIFE_MAIL_ALLOW_PRIVATE")
     return host, port, user, password, use_ssl
 
 
@@ -60,12 +117,17 @@ def _smtp_credentials(config: "RuntimeToolConfig"):
     password = config.mail_smtp_password or os.environ.get("SMTP_PASSWORD", "")
     port = int(config.mail_smtp_port or os.environ.get("SMTP_PORT") or 465)
     sender = config.mail_from or os.environ.get("MAIL_FROM") or user
+    if host:
+        assert_public_host(host, port, "LIFE_MAIL_ALLOW_PRIVATE")
     return host, port, user, password, sender
 
 
 def test_imap(config: "RuntimeToolConfig") -> dict:
     """Verify IMAP credentials and count INBOX messages."""
-    host, port, user, password, use_ssl = _imap_credentials(config)
+    try:
+        host, port, user, password, use_ssl = _imap_credentials(config)
+    except ValueError as error:
+        return {"ok": False, "error": str(error)}
     if not (host and user and password):
         return {"ok": False, "error": "IMAP 未配置（缺少主机/用户名/密码）"}
     try:
@@ -94,7 +156,10 @@ def test_imap(config: "RuntimeToolConfig") -> dict:
 
 def test_smtp(config: "RuntimeToolConfig") -> dict:
     """Verify SMTP credentials (connect + STARTTLS/SSL + login)."""
-    host, port, user, password, _sender = _smtp_credentials(config)
+    try:
+        host, port, user, password, _sender = _smtp_credentials(config)
+    except ValueError as error:
+        return {"ok": False, "error": str(error)}
     if not (host and user and password):
         return {"ok": False, "error": "SMTP 未配置（缺少主机/用户名/密码）"}
     try:
@@ -104,11 +169,14 @@ def test_smtp(config: "RuntimeToolConfig") -> dict:
         else:
             server = smtplib.SMTP(host, port, timeout=15)
             server.ehlo()
-            try:
-                server.starttls()
-                server.ehlo()
-            except Exception:
-                pass
+            if not server.has_extn("starttls"):
+                try:
+                    server.quit()
+                except Exception:
+                    pass
+                raise RuntimeError("SMTP 服务器未提供 STARTTLS，已拒绝明文登录")
+            server.starttls()
+            server.ehlo()
         try:
             server.login(user, password)
         finally:
@@ -123,7 +191,10 @@ def test_smtp(config: "RuntimeToolConfig") -> dict:
 
 def send_mail(config: "RuntimeToolConfig", to: str, subject: str, body: str) -> ToolResult:
     """Send a plain-text email via SMTP."""
-    host, port, user, password, sender = _smtp_credentials(config)
+    try:
+        host, port, user, password, sender = _smtp_credentials(config)
+    except ValueError as error:
+        return ToolResult(False, None, str(error))
     if not (host and user and password):
         return ToolResult(False, None, "SMTP 未配置（缺少主机/用户名/密码）")
     if not to:
@@ -145,11 +216,14 @@ def send_mail(config: "RuntimeToolConfig", to: str, subject: str, body: str) -> 
         else:
             server = smtplib.SMTP(host, port, timeout=20)
             server.ehlo()
-            try:
-                server.starttls()
-                server.ehlo()
-            except Exception:
-                pass
+            if not server.has_extn("starttls"):
+                try:
+                    server.quit()
+                except Exception:
+                    pass
+                return ToolResult(False, None, "SMTP 服务器未提供 STARTTLS，已拒绝明文发送密码")
+            server.starttls()
+            server.ehlo()
         try:
             server.login(user, password)
             server.sendmail(sender or user, [to], msg.as_string())
@@ -167,7 +241,11 @@ def mail_status(config: "RuntimeToolConfig", test_to: str = "") -> dict:
     """Full mail check: IMAP login, SMTP login and an optional test send."""
     imap = test_imap(config)
     smtp = test_smtp(config)
-    _host, _port, _user, _password, sender = _smtp_credentials(config)
+    try:
+        _host, _port, _user, _password, sender = _smtp_credentials(config)
+    except ValueError:
+        # test_smtp already reported the same guard rejection in `smtp`.
+        sender = ""
     result: dict = {"imap": imap, "smtp": smtp, "from": sender}
     if test_to and smtp.get("ok"):
         sent = send_mail(config, test_to, "0KAY 邮箱测试", "这是一封来自 0KAY L.I.F.E 的测试邮件，收到即表示发件配置正确。")
@@ -285,13 +363,16 @@ class GetMailTool(Tool):
                         ids = list(reversed(ids))[: max(1, int(limit))]
                         emails = []
                         for mid in ids:
-                            typ, msg_data = conn.fetch(mid, "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)] BODY[TEXT])")
+                            typ, msg_data = conn.fetch(mid, "(FLAGS BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)] BODY[TEXT])")
                             if typ != "OK" or not msg_data or msg_data[0] is None:
                                 continue
                             raw = b""
+                            flags = b""
                             for part in msg_data:
                                 if isinstance(part, tuple) and len(part) > 1:
                                     raw += part[1]
+                                elif isinstance(part, (bytes, bytearray)) and b"FLAGS" in part:
+                                    flags += bytes(part)
                             msg = email_lib.message_from_bytes(raw)
                             body = msg.get_payload(decode=True)
                             if body is None:
@@ -303,7 +384,11 @@ class GetMailTool(Tool):
                                 "subject": _decode(msg.get("Subject")),
                                 "preview": body.decode("utf-8", errors="replace")[:200],
                                 "date": msg.get("Date") or "",
-                                "unread": unread_only,
+                                # `\Seen` in the FETCH FLAGS is the real read state.
+                                # Previously this was just the query flag, so every
+                                # message reported unread=False unless unread_only
+                                # was set, and unread_count was always 0.
+                                "unread": (b"\\Seen" not in flags) if flags else bool(unread_only),
                             })
                         return emails
                     finally:
@@ -488,26 +573,41 @@ class WebBrowseTool(Tool):
     async def execute(self, url: str = "", max_length: int = 5000, **kwargs) -> ToolResult:
         if not url:
             return ToolResult(success=False, data=None, error="URL is required")
+        try:
+            _assert_public_http_url(url)
+        except ValueError as error:
+            return ToolResult(success=False, data=None, error=f"URL rejected: {error}")
+        try:
+            limit = max(100, min(int(max_length or 5000), 20000))
+        except (TypeError, ValueError):
+            limit = 5000
 
-        async with httpx.AsyncClient(follow_redirects=True, timeout=30) as client:
-            try:
-                resp = await client.get(url)
-                resp.raise_for_status()
-
-                # Simple text extraction (would use BeautifulSoup in production)
-                content = resp.text[:max_length]
-
-                return ToolResult(
-                    success=True,
-                    data={
-                        "url": url,
-                        "status_code": resp.status_code,
-                        "content": content,
-                        "content_type": resp.headers.get("content-type", ""),
-                    }
-                )
-            except Exception as e:
-                return ToolResult(success=False, data=None, error=str(e))
+        # Redirects are followed manually so every hop is re-validated against
+        # the SSRF guard (a public URL must not be able to 302 into 127.0.0.1).
+        current = url
+        try:
+            async with httpx.AsyncClient(follow_redirects=False, timeout=30) as client:
+                for _ in range(4):
+                    resp = await client.get(current)
+                    if resp.is_redirect and resp.headers.get("location"):
+                        current = str(httpx.URL(current).join(resp.headers["location"]))
+                        _assert_public_http_url(current)
+                        continue
+                    resp.raise_for_status()
+                    return ToolResult(
+                        success=True,
+                        data={
+                            "url": current,
+                            "status_code": resp.status_code,
+                            "content": resp.text[:limit],
+                            "content_type": resp.headers.get("content-type", ""),
+                        },
+                    )
+            return ToolResult(success=False, data=None, error="too many redirects")
+        except ValueError as error:
+            return ToolResult(success=False, data=None, error=f"URL rejected: {error}")
+        except Exception as e:
+            return ToolResult(success=False, data=None, error=str(e))
 
 
 class ComputerUseTool(Tool):
@@ -751,6 +851,117 @@ class AgendaTool(Tool):
         except Exception as e: return ToolResult(False, None, str(e))
 
 
+class GoalAddTool(Tool):
+    """Let the character invent a goal of its own.
+
+    ``add_goal`` used to be reachable only from the dashboard, so every goal was
+    written *for* the character.  Self-authored goals are capped (and marked
+    ``kind="self"``) so it cannot accumulate an unbounded backlog of intentions
+    it never acts on.
+    """
+
+    MAX_SELF_GOALS = 3
+
+    def __init__(self, companion): self.companion = companion
+
+    @property
+    def name(self) -> str: return "goal_add"
+
+    @property
+    def description(self) -> str:
+        return ("Set yourself a goal — something you want to get better at or finish. Use it when "
+                "you notice you care about something you have not acted on. You may hold at most "
+                f"{self.MAX_SELF_GOALS} self-set goals; log progress with goal_log.")
+
+    def parameters(self) -> dict:
+        return {"type": "object", "required": ["title"], "properties": {
+            "title": {"type": "string", "description": "<= 40 chars, concrete and yours"},
+            "detail": {"type": "string", "description": "what 'done' looks like, <= 200 chars"}}}
+
+    async def execute(self, title: str = "", detail: str = "", **kwargs) -> ToolResult:
+        title = str(title or "").strip()[:40]
+        if not title:
+            return ToolResult(False, None, "title is required")
+        try:
+            existing = await asyncio.to_thread(self.companion.list_goals, "")
+        except Exception as e:
+            return ToolResult(False, None, str(e))
+        if any(str(g.get("title")) == title for g in existing):
+            return ToolResult(False, None, "you already have a goal with that title")
+        mine = [g for g in existing if str(g.get("kind")) == "self" and str(g.get("status")) == "active"]
+        if len(mine) >= self.MAX_SELF_GOALS:
+            return ToolResult(False, None, "you already hold %d self-set goals; finish one first: %s"
+                              % (len(mine), "、".join(str(g.get("title")) for g in mine[:3])))
+        try:
+            goal = await asyncio.to_thread(self.companion.add_goal, title, str(detail or "")[:200], "self")
+            return ToolResult(True, goal)
+        except Exception as e:
+            return ToolResult(False, None, str(e))
+
+
+class GoalListTool(Tool):
+    """Let the character see its own self-authored goals.
+
+    ``personal_goals`` already reaches the THINK prompt as context, but without
+    this tool the model had no way to inspect or advance them, so they were
+    decorative.  Progress is never moved automatically.
+    """
+
+    def __init__(self, companion): self.companion = companion
+
+    @property
+    def name(self) -> str: return "goal_list"
+
+    @property
+    def description(self) -> str:
+        return ("List LIFE's own personal goals with progress. Call this before deciding what to "
+                "work on; goals are self-authored and never advanced automatically.")
+
+    def parameters(self) -> dict:
+        return {"type": "object", "properties": {
+            "status": {"type": "string", "description": "active / done / paused; omit for all"}}}
+
+    async def execute(self, status: str = "", **kwargs) -> ToolResult:
+        try:
+            goals = await asyncio.to_thread(self.companion.list_goals, str(status or ""))
+            return ToolResult(True, {"goals": goals})
+        except Exception as e:
+            return ToolResult(False, None, str(e))
+
+
+class GoalLogTool(Tool):
+    """Advance one of LIFE's own goals by recording real, completed evidence."""
+
+    def __init__(self, companion): self.companion = companion
+
+    @property
+    def name(self) -> str: return "goal_log"
+
+    @property
+    def description(self) -> str:
+        return ("Record evidence that you actually made progress on one of your own goals (get the "
+                "id from goal_list). Only log a step you really did — never log an intention.")
+
+    def parameters(self) -> dict:
+        return {"type": "object", "required": ["goal_id", "evidence"], "properties": {
+            "goal_id": {"type": "string"},
+            "evidence": {"type": "string", "description": "what you actually did, <= 80 chars"},
+            "progress": {"type": "number", "minimum": 0, "maximum": 1,
+                         "description": "absolute progress 0..1; omit to keep the current value"}}}
+
+    async def execute(self, goal_id: str = "", evidence: str = "", progress=None, **kwargs) -> ToolResult:
+        if not str(goal_id or "").strip() or not str(evidence or "").strip():
+            return ToolResult(False, None, "goal_id and evidence are required")
+        try:
+            result = await asyncio.to_thread(self.companion.add_goal_log, str(goal_id).strip(),
+                                             str(evidence).strip()[:200], progress)
+            if not result.get("updated"):
+                return ToolResult(False, None, "unknown goal_id")
+            return ToolResult(True, result)
+        except Exception as e:
+            return ToolResult(False, None, str(e))
+
+
 class JournalTool(Tool):
     def __init__(self, companion, kind="journal"): self.companion = companion; self.kind = kind
     @property
@@ -901,7 +1112,11 @@ class ToolRegistry:
             except Exception as error:
                 result = ToolResult(False, None, str(error))
         if record:
-            await self.recorder.finish(record, json.dumps(result.data, ensure_ascii=False), result.error or ("tool failed" if not result.success else ""))
+            try:
+                payload = json.dumps(result.data, ensure_ascii=False, default=str)
+            except Exception:
+                payload = ""
+            await self.recorder.finish(record, payload, result.error or ("tool failed" if not result.success else ""))
         return result
 
     def list_tools(self) -> list[dict]:
@@ -930,4 +1145,7 @@ def create_default_registry(core_client=None, config: RuntimeToolConfig | None =
         registry.register(AgendaTool(companion))
         registry.register(JournalTool(companion))
         registry.register(JournalTool(companion, "dream"))
+        registry.register(GoalListTool(companion))
+        registry.register(GoalAddTool(companion))
+        registry.register(GoalLogTool(companion))
     return registry

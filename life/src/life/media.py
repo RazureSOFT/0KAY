@@ -9,8 +9,15 @@ from __future__ import annotations
 import os
 import re
 from typing import Any, Callable
+from urllib.parse import urlsplit
+
+from .logging_setup import get_logger
+
+logger = get_logger("media")
 
 CQ_PATTERN = re.compile(r"\[CQ:([a-zA-Z_]+)((?:,[^\]]*)*)\]")
+
+MAX_TTS_BYTES = 16 * 1024 * 1024  # 16 MiB ceiling on a TTS response
 
 
 def _parse_cq_params(raw: str) -> dict:
@@ -97,19 +104,54 @@ class MediaPipeline:
     def has_tts(self) -> bool:
         return bool(self.tts_endpoint())
 
+    @staticmethod
+    def _tts_allowed_hosts() -> set[str]:
+        raw = os.getenv("TTS_ALLOWED_HOSTS") or ""
+        return {host.strip().lower() for host in raw.split(",") if host.strip()}
+
     async def synthesize(self, text: str) -> bytes | None:
-        """Return audio bytes from the configured TTS endpoint, or None on any failure."""
+        """Return audio bytes from the configured TTS endpoint, or None on any failure.
+
+        The endpoint comes from user settings / environment, so it is treated as
+        an outbound-request target: only http(s) is allowed, an optional
+        ``TTS_ALLOWED_HOSTS`` allow-list can pin the host, and the response is
+        size-capped so a rogue endpoint cannot exhaust memory.
+        """
         endpoint = self.tts_endpoint()
         if not endpoint or not str(text or "").strip():
+            return None
+        parsed = urlsplit(endpoint)
+        if parsed.scheme not in ("http", "https"):
+            logger.warning("TTS endpoint rejected (unsupported scheme): %s", endpoint)
+            return None
+        # The endpoint is owner-configured but writable over an unauthenticated
+        # channel, so it gets the same private-address rule as every other
+        # outbound fetch; `LIFE_ALLOW_PRIVATE_TTS=1` opts a LAN TTS server back in.
+        from .tools.tools import _assert_public_http_url
+        try:
+            _assert_public_http_url(endpoint, "LIFE_ALLOW_PRIVATE_TTS")
+        except ValueError as error:
+            logger.warning("TTS endpoint rejected: %s (%s)", endpoint, error)
+            return None
+        allowed = self._tts_allowed_hosts()
+        if allowed and (parsed.hostname or "").lower() not in allowed:
+            logger.warning("TTS endpoint host not in TTS_ALLOWED_HOSTS: %s", parsed.hostname)
             return None
         import httpx
 
         try:
             async with httpx.AsyncClient(timeout=30) as client:
-                response = await client.post(endpoint, json={"text": str(text)[:500]})
-                response.raise_for_status()
-                return response.content
-        except Exception:
+                async with client.stream("POST", endpoint, json={"text": str(text)[:500]}) as response:
+                    response.raise_for_status()
+                    buffer = bytearray()
+                    async for chunk in response.aiter_bytes():
+                        buffer.extend(chunk)
+                        if len(buffer) > MAX_TTS_BYTES:
+                            logger.warning("TTS response exceeded %d bytes; discarded", MAX_TTS_BYTES)
+                            return None
+                    return bytes(buffer)
+        except Exception as error:
+            logger.warning("TTS synthesis failed: %s", error)
             return None
 
     def describe(self, message: Any, vision: Callable[[str], str] | None = None) -> str:

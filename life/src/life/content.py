@@ -13,6 +13,13 @@ from typing import Any, Callable
 
 FEED_KINDS = ("news", "ai", "bilibili", "tech", "search")
 
+# A DTD / entity declaration in untrusted feed XML enables XXE and
+# entity-expansion ("billion laughs") denial of service, so such documents are
+# rejected before parsing.  `xml.etree` will not fetch external entities, but it
+# is not a hardened parser either.
+_DTD_RE = re.compile(r"<!\s*(DOCTYPE|ENTITY)", re.IGNORECASE)
+MAX_XML_CHARS = 5 * 1024 * 1024
+
 
 def _clean(text: Any, limit: int = 400) -> str:
     plain = re.sub(r"<[^>]+>", "", re.sub(r"\s+", " ", str(text or "")))
@@ -32,6 +39,8 @@ def _text(node, name: str) -> str:
 
 def parse_feed(xml_text: str, default_kind: str = "news", limit: int = 10) -> list[dict[str, Any]]:
     """Parse RSS or Atom into digest dicts. Malformed input yields an empty list."""
+    if not xml_text or len(xml_text) > MAX_XML_CHARS or _DTD_RE.search(xml_text):
+        return []
     try:
         root = ET.fromstring(xml_text)
     except ET.ParseError:
@@ -82,10 +91,27 @@ class ContentSystem:
     async def fetch_feed(self, url: str) -> str:
         import httpx
 
-        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
-            response = await client.get(url, headers={"User-Agent": "LIFE/1.0 (+companion)"})
-            response.raise_for_status()
-            return response.text
+        from .tools.tools import _assert_public_http_url
+
+        # News feeds are configured by the owner, but the same settings document
+        # is writable over an unauthenticated channel, so the URL is treated as
+        # untrusted input: reject private targets unless explicitly allowed.
+        allow_env = "LIFE_ALLOW_PRIVATE_FETCH"
+        _assert_public_http_url(url, allow_env)
+
+        # Redirects are followed manually so every hop is re-validated (a public
+        # feed URL must not be able to 302 into 127.0.0.1 or 169.254.169.254).
+        current = url
+        async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
+            for _ in range(5):
+                response = await client.get(current, headers={"User-Agent": "LIFE/1.0 (+companion)"})
+                if response.is_redirect and response.headers.get("location"):
+                    current = str(httpx.URL(current).join(response.headers["location"]))
+                    _assert_public_http_url(current, allow_env)
+                    continue
+                response.raise_for_status()
+                return response.text
+        raise ValueError("too many redirects")
 
     async def collect(self, companion, search: Callable | None = None, interests: list[str] | None = None) -> dict[str, Any]:
         """Fetch configured feeds (and optionally self-search), storing digests."""

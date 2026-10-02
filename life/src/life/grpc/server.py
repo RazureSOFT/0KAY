@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import sys
+from datetime import date
 
 import grpc
 from grpc import aio
@@ -17,7 +18,10 @@ from plugin.v1 import plugin_pb2
 
 from ..engine import LifeEngine
 from ..core_client import get_core_client
-from ..logging_setup import setup_logging
+from ..logging_setup import get_logger, setup_logging
+from .auth import build_interceptor, resolve_mode
+
+log = get_logger("grpc.server")
 
 
 class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
@@ -30,6 +34,9 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
         self._onebot_task: asyncio.Task | None = None
         self._onebot_started = False
         self._onebot_manager = None
+        # Hold references to fire-and-forget tasks; a bare create_task() result
+        # can be garbage-collected mid-flight and silently cancelled.
+        self._autonomy_tasks: set = set()
 
     async def start_background_tasks(self):
         """Start background loops (heartbeat + agent sync + optional OneBot)."""
@@ -70,13 +77,14 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                     observer=lambda group_id, user_id, message: asyncio.to_thread(self.engine.companion.observe_group, group_id, user_id, message),
                     should_reply=lambda group_id, user_id, message, mentioned: asyncio.to_thread(self.engine.group_should_reply, group_id, user_id, message, mentioned),
                     recall_handler=lambda session_id, user_id, note, adapter_type: asyncio.to_thread(self.engine.companion.timeline_add, "撤回", note[:80], ""),
+                    vision_handler=lambda ref: self.engine.describe_onebot_image(ref),
                 ),
             )
             self.engine.tool_config.onebot_sender = manager.send_message
-            print(f"[LIFE] OneBot adapter starting → {ws_url}")
+            log.info("OneBot adapter starting -> %s", ws_url)
             await manager.start_all()
         except Exception as e:
-            print(f"[LIFE] OneBot adapter failed: {e}")
+            log.warning("OneBot adapter failed: %s", e)
         finally:
             if self._onebot_manager:
                 await self._onebot_manager.stop_all()
@@ -93,7 +101,10 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 response = await client.get(f"{base}/api/settings/life", headers=auth_headers())
                 response.raise_for_status()
                 return response.json().get("values") or {}
-        except Exception:
+        except Exception as error:
+            # Core unreachable: the plugin keeps running on stale defaults, which
+            # used to happen with zero signal.
+            log.warning("could not load life settings from Core: %s", error)
             return {}
 
     async def _background_loop(self):
@@ -108,7 +119,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
 
         # Initial agent sync
         count = await asyncio.to_thread(self.engine.sync_agents)
-        print(f"[LIFE] Online agents: {count}")
+        log.info("Online agents: %s", count)
         await self._refresh_settings()
         if self.engine.tool_config.onebot_enabled:
             self._onebot_started = True
@@ -131,10 +142,10 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 await self.engine.learn_from_minecraft()
                 await self.engine.task_records.flush()
                 self.engine.circadian.tick(0)
-                self.engine._save_state()
+                await asyncio.to_thread(self.engine._save_state)
                 # Daily maintenance is intentionally local and bounded: compact
                 # memories, rebuild indexes, and retain seven JSON snapshots.
-                today = __import__("datetime").date.today().isoformat()
+                today = date.today().isoformat()
                 if getattr(self, "_maintenance_day", "") != today:
                     result = await asyncio.to_thread(self.engine.memory.maintenance)
                     self.engine.companion.audit("daily_memory_maintenance", json.dumps(result, ensure_ascii=False))
@@ -144,7 +155,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                     self._onebot_started = True
                     self._onebot_task = asyncio.create_task(self._start_onebot())
             except Exception as e:
-                print(f"[LIFE] background loop error: {e}")
+                log.warning("background loop error: %s", e)
 
     async def _refresh_settings(self):
         """Poll the Core-owned settings document; Core remains the secret store."""
@@ -227,15 +238,15 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             try:
                 reinforced = await asyncio.to_thread(self.engine.memory.periodic_reinforce)
                 if reinforced:
-                    print(f"[LIFE] reinforced {reinforced} weak memories")
+                    log.info("reinforced %s weak memories", reinforced)
             except Exception as e:
-                print(f"[LIFE] memory reinforce error: {e}")
+                log.warning("memory reinforce error: %s", e)
         elif event_type == life_pb2.SCHEDULED_EVENT_TYPE_MEMORY_CONSOLIDATION:
-            await asyncio.to_thread(self.engine.memory.consolidate)
+            # One night of sleep: SWS (forget + structural transfer) then REM (stabilise).
             try:
-                await asyncio.to_thread(self.engine.memory.periodic_reinforce)
+                await asyncio.to_thread(self.engine.memory.sleep_cycle)
             except Exception as e:
-                print(f"[LIFE] memory reinforce error: {e}")
+                log.warning("sleep cycle error: %s", e)
         elif event_type == life_pb2.SCHEDULED_EVENT_TYPE_IDLE_CHECK:
             if self.engine.circadian.should_auto_sleep():
                 self.engine.circadian.start_sleep()
@@ -251,16 +262,21 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                     await self.engine.content_tick()
                     await self.engine.outfit_tick()
                     await self.engine.maybe_daily_entries()
+                    await self.engine.maybe_life_event()
+                    await self.engine.worldsim_tick()
+                    await self.engine.worldsim_shadow_tick()
                     await self.engine.run_daily_review()
                 except Exception as e:
-                    print(f"[LIFE] autonomy cycle error: {e}")
+                    log.warning("autonomy cycle error: %s", e)
             try:
-                asyncio.create_task(autonomy_cycle())
+                task = asyncio.create_task(autonomy_cycle())
+                self._autonomy_tasks.add(task)
+                task.add_done_callback(self._autonomy_tasks.discard)
             except Exception as e:
-                print(f"[LIFE] autonomy error: {e}")
+                log.warning("could not start autonomy cycle: %s", e)
 
-        # Save state after events
-        self.engine._save_state()
+        # Save state after events (off the event loop: it is a full JSON rewrite)
+        await asyncio.to_thread(self.engine._save_state)
 
         return life_pb2.OnScheduledEventResponse(acknowledged=True)
 
@@ -345,6 +361,12 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             snapshot["circadian"] = {key: rhythm[key] for key in ("sleep_hour", "wake_hour", "observed_days", "is_sleeping", "mental_energy", "hunger", "health")}
             snapshot["emotion"] = self.engine.emotion.state.to_dict()
             snapshot["policy"] = await asyncio.to_thread(self.engine.companion.get_policy)
+            # Live cognition read-out (arbiter mode, per-wave state).  This is
+            # read-only telemetry for the dashboard; it is produced from the
+            # already-live systems, never recomputed from stored settings.
+            snapshot["cognition"] = await asyncio.to_thread(self.engine.cognition_status)
+            # The fictional world's identity + renderable map + actor positions.
+            snapshot["worldview"] = await self.engine.worldview_snapshot()
             # Known conversations the panel can target directly (session:<id>).
             snapshot["conversations"] = list(self.engine._histories.keys())[-20:]
             return life_pb2.GetCompanionResponse(json=json.dumps(snapshot, ensure_ascii=False))
@@ -378,11 +400,18 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             elif action == "clear_all_memory":
                 result = await self.engine.clear_memory()
                 self.engine.companion.audit("memory_clear_all", json.dumps(result, ensure_ascii=False), outcome="ok")
+            elif action == "reset_person":
+                result = await self.engine.reset_person()
             elif action == "ack_notifications":
                 self.engine.acknowledge_notifications(str(payload.get('session_id') or ''),payload.get('ids') or [])
                 result={'ok':True}
             elif action == "memory_page":
+                # Fail closed: the default is public-only. An admin browse has to
+                # ask for "*" explicitly (the gRPC channel is authenticated, so
+                # that is a deliberate act, not a default).
                 result = await asyncio.to_thread(self.engine.memory.page_facts, payload.get("tier",""), payload.get("query",""), int(payload.get("limit",50)), int(payload.get("offset",0)), payload.get("sort","recent"), payload.get("scope",""))
+            elif action == "memory_dashboard":
+                result = await asyncio.to_thread(self.engine.memory.dashboard)
             elif action == "memory_detail":
                 result = await asyncio.to_thread(self.engine.memory.get_fact, payload.get("id",""))
             elif action == "memory_reinforce":
@@ -421,7 +450,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                                         None if quiet_end in (None,"") else int(quiet_end))
                 result = {"ok": True, "daily_limit": daily, "per_target_limit": per_target}
             elif action == "relationship_adjust":
-                result = await asyncio.to_thread(self.engine.companion.apply_relationship_event, payload.get("user_id",""), payload.get("event_key",""), payload.get("reason","dashboard"), payload.get("channel","webui"), float(payload.get("delta",0)))
+                # A3 信息不对称性：面板强加的修改带 by="owner" 来源，对角色自己不可见。
+                result = await asyncio.to_thread(self.engine.companion.apply_relationship_event, payload.get("user_id",""), payload.get("event_key",""), payload.get("reason","dashboard"), payload.get("channel","webui"), float(payload.get("delta",0)), "owner")
             elif action in ("journal_generate", "dream_generate"):
                 kind = "journal" if action == "journal_generate" else "dream"
                 text = await self.engine.generate_companion_text(kind, str(payload.get("hint","")))
@@ -430,6 +460,16 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 content = await self.engine.generate_companion_text("proactive", str(payload.get("hint","")))
                 target = str(payload.get("target") or "user:owner")
                 result = await asyncio.to_thread(self.engine.companion.create_proactive_candidate, target, "ai_suggestion", content) if content else {"status":"empty"}
+            elif action == "world_generate":
+                result = await self.engine.generate_worldview(str(payload.get("instructions") or ""))
+            elif action == "world_map_generate":
+                result = await self.engine.generate_worldview(str(payload.get("instructions") or ""), map_only=True)
+            elif action == "world_clear":
+                result = await self.engine.world_clear()
+            elif action == "worldsim_tick":
+                result = await self.engine.worldsim_tick()
+            elif action == "world_shadow_tick":
+                result = await self.engine.worldsim_shadow_tick(force=bool(payload.get("force", False)))
             elif action == "autonomy_plan":
                 result = await self.engine.autonomous_plan(True)
             elif action == "proactive_tick":
@@ -511,6 +551,9 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await asyncio.to_thread(self.engine.companion.group_member_flag, payload.get("group_id",""), payload.get("user_id",""), payload.get("flag","watch"))
             elif action == "group_atmosphere":
                 result = await asyncio.to_thread(self.engine.companion.group_atmosphere, payload.get("group_id",""))
+            elif action == "group_relations":
+                result = {"relations": await asyncio.to_thread(
+                    self.engine.companion.group_relations, payload.get("group_id",""), int(payload.get("limit",10)))}
             elif action == "group_wake_tick":
                 result = await self.engine.group_wake_tick()
             elif action == "content_tick":
@@ -553,6 +596,9 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await asyncio.to_thread(self.engine.companion.get_settings)
             elif action == "settings_set":
                 result = await asyncio.to_thread(self.engine.companion.set_settings, payload.get("settings") or payload)
+                # Cognition knobs must take effect on the live systems, not only
+                # after a restart: reconfigure in place (learned state survives).
+                await asyncio.to_thread(self.engine.apply_cognition_settings)
             elif action == "config_export":
                 result = await asyncio.to_thread(self.engine.companion.export_config)
             elif action == "config_import":
@@ -607,7 +653,10 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))
         except Exception as e:
-            return life_pb2.ManageCompanionResponse(ok=False, error=str(e))
+            # Log the detail, return a generic message: internal paths/protocol
+            # details should not flow to the dashboard.
+            log.warning("ManageCompanion action failed: %s", e)
+            return life_pb2.ManageCompanionResponse(ok=False, error="internal error")
 
     async def CompactConversation(self, request, context):
         try:
@@ -632,7 +681,30 @@ async def serve(mocr_address: str = None):
     port = os.environ.get("LIFE_GRPC_PORT", "50053")
     log.info("starting LIFE gRPC server on :%s (data_dir=%s)", port, data_dir)
 
-    server = aio.server()
+    # The bind host and the auth mode are decided before the server object
+    # exists: a non-loopback bind without authentication must never get as far
+    # as listening.
+    bind_host = (os.getenv("LIFE_BIND_HOST", "127.0.0.1") or "127.0.0.1").strip()
+    loopback = bind_host in ("127.0.0.1", "localhost", "::1")
+    if not loopback and os.getenv("LIFE_ALLOW_REMOTE_BIND", "").strip().lower() not in ("1", "true", "yes", "on"):
+        log.warning(
+            "LIFE_BIND_HOST=%s is non-loopback but LIFE_ALLOW_REMOTE_BIND is not set; "
+            "binding to 127.0.0.1 instead (this gRPC endpoint has no authentication)", bind_host)
+        bind_host = "127.0.0.1"
+        loopback = True
+
+    auth_mode = resolve_mode(os.getenv("LIFE_REQUIRE_AUTH", "auto"))
+    if not loopback and auth_mode == "off":
+        raise RuntimeError(
+            "refusing to serve LIFE gRPC on a non-loopback host with "
+            "LIFE_REQUIRE_AUTH=0; enable authentication or bind to 127.0.0.1")
+    interceptor = build_interceptor(auth_mode, non_loopback=not loopback, log=log)
+
+    server = aio.server(interceptors=[interceptor] if interceptor is not None else None)
+    if not loopback:
+        log.warning("binding LIFE gRPC to non-loopback host %s (no TLS, auth=%s)", bind_host, auth_mode)
+    elif interceptor is None:
+        log.info("LIFE gRPC authentication disabled (LIFE_REQUIRE_AUTH=0)")
 
     try:
         servicer = LifeServiceServicer(mocr_address=mocr_address)
@@ -645,10 +717,10 @@ async def serve(mocr_address: str = None):
     core = get_core_client()
     core.life_address = os.getenv("LIFE_ADDRESS", f"localhost:{port}")
 
-    server.add_insecure_port(f"{os.getenv('LIFE_BIND_HOST', '127.0.0.1')}:{port}")
+    server.add_insecure_port(f"{bind_host}:{port}")
     await server.start()
-    log.info("LIFE gRPC listening on %s:%s (core=%s, mocr=%s)",
-             os.getenv("LIFE_BIND_HOST", "127.0.0.1"), port, core.address, mocr_address)
+    log.info("LIFE gRPC listening on %s:%s (core=%s, mocr=%s, auth=%s)",
+             bind_host, port, core.address, mocr_address, auth_mode)
 
     # Start background tasks (register with Core, heartbeat, sync agents)
     try:
