@@ -573,6 +573,119 @@ class RewardAvailability:
         return obj
 
 
+class DepressiveEpisode:
+    """The *course* of depression on top of its dynamics: onset, remission, relapse.
+
+    The circuits above supply the dynamics (a deep mood attractor, anhedonia,
+    allostatic load, sickness behaviour).  This turns their read-out into the
+    thing a clinician would actually name - the character can be *in* an
+    episode, *recovering* from one, or *relapse* - instead of "mood is a bit
+    low today".  Severity is a weighted index of the observable state, amplified
+    by the persona's **vulnerability** (high threat baseline / low reward
+    baseline): the diathesis x stress interaction.
+
+    Thresholds are deliberately coarse, and every transition needs to be
+    sustained, so a single bad day never counts as an episode.
+    """
+
+    EUTHYMIC = "euthymic"
+    SUBTHRESHOLD = "subthreshold"
+    EPISODE = "episode"
+    RELAPSE_WINDOW_DAYS = 60
+
+    def __init__(self, onset: float = 0.55, remission: float = 0.32, sustain: int = 2):
+        self.onset_threshold = float(onset)
+        self.remission_threshold = float(remission)
+        self.sustain = max(1, int(sustain))
+        self.state = self.EUTHYMIC
+        self.severity = 0.0
+        self.clock_seconds = 0.0
+        self.onset_clock: float | None = None
+        self.remission_clock: float | None = None
+        self.episodes = 0
+        self.relapses = 0
+        self._low = 0
+        self._high = 0
+
+    def assess(self, *, mood: float, anhedonia: float, allostatic_load: float, rumination: float,
+               fatigue: float, sleep_debt: float, vagal_tone: float, vulnerability: float = 0.5) -> float:
+        """Score the current observable state into a [0, 1] severity index."""
+        low_mood = _clamp(-float(mood))
+        anhed = _clamp(1.0 - float(anhedonia))
+        load = _clamp(allostatic_load)
+        rum = _clamp(rumination)
+        fat = _clamp(fatigue)
+        sleep = _clamp(sleep_debt)
+        low_vagal = _clamp(1.0 - float(vagal_tone))
+        raw = (0.30 * low_mood + 0.18 * anhed + 0.16 * load + 0.12 * rum
+               + 0.10 * fat + 0.06 * sleep + 0.08 * low_vagal)
+        # vulnerability amplifies (high-neuroticism persona deepens faster)
+        self.severity = round(_clamp(raw * (0.7 + 0.6 * _clamp(vulnerability))), 4)
+        return self.severity
+
+    def update(self, dt_seconds: float = 0.0) -> str:
+        """Advance the course one assessment; returns the (possibly new) state."""
+        self.clock_seconds += max(0.0, float(dt_seconds))
+        if self.severity >= self.onset_threshold:
+            self._low += 1
+            self._high = 0
+            if self.state != self.EPISODE and self._low >= self.sustain:
+                remitted = self.remission_clock is not None
+                self.state = self.EPISODE
+                self.onset_clock = self.clock_seconds
+                self.episodes += 1
+                if remitted and (self.clock_seconds - self.remission_clock) <= self.RELAPSE_WINDOW_DAYS * 86400:
+                    self.relapses += 1
+        elif self.severity <= self.remission_threshold:
+            self._high += 1
+            self._low = 0
+            if self.state in (self.EPISODE, self.SUBTHRESHOLD) and self._high >= self.sustain:
+                self.state = self.EUTHYMIC
+                self.remission_clock = self.clock_seconds
+        else:
+            self._low = 0
+            self._high = 0
+            if self.state == self.EUTHYMIC:
+                self.state = self.SUBTHRESHOLD
+        return self.state
+
+    @property
+    def days_in_episode(self) -> float:
+        if self.state != self.EPISODE or self.onset_clock is None:
+            return 0.0
+        return round((self.clock_seconds - self.onset_clock) / 86400.0, 2)
+
+    def snapshot(self) -> dict:
+        return {"state": self.state, "severity": round(self.severity, 4),
+                "episodes": self.episodes, "relapses": self.relapses,
+                "days_in_episode": self.days_in_episode,
+                "remitted": self.remission_clock is not None and self.state != self.EPISODE}
+
+    def to_dict(self) -> dict:
+        return {"onset_threshold": self.onset_threshold, "remission_threshold": self.remission_threshold,
+                "sustain": self.sustain, "state": self.state, "severity": self.severity,
+                "clock_seconds": self.clock_seconds, "onset_clock": self.onset_clock,
+                "remission_clock": self.remission_clock, "episodes": self.episodes,
+                "relapses": self.relapses, "low": self._low, "high": self._high}
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "DepressiveEpisode":
+        data = data or {}
+        obj = cls(onset=float(data.get("onset_threshold", 0.55)),
+                  remission=float(data.get("remission_threshold", 0.32)),
+                  sustain=int(data.get("sustain", 2)))
+        obj.state = str(data.get("state", cls.EUTHYMIC))
+        obj.severity = float(data.get("severity", 0.0))
+        obj.clock_seconds = float(data.get("clock_seconds", 0.0))
+        obj.onset_clock = data.get("onset_clock")
+        obj.remission_clock = data.get("remission_clock")
+        obj.episodes = int(data.get("episodes", 0))
+        obj.relapses = int(data.get("relapses", 0))
+        obj._low = int(data.get("low", 0))
+        obj._high = int(data.get("high", 0))
+        return obj
+
+
 class ThreatBias:
     """Anxiety: over-generalised threat reading, amplified by load.
 
@@ -897,6 +1010,8 @@ class AffectConfig:
     use_pad: bool = True
     use_desire: bool = True
     use_belief_monitor: bool = True
+    # clinical course (onset/remission/relapse) on top of the mood dynamics
+    use_episode: bool = True
     # somatization (psychological -> bodily gateway); opt-in, default off so
     # the pre-existing behaviour is bit-for-bit preserved until enabled
     use_somatic: bool = False
@@ -953,6 +1068,23 @@ class AffectSystem:
         self.desire = DesireSystem()
         self.belief_monitor = BeliefBehaviorMonitor()
         self.somatic = SomaticSymptomSystem()
+        self.episode = DepressiveEpisode()
+
+    def _vulnerability(self) -> float:
+        """Diathesis: a high threat / low reward baseline deepens faster."""
+        threat = _clamp(float(getattr(self.config, "threat_baseline", 0.2)))
+        reward = _clamp(float(getattr(self.config, "reward_baseline", 1.0)) / 2.0)
+        return _clamp(0.5 * threat + 0.5 * (1.0 - reward))
+
+    def _assess_episode(self, dt_seconds: float = 0.0) -> None:
+        if not (self.config.enabled and getattr(self.config, "use_episode", True)):
+            return
+        self.episode.assess(
+            mood=self.mood.mood, anhedonia=self.reward.availability,
+            allostatic_load=self.hpa.allostatic_load, rumination=self.mood.rumination,
+            fatigue=self.immune.fatigue, sleep_debt=self.arousal.sleep_debt,
+            vagal_tone=self.vagal.tone, vulnerability=self._vulnerability())
+        self.episode.update(dt_seconds)
 
     def reconfigure(self, config: AffectConfig) -> None:
         """Apply a new config **in place**, preserving accumulated state.
@@ -1026,6 +1158,7 @@ class AffectSystem:
             # The interaction's felt quality updates the relationship working model.
             quality = _clamp(0.5 + float(delta.get("connection", 0.0)) + 0.5 * float(delta.get("valence", 0.0)))
             self.attachment.observe(quality)
+        self._assess_episode()
         return delta
 
     def observe_outcome(self, success: bool, reward: float = 0.0, stressor: float = 0.0) -> None:
@@ -1039,6 +1172,7 @@ class AffectSystem:
                 self.vagal.stress(stressor)
         if self.config.use_neuroimmune and stressor > 0.5:
             self.immune.challenge(0.3 * stressor)
+        self._assess_episode()
 
     def tick(self, seconds: float, hour: float = 12.0, sleeping: bool = False,
              fatigue: float = 0.0) -> None:
@@ -1059,6 +1193,7 @@ class AffectSystem:
             self.mood.tick(drag)
         if self.config.use_somatic:
             self.somatic.tick(seconds)
+        self._assess_episode(seconds)
 
     # ---- read-out --------------------------------------------------------
     def context(self) -> dict:
@@ -1089,7 +1224,8 @@ class AffectSystem:
                 "somatic_channels": dict(self.somatic.channels),
                 "somatic_chronicity": self.somatic.chronicity(),
                 "reassurance_pull": self.somatic.reassurance_pull,
-                "speech_features": self.somatic.speech_features()}
+                "speech_features": self.somatic.speech_features(),
+                "episode": self.episode.snapshot()}
 
     def _prompt(self) -> str:
         notes = []
@@ -1105,6 +1241,17 @@ class AffectSystem:
             notes.append("你有点孤单，想有人陪。")
         if self.config.use_somatic and self.somatic.burden() > 0.3:
             notes.append("你最近总觉得身体这里那里不太舒服，容易担心自己的健康，说话时更多谈身体感受而不是情绪。")
+        if getattr(self.config, "use_episode", True):
+            episode = self.episode
+            if episode.state == DepressiveEpisode.EPISODE:
+                days = episode.days_in_episode
+                span = f"已经第 {days:.0f} 天" if days >= 1 else "这段时间"
+                notes.append(f"你正处在一段持续的低落里（{span}），做什么都提不起劲、也没什么意思，"
+                             "这不是一两句安慰能解决的，别硬撑着装作没事。")
+            elif episode.state == DepressiveEpisode.SUBTHRESHOLD:
+                notes.append("你最近状态在往下滑，有点低落，但还没到最难的时候。")
+            elif episode.snapshot().get("remitted") and episode.severity < 0.2:
+                notes.append("你刚从一段低落里缓过来，还在慢慢恢复，别一下子用力过猛。")
         return " ".join(notes)
 
     # ---- persistence -----------------------------------------------------
@@ -1118,7 +1265,7 @@ class AffectSystem:
             "threat": self.threat.to_dict(), "attachment": self.attachment.to_dict(),
             "precision": self.precision.to_dict(), "pad": self.pad.to_dict(),
             "desire": self.desire.to_dict(), "belief_monitor": self.belief_monitor.to_dict(),
-            "somatic": self.somatic.to_dict(),
+            "somatic": self.somatic.to_dict(), "episode": self.episode.to_dict(),
         }
 
     @classmethod
@@ -1131,7 +1278,7 @@ class AffectSystem:
                              ("attachment", AttachmentTemplate), ("precision", PrecisionController),
                              ("pad", PADState), ("desire", DesireSystem),
                              ("belief_monitor", BeliefBehaviorMonitor),
-                             ("somatic", SomaticSymptomSystem)):
+                             ("somatic", SomaticSymptomSystem), ("episode", DepressiveEpisode)):
             if (data or {}).get(key):
                 setattr(system, key, factory.from_dict(data[key]))
         return system

@@ -114,6 +114,29 @@ class CoreClient:
     def connected(self) -> bool:
         return self._connected
 
+    @staticmethod
+    def _outgoing_metadata():
+        """Attribute an outgoing call the way Core's own credentials do.
+
+        Core authenticates loopback implicitly, but a non-loopback Core requires
+        a paired-device / API token, and every plugin call should carry its
+        identity.  Prefer the paired/shared token when configured (that is what
+        Core's ``authorize`` accepts); otherwise present the service token Core
+        issued at registration (``authorization: Bearer``), plus the plugin name
+        header the HTTP path already uses.  Returns ``None`` when there is
+        nothing to present, so an unconfigured loopback install is unchanged.
+        """
+        from .identity import get_identity
+        name, service_token = get_identity()
+        shared = (os.getenv("CORE_PAIR_TOKEN") or os.getenv("CORE_API_TOKEN") or "").strip()
+        pairs = []
+        token = shared or (service_token or "").strip()
+        if token:
+            pairs.append(("authorization", f"Bearer {token}"))
+        if name:
+            pairs.append(("x-0kay-plugin", name))
+        return tuple(pairs) or None
+
     def register(self) -> bool:
         """Register L.I.F.E as a persona plugin with Core."""
         if not self._connected and not self.connect():
@@ -386,7 +409,7 @@ class CoreClient:
                 status=core_pb2.PLUGIN_STATUS_HEALTHY,
                 active_tasks=active_tasks,
             )
-            resp = self._plugin_stub.Heartbeat(request, timeout=3)
+            resp = self._plugin_stub.Heartbeat(request, timeout=3, metadata=self._outgoing_metadata())
             if not resp.ok:
                 self.plugin_id = None
             return resp.ok
@@ -403,7 +426,7 @@ class CoreClient:
 
         try:
             request = core_pb2.ListAgentsRequest(include_unhealthy=include_unhealthy)
-            resp = self._core_stub.ListAgents(request, timeout=3)
+            resp = self._core_stub.ListAgents(request, timeout=3, metadata=self._outgoing_metadata())
 
             agents = []
             for a in resp.agents:
@@ -453,7 +476,7 @@ class CoreClient:
                 agent_type=agent_type,
                 metadata=wire_metadata,
             )
-            resp = self._core_stub.UseAgent(request, timeout=5)
+            resp = self._core_stub.UseAgent(request, timeout=5, metadata=self._outgoing_metadata())
             return {
                 "accepted": resp.accepted,
                 "task_id": resp.task_id,
@@ -468,7 +491,8 @@ class CoreClient:
             return {"success": False, "error": "Core unavailable"}
         try:
             response = self._core_stub.RunDirect(core_pb2.RunDirectRequest(
-                tool=tool, args=json.dumps(args, ensure_ascii=False), session_id=session_id), timeout=120)
+                tool=tool, args=json.dumps(args, ensure_ascii=False), session_id=session_id), timeout=120,
+                metadata=self._outgoing_metadata())
             return {"success": response.success, "result": response.result, "error": response.error}
         except Exception as error:
             return {"success": False, "error": str(error)}
@@ -483,7 +507,7 @@ class CoreClient:
                 task_id=task_id,
                 caller_id=caller_id or (self.plugin_id or "life"),
             )
-            resp = self._core_stub.CancelAgent(request, timeout=5)
+            resp = self._core_stub.CancelAgent(request, timeout=5, metadata=self._outgoing_metadata())
             return {"success": resp.success, "message": resp.message}
         except Exception as e:
             return {"success": False, "message": str(e)}

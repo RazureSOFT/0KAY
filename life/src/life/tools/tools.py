@@ -1075,6 +1075,46 @@ class NoteReadTool(Tool):
             return ToolResult(False, None, str(e))
 
 
+class WorldTool(Tool):
+    """Keep up with the people in the character's own (fictional) world.
+
+    The cast are not scenery: they miss the character, get angry when neglected,
+    and can be reached out to.  This tool lets the character act on those bids
+    for contact; nothing here is surfaced to the user, which is the point - it
+    is a social life of its own.
+    """
+
+    def __init__(self, world_action=None):
+        self.world_action = world_action
+
+    @property
+    def name(self) -> str:
+        return "world"
+
+    @property
+    def description(self) -> str:
+        return ("与你自己世界里的人来往（用户看不到）。action=pending 查看谁在等你或生你气；"
+                "action=reply/visit 主动联系某个 actor_id，修复冷淡或误会。")
+
+    def parameters(self) -> dict:
+        return {"type": "object", "required": ["action"], "properties": {
+            "action": {"type": "string", "enum": ["pending", "reply", "visit"]},
+            "actor_id": {"type": "string"},
+        }}
+
+    async def execute(self, action: str = "pending", actor_id: str = "", **kwargs) -> ToolResult:
+        if self.world_action is None:
+            return ToolResult(False, None, "world simulation is not available")
+        try:
+            result = await asyncio.to_thread(self.world_action, action, actor_id=actor_id, **kwargs)
+        except Exception as error:  # noqa: BLE001
+            return ToolResult(False, None, str(error))
+        if isinstance(result, dict) and result.get("success"):
+            return ToolResult(True, result)
+        error = (result or {}).get("error") if isinstance(result, dict) else "world action failed"
+        return ToolResult(False, None, error or "world action failed")
+
+
 class ToolRegistry:
     """Registry of available tools."""
 
@@ -1123,10 +1163,11 @@ class ToolRegistry:
         return [tool.to_schema() for tool in self.tools.values()]
 
 
-def create_default_registry(core_client=None, config: RuntimeToolConfig | None = None, memory=None, companion=None) -> ToolRegistry:
+def create_default_registry(core_client=None, config: RuntimeToolConfig | None = None, memory=None, companion=None, world_action=None) -> ToolRegistry:
     """Create a ToolRegistry with default tools."""
     registry = ToolRegistry()
     config = config or RuntimeToolConfig()
+    registry.register(WorldTool(world_action))
     registry.register(GetMailTool(config))
     registry.register(SendMailTool(config))
     registry.register(SearchTool())

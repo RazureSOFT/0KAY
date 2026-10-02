@@ -186,25 +186,136 @@ class WorldRuntime:
         except Exception as _exc:
             logger.debug("suppressed error: %s", _exc)
 
+    #: The cast are not just scenery: they are people the character knows, who
+    #: miss it, get angry at it, and can be reached out to.  Below are the
+    #: thresholds that make their social life real (and bounded).
+    BEAT_MIN_DAYS = 1.5
+    UPSET_AFFINITY = 0.32
+    BEAT_COOLDOWN_STEPS = 4  # ~one world day between nudges from the same person
+
+    def _actor_name(self, actor_id: str) -> str:
+        return str((self.sim.state.get("actors", {}).get(actor_id) or {}).get("name") or actor_id)
+
+    def actor_roster(self) -> list[dict]:
+        """Every cast member with the relationship state the sim already keeps."""
+        out = []
+        for actor_id, actor in self.sim.state.get("actors", {}).items():
+            out.append({"id": actor_id, "name": actor.get("name", actor_id),
+                        "affinity": round(float(actor.get("affinity", 0.5)), 3),
+                        "tension": round(float(actor.get("tension", 0.0)), 3),
+                        "last_contact_days": round(float(actor.get("last_contact_days", 0.0)), 2),
+                        "pending": bool(actor.get("pending"))})
+        out.sort(key=lambda item: item["last_contact_days"], reverse=True)
+        return out
+
+    def pending_actor_contacts(self) -> list[dict]:
+        """Who is owed contact, most urgent first (upset before merely missing)."""
+        items = []
+        for actor_id, actor in self.sim.state.get("actors", {}).items():
+            affinity = float(actor.get("affinity", 0.5))
+            days = float(actor.get("last_contact_days", 0.0))
+            if not (actor.get("pending") or affinity < self.UPSET_AFFINITY or days >= self.BEAT_MIN_DAYS):
+                continue
+            items.append({"id": actor_id, "name": actor.get("name", actor_id),
+                          "affinity": round(affinity, 3), "last_contact_days": round(days, 2),
+                          "mood": "upset" if affinity < self.UPSET_AFFINITY else "missing"})
+        items.sort(key=lambda item: (item["mood"] != "upset", -item["last_contact_days"]))
+        return items
+
+    def _due_actor_beat(self):
+        """Pick one actor to make a bid for contact this tick, or ``None``."""
+        due = []
+        for actor_id, actor in self.sim.state.get("actors", {}).items():
+            last = float(actor.get("last_beat_step", -99))
+            if self.sim.now_step - last < self.BEAT_COOLDOWN_STEPS:
+                continue
+            affinity = float(actor.get("affinity", 0.5))
+            days = float(actor.get("last_contact_days", 0.0))
+            if affinity < self.UPSET_AFFINITY:
+                due.append((0, actor_id, "upset"))
+            elif days >= self.BEAT_MIN_DAYS:
+                due.append((1, actor_id, "reach"))
+        if not due:
+            return None
+        due.sort(key=lambda row: (row[0], row[1]))
+        return due[0][1], due[0][2]
+
+    def render_actor_beat(self, actor_id: str, kind: str) -> str:
+        name = self._actor_name(actor_id)
+        if kind == "upset":
+            return f"{name} 有点生你的气了：这么久都没个消息，ta 觉得你是不是把 ta 忘了。"
+        return f"{name} 主动来找你：最近过得怎么样？好久没好好聊过了。"
+
+    def apply_actor_beat(self, actor_id: str, kind: str) -> None:
+        actor = self.sim.state.get("actors", {}).get(actor_id)
+        if not actor:
+            return
+        actor["pending"] = True
+        actor["last_beat_step"] = self.sim.now_step
+        if kind == "upset":
+            actor["tension"] = min(1.0, float(actor.get("tension", 0.0)) + 0.1)
+
+    def life_contacts(self, actor_id: str) -> dict:
+        """The character reaches out (or answers): repairs the bond, resets the clock."""
+        actor = self.sim.state.get("actors", {}).get(actor_id)
+        if not actor:
+            return {"success": False, "error": "unknown actor"}
+        repaired = bool(actor.get("pending")) or float(actor.get("affinity", 0.5)) < self.UPSET_AFFINITY
+        actor["last_contact_days"] = 0.0
+        actor["affinity"] = min(1.0, float(actor.get("affinity", 0.5)) + 0.12)
+        actor["tension"] = max(0.0, float(actor.get("tension", 0.0)) * 0.4)
+        actor["pending"] = False
+        return {"success": True, "actor_id": actor_id, "name": actor.get("name", actor_id),
+                "repaired": repaired, "affinity": round(float(actor["affinity"]), 3)}
+
+    def decay_actors(self) -> int:
+        """Long silence cools an actor's affinity (the cost of neglecting them)."""
+        changed = 0
+        for actor in self.sim.state.get("actors", {}).values():
+            if float(actor.get("last_contact_days", 0.0)) >= 3.0:
+                actor["affinity"] = max(0.0, float(actor.get("affinity", 0.5)) - 0.01)
+                changed += 1
+        return changed
+
     def tick(self, engine=None, density: str = "texture", llm=None) -> dict | None:
         if density not in ("texture", "full"):
             return None
         self._sync_somatic(engine)
         event = self.sim.step()
-        if event is None:
-            self.persist()
-            return None
-        self._move_actor(event["bindings"].get("actor"))
-        text = self.render(event)
-        problems = self.validate(text, event)
-        if llm is not None:
-            text = self._render_with_llm(llm, event, text)
+        result = None
+        if event is not None:
+            self._move_actor(event["bindings"].get("actor"))
+            text = self.render(event)
             problems = self.validate(text, event)
+            if llm is not None:
+                text = self._render_with_llm(llm, event, text)
+                problems = self.validate(text, event)
+            self._log_shadow(event)
+            if engine is not None:
+                self._consume(engine, event, text, density)
+            result = {"event": event, "text": text, "problems": problems}
+        # The cast act on their own: someone who misses the character (or is
+        # angry at it) makes a bid for contact, independent of the environment.
+        self.decay_actors()
+        beat = self._due_actor_beat()
+        if beat is not None:
+            actor_id, kind = beat
+            self.apply_actor_beat(actor_id, kind)
+            beat_text = self.render_actor_beat(actor_id, kind)
+            self._log_shadow({"template_id": f"actor-{kind}", "bindings": {"actor": actor_id},
+                              "tier": "upset" if kind == "upset" else "shareable",
+                              "intensity": 2, "source": "actor"})
+            if engine is not None:
+                handler = getattr(engine, "_on_world_actor_beat", None)
+                if handler is not None:
+                    try:
+                        handler(actor_id, self._actor_name(actor_id), beat_text, kind)
+                    except Exception as _exc:
+                        logger.debug("suppressed error: %s", _exc)
+            if result is None:
+                result = {"event": None, "actor_beat": {"actor_id": actor_id, "kind": kind, "text": beat_text}}
         self.persist()
-        self._log_shadow(event)
-        if engine is not None:
-            self._consume(engine, event, text, density)
-        return {"event": event, "text": text, "problems": problems}
+        return result
 
     def _log_shadow(self, event: dict) -> None:
         try:

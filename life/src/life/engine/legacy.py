@@ -94,11 +94,13 @@ try:
         LanguageSystem,
         PERSONA_JSON_CONTRACT,
         PersonaTraits,
+        RelatingSystem,
         SelfhoodConfig,
         SelfhoodSystem,
         SocialConfig,
         SocialSystem,
         context_factors,
+        signals_from_message,
         merge_persona_llm_json,
         parse_persona,
         persona_summary,
@@ -109,6 +111,8 @@ try:
     _COGNITION_AVAILABLE = True
 except Exception:  # pragma: no cover - cognition core is optional
     _COGNITION_AVAILABLE = False
+
+from .resident import ResidentThinker
 
 logger = get_logger("engine")
 
@@ -247,7 +251,8 @@ class LifeEngine:
         self.online_agents = []
         self.online_agent_count = 0
         self.tool_config = RuntimeToolConfig()
-        self.tools = create_default_registry(core_client=self.core, config=self.tool_config, memory=self.memory, companion=self.companion)
+        self.tools = create_default_registry(core_client=self.core, config=self.tool_config, memory=self.memory,
+                                             companion=self.companion, world_action=self._world_action)
         self._plugin_tool_names: set = set()
         self.tools.recorder = self.task_records
         self.tools.approver = self._approve_tool
@@ -269,6 +274,11 @@ class LifeEngine:
         # on Windows the interleaved `os.replace` raised PermissionError and
         # aborted the whole notification tick.
         self._state_lock = threading.Lock()
+        # The slow affective systems are advanced both from the event loop (a
+        # turn) and from worker threads (the background clock), so their tick
+        # needs a lock; otherwise a turn and a background tick could interleave
+        # mid-update and corrupt the physiological state.
+        self._affect_lock = threading.Lock()
         self._background_tasks = set()
         self._reflection_limit = asyncio.Semaphore(2)
         self._last_plan = datetime.min
@@ -296,8 +306,13 @@ class LifeEngine:
             self.language = LanguageSystem()
             self.social = SocialSystem()
             self.selfhood = SelfhoodSystem()
+            # Reciprocity: a shared numeric trait space and a rupture/repair
+            # state machine, so "how alike are we" and "can we recover from a
+            # misunderstanding" are real rather than decorative.
+            self.relating = RelatingSystem()
         else:
             self.cognition = self.affect = self.language = self.social = self.selfhood = None
+            self.relating = None
         self._persona_traits = None
         self._persona_digest = None
         self._cognition_enabled = True
@@ -335,6 +350,10 @@ class LifeEngine:
         self._last_event_date = ""
         self._worldsim = None  # lazy WorldRuntime (S5)
         self._load_state()
+        # The resident thinker is not started here: it is launched by the gRPC
+        # servicer once the event loop is running (see `serve`).  Constructing it
+        # loads the persisted mind so a restart resumes the same train of thought.
+        self.resident = ResidentThinker(self)
         # Settings are applied *after* state so a saved setting always wins over
         # whatever config was persisted alongside the learned state.
         self.apply_cognition_settings()
@@ -717,7 +736,8 @@ class LifeEngine:
             for key, system, factory in (("affect", self.affect, AffectSystem),
                                          ("language", self.language, LanguageSystem),
                                          ("social", self.social, SocialSystem),
-                                         ("selfhood", self.selfhood, SelfhoodSystem)):
+                                         ("selfhood", self.selfhood, SelfhoodSystem),
+                                         ("relating", self.relating, RelatingSystem)):
                 saved = data.get(key)
                 if isinstance(saved, dict) and saved:
                     try:
@@ -746,7 +766,8 @@ class LifeEngine:
             "last_shadow_date": self._last_shadow_date,
             "last_interaction_at": self._last_interaction_at}
         for key, system in (("affect", self.affect), ("language", self.language),
-                            ("social", self.social), ("selfhood", self.selfhood)):
+                            ("social", self.social), ("selfhood", self.selfhood),
+                            ("relating", self.relating)):
             if system is not None:
                 try:
                     payload[key] = system.to_dict()
@@ -858,6 +879,14 @@ class LifeEngine:
 
     async def process_message(self, session_id, user_id, message, adapter_type="webui", persona=None, history=None):
         session_id = session_id or f"{adapter_type}:{user_id or 'default'}"
+        # A real message interrupts the resident train of thought *before* the
+        # session lock is taken, so it takes priority even while another
+        # session's turn is in flight.  The thinker parks and resumes its
+        # thought on a later tick.
+        try:
+            self.resident.notify_user_message(session_id, user_id, message)
+        except Exception:
+            pass
         # 人设 → 特质数据: the WebUI persona rides in with every message;
         # convert it into affect/somatic trait overrides (idempotent per
         # persona content, so this is a digest check in the common case;
@@ -882,6 +911,14 @@ class LifeEngine:
             world = await asyncio.to_thread(self.companion.world_context)
             if world:
                 turn.persona_context += "\nWorld & persona knowledge:\n" + world
+            if adapter_type == "onebot_group":
+                # Resolve typed display names ("@小明") to the stable user_id the
+                # relationship machinery keys on, so a name mention becomes data.
+                try:
+                    message = await asyncio.to_thread(
+                        self.companion.annotate_group_mentions, str(session_id).rsplit("_", 1)[-1], message)
+                except Exception:
+                    pass
             message, attachment_parts = await self._ingest_attachments(message)
             user_turn = {"role": "user", "content": message}
             if attachment_parts:
@@ -912,14 +949,22 @@ class LifeEngine:
 
     # --- cognition core: per-turn driving -----------------------------------
     def _tick_affect(self) -> None:
-        """Advance the slow affective systems by the real elapsed time."""
+        """Advance the slow affective systems by the real elapsed time.
+
+        Called from a turn *and* from the background clock (``to_thread``), so it
+        is locked.  Running it on the clock is what lets the character's
+        physiology evolve while nobody is talking - chronic stress keeps
+        accruing and sleep keeps repairing, instead of freezing until the next
+        message.
+        """
         if self.affect is None:
             return
-        moment = datetime.now()
-        elapsed = max(0.0, (moment - self._last_affect_at).total_seconds())
-        self._last_affect_at = moment
-        self.affect.tick(elapsed, hour=moment.hour,
-                         sleeping=bool(getattr(self.circadian.state, "is_sleeping", False)))
+        with self._affect_lock:
+            moment = datetime.now()
+            elapsed = max(0.0, (moment - self._last_affect_at).total_seconds())
+            self._last_affect_at = moment
+            self.affect.tick(elapsed, hour=moment.hour,
+                             sleeping=bool(getattr(self.circadian.state, "is_sleeping", False)))
 
     @staticmethod
     def _cognition_urgency(turn) -> float:
@@ -1333,7 +1378,34 @@ class LifeEngine:
         except Exception as error:
             logger.debug("self narrative update failed: %s", error)
 
-    def _observe_partner(self, partner: str, feedback: dict, latency: float | None) -> None:
+    def _sync_self_traits(self) -> None:
+        """Derive the character's own trait axes from its persona (idempotent)."""
+        if self.relating is None:
+            return
+        digest = getattr(self, "_persona_digest", None) or ""
+        if digest and getattr(self, "_relating_self_digest", None) == digest:
+            return
+        evidence = getattr(getattr(self, "_persona_traits", None), "evidence", None) or {}
+        breadth = 0
+        try:
+            breadth = int(self.selfhood.persona.breadth) if self.selfhood is not None else 0
+        except Exception:
+            breadth = 0
+        try:
+            values = self.companion.get_values()
+        except Exception:
+            values = {}
+        self.relating.traits.set_self(evidence=evidence, breadth=breadth, values=values)
+        # Publish self into the ties model so `homophily` compares real vectors.
+        if self.social is not None:
+            try:
+                self.social.ties.describe("__self__", self.relating.traits.self_axes)
+            except Exception:
+                pass
+        self._relating_self_digest = digest
+
+    def _observe_partner(self, partner: str, feedback: dict, latency: float | None,
+                         message: str = "", intent: str = "") -> None:
         """Fold one exchange into the emergent-ties model.
 
         The person on the other side is a real partner, not a statistic:
@@ -1342,6 +1414,10 @@ class LifeEngine:
         derived from their own next message (polarity + latency).  A partner who
         keeps snapping at us therefore genuinely lowers the tie instead of only
         ever raising it, which is what makes ``friends`` mean something.
+
+        This also feeds the reciprocity layer: the partner's **shared trait
+        axes** are estimated from their observable message, and the message's
+        sentiment advances the rupture/repair state machine.
         """
         partner = str(partner or "").strip()
         if self.social is None or not partner:
@@ -1349,17 +1425,41 @@ class LifeEngine:
         if not getattr(self.social.config, "enabled", False):
             return
         # `sentiment` is -1/0/1; map to a 0..1 interaction quality.
-        quality = 0.5 + 0.5 * float(feedback.get("sentiment", 0) or 0)
+        sentiment = float(feedback.get("sentiment", 0) or 0)
+        quality = 0.5 + 0.5 * sentiment
         if latency is not None:
             # A slow reply is a weaker sign of engagement - but do not let a long
             # gap read as hostility.
             quality *= 0.7 + 0.3 * max(0.0, 1.0 - min(1.0, latency / 3600.0))
         quality = max(0.0, min(1.0, quality))
+        if self.relating is not None:
+            try:
+                self._sync_self_traits()
+                signals = signals_from_message(message, sentiment=sentiment, latency=latency)
+                axes = self.relating.traits.observe(partner, signals)
+                if axes:
+                    self.social.ties.describe(partner, axes)
+                transition = self.relating.repair.observe(partner, sentiment, message, intent)
+                if transition == "rupture_opened":
+                    if self.relating.repair.is_misunderstanding(partner):
+                        self._record_self_narrative(f"「{partner}」觉得我误会了 ta 的意思", -0.25)
+                    else:
+                        self._record_self_narrative(f"我和「{partner}」之间闹得不愉快", -0.3)
+                elif transition == "repaired":
+                    self._record_self_narrative(f"我和「{partner}」把话说开了", 0.35)
+                    # A mended relationship is a real recovery signal: it should
+                    # lift reward availability, not just the tie number.
+                    try:
+                        self.affect.observe_outcome(success=True, reward=0.5, stressor=0.0)
+                    except Exception:
+                        pass
+            except Exception as error:
+                logger.debug("relating update failed: %s", error)
         try:
             self.social.ties.interact(partner, quality)
             self.social.ties.received_evaluation(partner, quality)
             # Explicit warmth / a correction is the framework's coaching signal.
-            if float(feedback.get("sentiment", 0) or 0) >= 1:
+            if sentiment >= 1:
                 self.social.ties.coach(partner, 0.5)
         except Exception as error:
             logger.debug("tie update failed: %s", error)
@@ -1382,8 +1482,10 @@ class LifeEngine:
         feedback = self._classify_feedback(message)
         reward = self._feedback_reward(entry, latency, feedback)
         # The person who just spoke is a real partner: build the reciprocal tie
-        # from how the exchange actually went.
-        self._observe_partner(entry.get("user_id", ""), feedback, latency)
+        # from how the exchange actually went.  Carry the intent of the turn they
+        # reacted to, so a rupture can remember what needs explaining.
+        self._observe_partner(entry.get("user_id", ""), feedback, latency, message,
+                              str((entry.get("context") or {}).get("intent") or ""))
         # Only *self-defining* moments belong in the autobiography - a routine
         # hello is not who I am.  Clear warmth, clear friction, or a recalled
         # message is.
@@ -1398,8 +1500,17 @@ class LifeEngine:
             logger.warning("cognition feedback observe failed: %s", error)
             learned = {}
         try:
-            self.affect.observe_outcome(success=feedback["sentiment"] >= 0, reward=reward,
-                                        stressor=1.0 if feedback["recalled"] else 0.0)
+            # Chronic *social* stress has to reach the HPA/allostatic-load route,
+            # or repeated hostility and rejection would only move mood and never
+            # accumulate.  A recalled message is the strongest stressor; ongoing
+            # negativity is a graded one.
+            if feedback["recalled"]:
+                stressor = 1.0
+            elif feedback["sentiment"] < 0:
+                stressor = min(0.8, 0.25 + 0.15 * int(feedback.get("negative", 1) or 1))
+            else:
+                stressor = 0.0
+            self.affect.observe_outcome(success=feedback["sentiment"] >= 0, reward=reward, stressor=stressor)
         except Exception as _exc:
             logger.debug("suppressed error: %s", _exc)
         # the reassurance trap: a comforting reply after a complaint turn
@@ -1555,6 +1666,27 @@ class LifeEngine:
         if values:
             top = sorted(values.items(), key=lambda kv: abs(kv[1]), reverse=True)[:5]
             turn.persona_context += "\n你在意的价值取向：" + "、".join(f"{k}({v:+.2f})" for k, v in top)
+        # Resident mind: carry the ongoing inner train of thought into the reply
+        # so the character answers as someone who was already thinking, not as a
+        # blank responder.  Empty when the resident process is disabled.
+        try:
+            resident_context = self.resident.context_block()
+        except Exception:
+            resident_context = ""
+        if resident_context:
+            turn.persona_context += "\n你此刻的内心（延续你自己的思考，不要直接念出来）：\n" + resident_context
+        # Relationship beliefs: only what the character can legitimately know.
+        # Owner-forced affinity changes stay opaque (by="owner" in the ledger);
+        # the character experiences the effect but not the cause.  Also carries
+        # the measured homophily, which is the shared trait space talking.
+        try:
+            self._sync_self_traits()
+            relationship_belief = await asyncio.to_thread(
+                self._relationship_belief_context, turn.user_id or "")
+        except Exception:
+            relationship_belief = ""
+        if relationship_belief:
+            turn.persona_context += "\n" + relationship_belief
         # Injection budget: keep the fixed persona/world head plus the freshly
         # appended high-priority tail (commitments/user model/values) when long.
         turn.persona_context = self._budget_context(turn.persona_context)
@@ -1848,6 +1980,49 @@ class LifeEngine:
         if not phrases:
             return ""
         return "可复用的口癖（仅在贴切时最多用一条，不要生硬堆砌）：\n" + "\n".join(f"- {p}" for p in phrases)
+
+    def _relationship_belief_context(self, user_id: str) -> str:
+        """What the character can honestly believe about this relationship.
+
+        Two sources that were previously dead:
+
+        * ``companion.relationship_beliefs`` - the non-opaque part of the ledger
+          (owner-forced edits are hidden when opacity is on), summarised into
+          what actually moved the relationship.
+        * the shared trait space - a *measured* homophily, not a guess from
+          prose.  Only shown once there is behavioural evidence.
+
+        Synchronous by design: the caller runs it on a worker thread.
+        """
+        if not user_id or self.social is None:
+            return ""
+        parts: list[str] = []
+        try:
+            events = self.companion.relationship_beliefs(user_id)
+        except Exception:
+            events = []
+        recent = [e for e in (events or [])
+                  if abs(float(e.get("delta", 0.0) or 0.0)) >= 0.02][:3]
+        if recent:
+            label = {"message_sentiment": "这段对话", "commitment_breach": "我失信",
+                     "owner_adjust": "关系变化"}.get
+            parts.append("最近的关系变化：" + "、".join(
+                f"{label(str(e.get('reason')), str(e.get('reason')))}"
+                f"({'变暖' if float(e.get('delta', 0)) > 0 else '变冷'}{abs(float(e.get('delta', 0))):.2f})"
+                for e in recent))
+        if self.relating is not None:
+            confidence = self.relating.traits.confidence(user_id)
+            if confidence >= 0.3:
+                similarity = self.relating.traits.homophily(user_id)
+                parts.append(f"你和他/她的相似度（基于双方可观察的行为，置信 {confidence:.2f}）：{similarity:.2f}")
+            severity = self.relating.repair.severity(user_id)
+            if severity > 0:
+                if self.relating.repair.is_misunderstanding(user_id):
+                    parts.append("你们之间还没解释清楚：你上次的用意被误解了"
+                                 "（如果合适，自然地说明你本来的意思，而不是一味道歉）")
+                else:
+                    parts.append("你们之间有一次还没修好的不愉快（如果合适，自然地修复它，不要指责）")
+        return "\n".join(parts)
 
     async def _relationship_style(self, user_id: str) -> str:
         """Unified tone guidance from the relationship expression decision (stage + interaction + role)."""
@@ -2349,6 +2524,14 @@ class LifeEngine:
             findings.append({"level": "warn", "title": "很久没人说话",
                              "detail": f"已经 {neglect:.1f} 天没有真正的对话了"})
             self._record_self_narrative(f"{neglect:.0f} 天没有人跟我说话", -0.35)
+            # Loneliness is a chronic stressor, not just a damping of ties: it
+            # must reach the physiology or prolonged isolation could never
+            # deepen into an episode.
+            try:
+                self.affect.observe_outcome(success=False, reward=-0.2,
+                                            stressor=min(1.0, 0.4 * neglect))
+            except Exception as error:
+                logger.debug("neglect affect feed failed: %s", error)
             if self.social is not None:
                 # Every tie sags, not just the people who went quiet - on a silent
                 # day nobody sustained any of them.
@@ -2367,6 +2550,11 @@ class LifeEngine:
             text = str(item.get("text") or "")[:60]
             findings.append({"level": "warn", "title": "没能兑现承诺", "detail": text})
             self._record_self_narrative(f"我答应过「{text}」却没做到", -0.45)
+            # A broken promise is a self-directed stressor too.
+            try:
+                self.affect.observe_outcome(success=False, reward=-0.3, stressor=0.6)
+            except Exception as error:
+                logger.debug("breach affect feed failed: %s", error)
             try:
                 await asyncio.to_thread(
                     self.companion.apply_relationship_event,
@@ -2374,6 +2562,30 @@ class LifeEngine:
                     "commitment_breach", "private", -0.06)
             except Exception as error:
                 logger.debug("breach relationship event failed: %s", error)
+        # An unrepaired misunderstanding is not free: it keeps eroding the tie it
+        # belongs to until someone actually repairs it.  (Relationship state used
+        # to be additive-only, so a rupture could never cost anything.)
+        if self.relating is not None:
+            for partner in self.relating.repair.unresolved():
+                severity = self.relating.repair.severity(partner)
+                if severity <= 0:
+                    continue
+                findings.append({"level": "info", "title": "还没和好",
+                                 "detail": f"和「{partner}」之间还有一次没修好的不愉快"})
+                self._record_self_narrative(f"我还没和「{partner}」和好", -0.15 * severity)
+                if self.social is not None:
+                    try:
+                        self.social.ties.decay(min(0.10, 0.05 * severity), [partner])
+                    except Exception as error:
+                        logger.debug("rupture tie decay failed: %s", error)
+        # Idle drift: a resident mind that went a whole day without thinking a
+        # single thought of its own is a cost too - "having a self" is not free.
+        if getattr(self, "resident", None) is not None and self.resident.enabled:
+            tick_day = str(getattr(self.resident.state, "last_tick", "") or "")[:10]
+            if tick_day != target:
+                findings.append({"level": "info", "title": "一整天没想过自己的事",
+                                 "detail": "常驻思考整日没有留下任何念头"})
+                self._record_self_narrative("我一整天都没有认真想过自己的事", -0.1)
         # B-series: consolidate the 8 cognition subsystems at the daily boundary,
         # where slow traits (moral stance, patience, perspective stage,
         # meta-awareness) are meant to drift.
@@ -2403,6 +2615,33 @@ class LifeEngine:
         self._save_state()
         return {"date": target, "summary": summary, "findings": findings, "report": report}
 
+    def _ensure_worldsim(self, settings: dict | None = None):
+        """Build (or reuse) the world runtime; ``None`` when the world is off.
+
+        The cast of this world are people the character knows - they miss it, get
+        angry at it and can be contacted - so the runtime also owns their
+        relationship state.  Only present when ``world_density`` is texture/full.
+        """
+        if settings is None:
+            try:
+                settings = self.companion.get_settings()
+            except Exception:
+                settings = {}
+        density = str(settings.get("world_density", "off") or "off")
+        if density not in ("texture", "full"):
+            return None
+        # Rebuild the world when the owner edits its worldview (premise/cast/places).
+        world_key = json.dumps({k: settings.get(k) for k in
+                                ("world_premise", "world_actors", "world_places", "world_map",
+                                 "world_fictional", "world_country", "world_city", "world_district")},
+                               ensure_ascii=False, sort_keys=True)
+        if self._worldsim is None or getattr(self, "_worldsim_key", None) != world_key:
+            from ..worldsim.runtime import WorldRuntime
+            self._worldsim = WorldRuntime(_plugin_path("world", "world"), _plugin_path("models", "models"),
+                                          f"{self.data_dir}/worldsim", 0, settings)
+            self._worldsim_key = world_key
+        return self._worldsim
+
     async def worldsim_tick(self) -> dict:
         """Advance the fictional world (only when world_density is texture/full)."""
         try:
@@ -2412,23 +2651,109 @@ class LifeEngine:
         density = str(settings.get("world_density", "off") or "off")
         if density not in ("texture", "full"):
             return {"skipped": "off"}
-        # Rebuild the world when the owner edits its worldview (premise/cast/places).
-        world_key = json.dumps({k: settings.get(k) for k in
-                                ("world_premise", "world_actors", "world_places", "world_map",
-                                 "world_fictional", "world_country", "world_city", "world_district")},
-                               ensure_ascii=False, sort_keys=True)
         try:
-            if self._worldsim is None or getattr(self, "_worldsim_key", None) != world_key:
-                from ..worldsim.runtime import WorldRuntime
-                self._worldsim = await asyncio.to_thread(
-                    WorldRuntime, _plugin_path("world", "world"), _plugin_path("models", "models"),
-                    f"{self.data_dir}/worldsim", 0, settings)
-                self._worldsim_key = world_key
-            result = await asyncio.to_thread(self._worldsim.tick, self, density)
+            runtime = await asyncio.to_thread(self._ensure_worldsim, settings)
+            if runtime is None:
+                return {"skipped": "off"}
+            result = await asyncio.to_thread(runtime.tick, self, density)
         except Exception as error:
             logger.warning("worldsim tick failed: %s", error)
             return {"error": str(error)}
         return result or {"skipped": "none"}
+
+    # --- the fictional cast as real "others" --------------------------------
+    def _on_world_actor_beat(self, actor_id: str, name: str, text: str, kind: str) -> None:
+        """A person in the character's own world reached out (or is upset).
+
+        This is deliberately *not* surfaced to the user: it is the character's
+        independent social life.  It lands in its timeline, memory, ties and
+        resident mind, so it can act on it (via the ``world`` tool) without the
+        owner seeing every move.
+        """
+        partner = f"world:{actor_id}"
+        try:
+            self.companion.timeline_add("世界", text[:200])
+        except Exception as _exc:
+            logger.debug("suppressed error: %s", _exc)
+        try:
+            self.emotion.state.apply_delta({"valence": -0.05 if kind == "upset" else 0.03,
+                                            "arousal": 0.03})
+        except Exception as _exc:
+            logger.debug("suppressed error: %s", _exc)
+        if kind == "upset":
+            # Someone in its own world being angry is an interpersonal stressor.
+            try:
+                self.affect.observe_outcome(success=False, reward=-0.2, stressor=0.5)
+            except Exception as _exc:
+                logger.debug("suppressed error: %s", _exc)
+        try:
+            self.memory.remember_episode(text[:280], prediction_error=2.0 if kind == "upset" else 1.0,
+                                         novelty=0.5, tags=["world", "actor"], scope="public")
+        except Exception as _exc:
+            logger.debug("suppressed error: %s", _exc)
+        if self.social is not None and getattr(self.social.config, "enabled", False):
+            try:
+                quality = 0.2 if kind == "upset" else 0.7
+                self.social.ties.interact(partner, quality)
+                self.social.ties.received_evaluation(partner, quality)
+            except Exception as error:
+                logger.debug("world tie update failed: %s", error)
+        if self.relating is not None:
+            try:
+                self.relating.repair.observe(partner, -1 if kind == "upset" else 0, text)
+                if kind == "upset":
+                    self._record_self_narrative(f"{name} 生我的气了", -0.25)
+            except Exception as error:
+                logger.debug("world relating update failed: %s", error)
+        try:
+            self.resident.notify_world_event()
+        except Exception as _exc:
+            logger.debug("suppressed error: %s", _exc)
+
+    def _world_contacts_context(self, runtime=None) -> str:
+        """Compact prompt text: who in the character's world wants its attention."""
+        runtime = runtime if runtime is not None else self._ensure_worldsim()
+        if runtime is None:
+            return ""
+        try:
+            pending = runtime.pending_actor_contacts()
+        except Exception:
+            return ""
+        if not pending:
+            return ""
+        lines = [f"- {p['name']}（{'在生你的气' if p['mood'] == 'upset' else '有阵子没联系了'}）"
+                 for p in pending[:5]]
+        return "\n".join(lines)
+
+    def _world_action(self, action: str = "", actor_id: str = "", **kwargs) -> dict:
+        """Backing implementation of the ``world`` tool (runs on a worker thread)."""
+        runtime = self._ensure_worldsim()
+        if runtime is None:
+            return {"success": False, "error": "world simulation is off (set world_density to texture/full)"}
+        action = str(action or "").lower()
+        if action in ("list", "pending", ""):
+            return {"success": True, "pending": runtime.pending_actor_contacts(),
+                    "roster": runtime.actor_roster()}
+        if action in ("reply", "visit", "contact"):
+            result = runtime.life_contacts(str(actor_id or kwargs.get("id") or ""))
+            if result.get("success"):
+                try:
+                    self.companion.timeline_add("世界", f"你主动联系了 {result['name']}", "")
+                except Exception as _exc:
+                    logger.debug("suppressed error: %s", _exc)
+                if self.relating is not None:
+                    try:
+                        self.relating.repair.observe(
+                            f"world:{result['actor_id']}", 1,
+                            "我主动联系了ta，把话说开" if result.get("repaired") else "")
+                    except Exception as error:
+                        logger.debug("world reply repair failed: %s", error)
+                try:
+                    self._save_state()
+                except Exception as _exc:
+                    logger.debug("suppressed error: %s", _exc)
+            return result
+        return {"success": False, "error": f"unknown world action: {action}"}
 
     async def worldsim_shadow_tick(self, force: bool = False) -> dict:
         """Weekly guarded policy update from the accumulated shadow log (S6).
@@ -2519,6 +2844,8 @@ class LifeEngine:
             self.language = LanguageSystem()
             self.social = SocialSystem()
             self.selfhood = SelfhoodSystem()
+            self.relating = RelatingSystem()
+            self._relating_self_digest = None
             result["cognition"] = "rebuilt"
             self.apply_cognition_settings()
         # Runtime state.
@@ -2545,6 +2872,9 @@ class LifeEngine:
             setattr(self, attr, "")
         self._worldsim = None
         self._worldsim_key = None
+        # The resident mind is part of the person: erase its train of thought too.
+        if getattr(self, "resident", None) is not None:
+            self.resident.reset()
         await asyncio.to_thread(self._save_state)
         await asyncio.to_thread(self.companion.audit, "reset_person", json.dumps(result, ensure_ascii=False), "", "ok")
         return result
@@ -3166,12 +3496,28 @@ class LifeEngine:
                     description = "已截取屏幕画面（视觉模型未返回描述）"
                 parts.append("电脑屏幕（视觉模型描述）:\n- " + description[:400])
                 signals.append("screen")
+        # The character's own world: someone who misses it or is angry is a real
+        # signal to act on, and one the user does not see.
+        try:
+            world = await asyncio.to_thread(self._world_contacts_context)
+            if world:
+                parts.append("你自己世界里的人（用户不知道你在和他们来往）:\n" + world)
+                signals.append("world")
+        except Exception as _exc:
+            logger.debug("suppressed error: %s", _exc)
         return "\n\n".join(parts), signals
 
     # Autonomy may execute these tools without user approval; computeruse can
     # look at the screen and drive the mouse/keyboard (gated by the user's
     # computer_use permission on Core and the agent host).
-    AUTONOMY_TOOLS = ("computeruse", "search", "web_browse", "minecraft", "agenda_add", "journal")
+    AUTONOMY_TOOLS = ("computeruse", "search", "web_browse", "minecraft", "agenda_add", "journal",
+                      # Self-set goals are the point of autonomous time: the
+                      # prompt already asks the character to use goal_add, but
+                      # the allow-list rejected it, so the capability was dead.
+                      "goal_add", "goal_log", "goal_list",
+                      # Its own world's people: reach out to someone who misses
+                      # it or is angry, without the user seeing.
+                      "world")
     AUTONOMY_COMPUTERUSE_ACTIONS = ("screenshot", "listwindows", "move", "click", "type", "key")
 
     async def _autonomy_think_loop(self, observations: str) -> tuple[str, list[str], int]:
@@ -3220,9 +3566,17 @@ class LifeEngine:
             )
             if self._last_persona_context:
                 system += "\nPersona:\n" + self._last_persona_context
+            try:
+                resident_context = self.resident.context_block()
+            except Exception:
+                resident_context = ""
+            if resident_context:
+                system += "\n\n你此刻的内心（延续你自己一直在想的事）：\n" + resident_context
             system += ("\n\nAutonomous rules:\n"
                        "- 你可以调用工具来观察或行动，一次最多一个，等结果回来再决定下一步。\n"
-                       "- 允许自动执行：computeruse（screenshot/listwindows/move/click/type/key）、search、web_browse、minecraft、agenda_add、journal。\n"
+                       "- 允许自动执行：computeruse（screenshot/listwindows/move/click/type/key）、search、web_browse、minecraft、agenda_add、journal、goal_add、goal_log、world。\n"
+                       "- 你自己的世界里有人可能在想你、或者生你的气（External Observations 会提示）。"
+                       "想维持这段关系就调用 world（先 pending 看谁在等，再 reply/visit 联系 ta）；这不打扰用户。\n"
                        "- 想主动联系用户时，把要说的话放进 proactive_message（第一人称、≤80 字、自然、不要引号）；不想打扰就留空。\n"
                        "- 时机也由你决定：看 External Observations 里的时间与最近互动。若此刻不合适（对方可能在忙、深夜、刚聊过），"
                        "用 proactive_after_minutes 给出推迟的分钟数（0=现在就发，最大 1440）；只有真的想说时才安排。")
@@ -3473,6 +3827,8 @@ class LifeEngine:
         return int(match.group(0)) if match else None
 
     async def close(self):
+        if getattr(self, "resident", None) is not None:
+            await self.resident.stop()
         tasks = list(self._background_tasks)
         for task in tasks:
             task.cancel()

@@ -110,6 +110,10 @@ class CompanionSystem:
             CREATE TABLE IF NOT EXISTS food_menu (id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'meal', tags TEXT NOT NULL DEFAULT '', note TEXT DEFAULT '', created_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS group_registry (group_id TEXT PRIMARY KEY, policy TEXT NOT NULL DEFAULT 'observe', alias TEXT NOT NULL DEFAULT '', note TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS group_member_flags (group_id TEXT NOT NULL, user_id TEXT NOT NULL, flag TEXT NOT NULL DEFAULT 'watch', updated_at TEXT NOT NULL, PRIMARY KEY(group_id,user_id));
+            -- Display-name -> stable user_id, so "@小明" (a name people type) can
+            -- be resolved to the same identity the rest of the relationship
+            -- machinery already keys on.
+            CREATE TABLE IF NOT EXISTS group_members (group_id TEXT NOT NULL, user_id TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL, PRIMARY KEY(group_id,user_id));
             -- Weighted, accumulating relations *inside* a group (who habitually
             -- talks with whom).  `social_edges` records the pair once for the
             -- dashboard graph; this table tracks how strong/active the tie is.
@@ -1392,7 +1396,7 @@ class CompanionSystem:
             return 0.0
         return max(-1.0, min(1.0, (positive - negative) / (positive + negative)))
 
-    def observe_group(self, group_id: str, user_id: str, message: str) -> None:
+    def observe_group(self, group_id: str, user_id: str, message: str, name: str = "") -> None:
         # The engine passes "qq_group_123" while the OneBot adapter passes "123";
         # both must resolve to the same key or one group's stats split in two and
         # the interest-wake notification can never find its channel.  Only the
@@ -1403,6 +1407,10 @@ class CompanionSystem:
             group_id = canonical.group(1)
         if self.group_policy(group_id) == "blacklist":
             return
+        # Remember the sender's display name against their stable id, so a later
+        # "@小明" in chat can be resolved to the same person.
+        if str(name or "").strip() and user_id:
+            self.remember_group_member(group_id, user_id, name)
         sentiment = self.group_sentiment(message)
         with self.db() as db:
             db.execute("INSERT OR IGNORE INTO group_scenes(group_id,updated_at) VALUES(?,?)",(group_id,now()))
@@ -1444,6 +1452,44 @@ class CompanionSystem:
         mood = float(scene["mood"]) if scene else 0.0
         label = "热闹" if mood >= 0.3 else "有点低沉" if mood <= -0.3 else "平稳"
         return {"group_id": group_id, "mood": round(mood, 3), "label": label, "threads": threads, "recent": recent}
+
+    def remember_group_member(self, group_id: str, user_id: str, name: str) -> None:
+        group_id, user_id, name = str(group_id or "").strip(), str(user_id or "").strip(), str(name or "").strip()[:40]
+        if not (group_id and user_id and name):
+            return
+        with self.db() as db:
+            db.execute("INSERT INTO group_members(group_id,user_id,name,updated_at) VALUES(?,?,?,?) "
+                       "ON CONFLICT(group_id,user_id) DO UPDATE SET name=excluded.name, updated_at=excluded.updated_at",
+                       (group_id, user_id, name, now()))
+
+    def resolve_group_mentions(self, group_id: str, text: str, limit: int = 8) -> list[dict[str,Any]]:
+        """Member display names appearing in ``text`` (name -> stable user_id)."""
+        group_id, body = str(group_id or "").strip(), str(text or "")
+        if not (group_id and body):
+            return []
+        with self.db() as db:
+            rows = [dict(r) for r in db.execute(
+                "SELECT user_id,name FROM group_members WHERE group_id=? AND name!=''", (group_id,)).fetchall()]
+        found: list[dict[str,Any]] = []
+        for row in rows:
+            name = str(row.get("name") or "")
+            if len(name) >= 2 and name in body and all(item["user_id"] != row["user_id"] for item in found):
+                found.append({"user_id": str(row["user_id"]), "name": name})
+            if len(found) >= max(1, min(int(limit), 20)):
+                break
+        return found
+
+    def annotate_group_mentions(self, group_id: str, text: str, limit: int = 8) -> str:
+        """Append the name->id mapping for any known member named in the message.
+
+        Lets "@小明" (a display name people type) reach the model as the same
+        stable identity the relationship/feedback machinery already uses.
+        """
+        found = self.resolve_group_mentions(group_id, text, limit)
+        if not found:
+            return str(text or "")
+        mapping = "、".join(f"{item['name']}={item['user_id']}" for item in found)
+        return f"{text}\n（群成员对应：{mapping}）"
 
     def group_relations(self, group_id: str, limit: int = 10, min_weight: float = 0.3) -> list[dict[str,Any]]:
         """Who habitually talks with whom inside this group.

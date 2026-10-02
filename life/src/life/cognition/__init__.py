@@ -49,6 +49,7 @@ from .affect import (
     ArousalGain,
     AttachmentTemplate,
     BeliefBehaviorMonitor,
+    DepressiveEpisode,
     DesireSystem,
     EmotionRegulator,
     HPAxis,
@@ -104,6 +105,13 @@ from .selfhood import (
     SelfhoodSystem,
     TemporalDiscounting,
 )
+from .relating import (
+    AXES,
+    RepairModel,
+    RelatingSystem,
+    TraitModel,
+    signals_from_message,
+)
 
 __all__ = [
     "ACTION_GUIDANCE",
@@ -149,6 +157,7 @@ __all__ = [
     "ArousalGain",
     "AttachmentTemplate",
     "BeliefBehaviorMonitor",
+    "DepressiveEpisode",
     "DesireSystem",
     "EmotionRegulator",
     "HPAxis",
@@ -198,4 +207,10 @@ __all__ = [
     "SelfhoodConfig",
     "SelfhoodSystem",
     "TemporalDiscounting",
+    # --- reciprocity: shared trait space + rupture/repair ---
+    "AXES",
+    "RepairModel",
+    "RelatingSystem",
+    "TraitModel",
+    "signals_from_message",
 ]

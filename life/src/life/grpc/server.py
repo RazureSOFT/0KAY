@@ -41,6 +41,13 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
     async def start_background_tasks(self):
         """Start background loops (heartbeat + agent sync + optional OneBot)."""
         self._sync_task = asyncio.create_task(self._background_loop())
+        # The resident thinker is the one long-lived process that thinks between
+        # runs; it owns its own cadence and is stopped by `engine.close()`.
+        try:
+            if self.engine.resident.start():
+                log.info("resident thinker started (interval=%.0fs)", self.engine.resident.interval)
+        except Exception as e:
+            log.warning("could not start resident thinker: %s", e)
 
     async def _start_onebot(self):
         """Start OneBot adapter if configured (Phase 4)."""
@@ -74,7 +81,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                     trigger_keywords=keywords,
                     bot_names=tuple(n.strip() for n in str(values.get("onebot_bot_names") or "").split(",") if n.strip()),
                     observe_group=values.get("onebot_observe_group") is not False,
-                    observer=lambda group_id, user_id, message: asyncio.to_thread(self.engine.companion.observe_group, group_id, user_id, message),
+                    observer=lambda group_id, user_id, message, name="": asyncio.to_thread(
+                        self.engine.companion.observe_group, group_id, user_id, message, name),
                     should_reply=lambda group_id, user_id, message, mentioned: asyncio.to_thread(self.engine.group_should_reply, group_id, user_id, message, mentioned),
                     recall_handler=lambda session_id, user_id, note, adapter_type: asyncio.to_thread(self.engine.companion.timeline_add, "撤回", note[:80], ""),
                     vision_handler=lambda ref: self.engine.describe_onebot_image(ref),
@@ -142,6 +150,10 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 await self.engine.learn_from_minecraft()
                 await self.engine.task_records.flush()
                 self.engine.circadian.tick(0)
+                # Advance the slow physiology on the clock too: the character's
+                # mood/HPA/allostatic load must evolve while it is alone, not
+                # only when a message arrives.
+                await asyncio.to_thread(self.engine._tick_affect)
                 await asyncio.to_thread(self.engine._save_state)
                 # Daily maintenance is intentionally local and bounded: compact
                 # memories, rebuild indexes, and retain seven JSON snapshots.

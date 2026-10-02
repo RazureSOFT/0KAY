@@ -204,7 +204,7 @@ class OneBotAdapter:
         # picture's content reaches a text-only model instead of a bare placeholder.
         content = (await self._describe(msg)) or msg.text
         if msg.is_group and self.config.observe_group and self.config.observer:
-            await self.config.observer(str(msg.group_id), str(msg.user_id), content)
+            await self.config.observer(str(msg.group_id), str(msg.user_id), content, msg.sender_name)
         keywords = tuple(k.lower() for k in self.config.trigger_keywords if k.strip())
         if msg.is_group:
             # Group chats: mention/keyword wakes; otherwise allow a natural continuation
