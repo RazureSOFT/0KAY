@@ -77,6 +77,13 @@
       "item": null
     },
     {
+      "comment": "Persona editing moved to the LIFE companion page; hide the Settings tab.",
+      "target": "settings",
+      "op": "remove",
+      "id": "persona",
+      "item": null
+    },
+    {
       "target": "settings",
       "op": "insert",
       "anchor": "permissions",
@@ -172,20 +179,6 @@
             "helpKey": "settings.reportAgentHostDesc"
           }
         ]
-      }
-    },
-    {
-      "target": "settings",
-      "op": "replace",
-      "id": "persona",
-      "item": {
-        "id": "persona",
-        "icon": "person",
-        "order": 40,
-        "label": "人设",
-        "labelKey": "settings.persona",
-        "descriptionKey": "settings.personaDesc",
-        "component": "persona"
       }
     },
     {
