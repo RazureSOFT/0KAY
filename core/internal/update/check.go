@@ -40,32 +40,83 @@ func apiBase() string {
 	return githubProxy + "/https://api.github.com"
 }
 
-// Latest fetches the newest published release of owner/repo.
-// It returns (nil, nil) when the repository has no releases yet.
+// Latest fetches the newest published release of owner/repo. When the
+// repository publishes no releases it falls back to the highest semver tag, so
+// a component that only tags (for example v0.0.8 without a matching release) is
+// still discoverable. It returns (nil, nil) when neither exists.
 func Latest(owner, repo string) (*Release, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/releases/latest", apiBase(), owner, repo)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	release, status, err := getJSON[Release](url)
 	if err != nil {
 		return nil, err
+	}
+	switch status {
+	case http.StatusOK:
+		return release, nil
+	case http.StatusNotFound:
+		return latestTag(owner, repo)
+	default:
+		return nil, fmt.Errorf("github releases: HTTP %d", status)
+	}
+}
+
+// latestTag returns the highest semver tag of owner/repo as a synthetic release
+// (no notes), or (nil, nil) when the repository has no tags.
+func latestTag(owner, repo string) (*Release, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/tags?per_page=100", apiBase(), owner, repo)
+	tags, status, err := getJSON[[]struct {
+		Name string `json:"name"`
+	}](url)
+	if err != nil {
+		return nil, err
+	}
+	if status == http.StatusNotFound {
+		return nil, nil
+	}
+	if status != http.StatusOK {
+		return nil, fmt.Errorf("github tags: HTTP %d", status)
+	}
+	best := ""
+	for _, tag := range *tags {
+		name := strings.TrimSpace(tag.Name)
+		if name == "" {
+			continue
+		}
+		if best == "" || Newer(name, best) {
+			best = name
+		}
+	}
+	if best == "" {
+		return nil, nil
+	}
+	return &Release{
+		TagName: best,
+		HTMLURL: fmt.Sprintf("https://github.com/%s/%s/releases/tag/%s", owner, repo, best),
+	}, nil
+}
+
+// getJSON performs a GET and decodes a JSON body. The status code is returned
+// for every response so callers can branch on 404 without an error.
+func getJSON[T any](url string) (*T, int, error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, 0, err
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("User-Agent", "0kay-core")
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, nil
-	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("github releases: HTTP %d", resp.StatusCode)
+		return nil, resp.StatusCode, nil
 	}
-	var release Release
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return nil, err
+	var value T
+	if err := json.NewDecoder(resp.Body).Decode(&value); err != nil {
+		return nil, resp.StatusCode, err
 	}
-	return &release, nil
+	return &value, resp.StatusCode, nil
 }
 
 // Normalize strips a leading "v" and surrounding whitespace.

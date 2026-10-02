@@ -1,6 +1,7 @@
 package update
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -58,5 +59,30 @@ func TestEverySourceComponentIsAddressable(t *testing.T) {
 	}
 	if CanUpdate("not-a-real-component") {
 		t.Error("CanUpdate(unknown) = true, want false")
+	}
+}
+
+func TestPmInstalledPluginListPrefersManifestVersion(t *testing.T) {
+	root := t.TempDir()
+	manifest := `{"name":"@razureink/0kay-free-model","version":"0.0.8","repository":"https://github.com/razureink/0KAY-free-model.git"}`
+	if err := os.WriteFile(filepath.Join(root, "manifest.json"), []byte(manifest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	home := t.TempDir()
+	state := fmt.Sprintf(
+		`{"installed":{"@razureink/0kay-free-model":{"version":"0.0.4","repository":"https://github.com/razureink/0KAY-free-model.git","repositoryRoot":%q}}}`,
+		root,
+	)
+	if err := os.WriteFile(filepath.Join(home, "state.json"), []byte(state), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("OKAY_PM_HOME", home)
+
+	plugins := pmInstalledPluginList()
+	if len(plugins) != 1 {
+		t.Fatalf("got %d plugins, want 1", len(plugins))
+	}
+	if plugins[0].Version != "0.0.8" {
+		t.Errorf("version = %q, want 0.0.8 (manifest must win over the stale record)", plugins[0].Version)
 	}
 }

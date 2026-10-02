@@ -146,9 +146,13 @@ func pmInstalledPluginList() []InstalledPlugin {
 		if repository == "" {
 			repository = packageRepository(record.RepositoryRoot)
 		}
-		version := record.Version
+		// The on-disk manifest is authoritative: a package can be rebuilt or
+		// republished without 0kay-pm rewriting its installed record, which
+		// would otherwise leave the About page showing a stale version (or
+		// reporting a downgrade as an update).
+		version := packageVersion(record.RepositoryRoot)
 		if version == "" {
-			version = packageVersion(record.RepositoryRoot)
+			version = record.Version
 		}
 		out = append(out, InstalledPlugin{Name: name, Version: version, Repository: repository, Source: "pm"})
 	}
