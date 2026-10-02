@@ -117,6 +117,7 @@ from .attachment import (
     AttachmentDynamics,
     AttachmentSystem,
     TYPES as ATTACHMENT_TYPES,
+    initial_state_for_persona,
     severity_band as attachment_severity_band,
     type_for_persona as attachment_type_for_persona,
 )
@@ -228,4 +229,5 @@ __all__ = [
     "AttachmentSystem",
     "attachment_severity_band",
     "attachment_type_for_persona",
+    "initial_state_for_persona",
 ]

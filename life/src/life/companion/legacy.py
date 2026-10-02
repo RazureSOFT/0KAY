@@ -487,6 +487,12 @@ class CompanionSystem:
                         # pre-cognition behaviour (the ablation contract holds).
                         "cog_memory_encode": "1", "cog_sleep_replay": "1",
                         "cog_memory_reconsolidate": "1", "cog_cls_interleave": "1",
+                        # wave 4c: pathological attachment (opt-in, off by default)
+                        "cog_attachment_enabled": "0", "cog_attachment_type": "依存型",
+                        # Tuned persona parameters saved from the companion persona
+                        # page (LLM/lexicon analysis reviewed by the owner).  When
+                        # set they override the raw parse of `persona_text`.
+                        "persona_traits_override": "{}", "attachment_override": "{}",
                         # A3 信息不对称性：主人从面板改的亲密度/记忆重要性，对"角色自己"
                         # 是不可见的（角色体验到结果，但不知道是主人改的）。默认开启。
                         "owner_opacity": "1"}
@@ -541,6 +547,8 @@ class CompanionSystem:
         # memory & consolidation (durable-state mutations; opt-in)
         "cog_memory_encode": ("bool", None), "cog_sleep_replay": ("bool", None),
         "cog_memory_reconsolidate": ("bool", None), "cog_cls_interleave": ("bool", None),
+        "cog_attachment_enabled": ("bool", None), "cog_attachment_type": ("choice", None),
+        "persona_traits_override": ("json", None), "attachment_override": ("json", None),
         "owner_opacity": ("bool", None),
     }
     LOCALE_CHOICES = ("zh-CN", "en-US")
@@ -548,6 +556,7 @@ class CompanionSystem:
     # to LOCALE_CHOICES (or STAGE_ORDER for the *_stage_cap keys).
     CHOICE_SETS = {"cog_affect_profile": tuple(_ERQ_PROFILES),
                    "cog_language_framing": tuple(_FRAMING_MODES),
+                   "cog_attachment_type": ("独占型", "依存型", "妄想型", "监视型", "自伤型", "排除型"),
                    "world_density": ("off", "texture", "full"),
                    "world_fictional": ("real", "fictional")}
     BOOL_VALUES = {"1", "0", "true", "false", "yes", "no", "on", "off"}

@@ -95,6 +95,7 @@ try:
         PERSONA_JSON_CONTRACT,
         AttachmentSystem,
         attachment_type_for_persona,
+        initial_state_for_persona,
         PersonaTraits,
         RelatingSystem,
         SelfhoodConfig,
@@ -321,6 +322,10 @@ class LifeEngine:
             self.attachment = None
         self._persona_traits = None
         self._persona_digest = None
+        # Owner-tuned persona parameters saved from the companion persona page;
+        # when present they override the raw parse of the persona text.
+        self._persona_traits_override: dict = {}
+        self._attachment_override: dict = {}
         self._cognition_enabled = True
         self._affect_modulates = True
         self._language_modulates = True
@@ -512,6 +517,14 @@ class LifeEngine:
             persona = parse_persona(persona_text)
             if persona.use_somatic:
                 somatic_on = True
+        # Owner-tuned persona parameters (saved from the companion persona page
+        # after LLM/lexicon analysis) take precedence over the raw parse.
+        self._persona_traits_override = self._json_setting(saved, "persona_traits_override")
+        if self._persona_traits_override:
+            persona = self._merge_persona_traits(persona or PersonaTraits(),
+                                                 self._persona_traits_override)
+            if persona.use_somatic:
+                somatic_on = True
         affect.use_somatic = somatic_on
         # a persona change must recompute a deterministic trait set, not
         # inherit whatever the previous persona (or an intervention) left
@@ -554,15 +567,28 @@ class LifeEngine:
         # explicit setting still overrides, and a persona edit re-evaluates.
         restored = bool(getattr(self, "_attachment_restored_enabled", False))
         self._attachment_restored_enabled = False
-        attachment_enabled = self._cognition_enabled and self._cog_bool(get("cog_attachment_enabled"), restored)
+        # A saved/env switch wins; otherwise an attachment circuit restored from
+        # disk stays on across a restart (the enabling persona is re-sent later).
+        explicit = ("cog_attachment_enabled" in (saved or {})) or bool(os.getenv("LIFE_COG_ATTACHMENT"))
+        if explicit:
+            attachment_enabled = self._cognition_enabled and self._cog_bool(get("cog_attachment_enabled"), False)
+        else:
+            attachment_enabled = self._cognition_enabled and restored
         attachment_type = str(get("cog_attachment_type") or "").strip()
         persona_type = attachment_type_for_persona(persona_text) if persona_text else ""
         if persona_type:
             attachment_enabled = self._cognition_enabled
             attachment_type = attachment_type or persona_type
+        # Owner-tuned attachment config (type + initial values from analysis).
+        self._attachment_override = self._json_setting(saved, "attachment_override")
+        if self._attachment_override.get("type"):
+            attachment_enabled = self._cognition_enabled
+            attachment_type = str(self._attachment_override["type"])
         self._attachment_enabled = attachment_enabled
         if self.attachment is not None:
             self.attachment.configure(enabled=attachment_enabled, type_key=attachment_type or "依存型")
+            if isinstance(self._attachment_override.get("initial"), dict):
+                self.attachment.seed_state(self._attachment_override["initial"])
         return self.cognition_status()
 
     def cognition_status(self) -> dict:
@@ -613,14 +639,44 @@ class LifeEngine:
         """Turn on the attachment circuit from a possessive/yandere persona."""
         if self.attachment is None:
             return
-        type_key = attachment_type_for_persona(text)
+        if self._attachment_override.get("type"):
+            # An owner-tuned override wins over the keyword lexicon.
+            type_key = str(self._attachment_override["type"])
+        else:
+            type_key = attachment_type_for_persona(text)
         if not type_key:
             return
         self._attachment_enabled = self._cognition_enabled
         self.attachment.configure(enabled=self._cognition_enabled, type_key=type_key)
-        # Seed the dynamics from the persona so two possessive personalities do
-        # not start from the same basin.
-        self.attachment.seed_from_persona(text)
+        # Seed from explicit tuned values, else from the persona text, so two
+        # possessive personalities do not start from the same basin.
+        if isinstance(self._attachment_override.get("initial"), dict):
+            self.attachment.seed_state(self._attachment_override["initial"])
+        else:
+            self.attachment.seed_from_persona(text)
+
+    @staticmethod
+    def _json_setting(saved, key: str) -> dict:
+        """Read a JSON-valued setting that may be a dict or a JSON string."""
+        raw = (saved or {}).get(key)
+        if isinstance(raw, dict):
+            return raw
+        try:
+            value = json.loads(raw or "{}")
+        except (TypeError, ValueError):
+            return {}
+        return value if isinstance(value, dict) else {}
+
+    @staticmethod
+    def _merge_persona_traits(base, override: dict):
+        """Overlay owner-tuned trait values on the parsed persona (clamped)."""
+        if not override:
+            return base
+        merged = merge_persona_llm_json(base, json.dumps(override, ensure_ascii=False))
+        if merged is None:
+            return base
+        merged.source = "override"
+        return merged
 
     def _persona_llm_enabled(self) -> bool:
         return self._cog_bool(
@@ -694,6 +750,8 @@ class LifeEngine:
             if refined is not None:
                 traits = refined
                 self._persona_llm_cache_store(digest, refined)
+        if self._persona_traits_override:
+            traits = self._merge_persona_traits(traits, self._persona_traits_override)
         self._layer_persona_traits(traits)
         self._enable_attachment_from_persona(text)
         self._persona_digest = digest
@@ -727,12 +785,60 @@ class LifeEngine:
         # re-derive from settings first, so repeated persona edits never
         # accumulate drift; then layer the persona overrides on top
         self.apply_cognition_settings()
-        self._layer_persona_traits(parse_persona(text))
+        traits = parse_persona(text)
+        if self._persona_traits_override:
+            traits = self._merge_persona_traits(traits, self._persona_traits_override)
+        self._layer_persona_traits(traits)
         self._enable_attachment_from_persona(text)
         # set last: apply_cognition_settings() invalidates the digest on
         # purpose, so it must be re-stamped here (not before)
         self._persona_digest = digest
         return persona_summary(getattr(self, "_persona_traits", None))
+
+    async def persona_analyze(self, text: str) -> dict:
+        """Interpret a persona into parameters WITHOUT saving (review + tune).
+
+        Uses the model when enabled, falling back to the deterministic lexicon;
+        also derives the attachment archetype and its initial 7-state values.
+        """
+        text = str(text or "").strip()
+        traits = parse_persona(text)
+        source = "lexicon"
+        if text and self._persona_llm_enabled():
+            try:
+                refined = await self._refine_persona_with_model(text, traits)
+                if refined is not None:
+                    traits, source = refined, "llm"
+            except Exception as error:
+                logger.debug("persona analyze llm failed: %s", error)
+        att_type = attachment_type_for_persona(text)
+        return {
+            "source": source,
+            "traits": traits.to_dict(),
+            "attachment": {"type": att_type,
+                           "initial": initial_state_for_persona(text) if att_type else {}},
+            "applied": traits.present,
+        }
+
+    def persona_apply(self, payload: dict) -> dict:
+        """Persist a reviewed persona + owner-tuned parameters, then apply.
+
+        The tuned trait/attachment values override the raw parse of the persona
+        text on every subsequent apply (see `apply_cognition_settings`).
+        """
+        payload = payload or {}
+        attachment = payload.get("attachment") or {}
+        settings = {
+            "persona_text": str(payload.get("text") or ""),
+            "persona_traits_override": json.dumps(payload.get("traits") or {}, ensure_ascii=False),
+            "attachment_override": json.dumps(attachment, ensure_ascii=False),
+        }
+        if attachment.get("type"):
+            settings["cog_attachment_enabled"] = "1"
+            settings["cog_attachment_type"] = str(attachment["type"])
+        result = self.companion.set_settings(settings)
+        self.apply_cognition_settings()
+        return {"saved": True, "rejected": result.get("rejected", [])}
 
     def sync_agents(self):
         info = self.core.list_agents(include_unhealthy=False)

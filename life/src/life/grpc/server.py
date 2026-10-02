@@ -611,6 +611,12 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 # Cognition knobs must take effect on the live systems, not only
                 # after a restart: reconfigure in place (learned state survives).
                 await asyncio.to_thread(self.engine.apply_cognition_settings)
+            elif action == "persona_analyze":
+                # Interpret the persona into parameters for review/tuning (no save).
+                result = await self.engine.persona_analyze(str(payload.get("text") or ""))
+            elif action == "persona_apply":
+                # Save the reviewed persona plus its tuned parameters.
+                result = await asyncio.to_thread(self.engine.persona_apply, payload)
             elif action == "config_export":
                 result = await asyncio.to_thread(self.engine.companion.export_config)
             elif action == "config_import":

@@ -283,6 +283,15 @@ class AttachmentSystem:
         """Set the initial state from the persona description (see INITIAL_HINTS)."""
         self.dynamics.state = initial_state_for_persona(text)
 
+    def seed_state(self, state: dict) -> None:
+        """Set the initial state from explicit (owner-tuned) values."""
+        for key, value in (state or {}).items():
+            if key in self.dynamics.state:
+                try:
+                    self.dynamics.state[key] = _clamp(float(value))
+                except (TypeError, ValueError):
+                    continue
+
     def configure(self, enabled: bool | None = None, type_key: str | None = None) -> None:
         if enabled is not None:
             self.enabled = bool(enabled)
