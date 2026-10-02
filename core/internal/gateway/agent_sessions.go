@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 func (g *Gateway) handleAgentSessions(w http.ResponseWriter, r *http.Request) {
@@ -250,4 +251,127 @@ func (g *Gateway) cancelTask(w http.ResponseWriter, r *http.Request, taskID stri
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{"success": response.Success, "message": response.Message})
+}
+
+// handleAgentSessionsFork POST /api/agent/sessions/fork {"session_id":…} — copy
+// a session's completed turns into a new session with an incremented title.
+func (g *Gateway) handleAgentSessionsFork(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodPost) {
+		return
+	}
+	if g.localCore == nil {
+		unavailable(w, "core not ready")
+		return
+	}
+	var body struct {
+		SessionID string `json:"session_id"`
+	}
+	if !decodeBody(w, r, &body, maxSmallBody) {
+		return
+	}
+	if strings.TrimSpace(body.SessionID) == "" {
+		badRequest(w, "session_id required")
+		return
+	}
+	id, err := g.localCore.ForkAgentSession(body.SessionID)
+	if err != nil {
+		writeErr(w, http.StatusConflict, "conflict", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]string{"session_id": id})
+}
+
+// handleAgentSessionsSearch GET /api/agent/sessions/search?q=&limit= — literal,
+// case-insensitive search over session titles and turn text. Metadata (title)
+// matches come first, then content matches carry a snippet.
+func (g *Gateway) handleAgentSessionsSearch(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
+	if g.localCore == nil {
+		unavailable(w, "core not ready")
+		return
+	}
+	query := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
+	matches := []map[string]any{}
+	if query == "" {
+		writeJSON(w, http.StatusOK, map[string]any{"matches": matches})
+		return
+	}
+	limit := 20
+	titles := map[string]string{}
+	snippets := map[string]string{}
+	seen := map[string]bool{}
+	add := func(sessionID, snippet string) {
+		if sessionID == "" || seen[sessionID] || len(matches) >= limit {
+			return
+		}
+		seen[sessionID] = true
+		matches = append(matches, map[string]any{"session_id": sessionID, "title": titles[sessionID], "snippet": snippet})
+	}
+	tasks := g.localCore.ListTasks()
+	for _, task := range tasks {
+		if task["kind"] != "agent_session" {
+			continue
+		}
+		sessionID, _ := task["session_id"].(string)
+		title, _ := task["prompt"].(string)
+		if sessionID == "" {
+			continue
+		}
+		titles[sessionID] = title
+		if strings.Contains(strings.ToLower(title), query) {
+			add(sessionID, title)
+		}
+	}
+	for _, task := range tasks {
+		sessionID, _ := task["session_id"].(string)
+		kind, _ := task["kind"].(string)
+		if sessionID == "" || seen[sessionID] || (kind != "agent" && kind != "compact") {
+			continue
+		}
+		prompt, _ := task["prompt"].(string)
+		result, _ := task["result"].(string)
+		text := strings.TrimSpace(strings.Join([]string{prompt, result}, "\n"))
+		if !strings.Contains(strings.ToLower(text), query) {
+			continue
+		}
+		if snippets[sessionID] == "" {
+			snippets[sessionID] = snippetAround(text, query)
+		}
+		add(sessionID, snippets[sessionID])
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"matches": matches})
+}
+
+// snippetAround returns a rune-safe window of text around the first match of
+// query (already lowercased), bracketed with ellipses when trimmed.
+func snippetAround(text, query string) string {
+	lower := strings.ToLower(text)
+	index := strings.Index(lower, query)
+	if index < 0 {
+		index = 0
+	}
+	start := index - 40
+	if start < 0 {
+		start = 0
+	}
+	end := index + len(query) + 60
+	if end > len(text) {
+		end = len(text)
+	}
+	for start > 0 && !utf8.RuneStart(text[start]) {
+		start--
+	}
+	for end < len(text) && !utf8.RuneStart(text[end]) {
+		end++
+	}
+	snippet := strings.TrimSpace(text[start:end])
+	if start > 0 {
+		snippet = "…" + snippet
+	}
+	if end < len(text) {
+		snippet += "…"
+	}
+	return snippet
 }

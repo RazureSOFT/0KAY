@@ -6,6 +6,7 @@ package search
 
 import (
 	"context"
+	"fmt"
 	"html"
 	"io"
 	"net/http"
@@ -33,7 +34,73 @@ const (
 	maxResults = 50
 )
 
-var client = &http.Client{Timeout: 12 * time.Second}
+var client = &http.Client{Timeout: 6 * time.Second}
+
+// overallBudget caps how long a single Search may wait across all engines.
+const overallBudget = 5 * time.Second
+
+// --- engine circuit breaker: a blocked/slow engine is skipped briefly so it
+// does not drag every search down to the deadline. ---
+var (
+	breakerMu    sync.Mutex
+	breakerUntil = map[string]time.Time{}
+)
+const breakerCooldown = 90 * time.Second
+
+func engineSkipped(name string) bool {
+	breakerMu.Lock()
+	defer breakerMu.Unlock()
+	until, ok := breakerUntil[name]
+	return ok && time.Now().Before(until)
+}
+
+func markEngineResult(name string, failed bool) {
+	breakerMu.Lock()
+	defer breakerMu.Unlock()
+	if failed {
+		breakerUntil[name] = time.Now().Add(breakerCooldown)
+	} else {
+		delete(breakerUntil, name)
+	}
+}
+
+// --- short-lived result cache for repeated identical queries. ---
+type cacheEntry struct {
+	at   time.Time
+	rows []Result
+}
+
+var (
+	cacheMu sync.Mutex
+	cache   = map[string]cacheEntry{}
+)
+const cacheTTL = 90 * time.Second
+
+func cacheKey(preferred string, limit int, query string) string {
+	return fmt.Sprintf("%s|%d|%s", preferred, limit, strings.ToLower(query))
+}
+
+func cacheGet(key string) ([]Result, bool) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	entry, ok := cache[key]
+	if !ok || time.Since(entry.at) > cacheTTL {
+		return nil, false
+	}
+	return entry.rows, true
+}
+
+func cachePut(key string, rows []Result) {
+	if len(rows) == 0 {
+		return
+	}
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	if len(cache) > 500 {
+		cache = map[string]cacheEntry{}
+	}
+	cache[key] = cacheEntry{time.Now(), rows}
+}
 
 var (
 	reTags    = regexp.MustCompile(`(?s)<[^>]+>`)
@@ -48,9 +115,11 @@ var (
 	re360Snip = regexp.MustCompile(`(?is)class="res-desc[^"]*"[^>]*>(.*?)</(?:p|span|div)>`)
 )
 
-// Search runs the preferred engine first, then the rest concurrently, merges,
-// de-duplicates by URL and ranks by query-term coverage. It never blocks on a
-// slow engine past ctx's deadline.
+// Search runs the preferred engine first and returns as soon as it has enough
+// results, instead of waiting for every engine. The remaining engines run
+// concurrently as fallback, bounded by overallBudget; results are merged,
+// de-duplicated by URL and interleaved by engine preference. Engines that fail
+// are skipped for a cooldown, and successful queries are cached briefly.
 func Search(ctx context.Context, query string, limit int, preferred string) ([]Result, []string) {
 	query = strings.TrimSpace(query)
 	if query == "" {
@@ -60,7 +129,33 @@ func Search(ctx context.Context, query string, limit int, preferred string) ([]R
 		limit = 10
 	}
 	preferred = normalizeEngine(preferred)
+	if cached, ok := cacheGet(cacheKey(preferred, limit, query)); ok {
+		return cached, nil
+	}
 	order := append([]string{preferred}, excluding(Engines, preferred)...)
+
+	// Drop engines that failed recently, unless that leaves us with none.
+	active := make([]string, 0, len(order))
+	for _, name := range order {
+		if !engineSkipped(name) {
+			active = append(active, name)
+		}
+	}
+	if len(active) == 0 {
+		active = order
+	}
+
+	budget := overallBudget
+	if deadline, ok := ctx.Deadline(); ok {
+		if remaining := time.Until(deadline); remaining < budget {
+			budget = remaining
+		}
+	}
+	if budget <= 0 {
+		budget = time.Second
+	}
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	type outcome struct {
 		name string
@@ -68,13 +163,13 @@ func Search(ctx context.Context, query string, limit int, preferred string) ([]R
 		rows []Result
 		err  error
 	}
-	results := make(chan outcome, len(order))
+	results := make(chan outcome, len(active))
 	var wg sync.WaitGroup
-	for i, name := range order {
+	for i, name := range active {
 		wg.Add(1)
 		go func(i int, name string) {
 			defer wg.Done()
-			rows, err := runEngine(ctx, name, query, limit)
+			rows, err := runEngine(runCtx, name, query, limit)
 			results <- outcome{name: name, idx: i, rows: rows, err: err}
 		}(i, name)
 	}
@@ -84,30 +179,55 @@ func Search(ctx context.Context, query string, limit int, preferred string) ([]R
 	seen := map[string]bool{}
 	collected := map[int][]Result{}
 	var errs []string
-	for out := range results {
-		if out.err != nil {
-			errs = append(errs, out.name+": "+out.err.Error())
-			continue
-		}
-		for _, r := range out.rows {
-			key := strings.TrimRight(strings.ToLower(strings.TrimSpace(r.URL)), "/")
-			if key == "" || seen[key] {
+	total := 0
+	preferredDone := false
+	timer := time.NewTimer(budget)
+	defer timer.Stop()
+
+loop:
+	for {
+		select {
+		case <-timer.C:
+			break loop
+		case out, ok := <-results:
+			if !ok {
+				break loop
+			}
+			if out.idx == 0 {
+				preferredDone = true
+			}
+			markEngineResult(out.name, out.err != nil)
+			if out.err != nil {
+				errs = append(errs, out.name+": "+out.err.Error())
 				continue
 			}
-			hay := strings.ToLower(r.Title + " " + r.URL + " " + r.Snippet)
-			if !anchorMatch(hay, terms) {
-				continue
+			for _, r := range out.rows {
+				key := strings.TrimRight(strings.ToLower(strings.TrimSpace(r.URL)), "/")
+				if key == "" || seen[key] {
+					continue
+				}
+				hay := strings.ToLower(r.Title + " " + r.URL + " " + r.Snippet)
+				if !anchorMatch(hay, terms) {
+					continue
+				}
+				seen[key] = true
+				collected[out.idx] = append(collected[out.idx], r)
+				total++
 			}
-			seen[key] = true
-			collected[out.idx] = append(collected[out.idx], r)
+			// Enough results from the preferred engine (or after it settled) —
+			// stop waiting on the rest.
+			if preferredDone && total >= limit {
+				break loop
+			}
 		}
 	}
+	cancel()
 
 	// Interleave engines so one fast source cannot fill every slot.
 	out := make([]Result, 0, limit)
 	for len(out) < limit {
 		progressed := false
-		for i := range order {
+		for i := range active {
 			rows := collected[i]
 			if len(rows) == 0 {
 				continue
@@ -123,6 +243,7 @@ func Search(ctx context.Context, query string, limit int, preferred string) ([]R
 			break
 		}
 	}
+	cachePut(cacheKey(preferred, limit, query), out)
 	return out, errs
 }
 

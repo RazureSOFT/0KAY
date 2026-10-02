@@ -2,7 +2,9 @@ package server
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -174,6 +176,88 @@ func (s *CoreServiceServer) ManageAgentSession(id, action string) error {
 	s.persistTasksLocked()
 	return nil
 }
+
+// ForkAgentSession copies a session's completed turns into a new session whose
+// display title increments the origin's trailing "(n)" ordinal (half-width or
+// full-width). The fork point is the latest completed agent turn, so a running
+// turn is never duplicated. The origin session, its directory and its logs are
+// left untouched.
+func (s *CoreServiceServer) ForkAgentSession(origin string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	source := s.tasks[origin]
+	if source == nil || source.Kind != "agent_session" || source.State == "deleted" {
+		return "", fmt.Errorf("session not found")
+	}
+	var forkAt time.Time
+	for _, task := range s.tasks {
+		if task.SessionID != origin || task.Kind != "agent" || task.EndedAt.IsZero() {
+			continue
+		}
+		if task.EndedAt.After(forkAt) {
+			forkAt = task.EndedAt
+		}
+	}
+	id := fmt.Sprintf("agent-session:fork:%d", time.Now().UnixNano())
+	now := time.Now()
+	s.tasks[id] = &TaskInfo{
+		TaskID: id, SessionID: id, ParentID: origin, Kind: "agent_session", CallerID: source.CallerID,
+		Prompt: forkTitle(source.Prompt), State: "done", StartedAt: now, EndedAt: now,
+	}
+	// Copy the turns and their steps up to the fork point into the new session,
+	// remapping task ids and parent links so the lineage stays intact.
+	turns := []*TaskInfo{}
+	for _, task := range s.tasks {
+		if task.SessionID != origin || task.TaskID == origin {
+			continue
+		}
+		if !forkAt.IsZero() && task.StartedAt.After(forkAt.Add(time.Nanosecond)) {
+			continue
+		}
+		turns = append(turns, task)
+	}
+	sort.Slice(turns, func(i, j int) bool {
+		if turns[i].StartedAt.Equal(turns[j].StartedAt) {
+			return turns[i].TaskID < turns[j].TaskID
+		}
+		return turns[i].StartedAt.Before(turns[j].StartedAt)
+	})
+	remap := map[string]string{}
+	for index, task := range turns {
+		newID := fmt.Sprintf("agent-fork:%d:%d", now.UnixNano(), index)
+		remap[task.TaskID] = newID
+		parent := ""
+		if mapped, ok := remap[task.ParentID]; ok {
+			parent = mapped
+		} else if task.ParentID == origin {
+			parent = id
+		}
+		copied := *task
+		copied.TaskID = newID
+		copied.SessionID = id
+		copied.ParentID = parent
+		copied.CancelFn = nil
+		s.tasks[newID] = &copied
+	}
+	s.persistTasksLocked()
+	return id, nil
+}
+
+// forkTitle increments a trailing "(n)"/"（n）" ordinal, else appends " (1)".
+func forkTitle(title string) string {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		title = "Agent session"
+	}
+	if match := forkOrdinal.FindStringSubmatch(title); match != nil {
+		if ordinal, err := strconv.Atoi(match[2]); err == nil {
+			return fmt.Sprintf("%s(%d)", strings.TrimRight(match[1], " "), ordinal+1)
+		}
+	}
+	return title + " (1)"
+}
+
+var forkOrdinal = regexp.MustCompile(`^([\s\S]*?)[\(（]\s*(\d+)\s*[\)）]\s*$`)
 
 // LIFE conversations have a stable Agent session; retain the originating chat
 // separately so completion notifications still return to the right channel.

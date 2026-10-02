@@ -1,4 +1,4 @@
-.PHONY: all build lint test clean docker-up docker-down proto
+.PHONY: all build lint test test-life clean docker-up docker-down proto deps-python
 
 # Default target
 all: build
@@ -45,6 +45,12 @@ docker-build:
 	docker-compose build
 
 # Development
+#
+# The LIFE plugin's own venv may be uv-created, in which case there is no `pip`
+# on PATH and `python -m pip install -e .` fails.  Resolve the interpreter once:
+# its venv when present, otherwise whatever `python` is on PATH.
+LIFE_PY := $(shell if [ -x life/.venv/Scripts/python.exe ]; then echo .venv/Scripts/python.exe; elif [ -x life/.venv/bin/python ]; then echo .venv/bin/python; else echo python; fi)
+
 dev-core:
 	cd core && go run ./cmd/core
 
@@ -52,7 +58,11 @@ dev-mocr:
 	cd mocr && go run ./cmd/mocr
 
 dev-life:
-	cd life && python -m life.main
+	cd life && $(LIFE_PY) -m life.main
+
+# Run the LIFE regression suite (507 tests, ~5 min).
+test-life:
+	cd life && $(LIFE_PY) -m pytest tests/ -q
 
 dev-agent:
 	cd agent && npm run dev
@@ -62,9 +72,9 @@ deps-go:
 	cd core && go mod tidy
 	cd mocr && go mod tidy
 
-# Install Python dependencies
+# Install Python dependencies (falls back to uv when the venv has no pip)
 deps-python:
-	cd life && pip install -e .
+	cd life && ($(LIFE_PY) -m pip install -e ".[dev]" || uv pip install -e ".[dev]")
 
 # Install Node.js dependencies
 deps-node:

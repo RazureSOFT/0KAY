@@ -92,10 +92,10 @@ func main() {
 					},
 					{
 						Key:          "default_model",
-						Type:         "text",
+						Type:         "model",
 						Label:        "默认模型",
 						DefaultValue: "",
-						Help:         "留空 = 按上面的模型选择策略智能选型；填写后固定使用该模型",
+						Help:         "留空 = 按上面的模型选择策略智能选型；选择后固定使用该模型",
 					},
 					{
 						Key:          "max_retries",
@@ -127,10 +127,10 @@ func main() {
 					},
 					{
 						Key:          "fallback_models",
-						Type:         "text",
+						Type:         "models",
 						Label:        "备选模型",
 						DefaultValue: "",
-						Help:         "逗号分隔的模型 ID，如 gpt-4o-mini,claude-haiku；留空 = 按供应商目录顺序依次尝试",
+						Help:         "从模型目录中选择；留空 = 按供应商目录顺序依次尝试",
 					},
 					{
 						Key:          "model_prices",
