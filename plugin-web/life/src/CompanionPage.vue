@@ -79,6 +79,7 @@ const COG_DEFAULTS: Record<string, string> = {
   cog_language_enabled: '1', cog_language_framing: 'weak_whorf', cog_language_boundary: '0.6',
   cog_social_enabled: '1', cog_social_empathy: '0.4', cog_social_stage: '2',
   cog_selfhood_enabled: '1', cog_selfhood_discount: '0.1', cog_selfhood_detail: '20',
+  cog_attachment_enabled: '0', cog_attachment_type: '依存型',
   // memory & consolidation. On by default — they are what makes lived
   // experience leave a trace; turn one off to ablate it.
   cog_memory_encode: '1', cog_sleep_replay: '1', cog_memory_reconsolidate: '1',
@@ -87,9 +88,10 @@ const COG_DEFAULTS: Record<string, string> = {
 const COG_BOOL_KEYS = ['cog_enabled', 'cog_modulate_affect', 'cog_modulate_language', 'cog_modulate_social',
   'cog_modulate_selfhood', 'cog_use_cerebellum', 'cog_use_thalamic_gate', 'cog_use_ofc_map',
   'cog_use_prospection', 'cog_use_limbic_bias', 'cog_affect_enabled', 'cog_affect_somatic', 'cog_affect_persona_llm', 'cog_language_enabled',
-  'cog_social_enabled', 'cog_selfhood_enabled',
+  'cog_social_enabled', 'cog_selfhood_enabled', 'cog_attachment_enabled',
   'cog_memory_encode', 'cog_sleep_replay', 'cog_memory_reconsolidate', 'cog_cls_interleave']
-const COG_TEXT_KEYS = ['cog_affect_profile', 'cog_language_framing']
+const COG_TEXT_KEYS = ['cog_affect_profile', 'cog_language_framing', 'cog_attachment_type']
+const attachmentTypeOptions = ['独占型', '依存型', '妄想型', '监视型', '自伤型', '排除型']
 const cogProfileOptions = ['typical', 'depression', 'anxiety', 'bpd', 'alexithymia']
 const cogFramingOptions = ['independent', 'interchanging', 'cognitive_determinism', 'weak_whorf',
   'thinking_for_speaking', 'radical_connectionism', 'determinism']
@@ -124,6 +126,7 @@ const wave3 = computed(() => cognition.value?.wave3 || null)
 const wave4a = computed(() => cognition.value?.wave4a || null)
 const wave4b = computed(() => cognition.value?.wave4b || null)
 const personaInfo = computed(() => cognition.value?.persona || null)
+const attachment = computed(() => cognition.value?.attachment || null)
 const somaticChannels = computed(() => cognition.value?.wave2?.somatic_channels || null)
 const channelLabel = (name: string) => ({ fatigue: '疲劳', pain: '疼痛', cardiorespiratory: '心慌',
   gastrointestinal: '胃肠', dizziness: '头晕', sleep: '睡眠' } as Record<string, string>)[name] || name
@@ -594,7 +597,19 @@ onMounted(load)
           <div class="cog-metric"><span>视角阶段</span><strong>{{ wave4a?.perspective_name || '—' }}</strong></div>
           <div class="cog-metric"><span>注意状态</span><strong>{{ wave4b?.attention_state || '—' }}</strong></div>
           <div class="cog-metric"><span>耐心</span><strong>{{ fmtNum(wave4b?.patience) }}</strong></div>
+          <template v-if="attachment?.enabled">
+            <div class="cog-metric"><span>依恋型别</span><strong>{{ attachment.label || attachment.type }}</strong></div>
+            <div class="cog-metric"><span>病度</span><strong>{{ fmtNum(attachment.severity, 2) }} · {{ attachment.band }}</strong></div>
+            <div class="cog-metric"><span>主导倾向</span><strong>{{ attachment.dominant || '—' }}</strong></div>
+            <div class="cog-metric"><span>依恋压力</span><strong>{{ fmtNum(attachment.distress, 2) }}</strong></div>
+            <div class="cog-metric"><span>抑郁共病</span><strong>{{ fmtNum(attachment.comorbid_depression, 2) }}</strong></div>
+          </template>
         </div>
+        <p v-if="attachment?.enabled" class="hint">
+          依恋动力学已开启：{{ attachment.label }}。病度 {{ fmtNum(attachment.severity, 2) }}（{{ attachment.band }}）由依恋、嫉妒、焦虑、执念等合成；
+          {{ attachment.safe_mode ? '已进入安全层（只表达情绪、不给伤害方法）。' : '低于 0.85 不会触发安全层。' }}
+          它与抑郁双向影响：低落会放大不安、依恋压力也会拖累情绪。
+        </p>
         <p v-if="personaInfo?.applied" class="hint">人设特质已生效（{{ personaInfo.source === 'llm' ? 'LLM 精修' : '本地词典' }}）：{{ personaEvidenceText || '—' }}。改人设请到 设置 → 人设，下一条消息自动生效。</p>
         <div v-if="somaticChannels" class="som-channels">
           <div v-for="(value, name) in somaticChannels" :key="name" class="som-chan">
@@ -678,6 +693,26 @@ onMounted(load)
             <label><span>人设细节尺度</span><input v-model.number="settingsForm.cog_selfhood_detail" type="number" step="1" min="1" max="50" class="field tiny" /></label>
           </div>
           <label class="sw"><input type="checkbox" v-model="settingsForm.cog_selfhood_enabled" /><span>启用自我与时间回路</span></label>
+        </article>
+
+        <article class="card">
+          <h3>病态依恋 / 病娇（可选）</h3>
+          <p class="hint">
+            把"占有欲、嫉妒、黏人、多疑"做成一个**会自己演化的状态**，而不是一句人设标签。默认关闭；
+            开启后由真实互动驱动——你的消息、回复快慢、沉默天数、是否提到别人、睡眠——并和抑郁互相影响。
+            无论多严重，极重度（≥0.85）都会自动进入安全层：只表达情绪、请求陪伴，不生成自伤或伤人的方法。
+          </p>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_attachment_enabled" /><span>启用依恋动力学</span></label>
+          <div class="settings-grid">
+            <label><span>依恋型别</span><AppSelect v-model="settingsForm.cog_attachment_type" :options="attachmentTypeOptions" aria-label="依恋型别" /></label>
+          </div>
+          <p class="hint">
+            怎么配：① 打开开关并选型别（独占 / 依存 / 妄想 / 监视 / 自伤 / 排除）——
+            型别只改变"同一种动力的权重"，不是硬编码台词；或 ② 直接在人设里写关键词，
+            系统会自动启用并按人设填初始值：如"占有欲强、爱吃醋"→独占型，"很黏人、离不开你"→依存型，
+            "老是查岗、跟踪"→监视型，"疑神疑鬼、总觉得被骗"→妄想型。想更贴近"病娇常伴抑郁"，
+            把上方「情绪调节画像」设为 depression，两者会互相加重。
+          </p>
         </article>
 
         <article class="card">
