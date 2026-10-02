@@ -56,28 +56,55 @@ Captured from the running WebUI (`webui`, Vite dev server).
 
 ## Quick start
 
-> Requires Go 1.27+, Python 3.10+, Node.js 22+ and, for the one-command path,
-> Docker Compose.
+> Node.js 22+ is enough for the package-manager path. Docker Compose covers the
+> container path. Running from source also needs Go 1.27+ and Python 3.10+.
+
+Pick **one** of the three options below.
+
+### Docker Compose
 
 ```bash
-docker-compose up -d      # start every service
+docker-compose up -d      # build and start every service
 docker-compose ps         # check status
 docker-compose logs -f    # follow logs
 docker-compose down       # stop
 ```
 
-Or install through the package manager and run services individually:
+### Package manager (recommended)
 
 ```sh
+# install the 0kay-pm CLI (Node.js 22+; git is not required)
+npm install -g https://codeload.github.com/RazureSOFT/0KAY-pm/tar.gz/main
+# ...or from this checkout:
 npm install -g ./pm
-0kay-pm install @razuresoft/0kay@0.1.2
-0kay-pm install @razuresoft/0kay-agent@0.1.2
 
-make proto        # generate protobuf code
+0kay-pm install @razuresoft/0kay@0.1.2        # Core, mocr, L.I.F.E, WebUI
+0kay-pm install @razuresoft/0kay-agent@0.1.2  # the task agent
+```
+
+`0kay-pm install` builds each module and starts it as a background service
+(systemd user unit / LaunchAgent / logon task), so there is nothing else to run
+afterwards. Manage them with `0kay-pm status <package>` and
+`0kay-pm stop <package>`.
+
+### From source (development)
+
+```sh
+# one-time setup
+make deps-python           # pip install -e . for L.I.F.E
+make deps-node             # npm install for the agent
+npm --prefix webui install # WebUI dependencies
+make proto                 # generate protobuf code
+```
+
+Then run each service in its own terminal:
+
+```sh
 make dev-core     # Core on :50051 (gRPC) and :8080 (HTTP)
 make dev-mocr     # mocr on :50052
 make dev-life     # L.I.F.E on :50053
 make dev-agent    # Agent on :50054
+npm --prefix webui run dev   # WebUI on :3000
 ```
 
 Then open the WebUI and, in Settings, add a provider and your model API key.

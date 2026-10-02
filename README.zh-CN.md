@@ -43,27 +43,54 @@
 
 ## 快速开始
 
-> 需要 Go 1.27+、Python 3.10+、Node.js 22+；用一条命令启动还需要 Docker Compose。
+> 用包管理器安装只需要 Node.js 22+；容器方式用 Docker Compose；从源码运行才需要
+> Go 1.27+ 和 Python 3.10+。
+
+**三选一**，不要混用。
+
+### Docker Compose
 
 ```bash
-docker-compose up -d      # 启动所有服务
+docker-compose up -d      # 构建并启动所有服务
 docker-compose ps         # 查看状态
 docker-compose logs -f    # 跟踪日志
 docker-compose down       # 停止
 ```
 
-或者用包管理器安装，再逐个启动服务：
+### 包管理器安装（推荐）
 
 ```sh
+# 安装 0kay-pm 命令行工具（Node.js 22+，不需要 git）
+npm install -g https://codeload.github.com/RazureSOFT/0KAY-pm/tar.gz/main
+# ……或者从本仓库安装：
 npm install -g ./pm
-0kay-pm install @razuresoft/0kay@0.1.2
-0kay-pm install @razuresoft/0kay-agent@0.1.2
 
-make proto        # 生成 Protobuf 代码
+0kay-pm install @razuresoft/0kay@0.1.2        # Core、mocr、L.I.F.E、WebUI
+0kay-pm install @razuresoft/0kay-agent@0.1.2  # 任务 Agent
+```
+
+`0kay-pm install` 会构建每个模块并把它作为**后台服务**启动（Linux systemd user
+unit / macOS LaunchAgent / Windows 登录任务），所以之后**不需要**再手动运行任何东西。
+用 `0kay-pm status <包名>` 查看状态、`0kay-pm stop <包名>` 停止。
+
+### 从源码运行（开发）
+
+```sh
+# 一次性准备
+make deps-python           # 为 L.I.F.E 执行 pip install -e .
+make deps-node             # 为 Agent 执行 npm install
+npm --prefix webui install # WebUI 依赖
+make proto                 # 生成 Protobuf 代码
+```
+
+然后在**各自的终端**里分别启动：
+
+```sh
 make dev-core     # Core：:50051 (gRPC) / :8080 (HTTP)
 make dev-mocr     # mocr：:50052
 make dev-life     # L.I.F.E：:50053
 make dev-agent    # Agent：:50054
+npm --prefix webui run dev   # WebUI：:3000
 ```
 
 打开 WebUI，在「设置 → 供应商」里添加供应商和模型 API Key 即可。
