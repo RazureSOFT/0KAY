@@ -5,8 +5,9 @@ underneath**. You run it locally, bring your own model API key, and keep your
 data on your own disk. A small Go **Core** owns registration, health, settings,
 routing, task dispatch, model access and provider credentials. Every other
 capability — model gateway, persona, task agent, tool bridges, Minecraft — is a
-**plugin**. (Start with [README.md](../README.md); the audience and use cases
-are spelled out there.)
+**plugin**. Start with the [README](https://github.com/RazureSOFT/0KAY) (or its
+[中文说明](https://github.com/RazureSOFT/0KAY/blob/main/README.zh-CN.md)); the
+audience and use cases are spelled out there.
 
 Plugins and Core talk through a shared **message format** (Protocol Buffers,
 "protobuf"). A small schema file declares the exact messages and calls both
@@ -45,16 +46,19 @@ installed, updated or disabled on its own.
 ## Quick start
 
 ```sh
-# install the package manager, then the platform and the agent
-npm install -g ./pm
-0kay-pm install @razuresoft/0kay@0.1.2
-0kay-pm install @razuresoft/0kay-agent@0.1.2
+# install the package manager, then the agent and the platform
+npm install -g https://codeload.github.com/RazureSOFT/0KAY-pm/tar.gz/main
+0kay-pm discover
+0kay-pm install @razuresoft/0kay-agent
+0kay-pm install @razuresoft/0kay
+0kay-pm start @razuresoft/0kay
 ```
 
 Installing the platform builds Core, mocr, LIFE, the WebUI and the plugin web
 bundles. Interactive installation asks for Core HTTP, Core gRPC and WebUI ports
 and starts each component after a successful build. See
-[Releases and Updates](RELEASES.md) for the full flow.
+[Releases and Updates](RELEASES.md) for the full flow and the
+[README](https://github.com/RazureSOFT/0KAY) for Docker and from-source options.
 
 ## Source of truth
 

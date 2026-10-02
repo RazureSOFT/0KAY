@@ -140,13 +140,18 @@ tbody tr:hover td{background:color-mix(in srgb, var(--md-primary) 5%, transparen
 """
 
 
+def _link(match) -> str:
+    label, target = match.group(1), match.group(2)
+    # Only in-site, relative *.md links map to the generated *.html pages;
+    # absolute URLs (GitHub, etc.) and anchors are left untouched.
+    if not target.startswith(("http://", "https://", "//", "#", "mailto:")) and target.endswith(".md"):
+        target = target[:-3] + ".html"
+    return f'<a href="{target}">{label}</a>'
+
+
 def inline(value: str) -> str:
     value = html.escape(value, quote=False)
-    value = re.sub(
-        r"\[([^]]+)\]\(([^)]+)\)",
-        lambda m: f'<a href="{m.group(2)[:-3] + ".html" if m.group(2).endswith(".md") else m.group(2)}">{m.group(1)}</a>',
-        value,
-    )
+    value = re.sub(r"\[([^]]+)\]\(([^)]+)\)", _link, value)
     value = re.sub(r"`([^`]+)`", r"<code>\1</code>", value)
     value = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", value)
     return value
@@ -157,13 +162,31 @@ def markdown_body(text: str) -> str:
     in_code = False
     list_open = False
     table_open = False
+    para: list[str] = []
+
+    def flush_paragraph() -> None:
+        if para:
+            body.append(f"<p>{inline(' '.join(para))}</p>")
+            para.clear()
+
+    def close_blocks() -> None:
+        nonlocal list_open, table_open
+        if list_open:
+            body.append("</ul>")
+            list_open = False
+        if table_open:
+            body.append("</table>")
+            table_open = False
+
     for raw in text.splitlines():
         line = raw.rstrip()
         if line.startswith("```"):
+            flush_paragraph()
             if in_code:
                 body.append("</code></pre>")
                 in_code = False
             else:
+                close_blocks()
                 body.append("<pre><code>")
                 in_code = True
             continue
@@ -171,25 +194,18 @@ def markdown_body(text: str) -> str:
             body.append(html.escape(line) + "\n")
             continue
         if not line:
-            if list_open:
-                body.append("</ul>")
-                list_open = False
-            if table_open:
-                body.append("</table>")
-                table_open = False
+            flush_paragraph()
+            close_blocks()
             continue
         heading = re.match(r"^(#{1,6})\s+(.+)$", line)
-        item = re.match(r"^[-*]\s+(.+)$", line)
         if heading:
-            if list_open:
-                body.append("</ul>")
-                list_open = False
-            if table_open:
-                body.append("</table>")
-                table_open = False
+            flush_paragraph()
+            close_blocks()
             level = len(heading.group(1))
             body.append(f"<h{level}>{inline(heading.group(2))}</h{level}>")
-        elif line.startswith("|"):
+            continue
+        if line.startswith("|"):
+            flush_paragraph()
             if list_open:
                 body.append("</ul>")
                 list_open = False
@@ -203,24 +219,23 @@ def markdown_body(text: str) -> str:
             else:
                 body.append("<tr>" + "".join(f"<td>{inline(c)}</td>" for c in cells) + "</tr>")
             continue
-        else:
+        item = re.match(r"^[-*]\s+(.+)$", line)
+        if item:
+            flush_paragraph()
             if table_open:
                 body.append("</table>")
                 table_open = False
-            if item:
-                if not list_open:
-                    body.append("<ul>")
-                    list_open = True
-                body.append(f"<li>{inline(item.group(1))}</li>")
-            else:
-                if list_open:
-                    body.append("</ul>")
-                    list_open = False
-                body.append(f"<p>{inline(line)}</p>")
-    if list_open:
-        body.append("</ul>")
-    if table_open:
-        body.append("</table>")
+            if not list_open:
+                body.append("<ul>")
+                list_open = True
+            body.append(f"<li>{inline(item.group(1))}</li>")
+            continue
+        # Plain text: soft-wrapped lines accumulate into a single paragraph.
+        close_blocks()
+        para.append(line)
+
+    flush_paragraph()
+    close_blocks()
     if in_code:
         body.append("</code></pre>")
     return "".join(body)
