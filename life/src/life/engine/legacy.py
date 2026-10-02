@@ -93,6 +93,8 @@ try:
         LanguageConfig,
         LanguageSystem,
         PERSONA_JSON_CONTRACT,
+        AttachmentSystem,
+        attachment_type_for_persona,
         PersonaTraits,
         RelatingSystem,
         SelfhoodConfig,
@@ -310,9 +312,13 @@ class LifeEngine:
             # state machine, so "how alike are we" and "can we recover from a
             # misunderstanding" are real rather than decorative.
             self.relating = RelatingSystem()
+            # Pathological attachment ("yandere") dynamics: opt-in, off by
+            # default, driven by real interaction signals (see apply settings).
+            self.attachment = AttachmentSystem()
         else:
             self.cognition = self.affect = self.language = self.social = self.selfhood = None
             self.relating = None
+            self.attachment = None
         self._persona_traits = None
         self._persona_digest = None
         self._cognition_enabled = True
@@ -320,6 +326,10 @@ class LifeEngine:
         self._language_modulates = True
         self._social_modulates = True
         self._selfhood_modulates = True
+        # Pathological attachment is off by default and only reaches the prompt
+        # when its own switch (or a "yandere" persona) turns it on.
+        self._attachment_enabled = False
+        self._attachment_restored_enabled = False
         # Durable-state consolidation switches (default OFF - see SETTING_DEFAULTS).
         self._memory_encode = False
         self._sleep_replay = False
@@ -398,6 +408,8 @@ class LifeEngine:
         "cog_language_framing": "LIFE_COG_LANGUAGE_FRAMING",
         "cog_social_enabled": "LIFE_COG_SOCIAL_ENABLED",
         "cog_selfhood_enabled": "LIFE_COG_SELFHOOD_ENABLED",
+        "cog_attachment_enabled": "LIFE_COG_ATTACHMENT",
+        "cog_attachment_type": "LIFE_COG_ATTACHMENT_TYPE",
     }
 
     @staticmethod
@@ -534,6 +546,23 @@ class LifeEngine:
         selfhood.discount_rate = self._cog_num(get("cog_selfhood_discount"), selfhood.discount_rate)
         selfhood.detail_scale = self._cog_num(get("cog_selfhood_detail"), selfhood.detail_scale)
         self.selfhood.reconfigure(selfhood)
+
+        # wave 4c: pathological attachment ("yandere") - opt-in, off by default.
+        # A persona that reads as possessive/jealous turns it on and picks a type.
+        # An attachment circuit restored from disk stays on across a restart
+        # (the persona that enabled it is re-sent with the next message); an
+        # explicit setting still overrides, and a persona edit re-evaluates.
+        restored = bool(getattr(self, "_attachment_restored_enabled", False))
+        self._attachment_restored_enabled = False
+        attachment_enabled = self._cognition_enabled and self._cog_bool(get("cog_attachment_enabled"), restored)
+        attachment_type = str(get("cog_attachment_type") or "").strip()
+        persona_type = attachment_type_for_persona(persona_text) if persona_text else ""
+        if persona_type:
+            attachment_enabled = self._cognition_enabled
+            attachment_type = attachment_type or persona_type
+        self._attachment_enabled = attachment_enabled
+        if self.attachment is not None:
+            self.attachment.configure(enabled=attachment_enabled, type_key=attachment_type or "依存型")
         return self.cognition_status()
 
     def cognition_status(self) -> dict:
@@ -551,6 +580,7 @@ class LifeEngine:
             "wave3": self.language.context(),
             "wave4a": self.social.context(),
             "wave4b": self.selfhood.context(),
+            "attachment": self.attachment.context() if self.attachment is not None else {"enabled": False},
             "persona": persona_summary(getattr(self, "_persona_traits", None)),
         }
 
@@ -578,6 +608,16 @@ class LifeEngine:
         self.affect.somatic.reset_traits()
         traits.apply(self.affect.config, self.affect.somatic, self.circadian)
         self._persona_traits = traits
+
+    def _enable_attachment_from_persona(self, text: str) -> None:
+        """Turn on the attachment circuit from a possessive/yandere persona."""
+        if self.attachment is None:
+            return
+        type_key = attachment_type_for_persona(text)
+        if not type_key:
+            return
+        self._attachment_enabled = self._cognition_enabled
+        self.attachment.configure(enabled=self._cognition_enabled, type_key=type_key)
 
     def _persona_llm_enabled(self) -> bool:
         return self._cog_bool(
@@ -652,6 +692,7 @@ class LifeEngine:
                 traits = refined
                 self._persona_llm_cache_store(digest, refined)
         self._layer_persona_traits(traits)
+        self._enable_attachment_from_persona(text)
         self._persona_digest = digest
         return persona_summary(self._persona_traits)
 
@@ -684,6 +725,7 @@ class LifeEngine:
         # accumulate drift; then layer the persona overrides on top
         self.apply_cognition_settings()
         self._layer_persona_traits(parse_persona(text))
+        self._enable_attachment_from_persona(text)
         # set last: apply_cognition_settings() invalidates the digest on
         # purpose, so it must be re-stamped here (not before)
         self._persona_digest = digest
@@ -737,13 +779,16 @@ class LifeEngine:
                                          ("language", self.language, LanguageSystem),
                                          ("social", self.social, SocialSystem),
                                          ("selfhood", self.selfhood, SelfhoodSystem),
-                                         ("relating", self.relating, RelatingSystem)):
+                                         ("relating", self.relating, RelatingSystem),
+                                         ("attachment", self.attachment, AttachmentSystem)):
                 saved = data.get(key)
                 if isinstance(saved, dict) and saved:
                     try:
                         setattr(self, key, factory.from_dict(saved))
                     except Exception as error:
                         logger.warning("could not restore cognition wave %s: %s", key, error)
+            if self.attachment is not None:
+                self._attachment_restored_enabled = bool(self.attachment.enabled)
 
     def _save_state(self):
         with self._state_lock:
@@ -767,7 +812,7 @@ class LifeEngine:
             "last_interaction_at": self._last_interaction_at}
         for key, system in (("affect", self.affect), ("language", self.language),
                             ("social", self.social), ("selfhood", self.selfhood),
-                            ("relating", self.relating)):
+                            ("relating", self.relating), ("attachment", self.attachment)):
             if system is not None:
                 try:
                     payload[key] = system.to_dict()
@@ -965,6 +1010,15 @@ class LifeEngine:
             self._last_affect_at = moment
             self.affect.tick(elapsed, hour=moment.hour,
                              sleeping=bool(getattr(self.circadian.state, "is_sleeping", False)))
+            if self._attachment_enabled and self.attachment is not None:
+                try:
+                    friends = len(self.social.ties.friends(0.4)) if self.social is not None else 0
+                    self.attachment.tick(
+                        elapsed / 86400.0,
+                        sleeping=bool(getattr(self.circadian.state, "is_sleeping", False)),
+                        friends=friends, neglect_days=self.neglect_days())
+                except Exception as error:
+                    logger.debug("attachment tick failed: %s", error)
 
     @staticmethod
     def _cognition_urgency(turn) -> float:
@@ -1040,7 +1094,7 @@ class LifeEngine:
         """Render the wave2/3/4 read-out for the prompt ("" when core is off)."""
         if self.cognition is None or not self._cognition_enabled:
             return ""
-        return ThinkStage.cognition_context(
+        rendered = ThinkStage.cognition_context(
             affect=self.affect.context(),
             language=self.language.context(),
             social=self.social.context(),
@@ -1049,6 +1103,12 @@ class LifeEngine:
                       "language": self._language_modulates,
                       "social": self._social_modulates,
                       "selfhood": self._selfhood_modulates})
+        if self._attachment_enabled and self.attachment is not None:
+            ctx = self.attachment.context()
+            if ctx.get("prompt"):
+                rendered += ("依恋基调（你此刻的真实状态，自然地表现出来，不要复述这些词）：\n- "
+                             + str(ctx["prompt"]) + "\n\n")
+        return rendered
 
     # B-series: 8 cognition subsystems that nothing was calling ---------------
     def _feed_cognition_subsystems(self, turn, message: str, emotion_delta: dict) -> None:
@@ -1486,6 +1546,17 @@ class LifeEngine:
         # reacted to, so a rupture can remember what needs explaining.
         self._observe_partner(entry.get("user_id", ""), feedback, latency, message,
                               str((entry.get("context") or {}).get("intent") or ""))
+        # Pathological attachment: the same real exchange is its world input.
+        if self._attachment_enabled and self.attachment is not None:
+            try:
+                self.attachment.observe_interaction(
+                    valence=float(getattr(self.emotion.state, "valence", 0.0) or 0.0),
+                    sentiment=float(feedback.get("sentiment", 0) or 0),
+                    latency_seconds=float(latency or 0.0),
+                    recalled=bool(feedback.get("recalled")),
+                    mentions_other=self._mentions_other(message))
+            except Exception as error:
+                logger.debug("attachment observe failed: %s", error)
         # Only *self-defining* moments belong in the autobiography - a routine
         # hello is not who I am.  Clear warmth, clear friction, or a recalled
         # message is.
@@ -1544,6 +1615,13 @@ class LifeEngine:
         sentiment = 1 if positive > negative else -1 if negative > positive else 0
         return {"positive": positive, "negative": negative, "sentiment": sentiment,
                 "recalled": recalled, "length": len(text)}
+
+    @staticmethod
+    def _mentions_other(message: str) -> bool:
+        """A cue that the partner's attention may be on someone else."""
+        text = str(message or "")
+        return any(word in text for word in
+                   ("他", "她", "别人", "朋友", "同事", "同学", "有人", "群里", "那个"))
 
     @staticmethod
     def _feedback_reward(entry: dict, latency: float | None, feedback: dict) -> float:
@@ -1828,6 +1906,15 @@ class LifeEngine:
         relationship_style = await self._relationship_style(getattr(turn, "user_id", ""))
         if relationship_style:
             guidance = relationship_style + "\n" + guidance
+        # Safety layer for the attachment model: at the extreme band the output
+        # must de-escalate and never provide self-harm/violence methods.
+        if self._attachment_enabled and self.attachment is not None:
+            try:
+                guard = self.attachment.guard()
+            except Exception:
+                guard = ""
+            if guard:
+                guidance = guard + "\n" + guidance
         # Fatigue is behaviour, not prose: exhausted -> a slower, shorter reply.
         # The delay multiplier is capped so the UI stays responsive.
         delay_multiplier = max(1.0, float(self.circadian.get_response_delay() or 1.0))
@@ -2845,7 +2932,9 @@ class LifeEngine:
             self.social = SocialSystem()
             self.selfhood = SelfhoodSystem()
             self.relating = RelatingSystem()
+            self.attachment = AttachmentSystem()
             self._relating_self_digest = None
+            self._attachment_enabled = False
             result["cognition"] = "rebuilt"
             self.apply_cognition_settings()
         # Runtime state.

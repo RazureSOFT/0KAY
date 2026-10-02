@@ -112,6 +112,14 @@ from .relating import (
     TraitModel,
     signals_from_message,
 )
+from .attachment import (
+    ACTIONS as ATTACHMENT_ACTIONS,
+    AttachmentDynamics,
+    AttachmentSystem,
+    TYPES as ATTACHMENT_TYPES,
+    severity_band as attachment_severity_band,
+    type_for_persona as attachment_type_for_persona,
+)
 
 __all__ = [
     "ACTION_GUIDANCE",
@@ -213,4 +221,11 @@ __all__ = [
     "RelatingSystem",
     "TraitModel",
     "signals_from_message",
+    # --- pathological attachment (the "yandere" model) ---
+    "ATTACHMENT_ACTIONS",
+    "ATTACHMENT_TYPES",
+    "AttachmentDynamics",
+    "AttachmentSystem",
+    "attachment_severity_band",
+    "attachment_type_for_persona",
 ]
