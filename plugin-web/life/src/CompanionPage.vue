@@ -127,6 +127,21 @@ const wave4a = computed(() => cognition.value?.wave4a || null)
 const wave4b = computed(() => cognition.value?.wave4b || null)
 const personaInfo = computed(() => cognition.value?.persona || null)
 const attachment = computed(() => cognition.value?.attachment || null)
+const episode = computed(() => wave2.value?.episode || null)
+const episodeStateLabel = (value: string) => ({ euthymic: '平稳', subthreshold: '下滑中', episode: '低落发作' } as Record<string, string>)[value] || '—'
+
+// One-click configurations: set the relevant knobs then save.
+function applyPreset(fields: Record<string, any>, label: string) {
+  Object.assign(settingsForm.value, fields)
+  void saveSettings().then(() => flash(`已套用并保存「${label}」`))
+}
+const PRESETS = [
+  { label: '常规', fields: { cog_affect_enabled: true, cog_affect_profile: 'typical', cog_affect_threat: 0.2, cog_affect_reward: 1, cog_attachment_enabled: false } },
+  { label: '抑郁倾向', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_affect_threat: 0.45, cog_affect_reward: 0.7 } },
+  { label: '病娇·独占', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_attachment_enabled: true, cog_attachment_type: '独占型' } },
+  { label: '病娇·依存', fields: { cog_affect_enabled: true, cog_attachment_enabled: true, cog_attachment_type: '依存型' } },
+  { label: '病娇·妄想', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_attachment_enabled: true, cog_attachment_type: '妄想型' } },
+]
 const somaticChannels = computed(() => cognition.value?.wave2?.somatic_channels || null)
 const channelLabel = (name: string) => ({ fatigue: '疲劳', pain: '疼痛', cardiorespiratory: '心慌',
   gastrointestinal: '胃肠', dizziness: '头晕', sleep: '睡眠' } as Record<string, string>)[name] || name
@@ -604,7 +619,17 @@ onMounted(load)
             <div class="cog-metric"><span>依恋压力</span><strong>{{ fmtNum(attachment.distress, 2) }}</strong></div>
             <div class="cog-metric"><span>抑郁共病</span><strong>{{ fmtNum(attachment.comorbid_depression, 2) }}</strong></div>
           </template>
+          <template v-if="episode">
+            <div class="cog-metric"><span>情绪病程</span><strong>{{ episodeStateLabel(episode.state) }}</strong></div>
+            <div class="cog-metric"><span>病程严重度</span><strong>{{ fmtNum(episode.severity, 2) }}</strong></div>
+            <div class="cog-metric"><span>发作 / 复发</span><strong>{{ episode.episodes }} / {{ episode.relapses }}</strong></div>
+            <div v-if="episode.state === 'episode'" class="cog-metric"><span>已持续</span><strong>{{ fmtNum(episode.days_in_episode, 1) }} 天</strong></div>
+          </template>
         </div>
+        <p v-if="episode" class="hint">
+          情绪病程：连续两次评估越过阈值才算「低落发作」，连续两次回落才算「缓解」；缓解期内再次发作计为「复发」。
+          它由情绪、快感缺失、稳态负荷、反刍、睡眠合成——沉默与慢性压力会把它推高。
+        </p>
         <p v-if="attachment?.enabled" class="hint">
           依恋动力学已开启：{{ attachment.label }}。病度 {{ fmtNum(attachment.severity, 2) }}（{{ attachment.band }}）由依恋、嫉妒、焦虑、执念等合成；
           {{ attachment.safe_mode ? '已进入安全层（只表达情绪、不给伤害方法）。' : '低于 0.85 不会触发安全层。' }}
@@ -629,6 +654,14 @@ onMounted(load)
           <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_language" /><span>语言影响提示词</span></label>
           <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_social" /><span>社会认知影响提示词</span></label>
           <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_selfhood" /><span>自我与时间影响提示词</span></label>
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>快速预设</h3>
+        <p class="hint">一键套用常见配置并保存（套用后仍可逐项微调）：常规、抑郁倾向、病娇（独占 / 依存 / 妄想）。病娇预设会同时把情绪调节画像设为 depression，贴合"常伴抑郁"。</p>
+        <div class="preset-row">
+          <button v-for="preset in PRESETS" :key="preset.label" type="button" class="btn sm" @click="applyPreset(preset.fields, preset.label)">{{ preset.label }}</button>
         </div>
       </article>
 
@@ -1006,6 +1039,7 @@ h1,h2,h3,h4{margin:0;letter-spacing:-.01em}
   background:var(--md-surface-container-high);color:var(--md-on-surface);font:400 14px/1.4 inherit;outline:none;transition:border-color .2s,box-shadow .2s}
 .field:focus{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 14%,transparent)}
 .field.tiny{width:104px;height:38px;padding:0 12px;font-size:13px}
+.preset-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .switches{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0}
 .sw{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--md-on-surface-variant);cursor:pointer}
 .sw input{width:18px;height:18px;accent-color:var(--md-primary)}
