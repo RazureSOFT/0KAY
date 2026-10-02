@@ -6,6 +6,7 @@ import ToolStepCard from './ToolStepCard.vue'
 import FileViewer from './FileViewer.vue'
 import AppSelect from './AppSelect.vue'
 import ThinkingSlider from './ThinkingSlider.vue'
+import ThinkChain from './ThinkChain.vue'
 import { locale, syncLocale } from './locale'
 import { useConfirm } from './confirm'
 import ConfirmDialog from './ConfirmDialog.vue'
@@ -712,7 +713,8 @@ function fileKind(name: string, dir: boolean): string {
   for (const [kind, list] of Object.entries(FILE_KINDS)) if (list.split(',').includes(ext)) return kind
   return 'file'
 }
-function toggleTree() { treeOpen.value = !treeOpen.value; if (treeOpen.value && !treeRows.value.length) void treeReload('') }
+function treeRootPathFor(): string { return workdir.value || executor.value?.host?.workdir || '' }
+function toggleTree() { treeOpen.value = !treeOpen.value; if (treeOpen.value && !treeRows.value.length) void treeReload(treeRootPathFor()) }
 async function loadTreeDir(dirPath: string, depth: number): Promise<TreeRow[]> {
   const res = await fetch(`/api/agent/tree?${treeQuery({ path: dirPath })}`, { signal: AbortSignal.timeout(15000) })
   if (!res.ok) throw new Error(await res.text())
@@ -744,6 +746,9 @@ async function treeToggle(row: TreeRow) {
   finally { row.loading = false }
 }
 function treePreview(row: TreeRow) { void openFilePreview(row.path, { confirmDiscard: true }) }
+// The tree must follow the selected workspace; otherwise it falls back to the
+// executor's process cwd, which is why it did not show the chosen project.
+watch([workdir, executorId], () => { if (treeOpen.value) void treeReload(treeRootPathFor()) })
 // --- usage window ---
 const usageOpen = ref(false)
 const usagePos = ref(loadBrowserPosKey('0kay.agent.usage.pos') || { x: Math.max(16, (window.innerWidth || 1280) - 336), y: 64 })
@@ -954,6 +959,12 @@ const todos = computed<Array<{ content: string; status: string }>>(() => {
   return list.filter((item: any) => item && typeof item.content === 'string' && item.status !== 'cancelled')
 })
 const todoDone = computed(() => todos.value.filter(item => item.status === 'completed').length)
+// A finished todo list has served its purpose: collapse it automatically, and
+// re-open when a new unfinished list arrives.
+const todoOpen = ref(true)
+watch([todos, todoDone], () => {
+  todoOpen.value = !(todos.value.length > 0 && todoDone.value === todos.value.length)
+})
 
 // Context usage indicator (hollow ring + hover breakdown).
 const contextUsage = ref<{ tokens?: number; window?: number; breakdown?: Record<string, number> } | null>(null)
@@ -1285,7 +1296,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
           <div class="sub-view-body">
             <div class="bubble user"><div class="message-head"><b>{{ tr('父 Agent', 'Parent agent') }}</b><time>{{ time(activeSub.started_at) }}</time></div><div class="message-text">{{ activeSub.prompt }}</div></div>
             <template v-for="step in childSteps(activeSub)" :key="step.task_id">
-              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="step.prompt" class="muted model-annotation">{{ step.prompt }}</small><details v-if="step.reasoning" class="think-chain" :open="step.state === 'running' && !step.result"><summary>{{ tr('思维链', 'Reasoning') }}</summary><pre>{{ step.reasoning }}</pre></details><template v-if="step.result"><MarkdownContent :content="step.result" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">{{ tr('子 Agent 正在生成回复…', 'Subagent is drafting a reply…') }}</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
+              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="step.prompt" class="muted model-annotation">{{ step.prompt }}</small><ThinkChain v-if="step.reasoning" :reasoning="step.reasoning" :open="step.state === 'running' && !step.result" :label="tr('思维链', 'Reasoning')" /><template v-if="step.result"><MarkdownContent :content="step.result" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">{{ tr('子 Agent 正在生成回复…', 'Subagent is drafting a reply…') }}</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
               <div v-else-if="step.kind === 'subagent'" class="subagent-card nested">
                 <button type="button" class="subagent-card-head" @click="openSub(step)"><span :class="step.state">●</span><strong>{{ tr('子 Agent', 'Subagent') }}</strong><span class="subagent-prompt">{{ step.prompt }}</span><small>{{ stateName(step.state) }}</small><span class="subagent-chevron" aria-hidden="true">▸</span></button>
               </div>
@@ -1307,7 +1318,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
           <div class="bubble user"><div class="message-head"><b>{{ isLife(turn) ? 'LIFE' : '你' }}</b><time>{{ time(turn.started_at) }}</time></div><div class="message-text">{{ turn.prompt?.replace(/^\[thinking_intensity=\w+\]\s*/, '') }}</div></div>
           <div class="bubble agent"><div class="message-head"><b>Agent</b><span :class="turn.state">{{ stateName(turn.state) }}</span></div>
             <div v-if="steps(turn).length" class="steps"><template v-for="step in steps(turn)" :key="step.task_id">
-              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="step.prompt" class="muted model-annotation">{{ step.prompt }}</small><details v-if="step.reasoning" class="think-chain" :open="step.state === 'running' && !step.result"><summary>{{ tr('思维链', 'Reasoning') }}</summary><pre>{{ step.reasoning }}</pre></details><template v-if="step.result"><MarkdownContent :content="step.result" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">Agent 正在生成回复…</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
+              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="step.prompt" class="muted model-annotation">{{ step.prompt }}</small><ThinkChain v-if="step.reasoning" :reasoning="step.reasoning" :open="step.state === 'running' && !step.result" :label="tr('思维链', 'Reasoning')" /><template v-if="step.result"><MarkdownContent :content="step.result" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">Agent 正在生成回复…</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
               <div v-else-if="step.kind === 'subagent'" class="subagent-card">
                 <button type="button" class="subagent-card-head" @click="openSub(step)">
                   <span :class="step.state">●</span>
@@ -1329,8 +1340,14 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
         </template>
       </div>
       <form v-if="!activeSub" class="composer" @submit.prevent="send">
-        <section v-if="todos.length" class="todo-panel" :aria-label="tr('待办清单','Todo list')">
-          <header><strong>{{ tr('待办','Todo') }}</strong><span>{{ todoDone }}/{{ todos.length }}</span></header>
+        <section v-if="todos.length" class="todo-panel" :class="{ collapsed: !todoOpen }" :aria-label="tr('待办清单','Todo list')">
+          <header>
+            <button type="button" class="todo-toggle" :aria-expanded="todoOpen" @click="todoOpen = !todoOpen">
+              <strong>{{ tr('待办','Todo') }}</strong>
+              <span>{{ todoDone }}/{{ todos.length }}</span>
+              <span class="todo-caret" aria-hidden="true">▸</span>
+            </button>
+          </header>
           <ul>
             <li v-for="(item, index) in todos" :key="index" :class="item.status">
               <span class="todo-mark" aria-hidden="true">{{ item.status === 'completed' ? '✓' : item.status === 'in_progress' ? '◐' : '○' }}</span>
@@ -1902,9 +1919,13 @@ button.subagent-card-head>strong{font-weight:700}
 /* ---- todo panel ---- */
 .todo-panel{padding:12px 16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);background:var(--md-surface-container-low);max-height:170px;overflow:auto;opacity:1;transform:none;transition:opacity 200ms var(--ease-emphasized-decel),transform 200ms var(--ease-emphasized-decel)}
 @starting-style{.todo-panel{opacity:0;transform:translateY(6px)}}
-.todo-panel>header{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant);text-transform:uppercase}
-.todo-panel>header span{font-weight:700;color:var(--md-primary)}
-.todo-panel ul{list-style:none;margin:9px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.todo-panel>header{display:flex;align-items:center;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant);text-transform:uppercase}
+.todo-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:0;padding:0;border:0;background:transparent;font:inherit;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--md-on-surface-variant);cursor:pointer}
+.todo-toggle>span:first-of-type{color:var(--md-primary)}
+.todo-caret{display:inline-grid;place-items:center;color:var(--md-on-surface-variant);transition:transform 200ms var(--ease-emphasized-decel)}
+.todo-panel.collapsed .todo-caret{transform:rotate(-90deg)}
+.todo-panel ul{list-style:none;margin:9px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;transition:opacity 180ms var(--ease-emphasized-decel)}
+.todo-panel.collapsed ul{display:none}
 .todo-panel li{display:flex;align-items:flex-start;gap:9px;font-size:13px;line-height:1.5;color:var(--md-on-surface);transition:opacity .2s,color .2s,transform 200ms var(--ease-emphasized-decel)}
 @starting-style{.todo-panel li{opacity:0;transform:translateY(6px)}}
 .todo-panel li.completed{opacity:.6}

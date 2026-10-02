@@ -10,7 +10,12 @@ const open = ref(false)
 const searchOpen = ref(false)
 
 const tool = computed(() => (props.step.prompt || '').trim() || 'tool')
-const isSearch = computed(() => ['websearch', 'web_search', 'search'].includes(tool.value))
+const isSearch = computed(() => ['websearch', 'web_search', 'search', 'papersearch', 'apidocsearch', 'apidoc_search'].includes(tool.value))
+const searchKind = computed(() => {
+  if (tool.value === 'papersearch') return tr('论文搜索', 'Paper search')
+  if (tool.value === 'apidocsearch' || tool.value === 'apidoc_search') return tr('API 文档搜索', 'API docs search')
+  return tr('搜索', 'Search')
+})
 
 const args = computed<any | null>(() => {
   if (!props.step.args) return null
@@ -42,6 +47,8 @@ const screenshot = computed<{ src: string; width?: number; height?: number; path
 const label = computed(() => {
   switch (tool.value) {
     case 'websearch': case 'web_search': case 'search': return tr('搜索', 'Search')
+    case 'papersearch': return tr('论文', 'Paper')
+    case 'apidocsearch': case 'apidoc_search': return tr('API 文档', 'API docs')
     case 'bash': return 'Bash'
     case 'write': return tr('写入', 'Write')
     case 'edit': case 'apply_patch': return tr('编辑', 'Edit')
@@ -51,6 +58,10 @@ const label = computed(() => {
     case 'task': return tr('子任务', 'Subtask')
     case 'skills_admin': case 'skill': return tr('技能', 'Skill')
     case 'computeruse': return tr('电脑操作', 'Computer')
+    case 'research': return tr('研究', 'Research')
+    case 'document': return tr('文档', 'Document')
+    case 'slides': return tr('幻灯片', 'Slides')
+    case 'browser': return tr('浏览器', 'Browser')
     default: return tr('工具', 'Tool')
   }
 })
@@ -194,6 +205,12 @@ const summary = computed(() => {
     const running = list.filter((item: any) => item?.status === 'in_progress').length
     return `${total} ${tr('项', 'items')} · ${tr('完成', 'done')} ${done}${running ? ` · ${tr('进行中', 'running')} ${running}` : ''}`
   }
+  if (name === 'research') {
+    const action = String(d?.action ?? a?.action ?? '')
+    const produced = d?.file || (Array.isArray(d?.files) ? d.files[0] : '') || d?.out || ''
+    return clip(`${action}${produced ? ` · ${produced}` : ''}`)
+  }
+  if (name === 'document' || name === 'slides') return clip(String(d?.path ?? a?.path ?? ''))
   if (name === 'computeruse') {
     const action = String(a?.action ?? d?.action ?? '')
     const position = a && a.x !== undefined ? ` (${a.x}, ${a.y})` : ''
@@ -306,10 +323,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       <p v-if="!sections.length && !diffFiles.length && !screenshot && step.state !== 'running' && !step.error" class="muted">{{ tr('执行完成，无输出', 'Completed with no output') }}</p>
       <p v-if="step.error" class="tool-error">{{ formatError?.(step.error) || step.error }}</p>
     </div>
+    <!-- Teleport to <body>: a `position:fixed` overlay inside a message card is
+         re-anchored by any transformed/overflow ancestor, which made the popup
+         appear in the middle of the message instead of the viewport centre. -->
+    <Teleport to="body">
     <div v-if="searchOpen" class="tool-dialog-backdrop" @click.self="searchOpen = false">
       <section class="tool-dialog" role="dialog" aria-modal="true" :aria-label="tr('搜索结果', 'Search results')">
         <header>
-          <h4>{{ tr('搜索', 'Search') }} · {{ searchText }}</h4>
+          <h4>{{ searchKind }} · {{ searchText }}</h4>
           <button
             type="button"
             class="tool-dialog-close"
@@ -334,6 +355,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         <p v-if="step.error" class="tool-error">{{ formatError?.(step.error) || step.error }}</p>
       </section>
     </div>
+    </Teleport>
   </div>
 </template>
 
