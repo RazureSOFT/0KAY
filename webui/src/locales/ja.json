@@ -5,6 +5,41 @@
     "status": "ステータス",
     "switchLang": "言語を切り替え"
   },
+  "auth": {
+    "title": "Core に接続",
+    "hint": "接続するにはアクセス PIN（またはペアリング / API トークン）を入力してください。",
+    "token": "アクセス PIN またはトークン",
+    "submit": "接続",
+    "cancel": "後で",
+    "failed": "サインインに失敗しました",
+    "pinTitle": "PIN を確認",
+    "pinHint": "続けるにはアクセス PIN を入力してください。",
+    "pin": "アクセス PIN",
+    "setupTitle": "アクセス PIN を設定",
+    "setupHint": "6 桁の PIN を選択してください。サインインと機密操作の確認に使用します。既存の環境ではアップグレード後に一度だけ設定します。",
+    "pinNew": "新しい PIN",
+    "pinConfirm": "PIN の確認",
+    "savePin": "PIN を保存",
+    "pinWrong": "PIN が正しくありません",
+    "useToken": "トークンを使用",
+    "usePin": "PIN を使用",
+    "pinGuardHint": "このページは保護されています。続けるには PIN を入力してください。"
+  },
+  "security": {
+    "desc": "PIN とサインインのスイッチ、および PIN を要求するページの設定。",
+    "pinSwitch": "PIN 保護",
+    "pinSwitchHelp": "オフにすると PIN の入力を一切求めません。保存済みの PIN は保持され、いつでも再度オンにできます。",
+    "loginSwitch": "サインインゲート",
+    "loginSwitchHelp": "オフにすると Core に到達できる誰でもペアリングトークンなしで API を呼び出せます。ループバック専用の構成でのみ使用してください。",
+    "pinSet": "6 桁の PIN を設定済み",
+    "pinUnset": "PIN 未設定",
+    "pageCount": "{n} 件選択",
+    "changePin": "PIN を変更",
+    "removePin": "PIN を削除",
+    "removePinConfirm": "このマシンに保存されたアクセス PIN を削除します。続行しますか？",
+    "pages": "PIN を要求するページ",
+    "pagesHelp": "チェックしたページはタブで最初に開くときに PIN を求めます。一度解除するとそのタブでは再確認されません。設定変更やプラグイン操作などの機密操作では常に確認します。"
+  },
   "minecraftConsent": {
     "title": "Minecraft ボットが承認を求めています",
     "approve": "許可",
@@ -147,8 +182,6 @@
     "irritation": "苛立ち"
   },
   "wizard": {
-    "pinTooShort": "PINは6桁の数字で入力してください。",
-    "pinMismatch": "PINが一致しません。",
     "title": "0kay へようこそ",
     "subtitle": "AI アシスタントを設定しましょう",
     "chooseLanguage": "言語を選択",
@@ -212,7 +245,9 @@
     "provider": "プロバイダー：",
     "startChatting": "チャットを開始",
     "back": "← 戻る",
-    "next": "次へ →"
+    "next": "次へ →",
+    "pinTooShort": "PINは6桁の数字で入力してください。",
+    "pinMismatch": "PINが一致しません。"
   },
   "settings": {
     "title": "設定",
@@ -385,27 +420,5 @@
       "name": "カスタム",
       "description": "OpenAI 互換のカスタムエンドポイント"
     }
-  },
-  "auth": {
-    "pinGuardHint": "このページは保護されています。続行するにはPINを入力してください。",
-    "setupTitle": "アクセスPINの設定",
-    "pinNew": "新しいPIN",
-    "pinConfirm": "PINの確認",
-    "savePin": "PINを保存"
-  },
-  "security": {
-    "desc": "PINとサインインの切り替え、およびPINを要求するページを設定します。",
-    "pinSwitch": "PIN保護",
-    "pinSwitchHelp": "オフにするとPINの入力を求められません。保存されたPINは保持されるため、いつでも再度オンにできます。",
-    "loginSwitch": "サインイン要求",
-    "loginSwitchHelp": "オフにすると、Coreに到達できる任意のデバイスがペアリングトークンなしでAPIを呼び出せます。ループバック専用の環境でのみオフにしてください。",
-    "pinSet": "6桁のPINが設定されています",
-    "pinUnset": "PINが未設定",
-    "pageCount": "{n}件選択中",
-    "changePin": "PINの変更",
-    "removePin": "PINを削除",
-    "removePinConfirm": "保存されたアクセスPINをこのマシンから削除します。よろしいですか？",
-    "pages": "PINを要求するページ",
-    "pagesHelp": "チェックしたページに入る際にPINを要求します。未選択の場合は、設定変更などの機密性の高い操作でのみ要求されます。"
   }
 }

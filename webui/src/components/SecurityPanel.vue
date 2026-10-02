@@ -263,9 +263,9 @@ async function onRemovePin() {
 
 .sec-card > .helper-text { margin: 2px 0 12px; }
 
-/* PinInput stretches to its column, so each labelled group sits in a tinted
-   inset that keeps the new-PIN and confirm groups visually apart. Scoped names
-   avoid the wizard's #app .pin-row rules entirely. */
+/* Each PIN group sits in its own tinted inset, so the new-PIN and confirm
+   boxes never share a row or overlap. Scoped names avoid the wizard's
+   #app .pin-row rules entirely. */
 .sec-pin-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -322,6 +322,18 @@ async function onRemovePin() {
   height: 16px;
   font-size: 10px;
 }
+.page-item input:checked + .toggle-slider {
+  background: var(--md-primary);
+  border-color: var(--md-primary);
+}
+.page-item input:checked + .toggle-slider::after {
+  left: 25px;
+  background: var(--md-on-primary);
+  color: var(--md-primary);
+}
+.page-item input:focus-visible + .toggle-slider {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-primary) 22%, transparent);
+}
 .page-text {
   display: flex;
   align-items: baseline;
@@ -340,6 +352,8 @@ async function onRemovePin() {
   font-size: 11px;
   color: var(--md-on-surface-variant);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sec-msg { margin-top: 12px; }

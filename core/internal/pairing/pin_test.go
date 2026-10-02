@@ -168,8 +168,8 @@ func TestNodeFetchIsNotABrowser(t *testing.T) {
 
 func boolPtr(value bool) *bool { return &value }
 
-// Turning the PIN off keeps it stored but stops every challenge; a scoped list
-// then only challenges the routes the owner ticked.
+// Turning the PIN off keeps it stored but stops every challenge; the page scope
+// is a WebUI guard only and must not relax the sensitive-action check.
 func TestPINSwitchAndPageScope(t *testing.T) {
 	s, err := New(t.TempDir())
 	if err != nil {
@@ -203,7 +203,7 @@ func TestPINSwitchAndPageScope(t *testing.T) {
 			req.AddCookie(c)
 		}
 		if page != "" {
-			req.Header.Set(PageHeader, page)
+			req.Header.Set("X-0kay-Page", page)
 		}
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
@@ -225,12 +225,14 @@ func TestPINSwitchAndPageScope(t *testing.T) {
 	if err := s.SetSecurityPrefs(boolPtr(true), nil, &[]string{"/settings"}); err != nil {
 		t.Fatal(err)
 	}
-	// An unknown route stays protected: dropping the header must not opt out.
+	// X-0kay-Page is client-asserted: neither dropping it nor claiming an
+	// unscoped route may relax the sensitive-action gate. Only a real PIN (or a
+	// machine credential) does.
 	if code := call(""); code != http.StatusForbidden {
 		t.Fatalf("missing page header = %d, want 403", code)
 	}
-	if code := call("/chat"); code != http.StatusOK {
-		t.Fatalf("unscoped page = %d, want 200", code)
+	if code := call("/chat"); code != http.StatusForbidden {
+		t.Fatalf("forged unscoped page = %d, want 403", code)
 	}
 	if code := call("/settings"); code != http.StatusForbidden {
 		t.Fatalf("scoped page = %d, want 403", code)
@@ -248,6 +250,63 @@ func TestPINSwitchAndPageScope(t *testing.T) {
 	}
 	if pages := reloaded.PinPages(); len(pages) != 1 || pages[0] != "/settings" {
 		t.Fatalf("page scope not persisted: %v", pages)
+	}
+}
+
+// Regression: a browser holding a session cookie but no PIN must not reach a
+// sensitive action by forging X-0kay-Page. The header is client-asserted, so an
+// attacker on a shared, unlocked browser can set it to any route they like —
+// including one the owner left unscoped. Only a real PIN may satisfy the gate.
+func TestForgedPageHeaderCannotBypassPin(t *testing.T) {
+	s, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPIN("424242"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetSecurityPrefs(boolPtr(true), nil, &[]string{"/settings"}); err != nil {
+		t.Fatal(err)
+	}
+	handler := s.HTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+
+	// Session cookie only: the owner signed in once, this tab never saw the PIN.
+	login := httptest.NewRequest(http.MethodPost, "/api/auth/session", strings.NewReader(`{"pin":"424242"}`))
+	login.RemoteAddr = "127.0.0.1:50000"
+	login.Header.Set("Referer", "http://localhost:3000/")
+	lw := httptest.NewRecorder()
+	handler.ServeHTTP(lw, login)
+	if lw.Code != http.StatusOK {
+		t.Fatalf("login: %d %s", lw.Code, lw.Body.String())
+	}
+	cookies := lw.Result().Cookies()
+
+	call := func(page, pin string) int {
+		req := httptest.NewRequest(http.MethodPost, "/api/providers", strings.NewReader("{}"))
+		req.RemoteAddr = "127.0.0.1:50000"
+		req.Header.Set("Referer", "http://localhost:3000/")
+		for _, c := range cookies {
+			req.AddCookie(c)
+		}
+		req.Header.Set("X-0kay-Page", page)
+		if pin != "" {
+			req.Header.Set(PinHeader, pin)
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		return w.Code
+	}
+
+	for _, page := range []string{"/chat", "/", "/usage", "/settings"} {
+		if code := call(page, ""); code != http.StatusForbidden {
+			t.Fatalf("forged page %q without PIN = %d, want 403", page, code)
+		}
+	}
+	if code := call("/chat", "000000"); code != http.StatusForbidden {
+		t.Fatalf("forged page with wrong PIN = %d, want 403", code)
+	}
+	if code := call("/chat", "424242"); code != http.StatusOK {
+		t.Fatalf("forged page with the real PIN = %d, want 200", code)
 	}
 }
 
@@ -368,9 +427,10 @@ func TestPINBruteForceLockout(t *testing.T) {
 	}
 }
 
-// A request that changes the switches AND sets a PIN must not half-apply when
-// the PIN is invalid: the prefs persist immediately, so validate the PIN first.
-func TestSecurityPrefsNotAppliedWhenPINInvalid(t *testing.T) {
+// Reading settings must not ask for the PIN: the WebUI loads all sections on
+// most pages, so gating reads made the browser prompt on every navigation.
+// Fetching the values needs a session; changing them still needs the PIN.
+func TestSettingsReadsAreNotPINGated(t *testing.T) {
 	s, err := New(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -380,14 +440,93 @@ func TestSecurityPrefsNotAppliedWhenPINInvalid(t *testing.T) {
 	}
 	handler := s.HTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
 
-	req := httptest.NewRequest(http.MethodPost, "/api/security/pin", strings.NewReader(`{"pin":"bad","enabled":false}`))
+	login := httptest.NewRequest(http.MethodPost, "/api/auth/session", strings.NewReader(`{"pin":"424242"}`))
+	login.RemoteAddr = "192.168.1.50:1234"
+	lw := httptest.NewRecorder()
+	handler.ServeHTTP(lw, login)
+	if lw.Code != http.StatusOK {
+		t.Fatalf("login: %d %s", lw.Code, lw.Body.String())
+	}
+	cookies := lw.Result().Cookies()
+
+	call := func(method, path string) int {
+		req := httptest.NewRequest(method, path, strings.NewReader("{}"))
+		req.RemoteAddr = "192.168.1.50:1234"
+		for _, c := range cookies {
+			req.AddCookie(c)
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		return w.Code
+	}
+
+	if code := call(http.MethodGet, "/api/settings/sections?values=1"); code != http.StatusOK {
+		t.Fatalf("settings sections read = %d, want 200", code)
+	}
+	if code := call(http.MethodGet, "/api/settings/life"); code != http.StatusOK {
+		t.Fatalf("settings section read = %d, want 200", code)
+	}
+	if code := call(http.MethodPost, "/api/settings/life"); code != http.StatusForbidden {
+		t.Fatalf("settings write without PIN = %d, want 403", code)
+	}
+}
+
+// A request that carries both an invalid new PIN and a switch change must be
+// rejected atomically: reporting 400 while still persisting the switch is a
+// silent partial write (the probe that found it used {"pin":"bad","enabled":false}).
+func TestInvalidPinLeavesSwitchesUntouched(t *testing.T) {
+	s, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPIN("424242"); err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/security/pin",
+		strings.NewReader(`{"pin":"bad","enabled":false}`))
 	req.RemoteAddr = "127.0.0.1:50000"
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("status=%d, want 400", w.Code)
+	rec := httptest.NewRecorder()
+	s.handlePIN(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid PIN = %d, want 400", rec.Code)
 	}
 	if !s.PinEnabled() {
-		t.Fatal("prefs leaked past a failed request: the PIN got disabled")
+		t.Fatal("switches were persisted despite the rejected PIN")
+	}
+	if !s.PinValid("424242") {
+		t.Fatal("stored PIN was replaced despite the rejected request")
+	}
+}
+
+// The sign-in gate may not be opened to the whole LAN without an explicit
+// opt-in, since that exposes the API to every host on the network.
+func TestLoginGateCannotBeOpenedInLANMode(t *testing.T) {
+	s, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.enforce = true
+	req := httptest.NewRequest(http.MethodPost, "/api/security/pin",
+		strings.NewReader(`{"login_enabled":false}`))
+	req.RemoteAddr = "127.0.0.1:50000"
+	rec := httptest.NewRecorder()
+	s.handlePIN(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("login off in LAN mode = %d, want 400", rec.Code)
+	}
+	if !s.LoginEnabled() {
+		t.Fatal("sign-in gate was disabled in LAN mode")
+	}
+	t.Setenv("CORE_ALLOW_LOGIN_OFF", "1")
+	rec = httptest.NewRecorder()
+	allowed := httptest.NewRequest(http.MethodPost, "/api/security/pin",
+		strings.NewReader(`{"login_enabled":false}`))
+	allowed.RemoteAddr = "127.0.0.1:50000"
+	s.handlePIN(rec, allowed)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("explicit opt-in = %d, want 200", rec.Code)
+	}
+	if s.LoginEnabled() {
+		t.Fatal("sign-in gate not disabled after explicit opt-in")
 	}
 }
