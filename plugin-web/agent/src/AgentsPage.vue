@@ -1123,7 +1123,8 @@ function editedPaths(step: TaskRow): string[] {
   const found: string[] = []
   const add = (value: unknown) => { if (typeof value === 'string' && value) found.push(value) }
   add(inner?.path)
-  if (Array.isArray(inner?.files)) inner.files.forEach((file: any) => add(file?.path))
+  add(inner?.file)
+  if (Array.isArray(inner?.files)) inner.files.forEach((file: any) => add(typeof file === 'string' ? file : file?.path))
   add(args?.filePath)
   if (Array.isArray(args?.patches)) args.patches.forEach((patch: any) => add(patch?.filePath))
   if (Array.isArray(inner?.patches)) inner.patches.forEach((patch: any) => add(patch?.filePath))
@@ -1142,7 +1143,8 @@ function considerStep(step: TaskRow) {
     handledSteps.add(step.task_id)
     return
   }
-  if (tool === 'write' || tool === 'edit' || tool === 'apply_patch') {
+  // File-producing tools: open the artifact for the user as soon as it exists.
+  if (['write', 'edit', 'apply_patch', 'document', 'slides', 'research'].includes(tool)) {
     const path = editedPaths(step).map(absolutePath).find(Boolean)
     if (path) { handledSteps.add(step.task_id); void openFilePreview(path) }
     else if (['done', 'failed', 'cancelled'].includes(step.state)) handledSteps.add(step.task_id)

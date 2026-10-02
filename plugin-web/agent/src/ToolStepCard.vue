@@ -62,6 +62,13 @@ const label = computed(() => {
     case 'document': return tr('文档', 'Document')
     case 'slides': return tr('幻灯片', 'Slides')
     case 'browser': return tr('浏览器', 'Browser')
+    case 'glob': return tr('文件匹配', 'Glob')
+    case 'grep': return tr('内容搜索', 'Grep')
+    case 'mcp': return 'MCP'
+    case 'compress_context': return tr('压缩上下文', 'Compress')
+    case 'decompress_context': return tr('展开上下文', 'Expand')
+    case 'search_context': return tr('检索上下文', 'Search context')
+    case 'acp_status': return tr('状态', 'Status')
     default: return tr('工具', 'Tool')
   }
 })
@@ -205,6 +212,8 @@ const summary = computed(() => {
     const running = list.filter((item: any) => item?.status === 'in_progress').length
     return `${total} ${tr('项', 'items')} · ${tr('完成', 'done')} ${done}${running ? ` · ${tr('进行中', 'running')} ${running}` : ''}`
   }
+  if (name === 'glob' || name === 'grep') return clip(String(a?.pattern ?? a?.query ?? ''))
+  if (name === 'search_context') return clip(String(a?.query ?? a?.q ?? ''))
   if (name === 'research') {
     const action = String(d?.action ?? a?.action ?? '')
     const produced = d?.file || (Array.isArray(d?.files) ? d.files[0] : '') || d?.out || ''
