@@ -576,11 +576,31 @@ const analysis = ref<any | null>(null)
 const analyzeBusy = ref(false)
 const erqOptions = ['typical', 'depression', 'anxiety', 'bpd', 'alexithymia']
 const attachmentTypeChoices = ['独占型', '依存型', '妄想型', '监视型', '自伤型', '排除型']
+const characterSelectOptions = computed(() => [
+  { value: '', label: '（不判定）' },
+  ...((analysis.value?.options?.character || []) as any[]).map((o) => ({ value: o.key, label: o.label })),
+])
+const relationshipSelectOptions = computed(() => [
+  { value: '', label: '（不判定）' },
+  ...((analysis.value?.options?.relationship || []) as any[]).map((o) => ({
+    value: o.key,
+    label: o.label + (o.pathological ? ' · 病娇族' : ''),
+  })),
+])
 function personaBody() {
   return { text: [personaForm.value.description, personaForm.value.personality].filter((v) => String(v || '').trim()).join('\n') }
 }
 // Editing the text invalidates the previous analysis — re-understand before save.
 watch(() => [personaForm.value.description, personaForm.value.personality, personaForm.value.customPrompt], () => { analysis.value = null })
+// The relationship style drives the attachment ODE: only the pathological
+// family (病娇族) may switch it on, with the archetype its option declares; a
+// healthy style (安全/焦虑/回避/...) always turns it off.
+watch(() => analysis.value?.relationship?.key, (key) => {
+  const att = analysis.value?.attachment
+  const opt = ((analysis.value?.options?.relationship || []) as any[]).find((o) => o.key === key)
+  if (!att || !opt) return
+  att.type = opt.pathological ? (opt.attachment_type || att.type || '') : ''
+})
 // Give the attachment seeds a neutral default when a type is chosen but the
 // analyzed text carried no attachment keywords.
 watch(() => analysis.value?.attachment?.type, (type) => {
@@ -608,9 +628,17 @@ async function savePersona() {
   personaBusy.value = true
   try {
     const body = personaBody()
+    // The analyser's traits carry the style axes; the owner may have changed
+    // the archetype selects afterwards, so sync them and drop the stale axes
+    // (the backend recomputes axes from the chosen archetypes).
+    const traits = { ...(analysis.value.traits || {}) }
+    traits.character = analysis.value.character?.key || null
+    traits.relationship = analysis.value.relationship?.key || null
+    traits.expression = analysis.value.character?.expression || analysis.value.expression || null
+    delete traits.axes
     const result = await act('persona_apply', {
       text: body.text,
-      traits: analysis.value.traits || {},
+      traits,
       attachment: analysis.value.attachment || {},
     })
     if (!result) return
@@ -685,7 +713,19 @@ onMounted(load)
         <p class="hint">填写/修改「描述」或「性格」后，先点右上角「LLM 理解」：模型会把文字解析成下面的参数，你核对或微调后「保存人设」才会写回；改了文字需要重新理解。</p>
       </article>
       <article v-if="analysis" class="card">
-        <h3>解析参数 <span class="count-pill ok">{{ analysis.source === 'llm' ? '模型理解' : '本地词典' }}</span></h3>
+        <h3>解析结果 <span class="count-pill ok">{{ analysis.source === 'llm' ? '模型理解' : '本地词典' }}</span></h3>
+        <div class="settings-grid">
+          <label><span>性格原型</span><AppSelect v-model="analysis.character.key" :options="characterSelectOptions" aria-label="性格原型" /></label>
+          <label><span>关系 / 依恋类型</span><AppSelect v-model="analysis.relationship.key" :options="relationshipSelectOptions" aria-label="关系类型" /></label>
+        </div>
+        <p v-if="analysis.relationship?.label" class="hint">
+          关系判定：{{ analysis.relationship.label }}
+          <template v-if="analysis.relationship.pathological">（病娇族 → 才会启用依恋动力学）</template>
+          <template v-else>（健康型 → 不启用病态依恋）</template>
+        </p>
+        <p v-if="analysis.character?.expression || analysis.expression" class="hint">说话风格：{{ analysis.character?.expression || analysis.expression }}</p>
+
+        <h4>情绪 / 躯体参数</h4>
         <div class="settings-grid">
           <label><span>威胁基线</span><input v-model.number="analysis.traits.threat_baseline" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
           <label><span>奖赏基线</span><input v-model.number="analysis.traits.reward_baseline" type="number" step="0.1" min="0" max="2" class="field tiny" /></label>
@@ -693,14 +733,37 @@ onMounted(load)
           <label><span>情绪调节画像</span><AppSelect v-model="analysis.traits.erq_profile" :options="erqOptions" aria-label="情绪调节画像" /></label>
           <label><span>作息（睡眠小时 0-23）</span><input v-model.number="analysis.traits.sleep_hour" type="number" min="0" max="23" class="field tiny" /></label>
         </div>
-        <div class="settings-grid" style="margin-top:10px">
-          <label><span>依恋型别（病娇，留空=不启用）</span><AppSelect v-model="analysis.attachment.type" :options="['', ...attachmentTypeChoices]" aria-label="依恋型别" /></label>
+
+        <h4>性格维度</h4>
+        <div class="settings-grid">
+          <label><span>外向性</span><input v-model.number="analysis.traits.extraversion" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          <label><span>宜人性</span><input v-model.number="analysis.traits.agreeableness" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          <label><span>尽责性</span><input v-model.number="analysis.traits.conscientiousness" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          <label><span>开放性</span><input v-model.number="analysis.traits.openness" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          <label><span>依恋焦虑</span><input v-model.number="analysis.traits.attach_anxiety" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          <label><span>依恋回避</span><input v-model.number="analysis.traits.attach_avoidance" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+        </div>
+        <details class="pdetails">
+          <summary>更多风格参数（表达 / 语气）</summary>
+          <div class="settings-grid" style="margin-top:10px">
+            <label><span>表达欲</span><input v-model.number="analysis.traits.expressiveness" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>主动性</span><input v-model.number="analysis.traits.initiative" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>幽默</span><input v-model.number="analysis.traits.humor" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>亲和</span><input v-model.number="analysis.traits.warmth" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>正式程度</span><input v-model.number="analysis.traits.formality" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>强势 / 支配</span><input v-model.number="analysis.traits.assertiveness" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          </div>
+        </details>
+
+        <h4>病态依恋（仅病娇族启用）</h4>
+        <div class="settings-grid">
+          <label><span>依恋型别（留空=不启用）</span><AppSelect v-model="analysis.attachment.type" :options="['', ...attachmentTypeChoices]" aria-label="依恋型别" /></label>
           <template v-if="analysis.attachment.type">
             <label><span>初始焦虑 X</span><input v-model.number="analysis.attachment.initial.X" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
             <label><span>初始安全感 S</span><input v-model.number="analysis.attachment.initial.S" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
           </template>
         </div>
-        <p class="hint">文字只是来源，真正保存进 LIFE 的是这里调好的数值。想更贴合「病娇常伴抑郁」，把情绪调节画像设为 depression。</p>
+        <p class="hint">文字只是来源，真正保存进 LIFE 的是这里调好的数值。关系类型选健康型时不会启用病态依恋；选病娇族才会按型别启动动力学。想更贴合「病娇常伴抑郁」，把情绪调节画像设为 depression。</p>
       </article>
     </section>
 
