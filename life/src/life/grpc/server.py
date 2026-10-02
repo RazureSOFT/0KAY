@@ -613,7 +613,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 await asyncio.to_thread(self.engine.apply_cognition_settings)
             elif action == "persona_analyze":
                 # Interpret the persona into parameters for review/tuning (no save).
-                result = await self.engine.persona_analyze(str(payload.get("text") or ""))
+                result = await self.engine.persona_analyze(
+                    str(payload.get("text") or ""), str(payload.get("gender") or ""))
             elif action == "persona_apply":
                 # Save the reviewed persona plus its tuned parameters.
                 result = await asyncio.to_thread(self.engine.persona_apply, payload)

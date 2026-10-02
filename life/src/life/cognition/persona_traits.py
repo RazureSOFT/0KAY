@@ -148,6 +148,13 @@ DEFAULTS = {"threat_baseline": 0.2, "reward_baseline": 1.0, "baseline_vagal": 0.
 
 TRAIT_FIELDS = tuple(RANGES) + ("erq_profile", "use_somatic", "sleep_hour")
 
+#: Allowed gender values; "" / unknown leaves it undecided.
+GENDERS = ("female", "male", "other")
+_FEMALE_WORDS = ("她", "女生", "女孩", "少女", "姐姐", "妹妹", "妈妈", "母亲",
+                 "女儿", "太太", "老婆", "女友", "女朋友", "女王", "御姐", "f", "female", "girl", "woman")
+_MALE_WORDS = ("他", "男生", "男孩", "少年", "哥哥", "弟弟", "爸爸", "父亲",
+               "儿子", "先生", "老公", "男友", "男朋友", "少年", "m", "male", "boy", "man")
+
 # How the personality fields fold onto relating's behavioural axes: (field, axis,
 # weight), applied as (value - 0.5) * weight.  This is what keeps the extra
 # knobs from being decorative - they genuinely shape the self trait vector.
@@ -205,6 +212,7 @@ class PersonaTraits:
     use_somatic: bool | None = None
     sleep_hour: int | None = None
     # -- style layer --
+    gender: str | None = None
     character: str | None = None
     relationship: str | None = None
     expression: str | None = None
@@ -273,6 +281,7 @@ class PersonaTraits:
 
     def to_dict(self) -> dict:
         data = {name: getattr(self, name) for name in TRAIT_FIELDS}
+        data["gender"] = self.gender
         data["character"] = self.character
         data["relationship"] = self.relationship
         data["expression"] = self.expression
@@ -294,6 +303,8 @@ class PersonaTraits:
             value = data.get(name)
             if value:
                 setattr(traits, name, str(value))
+        if data.get("gender") in GENDERS:
+            traits.gender = str(data["gender"])
         traits.axes = {str(k): float(v) for k, v in (data.get("axes") or {}).items()
                        if k in AXES}
         if data.get("confidence") is not None:
@@ -306,6 +317,22 @@ class PersonaTraits:
         return traits
 
 
+def detect_gender(text: str) -> str:
+    """Best-effort gender from pronouns/角色词; "" when ambiguous.
+
+    Chinese 他/她 are the strongest signal, then gendered role words.  A tie
+    (both used, or neither) stays undecided so the owner can pick.
+    """
+    body = str(text or "")
+    female = sum(1 for word in _FEMALE_WORDS if word in body)
+    male = sum(1 for word in _MALE_WORDS if word in body)
+    if female > male:
+        return "female"
+    if male > female:
+        return "male"
+    return ""
+
+
 def _add_style_deltas(deltas: dict[str, float], spec: dict) -> None:
     """Fold a character/relationship spec's numeric ``traits`` into ``deltas``."""
     for name, delta in (spec.get("traits") or {}).items():
@@ -313,12 +340,23 @@ def _add_style_deltas(deltas: dict[str, float], spec: dict) -> None:
             deltas[name] = deltas.get(name, 0.0) + float(delta)
 
 
-def parse_persona(text: str) -> PersonaTraits:
-    """Deterministic lexicon pass: persona text -> trait overrides."""
+def parse_persona(text: str, gender_hint: str = "") -> PersonaTraits:
+    """Deterministic lexicon pass: persona text -> trait overrides.
+
+    ``gender_hint`` is an explicit owner choice ("female"/"male"/"other") that
+    overrides the pronoun/role-word detection when valid.
+    """
     traits = PersonaTraits()
     text = str(text or "")
+    hint = str(gender_hint or "").strip().lower()
+    if hint in GENDERS:
+        traits.gender = hint
     if not text.strip():
         return traits
+    if traits.gender is None:
+        detected = detect_gender(text)
+        if detected:
+            traits.gender = detected
     # numeric dimensions accumulate pure deltas; explicit values (the
     # relationship anxiety/avoidance pair) are final and skip the re-basing.
     deltas: dict[str, float] = {}
@@ -390,6 +428,8 @@ def _build_contract() -> str:
         "2) 数值越界会被裁剪；宁可保守，也不要为了填满而乱给。\n"
         "3) 尽量在 evidence 里给出判断依据词，在 confidence 里给出整体置信度(0-1)。\n"
         "字段说明：\n"
+        "gender: 角色性别，female|male|other；文本用「她/女孩/姐/妹」多为 female，「他/男孩/哥/弟」多为 male，"
+        "确实无法判断才 null。\n"
         "character: 性格原型，从下面[性格原型候选]里选**一个最贴切**的 key，没有就 null。\n"
         "relationship: 关系/依恋类型，从[关系类型候选]里选**一个最贴切**的 key，没有就 null；"
         "注意「病娇族」(独占/依存/妄想/监视/自伤/排除) 与健康型(安全/焦虑/回避/恐惧回避/独立/家人/损友/合作伙伴/暗恋/守护/青梅竹马) 是并列的，"
@@ -407,9 +447,9 @@ def _build_contract() -> str:
         "use_somatic (true|false 是否启用躯体化)、sleep_hour (0-23 或 null 作息)。\n"
         "[性格原型候选] " + chars + "\n"
         "[关系类型候选] " + rels + "\n"
-        "示例：{\"character\":\"傲娇\",\"relationship\":\"焦虑型\",\"expression\":\"嘴硬心软，"
-        "爱用反话试探\",\"threat_baseline\":0.35,\"attach_anxiety\":0.8,\"evidence\":{\"character\":[\"傲娇\"]},"
-        "\"confidence\":0.7}\n"
+        "示例：{\"gender\":\"female\",\"character\":\"傲娇\",\"relationship\":\"焦虑型\","
+        "\"expression\":\"嘴硬心软，爱用反话试探\",\"threat_baseline\":0.35,\"attach_anxiety\":0.8,"
+        "\"evidence\":{\"character\":[\"傲娇\"]},\"confidence\":0.7}\n"
         "人设文本：\n"
     )
 
@@ -487,6 +527,8 @@ def merge_persona_llm_json(baseline: PersonaTraits, raw: str) -> PersonaTraits |
             except (TypeError, ValueError):
                 pass
     # style layer: only accept keys that exist in the taxonomies
+    if data.get("gender") in GENDERS:
+        merged.gender = str(data["gender"])
     if data.get("character") in CHARACTER_TYPES:
         merged.character = str(data["character"])
         spec = character_spec(merged.character)

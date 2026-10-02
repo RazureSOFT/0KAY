@@ -67,8 +67,10 @@ from .somatic import (
     SomaticSymptomSystem,
 )
 from .persona_traits import (
+    GENDERS,
     PERSONA_JSON_CONTRACT,
     PersonaTraits,
+    detect_gender,
     merge_persona_llm_json,
     parse_persona,
     persona_summary,
@@ -125,11 +127,13 @@ from .persona_style import (
     CHARACTER_TYPES,
     RELATIONSHIP_TYPES,
     character_options,
+    character_spec,
     classify_character,
     classify_relationship,
     relationship_attachment_type,
     relationship_is_pathological,
     relationship_options,
+    relationship_spec,
 )
 
 __all__ = [
@@ -192,8 +196,10 @@ __all__ = [
     "SYMPTOM_CHANNELS",
     "SomaticSymptomSystem",
     # --- persona -> trait parameters (人设 → 模型数据) ---
+    "GENDERS",
     "PERSONA_JSON_CONTRACT",
     "PersonaTraits",
+    "detect_gender",
     "merge_persona_llm_json",
     "parse_persona",
     "persona_summary",
@@ -202,11 +208,13 @@ __all__ = [
     "CHARACTER_TYPES",
     "RELATIONSHIP_TYPES",
     "character_options",
+    "character_spec",
     "classify_character",
     "classify_relationship",
     "relationship_attachment_type",
     "relationship_is_pathological",
     "relationship_options",
+    "relationship_spec",
     # --- third wave: language acquisition + the language-thought interface ---
     "FRAMING_MODES",
     "LanguageConfig",

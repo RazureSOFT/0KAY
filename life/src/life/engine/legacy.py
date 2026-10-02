@@ -96,10 +96,12 @@ try:
         AttachmentSystem,
         attachment_type_for_persona,
         character_options,
+        character_spec,
         classify_character,
         classify_relationship,
         initial_state_for_persona,
         relationship_options,
+        relationship_spec,
         PersonaTraits,
         RelatingSystem,
         relationship_attachment_type,
@@ -816,14 +818,16 @@ class LifeEngine:
         self._persona_digest = digest
         return persona_summary(getattr(self, "_persona_traits", None))
 
-    async def persona_analyze(self, text: str) -> dict:
+    async def persona_analyze(self, text: str, gender_hint: str = "") -> dict:
         """Interpret a persona into parameters WITHOUT saving (review + tune).
 
         Uses the model when enabled, falling back to the deterministic lexicon;
-        also derives the attachment archetype and its initial 7-state values.
+        also derives the character archetype, the relationship style (with its
+        gender) and - only for the pathological family - the attachment ODE
+        archetype and its initial 7-state values.
         """
         text = str(text or "").strip()
-        traits = parse_persona(text)
+        traits = parse_persona(text, gender_hint)
         source = "lexicon"
         if text and self._persona_llm_enabled():
             try:
@@ -832,20 +836,32 @@ class LifeEngine:
                     traits, source = refined, "llm"
             except Exception as error:
                 logger.debug("persona analyze llm failed: %s", error)
-        att_type = self._persona_attachment_type(text)
+        # The relationship style drives the attachment ODE: only the
+        # pathological family (病娇族) yields an archetype; a healthy style
+        # (安全/焦虑/回避/...) yields "" so the circuit stays off.
         character = classify_character(text)
         relationship = classify_relationship(text)
+        char_key = traits.character or character.get("key", "")
+        rel_key = traits.relationship or relationship.get("key", "")
+        char_spec = character_spec(char_key) if char_key else {}
+        rel_spec = relationship_spec(rel_key) if rel_key else {}
+        if rel_key:
+            att_type = relationship_attachment_type(rel_key)
+        else:
+            att_type = self._persona_attachment_type(text)
         return {
             "source": source,
+            "gender": traits.gender or "",
             "traits": traits.to_dict(),
-            "character": {"key": traits.character or character.get("key", ""),
-                          "label": character.get("label", ""),
+            "character": {"key": char_key,
+                          "label": char_spec.get("label", character.get("label", "")),
                           "evidence": character.get("evidence", []),
                           "expression": traits.expression or ""},
-            "relationship": {"key": traits.relationship or relationship.get("key", ""),
-                             "label": relationship.get("label", ""),
-                             "family": relationship.get("family", ""),
-                             "pathological": relationship.get("pathological", False),
+            "relationship": {"key": rel_key,
+                             "label": rel_spec.get("label", relationship.get("label", "")),
+                             "family": rel_spec.get("family", relationship.get("family", "")),
+                             "pathological": bool(rel_spec.get("pathological")),
+                             "attachment_type": att_type,
                              "evidence": relationship.get("evidence", [])},
             "attachment": {"type": att_type,
                            "initial": initial_state_for_persona(text) if att_type else {}},

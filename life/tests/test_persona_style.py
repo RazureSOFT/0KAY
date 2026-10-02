@@ -15,6 +15,7 @@ from life.cognition import (
     RELATIONSHIP_TYPES,
     classify_character,
     classify_relationship,
+    detect_gender,
     parse_persona,
 )
 from life.engine import LifeEngine
@@ -42,6 +43,13 @@ class StyleLexicon(unittest.TestCase):
     def test_taxonomies_have_many_kinds(self):
         self.assertGreaterEqual(len(CHARACTER_TYPES), 15)
         self.assertGreaterEqual(len(RELATIONSHIP_TYPES), 15)
+
+    def test_gender_detection(self):
+        self.assertEqual(detect_gender("她是个女孩，很温柔"), "female")
+        self.assertEqual(detect_gender("他是个高冷的少年"), "male")
+        self.assertEqual(detect_gender("神秘的存在"), "")
+        # An explicit owner choice overrides the pronoun guess.
+        self.assertEqual(parse_persona("她是个女孩", gender_hint="male").gender, "male")
 
 
 class ExpandedTraits(unittest.TestCase):
@@ -89,6 +97,16 @@ class EngineStyleWiring(unittest.TestCase):
         self.assertEqual(result["attachment"]["type"], "")
         self.assertTrue(result["options"]["character"])
         self.assertTrue(result["options"]["relationship"])
+
+    def test_analyze_reports_gender_and_derives_attachment_from_relationship(self):
+        result = asyncio.run(self.engine.persona_analyze("她占有欲很强，爱吃醋"))
+        self.assertEqual(result["gender"], "female")
+        self.assertTrue(result["relationship"]["pathological"])
+        # The attachment archetype is the one the relationship style declares,
+        # not an independent guess.
+        self.assertEqual(result["attachment"]["type"],
+                         result["relationship"]["attachment_type"])
+        self.assertEqual(result["attachment"]["type"], "独占型")
 
     def test_applying_a_healthy_style_turns_the_ode_off(self):
         self.engine.persona_apply({
