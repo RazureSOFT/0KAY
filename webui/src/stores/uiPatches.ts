@@ -147,11 +147,14 @@ export const BUILTIN_STATUS: StatusSection[] = [
   { id: 'connection', kind: 'connection', titleKey: 'status.connection', order: 90 },
 ]
 
-/** Built-in settings tabs (shell only; plugins/patches replace ownership). */
+/**
+ * Built-in settings tabs (shell only; plugins/patches replace ownership).
+ * `persona` is intentionally absent: editing the persona now lives on the LIFE
+ * companion page (which shares the same wizard persona via __0KAY_HOST__).
+ */
 export const BUILTIN_SETTINGS: SettingsTabItem[] = [
   { id: 'general', icon: 'globe', order: 10 },
   { id: 'provider', icon: 'cloud', order: 20, component: 'provider' },
-  { id: 'persona', icon: 'person', order: 40, component: 'persona' },
   { id: 'security', icon: 'shield', order: 55, component: 'security' },
   { id: 'permissions', icon: 'lock', order: 60, component: 'permissions' },
   { id: 'mcp', icon: 'plug', order: 78 },

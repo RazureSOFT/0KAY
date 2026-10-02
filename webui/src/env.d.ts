@@ -26,4 +26,11 @@ interface Window {
   __0KAY_UI__?: {
     confirm(options: OkayConfirmOptions | string): Promise<boolean>
   }
+  /** Host persona/config bridge so a plugin page (e.g. LIFE companion) can edit
+   *  the same persona the chat sends, and persist it via the wizard store. */
+  __0KAY_HOST__?: {
+    getPersona(): Record<string, string>
+    setPersona(patch: Record<string, string>): void
+    saveConfig(): void
+  }
 }

@@ -39,6 +39,19 @@ window.__0KAY_UI__ = {
   confirm: (options) => useConfirm().confirm(options),
 }
 
+// Host persona/config bridge: the LIFE companion page edits the same persona
+// object the chat sends with each message, and persists it through the wizard
+// store (the single source of truth). Without this a plugin page could only
+// touch localStorage and the running app would not see the change.
+window.__0KAY_HOST__ = {
+  getPersona: () => ({ ...wizard.persona }),
+  setPersona: (patch) => {
+    wizard.setPersona(patch || {})
+    wizard.saveToStorage()
+  },
+  saveConfig: () => wizard.saveToStorage(),
+}
+
 const ui = useUIPatchesStore(pinia)
 
 const bootstrap = createBootstrapManager(url => import(/* @vite-ignore */ url))

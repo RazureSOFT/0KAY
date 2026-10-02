@@ -13,8 +13,9 @@ const tab = ref('cognition')
 const pageEl = ref<HTMLElement | null>(null)
 const navItems = [
   { key: 'cognition', i: '01', label: '认知', icon: '◉' },
-  { key: 'world', i: '02', label: '世界', icon: '✦' },
-  { key: 'state', i: '03', label: '状态', icon: '☺' },
+  { key: 'persona', i: '02', label: '人设', icon: '✎' },
+  { key: 'world', i: '03', label: '世界', icon: '✦' },
+  { key: 'state', i: '04', label: '状态', icon: '☺' },
 ]
 
 function flash(message: string) { notice.value = message; setTimeout(() => { if (notice.value === message) notice.value = '' }, 2500) }
@@ -549,6 +550,45 @@ async function resetPerson() {
     await load()
   } finally { personBusy.value = false }
 }
+// --- persona (moved out of Settings → 人设) --------------------------------
+type PersonaForm = { name: string; avatar: string; birthDate: string; description: string; personality: string; greeting: string; customPrompt: string }
+const emptyPersona = (): PersonaForm => ({ name: '', avatar: '', birthDate: '', description: '', personality: '', greeting: '', customPrompt: '' })
+const personaForm = ref<PersonaForm>(emptyPersona())
+const personaBusy = ref(false)
+function personaHost() {
+  return (globalThis as any).__0KAY_HOST__ as {
+    getPersona?: () => Record<string, string>
+    setPersona?: (patch: Record<string, string>) => void
+    saveConfig?: () => void
+  } | undefined
+}
+function loadPersona() {
+  const host = personaHost()
+  if (host?.getPersona) { personaForm.value = { ...emptyPersona(), ...(host.getPersona() || {}) }; return }
+  try {
+    const cfg = JSON.parse(localStorage.getItem('0kay_config') || '{}')
+    personaForm.value = { ...emptyPersona(), ...(cfg.persona || {}) }
+  } catch { personaForm.value = emptyPersona() }
+}
+function savePersona() {
+  personaBusy.value = true
+  try {
+    const host = personaHost()
+    if (host?.setPersona) {
+      host.setPersona({ ...personaForm.value })
+      host.saveConfig?.()
+      flash('人设已保存')
+    } else {
+      const cfg = JSON.parse(localStorage.getItem('0kay_config') || '{}')
+      cfg.persona = { ...(cfg.persona || {}), ...personaForm.value }
+      localStorage.setItem('0kay_config', JSON.stringify(cfg))
+      flash('人设已保存到本机，刷新页面后生效')
+    }
+  } finally { personaBusy.value = false }
+}
+onMounted(loadPersona)
+watch(tab, (value) => { if (value === 'persona') loadPersona() })
+
 onMounted(load)
 </script>
 
@@ -583,6 +623,25 @@ onMounted(load)
         <i>{{ item.i }}</i><span class="tab-ic">{{ item.icon }}</span>{{ item.label }}
       </button>
     </nav>
+
+    <!-- 02 人设（原设置页 → 人设，移到陪伴） -->
+    <section v-show="tab === 'persona'" class="panel">
+      <div class="section-head"><div><h2>人设</h2><p class="desc">角色的名字、描述与性格。描述 + 性格是模型读取人设的全部来源：它同时驱动情绪画像、依恋动力学（病娇）的型别与初始值、以及抑郁倾向——改完保存，下一条消息即按新人设运行。</p></div>
+        <div class="head-actions"><button class="btn filled sm" :disabled="personaBusy" @click="savePersona">保存人设</button></div>
+      </div>
+      <article class="card">
+        <div class="settings-grid">
+          <label><span>名字</span><input v-model="personaForm.name" class="field" /></label>
+          <label><span>头像 URL</span><input v-model="personaForm.avatar" class="field" /></label>
+          <label><span>生日</span><input v-model="personaForm.birthDate" type="date" class="field" /></label>
+        </div>
+        <label class="pfield"><span>描述</span><textarea v-model="personaForm.description" rows="3" class="field"></textarea></label>
+        <label class="pfield"><span>性格</span><textarea v-model="personaForm.personality" rows="3" class="field"></textarea></label>
+        <label class="pfield"><span>问候语</span><textarea v-model="personaForm.greeting" rows="2" class="field"></textarea></label>
+        <label class="pfield"><span>自定义提示词（作为 system 提示逐字发送）</span><textarea v-model="personaForm.customPrompt" rows="5" class="field"></textarea></label>
+        <p class="hint">想启用"病态依恋 / 病娇"或"抑郁倾向"：在描述或性格里写关键词即可（如"占有欲强、爱吃醋""很黏人、离不开你""多疑""抑郁"），系统会自动启用相应回路并按文字填初始值；也可回「认知」页用一键预设。名字 / 问候 / 头像只影响显示。</p>
+      </article>
+    </section>
 
     <!-- 01 认知 -->
     <section v-show="tab === 'cognition'" class="panel">
@@ -1046,6 +1105,8 @@ h1,h2,h3,h4{margin:0;letter-spacing:-.01em}
 .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
 .settings-grid label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}
 .settings-grid .field{height:40px}
+.pfield{display:flex;flex-direction:column;gap:4px;margin-top:10px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}
+.pfield textarea.field{height:auto;min-height:70px;padding:10px 12px;resize:vertical;line-height:1.5}
 .cog-metric{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:var(--r-sm);
   background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant)}
 .cog-metric span{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant)}
