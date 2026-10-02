@@ -398,5 +398,30 @@ pytest tests/ -q                                   → 507 passed in 303.87s
 - 原始生成模板对"自伤/攻击竞争者"本就只保留情绪表达、不提供方法。
 - 模块 docstring 与论文一致声明：**虚构行为模型，非临床诊断工具，不用于评价真实的人**。
 
+### 11.4 病娇 ↔ 抑郁共病（双向耦合）
+
+临床上病态依恋与抑郁高度共病，所以两层是**互相喂**的，不是并列：
+
+| 方向 | 机制 | 位置 |
+|---|---|---|
+| 抑郁 → 依恋 | `AttachmentSystem.tick(depression=...)`：把 affect 的 mood/快感缺失/稳态负荷/反刍汇成抑郁指数，**抬高不确定 U、压低支持 Sup**（→ 嫉妒/执念更容易被点燃） | `cognition/attachment.py` |
+| 依恋 → 抑郁 | `AttachmentSystem.distress() = 0.6·Y + 0.4·O`；引擎在 `_tick_affect` 里把 distress 作为 stressor 喂回 `affect.observe_outcome`（→ HPA/稳态负荷上升，拖低情绪） | `engine/legacy.py` |
+
+两个方向都有上限/饱和，不会无限发散；`context()` 暴露 `distress` 与 `comorbid_depression`，prompt 在共病明显时补一句"低落和不安缠在一起"。
+
+### 11.5 按 LIFE 的人设提示词填初始数值
+
+`initial_state_for_persona(text)` 从人设文本（WebUI 的 description+personality）推导**初始 7 维状态**：出现"缺爱/多疑/孤独/被抛弃"降低安全感 S、抬高焦虑 X；"吃醋/嫉妒/占有/情敌"抬高 J；"黏/依赖/离不开"抬高 A；"执着/记/念旧"抬高 Am；"反刍/执念"抬高 O。启用时（`_enable_attachment_from_persona`）调用，所以"占有但稳定"和"占有且缺爱"从**不同的动力学盆地**起步，而不是同一套默认值。
+
+### 11.6 仍未搬进来的（研究产物）
+
+| 项 | 状态 | 说明 |
+|---|---|---|
+| 生成层模板 `TEMPLATES` / `render_utterance` | 未搬（也不需要） | 那是独立生成器；在 LIFE 里由 LLM 措辞，本模块只把**型别 hint + 分级基调 + 主导行动**喂进 prompt |
+| `cards/yandere_character_card_v2.json` | 未搬 | 可做成 LIFE 人设预设 |
+| `cards/prompt_template.md` | 未搬 | 接口模板 |
+| `eval/eval_protocol.md`（0–100 量表 + 810 轮） | 未搬 | 可接成 LIFE 评测脚本 |
+| 5 个实验（scenarios/bifurcation/recovery/intermittent/path_dependence）+ 论文/图 | 未搬 | 研究结论，非运行时 |
+
 **边界诚实说**：这是行为/动力学层的拟真，不是"它真的病了"，更没有主观体验证据；它让"占有欲/嫉妒/黏人"从一句人设描述变成**可演化、可观察、可测试**的状态。
 
