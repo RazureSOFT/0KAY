@@ -219,7 +219,7 @@ func (g *Gateway) summarizeViaLIFE(ctx context.Context, history []map[string]str
 	if len(lifes) == 0 {
 		return "", fmt.Errorf("LIFE unavailable and no model credentials for compaction")
 	}
-	conn, err := g.dial(lifes[0].Address)
+	conn, err := g.lifeDial(lifes[0])
 	if err != nil {
 		return "", err
 	}

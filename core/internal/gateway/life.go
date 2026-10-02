@@ -17,7 +17,7 @@ func (g *Gateway) overlayLifeState(r *http.Request, state map[string]interface{}
 	if len(lifes) == 0 || lifes[0].Address == "" {
 		return
 	}
-	conn, err := g.dial(lifes[0].Address)
+	conn, err := g.lifeDial(lifes[0])
 	if err != nil {
 		return
 	}
@@ -70,7 +70,7 @@ func (g *Gateway) forwardLifePermissions(p server.Permissions) {
 	if len(lifes) == 0 || lifes[0].Address == "" {
 		return
 	}
-	conn, err := g.dial(lifes[0].Address)
+	conn, err := g.lifeDial(lifes[0])
 	if err != nil {
 		return
 	}

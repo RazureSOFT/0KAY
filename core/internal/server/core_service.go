@@ -71,6 +71,11 @@ type CoreServiceServer struct {
 	// connection after every call bought nothing.
 	connMu   sync.Mutex
 	connPool map[string]*grpc.ClientConn
+	// lifeConns holds connections carrying LIFE's service token. It stays out of
+	// connPool because that pool is shared with Agent/Mocr: reusing one of those
+	// for LIFE would send no token, and reusing a LIFE connection for another
+	// plugin would attribute the call with the wrong identity.
+	lifeConns map[string]*grpc.ClientConn
 
 	// dispatchActivity tracks last ledger progress per dispatched task for the
 	// inactivity watchdog (dead/hung executor detection).
@@ -659,6 +664,34 @@ func (s *CoreServiceServer) dialCached(addr string) (*grpc.ClientConn, error) {
 		return nil, err
 	}
 	s.connPool[addr] = conn
+	return conn, nil
+}
+
+// lifeDialCached returns a cached connection to a LIFE plugin that attributes
+// every call with that plugin's service token, so LIFE can authenticate Core.
+// It shares connMu with dialCached but not the pool.
+func (s *CoreServiceServer) lifeDialCached(life *registry.PluginInstance) (*grpc.ClientConn, error) {
+	if life == nil || life.Address == "" {
+		return nil, status.Error(codes.Unavailable, "LIFE has no address")
+	}
+	key := life.Address + "\x00" + life.PluginID
+	s.connMu.Lock()
+	defer s.connMu.Unlock()
+	if s.lifeConns == nil {
+		s.lifeConns = map[string]*grpc.ClientConn{}
+	}
+	if conn, ok := s.lifeConns[key]; ok {
+		return conn, nil
+	}
+	conn, err := grpc.NewClient(
+		life.Address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithPerRPCCredentials(registry.NewServiceTokenCredentials(s.registry.Token(life.PluginID))),
+	)
+	if err != nil {
+		return nil, err
+	}
+	s.lifeConns[key] = conn
 	return conn, nil
 }
 
@@ -1413,7 +1446,7 @@ func (s *CoreServiceServer) deliverTaskCallback(taskID string, state pluginv1.Ta
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	conn, err := s.dialCached(life.Address)
+	conn, err := s.lifeDialCached(life)
 	if err != nil {
 		log.Printf("[TaskCompleted] Failed to connect to L.I.F.E at %s: %v", life.Address, err)
 		return

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -45,6 +46,11 @@ type Gateway struct {
 	// Cached outbound gRPC connections, keyed by plugin address.
 	connMu sync.Mutex
 	conns  map[string]*grpc.ClientConn
+	// lifeConns caches connections that carry the LIFE service token. They are
+	// kept out of `conns` on purpose: `dial` is shared with Agent/Mocr, so a
+	// token-bearing connection must never be handed to another plugin's client,
+	// and a connection created without credentials must never be reused for LIFE.
+	lifeConns map[string]*grpc.ClientConn
 
 	// providerStore holds multi-provider API configs (data/providers.json).
 	providerStore *providers.Store
@@ -70,6 +76,7 @@ type LocalCore interface {
 	HasAgentSession(string) bool
 	ManageAgentSession(string, string) error
 	RenameAgentSession(string, string) error
+	ForkAgentSession(string) (string, error)
 }
 
 // Config holds gateway configuration.
@@ -137,13 +144,40 @@ func (g *Gateway) dial(address string) (*grpc.ClientConn, error) {
 	return connection, nil
 }
 
+// lifeDial returns a cached gRPC connection to a LIFE plugin that attributes
+// every call with that plugin's service token, so LIFE can authenticate Core.
+func (g *Gateway) lifeDial(life *registry.PluginInstance) (*grpc.ClientConn, error) {
+	if life == nil || life.Address == "" {
+		return nil, status.Error(codes.Unavailable, "LIFE has no address")
+	}
+	key := life.Address + "\x00" + life.PluginID
+	g.connMu.Lock()
+	defer g.connMu.Unlock()
+	if g.lifeConns == nil {
+		g.lifeConns = map[string]*grpc.ClientConn{}
+	}
+	if connection, ok := g.lifeConns[key]; ok {
+		return connection, nil
+	}
+	connection, err := grpc.NewClient(
+		life.Address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithPerRPCCredentials(registry.NewServiceTokenCredentials(g.registry.Token(life.PluginID))),
+	)
+	if err != nil {
+		return nil, err
+	}
+	g.lifeConns[key] = connection
+	return connection, nil
+}
+
 // lifeClient returns the first registered LIFE plugin's client.
 func (g *Gateway) lifeClient() (lifev1.LifeServiceClient, bool) {
 	lifes := g.registry.GetPluginsByCapability("life")
 	if len(lifes) == 0 || lifes[0].Address == "" {
 		return nil, false
 	}
-	conn, err := g.dial(lifes[0].Address)
+	conn, err := g.lifeDial(lifes[0])
 	if err != nil {
 		return nil, false
 	}
@@ -285,10 +319,25 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("DELETE /api/agent/sessions/{session_id}", g.handleAgentSessionItem)
 	mux.HandleFunc("/api/agent/messages", g.handleAgentMessage)
 	mux.HandleFunc("/api/agent/workspace", g.handleAgentWorkspace)
+	mux.HandleFunc("/api/agent/workspaces", g.handleAgentWorkspaces)
+	mux.HandleFunc("POST /api/agent/sessions/fork", g.handleAgentSessionsFork)
+	mux.HandleFunc("GET /api/agent/sessions/search", g.handleAgentSessionsSearch)
+	mux.HandleFunc("GET /api/agent/pick-folder", g.handleAgentPickFolder)
 	mux.HandleFunc("/api/agent/approvals", g.handleAgentApprovals)
 	mux.HandleFunc("/api/agent/questions", g.handleAgentApprovals)
 	mux.HandleFunc("/api/agent/inbox", g.handleAgentInbox)
 	mux.HandleFunc("/api/agent/host", g.handleAgentWorkspace)
+	mux.HandleFunc("GET /api/agent/tree", g.handleAgentTree)
+	mux.HandleFunc("GET /api/agent/file", g.handleAgentFile)
+	mux.HandleFunc("GET /api/agent/file/raw", g.handleAgentFileRaw)
+	mux.HandleFunc("GET /api/agent/file/convert", g.handleAgentFileConvert)
+	mux.HandleFunc("GET /api/agent/file/text", g.handleAgentFileText)
+	mux.HandleFunc("POST /api/agent/file", g.handleAgentFileWrite)
+	mux.HandleFunc("POST /api/agent/exec", g.handleAgentExec)
+	mux.HandleFunc("GET /api/agent/browser", g.handleAgentBrowser)
+	mux.HandleFunc("GET /api/agent/browser/view", g.handleAgentBrowser)
+	mux.HandleFunc("GET /api/agent/browser/stream", g.handleAgentBrowserStream)
+	mux.HandleFunc("POST /api/agent/browser/action", g.handleAgentBrowserAction)
 	mux.HandleFunc("/api/agent/compact", g.handleAgentCompact)
 	mux.HandleFunc("GET /api/agent/context", g.handleAgentContext)
 	mux.HandleFunc("GET /api/agent/context/search", g.handleAgentContextSearch)
@@ -323,6 +372,8 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/tools", g.handleTools)
 	mux.HandleFunc("/api/tools/", g.handleTools)
 	mux.HandleFunc("/api/search", g.handleSearch)
+	mux.HandleFunc("/api/search/papers", g.handlePapersSearch)
+	mux.HandleFunc("/api/search/apidocs", g.handleApiDocsSearch)
 	mux.HandleFunc("/api/stdio-provider/{id}/{path...}", g.handleStdioProvider)
 	mux.Handle("/live2d/models/", http.StripPrefix("/live2d/models/", http.FileServer(http.Dir(live2DRoot()))))
 	mux.HandleFunc("/api/tasks", g.handleTasks)
@@ -794,7 +845,7 @@ func (g *Gateway) handleLifeChat(w http.ResponseWriter, r *http.Request) {
 		unavailable(w, "LIFE is unavailable")
 		return
 	}
-	conn, err := g.dial(lifes[0].Address)
+	conn, err := g.lifeDial(lifes[0])
 	if err != nil {
 		upstreamError(w, err.Error())
 		return
@@ -864,7 +915,7 @@ func (g *Gateway) handleLifeCompact(w http.ResponseWriter, r *http.Request) {
 		unavailable(w, "LIFE is unavailable")
 		return
 	}
-	conn, err := g.dial(lifes[0].Address)
+	conn, err := g.lifeDial(lifes[0])
 	if err != nil {
 		upstreamError(w, err.Error())
 		return
@@ -1227,7 +1278,7 @@ func (g *Gateway) handleLifeMemories(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := g.dial(lifes[0].Address)
+	conn, err := g.lifeDial(lifes[0])
 	if err != nil {
 		upstreamError(w, err.Error())
 		return
@@ -1595,9 +1646,18 @@ func (g *Gateway) handleTasks(w http.ResponseWriter, r *http.Request) {
 }
 
 // listLive2DModels scans for *.model3.json under live2DRoot.
+//
+// A single model folder often ships both a Cubism 2 manifest (.model.json) and
+// a Cubism 3/4 manifest (.model3.json); both normalise to the same id, which
+// used to surface the same model twice in the UI.  Deduplicate by id and prefer
+// the newer Cubism 3/4 (.model3.json) manifest.
 func listLive2DModels() []map[string]string {
 	root := live2DRoot()
-	var out []map[string]string
+	type entry struct {
+		model map[string]string
+		c3    bool
+	}
+	seen := map[string]entry{}
 	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return nil
@@ -1610,18 +1670,28 @@ func listLive2DModels() []map[string]string {
 			return nil
 		}
 		rel = filepath.ToSlash(rel)
+		lower := strings.ToLower(rel)
+		isC3 := strings.HasSuffix(lower, ".model3.json")
 		id := strings.TrimSuffix(strings.TrimSuffix(rel, ".model3.json"), ".model.json")
-		label := filepath.Base(id)
-		out = append(out, map[string]string{
-			"id":    id,
-			"label": label,
-			"url":   "/live2d/models/" + rel,
-		})
+		if existing, ok := seen[id]; ok && (existing.c3 || !isC3) {
+			// Keep the Cubism 3/4 manifest when both exist.
+			return nil
+		}
+		seen[id] = entry{
+			model: map[string]string{
+				"id":    id,
+				"label": filepath.Base(id),
+				"url":   "/live2d/models/" + rel,
+			},
+			c3: isC3,
+		}
 		return nil
 	})
-	if out == nil {
-		out = []map[string]string{}
+	out := make([]map[string]string, 0, len(seen))
+	for _, e := range seen {
+		out = append(out, e.model)
 	}
+	sort.Slice(out, func(i, j int) bool { return out[i]["id"] < out[j]["id"] })
 	return out
 }
 
@@ -1766,7 +1836,7 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 		}
 		finalRootName := filepath.Base(targetDir)
 
-		firstModelURL := ""
+		var manifestRemainders []string
 		saved := 0
 		for i, fh := range files {
 			rel := normPaths[i]
@@ -1806,19 +1876,32 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			saved++
-			if isLive2DManifest(remainder) && firstModelURL == "" {
-				firstModelURL = "/live2d/models/" + filepath.ToSlash(filepath.Join(finalRootName, remainder))
+			if isLive2DManifest(remainder) {
+				manifestRemainders = append(manifestRemainders, remainder)
 			}
 		}
-		if saved == 0 || firstModelURL == "" {
+		if saved == 0 || len(manifestRemainders) == 0 {
 			os.RemoveAll(targetDir)
 			http.Error(w, "No Live2D manifest found. Upload the complete folder containing .model.json or .model3.json and its textures/model files.", http.StatusBadRequest)
 			return
 		}
-		manifest := filepath.Join(root, filepath.FromSlash(strings.TrimPrefix(firstModelURL, "/live2d/models/")))
-		if err := validateLive2DManifest(manifest); err != nil {
+		// Model folders often keep stale manifests left over from renamed or
+		// backed-up files; prefer the first manifest whose referenced resources
+		// all exist instead of rejecting the whole upload over a broken one.
+		firstModelURL := ""
+		var failures []string
+		for _, rem := range manifestRemainders {
+			candidate := filepath.Join(root, finalRootName, filepath.FromSlash(rem))
+			err := validateLive2DManifest(candidate)
+			if err == nil {
+				firstModelURL = "/live2d/models/" + filepath.ToSlash(filepath.Join(finalRootName, rem))
+				break
+			}
+			failures = append(failures, rem+": "+err.Error())
+		}
+		if firstModelURL == "" {
 			os.RemoveAll(targetDir)
-			http.Error(w, err.Error(), 400)
+			http.Error(w, "no valid Live2D manifest: "+strings.Join(failures, "; "), http.StatusBadRequest)
 			return
 		}
 

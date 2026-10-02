@@ -27,7 +27,11 @@ func startLifeScheduler(ctx context.Context, reg *registry.Registry) {
 		if len(lifes) == 0 || lifes[0].Address == "" {
 			return
 		}
-		conn, err := grpc.NewClient(lifes[0].Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		conn, err := grpc.NewClient(
+			lifes[0].Address,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithPerRPCCredentials(registry.NewServiceTokenCredentials(reg.Token(lifes[0].PluginID))),
+		)
 		if err != nil {
 			return
 		}
