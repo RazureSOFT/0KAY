@@ -30,6 +30,45 @@ export const useChatStore = defineStore('chat', () => {
   const sessionId = ref(localStorage.getItem(SESSION_KEY) || `webui:${uid()}`)
   localStorage.setItem(SESSION_KEY, sessionId.value)
   const messages = ref<Message[]>([])
+  // Live2D stage markers emitted by the model (usually in its THINK layer),
+  // e.g. [[motion:Idle:0]] / [[motion:3]] / [[expression:exp_03]]. We dispatch
+  // them to the stage and strip them from the visible reply.
+  const seenL2DMarkers = new Map<string, Set<string>>()
+  const L2D_MARKER_RE = /\[\[\s*(motion|expression|emote|action)\s*:\s*([^\]]*?)\s*\]\]/gi
+  const L2D_MARKER_STRIP_RE = /\[\[\s*(?:motion|expression|emote|action)\s*:[^\]]*?\]\]/gi
+  function dispatchL2DMarker(kind: string, arg: string) {
+    if (typeof window === 'undefined') return
+    if (kind === 'expression' || kind === 'emote') {
+      if (arg) window.dispatchEvent(new CustomEvent('live2d-motion', { detail: { expression: arg } }))
+      return
+    }
+    let group: string | undefined
+    let index: number | undefined
+    const parts = arg.split(':')
+    if (parts.length >= 2) {
+      group = parts[0].trim() || undefined
+      index = parts[1].trim() === '' ? undefined : Number(parts[1])
+    } else if (/^\d+$/.test(arg)) {
+      index = Number(arg)
+    } else if (arg) {
+      group = arg
+    }
+    if (!Number.isFinite(index as number)) index = undefined
+    window.dispatchEvent(new CustomEvent('live2d-motion', { detail: { group, index } }))
+  }
+  function flushL2DMarkers(message: Message) {
+    const text = `${message.thinkSummary || ''}\n${message.content || ''}`
+    if (!text.includes('[[')) return
+    const seen = seenL2DMarkers.get(message.id) || new Set<string>()
+    L2D_MARKER_RE.lastIndex = 0
+    let match: RegExpExecArray | null
+    while ((match = L2D_MARKER_RE.exec(text))) {
+      if (seen.has(match[0])) continue
+      seen.add(match[0])
+      dispatchL2DMarker(match[1].toLowerCase(), match[2].trim())
+    }
+    seenL2DMarkers.set(message.id, seen)
+  }
   const isConnected = ref(false)
   const isTyping = ref(false)
   const unread = ref(0)
@@ -196,7 +235,7 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function appendChunk(requestId: string | undefined, chunk: string, separate = false, payload?: any) {
-    if (!chunk) return
+    if (!chunk && !payload?.think_summary) return
     const current = requestId ? messages.value.find((message) => message.role === 'assistant' && message.requestId === requestId) : undefined
     if (!separate || (current && !current.content)) {
       const target = findOrCreateAssistant(requestId)
@@ -205,10 +244,12 @@ export const useChatStore = defineStore('chat', () => {
         if (payload?.emotion) target.emotion = payload.emotion
         if (payload?.mental_energy !== undefined) target.mentalEnergy = payload.mental_energy
         if (payload?.think_summary) target.thinkSummary = payload.think_summary
+        flushL2DMarkers(target)
+        if (target.content.includes('[[')) target.content = target.content.replace(L2D_MARKER_STRIP_RE, '')
       }
       return
     }
-    messages.value.push({
+    const pushed: Message = {
       id: `msg_${++messageIdCounter}`,
       role: 'assistant',
       content: chunk,
@@ -217,7 +258,10 @@ export const useChatStore = defineStore('chat', () => {
       emotion: payload?.emotion,
       mentalEnergy: payload?.mental_energy,
       thinkSummary: payload?.think_summary,
-    })
+    }
+    messages.value.push(pushed)
+    flushL2DMarkers(pushed)
+    if (pushed.content.includes('[[')) pushed.content = pushed.content.replace(L2D_MARKER_STRIP_RE, '')
   }
 
   function handleChunk(data: any) {
@@ -467,17 +511,18 @@ export const useChatStore = defineStore('chat', () => {
     const message = messages.value.find((m) => m.role === 'assistant' && m.requestId === requestId)
     const text = (message?.content || '').trim()
     if (!text) return
+    const speakTextOnly = () => window.dispatchEvent(new CustomEvent('live2d-speak', { detail: { text } }))
     try {
       const res = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: text.slice(0, 600) }),
       })
-      if (!res.ok) return
+      if (!res.ok) { speakTextOnly(); return }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       window.dispatchEvent(new CustomEvent('live2d-speak', { detail: { url, text } }))
-    } catch { /* voice is best effort */ }
+    } catch { speakTextOnly() }
   }
 
   function abortActiveSse() {

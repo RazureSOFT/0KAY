@@ -104,7 +104,7 @@ onUnmounted(()=>{document.removeEventListener('pointerdown',outside,true);window
 .app-select-chevron svg{transition:transform 320ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}
 .app-select-chevron svg.is-open{transform:rotate(180deg)}
 .app-select-menu{
- position:fixed;z-index:10000;overflow-y:auto;overscroll-behavior:contain;
+ position:fixed;z-index:var(--z-popover,5000);overflow-y:auto;overscroll-behavior:contain;
  padding:8px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);
  border-radius:24px;background:var(--md-surface-container-low);color:var(--md-on-surface);
  box-shadow:0 18px 50px -12px color-mix(in srgb,var(--md-scrim,#000) 45%,transparent),0 4px 14px -4px #16244026;

@@ -497,7 +497,7 @@ const providerTypeOptions = computed(() =>
   flex: none; width: 40px; height: 40px; border-radius: 12px;
   display: grid; place-items: center; cursor: pointer;
   border: 1px solid var(--md-outline-variant); background: var(--md-surface-container-low);
-  color: var(--md-on-surface); transition: background-color 160ms, border-color 160ms;
+  color: var(--md-on-surface); transition: background-color var(--duration-short) var(--ease-out), border-color var(--duration-short) var(--ease-out);
 }
 .pp-back:hover { background: var(--md-surface-container); border-color: var(--md-primary); }
 .pp-editor-title { flex: 1; min-width: 0; }
@@ -520,8 +520,8 @@ const providerTypeOptions = computed(() =>
 
 .pp-status { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 650; background: var(--md-surface-container-highest); color: var(--md-on-surface-variant); white-space: nowrap; }
 .pp-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .55; }
-.pp-status.ok { background: var(--md-success-container); color: #0d1f06; }
-.pp-status.error { background: var(--md-error-container); color: #410e0b; }
+.pp-status.ok { background: var(--md-success-container); color: var(--md-on-success-container); }
+.pp-status.error { background: var(--md-error-container); color: var(--md-on-error-container); }
 .pp-status.checking { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
 .pp-status.checking .pp-dot { animation: pp-pulse 1s ease-in-out infinite; }
 @keyframes pp-pulse { 50% { opacity: .15; } }
@@ -562,9 +562,11 @@ const providerTypeOptions = computed(() =>
   display: flex; flex-direction: column; gap: 12px; padding: 16px;
   border: 1px solid var(--md-outline-variant); border-radius: 18px;
   background: var(--md-surface-container-low);
-  transition: border-color 180ms, transform 180ms, box-shadow 180ms;
+  transition: border-color var(--duration-medium) var(--ease-out), transform var(--duration-medium) var(--ease-out), box-shadow var(--duration-medium) var(--ease-out);
 }
-.pp-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-1); }
+@media (hover: hover) and (pointer: fine) {
+  .pp-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-1); }
+}
 .pp-card.default { border-color: color-mix(in srgb, var(--md-primary) 60%, var(--md-outline-variant)); }
 .pp-card.off { opacity: .62; }
 .pp-card-head { display: flex; align-items: center; gap: 12px; }

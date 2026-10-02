@@ -58,7 +58,7 @@ function onKeydown(event: KeyboardEvent) {
       <section
         ref="dialog"
         class="confirm-dialog"
-        role="alertdialog"
+        role="dialog"
         aria-modal="true"
         tabindex="-1"
       >
@@ -82,7 +82,7 @@ function onKeydown(event: KeyboardEvent) {
 .confirm-scrim {
   position: fixed;
   inset: 0;
-  z-index: 13000;
+  z-index: var(--z-modal);
   background: #21173566;
   backdrop-filter: blur(6px);
   display: grid;
@@ -115,4 +115,9 @@ function onKeydown(event: KeyboardEvent) {
 .confirm-dialog footer .confirm-primary { background: var(--md-primary, #6750a4); color: var(--md-on-primary, #fff); }
 .confirm-dialog footer .confirm-primary.danger { background: var(--md-error, #b3261e); color: var(--md-on-error, #fff); }
 .confirm-dialog footer button:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 3px; }
+.confirm-dialog:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .confirm-dialog { animation: none; transition: none; }
+}
 </style>

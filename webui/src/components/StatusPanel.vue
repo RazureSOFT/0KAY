@@ -236,7 +236,7 @@ const activeTasks = computed(() => lifeStore.activeTasks)
         <div v-else-if="section.kind === 'bar'" class="energy-bar">
           <div
             class="energy-fill"
-            :style="{ width: `${energyPercent}%`, backgroundColor: energyColor }"
+            :style="{ transform: `scaleX(${energyPercent / 100})`, backgroundColor: energyColor }"
           ></div>
         </div>
 
@@ -248,7 +248,7 @@ const activeTasks = computed(() => lifeStore.activeTasks)
               <div
                 class="emotion-fill"
                 :style="{
-                  width: `${Math.max(0, Math.min(1, axisValue(axis))) * 100}%`,
+                  transform: `scaleX(${Math.max(0, Math.min(1, axisValue(axis)))})`,
                   backgroundColor: axis.color || '#0078d4',
                 }"
               ></div>
@@ -426,8 +426,10 @@ const activeTasks = computed(() => lifeStore.activeTasks)
 
 .energy-fill {
   height: 100%;
+  width: 100%;
+  transform-origin: left;
   border-radius: var(--radius-sm);
-  transition: width var(--transition-normal), background-color var(--transition-normal);
+  transition: transform var(--duration-medium) var(--ease-out), background-color var(--duration-medium) var(--ease-out);
 }
 
 .emotion-bars {
@@ -458,8 +460,10 @@ const activeTasks = computed(() => lifeStore.activeTasks)
 
 .emotion-fill {
   height: 100%;
+  width: 100%;
+  transform-origin: left;
   border-radius: var(--radius-sm);
-  transition: width var(--transition-normal);
+  transition: transform var(--duration-medium) var(--ease-out);
 }
 
 .empty-tasks {

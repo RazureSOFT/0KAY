@@ -13,7 +13,7 @@ export function installInteractionMotion() {
     Object.assign(layer.style, { width: `${size}px`, height: `${size}px`, left: `${event.clientX - rect.left - size / 2}px`, top: `${event.clientY - rect.top - size / 2}px` })
     target.classList.add('motion-surface')
     target.appendChild(layer)
-    const animation = layer.animate([{ transform: 'scale(0)', opacity: .18 }, { transform: 'scale(1)', opacity: 0 }], { duration: 550, easing: 'cubic-bezier(.2,0,0,1)' })
+    const animation = layer.animate([{ transform: 'scale(.8)', opacity: .16 }, { transform: 'scale(1)', opacity: 0 }], { duration: 220, easing: 'cubic-bezier(.23,1,.32,1)' })
     animation.finished.then(() => layer.remove(), () => layer.remove())
   }
   document.addEventListener('pointerdown', press)

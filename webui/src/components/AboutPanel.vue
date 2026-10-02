@@ -396,7 +396,7 @@ onUnmounted(stopPolling)
   background: var(--md-surface-container);
 }
 .us-apply-banner.done { background: var(--md-success-container); color: #0d1f06; border-color: transparent; }
-.us-apply-banner.failed { background: var(--md-error-container); color: #410e0b; border-color: transparent; }
+.us-apply-banner.failed { background: var(--md-error-container); color: var(--md-on-error-container); border-color: transparent; }
 .us-apply-head { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .us-apply-head b { font-weight: 700; }
 .us-apply-label { margin-left: auto; font-size: 13px; opacity: 0.85; }

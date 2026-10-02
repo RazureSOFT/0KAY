@@ -1,59 +1,20 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
+import AppSelect from './AppSelect.vue'
 import { useConfirm } from './confirm'
 import ConfirmDialog from './ConfirmDialog.vue'
-import AppSelect from './AppSelect.vue'
 
 const { confirm } = useConfirm()
-const data = ref<any>({ relationships: [], relationship_ledger: [], agenda: [], calendar_candidates: [], journal: [], dreams: [], audit: [], groups: {}, proactive: { candidates: [], receipts: [] }, persona_evolution: [], open_topics: [], portraits: [], timeline: [] })
+const data = ref<any>({ settings: {}, cognition: null })
 const loading = ref(false); const error = ref(''); const notice = ref('')
-const agendaTitle = ref(''); const agendaWhen = ref(''); const agendaDetail = ref('')
-const journal = ref(''); const dream = ref('')
-const localToday = () => { const d = new Date(); const p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}` }
-const diaryDate = ref(localToday())
-const diary = ref<{ date: string; content: string; previous: string | null; next: string | null }>({ date: '', content: '', previous: null, next: null })
-const diaryLoading = ref(false)
-const diaryParagraphs = computed(() => (diary.value.content || '').split(/\n{2,}/).map((p) => p.trim()).filter(Boolean))
-async function loadDiary(day = diaryDate.value) {
-  diaryLoading.value = true
-  try {
-    const r = await fetch('/api/life/companion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'journal_page', payload: { date: day } }) })
-    if (!r.ok) throw Error(await r.text())
-    const body = await r.json()
-    diary.value = { date: body?.date || day, content: body?.content || '', previous: body?.previous || null, next: body?.next || null }
-    diaryDate.value = diary.value.date
-  } catch (e: any) { error.value = friendlyError(e) }
-  finally { diaryLoading.value = false }
-}
-function shiftDiary(dir: 'previous' | 'next') { const target = dir === 'previous' ? diary.value.previous : diary.value.next; if (target) void loadDiary(target) }
-const openGroup = ref<string>('')
-const proactiveForm = ref({ target: '', motive: '', content: '', preferred_at: '' })
-const targetChoice = ref('')
-const targetManual = ref('')
-function resolvedTarget() { return targetChoice.value === '__manual__' ? targetManual.value.trim() : targetChoice.value }
-const policy = ref({ daily_limit: 6, per_target_limit: 2, quiet_start: 23, quiet_end: 8 })
-const groups = computed(() => Object.entries(data.value.groups || {}))
-const activeCandidates = computed(() => (data.value.proactive?.candidates || []).filter((x: any) => !['delivered', 'cancelled'].includes(x.status)))
-const receipts = computed(() => data.value.proactive?.receipts || [])
-const todayKey = localToday()
-const todayAgenda = computed(() => (data.value.agenda || []).filter((x: any) => { const s = String(x.start_at || '').replace('T', ' '); return !s || s.slice(0, 10) >= todayKey }))
-
-const tab = ref('overview')
+const tab = ref('cognition')
 const pageEl = ref<HTMLElement | null>(null)
-const topicForm = ref('')
 const navItems = [
-  { key: 'overview', i: '01', label: '总览', icon: '◉' },
-  { key: 'world', i: '02', label: '世界知识', icon: '✎' },
-  { key: 'users', i: '03', label: '用户', icon: '☺' },
-  { key: 'groups', i: '04', label: '群聊', icon: '☷' },
-  { key: 'learning', i: '05', label: '学习', icon: '✚' },
-  { key: 'observe', i: '06', label: '观察', icon: '◎' },
-  { key: 'proactive', i: '07', label: '主动', icon: '✦' },
-  { key: 'tokens', i: '08', label: 'Token', icon: '∑' },
-  { key: 'troubleshooting', i: '09', label: '排障', icon: '⚠' },
-  { key: 'config', i: '10', label: '配置', icon: '⚙' },
-  { key: 'models', i: '11', label: '模型', icon: '⌁' },
-  { key: 'experimental', i: '12', label: '实验', icon: '⚗' },
+  { key: 'cognition', i: '01', label: '认知', icon: '◉' },
+  { key: 'world', i: '02', label: '世界', icon: '✦' },
+  { key: 'state', i: '03', label: '状态', icon: '☺' },
 ]
 
 function flash(message: string) { notice.value = message; setTimeout(() => { if (notice.value === message) notice.value = '' }, 2500) }
@@ -66,18 +27,15 @@ function friendlyError(e: any): string {
   return text || '操作失败'
 }
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-const usage = ref<any>(null)
-async function loadUsage() { try { const r = await fetch('/api/usage'); if (r.ok) usage.value = await r.json() } catch { /* optional */ } }
+
 async function load(attempt = 0): Promise<void> {
   loading.value = true; error.value = ''
   try {
     const r = await fetch('/api/life/companion')
     if (!r.ok) throw Error(await r.text() || String(r.status))
     data.value = await r.json()
-    if (data.value?.policy) policy.value = { ...policy.value, ...data.value.policy }
     syncSettings()
     loading.value = false
-    void loadUsage(); void loadDiary(); void loadCalendar(); void loadGroups(); void loadContent(); void loadExtensions(); void loadAudit()
   } catch (e: any) {
     if (attempt < 4) { await sleep(1500); return load(attempt + 1) }
     error.value = friendlyError(e)
@@ -98,332 +56,481 @@ async function act(action: string, payload: any) {
   }
   return null
 }
-async function query(action: string, payload: any) {
-  const r = await fetch('/api/life/companion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, payload }) })
-  if (!r.ok) throw Error(await r.text())
-  return await r.json().catch(() => ({}))
+function jump(target: string) {
+  tab.value = target
+  const behavior: ScrollBehavior = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+  const el = pageEl.value
+  if (el) el.scrollTo({ top: 0, behavior }); else window.scrollTo({ top: 0, behavior })
 }
-async function addAgenda() { if (!agendaTitle.value.trim()) return; await act('add_agenda', { title: agendaTitle.value, when: agendaWhen.value, detail: agendaDetail.value }); agendaTitle.value = ''; agendaWhen.value = ''; agendaDetail.value = ''; flash('已加入日程') }
-async function addEntry(kind: 'journal' | 'dream', content: string) { if (!content.trim()) return; await act(kind, { content }); if (kind === 'journal') journal.value = ''; else dream.value = '' }
-function relPct(v: number) { return `${Math.round(Math.max(0, Math.min(1, v || 0)) * 100)}%` }
-function agendaState(item: any): { label: string; cls: string } {
-  if (item.status === 'completed') return { label: '已完成', cls: 'ok' }
-  const start = new Date(String(item.start_at || '').replace(' ', 'T'))
-  if (!Number.isNaN(start.getTime()) && start.getTime() <= Date.now()) return { label: '进行中', cls: 'warn' }
-  return { label: '待开始', cls: 'muted' }
-}
-async function adjustRelationship(userId: string, delta: number) { const result = await act('relationship_adjust', { user_id: userId, event_key: `manual:${Date.now()}`, reason: 'dashboard_adjust', channel: 'webui', delta }); if (result) flash(`已调整 ${userId}`) }
-async function decayRelationships() { const r = await act('relationship_decay', {}); flash(r?.decayed != null ? `已自然回落 ${r.decayed} 个关系` : '已处理') }
-async function createProactive() { const target = resolvedTarget(); if (!target || !proactiveForm.value.content.trim()) return; const result = await act('proactive_create', { ...proactiveForm.value, target }); if (result) { proactiveForm.value = { target: '', motive: '', content: '', preferred_at: '' }; targetChoice.value = ''; targetManual.value = ''; flash('已创建主动候选') } }
-async function cancelProactive(id: string) { await act('proactive_cancel', { id, reason: 'dashboard_cancel' }); flash('已取消候选') }
-async function savePolicy() { await act('proactive_policy', { daily_limit: Number(policy.value.daily_limit), per_target_limit: Number(policy.value.per_target_limit), quiet_start: Number(policy.value.quiet_start), quiet_end: Number(policy.value.quiet_end) }); flash('策略已保存') }
-const generating = ref('')
-async function generate(kind: 'journal' | 'dream') {
-  generating.value = kind
-  try {
-    const r = await fetch('/api/life/companion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: kind === 'journal' ? 'journal_generate' : 'dream_generate', payload: {} }) })
-    if (!r.ok) throw Error(await r.text())
-    await load(); flash('已由 LIFE 生成')
-  } catch (e: any) { error.value = friendlyError(e) } finally { generating.value = '' }
-}
-async function suggestProactive() { const target = resolvedTarget(); if (!target) { flash('先选择发送目标'); return } const result = await act('proactive_suggest', { target, hint: proactiveForm.value.motive }); if (result) { proactiveForm.value = { target: '', motive: '', content: '', preferred_at: '' }; targetChoice.value = ''; targetManual.value = ''; flash('已生成建议候选') } }
-const ticking = ref(false)
-async function tickNow() { ticking.value = true
-  try {
-    const r = await fetch('/api/life/companion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'proactive_tick', payload: {} }) })
-    if (!r.ok) throw Error(await r.text())
-    const body = await r.json(); await load()
-    flash(body?.skipped ? `本次跳过：${body.skipped}` : `已投递 ${body.delivered || 0} 条 · 拦截 ${body.blocked || 0} 条`)
-  } catch (e: any) { error.value = friendlyError(e) } finally { ticking.value = false }
-}
-const planning = ref(false)
-async function planNow() { planning.value = true
-  try {
-    const r = await fetch('/api/life/companion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'autonomy_plan', payload: {} }) })
-    if (!r.ok) throw Error(await r.text())
-    const body = await r.json(); await load()
-    const applied = body?.applied
-    flash(applied ? `已自主规划：日程 ${applied.agenda} · 主动 ${applied.proactive}` : '本次没有新的规划')
-  } catch (e: any) { error.value = friendlyError(e) } finally { planning.value = false }
-}
-function daysUntil(text: string): number | null {
-  const value = (text || '').trim(); const today = new Date(); today.setHours(0, 0, 0, 0)
-  let target: Date | null = null
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) { target = new Date(value); target.setHours(0, 0, 0, 0); if (target < today) target.setFullYear(today.getFullYear() + 1) }
-  else if (/^\d{2}-\d{2}$/.test(value)) { target = new Date(today.getFullYear(), Number(value.slice(0, 2)) - 1, Number(value.slice(3, 5))); if (target < today) target.setFullYear(today.getFullYear() + 1) }
-  if (!target || Number.isNaN(target.getTime())) return null
-  return Math.round((target.getTime() - today.getTime()) / 86400000)
-}
-const dateForm = ref({ title: '', date: '', repeat_yearly: true, note: '' })
-async function addDate() { if (!dateForm.value.title.trim() || !dateForm.value.date.trim()) return; await act('date_add', { ...dateForm.value }); dateForm.value = { title: '', date: '', repeat_yearly: true, note: '' }; flash('已添加重要日期') }
-async function removeDate(id: string) { await act('date_delete', { id }); flash('已删除') }
-async function eat() { await act('circadian_eat', { amount: 45 }); flash('已用餐') }
-async function arrangeAgenda() { const result = await act('daily_agenda', {}); flash(result?.created ? `LIFE 已安排 ${result.created} 项活动` : '今天已有安排') }
-async function clearJournal(kind: 'journal' | 'dream') { const ok = await confirm({ title: kind === 'dream' ? '清除梦境' : '清除日记', message: '将删除全部该类型记录，无法恢复。', confirmLabel: '清除', danger: true }); if (!ok) return; await act('journal_clear', { kind }); flash('已清除') }
-function fmtTime(value?: string) { if (!value) return ''; const d = new Date(value); return Number.isNaN(d.getTime()) ? value : d.toLocaleString() }
 
-const selectedUser = ref('')
-const userSearch = ref('')
-const userStage = ref('')
-const detail = ref<any>(null)
-const detailLoading = ref(false)
-const detailTopics = ref<string[]>([])
-const detailPortrait = ref<any>(null)
-const detailTab = ref<'overview' | 'relationship' | 'proactive' | 'memory' | 'diagnostics'>('overview')
-const detailTabs = [{ key: 'overview', label: '概览' }, { key: 'relationship', label: '关系' }, { key: 'proactive', label: '主动' }, { key: 'memory', label: '记忆' }, { key: 'diagnostics', label: '诊断' }] as const
-const userStages = computed(() => Array.from(new Set((data.value.relationships || []).map((r: any) => r.stage).filter(Boolean))))
-const ownerIds = computed(() => String(data.value.settings?.owner_user_ids || '').split(',').map((x: string) => x.trim()).filter(Boolean))
-const filteredUsers = computed(() => (data.value.relationships || []).filter((r: any) => (!userSearch.value || String(r.user_id).toLowerCase().includes(userSearch.value.toLowerCase())) && (!userStage.value || r.stage === userStage.value)))
-async function openUser(userId: string) {
-  selectedUser.value = userId; detailTab.value = 'overview'; detailLoading.value = true
-  const [result, topics, portrait] = await Promise.all([
-    act('user_detail', { user_id: userId, limit: 100, memory_limit: 100 }),
-    query('open_topic_list', { user_id: userId, limit: 10 }).catch(() => ({ topics: [] })),
-    query('portrait_get', { user_id: userId }).catch(() => null),
-  ])
-  detail.value = result || null; detailTopics.value = topics?.topics || []; detailPortrait.value = portrait; detailLoading.value = false
+// --- cognition core --------------------------------------------------------
+// Mirrors CompanionSystem.SETTING_DEFAULTS on the backend.  Booleans are stored
+// as '1'/'0' strings; every other knob is numeric except the two enums.
+const COG_DEFAULTS: Record<string, string> = {
+  cog_enabled: '1',
+  cog_modulate_affect: '1', cog_modulate_language: '1', cog_modulate_social: '1', cog_modulate_selfhood: '1',
+  cog_plan_depth: '2', cog_wm_capacity: '5', cog_tau: '0.4', cog_gamma: '0.9',
+  cog_alpha_habit: '0.08', cog_alpha_mf: '0.2', cog_theta_pe: '0.25', cog_theta_n: '0.35',
+  cog_prospection_horizon: '4',
+  cog_use_cerebellum: '1', cog_use_thalamic_gate: '1', cog_use_ofc_map: '1',
+  cog_use_prospection: '1', cog_use_limbic_bias: '1',
+  cog_affect_enabled: '1', cog_affect_profile: 'typical', cog_affect_vagal: '0.6',
+  cog_affect_threat: '0.2', cog_affect_reward: '1', cog_affect_somatic: '0', cog_affect_persona_llm: '1',
+  cog_language_enabled: '1', cog_language_framing: 'weak_whorf', cog_language_boundary: '0.6',
+  cog_social_enabled: '1', cog_social_empathy: '0.4', cog_social_stage: '2',
+  cog_selfhood_enabled: '1', cog_selfhood_discount: '0.1', cog_selfhood_detail: '20',
+  // memory & consolidation. On by default — they are what makes lived
+  // experience leave a trace; turn one off to ablate it.
+  cog_memory_encode: '1', cog_sleep_replay: '1', cog_memory_reconsolidate: '1',
+  cog_cls_interleave: '1',
 }
-function closeUser() { selectedUser.value = ''; detail.value = null; detailTopics.value = []; detailPortrait.value = null }
-async function deleteMemory(id: string) { await act('delete_memory', { id }); if (selectedUser.value) void openUser(selectedUser.value) }
-async function resolveTopic(topic: string) { if (!selectedUser.value) return; const r = await act('open_topic_resolve', { user_id: selectedUser.value, topics: [topic] }); flash(r?.resolved ? '已标记完成' : '已处理') }
-
-const month = ref(localToday().slice(0, 7))
-const calendar = ref<any>({ events: [], candidates: [], conflicts: [] })
-const goalForm = ref({ title: '', detail: '', kind: 'growth' })
-const goalLogs = ref<Record<string, any[]>>({})
-const goalLogForm = ref<Record<string, string>>({})
-const foodForm = ref({ name: '', tags: '', note: '' })
-const words = computed(() => data.value.word_cloud || [])
-const calendarCells = computed(() => {
-  const [y, m] = month.value.split('-').map(Number); if (!y || !m) return [] as any[]
-  const days = new Date(y, m, 0).getDate(); const startPad = new Date(y, m - 1, 1).getDay(); const byDay: Record<string, any[]> = {}
-  for (const e of calendar.value.events || []) { const day = String(e.start_at || '').replace('T', ' ').slice(0, 10); (byDay[day] ||= []).push(e) }
-  const cells: any[] = []; for (let i = 0; i < startPad; i++) cells.push({ key: `pad-${i}`, empty: true })
-  for (let d = 1; d <= days; d++) { const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; cells.push({ key: iso, day: d, iso, events: byDay[iso] || [], today: iso === todayKey }) }
-  return cells
+const COG_BOOL_KEYS = ['cog_enabled', 'cog_modulate_affect', 'cog_modulate_language', 'cog_modulate_social',
+  'cog_modulate_selfhood', 'cog_use_cerebellum', 'cog_use_thalamic_gate', 'cog_use_ofc_map',
+  'cog_use_prospection', 'cog_use_limbic_bias', 'cog_affect_enabled', 'cog_affect_somatic', 'cog_affect_persona_llm', 'cog_language_enabled',
+  'cog_social_enabled', 'cog_selfhood_enabled',
+  'cog_memory_encode', 'cog_sleep_replay', 'cog_memory_reconsolidate', 'cog_cls_interleave']
+const COG_TEXT_KEYS = ['cog_affect_profile', 'cog_language_framing']
+const cogProfileOptions = ['typical', 'depression', 'anxiety', 'bpd', 'alexithymia']
+const cogFramingOptions = ['independent', 'interchanging', 'cognitive_determinism', 'weak_whorf',
+  'thinking_for_speaking', 'radical_connectionism', 'determinism']
+const cogStageOptions = ['0 · egocentric', '1 · subjective', '2 · self-reflective', '3 · mutual', '4 · societal-symbolic']
+const cogStageValue = computed({
+  get: () => `${Number(settingsForm.value.cog_social_stage ?? 2)} · ${['egocentric', 'subjective', 'self-reflective', 'mutual', 'societal-symbolic'][Number(settingsForm.value.cog_social_stage ?? 2)] || 'self-reflective'}`,
+  set: (value: string) => { settingsForm.value.cog_social_stage = Number(String(value).split('·')[0].trim()) },
 })
-async function loadCalendar() { try { const result = await query('calendar_month', { month: month.value }); if (result) calendar.value = result } catch { /* optional */ } }
-function shiftMonth(delta: number) { const [y, m] = month.value.split('-').map(Number); const d = new Date(y, m - 1 + delta, 1); month.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; void loadCalendar() }
-async function addGoal() { if (!goalForm.value.title.trim()) return; await act('goal_add', { ...goalForm.value }); goalForm.value = { title: '', detail: '', kind: 'growth' } }
-async function completeGoal(id: string) { await act('goal_update', { id, status: 'done', progress: 1 }) }
-async function removeGoal(id: string) { await act('goal_delete', { id }) }
-async function loadGoalLogs(id: string) { const r = await query('goal_logs', { id, limit: 20 }); goalLogs.value[id] = r?.logs || [] }
-async function addGoalLog(id: string) { const text = (goalLogForm.value[id] || '').trim(); if (!text) return; await act('goal_log_add', { id, evidence: text }); goalLogForm.value[id] = ''; void loadGoalLogs(id) }
-async function addFood() { if (!foodForm.value.name.trim()) return; await act('food_add', { ...foodForm.value }); foodForm.value = { name: '', tags: '', note: '' } }
-async function removeFood(id: string) { await act('food_delete', { id }) }
-
-const digests = ref<any[]>([])
-async function loadContent() { try { const r = await query('content_list', { limit: 30 }); digests.value = r?.digests || [] } catch { /* optional */ } }
-async function gatherContent() {
-  const r = await act('content_tick', {}); void loadContent(); if (!r) return
-  if (r.skipped === 'disabled') flash('内容抓取未开启（配置 → 环境与内容 打开 enable_content_fetch）')
-  else if (r.skipped === 'done') flash('今天已经抓取过了')
-  else if (r.skipped === 'sleeping') flash('睡眠中，暂不抓取')
-  else flash(r.stored != null ? `已抓取 ${r.stored} 条见闻` : '已处理')
+function cogRaw(key: string) { return String(data.value.settings?.[key] ?? COG_DEFAULTS[key] ?? '') }
+function syncCogSettings() {
+  const out: Record<string, any> = {}
+  for (const [key, fallback] of Object.entries(COG_DEFAULTS)) {
+    const raw = cogRaw(key) || fallback
+    out[key] = COG_BOOL_KEYS.includes(key) ? raw === '1' : COG_TEXT_KEYS.includes(key) ? raw : Number(raw)
+  }
+  return out
 }
-async function outfitToday() {
-  const r = await act('outfit_tick', {}); if (!r) return
-  if (r.outfit) flash(`今日穿搭：${r.outfit}`)
-  else if (r.skipped === 'no_wardrobe') flash('衣橱还没有条目（世界知识 → wardrobe）')
-  else if (r.skipped === 'done') flash('今天已经有穿搭了')
-  else flash('已处理')
+function cogPayload(): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [key, fallback] of Object.entries(COG_DEFAULTS)) {
+    const value = settingsForm.value[key]
+    if (COG_BOOL_KEYS.includes(key)) out[key] = value ? '1' : '0'
+    else out[key] = String(value ?? fallback)
+  }
+  return out
 }
-async function tryImage() { const r = await act('image_generate', { prompt: '今天的穿搭' }); flash(r?.ok ? '已生成' : `生图不可用：${r?.reason || '未配置扩展'}`) }
-async function addTopic() {
-  if (!selectedUser.value || !topicForm.value.trim()) return
-  const r = await act('open_topic_add', { user_id: selectedUser.value, topic: topicForm.value.trim() })
-  if (r) { topicForm.value = ''; flash('已加入未完话题') }
-}
-const activity = computed(() => {
-  const map: Record<string, number> = {}
-  for (const item of (data.value.timeline || [])) { const d = String(item.created_at || '').slice(0, 10); if (d) map[d] = (map[d] || 0) + 1 }
-  const days: { day: string; count: number }[] = []
-  for (let i = 13; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const key = d.toISOString().slice(0, 10); days.push({ day: key.slice(5), count: map[key] || 0 }) }
-  return days
+const cognition = computed(() => data.value.cognition || null)
+const lastControl = computed(() => cognition.value?.last_control || null)
+const wave1 = computed(() => cognition.value?.wave1 || null)
+const wave2 = computed(() => cognition.value?.wave2 || null)
+const wave3 = computed(() => cognition.value?.wave3 || null)
+const wave4a = computed(() => cognition.value?.wave4a || null)
+const wave4b = computed(() => cognition.value?.wave4b || null)
+const personaInfo = computed(() => cognition.value?.persona || null)
+const somaticChannels = computed(() => cognition.value?.wave2?.somatic_channels || null)
+const channelLabel = (name: string) => ({ fatigue: '疲劳', pain: '疼痛', cardiorespiratory: '心慌',
+  gastrointestinal: '胃肠', dizziness: '头晕', sleep: '睡眠' } as Record<string, string>)[name] || name
+const somScale = (value: any) => Math.max(0.02, Math.min(1, Number(value))).toFixed(3)
+const personaEvidenceText = computed(() => {
+  const evidence = personaInfo.value?.evidence || {}
+  return Object.entries(evidence).map(([dim, words]) => `${dim}(${(words as string[]).join('、')})`).join('；')
 })
-const activityMax = computed(() => Math.max(1, ...activity.value.map((d) => d.count)))
+function fmtNum(value: any, digits = 3) { return value == null || value === '' ? '—' : Number(value).toFixed(digits) }
 
-const registry = ref<any[]>([])
-const targetOptions = computed(() => {
-  const opts: { value: string; label: string }[] = []
-  for (const c of (data.value.conversations || [])) opts.push({ value: `session:${c}`, label: `会话 · ${c}` })
-  for (const r of (data.value.relationships || [])) opts.push({ value: `user:${r.user_id}`, label: `用户 · ${r.user_id}` })
-  for (const g of registry.value) opts.push({ value: `group:${g.group_id}`, label: `群 · ${g.alias || g.group_id}` })
-  return opts
-})
-const policyOptions = [{ value: 'observe', label: '观察' }, { value: 'whitelist', label: '白名单' }, { value: 'blacklist', label: '黑名单' }]
-const memberFlagOptions = [{ value: 'watch', label: '关注' }, { value: 'allow', label: '放行' }, { value: 'mute', label: '禁言' }]
-const stageOptions = computed(() => [{ value: '', label: '全部阶段' }, ...userStages.value.map((s: string) => ({ value: s, label: s }))])
-const stageCapOptions = ['警惕', '疏离', '陌生', '认识', '熟悉', '友好', '亲近', '亲密']
-const localeOptions = [{ value: 'zh-CN', label: '简体中文' }, { value: 'en-US', label: 'English' }]
-const mediaKindOptions = [{ value: 'tts', label: '语音 TTS' }, { value: 'image', label: '图片' }, { value: 'poke', label: '戳一戳' }, { value: 'status', label: 'QQ 状态' }]
-const proactiveTargetOptions = computed(() => [{ value: '', label: '选择发送到哪个对话 / 对象…' }, ...targetOptions.value, { value: '__manual__', label: '手动输入…' }])
-const mediaTargetOptions = computed(() => [{ value: '', label: '选择目标…' }, ...targetOptions.value])
-const groupForm = ref({ group_id: '', policy: 'observe', alias: '' })
-const groupSlang = ref<Record<string, any[]>>({})
-const groupMembers = ref<Record<string, any[]>>({})
-const groupAtmo = ref<Record<string, any>>({})
-const slangForm = ref<Record<string, string>>({})
-async function loadGroups() { try { const r = await query('group_list', {}); registry.value = r.groups || [] } catch { /* optional */ } }
-async function addGroup() { if (!groupForm.value.group_id.trim()) return; await act('group_upsert', { ...groupForm.value }); groupForm.value = { group_id: '', policy: 'observe', alias: '' } }
-async function removeGroup(id: string) { await act('group_delete', { group_id: id }); if (openGroup.value === id) openGroup.value = '' }
-async function setPolicy(g: any, policy: string) { await act('group_upsert', { group_id: g.group_id, policy, alias: g.alias || '', note: g.note || '' }) }
-async function setMemberFlag(id: string, userId: string, flag: string) { await act('group_member_flag', { group_id: id, user_id: userId, flag }); void loadGroupDetail(id) }
-async function loadGroupDetail(id: string) {
-  const [s, m, a] = await Promise.all([act('group_slang_list', { group_id: id }), act('group_members', { group_id: id }), query('group_atmosphere', { group_id: id }).catch(() => null)])
-  groupSlang.value[id] = s?.slang || []; groupMembers.value[id] = m?.members || []; if (a) groupAtmo.value[id] = a
-}
-function toggleGroup(id: string) { openGroup.value = openGroup.value === id ? '' : id; if (openGroup.value) void loadGroupDetail(id) }
-async function addSlang(id: string) { const topic = (slangForm.value[id] || '').trim(); if (!topic) return; await act('group_slang_update', { group_id: id, topic, score: 1 }); slangForm.value[id] = ''; void loadGroupDetail(id) }
-async function removeSlang(id: string, topic: string) { await act('group_slang_delete', { group_id: id, topic }); void loadGroupDetail(id) }
-async function wakeGroup() { const r = await act('group_wake_tick', {}); flash(r?.proposed != null ? `已生成 ${r.proposed} 条群聊插话候选` : '本次没有合适的群聊兴趣点') }
-
-const skillForm = ref({ name: '', category: 'general', level: 1, keywords: '' })
-const exprForm = ref({ text: '', scene: '' })
-const exprStatus = ref<'pending' | 'approved' | 'rejected'>('pending')
-const nodeForm = ref({ user_id: '', name: '', tags: '' })
-const edgeForm = ref({ source_id: '', target_id: '', relation: '' })
-const expressions = computed(() => (data.value.expressions || []).filter((e: any) => e.status === exprStatus.value))
-const exprCounts = computed(() => { const all = data.value.expressions || []; return { pending: all.filter((e: any) => e.status === 'pending').length, approved: all.filter((e: any) => e.status === 'approved').length, rejected: all.filter((e: any) => e.status === 'rejected').length } })
-async function addSkill() { if (!skillForm.value.name.trim()) return; await act('skill_add', { ...skillForm.value, level: Number(skillForm.value.level) }); skillForm.value = { name: '', category: 'general', level: 1, keywords: '' } }
-async function growSkill(name: string) { const r = await act('skill_grow', { name }); flash(r?.updated ? `${name} 升到 Lv.${r.level}` : '技能未找到') }
-async function removeSkill(id: string) { await act('skill_delete', { id }) }
-async function addExpression() { if (!exprForm.value.text.trim()) return; await act('expression_add', { ...exprForm.value }); exprForm.value = { text: '', scene: '' } }
-async function reviewExpression(id: string, accept: boolean) { await act('expression_review', { id, accept }) }
-async function removeExpression(id: string) { await act('expression_delete', { id }) }
-async function addNode() { if (!nodeForm.value.user_id.trim()) return; await act('social_node_upsert', { ...nodeForm.value }); nodeForm.value = { user_id: '', name: '', tags: '' } }
-async function addEdge() { if (!edgeForm.value.source_id.trim() || !edgeForm.value.target_id.trim()) return; await act('social_edge_add', { ...edgeForm.value }); edgeForm.value = { source_id: '', target_id: '', relation: '' } }
-async function removeEdge(id: string) { await act('social_edge_delete', { id }) }
+// --- worldsim / state ------------------------------------------------------
+const worldEvents = computed(() => (data.value.timeline || []).filter((t: any) => t.topic === '世界').slice(0, 30))
+const commitments = computed(() => data.value.commitments || [])
+const userModels = computed(() => data.value.user_model || [])
+const valuesList = computed(() => Object.entries(data.value.values || {})
+  .map(([k, v]) => ({ k, v: Number(v) })).sort((a: any, b: any) => Math.abs(b.v) - Math.abs(a.v)).slice(0, 20))
+function parseList(text: string) { try { const v = JSON.parse(text || '[]'); return Array.isArray(v) ? v : [] } catch { return [] } }
 
 const settingsForm = ref<Record<string, any>>({})
-const modelRoutesText = ref('{}')
-const diagnostics = ref<any>(null)
-const importText = ref('')
-const extensions = ref<Record<string, any>>({})
-const extensionList = computed(() => Object.entries(extensions.value || {}).map(([name, meta]: any) => ({ name, ...meta })))
-async function loadExtensions() { try { const r = await query('extension_status', {}); extensions.value = r?.extensions || {} } catch { /* optional */ } }
-function syncSettings() {
-  const s = data.value.settings || {}
-  const pick = (k: string, d: string) => String(s[k] ?? d)
-  settingsForm.value = {
-    proactive_daily_limit: Number(pick('proactive_daily_limit', '3')), proactive_target_limit: Number(pick('proactive_target_limit', '1')),
-    quiet_start: Number(pick('quiet_start', '23')), quiet_end: Number(pick('quiet_end', '8')),
-    idle_minutes: Number(pick('idle_minutes', '30')), min_interval_minutes: Number(pick('min_interval_minutes', '5')),
-    check_interval_seconds: Number(pick('check_interval_seconds', '600')), burst_max: Number(pick('burst_max', '2')),
-    daily_token_limit: Number(pick('daily_token_limit', '0')),
-    enable_proactive: pick('enable_proactive', '1') === '1', enable_group_observe: pick('enable_group_observe', '1') === '1', enable_dream: pick('enable_dream', '1') === '1',
-    owner_user_ids: pick('owner_user_ids', ''), secondary_user_ids: pick('secondary_user_ids', ''),
-    other_stage_cap: pick('other_stage_cap', '熟悉'), secondary_stage_cap: pick('secondary_stage_cap', '友好'),
-    enable_exclusive_bond: pick('enable_exclusive_bond', '1') === '1',
-    affinity_decay_per_day: Number(pick('affinity_decay_per_day', '0.02')), affinity_decay_after_days: Number(pick('affinity_decay_after_days', '3')),
-    reply_deceleration: pick('reply_deceleration', '1') === '1',
-    env_timezone: pick('env_timezone', 'Asia/Shanghai'), env_city: pick('env_city', ''),
-    env_latitude: pick('env_latitude', ''), env_longitude: pick('env_longitude', ''),
-    enable_environment_fetch: pick('enable_environment_fetch', '0') === '1', weather_cache_minutes: Number(pick('weather_cache_minutes', '60')),
-    enable_content_fetch: pick('enable_content_fetch', '0') === '1', news_feeds: pick('news_feeds', ''), content_items_per_feed: Number(pick('content_items_per_feed', '3')),
-    tts_endpoint: pick('tts_endpoint', ''), locale: pick('locale', 'zh-CN'),
+const worldDensity = ref('off')
+const worldDensityOptions = [{ value: 'off', label: '关闭' }, { value: 'texture', label: '纹理（只记录）' }, { value: 'full', label: '完整（可主动提及）' }]
+const worldFictional = ref('fictional')
+const worldCountry = ref('')
+const worldCity = ref('')
+const worldDistrict = ref('')
+const worldPremise = ref('')
+const personaText = ref('')
+const worldActors = ref('')
+const worldPlaces = ref('')
+const worldBusy = ref(false)
+const personBusy = ref(false)
+const worldFictionalOptions = [{ value: 'fictional', label: '虚构' }, { value: 'real', label: '真实' }]
+
+// worldview snapshot (identity + renderable map + current actor positions)
+const worldview = computed(() => data.value.worldview || null)
+const worldMap = computed(() => worldview.value?.map || { locations: [], edges: [], actors: [], width: 1000, height: 700, title: '' })
+const actorLocations = computed(() => worldview.value?.actor_locations || {})
+function locById(id: string) { return (worldMap.value.locations || []).find((l: any) => l.id === id) || null }
+const MAP_KINDS = ['home', 'work', 'shop', 'food', 'park', 'transit', 'other']
+const KIND_LABEL: Record<string, string> = { home: '家', work: '工作', shop: '商店', food: '餐饮', park: '公园', transit: '交通', other: '其他' }
+const KIND_COLOR: Record<string, string> = { home: '#e07a5f', work: '#5b8def', shop: '#e0a23d', food: '#57a773', park: '#3faead', transit: '#8b6fd6', other: '#8a94a6' }
+const usedKinds = computed(() => MAP_KINDS.filter(k => (worldMap.value.locations || []).some((l: any) => (l.kind || 'other') === k)))
+function escapeHtml(value: any) {
+  const map: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
+  return String(value ?? '').replace(/[&<>"']/g, (c) => map[c])
+}
+// --- Map (zoom/pan). Real country -> 高德 raster tiles. Fictional -> the same
+// Leaflet engine on a simple coordinate system, drawing the setting's
+// districts / water / roads / locations. -----------------------------------
+const mapEl = ref<HTMLElement | null>(null)
+const offlineHint = ref(false)
+let leafletMap: any = null
+let markerLayer: any = null
+let leafletKind = ''
+const TILE_URL = 'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}'
+const DISTRICT_FILLS = ['#2b4250', '#33495a', '#2f4a44', '#3a4258', '#463f4f', '#3d4a3a', '#4a4436', '#39485c']
+const BUILDING_FILLS = ['#dfe4ea', '#d6dce4', '#e6eaf0', '#cfd7e0']
+let activeRoute = ''
+const scope = ref<'city' | 'nation'>('city')
+const routeLayers: Record<string, { layer: any; base: any }[]> = {}
+function reg(id: string, layer: any, base: any) { (routeLayers[id] ||= []).push({ layer, base }) }
+/** Highlight the whole route in place — no re-render, so nothing vanishes. */
+function focusRoute(id: string) {
+  activeRoute = activeRoute === id ? '' : id
+  for (const [rid, entries] of Object.entries(routeLayers)) {
+    const on = rid === activeRoute
+    for (const { layer, base } of entries) {
+      if (layer.setStyle) layer.setStyle({ ...base, weight: (base.weight || 2) + (on ? 3.5 : 0), opacity: on ? 1 : (base.opacity ?? 1) })
+      if (on && layer.bringToFront) layer.bringToFront()
+    }
   }
-  modelRoutesText.value = pick('model_routes', '{}') || '{}'
+}
+function resetView() { activeRoute = ''; renderMap(false) }
+function toggleScope() { scope.value = scope.value === 'city' ? 'nation' : 'city'; renderMap(false) }
+
+function mapSize() { return { w: worldMap.value.width || 1000, h: worldMap.value.height || 700 } }
+/** Canvas (x right, y down) -> Leaflet simple CRS [lat, lng] (y up). */
+function xy(x: number, y: number) { return [mapSize().h - y, x] }
+function routeLabel(text: string, color: string) {
+  return L.divIcon({ className: 'wm-route', html: `<span class="wm-route-inner" style="--c:${color}">${escapeHtml(text)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] })
+}
+function minorLabel(text: string, color: string) {
+  return L.divIcon({ className: 'wm-route wm-minor', html: `<span class="wm-route-inner" style="--c:${color}">${escapeHtml(text)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] })
+}
+function stationLabel(text: string, color: string) {
+  return L.divIcon({ className: 'wm-route wm-station', html: `<span class="wm-route-inner" style="--c:${color}">${escapeHtml(text)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] })
+}
+/** Greedy label de-clutter in canvas space: keep the first, drop overlaps. */
+function declutter(labels: any[]) {
+  const kept: { x: number; y: number; w: number; h: number }[] = []
+  const out: any[] = []
+  for (const label of labels) {
+    const w = String(label.text).length * 13 + 20
+    const h = 22
+    const clash = kept.some((k) => Math.abs(k.x - label.x) < (k.w + w) / 2 && Math.abs(k.y - label.y) < (k.h + h) / 2)
+    if (clash) continue
+    kept.push({ x: label.x, y: label.y, w, h })
+    out.push(label)
+  }
+  return out
+}
+
+function ensureMap() {
+  const kind = worldMap.value.kind === 'real' ? 'real' : 'fictional'
+  if (leafletMap && leafletKind !== kind) { leafletMap.remove(); leafletMap = null; markerLayer = null }
+  if (leafletMap || !mapEl.value) return
+  if (kind === 'real') {
+    offlineHint.value = false
+    leafletMap = L.map(mapEl.value, { zoomControl: true, attributionControl: true }).setView([35, 105], 5)
+    const tiles = L.tileLayer(TILE_URL, { subdomains: ['1', '2', '3', '4'], maxZoom: 19, minZoom: 3, attribution: '© 高德地图' })
+    tiles.on('tileerror', () => { offlineHint.value = true })
+    tiles.on('load', () => { offlineHint.value = false })
+    tiles.addTo(leafletMap)
+  } else {
+    offlineHint.value = false
+    const { w, h } = mapSize()
+    leafletMap = L.map(mapEl.value, { crs: L.CRS.Simple, zoomControl: true, attributionControl: false, minZoom: -3, maxZoom: 3 }).setView([h / 2, w / 2], -1.5)
+    // draw order: water < parks < blocks < roads < metro < bus < labels
+    for (const [name, z] of [['pWater', 350], ['pParks', 360], ['pBlocks', 370], ['pRoads', 380], ['pMetro', 400], ['pBus', 410], ['pLabels', 620]] as [string, number][]) {
+      leafletMap.createPane(name)
+      leafletMap.getPane(name).style.zIndex = String(z)
+    }
+    const syncZoom = () => leafletMap.getContainer().classList.toggle('wm-zoom-low', leafletMap.getZoom() < 0)
+    leafletMap.on('zoomend', syncZoom)
+    setTimeout(syncZoom, 0)
+  }
+  leafletKind = kind
+  markerLayer = L.layerGroup().addTo(leafletMap)
+}
+
+function renderMap(keepView = false) {
+  if (!leafletMap || !markerLayer) return
+  markerLayer.clearLayers()
+  for (const key of Object.keys(routeLayers)) delete routeLayers[key]
+  activeRoute = ''
+  const locations = worldMap.value.locations || []
+  if (!locations.length) return
+  const fictional = leafletKind !== 'real'
+  const byId: Record<string, any> = {}
+  for (const loc of locations) byId[loc.id] = loc
+
+  if (fictional) {
+    const { w, h } = mapSize()
+    const path = (points: any[]) => points.map((p: any) => xy(p[0], p[1]))
+    // nationwide overview
+    const nation = worldMap.value.nation
+    if (scope.value === 'nation' && nation) {
+      L.rectangle([[0, 0], [h, w]], { pane: 'pWater', stroke: false, fillColor: '#d9e6f0', fillOpacity: 1 }).addTo(markerLayer)
+      L.polygon(path(nation.land), { pane: 'pWater', color: '#8fbfe6', weight: 1.5, fillColor: '#f4efe1', fillOpacity: 1 }).addTo(markerLayer)
+      ;(nation.provinces || []).forEach((p: any, i: number) => {
+        L.polygon(path(p.points), { pane: 'pParks', color: '#c9b98f', weight: 1, fillColor: i % 2 ? '#ece2c8' : '#e4d7b4', fillOpacity: 0.55 }).addTo(markerLayer)
+        L.marker(path([p.label])[0], { pane: 'pLabels', interactive: false, icon: routeLabel(p.name, '#8a7a5c') }).addTo(markerLayer)
+      })
+      ;(nation.routes || []).forEach((r: any) => L.polyline(path(r.points), { pane: 'pRoads', color: '#b98a4a', weight: 2.5, dashArray: '2 7' }).addTo(markerLayer))
+      ;(nation.cities || []).forEach((c: any) => {
+        const pos = xy(c.x, c.y)
+        L.circleMarker(pos, { pane: 'pLabels', radius: c.capital ? 9 : 6, color: '#ffffff', weight: 2, fillColor: c.capital ? '#d64545' : '#3a6ea5', fillOpacity: 1 }).bindPopup(escapeHtml(c.name)).addTo(markerLayer)
+        L.marker(pos, { pane: 'pLabels', interactive: false, icon: routeLabel(c.name, c.capital ? '#d64545' : '#3a6ea5') }).addTo(markerLayer)
+      })
+      leafletMap.fitBounds([[0, 0], [h, w]], { padding: [6, 6] })
+      return
+    }
+    L.rectangle([[0, 0], [h, w]], { pane: 'pWater', stroke: false, fillColor: '#eef1f4', fillOpacity: 1 }).addTo(markerLayer)
+    // residential compounds (小区), under the buildings
+    ;(worldMap.value.compounds || []).forEach((cp: any) => {
+      L.polygon(path(cp.points), { pane: 'pParks', color: '#c9b98f', weight: 1.2, dashArray: '7 5', fillColor: '#f3ead0', fillOpacity: 0.5 }).addTo(markerLayer)
+      L.marker(path(cp.points)[0], { pane: 'pLabels', interactive: false, icon: routeLabel(cp.name, '#a9884a') }).addTo(markerLayer)
+    })
+    // water
+    ;(worldMap.value.lakes || []).forEach((lk: any) => {
+      L.polygon(path(lk.points), { pane: 'pWater', color: '#8fbfe6', weight: 1.5, fillColor: '#bcd9f0', fillOpacity: 1 }).addTo(markerLayer)
+      if (lk.name && lk.name !== '') L.marker(xy(lk.label[0], lk.label[1]), { pane: 'pLabels', interactive: false, icon: routeLabel(lk.name, '#3d7fb5') }).addTo(markerLayer)
+    })
+    ;(worldMap.value.rivers || []).forEach((rv: any) => {
+      L.polyline(path(rv.points), { pane: 'pWater', color: '#8fbfe6', weight: 16, lineCap: 'round', lineJoin: 'round' }).addTo(markerLayer)
+      L.polyline(path(rv.points), { pane: 'pWater', color: '#bcd9f0', weight: 11, lineCap: 'round', lineJoin: 'round' }).addTo(markerLayer)
+      if (rv.name && rv.name !== '') L.marker(path(rv.points)[Math.floor(rv.points.length / 2)], { pane: 'pLabels', interactive: false, icon: routeLabel(rv.name, '#3d7fb5') }).addTo(markerLayer)
+    })
+    // parks
+    ;(worldMap.value.parks || []).forEach((pk: any) => {
+      L.polygon(path(pk.points), { pane: 'pParks', color: '#a9d3a0', weight: 1, fillColor: '#c9e6c4', fillOpacity: 1 }).addTo(markerLayer)
+      ;(pk.trees || []).forEach((t: any) => L.circleMarker(xy(t[0], t[1]), { pane: 'pParks', radius: 2.6, stroke: false, fillColor: '#82bd79', fillOpacity: 1 }).addTo(markerLayer))
+      if (pk.name && pk.name !== '公园') L.marker(path(pk.points)[0], { pane: 'pLabels', interactive: false, icon: routeLabel(pk.name, '#5a9e52') }).addTo(markerLayer)
+    })
+    // buildings: drop shadow, footprint, and a rooftop inset for "towers"
+    const buildingLabels: { x: number; y: number; text: string; color: string }[] = []
+    ;(worldMap.value.blocks || []).forEach((bl: any) => {
+      const pts = path(bl.points)
+      L.polygon(pts.map((p: any) => [p[0] - 3, p[1] + 3]), { pane: 'pBlocks', stroke: false, fillColor: '#5b6b7a', fillOpacity: 0.16 }).addTo(markerLayer)
+      L.polygon(pts, { pane: 'pBlocks', color: '#b9c3cd', weight: 1, fillColor: BUILDING_FILLS[(bl.shade || 0) % BUILDING_FILLS.length], fillOpacity: 1 }).addTo(markerLayer)
+      if (bl.tower) {
+        const cx = pts.reduce((s: number, p: any) => s + p[0], 0) / pts.length
+        const cy = pts.reduce((s: number, p: any) => s + p[1], 0) / pts.length
+        L.polygon(pts.map((p: any) => [cx + (p[0] - cx) * 0.5, cy + (p[1] - cy) * 0.5]),
+          { pane: 'pBlocks', color: '#aab4c0', weight: 1, fillColor: '#eef2f6', fillOpacity: 1 }).addTo(markerLayer)
+      }
+      if (bl.name) {
+        const cx = bl.points.reduce((s: number, p: any) => s + p[0], 0) / bl.points.length
+        const cy = bl.points.reduce((s: number, p: any) => s + p[1], 0) / bl.points.length
+        buildingLabels.push({ x: cx, y: cy, text: bl.name, color: bl.tower ? '#6b5b8a' : '#7a8794' })
+      }
+    })
+    // model-named landmarks always shown; filler building names de-cluttered
+    ;(worldMap.value.named_buildings || []).forEach((b: any) => {
+      L.circleMarker(xy(b.x, b.y), { pane: 'pLabels', radius: 4, color: '#ffffff', weight: 1.5, fillColor: '#8a5a2b', fillOpacity: 1 }).addTo(markerLayer)
+      L.marker(xy(b.x, b.y), { pane: 'pLabels', interactive: false, icon: routeLabel(b.name, '#8a5a2b') }).addTo(markerLayer)
+    })
+    for (const label of declutter(buildingLabels)) {
+      L.marker(xy(label.x, label.y), { pane: 'pLabels', interactive: false, icon: minorLabel(label.text, label.color) }).addTo(markerLayer)
+    }
+    // road hierarchy: highway > arterial > street
+    const STREET_STYLE: Record<string, { casing: number; fill: number; color: string }> = {
+      highway: { casing: 13, fill: 6.5, color: '#f08c2e' },
+      arterial: { casing: 10, fill: 4.5, color: '#f7cf8a' },
+      street: { casing: 5, fill: 2.4, color: '#ffffff' },
+    }
+    ;(worldMap.value.streets || []).forEach((st: any) => {
+      const style = STREET_STYLE[st.kind] || STREET_STYLE.street
+      const pts = path(st.points)
+      L.polyline(pts, { pane: 'pRoads', color: '#ffffff', weight: style.casing, lineCap: 'round', lineJoin: 'round' }).addTo(markerLayer)
+      L.polyline(pts, { pane: 'pRoads', color: style.color, weight: style.fill, lineCap: 'round', lineJoin: 'round' }).addTo(markerLayer)
+    })
+    // named roads on top (clickable / highlightable)
+    ;(worldMap.value.roads || []).forEach((rd: any, i: number) => {
+      if (!rd.name) return
+      const pts = path(rd.points)
+      const rid = 'road:' + i
+      L.polyline(pts, { pane: 'pRoads', color: '#ffffff', weight: 11, lineCap: 'round', lineJoin: 'round' }).addTo(markerLayer)
+      const base = { pane: 'pRoads', color: '#f6c56b', weight: 5, opacity: 1, lineCap: 'round', lineJoin: 'round' }
+      reg(rid, L.polyline(pts, base).on('click', () => focusRoute(rid)).addTo(markerLayer), base)
+      L.marker(pts[Math.floor(pts.length / 2)], { pane: 'pLabels', interactive: true, icon: routeLabel(rd.name, '#9a8358') }).on('click', () => focusRoute(rid)).addTo(markerLayer)
+    })
+    // districts (faint zones) + labels
+    ;(worldMap.value.districts || []).forEach((d: any, i: number) => {
+      L.circle(xy(d.x, d.y), { pane: 'pRoads', radius: d.r || 200, color: '#93a2b0', weight: 1, dashArray: '4 7', fillColor: DISTRICT_FILLS[i % DISTRICT_FILLS.length], fillOpacity: 0.08 }).addTo(markerLayer)
+      L.marker(xy(d.x, d.y), { pane: 'pLabels', interactive: false, icon: L.divIcon({ className: 'wm-district', html: `<span class="wm-district-inner">${escapeHtml(d.name)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] }) }).addTo(markerLayer)
+    })
+    // metro (click a line / station / name to highlight the whole line)
+    const stationLabels: { x: number; y: number; text: string; color: string }[] = []
+    ;(worldMap.value.metro || []).forEach((m: any, i: number) => {
+      const pts = path(m.points)
+      const rid = 'metro:' + i
+      L.polyline(pts, { pane: 'pMetro', color: '#ffffff', weight: 8, lineCap: 'round', lineJoin: 'round' }).addTo(markerLayer)
+      const base = { pane: 'pMetro', color: m.color, weight: 4.5, opacity: 0.92, lineCap: 'round', lineJoin: 'round' }
+      reg(rid, L.polyline(pts, base).on('click', () => focusRoute(rid)).addTo(markerLayer), base)
+      ;(m.stations || []).forEach((s: any) => {
+        L.circleMarker(xy(s.x, s.y), { pane: 'pMetro', radius: 5, color: '#ffffff', weight: 2.5, fillColor: m.color, fillOpacity: 1 })
+          .bindPopup(escapeHtml(s.name || m.name)).on('click', () => focusRoute(rid)).addTo(markerLayer)
+        if (s.name) stationLabels.push({ x: s.x, y: s.y, text: s.name, color: m.color })
+      })
+      L.marker(pts[Math.floor(pts.length / 2)], { pane: 'pLabels', interactive: true, icon: routeLabel(m.name, m.color) }).on('click', () => focusRoute(rid)).addTo(markerLayer)
+    })
+    // bus
+    ;(worldMap.value.bus || []).forEach((b: any, i: number) => {
+      const pts = path(b.points)
+      const rid = 'bus:' + i
+      const base = { pane: 'pBus', color: b.color, weight: 3, opacity: 0.95, dashArray: '7 7', lineCap: 'round' }
+      reg(rid, L.polyline(pts, base).on('click', () => focusRoute(rid)).addTo(markerLayer), base)
+      ;(b.stops || []).forEach((s: any) => L.circleMarker(xy(s.x, s.y), { pane: 'pBus', radius: 3.2, color: '#ffffff', weight: 1.5, fillColor: b.color, fillOpacity: 1 })
+        .bindPopup(escapeHtml(s.name || b.name)).on('click', () => focusRoute(rid)).addTo(markerLayer))
+      L.marker(pts[Math.floor(pts.length / 2)], { pane: 'pLabels', interactive: true, icon: routeLabel(b.name, b.color) }).on('click', () => focusRoute(rid)).addTo(markerLayer)
+    })
+    // station names, de-cluttered so they stay readable
+    for (const label of declutter(stationLabels)) {
+      L.marker(xy(label.x, label.y), { pane: 'pLabels', interactive: false, icon: stationLabel(label.text, label.color) }).addTo(markerLayer)
+    }
+  } else {
+    for (const edge of worldMap.value.edges || []) {
+      const a = byId[edge[0]]
+      const b = byId[edge[1]]
+      if (a?.lat != null && b?.lat != null) {
+        L.polyline([[a.lat, a.lng], [b.lat, b.lng]], { color: '#5b8def', weight: 3, opacity: 0.55, dashArray: '2 8', lineCap: 'round' }).addTo(markerLayer)
+      }
+    }
+  }
+
+  for (const loc of locations) {
+    const color = KIND_COLOR[loc.kind] || KIND_COLOR.other
+    const pos = fictional ? xy(loc.x, loc.y) : (loc.lat != null ? [loc.lat, loc.lng] : null)
+    if (!pos) continue
+    const icon = L.divIcon({
+      className: 'wm-pin-holder',
+      html: `<span class="wm-pin" style="--c:${color}"></span><span class="wm-pin-label">${escapeHtml(loc.name)}</span>`,
+      iconSize: [0, 0], iconAnchor: [0, 0],
+    })
+    L.marker(pos, { icon })
+      .bindPopup(`<b>${escapeHtml(loc.name)}</b>${loc.desc ? '<br>' + escapeHtml(loc.desc) : ''}`)
+      .addTo(markerLayer)
+  }
+  for (const actor of worldMap.value.actors || []) {
+    const loc = byId[actorLocations.value[actor.id] || actor.location]
+    if (!loc) continue
+    const pos = fictional ? xy(loc.x, loc.y) : (loc.lat != null ? [loc.lat, loc.lng] : null)
+    if (!pos) continue
+    const icon = L.divIcon({
+      className: 'wm-actor-holder',
+      html: `<span class="wm-actor-badge">${escapeHtml((actor.name || '?').slice(0, 1))}</span><span class="wm-actor-name">${escapeHtml(actor.name)}</span>`,
+      iconSize: [0, 0], iconAnchor: [0, 0],
+    })
+    L.marker(pos, { icon }).bindPopup(`${escapeHtml(actor.name)} · ${escapeHtml(loc.name)}`).addTo(markerLayer)
+  }
+
+  if (keepView) return
+  if (fictional) {
+    const { w, h } = mapSize()
+    leafletMap.fitBounds([[0, 0], [h, w]], { padding: [0, 0] })
+  } else {
+    const points = locations.filter((l: any) => l.lat != null).map((l: any) => [l.lat, l.lng])
+    if (points.length > 1) leafletMap.fitBounds(points, { padding: [56, 56], maxZoom: 15 })
+    else if (points.length === 1) leafletMap.setView(points[0], 14)
+  }
+}
+watch([tab, () => data.value.worldview], async () => {
+  if (tab.value !== 'world') return
+  await nextTick()
+  ensureMap()
+  renderMap()
+  if (leafletMap) setTimeout(() => leafletMap.invalidateSize(), 80)
+})
+onUnmounted(() => { if (leafletMap) { leafletMap.remove(); leafletMap = null; markerLayer = null } })
+
+function syncSettings() {
+  settingsForm.value = { ...syncCogSettings() }
+  worldDensity.value = String(data.value.settings?.world_density || 'off')
+  worldFictional.value = String(data.value.settings?.world_fictional || 'fictional')
+  worldCountry.value = String(data.value.settings?.world_country || '')
+  worldCity.value = String(data.value.settings?.world_city || '')
+  worldDistrict.value = String(data.value.settings?.world_district || '')
+  worldPremise.value = String(data.value.settings?.world_premise || '')
+  personaText.value = String(data.value.settings?.persona_text || '')
+  worldActors.value = String(data.value.settings?.world_actors || '')
+  worldPlaces.value = String(data.value.settings?.world_places || '')
 }
 async function saveSettings() {
-  const s = settingsForm.value
-  const payload: Record<string, string> = {
-    proactive_daily_limit: String(s.proactive_daily_limit), proactive_target_limit: String(s.proactive_target_limit),
-    quiet_start: String(s.quiet_start), quiet_end: String(s.quiet_end), idle_minutes: String(s.idle_minutes),
-    min_interval_minutes: String(s.min_interval_minutes), check_interval_seconds: String(s.check_interval_seconds),
-    burst_max: String(s.burst_max), daily_token_limit: String(s.daily_token_limit),
-    enable_proactive: s.enable_proactive ? '1' : '0', enable_group_observe: s.enable_group_observe ? '1' : '0', enable_dream: s.enable_dream ? '1' : '0',
-    owner_user_ids: String(s.owner_user_ids), secondary_user_ids: String(s.secondary_user_ids),
-    other_stage_cap: String(s.other_stage_cap), secondary_stage_cap: String(s.secondary_stage_cap), enable_exclusive_bond: s.enable_exclusive_bond ? '1' : '0',
-    affinity_decay_per_day: String(s.affinity_decay_per_day), affinity_decay_after_days: String(s.affinity_decay_after_days), reply_deceleration: s.reply_deceleration ? '1' : '0',
-    env_timezone: String(s.env_timezone), env_city: String(s.env_city), env_latitude: String(s.env_latitude), env_longitude: String(s.env_longitude),
-    enable_environment_fetch: s.enable_environment_fetch ? '1' : '0', weather_cache_minutes: String(s.weather_cache_minutes),
-    enable_content_fetch: s.enable_content_fetch ? '1' : '0', news_feeds: String(s.news_feeds), content_items_per_feed: String(s.content_items_per_feed),
-    tts_endpoint: String(s.tts_endpoint), locale: String(s.locale),
-  }
-  const result = await act('settings_set', { settings: payload })
+  const settings = { ...cogPayload(), world_density: worldDensity.value,
+    world_fictional: worldFictional.value, world_country: worldCountry.value,
+    world_city: worldCity.value, world_district: worldDistrict.value,
+    world_premise: worldPremise.value, world_actors: worldActors.value, world_places: worldPlaces.value,
+    persona_text: personaText.value }
+  const result = await act('settings_set', { settings })
   if (result?.rejected?.length) flash(`已保存，忽略无效项：${result.rejected.join('、')}`); else flash('设置已保存')
 }
-async function saveModelRoutes() {
-  let parsed: any; try { parsed = JSON.parse(modelRoutesText.value || '{}') } catch { error.value = '模型分流不是合法 JSON'; return }
-  await act('model_routes_set', { routes: parsed }); await act('settings_set', { settings: { model_routes: JSON.stringify(parsed) } }); flash('模型分流已保存并生效')
+async function generateWorld() {
+  if (worldBusy.value) return
+  const ok = await confirm({
+    title: '✦ AI 重写设定',
+    message: '这会用模型结果覆盖上面的 国家 / 城市 / 前言 / 演员 / 地点 等设定。只想更新地图，请用「只生成地图（保留设定）」',
+    confirmLabel: '覆盖并生成',
+    danger: true,
+  })
+  if (!ok) return
+  worldBusy.value = true
+  try {
+    const result = await act('world_generate', { instructions: '' })
+    if (result?.worldview) flash('已由 AI 完善世界观并生成地图')
+  } finally {
+    worldBusy.value = false
+  }
 }
-async function exportConfig() {
-  const r = await fetch('/api/life/companion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'config_export', payload: {} }) })
-  if (!r.ok) { error.value = await r.text(); return }
-  const blob = new Blob([JSON.stringify(await r.json(), null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob)
-  const a = document.createElement('a'); a.href = url; a.download = `life-companion-${localToday()}.json`; a.click(); URL.revokeObjectURL(url)
+async function generateMapOnly() {
+  if (worldBusy.value) return
+  worldBusy.value = true
+  try {
+    const result = await act('world_map_generate', { instructions: '' })
+    if (result?.worldview) flash('已按当前设定重新生成地图（设定未改动）')
+  } finally {
+    worldBusy.value = false
+  }
 }
-async function importConfig() {
-  if (!importText.value.trim()) return
-  let snapshot: any; try { snapshot = JSON.parse(importText.value) } catch { error.value = '导入内容不是合法 JSON'; return }
-  const result = await act('config_import', { snapshot })
-  if (result) { importText.value = ''; flash(`已导入：${Object.entries(result.applied || {}).map(([k, v]) => `${k} ${v}`).join(' · ')}`) }
+async function clearWorld() {
+  const ok = await confirm({
+    title: '清除世界事件',
+    message: '会删除时间线里所有「世界」事件、世界触发的主动消息与相关记忆，并重置世界状态（演员位置等）。此操作不可撤销。',
+    confirmLabel: '清除',
+    danger: true,
+  })
+  if (!ok) return
+  const result = await act('world_clear', {})
+  if (result) flash('已清除世界事件并重置世界状态')
 }
-async function exportAll() {
-  const r = await fetch('/api/life/companion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'export_all', payload: {} }) })
-  if (!r.ok) { error.value = friendlyError(await r.text()); return }
-  const blob = new Blob([JSON.stringify(await r.json(), null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `life-full-${localToday()}.json`; a.click(); URL.revokeObjectURL(url)
+async function resetPerson() {
+  const first = await confirm({
+    title: '重置整个人',
+    message:
+      '这是唯一一次可以「重来」的操作——日常里删除一条记忆或撤回一句话都是不可逆的。\n\n' +
+      '会清空：全部记忆与本地备份、关系与亲密度、承诺、目标与进展日志、未完成话题、用户画像与用户模型、' +
+      '价值取向、人设演化、日记与梦境、每日复盘、技能与常用表达、社交节点与边、群内关系、时间线与见闻、' +
+      '主动消息与回执，以及认知内核（自我叙事、互惠关系、情感历史、学到的价值表）。\n\n' +
+      '会保留：你自己的设置（限额、端点、群策略、日历规则）。\n\n此操作不可撤销。',
+    confirmLabel: '继续',
+    danger: true,
+  })
+  if (!first) return
+  const second = await confirm({
+    title: '再确认一次',
+    message: '真的要把这个人恢复到出厂状态吗？之后他不会再记得发生过的任何事。',
+    confirmLabel: '重置整个人',
+    danger: true,
+  })
+  if (!second) return
+  personBusy.value = true
+  try {
+    await act('reset_person', {})
+    flash('已重置整个人')
+    await load()
+  } finally { personBusy.value = false }
 }
-async function importAll() {
-  if (!importText.value.trim()) return
-  let snapshot: any; try { snapshot = JSON.parse(importText.value) } catch { error.value = '导入内容不是合法 JSON'; return }
-  const result = await act('import_all', { snapshot })
-  if (result) { importText.value = ''; flash(`已全量导入：${Object.entries(result.applied || {}).map(([k, v]) => `${k} ${v}`).join(' · ')}`) }
-}
-async function runDiagnostics() { const result = await act('diagnostics', {}); if (result) diagnostics.value = result }
-
-const auditKind = ref(''); const auditOutcome = ref(''); const auditItems = ref<any[]>([]); const auditTotal = ref(0)
-async function loadAudit() { try { const r = await query('audit_query', { kind: auditKind.value, outcome: auditOutcome.value, limit: 120 }); auditItems.value = r?.items || []; auditTotal.value = r?.total || 0 } catch { /* optional */ } }
-
-const worldKinds = ['persona', 'worldview', 'style', 'background', 'wardrobe', 'reference']
-const worldKind = ref('')
-const worldForm = ref({ id: '', kind: 'worldview', title: '', content: '', tags: '' })
-const worldList = computed(() => (data.value.world || []).filter((w: any) => !worldKind.value || w.kind === worldKind.value))
-function editWorld(w: any) { worldForm.value = { id: w.id, kind: w.kind, title: w.title, content: w.content, tags: w.tags || '' } }
-async function saveWorld() { if (!worldForm.value.title.trim() || !worldForm.value.content.trim()) return; await act('world_upsert', { ...worldForm.value }); worldForm.value = { id: '', kind: 'worldview', title: '', content: '', tags: '' } }
-async function removeWorld(id: string) { await act('world_delete', { id }) }
-
-const timeline = computed(() => data.value.timeline || [])
-const openTopics = computed(() => data.value.open_topics || [])
-const portraits = computed(() => data.value.portraits || [])
-const reviews = computed(() => data.value.reviews || [])
-function parseFindings(review: any) { try { return JSON.parse(review.findings || '[]') } catch { return [] } }
-const tlSearch = ref('')
-const filteredTimeline = computed(() => {
-  const q = tlSearch.value.trim().toLowerCase()
-  return timeline.value.filter((item: any) => !q || `${item.topic} ${item.summary} ${item.detail || ''}`.toLowerCase().includes(q))
-})
-const groupSearch = ref('')
-const filteredRegistry = computed(() => {
-  const q = groupSearch.value.trim().toLowerCase()
-  return registry.value.filter((g: any) => !q || `${g.group_id} ${g.alias || ''}`.toLowerCase().includes(q))
-})
-const emotion = computed(() => data.value.emotion || { valence: 0, arousal: 0.5, connection: 0.5, irritation: 0 })
-const radarPoints = computed(() => {
-  const e = emotion.value
-  const values = [(Number(e.valence) + 1) / 2, Number(e.arousal), Number(e.connection), Number(e.irritation)]
-  const cx = 60, cy = 60, radius = 46
-  return values.map((value, index) => {
-    const angle = (-90 + index * 90) * Math.PI / 180
-    const length = radius * Math.max(0.05, Math.min(1, Number(value) || 0))
-    return `${(cx + length * Math.cos(angle)).toFixed(1)},${(cy + length * Math.sin(angle)).toFixed(1)}`
-  }).join(' ')
-})
-const mediaForm = ref({ kind: 'tts', target: '', text: '', file: '' })
-async function sendMedia() {
-  const r = await act('send_media', { ...mediaForm.value })
-  flash(r?.ok ? '已发送' : `发送失败：${r?.reason || '未知'}`)
-}
-async function backupNow() { const r = await act('backup_now', {}); flash(r?.backup ? '已备份陪伴数据' : `备份失败：${r?.error || '未知'}`) }
-const todayStr = localToday()
-const currentAgenda = computed(() => { const now = Date.now(); return todayAgenda.value.filter((x: any) => { if (!x.start_at) return false; const t = new Date(String(x.start_at).replace(' ', 'T')).getTime(); return !Number.isNaN(t) && t <= now }).slice(-1)[0] || null })
-const nextAgenda = computed(() => { const now = Date.now(); return todayAgenda.value.find((x: any) => { if (!x.start_at) return false; const t = new Date(String(x.start_at).replace(' ', 'T')).getTime(); return !Number.isNaN(t) && t > now }) || null })
-const upcomingDates = computed(() => (data.value.important_dates || []).map((d: any) => ({ ...d, inDays: daysUntil(d.date_text) })).filter((d: any) => d.inDays !== null).sort((a: any, b: any) => a.inDays - b.inDays).slice(0, 3))
-const latestJournal = computed(() => (data.value.journal || [])[0] || null)
-const latestDream = computed(() => (data.value.dreams || [])[0] || null)
-function jump(target: string) { tab.value = target; const el = pageEl.value; if (el) el.scrollTo({ top: 0, behavior: 'smooth' }); else window.scrollTo({ top: 0, behavior: 'smooth' }) }
 onMounted(load)
 </script>
 
@@ -432,36 +539,21 @@ onMounted(load)
     <header class="hero">
       <div class="hero-main">
         <div class="hero-copy">
-          <p class="eyebrow"><b>●</b> L.I.F.E / COMPANION</p>
-          <h1>陪伴面板</h1>
-          <p class="sub">日程、关系、主动、群聊、成长与诊断集中在这里；功能卡片点击进入对应视图。</p>
+          <p class="eyebrow"><b>◉</b> L.I.F.E / COGNITION</p>
+          <h1>陪伴面板 · 认知内核</h1>
+          <p class="sub">五套认知回路（决策仲裁 / 情感生理 / 语言习得 / 社会学习 / 自我与时间）。它们始终在后台记录状态；只有打开对应的「调节」开关，状态才会写进提示词。全部关闭时行为与旧版完全一致。</p>
         </div>
         <div class="hero-actions">
-          <button class="fab" :disabled="planning" @click="planNow"><span class="fab-ic">✦</span>{{ planning ? '规划中…' : '让 LIFE 规划' }}</button>
+          <button class="fab" :disabled="loading" @click="saveSettings"><span class="fab-ic">✦</span>保存设置</button>
           <button class="btn tonic" :disabled="loading" @click="load">{{ loading ? '刷新中…' : '刷新' }}</button>
-          <button class="btn text" @click="jump('config')">配置引导</button>
         </div>
-      </div>
-
-      <div class="hero-stats">
-        <button class="stat" @click="jump('users')"><span class="stat-ic t1">☺</span><span class="stat-num">{{ data.relationships?.length || 0 }}</span><span class="stat-cap">关系对象</span></button>
-        <button class="stat" @click="jump('overview')"><span class="stat-ic t2">▤</span><span class="stat-num">{{ todayAgenda.filter((x: any) => x.status === 'active').length }}</span><span class="stat-cap">待进行日程</span></button>
-        <button class="stat" @click="jump('proactive')"><span class="stat-ic t3">✦</span><span class="stat-num">{{ activeCandidates.length }}</span><span class="stat-cap">待投递主动</span></button>
-        <button class="stat" @click="jump('groups')"><span class="stat-ic t4">☷</span><span class="stat-num">{{ groups.length }}</span><span class="stat-cap">观察群聊</span></button>
-        <button class="stat" @click="jump('observe')"><span class="stat-ic t5">◎</span><span class="stat-num">{{ openTopics.length }}</span><span class="stat-cap">未完话题</span></button>
-        <button class="stat" @click="jump('observe')"><span class="stat-ic t6">✎</span><span class="stat-num">{{ digests.length }}</span><span class="stat-cap">内容见闻</span></button>
       </div>
 
       <div class="state-row">
-        <span class="pill">精力 {{ Math.round(data.circadian?.mental_energy ?? 0) }}</span>
-        <span class="pill" :class="{ bad: (data.circadian?.hunger ?? 0) >= 75 }">饥饿 {{ Math.round(data.circadian?.hunger ?? 0) }}</span>
-        <span class="pill" :class="{ bad: (data.circadian?.health ?? 100) < 60 }">健康 {{ Math.round(data.circadian?.health ?? 100) }}</span>
-        <span class="pill" v-if="data.circadian?.is_sleeping">睡眠中</span>
-        <span class="pill soft" v-if="data.settings?.env_timezone">{{ data.settings.env_timezone }}</span>
-        <span class="pill soft" v-if="data.settings?.env_city">{{ data.settings.env_city }}</span>
-        <button class="chip-btn" @click="eat">吃饭</button>
-        <button class="chip-btn" @click="outfitToday">今日穿搭</button>
-        <button class="chip-btn" @click="decayRelationships">关系回落</button>
+        <span class="pill" :class="{ bad: cognition && !cognition.enabled }">认知内核 {{ cognition?.available === false ? '不可用' : cognition?.enabled ? '运行中' : '已停止' }}</span>
+        <span class="pill soft">已决策 {{ wave1?.turns ?? 0 }} 轮</span>
+        <span class="pill soft">情景痕迹 {{ wave1?.engrams ?? 0 }}</span>
+        <span class="pill soft">词汇量 {{ wave3?.lexicon_size ?? 0 }}</span>
       </div>
     </header>
 
@@ -474,498 +566,282 @@ onMounted(load)
       </button>
     </nav>
 
-    <!-- 01 总览 -->
-    <section v-show="tab === 'overview'" class="panel">
-      <div class="section-head"><div><h2>今日概览</h2><p class="desc">生活工作台：今天发生了什么、现在在做什么、接下来做什么。</p></div>
-        <div class="head-actions"><button class="btn tonal sm" @click="arrangeAgenda">安排今天</button><button class="btn tonal sm" @click="generate('journal')">生成日记</button><button class="btn tonal sm" @click="generate('dream')">生成梦境</button></div>
-      </div>
-      <div class="desk">
-        <div class="desk-col">
-          <article class="dcard">
-            <header><span class="dot ic"></span><h3>今日</h3><small>{{ todayStr }}</small></header>
-            <div class="fact-grid">
-              <div class="fact"><b>{{ data.relationships?.length || 0 }}</b><span>记住的人</span></div>
-              <div class="fact"><b>{{ activeCandidates.length }}</b><span>待投递</span></div>
-              <div class="fact"><b>{{ todayAgenda.length }}</b><span>今日日程</span></div>
-              <div class="fact"><b>{{ openTopics.length }}</b><span>未完话题</span></div>
-            </div>
-            <div v-if="upcomingDates.length" class="mini-list">
-              <span v-for="d in upcomingDates" :key="d.id" class="chip warn">{{ d.title }} · {{ d.inDays === 0 ? '今天' : d.inDays + '天后' }}</span>
-            </div>
-          </article>
-          <article class="dcard">
-            <header><span class="dot ic"></span><h3>当前</h3></header>
-            <div v-if="currentAgenda" class="cur"><strong>{{ currentAgenda.title }}</strong><span class="chip ok">进行中</span></div>
-            <p v-else class="empty">此刻没有进行中的日程。</p>
-            <div v-if="nextAgenda" class="meta">接下来：{{ nextAgenda.start_at }} {{ nextAgenda.title }}</div>
-          </article>
-          <article class="dcard" v-if="data.calendar_candidates?.filter((x: any) => x.status === 'pending_confirmation').length">
-            <header><span class="dot ic"></span><h3>待确认日程</h3><small>{{ data.calendar_candidates.filter((x: any) => x.status === 'pending_confirmation').length }}</small></header>
-            <ul class="mini-list">
-              <li v-for="c in data.calendar_candidates.filter((x: any) => x.status === 'pending_confirmation')" :key="c.id">
-                <span>{{ c.title }}<em class="meta"> · {{ c.when_text }}</em></span>
-                <span class="mini-actions"><button class="btn filled sm" @click="act('confirm_agenda', { id: c.id })">确认</button><button class="btn text sm" @click="act('reject_agenda', { id: c.id })">拒绝</button></span>
-              </li>
-            </ul>
-          </article>
-          <article class="dcard">
-            <header><span class="dot ic"></span><h3>新增日程</h3><button class="link" @click="arrangeAgenda">让 LIFE 安排</button></header>
-            <div class="form-row"><input v-model="agendaTitle" class="field" placeholder="日程标题" @keyup.enter="addAgenda" /></div>
-            <div class="form-row"><input v-model="agendaWhen" class="field" placeholder="时间，如 2026-09-25 20:00" /></div>
-            <textarea v-model="agendaDetail" class="field area" placeholder="说明（可选）"></textarea>
-            <button class="btn filled sm" @click="addAgenda" :disabled="!agendaTitle.trim()">添加到日程</button>
-            <p class="hint">直接加入日程，无需确认。</p>
-          </article>
-        </div>
-
-        <div class="desk-col">
-          <article class="dcard">
-            <header><span class="dot ic"></span><h3>时间轴</h3><button class="link" @click="jump('observe')">完整日程</button></header>
-            <ol class="tl">
-              <li v-for="item in todayAgenda" :key="item.id" :class="agendaState(item).cls">
-                <time>{{ (item.start_at || '').replace('T', ' ').slice(11, 16) || '--:--' }}</time>
-                <div><strong :class="{ done: item.status === 'completed' }">{{ item.title }}</strong><span v-if="item.detail" class="meta">{{ item.detail }}</span></div>
-                <span class="chip" :class="agendaState(item).cls">{{ agendaState(item).label }}</span>
-              </li>
-              <li v-if="!todayAgenda.length" class="empty">今天还没有安排。</li>
-            </ol>
-          </article>
-          <article class="dcard">
-            <header><span class="dot ic"></span><h3>最新日记</h3><button class="link" @click="jump('observe')">全部</button></header>
-            <p v-if="latestJournal" class="prose">{{ latestJournal.content }}</p>
-            <p v-else class="empty">今天还没有写下什么。</p>
-            <div class="actions-row"><textarea v-model="journal" class="field area" placeholder="为今天写下一点…"></textarea><button class="btn filled sm" @click="addEntry('journal', journal)">写入日记</button></div>
-            <div class="actions-row"><textarea v-model="dream" class="field area" placeholder="记录一个梦…"></textarea><button class="btn tonal sm" @click="addEntry('dream', dream)">写入梦境</button></div>
-          </article>
-        </div>
-
-        <div class="desk-col">
-          <article class="dcard">
-            <header><span class="dot ic"></span><h3>动态与记忆</h3><button class="link" @click="jump('observe')">观察</button></header>
-            <ol class="mini-tl">
-              <li v-for="item in timeline.slice(0, 5)" :key="item.id"><span class="dot"></span><div><strong>{{ item.topic }}</strong><span class="meta">{{ item.summary }}</span></div></li>
-              <li v-if="!timeline.length" class="empty">还没有记录。</li>
-            </ol>
-          </article>
-          <article class="dcard">
-            <header><span class="dot ic"></span><h3>运行能力</h3><button class="link" @click="jump('models')">模型</button></header>
-            <div class="caps">
-              <span v-for="ext in extensionList" :key="ext.name" class="cap" :class="{ off: !ext.available }"><b>{{ ext.name }}</b><small>{{ ext.available ? '可用' : '未就绪' }}</small></span>
-              <span v-if="!extensionList.length" class="empty">没有注册的扩展。</span>
-            </div>
-          </article>
-        </div>
+    <!-- 01 认知 -->
+    <section v-show="tab === 'cognition'" class="panel">
+      <div class="section-head"><div><h2>认知内核</h2><p class="desc">实时状态与全部参数。改动后点右上角「保存设置」才会生效。</p></div>
+        <div class="head-actions"><button class="btn filled sm" @click="saveSettings">保存设置</button></div>
       </div>
 
-      <details class="fold" open>
-        <summary><b>关系与主动策略</b><small>私聊、群聊与长线主动的当前概况</small></summary>
-        <div class="grid3">
-          <article class="card"><h3>私聊关系</h3>
-            <ul class="mini-list">
-              <li v-for="r in (data.relationships || []).slice(0, 5)" :key="r.user_id"><span>{{ r.user_id }}<em v-if="ownerIds.includes(r.user_id)" class="owner">owner</em></span><b>{{ r.stage }} · {{ Math.round((r.affinity || 0) * 100) }}%</b></li>
-              <li v-if="!(data.relationships || []).length" class="empty">暂无</li>
-            </ul>
-          </article>
-          <article class="card"><h3>群聊观察</h3>
-            <ul class="mini-list">
-              <li v-for="g in registry.slice(0, 5)" :key="g.group_id"><span>{{ g.alias || g.group_id }}</span><b>{{ g.policy }} · {{ g.observations }} 条</b></li>
-              <li v-if="!registry.length" class="empty">暂无</li>
-            </ul>
-          </article>
-          <article class="card"><h3>长线主动</h3>
-            <div class="policy">
-              <label><span>每日上限</span><input v-model.number="policy.daily_limit" type="number" min="0" class="field tiny" /></label>
-              <label><span>单人上限</span><input v-model.number="policy.per_target_limit" type="number" min="0" class="field tiny" /></label>
-              <label><span>免打扰起</span><input v-model.number="policy.quiet_start" type="number" min="0" max="23" class="field tiny" /></label>
-              <label><span>免打扰止</span><input v-model.number="policy.quiet_end" type="number" min="0" max="23" class="field tiny" /></label>
-              <button class="btn tonal sm" @click="savePolicy">保存策略</button>
-            </div>
-            <p class="hint">未回应会降速：连续 2 次暂停 24h、3 次暂停 3 天；回复即重置。</p>
-          </article>
+      <article class="card">
+        <h3>实时状态 <span class="count-pill" :class="{ ok: cognition?.enabled }">{{ cognition?.enabled ? '运行中' : '已停止' }}</span></h3>
+        <div v-if="!cognition" class="empty">尚无状态数据（刷新后显示）</div>
+        <div v-else class="settings-grid">
+          <div class="cog-metric"><span>仲裁模式</span><strong>{{ lastControl?.mode || '—' }}</strong></div>
+          <div class="cog-metric"><span>本轮策略</span><strong>{{ lastControl?.action || '—' }}</strong></div>
+          <div class="cog-metric"><span>控制需求</span><strong>{{ fmtNum(lastControl?.need) }}</strong></div>
+          <div class="cog-metric"><span>置信度</span><strong>{{ fmtNum(lastControl?.confidence) }}</strong></div>
+          <div class="cog-metric"><span>已决策轮数</span><strong>{{ wave1?.turns ?? 0 }}</strong></div>
+          <div class="cog-metric"><span>情景痕迹</span><strong>{{ wave1?.engrams ?? 0 }}</strong></div>
+          <div class="cog-metric"><span>模型可靠性</span><strong>{{ fmtNum(wave1?.reliability) }}</strong></div>
+          <div class="cog-metric"><span>心境</span><strong>{{ fmtNum(wave2?.mood) }}</strong></div>
+          <div class="cog-metric"><span>迷走张力</span><strong>{{ fmtNum(wave2?.vagal_tone) }}</strong></div>
+          <div class="cog-metric"><span>躯体化指数</span><strong>{{ fmtNum(wave2?.somatization_index) }}</strong></div>
+          <div class="cog-metric"><span>健康焦虑</span><strong>{{ fmtNum(wave2?.health_anxiety) }}</strong></div>
+          <div class="cog-metric"><span>躯体负担</span><strong>{{ fmtNum(wave2?.somatic_burden) }}</strong></div>
+          <div class="cog-metric"><span>人设特质</span><strong>{{ personaInfo?.applied ? (personaInfo.source === 'llm' ? '已应用 · LLM' : '已应用 · 词典') : '未解析' }}</strong></div>
+          <div class="cog-metric"><span>词汇量</span><strong>{{ wave3?.lexicon_size ?? 0 }}</strong></div>
+          <div class="cog-metric"><span>共情权重</span><strong>{{ fmtNum(wave4a?.empathy) }}</strong></div>
+          <div class="cog-metric"><span>视角阶段</span><strong>{{ wave4a?.perspective_name || '—' }}</strong></div>
+          <div class="cog-metric"><span>注意状态</span><strong>{{ wave4b?.attention_state || '—' }}</strong></div>
+          <div class="cog-metric"><span>耐心</span><strong>{{ fmtNum(wave4b?.patience) }}</strong></div>
         </div>
-      </details>
-
-      <details class="fold">
-        <summary><b>观察与内容记录</b><small>关系分布、群聊分布、内容见闻与活跃</small></summary>
-        <div class="grid2">
-          <article class="card"><h3>私聊关系分布</h3>
-            <div class="bars"><div v-for="r in (data.relationships || []).slice(0, 8)" :key="r.user_id" class="bar-row"><span class="bar-label">{{ r.user_id }}</span><div class="bar"><i :style="{ width: relPct(r.affinity) }"></i></div><b>{{ Math.round((r.affinity || 0) * 100) }}%</b></div><p v-if="!(data.relationships || []).length" class="empty">暂无</p></div>
-          </article>
-          <article class="card"><h3>群聊观测分布</h3>
-            <div class="bars"><div v-for="g in registry.slice(0, 8)" :key="g.group_id" class="bar-row"><span class="bar-label">{{ g.alias || g.group_id }}</span><div class="bar"><i :style="{ width: Math.min(100, g.observations) + '%' }"></i></div><b>{{ g.observations }}</b></div><p v-if="!registry.length" class="empty">暂无</p></div>
-          </article>
-          <article class="card"><h3>内容见闻 <button class="link" @click="gatherContent">抓取</button></h3>
-            <ol class="feed"><li v-for="d in digests.slice(0, 6)" :key="d.id"><strong>{{ d.title }}</strong><span class="meta">{{ d.kind }} · {{ fmtTime(d.created_at) }}</span></li><li v-if="!digests.length" class="empty">暂无；在配置里填 news_feeds 并开启内容抓取。</li></ol>
-          </article>
-          <article class="card"><h3>最近活跃</h3>
-            <ol class="feed"><li v-for="item in timeline.slice(0, 8)" :key="item.id"><strong>{{ item.topic }}</strong><span class="meta">{{ fmtTime(item.created_at) }} · {{ item.summary }}</span></li><li v-if="!timeline.length" class="empty">暂无</li></ol>
-          </article>
-        </div>
-      </details>
-    </section>
-
-    <!-- 02 世界知识 -->
-    <section v-show="tab === 'world'" class="panel">
-      <div class="section-head"><div><h2>世界知识</h2><p class="desc">角色资料、世界观、衣橱与引用资料；作为日程、状态、日记与主动行为的背景，不覆盖主回复人格。</p></div>
-        <div class="head-actions"><button class="btn tonal sm" @click="outfitToday">今日穿搭</button><button class="btn filled sm" @click="saveWorld" :disabled="!worldForm.title.trim() || !worldForm.content.trim()">{{ worldForm.id ? '保存' : '添加' }}</button></div>
-      </div>
-      <div class="world-layout">
-        <aside class="world-nav">
-          <button :class="{ active: worldKind === '' }" @click="worldKind = ''">全部 <b>{{ (data.world || []).length }}</b></button>
-          <button v-for="k in worldKinds" :key="k" :class="{ active: worldKind === k }" @click="worldKind = k">{{ k }}</button>
-        </aside>
-        <div class="world-body">
-          <article class="card">
-            <h3>{{ worldForm.id ? '编辑条目' : '新增条目' }}</h3>
-            <div class="form-row">
-              <AppSelect v-model="worldForm.kind" class="sel" style="width:160px" :options="worldKinds" aria-label="条目类型" />
-              <input v-model="worldForm.title" class="field" placeholder="标题，如 世界观 / 今日穿搭" />
-            </div>
-            <textarea v-model="worldForm.content" class="field area" placeholder="内容…"></textarea>
-            <input v-model="worldForm.tags" class="field" placeholder="标签（可选）" />
-            <div class="actions-row"><button class="btn filled sm" @click="saveWorld" :disabled="!worldForm.title.trim() || !worldForm.content.trim()">{{ worldForm.id ? '保存' : '添加' }}</button><button v-if="worldForm.id" class="btn text sm" @click="worldForm = { id: '', kind: 'worldview', title: '', content: '', tags: '' }">取消编辑</button></div>
-          </article>
-          <div class="cards">
-            <article v-for="w in worldList" :key="w.id" class="card item-card">
-              <div class="row"><strong>{{ w.title }}</strong><span class="chip muted">{{ w.kind }}</span></div>
-              <p class="prose">{{ w.content }}</p>
-              <span v-if="w.tags" class="meta">{{ w.tags }}</span>
-              <div class="actions-row"><button class="btn tonal sm" @click="editWorld(w)">编辑</button><button class="btn danger sm" @click="removeWorld(w.id)">删除</button></div>
-            </article>
-            <p v-if="!worldList.length" class="empty">还没有条目。</p>
+        <p v-if="personaInfo?.applied" class="hint">人设特质已生效（{{ personaInfo.source === 'llm' ? 'LLM 精修' : '本地词典' }}）：{{ personaEvidenceText || '—' }}。改人设请到 设置 → 人设，下一条消息自动生效。</p>
+        <div v-if="somaticChannels" class="som-channels">
+          <div v-for="(value, name) in somaticChannels" :key="name" class="som-chan">
+            <span class="som-chan-name">{{ channelLabel(name) }}</span>
+            <span class="som-chan-bar"><i :style="{ transform: 'scaleX(' + somScale(value) + ')' }"></i></span>
+            <span class="som-chan-val">{{ fmtNum(value, 2) }}</span>
           </div>
+          <p v-if="Number(wave2?.somatic_chronicity) > 0.1" class="hint">慢性化程度 {{ fmtNum(wave2?.somatic_chronicity) }} — 反复报告的通道已开始敏化。</p>
         </div>
+      </article>
+
+      <article class="card">
+        <h3>总开关与提示词调节</h3>
+        <div class="switches">
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_enabled" /><span>启用认知内核</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_affect" /><span>情感影响提示词</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_language" /><span>语言影响提示词</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_social" /><span>社会认知影响提示词</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_selfhood" /><span>自我与时间影响提示词</span></label>
+        </div>
+      </article>
+
+      <div class="grid2">
+        <article class="card">
+          <h3>决策仲裁（第一波）</h3>
+          <div class="settings-grid">
+            <label><span>规划深度</span><input v-model.number="settingsForm.cog_plan_depth" type="number" min="1" max="6" class="field tiny" /></label>
+            <label><span>工作记忆容量</span><input v-model.number="settingsForm.cog_wm_capacity" type="number" min="1" max="12" class="field tiny" /></label>
+            <label><span>策略温度 τ</span><input v-model.number="settingsForm.cog_tau" type="number" step="0.05" min="0.05" max="1" class="field tiny" /></label>
+            <label><span>折扣 γ</span><input v-model.number="settingsForm.cog_gamma" type="number" step="0.01" min="0" max="0.999" class="field tiny" /></label>
+            <label><span>习惯学习率</span><input v-model.number="settingsForm.cog_alpha_habit" type="number" step="0.01" min="0" max="1" class="field tiny" /></label>
+            <label><span>无模型学习率</span><input v-model.number="settingsForm.cog_alpha_mf" type="number" step="0.01" min="0" max="1" class="field tiny" /></label>
+            <label><span>惊讶阈值 θ_pe</span><input v-model.number="settingsForm.cog_theta_pe" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>新颖阈值 θ_n</span><input v-model.number="settingsForm.cog_theta_n" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>前瞻视野</span><input v-model.number="settingsForm.cog_prospection_horizon" type="number" min="1" max="8" class="field tiny" /></label>
+          </div>
+          <div class="switches">
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_use_thalamic_gate" /><span>丘脑门控</span></label>
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_use_cerebellum" /><span>小脑预测误差</span></label>
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_use_ofc_map" /><span>OFC 认知地图</span></label>
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_use_prospection" /><span>未来奖赏前瞻</span></label>
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_use_limbic_bias" /><span>边缘系统偏向</span></label>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>情感与生理（第二波）</h3>
+          <div class="settings-grid">
+            <label><span>情绪调节画像</span><AppSelect v-model="settingsForm.cog_affect_profile" :options="cogProfileOptions" aria-label="情绪调节画像" /></label>
+            <label><span>迷走基线</span><input v-model.number="settingsForm.cog_affect_vagal" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>威胁基线</span><input v-model.number="settingsForm.cog_affect_threat" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>奖赏基线</span><input v-model.number="settingsForm.cog_affect_reward" type="number" step="0.1" min="0" max="2" class="field tiny" /></label>
+          </div>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_affect_enabled" /><span>启用情感与生理回路</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_affect_somatic" /><span>启用躯体化网关（人设含体弱、心慌等标记时自动开启）</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_affect_persona_llm" /><span>人设特质由模型理解（改动人设后下一条消息精修一次，失败自动回退本地词典）</span></label>
+        </article>
+
+        <article class="card">
+          <h3>语言习得（第三波）</h3>
+          <div class="settings-grid">
+            <label><span>语言-思维耦合</span><AppSelect v-model="settingsForm.cog_language_framing" :options="cogFramingOptions" aria-label="语言-思维耦合" /></label>
+            <label><span>分词边界阈值</span><input v-model.number="settingsForm.cog_language_boundary" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          </div>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_language_enabled" /><span>启用语言习得回路</span></label>
+        </article>
+
+        <article class="card">
+          <h3>社会学习（第四波）</h3>
+          <div class="settings-grid">
+            <label><span>共情权重</span><input v-model.number="settingsForm.cog_social_empathy" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>观点采择阶段</span><AppSelect v-model="cogStageValue" :options="cogStageOptions" aria-label="观点采择阶段" /></label>
+          </div>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_social_enabled" /><span>启用社会学习回路</span></label>
+        </article>
+
+        <article class="card">
+          <h3>自我与时间（第四波）</h3>
+          <div class="settings-grid">
+            <label><span>时间折扣 k</span><input v-model.number="settingsForm.cog_selfhood_discount" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>人设细节尺度</span><input v-model.number="settingsForm.cog_selfhood_detail" type="number" step="1" min="1" max="50" class="field tiny" /></label>
+          </div>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_selfhood_enabled" /><span>启用自我与时间回路</span></label>
+        </article>
+
+        <article class="card">
+          <h3>记忆与巩固（默认开启）</h3>
+          <p class="hint">这四项决定「经历会不会留下痕迹」：写入情景记忆、睡眠期回放、日终再巩固、交错学习（CLS）。默认开启——关掉时人格被固定在人设上，经历不留痕，行为与无认知内核时完全一致（可逐个消融）。</p>
+          <div class="switches">
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_memory_encode" /><span>选择性情景编码</span></label>
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_sleep_replay" /><span>睡眠期回放巩固</span></label>
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_memory_reconsolidate" /><span>日终痕迹再巩固</span></label>
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_cls_interleave" /><span>交错学习 + 一致性门控（CLS）</span></label>
+          </div>
+        </article>
       </div>
     </section>
 
-    <!-- 03 用户 -->
-    <section v-show="tab === 'users'" class="panel">
-      <div class="section-head"><div><h2>用户档案</h2><p class="desc">关系阶段、互动表达、未完话题与画像；先看身份，再进入详情。</p></div>
-        <div class="head-actions"><input v-model="userSearch" class="field search" placeholder="搜索用户 ID" />
-          <AppSelect v-model="userStage" class="sel" style="width:170px" :options="stageOptions" aria-label="阶段筛选" />
-        </div>
-      </div>
-      <div class="user-layout">
-        <aside class="roster">
-          <div class="roster-head"><span class="eyebrow">PEOPLE</span><span class="count-pill">{{ filteredUsers.length }}</span></div>
-          <button v-for="rel in filteredUsers" :key="rel.user_id" class="roster-row" :class="{ active: selectedUser === rel.user_id }" @click="openUser(rel.user_id)">
-            <span class="avatar">{{ (rel.user_id || '?').slice(0, 1).toUpperCase() }}</span>
-            <span class="rmain"><span class="rtop">{{ rel.user_id }}<em v-if="ownerIds.includes(rel.user_id)" class="owner">owner</em></span><span class="bar"><i :style="{ width: relPct(rel.affinity) }"></i></span><span class="meta">{{ rel.stage }} · {{ Math.round((rel.affinity || 0) * 100) }}%</span></span>
-          </button>
-          <p v-if="!filteredUsers.length" class="empty">没有匹配的用户。</p>
-        </aside>
-        <div class="user-detail">
-          <button v-if="selectedUser" class="btn text sm" @click="closeUser">← 返回目录</button>
-          <div v-if="detailLoading" class="empty">加载中…</div>
-          <template v-else-if="detail">
-            <div class="detail-head"><span class="avatar lg">{{ (detail.user_id || '?').slice(0, 1).toUpperCase() }}</span><div><strong>{{ detail.user_id }}</strong><span class="meta">角色 {{ detail.role || 'other' }} · 阶段 {{ detail.relationship?.stage }} · 互动 {{ detail.expression?.interaction }} · 好感 {{ Math.round((detail.relationship?.affinity || 0) * 100) }}%</span></div></div>
-            <nav class="subtabs"><button v-for="t in detailTabs" :key="t.key" :class="{ active: detailTab === t.key }" @click="detailTab = t.key">{{ t.label }}</button></nav>
-            <div v-if="detailTab === 'overview'">
-              <div class="kv-grid">
-                <div class="kv"><span>关系事件</span><b>{{ detail.counts?.ledger || 0 }}</b></div>
-                <div class="kv"><span>主动候选</span><b>{{ detail.counts?.candidates || 0 }}</b></div>
-                <div class="kv"><span>已投递</span><b>{{ detail.counts?.delivered || 0 }}</b></div>
-                <div class="kv"><span>记忆条数</span><b>{{ detail.memories?.total || 0 }}</b></div>
-                <div class="kv"><span>主动额度</span><b>{{ detail.expression?.proactive_limit ?? '—' }}</b></div>
-              </div>
-              <div v-if="detailPortrait?.summary" class="note"><b>画像：</b>{{ detailPortrait.summary }}<template v-if="detailPortrait.traits"> · {{ detailPortrait.traits }}</template></div>
-              <div v-if="detail.expression?.tone" class="note"><b>表达基调：</b>{{ detail.expression.tone }}</div>
-              <h4 class="sub-label">未完话题</h4>
-              <div class="chips"><span v-for="t in detailTopics" :key="t" class="chip">{{ t }}<button @click="resolveTopic(t)">×</button></span><span v-if="!detailTopics.length" class="meta">暂无</span></div>
-              <div class="form-row"><input v-model="topicForm" class="field" placeholder="手动加一条待跟进话题…" @keyup.enter="addTopic" /><button class="btn tonal sm" @click="addTopic" :disabled="!topicForm.trim()">加入</button></div>
-            </div>
-            <div v-else-if="detailTab === 'relationship'">
-              <div class="bar big"><i :style="{ width: relPct(detail.relationship?.affinity) }"></i></div>
-              <p class="meta">阶段 {{ detail.expression?.stage }} · 互动 {{ detail.expression?.interaction }} · 额度 {{ detail.expression?.proactive_limit }} · 专属联结 {{ detail.expression?.bond ? '是' : '否' }}</p>
-              <div class="actions-row"><button class="btn tonal sm" @click="adjustRelationship(detail.user_id, 0.05)">更亲近 +</button><button class="btn tonal sm" @click="adjustRelationship(detail.user_id, -0.05)">更疏远 −</button></div>
-              <h4 class="sub-label">事件账本</h4>
-              <ol class="feed"><li v-for="e in detail.ledger" :key="e.id"><span :class="e.delta >= 0 ? 'pos' : 'neg'">{{ e.delta >= 0 ? '+' : '' }}{{ e.delta }}</span> {{ e.event_key }} · {{ e.reason }} · {{ fmtTime(e.created_at) }}</li><li v-if="!(detail.ledger || []).length" class="empty">暂无</li></ol>
-            </div>
-            <div v-else-if="detailTab === 'proactive'">
-              <ol class="feed"><li v-for="c in (detail.proactive?.candidates || [])" :key="c.id"><strong>{{ c.motive }}</strong> · {{ c.status }}<span class="meta">{{ c.content }}</span><button v-if="!['delivered','cancelled'].includes(c.status)" class="btn danger sm" @click="cancelProactive(c.id)">取消</button></li><li v-if="!(detail.proactive?.candidates || []).length" class="empty">暂无</li></ol>
-            </div>
-            <div v-else-if="detailTab === 'memory'">
-              <ol class="feed"><li v-for="m in (detail.memories?.items || [])" :key="m.id">{{ m.content }}<span class="meta">scope {{ m.scope }} · 重要度 {{ Math.round((m.importance || 0) * 100) }}%</span><button class="btn danger sm" @click="deleteMemory(m.id)">删除</button></li><li v-if="!(detail.memories?.items || []).length" class="empty">没有相关记忆</li></ol>
-            </div>
-            <div v-else>
-              <ol class="feed"><li v-for="item in (detail.audit || [])" :key="item.id"><strong>{{ item.kind }}</strong> · {{ item.outcome }}<span class="meta">{{ item.target }} · {{ fmtTime(item.created_at) }}</span></li><li v-if="!(detail.audit || []).length" class="empty">暂无</li></ol>
-            </div>
-          </template>
-          <p v-else class="empty">从左侧选择一个用户查看详情。</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- 04 群聊 -->
-    <section v-show="tab === 'groups'" class="panel">
-      <div class="section-head"><div><h2>群聊观察</h2><p class="desc">群气氛、话题线、黑话与成员安全。</p></div>
-        <div class="head-actions"><input v-model="groupSearch" class="field search" placeholder="搜索群号 / 备注" /><button class="btn tonal sm" @click="wakeGroup">兴趣唤醒一次</button></div>
+    <!-- 02 世界 -->
+    <section v-show="tab === 'world'" class="panel">
+      <div class="section-head"><div><h2>世界</h2><p class="desc">本地小模型驱动的虚构生活世界：事件、演员表与账本。默认关闭。</p></div>
+        <div class="head-actions"><button class="btn filled sm" @click="saveSettings">保存设置</button></div>
       </div>
       <article class="card">
-        <div class="group-form"><input v-model="groupForm.group_id" class="field" placeholder="群号" /><AppSelect v-model="groupForm.policy" class="sel" style="width:140px" :options="policyOptions" aria-label="群策略" /><input v-model="groupForm.alias" class="field" placeholder="备注名（可选）" /><button class="btn filled sm" @click="addGroup" :disabled="!groupForm.group_id.trim()">添加群</button></div>
-        <div class="cards">
-          <article v-for="g in filteredRegistry" :key="g.group_id" class="card sub">
-            <div class="row"><strong>{{ g.group_id }}</strong><span v-if="g.alias" class="chip muted">{{ g.alias }}</span><span class="chip" :class="g.policy === 'blacklist' ? 'danger' : g.policy === 'whitelist' ? 'ok' : 'muted'">{{ g.policy }}</span></div>
-            <span class="meta">{{ g.observations }} 条观察 · {{ g.topics }} 个话题<template v-if="groupAtmo[g.group_id]"> · 气氛 {{ groupAtmo[g.group_id].label }}</template></span>
-            <div v-if="openGroup === g.group_id" class="group-detail">
-              <h4 class="sub-label">话题线</h4>
-              <div class="chips"><span v-for="t in (groupAtmo[g.group_id]?.threads || [])" :key="t.topic" class="chip muted">{{ t.topic }} · {{ Math.round(t.score) }}</span><span v-if="!(groupAtmo[g.group_id]?.threads || []).length" class="meta">暂无</span></div>
-              <h4 class="sub-label">黑话 / 话题</h4>
-              <div class="chips"><span v-for="s in (groupSlang[g.group_id] || [])" :key="s.topic" class="chip muted">{{ s.topic }} · {{ Math.round(s.score) }}<button @click="removeSlang(g.group_id, s.topic)">×</button></span></div>
-              <div class="form-row"><input v-model="slangForm[g.group_id]" class="field" placeholder="新增黑话 / 话题" /><button class="btn tonal sm" @click="addSlang(g.group_id)">添加</button></div>
-              <h4 class="sub-label">成员安全</h4>
-              <div class="members"><div v-for="m in (groupMembers[g.group_id] || [])" :key="m.user_id" class="member"><span>{{ m.user_id }}</span><span class="meta">{{ m.messages }} 条</span><AppSelect :model-value="m.flag" class="sel-tiny" style="width:108px" :options="memberFlagOptions" aria-label="成员标记" @update:model-value="(v: string) => setMemberFlag(g.group_id, m.user_id, v)" /></div></div>
-            </div>
-            <div class="actions-row"><AppSelect :model-value="g.policy" class="sel-tiny" style="width:124px" :options="policyOptions" aria-label="群策略" @update:model-value="(v: string) => setPolicy(g, v)" /><button class="btn tonal sm" @click="toggleGroup(g.group_id)">{{ openGroup === g.group_id ? '收起' : '管理' }}</button><button class="btn danger sm" @click="removeGroup(g.group_id)">删除</button></div>
-          </article>
-          <p v-if="!filteredRegistry.length" class="empty">还没有群记录。</p>
+        <h3>虚构浓度</h3>
+        <div class="settings-grid">
+          <label><span>world_density</span><AppSelect v-model="worldDensity" :options="worldDensityOptions" aria-label="虚构浓度" /></label>
         </div>
+        <p class="hint">off 完全不影响现有行为；texture 只把事件写进时间线与记忆；full 允许作为主动话题提及（上线需你明确确认）。</p>
+      </article>
+      <article class="card">
+        <h3>人设 → 特质数据</h3>
+        <p class="hint">把角色人设写在这里（性格、体质、作息、情绪风格）。保存后解析为认知内核的特质参数（威胁、奖赏基线、情绪调节画像、躯体化增益、作息等）：默认先由本地词典即时生效，并由模型对改动人设做一次精修（失败自动回退词典）。写明「体弱多病 / 心慌失眠」等会自动开启躯体化网关。</p>
+        <label class="world-field"><span class="world-label">人设文本</span>
+          <textarea v-model="personaText" class="world-text" rows="4" placeholder="例：她性格开朗但容易焦虑，体质偏弱，经常心慌失眠，遇到事爱钻牛角尖。"></textarea>
+        </label>
+      </article>
+      <article class="card">
+        <h3>世界观 · 定位</h3>
+        <p class="hint">说清这是哪里：国家 / 城市 / 小区（可真实可虚构）。填不全也没关系——点「AI 完善」会补全设定并生成一份带坐标的地图。改了演员或地点后，之前生成的事件会作废、重新开始。</p>
+        <div class="settings-grid">
+          <label><span>世界类型</span><AppSelect v-model="worldFictional" :options="worldFictionalOptions" aria-label="世界类型" /></label>
+          <label><span>国家</span><input v-model="worldCountry" class="field" placeholder="中国 / 架空：曦京" /></label>
+          <label><span>城市</span><input v-model="worldCity" class="field" placeholder="杭州 / 临海市" /></label>
+          <label><span>城区 · 小区</span><input v-model="worldDistrict" class="field" placeholder="西湖区 · 文一西路" /></label>
+        </div>
+        <label class="world-field"><span class="world-label">世界设定 / 前言</span>
+          <textarea v-model="worldPremise" class="world-text" rows="3" placeholder="例：她住在一座临海小城，开着一家旧书店，养了一只叫煤球的猫。"></textarea>
+        </label>
+        <label class="world-field"><span class="world-label">演员表（每行一个：名字 — 名字|关系；关系可为 朋友/同事/家人）</span>
+          <textarea v-model="worldActors" class="world-text" rows="4" placeholder="林小满|朋友&#10;阿哲|同事&#10;妈妈|家人"></textarea>
+        </label>
+        <label class="world-field"><span class="world-label">地点（逗号或换行分隔）</span>
+          <textarea v-model="worldPlaces" class="world-text" rows="2" placeholder="楼下便利店, 常去的咖啡馆, 城西书店"></textarea>
+        </label>
+        <div class="world-actions">
+          <button class="btn filled sm" type="button" :disabled="worldBusy" @click="generateMapOnly">{{ worldBusy ? '生成中…' : '✦ 只生成地图（保留设定）' }}</button>
+          <button class="btn tonic sm" type="button" :disabled="worldBusy" @click="generateWorld">{{ worldBusy ? '生成中…' : 'AI 完善设定 + 生成地图' }}</button>
+          <span class="hint">「只生成地图」不会动上面的设定文本；「完善设定」会用它重写设定。</span>
+        </div>
+      </article>
+      <article class="card">
+        <div class="wm-head">
+          <h3>世界地图 <span class="count-pill">{{ worldMap.locations.length }}</span></h3>
+          <span v-if="worldview" class="wm-place">{{ worldview.fictional ? '虚构' : '真实' }} · {{ [worldview.country, worldview.city, worldview.district].filter(Boolean).join(' / ') || '未命名' }}</span>
+        </div>
+        <p v-if="worldview?.premise" class="hint wm-premise">{{ worldview.premise }}</p>
+        <div class="wm-map-wrap">
+          <div ref="mapEl" class="world-map-leaflet" :class="{ 'is-empty': !worldMap.locations.length }"></div>
+          <div v-if="offlineHint" class="wm-offline">底图加载失败（可能离线），仍可查看城市标记</div>
+          <template v-if="worldMap.locations.length">
+            <button v-if="worldMap.kind !== 'real' && worldMap.nation" type="button" class="wm-scope" @click="toggleScope">{{ scope === 'city' ? '全国视图' : '城市视图' }}</button>
+            <button type="button" class="wm-reset" @click="resetView">⟲ 复位视角</button>
+            <div v-if="worldMap.kind !== 'real' && scope === 'city'" class="wm-compass" aria-hidden="true"><i>N</i></div>
+          </template>
+        </div>
+        <p v-if="!worldMap.locations.length" class="empty">还没有地图。点上面的「AI 完善并生成地图」。</p>
+        <div v-if="worldMap.locations.length" class="wm-legend">
+          <span v-for="k in usedKinds" :key="k"><i :class="'k-' + k"></i>{{ KIND_LABEL[k] }}</span>
+          <span><i class="k-actor"></i>角色（{{ worldMap.actors.length }}）</span>
+          <template v-if="worldMap.kind !== 'real'">
+            <span><i class="k-hw"></i>高速/环线</span>
+            <span><i class="k-arterial"></i>主干道</span>
+            <span><i class="k-street"></i>街道</span>
+            <span><i class="k-metro"></i>地铁</span>
+            <span><i class="k-bus"></i>公交</span>
+            <span><i class="k-park2"></i>公园</span>
+            <span><i class="k-water"></i>水域</span>
+          </template>
+        </div>
+        <div v-if="worldMap.locations.length && worldMap.kind !== 'real' && scope === 'city'" class="wm-routes">
+          <div v-if="(worldMap.metro || []).length" class="wm-routes-col">
+            <h4>地铁线路表</h4>
+            <ul>
+              <li v-for="(m, i) in worldMap.metro" :key="'m' + i">
+                <b :style="{ color: m.color }">{{ m.name }}</b>
+                <span>{{ (m.stations || []).map((s: any) => s.name).filter(Boolean).join(' · ') }}</span>
+              </li>
+            </ul>
+          </div>
+          <div v-if="(worldMap.bus || []).length" class="wm-routes-col">
+            <h4>公交线路表</h4>
+            <ul>
+              <li v-for="(b, i) in worldMap.bus" :key="'b' + i">
+                <b :style="{ color: b.color }">{{ b.name }}</b>
+                <span>{{ (b.stops || []).map((s: any) => s.name).filter(Boolean).join(' · ') }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </article>
+      <article class="card">
+        <div class="wm-head">
+          <h3>最近世界事件 <span class="count-pill">{{ worldEvents.length }}</span></h3>
+          <button v-if="worldEvents.length" type="button" class="btn tonic sm" @click="clearWorld">清除世界事件</button>
+        </div>
+        <ol class="feed"><li v-for="e in worldEvents" :key="e.id"><span class="meta">{{ e.created_at }}</span><strong>{{ e.summary }}</strong></li>
+          <li v-if="!worldEvents.length" class="empty">还没有世界事件（开启后由本地模型生成）。</li></ol>
       </article>
     </section>
 
-    <!-- 05 学习 -->
-    <section v-show="tab === 'learning'" class="panel">
-      <div class="section-head"><div><h2>学习</h2><p class="desc">技能成长、表达学习与社交关系网。</p></div></div>
-      <div class="grid3">
-        <article class="card">
-          <h3>技能学习 <span class="count-pill">{{ (data.skills || []).length }}</span></h3>
-          <div class="form-row"><input v-model="skillForm.name" class="field" placeholder="技能，如 弹钢琴" /><input v-model.number="skillForm.level" type="number" min="1" max="10" class="field tiny" /></div>
-          <input v-model="skillForm.keywords" class="field" placeholder="关键词（逗号分隔，可选）" />
-          <button class="btn filled sm" @click="addSkill" :disabled="!skillForm.name.trim()">添加技能</button>
-          <ol class="feed"><li v-for="s in data.skills" :key="s.id"><strong>{{ s.name }}</strong> <span class="chip muted">Lv.{{ s.level }}</span> {{ s.category }}<div class="actions-row"><button class="btn tonal sm" @click="growSkill(s.name)">练习 +1</button><button class="btn danger sm" @click="removeSkill(s.id)">删除</button></div></li><li v-if="!(data.skills || []).length" class="empty">还没有技能</li></ol>
-        </article>
-        <article class="card">
-          <h3>表达学习</h3>
-          <div class="subtabs"><button :class="{ active: exprStatus === 'pending' }" @click="exprStatus = 'pending'">待审 {{ exprCounts.pending }}</button><button :class="{ active: exprStatus === 'approved' }" @click="exprStatus = 'approved'">已用 {{ exprCounts.approved }}</button><button :class="{ active: exprStatus === 'rejected' }" @click="exprStatus = 'rejected'">已拒 {{ exprCounts.rejected }}</button></div>
-          <div class="form-row"><input v-model="exprForm.text" class="field" placeholder="表达，如 晚安呀" /><input v-model="exprForm.scene" class="field" style="max-width:120px" placeholder="场景" /><button class="btn filled sm" @click="addExpression" :disabled="!exprForm.text.trim()">入库</button></div>
-          <ol class="feed"><li v-for="e in expressions" :key="e.id"><strong>{{ e.text }}</strong> <span class="meta">{{ e.scene || '通用' }} · {{ e.source }}</span><div class="actions-row"><button v-if="e.status === 'pending'" class="btn tonal sm" @click="reviewExpression(e.id, true)">采用</button><button v-if="e.status === 'pending'" class="btn text sm" @click="reviewExpression(e.id, false)">拒绝</button><button class="btn danger sm" @click="removeExpression(e.id)">删除</button></div></li><li v-if="!expressions.length" class="empty">该分类下没有表达</li></ol>
-        </article>
-        <article class="card">
-          <h3>社交关系网 <span class="count-pill">{{ (data.social_nodes || []).length }} / {{ (data.social_edges || []).length }}</span></h3>
-          <div class="form-row"><input v-model="nodeForm.user_id" class="field" placeholder="用户 ID" /><input v-model="nodeForm.name" class="field" placeholder="称呼（可选）" /><button class="btn filled sm" @click="addNode" :disabled="!nodeForm.user_id.trim()">加入</button></div>
-          <ol class="feed"><li v-for="n in data.social_nodes" :key="n.user_id"><strong>{{ n.name || n.user_id }}</strong> <span class="meta">{{ n.user_id }}</span></li><li v-if="!(data.social_nodes || []).length" class="empty">关系网还是空的</li></ol>
-          <h4 class="sub-label">关系连线</h4>
-          <div class="form-row"><input v-model="edgeForm.source_id" class="field" placeholder="A" /><input v-model="edgeForm.target_id" class="field" placeholder="B" /><input v-model="edgeForm.relation" class="field" placeholder="关系" /><button class="btn tonal sm" @click="addEdge">连线</button></div>
-          <ol class="feed"><li v-for="e in data.social_edges" :key="e.id">{{ e.source_id }} → {{ e.target_id }} · {{ e.relation }} <button class="btn danger sm" @click="removeEdge(e.id)">×</button></li><li v-if="!(data.social_edges || []).length" class="empty">还没有连线</li></ol>
-        </article>
-      </div>
-    </section>
-
-    <!-- 06 观察 -->
-    <section v-show="tab === 'observe'" class="panel">
-      <div class="section-head"><div><h2>观察</h2><p class="desc">日程日历、目标、性格演化、未完话题、画像与自我时间线。</p></div>
-        <div class="head-actions"><button class="btn tonal sm" @click="shiftMonth(-1)">←</button><strong>{{ month }}</strong><button class="btn tonal sm" @click="shiftMonth(1)">→</button></div>
-      </div>
+    <!-- 03 状态 -->
+    <section v-show="tab === 'state'" class="panel">
+      <div class="section-head"><div><h2>状态</h2><p class="desc">承诺账本、结构化用户模型与价值取向。</p></div></div>
+      <article class="card">
+        <h3>承诺账本 <span class="count-pill">{{ commitments.length }}</span></h3>
+        <ol class="feed"><li v-for="c in commitments" :key="c.id"><strong>{{ c.text }}</strong><span class="meta">{{ c.user_id }}</span></li>
+          <li v-if="!commitments.length" class="empty">没有未了结的承诺。</li></ol>
+      </article>
       <div class="grid2">
-        <article class="card cal-card">
-          <div class="cal-week"><span v-for="w in ['日','一','二','三','四','五','六']" :key="w">{{ w }}</span></div>
-          <div class="cal-grid"><div v-for="cell in calendarCells" :key="cell.key" class="cal-cell" :class="{ empty: cell.empty, today: cell.today, has: cell.events?.length }"><span v-if="!cell.empty" class="cal-day">{{ cell.day }}</span><span v-for="e in (cell.events || []).slice(0, 2)" :key="e.id" class="cal-chip">{{ e.title }}</span><span v-if="(cell.events || []).length > 2" class="cal-more">+{{ cell.events.length - 2 }}</span></div></div>
-          <p v-if="calendar.conflicts?.length" class="warnline">⚠ {{ calendar.conflicts.length }} 处时间冲突：{{ calendar.conflicts.map((c: any) => c.titles.join(' / ')).join('；') }}</p>
-          <h4 class="sub-label">本月待确认候选 ({{ calendar.candidates?.length || 0 }})</h4>
-          <ol class="feed">
-            <li v-for="c in (calendar.candidates || []).slice(0, 8)" :key="c.id">{{ c.title }} · {{ c.when_text }}
-              <div class="actions-row"><button class="btn filled sm" @click="act('confirm_agenda', { id: c.id }).then(loadCalendar)">确认</button><button class="btn text sm" @click="act('reject_agenda', { id: c.id }).then(loadCalendar)">拒绝</button></div>
-            </li>
-            <li v-if="!(calendar.candidates || []).length" class="empty">没有待确认候选</li>
-          </ol>
-        </article>
-        <article class="card"><h3>近 14 天活跃</h3>
-          <div class="spark">
-            <div v-for="d in activity" :key="d.day" class="spark-col" :title="`${d.day} · ${d.count}`"><i :style="{ height: Math.max(4, Math.round((d.count / activityMax) * 100)) + '%' }"></i><span>{{ d.day }}</span></div>
-          </div>
-          <p class="hint">来自 Bot 自我时间线（日记/梦境/任务/主动/见闻）。</p>
+        <article class="card">
+          <h3>用户模型</h3>
+          <ol class="feed"><li v-for="m in userModels" :key="m.user_id"><strong>{{ m.user_id }}</strong>
+            <span class="meta">喜欢：{{ parseList(m.preferences).join('、') || '—' }}</span>
+            <span class="meta">雷区：{{ parseList(m.taboos).join('、') || '—' }}</span>
+            <span class="meta">关心：{{ parseList(m.concerns).join('、') || '—' }}</span></li>
+            <li v-if="!userModels.length" class="empty">还没有结构化画像。</li></ol>
         </article>
         <article class="card">
-          <h3>个人目标 <span class="count-pill">{{ (data.goals || []).length }}</span></h3>
-          <div class="form-row"><input v-model="goalForm.title" class="field" placeholder="目标，如 学会一首钢琴曲" /><button class="btn filled sm" @click="addGoal" :disabled="!goalForm.title.trim()">添加</button></div>
-          <ol class="feed"><li v-for="g in data.goals" :key="g.id"><strong :class="{ done: g.status === 'done' }">{{ g.title }}</strong><span class="bar"><i :style="{ width: relPct(g.progress) }"></i></span><div class="form-row"><input v-model="goalLogForm[g.id]" class="field" placeholder="记录一次进展…" /><button class="btn tonal sm" @click="addGoalLog(g.id)">记一笔</button><button class="btn text sm" @click="loadGoalLogs(g.id)">日志</button></div><ol v-if="goalLogs[g.id]?.length" class="feed"><li v-for="log in goalLogs[g.id]" :key="log.id" class="meta">{{ log.evidence }} · {{ fmtTime(log.created_at) }}</li></ol></li><li v-if="!(data.goals || []).length" class="empty">还没有目标</li></ol>
-        </article>
-        <article class="card"><h3>成长中的性格</h3><ol class="feed"><li v-for="t in data.persona_evolution" :key="t.id"><strong>{{ t.trait }}</strong> <span class="chip">{{ t.value }}</span><span class="meta">支持 {{ t.support_count }} · 置信 {{ Math.round((t.confidence || 0) * 100) }}%</span></li><li v-if="!data.persona_evolution?.length" class="empty">LIFE 还在观察。</li></ol></article>
-        <article class="card"><h3>未完话题 <span class="count-pill">{{ openTopics.length }}</span></h3><ol class="feed"><li v-for="t in openTopics" :key="t.id"><strong>{{ t.topic }}</strong><span class="meta">{{ t.user_id }} · {{ fmtTime(t.updated_at) }}</span><button class="btn tonal sm" @click="openUser(t.user_id); jump('users')">查看用户</button></li><li v-if="!openTopics.length" class="empty">没有待跟进的话题。</li></ol></article>
-        <article class="card"><h3>轻量画像 <span class="count-pill">{{ portraits.length }}</span></h3><ol class="feed"><li v-for="p in portraits" :key="p.user_id"><strong>{{ p.user_id }}</strong><span class="meta">{{ p.summary }}<template v-if="p.traits"> · {{ p.traits }}</template></span></li><li v-if="!portraits.length" class="empty">还没有稳定画像。</li></ol></article>
-        <article class="card cal-card"><h3>Bot 自我时间线 <span class="count-pill">{{ filteredTimeline.length }}/{{ timeline.length }}</span><input v-model="tlSearch" class="field search" style="margin-left:auto" placeholder="搜索时间线" /></h3><ol class="tl"><li v-for="item in filteredTimeline" :key="item.id"><time>{{ fmtTime(item.created_at).slice(5, 16) }}</time><div><strong>{{ item.topic }}</strong><span class="meta">{{ item.summary }}</span></div></li><li v-if="!filteredTimeline.length" class="empty">没有匹配的记录。</li></ol></article>
-        <article class="card"><h3>情绪雷达</h3>
-          <div class="radar-wrap">
-            <svg viewBox="0 0 120 120" class="radar" aria-label="情绪雷达">
-              <polygon points="60,14 106,60 60,106 14,60" class="radar-grid" />
-              <polygon points="60,37 83,60 60,83 37,60" class="radar-grid" />
-              <polygon :points="radarPoints" class="radar-fill" />
-              <text x="60" y="10" class="radar-lbl" text-anchor="middle">心情</text>
-              <text x="112" y="63" class="radar-lbl" text-anchor="end">激活</text>
-              <text x="60" y="119" class="radar-lbl" text-anchor="middle">连接</text>
-              <text x="8" y="63" class="radar-lbl">烦扰</text>
-            </svg>
-            <p class="hint">心情 {{ Math.round(((emotion.valence + 1) / 2) * 100) }}% · 激活 {{ Math.round(emotion.arousal * 100) }}% · 连接 {{ Math.round(emotion.connection * 100) }}% · 烦扰 {{ Math.round(emotion.irritation * 100) }}%</p>
-          </div>
-        </article>
-        <article class="card cal-card"><h3>每日复盘 <span class="count-pill">{{ reviews.length }}</span><button class="btn tonal sm" style="margin-left:auto" @click="act('daily_review', {})">立即复盘</button></h3>
-          <ol class="feed">
-            <li v-for="r in reviews" :key="r.date"><strong>{{ r.date }}</strong><span class="meta">{{ r.summary }}</span>
-              <ul v-if="parseFindings(r).length" class="findings">
-                <li v-for="(f, i) in parseFindings(r)" :key="i"><span class="chip" :class="f.level === 'warn' ? 'warn' : 'muted'">{{ f.title }}</span><span class="meta">{{ f.detail }}</span></li>
-              </ul>
-            </li>
-            <li v-if="!reviews.length" class="empty">还没有复盘记录；每天会自动生成一次。</li>
-          </ol>
+          <h3>价值取向</h3>
+          <ol class="feed"><li v-for="v in valuesList" :key="v.k"><strong>{{ v.k }}</strong><span class="meta">{{ Number(v.v).toFixed(2) }}</span></li>
+            <li v-if="!valuesList.length" class="empty">还没有形成稳定价值取向。</li></ol>
         </article>
       </div>
     </section>
 
-    <!-- 07 主动 -->
-    <section v-show="tab === 'proactive'" class="panel">
-      <div class="section-head"><div><h2>主动行为</h2><p class="desc">候选、投递时机、配额与未回应降速。</p></div>
-        <div class="head-actions"><button class="btn tonal sm" @click="suggestProactive">让 LIFE 建议一条</button><button class="btn tonal sm" :disabled="ticking" @click="tickNow">{{ ticking ? '检查中…' : '立即检查投递' }}</button></div>
+    <section class="section">
+      <div class="section-head">
+        <div><h2>危险操作</h2>
+          <p class="desc">日常操作不可撤销：撤回一句话、删除一条记忆都是永久的。这里保留唯一一次「重来」的机会。</p>
+        </div>
       </div>
       <div class="grid2">
         <article class="card">
-          <h3>候选队列 <span class="count-pill">{{ activeCandidates.length }}</span></h3>
-          <div class="form-row">
-            <AppSelect v-model="targetChoice" style="flex:1;min-width:200px" :options="proactiveTargetOptions" aria-label="发送目标" />
-            <input v-if="targetChoice === '__manual__'" v-model="targetManual" class="field" placeholder="session:<会话ID> / user:<QQ> / group:<群号>" />
+          <h3>重置整个人</h3>
+          <p class="hint">清空记忆与备份、关系、承诺、目标、日记与梦境、价值取向、人设演化与认知内核，回到出厂状态。你自己的设置会保留。</p>
+          <p class="hint" style="margin-top:10px"><strong>需要二次确认。</strong></p>
+          <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn danger" :disabled="personBusy" @click="resetPerson">
+              {{ personBusy ? '重置中…' : '重置整个人' }}
+            </button>
           </div>
-          <div class="form-row"><input v-model="proactiveForm.motive" class="field" placeholder="动机，如 care" /><input v-model="proactiveForm.preferred_at" class="field" placeholder="期望时间（ISO，可选）" /></div>
-          <textarea v-model="proactiveForm.content" class="field area" placeholder="想说的内容…"></textarea>
-          <button class="btn filled sm" @click="createProactive" :disabled="!proactiveForm.target.trim() || !proactiveForm.content.trim()">创建候选</button>
-          <ol class="feed"><li v-for="c in activeCandidates" :key="c.id"><strong>{{ c.target }} · {{ c.motive }}</strong><span class="meta">{{ c.content }}</span><span class="meta">窗口 {{ fmtTime(c.preferred_at) }}<template v-if="c.best_until"> → {{ fmtTime(c.best_until) }}</template></span><button class="btn danger sm" @click="cancelProactive(c.id)">取消</button></li><li v-if="!activeCandidates.length" class="empty">没有待投递候选</li></ol>
         </article>
-        <article class="card">
-          <h3>投递记录</h3>
-          <ol class="feed"><li v-for="r in receipts" :key="r.id">{{ r.phase }} · {{ r.content }}<span class="meta">{{ fmtTime(r.created_at) }}</span></li><li v-if="!receipts.length" class="empty">还没有投递记录</li></ol>
-        </article>
-      </div>
-    </section>
-
-    <!-- 08 Token -->
-    <section v-show="tab === 'tokens'" class="panel">
-      <div class="section-head"><div><h2>Token 用量</h2><p class="desc">模型调用与 token 统计。</p></div><div class="head-actions"><button class="btn tonal sm" @click="loadUsage">刷新</button></div></div>
-      <div class="stat-cards">
-        <article class="stat-card"><b>{{ (usage?.total_tokens || 0).toLocaleString() }}</b><span>总 Token</span></article>
-        <article class="stat-card"><b>{{ (usage?.total_prompt_tokens || 0).toLocaleString() }}</b><span>输入</span></article>
-        <article class="stat-card"><b>{{ (usage?.total_completion_tokens || 0).toLocaleString() }}</b><span>输出</span></article>
-        <article class="stat-card"><b>{{ usage?.request_count || 0 }}</b><span>请求次数</span></article>
-      </div>
-      <article class="card"><h3>按模型</h3><ol class="feed"><li v-for="(value, name) in (usage?.by_model || {})" :key="name"><strong>{{ name }}</strong> <span class="meta">{{ (value.total || 0).toLocaleString() }} tokens · {{ value.count }} 次</span></li><li v-if="!usage || !Object.keys(usage.by_model || {}).length" class="empty">暂无用量记录</li></ol></article>
-    </section>
-
-    <!-- 09 排障 -->
-    <section v-show="tab === 'troubleshooting'" class="panel">
-      <div class="section-head"><div><h2>排障与审计</h2><p class="desc">运行检查、主动行为审计与记忆维护。</p></div>
-        <div class="head-actions"><button class="btn tonal sm" @click="runDiagnostics">运行诊断</button><button class="btn tonal sm" @click="act('memory_maintenance', {})">记忆维护</button><button class="btn tonal sm" @click="backupNow">备份数据</button></div>
-      </div>
-      <div class="grid2">
-        <article class="card">
-          <h3>运行检查</h3>
-          <ol class="feed"><li v-for="c in (diagnostics?.checks || [])" :key="c.name"><strong>{{ c.name }}</strong><span class="meta">{{ c.detail }}</span><span class="chip" :class="c.status === 'ok' ? 'ok' : c.status === 'warn' ? 'warn' : 'muted'">{{ c.status }}</span></li><li v-if="!diagnostics" class="empty">点击运行诊断</li></ol>
-          <div v-if="diagnostics" class="kv-grid"><div v-for="(v, k) in diagnostics.counts" :key="k" class="kv"><span>{{ k }}</span><b>{{ v }}</b></div></div>
-        </article>
-        <article class="card">
-          <h3>主动行为审计 <span class="count-pill">{{ auditTotal }}</span></h3>
-          <div class="form-row"><input v-model="auditKind" class="field" placeholder="类型筛选" /><input v-model="auditOutcome" class="field" placeholder="结果" /><button class="btn tonal sm" @click="loadAudit">查询</button></div>
-          <ol class="tl"><li v-for="item in auditItems" :key="item.id"><time>{{ fmtTime(item.created_at).slice(5, 16) }}</time><div><strong>{{ item.kind }}</strong> <span class="chip" :class="item.outcome === 'ok' ? 'ok' : 'warn'">{{ item.outcome }}</span><span class="meta">{{ item.target }}</span><p v-if="item.detail" class="tl-detail">{{ item.detail }}</p></div></li><li v-if="!auditItems.length" class="empty">暂无审计记录</li></ol>
-        </article>
-      </div>
-    </section>
-
-    <!-- 10 配置 -->
-    <section v-show="tab === 'config'" class="panel">
-      <div class="section-head"><div><h2>配置</h2><p class="desc">运行设置、用户边界、环境与内容、导入导出。</p></div><div class="head-actions"><button class="btn filled sm" @click="saveSettings">保存</button></div></div>
-      <div class="grid2">
-        <article class="card">
-          <h3>主动行为</h3>
-          <div class="settings-grid">
-            <label><span>每日主动上限</span><input v-model.number="settingsForm.proactive_daily_limit" type="number" min="0" class="field tiny" /></label>
-            <label><span>单人上限</span><input v-model.number="settingsForm.proactive_target_limit" type="number" min="0" class="field tiny" /></label>
-            <label><span>免打扰起</span><input v-model.number="settingsForm.quiet_start" type="number" min="0" max="23" class="field tiny" /></label>
-            <label><span>免打扰止</span><input v-model.number="settingsForm.quiet_end" type="number" min="0" max="23" class="field tiny" /></label>
-            <label><span>空闲分钟</span><input v-model.number="settingsForm.idle_minutes" type="number" class="field tiny" /></label>
-            <label><span>最小间隔(分)</span><input v-model.number="settingsForm.min_interval_minutes" type="number" class="field tiny" /></label>
-            <label><span>检查间隔(秒)</span><input v-model.number="settingsForm.check_interval_seconds" type="number" class="field tiny" /></label>
-            <label><span>连发上限</span><input v-model.number="settingsForm.burst_max" type="number" class="field tiny" /></label>
-            <label><span>每日 Token</span><input v-model.number="settingsForm.daily_token_limit" type="number" class="field tiny" /></label>
-          </div>
-          <div class="switches">
-            <label class="sw"><input type="checkbox" v-model="settingsForm.enable_proactive" /><span>启用主动消息</span></label>
-            <label class="sw"><input type="checkbox" v-model="settingsForm.enable_group_observe" /><span>群聊观察</span></label>
-            <label class="sw"><input type="checkbox" v-model="settingsForm.enable_dream" /><span>梦境生成</span></label>
-            <label class="sw"><input type="checkbox" v-model="settingsForm.reply_deceleration" /><span>未回应降速</span></label>
-          </div>
-          <h4 class="sub-label">用户边界</h4>
-          <div class="settings-grid">
-            <label class="wide"><span>主要用户 ID（逗号分隔）</span><input v-model="settingsForm.owner_user_ids" class="field" /></label>
-            <label class="wide"><span>次要用户 ID（逗号分隔）</span><input v-model="settingsForm.secondary_user_ids" class="field" /></label>
-            <label><span>普通用户阶段上限</span><AppSelect v-model="settingsForm.other_stage_cap" :options="stageCapOptions" aria-label="普通用户阶段上限" /></label>
-            <label><span>次要用户阶段上限</span><AppSelect v-model="settingsForm.secondary_stage_cap" :options="stageCapOptions" aria-label="次要用户阶段上限" /></label>
-            <label><span>好感回落/天</span><input v-model.number="settingsForm.affinity_decay_per_day" type="number" step="0.01" min="0" max="1" class="field tiny" /></label>
-            <label><span>未互动多久才回落(天)</span><input v-model.number="settingsForm.affinity_decay_after_days" type="number" min="0" class="field tiny" /></label>
-          </div>
-          <label class="sw"><input type="checkbox" v-model="settingsForm.enable_exclusive_bond" /><span>允许主要用户的专属联结</span></label>
-        </article>
-        <article class="card">
-          <h3>环境与内容</h3>
-          <div class="settings-grid">
-            <label><span>时区</span><input v-model="settingsForm.env_timezone" class="field" /></label>
-            <label><span>城市</span><input v-model="settingsForm.env_city" class="field" /></label>
-            <label><span>纬度</span><input v-model="settingsForm.env_latitude" class="field tiny" /></label>
-            <label><span>经度</span><input v-model="settingsForm.env_longitude" class="field tiny" /></label>
-            <label><span>天气缓存(分)</span><input v-model.number="settingsForm.weather_cache_minutes" type="number" min="5" class="field tiny" /></label>
-            <label><span>每条源条数</span><input v-model.number="settingsForm.content_items_per_feed" type="number" min="1" class="field tiny" /></label>
-            <label><span>语言</span><AppSelect v-model="settingsForm.locale" :options="localeOptions" aria-label="语言" /></label>
-          </div>
-          <input v-model="settingsForm.news_feeds" class="field" placeholder="news_feeds：ai:https://… , bilibili:https://… , https://…" />
-          <input v-model="settingsForm.tts_endpoint" class="field" placeholder="tts_endpoint（可选）" />
-          <div class="switches">
-            <label class="sw"><input type="checkbox" v-model="settingsForm.enable_environment_fetch" /><span>允许联网取天气</span></label>
-            <label class="sw"><input type="checkbox" v-model="settingsForm.enable_content_fetch" /><span>允许联网取内容</span></label>
-          </div>
-          <h4 class="sub-label">数据导入导出</h4>
-          <div class="actions-row"><button class="btn tonal sm" @click="exportConfig">导出配置</button><button class="btn tonal sm" @click="exportAll">导出全部（含关系/日记/时间线）</button></div>
-          <textarea v-model="importText" class="field area" placeholder="粘贴导出 JSON 后点导入…"></textarea>
-          <div class="actions-row"><button class="btn filled sm" @click="importConfig" :disabled="!importText.trim()">导入配置</button><button class="btn filled sm" @click="importAll" :disabled="!importText.trim()">全量导入</button></div>
-        </article>
-      </div>
-    </section>
-
-    <!-- 11 模型 -->
-    <section v-show="tab === 'models'" class="panel">
-      <div class="section-head"><div><h2>模型与扩展</h2><p class="desc">逐任务模型分流，以及可选扩展的可用状态（fail-closed）。</p></div><div class="head-actions"><button class="btn filled sm" @click="saveModelRoutes">保存分流</button><button class="btn tonal sm" @click="loadExtensions">刷新扩展</button></div></div>
-      <div class="grid2">
-        <article class="card">
-          <h3>逐任务模型分流</h3>
-          <p class="hint">JSON：任务 → 模型。可用任务：think / output / reflect / journal / dream / agenda / plan / compact。</p>
-          <textarea v-model="modelRoutesText" class="field area" placeholder='{"think":"deepseek-v4-pro","output":"deepseek-flash"}'></textarea>
-          <button class="btn filled sm" @click="saveModelRoutes">保存并生效</button>
-        </article>
-        <article class="card">
-          <h3>扩展状态</h3>
-          <ol class="feed"><li v-for="ext in extensionList" :key="ext.name"><strong>{{ ext.name }}</strong><span class="meta">api {{ ext.api_version }} · {{ ext.reason || '—' }}</span><span class="chip" :class="ext.available ? 'ok' : 'muted'">{{ ext.available ? '可用' : '未就绪' }}</span></li><li v-if="!extensionList.length" class="empty">没有注册的扩展。</li></ol>
-          <p class="hint">未就绪的扩展不会伪装成可用；配置对应端点或开关后即可转为可用。</p>
-        </article>
-      </div>
-    </section>
-
-    <!-- 12 实验 -->
-    <section v-show="tab === 'experimental'" class="panel">
-      <div class="section-head"><div><h2>实验与手动触发</h2><p class="desc">一次性触发内容抓取、群聊兴趣唤醒、关系回落、穿搭与生图（扩展未就绪时失败即报）。</p></div></div>
-      <div class="grid3">
-        <article class="card"><h3>内容</h3><div class="actions-row"><button class="btn tonal sm" @click="gatherContent">抓取见闻</button><button class="btn tonal sm" @click="generate('journal')">生成日记</button><button class="btn tonal sm" @click="generate('dream')">生成梦境</button></div></article>
-        <article class="card"><h3>行为</h3><div class="actions-row"><button class="btn tonal sm" @click="wakeGroup">群聊兴趣唤醒</button><button class="btn tonal sm" @click="decayRelationships">关系自然回落</button><button class="btn tonal sm" @click="outfitToday">今日穿搭</button></div></article>
-        <article class="card"><h3>生图（扩展门控）</h3><p class="hint">未安装生图扩展或未配置端点时不会伪装成功。</p><div class="actions-row"><button class="btn tonal sm" @click="tryImage">尝试生图</button></div></article>
-        <article class="card"><h3>多模态出站</h3>
-          <div class="form-row">
-            <AppSelect v-model="mediaForm.kind" class="sel" style="width:160px" :options="mediaKindOptions" aria-label="媒体类型" />
-            <AppSelect v-model="mediaForm.target" style="flex:1;min-width:200px" :options="mediaTargetOptions" aria-label="发送目标" />
-          </div>
-          <textarea v-if="mediaForm.kind === 'tts'" v-model="mediaForm.text" class="field area" placeholder="语音内容…"></textarea>
-          <input v-else-if="mediaForm.kind === 'image'" v-model="mediaForm.file" class="field" placeholder="图片路径 / URL" />
-          <button class="btn filled sm" @click="sendMedia" :disabled="!mediaForm.target">发送</button>
-          <p class="hint">需要 OneBot 已连接；未连接会明确失败。</p>
-        </article>
-        <article class="card"><h3>食物菜单</h3><div class="form-row"><input v-model="foodForm.name" class="field" placeholder="食物，如 番茄牛腩" /><input v-model="foodForm.tags" class="field" placeholder="标签（可选）" /><button class="btn filled sm" @click="addFood" :disabled="!foodForm.name.trim()">加入</button></div><ol class="feed"><li v-for="f in data.food" :key="f.id">{{ f.name }} <span class="meta">{{ f.tags || '—' }}</span><button class="btn danger sm" @click="removeFood(f.id)">删除</button></li><li v-if="!(data.food || []).length" class="empty">菜单还是空的</li></ol></article>
-        <article class="card"><h3>重要日期</h3><div class="form-row"><input v-model="dateForm.title" class="field" placeholder="名称，如 生日" /><input v-model="dateForm.date" class="field" placeholder="YYYY-MM-DD 或 MM-DD" /><button class="btn filled sm" @click="addDate" :disabled="!dateForm.title.trim() || !dateForm.date.trim()">添加</button></div><label class="sw"><input type="checkbox" v-model="dateForm.repeat_yearly" /><span>每年重复</span></label><ol class="feed"><li v-for="item in data.important_dates" :key="item.id">{{ item.title }} · {{ item.date_text }}<button class="btn danger sm" @click="removeDate(item.id)">删除</button></li><li v-if="!data.important_dates?.length" class="empty">还没有重要日期</li></ol></article>
-        <article class="card"><h3>群聊黑话词云</h3><div class="cloud"><span v-for="w in words" :key="w.topic" class="cloud-word" :style="{ fontSize: (12 + Math.min(18, Math.log(w.score + 1) * 6)) + 'px', opacity: 0.55 + Math.min(0.45, w.score / 20) }">{{ w.topic }}</span><span v-if="!words.length" class="empty">还没有词云数据</span></div></article>
       </div>
     </section>
   </main>
+  <ConfirmDialog />
 </template>
 
 <style scoped>
@@ -993,28 +869,16 @@ h1,h2,h3,h4{margin:0;letter-spacing:-.01em}
 .fab{height:52px;padding:0 22px;border:0;border-radius:18px;background:var(--md-primary);color:var(--md-on-primary,#fff);
   font:700 14px/1 inherit;display:inline-flex;align-items:center;gap:10px;cursor:pointer;box-shadow:0 6px 18px color-mix(in srgb,var(--md-primary) 34%,transparent);
   transition:transform .28s var(--spring),box-shadow .28s}
-.fab:hover:not(:disabled){transform:translateY(-2px) scale(1.02)}
+@media (hover: hover) and (pointer: fine){.fab:hover:not(:disabled){transform:translateY(-2px) scale(1.02)}}
 .fab:disabled{opacity:.6;cursor:not-allowed}
 .fab-ic{font-size:17px}
-.hero-stats{position:relative;z-index:1;display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:22px}
-.stat{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px 14px;border:0;border-radius:var(--r-md);
-  background:color-mix(in srgb,var(--md-surface-container-lowest) 78%,transparent);cursor:pointer;text-align:left;
-  transition:transform .25s var(--spring),background .25s;backdrop-filter:blur(4px)}
-.stat:hover{transform:translateY(-2px);background:var(--md-surface-container-lowest)}
-.stat-ic{font-size:14px;opacity:.85}
-.stat-num{font-size:26px;font-weight:800;letter-spacing:-.02em}
-.stat-cap{font-size:12px;color:var(--md-on-surface-variant)}
-.t1{color:var(--md-primary)} .t2{color:#9a6a00} .t3{color:#7b4bb7} .t4{color:#0d8a5f} .t5{color:#b5473c} .t6{color:#1a6fb4}
 .state-row{position:relative;z-index:1;display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
 .pill{padding:6px 14px;border-radius:999px;background:color-mix(in srgb,var(--md-surface-container-lowest) 70%,transparent);font-size:13px;font-weight:700}
 .pill.soft{font-weight:500;color:var(--md-on-surface-variant)}
 .pill.bad{background:#ffdcc6;color:#7a3a00}
-.chip-btn{border:0;border-radius:999px;padding:7px 14px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);
-  font:700 13px/1 inherit;cursor:pointer;transition:transform .2s var(--spring)}
-.chip-btn:hover{transform:translateY(-1px)}
 
 .banner{padding:12px 16px;border-radius:var(--r-sm);font-size:13px;margin:0 0 16px}
-.banner.err{background:var(--md-error-container);color:#410e0b}
+.banner.err{background:var(--md-error-container);color:var(--md-on-error-container)}
 .banner.ok{background:var(--md-primary-container);color:var(--md-on-primary-container)}
 
 /* Tabs */
@@ -1041,11 +905,11 @@ h1,h2,h3,h4{margin:0;letter-spacing:-.01em}
   display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .22s var(--spring),background .22s,box-shadow .22s}
 .btn.sm{height:34px;padding:0 14px;font-size:13px}
 .btn:disabled{opacity:.5;cursor:not-allowed}
-.btn:hover:not(:disabled){transform:translateY(-1px)}
+@media (hover: hover) and (pointer: fine){.btn:hover:not(:disabled){transform:translateY(-1px)}}
 .btn.filled{background:var(--md-primary);color:var(--md-on-primary,#fff)}
 .btn.tonic{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 .btn.text{background:transparent;color:var(--md-primary)}
-.btn.danger{background:var(--md-error-container);color:#410e0b}
+.btn.danger{background:var(--md-error-container);color:var(--md-on-error-container)}
 .link{border:0;background:transparent;color:var(--md-primary);font:700 12px/1 inherit;cursor:pointer;padding:4px}
 
 /* Cards */
@@ -1054,198 +918,134 @@ h1,h2,h3,h4{margin:0;letter-spacing:-.01em}
 .card.sub{padding:16px;margin-bottom:0}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
-.item-card{display:flex;flex-direction:column;gap:8px}
-.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .sub-label{margin:16px 0 8px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--md-on-surface-variant)}
 .hint{font-size:12px;color:var(--md-on-surface-variant);line-height:1.55;margin:6px 0}
+.world-field{display:block;margin:10px 0}
+.world-label{display:block;font-size:12px;font-weight:600;color:var(--md-on-surface-variant);margin-bottom:4px}
+.world-text{width:100%;min-height:64px;padding:10px 14px;border:1px solid var(--md-outline-variant);border-radius:var(--r-sm);background:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;font-size:13px;line-height:1.5;resize:vertical;outline:none}
+.world-text:focus{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 14%,transparent)}
+.world-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}
+.wm-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.wm-place{font-size:12px;color:var(--md-on-surface-variant)}
+.wm-premise{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:2px 0 8px}
+.wm-map-wrap{position:relative;margin-top:8px}
+.world-map-leaflet{height:clamp(460px, 72vh, 820px);border-radius:16px;overflow:hidden;border:1px solid var(--md-outline-variant);background:#e8edf2}
+.world-map-leaflet.is-empty{display:none}
+.wm-reset{position:absolute;top:10px;right:10px;z-index:var(--z-overlay);border:1px solid var(--md-outline-variant);background:rgba(255,255,255,.94);color:#33404c;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.wm-reset:hover{background:#fff}
+.wm-compass{position:absolute;left:12px;bottom:12px;z-index:var(--z-overlay);width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.92);border:1px solid #b9c3cd;box-shadow:0 1px 4px rgba(0,0,0,.18);display:grid;place-items:center}
+.wm-compass i{font-style:normal;font-size:12px;font-weight:800;color:#d64545;position:relative}
+.wm-compass i::before{content:'';position:absolute;left:50%;top:-9px;transform:translateX(-50%);border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:9px solid #33404c}
+.wm-scope{position:absolute;bottom:12px;right:12px;z-index:var(--z-overlay);border:1px solid var(--md-outline-variant);background:rgba(255,255,255,.94);color:#33404c;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.wm-scope:hover{background:#fff}
+.wm-offline{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:var(--z-overlay);background:rgba(209,73,91,.94);color:#fff;font-size:12px;font-weight:600;padding:5px 12px;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.wm-routes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-top:14px}
+.wm-routes h4{margin:0 0 6px;font-size:13px;font-weight:800}
+.wm-routes ul{list-style:none;margin:0;padding:0}
+.wm-routes li{display:flex;gap:10px;padding:4px 0;border-bottom:1px dashed color-mix(in srgb,var(--md-outline-variant) 70%,transparent);font-size:12.5px}
+.wm-routes b{flex:0 0 88px}
+.wm-routes span{color:var(--md-on-surface-variant);line-height:1.5}
+.wm-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:12px;color:var(--md-on-surface-variant)}
+.wm-legend span{display:inline-flex;align-items:center;gap:6px}
+.wm-legend i{width:12px;height:12px;border-radius:50%;display:inline-block;border:1.5px solid rgba(255,255,255,.7)}
+.wm-legend i.k-home{background:#e07a5f}
+.wm-legend i.k-work{background:#5b8def}
+.wm-legend i.k-shop{background:#e0a23d}
+.wm-legend i.k-food{background:#57a773}
+.wm-legend i.k-park{background:#3faead}
+.wm-legend i.k-transit{background:#8b6fd6}
+.wm-legend i.k-other{background:#8a94a6}
+.wm-legend i.k-actor{background:#fff;border-color:#d1495b;box-shadow:inset 0 0 0 3px #d1495b}
+.wm-legend i.k-metro{background:#d64545}
+.wm-legend i.k-bus{background:#e08a2e}
+.wm-legend i.k-park2{background:#9bd08f}
+.wm-legend i.k-water{background:#8fbfe6}
+.wm-legend i.k-hw{background:#f08c2e}
+.wm-legend i.k-arterial{background:#f7cf8a}
+.wm-legend i.k-street{background:#fff;border-color:#b9c3cd}
 .meta{font-size:12px;color:var(--md-on-surface-variant);line-height:1.5}
-.prose{margin:0;font-size:14px;line-height:1.85;white-space:pre-wrap;overflow-wrap:anywhere}
 .empty{padding:14px;text-align:center;font-size:13px;color:var(--md-on-surface-variant)}
 
 /* Fields */
 .field{width:100%;height:48px;padding:0 16px;border:1px solid var(--md-outline-variant);border-radius:var(--r-sm);
   background:var(--md-surface-container-high);color:var(--md-on-surface);font:400 14px/1.4 inherit;outline:none;transition:border-color .2s,box-shadow .2s}
 .field:focus{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 14%,transparent)}
-.field.area{height:auto;padding:12px 16px;line-height:1.6;resize:vertical;min-height:84px}
 .field.tiny{width:104px;height:38px;padding:0 12px;font-size:13px}
-.field.search{max-width:200px}
-.form-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
-.form-row .field{flex:1;min-width:120px}
-.actions-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
 .switches{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0}
 .sw{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--md-on-surface-variant);cursor:pointer}
 .sw input{width:18px;height:18px;accent-color:var(--md-primary)}
 .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
 .settings-grid label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}
-.settings-grid label.wide{grid-column:span 2}
 .settings-grid .field{height:40px}
+.cog-metric{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:var(--r-sm);
+  background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant)}
+.cog-metric span{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant)}
+.cog-metric strong{font-size:16px;font-weight:800;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.som-channels{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.som-chan{display:grid;grid-template-columns:52px 1fr 48px;align-items:center;gap:10px}
+.som-chan-name{font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}
+.som-chan-bar{display:block;height:8px;border-radius:999px;background:var(--md-surface-container);overflow:hidden}
+.som-chan-bar i{display:block;width:100%;height:100%;border-radius:999px;background:var(--md-primary);transform-origin:left;transition:transform var(--duration-medium) var(--ease-out);will-change:transform}
+.som-chan-val{font-size:12px;font-weight:700;text-align:right;color:var(--md-on-surface-variant)}
 
 /* Chips / status */
 .chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:700;
   background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 .chip.muted{background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-weight:500}
 .chip.ok{background:var(--md-success-container);color:#0d3b1e}
-.chip.warn{background:#ffe6c2;color:#7a4400}
-.chip.danger{background:var(--md-error-container);color:#410e0b}
-.chip button{border:0;background:transparent;color:inherit;cursor:pointer;font-weight:800;margin-left:2px}
 .count-pill{margin-left:auto;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700}
-.chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
-.owner{margin-left:6px;font-style:normal;font-size:12px;font-weight:800;background:var(--md-success-container);color:#0d3b1e;border-radius:999px;padding:2px 7px}
-.note{margin:10px 0;padding:12px 14px;border-radius:var(--r-sm);background:var(--md-surface-container);font-size:13px;line-height:1.6}
+.count-pill.ok{background:var(--md-success-container);color:#0d3b1e}
+.actions-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
 
-/* Dashboard desk */
-.desk{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:16px;align-items:start}
-.desk-col{display:flex;flex-direction:column;gap:16px}
-.dcard{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--r-lg);padding:18px}
-.dcard header{display:flex;align-items:center;gap:8px;margin-bottom:12px}
-.dcard header h3{font-size:14px;font-weight:800}
-.dcard header small,.dcard header .link{margin-left:auto}
-.dcard .link{margin-left:auto}
-.dot{width:11px;height:11px;border-radius:50%;background:var(--md-outline)}
-.dot.ic{background:var(--md-primary);box-shadow:0 0 0 4px color-mix(in srgb,var(--md-primary) 18%,transparent)}
-.fact-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.fact{background:var(--md-surface-container-low);border-radius:var(--r-sm);padding:10px 12px;display:flex;flex-direction:column;gap:2px}
-.fact b{font-size:22px;font-weight:800}
-.fact span{font-size:12px;color:var(--md-on-surface-variant)}
-.mini-list{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
-.mini-list li{display:flex;justify-content:space-between;gap:10px;font-size:13px;align-items:center}
-.cur{display:flex;align-items:center;gap:10px;font-size:15px}
-.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-.tl li{display:flex;gap:12px;align-items:flex-start;padding:8px 10px;border-radius:var(--r-sm);background:var(--md-surface-container-low)}
-.tl li time{font:600 12px/1.4 ui-monospace,monospace;color:var(--md-on-surface-variant);flex:0 0 46px}
-.tl li > div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.tl li strong.done{text-decoration:line-through;color:var(--md-on-surface-variant)}
-.tl li.ok{background:var(--md-success-container)}
-.tl li.warn{background:#fff3dd}
-.mini-tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-.mini-tl li{display:flex;gap:10px;align-items:flex-start}
-.mini-tl li > div{display:flex;flex-direction:column;gap:2px}
-.caps{display:flex;flex-wrap:wrap;gap:8px}
-.cap{display:flex;flex-direction:column;gap:1px;padding:8px 12px;border-radius:var(--r-sm);background:var(--md-surface-container-low);min-width:96px}
-.cap b{font-size:13px}
-.cap small{font-size:12px;color:#0d8a5f;font-weight:700}
-.cap.off small{color:var(--md-on-surface-variant)}
-.fold{border:1px solid var(--md-outline-variant);border-radius:var(--r-lg);margin-top:16px;background:var(--md-surface-container-lowest);overflow:hidden}
-.fold summary{padding:16px 20px;cursor:pointer;display:flex;flex-direction:column;gap:2px;list-style:none}
-.fold summary::-webkit-details-marker{display:none}
-.fold summary b{font-size:15px}
-.fold summary small{font-size:12px;color:var(--md-on-surface-variant)}
-.fold[open] summary{border-bottom:1px solid var(--md-outline-variant)}
-.fold .grid3,.fold .grid2{padding:18px;margin:0}
-.stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
-.stat-card{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--r-lg);padding:18px;display:flex;flex-direction:column;gap:4px}
-.stat-card b{font-size:28px;font-weight:800}
-.stat-card span{font-size:12px;color:var(--md-on-surface-variant)}
-
-/* Bars */
-.bars{display:flex;flex-direction:column;gap:10px}
-.bar-row{display:flex;align-items:center;gap:10px;font-size:13px}
-.bar-label{flex:0 0 84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--md-on-surface-variant)}
-.bar{flex:1;height:10px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}
-.bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--md-primary),color-mix(in srgb,var(--md-primary) 60%,#fff));transition:width .4s var(--spring)}
-.bar.big{height:14px;margin:8px 0}
-
-/* Feed */
-.feed{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-.feed li{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:var(--r-sm);background:var(--md-surface-container-low);font-size:13px}
-.feed li .actions-row{margin-top:4px}
-.pos{color:var(--md-success);font-weight:800}
-.neg{color:var(--md-error);font-weight:800}
-.tl-detail{margin:4px 0 0;font-size:12px;color:var(--md-on-surface-variant);background:var(--md-surface-container);padding:7px 10px;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere}
-
-/* User workspace */
-.user-layout{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
-.roster{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--r-lg);padding:14px;display:flex;flex-direction:column;gap:8px}
-.roster-head{display:flex;align-items:center;gap:8px;padding:4px 6px 8px}
-.roster-row{display:flex;gap:10px;align-items:center;padding:10px;border:0;border-radius:var(--r-sm);background:transparent;cursor:pointer;text-align:left;transition:background .2s}
-.roster-row:hover{background:var(--md-surface-container-low)}
-.roster-row.active{background:var(--md-secondary-container)}
-.avatar{width:38px;height:38px;border-radius:50%;background:var(--md-primary-container);color:var(--md-on-primary-container);display:grid;place-items:center;font-weight:800;flex:0 0 auto}
-.avatar.lg{width:52px;height:52px;font-size:20px}
-.rmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
-.rtop{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700}
-.user-detail{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--r-lg);padding:20px;min-height:320px}
-.detail-head{display:flex;align-items:center;gap:14px;padding-bottom:14px;border-bottom:1px solid var(--md-outline-variant);margin-bottom:12px}
-.subtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
-.subtabs button{height:32px;padding:0 14px;border:1px solid var(--md-outline-variant);border-radius:999px;background:transparent;color:var(--md-on-surface-variant);font:700 12px/1 inherit;cursor:pointer}
-.subtabs button.active{background:var(--md-primary);color:var(--md-on-primary,#fff);border-color:transparent}
-.kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:8px}
-.kv{background:var(--md-surface-container-low);border-radius:var(--r-sm);padding:12px 14px;display:flex;flex-direction:column;gap:3px}
-.kv span{font-size:12px;color:var(--md-on-surface-variant)}
-.kv b{font-size:22px;font-weight:800}
-
-/* World */
-.world-layout{display:grid;grid-template-columns:190px 1fr;gap:16px;align-items:start}
-.world-nav{position:sticky;top:8px;display:flex;flex-direction:column;gap:4px}
-.world-nav button{display:flex;justify-content:space-between;align-items:center;height:42px;padding:0 14px;border:0;border-radius:999px;background:transparent;color:var(--md-on-surface-variant);font:700 13px/1 inherit;cursor:pointer;transition:background .2s}
-.world-nav button:hover{background:var(--md-surface-container-high)}
-.world-nav button.active{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-.world-body .cards{margin-top:0}
-
-/* Group */
-.group-form{display:grid;grid-template-columns:1fr 130px 1fr auto;gap:10px;margin-bottom:16px}
-.group-detail{margin:10px 0;padding:12px;border-radius:var(--r-sm);background:var(--md-surface-container-low)}
-.members{display:flex;flex-direction:column;gap:6px}
-.member{display:flex;align-items:center;gap:10px;font-size:13px}
-.member .meta{flex:1}
-
-/* Calendar */
-.cal-card{grid-column:auto}
-.cal-week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}
-.cal-week span{text-align:center;font-size:12px;color:var(--md-on-surface-variant);font-weight:700}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
-.cal-cell{min-height:74px;border:1px solid var(--md-outline-variant);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:3px;background:var(--md-surface-container-lowest)}
-.cal-cell.empty{border-color:transparent;background:transparent}
-.cal-cell.today{border-color:var(--md-primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--md-primary) 20%,transparent)}
-.cal-cell.has{background:var(--md-surface-container-low)}
-.cal-day{font-size:12px;font-weight:800;color:var(--md-on-surface-variant)}
-.cal-chip{font-size:11px;line-height:1.3;background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:6px;padding:2px 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cal-more{font-size:12px;color:var(--md-on-surface-variant)}
-
-.cloud{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;padding:8px 0}
-.cloud-word{font-weight:800;color:var(--md-primary);line-height:1.2}
-
-.mini-actions{display:flex;gap:6px;flex:0 0 auto}
-.warnline{margin:12px 0 0;padding:10px 12px;border-radius:var(--r-sm);background:#fff3dd;color:#7a4400;font-size:13px}
-.spark{display:flex;align-items:flex-end;gap:6px;height:120px;padding:8px 2px 0}
-.spark-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%}
-.spark-col i{width:100%;max-width:22px;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,var(--md-primary),color-mix(in srgb,var(--md-primary) 55%,#fff));transition:height .4s var(--spring)}
-.spark-col span{font-size:11px;color:var(--md-on-surface-variant);font-family:ui-monospace,monospace}
-.radar-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
-.radar{width:180px;height:180px}
-.radar-grid{fill:none;stroke:var(--md-outline-variant);stroke-width:1}
-.radar-fill{fill:color-mix(in srgb,var(--md-primary) 34%,transparent);stroke:var(--md-primary);stroke-width:2;transition:all .4s var(--spring)}
-.radar-lbl{font-size:10px;fill:var(--md-on-surface-variant);font-weight:700}
-.findings{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
-.findings li{display:flex;gap:8px;align-items:center}
-
-/* ---------- Material 3 Expressive align ---------- */
-#app .pcp .card,
-#app .pcp .dcard{border-color:color-mix(in srgb,var(--md-outline-variant) 55%,transparent);background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}
+/* Material 3 Expressive align */
+#app .pcp .card{border-color:color-mix(in srgb,var(--md-outline-variant) 55%,transparent);background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}
 #app .pcp .field{height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high)}
 #app .pcp .field:focus{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}
-#app .pcp .field.area{height:auto}
 #app .pcp .field.tiny{height:40px}
 #app .pcp .settings-grid .field{height:44px}
 #app .pcp .btn{height:44px;padding:0 20px}
 #app .pcp .btn.sm{height:36px;padding:0 15px}
-#app .pcp .stat-card,
-#app .pcp .item-card{border-color:color-mix(in srgb,var(--md-outline-variant) 55%,transparent)}
-#app .pcp .note,#app .pcp .fact,#app .pcp .tl li,#app .pcp .feed li,#app .pcp .kv,#app .pcp .cap,#app .pcp .group-detail{background:var(--md-surface-container)}
-#app .pcp .sel{flex:0 0 auto}
-#app .pcp .sel :deep(.app-select-trigger){min-height:48px;border-radius:14px}
-#app .pcp .sel-tiny{flex:0 0 auto}
-#app .pcp .sel-tiny :deep(.app-select-trigger){min-height:38px;padding:0 10px;border-radius:12px;font-size:13px}
+#app .pcp .cog-metric{background:var(--md-surface-container)}
+
+@media (prefers-reduced-motion: reduce){
+  .panel{animation:none}
+  .fab,.btn,.tab,.som-chan-bar i{transition:none}
+  .fab:hover:not(:disabled),.btn:hover:not(:disabled),.tab.active{transform:none}
+}
 
 @media (prefers-color-scheme: dark){
   .pill.bad{background:#5a2d00;color:#ffd7b0}
-  .chip.warn{background:#5a3d00;color:#ffe0a3}
-  .warnline{background:#3d2b00;color:#ffd89a}
-  .tl li.warn{background:#3d2b00}
 }
 
-@media(max-width:1080px){.desk{grid-template-columns:1fr 1fr}.stat-cards{grid-template-columns:repeat(2,1fr)}.hero-stats{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:820px){.grid2,.grid3,.desk,.user-layout,.world-layout{grid-template-columns:1fr}.group-form{grid-template-columns:1fr}.settings-grid label.wide{grid-column:span 1}.hero-stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}.settings-grid label.wide{grid-column:span 1}}
 @media(max-width:560px){.pcp{padding:var(--space-lg) var(--space-lg) 80px}.hero{padding:20px}.hero-actions{width:100%}}
+</style>
+
+<style>
+/* Leaflet creates its markers outside Vue's scoped CSS, so these live in a
+   plain (unscoped) block. All names are prefixed to avoid collisions. */
+.wm-pin-holder,.wm-actor-holder{background:none;border:none}
+.wm-pin{position:absolute;left:0;top:0;width:16px;height:16px;border-radius:50%;background:var(--c,#8a94a6);
+  border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);transform:translate(-50%,-50%)}
+.wm-pin::after{content:'';position:absolute;left:50%;top:100%;width:2px;height:8px;background:#fff;transform:translateX(-50%);opacity:.7}
+.wm-pin-label{position:absolute;left:12px;top:-9px;white-space:nowrap;background:rgba(18,20,26,.82);color:#fff;
+  font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px;pointer-events:none}
+.wm-actor-badge{position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:#fff;color:#d1495b;
+  border:3px solid #d1495b;font-size:14px;font-weight:800;line-height:1;display:grid;place-items:center;
+  transform:translate(-50%,-50%);box-shadow:0 2px 6px rgba(0,0,0,.5);z-index:600}
+.wm-actor-name{position:absolute;left:0;top:20px;white-space:nowrap;background:#d1495b;color:#fff;font-size:11px;
+  font-weight:700;padding:1px 7px;border-radius:9px;transform:translateX(-50%)}
+.wm-district{background:none;border:none}
+.wm-district-inner{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;font-size:12px;
+  font-weight:800;letter-spacing:.2em;color:#5c6b78;text-shadow:0 1px 0 rgba(255,255,255,.9);pointer-events:none}
+.wm-route{background:none;border:none}
+.wm-route-inner{position:absolute;left:0;top:0;transform:translate(-50%,-50%);background:var(--c,#333);color:#fff;
+  font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.35);pointer-events:none}
+/* filler building names hide when zoomed out, to keep the map readable */
+.wm-zoom-low .wm-minor{display:none}
+/* metro station names: small white pills with the line colour as the border */
+.wm-station .wm-route-inner{background:#fff;color:#33404c;border:1.5px solid var(--c,#888);border-radius:6px;font-size:9px;font-weight:700;padding:1px 5px}
+.leaflet-container{font-family:inherit;background:#e8edf2;border-radius:16px}
+.leaflet-container a{color:#2f6fed}
+.leaflet-popup-content{font-size:13px;line-height:1.5}
 </style>

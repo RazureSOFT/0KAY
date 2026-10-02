@@ -177,7 +177,7 @@ onMounted(load)
 .subtitle { margin: 8px 0 0; color: var(--md-on-surface-variant); font-size: 14px; line-height: 1.6; max-width: 60ch; }
 .mcp-actions { display: flex; gap: 10px; }
 
-.error-banner { padding: 14px 18px; border-radius: 16px; background: var(--md-error-container); color: #410e0b; margin-bottom: var(--space-lg); }
+.error-banner { padding: 14px 18px; border-radius: 16px; background: var(--md-error-container); color: var(--md-on-error-container); margin-bottom: var(--space-lg); }
 .notice-banner { padding: 14px 18px; border-radius: 16px; background: var(--md-secondary-container); color: var(--md-on-secondary-container); margin-bottom: var(--space-lg); }
 .hint { color: var(--md-on-surface-variant); font-size: 14px; }
 
@@ -218,7 +218,7 @@ onMounted(load)
   font-weight: 650;
   cursor: pointer;
   background: var(--md-error-container);
-  color: #410e0b;
+  color: var(--md-on-error-container);
 }
 .btn {
   height: 44px;

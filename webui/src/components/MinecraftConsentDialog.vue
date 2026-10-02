@@ -90,7 +90,7 @@ onUnmounted(() => {
 }
 .mc-consent-icon {
   width: 46px; height: 46px; border-radius: 16px; display: grid; place-items: center;
-  background: var(--md-error-container); color: #410e0b;
+  background: var(--md-error-container); color: var(--md-on-error-container);
 }
 .mc-consent-body h2 { margin: 0 0 6px; font-size: 19px; font-weight: 700; }
 .mc-consent-body p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--md-on-surface-variant); overflow-wrap: anywhere; }

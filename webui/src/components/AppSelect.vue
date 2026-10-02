@@ -79,7 +79,7 @@ onUnmounted(()=>{document.removeEventListener('pointerdown',outside,true);window
  min-height:52px;padding:0 14px 0 16px;border:1px solid transparent;border-radius:16px;
  background-color:var(--md-surface-container-high);color:var(--md-on-surface);
  font:inherit;font-size:15px;text-align:left;cursor:pointer;box-shadow:none;
- transition:background-color 180ms,border-color 180ms,box-shadow 200ms,border-radius 340ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1));
+ transition:background-color var(--duration-short) var(--ease-out),border-color var(--duration-short) var(--ease-out),box-shadow var(--duration-medium) var(--ease-out);
 }
 #app .app-select-trigger:hover:not(:disabled){background-color:var(--md-surface-container-highest)}
 #app .app-select-trigger[aria-expanded="true"],#app .app-select-trigger:focus-visible{
@@ -88,12 +88,12 @@ onUnmounted(()=>{document.removeEventListener('pointerdown',outside,true);window
 }
 #app .app-select-trigger:disabled{opacity:.5;cursor:not-allowed}
 .app-select-value{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
-.app-select-chevron{flex-shrink:0;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;color:var(--md-on-surface-variant);transition:transform 320ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color 160ms}
+.app-select-chevron{flex-shrink:0;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;color:var(--md-on-surface-variant);transition:transform var(--duration-medium) var(--ease-spring),background-color var(--duration-short) var(--ease-out)}
 #app .app-select-trigger:hover .app-select-chevron{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent)}
-.app-select-chevron svg{transition:transform 320ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}
+.app-select-chevron svg{transition:transform var(--duration-medium) var(--ease-spring)}
 .app-select-chevron svg.is-open{transform:rotate(180deg)}
 .app-select-menu{
- position:fixed;z-index:10000;overflow-y:auto;overscroll-behavior:contain;
+ position:fixed;z-index:var(--z-popover,5000);overflow-y:auto;overscroll-behavior:contain;
  padding:8px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);
  border-radius:24px;background:var(--md-surface-container-low);color:var(--md-on-surface);
  box-shadow:0 18px 50px -12px color-mix(in srgb,var(--md-scrim,#000) 45%,transparent),0 4px 14px -4px #16244026;
@@ -104,7 +104,7 @@ onUnmounted(()=>{document.removeEventListener('pointerdown',outside,true);window
  display:flex;justify-content:space-between;align-items:center;gap:12px;
  min-height:46px;padding:0 14px;border-radius:14px;cursor:pointer;
  overflow-wrap:anywhere;line-height:1.4;color:var(--md-on-surface);
- transition:background-color 140ms,border-radius 300ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),color 140ms;
+ transition:background-color var(--duration-short) var(--ease-out),border-radius var(--duration-medium) var(--ease-out),color var(--duration-short) var(--ease-out);
 }
 .app-select-option>span{min-width:0}
 .app-select-check{flex-shrink:0;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;color:var(--md-primary)}
@@ -116,7 +116,7 @@ onUnmounted(()=>{document.removeEventListener('pointerdown',outside,true);window
 .app-select-search{position:sticky;top:-8px;z-index:1;display:flex;align-items:center;gap:10px;margin:-8px -8px 8px;padding:13px 16px;background:var(--md-surface-container-low);border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:24px 24px 0 0;color:var(--md-on-surface-variant)}
 .app-select-search input{flex:1;min-width:0;border:0;background:transparent;padding:0;font:inherit;color:var(--md-on-surface);outline:none}
 .app-select-empty{padding:18px;color:var(--md-on-surface-variant);text-align:center;font-size:13px}
-.select-menu-enter-active{transition:opacity 180ms var(--ease-emphasized,cubic-bezier(.2,0,0,1)),transform 320ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}
-.select-menu-leave-active{transition:opacity 130ms,transform 130ms}
+.select-menu-enter-active{transition:opacity var(--duration-short) var(--ease-out),transform var(--duration-medium) var(--ease-spring)}
+.select-menu-leave-active{transition:opacity var(--duration-short) var(--ease-out),transform var(--duration-short) var(--ease-out)}
 .select-menu-enter-from,.select-menu-leave-to{opacity:0;transform:translateY(-6px) scale(.97)}
 </style>

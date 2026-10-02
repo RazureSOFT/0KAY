@@ -32,6 +32,13 @@ function injectCss(styleId) {
 
 export default defineConfig({
   plugins: [vue(), injectCss('agent-plugin-style')],
+  // Some bundled preview libraries (pptx-preview → zrender) reference `process`
+  // at module-evaluation time. The plugin runs in the browser, so shim it.
+  define: {
+    'process.env.NODE_ENV': JSON.stringify('production'),
+    'process.env': '{}',
+    global: 'globalThis',
+  },
   build: {
     outDir,
     emptyOutDir: true,
@@ -44,6 +51,8 @@ export default defineConfig({
     rollupOptions: {
       external: ['vue'],
       output: {
+        // `process` shim for libraries that touch process.nextTick/env at load.
+        banner: 'var process=globalThis.process||{env:{NODE_ENV:"production"},nextTick:(fn,...a)=>Promise.resolve().then(()=>fn(...a))};',
         entryFileNames: 'index.js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash][extname]',

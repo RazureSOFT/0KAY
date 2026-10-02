@@ -19,7 +19,7 @@ type Memory = {
   memory_type?: string
   source_kind?: string
 }
-type Note = { note_id: string; preview: string; bytes: number }
+type Note = { note_id: string; preview: string; bytes: number; scope?: string }
 type Reflection = {
   id: string
   session_id: string
@@ -29,6 +29,7 @@ type Reflection = {
   created_at: string
   user_text: string
   assistant_text: string
+  scope?: string
 }
 
 const tab = ref<'memories' | 'notes' | 'reflections'>('memories')
@@ -40,6 +41,14 @@ const limit = 30
 const memories = ref<Memory[]>([])
 const total = ref(0)
 const stats = ref<any>({ working: 0, shortTerm: { total: 0 }, longTerm: 0, avgStrength: 0 })
+const dashboard = ref<any>(null)
+const maxTier = computed(() => Math.max(1, dashboard.value?.tiers?.short_term || 0, dashboard.value?.tiers?.long_term || 0))
+const maxHist = computed(() => Math.max(1, ...(dashboard.value?.strength_histogram || [1])))
+const decayPoints = computed(() => {
+  const curve = dashboard.value?.decay_curve || []
+  return curve.map((point: any) => `${(point.day / 90 * 200).toFixed(1)},${(60 - point.strength * 60).toFixed(1)}`).join(' ')
+})
+function barWidth(value: number, max: number) { return `${Math.round((value || 0) / Math.max(1, max) * 100)}%` }
 const loading = ref(false)
 const error = ref('')
 const notice = ref('')
@@ -84,6 +93,11 @@ async function loadStats() {
   } catch { /* optional */ }
 }
 
+async function loadDashboard() {
+  try { dashboard.value = await call('memory_dashboard', {}) }
+  catch { /* optional */ }
+}
+
 async function loadMemories() {
   loading.value = true
   error.value = ''
@@ -116,6 +130,7 @@ async function loadReflections() {
 }
 
 function refresh() {
+  void loadStats(); void loadDashboard()
   if (tab.value === 'notes') return loadNotes()
   if (tab.value === 'reflections') return loadReflections()
   return loadMemories()
@@ -157,14 +172,24 @@ async function onImportFile(event: Event) {
 }
 
 async function removeMemory(memory: Memory) {
-  const ok = await confirm({ title: '删除记忆', message: '删除会撤销该记忆并重建检索投影，继续吗？', confirmLabel: '删除', danger: true })
+  const ok = await confirm({
+    title: '永久删除记忆',
+    message: '这条记忆会被彻底抹掉：事实库、内存分层、检索投影，以及所有本地备份里的副本。删除后无法恢复，也无法通过导入备份找回。确定继续吗？',
+    confirmLabel: '永久删除',
+    danger: true,
+  })
   if (!ok) return
   try { await call('delete_memory', { id: memory.id }); await loadMemories(); await loadStats() }
   catch (cause: any) { error.value = cause?.message || '删除失败' }
 }
 
 async function clearAll() {
-  const ok = await confirm({ title: '清除全部记忆', message: '这会清除工作、短期、长期记忆、笔记块和反思提案，无法恢复。确定继续吗？', confirmLabel: '全部清除', danger: true })
+  const ok = await confirm({
+    title: '清除全部记忆',
+    message: '清空工作 / 短期 / 长期记忆、笔记、反思提案与本地备份。\n注意：这只清记忆层——关系、目标、承诺、自我叙事都还在，人还是原来那个人。\n如果想连同关系与自我一起回到出厂状态，请到「伴侣」页的「重置整个人」。\n此操作不可撤销。',
+    confirmLabel: '清除全部记忆',
+    danger: true,
+  })
   if (!ok) return
   try { await call('clear_all_memory', {}); await loadMemories(); await loadStats() }
   catch (cause: any) { error.value = cause?.message || '清除失败' }
@@ -213,7 +238,7 @@ watch([tier, sort], () => { offset.value = 0; loadMemories() })
 watch(noteQuery, () => { if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(loadNotes, 250) })
 watch(reflectionStatus, loadReflections)
 watch(tab, refresh)
-onMounted(async () => { await loadMemories(); await loadStats() })
+onMounted(async () => { await loadMemories(); await loadStats(); await loadDashboard() })
 </script>
 
 <template>
@@ -227,7 +252,7 @@ onMounted(async () => { await loadMemories(); await loadStats() })
         </div>
         <div class="header-actions">
           <button class="btn btn-tonal" :disabled="loading" @click="runMaintenance">巩固维护</button>
-          <button class="btn btn-danger" :disabled="loading" @click="clearAll">一键清除</button>
+          <button class="btn btn-danger" :disabled="loading" @click="clearAll" title="只清记忆层；重置整个人在「伴侣」页">清除全部记忆</button>
           <button class="btn btn-tonal" :disabled="loading" @click="refresh">{{ loading ? '加载中…' : '刷新' }}</button>
         </div>
       </header>
@@ -249,6 +274,42 @@ onMounted(async () => { await loadMemories(); await loadStats() })
           <div class="stat-head"><span class="icon-badge tone-4" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 14l4-4 3 3 5-6 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><span class="stat-label">平均强度</span></div>
           <strong class="stat-value">{{ pct(stats.avgStrength) }}</strong><span class="stat-hint">遗忘曲线后的值</span>
         </article>
+      </section>
+
+      <section v-if="dashboard" class="card" style="margin-top:16px">
+        <div class="card-head"><h2 class="card-title">记忆动力学（TMD / RRF）</h2>
+          <span class="chip muted">RRF k={{ dashboard.rrf_k }}</span></div>
+        <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:18px;align-items:end">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;margin:6px 0">
+              <span style="width:48px;font-size:12px">短期</span>
+              <div style="flex:1;height:10px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden">
+                <i :style="{ display: 'block', height: '100%', width: barWidth(dashboard.tiers.short_term, maxTier) }"></i></div>
+              <b>{{ dashboard.tiers.short_term }}</b>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin:6px 0">
+              <span style="width:48px;font-size:12px">长期</span>
+              <div style="flex:1;height:10px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden">
+                <i :style="{ display: 'block', height: '100%', width: barWidth(dashboard.tiers.long_term, maxTier) }"></i></div>
+              <b>{{ dashboard.tiers.long_term }}</b>
+            </div>
+            <p class="hint">平均强度 {{ pct(dashboard.avg_strength) }} · 低强度 {{ dashboard.low_strength }} · 语义 {{ dashboard.types?.semantic || 0 }} / 情景 {{ dashboard.types?.episode || 0 }}</p>
+          </div>
+          <div>
+            <p class="hint">强度分布（0→1）</p>
+            <div style="display:flex;align-items:flex-end;gap:3px;height:60px">
+              <i v-for="(count, index) in dashboard.strength_histogram" :key="index"
+                 :title="`${index / 10}~${(index + 1) / 10}: ${count}`"
+                 :style="{ flex: '1', background: 'var(--md-primary)', borderRadius: '3px 3px 0 0', height: barWidth(count, maxHist) }"></i>
+            </div>
+          </div>
+          <div>
+            <p class="hint">遗忘曲线（重要度 0.7，λ=0.05）</p>
+            <svg viewBox="0 0 200 60" style="width:100%;height:60px;color:var(--md-primary)" aria-label="遗忘曲线">
+              <polyline :points="decayPoints" fill="none" stroke="currentColor" stroke-width="2" />
+            </svg>
+          </div>
+        </div>
       </section>
 
       <nav class="tabs">
@@ -277,6 +338,7 @@ onMounted(async () => { await loadMemories(); await loadStats() })
         </section>
 
         <section class="memory-list">
+          <TransitionGroup name="memory-card">
           <article v-for="memory in memories" :key="memory.id" class="memory-card" :class="{ open: expanded === memory.id }">
             <div class="card-top">
               <span class="chip" :class="'tier-' + (memory.tier === 'long_term' ? 'long' : 'short')">{{ label(memory.tier) }}</span>
@@ -287,8 +349,8 @@ onMounted(async () => { await loadMemories(); await loadStats() })
             <p class="memory-content">{{ memory.content }}</p>
             <div v-if="memory.tags?.length" class="tags"><span v-for="tag in memory.tags" :key="tag">#{{ tag }}</span></div>
             <footer class="memory-foot">
-              <div class="meter" title="重要性"><span>重要性</span><div class="meter-bar"><i :style="{ width: pct(memory.importance) }" class="fill-primary"></i></div><b>{{ pct(memory.importance) }}</b></div>
-              <div class="meter" title="强度"><span>强度</span><div class="meter-bar"><i :style="{ width: pct(memory.strength) }" class="fill-secondary"></i></div><b>{{ pct(memory.strength) }}</b></div>
+              <div class="meter" title="重要性"><span>重要性</span><div class="meter-bar"><i :style="{ '--v': pct(memory.importance) }" class="fill-primary"></i></div><b>{{ pct(memory.importance) }}</b></div>
+              <div class="meter" title="强度"><span>强度</span><div class="meter-bar"><i :style="{ '--v': pct(memory.strength) }" class="fill-secondary"></i></div><b>{{ pct(memory.strength) }}</b></div>
               <span class="meter-text">召回 {{ memory.recall_count || 0 }} 次</span>
             </footer>
             <div v-if="expanded === memory.id" class="detail">
@@ -306,6 +368,7 @@ onMounted(async () => { await loadMemories(); await loadStats() })
               <button class="btn btn-sm btn-tonal" @click="reinforce(memory)">再巩固</button>
             </div>
           </article>
+          </TransitionGroup>
           <div v-if="!loading && !memories.length" class="empty-state"><p>暂无匹配记忆</p><p class="hint">LIFE 会在对话与工具调用中逐步沉淀记忆。</p></div>
         </section>
 
@@ -337,6 +400,7 @@ onMounted(async () => { await loadMemories(); await loadStats() })
                   <strong>{{ note.note_id }}</strong>
                   <span class="item-meta">{{ note.preview?.slice(0, 90) || '（空）' }}</span>
                   <span class="item-meta">{{ (note.bytes / 1024).toFixed(1) }} KB</span>
+                  <span class="chip muted" v-if="note.scope && note.scope !== 'public'">scope：{{ note.scope }}</span>
                 </div>
                 <div class="note-actions">
                   <button class="btn btn-sm btn-tonal" @click="readNote(note)">阅读</button>
@@ -371,6 +435,7 @@ onMounted(async () => { await loadMemories(); await loadStats() })
             <div class="card-head">
               <h3 class="card-title">{{ item.statement || '（无摘要）' }}</h3>
               <span class="chip" :class="item.status === 'applied' ? 'chip-ok' : item.status === 'rejected' ? 'chip-warn' : 'muted'">{{ item.status }}</span>
+              <span class="chip muted" v-if="item.scope && item.scope !== 'public'">scope：{{ item.scope }}</span>
             </div>
             <p class="item-meta">来源会话 {{ item.session_id }} · {{ fmtTime(item.created_at) }}</p>
             <details>
@@ -409,7 +474,7 @@ onMounted(async () => { await loadMemories(); await loadStats() })
 .btn-sm{height:30px;padding:0 12px;font-size:12px}
 .btn-primary{background:var(--md-primary);color:var(--md-on-primary,#fff)}
 .btn-tonal{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-.btn-danger{background:var(--md-error-container);color:#410E0B}
+.btn-danger{background:var(--md-error-container);color:var(--md-on-error-container)}
 
 .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-lg);margin-bottom:var(--space-lg)}
 .stat-card{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--radius-lg);padding:var(--space-lg);box-shadow:var(--shadow-1);display:flex;flex-direction:column;gap:8px}
@@ -435,6 +500,7 @@ onMounted(async () => { await loadMemories(); await loadStats() })
 .search-field{display:flex;align-items:center;gap:10px;flex:1;min-width:220px}
 .search-icon{color:var(--md-on-surface-variant);flex-shrink:0}
 .search-field input{flex:1;min-width:0;height:38px;border:0;background:transparent;outline:none;color:var(--md-on-surface);font-size:14px}
+.search-field input:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
 .search-field.mini{padding:8px 12px;border:1px solid var(--md-outline-variant);border-radius:10px;margin-bottom:12px}
 .select{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--md-on-surface-variant);font-weight:600}
 .select select{height:34px;border:1px solid var(--md-outline-variant);border-radius:9px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);padding:0 10px;font:inherit;font-size:13px}
@@ -446,14 +512,21 @@ onMounted(async () => { await loadMemories(); await loadStats() })
 .chip-ok{background:var(--md-success-container);color:#0D3B1E}
 .chip-warn{background:#FFF1DC;color:#7A4400}
 
-.error-banner{padding:12px 16px;border-radius:12px;background:var(--md-error-container);color:#410E0B;font-size:13px;margin:var(--space-lg) 0}
+.error-banner{padding:12px 16px;border-radius:12px;background:var(--md-error-container);color:var(--md-on-error-container);font-size:13px;margin:var(--space-lg) 0}
 .notice{padding:10px 16px;border-radius:12px;background:var(--md-primary-container);color:var(--md-on-primary-container);font-size:13px;margin-top:var(--space-md)}
 
 .memory-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:var(--space-lg)}
 .memory-card{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--radius-lg);padding:var(--space-lg);box-shadow:var(--shadow-1);display:flex;flex-direction:column;gap:12px;transition:border-color .15s,box-shadow .15s}
+.memory-card-enter-active{transition:opacity 200ms var(--ease-emphasized-decel),transform 200ms var(--ease-emphasized-decel)}
+.memory-card-leave-active{transition:opacity 160ms var(--ease-emphasized-accel),transform 160ms var(--ease-emphasized-accel)}
+.memory-card-enter-from{opacity:0;transform:translateY(6px) scale(.98)}
+.memory-card-leave-to{opacity:0;transform:scale(.98)}
+.memory-card-move{transition:transform 260ms var(--ease-emphasized)}
+@media (prefers-reduced-motion: reduce){.memory-card-enter-active,.memory-card-leave-active,.memory-card-move{transition-duration:1ms}.memory-card-enter-from,.memory-card-leave-to{transform:none}}
 .memory-card:hover{border-color:color-mix(in srgb,var(--md-primary) 45%,var(--md-outline-variant));box-shadow:var(--shadow-2)}
 .card-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.btn-icon{width:30px;height:30px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--md-on-surface-variant);display:grid;place-items:center;cursor:pointer;margin-left:auto}
+.btn-icon{position:relative;width:30px;height:30px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--md-on-surface-variant);display:grid;place-items:center;cursor:pointer;margin-left:auto}
+.btn-icon::after{content:'';position:absolute;top:50%;left:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
 .btn-icon.danger:hover{background:var(--md-error-container);color:var(--md-error)}
 .memory-content{margin:0;line-height:1.65;font-size:14px;white-space:pre-wrap}
 .tags{display:flex;gap:6px;flex-wrap:wrap}
@@ -461,7 +534,7 @@ onMounted(async () => { await loadMemories(); await loadStats() })
 .memory-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--md-outline-variant)}
 .meter{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--md-on-surface-variant)}
 .meter-bar{width:56px;height:5px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}
-.meter-bar i{display:block;height:100%;border-radius:999px;transition:width .3s}
+.meter-bar i{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(var(--v,0%));border-radius:999px;transition:transform .3s var(--ease-out,ease)}
 .fill-primary{background:var(--md-primary)}
 .fill-secondary{background:var(--md-secondary,#536255)}
 .meter-text{margin-left:auto;font-size:12px;color:var(--md-on-surface-variant)}
@@ -509,13 +582,13 @@ onMounted(async () => { await loadMemories(); await loadStats() })
   box-shadow:var(--shadow-1);
 }
 #app .memory-page .stat-card{border-radius:24px;transition:transform 280ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),box-shadow 280ms}
-#app .memory-page .stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
+@media (hover: hover) and (pointer: fine){#app .memory-page .stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}}
 #app .memory-page .stat-value{font-size:34px;font-weight:800;letter-spacing:-.02em}
 #app .memory-page .icon-badge{width:44px;height:44px;border-radius:16px 16px 16px 6px}
 #app .memory-page .card,
 #app .memory-page .memory-card{border-radius:24px}
 #app .memory-page .memory-card{transition:transform 260ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),box-shadow 220ms,border-color 200ms}
-#app .memory-page .memory-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2);border-color:color-mix(in srgb,var(--md-primary) 30%,var(--md-outline-variant))}
+@media (hover: hover) and (pointer: fine){#app .memory-page .memory-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2);border-color:color-mix(in srgb,var(--md-primary) 30%,var(--md-outline-variant))}}
 #app .memory-page .btn{height:44px;padding:0 20px;border-radius:999px;font-weight:700}
 #app .memory-page .btn-sm{height:34px;padding:0 14px;font-size:13px}
 #app .memory-page .btn-tonal{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
@@ -533,6 +606,12 @@ onMounted(async () => { await loadMemories(); await loadStats() })
 #app .memory-page .tabs button{border-radius:999px;padding:9px 20px;font-weight:650}
 #app .memory-page .tabs button.active{background:var(--md-primary);color:var(--md-on-primary);box-shadow:var(--shadow-1)}
 #app .memory-page .note-item{border-radius:16px;border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);background:var(--md-surface-container-low)}
+
+@media (prefers-reduced-motion: reduce){
+  #app .memory-page .stat-card:hover,
+  #app .memory-page .memory-card:hover{transform:none}
+  .meter-bar i{transition:none}
+}
 
 @media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}.grid-notes{grid-template-columns:1fr}}
 @media(max-width:640px){.page{padding:var(--space-lg)}.header-actions{padding-top:0}.memory-list{grid-template-columns:1fr}}

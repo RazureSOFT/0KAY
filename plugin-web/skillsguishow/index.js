@@ -28,7 +28,7 @@ const CSS = `
     radial-gradient(520px 260px at 100% 0%,color-mix(in srgb,var(--md-tertiary) 18%,transparent),transparent 70%),
     linear-gradient(135deg,var(--md-primary-container),color-mix(in srgb,var(--md-primary-container) 45%,var(--md-surface-container-high)));
   color:var(--md-on-primary-container);box-shadow:var(--shadow-1);
-  animation:skg-rise 520ms var(--skg-spring) both;
+  animation:skg-rise var(--duration-medium,220ms) var(--skg-spring) both;
 }
 .skg-hero-main{display:flex;gap:18px;align-items:flex-start;min-width:0}
 .skg-logo{
@@ -48,26 +48,30 @@ const CSS = `
   font:700 14px/1 inherit;color:var(--md-on-surface);background:var(--md-surface-container-high);
   transition:transform 260ms var(--skg-spring),background-color 180ms,box-shadow 200ms;
 }
-#app .skg .skg-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:var(--shadow-2)}
 #app .skg .skg-btn:disabled{opacity:.5;cursor:not-allowed}
+@media (hover: hover) and (pointer: fine){
+  #app .skg .skg-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:var(--shadow-2)}
+}
 #app .skg .skg-btn.skg-primary{background:var(--md-primary);color:var(--md-on-primary);box-shadow:0 8px 20px color-mix(in srgb,var(--md-primary) 32%,transparent)}
 #app .skg .skg-btn.skg-tonal{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-#app .skg .skg-btn.skg-danger{background:var(--md-error-container);color:var(--md-on-error-container,#410e0b)}
-#app .skg .skg-btn.skg-sm{height:34px;padding:0 15px;font-size:13px}
+#app .skg .skg-btn.skg-danger{background:var(--md-error-container);color:var(--md-on-error-container,var(--md-on-error-container))}
+#app .skg .skg-btn.skg-sm{min-height:44px;padding:0 15px;font-size:13px}
 
 /* ---------- Banners ---------- */
 .skg-banner{padding:13px 18px;border-radius:18px;font-size:13px;margin-bottom:14px;font-weight:600}
-.skg-banner.err{background:var(--md-error-container);color:var(--md-on-error-container,#410e0b)}
-.skg-banner.ok{background:var(--md-success-container);color:#0d3b1e}
+.skg-banner.err{background:var(--md-error-container);color:var(--md-on-error-container,var(--md-on-error-container))}
+.skg-banner.ok{background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e)}
 
 /* ---------- Stats ---------- */
 .skg-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:18px;margin-bottom:22px}
 .skg-stat{
   padding:20px;border-radius:26px;display:flex;flex-direction:column;gap:8px;
-  box-shadow:var(--shadow-1);animation:skg-rise 520ms var(--skg-spring) both;
+  box-shadow:var(--shadow-1);animation:skg-rise var(--duration-medium,220ms) var(--skg-spring) both;
   transition:transform 300ms var(--skg-spring),box-shadow 300ms;
 }
-.skg-stat:hover{transform:translateY(-3px);box-shadow:var(--shadow-2)}
+@media (hover: hover) and (pointer: fine){
+  .skg-stat:hover{transform:translateY(-3px);box-shadow:var(--shadow-2)}
+}
 .skg-stat .skg-ic{width:40px;height:40px;border-radius:16px 16px 16px 6px;display:grid;place-items:center;background:color-mix(in srgb,currentColor 14%,transparent)}
 .skg-stat b{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
 .skg-stat span{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.78}
@@ -82,7 +86,7 @@ const CSS = `
 .skg-upload{
   padding:24px;border-radius:28px;margin-bottom:22px;display:flex;flex-direction:column;gap:14px;
   background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);
-  box-shadow:var(--shadow-1);animation:skg-rise 460ms var(--skg-spring) both;
+  box-shadow:var(--shadow-1);animation:skg-rise var(--duration-medium,220ms) var(--skg-spring) both;
 }
 .skg-upload h2{font-size:17px;font-weight:800}
 .skg-hint{font-size:13px;line-height:1.6;color:var(--md-on-surface-variant)}
@@ -93,7 +97,7 @@ const CSS = `
 }
 .skg-upload input[type=text],.skg-search input{height:50px;padding:0 16px}
 .skg-textarea{min-height:150px;padding:14px 16px;line-height:1.6;resize:vertical}
-.skg-upload input[type=text]:focus,.skg-textarea:focus,.skg-search input:focus{
+.skg-upload input[type=text]:focus-visible,.skg-textarea:focus-visible,.skg-search input:focus-visible{
   border-color:var(--md-primary);background-color:var(--md-surface-container-lowest);
   box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent);
 }
@@ -113,7 +117,7 @@ const CSS = `
 }
 .skg-folder b{font-size:14px;font-weight:800}
 .skg-folder span{flex:1;min-width:180px;font-size:13px;line-height:1.55;opacity:.88}
-.skg-folder .skg-btn{height:40px;padding:0 18px;background:var(--md-on-secondary-container);color:var(--md-secondary-container)}
+.skg-folder .skg-btn{min-height:44px;padding:0 18px;background:var(--md-on-secondary-container);color:var(--md-secondary-container)}
 .skg-upload-actions{display:flex;justify-content:flex-end;gap:10px}
 
 /* ---------- Toolbar ---------- */
@@ -131,10 +135,12 @@ const CSS = `
 .skg-card{
   position:relative;padding:22px;border-radius:28px;display:flex;flex-direction:column;gap:14px;
   background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);
-  box-shadow:var(--shadow-1);animation:skg-rise 520ms var(--skg-spring) both;
+  box-shadow:var(--shadow-1);animation:skg-rise var(--duration-medium,220ms) var(--skg-spring) both;
   transition:transform 300ms var(--skg-spring),box-shadow 300ms,border-color 300ms,border-radius 360ms var(--skg-spring);
 }
-.skg-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-3);border-color:color-mix(in srgb,var(--md-primary) 32%,var(--md-outline-variant));border-radius:28px 28px 28px 10px}
+@media (hover: hover) and (pointer: fine){
+  .skg-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-3);border-color:color-mix(in srgb,var(--md-primary) 32%,var(--md-outline-variant));border-radius:28px 28px 28px 10px}
+}
 .skg-card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .skg-name{font:700 13px/1.2 ui-monospace,monospace;color:var(--md-on-primary-container);background:var(--md-primary-container);padding:7px 13px;border-radius:999px}
 .skg-pill{
@@ -159,6 +165,17 @@ const CSS = `
   .skg-hero{display:block}
   .skg-hero-actions{margin-top:16px}
   .skg-grid{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){
+  #app .skg *, #app .skg *::before, #app .skg *::after{
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+    scroll-behavior:auto !important;
+  }
+  .skg-stat:hover,
+  .skg-card:hover,
+  #app .skg .skg-btn:hover:not(:disabled){transform:none}
 }
 `
 
@@ -388,7 +405,7 @@ export default {
           : null,
 
         h('section', { class: 'skg-toolbar' }, [
-          h('label', { class: 'skg-search' }, [searchIcon(), h('input', { placeholder: '搜索技能名称、描述或标签…', value: query.value, onInput: (e) => (query.value = e.target.value) })]),
+          h('label', { class: 'skg-search' }, [searchIcon(), h('input', { 'aria-label': '搜索技能', placeholder: '搜索技能名称、描述或标签…', value: query.value, onInput: (e) => (query.value = e.target.value) })]),
           h('span', { class: 'skg-count' }, `${visible.value.length} / ${skills.value.length}`),
         ]),
 
@@ -398,8 +415,8 @@ export default {
               h('p', {}, error.value ? '确认 Agent 在线后重试。' : '点击右上角「上传技能」或「上传文件夹」创建。'),
             ])
           : h('section', { class: 'skg-grid' },
-              visible.value.map((s, i) =>
-                h('article', { class: 'skg-card', key: s.name, style: `animation-delay:${Math.min(i, 12) * 40}ms` }, [
+              visible.value.map((s) =>
+                h('article', { class: 'skg-card', key: s.name }, [
                   h('div', { class: 'skg-card-top' }, [
                     h('code', { class: 'skg-name' }, `/${s.name}`),
                     h('span', { class: `skg-pill${s.source === 'builtin' ? ' builtin' : ''}` }, s.source === 'builtin' ? '内置' : '文件'),

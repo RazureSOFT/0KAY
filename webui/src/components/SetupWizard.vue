@@ -202,7 +202,7 @@ function useCustomModels() {
 
         <div class="rail-progress">
           <span>{{ wizard.currentStep }} / {{ wizard.totalSteps }}</span>
-          <div class="track"><div class="fill" :style="{ width: `${progress}%` }"></div></div>
+          <div class="track"><div class="fill" :style="{ transform: `scaleX(${progress / 100})` }"></div></div>
         </div>
       </aside>
 
@@ -562,7 +562,7 @@ function useCustomModels() {
 #app .rail-progress { padding: 0 6px; }
 #app .rail-progress > span { font-size: 12px; color: var(--md-on-surface-variant); }
 #app .rail-progress .track { height: 6px; margin-top: 6px; border-radius: 999px; background: var(--md-surface-container-highest); overflow: hidden; }
-#app .rail-progress .fill { height: 100%; border-radius: 999px; background: var(--md-primary); transition: width 400ms var(--ease-spring, ease); }
+#app .rail-progress .fill { height: 100%; width: 100%; transform-origin: left; border-radius: 999px; background: var(--md-primary); transition: transform var(--duration-long) var(--ease-spring); }
 
 /* Body */
 #app .wizard-body { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--md-surface); }
@@ -656,7 +656,7 @@ function useCustomModels() {
 #app .helper-link:hover { text-decoration: underline; }
 #app .helper-text { margin: 8px 0 0; font-size: 13px; color: var(--md-on-surface-variant); }
 #app .helper-text a { color: var(--md-primary); }
-#app .alert { padding: 12px 14px; border-radius: 14px; background: var(--md-error-container); color: #410e0b; font-size: 13px; }
+#app .alert { padding: 12px 14px; border-radius: 14px; background: var(--md-error-container); color: var(--md-on-error-container); font-size: 13px; }
 
 /* Models */
 #app .model-list { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; padding-right: 2px; }

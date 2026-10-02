@@ -344,7 +344,7 @@ onUnmounted(stopPolling)
   color: var(--md-on-surface-variant);
   font-size: 12.5px; font-weight: 650;
   cursor: pointer;
-  transition: all 160ms;
+  transition: border-color var(--duration-short) var(--ease-out), background-color var(--duration-short) var(--ease-out), color var(--duration-short) var(--ease-out);
 }
 .us-chip:hover { border-color: var(--md-primary); color: var(--md-primary); }
 .us-chip.active { background: var(--md-primary); border-color: var(--md-primary); color: var(--md-on-primary); }
@@ -382,7 +382,7 @@ onUnmounted(stopPolling)
   background: var(--md-surface-container);
 }
 .us-apply-banner.done { background: var(--md-success-container); color: #0d1f06; border-color: transparent; }
-.us-apply-banner.failed { background: var(--md-error-container); color: #410e0b; border-color: transparent; }
+.us-apply-banner.failed { background: var(--md-error-container); color: var(--md-on-error-container); border-color: transparent; }
 .us-apply-head { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .us-apply-head b { font-weight: 700; }
 .us-apply-label { margin-left: auto; font-size: 13px; opacity: 0.85; }
@@ -448,7 +448,7 @@ onUnmounted(stopPolling)
 }
 .us-status.ok { background: var(--md-success-container); color: #0d1f06; }
 .us-status.warn { background: #ffdf9e; color: #4a3800; }
-.us-status.bad { background: var(--md-error-container); color: #410e0b; }
+.us-status.bad { background: var(--md-error-container); color: var(--md-on-error-container); }
 .us-actions { display: inline-flex; align-items: center; gap: 10px; justify-self: end; }
 .us-repo { color: var(--md-primary); text-decoration: none; font-size: 13px; font-weight: 600; white-space: nowrap; }
 .us-repo:hover { text-decoration: underline; }

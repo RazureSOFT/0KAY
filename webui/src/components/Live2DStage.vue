@@ -34,6 +34,55 @@ async function loadModelList() {
   }
 }
 
+// Draggable reset control: the user places it where it feels right; we remember.
+const RESET_POS_KEY = '0kay.web.live2d.resetbtn'
+const resetBtnEl = ref<HTMLElement | null>(null)
+const resetPos = ref<{ x: number; y: number } | null>(loadResetPos())
+const resetDragging = ref(false)
+let resetMoved = false
+let resetStart = { x: 0, y: 0 }
+let resetOrigin = { x: 0, y: 0 }
+
+function loadResetPos(): { x: number; y: number } | null {
+  try {
+    const raw = localStorage.getItem(RESET_POS_KEY)
+    if (raw) { const p = JSON.parse(raw); if (typeof p?.x === 'number' && typeof p?.y === 'number') return p }
+  } catch { /* ignore */ }
+  return null
+}
+const resetStyle = computed(() => resetPos.value
+  ? { left: `${resetPos.value.x}px`, top: `${resetPos.value.y}px`, right: 'auto', bottom: 'auto' }
+  : {})
+function onResetPointerDown(e: PointerEvent) {
+  resetDragging.value = true
+  resetMoved = false
+  resetStart = { x: e.clientX, y: e.clientY }
+  const rect = resetBtnEl.value?.getBoundingClientRect()
+  resetOrigin = { x: rect?.left ?? 0, y: rect?.top ?? 0 }
+  try { resetBtnEl.value?.setPointerCapture(e.pointerId) } catch { /* ignore */ }
+}
+function onResetPointerMove(e: PointerEvent) {
+  if (!resetDragging.value || !stageEl.value) return
+  const dx = e.clientX - resetStart.x
+  const dy = e.clientY - resetStart.y
+  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) resetMoved = true
+  const sr = stageEl.value.getBoundingClientRect()
+  const size = resetBtnEl.value?.offsetWidth || 34
+  const nx = clamp(resetOrigin.x - sr.left + dx, 4, Math.max(4, sr.width - size - 4))
+  const ny = clamp(resetOrigin.y - sr.top + dy, 4, Math.max(4, sr.height - size - 4))
+  resetPos.value = { x: Math.round(nx), y: Math.round(ny) }
+}
+function onResetPointerUp(e: PointerEvent) {
+  if (!resetDragging.value) return
+  resetDragging.value = false
+  try { resetBtnEl.value?.releasePointerCapture(e.pointerId) } catch { /* ignore */ }
+  if (resetMoved) { try { localStorage.setItem(RESET_POS_KEY, JSON.stringify(resetPos.value)) } catch { /* ignore */ } }
+}
+function onResetClick() {
+  if (resetMoved) { resetMoved = false; return }
+  resetView()
+}
+
 let pixiApp: any = null
 let live2dModel: any = null
 let resizeObserver: ResizeObserver | null = null
@@ -45,27 +94,49 @@ let dragging = false
 let dragPointerId: number | null = null
 let dragOffset = { x: 0, y: 0 }
 
-// --- lip sync: drive the mouth while a TTS clip plays ---
+// --- lip sync: drive the mouth while speech plays (audio RMS, or text-timed fallback) ---
 let audioEl: HTMLAudioElement | null = null
 let audioCtx: AudioContext | null = null
 let analyser: AnalyserNode | null = null
 let audioData: Uint8Array | null = null
-let speaking = false
+let mouthMode: 'off' | 'audio' | 'text' = 'off'
 let mouthSmoothed = 0
+let textStart = 0
+let textChars = 0
+let textSlot = 120
+let mouthParams: string[] = ['ParamMouthOpenY']
 
 function setMouth(value: number) {
   const core = live2dModel?.internalModel?.coreModel
   if (!core) return
   const v = clamp(value, 0, 1)
+  for (const id of mouthParams) {
+    try {
+      if (typeof core.setParameterValueById === 'function') core.setParameterValueById(id, v)
+      else if (typeof core.setParamFloat === 'function') core.setParamFloat(id, v)
+    } catch { /* model lacks the parameter */ }
+  }
+}
+
+// Prefer the parameter the model declares for lip sync (e.g. mao_pro uses ParamA).
+// In pixi-live2d-display, settings.groups is an ARRAY of { Name, Ids }.
+function detectMouthParams(model: any) {
+  const found: string[] = []
   try {
-    if (typeof core.setParameterValueById === 'function') core.setParameterValueById('ParamMouthOpenY', v)
-    else if (typeof core.setParamFloat === 'function') core.setParamFloat('ParamMouthOpenY', v)
-  } catch { /* model lacks the parameter */ }
+    const settings = model?.internalModel?.settings
+    let ids: unknown = settings?.getLipSyncParameters?.()
+    if (!Array.isArray(ids) && Array.isArray(settings?.groups)) {
+      const lip = settings.groups.find((g: { Name?: string; name?: string }) => (g?.Name || g?.name || '').toLowerCase() === 'lipsync')
+      ids = lip?.Ids
+    }
+    if (Array.isArray(ids)) for (const id of ids) if (typeof id === 'string' && id) found.push(id)
+  } catch { /* ignore */ }
+  mouthParams = found.length ? found : ['ParamMouthOpenY']
 }
 
 function onBeforeModelUpdate() {
-  if (!speaking) { if (mouthSmoothed !== 0) { mouthSmoothed = 0; setMouth(0) } return }
-  if (analyser && audioData) {
+  if (mouthMode === 'off') { if (mouthSmoothed !== 0) { mouthSmoothed = 0; setMouth(0) } return }
+  if (mouthMode === 'audio' && analyser && audioData) {
     analyser.getByteTimeDomainData(audioData)
     let sum = 0
     for (let i = 0; i < audioData.length; i++) { const d = (audioData[i] - 128) / 128; sum += d * d }
@@ -73,18 +144,26 @@ function onBeforeModelUpdate() {
     const target = clamp(rms * 3.4, 0, 1)
     mouthSmoothed = mouthSmoothed * 0.35 + target * 0.65
     setMouth(mouthSmoothed)
-  } else {
-    setMouth(0.6)
+    return
+  }
+  if (mouthMode === 'text') {
+    const elapsed = performance.now() - textStart
+    if (elapsed > textChars * textSlot + 260) { mouthMode = 'off'; mouthSmoothed = 0; setMouth(0); return }
+    const phase = (elapsed % textSlot) / textSlot
+    const target = phase < 0.5 ? 0.12 + 0.72 * Math.sin((phase / 0.5) * Math.PI) : 0.06
+    mouthSmoothed = mouthSmoothed * 0.45 + target * 0.55
+    setMouth(mouthSmoothed)
   }
 }
 
-async function speak(url: string) {
-  if (!url || !live2dModel) return
+async function speak(url: string, text = '') {
+  if (!url) { speakText(text); return }
+  if (!live2dModel) return
   try {
     if (!audioEl) {
       audioEl = new Audio()
       audioEl.crossOrigin = 'anonymous'
-      audioEl.addEventListener('ended', () => { speaking = false; mouthSmoothed = 0; setMouth(0) })
+      audioEl.addEventListener('ended', () => { mouthMode = 'off'; mouthSmoothed = 0; setMouth(0) })
     }
     audioEl.src = url
     if (!audioCtx) {
@@ -100,21 +179,99 @@ async function speak(url: string) {
       }
     }
     await audioCtx?.resume().catch(() => {})
-    speaking = true
-    await audioEl.play().catch(() => { speaking = false })
-  } catch { speaking = false }
+    mouthMode = 'audio'
+    await audioEl.play().catch(() => { if (text) speakText(text); else { mouthMode = 'off'; setMouth(0) } })
+  } catch { if (text) speakText(text); else mouthMode = 'off' }
+}
+
+// Text-driven fallback: move the mouth per character when there is no audio.
+function speakText(text: string) {
+  const chars = Array.from(String(text || '')).filter((c) => /\S/.test(c))
+  if (!chars.length) return
+  textSlot = /[\u4e00-\u9fff]/.test(chars.join('')) ? 140 : 80
+  textChars = chars.length
+  textStart = performance.now()
+  mouthMode = 'text'
 }
 
 function stopSpeaking() {
-  speaking = false
+  mouthMode = 'off'
   mouthSmoothed = 0
   setMouth(0)
   try { audioEl?.pause() } catch { /* ignore */ }
 }
 
 function onLive2DSpeak(event: Event) {
-  const url = (event as CustomEvent<{ url?: string }>).detail?.url
-  if (url) void speak(url)
+  const detail = (event as CustomEvent<{ url?: string; text?: string }>).detail || {}
+  if (detail.url) void speak(detail.url, detail.text || '')
+  else if (detail.text) speakText(detail.text)
+}
+
+// --- motions & expressions (AI / autonomy can drive these) ---
+let motionGroups: Record<string, number> = {}
+let expressionNames: string[] = []
+let autonomyTimer = 0
+
+function detectCapabilities(model: any) {
+  motionGroups = {}
+  expressionNames = []
+  try {
+    const mm = model?.internalModel?.motionManager
+    const settings = model?.internalModel?.settings
+    const motions = mm?.definitions || settings?.motions || {}
+    for (const [key, value] of Object.entries(motions)) motionGroups[key] = Array.isArray(value) ? (value as unknown[]).length : 0
+    const defs = mm?.expressionManager?.definitions || settings?.expressions || []
+    expressionNames = (defs as Array<{ Name?: string; name?: string }>).map((e) => e?.Name || e?.name).filter((n): n is string => !!n)
+  } catch { /* ignore */ }
+  try { console.info('[live2d] motions', motionGroups, 'expressions', expressionNames) } catch { /* ignore */ }
+  try { (window as unknown as Record<string, unknown>).__0KAY_LIVE2D_CAPS__ = { motions: motionGroups, expressions: expressionNames } } catch { /* ignore */ }
+}
+
+function playMotion(group?: string, index?: number) {
+  if (!live2dModel) return
+  const usable = Object.keys(motionGroups).filter((g) => motionGroups[g] > 0)
+  if (!usable.length) return
+  const idle = usable.find((g) => /idle/i.test(g))
+  const named = group && motionGroups[group] > 0
+  const target = named ? (group as string) : (index == null && idle ? idle : usable.find((g) => g !== idle) || usable[0])
+  try {
+    const mm = live2dModel.internalModel?.motionManager
+    if (typeof live2dModel.motion === 'function' && named) { live2dModel.motion(target, index); return }
+    if (index == null) { mm?.startRandomMotion?.(target); return }
+    mm?.startMotion?.(target, index)
+  } catch { /* ignore */ }
+}
+
+function playExpression(name?: string) {
+  if (!live2dModel || !name) return
+  const index = /^\d+$/.test(name) ? Number(name) : expressionNames.indexOf(name)
+  const target = index >= 0 ? index : name
+  try {
+    const em = live2dModel.internalModel?.motionManager?.expressionManager
+    if (em?.setExpression) { em.setExpression(target); return }
+    live2dModel.expression?.(target)
+  } catch { /* ignore */ }
+}
+
+function startAutonomy() {
+  stopAutonomy()
+  if (typeof window === 'undefined') return
+  autonomyTimer = window.setInterval(() => {
+    if (mouthMode !== 'off' || document.hidden) return
+    const body = Object.keys(motionGroups).filter((g) => motionGroups[g] > 0 && !/idle/i.test(g))
+    if (body.length && Math.random() < 0.6) playMotion(body[Math.floor(Math.random() * body.length)])
+    if (expressionNames.length && Math.random() < 0.5) playExpression(expressionNames[Math.floor(Math.random() * expressionNames.length)])
+  }, 9000)
+}
+
+function stopAutonomy() {
+  if (autonomyTimer) { clearInterval(autonomyTimer); autonomyTimer = 0 }
+}
+
+function onLive2DMotion(event: Event) {
+  const detail = (event as CustomEvent<{ group?: string; index?: number; expression?: string }>).detail || {}
+  if (detail.expression) playExpression(detail.expression)
+  if (detail.group || detail.index != null) playMotion(detail.group, detail.index)
 }
 
 const TRANSFORM_KEY_PREFIX = '0kay.web.live2d.transform.'
@@ -165,6 +322,9 @@ function saveTransform(immediate = false) {
 }
 
 function disposeModel() {
+  stopAutonomy()
+  mouthMode = 'off'
+  mouthSmoothed = 0
   endDrag()
   if(transformSaveTimer) {clearTimeout(transformSaveTimer);transformSaveTimer=0}
   if (live2dModel) {
@@ -348,6 +508,8 @@ function onStagePointerMove(e: PointerEvent) {
 function onStagePointerDown(e: PointerEvent) {
   if (!live2dModel || !pixiApp || !stageEl.value) return
   if (e.button !== 0 && e.pointerType === 'mouse') return
+  // Never hijack clicks on floating controls (e.g. the reset button).
+  if ((e.target as Element | null)?.closest?.('.stage-reset')) return
   const rect = stageEl.value.getBoundingClientRect()
   if (!rect.width || !rect.height) return
   const gx = ((e.clientX - rect.left) / rect.width) * pixiApp.screen.width
@@ -504,16 +666,14 @@ async function loadModel() {
     pixiApp.stage.addChild(model)
     fitModel()
     try { model.internalModel?.on?.('beforeModelUpdate', onBeforeModelUpdate) } catch { /* optional */ }
+    detectMouthParams(model)
+    detectCapabilities(model)
     loadState.value = 'ok'
     refreshFocusFromLastPointer()
 
-    // play idle motion if available
-    try {
-      const groups = model.internalModel?.motionManager?.definitions
-      if (groups && groups.Idle?.length) {
-        model.motion('Idle')
-      }
-    } catch { /* optional */ }
+    // Idle by default, then let the character act on its own.
+    playMotion('Idle')
+    startAutonomy()
   } catch (e: any) {
     if (token !== loadToken) return
     console.error('Live2D load failed:', e)
@@ -535,7 +695,8 @@ function scheduleReload() {
 onMounted(async () => {
   window.addEventListener('live2d-models-changed',loadModelList)
   window.addEventListener('live2d-speak',onLive2DSpeak as EventListener)
-  ;(window as unknown as { __0KAY_LIVE2D__?: unknown }).__0KAY_LIVE2D__ = { speak, stop: stopSpeaking }
+  window.addEventListener('live2d-motion',onLive2DMotion as EventListener)
+  ;(window as unknown as { __0KAY_LIVE2D__?: unknown }).__0KAY_LIVE2D__ = { speak, stop: stopSpeaking, motion: playMotion, expression: playExpression }
   try {
     const response=await fetch('/api/settings/live2d')
     if(response.ok) {const {values}=await response.json();if(values && typeof values.enabled==='boolean')wizard.live2d.enabled=values.enabled;if(values && typeof values.model_url==='string')wizard.live2d.modelUrl=values.model_url}
@@ -548,6 +709,8 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('live2d-models-changed',loadModelList)
   window.removeEventListener('live2d-speak',onLive2DSpeak as EventListener)
+  window.removeEventListener('live2d-motion',onLive2DMotion as EventListener)
+  stopAutonomy()
   stopSpeaking()
   try { audioCtx?.close() } catch { /* ignore */ }
   audioCtx = null
@@ -561,47 +724,26 @@ watch(modelUrl, () => {
   if (enabled.value) loadModel()
 })
 
-function selectModel(url: string) {
-  wizard.live2d.modelUrl = url
-  wizard.live2d.enabled = true
-  wizard.saveToStorage()
-}
+// Emotion -> expression/motion. The index mapping is a best-effort default;
+// AI code can also drive the model explicitly via the `live2d-motion` event
+// or `window.__0KAY_LIVE2D__.motion(group, index)` / `.expression(name)`.
+const MOOD_EXPRESSION: Record<string, number> = { happy: 2, sad: 4, irritated: 6, neutral: 0, drowsy: 0, exhausted: 0, sleeping: 0 }
+watch(mood, (value) => {
+  if (!live2dModel || mouthMode !== 'off' || !expressionNames.length) return
+  const index = MOOD_EXPRESSION[value] ?? 0
+  playExpression(expressionNames[index] || expressionNames[0])
+  if ((value === 'happy' || value === 'irritated') && Math.random() < 0.5) playMotion()
+})
+
 </script>
 
 <template>
   <div class="live2d-stage" :class="{ on: enabled }">
-    <div class="stage-chrome">
-      <span class="stage-title">Live2D</span>
-      <div class="stage-actions">
-        <button
-          v-for="m in builtInModels"
-          :key="m.id"
-          class="chip"
-          :class="{ active: modelUrl.endsWith(m.url) || modelUrl === m.url }"
-          type="button"
-          @click="selectModel(m.url)"
-        >{{ m.label }}</button>
-        <span class="chip" :class="{ active: enabled }">
-          {{ enabled ? t('live2d.on') : t('live2d.off') }}
-        </span>
-        <button
-          v-if="enabled && loadState === 'ok'"
-          class="chip"
-          type="button"
-          :title="t('live2d.resetView')"
-          @click="resetView"
-        >{{ t('live2d.resetView') }}</button>
-      </div>
-    </div>
-
     <div ref="stageEl" class="stage-viewport" :style="{ '--mood': accent }" :title="enabled && loadState === 'ok' ? t('live2d.interactHint') : ''">
       <canvas ref="canvasEl" class="stage-canvas"></canvas>
 
       <div v-if="!enabled" class="stage-placeholder">
         <p>{{ t('live2d.disabledHint') }}</p>
-        <button v-if="builtInModels[0]" class="btn btn-tonal" type="button" @click="selectModel(builtInModels[0].url)">
-          {{ t('live2d.configure') }}
-        </button>
       </div>
 
       <div v-else-if="loadState === 'loading'" class="stage-status">
@@ -612,13 +754,24 @@ function selectModel(url: string) {
         {{ errorMsg || t('live2d.loadError') }}
       </div>
 
+      <button
+        v-if="enabled && loadState === 'ok'"
+        ref="resetBtnEl"
+        class="stage-reset"
+        :class="{ dragging: resetDragging }"
+        type="button"
+        :style="resetStyle"
+        :title="t('live2d.resetView')"
+        :aria-label="t('live2d.resetView')"
+        @pointerdown.stop="onResetPointerDown"
+        @pointermove.stop="onResetPointerMove"
+        @pointerup.stop="onResetPointerUp"
+        @pointercancel.stop="onResetPointerUp"
+        @click.stop="onResetClick"
+      >⟲</button>
+
       <div class="stage-gradient"></div>
       <div class="stage-hint">{{ mood }}</div>
-    </div>
-
-    <div class="stage-meta">
-      <span class="meta-label">{{ t('live2d.model') }}</span>
-      <span class="meta-value">{{ modelMeta || '—' }}</span>
     </div>
   </div>
 </template>
@@ -632,37 +785,6 @@ function selectModel(url: string) {
   overflow: hidden;
   border: 1px solid var(--md-outline-variant);
   min-height: 320px;
-}
-
-.stage-chrome {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  flex-wrap: wrap;
-  padding: var(--space-md) var(--space-lg);
-  background: var(--md-surface-container-high);
-}
-
-.stage-title {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--md-on-surface);
-}
-
-.stage-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.stage-actions .chip {
-  height: 28px;
-  font-size: 12px;
-  cursor: pointer;
-  border: none;
-  font-family: inherit;
 }
 
 .stage-viewport {
@@ -703,7 +825,7 @@ function selectModel(url: string) {
 
 .stage-hint {
   position: absolute;
-  right: 10px;
+  left: 10px;
   top: 10px;
   z-index: 3;
   padding: 4px 10px;
@@ -714,6 +836,36 @@ function selectModel(url: string) {
   text-transform: capitalize;
   pointer-events: none;
 }
+
+/* Translucent reset control floating over the stage (appears only when live). */
+.stage-reset {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--md-on-surface) 10%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--md-surface) 55%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: var(--md-on-surface);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+  opacity: 0.7;
+  transition: opacity var(--duration-short) var(--ease-out), background-color var(--duration-short) var(--ease-out);
+}
+.stage-reset:hover { opacity: 1; background: color-mix(in srgb, var(--md-surface) 82%, transparent); }
+.stage-reset:active { transform: scale(0.96); }
+.stage-reset.dragging { cursor: grabbing; opacity: 1; }
 
 .stage-placeholder {
   position: absolute;
@@ -745,28 +897,9 @@ function selectModel(url: string) {
 
 .stage-status.warn {
   background: var(--md-error-container);
-  color: #410E0B;
+  color: var(--md-on-error-container);
   max-width: 90%;
   word-break: break-word;
 }
 
-.stage-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-md);
-  padding: var(--space-sm) var(--space-lg);
-  font-size: 12px;
-  background: var(--md-surface-container-low);
-  border-top: 1px solid var(--md-outline-variant);
-}
-
-.meta-label { color: var(--md-on-surface-variant); }
-.meta-value {
-  color: var(--md-on-surface);
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 60%;
-}
 </style>

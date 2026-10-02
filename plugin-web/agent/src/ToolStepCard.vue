@@ -345,21 +345,22 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .tool-summary{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--code-font);font-size:13px;color:var(--md-on-surface)}
 .tool-stat{flex-shrink:0;font-size:12px;font-weight:600;color:var(--md-primary);border:1px solid var(--md-outline-variant);border-radius:999px;padding:1px 8px}
 .tool-state{flex-shrink:0;font-size:13px;color:var(--md-on-surface-variant)}
-.tool-chevron{flex-shrink:0;color:var(--md-on-surface-variant);font-size:12px;transition:transform .15s}
+.tool-chevron{flex-shrink:0;color:var(--md-on-surface-variant);font-size:12px;transition:transform var(--duration-short) var(--ease-out)}
 .tool-card.expanded .tool-chevron{transform:rotate(90deg)}
 .tool-dot{font-size:9px}
 .tool-dot.running,.tool-dot.pending{color:#b88412}
 .tool-dot.failed{color:var(--md-error,#c44)}
 .tool-dot.done{color:#3a6}
 .tool-dot.cancelled{color:var(--md-on-surface-variant)}
-.tool-card-body{padding:4px 12px 12px;border-top:1px solid var(--md-outline-variant);display:flex;flex-direction:column;gap:6px}
+.tool-card-body{padding:4px 12px 12px;border-top:1px solid var(--md-outline-variant);display:flex;flex-direction:column;gap:6px;opacity:1;transform:none;transition:opacity var(--duration-medium) var(--ease-out),transform var(--duration-medium) var(--ease-out)}
+@starting-style{.tool-card-body{opacity:0;transform:translateY(-4px)}}
 .tool-section-label{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--md-on-surface-variant);margin-top:4px}
 .tool-card-body pre{margin:0;max-height:340px;overflow:auto;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:8px;padding:8px 10px;font-family:var(--code-font);font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
 .tool-shot{margin:0;display:flex;flex-direction:column;gap:6px}
 .tool-shot img{width:100%;border-radius:12px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-lowest);display:block}
 .tool-shot figcaption{font-family:var(--code-font);font-size:11.5px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}
 .tool-section-text{margin:0;font-size:13px;overflow-wrap:anywhere}
-.tool-error{background:var(--md-error-container);padding:8px 12px;border-radius:8px;margin:0;font-size:12px;overflow-wrap:anywhere}
+.tool-error{background:var(--md-error-container);color:var(--md-on-error-container);padding:8px 12px;border-radius:8px;margin:0;font-size:12px;overflow-wrap:anywhere}
 .muted{font-size:12px;color:var(--md-on-surface-variant);margin:0}
 .tool-dialog-backdrop{position:fixed;inset:0;background:#0008;z-index:1050;display:grid;place-items:center;padding:20px}
 .tool-dialog{background:var(--md-surface);color:var(--md-on-surface);border:1px solid var(--md-outline-variant);border-radius:16px;padding:18px 20px;width:min(680px,100%);max-height:82vh;overflow:auto;display:flex;flex-direction:column;gap:12px}

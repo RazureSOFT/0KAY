@@ -457,6 +457,7 @@ onUnmounted(() => {
     </div>
 
     <Teleport to="body">
+      <Transition name="pd">
       <div v-if="detail" class="pd-scrim" @click.self="closeDetail">
         <section class="pd-dialog" role="dialog" aria-modal="true" :aria-label="`${detail.name} 详情`">
           <header class="pd-head">
@@ -537,6 +538,7 @@ onUnmounted(() => {
           </footer>
         </section>
       </div>
+      </Transition>
     </Teleport>
   </div>
 </template>
@@ -565,7 +567,7 @@ onUnmounted(() => {
 .page-header h1, .pp-hero h1 { font-size: clamp(26px, 3vw, 38px); font-weight: 800; letter-spacing: -.02em; margin: 0; }
 .subtitle { color: var(--md-on-surface-variant); font-size: 15px; margin-top: 8px; line-height: 1.6; max-width: 70ch; }
 
-.error-banner { padding: 14px 18px; border-radius: 18px; background: var(--md-error-container); color: var(--md-on-error-container, #410E0B); margin-bottom: var(--space-lg); }
+.error-banner { padding: 14px 18px; border-radius: 18px; background: var(--md-error-container); color: var(--md-on-error-container); margin-bottom: var(--space-lg); }
 .notice-banner { padding: 14px 18px; border-radius: 18px; background: var(--md-secondary-container); color: var(--md-on-secondary-container); margin-bottom: var(--space-lg); }
 
 .pp-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-lg); }
@@ -573,7 +575,7 @@ onUnmounted(() => {
 .pp-stat b { font-size: 32px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
 .pp-stat span { font-size: 12px; font-weight: 700; letter-spacing: .04em; opacity: .8; }
 .tone-primary { background: var(--md-primary-container); color: var(--md-on-primary-container); }
-.tone-success { background: var(--md-success-container); color: #0d3b1e; }
+.tone-success { background: var(--md-success-container); color: var(--md-on-success-container); }
 .tone-muted { background: var(--md-surface-container-high); color: var(--md-on-surface-variant); }
 
 .plugin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(312px, 1fr)); gap: var(--space-lg); }
@@ -588,12 +590,14 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  animation: pp-card-in 520ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)) both;
+  animation: pp-card-in var(--duration-long) var(--ease-spring) both;
   cursor: pointer;
-  transition: transform 300ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)), box-shadow 300ms, border-color 300ms;
+  transition: transform var(--duration-medium) var(--ease-out), box-shadow var(--duration-medium) var(--ease-out), border-color var(--duration-medium) var(--ease-out);
 }
 @keyframes pp-card-in { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
-#app .plugins-page .plugin-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-2); border-color: color-mix(in srgb, var(--md-primary) 30%, var(--md-outline-variant)); }
+@media (hover: hover) and (pointer: fine) {
+  #app .plugins-page .plugin-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-2); border-color: color-mix(in srgb, var(--md-primary) 30%, var(--md-outline-variant)); }
+}
 #app .plugins-page .plugin-card.healthy::before {
   content: ''; position: absolute; left: 0; top: 22px; bottom: 22px; width: 4px; border-radius: 999px; background: var(--md-success);
 }
@@ -620,7 +624,7 @@ onUnmounted(() => {
   background: var(--md-surface-container-highest); color: var(--md-on-surface-variant);
 }
 .status-chip .status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.status-chip.ok { background: var(--md-success-container); color: #0d3b1e; }
+.status-chip.ok { background: var(--md-success-container); color: var(--md-on-success-container); }
 .status-chip.off { background: var(--md-surface-container-highest); color: var(--md-on-surface-variant); }
 
 .plugin-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 0; }
@@ -634,21 +638,23 @@ onUnmounted(() => {
 
 .card-actions { display: flex; gap: var(--space-sm); margin-top: auto; align-items: center; flex-wrap: wrap; }
 
-.plugin-switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; font-size: 13px; font-weight: 650; color: var(--md-on-surface-variant); }
+.plugin-switch { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; user-select: none; font-size: 13px; font-weight: 650; color: var(--md-on-surface-variant); }
 .plugin-switch input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
 .plugin-switch-slider {
   width: 50px; height: 30px; flex-shrink: 0;
   background: var(--md-surface-container-highest);
   border: 2px solid var(--md-outline); border-radius: 999px; position: relative;
-  transition: background-color 320ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)), border-color 320ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1));
+  transition: background-color var(--duration-medium) var(--ease-out), border-color var(--duration-medium) var(--ease-out);
 }
 .plugin-switch-slider::after {
   content: ''; position: absolute; top: 50%; left: 4px; width: 18px; height: 18px;
-  background: var(--md-outline); border-radius: 50%; transform: translateY(-50%);
-  transition: left 340ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)), width 340ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)), height 340ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)), background-color 300ms;
+  background: var(--md-outline); border-radius: 50%;
+  transform: translateY(-50%) translateX(0) scale(1);
+  transition: transform var(--duration-medium) var(--ease-spring-soft), background-color var(--duration-medium) var(--ease-out);
 }
+.plugin-switch input:focus-visible + .plugin-switch-slider { outline: 3px solid var(--md-primary); outline-offset: 2px; }
 .plugin-switch.on .plugin-switch-slider { background: var(--md-primary); border-color: var(--md-primary); }
-.plugin-switch.on .plugin-switch-slider::after { left: 24px; width: 20px; height: 20px; background: var(--md-on-primary); }
+.plugin-switch.on .plugin-switch-slider::after { transform: translateY(-50%) translateX(20px) scale(1.12); background: var(--md-on-primary); }
 .plugin-switch.busy { opacity: .6; cursor: wait; }
 .plugin-switch-label { white-space: nowrap; }
 
@@ -656,12 +662,14 @@ onUnmounted(() => {
   height: 46px; padding: 0 22px; border: 1px solid transparent; border-radius: 999px;
   font-weight: 700; font-size: 14px; color: var(--md-on-surface); background: var(--md-surface-container-high);
   display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer;
-  transition: transform 240ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)), background-color 180ms, box-shadow 200ms;
+  transition: transform var(--duration-medium) var(--ease-spring), background-color var(--duration-short) var(--ease-out), box-shadow var(--duration-medium) var(--ease-out);
 }
-#app .plugins-page .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-1); }
+@media (hover: hover) and (pointer: fine) {
+  #app .plugins-page .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-1); }
+}
 #app .plugins-page .btn:disabled { opacity: .6; cursor: not-allowed; }
 #app .plugins-page .btn-tonal { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
-#app .plugins-page .btn-danger { background: var(--md-error-container); color: #410e0b; }
+#app .plugins-page .btn-danger { background: var(--md-error-container); color: var(--md-on-error-container); }
 
 .empty-state { grid-column: 1 / -1; padding: var(--space-xxl); text-align: center; background: var(--md-surface-container); border-radius: 32px; color: var(--md-on-surface-variant); }
 .empty-state p { margin: 0; font-size: 15px; font-weight: 600; color: var(--md-on-surface); }
@@ -669,10 +677,9 @@ onUnmounted(() => {
 
 /* Plugin detail dialog (teleported to body). */
 .pd-scrim {
-  position: fixed; inset: 0; z-index: 13000;
-  background: #21173566; backdrop-filter: blur(6px);
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  background: var(--md-scrim); backdrop-filter: blur(6px);
   display: grid; place-items: center; padding: 20px;
-  animation: fadeIn 180ms ease-out;
 }
 .pd-dialog {
   width: min(760px, 100%); max-height: min(86vh, 900px);
@@ -682,17 +689,22 @@ onUnmounted(() => {
   border: 1px solid var(--md-outline-variant);
   border-radius: 28px; padding: 26px;
   box-shadow: 0 24px 70px #18132d33;
-  animation: dialog-arrive 320ms var(--ease-emphasized, ease-out) both;
 }
+.pd-enter-active { transition: opacity var(--duration-medium) var(--ease-out); }
+.pd-leave-active { transition: opacity var(--duration-short) var(--ease-emphasized-accel); }
+.pd-enter-from, .pd-leave-to { opacity: 0; }
+.pd-enter-active .pd-dialog { transition: opacity var(--duration-long) var(--ease-emphasized-decel), transform var(--duration-long) var(--ease-emphasized-decel); }
+.pd-leave-active .pd-dialog { transition: opacity var(--duration-short) var(--ease-emphasized-accel), transform var(--duration-short) var(--ease-emphasized-accel); }
+.pd-enter-from .pd-dialog, .pd-leave-to .pd-dialog { opacity: 0; transform: translateY(12px) scale(0.97); }
 .pd-head { display: flex; align-items: flex-start; gap: 16px; }
 .pd-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .pd-titles h2 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .pd-pkg { font-size: 13px; color: var(--md-on-surface-variant); font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
-.pd-close { border: 0; background: transparent; color: var(--md-on-surface-variant); font-size: 26px; line-height: 1; width: 40px; height: 40px; border-radius: 999px; cursor: pointer; flex-shrink: 0; }
+.pd-close { border: 0; background: transparent; color: var(--md-on-surface-variant); font-size: 26px; line-height: 1; width: 44px; height: 44px; border-radius: 999px; cursor: pointer; flex-shrink: 0; }
 .pd-close:hover { background: var(--md-surface-container-highest); }
 .pd-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0; }
 .pd-chip { height: 28px; padding: 0 12px; border-radius: 999px; display: inline-flex; align-items: center; font-size: 12px; font-weight: 650; background: var(--md-surface-container-highest); color: var(--md-on-surface-variant); }
-.pd-chip.ok { background: var(--md-success-container); color: #0d3b1e; }
+.pd-chip.ok { background: var(--md-success-container); color: var(--md-on-success-container); }
 .pd-repo { font-size: 13px; font-weight: 650; color: var(--md-primary); text-decoration: underline; overflow-wrap: anywhere; }
 .pd-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px; margin: 0 -4px; border-radius: 16px; background: var(--md-surface-container-low); }
 .pd-perms { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; padding: 14px 16px; border-radius: 16px; background: var(--md-surface-container-low); }
@@ -705,9 +717,11 @@ onUnmounted(() => {
 .pd-foot { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
 .pd-foot .btn { height: 46px; padding: 0 22px; border: 1px solid transparent; border-radius: 999px; font-weight: 700; font-size: 14px; color: var(--md-on-surface); background: var(--md-surface-container-high); display: inline-flex; align-items: center; text-decoration: none; cursor: pointer; }
 .pd-foot .btn-tonal { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
-.pd-foot .btn-danger { background: var(--md-error-container); color: #410e0b; }
+.pd-foot .btn-danger { background: var(--md-error-container); color: var(--md-on-error-container); }
 .pd-foot .btn:disabled { opacity: .6; cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) {
-  .pd-scrim, .pd-dialog { animation: none; }
+  .pd-enter-active, .pd-leave-active,
+  .pd-enter-active .pd-dialog, .pd-leave-active .pd-dialog { transition: none; }
+  .pd-enter-from .pd-dialog, .pd-leave-to .pd-dialog { transform: none; }
 }
 </style>

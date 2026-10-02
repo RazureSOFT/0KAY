@@ -6,6 +6,7 @@ const serviceUrl = ref(storedUrl || `http://${location.hostname || '127.0.0.1'}:
 const status = ref(null)
 const world = ref({ waypoints: [], skills: [] })
 const error = ref('')
+const loading = ref(true)
 const busy = ref(false)
 const showConnect = ref(false)
 const form = ref({ edition: 'java', host: '', port: '', username: 'XingYao', password: '' })
@@ -44,6 +45,8 @@ async function refresh() {
     fetchWorld()
   } catch (e) {
     error.value = e?.message || 'unreachable'
+  } finally {
+    loading.value = false
   }
 }
 
@@ -150,8 +153,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
         <div class="card">
           <h2>状态</h2>
-          <div class="bar-row"><span class="bar-label">生命</span><div class="bar"><i class="hp" :style="{ width: pct(bot.health) + '%' }" /></div><span class="bar-num">{{ bot.health ?? '-' }}/20</span></div>
-          <div class="bar-row"><span class="bar-label">饥饿</span><div class="bar"><i class="food" :style="{ width: pct(bot.food) + '%' }" /></div><span class="bar-num">{{ bot.food ?? '-' }}/20</span></div>
+          <div class="bar-row"><span class="bar-label">生命</span><div class="bar"><i class="hp" :style="{ transform: `scaleX(${pct(bot.health) / 100})` }" /></div><span class="bar-num">{{ bot.health ?? '-' }}/20</span></div>
+          <div class="bar-row"><span class="bar-label">饥饿</span><div class="bar"><i class="food" :style="{ transform: `scaleX(${pct(bot.food) / 100})` }" /></div><span class="bar-num">{{ bot.food ?? '-' }}/20</span></div>
           <p v-if="bot.error" class="err small">{{ bot.error }}</p>
         </div>
 
@@ -211,6 +214,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       </section>
     </template>
 
+    <p v-else-if="loading" class="muted pad">正在加载…</p>
     <p v-else-if="!error" class="muted pad">未连接。点「连接」填写服务器，或让 L.I.F.E 说「连到 xxx 服务器」。</p>
   </div>
 </template>
@@ -246,23 +250,25 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .dot.err{background:var(--md-error);box-shadow:0 0 0 4px color-mix(in srgb,var(--md-error) 20%,transparent)}
 #app .mc .tag{
   font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;
-  background:var(--md-success-container);color:#0d3b1e;
+  background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e);
 }
 #app .mc .mc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 
 /* Buttons */
 #app .mc .btn{
-  height:40px;padding:0 16px;border:1px solid transparent;border-radius:999px;
+  min-height:44px;padding:0 16px;border:1px solid transparent;border-radius:999px;
   font:700 13px/1 inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;
   color:var(--md-on-surface);background:var(--md-surface-container-high);
   transition:transform 240ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color 180ms,box-shadow 200ms,border-radius 320ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1));
 }
-#app .mc .btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:var(--shadow-1)}
 #app .mc .btn:disabled{opacity:.5;cursor:not-allowed}
-#app .mc .btn.sm{height:32px;padding:0 13px;font-size:13px}
+@media (hover: hover) and (pointer: fine){
+  #app .mc .btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:var(--shadow-1)}
+}
+#app .mc .btn.sm{min-height:44px;padding:0 13px;font-size:13px}
 #app .mc .btn.filled{background:var(--md-primary);color:var(--md-on-primary);box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 30%,transparent)}
 #app .mc .btn.tonic{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-#app .mc .btn.danger{background:var(--md-error-container);color:var(--md-on-error-container,#410e0b)}
+#app .mc .btn.danger{background:var(--md-error-container);color:var(--md-on-error-container,var(--md-on-error-container))}
 
 /* Inputs */
 #app .mc .url,
@@ -273,7 +279,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
   transition:background-color 180ms,border-color 180ms,box-shadow 200ms;
 }
 #app .mc .url{width:238px}
-#app .mc .url:focus,#app .mc .connect input:focus,#app .mc .connect select:focus{
+#app .mc .url:focus-visible,#app .mc .connect input:focus-visible,#app .mc .connect select:focus-visible{
   border-color:var(--md-primary);background:var(--md-surface-container-lowest);
   box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent);
 }
@@ -284,7 +290,9 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
   border-radius:24px;padding:18px 20px;margin-bottom:16px;box-shadow:var(--shadow-1);
   transition:transform 280ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),box-shadow 280ms;
 }
-#app .mc .card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
+@media (hover: hover) and (pointer: fine){
+  #app .mc .card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
+}
 #app .mc .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-bottom:0}
 #app .mc .grid .card{margin-bottom:16px}
 #app .mc .connect-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
@@ -301,7 +309,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .bar-row{display:flex;align-items:center;gap:12px;margin:10px 0;font-size:13px}
 #app .mc .bar-label{width:36px;color:var(--md-on-surface-variant);flex-shrink:0}
 #app .mc .bar{flex:1;height:12px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}
-#app .mc .bar i{display:block;height:100%;border-radius:999px;transition:width 400ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}
+#app .mc .bar i{display:block;width:100%;height:100%;border-radius:999px;transform-origin:left;transform:scaleX(0);transition:transform var(--duration-long,360ms) var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}
 #app .mc .bar i.hp{background:linear-gradient(90deg,#e35d5d,#ff9a9a)}
 #app .mc .bar i.food{background:linear-gradient(90deg,#d99a37,#f0c060)}
 #app .mc .bar-num{width:54px;text-align:right;color:var(--md-on-surface-variant);flex-shrink:0}
@@ -334,7 +342,9 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
   display:flex;align-items:center;justify-content:center;padding:4px;overflow:hidden;
   transition:transform 200ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color 180ms;
 }
-#app .mc .cell:hover{transform:translateY(-2px);background:var(--md-surface-container-highest)}
+@media (hover: hover) and (pointer: fine){
+  #app .mc .cell:hover{background:var(--md-surface-container-highest)}
+}
 #app .mc .cell .it{font-size:11px;line-height:1.1;text-align:center;word-break:break-word}
 #app .mc .cell .it b{display:block;font-size:11px;color:var(--md-primary);font-weight:800}
 
@@ -342,5 +352,16 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
   #app .mc .url{width:100%}
   #app .mc .mc-actions{width:100%}
   #app .mc .inv{grid-template-columns:repeat(5,1fr)}
+}
+
+@media (prefers-reduced-motion: reduce){
+  #app .mc *, #app .mc *::before, #app .mc *::after{
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+    scroll-behavior:auto !important;
+  }
+  #app .mc .btn:hover:not(:disabled),
+  #app .mc .card:hover{transform:none}
 }
 </style>

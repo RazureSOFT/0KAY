@@ -1,0 +1,20 @@
+{
+  "id": "deepseek-web-ui",
+  "name": "DeepSeek 网页版设置面板",
+  "version": "0.3.0",
+  "enabled": true,
+  "patches": [
+    {
+      "target": "settings",
+      "op": "insert",
+      "id": "deepseek-web",
+      "item": {
+        "id": "deepseek-web",
+        "icon": "cloud",
+        "label": "DeepSeek 网页版",
+        "order": 82,
+        "module": "/api/plugins/deepseek-web/ui/panel.js"
+      }
+    }
+  ]
+}

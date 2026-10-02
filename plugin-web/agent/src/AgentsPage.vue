@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAgentsStore, type TaskRow } from './store'
 import MarkdownContent from './MarkdownContent.vue'
 import ToolStepCard from './ToolStepCard.vue'
+import FileViewer from './FileViewer.vue'
 import AppSelect from './AppSelect.vue'
 import ThinkingSlider from './ThinkingSlider.vue'
 import { locale, syncLocale } from './locale'
@@ -84,7 +85,7 @@ const followLatest = ref(true)
 function rememberEditor(id = selectedId.value) {
   try { localStorage.setItem(`0kay.agent.editor:${id}`, JSON.stringify({draft:draft.value,mode:mode.value,...options()})) } catch { /* storage unavailable */ }
 }
-function closeBrowser() { browseRequest++;browserOpen.value=false;browserBusy.value=false }
+function closeBrowser() { browseRequest++;browserOpen.value=false;browserBusy.value=false;workspacePick.value=false }
 function onEscape(event: KeyboardEvent) {if(event.key==='Escape' && browserOpen.value) closeBrowser()}
 // Slash menu: typing "/" offers the agent's skills (the agent resolves
 // "/<skill> <request>") plus built-in commands.
@@ -170,10 +171,17 @@ async function browse(path = '') {
   } catch(e:any) {if(request===browseRequest) browserError.value=e.message}
   finally {if(request===browseRequest) browserBusy.value=false}
 }
-function selectDirectory() {
+async function selectDirectory() {
   if (!executor.value || executor.value.plugin_id!==browserExecutor || browserBusy.value || browserError.value) return
+  const chosen = directory.value.path
+  if (workspacePick.value) {
+    workspacePick.value=false;browserOpen.value=false
+    const title = chosen.split(/[\\/]/).filter(Boolean).pop() || 'workspace'
+    try { await workspaceAction('create', { path: chosen, title }) } catch (e: any) { error.value = e.message }
+    return
+  }
   executorId.value=executor.value.plugin_id
-  workdir.value=directory.value.path;browserOpen.value=false
+  workdir.value=chosen;browserOpen.value=false
 }
 async function fetchHost() {
   if(!hostOpen.value || !executor.value || hostFetching || document.hidden) return
@@ -198,9 +206,560 @@ async function compact() {
   } catch(e:any) {error.value=e.message;compactNotice.value=''}
   finally {busy.value=false}
 }
-const ringStyle=(value:number)=>({background:`conic-gradient(var(--md-primary) ${Math.max(0,Math.min(100,value))}%, var(--md-outline-variant) 0)`})
+const ringStyle=(value:number)=>({background:`conic-gradient(from -90deg, var(--md-primary) ${Math.max(0,Math.min(100,value))}%, var(--md-outline-variant) 0)`})
+// Ease a number toward its target so the rings sweep instead of snapping.
+function useTween(source: () => number, duration = 700) {
+  const out = ref(0)
+  let raf = 0, from = 0, to = 0, start = 0
+  watch(source, (val) => {
+    to = Number(val) || 0
+    from = out.value
+    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { out.value = to; return }
+    start = performance.now()
+    cancelAnimationFrame(raf)
+    const step = (t: number) => { const k = Math.min(1, (t - start) / duration); const e = 1 - Math.pow(1 - k, 3); out.value = from + (to - from) * e; if (k < 1) raf = requestAnimationFrame(step) }
+    raf = requestAnimationFrame(step)
+  }, { immediate: true })
+  onUnmounted(() => cancelAnimationFrame(raf))
+  return out
+}
+const cpuDisplay = useTween(() => Number(hostUsage.value?.cpu_percent) || 0)
+const memDisplay = useTween(() => Number(hostUsage.value?.memory_percent) || 0)
 const executor = computed(() => executorId.value ? store.agents.find(agent => agent.plugin_id === executorId.value) : store.agents.find(agent => store.isHealthy(agent)))
 const gib = (bytes?: number) => bytes === undefined ? '—' : `${(bytes / 1024 ** 3).toFixed(1)} GiB`
+// Live browser-automation status from the selected executor (see Agent browser tool).
+const browserStatus = ref<{ enabled: boolean; available: boolean; running: boolean; url: string; title: string; tabs: number } | null>(null)
+let browserTimer: ReturnType<typeof setInterval> | null = null
+let browserFetching = false
+async function fetchBrowserStatus() {
+  if (browserFetching) return
+  browserFetching = true
+  try {
+    const query = executor.value?.plugin_id ? `?executor_id=${encodeURIComponent(executor.value.plugin_id)}` : ''
+    const response = await fetch(`/api/agent/browser${query}`, { signal: AbortSignal.timeout(8000) })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    browserStatus.value = await response.json()
+  } catch { browserStatus.value = null }
+  finally { browserFetching = false }
+}
+const browserLabel = computed(() => {
+  const b = browserStatus.value
+  if (!b) return tr('浏览器 · 离线', 'Browser · offline')
+  if (!b.enabled) return tr('浏览器 · 未启用', 'Browser · disabled')
+  if (b.running) return `${tr('浏览器运行中', 'Browser running')}${b.tabs ? ` · ${b.tabs} ${tr('标签', 'tabs')}` : ''}`
+  if (b.available) return tr('浏览器 · 空闲', 'Browser · idle')
+  return tr('浏览器 · 不可用', 'Browser · unavailable')
+})
+const browserTooltip = computed(() => {
+  const b = browserStatus.value
+  if (!b) return tr('无法获取浏览器状态', 'Browser status unavailable')
+  const parts = [b.enabled ? 'enabled' : 'disabled', b.available ? 'available' : 'not installed', b.running ? 'running' : 'stopped']
+  if (b.url) parts.push(b.url)
+  return parts.join(' · ')
+})
+// ZCode-style live viewport: a smooth MJPEG stream (CDP screencast) plus a
+// toolbar that drives the page (back/forward/reload/goto).
+const browserViewOpen = ref(false)
+const browserStreamSrc = ref('')
+let browserViewTimer: ReturnType<typeof setInterval> | null = null
+let browserStreamRetry: ReturnType<typeof setTimeout> | null = null
+function refreshBrowserStream() {
+  const query = executor.value?.plugin_id ? `?executor_id=${encodeURIComponent(executor.value.plugin_id)}` : ''
+  const next = browserViewOpen.value && browserStatus.value?.running ? `/api/agent/browser/stream${query}` : ''
+  if (next !== browserStreamSrc.value) browserStreamSrc.value = next
+}
+const browserTabs = ref<Array<{ id: string; url: string; title: string; active: boolean }>>([])
+async function fetchBrowserTabs() {
+  if (!browserViewOpen.value || !browserStatus.value?.running) { browserTabs.value = []; return }
+  try {
+    const body = { action: 'tabs', ...(executor.value?.plugin_id ? { executor_id: executor.value.plugin_id } : {}) }
+    const res = await fetch('/api/agent/browser/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(10000) })
+    if (res.ok) { const data = await res.json(); browserTabs.value = data.tabs || [] }
+  } catch { /* keep the last list */ }
+}
+function browserNewTab() { void postBrowserAction({ action: 'newtab' }); window.setTimeout(() => void fetchBrowserTabs(), 500) }
+function browserActivateTab(id: string) { void postBrowserAction({ action: 'activate', id }) }
+function browserCloseTab(id: string) { void postBrowserAction({ action: 'closetab', id }); window.setTimeout(() => void fetchBrowserTabs(), 500) }
+function toggleBrowserView() {
+  browserViewOpen.value = !browserViewOpen.value
+  if (browserViewOpen.value) {
+    void fetchBrowserStatus()
+    void fetchBrowserTabs()
+    refreshBrowserStream()
+    if (!browserViewTimer) browserViewTimer = setInterval(() => { void fetchBrowserStatus(); void fetchBrowserTabs() }, 1500)
+  } else {
+    browserStreamSrc.value = ''
+    browserTabs.value = []
+    if (browserViewTimer) { clearInterval(browserViewTimer); browserViewTimer = null }
+  }
+}
+function onBrowserStreamError() {
+  if (!browserViewOpen.value) return
+  browserStreamSrc.value = ''
+  if (browserStreamRetry) clearTimeout(browserStreamRetry)
+  browserStreamRetry = setTimeout(() => { void fetchBrowserStatus(); refreshBrowserStream() }, 1200)
+}
+const browserUrlInput = ref('')
+const browserUrlFocused = ref(false)
+const browserBusyAction = ref(false)
+watch(() => browserStatus.value?.url, (url) => { if (url && !browserUrlFocused.value) browserUrlInput.value = url })
+watch(browserStatus, () => { if (browserViewOpen.value) refreshBrowserStream() })
+async function postBrowserAction(payload: Record<string, any>) {
+  browserBusyAction.value = true
+  try {
+    const body = { ...payload, ...(executor.value?.plugin_id ? { executor_id: executor.value.plugin_id } : {}) }
+    const response = await fetch('/api/agent/browser/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(60000) })
+    if (!response.ok) throw new Error(await response.text())
+    await fetchBrowserStatus()
+  } catch (e: any) {
+    browserStatus.value = { ...(browserStatus.value || ({} as any)), error: e?.message || 'action failed' }
+  } finally { browserBusyAction.value = false }
+}
+function browserGoto() {
+  const url = browserUrlInput.value.trim()
+  if (!url) return
+  void postBrowserAction({ action: 'goto', url: /^https?:\/\//i.test(url) ? url : `https://${url}` })
+}
+// --- floating window geometry (drag + resize, persisted) ---
+const clampv = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
+function loadBrowserPos() {
+  try { const p = JSON.parse(localStorage.getItem('0kay.agent.browser.pos') || ''); if (p && Number.isFinite(p.x)) return { x: p.x, y: p.y } } catch { /* default */ }
+  return { x: Math.max(16, (window.innerWidth || 1280) - 560), y: Math.max(16, (window.innerHeight || 800) - 520) }
+}
+function loadBrowserSize() {
+  try { const s = JSON.parse(localStorage.getItem('0kay.agent.browser.size') || ''); if (s && Number.isFinite(s.w)) return { w: s.w, h: s.h } } catch { /* default */ }
+  return { w: 520, h: 420 }
+}
+const browserPos = ref(loadBrowserPos())
+const browserSize = ref(loadBrowserSize())
+const panelStyle = computed(() => ({ translate: `${browserPos.value.x}px ${browserPos.value.y}px`, width: `${browserSize.value.w}px`, height: `${browserSize.value.h}px` }))
+let dragState: { dx: number; dy: number } | null = null
+let resizeState: { sx: number; sy: number; w: number; h: number } | null = null
+function onToolbarDown(event: PointerEvent) {
+  if ((event.target as HTMLElement).closest('button,input,form,a')) return
+  dragState = { dx: event.clientX - browserPos.value.x, dy: event.clientY - browserPos.value.y }
+  window.addEventListener('pointermove', onDragMove)
+  window.addEventListener('pointerup', onDragEnd)
+}
+function onDragMove(event: PointerEvent) {
+  if (!dragState) return
+  browserPos.value = { x: clampv(event.clientX - dragState.dx, 0, window.innerWidth - 120), y: clampv(event.clientY - dragState.dy, 0, window.innerHeight - 48) }
+}
+function onDragEnd() { dragState = null; window.removeEventListener('pointermove', onDragMove); window.removeEventListener('pointerup', onDragEnd); try { localStorage.setItem('0kay.agent.browser.pos', JSON.stringify(browserPos.value)) } catch { /* ignore */ } }
+function onResizeDown(event: PointerEvent) {
+  event.preventDefault(); event.stopPropagation()
+  resizeState = { sx: event.clientX, sy: event.clientY, w: browserSize.value.w, h: browserSize.value.h }
+  window.addEventListener('pointermove', onResizeMove)
+  window.addEventListener('pointerup', onResizeEnd)
+}
+function onResizeMove(event: PointerEvent) {
+  if (!resizeState) return
+  browserSize.value = { w: clampv(resizeState.w + (event.clientX - resizeState.sx), 340, 1600), h: clampv(resizeState.h + (event.clientY - resizeState.sy), 260, 1000) }
+}
+function onResizeEnd() { resizeState = null; window.removeEventListener('pointermove', onResizeMove); window.removeEventListener('pointerup', onResizeEnd); try { localStorage.setItem('0kay.agent.browser.size', JSON.stringify(browserSize.value)) } catch { /* ignore */ } }
+// --- manual interaction: map streamed-image pixels to page CSS px, forward via CDP ---
+const browserImg = ref<HTMLImageElement | null>(null)
+function sendBrowserInput(payload: Record<string, any>) {
+  const body = { ...payload, ...(executor.value?.plugin_id ? { executor_id: executor.value.plugin_id } : {}) }
+  void fetch('/api/agent/browser/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) }).catch(() => { /* input is best-effort */ })
+}
+function pageCoords(event: PointerEvent | WheelEvent) {
+  const rect = browserImg.value?.getBoundingClientRect()
+  const vw = browserStatus.value?.viewportWidth || Math.round(rect?.width || 1280)
+  const vh = browserStatus.value?.viewportHeight || Math.round(rect?.height || 720)
+  if (!rect || !rect.width || !rect.height) return { x: 0, y: 0 }
+  return { x: Math.round((event.clientX - rect.left) / rect.width * vw), y: Math.round((event.clientY - rect.top) / rect.height * vh) }
+}
+let viewDown = false
+let lastMoveAt = 0
+function onViewDown(event: PointerEvent) {
+  if (event.button !== 0 && event.button !== 2) return
+  event.preventDefault()
+  ;(event.currentTarget as HTMLElement).focus?.()
+  const p = pageCoords(event)
+  viewDown = true
+  sendBrowserInput({ action: 'mouse', type: 'down', x: p.x, y: p.y, button: event.button === 2 ? 'right' : 'left', buttons: event.button === 2 ? 2 : 1 })
+}
+function onViewMove(event: PointerEvent) {
+  if (!viewDown) return
+  const now = performance.now()
+  if (now - lastMoveAt < 32) return // coalesce drag moves (~30/s) to cut round trips
+  lastMoveAt = now
+  const p = pageCoords(event)
+  sendBrowserInput({ action: 'mouse', type: 'move', x: p.x, y: p.y, buttons: 1 })
+}
+function onViewUp(event: PointerEvent) {
+  if (!viewDown) return
+  viewDown = false
+  const p = pageCoords(event)
+  sendBrowserInput({ action: 'mouse', type: 'up', x: p.x, y: p.y, button: event.button === 2 ? 'right' : 'left', buttons: 0 })
+}
+function onViewWheel(event: WheelEvent) {
+  event.preventDefault()
+  const p = pageCoords(event)
+  sendBrowserInput({ action: 'wheel', x: p.x, y: p.y, deltaX: event.deltaX, deltaY: event.deltaY })
+}
+function onViewKey(event: KeyboardEvent) {
+  const key = event.key
+  if (key.length === 1 && !event.ctrlKey && !event.metaKey) sendBrowserInput({ action: 'type', text: key })
+  else if (key !== 'Shift' && key !== 'Control' && key !== 'Alt' && key !== 'Meta') sendBrowserInput({ action: 'press', key: key === ' ' ? 'space' : key })
+  event.preventDefault()
+}
+// --- generic floating-window geometry (drag + resize, persisted) ---
+function makeWindowHandlers(posRef: any, sizeRef: any, posKey: string, sizeKey: string) {
+  let drag: { dx: number; dy: number } | null = null
+  let rs: { sx: number; sy: number; w: number; h: number } | null = null
+  const onMove = (e: PointerEvent) => { if (drag) posRef.value = { x: clampv(e.clientX - drag.dx, 0, window.innerWidth - 120), y: clampv(e.clientY - drag.dy, 0, window.innerHeight - 48) } }
+  const onUp = () => { drag = null; window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); try { localStorage.setItem(posKey, JSON.stringify(posRef.value)) } catch { /* ignore */ } }
+  const onResizeMove = (e: PointerEvent) => { if (rs) sizeRef.value = { w: clampv(rs.w + (e.clientX - rs.sx), 320, 1600), h: clampv(rs.h + (e.clientY - rs.sy), 240, 1000) } }
+  const onResizeUp = () => { rs = null; window.removeEventListener('pointermove', onResizeMove); window.removeEventListener('pointerup', onResizeUp); try { localStorage.setItem(sizeKey, JSON.stringify(sizeRef.value)) } catch { /* ignore */ } }
+  return {
+    down: (e: PointerEvent) => { if ((e.target as HTMLElement).closest('button,input,form,a')) return; drag = { dx: e.clientX - posRef.value.x, dy: e.clientY - posRef.value.y }; window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp) },
+    rdown: (e: PointerEvent) => { e.preventDefault(); e.stopPropagation(); rs = { sx: e.clientX, sy: e.clientY, w: sizeRef.value.w, h: sizeRef.value.h }; window.addEventListener('pointermove', onResizeMove); window.addEventListener('pointerup', onResizeUp) },
+  }
+}
+// --- project tree window ---
+interface TreeRow { name: string; path: string; dir: boolean; depth: number; expanded: boolean; loading: boolean }
+const treeOpen = ref(false)
+const treeRows = ref<TreeRow[]>([])
+const treeLoading = ref(false)
+const treeError = ref('')
+const treeRootPath = ref('')
+// --- file editor window (opened when the agent writes/edits a file) ---
+interface FileData { path: string; content: string; totalLines: number }
+const fileOpen = ref(false)
+const fileData = ref<FileData | null>(null)
+const fileLoading = ref(false)
+const fileError = ref('')
+const fileDraft = ref('')
+const fileSaving = ref(false)
+const fileNotice = ref('')
+const fileDirty = computed(() => !!fileData.value && fileDraft.value !== fileData.value.content)
+// How the file window renders a given file.
+type FileView = 'code' | 'markdown' | 'pdf' | 'docx' | 'pptx' | 'spreadsheet' | 'legacy' | 'text' | 'image' | 'unsupported'
+const FILE_VIEW: Record<string, FileView> = {
+  md: 'markdown', markdown: 'markdown', mdown: 'markdown', mkd: 'markdown',
+  pdf: 'pdf', docx: 'docx', pptx: 'pptx', docm: 'docx', pptm: 'pptx', dotx: 'docx', potx: 'pptx',
+  xlsx: 'spreadsheet', xls: 'spreadsheet', xlsm: 'spreadsheet', xlsb: 'spreadsheet', ods: 'spreadsheet',
+  png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image', svg: 'image', bmp: 'image', avif: 'image', ico: 'image',
+  doc: 'legacy', dot: 'legacy', wps: 'legacy', ppt: 'legacy', pot: 'legacy', pps: 'legacy',
+}
+const FILE_MIME: Record<string, string> = {
+  pdf: 'application/pdf',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
+  svg: 'image/svg+xml', bmp: 'image/bmp', avif: 'image/avif', ico: 'image/x-icon',
+}
+const extOf = (path: string) => (path.split('.').pop() || '').toLowerCase()
+function viewForFile(path: string): FileView { return FILE_VIEW[extOf(path)] || 'code' }
+const fileView = ref<FileView>('code')
+const fileBytes = ref<Uint8Array | null>(null)
+const fileMime = ref('')
+const fileText = ref('')
+const fileByteLength = ref(0)
+const mdSource = ref(false)
+const fileEditable = computed(() => fileView.value === 'code' || (fileView.value === 'markdown' && mdSource.value))
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64 || '')
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
+const humanSize = (bytes: number) => bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 ** 2).toFixed(1)} MB`
+const baseName = (path?: string) => (path || '').split(/[\\/]/).pop() || ''
+const filePos = ref(loadBrowserPosKey('0kay.agent.file.pos') || { x: Math.max(16, (window.innerWidth || 1280) - 660), y: 88 })
+const fileSize = ref(loadBrowserSizeKey('0kay.agent.file.size') || { w: 560, h: 500 })
+const fileHandlers = makeWindowHandlers(filePos, fileSize, '0kay.agent.file.pos', '0kay.agent.file.size')
+const onFileDown = fileHandlers.down
+const onFileResizeDown = fileHandlers.rdown
+const filePanelStyle = computed(() => ({ translate: `${filePos.value.x}px ${filePos.value.y}px`, width: `${fileSize.value.w}px`, height: `${fileSize.value.h}px` }))
+let fileRequest = 0
+async function openFilePreview(path: string, opts: { confirmDiscard?: boolean } = {}) {
+  if (!path) return
+  if (fileDirty.value) {
+    // Never clobber unsaved edits silently. Auto-open just skips; a manual open
+    // or reload asks first.
+    if (!opts.confirmDiscard) return
+    const same = fileData.value?.path === path
+    const ok = await confirm({
+      title: tr('放弃修改？', 'Discard changes?'),
+      message: same ? tr('重新加载会丢失未保存的修改。', 'Reloading will lose unsaved changes.') : tr('打开其他文件会丢失未保存的修改。', 'Opening another file will lose unsaved changes.'),
+      confirmLabel: tr('放弃', 'Discard'), danger: true,
+    })
+    if (!ok) return
+  }
+  const view = viewForFile(path)
+  const request = ++fileRequest
+  fileOpen.value = true
+  fileLoading.value = true
+  fileError.value = ''
+  fileView.value = view
+  fileBytes.value = null
+  fileByteLength.value = 0
+  fileText.value = ''
+  fileMime.value = FILE_MIME[extOf(path)] || ''
+  mdSource.value = false
+  try {
+    if (view === 'legacy') {
+      // Prefer converting to PDF (full layout) via LibreOffice; fall back to
+      // plain-text extraction when the executor has no converter.
+      const converted = await fetch(`/api/agent/file/convert?${treeQuery({ path, target: 'pdf' })}`, { signal: AbortSignal.timeout(170000) })
+      if (converted.ok) {
+        const data = await converted.json()
+        if (request !== fileRequest) return
+        const bytes = base64ToBytes(data.base64 || '')
+        fileBytes.value = bytes
+        fileByteLength.value = Number(data.size) || bytes.length
+        fileMime.value = 'application/pdf'
+        fileView.value = 'pdf'
+        fileData.value = { path, content: '', totalLines: 0 }
+      } else {
+        const extracted = await fetch(`/api/agent/file/text?${treeQuery({ path })}`, { signal: AbortSignal.timeout(45000) })
+        if (!extracted.ok) throw new Error(await extracted.text())
+        const data = await extracted.json()
+        if (request !== fileRequest) return
+        fileText.value = data.content || ''
+        fileView.value = 'text'
+        fileData.value = { path, content: '', totalLines: 0 }
+      }
+    } else if (view === 'code' || view === 'markdown') {
+      const res = await fetch(`/api/agent/file?${treeQuery({ path, limit: '4000' })}`, { signal: AbortSignal.timeout(15000) })
+      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json()
+      if (request !== fileRequest) return
+      const next: FileData = { path: data.path || path, content: data.content || '', totalLines: data.totalLines || 0 }
+      fileData.value = next
+      fileDraft.value = next.content
+    } else if (view === 'unsupported') {
+      fileData.value = { path, content: '', totalLines: 0 }
+      fileDraft.value = ''
+    } else {
+      const res = await fetch(`/api/agent/file/raw?${treeQuery({ path })}`, { signal: AbortSignal.timeout(30000) })
+      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json()
+      if (request !== fileRequest) return
+      const bytes = base64ToBytes(data.base64 || '')
+      fileBytes.value = bytes
+      fileByteLength.value = Number(data.size) || bytes.length
+      fileData.value = { path: data.path || path, content: '', totalLines: 0 }
+      fileDraft.value = ''
+    }
+  } catch (e: any) {
+    if (request !== fileRequest) return
+    fileError.value = e?.message || 'read failed'
+    fileData.value = { path, content: '', totalLines: 0 }
+    fileDraft.value = ''
+  } finally { if (request === fileRequest) fileLoading.value = false }
+}
+async function saveFile() {
+  if (!fileData.value || fileSaving.value || !fileDirty.value) return
+  fileSaving.value = true
+  fileNotice.value = ''
+  try {
+    const res = await fetch('/api/agent/file', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: fileData.value.path, content: fileDraft.value, ...(executor.value?.plugin_id ? { executor_id: executor.value.plugin_id } : {}) }),
+      signal: AbortSignal.timeout(30000),
+    })
+    if (!res.ok) throw new Error(await res.text())
+    fileData.value = { ...fileData.value, content: fileDraft.value, totalLines: fileDraft.value.split(/\r?\n/).length }
+    fileNotice.value = tr('已保存', 'Saved')
+    window.setTimeout(() => { if (fileNotice.value) fileNotice.value = '' }, 2200)
+  } catch (e: any) { fileError.value = e?.message || 'save failed' }
+  finally { fileSaving.value = false }
+}
+function onFileEditorKey(event: KeyboardEvent) {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); void saveFile() }
+}
+function reloadFile() { if (fileData.value) void openFilePreview(fileData.value.path, { confirmDiscard: true }) }
+async function closeFilePanel() {
+  if (fileDirty.value) {
+    const ok = await confirm({ title: tr('放弃修改？', 'Discard changes?'), message: tr('有未保存的修改，关闭会丢失。', 'You have unsaved changes. Closing will lose them.'), confirmLabel: tr('放弃', 'Discard'), danger: true })
+    if (!ok) return
+  }
+  fileOpen.value = false
+}
+
+// --- terminal console: pick an executor and run shell commands on it ---
+interface TermLine { kind: 'cmd' | 'out' | 'err' | 'note'; text: string }
+const termOpen = ref(false)
+const termPos = ref(loadBrowserPosKey('0kay.agent.term.pos') || { x: Math.max(16, (window.innerWidth || 1280) - 700), y: Math.max(16, (window.innerHeight || 800) - 540) })
+const termSize = ref(loadBrowserSizeKey('0kay.agent.term.size') || { w: 640, h: 470 })
+const termHandlers = makeWindowHandlers(termPos, termSize, '0kay.agent.term.pos', '0kay.agent.term.size')
+const onTermDown = termHandlers.down
+const onTermResizeDown = termHandlers.rdown
+const termPanelStyle = computed(() => ({ translate: `${termPos.value.x}px ${termPos.value.y}px`, width: `${termSize.value.w}px`, height: `${termSize.value.h}px` }))
+const termExecutorId = ref('')
+const termCwd = ref('')
+const termLines = ref<TermLine[]>([])
+const termInput = ref('')
+const termBusy = ref(false)
+const termBody = ref<HTMLElement | null>(null)
+const termHistory = ref<string[]>([])
+let termHistoryIndex = 0
+const termExecutor = computed(() => store.agents.find(agent => agent.plugin_id === termExecutorId.value) || null)
+const executorOptions = computed(() => store.agents.map(agent => ({ value: agent.plugin_id, label: `${agent.host?.hostname || agent.name} · ${agent.plugin_id}`, disabled: !store.isHealthy(agent) })))
+function termDefaultExecutor(): string {
+  return executorId.value || executor.value?.plugin_id || store.agents.find(agent => store.isHealthy(agent))?.plugin_id || ''
+}
+function termPush(kind: TermLine['kind'], text: string) { if (text) termLines.value.push({ kind, text }) }
+async function termScroll() { await nextTick(); if (termBody.value) termBody.value.scrollTop = termBody.value.scrollHeight }
+function toggleTerm() {
+  termOpen.value = !termOpen.value
+  if (termOpen.value && !termExecutorId.value) termExecutorId.value = termDefaultExecutor()
+  if (termOpen.value && !termCwd.value) termCwd.value = termExecutor.value?.host?.workdir || ''
+}
+function termChangeExecutor(id: string) {
+  termExecutorId.value = id
+  const agent = store.agents.find(a => a.plugin_id === id)
+  termCwd.value = agent?.host?.workdir || ''
+  termPush('note', tr(`已切换到 ${agent?.host?.hostname || id}${termCwd.value ? ' · ' + termCwd.value : ''}`, `Switched to ${agent?.host?.hostname || id}${termCwd.value ? ' · ' + termCwd.value : ''}`))
+  void termScroll()
+}
+// Resolve a cd target against the current directory without a shell round-trip,
+// so the working directory persists between commands.
+function joinPath(base: string, rel: string): string {
+  const win = /^[a-zA-Z]:[\\/]|\\\\/.test(base) || base.includes('\\')
+  const isAbsolute = win ? /^([a-zA-Z]:[\\/]|\\\\)/.test(rel) : rel.startsWith('/')
+  const combined = isAbsolute ? rel : `${base}${base.endsWith('/') || base.endsWith('\\') || !base ? '' : win ? '\\' : '/'}${rel}`
+  const stack: string[] = []
+  for (const part of combined.replace(/\\/g, '/').split('/')) {
+    if (!part || part === '.') continue
+    if (part === '..') stack.pop()
+    else stack.push(part)
+  }
+  const out = stack.join(win ? '\\' : '/')
+  if (!win) return out.startsWith('/') ? out : '/' + out
+  return out
+}
+async function termRun() {
+  if (termBusy.value) return
+  const command = termInput.value.trim()
+  if (!command) return
+  termInput.value = ''
+  termHistory.value = [...termHistory.value.filter(item => item !== command), command].slice(-100)
+  termHistoryIndex = termHistory.value.length
+  termPush('cmd', `${termCwd.value || '~'} $ ${command}`)
+  await termScroll()
+  const cd = /^cd(?:\s+(.+))?$/i.exec(command)
+  if (cd) {
+    const target = (cd[1] || '').trim().replace(/^"(.*)"$/, '$1')
+    if (!target) { termPush('note', termCwd.value || ''); await termScroll(); return }
+    termCwd.value = joinPath(termCwd.value, target)
+    termPush('note', termCwd.value)
+    await termScroll()
+    return
+  }
+  if (!termExecutorId.value) { termPush('err', tr('请先选择执行器', 'Choose an executor first')); await termScroll(); return }
+  termBusy.value = true
+  try {
+    const res = await fetch('/api/agent/exec', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ executor_id: termExecutorId.value, command, cwd: termCwd.value, timeout: 120000 }),
+      signal: AbortSignal.timeout(300000),
+    })
+    if (!res.ok) throw new Error(await res.text())
+    const data = await res.json()
+    if (data.cwd) termCwd.value = data.cwd
+    if (data.stdout) termPush('out', String(data.stdout).replace(/\s+$/, ''))
+    if (data.stderr) termPush('err', String(data.stderr).replace(/\s+$/, ''))
+    if (data.exitCode !== undefined && data.exitCode !== 0) termPush('note', tr(`退出码 ${data.exitCode}`, `exit code ${data.exitCode}`))
+    if (data.truncated) termPush('note', tr('输出已截断', 'output truncated'))
+  } catch (e: any) { termPush('err', e?.message || 'command failed') }
+  finally { termBusy.value = false; await termScroll() }
+}
+function termKey(event: KeyboardEvent) {
+  if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229) { event.preventDefault(); void termRun(); return }
+  if (event.key === 'ArrowUp' && termHistory.value.length) {
+    event.preventDefault()
+    termHistoryIndex = Math.max(0, termHistoryIndex - 1)
+    termInput.value = termHistory.value[termHistoryIndex] || ''
+    return
+  }
+  if (event.key === 'ArrowDown' && termHistory.value.length) {
+    event.preventDefault()
+    termHistoryIndex = Math.min(termHistory.value.length, termHistoryIndex + 1)
+    termInput.value = termHistory.value[termHistoryIndex] || ''
+  }
+}
+function termClear() { termLines.value = [] }
+
+const treePos = ref(loadBrowserPosKey('0kay.agent.tree.pos') || { x: Math.max(16, (window.innerWidth || 1280) - 620), y: 64 })
+const treeSize = ref(loadBrowserSizeKey('0kay.agent.tree.size') || { w: 340, h: 460 })
+const treeHandlers = makeWindowHandlers(treePos, treeSize, '0kay.agent.tree.pos', '0kay.agent.tree.size')
+const onTreeDown = treeHandlers.down
+const onTreeResizeDown = treeHandlers.rdown
+const treePanelStyle = computed(() => ({ translate: `${treePos.value.x}px ${treePos.value.y}px`, width: `${treeSize.value.w}px`, height: `${treeSize.value.h}px` }))
+function loadBrowserPosKey(key: string) { try { const p = JSON.parse(localStorage.getItem(key) || ''); if (p && Number.isFinite(p.x)) return { x: p.x, y: p.y } } catch { /* default */ } return null }
+function loadBrowserSizeKey(key: string) { try { const s = JSON.parse(localStorage.getItem(key) || ''); if (s && Number.isFinite(s.w)) return { w: s.w, h: s.h } } catch { /* default */ } return null }
+function treeQuery(extra: Record<string, string>) {
+  const p = new URLSearchParams(extra)
+  if (executor.value?.plugin_id) p.set('executor_id', executor.value.plugin_id)
+  return p.toString()
+}
+// Icon tint for the project tree, grouped by broad file category.
+const FILE_KINDS: Record<string, string> = {
+  code: 'ts,tsx,js,jsx,mjs,cjs,vue,py,go,rs,java,c,cpp,cc,cxx,h,hpp,cs,rb,php,swift,kt,kts,lua,sh,bash,zsh,ps1',
+  data: 'json,jsonc,yaml,yml,toml,ini,xml,csv,sql',
+  doc: 'md,markdown,txt,rst,log',
+  image: 'png,jpg,jpeg,gif,svg,webp,ico,bmp,avif',
+  archive: 'zip,tar,gz,tgz,7z,rar,exe,dll,bin,lock,woff,woff2,ttf,otf',
+}
+function fileKind(name: string, dir: boolean): string {
+  if (dir) return 'dir'
+  const ext = (name.split('.').pop() || '').toLowerCase()
+  for (const [kind, list] of Object.entries(FILE_KINDS)) if (list.split(',').includes(ext)) return kind
+  return 'file'
+}
+function toggleTree() { treeOpen.value = !treeOpen.value; if (treeOpen.value && !treeRows.value.length) void treeReload('') }
+async function loadTreeDir(dirPath: string, depth: number): Promise<TreeRow[]> {
+  const res = await fetch(`/api/agent/tree?${treeQuery({ path: dirPath })}`, { signal: AbortSignal.timeout(15000) })
+  if (!res.ok) throw new Error(await res.text())
+  const data = await res.json()
+  return (data.entries || []).map((e: any) => ({ name: e.name, path: e.path, dir: !!e.dir, depth, expanded: false, loading: false }))
+}
+async function treeReload(dirPath = '') {
+  treeLoading.value = true; treeError.value = ''
+  try { treeRootPath.value = dirPath; treeRows.value = await loadTreeDir(dirPath, 0) }
+  catch (e: any) { treeError.value = e?.message || 'load failed' }
+  finally { treeLoading.value = false }
+}
+async function treeToggle(row: TreeRow) {
+  const idx = treeRows.value.indexOf(row)
+  if (idx < 0) return
+  if (!row.dir) { void treePreview(row); return }
+  if (row.expanded) {
+    row.expanded = false
+    let i = idx + 1
+    while (i < treeRows.value.length && treeRows.value[i].depth > row.depth) treeRows.value.splice(i, 1)
+    return
+  }
+  row.loading = true
+  try {
+    const children = await loadTreeDir(row.path, row.depth + 1)
+    row.expanded = true
+    treeRows.value.splice(idx + 1, 0, ...children)
+  } catch (e: any) { treeError.value = e?.message || 'load failed' }
+  finally { row.loading = false }
+}
+function treePreview(row: TreeRow) { void openFilePreview(row.path, { confirmDiscard: true }) }
+// --- usage window ---
+const usageOpen = ref(false)
+const usagePos = ref(loadBrowserPosKey('0kay.agent.usage.pos') || { x: Math.max(16, (window.innerWidth || 1280) - 336), y: 64 })
+const usageSize = ref(loadBrowserSizeKey('0kay.agent.usage.size') || { w: 300, h: 300 })
+const usageHandlers = makeWindowHandlers(usagePos, usageSize, '0kay.agent.usage.pos', '0kay.agent.usage.size')
+const onUsageDown = usageHandlers.down
+const onUsageResizeDown = usageHandlers.rdown
+const usagePanelStyle = computed(() => ({ translate: `${usagePos.value.x}px ${usagePos.value.y}px`, width: `${usageSize.value.w}px`, height: `${usageSize.value.h}px` }))
+function toggleUsage() { usageOpen.value = !usageOpen.value; if (usageOpen.value) void fetchContextUsage() }
+// --- host window ---
+const hostPos = ref(loadBrowserPosKey('0kay.agent.host.pos') || { x: Math.max(16, (window.innerWidth || 1280) - 336), y: 392 })
+const hostSize = ref(loadBrowserSizeKey('0kay.agent.host.size') || { w: 360, h: 360 })
+const hostHandlers = makeWindowHandlers(hostPos, hostSize, '0kay.agent.host.pos', '0kay.agent.host.size')
+const onHostDown = hostHandlers.down
+const onHostResizeDown = hostHandlers.rdown
+const hostPanelStyle = computed(() => ({ translate: `${hostPos.value.x}px ${hostPos.value.y}px`, width: `${hostSize.value.w}px`, height: `${hostSize.value.h}px` }))
 function loadOptions() {
   try {
     const saved = JSON.parse(localStorage.getItem(`0kay.agent.editor:${selectedId.value}`) || localStorage.getItem(`0kay.agent.options:${selectedId.value}`) || '{}')
@@ -250,6 +809,137 @@ const sessions = computed(() => store.sessions.filter(item =>
   (showArchived.value ? item.state === 'archived' : item.state !== 'archived') &&
   (source.value === 'all' || (source.value === 'life' ? isLife(item) : !isLife(item))) &&
   (item.prompt || '').toLowerCase().includes(search.value.toLowerCase())))
+
+// --- dsh-style workspaces: sessions grouped under registered directories ---
+interface WorkspaceRow { id: string; title: string; path: string; createdAt: string; updatedAt: string; sessionIds: string[]; exists?: boolean }
+const workspaces = ref<WorkspaceRow[]>([])
+const collapsed = ref<Set<string>>(new Set(JSON.parse(localStorage.getItem('0kay.agent.ws.collapsed') || '[]')))
+const expandedGroups = ref<Set<string>>(new Set())
+const workspacePick = ref(false)
+function workspaceQuery(): string { return executor.value?.plugin_id ? `executor_id=${encodeURIComponent(executor.value.plugin_id)}` : '' }
+async function fetchWorkspaces() {
+  try {
+    const query = workspaceQuery()
+    const response = await fetch(`/api/agent/workspaces${query ? `?${query}` : ''}`)
+    if (!response.ok) return
+    const data = await response.json()
+    workspaces.value = Array.isArray(data?.workspaces) ? data.workspaces : []
+  } catch { /* offline */ }
+}
+async function workspaceAction(action: string, payload: Record<string, unknown> = {}) {
+  const response = await fetch('/api/agent/workspaces', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...payload, action, ...(executor.value ? { executor_id: executor.value.plugin_id } : {}) }),
+  })
+  if (!response.ok) throw new Error(await response.text())
+  await fetchWorkspaces()
+  return response.json()
+}
+const orderMode = ref<'manual' | 'recent'>(localStorage.getItem('0kay.agent.ws.order') === 'recent' ? 'recent' : 'manual')
+function setOrderMode(mode: 'manual' | 'recent') { orderMode.value = mode; localStorage.setItem('0kay.agent.ws.order', mode) }
+function sessionActivity(item: TaskRow): number {
+  let latest = Date.parse(item.started_at || '') || 0
+  for (const task of store.tasks) if (task.session_id === item.session_id && task.started_at) latest = Math.max(latest, Date.parse(task.started_at) || 0)
+  return latest
+}
+const arrange = (list: TaskRow[]) => orderMode.value === 'recent' ? [...list].sort((a, b) => sessionActivity(b) - sessionActivity(a)) : list
+const sessionGroups = computed(() => {
+  const groups = workspaces.value.map(workspace => ({
+    id: workspace.id, title: workspace.title, path: workspace.path, exists: workspace.exists !== false,
+    sessions: arrange(sessions.value.filter(item => (workspace.sessionIds || []).includes(item.session_id || ''))),
+  }))
+  const claimed = new Set(workspaces.value.flatMap(workspace => workspace.sessionIds || []))
+  return { groups, ungrouped: arrange(sessions.value.filter(item => !claimed.has(item.session_id || ''))) }
+})
+function toggleGroup(id: string) {
+  const next = new Set(collapsed.value)
+  if (next.has(id)) next.delete(id); else next.add(id)
+  collapsed.value = next
+  localStorage.setItem('0kay.agent.ws.collapsed', JSON.stringify([...next]))
+}
+const isExpanded = (id: string) => expandedGroups.value.has(id)
+function toggleExpanded(id: string) { const next = new Set(expandedGroups.value); if (next.has(id)) next.delete(id); else next.add(id); expandedGroups.value = next }
+const visibleSessions = (group: { id: string; sessions: TaskRow[] }) => isExpanded(group.id) ? group.sessions : group.sessions.slice(0, 5)
+async function addWorkspace() {
+  if (!executor.value) { error.value = tr('请先选择在线执行器', 'Select an online executor first'); return }
+  workspacePick.value = true
+  await browse('')
+}
+async function createIn(workspaceId: string) {
+  const workspace = workspaces.value.find(row => row.id === workspaceId)
+  if (workspace) { workdir.value = workspace.path; executorId.value = executor.value?.plugin_id || executorId.value }
+  await create()
+}
+async function renameWorkspace(workspace: WorkspaceRow) {
+  const title = window.prompt(tr('工作区名称', 'Workspace name'), workspace.title)
+  if (title == null || !title.trim()) return
+  try { await workspaceAction('rename', { id: workspace.id, to: title.trim() }) } catch (e: any) { error.value = e.message }
+}
+async function deleteWorkspace(workspace: WorkspaceRow) {
+  const ok = await confirm({
+    title: tr('移除工作区', 'Remove workspace'),
+    message: tr('只移除登记，目录与会话都会保留；其中的会话进入未分组。', 'Only the registration is removed; the directory and sessions are kept. Its sessions move to Ungrouped.'),
+    confirmLabel: tr('移除', 'Remove'), danger: true,
+  })
+  if (!ok) return
+  try { await workspaceAction('delete', { id: workspace.id }) } catch (e: any) { error.value = e.message }
+}
+let dragWorkspace = ''
+function onGroupDragStart(id: string) { dragWorkspace = id }
+async function onGroupDrop(targetId: string) {
+  if (!dragWorkspace || dragWorkspace === targetId) return
+  try { await workspaceAction('reorder', { id: dragWorkspace, before: targetId }) } catch (e: any) { error.value = e.message }
+  dragWorkspace = ''
+}
+let workspaceTimer: ReturnType<typeof setInterval> | null = null
+watch([executor, () => store.sessions.length], () => void fetchWorkspaces())
+
+// --- debounced content search (title matches are instant; content adds snippets) ---
+const contentMatches = ref<Array<{ session_id: string; title: string; snippet: string }>>([])
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+watch(search, (value) => {
+  if (searchTimer) clearTimeout(searchTimer)
+  const query = String(value || '').trim()
+  if (!query) { contentMatches.value = []; return }
+  searchTimer = setTimeout(async () => {
+    try {
+      const response = await fetch(`/api/agent/sessions/search?q=${encodeURIComponent(query)}`)
+      if (!response.ok) return
+      const data = await response.json()
+      contentMatches.value = Array.isArray(data?.matches) ? data.matches : []
+    } catch { /* offline */ }
+  }, 250)
+})
+const searchResults = computed(() => {
+  const rows = [...sessions.value]
+  const seen = new Set(rows.map(row => row.session_id))
+  for (const match of contentMatches.value) {
+    if (seen.has(match.session_id)) continue
+    const row = store.sessions.find(item => item.session_id === match.session_id)
+    if (row) { rows.push(row); seen.add(match.session_id) }
+  }
+  return rows
+})
+const snippetFor = (id?: string) => contentMatches.value.find(match => match.session_id === id)?.snippet || ''
+
+// --- session fork / cross-workspace move ---
+async function forkSession(item: TaskRow) {
+  if (!item.session_id || busy.value) return
+  busy.value = true; error.value = ''
+  try {
+    const response = await fetch('/api/agent/sessions/fork', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: item.session_id, ...(executor.value ? { executor_id: executor.value.plugin_id } : {}) }) })
+    if (!response.ok) throw new Error(await response.text())
+    const data = await response.json()
+    await store.fetchAgents()
+    if (data?.session_id) choose(data.session_id)
+  } catch (e: any) { error.value = e.message }
+  finally { busy.value = false }
+}
+async function moveSessionTo(item: TaskRow, workspaceId: string) {
+  if (!item.session_id || !workspaceId) return
+  try { await workspaceAction('move-session', { session: item.session_id, to: workspaceId }) } catch (e: any) { error.value = e.message }
+}
+function onMoveChange(item: TaskRow, event: Event) { const value = (event.target as HTMLSelectElement).value; if (value) void moveSessionTo(item, value) }
 const turns = computed(() => store.tasks.filter(item => item.kind === 'agent' && item.session_id === selectedId.value)
   .sort((a,b) => (a.started_at || '').localeCompare(b.started_at || '') || a.task_id.localeCompare(b.task_id)))
 const active = computed(() => store.tasks.find(item => item.session_id===selectedId.value && ['agent','compact'].includes(item.kind || '') && ['running','pending'].includes(item.state)))
@@ -402,6 +1092,67 @@ async function stop() {
   try { await store.cancelTask(active.value.task_id) } catch (e: any) { error.value = e.message }
 }
 async function scrollBottom() { await nextTick(); if(followLatest.value) transcript.value?.scrollTo({top:transcript.value.scrollHeight,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}) }
+
+// --- auto-open windows while the agent works in the selected session ---
+// Browser tool use pops the live viewport; write/edit/apply_patch pops the file
+// preview. Existing steps are seeded on load/switch so nothing opens retroactively.
+const handledSteps = new Set<string>()
+let seededSession = ''
+function parseStepJson(raw?: string): any { if (!raw) return null; try { return JSON.parse(raw) } catch { return null } }
+function absolutePath(value: string): string {
+  if (!value) return ''
+  if (/^([a-zA-Z]:[\\/]|\\\\|\/)/.test(value)) return value
+  const base = workdir.value || executor.value?.host?.workdir || ''
+  return base ? `${base.replace(/[\\/]+$/, '')}/${value.replace(/^[\\/]+/, '')}` : ''
+}
+function editedPaths(step: TaskRow): string[] {
+  const args = parseStepJson(step.args) || {}
+  const raw = parseStepJson(step.result)
+  const inner = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw.data ?? raw) : {}
+  const found: string[] = []
+  const add = (value: unknown) => { if (typeof value === 'string' && value) found.push(value) }
+  add(inner?.path)
+  if (Array.isArray(inner?.files)) inner.files.forEach((file: any) => add(file?.path))
+  add(args?.filePath)
+  if (Array.isArray(args?.patches)) args.patches.forEach((patch: any) => add(patch?.filePath))
+  if (Array.isArray(inner?.patches)) inner.patches.forEach((patch: any) => add(patch?.filePath))
+  return found
+}
+function ensureBrowserView() {
+  if (!browserViewOpen.value) toggleBrowserView()
+  else { void fetchBrowserStatus(); void fetchBrowserTabs(); refreshBrowserStream() }
+}
+function considerStep(step: TaskRow) {
+  const tool = (step.prompt || '').trim()
+  if (tool === 'browser') {
+    const action = String((parseStepJson(step.args) || {})?.action || '').toLowerCase()
+    if (!action || ['status', 'frame'].includes(action)) { handledSteps.add(step.task_id); return }
+    ensureBrowserView()
+    handledSteps.add(step.task_id)
+    return
+  }
+  if (tool === 'write' || tool === 'edit' || tool === 'apply_patch') {
+    const path = editedPaths(step).map(absolutePath).find(Boolean)
+    if (path) { handledSteps.add(step.task_id); void openFilePreview(path) }
+    else if (['done', 'failed', 'cancelled'].includes(step.state)) handledSteps.add(step.task_id)
+    return
+  }
+  handledSteps.add(step.task_id)
+}
+watch([selectedId, () => store.tasks.map(item => `${item.task_id}:${item.session_id}:${item.state}:${item.result?.length || 0}`).join('|')], () => {
+  const sid = selectedId.value
+  if (!sid) return
+  if (seededSession !== sid) {
+    seededSession = sid
+    handledSteps.clear()
+    for (const step of store.tasks) if (step.session_id === sid) handledSteps.add(step.task_id)
+    return
+  }
+  for (const step of store.tasks) {
+    if (step.kind !== 'tool' || step.session_id !== sid || handledSteps.has(step.task_id)) continue
+    considerStep(step)
+  }
+})
 watch(() => store.tasks.filter(item=>item.session_id===selectedId.value).map(item => `${item.task_id}:${item.state}:${item.result?.length}`).join('|'), scrollBottom)
 watch(() => store.tasks.filter(item => item.session_id === selectedId.value).map(item => `${item.task_id}:${item.state}:${item.result?.length}`).join('|'), scheduleContextUsage)
 watch(selectedId, () => { void fetchContextUsage() })
@@ -409,11 +1160,11 @@ watch(modelId, () => { void fetchContextUsage() })
 onMounted(() => { void fetchContextUsage() })
 watch(selectedId, () => { followLatest.value=true;void scrollBottom();closeBrowser();clearSubs();error.value='' })
 watch(selectedId, loadOptions)
-watch(executorId,()=>{hostUsage.value=null;workdir.value='';closeBrowser();fetchHost()},{flush:'sync'})
+watch(executorId,()=>{hostUsage.value=null;workdir.value='';closeBrowser();fetchHost();void fetchBrowserStatus()},{flush:'sync'})
 watch(hostOpen,fetchHost)
 watch(selectedId,()=>{compactNotice.value=''})
-onMounted(() => { syncLocale(); store.connect(); loadOptions(); fetchModels();hostTimer=setInterval(fetchHost,5000);window.addEventListener('keydown',onEscape) })
-onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTimer) clearInterval(hostTimer);window.removeEventListener('keydown',onEscape)})
+onMounted(() => { syncLocale(); store.connect(); loadOptions(); fetchModels();void fetchWorkspaces();hostTimer=setInterval(fetchHost,5000);workspaceTimer=setInterval(()=>{if(!document.hidden)void fetchWorkspaces()},5000);void fetchBrowserStatus();browserTimer=setInterval(fetchBrowserStatus,5000);window.addEventListener('keydown',onEscape) })
+onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTimer) clearInterval(hostTimer);if(workspaceTimer) clearInterval(workspaceTimer);if(browserTimer) clearInterval(browserTimer);if(browserViewTimer) clearInterval(browserViewTimer);if(browserStreamRetry) clearTimeout(browserStreamRetry);window.removeEventListener('keydown',onEscape)})
 </script>
 
 <template>
@@ -423,13 +1174,76 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
       <div class="connection"><i :class="{online:store.onlineCount>0}" />{{ store.onlineCount }} {{ tr('个执行器在线','executors online') }} <button @click="store.fetchAgents()" :title="tr('刷新','Refresh')" aria-label="refresh"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
       <input v-model="search" :placeholder="tr('搜索会话…','Search sessions…')" :aria-label="tr('搜索会话','Search sessions')" />
       <nav class="filter-bar"><button v-for="filter in [{id:'all',label:tr('全部','All')},{id:'life',label:tr('LIFE 发起','From LIFE')},{id:'user',label:tr('我的对话','My chats')}]" :key="filter.id" :class="{chosen:source===filter.id}" @click="source=filter.id">{{ filter.label }}</button></nav>
-      <label class="muted"><input v-model="showArchived" type="checkbox" /> {{ tr('显示已归档会话','Show archived sessions') }}</label>
+      <div class="sidebar-toggles">
+        <label class="muted"><input v-model="showArchived" type="checkbox" /> {{ tr('显示已归档会话','Show archived sessions') }}</label>
+        <nav class="order-toggle"><button type="button" :class="{chosen:orderMode==='manual'}" @click="setOrderMode('manual')">{{ tr('手动','Manual') }}</button><button type="button" :class="{chosen:orderMode==='recent'}" @click="setOrderMode('recent')">{{ tr('最近','Recent') }}</button></nav>
+      </div>
       <div class="session-list">
-        <button v-for="item in sessions" :key="item.task_id" class="session-card" :disabled="busy" :class="{selected:selectedId===item.session_id && !showLedger}" @click="choose(item.session_id!)">
-          <span class="origin">{{ isLife(item) ? 'LIFE → Agent' : tr('你 ↔ Agent','You ↔ Agent') }}</span>
-          <strong>{{ item.prompt || '未命名会话' }}</strong><small>{{ time(item.started_at) }}</small>
-        </button>
-        <p v-if="!sessions.length" class="muted">{{ tr('暂无会话。直接发送消息，或等待 LIFE 委派工作。','No sessions yet. Send a message or wait for LIFE to delegate work.') }}</p>
+        <section v-if="search.trim()" class="ws-group">
+          <header class="ws-head static"><span class="ws-title">{{ tr('搜索结果','Search results') }}</span><span class="ws-count">{{ searchResults.length }}</span></header>
+          <div class="ws-sessions">
+            <div v-for="item in searchResults" :key="item.task_id" class="session-row" :class="{selected:selectedId===item.session_id && !showLedger}">
+              <button class="session-card" :disabled="busy" @click="choose(item.session_id!)">
+                <span class="origin">{{ isLife(item) ? 'LIFE → Agent' : tr('你 ↔ Agent','You ↔ Agent') }}</span>
+                <strong>{{ item.prompt || tr('未命名会话','Untitled session') }}</strong>
+                <small>{{ snippetFor(item.session_id) || time(item.started_at) }}</small>
+              </button>
+              <span class="row-actions">
+                <button type="button" :disabled="busy" :title="tr('Fork 会话','Fork session')" @click.stop="forkSession(item)">⑂</button>
+                <select :disabled="busy || !workspaces.length" :title="tr('移动到工作区','Move to workspace')" @click.stop @change="onMoveChange(item, $event)"><option value="">↪</option><option v-for="ws in workspaces" :key="ws.id" :value="ws.id">{{ ws.title }}</option></select>
+              </span>
+            </div>
+            <p v-if="!searchResults.length" class="muted ws-empty">{{ tr('无匹配会话','No matches') }}</p>
+          </div>
+        </section>
+
+        <template v-else>
+          <section v-for="group in sessionGroups.groups" :key="group.id" class="ws-group" :class="{collapsed:collapsed.has(group.id)}" @dragover.prevent @drop="onGroupDrop(group.id)">
+            <header class="ws-head" draggable="true" @dragstart="onGroupDragStart(group.id)">
+              <button type="button" class="ws-toggle" @click="toggleGroup(group.id)" :aria-expanded="!collapsed.has(group.id)" :title="collapsed.has(group.id) ? tr('展开','Expand') : tr('折叠','Collapse')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <span class="ws-title" :title="group.path">{{ group.title }}<i v-if="!group.exists" class="ws-missing" :title="tr('目录不存在','Missing directory')">!</i></span>
+              <span class="ws-count">{{ group.sessions.length }}</span>
+              <span class="ws-actions">
+                <button type="button" @click.stop="createIn(group.id)" :disabled="busy" :title="tr('在此工作区新建会话','New session here')">+</button>
+                <button type="button" @click.stop="renameWorkspace(group)" :title="tr('重命名','Rename')">✎</button>
+                <button type="button" class="danger" @click.stop="deleteWorkspace(group)" :title="tr('移除工作区','Remove workspace')">×</button>
+              </span>
+            </header>
+            <div class="ws-sessions">
+              <div v-for="item in visibleSessions(group)" :key="item.task_id" class="session-row" :class="{selected:selectedId===item.session_id && !showLedger}">
+                <button class="session-card" :disabled="busy" @click="choose(item.session_id!)">
+                  <span class="origin">{{ isLife(item) ? 'LIFE → Agent' : tr('你 ↔ Agent','You ↔ Agent') }}</span>
+                  <strong>{{ item.prompt || tr('未命名会话','Untitled session') }}</strong><small>{{ time(item.started_at) }}</small>
+                </button>
+                <span class="row-actions">
+                  <button type="button" :disabled="busy" :title="tr('Fork 会话','Fork session')" @click.stop="forkSession(item)">⑂</button>
+                  <select :disabled="busy || !workspaces.length" :title="tr('移动到工作区','Move to workspace')" @click.stop @change="onMoveChange(item, $event)"><option value="">↪</option><option v-for="ws in workspaces" :key="ws.id" :value="ws.id">{{ ws.title }}</option></select>
+                </span>
+              </div>
+              <button v-if="group.sessions.length > 5" class="ws-more" @click="toggleExpanded(group.id)">{{ isExpanded(group.id) ? tr('收起','Show less') : tr('展开其余','Show more') + ` (${group.sessions.length - 5})` }}</button>
+              <p v-if="!group.sessions.length" class="muted ws-empty">{{ tr('暂无会话','No sessions') }}</p>
+            </div>
+          </section>
+
+          <section v-if="sessionGroups.ungrouped.length" class="ws-group">
+            <header class="ws-head static"><span class="ws-title">{{ tr('未分组','Ungrouped') }}</span><span class="ws-count">{{ sessionGroups.ungrouped.length }}</span></header>
+            <div class="ws-sessions">
+              <div v-for="item in sessionGroups.ungrouped" :key="item.task_id" class="session-row" :class="{selected:selectedId===item.session_id && !showLedger}">
+                <button class="session-card" :disabled="busy" @click="choose(item.session_id!)">
+                  <span class="origin">{{ isLife(item) ? 'LIFE → Agent' : tr('你 ↔ Agent','You ↔ Agent') }}</span>
+                  <strong>{{ item.prompt || tr('未命名会话','Untitled session') }}</strong><small>{{ time(item.started_at) }}</small>
+                </button>
+                <span class="row-actions">
+                  <button type="button" :disabled="busy" :title="tr('Fork 会话','Fork session')" @click.stop="forkSession(item)">⑂</button>
+                  <select :disabled="busy || !workspaces.length" :title="tr('移动到工作区','Move to workspace')" @click.stop @change="onMoveChange(item, $event)"><option value="">↪</option><option v-for="ws in workspaces" :key="ws.id" :value="ws.id">{{ ws.title }}</option></select>
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <button v-if="executor" class="ws-add" :disabled="busy" @click="addWorkspace()">+ {{ tr('添加工作区…','Add workspace…') }}</button>
+          <p v-if="!sessions.length && !workspaces.length" class="muted">{{ tr('暂无会话。直接发送消息，或等待 LIFE 委派工作。','No sessions yet. Send a message or wait for LIFE to delegate work.') }}</p>
+        </template>
       </div>
       <button class="ledger-button" :class="{chosen:showLedger}" @click="showLedger=true">{{ tr('全部任务记录','All task records') }} · {{ store.tasks.length }}</button>
     </aside>
@@ -446,14 +1260,18 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
     </section>
 
     <section v-else class="conversation">
-      <header class="conversation-header"><div><h2>{{ session?.prompt || '与 Agent 对话' }}</h2><p>{{ session && isLife(session) ? 'LIFE 发起的工作会话 · 你可以查看过程，也可以直接继续对话' : '持续对话 · 编程、调研与工具执行' }}</p></div><span v-if="active" class="running">正在执行</span><div v-if="session" class="session-actions"><button :disabled="!!active" @click="manage(session.state === 'archived' ? 'restore' : 'archive')">{{ session.state === 'archived' ? '恢复' : '归档' }}</button><button :disabled="!!active" @click="manage('delete')">删除</button></div></header>
+      <header class="conversation-header">
+        <div class="conversation-heading"><h2>{{ session?.prompt || '与 Agent 对话' }}</h2><p>{{ session && isLife(session) ? 'LIFE 发起的工作会话 · 你可以查看过程，也可以直接继续对话' : '持续对话 · 编程、调研与工具执行' }}</p></div>
+        <div class="conversation-actions">
+          <span class="browser-status" :class="{on:browserStatus?.running,off:browserStatus&&!browserStatus.enabled}" :title="browserTooltip"><i aria-hidden="true" />{{ browserLabel }}</span>
+          <span v-if="active" class="running">{{ tr('正在执行','Running') }}</span>
+          <div v-if="session" class="session-actions">
+            <button type="button" class="icon-btn" :disabled="!!active" :title="session.state === 'archived' ? tr('恢复','Restore') : tr('归档','Archive')" @click="manage(session.state === 'archived' ? 'restore' : 'archive')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M6 7v11a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7M9.5 11h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button type="button" class="icon-btn danger" :disabled="!!active" :title="tr('删除','Delete')" @click="manage('delete')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M8 7l1 12h6l1-12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+        </div>
+      </header>
       <div v-if="error || store.error" class="error" role="alert">{{ error || store.error }}</div>
-      <section v-if="hostOpen" class="host-panel">
-        <template v-if="executor"><strong>{{ executor.host?.hostname || executor.name }}</strong><span :class="store.isHealthy(executor) ? 'done' : 'failed'">{{ store.isHealthy(executor) ? '在线' : '离线' }}</span>
-        <div class="usage-rings"><div v-for="metric in [{label:'CPU 占用',value:hostUsage?.cpu_percent},{label:'内存占用',value:hostUsage?.memory_percent}]" :key="metric.label" class="usage-metric"><div class="usage-ring" :style="ringStyle(metric.value || 0)"><b>{{ metric.value === undefined ? '—' : `${metric.value.toFixed(1)}%` }}</b></div><span>{{ metric.label }}</span></div><small>{{ hostUsage ? `采样时间：${time(hostUsage.sampled_at)}` : '等待宿主机实时采样' }}</small></div>
-        <dl><div><dt>执行器地址</dt><dd>{{ executor.address }}</dd></div><div><dt>系统 / 架构</dt><dd>{{ executor.host?.os || '—' }} / {{ executor.host?.arch || '—' }}</dd></div><div><dt>CPU</dt><dd>{{ executor.host?.cpu_model || '—' }} · {{ executor.host?.cpu_cores || '—' }} 核</dd></div><div><dt>可用 / 总内存</dt><dd>{{ gib(executor.host?.memory_available_bytes) }} / {{ gib(executor.host?.memory_total_bytes) }}</dd></div><div><dt>活跃任务</dt><dd>{{ executor.active_tasks }}</dd></div><div><dt>距上次心跳</dt><dd>{{ executor.last_heartbeat_age_seconds }} 秒</dd></div><div><dt>默认工作目录</dt><dd>{{ executor.host?.workdir || '—' }}</dd></div></dl></template>
-        <p v-else class="muted">没有可用的执行器宿主机信息。</p>
-      </section>
       <div ref="transcript" class="transcript" @scroll.passive="onTranscriptScroll">
         <div v-if="activeSub" class="sub-view">
           <header class="sub-view-header">
@@ -553,17 +1371,214 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16.5 6.5 8.9 14.1a2.5 2.5 0 0 0 3.5 3.5l7.6-7.6a4.5 4.5 0 0 0-6.4-6.4l-8.3 8.3a6.5 6.5 0 0 0 9.2 9.2l5.6-5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
             <button v-if="active?.kind !== 'agent'" type="submit" class="send-fly" :disabled="busy || !!active || !draft.trim() || session?.state === 'archived'" :aria-label="tr('发送','Send')" :title="tr('发送','Send')">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.6 11.2 20.4 4l-7.1 16.4-2.5-6.8-7.2-2.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m10.8 13.6 3.4-3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21.5 2.5 10.8 13.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M21.5 2.5 14.5 21.5l-3.7-8.3-8.3-3.7 19-7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
             </button>
             <button v-else type="button" class="send-fly stop" @click="stop" :aria-label="tr('停止','Stop')" :title="tr('停止','Stop')">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>
             </button>
           </div>
         </div>
-        <footer><div v-if="contextUsage" class="ctx-usage" tabindex="0" :aria-label="tr('上下文用量','Context usage')"><svg class="ctx-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="ctx-track" cx="10" cy="10" r="8"/></svg><span class="ctx-value">{{ fmtK(contextUsage.tokens) }}</span><div class="ctx-tip" role="tooltip"><strong>{{ tr('上下文用量','Context Usage') }}</strong><div class="ctx-used"><b>{{ fmtK(contextUsage.tokens) }}</b><span>{{ tr('已用','Used') }}</span></div><div class="ctx-row" v-for="row in ctxRows" :key="row.key"><span>{{ row.label }}</span><span>{{ row.value }}</span></div></div></div><button type="button" class="options-toggle" :class="{open: optionsOpen}" :aria-expanded="optionsOpen" @click="optionsOpen=!optionsOpen">{{ optionsOpen ? tr('收起','Less') : tr('设置','Settings') }}</button><AppSelect v-model="mode" :disabled="busy" :aria-label="tr('Agent 模式','Agent mode')" :options="[{value:'general',label:tr('通用 Agent','General Agent')},{value:'code',label:tr('编程 Agent','Coding Agent')},{value:'research',label:tr('调研 Agent','Research Agent')},{value:'science',label:tr('科学 Agent','Science Agent')}]" /><button type="button" @click="hostOpen=!hostOpen">{{ tr('宿主机','Host') }}</button><button type="button" :disabled="!session || !!active || busy || session.state === 'archived'" @click="compact">/compact</button><span class="muted">{{ active?.kind === 'compact' ? tr('上下文压缩中…','Compacting…') : store.onlineCount ? tr('在当前会话中继续','Continue this session') : tr('执行器离线','Executor offline') }}</span></footer>
+        <footer class="composer-footer">
+          <div class="footer-status">
+            <div v-if="contextUsage" class="ctx-usage" tabindex="0" :aria-label="tr('上下文用量','Context usage')"><svg class="ctx-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="ctx-track" cx="10" cy="10" r="8"/></svg><span class="ctx-value">{{ fmtK(contextUsage.tokens) }}</span><div class="ctx-tip" role="tooltip"><strong>{{ tr('上下文用量','Context Usage') }}</strong><div class="ctx-used"><b>{{ fmtK(contextUsage.tokens) }}</b><span>{{ tr('已用','Used') }}</span></div><div class="ctx-row" v-for="row in ctxRows" :key="row.key"><span>{{ row.label }}</span><span>{{ row.value }}</span></div></div></div>
+            <span class="connection-hint"><i :class="{online:store.onlineCount>0}" />{{ active?.kind === 'compact' ? tr('上下文压缩中…','Compacting…') : store.onlineCount ? tr('执行器在线','Executor online') : tr('执行器离线','Executor offline') }}</span>
+          </div>
+          <div class="footer-actions">
+            <label class="mode-field"><AppSelect v-model="mode" :disabled="busy" :aria-label="tr('Agent 模式','Agent mode')" :options="[{value:'general',label:tr('通用 Agent','General Agent')},{value:'code',label:tr('编程 Agent','Coding Agent')},{value:'code_explore',label:tr('编程 Agent · 多路探索 (5)','Coding Agent · Explore (5)')},{value:'research',label:tr('调研 Agent','Research Agent')},{value:'science',label:tr('科学 Agent','Science Agent')}]" /></label>
+            <button type="button" class="chip-btn" :class="{active:hostOpen}" @click="hostOpen=!hostOpen"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>{{ tr('宿主机','Host') }}</button>
+            <button type="button" class="chip-btn" :disabled="!session || !!active || busy || session.state === 'archived'" @click="compact"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 9h16M4 15h16M9 4v16M15 4v16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>/compact</button>
+            <button type="button" class="chip-btn" :class="{active:optionsOpen}" :aria-expanded="optionsOpen" @click="optionsOpen=!optionsOpen"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke="currentColor" stroke-width="1.6"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13.6H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ tr('设置','Settings') }}</button>
+          </div>
+        </footer>
       </form>
     </section>
-    <div v-if="browserOpen" class="directory-backdrop" @click.self="closeBrowser"><section class="directory-dialog" role="dialog" aria-modal="true" aria-label="选择工作区目录"><header><h2>选择 {{ executor?.host?.hostname || '执行器' }} 的工作区</h2><button @click="closeBrowser">关闭</button></header><div class="directory-roots"><button v-for="root in directory.roots" :key="root" :disabled="browserBusy" @click="browse(root)">{{ root }}</button><button :disabled="browserBusy" @click="browse(executor?.host?.workdir || '')">默认目录</button></div><code>{{ directory.path }}</code><form class="new-folder" @submit.prevent="createFolder"><input v-model="folderName" placeholder="新文件夹名称" aria-label="新文件夹名称" :disabled="browserBusy"/><button :disabled="browserBusy || !folderName.trim() || !directory.path">新建文件夹</button></form><p v-if="browserError" class="error">{{ browserError }}</p><p v-if="browserBusy">正在读取目录…</p><div v-else class="directory-list"><button v-if="directory.parent!==directory.path" @click="browse(directory.parent)">上一级</button><button v-for="folder in directory.directories" :key="folder.path" @click="browse(folder.path)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ folder.name }}</button><p v-if="!directory.directories.length" class="muted">没有子目录</p></div><footer><button :disabled="browserBusy || !!browserError || !directory.path" @click="selectDirectory">选择当前目录</button></footer></section></div>
+    <div v-if="browserOpen" class="directory-backdrop" @click.self="closeBrowser"><section class="directory-dialog" role="dialog" aria-modal="true" aria-label="选择工作区目录" tabindex="-1"><header><h2>选择 {{ executor?.host?.hostname || '执行器' }} 的工作区</h2><button @click="closeBrowser">关闭</button></header><div class="directory-roots"><button v-for="root in directory.roots" :key="root" :disabled="browserBusy" @click="browse(root)">{{ root }}</button><button :disabled="browserBusy" @click="browse(executor?.host?.workdir || '')">默认目录</button></div><code>{{ directory.path }}</code><form class="new-folder" @submit.prevent="createFolder"><input v-model="folderName" placeholder="新文件夹名称" aria-label="新文件夹名称" :disabled="browserBusy"/><button :disabled="browserBusy || !folderName.trim() || !directory.path">新建文件夹</button></form><p v-if="browserError" class="error">{{ browserError }}</p><p v-if="browserBusy">正在读取目录…</p><div v-else class="directory-list"><button v-if="directory.parent!==directory.path" @click="browse(directory.parent)">上一级</button><button v-for="folder in directory.directories" :key="folder.path" @click="browse(folder.path)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ folder.name }}</button><p v-if="!directory.directories.length" class="muted">没有子目录</p></div><footer><button :disabled="browserBusy || !!browserError || !directory.path" @click="selectDirectory">选择当前目录</button></footer></section></div>
+    <aside class="dock" :aria-label="tr('工具','Tools')">
+      <button type="button" class="dock-btn" :class="{active:browserViewOpen}" :disabled="!browserStatus?.running" :title="tr('浏览器画面','Browser view')" @click="toggleBrowserView">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="15" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M3 8.5h18" stroke="currentColor" stroke-width="1.7"/><circle cx="6.2" cy="6.3" r=".7" fill="currentColor"/><circle cx="8.7" cy="6.3" r=".7" fill="currentColor"/></svg>
+        <span class="dock-dot" :class="{on:browserStatus?.running}" />
+      </button>
+      <button type="button" class="dock-btn" :class="{active:treeOpen}" :title="tr('项目树','Project tree')" @click="toggleTree">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      </button>
+      <button type="button" class="dock-btn" :class="{active:termOpen}" :title="tr('终端','Terminal')" @click="toggleTerm">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M7.5 9l3 3-3 3M13 15h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button type="button" class="dock-btn" :class="{active:usageOpen}" :title="tr('上下文用量','Context usage')" @click="toggleUsage">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button type="button" class="dock-btn" :class="{active:hostOpen}" :title="tr('宿主机','Host')" @click="hostOpen=!hostOpen">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </aside>
+
+    <Transition name="browser-panel">
+    <section v-if="browserViewOpen" class="browser-panel" :style="panelStyle">
+      <div class="browser-toolbar" @pointerdown="onToolbarDown">
+        <span class="browser-grab" aria-hidden="true">⠿</span>
+        <button type="button" :disabled="!browserStatus?.running || !browserStatus?.canGoBack || browserBusyAction" :title="tr('后退','Back')" @click="postBrowserAction({ action: 'back' })">◀</button>
+        <button type="button" :disabled="!browserStatus?.running || !browserStatus?.canGoForward || browserBusyAction" :title="tr('前进','Forward')" @click="postBrowserAction({ action: 'forward' })">▶</button>
+        <button type="button" :disabled="!browserStatus?.running || browserBusyAction" :title="tr('刷新','Reload')" @click="postBrowserAction({ action: 'reload' })">⟳</button>
+        <form class="browser-url" @submit.prevent="browserGoto">
+          <span class="browser-lock" :class="{on:browserStatus?.running}">●</span>
+          <input v-model="browserUrlInput" :placeholder="browserStatus?.url || 'about:blank'" @focus="browserUrlFocused = true" @blur="browserUrlFocused = false" />
+        </form>
+        <button type="button" :title="tr('关闭','Close')" @click="toggleBrowserView">✕</button>
+      </div>
+      <div v-if="browserTabs.length" class="browser-tabbar">
+        <button v-for="tab in browserTabs" :key="tab.id" type="button" class="browser-tab" :class="{active:tab.active}" :title="tab.url" @click="browserActivateTab(tab.id)">
+          <span class="browser-tab-title">{{ tab.title || tab.url || 'about:blank' }}</span>
+          <span class="browser-tab-close" :title="tr('关闭标签','Close tab')" @click.stop="browserCloseTab(tab.id)">✕</span>
+        </button>
+        <button type="button" class="browser-tab-new" :title="tr('新标签页','New tab')" @click="browserNewTab">+</button>
+      </div>
+      <div class="browser-viewport" tabindex="0" @wheel="onViewWheel" @pointerdown="onViewDown" @pointermove="onViewMove" @pointerup="onViewUp" @keydown="onViewKey" @contextmenu.prevent>
+        <img v-if="browserStreamSrc" ref="browserImg" :src="browserStreamSrc" alt="browser viewport" draggable="false" @error="onBrowserStreamError" />
+        <p v-else class="browser-empty">{{ browserStatus?.error || (browserStatus?.running ? tr('正在连接画面…','Connecting…') : tr('浏览器未运行','Browser is not running')) }}</p>
+      </div>
+      <span class="browser-resize" :title="tr('调整大小','Resize')" @pointerdown="onResizeDown"></span>
+    </section>
+    </Transition>
+
+    <Transition name="browser-panel">
+    <section v-if="treeOpen" class="tree-panel" :style="treePanelStyle">
+      <div class="browser-toolbar" @pointerdown="onTreeDown">
+        <span class="browser-grab" aria-hidden="true">⠿</span>
+        <strong class="tree-title">{{ tr('项目树','Project tree') }}</strong>
+        <button type="button" :title="tr('回到工作区根目录','Workspace root')" @click="treeReload('')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 11l8-7 8 7M6 10v9h12v-9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button type="button" :title="tr('刷新','Refresh')" @click="treeReload(treeRootPath)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button type="button" :title="tr('关闭','Close')" @click="treeOpen=false"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="tree-crumb" :title="treeRootPath || executor?.host?.workdir || ''">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        <span>{{ treeRootPath || executor?.host?.workdir || tr('工作区根目录','Workspace root') }}</span>
+      </div>
+      <div class="tree-body">
+        <div class="tree-list" role="tree">
+          <div v-if="treeLoading" class="tree-state"><span class="tree-spin" aria-hidden="true"></span>{{ tr('加载中…','Loading…') }}</div>
+          <div v-else-if="treeError" class="tree-state error">{{ treeError }}</div>
+          <template v-else>
+            <button v-for="row in treeRows" :key="row.path" type="button" class="tree-row" :class="{dir:row.dir,sel:fileData?.path===row.path}" :style="{ paddingLeft: (10 + row.depth * 16) + 'px' }" :title="row.path" @click="treeToggle(row)">
+              <span class="tree-chev" :class="{open:row.expanded}">
+                <span v-if="row.loading" class="tree-spin small" aria-hidden="true"></span>
+                <svg v-else-if="row.dir" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="tree-icon" :class="fileKind(row.name, row.dir)">
+                <svg v-if="row.dir" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" fill="currentColor" opacity=".16"/><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 3h7l5 5v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="currentColor" opacity=".14"/><path d="M13 3v5h5M6 3h7l5 5v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="tree-name">{{ row.name }}</span>
+            </button>
+            <div v-if="!treeRows.length" class="tree-state">{{ tr('空目录','Empty folder') }}</div>
+          </template>
+        </div>
+      </div>
+      <span class="browser-resize" :title="tr('调整大小','Resize')" @pointerdown="onTreeResizeDown"></span>
+    </section>
+    </Transition>
+
+    <Transition name="browser-panel">
+    <section v-if="usageOpen" class="usage-panel" :style="usagePanelStyle">
+      <div class="browser-toolbar" @pointerdown="onUsageDown">
+        <span class="browser-grab" aria-hidden="true">⠿</span>
+        <strong class="tree-title">{{ tr('上下文用量','Context usage') }}</strong>
+        <button type="button" :title="tr('刷新','Refresh')" @click="fetchContextUsage()">⟳</button>
+        <button type="button" :title="tr('关闭','Close')" @click="usageOpen=false">✕</button>
+      </div>
+      <div class="usage-body">
+        <div class="usage-big"><b>{{ fmtK(contextUsage?.tokens || 0) }}</b><span>{{ tr('已用 tokens','tokens used') }}</span></div>
+        <div class="ctx-row" v-for="row in ctxRows" :key="row.key"><span>{{ row.label }}</span><span>{{ row.value }}</span></div>
+        <p v-if="!ctxRows.length" class="tree-msg">{{ tr('暂无数据','No data') }}</p>
+      </div>
+      <span class="browser-resize" :title="tr('调整大小','Resize')" @pointerdown="onUsageResizeDown"></span>
+    </section>
+    </Transition>
+
+    <Transition name="browser-panel">
+    <section v-if="hostOpen" class="host-window" :style="hostPanelStyle">
+      <div class="browser-toolbar" @pointerdown="onHostDown">
+        <span class="browser-grab" aria-hidden="true">⠿</span>
+        <strong class="tree-title">{{ tr('宿主机','Host') }}</strong>
+        <button type="button" :title="tr('刷新','Refresh')" @click="fetchHost()">⟳</button>
+        <button type="button" :title="tr('关闭','Close')" @click="hostOpen=false">✕</button>
+      </div>
+      <div class="host-body">
+        <template v-if="executor">
+          <div class="host-head">
+            <span class="host-name">{{ executor.host?.hostname || executor.name }}</span>
+            <span class="host-status" :class="store.isHealthy(executor) ? 'ok' : 'off'">{{ store.isHealthy(executor) ? tr('在线','Online') : tr('离线','Offline') }}</span>
+          </div>
+          <div class="usage-rings">
+            <div class="usage-metric"><div class="usage-ring" :style="ringStyle(cpuDisplay)"><b>{{ Math.round(cpuDisplay) }}%</b></div><span>CPU</span></div>
+            <div class="usage-metric"><div class="usage-ring" :style="ringStyle(memDisplay)"><b>{{ Math.round(memDisplay) }}%</b></div><span>{{ tr('内存','Memory') }}</span></div>
+            <small class="host-sampled">{{ hostUsage ? tr('采样','Sampled') + ' ' + time(hostUsage.sampled_at) : tr('等待采样…','Sampling…') }}</small>
+          </div>
+          <dl class="host-details">
+            <div><dt>{{ tr('地址','Address') }}</dt><dd>{{ executor.address }}</dd></div>
+            <div><dt>{{ tr('系统','OS') }}</dt><dd>{{ executor.host?.os || '—' }} / {{ executor.host?.arch || '—' }}</dd></div>
+            <div><dt>CPU</dt><dd>{{ executor.host?.cpu_model || '—' }} · {{ executor.host?.cpu_cores || '—' }} {{ tr('核','cores') }}</dd></div>
+            <div><dt>{{ tr('内存','Memory') }}</dt><dd>{{ gib(executor.host?.memory_available_bytes) }} / {{ gib(executor.host?.memory_total_bytes) }}</dd></div>
+            <div><dt>{{ tr('活跃任务','Active') }}</dt><dd>{{ executor.active_tasks }}</dd></div>
+            <div><dt>{{ tr('心跳','Heartbeat') }}</dt><dd>{{ executor.last_heartbeat_age_seconds }}s</dd></div>
+            <div><dt>{{ tr('工作目录','Workdir') }}</dt><dd>{{ executor.host?.workdir || '—' }}</dd></div>
+          </dl>
+        </template>
+        <p v-else class="host-empty">{{ tr('没有可用的执行器宿主机信息。','No executor host info.') }}</p>
+      </div>
+      <span class="browser-resize" :title="tr('调整大小','Resize')" @pointerdown="onHostResizeDown"></span>
+    </section>
+    </Transition>
+
+    <Transition name="browser-panel">
+    <section v-if="fileOpen" class="file-panel" :style="filePanelStyle">
+      <div class="browser-toolbar" @pointerdown="onFileDown">
+        <span class="browser-grab" aria-hidden="true">⠿</span>
+        <strong class="tree-title" :title="fileData?.path">{{ baseName(fileData?.path) || tr('文件','File') }}</strong>
+        <span v-if="fileDirty" class="file-dirty" :title="tr('未保存','Unsaved')" aria-hidden="true"></span>
+        <button v-if="fileView === 'markdown'" type="button" :title="mdSource ? tr('渲染预览','Rendered preview') : tr('查看源码','View source')" @click="mdSource = !mdSource"><svg v-if="mdSource" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg><svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8.5 6 3 12l5.5 6M15.5 6 21 12l-5.5 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button v-if="fileEditable || fileDirty" type="button" :disabled="!fileDirty || fileSaving" :title="tr('保存 (Ctrl+S)','Save (Ctrl+S)')" @click="saveFile"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 3h11l3 3v15H5V3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 3v6h8M8 21v-7h8v7" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></button>
+        <button type="button" :disabled="!fileData || fileLoading" :title="tr('重新加载','Reload')" @click="reloadFile"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button type="button" :title="tr('关闭','Close')" @click="closeFilePanel"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+      <p v-if="fileLoading" class="tree-msg">{{ tr('加载中…','Loading…') }}</p>
+      <p v-else-if="fileError" class="tree-msg error">{{ fileError }}</p>
+      <FileViewer v-else-if="fileData" v-model="fileDraft" :path="fileData.path" :view="fileView" :bytes="fileBytes" :mime="fileMime" :text="fileText" :md-source="mdSource" @keydown="onFileEditorKey" />
+      <p v-else class="tree-msg">{{ tr('没有文件','No file') }}</p>
+      <footer v-if="fileData" class="file-foot">
+        <span :title="fileData.path">{{ fileData.path }}</span>
+        <small v-if="fileNotice" class="file-saved">{{ fileNotice }}</small>
+        <small v-else-if="fileEditable && fileDirty" class="file-unsaved">{{ tr('未保存','Unsaved') }}</small>
+        <small v-else-if="fileByteLength">{{ humanSize(fileByteLength) }}</small>
+        <small v-else-if="fileData.totalLines">{{ fileData.totalLines }} {{ tr('行','lines') }}</small>
+      </footer>
+      <span class="browser-resize" :title="tr('调整大小','Resize')" @pointerdown="onFileResizeDown"></span>
+    </section>
+    </Transition>
+
+    <Transition name="browser-panel">
+    <section v-if="termOpen" class="term-panel" :style="termPanelStyle">
+      <div class="browser-toolbar" @pointerdown="onTermDown">
+        <span class="browser-grab" aria-hidden="true">⠿</span>
+        <strong class="tree-title">{{ tr('终端','Terminal') }}</strong>
+        <div class="term-exec">
+          <AppSelect :model-value="termExecutorId" :aria-label="tr('执行器','Executor')" :options="executorOptions" :placeholder="tr('选择执行器','Choose executor')" @change="termChangeExecutor" />
+        </div>
+        <button type="button" :title="tr('清屏','Clear')" @click="termClear"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M7 7l1 12h8l1-12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button type="button" :title="tr('关闭','Close')" @click="termOpen=false"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+      <div ref="termBody" class="term-body">
+        <p v-if="!termLines.length" class="term-hint">{{ tr('选择执行器，输入命令，按 Enter 运行。会沿用当前目录，cd 可直接切换。','Pick an executor, type a command and press Enter. The working directory persists; use cd to change it.') }}</p>
+        <div v-for="(line, index) in termLines" :key="index" class="term-line" :class="line.kind">{{ line.text }}</div>
+        <div v-if="termBusy" class="term-line note term-running"><span class="tree-spin small" aria-hidden="true"></span>{{ tr('运行中…','Running…') }}</div>
+      </div>
+      <form class="term-input" @submit.prevent="termRun">
+        <span class="term-prompt" aria-hidden="true">❯</span>
+        <input v-model="termInput" :disabled="termBusy" spellcheck="false" autocomplete="off" autocapitalize="off" :aria-label="tr('命令','Command')" :placeholder="termBusy ? tr('命令执行中…','Running…') : tr('输入命令…','Type a command…')" @keydown="termKey" />
+        <button type="submit" :disabled="termBusy || !termInput.trim()">{{ tr('运行','Run') }}</button>
+      </form>
+      <span class="browser-resize" :title="tr('调整大小','Resize')" @pointerdown="onTermResizeDown"></span>
+    </section>
+    </Transition>
   </main>
   <ConfirmDialog />
 </template>
@@ -629,13 +1644,192 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .conversation-header h2{font-size:17px;font-weight:650;margin:0}
 .conversation-header p{margin:6px 0 0;color:var(--md-on-surface-variant);font-size:13px}
 .session-actions{display:flex;gap:8px;flex-shrink:0}
-.session-actions button{height:32px;padding:0 13px;border-radius:9px;font-size:13px;font-weight:550;background:var(--md-surface-container-lowest)}
+.session-actions button{height:32px;border-radius:9px;font-size:13px;font-weight:550;background:var(--md-surface-container-lowest)}
+.session-actions .icon-btn{width:32px;padding:0}
 .running{color:#B88412;font-weight:650;font-size:12px}
+.browser-status{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:600;flex-shrink:0;color:var(--md-on-surface-variant);background:var(--md-surface-container-high)}
+.browser-status i{width:8px;height:8px;border-radius:50%;background:var(--md-outline)}
+.browser-status.on{color:var(--md-success);background:color-mix(in srgb,var(--md-success) 14%,transparent)}
+.browser-status.on i{background:var(--md-success)}
+.browser-status.off{opacity:.7}
+/* ---- shared button system ---- */
+.icon-btn{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;background:var(--md-surface-container-lowest);color:var(--md-on-surface-variant);flex-shrink:0;transition:background-color 160ms,transform 160ms var(--ease-emphasized-decel)}
+.icon-btn:hover:not(:disabled){background:var(--md-secondary-container)}
+.icon-btn.active{background:color-mix(in srgb,var(--md-primary) 16%,transparent);color:var(--md-primary)}
+.icon-btn.danger{color:var(--md-error)}
+.icon-btn.danger:hover:not(:disabled){background:color-mix(in srgb,var(--md-error) 14%,transparent)}
+.chip-btn{height:30px;padding:0 12px;display:inline-flex;align-items:center;gap:6px;border-radius:999px;font-size:12.5px;font-weight:600;flex-shrink:0;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);transition:background-color 160ms,transform 160ms var(--ease-emphasized-decel)}
+.chip-btn:hover:not(:disabled){background:var(--md-secondary-container)}
+.chip-btn.active{background:color-mix(in srgb,var(--md-primary) 18%,transparent);color:var(--md-primary)}
+/* Press feedback: scale reads as "pressed" better than the global translateY(1px). */
+#app .workspace :is(.icon-btn,.chip-btn,.attach-fly,.send-fly):active:not(:disabled){transform:scale(.97)}
+#app .workspace :is(.icon-btn,.chip-btn):focus-visible,
+.browser-toolbar button:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}
+
+/* ---- conversation header layout ---- */
+.conversation-header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.conversation-heading{flex:1;min-width:180px}
+.conversation-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.session-actions{display:flex;gap:6px;flex-shrink:0}
+
+/* ---- composer footer layout ---- */
+.composer-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.footer-status{display:flex;align-items:center;gap:12px;min-width:0}
+.footer-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.connection-hint{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--md-on-surface-variant);white-space:nowrap}
+.connection-hint i{width:8px;height:8px;border-radius:50%;background:var(--md-outline)}
+.connection-hint i.online{background:var(--md-success)}
+.browser-panel,.tree-panel,.usage-panel,.host-window,.file-panel,.term-panel{position:fixed;left:0;top:0;z-index:var(--z-panel);display:flex;flex-direction:column;border:1px solid var(--md-outline-variant);border-radius:14px;overflow:hidden;background:var(--md-surface-container-low);box-shadow:var(--shadow-4)}
+.browser-panel-enter-active{transition:opacity 240ms var(--ease-emphasized-decel),transform 240ms var(--ease-emphasized-decel)}
+.browser-panel-leave-active{transition:opacity 140ms var(--ease-emphasized-accel),transform 140ms var(--ease-emphasized-accel)}
+.browser-panel-enter-from,.browser-panel-leave-to{opacity:0;transform:translateY(-6px) scale(.99)}
+@media (prefers-reduced-motion: reduce){.browser-panel-enter-active,.browser-panel-leave-active{transition-duration:1ms}.browser-panel-enter-from,.browser-panel-leave-to{transform:none}}
+.browser-toolbar{display:flex;align-items:center;gap:6px;padding:7px 9px;background:var(--md-surface-container-high);color:var(--md-on-surface);cursor:grab;touch-action:none;user-select:none}
+.browser-toolbar:active{cursor:grabbing}
+.browser-grab{font-size:13px;line-height:1;color:var(--md-on-surface-variant);padding:0 2px;cursor:grab}
+.browser-toolbar button{width:28px;height:28px;padding:0;display:inline-grid;place-items:center;border-radius:8px;font-size:13px;line-height:1;color:var(--md-on-surface-variant);background:transparent;flex-shrink:0}
+.browser-toolbar button svg{display:block}
+.browser-toolbar button:hover:not(:disabled){background:var(--md-surface-container-highest)}
+.browser-toolbar button:disabled{opacity:.35;cursor:default}
+.browser-url{flex:1;display:flex;align-items:center;gap:7px;min-width:120px;height:30px;padding:0 12px;border-radius:15px;background:var(--md-surface-container)}
+.browser-url input{flex:1;min-width:0;border:none;background:transparent;color:var(--md-on-surface);font-size:12.5px;outline:none}
+.browser-url input::placeholder{color:var(--md-on-surface-variant)}
+.browser-lock{font-size:8px;color:var(--md-on-surface-variant)}
+.browser-lock.on{color:var(--md-success)}
+.browser-page-title{max-width:26%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--md-on-surface-variant)}
+.browser-tabbar{display:flex;align-items:center;gap:4px;padding:5px 8px;background:var(--md-surface-container);overflow-x:auto}
+.browser-tab{display:inline-flex;align-items:center;gap:5px;max-width:170px;height:26px;padding:0 4px 0 10px;border:0;border-radius:8px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:12px;flex-shrink:0;cursor:pointer}
+.browser-tab:hover{background:var(--md-surface-container-highest)}
+.browser-tab.active{background:var(--md-surface-container-lowest);color:var(--md-on-surface);box-shadow:var(--shadow-1)}
+.browser-tab-title{max-width:126px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.browser-tab-close{position:relative;width:16px;height:16px;display:grid;place-items:center;border-radius:50%;font-size:10px;flex-shrink:0}
+.browser-tab-close::before{content:'';position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+.browser-tab-close:hover{background:var(--md-surface-container-highest);color:var(--md-error)}
+.browser-tab-new{width:26px;height:26px;border:0;border-radius:8px;background:transparent;color:var(--md-on-surface-variant);font-size:16px;line-height:1;flex-shrink:0;cursor:pointer}
+.browser-tab-new:hover{background:var(--md-surface-container-high)}
+.browser-viewport{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;background:var(--md-surface-container-lowest);cursor:crosshair;outline:none;touch-action:none}
+.browser-viewport:focus-visible{outline:2px solid var(--md-primary);outline-offset:-2px}
+.browser-viewport img{width:100%;height:auto;display:block;user-select:none;-webkit-user-drag:none}
+.browser-empty{margin:auto;padding:40px;color:var(--md-on-surface-variant);font-size:13px;text-align:center}
+.browser-resize{position:absolute;right:1px;bottom:1px;width:16px;height:16px;cursor:nwse-resize;touch-action:none;opacity:.5;
+  background:repeating-linear-gradient(135deg,transparent 0 3px,var(--md-on-surface-variant) 3px 4px)}
+.browser-resize:hover{opacity:.85}
+
+/* ---- right dock ---- */
+.dock{width:58px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 0;border-radius:28px;background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}
+.dock-btn{position:relative;width:42px;height:42px;display:grid;place-items:center;border:0;border-radius:14px;background:transparent;color:var(--md-on-surface-variant);transition:background-color 160ms,color 160ms,transform 160ms var(--ease-emphasized-decel)}
+.dock-btn:hover:not(:disabled){background:var(--md-secondary-container);color:var(--md-on-surface)}
+.dock-btn:active:not(:disabled){transform:scale(.94)}
+.dock-btn.active{background:color-mix(in srgb,var(--md-primary) 18%,transparent);color:var(--md-primary)}
+.dock-btn:disabled{opacity:.35;cursor:default}
+.dock-btn:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}
+.dock-dot{position:absolute;right:6px;top:6px;width:8px;height:8px;border-radius:50%;background:var(--md-outline)}
+.dock-dot.on{background:var(--md-success)}
+@media(max-width:800px){.dock{display:none}}
+
+/* ---- project tree window ---- */
+.tree-title{flex:1;min-width:0;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-crumb{display:flex;align-items:center;gap:7px;padding:7px 12px;background:var(--md-surface-container-low);color:var(--md-on-surface-variant);border-bottom:1px solid var(--md-outline-variant);flex-shrink:0}
+.tree-crumb svg{flex:none;opacity:.8}
+.tree-crumb span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--code-font);font-size:11.5px}
+.tree-body{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--md-surface-container-lowest)}
+.tree-list{flex:1;min-height:0;overflow:auto;padding:8px 6px 12px}
+.tree-list::-webkit-scrollbar{width:11px}
+.tree-list::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--md-on-surface-variant) 30%,transparent);border-radius:999px;border:3px solid transparent;background-clip:content-box}
+.tree-list::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--md-on-surface-variant) 48%,transparent);background-clip:content-box}
+.tree-state{display:flex;align-items:center;justify-content:center;gap:9px;padding:34px 18px;color:var(--md-on-surface-variant);font-size:12.5px;text-align:center}
+.tree-state.error{color:var(--md-error)}
+.tree-msg{margin:14px;color:var(--md-on-surface-variant);font-size:12.5px}
+.tree-msg.error{color:var(--md-error)}
+.tree-spin{width:15px;height:15px;border-radius:50%;border:2px solid color-mix(in srgb,var(--md-primary) 28%,transparent);border-top-color:var(--md-primary);animation:tree-spin .7s linear infinite;flex:none}
+.tree-spin.small{width:11px;height:11px;border-width:1.6px}
+@keyframes tree-spin{to{transform:rotate(360deg)}}
+.tree-row{display:flex;align-items:center;gap:7px;width:100%;min-height:30px;text-align:left;padding:0 8px;border:0;border-radius:9px;background:transparent;color:var(--md-on-surface);font-size:13px;font-weight:450;line-height:1.3;transition:background-color 140ms var(--ease-emphasized-decel),color 140ms}
+.tree-row:hover:not(:disabled){background:color-mix(in srgb,var(--md-on-surface) 7%,transparent)}
+.tree-row.dir{font-weight:600}
+.tree-row.dir .tree-name{letter-spacing:-.003em}
+.tree-row.sel{background:color-mix(in srgb,var(--md-primary) 15%,transparent);color:var(--md-primary)}
+.tree-row.sel .tree-icon{color:var(--md-primary)}
+.tree-chev{flex:none;width:14px;height:14px;display:grid;place-items:center;color:var(--md-on-surface-variant);transition:transform 180ms var(--ease-emphasized);opacity:.75}
+.tree-chev.open{transform:rotate(90deg)}
+.tree-chev svg{display:block}
+.tree-icon{flex:none;width:16px;height:16px;display:grid;place-items:center;color:var(--md-on-surface-variant)}
+.tree-icon svg{display:block}
+.tree-icon.dir{color:#d9a441}
+.tree-icon.code{color:#5b6ee1}
+.tree-icon.data{color:#12a594}
+.tree-icon.doc{color:#c07c1a}
+.tree-icon.image{color:#9b5cf6}
+.tree-icon.archive{color:#7c8598}
+@media (prefers-color-scheme: dark){
+  .tree-icon.dir{color:#e5bd6a}
+  .tree-icon.code{color:#9aa8ff}
+  .tree-icon.data{color:#4dd4c4}
+  .tree-icon.doc{color:#e0a84e}
+  .tree-icon.image{color:#c39bff}
+  .tree-icon.archive{color:#9aa4b5}
+}
+@media (prefers-reduced-motion: reduce){.tree-chev{transition-duration:1ms}.tree-spin{animation-duration:1.6s}}
+.tree-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ---- file preview window ---- */
+.file-dirty{width:8px;height:8px;border-radius:50%;background:var(--md-primary);flex-shrink:0}
+.file-foot{display:flex;align-items:center;gap:10px;padding:5px 12px;background:var(--md-surface-container);font-size:11.5px;color:var(--md-on-surface-variant);border-top:1px solid var(--md-outline-variant)}
+.file-foot span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--code-font)}
+.file-foot small{flex:none;font-variant-numeric:tabular-nums}
+.file-saved{color:var(--md-success,#3ba55c);font-weight:650}
+.file-unsaved{color:#B88412;font-weight:650}
+
+/* ---- terminal window ---- */
+.term-exec{flex:0 1 208px;min-width:112px}
+.term-exec :deep(.app-select-trigger){min-height:30px;height:30px;border-radius:9px;font-size:12px;padding:0 6px 0 12px;background:var(--md-surface-container)}
+.term-exec :deep(.app-select-chevron){width:20px;height:20px}
+.term-body{flex:1;min-height:0;overflow:auto;padding:10px 13px;background:#0e1116;color:#d6deeb;font-family:var(--code-font);font-size:12px;line-height:1.6}
+.term-hint{margin:4px 0;color:#7c8798;font-size:12px}
+.term-line{white-space:pre-wrap;overflow-wrap:anywhere}
+.term-line.cmd{margin-top:8px;color:#9ecbff;font-weight:600}
+.term-line.cmd:first-child{margin-top:0}
+.term-line.out{color:#d6deeb}
+.term-line.err{color:#ff9d9d}
+.term-line.note{color:#7c8798;font-style:italic}
+.term-running{display:flex;align-items:center;gap:8px}
+.term-input{display:flex;align-items:center;gap:9px;padding:8px 12px;border-top:1px solid var(--md-outline-variant);background:var(--md-surface-container-low)}
+.term-prompt{flex:none;color:var(--md-primary);font-family:var(--code-font);font-weight:750}
+.term-input input{flex:1;min-width:0;border:0;background:transparent;padding:4px 0;font-family:var(--code-font);font-size:12.5px;color:var(--md-on-surface);outline:none}
+.term-input input:focus{box-shadow:none;border:0}
+.term-input button{flex:none;height:30px;padding:0 14px;border:0;border-radius:8px;background:var(--md-primary);color:var(--md-on-primary,#fff);font-size:12px;font-weight:650;transition:filter 160ms,transform 160ms var(--ease-emphasized-decel)}
+.term-input button:hover:not(:disabled){filter:brightness(1.07)}
+.term-input button:active:not(:disabled){transform:scale(.97)}
+.term-input button:disabled{opacity:.45}
+
+/* ---- usage window ---- */
+.usage-body{flex:1;min-height:0;overflow:auto;padding:14px 16px}
+.usage-big{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
+.usage-big b{font-size:28px;font-weight:800;color:var(--md-primary);line-height:1;font-variant-numeric:tabular-nums}
+.usage-big span{font-size:12px;color:var(--md-on-surface-variant)}
+.usage-body .ctx-row{padding:7px 0}
+
+/* ---- host window ---- */
+.host-body{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:14px;padding:16px;background:var(--md-surface-container-lowest)}
+.host-head{display:flex;align-items:center;gap:10px}
+.host-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;font-weight:750}
+.host-status{padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:700;flex-shrink:0;background:var(--md-surface-container-high);color:var(--md-on-surface-variant)}
+.host-status.ok{background:color-mix(in srgb,var(--md-success) 18%,transparent);color:var(--md-success)}
+.host-status.off{background:var(--md-error-container);color:var(--md-on-error-container,var(--md-on-error-container))}
+.usage-rings{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.usage-metric{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:var(--md-on-surface-variant)}
+.usage-ring{width:76px;height:76px;border-radius:50%;display:grid;place-items:center}
+.usage-ring b{width:58px;height:58px;border-radius:50%;background:var(--md-surface-container-lowest);display:grid;place-items:center;font-size:14px;font-weight:750;box-shadow:var(--shadow-1);font-variant-numeric:tabular-nums}
+.host-sampled{color:var(--md-on-surface-variant);font-size:11.5px}
+.host-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:0}
+.host-details>div{background:var(--md-surface-container);border-radius:12px;padding:8px 10px;min-width:0}
+.host-details dt{color:var(--md-on-surface-variant);font-weight:600;font-size:11px}
+.host-details dd{margin:3px 0 0;font-size:12.5px;overflow-wrap:anywhere}
+.host-empty{margin:14px;color:var(--md-on-surface-variant);font-size:12.5px}
 .failed{color:var(--md-error)}
 .done{color:var(--md-success);font-weight:600;font-size:12px}
 .cancelled,.muted{color:var(--md-on-surface-variant)}
 .muted{font-size:12px;line-height:1.6}
-.error{background:var(--md-error-container);color:#410E0B;padding:11px 16px;border-radius:12px;margin:8px 0;font-size:13px;overflow-wrap:anywhere}
+.error{background:var(--md-error-container);color:var(--md-on-error-container);padding:11px 16px;border-radius:12px;margin:8px 0;font-size:13px;overflow-wrap:anywhere}
 
 .transcript{flex:1;overflow-y:auto;padding:26px 28px;min-height:0}
 .context-summary{max-width:920px;margin:0 auto 22px;padding:14px 18px;border:1px dashed var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-low)}
@@ -706,11 +1900,13 @@ button.subagent-card-head>strong{font-weight:700}
 .sub-view-body{min-height:120px}
 
 /* ---- todo panel ---- */
-.todo-panel{padding:12px 16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);background:var(--md-surface-container-low);max-height:170px;overflow:auto;animation:panel-in .22s cubic-bezier(.2,0,0,1) both}
+.todo-panel{padding:12px 16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);background:var(--md-surface-container-low);max-height:170px;overflow:auto;opacity:1;transform:none;transition:opacity 200ms var(--ease-emphasized-decel),transform 200ms var(--ease-emphasized-decel)}
+@starting-style{.todo-panel{opacity:0;transform:translateY(6px)}}
 .todo-panel>header{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant);text-transform:uppercase}
 .todo-panel>header span{font-weight:700;color:var(--md-primary)}
 .todo-panel ul{list-style:none;margin:9px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
-.todo-panel li{display:flex;align-items:flex-start;gap:9px;font-size:13px;line-height:1.5;color:var(--md-on-surface);animation:panel-in .22s ease both;transition:opacity .2s,color .2s}
+.todo-panel li{display:flex;align-items:flex-start;gap:9px;font-size:13px;line-height:1.5;color:var(--md-on-surface);transition:opacity .2s,color .2s,transform 200ms var(--ease-emphasized-decel)}
+@starting-style{.todo-panel li{opacity:0;transform:translateY(6px)}}
 .todo-panel li.completed{opacity:.6}
 .todo-panel li.completed .todo-text{text-decoration:line-through}
 .todo-panel li.in_progress .todo-text{font-weight:650}
@@ -723,8 +1919,8 @@ button.subagent-card-head>strong{font-weight:700}
 .ctx-ring{width:20px;height:20px;flex:none}
 .ctx-track{fill:none;stroke:var(--md-primary);stroke-width:2.2;opacity:.85}
 .ctx-value{font-size:11px;color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums}
-.ctx-tip{position:absolute;bottom:calc(100% + 12px);right:0;left:auto;transform:translateY(4px);z-index:60;width:max-content;min-width:216px;max-width:280px;padding:12px 14px;border-radius:14px;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);box-shadow:var(--shadow-3);color:var(--md-on-surface);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .16s,transform .16s,visibility .16s;font-size:12px;text-align:left}
-.ctx-usage:hover .ctx-tip,.ctx-usage:focus-visible .ctx-tip,.ctx-usage:focus-within .ctx-tip{opacity:1;visibility:visible;transform:translateY(0)}
+.ctx-tip{position:absolute;bottom:calc(100% + 12px);left:0;right:auto;transform-origin:bottom left;transform:translateY(4px) scale(.97);z-index:var(--z-popover);width:max-content;min-width:216px;max-width:280px;padding:12px 14px;border-radius:14px;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);box-shadow:var(--shadow-3);color:var(--md-on-surface);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 160ms var(--ease-emphasized-decel),transform 160ms var(--ease-emphasized-decel),visibility 160ms;font-size:12px;text-align:left}
+.ctx-usage:hover .ctx-tip,.ctx-usage:focus-visible .ctx-tip,.ctx-usage:focus-within .ctx-tip{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
 .ctx-tip strong{display:block;font-size:12px;font-weight:750;margin-bottom:8px}
 .ctx-used{display:flex;align-items:baseline;gap:6px}
 .ctx-used b{font-size:22px;font-weight:800;color:var(--md-primary);line-height:1}
@@ -736,31 +1932,32 @@ button.subagent-card-head>strong{font-weight:700}
 /* ---- composer ---- */
 .composer{flex-shrink:0;margin:0 20px 18px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-lowest);overflow:visible;box-shadow:var(--shadow-1)}
 .composer-input{position:relative}
-.composer-input textarea{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 112px 15px 16px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}
+.composer-input textarea{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 124px 15px 16px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}
 .composer-input textarea:focus{box-shadow:none;border:0}
-.slash-menu{position:fixed;z-index:10000;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:14px;box-shadow:var(--shadow-3);padding:6px;max-height:min(320px,42vh);overflow:auto}
+.slash-menu{position:fixed;z-index:var(--z-popover);background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:14px;box-shadow:var(--shadow-3);padding:6px;max-height:min(320px,42vh);overflow:auto}
 .slash-item{display:flex;align-items:baseline;gap:10px;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:var(--md-on-surface);cursor:pointer}
 .slash-item.active{background:var(--md-secondary-container)}
 .slash-name{flex:none;font-family:var(--code-font);font-weight:650;font-size:13px;color:var(--md-primary)}
 .slash-desc{font-size:12px;color:var(--md-on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .attach-chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px 0}
 .composer-actions{position:absolute;right:10px;bottom:10px;z-index:2;display:flex;align-items:center;gap:8px}
-.attach-fly{width:42px;height:42px;flex:none;aspect-ratio:1/1;display:grid;place-items:center;border:0;border-radius:50%;padding:0;margin:0;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-.attach-fly svg{width:18px;height:18px}
+.attach-fly{width:42px;height:42px;flex:none;aspect-ratio:1/1;display:inline-flex;align-items:center;justify-content:center;line-height:0;border:0;border-radius:50%;padding:0;margin:0;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+.attach-fly svg{width:18px;height:18px;display:block}
 .attach-fly:hover:not(:disabled){filter:brightness(1.05)}
 .attach-fly:disabled{opacity:.5;cursor:default}
 .attach-chip{display:inline-flex;align-items:center;gap:6px;max-width:220px;font-size:12px;padding:4px 6px 4px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .attach-chip button{border:0;background:transparent;cursor:pointer;font-size:14px;line-height:1;padding:0 4px;color:var(--md-on-surface-variant)}
 .attach-chip button:hover{color:var(--md-error)}
 .attach-error{font-size:12px;color:var(--md-error)}
-.send-fly{width:42px;height:42px;flex:none;aspect-ratio:1/1;display:grid;place-items:center;border:0;border-radius:50%;padding:0;margin:0;background:var(--md-primary);color:var(--md-on-primary,#fff);box-shadow:0 2px 10px color-mix(in srgb,var(--md-primary) 38%,transparent)}
-.send-fly svg{width:20px;height:20px}
+.send-fly{width:42px;height:42px;flex:none;aspect-ratio:1/1;display:inline-flex;align-items:center;justify-content:center;line-height:0;border:0;border-radius:50%;padding:0;margin:0;background:var(--md-primary);color:var(--md-on-primary,#fff);box-shadow:0 2px 10px color-mix(in srgb,var(--md-primary) 38%,transparent)}
+.send-fly svg{width:20px;height:20px;display:block}
 .send-fly:hover:not(:disabled){filter:brightness(1.08)}
 .send-fly:disabled{background:var(--md-surface-container);color:var(--md-on-surface-variant);opacity:.7;box-shadow:none}
 .send-fly.stop{background:var(--md-error);color:#fff;box-shadow:0 2px 10px color-mix(in srgb,var(--md-error) 40%,transparent)}
 .compact-notice{font-size:12px;padding:10px 16px;color:var(--md-primary);background:var(--md-primary-container);border-radius:10px;margin:10px 16px 0}
-.options-collapse{max-height:0;overflow:hidden;transition:max-height .3s cubic-bezier(.2,0,0,1)}
-.options-collapse.open{max-height:360px}
+.options-collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--duration-medium) var(--ease-emphasized)}
+.options-collapse.open{grid-template-rows:1fr}
+.options-collapse>.execution-options{overflow:hidden;min-height:0}
 .options-toggle{display:inline-flex;align-items:center;gap:6px;transition:background-color .18s,color .18s}
 .options-toggle.open{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 .execution-options{display:flex;gap:10px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid var(--md-outline-variant);align-items:end}
@@ -768,9 +1965,7 @@ button.subagent-card-head>strong{font-weight:700}
 .execution-options :deep(.app-select-trigger),.execution-options .workspace-select{width:100%;font-size:13px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--md-on-surface);min-height:36px;border-radius:10px;background:var(--md-surface-container);border-color:transparent;text-align:left}
 .workspace-select{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block}
 .composer footer{display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap;border-top:1px solid var(--md-outline-variant)}
-.composer footer>select,.composer footer>.app-select{font-size:13px;border-radius:10px;min-height:34px}
-.composer footer .muted{flex:1;min-width:120px}
-.composer footer>button{font-size:13px;font-weight:600;border-radius:9px;min-height:34px}
+.composer-footer .mode-field :deep(.app-select-trigger){min-height:30px;font-size:12.5px;border-radius:999px;background:var(--md-surface-container-high);border-color:transparent}
 
 /* ---- host panel / rings ---- */
 .host-panel>strong{font-size:14px}
@@ -784,8 +1979,9 @@ button.subagent-card-head>strong{font-weight:700}
 
 /* ---- directory dialog ---- */
 .new-folder{display:flex;gap:8px}.new-folder input{flex:1;min-width:0}
-.directory-backdrop{position:fixed;inset:0;background:#14111acc;z-index:1000;display:grid;place-items:center;padding:20px}
-.directory-dialog{background:var(--md-surface);border:1px solid var(--md-outline-variant);border-radius:20px;padding:22px;width:min(680px,100%);display:flex;flex-direction:column;gap:14px;max-height:85vh;box-shadow:var(--shadow-4)}
+.directory-backdrop{position:fixed;inset:0;background:var(--md-scrim);z-index:var(--z-modal);display:grid;place-items:center;padding:20px}
+.directory-dialog{position:relative;z-index:var(--z-modal);background:var(--md-surface);border:1px solid var(--md-outline-variant);border-radius:20px;padding:22px;width:min(680px,100%);display:flex;flex-direction:column;gap:14px;max-height:85vh;box-shadow:var(--shadow-4);outline:none}
+.directory-dialog:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}
 .directory-dialog>header{gap:12px}
 .directory-dialog>header h2{font-size:16px;font-weight:650}
 .directory-list{overflow:auto;min-height:180px;display:flex;flex-direction:column;gap:6px}
@@ -828,9 +2024,11 @@ button.subagent-card-head>strong{font-weight:700}
   gap:5px;margin-bottom:8px;padding:13px 15px;
   border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);
   border-radius:18px;background:var(--md-surface-container-lowest);
-  transition:transform 260ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)),background-color 200ms,border-color 200ms,box-shadow 220ms,border-radius 320ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1));
+  transition:transform 180ms var(--ease-emphasized-decel),background-color 200ms,border-color 200ms,box-shadow 220ms,border-radius 320ms var(--ease-emphasized);
 }
-#app .workspace .session-card:hover:not(:disabled){transform:translateY(-2px);box-shadow:var(--shadow-1);border-color:color-mix(in srgb,var(--md-primary) 35%,var(--md-outline-variant))}
+@media (hover:hover) and (pointer:fine){
+  #app .workspace .session-card:hover:not(:disabled){transform:translateY(-2px);box-shadow:var(--shadow-1);border-color:color-mix(in srgb,var(--md-primary) 35%,var(--md-outline-variant))}
+}
 #app .workspace .session-card.selected{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent;border-radius:20px 20px 20px 7px;box-shadow:var(--shadow-1)}
 #app .workspace .session-card .origin{font-weight:700;letter-spacing:.05em;text-transform:uppercase;font-size:12px;color:var(--md-primary)}
 #app .workspace .session-card.selected .origin{color:var(--md-on-secondary-container);opacity:.75}
@@ -850,6 +2048,8 @@ button.subagent-card-head>strong{font-weight:700}
 #app .workspace .conversation-header h2{font-size:20px;font-weight:750;letter-spacing:-.01em}
 #app .workspace .session-actions button{height:36px;padding:0 15px;border-radius:999px;background:var(--md-surface-container-high);border-color:transparent;font-weight:650}
 #app .workspace .session-actions button:hover:not(:disabled){background:var(--md-surface-container-highest);box-shadow:none}
+#app .workspace .session-actions .icon-btn{width:36px;height:36px;padding:0;border-radius:50%;background:var(--md-surface-container-high)}
+#app .workspace .session-actions .icon-btn.danger{color:var(--md-error);background:color-mix(in srgb,var(--md-error) 12%,transparent)}
 #app .workspace .running{color:#B88412;background:color-mix(in srgb,#B88412 14%,transparent);padding:4px 11px;border-radius:999px;font-weight:700}
 #app .workspace .transcript{padding:28px 30px}
 #app .workspace .welcome{margin:64px auto 0}
@@ -899,16 +2099,20 @@ button.subagent-card-head>strong{font-weight:700}
   min-height:52px;border-radius:16px;border-color:transparent;
   background:var(--md-surface-container-high);font-size:13px;
 }
-#app .workspace .execution-options :deep(.app-select-trigger),
-#app .workspace .composer footer :deep(.app-select-trigger){
+#app .workspace .execution-options :deep(.app-select-trigger){
   min-height:52px;border-radius:16px;border-color:transparent;
   background:var(--md-surface-container-high);font-size:13px;
 }
-#app .workspace .composer-input textarea{border-radius:0;background:transparent}
-#app .workspace .send-fly{
-  width:46px !important;height:46px !important;border-radius:50% !important;
-  box-shadow:0 8px 22px color-mix(in srgb,var(--md-primary) 34%,transparent);
+#app .workspace .composer-footer .mode-field :deep(.app-select-trigger){
+  min-height:30px;border-radius:999px;border-color:transparent;
+  background:var(--md-surface-container-high);font-size:12.5px;
 }
+#app .workspace .composer-input textarea{border-radius:0;background:transparent}
+#app .workspace .send-fly,
+#app .workspace .attach-fly{
+  width:46px !important;height:46px !important;border-radius:50% !important;
+}
+#app .workspace .send-fly{box-shadow:0 8px 22px color-mix(in srgb,var(--md-primary) 34%,transparent)}
 #app .workspace .composer footer{border-top:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);padding:12px 16px}
 #app .workspace .composer footer>button{border-radius:999px;min-height:36px;padding-inline:15px;background:var(--md-surface-container-high);border-color:transparent}
 
@@ -922,15 +2126,69 @@ button.subagent-card-head>strong{font-weight:700}
 
 /* ---- responsive ---- */
 /* ---- motion (restrained) ---- */
-@keyframes turn-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-@keyframes panel-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes caret-blink{0%,100%{opacity:1}50%{opacity:.2}}
 @keyframes soft-pulse{0%,100%{opacity:1}50%{opacity:.5}}
-.turn{animation:turn-in .28s cubic-bezier(.2,0,0,1) both}
+/* Turns enter via interruptible transitions (@starting-style), not keyframes. */
+.turn{opacity:1;transform:none;transition:opacity 220ms var(--ease-emphasized-decel),transform 220ms var(--ease-emphasized-decel)}
+@starting-style{.turn{opacity:0;transform:translateY(10px)}}
 #app .workspace .agent-speech .running{animation:caret-blink 1s steps(1,end) infinite;color:var(--md-primary)}
-#app .workspace .conversation-header .running{animation:soft-pulse 1.6s ease-in-out infinite}
-@media (prefers-reduced-motion: reduce){*,:deep(*){animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}}
+@media (prefers-reduced-motion: reduce){
+  .turn{transition:opacity 120ms var(--ease-emphasized)}
+  @starting-style{.turn{transform:none}}
+  .todo-panel,.todo-panel li{animation:none;transition:opacity 120ms}
+  @starting-style{.todo-panel,.todo-panel li{transform:none}}
+  .options-collapse,.browser-panel-enter-active,.browser-panel-leave-active{transition-duration:1ms}
+  .browser-panel-enter-from,.browser-panel-leave-to{transform:none}
+  .browser-status.on i{animation:none}
+  .ws-group{transition:none}
+  .ws-toggle{transition:none}
+  .ws-sessions,.ws-group.collapsed .ws-sessions{transition:none}
+  .ws-sessions .session-row{transition:opacity 120ms var(--ease-emphasized)}
+  @starting-style{.ws-sessions .session-row{transform:none}}
+}
 
-@media(max-width:800px){.sessions{width:214px;padding:12px 10px}.transcript{padding:14px}.composer{margin:0 12px 12px}.composer footer .muted{display:none}.conversation-header{padding:14px 16px}.welcome{margin:30px auto 0}.turn{margin-bottom:22px}}
+@media(max-width:800px){.sessions{width:214px;padding:12px 10px}.transcript{padding:14px}.composer{margin:0 12px 12px}.connection-hint{display:none}.conversation-header{padding:14px 16px}.welcome{margin:30px auto 0}.turn{margin-bottom:22px}}
 @media(max-width:560px){.workspace{flex-direction:column}.sessions{width:100%;max-height:230px;border-right:0;border-bottom:1px solid var(--md-outline-variant)}.sessions>input,.filter-bar,.connection{display:none}.session-list{display:flex;gap:6px;overflow-x:auto}.session-card{min-width:160px;width:160px;margin-bottom:0}.ledger-button{padding:5px;font-size:12px}}
+/* ---- sidebar order toggle + session row actions ---- */
+.sidebar-toggles{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.order-toggle{display:inline-flex;padding:2px;border-radius:999px;background:var(--md-surface-container-high)}
+.order-toggle button{border:0;background:transparent;border-radius:999px;padding:4px 9px;font-size:11.5px;font-weight:600;color:var(--md-on-surface-variant);cursor:pointer}
+.order-toggle button.chosen{background:var(--md-primary);color:var(--md-on-primary,#fff)}
+.session-row{position:relative}
+.session-row .row-actions{position:absolute;top:6px;right:6px;display:none;align-items:center;gap:8px}
+.session-row:hover .row-actions,
+.session-row:focus-within .row-actions{display:inline-flex}
+@media (hover: none){.session-row .row-actions{display:inline-flex}}
+.row-actions button{position:relative;width:24px;height:24px;border:0;border-radius:7px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:13px;line-height:1}
+.row-actions button::before{content:'';position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+.row-actions button:hover:not(:disabled){background:var(--md-primary);color:var(--md-on-primary,#fff)}
+.row-actions select{max-width:78px;height:24px;border:0;border-radius:7px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:12px}
+.session-row.selected .session-card{background:var(--md-secondary-container);border-color:transparent;border-radius:12px 12px 12px 4px}
+
+/* ---- workspace groups (dsh-style) ---- */
+.ws-group{margin:0 0 10px;border:1px solid var(--md-outline-variant);border-radius:12px;overflow:hidden;background:var(--md-surface-container-lowest);display:grid;grid-template-rows:auto 1fr;transition:grid-template-rows var(--duration-medium) var(--ease-emphasized)}
+.ws-group.collapsed{opacity:.92;grid-template-rows:auto 0fr}
+.ws-head{display:flex;align-items:center;gap:6px;padding:8px 8px 8px 6px;background:var(--md-surface-container);cursor:grab}
+.ws-head.static{cursor:default}
+.ws-head:active{cursor:grabbing}
+.ws-toggle{position:relative;width:22px;height:22px;flex:none;display:grid;place-items:center;border:0;background:transparent;color:var(--md-on-surface-variant);transition:transform var(--duration-medium) var(--ease-emphasized)}
+.ws-toggle::before{content:'';position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+.ws-group.collapsed .ws-toggle{transform:rotate(-90deg)}
+.ws-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:650;font-size:13.5px}
+.ws-missing{color:var(--md-error);font-style:normal;font-weight:700;margin-left:5px}
+.ws-count{flex:none;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);font-size:11.5px;font-weight:700}
+.ws-actions{display:inline-flex;gap:22px;flex:none}
+.ws-actions button{position:relative;width:22px;height:22px;border:0;border-radius:6px;background:transparent;color:var(--md-on-surface-variant);font-size:13px;line-height:1}
+.ws-actions button::before{content:'';position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+.ws-actions button:hover:not(:disabled){background:var(--md-surface-container-highest)}
+.ws-actions button.danger:hover:not(:disabled){color:var(--md-error)}
+.ws-sessions{padding:8px;overflow:hidden;min-height:0;visibility:visible;transition:visibility 0s linear 0s}
+.ws-group.collapsed .ws-sessions{visibility:hidden;transition:visibility 0s linear var(--duration-medium)}
+.ws-sessions .session-row{transition:opacity var(--duration-medium) var(--ease-emphasized-decel),transform var(--duration-medium) var(--ease-emphasized-decel)}
+@starting-style{.ws-sessions .session-row{opacity:0;transform:translateY(-4px)}}
+.ws-sessions .session-card{margin-bottom:6px}
+.ws-empty{margin:4px 6px}
+.ws-more{margin:2px 0 4px;border:0;background:transparent;color:var(--md-primary);font-size:12.5px;font-weight:600;cursor:pointer}
+.ws-add{width:100%;margin-top:2px;padding:9px;border:1.5px dashed var(--md-outline-variant);border-radius:10px;background:transparent;color:var(--md-on-surface-variant);font-size:13px;font-weight:600}
+.ws-add:hover:not(:disabled){border-color:var(--md-primary);color:var(--md-primary)}
 </style>

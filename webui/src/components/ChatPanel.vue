@@ -296,7 +296,7 @@ watch(
   height: 100%;
   background: var(--neutral-gray-2);
 }
-.context-btn{border:1px solid var(--md-outline-variant);border-radius:999px;background:transparent;color:var(--md-on-surface-variant);padding:4px 9px;font-size:12px;cursor:pointer}.context-btn:disabled{opacity:.6;cursor:wait}.context-btn.danger{color:var(--md-error)}
+.context-btn{border:1px solid var(--md-outline-variant);border-radius:999px;background:transparent;color:var(--md-on-surface-variant);min-height:32px;padding:7px 12px;font-size:12px;cursor:pointer;transition:background-color var(--transition-fast),border-color var(--transition-fast),color var(--transition-fast)}.context-btn:disabled{opacity:.6;cursor:wait}.context-btn.danger{color:var(--md-error)}
 
 .chat-container {
   flex: 1;
@@ -365,8 +365,8 @@ watch(
 .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
 
 @keyframes bounce {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
+  0%, 80%, 100% { transform: scale(0.5); opacity: 0.45; }
+  40% { transform: scale(1); opacity: 1; }
 }
 
 .input-area {
@@ -385,7 +385,7 @@ watch(
   background: var(--neutral-gray-4);
   border-radius: var(--radius-lg);
   border: 1px solid transparent;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .input-wrapper:focus-within {
@@ -502,7 +502,7 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .attach-btn:hover:not(:disabled) {
@@ -526,7 +526,7 @@ watch(
   background: var(--brand-primary);
   color: var(--neutral-white);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), transform var(--duration-short) var(--ease-out);
 }
 
 .send-button:hover:not(:disabled) {

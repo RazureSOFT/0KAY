@@ -110,7 +110,7 @@ function onKeydown(event: KeyboardEvent) {
 .confirm-scrim {
   position: fixed;
   inset: 0;
-  z-index: 13000;
+  z-index: var(--z-modal, 4000);
   background: #21173566;
   backdrop-filter: blur(6px);
   display: grid;
