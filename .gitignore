@@ -37,3 +37,20 @@ webui/scripts/skills-ui.png
 
 # Live2D models are large binary assets; they are not tracked or pushed.
 webui/public/live2d/models/
+
+# Generated research artifacts (figures, papers, scratch notes).
+life/output/
+
+# Local experiment scratch and model checkpoints (regenerable, not source).
+life/working/
+life/models/
+
+# Tool-internal memory, not project content.
+.workbuddy-ai/
+
+# ZCode is an independent workspace (its own .gitignore, pnpm workspace and
+# env files); it must not be absorbed into this repository.
+/ZCode/
+
+# Local build backups.
+*.exe.bak

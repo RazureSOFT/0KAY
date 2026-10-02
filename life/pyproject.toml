@@ -8,23 +8,52 @@ version = "0.1.2"
 description = "L.I.F.E - Persona plugin for 0kay AI Agent platform"
 requires-python = ">=3.10"
 dependencies = [
-    "grpcio>=1.60.0",
-    "grpcio-tools>=1.60.0",
+    # 1.66+: grpc.aio's ServerInterceptor/HandlerCallDetails behaviour that
+    # life.grpc.auth relies on; older 1.60 wheels are missing the pieces.
+    "grpcio>=1.66.0",
+    "grpcio-tools>=1.67.0",
     "protobuf>=4.25.0",
-    "pydantic>=2.0.0",
     "numpy>=1.24.0",
-    "chromadb>=0.4.0",
-    "aiosmtplib>=3.0.0",
     "httpx>=0.25.0",
     "websockets>=14.0",
     "tantivy>=0.26.2",
 ]
 
 [project.optional-dependencies]
+# The research toolchain (figures + Word export) is optional so the base
+# plugin stays lean; `pip install .[research]` enables it.
+research = [
+    "matplotlib>=3.7.0",
+    "python-docx>=1.1.0",
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
+    "matplotlib>=3.7.0",
+    "python-docx>=1.1.0",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/life"]
+# The runtime imports `world.*` from life.worldsim and the shadow updater.
+# Ship it alongside `life`; packaging only src/life makes those imports fail
+# outside a source checkout even if the development PYTHONPATH is correct.
+packages = ["src/life", "world"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "grpc.*",
+    "grpc_tools.*",
+    "google.protobuf.*",
+    "tantivy.*",
+    "httpx.*",
+    "websockets.*",
+    "numpy.*",
+    "matplotlib.*",
+    "docx.*",
+]
+ignore_missing_imports = true

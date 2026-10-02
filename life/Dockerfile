@@ -31,9 +31,16 @@ COPY --from=builder /app/gen/python/ ./gen/python/
 COPY --from=builder /app/life/ ./life/
 
 # Create data directory
-RUN mkdir -p /app/data/life/memory
+RUN mkdir -p /app/data/life/memory \
+    && groupadd --system --gid 10001 life \
+    && useradd --system --uid 10001 --gid life --home-dir /app --no-create-home life \
+    && chown -R life:life /app
 
 EXPOSE 50053
 ENV PROTO_PYTHON_DIR=/app/gen/python
+
+# Run as an unprivileged user: the process parses untrusted RSS/HTML/media and
+# opens network connections, so it must not be root inside the container.
+USER life
 
 CMD ["python", "-m", "life.main"]
