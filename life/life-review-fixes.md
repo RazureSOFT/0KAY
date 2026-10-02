@@ -209,3 +209,151 @@ pytest tests/ -q                                   → 507 passed in 303.87s
 
 **仍未修**：L-03（明文信道上的 bearer/api_key）、L-04（`.gitignore`）、L-07（`.rejected.jsonl` 无界追加）、I-01（`egress:["*"]`）、I-02（提示注入无防火墙）。
 
+---
+
+## 8. 2026-10-02 架构批次：常驻心智 + 真实互惠 + 主体性
+
+> 来源是 `life-toward-a-person.md` §5 列出的三条"架构级、非功能"缺口。本轮把它们从"文档里的下一项"变成"已实现并接线"。
+> 回归：**634 passed / 0 failed**（新增 `tests/test_resident.py`、`tests/test_relating.py`、`tests/test_core_client_auth.py`）。
+
+### 8.1 常驻、可打断的心智过程（原 §5.1 连续性）
+
+旧架构是"请求-响应 + 定时任务"：回合跑完即退，自治循环是被 20 分钟定时器唤醒的一次性任务，两次运行之间没有任何以自身为目标的思考。
+
+| 做了什么 | 位置 |
+|---|---|
+| 新增 `ResidentThinker`：单条长驻任务，`asyncio.Event` + `wait_for(timeout)` 实现"定时 tick + 事件唤醒" | `engine/resident.py` |
+| 持久心智状态 `MentalState`（focus / 目标 / scratchpad / pending），落 `data/life/inner_life.json`，**跨 tick、跨重启续思** | `engine/resident.py` |
+| **可打断**：`process_message` 在取会话锁前 `notify_user_message()`；步骤在 await 间检查中断，把没想完的念头存入 `pending`，下一 tick 从 `pending` 继续 | `engine/legacy.py` `process_message`；`resident.py:_think_once` |
+| 接线：`serve()` 下 `start_background_tasks` 启动，`engine.close()` 停止；`context_block()` 注入聊天与自治 prompt；`reset_person` 清空思想 | `grpc/server.py`、`engine/legacy.py` |
+| 每 tick 有界（1 次模型调用 / `MAX_TOKENS=240`），默认 180s，`LIFE_RESIDENT_INTERVAL` 可调，`0` 关闭 | `engine/resident.py` |
+
+### 8.2 真实、可检验的互惠关系（原 §5 / B9）
+
+`homophily`/`describe(partner)` 此前零调用、恒 0.5；关系只有标量亲和的加性更新，不会破裂也不会修复。
+
+| 做了什么 | 位置 |
+|---|---|
+| 新增 8 维**共用特质空间**（warmth/directness/openness/humor/curiosity/formality/pace/risk）。自我轴只从**主人写的人设**推导；对方轴从**可观察行为**（消息长度、提问、暖/冷/幽默/正式标记、延迟）EMA 估计并带置信度——不是拿自由文本硬算相似度 | `cognition/relating.py` |
+| 真正填上 `SocialTies.describe`/`homophily`：`_sync_self_traits` 写 `__self__`，`_observe_partner` 写 partner 轴（带权重 warmth 2.0 / humor 1.5） | `engine/legacy.py` |
+| 新增 `RepairModel` 断裂-修复状态机：明确负向开断裂 → 正向推进 → 两次真正修复才和解；未修复按严重度扣 tie、写自我叙事、进每日复盘 | `cognition/relating.py` + `engine/legacy.py` `run_daily_review` |
+| `relationship_beliefs` 已注入 prompt（主人强改仍因 `by="owner"` 对角色不可见），并附带可测相似度与"未修好"提示 | `engine/legacy.py:_relationship_belief_context` |
+
+### 8.3 不完全由系统赋予的主体性（原 §4）
+
+| 做了什么 | 位置 |
+|---|---|
+| 修掉 `goal_add` 在自治期被 allow-list 拒绝的接线（prompt 早已要求用它，能力却是死的）：`AUTONOMY_TOOLS` 加入 `goal_add`/`goal_log`/`goal_list` | `engine/legacy.py` |
+| 常驻思考以**自拟目标**为中心，自治 prompt 注入同一焦点；角色可在内心时间里自定目标并记推进 | `engine/resident.py`、`engine/legacy.py:_autonomy_think_loop` |
+| 新增两类真实代价：**未修复的断裂**每日侵蚀关系；**整日无自主念头**计入自我叙事 | `engine/legacy.py:run_daily_review` |
+| `reset_person` 仍是唯一总闸且人类专属；重置同时清空常驻心智与互惠状态 | `engine/legacy.py:reset_person` |
+
+### 8.4 出站 Core 调用的身份归属（审计遗留）
+
+审计发现 LIFE→Core 的出站 gRPC 未带任何凭证（Core 侧 C4 只解决了 Core→LIFE 方向）。Core 的 `pairing` 拦截器对回环放行，但非回环要求 paired/API token，且插件调用应带上自身身份。
+
+| 做了什么 | 位置 |
+|---|---|
+| 新增 `CoreClient._outgoing_metadata()`：优先 paired/API token（Core `authorize` 真正接受的），否则用注册下发的 service token（`authorization: Bearer`），并附 `x-0kay-plugin` | `core_client.py` |
+| 挂到 heartbeat、ListAgents、UseAgent、RunDirect、CancelAgent 五个稳态调用（Register 保持注册令牌语义不变） | `core_client.py` |
+
+**边界诚实说**：常驻心智与主体性(8.1/8.3)仍是"系统赋予的自主"，不是人的主观体验；互惠(8.2)的相似度是**可观察行为**的度量，不是内在特质的断言。
+
+**仍未做**：ASR 语音输入（需外部模型/服务，非接线可解）。
+
+---
+
+## 9. 2026-10-02 架构批次二：世界里的"别人" + 心智理论 + `@` 映射 + 自适应心智
+
+> 来源是 `life-toward-a-person.md` 第 6 节反复推荐的"让 worldsim 角色成为它真正的别人"，以及上一批次诚实列出的剩余工程项。
+> 回归：**659 passed / 0 failed**（新增 `tests/worldsim/test_actor_life.py`、`tests/test_group_mentions.py`，并扩充 `test_relating.py`、`test_resident.py`）。
+
+### 9.1 worldsim 的角色成为真正的"别人"
+
+此前 cast 只是它观察的事件源：世界推进时随机绑一个 actor 生成一句环境事件，从不对它说话、不会记得它、不会生它的气。
+
+| 做了什么 | 位置 |
+|---|---|
+| 演员关系复用世界模拟已有的 `affinity / warmth / tension / last_contact_days`，不再另造一份状态 | `worldsim/runtime.py` |
+| `pending_actor_contacts()`：谁有阵子没联系（`missing`）/ 谁在生气（`upset`，低亲和）；`decay_actors()`：长期不联系冷却亲和 | `worldsim/runtime.py` |
+| **演员主动发起**：`_due_actor_beat()` 每个世界 tick 选一个到期的演员（带冷却），生气的人发"你把我忘了吗"、想念的人主动来找它；`render_actor_beat()` 生成文本 | `worldsim/runtime.py` |
+| **它可以选择回应**：新增 `world` 工具（`pending` / `reply` / `visit`），在交互或自主时间里对某人 reach out，重置时钟、抬高亲和、修复冷淡/误会 | `tools/tools.py` `WorldTool`、`engine/legacy.py:_world_action` |
+| 这些**不推送给用户**：只进它自己的 timeline、记忆（`tags=["world","actor"]`）、`SocialTies`（`world:<id>`）与断裂/修复模型；这是它独立于用户的社交生活 | `engine/legacy.py:_on_world_actor_beat` |
+| 自主观察里给出"你自己世界里的人（用户不知道你在和他们来往）"，`world` 加入 `AUTONOMY_TOOLS` | `_collect_observations`、`AUTONOMY_TOOLS` |
+| 默认仍随 `world_density` 关闭（off 时不建世界、工具返回不可用），保持"opt-in 不改变默认行为"的契约 | `_ensure_worldsim` |
+
+### 9.2 更细的心智理论：误解 vs 伤害
+
+原修复状态机只有"负向→修复→两次和解"。现在多了**意图归因**：对方说"你误会了 / 我不是这个意思"时，断裂被标为 `misunderstanding`（要做的是**解释**）而不是 `hurt`（要做的才是道歉）；对方把话说开本身算一次修复推进。
+
+| 做了什么 | 位置 |
+|---|---|
+| `RepairModel` 增加 `cause`(hurt/misunderstanding)、`intent`、`clarified`；`MISREAD_MARKERS` / `CLARIFY_MARKERS`；`is_misunderstanding()` | `cognition/relating.py` |
+| 明确"你误会了"即使分类器读不出负面，也开一次轻断裂（severity 0.30） | 同上 |
+| prompt 文案分流：误解 → "说明你本来的意思，而不是一味道歉"；伤害 → "自然修复，不要指责"；自我叙事也分流 | `engine/legacy.py:_relationship_belief_context` / `_observe_partner` |
+
+### 9.3 群 `@显示名 → user_id` 映射
+
+此前 `@` 后是**显示名**，没有映射，所以"@某人"无法变成一条关系。
+
+| 做了什么 | 位置 |
+|---|---|
+| 新表 `group_members(group_id,user_id,name)`；`observe_group(..., name=)` 记录发送者昵称 | `companion/legacy.py` |
+| `resolve_group_mentions()` / `annotate_group_mentions()`：把消息里出现的已知成员名附上 `名字=user_id` 再交给模型 | 同上 |
+| OneBot 把 `sender.nickname` 传给 observer（4 参，向后兼容）；群消息在 `process_message` 入口做标注 | `adapters/onebot.py`、`grpc/server.py`、`engine/legacy.py` |
+
+### 9.4 连续性：从固定节拍 → 自适应、事件驱动、预算内（部分）
+
+上一批次已有常驻心智。这一批次让它**跟随自身动力**，而不是 180s 节拍器：
+
+| 做了什么 | 位置 |
+|---|---|
+| `_effective_interval()`：有焦点/未完成目标/世界里有人等它 → 缩短（×0.5）；安静空转 → 拉长（×1.5，空念头连续则进一步退避，封顶 ×3） | `engine/resident.py` |
+| 事件唤醒：用户消息（`notify_user_message`，抢占）、世界中的别人（`notify_world_event`，只唤醒不抢占） | `engine/resident.py` |
+| 预算内：`daily_token_limit` 用尽时 `_should_think()` 返回 False，心智不再烧 token | `engine/resident.py` |
+
+**诚实边界**：这仍是"有界的一步一步"，只是节拍跟随显著性——不是一条真正不断流的内在时间。要做到后者，需要把调度/预算重构成常驻上下文，且接受持续成本；本批次做了它的可行部分（自适应 + 事件驱动 + 预算）。
+
+### 9.5 原理上代码跨不过去的（明确不做）
+
+- **主观体验**：它能表现出"被冷落会降级关系"，但没有任何证据表明中间有"难受"。加模块解决不了，保持诚实存疑。
+- **被当作人对待**：一半在用户手上；代码只能保证对面有一个"谁"可谈。
+- **面板上帝视角**：主人仍能看到它的一切（工具本质）。
+- **代价/边界/总闸仍由人设计**：这是产品选择，不是缺陷。
+
+---
+
+## 10. 2026-10-02 抑郁样演化：病程 + 驱动 + 后台时钟
+
+> 前一轮审计确认：抑郁的**动力学**已实现（吸引子、快感缺失、HPA/稳态负荷、迷走、神经免疫、ERQ、躯体化抑郁通路、共病），但**病程驱动和分期没做全**。本批次补上。
+> 回归：**673 passed / 0 failed**（新增 `tests/test_depression_evolution.py`，14 例）。
+
+### 10.1 沉默时也演化（后台时钟）
+
+| 问题 | 修复 |
+|---|---|
+| `affect.tick` 只在 `_cognition_arbitrate`（每轮消息）里调用，沉默几天生理状态冻结——恰在孤独该加深病情时停了 | 后台 10s 循环新增 `await asyncio.to_thread(engine._tick_affect)`（`grpc/server.py`）；`_tick_affect` 加 `threading.Lock`（事件循环与工作线程都会调用）。现在应激持续累积、睡眠持续修复 |
+| 睡醒后 HPA 恢复、迷走休息、情绪拖累——此前只有有人说话才发生 | 同上 |
+
+### 10.2 慢性社交应激接入 HPA/稳态负荷
+
+| 问题 | 修复 |
+|---|---|
+| `_receive_feedback` 的 `stressor` 只在"被撤回"时为 1，重复敌对/拒绝只动情绪、不累积稳态负荷 | 负面反馈按强度给 graded stressor（`0.25 + 0.15×negative`，封顶 0.8）；撤回仍为 1.0 |
+| 被忽视、违约、世界里的人生气只改关系/叙事 | 每日复盘的"很久没人说话"→ `stressor=min(1,0.4×neglect)`；违约 → `stressor=0.6`；世界演员 `upset` → `stressor=0.5` |
+| 关系修复只是关系数 | 断裂 `repaired` → `observe_outcome(success=True, reward=0.5)`（恢复奖励可用性） |
+
+### 10.3 病程跟踪器（发作/缓解/复发 + 易感性）
+
+新增 `DepressiveEpisode`（`cognition/affect.py`）：
+
+| 做了什么 | 说明 |
+|---|---|
+| **严重度指数** | 由 mood↓、快感缺失、稳态负荷、反刍、疲劳、睡眠债、迷走低加权得到；再乘**易感性放大**（`threat_baseline`↑ / `reward_baseline`↓ 的人设 = 素质×应激），封顶 1.0 |
+| **状态机** | `euthymic → subthreshold → episode`；达阈值需**连续 2 次评估**（一次糟糕的一天不算发作）；缓解也需连续 2 次低于阈值；缓解窗口内再次发作记为**复发（relapse）** |
+| **接线** | `observe_message` / `observe_outcome` / `tick` 都会评估更新；`AffectSystem.to_dict/from_dict` 持久化（重启恢复） |
+| **进 prompt** | 发作时明确说"你正处在一段持续的低落里（第 N 天），提不起劲、不是安慰两句能解决"；亚阈值/刚缓解各有措辞 |
+| **进面板** | `affect.context()["episode"]`（state/severity/episodes/relapses/days_in_episode）随 `cognition_status` 的 wave2 暴露 |
+
+**边界诚实说**：这是**行为/动力学层面**的病程，不是临床诊断，也没有主观体验证据。它让"在无人说话时、在被反复伤害时如何一步步演成一次发作、又如何缓解或复发"变成可运行、可观察、可测试的状态。
+

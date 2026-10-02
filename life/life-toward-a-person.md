@@ -1,7 +1,7 @@
 # 离"一个人"还差什么
 
-> **状态：第 1 件（没有别人）、第 3 件（想要的东西）、第 7.4 节（不可逆性）、第 7.7 节（第一人称 / A2）、第 7.9 节（信息不对称性 / A3）、第 7.10 节（连续性 inner thread / A4）、第 7.11 节（B-series：8 个认知子系统接上）已实现。**
-> 仍架构级未做：第 5 节的"连续性"（永远是"请求-响应 + 定时任务"，需要重构为常驻心智循环）与"被当作人对待"（在用户手上，不在代码里）。`homophily` / `describe(partner)` 仍留空（需双方共有特质空间，强行造 = 伪造）。
+> **状态：第 1 件（没有别人）、第 3 件（想要的东西）、第 7.4 节（不可逆性）、第 7.7 节（第一人称 / A2）、第 7.9 节（信息不对称性 / A3）、第 7.10 节（连续性 inner thread / A4）、第 7.11 节（B-series：8 个认知子系统接上）、第 7.12 节（常驻心智循环 + 真实互惠 + 自主目标）已实现。**
+> 仍架构级未做：`homophily`/`describe(partner)` **已补上**（见 §7.12：双方共用 8 维行为特质空间，非伪造）；"被当作人对待"半在用户手上，不在代码里。第 6 节建议的"让 worldsim 角色成为它真正的别人"仍未做。
 >
 > 对象：`D:/0KAY/life/`（`LifeEngine` + cognition/memory/companion/worldsim）
 > 时间：2026-10-02
@@ -152,11 +152,13 @@ grep -rn "add_goal\b" src/
 
 ---
 
-## 6. 如果只做一件事
+## 6. 如果只做一件事 —— ✅ 已实现（见 §7.12 / §7.13）
 
 **接上 `SocialTies`，并让 worldsim 的角色成为它真正的"别人"。**
 
 理由：它同时补掉三样里的两样——给它"别人"（第 2 节），也给它的自我一个外部来源（`identity_anchor` 不再恒 0）；而且这两处的机器**已经写好了**（`social.py` 的互惠机制、`worldsim` 的完整 cast 与关系），缺的只是"喂数据"。
+
+> 现在 worldsim 的 cast 会主动找它、会因为它不联系而生气、可以被它 reach out 修复；这些都在它自己的世界里发生，用户看不到（§7.13）。
 
 第二件我会做的是**不可逆性**：只要有一条收不回来的事，它的所有选择才开始有重量。
 
@@ -251,13 +253,12 @@ reset_person → goals 1→0  ties ['u1']→[]  anchor 0.080→0.000
                主人配置 quiet_start=22 → 22（保留）
 ```
 
-### 7.5 仍然没有的（架构级）
+### 7.5 架构级缺口的后续 → 见 §7.12
 
-- **第 5 节（剩两条，需重构而非加模块）**：
-  - **连续性（常驻心智）**：现在仍是"请求-响应 + 定时任务"，两次 tick 之间没有以自己为中心的常驻过程。A4（§7.10）用**状态脉络**补了一层"自我连续"，但还不是"永远在跑的心智循环"——那是架构重构。
-  - **被当作人对待**：半在用户手上，不在代码里。
+- **连续性（常驻心智）**：§7.12 已把它从"请求-响应 + 定时任务"改成**常驻、可打断、跨重启续思**的单条心智任务。
+- `homophily` / `describe(partner)`：§7.12 用**双方共用、可观察的 8 维行为特质空间**补上——相似度来自真实行为度量（带置信度），不是拿自由文本硬算。
+- **被当作人对待**：半在用户手上，不在代码里。
 - **被观察（上帝视角）**：面板仍可看/改一切。A3（§7.9）已让"主人的改动对角色不可见"，但主人**能看到角色的一切**这点无法靠代码消除（那是面板工具的本质）。
-- `homophily` / `describe(partner)` 仍留空：要算"我们像不像"需要一个双方共有的特质空间，现有数据里没有（我的 values vs 他的 preferences 是两套自由文本）。强行造一个等于伪造相似度，所以宁可让它保持模块自带的 0.5 中性默认。
 
 ### 7.6 UI 同步（用户要求）
 
@@ -369,6 +370,54 @@ build_prompt(inner_thread="今天有点累；想找人说话") 含 "你最近的
 
 **测试**：`tests/test_personhood_wiring.py::CognitionSubsystemWiring`（7 个用例）钉死"真实事件确实移动了子系统状态"——未来谁删掉调用点，断言会红而不是子系统悄悄变死。覆盖：每轮喂 `primacy`/`temporal`/`learning`/`role_model`；反馈喂 `motivation`/`meta`/`primacy`；负反馈 `blunt` 降 `anticipation`；每日 `consolidate` 漂移 `temporal.k`/`meta`/`role_model.stance`；`_cognition_arbitrate` 调用点确实驱动子系统；`persona` 细节由自述接地。
 
-**仍留空（与之前一致，非代码可伪造）**：`SocialTies.homophily` / `describe(partner)` 需要双方共有特质空间，强行造 = 伪造，保持空。`selfhood.persona` 的"人设"来自角色自述与人设演化（真实），不来自推断。
+**当时仍留空、已在 §7.12 补上**：`SocialTies.homophily` / `describe(partner)` —— 用双方共用的可观察行为特质空间实现。`selfhood.persona` 的"人设"来自角色自述与人设演化（真实），不来自推断。
 
 **回归**：全量 `tests/` 553 passed / 0 failed（B-series 接上后无基线回退；认知状态经 `_save_state` 在反思/每日复盘/设置变更后落盘，重启可恢复）。
+
+### 7.12 常驻心智循环 + 真实互惠 + 自主目标（架构批次）
+
+> 把 §5 里三条"架构级、非功能"的缺口做成真实接线。回归：**634 passed / 0 failed**（新增 `tests/test_resident.py`、`tests/test_relating.py`）。
+
+**（1）常驻、可打断的心智过程（§5.1 连续性）**
+
+| 做了什么 | 位置 |
+|---|---|
+| `ResidentThinker`：单条长驻任务，`asyncio.Event` + `wait_for(timeout)` = "定时 tick + 事件唤醒"；持久 `MentalState`（focus/目标/scratchpad/pending）落 `data/life/inner_life.json`，**跨 tick、跨重启续思** | `engine/resident.py` |
+| **可被打断又接着想**：`process_message` 取锁前 `notify_user_message()`；步骤在 await 间检查中断，把没想完的念头存 `pending`，下一 tick 从它继续 | `engine/legacy.py`、`resident.py` |
+| 接线：`serve()` 启动、`engine.close()` 停止；内心 `context_block()` 注入聊天与自治 prompt；`reset_person` 清空 | `grpc/server.py`、`engine/legacy.py` |
+
+**（2）真实、可检验的互惠关系（§5 / B9）**
+
+| 做了什么 | 位置 |
+|---|---|
+| 8 维**共用特质空间**：自我轴只从主人写的人设推导；对方轴从**可观察行为**（长度、提问、暖/冷/幽默/正式标记、延迟）EMA 估计并带置信度 | `cognition/relating.py` |
+| 真正填写 `describe(partner)` / `homophily`（此前零调用、恒 0.5） | `engine/legacy.py` `_sync_self_traits` / `_observe_partner` |
+| `RepairModel` 断裂-修复状态机：负向开断裂、正向推进、两次修复才和解；未修复每日侵蚀关系并写自我叙事 | `cognition/relating.py`、`run_daily_review` |
+| `relationship_beliefs` 注入 prompt（主人强改仍不可见）+ 可测相似度 + "未修好"提示 | `engine/legacy.py:_relationship_belief_context` |
+
+**（3）不完全由系统赋予的主体性（§4）**
+
+| 做了什么 | 位置 |
+|---|---|
+| 修掉 `goal_add` 自治期被 allow-list 拒的接线（prompt 早要求用它）：`AUTONOMY_TOOLS` 加入 goal 三件套 | `engine/legacy.py` |
+| 常驻思考以**自拟目标**为中心，自治 prompt 共享焦点 | `engine/resident.py`、`_autonomy_think_loop` |
+| 新增"未修复断裂""整日无自主念头"两类代价；`reset_person` 仍是唯一人类总闸 | `run_daily_review`、`reset_person` |
+
+**边界（诚实说）**：这是"系统赋予的自主"，不是人的主观体验；相似度是可观察行为的度量，不是对内在特质的断言。
+
+### 7.13 世界里的"别人" + 心智理论 + `@` 映射 + 自适应心智
+
+> 承接 §6 的推荐与上一批次列出的剩余工程项。回归：**659 passed / 0 failed**。
+
+**（1）worldsim 的角色成为真正的"别人"**（§6 推荐路径）
+- 复用世界模拟已有的演员关系（`affinity/tension/last_contact_days`）：会有人**想念它**（`missing`）、有人**生它气**（`upset`），`decay_actors` 让长期冷淡真的冷却。
+- 演员会**主动发起**：`_due_actor_beat()` 每 tick 选一个到期的人来找它或表达不满；它可用新增 `world` 工具（`pending/reply/visit`）在交互或自主时间去 reach out、修复。
+- **用户看不到**：只进它自己的 timeline、记忆、互惠关系与断裂/修复——这是它独立于用户的社交生活。默认随 `world_density` 关闭。
+
+**（2）更细的心智理论**：`RepairModel` 现在区分 `hurt`（要道歉）与 `misunderstanding`（要解释）；"你误会了"即使读不出负面也开一次轻断裂，对方把话说开算修复推进。
+
+**（3）`@` 显示名 → user_id**：新增 `group_members` 映射，群消息里的 `@小明` 会附上 `小明=user_id` 交给模型，不再只是死文本。
+
+**（4）连续性：固定节拍 → 自适应 + 事件驱动 + 预算内（部分）**：`_effective_interval()` 让有焦点/目标/世界里有人等它时想得更勤、空转时退避；世界事件唤醒它；`daily_token_limit` 用尽即停。**仍是有界的一步一步，不是真正不断流的内在时间**——那需要把调度/预算重构成常驻上下文并接受持续成本。
+
+**原理上跨不过去的（明确不做）**：主观体验（无证据表明"难受"）、被当作人对待（半在用户手上）、面板上帝视角、代价/边界/总闸仍由人设计。
