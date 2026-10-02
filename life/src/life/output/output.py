@@ -12,20 +12,30 @@ class OutputResult:
     @classmethod
     def from_text(cls, text: str, max_chunk_size: int = 100) -> "OutputResult":
         """Split text into chunks for messaging platforms."""
-        chunks = []
+        limit = max(1, int(max_chunk_size))
+        chunks: list[str] = []
         current = ""
 
+        def _flush() -> None:
+            nonlocal current
+            if current:
+                chunks.append(current.strip())
+                current = ""
+
         for line in text.split("\n"):
-            if len(current) + len(line) + 1 > max_chunk_size:
-                if current:
-                    chunks.append(current.strip())
+            # A single line longer than the limit must still be split, otherwise
+            # the chunk ceiling is silently ignored for wall-of-text replies.
+            while len(line) > limit:
+                _flush()
+                chunks.append(line[:limit].strip())
+                line = line[limit:]
+            if len(current) + len(line) + 1 > limit:
+                _flush()
                 current = line
             else:
                 current = current + "\n" + line if current else line
 
-        if current:
-            chunks.append(current.strip())
-
+        _flush()
         return cls(text=text, chunks=chunks or [text])
 
 

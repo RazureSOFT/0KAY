@@ -8,6 +8,10 @@ from pathlib import Path
 
 
 class UsageLedger:
+    #: Rolling window of daily buckets kept in ``usage.json``; older days are
+    #: dropped so the ledger cannot grow without bound.
+    MAX_DAYS = 400
+
     def __init__(self, data_dir: str):
         self.path = Path(data_dir) / "usage.json"
         self._data = self._load()
@@ -41,6 +45,11 @@ class UsageLedger:
         daily["requests"] += 1
         daily["input"] += int(input_tokens or 0)
         daily["output"] += int(output_tokens or 0)
+        # ISO dates sort lexicographically == chronologically, so the oldest
+        # buckets are the first entries.
+        if len(by_day) > self.MAX_DAYS:
+            for stale in sorted(by_day)[: len(by_day) - self.MAX_DAYS]:
+                by_day.pop(stale, None)
         self._save()
 
     def set_balance(self, provider: str, amount, currency: str = "") -> dict:

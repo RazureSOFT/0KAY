@@ -4,9 +4,20 @@ import json
 import grpc
 import httpx
 import asyncio
+from urllib.parse import urlsplit
 from mocr.v1 import mocr_pb2, mocr_pb2_grpc
 
-from .http_auth import auth_headers
+from .http_auth import auth_headers, require_auth_headers
+
+# Hard ceiling for an attachment download so a hostile/large file cannot
+# exhaust plugin memory (the response used to be buffered without limit).
+MAX_ATTACHMENT_BYTES = 64 * 1024 * 1024
+
+
+def _origin(url: str) -> tuple[str, str, int]:
+    parts = urlsplit(url)
+    scheme = (parts.scheme or "http").lower()
+    return (scheme, (parts.hostname or "").lower(), parts.port or (443 if scheme == "https" else 80))
 
 
 class MocrClient:
@@ -28,14 +39,31 @@ class MocrClient:
         return self._http
 
     async def fetch_file(self, url: str, timeout: float = 30.0) -> bytes:
-        """Download an uploaded attachment from Core by its /api/files URL."""
+        """Download an uploaded attachment from Core by its /api/files URL.
+
+        Absolute URLs are accepted only when they point at the Core origin, so a
+        model-supplied URL cannot reuse the plugin's Bearer token as an SSRF
+        primitive against an arbitrary third party.
+        """
         if not url:
             raise ValueError("empty attachment url")
-        target = url if url.startswith("http") else f"{self.core_http}{url}"
-        async with httpx.AsyncClient(timeout=timeout) as http:
-            response = await http.get(target, headers=auth_headers())
-            response.raise_for_status()
-            return response.content
+        raw = str(url).strip()
+        if raw.startswith("http://") or raw.startswith("https://"):
+            if _origin(raw) != _origin(self.core_http):
+                raise ValueError("attachment url must point at the Core host")
+            target = raw
+        else:
+            target = f"{self.core_http}{raw}"
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as http:
+            # Fail closed: never issue a Core file request with no credentials.
+            async with http.stream("GET", target, headers=require_auth_headers()) as response:
+                response.raise_for_status()
+                buffer = bytearray()
+                async for chunk in response.aiter_bytes():
+                    buffer.extend(chunk)
+                    if len(buffer) > MAX_ATTACHMENT_BYTES:
+                        raise ValueError("attachment exceeds size limit")
+                return bytes(buffer)
 
     async def close(self):
         if self._http:
@@ -57,8 +85,7 @@ class MocrClient:
         data = response.json()
         providers = data if isinstance(data, list) else data.get("providers", [])
         default_id = data.get("default_provider_id", "") if isinstance(data, dict) else ""
-        if not model_id or str(model_id).lower() in ("auto", "mocr"):
-            chosen = next((p for p in providers if p.get("enabled", True) and p.get("id") == default_id), None)
+        if not model_id or str(model_id).lower() in ("auto", "mocr"):            chosen = next((p for p in providers if p.get("enabled", True) and p.get("id") == default_id), None)
         else:
             matches = [p for p in providers if p.get("enabled", True)
                        and any((m if isinstance(m, str) else m.get("id", m.get("model_id"))) == model_id for m in p.get("models", []))]

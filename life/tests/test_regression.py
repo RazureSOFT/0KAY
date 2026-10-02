@@ -1,10 +1,12 @@
 import asyncio
 import json
 import os
+import subprocess
 from datetime import date
 from pathlib import Path
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -131,7 +133,7 @@ class MemoryTests(unittest.TestCase):
             self.assertEqual(detail["relationship"]["user_id"], "u1")
             self.assertEqual(detail["counts"]["ledger"], 1)
             self.assertEqual(detail["counts"]["candidates"], 1)
-            page = memory.page_facts(scope="u1")
+            page = memory.page_facts(scope="session:u1")
             self.assertEqual(page["total"], 1)
             self.assertEqual(page["items"][0]["content"], "likes jazz")
             with self.assertRaises(ValueError): companion.user_detail("")
@@ -230,7 +232,11 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
         requests = []
         class Model:
             async def generate(self, model_id, messages, system_prompt="", thinking=False, **kwargs):
-                requests.append((thinking, list(messages), system_prompt))
+                # Only capture the THINK planning passes. The engine's internal
+                # self-statement reflection (thinking=False) runs during a turn and
+                # must not pollute this conversation-flow capture.
+                if thinking:
+                    requests.append((thinking, list(messages), system_prompt))
                 await asyncio.sleep(0)
                 if thinking:
                     yield json.dumps({"output_guidance": "reply", "memory_query": "unique", "tool_calls": []})
@@ -314,9 +320,18 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
         self.engine.memory.store("secretmarker useful fact", metadata={"scope": "session:a"})
         systems = []
         class Model:
-            turns = 0
+            def __init__(self):
+                # Instance state: a class attribute would be shared by any
+                # second model built in the same test.
+                self.turns = 0
+
             async def generate(self, model_id, messages, system_prompt="", thinking=False, **kwargs):
-                systems.append(system_prompt)
+                # Only capture the THINK planning passes. The engine also runs an
+                # internal self-statement reflection (thinking=False) during a turn;
+                # that is the character's own monologue, not the conversation flow
+                # this test asserts on, so it must not shift `systems` indices.
+                if thinking:
+                    systems.append(system_prompt)
                 if thinking:
                     self.turns += 1
                     if self.turns == 1:
@@ -393,6 +408,81 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual([chunk async for chunk in client.generate("b", [])], ["ok"])
                 self.assertEqual(requests[-1].api_key, value)
                 self.assertEqual(requests[-1].base_url, "http://b")
+
+
+class ConcurrentSQLiteTests(unittest.TestCase):
+    """Regression: WAL mode + per-call connection churn raised
+    ``sqlite3.OperationalError: attempt to write a readonly database``.
+
+    ``CompanionSystem.db()`` and ``MemorySystem._connect()`` each open a fresh
+    connection per call and close it again, and callers reach them from
+    arbitrary worker threads (the engine wraps most companion/memory work in
+    ``asyncio.to_thread``).  In WAL mode SQLite deletes the ``-wal``/``-shm``
+    sidecars when the *last* connection closes, so a connection opening
+    concurrently with that teardown can fail its first write with
+    ``SQLITE_READONLY`` (code 8) on Windows.  That is a race rather than a lock
+    timeout, so ``busy_timeout`` does not help; both systems now serialize
+    access with an RLock.
+
+    These tests pin the contract that removes the race -- a second caller must
+    not be able to open the database while the first still holds it -- which is
+    deterministic, unlike probing for the intermittent write error itself.
+    """
+
+    def _assert_serialized(self, open_database) -> None:
+        inside = threading.Event()
+        attempting = threading.Event()
+        entered_concurrently = threading.Event()
+        release = threading.Event()
+
+        def first() -> None:
+            with open_database():
+                inside.set()
+                release.wait(10)
+
+        def second() -> None:
+            inside.wait(10)
+            attempting.set()
+            with open_database():
+                entered_concurrently.set()
+
+        holder = threading.Thread(target=first, daemon=True)
+        waiter = threading.Thread(target=second, daemon=True)
+        holder.start(); waiter.start()
+        self.assertTrue(inside.wait(10), "first caller never entered")
+        self.assertTrue(attempting.wait(10), "second caller never attempted")
+        # The second caller must stay blocked for as long as the first holds on.
+        self.assertFalse(entered_concurrently.wait(0.5), "database allowed concurrent access")
+        release.set()
+        holder.join(10); waiter.join(10)
+        self.assertTrue(entered_concurrently.is_set(), "second caller never ran after release")
+
+    def test_companion_db_serializes_access(self):
+        with tempfile.TemporaryDirectory() as directory:
+            companion = CompanionSystem(directory)
+            self._assert_serialized(companion.db)
+
+    def test_memory_connect_serializes_access(self):
+        with tempfile.TemporaryDirectory() as directory:
+            memory = MemorySystem(directory)
+            self._assert_serialized(memory._connect)
+
+
+class WorldPackageImportTests(unittest.TestCase):
+    def test_worldview_loads_with_only_src_on_pythonpath_from_other_cwd(self):
+        """Match Core's PYTHONPATH=life/src outside the plugin working directory."""
+        root = Path(__file__).resolve().parents[1]
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(root / "src")
+        with tempfile.TemporaryDirectory() as other_cwd:
+            result = subprocess.run(
+                [sys.executable, "-c",
+                 "from life.worldsim.worldview import build_map; "
+                 "from life.worldsim.runtime import WorldRuntime; "
+                 "import world.sim; print('world imports ok')"],
+                cwd=other_cwd, env=env, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("world imports ok", result.stdout)
 
 
 if __name__ == "__main__":

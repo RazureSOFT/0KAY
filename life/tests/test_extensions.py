@@ -42,9 +42,13 @@ class ExtensionRegistryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             engine = LifeEngine(directory)
             status = engine.extension_status()
-            for name in ("tts", "image", "content", "qzone", "vision"):
-                self.assertIn(name, status)
-            self.assertFalse(status["qzone"]["available"])
+            # `qzone` used to be registered with `probe=lambda: False`, so it
+            # advertised a capability that could never be enabled and nothing ever
+            # consumed it.  It was removed rather than kept as a permanent
+            # "not installed" entry; every remaining extension is probe-gated.
+            self.assertEqual(set(status), {"tts", "image", "comfyui", "content", "vision"})
+            for name, info in status.items():
+                self.assertIn("available", info, name)
 
 
 if __name__ == "__main__":

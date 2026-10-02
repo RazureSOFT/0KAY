@@ -36,10 +36,15 @@ class SoulState:
         return round(max(0.0, min(1.5, base * (0.55 + math.tanh(self.creativity - 0.5) * 0.5))), 2)
 
     def resonate(self, valence: float, arousal: float) -> None:
-        """Old-state resonance: current affect bends the channels, then they drift back."""
+        """Old-state resonance: current affect bends the channels, then they drift back.
+
+        ``arousal`` is on [0, 1] (0.5 = neutral) but ``valence`` is on [-1, 1]
+        (0.0 = neutral).  Centring the valence terms on 0.5 made neutral drift
+        one-way on every call, so both terms are centred on the true neutral.
+        """
         self.creativity = _clamp(self.creativity + (arousal - 0.5) * 0.12, 0.1, 1.0)
-        self.expression_desire = _clamp(self.expression_desire + (valence - 0.5) * 0.12, 0.1, 1.0)
-        self.recall_depth = _clamp(self.recall_depth + (0.5 - valence) * 0.05, 0.1, 1.0)
+        self.expression_desire = _clamp(self.expression_desire + valence * 0.12, 0.1, 1.0)
+        self.recall_depth = _clamp(self.recall_depth - valence * 0.05, 0.1, 1.0)
 
     def to_dict(self) -> dict:
         return asdict(self)

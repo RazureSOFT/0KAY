@@ -23,11 +23,17 @@ class EmotionState:
         self.last_updated = datetime.now()
 
     def decay(self, seconds: float) -> None:
-        """Apply natural decay to emotions over time."""
-        decay_rate = 0.001 * seconds  # Slow decay
-        self.valence *= (1.0 - decay_rate)
-        self.arousal *= (1.0 - decay_rate * 0.5)
-        self.irritation *= (1.0 - decay_rate * 2)  # Irritability decays faster
+        """Apply natural decay to emotions over time.
+
+        The rate is clamped per signal: with the raw ``0.001 * seconds`` a long
+        gap (e.g. overnight) made ``1 - rate`` negative and *flipped* the sign of
+        mood.  Irritability still fades fastest, arousal slowest.
+        """
+        seconds = max(0.0, float(seconds))
+        rate = min(0.5, 0.001 * seconds)
+        self.valence *= (1.0 - rate)
+        self.arousal *= (1.0 - rate * 0.5)
+        self.irritation *= (1.0 - min(0.9, rate * 2))
 
     def to_dict(self) -> dict:
         return {
@@ -71,6 +77,10 @@ class EmotionEngine:
 
     def on_user_message(self, message: str) -> dict:
         """Calculate emotion delta from user message (English + Chinese cues)."""
+        # Coerce like `classify_intent` does: the caller may pass None or a
+        # structured message (image/forward), which previously raised
+        # AttributeError on `.lower()`.
+        message = str(message or "")
         delta = {"valence": 0.0, "arousal": 0.0, "connection": 0.0, "irritation": 0.0}
 
         positive_words = ["thanks", "good", "great", "love", "happy", "nice", "awesome",
