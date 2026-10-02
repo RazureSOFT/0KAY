@@ -551,8 +551,17 @@ async function resetPerson() {
   } finally { personBusy.value = false }
 }
 // --- persona (moved out of Settings → 人设) --------------------------------
-type PersonaForm = { name: string; avatar: string; birthDate: string; description: string; personality: string; greeting: string; customPrompt: string }
-const emptyPersona = (): PersonaForm => ({ name: '', avatar: '', birthDate: '', description: '', personality: '', greeting: '', customPrompt: '' })
+type PersonaForm = { name: string; avatar: string; birthDate: string; gender: string; description: string; personality: string; greeting: string; customPrompt: string }
+const emptyPersona = (): PersonaForm => ({ name: '', avatar: '', birthDate: '', gender: '', description: '', personality: '', greeting: '', customPrompt: '' })
+const genderOptions = [
+  { value: '', label: '不判定' },
+  { value: 'female', label: '女' },
+  { value: 'male', label: '男' },
+  { value: 'other', label: '其它' },
+]
+function genderLabel(value: string) {
+  return (genderOptions.find((o) => o.value === value) || genderOptions[0]).label
+}
 const personaForm = ref<PersonaForm>(emptyPersona())
 const personaBusy = ref(false)
 function personaHost() {
@@ -575,7 +584,6 @@ function loadPersona() {
 const analysis = ref<any | null>(null)
 const analyzeBusy = ref(false)
 const erqOptions = ['typical', 'depression', 'anxiety', 'bpd', 'alexithymia']
-const attachmentTypeChoices = ['独占型', '依存型', '妄想型', '监视型', '自伤型', '排除型']
 const characterSelectOptions = computed(() => [
   { value: '', label: '（不判定）' },
   ...((analysis.value?.options?.character || []) as any[]).map((o) => ({ value: o.key, label: o.label })),
@@ -592,15 +600,19 @@ function personaBody() {
 }
 // Editing the text invalidates the previous analysis — re-understand before save.
 watch(() => [personaForm.value.description, personaForm.value.personality, personaForm.value.customPrompt], () => { analysis.value = null })
+function relationshipOptionFor(key: string) {
+  return ((analysis.value?.options?.relationship || []) as any[]).find((o) => o.key === key)
+}
 // The relationship style drives the attachment ODE: only the pathological
 // family (病娇族) may switch it on, with the archetype its option declares; a
-// healthy style (安全/焦虑/回避/...) always turns it off.
+// healthy style (安全/焦虑/回避/...) always turns it off.  `immediate` so the
+// freshly-analysed relationship is applied without needing a manual change.
 watch(() => analysis.value?.relationship?.key, (key) => {
   const att = analysis.value?.attachment
-  const opt = ((analysis.value?.options?.relationship || []) as any[]).find((o) => o.key === key)
-  if (!att || !opt) return
-  att.type = opt.pathological ? (opt.attachment_type || att.type || '') : ''
-})
+  if (!att) return
+  const opt = relationshipOptionFor(key)
+  att.type = opt?.pathological ? (opt.attachment_type || '') : ''
+}, { immediate: true })
 // Give the attachment seeds a neutral default when a type is chosen but the
 // analyzed text carried no attachment keywords.
 watch(() => analysis.value?.attachment?.type, (type) => {
@@ -616,9 +628,10 @@ async function analyzePersona() {
   if (!body.text.trim()) { flash('请先填写「描述」或「性格」'); return }
   analyzeBusy.value = true
   try {
-    const result = await act('persona_analyze', body)
+    const result = await act('persona_analyze', { text: body.text, gender: personaForm.value.gender })
     if (result) {
       analysis.value = result
+      if (!personaForm.value.gender && result.gender) personaForm.value.gender = result.gender
       flash(result.source === 'llm' ? '已由模型理解，请核对/微调参数' : '模型不可用，已用本地词典理解，请核对')
     }
   } finally { analyzeBusy.value = false }
@@ -632,6 +645,7 @@ async function savePersona() {
     // the archetype selects afterwards, so sync them and drop the stale axes
     // (the backend recomputes axes from the chosen archetypes).
     const traits = { ...(analysis.value.traits || {}) }
+    traits.gender = analysis.value.gender || personaForm.value.gender || null
     traits.character = analysis.value.character?.key || null
     traits.relationship = analysis.value.relationship?.key || null
     traits.expression = analysis.value.character?.expression || analysis.value.expression || null
@@ -703,6 +717,7 @@ onMounted(load)
       <article class="card">
         <div class="settings-grid">
           <label><span>名字</span><input v-model="personaForm.name" class="field" /></label>
+          <label><span>性别</span><AppSelect v-model="personaForm.gender" :options="genderOptions" aria-label="性别" /></label>
           <label><span>头像 URL</span><input v-model="personaForm.avatar" class="field" /></label>
           <label><span>生日</span><input v-model="personaForm.birthDate" type="date" class="field" /></label>
         </div>
@@ -715,13 +730,17 @@ onMounted(load)
       <article v-if="analysis" class="card">
         <h3>解析结果 <span class="count-pill ok">{{ analysis.source === 'llm' ? '模型理解' : '本地词典' }}</span></h3>
         <div class="settings-grid">
+          <label><span>性别</span><AppSelect v-model="analysis.gender" :options="genderOptions" aria-label="性别" /></label>
           <label><span>性格原型</span><AppSelect v-model="analysis.character.key" :options="characterSelectOptions" aria-label="性格原型" /></label>
           <label><span>关系 / 依恋类型</span><AppSelect v-model="analysis.relationship.key" :options="relationshipSelectOptions" aria-label="关系类型" /></label>
         </div>
-        <p v-if="analysis.relationship?.label" class="hint">
-          关系判定：{{ analysis.relationship.label }}
-          <template v-if="analysis.relationship.pathological">（病娇族 → 才会启用依恋动力学）</template>
-          <template v-else>（健康型 → 不启用病态依恋）</template>
+        <p class="hint">
+          性别：{{ genderLabel(analysis.gender) }}。
+          <template v-if="analysis.relationship?.label">
+            关系判定：{{ analysis.relationship.label }}
+            <template v-if="analysis.relationship.pathological">（病娇族 → 才会启用依恋动力学）</template>
+            <template v-else>（健康型 → 不启用病态依恋）</template>
+          </template>
         </p>
         <p v-if="analysis.character?.expression || analysis.expression" class="hint">说话风格：{{ analysis.character?.expression || analysis.expression }}</p>
 
@@ -755,15 +774,16 @@ onMounted(load)
           </div>
         </details>
 
-        <h4>病态依恋（仅病娇族启用）</h4>
-        <div class="settings-grid">
-          <label><span>依恋型别（留空=不启用）</span><AppSelect v-model="analysis.attachment.type" :options="['', ...attachmentTypeChoices]" aria-label="依恋型别" /></label>
-          <template v-if="analysis.attachment.type">
+        <template v-if="analysis.attachment.type">
+          <h4>病态依恋 · 由关系类型「{{ analysis.relationship.label }}」决定</h4>
+          <div class="settings-grid">
+            <label><span>依恋型别（随关系类型）</span><input class="field" :value="analysis.attachment.type + '（' + (analysis.relationship.label || '') + '）'" disabled /></label>
             <label><span>初始焦虑 X</span><input v-model.number="analysis.attachment.initial.X" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
             <label><span>初始安全感 S</span><input v-model.number="analysis.attachment.initial.S" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-          </template>
-        </div>
-        <p class="hint">文字只是来源，真正保存进 LIFE 的是这里调好的数值。关系类型选健康型时不会启用病态依恋；选病娇族才会按型别启动动力学。想更贴合「病娇常伴抑郁」，把情绪调节画像设为 depression。</p>
+          </div>
+          <p class="hint">文字只是来源，真正保存进 LIFE 的是这里调好的数值。依恋型别由「关系/依恋类型」自动决定，改关系类型即可换型别。想更贴合「病娇常伴抑郁」，把情绪调节画像设为 depression。</p>
+        </template>
+        <p v-else class="hint">当前关系类型不是病娇族，不启用病态依恋动力学（病度、嫉妒、执念等由关系动力学单独驱动）。</p>
       </article>
     </section>
 
