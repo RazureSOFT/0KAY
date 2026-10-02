@@ -570,20 +570,60 @@ function loadPersona() {
     personaForm.value = { ...emptyPersona(), ...(cfg.persona || {}) }
   } catch { personaForm.value = emptyPersona() }
 }
-function savePersona() {
+// Analysis is required before saving: the model reads the persona into
+// parameters, the owner reviews/tunes them, and only then can it be persisted.
+const analysis = ref<any | null>(null)
+const analyzeBusy = ref(false)
+const erqOptions = ['typical', 'depression', 'anxiety', 'bpd', 'alexithymia']
+const attachmentTypeChoices = ['独占型', '依存型', '妄想型', '监视型', '自伤型', '排除型']
+function personaBody() {
+  return { text: [personaForm.value.description, personaForm.value.personality].filter((v) => String(v || '').trim()).join('\n') }
+}
+// Editing the text invalidates the previous analysis — re-understand before save.
+watch(() => [personaForm.value.description, personaForm.value.personality, personaForm.value.customPrompt], () => { analysis.value = null })
+// Give the attachment seeds a neutral default when a type is chosen but the
+// analyzed text carried no attachment keywords.
+watch(() => analysis.value?.attachment?.type, (type) => {
+  const att = analysis.value?.attachment
+  if (!type || !att) return
+  if (!att.initial || typeof att.initial !== 'object') att.initial = {}
+  for (const [key, value] of Object.entries({ A: 0.05, Am: 0, Tr: 0.5, J: 0, X: 0.05, S: 0.6, O: 0 })) {
+    if (att.initial[key] == null) att.initial[key] = value
+  }
+})
+async function analyzePersona() {
+  const body = personaBody()
+  if (!body.text.trim()) { flash('请先填写「描述」或「性格」'); return }
+  analyzeBusy.value = true
+  try {
+    const result = await act('persona_analyze', body)
+    if (result) {
+      analysis.value = result
+      flash(result.source === 'llm' ? '已由模型理解，请核对/微调参数' : '模型不可用，已用本地词典理解，请核对')
+    }
+  } finally { analyzeBusy.value = false }
+}
+async function savePersona() {
+  if (!analysis.value) { flash('请先点「LLM 理解」并核对参数，再保存'); return }
   personaBusy.value = true
   try {
+    const body = personaBody()
+    const result = await act('persona_apply', {
+      text: body.text,
+      traits: analysis.value.traits || {},
+      attachment: analysis.value.attachment || {},
+    })
+    if (!result) return
     const host = personaHost()
     if (host?.setPersona) {
       host.setPersona({ ...personaForm.value })
       host.saveConfig?.()
-      flash('人设已保存')
     } else {
       const cfg = JSON.parse(localStorage.getItem('0kay_config') || '{}')
       cfg.persona = { ...(cfg.persona || {}), ...personaForm.value }
       localStorage.setItem('0kay_config', JSON.stringify(cfg))
-      flash('人设已保存到本机，刷新页面后生效')
     }
+    flash('人设与参数已保存')
   } finally { personaBusy.value = false }
 }
 onMounted(loadPersona)
@@ -626,8 +666,11 @@ onMounted(load)
 
     <!-- 02 人设（原设置页 → 人设，移到陪伴） -->
     <section v-show="tab === 'persona'" class="panel">
-      <div class="section-head"><div><h2>人设</h2><p class="desc">角色的名字、描述与性格。描述 + 性格是模型读取人设的全部来源：它同时驱动情绪画像、依恋动力学（病娇）的型别与初始值、以及抑郁倾向——改完保存，下一条消息即按新人设运行。</p></div>
-        <div class="head-actions"><button class="btn filled sm" :disabled="personaBusy" @click="savePersona">保存人设</button></div>
+      <div class="section-head"><div><h2>人设</h2><p class="desc">角色的名字、描述与性格。描述 + 性格是模型读取人设的全部来源：它同时驱动情绪画像、依恋动力学（病娇）的型别与初始值、以及抑郁倾向。改完文字后必须先用「LLM 理解」解析成参数、核对微调，才能保存。</p></div>
+        <div class="head-actions">
+          <button class="btn tonic sm" :disabled="analyzeBusy || loading" @click="analyzePersona">{{ analyzeBusy ? '理解中…' : 'LLM 理解' }}</button>
+          <button class="btn filled sm" :disabled="personaBusy || !analysis" @click="savePersona">保存人设</button>
+        </div>
       </div>
       <article class="card">
         <div class="settings-grid">
@@ -639,7 +682,25 @@ onMounted(load)
         <label class="pfield"><span>性格</span><textarea v-model="personaForm.personality" rows="3" class="field"></textarea></label>
         <label class="pfield"><span>问候语</span><textarea v-model="personaForm.greeting" rows="2" class="field"></textarea></label>
         <label class="pfield"><span>自定义提示词（作为 system 提示逐字发送）</span><textarea v-model="personaForm.customPrompt" rows="5" class="field"></textarea></label>
-        <p class="hint">想启用"病态依恋 / 病娇"或"抑郁倾向"：在描述或性格里写关键词即可（如"占有欲强、爱吃醋""很黏人、离不开你""多疑""抑郁"），系统会自动启用相应回路并按文字填初始值；也可回「认知」页用一键预设。名字 / 问候 / 头像只影响显示。</p>
+        <p class="hint">填写/修改「描述」或「性格」后，先点右上角「LLM 理解」：模型会把文字解析成下面的参数，你核对或微调后「保存人设」才会写回；改了文字需要重新理解。</p>
+      </article>
+      <article v-if="analysis" class="card">
+        <h3>解析参数 <span class="count-pill ok">{{ analysis.source === 'llm' ? '模型理解' : '本地词典' }}</span></h3>
+        <div class="settings-grid">
+          <label><span>威胁基线</span><input v-model.number="analysis.traits.threat_baseline" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          <label><span>奖赏基线</span><input v-model.number="analysis.traits.reward_baseline" type="number" step="0.1" min="0" max="2" class="field tiny" /></label>
+          <label><span>灾难化</span><input v-model.number="analysis.traits.catastrophizing" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          <label><span>情绪调节画像</span><AppSelect v-model="analysis.traits.erq_profile" :options="erqOptions" aria-label="情绪调节画像" /></label>
+          <label><span>作息（睡眠小时 0-23）</span><input v-model.number="analysis.traits.sleep_hour" type="number" min="0" max="23" class="field tiny" /></label>
+        </div>
+        <div class="settings-grid" style="margin-top:10px">
+          <label><span>依恋型别（病娇，留空=不启用）</span><AppSelect v-model="analysis.attachment.type" :options="['', ...attachmentTypeChoices]" aria-label="依恋型别" /></label>
+          <template v-if="analysis.attachment.type">
+            <label><span>初始焦虑 X</span><input v-model.number="analysis.attachment.initial.X" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>初始安全感 S</span><input v-model.number="analysis.attachment.initial.S" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          </template>
+        </div>
+        <p class="hint">文字只是来源，真正保存进 LIFE 的是这里调好的数值。想更贴合「病娇常伴抑郁」，把情绪调节画像设为 depression。</p>
       </article>
     </section>
 
