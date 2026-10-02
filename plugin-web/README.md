@@ -1,5 +1,9 @@
 # plugin-web — plugin UI build convention
 
+> Part of **[0KAY](../README.md)** — a self-hosted AI companion that remembers
+> you, with a real agent underneath. This directory documents how 0KAY plugins
+> ship their own Vue pages without rebuilding the WebUI.
+
 Scheme C: plugins ship a native Vue page without rebuilding WebUI.
 
 ## Layout

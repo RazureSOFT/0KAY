@@ -1,10 +1,19 @@
 # 0KAY Plugin API
 
-0KAY is a local-first, modular AI companion platform. A small Go **Core**
-owns registration, health, settings, routing, task dispatch, model access and
-provider credentials. Every other capability — model gateway, persona, task
-agent, tool bridges, Minecraft — is a **plugin** that talks to Core over shared
-protobuf contracts and can be installed, updated or disabled independently.
+0KAY is a **self-hosted AI companion that remembers you — with a real agent
+underneath**. You run it locally, bring your own model API key, and keep your
+data on your own disk. A small Go **Core** owns registration, health, settings,
+routing, task dispatch, model access and provider credentials. Every other
+capability — model gateway, persona, task agent, tool bridges, Minecraft — is a
+**plugin**. (Start with [README.md](../README.md); the audience and use cases
+are spelled out there.)
+
+Plugins and Core talk through a shared **message format** (Protocol Buffers,
+"protobuf"). A small schema file declares the exact messages and calls both
+sides may use, and code is generated from it for every language, so Go, Node
+and Python all agree on the shape of the data. Because that schema (plus a
+package manifest) is the *only* thing the two sides share, a plugin can be
+installed, updated or disabled on its own.
 
 ## Repositories
 
@@ -19,7 +28,7 @@ protobuf contracts and can be installed, updated or disabled independently.
 ## How to read these docs
 
 - [HTTP API Reference](HTTP_API.md) — every Core gateway route, auth, errors.
-- [Plugin API (v1)](PLUGIN_API.md) — protobuf contracts and package manifests.
+- [Plugin API (v1)](PLUGIN_API.md) — the protobuf schema (the plugin↔Core message format) and package manifests.
 - [Plugin Lifecycle](plugin-lifecycle.md) — register, heartbeat, types, disable.
 - [Writing a Plugin](writing-a-plugin.md) — end-to-end plugin guide.
 - [Core Services](core-services.md) — `core.v1.CoreService` RPCs.
@@ -49,7 +58,8 @@ and starts each component after a successful build. See
 
 ## Source of truth
 
-- Protobuf contracts live in [`proto/`](https://github.com/RazureSOFT/0KAY/tree/main/proto);
+- Protobuf contracts (the schema that defines every plugin↔Core message and
+  call) live in [`proto/`](https://github.com/RazureSOFT/0KAY/tree/main/proto);
   generated bindings live in [`gen/`](https://github.com/RazureSOFT/0KAY/tree/main/gen).
   If a binding differs from the source, regenerate:
 

@@ -1,8 +1,50 @@
 # 0KAY
 
-0KAY is a local-first AI agent platform. Core (Go) is the gateway and scheduler;
-the services around it handle model selection, the persona, and task execution.
-A web UI ships with it, and the agent runtime lives in its own repository.
+**A self-hosted AI companion that remembers you — with a real agent underneath.**
+
+*一句话：在自己电脑上跑一个会记事、有情绪、还能帮你干活的 AI 伙伴。*
+*(中文说明：[README.zh-CN.md](README.zh-CN.md))*
+
+Most "AI companion" apps are a chat box with a system prompt. 0KAY is built around
+two ideas that a chat box cannot do:
+
+- **The companion keeps state.** Emotion, short- and long-term memory, a
+  sleep/wake rhythm, relationships and proactive messages. It remembers what you
+  told it last week — and can bring it up first.
+- **It is also a real agent.** File edits, shell, web and desktop control, behind
+  an approval gate. The same character that talks to you can actually do your work.
+
+It runs locally. You bring your own model API key (OpenAI-compatible or
+Anthropic-format providers), and your data stays in plain files on your disk.
+
+## What you can do
+
+- **Talk to a companion that remembers.** Conversations feed its memory and
+  mood; it has good and bad days, journals, dreams, and reaches out on its own.
+- **Give it a face and a voice.** Live2D avatar and TTS.
+- **Delegate real work.** A coding/research agent with filesystem, shell, web
+  fetch/search and whole-desktop tools. Risky calls wait for your approval.
+- **Reach it where you already are.** Chat in the WebUI, or connect QQ / OneBot.
+- **Extend everything.** Beyond a small Go core, every capability is a plugin:
+  model gateway, persona, agent, TTS, search, Minecraft, and plugin-owned WebUI
+  pages. Install, disable or swap each one on its own.
+- **Keep it private.** Services bind to loopback by default; provider keys stay
+  in Core; data is plain files you own.
+
+## Who this is for
+
+**This is for you if…**
+
+- You want an AI companion whose memory and personality are *yours*, not a
+  vendor's, and you care about that staying on your own machine.
+- You're comfortable running a few local services (Go / Python / Node, or Docker)
+  and pasting in your own model API key.
+- You like to tinker: swap models, add plugins, run it on QQ, build a custom page.
+
+**This is probably not for you if…**
+
+- You want a zero-setup cloud app — 0KAY is self-hosted by design.
+- You don't want to manage model API keys or ports.
 
 ## Screenshots
 
@@ -12,128 +54,87 @@ A web UI ships with it, and the agent runtime lives in its own repository.
 
 Captured from the running WebUI (`webui`, Vite dev server).
 
-## Documentation
-
-- [Architecture](ARCHITECTURE.md): component boundaries, communication, data flow, UI patches.
-- [Runtime Contracts](RUNTIME_CONTRACTS.md): task identity, session scope, approvals, callbacks, persistence.
-- [Model Catalog](MODEL_CATALOG.md): model references and fallback IDs.
-
-## Architecture
-
-```
-WebUI (TS) ──HTTP/WebSocket──┐
-                              │
-QQ/OneBot ──WebSocket───────┤
-                              ▼
-                        ┌──────────┐
-                        │   Core   │ (Go, gRPC + HTTP)
-                        │ 网关/调度 │
-                        └────┬─────┘
-                             │ gRPC
-              ┌──────────────┼──────────────┐
-              ▼              ▼              ▼
-         ┌────────┐    ┌──────────┐   ┌──────────┐
-         │  mocr  │    │  L.I.F.E │   │  Agent   │
-         │  (Go)  │    │ (Python) │   │  (TS)    │
-         └────────┘    └──────────┘   └──────────┘
-```
-
-## Components
-
-### Core (Go)
-Gateway (HTTP and WebSocket), plugin registry and service discovery, task scheduling.
-
-### mocr (Go)
-Model selection (think model plus output model) and streaming generation.
-
-### L.I.F.E (Python)
-Persona replies; emotion (valence, arousal, connection, irritation); memory
-(working, short-term, long-term); a sleep/wake rhythm; and tools for mail,
-agents, and search.
-
-### Agent (TypeScript, separate repository)
-Task execution and tools (filesystem, shell), scheduled by Core over gRPC.
-
 ## Quick start
 
-Plugin API reference: [docs/PLUGIN_API.md](docs/PLUGIN_API.md).
-Modular installation and LAN pairing: [pm/README.md](pm/README.md).
-To use the local CLI, `npm install -g ./pm`; package manifests live at the
-repository root and in each module. Publishing to GitHub or npm requires those
-manifests and the package to be published first.
-
-### Agent permissions
-
-The composer starts in Normal mode, where every tool call waits for approval.
-Child agents inherit the mode. Full access is set per turn and runs enabled
-tools without asking. Calls to LIFE, MCP, and computer tools still need
-approval; browsing the workspace and creating a GUI folder do not. An approval
-expires after ten minutes or when the task is cancelled.
-
-### Security
-
-Services bind to loopback by default, and Docker publishes backend ports on host
-loopback only. Set `CORE_BIND_HOST`, `AGENT_BIND_HOST`, `MOCR_BIND_HOST`, or
-`LIFE_BIND_HOST` to override this on a trusted service network. To expose HTTP
-externally, put an authenticated reverse proxy in front. `CORE_API_TOKEN` makes
-Core require a bearer token, and a browser can exchange it for an HttpOnly
-`0kay_session` cookie at `POST /api/auth/session`, which also authenticates
-EventSource and WebSocket clients. Requests from origins outside
-`CORE_ALLOWED_ORIGINS` are denied, and an unexpected `Host` header is rejected
-to block DNS rebinding. `GET /api/providers` never returns provider API keys;
-only the service-only `GET /api/providers/credentials` does.
-
-### Agent repository
-
-`agent/` is maintained in its own repository. On a fresh clone, run
-`powershell -File bootstrap.ps1` to check out the revision recorded in
-`dependencies.json`; existing agent worktrees are left untouched. For a
-coordinated release, publish agent first and update its revision in
-`dependencies.json`. That file records the baseline commit, so an uncommitted
-agent fix is not part of a release until it is published.
-
-### Local validation
-
-```powershell
-python -B -m unittest discover -s life/tests -v
-# agent/: npm test; npx tsc --noEmit
-# core/ and mocr/: go test ./...
-```
-
-### Docker Compose
+> Requires Go 1.27+, Python 3.10+, Node.js 22+ and, for the one-command path,
+> Docker Compose.
 
 ```bash
-docker-compose up -d      # start all services
+docker-compose up -d      # start every service
 docker-compose ps         # check status
-docker-compose logs -f    # view logs
+docker-compose logs -f    # follow logs
 docker-compose down       # stop
 ```
 
-### Running services
+Or install through the package manager and run services individually:
 
-```bash
-make proto     # generate protobuf code
-make dev-core  # Core on :50051 (gRPC) and :8080 (HTTP)
-make dev-mocr  # mocr on :50052
-make dev-life  # L.I.F.E on :50053
-make dev-agent # Agent on :50054
+```sh
+npm install -g ./pm
+0kay-pm install @razuresoft/0kay@0.1.2
+0kay-pm install @razuresoft/0kay-agent@0.1.2
+
+make proto        # generate protobuf code
+make dev-core     # Core on :50051 (gRPC) and :8080 (HTTP)
+make dev-mocr     # mocr on :50052
+make dev-life     # L.I.F.E on :50053
+make dev-agent    # Agent on :50054
 ```
 
-## API endpoints
+Then open the WebUI and, in Settings, add a provider and your model API key.
+Health check: `GET http://127.0.0.1:8080/health`.
 
-### Core HTTP gateway
+### Security
 
-- `GET /health`: health check
-- `GET /api/plugins`: list plugins
-- `POST /api/chat`: chat, sync or streaming
-- `WS /ws`: WebSocket
+Loopback by default; override with `CORE_BIND_HOST`, `AGENT_BIND_HOST`,
+`MOCR_BIND_HOST`, `LIFE_BIND_HOST` only on a trusted network. Put an
+authenticated reverse proxy in front to expose HTTP. `CORE_API_TOKEN` makes Core
+require a bearer token (exchanged for an HttpOnly `0kay_session` cookie at
+`POST /api/auth/session`), a browser access PIN gates the UI, and
+`GET /api/providers` never returns provider API keys. See
+[docs/security.md](docs/security.md).
 
-### gRPC services
+## How it fits together
 
-- `core.v1.PluginService`: plugin registration
-- `core.v1.CoreService`: mocr and agent dispatch
-- `mocr.v1.MocrService`: model selection
-- `life.v1.LifeService`: persona callbacks
+```
+WebUI (TS) ──HTTP/WebSocket──┐
+QQ/OneBot ──WebSocket───────┤
+                             ▼
+                       ┌──────────┐
+                       │   Core   │  Go — gateway, tasks, plugin registry
+                       └────┬─────┘
+                            │ gRPC
+             ┌──────────────┼──────────────┐
+             ▼              ▼              ▼
+        ┌────────┐    ┌──────────┐   ┌──────────┐
+        │  mocr  │    │  L.I.F.E │   │  Agent   │
+        │  Go    │    │ (Python) │   │  (TS)    │
+        │ models │    │ persona  │   │  tasks   │
+        └────────┘    └──────────┘   └──────────┘
+```
+
+- **Core** (Go) — HTTP/WebSocket gateway, plugin registry and health, task
+  scheduling, settings, provider credentials. It is the single source of truth.
+- **mocr** (Go) — the model gateway: provider access, streaming, retries, and
+  think/output model selection.
+- **L.I.F.E** (Python) — the companion: persona, emotion, memory, circadian
+  rhythm, proactive messages and companion tools.
+- **Agent** (TypeScript, [separate repo](https://github.com/RazureSOFT/0KAY-agent))
+  — the task engine and its tools.
+- **WebUI** (Vue 3) — the single-page app; it only talks to Core over HTTP.
+
+Everything except Core itself is a plugin, so a component can be installed,
+updated or disabled on its own. Details: [ARCHITECTURE.md](ARCHITECTURE.md) and
+[RUNTIME_CONTRACTS.md](RUNTIME_CONTRACTS.md).
+
+## Documentation
+
+- [Architecture](ARCHITECTURE.md) — component boundaries, data flow, UI patches.
+- [Runtime Contracts](RUNTIME_CONTRACTS.md) — task identity, sessions, approvals, persistence.
+- [Plugin API](docs/PLUGIN_API.md) — the protobuf contract every plugin speaks.
+- [Writing a Plugin](docs/writing-a-plugin.md) — end-to-end plugin guide.
+- [HTTP API](docs/HTTP_API.md) — every Core gateway route.
+- [Model Catalog](MODEL_CATALOG.md) — fallback model IDs.
+- [Releases and Updates](docs/RELEASES.md) — install and one-click updates.
 
 ## Requirements
 
@@ -142,18 +143,27 @@ make dev-agent # Agent on :50054
 - Node.js 22+
 - Docker and Docker Compose
 
-### Project structure
+## Project structure
 
 ```
-0kay/
-├── proto/          # protobuf definitions
-├── core/           # Go, gateway
-├── mocr/           # Go, model selector
-├── life/           # Python, persona plugin
-├── agent/          # TypeScript, task engine
-├── gen/            # generated code
-├── docker-compose.yml
-└── Makefile
+0KAY/
+├── proto/       # shared Protobuf contracts
+├── core/        # Go — gateway, registry, scheduling
+├── mocr/        # Go — model gateway
+├── life/        # Python — companion (persona, memory, emotion)
+├── agent/       # TypeScript — task engine (separate repo)
+├── webui/       # Vue 3 single-page app
+├── plugin-web/  # plugin-owned web UIs
+├── gen/         # generated bindings
+└── docker-compose.yml
+```
+
+## Development
+
+```powershell
+python -B -m unittest discover -s life/tests -v   # L.I.F.E tests
+# agent/: npm test; npx tsc --noEmit
+# core/ and mocr/: go test ./...
 ```
 
 ## License
