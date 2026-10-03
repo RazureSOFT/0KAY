@@ -337,6 +337,42 @@ func writeErr(w http.ResponseWriter, status int, code, message string) {
 //	GET    /api/auth/session  -> {authenticated, method, requires_auth, core_id}
 //	POST   /api/auth/session  {"token": "..."} -> sets the HttpOnly session cookie
 //	DELETE /api/auth/session  -> clears the session cookie
+//
+// localAddresses returns the host's non-loopback IPv4 addresses so the WebUI
+// can offer the LAN address by default when pairing a phone. It is a read-only
+// hint; it does not change how Core binds or authenticates.
+func localAddresses() []string {
+	out := []string{}
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return out
+	}
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		list, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, a := range list {
+			var ip net.IP
+			switch v := a.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			if ip == nil || ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+				continue
+			}
+			if v4 := ip.To4(); v4 != nil {
+				out = append(out, v4.String())
+			}
+		}
+	}
+	return out
+}
 func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet, http.MethodHead:
@@ -359,6 +395,7 @@ func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 			"requires_auth": requires,
 			"core_id":       s.ID,
 			"lan_enabled":   s.enforce,
+			"addresses":     localAddresses(),
 		})
 	case http.MethodPost:
 		if s.enforceLoginLimit(w, r) {

@@ -4,8 +4,12 @@
  *
  * Shows a QR code the 0KAY Android app can scan to connect. The advertised
  * host/port/TLS can be overridden here (e.g. when Core is exposed through FRP
- * or another reverse proxy) without changing Core itself. Token/PIN are
+ * or another reverse proxy) without changing Core's networking. Token/PIN are
  * optional: leave them empty for a trusted-LAN (CORE_TRUSTED_NETWORKS) setup.
+ *
+ * The default host is the machine's LAN IPv4, read from Core's read-only
+ * `addresses` hint on /api/auth/session, so a phone on the same network can
+ * scan and connect with no manual typing. Editing the host pins it.
  */
 import { computed, onMounted, ref, watch } from 'vue'
 import qrcodegen from '../vendor/qrcodegen'
@@ -14,6 +18,7 @@ const STORAGE_KEY = '0kay.connection.qr.v1'
 
 interface Saved {
   host?: string
+  hostOverride?: boolean
   port?: string
   tls?: boolean
   token?: string
@@ -29,8 +34,22 @@ function loadSaved(): Saved {
   }
 }
 
+/** Prefer classic private ranges, then anything else, keeping the first seen. */
+function pickLan(addresses: string[]): string {
+  const rank = (ip: string) => {
+    if (/^192\.168\./.test(ip)) return 0
+    if (/^10\./.test(ip)) return 1
+    if (/^172\.(1[6-9]|2\d|3[01])\./.test(ip)) return 2
+    if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(ip)) return 4
+    return 3
+  }
+  return [...addresses].sort((a, b) => rank(a) - rank(b))[0] || ''
+}
+
 const saved = loadSaved()
-const host = ref(saved.host ?? location.hostname)
+const hostOverride = !!saved.hostOverride
+const host = ref(saved.hostOverride && saved.host ? saved.host : location.hostname)
+const hostEdited = ref(hostOverride)
 const port = ref(saved.port ?? (location.port || (location.protocol === 'https:' ? '443' : '8080')))
 const tls = ref(saved.tls ?? location.protocol === 'https:')
 const token = ref(saved.token ?? '')
@@ -47,17 +66,21 @@ onMounted(async () => {
       const data = await res.json()
       coreId.value = String(data.core_id || '')
       lanEnabled.value = !!data.lan_enabled
+      const addresses: string[] = Array.isArray(data.addresses) ? data.addresses : []
+      const lan = pickLan(addresses)
+      if (!hostEdited.value && lan) host.value = lan
     }
   } catch {
     /* offline */
   }
 })
 
-watch([host, port, tls, token, pin, name], () => {
+watch([host, port, tls, token, pin, name, hostEdited], () => {
   localStorage.setItem(
     STORAGE_KEY,
     JSON.stringify({
       host: host.value,
+      hostOverride: hostEdited.value,
       port: port.value,
       tls: tls.value,
       token: token.value,
@@ -112,16 +135,21 @@ async function copyLink() {
   <div class="content-card">
     <h2>连接手机</h2>
     <p class="card-desc">
-      用 0KAY 安卓 App 扫描下方二维码即可连接。若通过 FRP / 反向代理暴露，请把下方
-      <strong>对外主机 / 端口 / TLS</strong> 改成外网可达地址（Core 本身无需修改）。
-      Token / PIN 可留空（可信局域网）；公网访问请填写以便 App 直接认证。
+      用 0KAY 安卓 App 扫描下方二维码即可连接。默认使用本机局域网 IP；若通过 FRP /
+      反向代理暴露，请把下方 <strong>对外主机 / 端口 / TLS</strong> 改成外网可达地址
+      （Core 本身无需修改）。Token / PIN 可留空（可信局域网）；公网访问请填写以便 App 直接认证。
     </p>
 
     <div class="connection-grid">
       <div class="connection-form">
         <div class="field">
-          <label>对外主机 / IP</label>
-          <input v-model="host" class="input" placeholder="192.168.1.10 或 your.domain.com" />
+          <label>对外主机 / IP（默认局域网 IP）</label>
+          <input
+            v-model="host"
+            class="input"
+            placeholder="192.168.1.10 或 your.domain.com"
+            @input="hostEdited = true"
+          />
         </div>
         <div class="field">
           <label>端口</label>
