@@ -10,7 +10,7 @@ Complete reference for the Core HTTP gateway. Default base URL is
 
 ### Authentication
 
-Every `/api/*` route (including `/health`) is behind one gate:
+Every route (including `/health`) is behind one gate:
 
 - Loopback callers and callers inside `CORE_TRUSTED_NETWORKS` are trusted and
   need no credential.
@@ -122,17 +122,23 @@ pointing at the successor, for example `POST /api/usage/clear` →
 |---|---|---|
 | GET | `/health` | Health summary (behind the normal auth gate) |
 | GET | `/api/plugins` | All plugins, including disabled rows |
+| GET | `/api/plugins/installed` | 0kay-pm installed components → `{installed, packages}` |
+| GET | `/api/plugins/capabilities` | Aggregated contributions of 0kay-pm-installed packages → `{commands, skills, hooks, mcp_servers, agents}` |
 | PATCH | `/api/plugins/{name}` | `{enabled: bool}`; unknown plugin → `404` |
 | POST | `/api/plugins/enable` | Legacy alias: enable, body `{plugin\|name}` |
 | POST | `/api/plugins/disable` | Legacy alias: disable (persisted to `data/disabled_plugins.json`) |
+| POST | `/api/plugins/install` | Legacy alias of `/api/plugins/pm/install` |
+| GET | `/api/plugins/install/status` | Legacy alias of `/api/plugins/pm/status` |
+| POST | `/api/plugins/uninstall` | Legacy alias of `/api/plugins/pm/uninstall` |
 | GET, HEAD | `/api/plugins/{name}/ui/{path…}` | Plugin frontend ESM/static assets |
 
 ```json
 // GET /health
 {"status": "ok", "plugins": 6, "healthy": 5}
 
-// GET /api/plugins (array)
-[{"plugin_id": "agent", "name": "agent", "version": "0.1.0",
+// GET /api/plugins (array) — plugin_id is a stable hash of the plugin name
+// (built-ins use hashed ids too; only placeholders like "disabled:<name>" are literal).
+[{"plugin_id": "plugin_04dfb2f26c115ff43f05e6d9", "name": "agent", "version": "0.1.0",
   "type": "PLUGIN_TYPE_SERVICE", "capabilities": ["agent"],
   "status": "PLUGIN_STATUS_HEALTHY", "active_tasks": 0, "disabled": false}]
 
@@ -211,11 +217,28 @@ Served from `$CORE_DATA_DIR/plugin-ui/{name}` (default `data/plugin-ui/{name}`).
 | GET | `/api/agents` | Registered executors, health, missing dependencies |
 | GET | `/api/agent/sessions` | List sessions (`kind == "agent_session"` tasks) |
 | POST | `/api/agent/sessions` | Create session, body `{title}` → `201 {session_id}` |
-| PATCH | `/api/agent/sessions/{session_id}` | `{action: "archive"\|"restore"\|…}` or `{action:"rename", title}` |
+| PATCH | `/api/agent/sessions/{session_id}` | `{action: "archive"\|"restore"\|"rename", title?}` |
 | DELETE | `/api/agent/sessions/{session_id}` | Delete a session |
-| POST | `/api/agent/sessions` | Legacy alias: PATCH/DELETE with `{session_id, action?, title?}` in the body |
+| POST | `/api/agent/sessions` | Legacy alias (with `{session_id, action?, title?}` in the body) for the PATCH/DELETE forms above |
+| GET | `/api/agent/sessions/search` | `?q=&limit=` literal search over session titles + turn text → `{matches:[{session_id,title,snippet}]}` |
+| POST | `/api/agent/sessions/fork` | `{session_id}` → `201 {session_id}` (copies the completed turns into a new titled session) |
 | POST | `/api/agent/messages` | Dispatch a prompt to a session |
 | GET, POST | `/api/agent/workspace` | GET browse `?executor_id=&path=`, POST `{path,name}` mkdir |
+| GET, POST | `/api/agent/workspaces` | dsh-style workspace registry: GET `{workspaces:[…]}`, POST `{action, …}` (forwards to `workspace_admin`) |
+| GET | `/api/agent/tree` | `?executor_id=&path=` one directory level (`workspace_tree`) |
+| GET | `/api/agent/file` | `?executor_id=&path=&offset=&limit=` read a workspace text file (`workspace_read`) |
+| GET | `/api/agent/file/raw` | `?path=` read a file as base64, binary-safe (`workspace_read_binary`) |
+| GET | `/api/agent/file/convert` | `?path=&target=` convert a legacy Office file (LibreOffice), e.g. `.doc/.ppt → pdf` |
+| GET | `/api/agent/file/text` | `?path=` best-effort plain-text extraction from a legacy Office file (`workspace_extract_text`) |
+| POST | `/api/agent/file` | `{executor_id,path,content}` write a file (`workspace_write`) |
+| POST | `/api/agent/exec` | `{executor_id,command,cwd,timeout}` run a shell command (`terminal_exec`) |
+| GET | `/api/agent/pick-folder` | `?executor_id=&title=` native OS folder dialog on the executor host (blocks until pick/cancel) |
+| GET | `/api/agent/browser` | `?executor_id=` browser status (`browser_status`) |
+| GET | `/api/agent/browser/view` | `?executor_id=` one JPEG frame of the live page (`browser_view`) |
+| GET | `/api/agent/browser/stream` | `?executor_id=` live MJPEG (`multipart/x-mixed-replace; boundary=okayframe`) of the page |
+| POST | `/api/agent/browser/action` | drive the browser (`browser` tool: back/forward/reload/goto/…) |
+| GET | `/api/agent/context` | `?session_id=&model_id=` compaction state → `{summary,tokens,window,threshold,breakdown,blocks}` |
+| GET | `/api/agent/context/search` | `?session_id=&q=` keyword search over the session's turns + folded summaries |
 | GET | `/api/agent/host` | `?executor_id=` live CPU/memory sample via `host_status` |
 | POST | `/api/agent/compact` | Compact a session's history via LIFE |
 
@@ -450,6 +473,7 @@ installing a package that declares a provider.
 | GET | `/api/settings/sections?values=1` | Same, each row additionally carrying `values` (one round trip) |
 | GET | `/api/settings/{id}` | `{section, values}` |
 | POST, PUT | `/api/settings/{id}` | Body: flat values or `{values: {...}}` → `{section, values}` |
+| POST | `/api/settings/{id}/test` | Run the section's backend test and return the sample as audio (currently a fixed TTS sample; `502 tts_test_failed` when unavailable) |
 
 `SetValues` is a merge: omitted keys keep their previous value. Sections owned by
 a disabled plugin return `403 section disabled`. See
@@ -478,8 +502,8 @@ a disabled plugin return `403 section disabled`. See
 
 - Discovery directories: `$CORE_DATA_DIR/ui`, `{cwd}/ui`, `{cwd}/../webui/patches`,
   `{cwd}/data/ui`. Only `*.patch` files are read; contents are JSON.
-- `GET` rescans at most every 3 seconds (mtime check). `POST` and plugin
-  enable/disable bypass the cooldown.
+- `GET` rescans at most every 3 seconds (a time-based cooldown; each rescan
+  re-reads every `*.patch`). `POST` and plugin enable/disable bypass the cooldown.
 - An op is dropped when its `capability` (falling back to `plugin`) matches no
   registered capability, or when its plugin is disabled.
 - Targets: `nav`, `router`, `settings`, `status`, `chat`, `theme`, `bootstrap`.
@@ -521,7 +545,7 @@ see [Authentication](#authentication).
 | Core HTTP | 8080 (TLS 8443 in LAN mode) | trusted network, `CORE_API_TOKEN`, paired device token, or `0kay_session` cookie |
 | Core gRPC | 50051 (TLS 5443 in LAN mode) | pairing on TLS port; loopback plaintext otherwise |
 | mocr gRPC | 50052 | none (loopback bind, plaintext) |
-| LIFE gRPC | 50053 | none (loopback bind, plaintext) |
+| LIFE gRPC | 50053 | Core presents the plugin service token (`authorization: Bearer <token>`; `LIFE_REQUIRE_AUTH=auto`); loopback bind, plaintext |
 | Agent gRPC | 50054 | `authorization: Bearer ${CORE_PAIR_TOKEN\|\|CORE_API_TOKEN}` on every RPC |
 | Minecraft HTTP | 8765 | local tool API for the minecraft plugin |
 | Discovery | UDP 50050 | pairing protocol |
@@ -537,3 +561,35 @@ see [Authentication](#authentication).
 
 `GET /api/providers/credentials` is fetched per request (no caching) so provider
 edits take effect immediately.
+
+## 17. Built-in search
+
+Core runs web search itself (no SearXNG plugin or extra port); Agent and
+L.I.F.E. call these routes. All three take `GET ?q=&n=` (alias `?query=`) or
+`POST {"query":"…","n":10}` and return the same envelope
+`{query, results:[{title,url,snippet,engine}], errors:[…]}`. Search failures are
+reported inside `errors` (never a hard 5xx): a thin result set is still `200`.
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET, POST | `/api/search` | Web search; `?engine=cnbing\|bing\|so360\|duckduckgo` (default from the `search` settings section) |
+| GET, POST | `/api/search/papers` | Academic literature (arXiv / Crossref / OpenAlex) |
+| GET, POST | `/api/search/apidocs` | API documentation (MDN / Microsoft Learn / Stack Overflow), with a doc-domain-filtered web fallback |
+
+Results are de-duplicated by URL and interleaved by source precedence; `n`
+defaults to 10 (8 for the specialized backends) and is capped at 50.
+
+## 18. Plugin tools
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/tools?scope=agent\|life` | Plugin tool catalog → `{tools:[{plugin,name,description,parameters,dangerous,scopes}]}` |
+| POST | `/api/tools/call` | `{tool, args}` (or `{tool, args_json, session_id, caller}`) → invoke a plugin tool |
+
+Related single-purpose routes:
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/tts` | `{text, voice?}` → audio bytes (`audio/*`); `502 tts_failed` when TTS is unavailable |
+| POST | `/api/settings/{id}/test` | Fixed TTS sample (see §11) |
+| POST | `/api/net/egress` | Plugin-attributed outbound HTTP proxy; body `{url, method?, headers?, body?, timeout_ms?}` → `{status, headers, body}`. Requires plugin identity (`X-0KAY-Plugin` + service token) and enforces the plugin's `permissions.egress` allow-list; the only sanctioned plugin network path |
