@@ -55,7 +55,7 @@ class Phase1Wiring(unittest.TestCase):
     def test_soul_persists_across_restart(self):
         self.engine.soul.creativity = 0.93
         self.engine.soul.recall_depth = 0.11
-        self.engine._save_state()
+        self.engine.flush_state()
         reloaded = LifeEngine(self.dir.name)
         self.assertAlmostEqual(reloaded.soul.creativity, 0.93, places=2)
         self.assertAlmostEqual(reloaded.soul.recall_depth, 0.11, places=2)

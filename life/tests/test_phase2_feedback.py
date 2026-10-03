@@ -65,7 +65,7 @@ class Phase2Feedback(unittest.TestCase):
         self.engine._cognition_arbitrate("你好", turn, "", {})
         self.engine._record_awaiting(turn, "我在呢")
         self.engine._receive_feedback(turn, "谢谢")
-        self.engine._save_state()
+        self.engine.flush_state()
         reloaded = LifeEngine(self.dir.name)
         self.assertGreaterEqual(reloaded._feedback_stats.get("u1", {}).get("positive", 0), 1)
 

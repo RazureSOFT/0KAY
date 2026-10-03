@@ -274,6 +274,9 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.engine.on_task_completed("t", "TASK_STATE_DONE", "again"), "")
         self.engine.active_tasks["f"] = {"session_id": "a"}
         self.assertIn("actual error", await self.engine.on_task_completed("f", "TASK_STATE_FAILED", "", "actual error"))
+        # A graceful restart flushes the debounced snapshot (engine.close does
+        # this); model that here before reopening the same data dir.
+        self.engine.flush_state()
         restarted = LifeEngine(self.directory.name)
         self.assertEqual(len(restarted.get_notifications("a")), 1)
 

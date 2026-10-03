@@ -174,7 +174,7 @@ class AttachmentWiring(unittest.TestCase):
         self.engine._enable_attachment_from_persona("病娇")
         for _ in range(10):
             _feed(self.engine.attachment, 1.0)
-        self.engine._save_state()
+        self.engine.flush_state()
         reopened = LifeEngine(self.directory.name)
         self.assertTrue(reopened.attachment.enabled)
         self.assertAlmostEqual(reopened.attachment.severity(), self.engine.attachment.severity(), places=6)

@@ -285,6 +285,19 @@ class LifeEngine:
         # on Windows the interleaved `os.replace` raised PermissionError and
         # aborted the whole notification tick.
         self._state_lock = threading.Lock()
+        # Debounce/coalesce state.json writes: a single turn fires `_save_state`
+        # several times (tool batches, notifications, the closing write), and
+        # the background clock adds more.  Within the window they collapse into
+        # one atomic snapshot; `flush_state()` (and `close()`) forces it out, so
+        # nothing is lost on a clean exit.  LIFE_STATE_DEBOUNCE=0 restores the
+        # old write-through behaviour.
+        self._state_timer_lock = threading.Lock()
+        self._state_timer = None
+        self._state_dirty = False
+        try:
+            self._state_debounce = max(0.0, float(os.getenv("LIFE_STATE_DEBOUNCE", "2") or 2))
+        except (TypeError, ValueError):
+            self._state_debounce = 2.0
         # The slow affective systems are advanced both from the event loop (a
         # turn) and from worker threads (the background clock), so their tick
         # needs a lock; otherwise a turn and a background tick could interleave
@@ -1068,6 +1081,40 @@ class LifeEngine:
                 self._attachment_restored_enabled = bool(self.attachment.enabled)
 
     def _save_state(self):
+        """Schedule a snapshot, coalescing bursts inside the debounce window."""
+        window = getattr(self, "_state_debounce", 0.0)
+        if window <= 0:
+            with self._state_lock:
+                self._save_state_locked()
+            return
+        with self._state_timer_lock:
+            self._state_dirty = True
+            if self._state_timer is not None:
+                return  # a write is already pending; this change rides along
+            timer = threading.Timer(window, self._flush_state_timer)
+            timer.daemon = True
+            self._state_timer = timer
+            timer.start()
+
+    def _flush_state_timer(self):
+        with self._state_timer_lock:
+            self._state_timer = None
+            dirty, self._state_dirty = self._state_dirty, False
+        if dirty:
+            with self._state_lock:
+                self._save_state_locked()
+
+    def flush_state(self):
+        """Write any pending debounced snapshot immediately.
+
+        Called on clean shutdown and by anything that needs the file on disk
+        right now (e.g. a restart test).  Safe to call when nothing is pending.
+        """
+        with self._state_timer_lock:
+            timer, self._state_timer = self._state_timer, None
+            self._state_dirty = False
+        if timer is not None:
+            timer.cancel()
         with self._state_lock:
             self._save_state_locked()
 
@@ -4215,6 +4262,8 @@ class LifeEngine:
     async def close(self):
         if getattr(self, "resident", None) is not None:
             await self.resident.stop()
+        # Flush any debounced snapshot before the process goes away.
+        self.flush_state()
         tasks = list(self._background_tasks)
         for task in tasks:
             task.cancel()

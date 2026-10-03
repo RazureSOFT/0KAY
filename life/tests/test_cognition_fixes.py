@@ -55,7 +55,7 @@ class CognitionFixes(unittest.TestCase):
     def test_state_is_persisted_and_reloaded(self):
         self._drive()
         self._drive(session_id="s2")
-        self.engine._save_state()
+        self.engine.flush_state()
         path = Path(self.dir.name) / "cognition" / "cognition.json"
         self.assertTrue(path.exists(), "cognition state was never written to disk")
         reloaded = LifeEngine(self.dir.name)

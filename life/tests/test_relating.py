@@ -165,7 +165,7 @@ class RelatingWiring(unittest.TestCase):
     def test_relating_state_survives_a_restart(self):
         for _ in range(4):
             self._exchange("u1", "谢谢你，哈哈")
-        self.engine._save_state()
+        self.engine.flush_state()
         reopened = LifeEngine(self.directory.name)
         self.assertIn("u1", reopened.relating.traits.partner_axes)
 
