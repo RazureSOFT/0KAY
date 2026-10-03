@@ -6,13 +6,12 @@ from typing import Any, Optional
 import ipaddress
 import json
 import socket
-import ssl
 import uuid
 import asyncio
 from urllib.parse import urlsplit
 
 import httpx
-from ..network import PublicHTTPTransport, SecureIMAP, StartTLSIMAP, SecureSMTP, StartTLSSMTP
+from ..network import PublicHTTPTransport
 
 
 def _env_flag(name: str) -> bool:
@@ -25,10 +24,9 @@ def assert_public_host(host: str, port: int = 0, allow_env: str = "") -> str:
     """SSRF guard for a bare host target: reject hosts resolving to private IPs.
 
     ``allow_env`` names an environment variable that opts the caller out of the
-    check (e.g. ``LIFE_MAIL_ALLOW_PRIVATE`` for a self-hosted LAN mail server).
-    The opt-out only skips the *private-address* rule; an unresolvable host is
-    still an error, so the exemption cannot be used to disable validation
-    wholesale.
+    check (e.g. for a self-hosted service on the LAN). The opt-out only skips
+    the *private-address* rule; an unresolvable host is still an error, so the
+    exemption cannot be used to disable validation wholesale.
     """
     host = str(host or "").strip()
     if not host:
@@ -78,18 +76,6 @@ class ToolResult:
 class RuntimeToolConfig:
     """Mutable LIFE tool permissions/settings loaded from Core."""
     computer_use: bool = False
-    mail_mailbox_path: str = ""
-    mail_imap_host: str = ""
-    mail_imap_port: int = 993
-    mail_imap_user: str = ""
-    mail_imap_password: str = ""
-    mail_imap_ssl: bool = True
-    mail_smtp_host: str = ""
-    mail_smtp_port: int = 465
-    mail_smtp_user: str = ""
-    mail_smtp_password: str = ""
-    mail_from: str = ""
-    mail_from_name: str = "0KAY"
     mail_require_approval: bool = True
     mail_auto_approve_all: bool = False
     mcp_enabled: bool = True
@@ -99,162 +85,9 @@ class RuntimeToolConfig:
     minecraft_url: str = "http://127.0.0.1:8765"
 
 
-def _imap_credentials(config: "RuntimeToolConfig"):
-    import os
-    host = config.mail_imap_host or os.environ.get("IMAP_HOST", "")
-    user = config.mail_imap_user or os.environ.get("IMAP_USER", "")
-    password = config.mail_imap_password or os.environ.get("IMAP_PASSWORD", "")
-    port = int(config.mail_imap_port or os.environ.get("IMAP_PORT") or 993)
-    use_ssl = getattr(config, "mail_imap_ssl", True)
-    # Every IMAP path funnels through here, so the SSRF rule lives here too.
-    if host:
-        assert_public_host(host, port, "LIFE_MAIL_ALLOW_PRIVATE")
-    return host, port, user, password, use_ssl
-
-
-def _smtp_credentials(config: "RuntimeToolConfig"):
-    import os
-    host = config.mail_smtp_host or os.environ.get("SMTP_HOST", "")
-    user = config.mail_smtp_user or os.environ.get("SMTP_USER", "")
-    password = config.mail_smtp_password or os.environ.get("SMTP_PASSWORD", "")
-    port = int(config.mail_smtp_port or os.environ.get("SMTP_PORT") or 465)
-    sender = config.mail_from or os.environ.get("MAIL_FROM") or user
-    if host:
-        assert_public_host(host, port, "LIFE_MAIL_ALLOW_PRIVATE")
-    return host, port, user, password, sender
-
-
-def test_imap(config: "RuntimeToolConfig") -> dict:
-    """Verify IMAP credentials and count INBOX messages."""
-    try:
-        host, port, user, password, use_ssl = _imap_credentials(config)
-    except ValueError as error:
-        return {"ok": False, "error": str(error)}
-    if not (host and user and password):
-        return {"ok": False, "error": "IMAP 未配置（缺少主机/用户名/密码）"}
-    try:
-        import imaplib
-        conn = SecureIMAP(host, port=port, timeout=15, ssl_context=ssl.create_default_context()) if use_ssl else StartTLSIMAP(host, port=port, timeout=15)
-        try:
-            if not use_ssl:
-                conn.starttls(ssl_context=ssl.create_default_context())
-            conn.login(user, password)
-            typ, _ = conn.select("INBOX")
-            total = 0
-            if typ == "OK":
-                try:
-                    typ2, data = conn.search(None, "ALL")
-                    if typ2 == "OK" and data and data[0]:
-                        total = len((data[0] or b"").split())
-                except Exception:
-                    total = 0
-            return {"ok": True, "host": host, "port": port, "user": user, "messages": total}
-        finally:
-            try:
-                conn.logout()
-            except Exception:
-                pass
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-
-def test_smtp(config: "RuntimeToolConfig") -> dict:
-    """Verify SMTP credentials (connect + STARTTLS/SSL + login)."""
-    try:
-        host, port, user, password, _sender = _smtp_credentials(config)
-    except ValueError as error:
-        return {"ok": False, "error": str(error)}
-    if not (host and user and password):
-        return {"ok": False, "error": "SMTP 未配置（缺少主机/用户名/密码）"}
-    try:
-        import smtplib
-        if port == 465:
-            server = SecureSMTP(host, port, timeout=15, context=ssl.create_default_context())
-        else:
-            server = StartTLSSMTP(host, port, timeout=15)
-            server.ehlo()
-            if not server.has_extn("starttls"):
-                try:
-                    server.quit()
-                except Exception:
-                    pass
-                raise RuntimeError("SMTP 服务器未提供 STARTTLS，已拒绝明文登录")
-            server.starttls(context=ssl.create_default_context())
-            server.ehlo()
-        try:
-            server.login(user, password)
-        finally:
-            try:
-                server.quit()
-            except Exception:
-                pass
-        return {"ok": True, "host": host, "port": port, "user": user}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-
-def send_mail(config: "RuntimeToolConfig", to: str, subject: str, body: str) -> ToolResult:
-    """Send a plain-text email via SMTP."""
-    try:
-        host, port, user, password, sender = _smtp_credentials(config)
-    except ValueError as error:
-        return ToolResult(False, None, str(error))
-    if not (host and user and password):
-        return ToolResult(False, None, "SMTP 未配置（缺少主机/用户名/密码）")
-    if not to:
-        return ToolResult(False, None, "缺少收件人")
-    try:
-        import smtplib
-        from email.mime.text import MIMEText
-        from email.header import Header
-        from email.utils import formataddr
-
-        msg = MIMEText(body or "", "plain", "utf-8")
-        msg["Subject"] = Header(subject or "(无主题)", "utf-8")
-        display_name = str(getattr(config, "mail_from_name", "") or "").strip()
-        msg["From"] = formataddr((display_name, sender)) if (sender and display_name) else sender
-        msg["To"] = to
-
-        if port == 465:
-            server = SecureSMTP(host, port, timeout=20, context=ssl.create_default_context())
-        else:
-            server = StartTLSSMTP(host, port, timeout=20)
-            server.ehlo()
-            if not server.has_extn("starttls"):
-                try:
-                    server.quit()
-                except Exception:
-                    pass
-                return ToolResult(False, None, "SMTP 服务器未提供 STARTTLS，已拒绝明文发送密码")
-            server.starttls(context=ssl.create_default_context())
-            server.ehlo()
-        try:
-            server.login(user, password)
-            server.sendmail(sender or user, [to], msg.as_string())
-        finally:
-            try:
-                server.quit()
-            except Exception:
-                pass
-        return ToolResult(True, {"to": to, "subject": subject, "from": sender})
-    except Exception as e:
-        return ToolResult(False, None, str(e))
-
-
-def mail_status(config: "RuntimeToolConfig", test_to: str = "") -> dict:
-    """Full mail check: IMAP login, SMTP login and an optional test send."""
-    imap = test_imap(config)
-    smtp = test_smtp(config)
-    try:
-        _host, _port, _user, _password, sender = _smtp_credentials(config)
-    except ValueError:
-        # test_smtp already reported the same guard rejection in `smtp`.
-        sender = ""
-    result: dict = {"imap": imap, "smtp": smtp, "from": sender}
-    if test_to and smtp.get("ok"):
-        sent = send_mail(config, test_to, "0KAY 邮箱测试", "这是一封来自 0KAY L.I.F.E 的测试邮件，收到即表示发件配置正确。")
-        result["sent"] = {"ok": sent.success, "to": test_to, "error": sent.error}
-    return result
+# Mail (getmail/sendmail) is no longer implemented in L.I.F.E itself. It is
+# provided by the built-in mail server in 0kay-mcp and reached through the MCP
+# tool; see GetMailTool / SendMailTool below.
 
 
 class Tool(ABC):
@@ -285,8 +118,34 @@ class Tool(ABC):
         return {"type": "object", "properties": {}}
 
 
+async def _call_mail_mcp(core_client, tool: str, args: dict) -> ToolResult:
+    """Delegate a mail tool call to the built-in mail server in 0kay-mcp."""
+    if core_client is None:
+        return ToolResult(False, None, "Core client is unavailable")
+    try:
+        response = await asyncio.to_thread(
+            core_client.run_agent_tool, "mcp",
+            {"action": "call", "server": "mail", "tool": tool, "args": args},
+            f"life-{tool}",
+        )
+    except Exception as error:  # noqa: BLE001 - surface any transport error
+        return ToolResult(False, None, str(error))
+    if not response.get("success"):
+        return ToolResult(False, None, response.get("error", "mail MCP call failed"))
+    try:
+        data = json.loads(response.get("result") or "{}")
+    except Exception:
+        return ToolResult(False, None, "unexpected mail response")
+    inner = data.get("result", data) if isinstance(data, dict) else data
+    return ToolResult(True, inner)
+
+
 class GetMailTool(Tool):
-    """Tool to fetch emails via IMAP (env-configured) or local mailbox file."""
+    """Fetch inbox mail via the built-in 0kay-mcp mail server."""
+
+    def __init__(self, core_client, config: RuntimeToolConfig):
+        self.core_client = core_client
+        self.config = config
 
     @property
     def name(self) -> str:
@@ -296,9 +155,6 @@ class GetMailTool(Tool):
     def description(self) -> str:
         return "Fetch recent emails from the user's inbox. Returns subject, sender, preview."
 
-    def __init__(self, config: RuntimeToolConfig):
-        self.config = config
-
     def parameters(self) -> dict:
         return {"type": "object", "properties": {
             "limit": {"type": "integer", "minimum": 1, "maximum": 50},
@@ -306,123 +162,20 @@ class GetMailTool(Tool):
         }}
 
     async def execute(self, limit: int = 5, unread_only: bool = False, **kwargs) -> ToolResult:
-        import os
-        from datetime import datetime, timedelta
-
-        # Local mailbox file (JSON list) for offline / demo use
-        mailbox_path = self.config.mail_mailbox_path or os.environ.get("MAILBOX_PATH", "")
-        if mailbox_path and os.path.isfile(mailbox_path):
-            try:
-                with open(mailbox_path, "r", encoding="utf-8") as f:
-                    items = json.load(f)
-                if not isinstance(items, list):
-                    raise ValueError("mailbox must be a JSON list")
-                if unread_only:
-                    items = [m for m in items if m.get("unread")]
-                items = items[: max(1, int(limit))]
-                return ToolResult(
-                    success=True,
-                    data={
-                        "emails": items,
-                        "total": len(items),
-                        "unread_count": sum(1 for m in items if m.get("unread")),
-                        "source": "mailbox_file",
-                    },
-                )
-            except Exception as e:
-                return ToolResult(success=False, data=None, error=str(e))
-
-        # IMAP via env credentials
-        host = self.config.mail_imap_host or os.environ.get("IMAP_HOST", "")
-        user = self.config.mail_imap_user or os.environ.get("IMAP_USER", "")
-        password = self.config.mail_imap_password or os.environ.get("IMAP_PASSWORD", "")
-        port = self.config.mail_imap_port or 993
-        if host and user and password:
-            try:
-                import imaplib
-                import email as email_lib
-                from email.header import decode_header
-
-                def _decode(v):
-                    if not v:
-                        return ""
-                    parts = decode_header(v)
-                    out = []
-                    for text, enc in parts:
-                        if isinstance(text, bytes):
-                            out.append(text.decode(enc or "utf-8", errors="replace"))
-                        else:
-                            out.append(text)
-                    return "".join(out)
-
-                def _read():
-                    conn = SecureIMAP(host, port=port, timeout=15, ssl_context=ssl.create_default_context())
-                    try:
-                        conn.login(user, password)
-                        conn.select("INBOX")
-                        typ, data = conn.search(None, "UNSEEN" if unread_only else "ALL")
-                        if typ != "OK":
-                            return []
-                        ids = (data[0] or b"").split()
-                        ids = list(reversed(ids))[: max(1, int(limit))]
-                        emails = []
-                        for mid in ids:
-                            typ, msg_data = conn.fetch(mid, "(FLAGS BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)] BODY[TEXT])")
-                            if typ != "OK" or not msg_data or msg_data[0] is None:
-                                continue
-                            raw = b""
-                            flags = b""
-                            for part in msg_data:
-                                if isinstance(part, tuple) and len(part) > 1:
-                                    raw += part[1]
-                                elif isinstance(part, (bytes, bytearray)) and b"FLAGS" in part:
-                                    flags += bytes(part)
-                            msg = email_lib.message_from_bytes(raw)
-                            body = msg.get_payload(decode=True)
-                            if body is None:
-                                payload = msg.get_payload()
-                                body = payload.encode() if isinstance(payload, str) else b""
-                            emails.append({
-                                "id": mid.decode() if isinstance(mid, bytes) else str(mid),
-                                "from": _decode(msg.get("From")),
-                                "subject": _decode(msg.get("Subject")),
-                                "preview": body.decode("utf-8", errors="replace")[:200],
-                                "date": msg.get("Date") or "",
-                                # `\Seen` in the FETCH FLAGS is the real read state.
-                                # Previously this was just the query flag, so every
-                                # message reported unread=False unless unread_only
-                                # was set, and unread_count was always 0.
-                                "unread": (b"\\Seen" not in flags) if flags else bool(unread_only),
-                            })
-                        return emails
-                    finally:
-                        try:
-                            conn.logout()
-                        except Exception:
-                            pass
-
-                emails = await asyncio.to_thread(_read)
-                return ToolResult(
-                    success=True,
-                    data={
-                        "emails": emails,
-                        "total": len(emails),
-                        "unread_count": sum(1 for m in emails if m.get("unread")),
-                        "source": "imap",
-                    },
-                )
-            except Exception as e:
-                return ToolResult(success=False, data=None, error=str(e))
-
-        return ToolResult(
-            success=False,
-            data=None,
-            error="getmail not configured (set L.I.F.E mail settings)",
+        if not self.config.mcp_enabled:
+            return ToolResult(False, None, "MCP is disabled in L.I.F.E settings")
+        return await _call_mail_mcp(
+            self.core_client, "getmail",
+            {"limit": limit, "unread_only": bool(unread_only)},
         )
 
 
 class SendMailTool(Tool):
-    """Tool to send an email via SMTP (config- or env-configured)."""
+    """Send mail via the built-in 0kay-mcp mail server."""
+
+    def __init__(self, core_client, config: RuntimeToolConfig):
+        self.core_client = core_client
+        self.config = config
 
     @property
     def name(self) -> str:
@@ -432,9 +185,6 @@ class SendMailTool(Tool):
     def description(self) -> str:
         return "Send an email to a recipient. Provide to, subject and body."
 
-    def __init__(self, config: RuntimeToolConfig):
-        self.config = config
-
     def parameters(self) -> dict:
         return {"type": "object", "properties": {
             "to": {"type": "string", "description": "Recipient email address"},
@@ -443,7 +193,12 @@ class SendMailTool(Tool):
         }, "required": ["to", "body"]}
 
     async def execute(self, to: str = "", subject: str = "", body: str = "", **kwargs) -> ToolResult:
-        return await asyncio.to_thread(send_mail, self.config, str(to), str(subject), str(body))
+        if not self.config.mcp_enabled:
+            return ToolResult(False, None, "MCP is disabled in L.I.F.E settings")
+        return await _call_mail_mcp(
+            self.core_client, "sendmail",
+            {"to": str(to), "subject": str(subject), "body": str(body)},
+        )
 
 
 class SearchTool(Tool):
@@ -1138,13 +893,28 @@ class ToolRegistry:
     def get(self, name: str) -> Optional[Tool]:
         return self.tools.get(name)
 
+    def needs_approval(self, name: str, kwargs: dict) -> bool:
+        """Whether this call must pass the approval gate.
+
+        Besides the directly-named approval tools, a mail call routed through
+        the generic ``mcp`` tool must hit the same gate, otherwise the typed
+        ``getmail``/``sendmail`` approval could be bypassed with
+        ``mcp(action='call', server='mail', ...)``.
+        """
+        if name in self.approval_tools:
+            return True
+        if name == "mcp" and str(kwargs.get("action") or "") == "call":
+            if str(kwargs.get("server") or "") == "mail" and str(kwargs.get("tool") or "") in ("getmail", "sendmail"):
+                return True
+        return False
+
     async def call(self, name: str, **kwargs) -> ToolResult:
         record = await self.recorder.start("tool", name) if self.recorder else None
         tool = self.get(name)
         if not tool:
             result = ToolResult(success=False, data=None, error=f"Tool '{name}' not found")
         else:
-            if self.approver is not None and name in self.approval_tools:
+            if self.approver is not None and self.needs_approval(name, kwargs):
                 allowed, reason = await self.approver(name, kwargs)
                 if not allowed:
                     result = ToolResult(success=False, data=None, error=f"用户未授权「{name}」：{reason}")
@@ -1176,8 +946,8 @@ def create_default_registry(core_client=None, config: RuntimeToolConfig | None =
     registry = ToolRegistry()
     config = config or RuntimeToolConfig()
     registry.register(WorldTool(world_action))
-    registry.register(GetMailTool(config))
-    registry.register(SendMailTool(config))
+    registry.register(GetMailTool(core_client, config))
+    registry.register(SendMailTool(core_client, config))
     registry.register(SearchTool())
     registry.register(UseAgentTool(core_client=core_client))
     registry.register(WebBrowseTool())

@@ -37,6 +37,9 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
         # Hold references to fire-and-forget tasks; a bare create_task() result
         # can be garbage-collected mid-flight and silently cancelled.
         self._autonomy_tasks: set = set()
+        # A full autonomy cycle can outlast the idle-check cadence; guard against
+        # stacking overlapping cycles (duplicate proactives/ticks).
+        self._autonomy_running = False
 
     async def start_background_tasks(self):
         """Start background loops (heartbeat + agent sync + optional OneBot)."""
@@ -266,29 +269,43 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             if self.engine.circadian.should_auto_sleep():
                 self.engine.circadian.start_sleep()
             # Autonomy cycle: deliver due proactive candidates, then plan new ones.
-            async def autonomy_cycle():
+            # Skip if a previous cycle is still running so ticks cannot stack.
+            if self._autonomy_running:
+                log.debug("autonomy cycle already running; skipping this idle check")
+            else:
+                async def autonomy_cycle():
+                    try:
+                        await asyncio.to_thread(self.engine.companion.advance_agenda)
+                        await self.engine.proactive_tick()
+                        await self.engine.maybe_daily_agenda()
+                        await self.engine.autonomous_plan()
+                        await self.engine.observation_tick()
+                        await self.engine.group_wake_tick()
+                        await self.engine.content_tick()
+                        await self.engine.outfit_tick()
+                        await self.engine.maybe_daily_entries()
+                        await self.engine.maybe_life_event()
+                        await self.engine.worldsim_tick()
+                        await self.engine.worldsim_shadow_tick()
+                        await self.engine.run_daily_review()
+                    except Exception as e:
+                        log.warning("autonomy cycle error: %s", e)
+
+                def _cycle_done(task):
+                    # Cleared via the done callback (not a coroutine `finally`) so
+                    # the guard also resets when the task is cancelled before its
+                    # first step.
+                    self._autonomy_tasks.discard(task)
+                    self._autonomy_running = False
+
+                self._autonomy_running = True
                 try:
-                    await asyncio.to_thread(self.engine.companion.advance_agenda)
-                    await self.engine.proactive_tick()
-                    await self.engine.maybe_daily_agenda()
-                    await self.engine.autonomous_plan()
-                    await self.engine.observation_tick()
-                    await self.engine.group_wake_tick()
-                    await self.engine.content_tick()
-                    await self.engine.outfit_tick()
-                    await self.engine.maybe_daily_entries()
-                    await self.engine.maybe_life_event()
-                    await self.engine.worldsim_tick()
-                    await self.engine.worldsim_shadow_tick()
-                    await self.engine.run_daily_review()
+                    task = asyncio.create_task(autonomy_cycle())
+                    self._autonomy_tasks.add(task)
+                    task.add_done_callback(_cycle_done)
                 except Exception as e:
-                    log.warning("autonomy cycle error: %s", e)
-            try:
-                task = asyncio.create_task(autonomy_cycle())
-                self._autonomy_tasks.add(task)
-                task.add_done_callback(self._autonomy_tasks.discard)
-            except Exception as e:
-                log.warning("could not start autonomy cycle: %s", e)
+                    self._autonomy_running = False
+                    log.warning("could not start autonomy cycle: %s", e)
 
         # Save state after events (off the event loop: it is a full JSON rewrite)
         await asyncio.to_thread(self.engine._save_state)
@@ -651,8 +668,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = {"kinds": await asyncio.to_thread(self.engine.companion.audit_kinds)}
             elif action == "extension_status":
                 result = {"extensions": self.engine.extension_status()}
-            elif action == "mail_test":
-                result = await asyncio.to_thread(self.engine.mail_test, str(payload.get("to", "")), payload.get("config") or None)
             elif action == "approval_list":
                 result = {"approvals": self.engine.list_approvals()}
             elif action == "approval_resolve":
@@ -766,7 +781,13 @@ async def serve(mocr_address: str = None):
         for task in (servicer._sync_task, servicer._onebot_task):
             if task:
                 task.cancel()
-        await asyncio.gather(*(t for t in (servicer._sync_task, servicer._onebot_task) if t), return_exceptions=True)
+        pending = [t for t in (servicer._sync_task, servicer._onebot_task) if t]
+        # In-flight autonomy cycles are fire-and-forget; cancel and await them so
+        # shutdown does not race a half-finished tick.
+        for task in list(servicer._autonomy_tasks):
+            task.cancel()
+        pending.extend(list(servicer._autonomy_tasks))
+        await asyncio.gather(*pending, return_exceptions=True)
         await servicer.engine.close()
         core.close()
         await server.stop(grace=5)

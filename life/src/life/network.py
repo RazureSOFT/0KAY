@@ -5,9 +5,6 @@ import asyncio
 import ipaddress
 import os
 import socket
-import ssl
-import imaplib
-import smtplib
 
 import httpx
 
@@ -45,38 +42,3 @@ class PublicHTTPTransport(httpx.AsyncBaseTransport):
 
     async def aclose(self):
         await self.inner.aclose()
-
-
-def mail_socket(host: str, port: int, timeout, source_address=None):
-    address = resolved_address(host, port, "LIFE_MAIL_ALLOW_PRIVATE")
-    return socket.create_connection((address, port), timeout, source_address)
-
-
-class SecureIMAP(imaplib.IMAP4_SSL):
-    def _create_socket(self, timeout):
-        sock = mail_socket(self.host, self.port, timeout)
-        try:
-            return self.ssl_context.wrap_socket(sock, server_hostname=self.host)
-        except BaseException:
-            sock.close()
-            raise
-
-
-class StartTLSIMAP(imaplib.IMAP4):
-    def _create_socket(self, timeout):
-        return mail_socket(self.host, self.port, timeout)
-
-
-class SecureSMTP(smtplib.SMTP_SSL):
-    def _get_socket(self, host, port, timeout):
-        sock = mail_socket(host, port, timeout, self.source_address)
-        try:
-            return self.context.wrap_socket(sock, server_hostname=host)
-        except BaseException:
-            sock.close()
-            raise
-
-
-class StartTLSSMTP(smtplib.SMTP):
-    def _get_socket(self, host, port, timeout):
-        return mail_socket(host, port, timeout, self.source_address)

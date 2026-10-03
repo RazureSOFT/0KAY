@@ -465,7 +465,10 @@ func registerMcpSettings(setStore *settings.Store) {
 				Type:         "text",
 				Label:        "MCP 服务",
 				DefaultValue: "[]",
-				Help:         "JSON 数组；由 WebUI 的 MCP 面板编辑，Agent 与 L.I.F.E 共用",
+				Help: "JSON 数组；由 WebUI 的 MCP 面板编辑，Agent 与 L.I.F.E 共用。" +
+					"内置邮件服务器示例：{\"id\":\"mail\",\"transport\":\"builtin\"," +
+					"\"options\":{\"imap\":{\"host\":\"\",\"port\":993,\"ssl\":true,\"user\":\"\",\"password\":\"\"}," +
+					"\"smtp\":{\"host\":\"\",\"port\":465,\"secure\":true,\"user\":\"\",\"password\":\"\",\"from\":\"\",\"fromName\":\"0KAY\"}}}",
 			},
 		},
 	})

@@ -27,11 +27,23 @@ class MocrClient:
         self._channel = None
         self._stub = None
         self._http = None
+        self._connect_lock = asyncio.Lock()
         self.recorder = None
 
     async def connect(self):
-        self._channel = grpc.aio.insecure_channel(self.address)
-        self._stub = mocr_pb2_grpc.MocrServiceStub(self._channel)
+        # Serialize so concurrent callers cannot close each other's fresh channel;
+        # close any previous channel first so a reconnect does not leak it.
+        async with self._connect_lock:
+            if self._channel is not None:
+                try:
+                    await self._channel.close()
+                except Exception:
+                    pass
+                self._channel = None
+                self._stub = None
+            channel = grpc.aio.insecure_channel(self.address)
+            self._channel = channel
+            self._stub = mocr_pb2_grpc.MocrServiceStub(channel)
 
     async def _http_client(self):
         if self._http is None:
@@ -66,11 +78,17 @@ class MocrClient:
                 return bytes(buffer)
 
     async def close(self):
-        if self._http:
-            await self._http.aclose()
-            self._http = None
-        if self._channel:
-            await self._channel.close()
+        async with self._connect_lock:
+            if self._http:
+                await self._http.aclose()
+                self._http = None
+            if self._channel:
+                try:
+                    await self._channel.close()
+                except Exception:
+                    pass
+                self._channel = None
+                self._stub = None
 
     async def describe_image(self, model_id, image_base64, mime="image/jpeg", prompt="", max_tokens=1024, timeout=90.0) -> str:
         """Describe an image with a vision-capable model.

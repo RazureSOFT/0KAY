@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -123,6 +124,10 @@ class ResidentThinker:
         self._interrupted = False
         self._last_user_at: datetime | None = None
         self._idle_streak = 0
+        # Serialize thinking so an on-demand `think_now` cannot interleave with
+        # the long-lived `_run` tick (both mutate `state` and persist it).
+        self._think_lock = asyncio.Lock()
+        self._save_lock = threading.Lock()
         self._load()
 
     # -- lifecycle ---------------------------------------------------------
@@ -261,22 +266,24 @@ class ResidentThinker:
 
     # -- one bounded step --------------------------------------------------
     async def _think_once(self) -> bool:
-        thought, focus, goal_logs, goal_adds = await self._generate()
-        # Interruption may have landed while the model was generating: keep the
-        # half-formed thought for next time instead of applying side effects.
-        if self._interrupted:
-            self.state.pending = thought or self.state.pending
+        async with self._think_lock:
+            thought, focus, goal_logs, goal_adds = await self._generate()
+            # Interruption may have landed while the model was generating: keep
+            # the half-formed thought for next time instead of applying side
+            # effects.
+            if self._interrupted:
+                self.state.pending = thought or self.state.pending
+                self._save()
+                return False
+            self._apply(thought, focus, goal_logs, goal_adds)
+            self.state.pending = ""
+            self.state.ticks += 1
+            self.state.last_tick = _now()
+            # A run of thoughts that produce nothing backs the cadence off, so an
+            # idle mind does not keep paying for empty output.
+            self._idle_streak = 0 if thought else min(6, getattr(self, "_idle_streak", 0) + 1)
             self._save()
-            return False
-        self._apply(thought, focus, goal_logs, goal_adds)
-        self.state.pending = ""
-        self.state.ticks += 1
-        self.state.last_tick = _now()
-        # A run of thoughts that produce nothing backs the cadence off, so an
-        # idle mind does not keep paying for empty output.
-        self._idle_streak = 0 if thought else min(6, getattr(self, "_idle_streak", 0) + 1)
-        self._save()
-        return True
+            return True
 
     async def _generate(self) -> tuple[str, str, list[dict], list[dict]]:
         engine = self.engine
@@ -396,13 +403,17 @@ class ResidentThinker:
         self.state = MentalState.from_dict(data)
 
     def _save(self) -> None:
-        try:
-            self.state_path.parent.mkdir(parents=True, exist_ok=True)
-            temporary = self.state_path.with_suffix(".tmp")
-            temporary.write_text(json.dumps(self.state.to_dict(), ensure_ascii=False), encoding="utf-8")
-            temporary.replace(self.state_path)
-        except OSError as error:  # pragma: no cover - best effort
-            self._log("resident state save failed: %s", error)
+        # A per-process temp name avoids two writers racing on the same `.tmp`
+        # (which caused spurious Windows os.replace PermissionError), and the
+        # lock serializes the write+replace pair.
+        with self._save_lock:
+            try:
+                self.state_path.parent.mkdir(parents=True, exist_ok=True)
+                temporary = self.state_path.with_name(f"{self.state_path.name}.{os.getpid()}.tmp")
+                temporary.write_text(json.dumps(self.state.to_dict(), ensure_ascii=False), encoding="utf-8")
+                os.replace(temporary, self.state_path)
+            except OSError as error:  # pragma: no cover - best effort
+                self._log("resident state save failed: %s", error)
 
     def reset(self) -> None:
         """Wipe the mind (used by the whole-person reset)."""

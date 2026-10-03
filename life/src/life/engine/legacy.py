@@ -304,6 +304,7 @@ class LifeEngine:
         # mid-update and corrupt the physiological state.
         self._affect_lock = threading.Lock()
         self._background_tasks = set()
+        self._plugin_refresh_task: asyncio.Task | None = None
         self._reflection_limit = asyncio.Semaphore(2)
         self._last_plan = datetime.min
         self._last_dream_date = ""
@@ -1088,7 +1089,8 @@ class LifeEngine:
         window = getattr(self, "_state_debounce", 0.0)
         if window <= 0:
             with self._state_lock:
-                self._save_state_locked()
+                if not self._safe_save_locked():
+                    logger.warning("state snapshot failed; kept dirty")
             return
         with self._state_timer_lock:
             self._state_dirty = True
@@ -1105,7 +1107,10 @@ class LifeEngine:
             dirty, self._state_dirty = self._state_dirty, False
         if dirty:
             with self._state_lock:
-                self._save_state_locked()
+                ok = self._safe_save_locked()
+            if not ok:
+                # Re-arm the debounce so the pending change is not lost.
+                self._save_state()
 
     def flush_state(self):
         """Write any pending debounced snapshot immediately.
@@ -1119,7 +1124,24 @@ class LifeEngine:
         if timer is not None:
             timer.cancel()
         with self._state_lock:
+            self._safe_save_locked()
+
+    def _safe_save_locked(self) -> bool:
+        """Snapshot under the caller's lock; keep the dirty flag on failure.
+
+        The flush runs on a debounce timer thread while the event loop may be
+        mutating the live collections, so a snapshot can raise (e.g. "dictionary
+        changed size during iteration").  Swallow it and stay dirty instead of
+        losing the write.
+        """
+        try:
             self._save_state_locked()
+            return True
+        except Exception as error:  # noqa: BLE001 - never lose state on a bad snapshot
+            logger.warning("state snapshot failed: %s", error)
+            with self._state_timer_lock:
+                self._state_dirty = True
+            return False
 
     def _save_state_locked(self):
         self._state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1129,8 +1151,12 @@ class LifeEngine:
             "awaiting_feedback": self._awaiting_feedback, "feedback_stats": self._feedback_stats,
             "last_event_date": self._last_event_date,
             "minecraft_cursor": self.minecraft_cursor,
-            "active_tasks": self.active_tasks, "notifications": self._notifications, "completed_tasks": self._completed_tasks,
-            "histories": self._histories, "last_dream_date": self._last_dream_date,
+            # Defensive copies: this may run on the debounce timer thread while
+            # the event loop mutates these live collections.
+            "active_tasks": dict(self.active_tasks), "notifications": list(self._notifications),
+            "completed_tasks": list(self._completed_tasks),
+            "histories": {key: list(value) for key, value in list(self._histories.items())},
+            "last_dream_date": self._last_dream_date,
             "last_dream_key": self._last_dream_key, "last_replay_key": self._last_replay_key,
             "last_stabilize_key": self._last_stabilize_key,
             "last_agenda_date": self._last_agenda_date,
@@ -1265,7 +1291,13 @@ class LifeEngine:
         # on a persona change the agent's own model refines the traits,
         # falling back to the deterministic lexicon on any failure).
         await self.apply_persona_object_async(persona if isinstance(persona, dict) else None)
-        lock = self._session_locks.setdefault(session_id, asyncio.Lock())
+        lock = self._session_locks.get(session_id)
+        if lock is None:
+            lock = asyncio.Lock()
+        # Re-insert to mark recent use: _prune_session_state evicts FIFO, so a
+        # session that keeps talking must move to the end of the ordering.
+        self._session_locks.pop(session_id, None)
+        self._session_locks[session_id] = lock
         async with lock:
             previous = list(self._histories.get(session_id, []))
             if history is not None:
@@ -1720,11 +1752,12 @@ class LifeEngine:
             logger.warning("could not encode episode: %s", error)
 
     def _prune_session_state(self) -> None:
-        """Evict the oldest per-session state past ``MAX_SESSIONS``.
+        """Evict the least-recently-used per-session state past ``MAX_SESSIONS``.
 
-        Both dicts are insertion-ordered, so the first keys are the least
-        recently *created* sessions.  Locks that are currently held are skipped
-        so an in-flight turn can never lose its lock.
+        Both dicts are insertion-ordered and sessions are re-inserted on use
+        (``process_message`` / ``_histories`` update), so the first keys are the
+        least recently *used* sessions.  Locks that are currently held are
+        skipped so an in-flight turn can never lose its lock.
         """
         overflow = len(self._histories) - self.MAX_SESSIONS
         if overflow > 0:
@@ -2305,6 +2338,9 @@ class LifeEngine:
             response = "模型没有返回内容，当前请求未完成。"
             yield {"type": "chunk", "chunk": response, "done": False}
         turn.history.append({"role": "assistant", "content": response})
+        # Re-insert so this session becomes the most-recently-used entry; the
+        # recency consumers below rely on the dict's insertion order.
+        self._histories.pop(turn.session_id, None)
         self._histories[turn.session_id] = turn.history[-20:]
         self._prune_session_state()
         # Park this turn's arbitration: it is credited when the user's next
@@ -2440,10 +2476,10 @@ class LifeEngine:
         recent = [e for e in (events or [])
                   if abs(float(e.get("delta", 0.0) or 0.0)) >= 0.02][:3]
         if recent:
-            label = {"message_sentiment": "这段对话", "commitment_breach": "我失信",
-                     "owner_adjust": "关系变化"}.get(str(e.get('reason')), str(e.get('reason')))
+            labels = {"message_sentiment": "这段对话", "commitment_breach": "我失信",
+                      "owner_adjust": "关系变化"}
             parts.append("最近的关系变化：" + "、".join(
-                f"{label(str(e.get('reason')), str(e.get('reason')))}"
+                f"{labels.get(str(e.get('reason')), str(e.get('reason')))}"
                 f"({'变暖' if float(e.get('delta', 0)) > 0 else '变冷'}{abs(float(e.get('delta', 0))):.2f})"
                 for e in recent))
         if self.relating is not None:
@@ -3881,9 +3917,18 @@ class LifeEngine:
         # Fail closed: an absent attribute must not silently opt the autonomous
         # pass in to reading the inbox (matches `_approve_tool`'s fallback).
         if not getattr(self.tool_config, "mail_require_approval", True):
-            result = await self._call_tool_direct("getmail", limit=5, unread_only=True)
+            result = await self._call_tool_direct("getmail", limit=5, unread_only=True, timeout=60.0)
             data = result.data if (result and result.success) else None
-            emails = (data or {}).get("emails") or []
+            emails = data.get("emails") or [] if isinstance(data, dict) else []
+            if isinstance(data, dict):
+                # The autonomous read bypasses the per-call approval gate, so it
+                # is recorded explicitly for the audit trail.
+                unread_total = int(data.get("unread_count") or len(emails))
+                try:
+                    await asyncio.to_thread(self.companion.audit, "mail_read",
+                                            f"autonomous unread={unread_total}", "", "allowed")
+                except Exception as _exc:
+                    logger.debug("suppressed error: %s", _exc)
             if emails:
                 lines = []
                 for item in emails[:5]:
@@ -4195,6 +4240,11 @@ class LifeEngine:
             if not content:
                 continue
             reviewed = await self._review_outgoing(content, target)
+            if reviewed is None:
+                # Review service unavailable: defer (do not send the unreviewed
+                # draft, but do not treat a transient outage as a policy denial).
+                await asyncio.to_thread(self.companion.audit, "proactive_deferred", "review_unavailable", candidate_id, "deferred")
+                continue
             if not reviewed:
                 await asyncio.to_thread(self.companion.audit, "proactive_blocked", "review_declined", candidate_id, "blocked")
                 blocked += 1
@@ -4233,8 +4283,15 @@ class LifeEngine:
         self._save_state()
         return notification
 
-    async def _review_outgoing(self, content: str, target: str) -> str:
-        """Pre-send review/rewrite via the model; empty string declines sending."""
+    async def _review_outgoing(self, content: str, target: str):
+        """Pre-send review/rewrite via the model.
+
+        Returns the text to send, ``""`` when the review explicitly declines, or
+        ``None`` when the review could not run (transport/timeout/provider
+        error).  The two are kept distinct so a transient model outage defers
+        proactive messages instead of silently disabling them, while an
+        unreviewed draft is still never sent.
+        """
         prompt = ("以 L.I.F.E 的口吻在发送前复核这条主动消息，使其自然、真诚、不打扰、不超过 80 字。"
                   "只输出最终要发送的文本；若此刻不适合发送，输出空字符串。\n原草稿：" + content)
         try:
@@ -4243,8 +4300,11 @@ class LifeEngine:
                 [{"role": "user", "content": prompt}],
                 "主动消息发送前复核。仅输出文本。", thinking=False, max_tokens=200)])
             return text.strip().strip('"')
-        except Exception:
-            return content
+        except asyncio.CancelledError:
+            raise
+        except Exception as error:  # noqa: BLE001 - never send an unreviewed draft
+            logger.warning("outgoing review unavailable, deferring send: %s", error)
+            return None
 
     @staticmethod
     def _target_user_id(target: str):
@@ -4400,13 +4460,7 @@ class LifeEngine:
         return self.usage.summary()
 
     def apply_tool_settings(self, values):
-        for key in ("mail_mailbox_path", "mail_imap_host", "mail_imap_user", "mail_imap_password",
-                    "mail_smtp_host", "mail_smtp_user", "mail_smtp_password", "mail_from"):
-            setattr(self.tool_config, key, str(values.get(key) or ""))
-        self.tool_config.mail_imap_port = int(values.get("mail_imap_port") or 993)
-        self.tool_config.mail_smtp_port = int(values.get("mail_smtp_port") or 465)
-        self.tool_config.mail_imap_ssl = bool(values.get("mail_imap_ssl", True))
-        self.tool_config.mail_from_name = str(values.get("mail_from_name") or "0KAY")
+        # Mail credentials/endpoints now live in the 0kay-mcp mail server config.
         # Fail closed when the setting is absent (e.g. Core unreachable and
         # settings came back empty): require approval rather than silently
         # auto-approving mail.  An explicit user value is still honoured.
@@ -4433,10 +4487,17 @@ class LifeEngine:
             daily = int(values["proactive_daily_limit"]) if values.get("proactive_daily_limit") is not None else policy["daily_limit"]
             per_target = int(values["proactive_target_limit"]) if values.get("proactive_target_limit") is not None else policy["per_target_limit"]
             self.companion.set_runtime_policy(daily, per_target)
+        # Dedupe rather than share the 8-task reflection cap: a sustained burst
+        # of reflections must not starve plugin-tool refreshes. Only one refresh
+        # runs at a time; a periodic settings poll will retry if one is in flight.
+        existing = self._plugin_refresh_task
+        if existing is not None and not existing.done():
+            return
         try:
-            # Hold the task in `_background_tasks`: a bare `create_task` result is
-            # only weakly referenced and may be garbage-collected mid-flight.
+            # Hold the task: a bare `create_task` result is only weakly
+            # referenced and may be garbage-collected mid-flight.
             task = asyncio.get_running_loop().create_task(self.refresh_plugin_tools())
+            self._plugin_refresh_task = task
             self._background_tasks.add(task)
             task.add_done_callback(self._background_tasks.discard)
         except RuntimeError:
@@ -4466,6 +4527,30 @@ class LifeEngine:
         except Exception:
             return
 
+    #: How long a mail approval blocks the turn before it is denied.
+    APPROVAL_TIMEOUT = 120
+
+    def _approval_detail(self, tool: str, args: dict) -> str:
+        """A privacy-safe summary for the dialog and the audit store.
+
+        Never include the message body: for ``sendmail`` only the recipient and
+        subject are surfaced, and mail reached through the generic ``mcp`` tool
+        is unwrapped to the same summary rather than dumping raw JSON.
+        """
+        args = args if isinstance(args, dict) else {}
+        if tool == "mcp":
+            inner_tool = str(args.get("tool") or "")
+            if inner_tool in ("getmail", "sendmail"):
+                return self._approval_detail(inner_tool, args.get("args") or {})
+            return f"mcp → {args.get('server', '')}:{inner_tool}"
+        if tool == "sendmail":
+            to = str(args.get("to") or "")
+            subject = str(args.get("subject") or "").strip()[:80]
+            return f"收件人：{to}｜主题：{subject or '(无主题)'}"
+        if tool == "getmail":
+            return f"读取收件箱（limit={args.get('limit', 5)}, unread_only={bool(args.get('unread_only'))}）"
+        return json.dumps(args, ensure_ascii=False)[:200] if args else ""
+
     async def _approve_tool(self, tool: str, args: dict):
         """Block a mail tool call until the user approves it in the WebUI."""
         if getattr(self.tool_config, "mail_auto_approve_all", False):
@@ -4474,17 +4559,18 @@ class LifeEngine:
             return True, "无需确认"
         import uuid
         approval_id = uuid.uuid4().hex[:12]
-        detail = json.dumps(args, ensure_ascii=False)[:500] if args else ""
+        detail = self._approval_detail(tool, args)
         event = asyncio.Event()
         entry = {"id": approval_id, "tool": tool, "detail": detail,
-                 "created_at": datetime.now().isoformat(), "event": event, "allowed": None}
+                 "created_at": datetime.now().isoformat(), "event": event, "allowed": None,
+                 "loop": asyncio.get_running_loop()}
         self._approvals[approval_id] = entry
         try:
             await asyncio.to_thread(self.companion.audit, "mail_approval", f"{tool} {detail}", "", "pending")
         except Exception as _exc:
             logger.debug("suppressed error: %s", _exc)
         try:
-            await asyncio.wait_for(event.wait(), timeout=300)
+            await asyncio.wait_for(event.wait(), timeout=self.APPROVAL_TIMEOUT)
         except asyncio.TimeoutError:
             self._approvals.pop(approval_id, None)
             try:
@@ -4509,33 +4595,15 @@ class LifeEngine:
         if not entry:
             return False
         entry["allowed"] = bool(allowed)
-        entry["event"].set()
+        # This may run on a worker thread (via asyncio.to_thread); the waiting
+        # event belongs to the event loop, so wake it thread-safely.
+        loop = entry.get("loop")
+        event = entry["event"]
+        if loop is not None and loop.is_running():
+            loop.call_soon_threadsafe(event.set)
+        else:
+            event.set()
         return True
-
-    def mail_test(self, test_to: str = "", overrides: dict | None = None) -> dict:
-        """Check mail credentials (IMAP + SMTP), optionally sending a test email.
-
-        ``overrides`` lets the settings page validate unsaved values directly.
-        """
-        import dataclasses
-        from ..tools.tools import mail_status
-        config = self.tool_config
-        if overrides:
-            fields = {f.name for f in dataclasses.fields(self.tool_config)}
-            clean = {}
-            for key, value in overrides.items():
-                if key not in fields:
-                    continue
-                if key.endswith("_port"):
-                    try:
-                        value = int(value)
-                    except (TypeError, ValueError):
-                        continue
-                if key == "mail_imap_ssl":
-                    value = bool(value)
-                clean[key] = value
-            config = dataclasses.replace(self.tool_config, **clean)
-        return mail_status(config, test_to or "")
 
     async def poll_minecraft(self):
         """Ingest new 0kay-minecraft events into durable memory.

@@ -8,17 +8,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from life.content import ContentSystem
 from life.media import MediaPipeline
-from life.tools.tools import (
-    RuntimeToolConfig,
-    _assert_public_http_url,
-    _smtp_credentials,
-    assert_public_host,
-    send_mail,
-)
-
-# Imported under an alias: `test_smtp` would otherwise be collected as a test
-# function by pytest and fail looking for a `config` fixture.
-from life.tools.tools import test_smtp as smtp_check
+from life.tools.tools import RuntimeToolConfig, _assert_public_http_url, assert_public_host
 
 LOOPBACK = "127.0.0.1"
 PRIVATE = "10.0.0.5"
@@ -98,35 +88,6 @@ class TtsGuard(unittest.TestCase):
     def test_scheme_rejected_even_with_allowlist(self):
         pipeline = MediaPipeline(settings_getter=lambda: {"tts_endpoint": "file:///etc/passwd"})
         self.assertIsNone(asyncio.run(pipeline.synthesize("你好")))
-
-
-class MailHostGuard(unittest.TestCase):
-    def _config(self, host: str) -> RuntimeToolConfig:
-        return RuntimeToolConfig(
-            mail_smtp_host=host, mail_smtp_port=465,
-            mail_smtp_user="u@example.com", mail_smtp_password="pw",
-            mail_imap_host=host, mail_imap_port=993,
-            mail_imap_user="u@example.com", mail_imap_password="pw",
-        )
-
-    def test_private_smtp_host_rejected(self):
-        with self.assertRaises(ValueError):
-            _smtp_credentials(self._config(LOOPBACK))
-
-    def test_test_smtp_returns_structured_error(self):
-        result = smtp_check(self._config(LINK_LOCAL))
-        self.assertFalse(result["ok"])
-        self.assertIn("non-public", result["error"])
-
-    def test_send_mail_returns_error_result(self):
-        result = send_mail(self._config(PRIVATE), "a@example.com", "s", "b")
-        self.assertFalse(result.success)
-        self.assertIn("non-public", result.error)
-
-    def test_mail_allow_private_env_opts_in(self):
-        with patch.dict(os.environ, {"LIFE_MAIL_ALLOW_PRIVATE": "1"}):
-            host, *_ = _smtp_credentials(self._config(LOOPBACK))
-            self.assertEqual(host, LOOPBACK)
 
 
 class MailApprovalFailsClosed(unittest.TestCase):
