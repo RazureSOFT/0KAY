@@ -131,6 +131,34 @@ const attachment = computed(() => cognition.value?.attachment || null)
 const episode = computed(() => wave2.value?.episode || null)
 const episodeStateLabel = (value: string) => ({ euthymic: '平稳', subthreshold: '下滑中', episode: '低落发作' } as Record<string, string>)[value] || '—'
 
+// --- life on/off (开始生命 / 暂停生命) -------------------------------------
+const life = computed(() => cognition.value?.life || null)
+const lifeBusy = ref(false)
+const lifeGreet = ref(true)
+function lifeAgeText() {
+  const born = life.value?.born_at
+  if (!born) return '—'
+  const ms = Date.now() - new Date(born).getTime()
+  if (!isFinite(ms) || ms < 0) return '—'
+  const days = Math.floor(ms / 86400000)
+  const hours = Math.floor((ms % 86400000) / 3600000)
+  return days > 0 ? `${days} 天 ${hours} 小时` : `${hours} 小时`
+}
+async function startLife() {
+  lifeBusy.value = true
+  try {
+    const result = await act('life_start', { greet: lifeGreet.value })
+    if (result) flash(result.greeting ? `她开始生活了：${result.greeting}` : '生命已开始：她开始有自己的生活了')
+  } finally { lifeBusy.value = false }
+}
+async function stopLife() {
+  lifeBusy.value = true
+  try {
+    const result = await act('life_stop', {})
+    if (result) flash('已暂停：她不再主动思考，记忆与内心状态保留')
+  } finally { lifeBusy.value = false }
+}
+
 // One-click configurations: set the relevant knobs then save.
 function applyPreset(fields: Record<string, any>, label: string) {
   Object.assign(settingsForm.value, fields)
@@ -684,6 +712,7 @@ onMounted(load)
           <p class="sub">五套认知回路（决策仲裁 / 情感生理 / 语言习得 / 社会学习 / 自我与时间）。它们始终在后台记录状态；只有打开对应的「调节」开关，状态才会写进提示词。全部关闭时行为与旧版完全一致。</p>
         </div>
         <div class="hero-actions">
+          <button class="btn" :class="{ tonic: !life?.alive }" :disabled="lifeBusy || loading" @click="life?.alive ? stopLife() : startLife()">{{ lifeBusy ? '…' : (life?.alive ? '⏸ 暂停生命' : '❍ 开始生命') }}</button>
           <button class="fab" :disabled="loading" @click="saveSettings"><span class="fab-ic">✦</span>保存设置</button>
           <button class="btn tonic" :disabled="loading" @click="load">{{ loading ? '刷新中…' : '刷新' }}</button>
         </div>
@@ -792,6 +821,28 @@ onMounted(load)
       <div class="section-head"><div><h2>认知内核</h2><p class="desc">实时状态与全部参数。改动后点右上角「保存设置」才会生效。</p></div>
         <div class="head-actions"><button class="btn filled sm" @click="saveSettings">保存设置</button></div>
       </div>
+
+      <article class="card">
+        <h3>生命 <span class="count-pill" :class="{ ok: life?.alive }">{{ life?.alive ? '活着' : '未开始 / 已暂停' }}</span></h3>
+        <div class="settings-grid">
+          <div class="cog-metric"><span>状态</span><strong>{{ life?.alive ? '活着' : '未开始 / 已暂停' }}</strong></div>
+          <div class="cog-metric"><span>已活</span><strong>{{ lifeAgeText() }}</strong></div>
+          <div class="cog-metric"><span>思考步数</span><strong>{{ life?.ticks ?? 0 }}</strong></div>
+          <div class="cog-metric"><span>常驻思考</span><strong>{{ life?.resident_running ? '运行中' : '停止' }}</strong></div>
+          <div class="cog-metric"><span>主动行为</span><strong>{{ life?.proactive_enabled ? '开' : '关' }}</strong></div>
+          <div class="cog-metric"><span>上次思考</span><strong>{{ (life?.last_tick || '').slice(0, 16).replace('T', ' ') || '—' }}</strong></div>
+        </div>
+        <p v-if="life?.last_thought" class="hint">此刻的念头：{{ life.last_thought }}</p>
+        <p v-if="life?.focus" class="hint">当前专注：{{ life.focus }}</p>
+        <p v-if="life?.active_goal" class="hint">想推进的目标：{{ life.active_goal }}</p>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px">
+          <label class="sw"><input type="checkbox" v-model="lifeGreet" /><span>开始时让她先主动说一句</span></label>
+          <button class="btn sm" :class="{ filled: !life?.alive }" :disabled="lifeBusy || loading" @click="life?.alive ? stopLife() : startLife()">
+            {{ lifeBusy ? '…' : (life?.alive ? '⏸ 暂停生命' : '❍ 开始生命') }}
+          </button>
+        </div>
+        <p class="hint">「开始生命」一次打开：认知内核 + 常驻思考 + 主动行为（主动消息/做梦），并立刻让她想第一件事。暂停后不再自主思考，但内心状态与记忆都保留。</p>
+      </article>
 
       <article class="card">
         <h3>实时状态 <span class="count-pill" :class="{ ok: cognition?.enabled }">{{ cognition?.enabled ? '运行中' : '已停止' }}</span></h3>
