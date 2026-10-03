@@ -62,6 +62,22 @@ type Gateway struct {
 	stdio *stdioprovider.Runner
 }
 
+// CloseConnections closes and removes cached gRPC connections for the given address.
+func (g *Gateway) CloseConnections(address string) {
+	g.connMu.Lock()
+	defer g.connMu.Unlock()
+	if conn, ok := g.conns[address]; ok {
+		conn.Close()
+		delete(g.conns, address)
+	}
+	for key, conn := range g.lifeConns {
+		if len(key) > len(address)+1 && key[:len(address)+1] == address+"\x00" {
+			conn.Close()
+			delete(g.lifeConns, key)
+		}
+	}
+}
+
 // LocalCore is the subset of CoreServiceServer the gateway needs.
 type LocalCore interface {
 	GetUsage() map[string]interface{}
@@ -70,6 +86,8 @@ type LocalCore interface {
 	GetPermissions() server.Permissions
 	SetPermissions(p server.Permissions)
 	ListTasks() []map[string]interface{}
+	SessionTasks(string) []map[string]interface{}
+	SessionTasksPage(string, string, int) ([]map[string]interface{}, bool, string)
 	TaskDelta(string) map[string]interface{}
 	RecordTask(server.TaskEvent) error
 	CreateAgentSession(string) (string, error)
@@ -338,6 +356,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/agent/workspaces", g.handleAgentWorkspaces)
 	mux.HandleFunc("POST /api/agent/sessions/fork", g.handleAgentSessionsFork)
 	mux.HandleFunc("GET /api/agent/sessions/search", g.handleAgentSessionsSearch)
+	mux.HandleFunc("GET /api/agent/sessions/{session_id}/turns", g.handleAgentSessionTurns)
 	mux.HandleFunc("GET /api/agent/pick-folder", g.handleAgentPickFolder)
 	mux.HandleFunc("/api/agent/approvals", g.handleAgentApprovals)
 	mux.HandleFunc("/api/agent/questions", g.handleAgentApprovals)
@@ -354,6 +373,8 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("GET /api/agent/browser/view", g.handleAgentBrowser)
 	mux.HandleFunc("GET /api/agent/browser/stream", g.handleAgentBrowserStream)
 	mux.HandleFunc("POST /api/agent/browser/action", g.handleAgentBrowserAction)
+	mux.HandleFunc("GET /api/agent/computeruse", g.handleAgentComputerUse)
+	mux.HandleFunc("GET /api/agent/computeruse/stream", g.handleAgentComputerUseStream)
 	mux.HandleFunc("/api/agent/compact", g.handleAgentCompact)
 	mux.HandleFunc("GET /api/agent/context", g.handleAgentContext)
 	mux.HandleFunc("GET /api/agent/context/search", g.handleAgentContextSearch)
@@ -557,6 +578,14 @@ func (g *Gateway) setPluginEnabled(name string, enable bool, w http.ResponseWrit
 	}
 	g.registry.SetEnabled(name, enable)
 	g.persistDisabledPlugins()
+	// Close cached gRPC connections for the disabled plugin.
+	if !enable && g.registry != nil {
+		for _, plugin := range g.registry.GetAllPlugins() {
+			if plugin.PluginID == name && plugin.Address != "" {
+				g.CloseConnections(plugin.Address)
+			}
+		}
+	}
 	// Re-evaluate patch/settings visibility for the toggled plugin.
 	if g.uiPatches != nil {
 		g.uiPatches.Reload()

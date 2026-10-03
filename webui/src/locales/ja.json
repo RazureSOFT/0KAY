@@ -99,6 +99,7 @@
     "searchEngine": "検索エンジン",
     "noActiveTasks": "実行中タスクなし",
     "running": "実行中",
+    "connected": "接続済み",
     "disconnected": "未接続"
   },
   "memory": {
@@ -260,6 +261,7 @@
     "apiRequired": "API キーとベース URL は必須です",
     "models": "モデル",
     "persona": "ペルソナ",
+    "live2d": "Live2D",
     "permissions": "権限",
     "screenWatch": "画面監視",
     "screenWatchDesc": "L.I.F.E に画面内容の観察を許可（デフォルト無効）",

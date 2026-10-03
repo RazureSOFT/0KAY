@@ -365,9 +365,16 @@ type GenerateResponse struct {
 	ToolCalls []*ToolCall `protobuf:"bytes,7,rep,name=tool_calls,json=toolCalls,proto3" json:"tool_calls,omitempty"`
 	// text is the full accumulated assistant text (sent once with done=true when
 	// any tool calls were requested, so callers can persist the turn).
-	Text          string `protobuf:"bytes,8,opt,name=text,proto3" json:"text,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Text string `protobuf:"bytes,8,opt,name=text,proto3" json:"text,omitempty"`
+	// model is the model that actually produced the output (after any auto-switch).
+	Model string `protobuf:"bytes,9,opt,name=model,proto3" json:"model,omitempty"`
+	// requested_model is the model the caller asked for.
+	RequestedModel string `protobuf:"bytes,10,opt,name=requested_model,json=requestedModel,proto3" json:"requested_model,omitempty"`
+	// fallback_reason is non-empty when a different model produced the output
+	// (auto-switch after the requested model failed).
+	FallbackReason string `protobuf:"bytes,11,opt,name=fallback_reason,json=fallbackReason,proto3" json:"fallback_reason,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GenerateResponse) Reset() {
@@ -452,6 +459,27 @@ func (x *GenerateResponse) GetToolCalls() []*ToolCall {
 func (x *GenerateResponse) GetText() string {
 	if x != nil {
 		return x.Text
+	}
+	return ""
+}
+
+func (x *GenerateResponse) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *GenerateResponse) GetRequestedModel() string {
+	if x != nil {
+		return x.RequestedModel
+	}
+	return ""
+}
+
+func (x *GenerateResponse) GetFallbackReason() string {
+	if x != nil {
+		return x.FallbackReason
 	}
 	return ""
 }
@@ -1080,7 +1108,7 @@ const file_mocr_v1_mocr_proto_rawDesc = "" +
 	" \x01(\tR\x06apiKey\x12#\n" +
 	"\x05tools\x18\v \x03(\v2\r.mocr.v1.ToolR\x05tools\x12\x1f\n" +
 	"\vtool_choice\x18\f \x01(\tR\n" +
-	"toolChoice\"\xa8\x02\n" +
+	"toolChoice\"\x90\x03\n" +
 	"\x10GenerateResponse\x12\x14\n" +
 	"\x05chunk\x18\x01 \x01(\tR\x05chunk\x12\x12\n" +
 	"\x04done\x18\x02 \x01(\bR\x04done\x12:\n" +
@@ -1090,7 +1118,11 @@ const file_mocr_v1_mocr_proto_rawDesc = "" +
 	"\x04role\x18\x06 \x01(\tR\x04role\x120\n" +
 	"\n" +
 	"tool_calls\x18\a \x03(\v2\x11.mocr.v1.ToolCallR\ttoolCalls\x12\x12\n" +
-	"\x04text\x18\b \x01(\tR\x04text\"L\n" +
+	"\x04text\x18\b \x01(\tR\x04text\x12\x14\n" +
+	"\x05model\x18\t \x01(\tR\x05model\x12'\n" +
+	"\x0frequested_model\x18\n" +
+	" \x01(\tR\x0erequestedModel\x12'\n" +
+	"\x0ffallback_reason\x18\v \x01(\tR\x0efallbackReason\"L\n" +
 	"\x04Tool\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x120\n" +
 	"\bfunction\x18\x02 \x01(\v2\x14.mocr.v1.FunctionDefR\bfunction\"l\n" +

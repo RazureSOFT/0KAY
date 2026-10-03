@@ -48,15 +48,26 @@ func autoCompactTokens() int {
 }
 
 // sessionContextTokens estimates the live context size for a session (4 chars ≈ 1 token).
+// estimateTextTokens approximates a token count: ~4 ASCII chars per token and
+// ~1 token per non-ASCII (CJK) character, which chars/4 badly under-counts.
+func estimateTextTokens(text string) int {
+	ascii, wide := 0, 0
+	for _, r := range text {
+		if r < 128 {
+			ascii++
+		} else {
+			wide++
+		}
+	}
+	return ascii/4 + wide
+}
+
 func (g *Gateway) sessionContextTokens(sessionID string) int {
 	if g.localCore == nil {
 		return 0
 	}
 	total := 0
-	for _, task := range g.localCore.ListTasks() {
-		if task["session_id"] != sessionID {
-			continue
-		}
+	for _, task := range g.localCore.SessionTasks(sessionID) {
 		state, _ := task["state"].(string)
 		if state != "done" {
 			continue
@@ -65,7 +76,7 @@ func (g *Gateway) sessionContextTokens(sessionID string) int {
 		case "agent", "compact":
 			prompt, _ := task["prompt"].(string)
 			result, _ := task["result"].(string)
-			total += (len(prompt) + len(result)) / 4
+			total += estimateTextTokens(prompt) + estimateTextTokens(result)
 		}
 	}
 	return total
@@ -91,15 +102,12 @@ func (g *Gateway) compactSession(ctx context.Context, sessionID, modelID string)
 	if g.localCore == nil || !g.localCore.HasAgentSession(sessionID) {
 		return "", fmt.Errorf("invalid session")
 	}
-	tasks := g.localCore.ListTasks()
+	tasks := g.localCore.SessionTasks(sessionID)
 	history := []map[string]string{}
 	foldedIDs := []string{}
 	fromID, toID := "", ""
 	for i := len(tasks) - 1; i >= 0; i-- {
 		task := tasks[i]
-		if task["session_id"] != sessionID {
-			continue
-		}
 		state, _ := task["state"].(string)
 		if state == "running" || state == "pending" {
 			return "", fmt.Errorf("wait for active work to finish")
@@ -240,8 +248,8 @@ func (g *Gateway) compactBlocks(sessionID string) []map[string]any {
 		return nil
 	}
 	out := []map[string]any{}
-	for _, task := range g.localCore.ListTasks() {
-		if task["session_id"] != sessionID || task["kind"] != "compact" {
+	for _, task := range g.localCore.SessionTasks(sessionID) {
+		if task["kind"] != "compact" {
 			continue
 		}
 		if state, _ := task["state"].(string); state != "done" {
@@ -280,7 +288,7 @@ func (g *Gateway) handleAgentContext(w http.ResponseWriter, r *http.Request) {
 	if agents := g.registry.GetAgents(true); len(agents) > 0 {
 		agent := agents[0]
 		if conn, err := g.dial(agent.Address); err == nil {
-			args, _ := json.Marshal(map[string]any{"conversation_tokens": tokens, "window": window})
+			args, _ := json.Marshal(map[string]any{"conversation_tokens": tokens, "window": window, "session_id": sessionID})
 			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 			res, err := agentv1.NewAgentServiceClient(conn).RunDirect(pairing.CallbackContext(ctx, agent.Address), &agentv1.RunDirectRequest{Tool: "context_usage", Args: string(args)})
 			cancel()
@@ -291,7 +299,11 @@ func (g *Gateway) handleAgentContext(w http.ResponseWriter, r *http.Request) {
 					if value, ok := parsed["window"].(float64); ok && value > 0 {
 						window = int(value)
 					}
-					if value, ok := parsed["used"].(float64); ok {
+					// Prefer the model's real prompt-token count when it is known;
+					// the text estimate is only a fallback.
+					if value, ok := parsed["last_prompt_tokens"].(float64); ok && value > 0 {
+						tokens = int(value)
+					} else if value, ok := parsed["used"].(float64); ok {
 						tokens = int(value)
 					}
 				}
@@ -371,10 +383,7 @@ func (g *Gateway) handleAgentContextSearch(w http.ResponseWriter, r *http.Reques
 	}
 	const snippet = 240
 	matches := []map[string]any{}
-	for _, task := range g.localCore.ListTasks() {
-		if task["session_id"] != sessionID {
-			continue
-		}
+	for _, task := range g.localCore.SessionTasks(sessionID) {
 		kind, _ := task["kind"].(string)
 		if kind != "agent" && kind != "compact" {
 			continue

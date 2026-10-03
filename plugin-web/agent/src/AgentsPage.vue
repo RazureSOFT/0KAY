@@ -811,7 +811,6 @@ async function fetchModels() {
 function options() { const level=intensity.value===0?'off':intensity.value<35?'low':intensity.value<62.5?'medium':intensity.value<87.5?'high':'max';return { executor_id: executorId.value, workdir: workdir.value.trim(), thinking_intensity: level, model_id: modelId.value, permission_mode:permissionMode.value, language:locale.value } }
 const busy = ref(false)
 const error = ref('')
-const showLedger = ref(false)
 const showArchived = ref(false)
 const subStack = ref<TaskRow[]>([])
 const activeSub = computed<TaskRow | null>(() => subStack.value[subStack.value.length - 1] || null)
@@ -1004,6 +1003,21 @@ const contextSummary = computed(() => {
 })
 const stateName = (value: string) => (locale.value==='en'?{pending:'Queued',running:'Running',done:'Completed',failed:'Failed',cancelled:'Stopped'}:{ pending:'等待执行', running:'执行中', done:'完成', failed:'失败', cancelled:'已停止' })[value] || value
 const time = (value?: string) => value ? new Date(value).toLocaleString() : ''
+// The model that actually produced a think step, from mocr's report (a fallback
+// model may differ from the requested one).
+function modelInfo(step: TaskRow) {
+  let actual = '', requested = '', reason = ''
+  try {
+    if (step.args) { const parsed = JSON.parse(step.args); actual = String(parsed.model || ''); requested = String(parsed.requested || ''); reason = String(parsed.fallback || '') }
+  } catch { /* args is not model metadata */ }
+  return { actual, requested, reason, fellBack: !!actual && !!requested && actual !== requested }
+}
+function modelAnnotation(step: TaskRow): string {
+  const info = modelInfo(step)
+  if (info.fellBack) return tr(`${info.requested} 不可用，已回退 ${info.actual}`, `${info.requested} unavailable · fell back to ${info.actual}`)
+  return info.actual || String(step.prompt || '')
+}
+function modelReason(step: TaskRow): string { return modelInfo(step).reason }
 function steps(turn: TaskRow) {
   return store.tasks.filter(item => item.task_id !== turn.task_id && item.session_id === turn.session_id &&
     item.parent_id === turn.task_id)
@@ -1077,10 +1091,10 @@ async function manage(action: 'archive' | 'restore' | 'delete') {
   } catch (e: any) { error.value = e.message }
   finally {busy.value=false}
 }
-function choose(id: string) { if(busy.value)return;rememberEditor();selectedId.value = id; showLedger.value = false; localStorage.setItem('0kay.agent.selected', id) }
+function choose(id: string) { if(busy.value)return;rememberEditor();selectedId.value = id; localStorage.setItem('0kay.agent.selected', id) }
 async function create() {
   busy.value = true; error.value = ''
-  try { const id=await store.createSession('新对话');rememberEditor();selectedId.value=id;localStorage.setItem('0kay.agent.selected',id);showLedger.value=false;showArchived.value=false } catch (e: any) { error.value = e.message }
+  try { const id=await store.createSession('新对话');rememberEditor();selectedId.value=id;localStorage.setItem('0kay.agent.selected',id);showArchived.value=false } catch (e: any) { error.value = e.message }
   finally { busy.value = false }
 }
 async function send() {
@@ -1125,6 +1139,9 @@ async function scrollBottom() { await nextTick(); if(followLatest.value) transcr
 // preview. Existing steps are seeded on load/switch so nothing opens retroactively.
 const handledSteps = new Set<string>()
 let seededSession = ''
+// Wall-clock when the current session was seeded: steps older than this are
+// history the user just navigated to, not live work, so never auto-open for them.
+let seededAt = 0
 function parseStepJson(raw?: string): any { if (!raw) return null; try { return JSON.parse(raw) } catch { return null } }
 function absolutePath(value: string): string {
   if (!value) return ''
@@ -1174,15 +1191,21 @@ watch([selectedId, () => store.tasks.map(item => `${item.task_id}:${item.session
   if (!sid) return
   if (seededSession !== sid) {
     seededSession = sid
+    seededAt = Date.now()
     handledSteps.clear()
     for (const step of store.tasks) if (step.session_id === sid) handledSteps.add(step.task_id)
     return
   }
   for (const step of store.tasks) {
     if (step.kind !== 'tool' || step.session_id !== sid || handledSteps.has(step.task_id)) continue
+    // Older turns loaded on demand must not retroactively pop windows.
+    if (Date.parse(step.started_at || '') <= seededAt) { handledSteps.add(step.task_id); continue }
     considerStep(step)
   }
 })
+// A store reset (Core restart) clears the client cache; re-seed so the refreshed
+// rows are treated as history rather than live work.
+watch(() => store.resetToken, () => { seededSession = ''; handledSteps.clear() })
 watch(() => store.tasks.filter(item=>item.session_id===selectedId.value).map(item => `${item.task_id}:${item.state}:${item.result?.length}`).join('|'), scrollBottom)
 watch(() => store.tasks.filter(item => item.session_id === selectedId.value).map(item => `${item.task_id}:${item.state}:${item.result?.length}`).join('|'), scheduleContextUsage)
 watch(selectedId, () => { void fetchContextUsage() })
@@ -1193,6 +1216,9 @@ watch(selectedId, loadOptions)
 watch(executorId,()=>{hostUsage.value=null;workdir.value='';closeBrowser();fetchHost();void fetchBrowserStatus()},{flush:'sync'})
 watch(hostOpen,fetchHost)
 watch(selectedId,()=>{compactNotice.value=''})
+// Load the selected session's turns on demand, and re-load whenever the store
+// resets (Core restart / new SSE cursor) because that clears the client cache.
+watch([selectedId, () => store.resetToken], ([id]) => { if (id) void store.ensureSessionTurns(id) }, { immediate: true })
 onMounted(() => { syncLocale(); store.connect(); loadOptions(); fetchModels();void fetchWorkspaces();hostTimer=setInterval(fetchHost,5000);workspaceTimer=setInterval(()=>{if(!document.hidden)void fetchWorkspaces()},5000);void fetchBrowserStatus();browserTimer=setInterval(fetchBrowserStatus,5000);window.addEventListener('keydown',onEscape) })
 onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTimer) clearInterval(hostTimer);if(workspaceTimer) clearInterval(workspaceTimer);if(browserTimer) clearInterval(browserTimer);if(browserViewTimer) clearInterval(browserViewTimer);if(browserStreamRetry) clearTimeout(browserStreamRetry);window.removeEventListener('keydown',onEscape)})
 </script>
@@ -1212,7 +1238,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
         <section v-if="search.trim()" class="ws-group">
           <header class="ws-head static"><span class="ws-title">{{ tr('搜索结果','Search results') }}</span><span class="ws-count">{{ searchResults.length }}</span></header>
           <div class="ws-sessions">
-            <div v-for="item in searchResults" :key="item.task_id" class="session-row" :class="{selected:selectedId===item.session_id && !showLedger}">
+            <div v-for="item in searchResults" :key="item.task_id" class="session-row" :class="{selected:selectedId===item.session_id}">
               <button class="session-card" :disabled="busy" @click="choose(item.session_id!)">
                 <span class="origin">{{ isLife(item) ? 'LIFE → Agent' : tr('你 ↔ Agent','You ↔ Agent') }}</span>
                 <strong>{{ item.prompt || tr('未命名会话','Untitled session') }}</strong>
@@ -1240,7 +1266,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
               </span>
             </header>
             <div class="ws-sessions">
-              <div v-for="item in visibleSessions(group)" :key="item.task_id" class="session-row" :class="{selected:selectedId===item.session_id && !showLedger}">
+              <div v-for="item in visibleSessions(group)" :key="item.task_id" class="session-row" :class="{selected:selectedId===item.session_id}">
                 <button class="session-card" :disabled="busy" @click="choose(item.session_id!)">
                   <span class="origin">{{ isLife(item) ? 'LIFE → Agent' : tr('你 ↔ Agent','You ↔ Agent') }}</span>
                   <strong>{{ item.prompt || tr('未命名会话','Untitled session') }}</strong><small>{{ time(item.started_at) }}</small>
@@ -1258,7 +1284,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
           <section v-if="sessionGroups.ungrouped.length" class="ws-group">
             <header class="ws-head static"><span class="ws-title">{{ tr('未分组','Ungrouped') }}</span><span class="ws-count">{{ sessionGroups.ungrouped.length }}</span></header>
             <div class="ws-sessions">
-              <div v-for="item in sessionGroups.ungrouped" :key="item.task_id" class="session-row" :class="{selected:selectedId===item.session_id && !showLedger}">
+              <div v-for="item in sessionGroups.ungrouped" :key="item.task_id" class="session-row" :class="{selected:selectedId===item.session_id}">
                 <button class="session-card" :disabled="busy" @click="choose(item.session_id!)">
                   <span class="origin">{{ isLife(item) ? 'LIFE → Agent' : tr('你 ↔ Agent','You ↔ Agent') }}</span>
                   <strong>{{ item.prompt || tr('未命名会话','Untitled session') }}</strong><small>{{ time(item.started_at) }}</small>
@@ -1275,21 +1301,9 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
           <p v-if="!sessions.length && !workspaces.length" class="muted">{{ tr('暂无会话。直接发送消息，或等待 LIFE 委派工作。','No sessions yet. Send a message or wait for LIFE to delegate work.') }}</p>
         </template>
       </div>
-      <button class="ledger-button" :class="{chosen:showLedger}" @click="showLedger=true">{{ tr('全部任务记录','All task records') }} · {{ store.tasks.length }}</button>
     </aside>
 
-    <section v-if="showLedger" class="ledger">
-      <header><h2>{{ tr('全部任务记录','All task records') }}</h2><button @click="showLedger=false">{{ tr('返回会话','Back to chat') }}</button></header>
-      <p class="muted">{{ tr('包括 LIFE 对话、模型调用、Agent 执行及工具活动。','LIFE conversations, model calls, Agent execution and tool activity.') }}</p>
-      <article v-for="task in store.tasks" :key="task.task_id" class="ledger-entry">
-        <div><span>{{ task.kind || 'agent' }}</span><span :class="task.state">{{ stateName(task.state) }}</span><small>{{ time(task.started_at) }}</small></div>
-        <p>{{ task.prompt }}</p>
-        <button v-if="store.sessions.some(s=>s.session_id===task.session_id)" @click="choose(task.session_id!)">打开所属会话</button>
-        <details><summary>详情</summary><code>{{ task.task_id }}</code><pre>{{ task.result || task.error || '等待结果' }}</pre></details>
-      </article>
-    </section>
-
-    <section v-else class="conversation">
+    <section class="conversation">
       <header class="conversation-header">
         <div class="conversation-heading"><h2>{{ session?.prompt || '与 Agent 对话' }}</h2><p>{{ session && isLife(session) ? 'LIFE 发起的工作会话 · 你可以查看过程，也可以直接继续对话' : '持续对话 · 编程、调研与工具执行' }}</p></div>
         <div class="conversation-actions">
@@ -1315,7 +1329,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
           <div class="sub-view-body">
             <div class="bubble user"><div class="message-head"><b>{{ tr('父 Agent', 'Parent agent') }}</b><time>{{ time(activeSub.started_at) }}</time></div><div class="message-text">{{ activeSub.prompt }}</div></div>
             <template v-for="step in childSteps(activeSub)" :key="step.task_id">
-              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="step.prompt" class="muted model-annotation">{{ step.prompt }}</small><ThinkChain v-if="step.reasoning" :reasoning="step.reasoning" :open="step.state === 'running' && !step.result" :label="tr('思维链', 'Reasoning')" /><template v-if="step.result"><MarkdownContent :content="step.result" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">{{ tr('子 Agent 正在生成回复…', 'Subagent is drafting a reply…') }}</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
+              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="modelAnnotation(step)" class="muted model-annotation" :class="{fallback: modelInfo(step).fellBack}" :title="modelReason(step)">{{ modelAnnotation(step) }}</small><ThinkChain v-if="step.reasoning" :reasoning="step.reasoning" :open="step.state === 'running' && !step.result" :label="tr('思维链', 'Reasoning')" /><template v-if="step.result"><MarkdownContent :content="step.result" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">{{ tr('子 Agent 正在生成回复…', 'Subagent is drafting a reply…') }}</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
               <div v-else-if="step.kind === 'subagent'" class="subagent-card nested">
                 <button type="button" class="subagent-card-head" @click="openSub(step)"><span :class="step.state">●</span><strong>{{ tr('子 Agent', 'Subagent') }}</strong><span class="subagent-prompt">{{ step.prompt }}</span><small>{{ stateName(step.state) }}</small><span class="subagent-chevron" aria-hidden="true">▸</span></button>
               </div>
@@ -1333,11 +1347,12 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
           <div class="context-summary-head"><strong>{{ tr('上下文摘要', 'Context summary') }}</strong><time>{{ time(contextSummary.started_at) }}</time></div>
           <MarkdownContent :content="contextSummary.result || ''" />
         </article>
+        <button v-if="store.hasOlderTurns(selectedId)" class="load-earlier" type="button" @click="store.olderSessionTurns(selectedId)">{{ tr('加载更早的记录','Load earlier messages') }}</button>
         <article v-for="turn in turns" :key="turn.task_id" class="turn">
           <div class="bubble user"><div class="message-head"><b>{{ isLife(turn) ? 'LIFE' : '你' }}</b><time>{{ time(turn.started_at) }}</time></div><div class="message-text">{{ turn.prompt?.replace(/^\[thinking_intensity=\w+\]\s*/, '') }}</div></div>
           <div class="bubble agent"><div class="message-head"><b>Agent</b><span :class="turn.state">{{ stateName(turn.state) }}</span></div>
             <div v-if="steps(turn).length" class="steps"><template v-for="step in steps(turn)" :key="step.task_id">
-              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="step.prompt" class="muted model-annotation">{{ step.prompt }}</small><ThinkChain v-if="step.reasoning" :reasoning="step.reasoning" :open="step.state === 'running' && !step.result" :label="tr('思维链', 'Reasoning')" /><template v-if="step.result"><MarkdownContent :content="step.result" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">Agent 正在生成回复…</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
+              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="modelAnnotation(step)" class="muted model-annotation" :class="{fallback: modelInfo(step).fellBack}" :title="modelReason(step)">{{ modelAnnotation(step) }}</small><ThinkChain v-if="step.reasoning" :reasoning="step.reasoning" :open="step.state === 'running' && !step.result" :label="tr('思维链', 'Reasoning')" /><template v-if="step.result"><MarkdownContent :content="step.result" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">Agent 正在生成回复…</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
               <div v-else-if="step.kind === 'subagent'" class="subagent-card">
                 <button type="button" class="subagent-card-head" @click="openSub(step)">
                   <span :class="step.state">●</span>
@@ -1419,7 +1434,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
         </div>
         <footer class="composer-footer">
           <div class="footer-status">
-            <div v-if="contextUsage" class="ctx-usage" tabindex="0" :aria-label="tr('上下文用量','Context usage')"><svg class="ctx-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="ctx-track" cx="10" cy="10" r="8"/></svg><span class="ctx-value">{{ fmtK(contextUsage.tokens) }}</span><div class="ctx-tip" role="tooltip"><strong>{{ tr('上下文用量','Context Usage') }}</strong><div class="ctx-used"><b>{{ fmtK(contextUsage.tokens) }}</b><span>{{ tr('已用','Used') }}</span></div><div class="ctx-row" v-for="row in ctxRows" :key="row.key"><span>{{ row.label }}</span><span>{{ row.value }}</span></div></div></div>
+            <div v-if="contextUsage" class="ctx-usage" tabindex="0" :aria-label="tr('上下文用量','Context usage')"><svg class="ctx-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="ctx-track" cx="10" cy="10" r="8"/></svg><span class="ctx-value">{{ fmtK(contextUsage.tokens) }}</span><div class="ctx-tip" role="tooltip"><strong>{{ tr('上下文用量','Context Usage') }}</strong><div class="ctx-used"><b>{{ fmtK(contextUsage.tokens) }}</b><span>{{ tr('已用 tokens','tokens used') }}</span></div><div class="ctx-row" v-for="row in ctxRows" :key="row.key"><span>{{ row.label }}</span><span>{{ row.value }}</span></div></div></div>
             <span class="connection-hint"><i :class="{online:store.onlineCount>0}" />{{ active?.kind === 'compact' ? tr('上下文压缩中…','Compacting…') : store.onlineCount ? tr('执行器在线','Executor online') : tr('执行器离线','Executor offline') }}</span>
           </div>
           <div class="footer-actions">
@@ -1881,6 +1896,8 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .welcome p{margin:6px 0;font-size:14px}
 
 /* ---- message bubbles ---- */
+.load-earlier{display:block;margin:0 auto 22px;padding:8px 16px;border:1px solid var(--md-outline-variant);border-radius:999px;background:var(--md-surface-container-low);color:var(--md-on-surface-variant);font-size:13px;cursor:pointer;transition:background 150ms var(--ease-emphasized-decel),color 150ms var(--ease-emphasized-decel)}
+.load-earlier:hover{background:var(--md-surface-container);color:var(--md-on-surface)}
 .turn{max-width:920px;margin:0 auto 30px;display:flex;flex-direction:column;gap:10px}
 .bubble{padding:15px 19px;font-size:14px}
 .bubble.user{align-self:flex-end;max-width:82%;background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:16px 16px 4px 16px}
@@ -1897,6 +1914,7 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 /* agent speech / markdown inside response */
 .agent-speech{margin:6px 0;padding:2px 0;line-height:1.7}
 .model-annotation{display:block;font-size:12px;opacity:.7;margin-bottom:4px;font-family:var(--code-font)}
+.model-annotation.fallback{opacity:1;color:var(--md-error)}
 .think-chain{margin:2px 0 8px;border:0;border-radius:10px;background:var(--md-surface-container-low);overflow:hidden}
 .think-chain>summary{display:inline-flex;align-items:center;gap:5px;cursor:pointer;list-style:none;padding:3px 10px;font-size:11px;font-weight:600;letter-spacing:.03em;color:var(--md-on-surface-variant);user-select:none;border-radius:999px;background:var(--md-surface-container)}
 .think-chain>summary::-webkit-details-marker{display:none}
@@ -1960,7 +1978,7 @@ button.subagent-card-head>strong{font-weight:700}
 /* ---- context usage ring ---- */
 .ctx-usage{position:relative;display:inline-flex;align-items:center;gap:6px;flex:none;outline:none;order:99;margin-left:6px;cursor:default}
 .ctx-ring{width:20px;height:20px;flex:none}
-.ctx-track{fill:none;stroke:var(--md-primary);stroke-width:2.2;opacity:.85}
+.ctx-track{fill:none;stroke:var(--md-outline-variant);stroke-width:2.2}
 .ctx-value{font-size:11px;color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums}
 .ctx-tip{position:absolute;bottom:calc(100% + 12px);left:0;right:auto;transform-origin:bottom left;transform:translateY(4px) scale(.97);z-index:var(--z-popover);width:max-content;min-width:216px;max-width:280px;padding:12px 14px;border-radius:14px;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);box-shadow:var(--shadow-3);color:var(--md-on-surface);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 160ms var(--ease-emphasized-decel),transform 160ms var(--ease-emphasized-decel),visibility 160ms;font-size:12px;text-align:left}
 .ctx-usage:hover .ctx-tip,.ctx-usage:focus-visible .ctx-tip,.ctx-usage:focus-within .ctx-tip{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
@@ -1968,7 +1986,6 @@ button.subagent-card-head>strong{font-weight:700}
 .ctx-used{display:flex;align-items:baseline;gap:6px}
 .ctx-used b{font-size:22px;font-weight:800;color:var(--md-primary);line-height:1}
 .ctx-used span{color:var(--md-on-surface-variant)}
-.ctx-sub{color:var(--md-on-surface-variant);margin:4px 0 8px}
 .ctx-row{display:flex;justify-content:space-between;gap:16px;padding:4px 0;border-top:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}
 .ctx-row span:last-child{font-weight:650;color:var(--md-primary)}
 
@@ -2175,6 +2192,44 @@ button.subagent-card-head>strong{font-weight:700}
 .turn{opacity:1;transform:none;transition:opacity 220ms var(--ease-emphasized-decel),transform 220ms var(--ease-emphasized-decel)}
 @starting-style{.turn{opacity:0;transform:translateY(10px)}}
 #app .workspace .agent-speech .running{animation:caret-blink 1s steps(1,end) infinite;color:var(--md-primary)}
+/* ---- motion: messages/steps ease in (staggered), running state breathes ---- */
+.turn .bubble,
+.turn .steps > *,
+.turn .agent-speech,
+.turn .subagent-card,
+.turn .tool-card{transition:opacity 340ms var(--ease-emphasized-decel),transform 340ms var(--ease-emphasized-decel);transition-delay:calc(var(--stagger,0) * 55ms)}
+@starting-style{
+  .turn .bubble,
+  .turn .steps > *,
+  .turn .agent-speech,
+  .turn .subagent-card,
+  .turn .tool-card{opacity:0;transform:translateY(16px) scale(.985)}
+}
+.steps>*:nth-child(1){--stagger:0}
+.steps>*:nth-child(2){--stagger:1}
+.steps>*:nth-child(3){--stagger:2}
+.steps>*:nth-child(4){--stagger:3}
+.steps>*:nth-child(5){--stagger:4}
+.steps>*:nth-child(6){--stagger:5}
+.steps>*:nth-child(7){--stagger:6}
+.steps>*:nth-child(8){--stagger:7}
+.steps>*:nth-child(9){--stagger:8}
+.steps>*:nth-child(10){--stagger:9}
+.steps>*:nth-child(n+11){--stagger:10}
+@keyframes sheen{0%{background-position:-140% 0}100%{background-position:240% 0}}
+.agent-speech{position:relative}
+.agent-speech:has(.running)::after{content:'';position:absolute;left:2px;right:2px;bottom:0;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--md-primary) 70%,transparent),transparent);background-size:280% 100%;animation:sheen 1.4s linear infinite}
+.state.running,.running{animation:soft-pulse 1.4s var(--ease-emphasized) infinite}
+.tool-card,.subagent-card{transition:transform 200ms var(--ease-emphasized-decel),box-shadow 220ms var(--ease-emphasized-decel),background-color 200ms}
+.tool-card:hover,.subagent-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-3)}
+.tool-card:active,.subagent-card:active{transform:translateY(0) scale(.995)}
+.icon-btn:hover:not(:disabled),.dock-btn:hover:not(:disabled),.chip-btn:hover:not(:disabled){transform:translateY(-1px)}
+.icon-btn:active:not(:disabled),.dock-btn:active:not(:disabled),.chip-btn:active:not(:disabled),.ws-actions button:active:not(:disabled),.row-actions button:active:not(:disabled){transform:scale(.94)}
+.composer{transition:border-color 200ms var(--ease-emphasized-decel),box-shadow 220ms var(--ease-emphasized-decel)}
+.composer:focus-within{border-color:color-mix(in srgb,var(--md-primary) 55%,var(--md-outline-variant));box-shadow:0 6px 22px color-mix(in srgb,var(--md-primary) 14%,transparent)}
+.session-card{transition:background-color 180ms var(--ease-emphasized-decel),border-color 180ms,transform 160ms var(--ease-emphasized-decel)}
+.session-card:hover:not(:disabled){transform:translateY(-1px)}
+.transcript{scroll-behavior:smooth}
 @media (prefers-reduced-motion: reduce){
   .turn{transition:opacity 120ms var(--ease-emphasized)}
   @starting-style{.turn{transform:none}}
@@ -2188,6 +2243,11 @@ button.subagent-card-head>strong{font-weight:700}
   .ws-sessions,.ws-group.collapsed .ws-sessions{transition:none}
   .ws-sessions .session-row{transition:opacity 120ms var(--ease-emphasized)}
   @starting-style{.ws-sessions .session-row{transform:none}}
+  .turn .bubble,.turn .steps>*,.turn .agent-speech,.turn .subagent-card,.turn .tool-card{transition:opacity 120ms;transition-delay:0ms}
+  @starting-style{.turn .bubble,.turn .steps>*,.turn .agent-speech,.turn .subagent-card,.turn .tool-card{transform:none}}
+  .state.running,.running,.agent-speech:has(.running)::after{animation:none}
+  .tool-card:hover,.subagent-card:hover,.icon-btn:hover:not(:disabled),.session-card:hover:not(:disabled){transform:none}
+  .transcript{scroll-behavior:auto}
 }
 
 @media(max-width:800px){.sessions{width:214px;padding:12px 10px}.transcript{padding:14px}.composer{margin:0 12px 12px}.connection-hint{display:none}.conversation-header{padding:14px 16px}.welcome{margin:30px auto 0}.turn{margin-bottom:22px}}

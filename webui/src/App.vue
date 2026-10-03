@@ -8,6 +8,7 @@ import { useChatStore } from './stores/chat'
 import { useUIPatchesStore } from './stores/uiPatches'
 import SetupWizard from './components/SetupWizard.vue'
 import GlobalAgentInbox from './components/GlobalAgentInbox.vue'
+import ComputerUsePip from './components/ComputerUsePip.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import AppSelect from './components/AppSelect.vue'
 import LifeApprovalDialog from './components/LifeApprovalDialog.vue'
@@ -336,6 +337,7 @@ async function onSetupSubmit() {
 
   <div v-else class="app-shell">
     <GlobalAgentInbox />
+    <ComputerUsePip />
     <ConfirmDialog />
     <LifeApprovalDialog />
 <MinecraftConsentDialog />

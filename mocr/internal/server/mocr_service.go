@@ -359,7 +359,7 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 		if err == nil {
 			hasPayload := chunks > 0 || (info != nil && (len(info.ToolCalls) > 0 || info.ReasoningContent != ""))
 			if hasPayload {
-				return finishGenerate(req, curModel, info, &fullText, requestID, sessionID, stream)
+				return finishGenerate(req, curModel, lastErr, info, &fullText, requestID, sessionID, stream)
 			}
 			// Empty response (no text / tool calls / reasoning) → switch model.
 			log.Printf("[mocr] empty response model=%s; trying next model", curModel)
@@ -386,7 +386,7 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 }
 
 // finishGenerate reports usage (on the model actually used) and sends the final Done response.
-func finishGenerate(req *mocrv1.GenerateRequest, modelID string, info *prov.FinishInfo, fullText *strings.Builder, requestID, sessionID string, stream mocrv1.MocrService_GenerateServer) error {
+func finishGenerate(req *mocrv1.GenerateRequest, modelID string, lastErr error, info *prov.FinishInfo, fullText *strings.Builder, requestID, sessionID string, stream mocrv1.MocrService_GenerateServer) error {
 
 	if info == nil {
 		info = &prov.FinishInfo{FinishReason: "stop"}
@@ -410,11 +410,21 @@ func finishGenerate(req *mocrv1.GenerateRequest, modelID string, info *prov.Fini
 		Done:            true,
 		FinishReason:    mapFinish(info.FinishReason),
 		ThinkingContent: info.ReasoningContent,
+		Model:           modelID,
+		RequestedModel:  req.ModelId,
 		Usage: &mocrv1.TokenUsage{
 			PromptTokens:     promptTokens,
 			CompletionTokens: completionTokens,
 			TotalTokens:      promptTokens + completionTokens,
 		},
+	}
+	if modelID != req.ModelId {
+		// The requested model failed and a fallback produced this output.
+		if lastErr != nil {
+			final.FallbackReason = lastErr.Error()
+		} else {
+			final.FallbackReason = "requested model produced no output"
+		}
 	}
 	if len(info.ToolCalls) > 0 {
 		final.Role = "assistant"
@@ -453,16 +463,4 @@ func firstMeta(ctx context.Context, key string) string {
 	return ""
 }
 
-// splitIntoChunks splits text into chunks of approximately size n.
-func splitIntoChunks(text string, n int) []string {
-	var chunks []string
-	for len(text) > 0 {
-		if len(text) <= n {
-			chunks = append(chunks, text)
-			break
-		}
-		chunks = append(chunks, text[:n])
-		text = text[n:]
-	}
-	return chunks
-}
+

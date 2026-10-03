@@ -90,6 +90,32 @@ func (g *Gateway) handleAgentSessionItem(w http.ResponseWriter, r *http.Request)
 	}
 }
 
+// handleAgentSessionTurns GET /api/agent/sessions/{session_id}/turns?before=&limit=
+// returns one page of a session's rows (newest first) so the browser can load an
+// old conversation on demand instead of receiving the whole history up front.
+func (g *Gateway) handleAgentSessionTurns(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
+	if g.localCore == nil {
+		unavailable(w, "core not ready")
+		return
+	}
+	sessionID := r.PathValue("session_id")
+	if sessionID == "" {
+		badRequest(w, "session_id required")
+		return
+	}
+	limit := 50
+	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
+		if value, err := strconv.Atoi(raw); err == nil {
+			limit = value
+		}
+	}
+	rows, more, next := g.localCore.SessionTasksPage(sessionID, strings.TrimSpace(r.URL.Query().Get("before")), limit)
+	writeJSON(w, http.StatusOK, map[string]interface{}{"tasks": rows, "more": more, "next": next})
+}
+
 func (g *Gateway) manageAgentSession(w http.ResponseWriter, method, sessionID, action, title string) {
 	if method == http.MethodDelete {
 		action = "delete"
@@ -136,8 +162,8 @@ func (g *Gateway) handleAgentMessage(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusNotFound, "not_found", "session not found")
 		return
 	}
-	for _, task := range g.localCore.ListTasks() {
-		if task["session_id"] == body.SessionID && (task["state"] == "running" || task["state"] == "pending") {
+	for _, task := range g.localCore.SessionTasks(body.SessionID) {
+		if task["state"] == "running" || task["state"] == "pending" {
 			writeErr(w, http.StatusConflict, "conflict", "session already has an active task")
 			return
 		}
@@ -200,8 +226,8 @@ func (g *Gateway) latestCompactSummary(sessionID string) string {
 	if g.localCore == nil || sessionID == "" {
 		return ""
 	}
-	for _, task := range g.localCore.ListTasks() {
-		if task["session_id"] != sessionID || task["kind"] != "compact" || task["state"] != "done" {
+	for _, task := range g.localCore.SessionTasks(sessionID) {
+		if task["kind"] != "compact" || task["state"] != "done" {
 			continue
 		}
 		if result, _ := task["result"].(string); strings.TrimSpace(result) != "" {

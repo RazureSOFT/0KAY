@@ -19,6 +19,7 @@ import McpPanel from '../components/McpPanel.vue'
 import DangerPanel from '../components/DangerPanel.vue'
 import PluginModulePane from '../components/PluginModulePane.vue'
 import AppSelect from '../components/AppSelect.vue'
+import ModelsField from '../components/ModelsField.vue'
 import { useConfirm } from '../composables/confirm'
 import { useSettingsMeta } from '../composables/settingsMeta'
 
@@ -63,6 +64,22 @@ const sectionDrafts = ref<Record<string, Record<string, unknown>>>({})
 const sectionMsg = ref('')
 const sectionTesting = ref(false)
 const sectionTestMsg = ref('')
+
+/** Model catalog for `model` / `models` settings fields (dropdowns). */
+const availableModels = ref<string[]>([])
+const modelAutoLabel = computed(() => (locale.value === 'en' ? 'Auto (by strategy)' : '自动（按策略）'))
+const modelOptions = computed(() => [
+  { value: '', label: modelAutoLabel.value },
+  ...availableModels.value.map((id) => ({ value: id, label: id })),
+])
+async function loadAvailableModels() {
+  try {
+    const res = await fetch('/api/models')
+    if (!res.ok) return
+    const body: { models?: Array<{ id?: string }> } = await res.json()
+    availableModels.value = Array.from(new Set((body.models || []).map((model) => String(model.id || '')).filter(Boolean)))
+  } catch { /* offline */ }
+}
 
 /** Run a plugin section's backend test; play the returned audio sample. */
 async function testPluginSection(id: string) {
@@ -269,6 +286,7 @@ onMounted(async () => {
   const q = route.query.tab as string | undefined
   if (q) activeTab.value = q
   loadUploadedModels()
+  void loadAvailableModels()
   await sectionsStore.fetchSections()
   for (const sec of sectionsStore.sections) loadSectionDraft(sec.id)
 })
@@ -537,6 +555,16 @@ function save() {
               <AppSelect class="input" :aria-label="f.label" :model-value="String(sectionDrafts[activeTab]?.[f.key] ?? '')" :options="f.options || []" @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }" />
               <p v-if="f.help" class="helper-text">{{ f.help }}</p>
             </template>
+            <template v-else-if="f.type === 'model'">
+              <label>{{ f.label }}</label>
+              <AppSelect class="input" :aria-label="f.label" :model-value="String(sectionDrafts[activeTab]?.[f.key] ?? '')" :options="modelOptions" @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }" />
+              <p v-if="f.help" class="helper-text">{{ f.help }}</p>
+            </template>
+            <template v-else-if="f.type === 'models'">
+              <label>{{ f.label }}</label>
+              <ModelsField :model-value="String(sectionDrafts[activeTab]?.[f.key] ?? '')" :options="availableModels" @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }" />
+              <p v-if="f.help" class="helper-text">{{ f.help }}</p>
+            </template>
             <template v-else-if="f.type === 'test'">
               <label>{{ f.label }}</label>
               <div class="actions-row">
@@ -608,6 +636,20 @@ function save() {
             <template v-else-if="f.type === 'select'">
               <label>{{ fieldLabel(tabMeta(activeTab), f.key, `settings.${f.key}`) }}</label>
               <AppSelect class="input" :aria-label="fieldLabel(tabMeta(activeTab), f.key, `settings.${f.key}`)" :model-value="String(sectionDrafts[activeTab]?.[f.key] ?? '')" :options="f.options || []" @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }" />
+              <p v-if="f.help || f.helpKey" class="helper-text">
+                {{ fieldHelp(tabMeta(activeTab), f.key, `settings.${f.key}Desc`) }}
+              </p>
+            </template>
+            <template v-else-if="f.type === 'model'">
+              <label>{{ fieldLabel(tabMeta(activeTab), f.key, `settings.${f.key}`) }}</label>
+              <AppSelect class="input" :aria-label="fieldLabel(tabMeta(activeTab), f.key, `settings.${f.key}`)" :model-value="String(sectionDrafts[activeTab]?.[f.key] ?? '')" :options="modelOptions" @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }" />
+              <p v-if="f.help || f.helpKey" class="helper-text">
+                {{ fieldHelp(tabMeta(activeTab), f.key, `settings.${f.key}Desc`) }}
+              </p>
+            </template>
+            <template v-else-if="f.type === 'models'">
+              <label>{{ fieldLabel(tabMeta(activeTab), f.key, `settings.${f.key}`) }}</label>
+              <ModelsField :model-value="String(sectionDrafts[activeTab]?.[f.key] ?? '')" :options="availableModels" @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }" />
               <p v-if="f.help || f.helpKey" class="helper-text">
                 {{ fieldHelp(tabMeta(activeTab), f.key, `settings.${f.key}Desc`) }}
               </p>

@@ -2,7 +2,7 @@ package server
 
 import (
 	"encoding/json"
-	"os"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -20,7 +20,7 @@ func TestCancelledTaskCannotBecomeDone(t *testing.T) {
 }
 
 func TestTaskLedgerAndSessionHistory(t *testing.T) {
-	s := &CoreServiceServer{tasks: map[string]*TaskInfo{}, taskHistoryPath: filepath.Join(t.TempDir(), "tasks.json")}
+	s := &CoreServiceServer{tasks: map[string]*TaskInfo{}}
 	session, err := s.CreateAgentSession("Coding")
 	if err != nil || !s.HasAgentSession(session) {
 		t.Fatalf("create session: %v", err)
@@ -45,22 +45,6 @@ func TestTaskLedgerAndSessionHistory(t *testing.T) {
 	}
 	if len(s.ListTasks()) < 62 {
 		t.Fatal("task history was silently truncated")
-	}
-	data, err := os.ReadFile(s.taskHistoryPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var saved []persistedTask
-	if err = json.Unmarshal(data, &saved); err != nil {
-		t.Fatal(err)
-	}
-	restored := &CoreServiceServer{tasks: map[string]*TaskInfo{}, taskHistoryPath: s.taskHistoryPath}
-	for _, item := range saved {
-		restored.tasks[item.TaskID] = &TaskInfo{TaskID: item.TaskID}
-	}
-	restored.replayTaskJournal()
-	if len(restored.tasks) != len(s.ListTasks()) {
-		t.Fatal("ledger journal not persisted")
 	}
 }
 
@@ -132,6 +116,79 @@ func TestCompactionReplacesContextButKeepsTranscript(t *testing.T) {
 	}
 	if s.tasks["before"] == nil {
 		t.Fatal("compaction deleted transcript")
+	}
+}
+
+func TestTaskDeltaResetIsLightweight(t *testing.T) {
+	s := &CoreServiceServer{tasks: map[string]*TaskInfo{}}
+	session, _ := s.CreateAgentSession("s")
+	for i := 0; i < 300; i++ {
+		id := fmt.Sprintf("tool-%03d", i)
+		_ = s.RecordTask(TaskEvent{TaskID: id, Kind: "tool", State: "running"})
+		s.finishTask(id, "done", "ok", "")
+	}
+	rows, _ := s.TaskDelta("")["tasks"].([]map[string]interface{})
+	if len(rows) > resetTaskLimit+10 {
+		t.Fatalf("reset dumped %d rows; want <= %d", len(rows), resetTaskLimit+10)
+	}
+	seen := false
+	for _, row := range rows {
+		if row["task_id"] == session {
+			seen = true
+		}
+	}
+	if !seen {
+		t.Fatal("reset omitted the session row")
+	}
+}
+
+func TestSessionTurnsPageAndPersistenceAcrossRestart(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "tasks.json")
+	t.Setenv("TASKS_PATH", path)
+	t.Setenv("USAGE_PATH", filepath.Join(t.TempDir(), "usage.json"))
+	s := NewCoreServiceServer(nil)
+	id, err := s.CreateAgentSession("paging")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 120; i++ {
+		_ = s.RecordTask(TaskEvent{TaskID: fmt.Sprintf("turn-%03d", i), SessionID: id, Kind: "agent", Prompt: fmt.Sprintf("ask %d", i), State: "done", Result: fmt.Sprintf("answer %d", i)})
+	}
+	big := strings.Repeat("x", 100000)
+	_ = s.RecordTask(TaskEvent{TaskID: "big", SessionID: id, Kind: "agent", State: "done", Result: big, Reasoning: big})
+
+	first, more, next := s.SessionTasksPage(id, "", 50)
+	if len(first) != 50 || !more || next == "" {
+		t.Fatalf("page1 len=%d more=%v next=%q", len(first), more, next)
+	}
+	second, more2, _ := s.SessionTasksPage(id, next, 50)
+	if len(second) != 50 || !more2 {
+		t.Fatalf("page2 len=%d more=%v", len(second), more2)
+	}
+	if first[len(first)-1]["task_id"] == second[0]["task_id"] {
+		t.Fatal("pages overlap")
+	}
+
+	restored := NewCoreServiceServer(nil)
+	if !restored.HasAgentSession(id) {
+		t.Fatal("session lost across restart")
+	}
+	rows, _, _ := restored.SessionTasksPage(id, "", 200)
+	foundBig := false
+	for _, row := range rows {
+		if row["task_id"] != "big" {
+			continue
+		}
+		foundBig = true
+		if result, _ := row["result"].(string); len(result) > persistedResultLimit+32 {
+			t.Fatalf("persisted result not clipped: %d", len(result))
+		}
+		if reasoning, _ := row["reasoning"].(string); len(reasoning) > persistedReasoningLimit+32 {
+			t.Fatalf("persisted reasoning not clipped: %d", len(reasoning))
+		}
+	}
+	if !foundBig {
+		t.Fatal("task row lost across restart")
 	}
 }
 

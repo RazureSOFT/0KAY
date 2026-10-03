@@ -109,12 +109,13 @@ var (
 	reSpaces  = regexp.MustCompile(`[ \t]+`)
 	reBlankLn = regexp.MustCompile(`\n{2,}`)
 
-	reDDG     = regexp.MustCompile(`(?is)<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>`)
-	reDDGSnip = regexp.MustCompile(`(?is)class="result__snippet"[^>]*>(.*?)</(?:a|td|div)>`)
-	reBing    = regexp.MustCompile(`(?is)<h2[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>`)
-	re360Item = regexp.MustCompile(`(?is)<h3[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>`)
-	re360URL  = regexp.MustCompile(`(?i)\bdata-mdurl="([^"]+)"`)
-	re360Snip = regexp.MustCompile(`(?is)class="res-desc[^"]*"[^>]*>(.*?)</(?:p|span|div)>`)
+	reDDG      = regexp.MustCompile(`(?is)<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>`)
+	reDDGSnip  = regexp.MustCompile(`(?is)class="result__snippet"[^>]*>(.*?)</(?:a|td|div)>`)
+	reBing     = regexp.MustCompile(`(?is)<h2[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>`)
+	reBingSnip = regexp.MustCompile(`(?is)<p[^>]*>(.*?)</p>`)
+	re360Item  = regexp.MustCompile(`(?is)<h3[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>`)
+	re360URL   = regexp.MustCompile(`(?i)\bdata-mdurl="([^"]+)"`)
+	re360Snip  = regexp.MustCompile(`(?is)class="res-desc[^"]*"[^>]*>(.*?)</(?:p|span|div)>`)
 )
 
 // Search runs the preferred engine first and returns as soon as it has enough
@@ -324,12 +325,22 @@ func fetchBing(ctx context.Context, query string, limit int, cn bool) ([]Result,
 		return nil, err
 	}
 	out := make([]Result, 0, limit)
-	for _, m := range reBing.FindAllStringSubmatch(text, limit*2) {
+	// Each organic result is a <li class="b_algo"> block. Split on the class so
+	// nested markup cannot truncate the block before its snippet <p>.
+	for _, block := range strings.Split(text, `class="b_algo"`)[1:] {
+		m := reBing.FindStringSubmatch(block)
+		if m == nil {
+			continue
+		}
 		href := html.UnescapeString(m[1])
 		if !strings.HasPrefix(href, "http") || strings.Contains(href, "bing.com") || strings.Contains(href, "microsoft.com") {
 			continue
 		}
-		out = append(out, Result{Title: stripTags(m[2]), URL: href, Engine: engine})
+		snippet := ""
+		if s := reBingSnip.FindStringSubmatch(block); s != nil {
+			snippet = stripTags(s[1])
+		}
+		out = append(out, Result{Title: stripTags(m[2]), URL: href, Snippet: snippet, Engine: engine})
 		if len(out) >= limit {
 			break
 		}

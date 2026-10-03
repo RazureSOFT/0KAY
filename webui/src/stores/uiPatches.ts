@@ -82,7 +82,7 @@ export interface StatusSection {
 
 export interface SettingsField {
   key: string
-  type: 'bool' | 'number' | 'text' | 'select'
+  type: 'bool' | 'number' | 'text' | 'select' | 'model' | 'models'
   label?: string
   labelKey?: string
   help?: string

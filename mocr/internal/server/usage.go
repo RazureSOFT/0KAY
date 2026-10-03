@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 
@@ -20,6 +21,7 @@ const usageOutboxMax = 512
 const usageOutboxTTL = 7 * 24 * time.Hour
 
 var usageLock sync.Mutex
+var usageWg sync.WaitGroup
 
 func coreAuth(req *http.Request) {
 	// Attribute the call with the plugin identity issued at registration so Core
@@ -57,11 +59,12 @@ func reportUsage(requestID, sessionID, model string, prompt, completion int32) {
 		log.Printf("usage write: %v", err)
 		return
 	}
+	usageWg.Add(1)
 	go func() {
+		defer usageWg.Done()
 		usageLock.Lock()
 		defer usageLock.Unlock()
 		entries, _ := os.ReadDir(directory)
-		// Drop oversize backlog (oldest first) and stale files past TTL.
 		var files []string
 		for _, entry := range entries {
 			if !entry.IsDir() {
@@ -129,17 +132,22 @@ func reportUsage(requestID, sessionID, model string, prompt, completion int32) {
 	}()
 }
 func sortUsageFilesByAge(files []string) {
-	for i := 1; i < len(files); i++ {
-		for j := i; j > 0; j-- {
-			a, err := os.Stat(files[j-1])
-			b, err2 := os.Stat(files[j])
-			if err != nil || err2 != nil {
-				break
-			}
-			if !a.ModTime().Before(b.ModTime()) {
-				break
-			}
-			files[j-1], files[j] = files[j], files[j-1]
+	type fileInfo struct {
+		path    string
+		modTime time.Time
+	}
+	infos := make([]fileInfo, 0, len(files))
+	for _, f := range files {
+		info, err := os.Stat(f)
+		if err != nil {
+			continue
 		}
+		infos = append(infos, fileInfo{path: f, modTime: info.ModTime()})
+	}
+	sort.Slice(infos, func(i, j int) bool {
+		return infos[i].modTime.Before(infos[j].modTime)
+	})
+	for i, fi := range infos {
+		files[i] = fi.path
 	}
 }

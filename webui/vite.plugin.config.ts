@@ -33,6 +33,19 @@ const SHARED = new Set(
   ].map((p) => toPosix(path.join(src, p))),
 )
 
+// Shared Vue components are imported as *default* exports in source, but the
+// host bridge exposes them as *named* exports (its default export is the whole
+// host runtime). A default import would therefore resolve to the runtime object
+// and render nothing, so those imports are rewritten to named ones.
+const SHARED_COMPONENT_EXPORTS = new Map<string, string>(
+  [...SHARED].filter((p) => p.endsWith('.vue')).map((p) => [p, path.basename(p, '.vue')]),
+)
+
+function resolveShared(absNoExt: string): string | undefined {
+  return [absNoExt, `${absNoExt}.ts`, `${absNoExt}.vue`, `${absNoExt}/index.ts`]
+    .find((candidate) => SHARED.has(candidate))
+}
+
 function rewriteSharedToHost() {
   return {
     name: 'rewrite-shared-to-host',
@@ -42,20 +55,33 @@ function rewriteSharedToHost() {
       if (!cleanId.startsWith(srcPosix)) return null
       const dir = path.dirname(cleanId)
       let changed = false
-      const out = code.replace(
-        /(\bfrom\s*|\bimport\s*)(['"])([^'"]+)\2/g,
-        (match, kw: string, quote: string, spec: string) => {
+      // 1) default component imports: `import X from './AppSelect.vue'`
+      //    → `import { AppSelect as X } from '@0kay/host'`
+      code = code.replace(
+        /(\bimport\s+)([A-Za-z_$][\w$]*)(\s+from\s*)(['"])([^'"]+)\4/g,
+        (match, keyword: string, local: string, from: string, quote: string, spec: string) => {
           if (!spec.startsWith('.')) return match
           const abs = toPosix(path.resolve(dir, spec))
-          const candidates = [abs, `${abs}.ts`, `${abs}.vue`, `${abs}/index.ts`]
-          if (candidates.some((candidate) => SHARED.has(candidate))) {
-            changed = true
-            return `${kw}${quote}@0kay/host${quote}`
-          }
-          return match
+          const shared = resolveShared(abs)
+          const exported = shared ? SHARED_COMPONENT_EXPORTS.get(shared) : undefined
+          if (!exported) return match
+          changed = true
+          const binding = exported === local ? `{ ${exported} }` : `{ ${exported} as ${local} }`
+          return `${keyword}${binding}${from}${quote}@0kay/host${quote}`
         },
       )
-      return changed ? { code: out, map: null } : null
+      // 2) every other relative import of a shared module: rewrite the specifier.
+      code = code.replace(
+        /(\bfrom\s*|\bimport\s*)(['"])([^'"]+)\2/g,
+        (match, keyword: string, quote: string, spec: string) => {
+          if (!spec.startsWith('.')) return match
+          const abs = toPosix(path.resolve(dir, spec))
+          if (!resolveShared(abs)) return match
+          changed = true
+          return `${keyword}${quote}@0kay/host${quote}`
+        },
+      )
+      return changed ? { code, map: null } : null
     },
   }
 }

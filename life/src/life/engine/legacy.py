@@ -1594,6 +1594,8 @@ class LifeEngine:
             if age < 20 * 60:
                 return
         try:
+            if len(self._background_tasks) >= 8:
+                return
             # Hold a reference: a bare `ensure_future` result is only weakly
             # referenced and the task can be garbage-collected mid-flight.
             task = asyncio.ensure_future(self._author_self_statement(reason="refresh"))
@@ -2439,7 +2441,7 @@ class LifeEngine:
                   if abs(float(e.get("delta", 0.0) or 0.0)) >= 0.02][:3]
         if recent:
             label = {"message_sentiment": "这段对话", "commitment_breach": "我失信",
-                     "owner_adjust": "关系变化"}.get
+                     "owner_adjust": "关系变化"}.get(str(e.get('reason')), str(e.get('reason')))
             parts.append("最近的关系变化：" + "、".join(
                 f"{label(str(e.get('reason')), str(e.get('reason')))}"
                 f"({'变暖' if float(e.get('delta', 0)) > 0 else '变冷'}{abs(float(e.get('delta', 0))):.2f})"

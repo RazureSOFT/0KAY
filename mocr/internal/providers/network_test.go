@@ -13,8 +13,8 @@ func TestMetadataCannotBeDialed(t *testing.T) {
 			t.Fatal("metadata admitted", address)
 		}
 	}
-	t.Setenv("MOCR_SSRF_STRICT", "1")
+	t.Setenv("MOCR_SSRF_ALLOW_PRIVATE", "")
 	if !blockedAddress(net.ParseIP("127.0.0.1")) {
-		t.Fatal("strict loopback admitted")
+		t.Fatal("loopback admitted by default")
 	}
 }

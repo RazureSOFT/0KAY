@@ -384,6 +384,9 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 
 	if !opts.Stream {
 		var parsed struct {
+			Error *struct {
+				Message string `json:"message"`
+			} `json:"error"`
 			Choices []struct {
 				Message struct {
 					Content          string `json:"content"`
@@ -406,6 +409,9 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
 			return nil, err
+		}
+		if parsed.Error != nil && parsed.Error.Message != "" {
+			return nil, fmt.Errorf("provider error: %s", parsed.Error.Message)
 		}
 		info := &FinishInfo{FinishReason: "stop"}
 		if len(parsed.Choices) > 0 {
@@ -447,6 +453,18 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 		idle.Reset(streamIdleTimeout())
 		line := scanner.Text()
 		if !strings.HasPrefix(line, "data:") {
+			// Some gateways return a plain JSON error body (no SSE frames) with
+			// HTTP 200; surface it instead of a vague "no completion marker".
+			if trimmed := strings.TrimSpace(line); strings.HasPrefix(trimmed, "{") {
+				var errPayload struct {
+					Error *struct {
+						Message string `json:"message"`
+					} `json:"error"`
+				}
+				if json.Unmarshal([]byte(trimmed), &errPayload) == nil && errPayload.Error != nil && errPayload.Error.Message != "" {
+					return nil, fmt.Errorf("provider error: %s", errPayload.Error.Message)
+				}
+			}
 			continue
 		}
 		data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
@@ -862,9 +880,6 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 	emitTools(opts, calls)
 	return &FinishInfo{FinishReason: finish, PromptTokens: pt, OutputTokens: ot, ToolCalls: calls, ReasoningContent: reasoning.String()}, nil
 }
-
-// Ensure time is referenced if needed later.
-var _ = time.Second
 
 func streamIdleTimeout() time.Duration {
 	if value, err := time.ParseDuration(os.Getenv("MOCR_STREAM_IDLE_TIMEOUT")); err == nil && value > 0 {

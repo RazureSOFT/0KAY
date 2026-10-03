@@ -99,6 +99,7 @@
     "searchEngine": "Search engine",
     "noActiveTasks": "No active tasks",
     "running": "Running",
+    "connected": "Connected",
     "disconnected": "Disconnected"
   },
   "memory": {
@@ -264,6 +265,7 @@
     "apiRequired": "API Key and Base URL are required",
     "models": "Models",
     "persona": "Persona",
+    "live2d": "Live2D",
     "permissions": "Permissions",
     "screenWatch": "Screen watch",
     "screenWatchDesc": "Allow L.I.F.E to observe screen content (off by default)",

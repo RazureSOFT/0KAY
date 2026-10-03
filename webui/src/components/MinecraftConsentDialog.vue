@@ -8,20 +8,34 @@ type Pending = { id: string; action?: string; detail?: string; created_at?: stri
 
 const pending = ref<Pending | null>(null)
 const busy = ref(false)
-let timer: ReturnType<typeof setInterval> | null = null
+let timer: ReturnType<typeof setTimeout> | null = null
+let failures = 0
+const POLL_OK = 3000
+const POLL_MAX = 60000
 
 function base() {
   return (localStorage.getItem('0kay_minecraft_url') || 'http://127.0.0.1:8765').replace(/\/+$/, '')
 }
 
+function schedule() {
+  // Back off while the service is unreachable so a stopped Minecraft bot does
+  // not spam ERR_CONNECTION_REFUSED every few seconds.
+  const delay = failures === 0 ? POLL_OK : Math.min(POLL_OK * 2 ** failures, POLL_MAX)
+  timer = setTimeout(() => { void poll() }, delay)
+}
+
 async function poll() {
   try {
     const res = await fetch(`${base()}/status`, { signal: AbortSignal.timeout(4000) })
-    if (!res.ok) { pending.value = null; return }
+    if (!res.ok) { pending.value = null; failures = 0; return }
     const data = await res.json()
     pending.value = data?.consent?.pending || null
+    failures = 0
   } catch {
     pending.value = null // service offline / not configured
+    failures = Math.min(failures + 1, 6)
+  } finally {
+    schedule()
   }
 }
 
@@ -37,16 +51,17 @@ async function reply(approve: boolean) {
   } catch { /* best effort; the service will time out */ }
   pending.value = null
   busy.value = false
+  failures = 0
+  if (timer) clearTimeout(timer)
   void poll()
 }
 
 onMounted(() => {
   void poll()
-  timer = setInterval(poll, 3000)
 })
 
 onUnmounted(() => {
-  if (timer) clearInterval(timer)
+  if (timer) clearTimeout(timer)
 })
 </script>
 

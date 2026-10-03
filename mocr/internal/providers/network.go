@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+// blockedAddress reports whether an outbound dial target is forbidden.
+// Metadata/link-local/CGNAT ranges are always refused. Private and loopback
+// ranges are refused by default so a misconfigured or attacker-influenced
+// provider BaseUrl cannot reach internal services; set MOCR_SSRF_ALLOW_PRIVATE=1
+// to permit them again (e.g. for a local Ollama/LM Studio endpoint).
 func blockedAddress(ip net.IP) bool {
 	if ip == nil || ip.IsUnspecified() || ip.IsMulticast() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
 		return true
@@ -21,7 +26,10 @@ func blockedAddress(ip net.IP) bool {
 			return true
 		}
 	}
-	return os.Getenv("MOCR_SSRF_STRICT") == "1" && (ip.IsPrivate() || ip.IsLoopback())
+	if os.Getenv("MOCR_SSRF_ALLOW_PRIVATE") == "1" {
+		return false
+	}
+	return ip.IsPrivate() || ip.IsLoopback()
 }
 
 func guardedDial(ctx context.Context, network, address string) (net.Conn, error) {

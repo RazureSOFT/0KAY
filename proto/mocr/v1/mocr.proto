@@ -103,6 +103,16 @@ message GenerateResponse {
   // text is the full accumulated assistant text (sent once with done=true when
   // any tool calls were requested, so callers can persist the turn).
   string text = 8;
+
+  // model is the model that actually produced the output (after any auto-switch).
+  string model = 9;
+
+  // requested_model is the model the caller asked for.
+  string requested_model = 10;
+
+  // fallback_reason is non-empty when a different model produced the output
+  // (auto-switch after the requested model failed).
+  string fallback_reason = 11;
 }
 
 // Tool declares a callable function for native tool calling.

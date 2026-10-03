@@ -99,6 +99,7 @@
     "searchEngine": "搜尋引擎",
     "noActiveTasks": "暫無活躍任務",
     "running": "執行中",
+    "connected": "已連線",
     "disconnected": "未連線"
   },
   "memory": {
@@ -264,6 +265,7 @@
     "apiRequired": "請填寫 API Key 和 Base URL",
     "models": "模型",
     "persona": "人設",
+    "live2d": "Live2D",
     "permissions": "權限",
     "screenWatch": "螢幕監看",
     "screenWatchDesc": "允許 L.I.F.E 觀察螢幕內容（預設關閉）",

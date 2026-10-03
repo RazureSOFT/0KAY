@@ -93,6 +93,8 @@ function applyPatchesAndRematch() {
 
 ui.fetchPatches().then(applyPatchesAndRematch).catch(() => {
   registerPatchRoutes()
+  void installBootstrapModules()
+  applyThemePatches(ui.themePatches)
 })
 
 // Re-register when polling refreshes ops (new patch files at runtime).

@@ -564,7 +564,7 @@ const pt = ["title"], gt = {
       ], 12, pt)
     ], 2));
   }
-}), Lt = /* @__PURE__ */ vt(bt, [["__scopeId", "data-v-ed3cc7f4"]]);
+}), Lt = /* @__PURE__ */ vt(bt, [["__scopeId", "data-v-594879d8"]]);
 export {
   Lt as L
 };

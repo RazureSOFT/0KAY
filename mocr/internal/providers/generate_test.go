@@ -5,9 +5,17 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"testing"
 )
+
+// TestMain allows loopback httptest servers, which the SSRF guard blocks by
+// default (same as a user running a local model server).
+func TestMain(m *testing.M) {
+	os.Setenv("MOCR_SSRF_ALLOW_PRIVATE", "1")
+	os.Exit(m.Run())
+}
 
 func TestIncompleteStreamAndThinking(t *testing.T) {
 	var body map[string]interface{}

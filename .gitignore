@@ -23,6 +23,9 @@ core/data/paired_devices.json
 core/data/core.crt
 core/data/core.key
 **/runtime-env.json
+# Local runtime secrets (generated registration/service tokens); never commit.
+/.env
+/.env.*
 
 # Local tooling & runtime artifacts
 buf-win.exe

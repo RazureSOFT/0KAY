@@ -99,6 +99,7 @@
     "searchEngine": "搜索引擎",
     "noActiveTasks": "暂无活跃任务",
     "running": "运行中",
+    "connected": "已连接",
     "disconnected": "未连接"
   },
   "memory": {
@@ -264,6 +265,7 @@
     "apiRequired": "请填写 API Key 和 Base URL",
     "models": "模型",
     "persona": "人设",
+    "live2d": "Live2D",
     "permissions": "权限",
     "screenWatch": "屏幕监听",
     "screenWatchDesc": "允许 L.I.F.E 观察屏幕内容（默认关闭）",

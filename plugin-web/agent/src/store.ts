@@ -49,6 +49,7 @@ function createStore() {
     onlineCount: 0,
     loading: false,
     error: '',
+    resetToken: 0,
   })
 
   let timer: ReturnType<typeof setInterval> | null = null
@@ -60,15 +61,34 @@ function createStore() {
   let streaming = false
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   let reconnectDelay = 1000
+  // Turns are loaded per session on demand: the initial snapshot only carries
+  // sessions, in-flight work and the newest rows. turnsMore[sessionId] holds the
+  // cursor for the next older page ("" once the whole history is loaded).
+  const turnsLoaded = new Set<string>()
+  const turnsMore = reactive<Record<string, string>>({})
 
-  function applyTasks(tdata: any) {
-    if (tdata.reset) taskCache.clear()
-    for (const id of tdata.removed || []) taskCache.delete(id)
-    for (const row of tdata.tasks || []) taskCache.set(row.task_id, row)
-    taskCursor = tdata.cursor || ''
+  function recompute() {
     const rows = [...taskCache.values()].sort((a, b) => (b.started_at || '').localeCompare(a.started_at || '') || a.task_id.localeCompare(b.task_id))
     s.tasks = rows.filter((task) => task.kind !== 'agent_session')
     s.sessions = rows.filter((task) => task.kind === 'agent_session')
+  }
+
+  function mergeTasks(rows: TaskRow[]) {
+    for (const row of rows || []) taskCache.set(row.task_id, row)
+    recompute()
+  }
+
+  function applyTasks(tdata: any) {
+    if (tdata.reset) {
+      taskCache.clear()
+      turnsLoaded.clear()
+      for (const key of Object.keys(turnsMore)) delete turnsMore[key]
+      s.resetToken++
+    }
+    for (const id of tdata.removed || []) taskCache.delete(id)
+    for (const row of tdata.tasks || []) taskCache.set(row.task_id, row)
+    taskCursor = tdata.cursor || ''
+    recompute()
   }
 
   function streamTasks() {
@@ -156,6 +176,41 @@ function createStore() {
     if (!response.ok) throw new Error(await response.text())
     await fetchAgents()
   }
+  async function fetchSessionTurns(session_id: string, before = ''): Promise<{ more: boolean; next: string }> {
+    const url = `/api/agent/sessions/${encodeURIComponent(session_id)}/turns?limit=50${before ? `&before=${encodeURIComponent(before)}` : ''}`
+    const response = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const data = await response.json()
+    mergeTasks(data.tasks || [])
+    return { more: !!data.more, next: data.next || '' }
+  }
+
+  // ensureSessionTurns loads a session's newest page once. Older pages are
+  // fetched explicitly with olderSessionTurns so the first render stays small.
+  async function ensureSessionTurns(session_id: string): Promise<void> {
+    if (!session_id || turnsLoaded.has(session_id)) return
+    turnsLoaded.add(session_id)
+    try {
+      const page = await fetchSessionTurns(session_id)
+      turnsMore[session_id] = page.more ? page.next : ''
+    } catch {
+      turnsLoaded.delete(session_id)
+    }
+  }
+
+  async function olderSessionTurns(session_id: string): Promise<void> {
+    const before = turnsMore[session_id]
+    if (!session_id || !before) return
+    try {
+      const page = await fetchSessionTurns(session_id, before)
+      turnsMore[session_id] = page.more ? page.next : ''
+    } catch { /* keep the cursor so the user can retry */ }
+  }
+
+  function hasOlderTurns(session_id?: string): boolean {
+    return !!(session_id && turnsMore[session_id])
+  }
+
   async function sendTask(session_id: string, prompt: string, agent_type: string, options: Record<string, string> = {}) {
     const response = await fetch('/api/agent/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id, prompt, agent_type, ...options }) })
     const body = await response.text()
@@ -183,6 +238,9 @@ function createStore() {
     manageSession,
     sendTask,
     cancelTask,
+    ensureSessionTurns,
+    olderSessionTurns,
+    hasOlderTurns,
   })
 }
 

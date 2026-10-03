@@ -24,7 +24,7 @@ func (s *CoreServiceServer) replayTaskJournal() {
 			continue
 		}
 		for _, item := range record.Tasks {
-			s.tasks[item.TaskID] = &TaskInfo{TaskID: item.TaskID, CallerID: item.CallerID, Prompt: item.Prompt, AgentID: item.AgentID, State: item.State, Result: item.Result, Error: item.Error, StartedAt: item.StartedAt, EndedAt: item.EndedAt, SessionID: item.SessionID, Kind: item.Kind, ParentID: item.ParentID, Args: item.Args}
+			s.tasks[item.TaskID] = &TaskInfo{TaskID: item.TaskID, CallerID: item.CallerID, Prompt: item.Prompt, AgentID: item.AgentID, State: item.State, Result: item.Result, Error: item.Error, StartedAt: item.StartedAt, EndedAt: item.EndedAt, SessionID: item.SessionID, Kind: item.Kind, ParentID: item.ParentID, Args: item.Args, Reasoning: item.Reasoning}
 		}
 		for _, id := range record.Removed {
 			if task := s.tasks[id]; task == nil || task.State != "deleted" {

@@ -27,7 +27,8 @@ func TestAgentSessionCanBeCreatedWithoutExecutor(t *testing.T) {
 		t.Fatal("session not created")
 	}
 	restored := server.NewCoreServiceServer(nil)
+	// Task history is persisted to TASKS_PATH, so a restart keeps the session.
 	if !restored.HasAgentSession(created["session_id"]) {
-		t.Fatal("session did not survive restart")
+		t.Fatal("session history should survive a restart")
 	}
 }

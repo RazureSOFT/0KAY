@@ -8,10 +8,12 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"0kay/core/internal/egress"
 	"0kay/core/internal/pairing"
@@ -324,6 +326,10 @@ func NewCoreServiceServer(reg *registry.Registry) *CoreServiceServer {
 	if taskPath == "" {
 		taskPath = "data/tasks.json"
 	}
+	// Task history is restored from the on-disk snapshot so conversations and
+	// their tool steps survive a Core restart. Fields are bounded on write (see
+	// persistedFrom) so the snapshot stays small; the WebUI still loads an old
+	// session's turns on demand instead of receiving the whole ledger at once.
 	tasks := make(map[string]*TaskInfo)
 	if data, err := os.ReadFile(taskPath); err == nil {
 		var saved []persistedTask
@@ -402,13 +408,77 @@ func (s *CoreServiceServer) shouldSyncJournalLocked(changes []persistedTask, rem
 	return time.Since(s.lastJournalSync) >= journalSyncInterval
 }
 
-func (s *CoreServiceServer) persistTasksLocked() {
-	if s.taskHistoryPath == "" {
-		return
+// Bounds on the durable copy of a task. The in-memory row keeps the full value
+// for the running process; only the snapshot/journal copy is clipped so a long
+// result or chain-of-thought cannot bloat the ledger file.
+const (
+	persistedPromptLimit     = 8000
+	persistedResultLimit     = 16000
+	persistedErrorLimit      = 4000
+	persistedArgsLimit       = 8000
+	persistedReasoningLimit  = 8000
+	persistedSessionLimit    = 2000
+	persistedNonSessionLimit = 5000
+)
+
+// persistedFrom builds the durable form of a task, clipping oversized fields.
+func persistedFrom(t *TaskInfo) persistedTask {
+	return persistedTask{
+		TaskID:    t.TaskID,
+		CallerID:  t.CallerID,
+		Prompt:    clipField(t.Prompt, persistedPromptLimit),
+		AgentID:   t.AgentID,
+		State:     t.State,
+		Result:    clipField(t.Result, persistedResultLimit),
+		Error:     clipField(t.Error, persistedErrorLimit),
+		StartedAt: t.StartedAt,
+		EndedAt:   t.EndedAt,
+		SessionID: t.SessionID,
+		Kind:      t.Kind,
+		ParentID:  t.ParentID,
+		Args:      clipField(t.Args, persistedArgsLimit),
+		Reasoning: clipField(t.Reasoning, persistedReasoningLimit),
 	}
+}
+
+// snapshotTasks trims the persisted set to the retention caps, keeping the
+// newest rows of each class so the snapshot cannot grow without bound.
+func snapshotTasks(items []persistedTask) []persistedTask {
+	sessions := make([]persistedTask, 0, len(items))
+	others := make([]persistedTask, 0, len(items))
+	for _, item := range items {
+		if item.Kind == "agent_session" {
+			sessions = append(sessions, item)
+		} else {
+			others = append(others, item)
+		}
+	}
+	byNewest := func(list []persistedTask) {
+		sort.Slice(list, func(i, j int) bool {
+			if list[i].StartedAt.Equal(list[j].StartedAt) {
+				return list[i].TaskID < list[j].TaskID
+			}
+			return list[i].StartedAt.After(list[j].StartedAt)
+		})
+	}
+	byNewest(sessions)
+	byNewest(others)
+	if len(sessions) > persistedSessionLimit {
+		sessions = sessions[:persistedSessionLimit]
+	}
+	if len(others) > persistedNonSessionLimit {
+		others = others[:persistedNonSessionLimit]
+	}
+	return append(sessions, others...)
+}
+
+// persistTasksLocked advances the in-memory change tracking TaskDelta relies on
+// and appends the delta to the durable journal. Fields are clipped (persistedFrom)
+// so the ledger stays small even while a tool streams large results.
+func (s *CoreServiceServer) persistTasksLocked() {
 	items := make([]persistedTask, 0, len(s.tasks))
 	for _, t := range s.tasks {
-		items = append(items, persistedTask{TaskID: t.TaskID, CallerID: t.CallerID, Prompt: t.Prompt, AgentID: t.AgentID, State: t.State, Result: t.Result, Error: t.Error, StartedAt: t.StartedAt, EndedAt: t.EndedAt, SessionID: t.SessionID, Kind: t.Kind, ParentID: t.ParentID, Args: t.Args, Reasoning: t.Reasoning})
+		items = append(items, persistedFrom(t))
 	}
 	if s.taskFingerprints == nil {
 		s.taskFingerprints = map[string]string{}
@@ -444,6 +514,23 @@ func (s *CoreServiceServer) persistTasksLocked() {
 		s.taskRemoved[id] = s.taskRevision
 		delete(s.taskChanges, id)
 	}
+	if s.taskHistoryPath != "" {
+		s.appendTaskJournalLocked(changes, removed)
+	}
+	for _, item := range changes {
+		raw, _ := json.Marshal(item)
+		s.taskFingerprints[item.TaskID] = string(raw)
+	}
+	for _, id := range removed {
+		if s.tasks[id] == nil {
+			delete(s.taskFingerprints, id)
+		}
+	}
+}
+
+// appendTaskJournalLocked appends the delta to the journal and periodically
+// compacts it into the snapshot. Callers must hold s.mu.
+func (s *CoreServiceServer) appendTaskJournalLocked(changes []persistedTask, removed []string) {
 	_ = os.MkdirAll(filepath.Dir(s.taskHistoryPath), 0700)
 	journal, err := os.OpenFile(s.taskHistoryPath+".journal", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
@@ -469,21 +556,17 @@ func (s *CoreServiceServer) persistTasksLocked() {
 		log.Printf("task journal write: %v", err)
 		return
 	}
-	for _, item := range changes {
-		raw, _ := json.Marshal(item)
-		s.taskFingerprints[item.TaskID] = string(raw)
-	}
-	for _, id := range removed {
-		if s.tasks[id] == nil {
-			delete(s.taskFingerprints, id)
-		}
-	}
 	info, _ := os.Stat(s.taskHistoryPath + ".journal")
 	_, snapshotErr := os.Stat(s.taskHistoryPath)
 	if snapshotErr == nil && info != nil && info.Size() < 8<<20 {
 		return
 	}
-	if data, err := json.MarshalIndent(items, "", "  "); err == nil {
+	snapshotItems := make([]persistedTask, 0, len(s.tasks))
+	for _, t := range s.tasks {
+		snapshotItems = append(snapshotItems, persistedFrom(t))
+	}
+	snapshot := snapshotTasks(snapshotItems)
+	if data, err := json.MarshalIndent(snapshot, "", "  "); err == nil {
 		_ = os.MkdirAll(filepath.Dir(s.taskHistoryPath), 0o755)
 		temporary := s.taskHistoryPath + ".tmp"
 		if err := writeFileSync(temporary, data, 0o600); err == nil {
@@ -502,6 +585,7 @@ func (s *CoreServiceServer) persistTasksLocked() {
 		}
 	}
 }
+
 
 // writeFileSync writes data to path and flushes it to the disk before
 // returning, so a subsequent rename cannot publish a half-written snapshot.
@@ -1245,8 +1329,6 @@ func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRe
 	s.mu.Lock()
 	s.tasks[req.TaskId].AgentID = agent.PluginID
 	s.tasks[req.TaskId].State = "running"
-	s.mu.Unlock()
-	s.mu.Lock()
 	s.persistTasksLocked()
 	s.mu.Unlock()
 
@@ -1316,6 +1398,7 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 
 	conn, err := grpc.NewClient(agentAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithPerRPCCredentials(registry.NewServiceTokenCredentials(s.registry.Token(agent.PluginID))),
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:                30 * time.Second,
 			Timeout:             10 * time.Second,
@@ -1547,47 +1630,104 @@ func (s *CoreServiceServer) GetTask(taskID string) (*TaskInfo, bool) {
 	return task, ok
 }
 
-// ListTasks returns JSON-friendly task state-machine entries for the gateway.
-func (s *CoreServiceServer) ListTasks() []map[string]interface{} {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	out := make([]map[string]interface{}, 0, len(s.tasks))
-	for _, t := range s.tasks {
-		if session := s.tasks[t.SessionID]; session != nil && session.Kind == "agent_session" && session.State == "deleted" {
+// taskBlobPattern matches a base64 blob value inside a JSON task result.
+var taskBlobPattern = regexp.MustCompile(`("base64"\s*:\s*")[^"]{500,}(")`)
+
+// redactTaskResult removes oversized base64 blobs from a tool result so the
+// task list stays small. Results without a big blob are returned unchanged;
+// anything still oversized (e.g. other giant fields) collapses to a marker so
+// the API payload is always bounded.
+func redactTaskResult(raw string) string {
+	const limit = 6_000
+	if len(raw) <= limit {
+		return raw
+	}
+	redacted := taskBlobPattern.ReplaceAllString(raw, `${1}[omitted]${2}`)
+	if len(redacted) > limit {
+		return fmt.Sprintf(`{"truncated":true,"bytes":%d}`, len(raw))
+	}
+	return redacted
+}
+
+// taskListLimit caps how many (non-session) task rows the gateway API returns,
+// so the payload stays small even with a long history. Newest rows win.
+const taskListLimit = 500
+
+// limitTaskRows keeps every session row (so the session list is intact) plus
+// the newest taskListLimit non-session rows. Input must be sorted newest-first.
+func limitTaskRows(rows []map[string]interface{}) []map[string]interface{} {
+	kept := make([]map[string]interface{}, 0, len(rows))
+	others := 0
+	for _, row := range rows {
+		if row["kind"] == "agent_session" {
+			kept = append(kept, row)
 			continue
 		}
-		state := t.State
-		if state == "" {
-			state = "running"
+		if others < taskListLimit {
+			kept = append(kept, row)
+			others++
 		}
-		item := map[string]interface{}{
-			"task_id":    t.TaskID,
-			"caller_id":  t.CallerID,
-			"prompt":     t.Prompt,
-			"agent_id":   t.AgentID,
-			"state":      state,
-			"started_at": t.StartedAt.Format("2006-01-02T15:04:05.000000000Z07:00"),
-			"session_id": t.SessionID,
-			"kind":       t.Kind,
-			"parent_id":  t.ParentID,
-		}
-		if !t.EndedAt.IsZero() {
-			item["ended_at"] = t.EndedAt.Format(time.RFC3339)
-		}
-		if t.Args != "" {
-			item["args"] = t.Args
-		}
-		if t.Result != "" {
-			item["result"] = t.Result
-		}
-		if t.Reasoning != "" {
-			item["reasoning"] = t.Reasoning
-		}
-		if t.Error != "" {
-			item["error"] = t.Error
-		}
-		out = append(out, item)
 	}
+	sortTaskRows(kept)
+	return kept
+}
+
+// taskRowLocked builds a JSON-friendly task row. Caller must hold s.mu.
+func (s *CoreServiceServer) taskRowLocked(t *TaskInfo) map[string]interface{} {
+	state := t.State
+	if state == "" {
+		state = "running"
+	}
+	item := map[string]interface{}{
+		"task_id":    t.TaskID,
+		"caller_id":  t.CallerID,
+		"prompt":     clipField(t.Prompt, 400),
+		"agent_id":   t.AgentID,
+		"state":      state,
+		"started_at": t.StartedAt.Format("2006-01-02T15:04:05.000000000Z07:00"),
+		"session_id": t.SessionID,
+		"kind":       t.Kind,
+		"parent_id":  t.ParentID,
+	}
+	if !t.EndedAt.IsZero() {
+		item["ended_at"] = t.EndedAt.Format(time.RFC3339)
+	}
+	if t.Args != "" {
+		item["args"] = clipField(t.Args, 800)
+	}
+	if t.Result != "" {
+		item["result"] = redactTaskResult(t.Result)
+	}
+	if t.Reasoning != "" {
+		item["reasoning"] = clipField(t.Reasoning, 3000)
+	}
+	if t.Error != "" {
+		item["error"] = clipField(t.Error, 1500)
+	}
+	return item
+}
+
+// clipField bounds a string field so a single row cannot bloat the payload.
+func clipField(value string, max int) string {
+	if len(value) <= max {
+		return value
+	}
+	cut := max
+	for cut > 0 && !utf8.RuneStart(value[cut]) {
+		cut--
+	}
+	return value[:cut] + "…[truncated]"
+}
+
+// sessionDeletedLocked reports whether a task's session was deleted.
+// Caller must hold s.mu.
+func (s *CoreServiceServer) sessionDeletedLocked(t *TaskInfo) bool {
+	session := s.tasks[t.SessionID]
+	return session != nil && session.Kind == "agent_session" && session.State == "deleted"
+}
+
+// sortTaskRows orders rows newest-first, tie-broken by task id.
+func sortTaskRows(out []map[string]interface{}) {
 	sort.Slice(out, func(i, j int) bool {
 		a, b := out[i]["started_at"].(string), out[j]["started_at"].(string)
 		if a == b {
@@ -1595,7 +1735,25 @@ func (s *CoreServiceServer) ListTasks() []map[string]interface{} {
 		}
 		return a > b
 	})
-	return out
+}
+
+// ListTasks returns JSON-friendly task state-machine entries for the gateway.
+//
+// Tool results can embed large base64 blobs (computeruse screenshots). Returning
+// them verbatim made /api/tasks multi-megabyte and slow, so the browser's short
+// polling deadlines timed out; blobs are stripped here and bounded in size.
+func (s *CoreServiceServer) ListTasks() []map[string]interface{} {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]map[string]interface{}, 0, len(s.tasks))
+	for _, t := range s.tasks {
+		if s.sessionDeletedLocked(t) {
+			continue
+		}
+		out = append(out, s.taskRowLocked(t))
+	}
+	sortTaskRows(out)
+	return limitTaskRows(out)
 }
 
 // RemoveTask removes a task (internal helper).
