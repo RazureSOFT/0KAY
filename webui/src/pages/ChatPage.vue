@@ -28,7 +28,6 @@ const MIN_CHAT = 320
 const MIN_STAGE = 360
 const MAX_CHAT = 960
 const chatRatio = ref(0.34)
-const resizer = ref<HTMLElement | null>(null)
 const pageEl = ref<HTMLElement | null>(null)
 let dragging = false
 

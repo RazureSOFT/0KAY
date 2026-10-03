@@ -3,6 +3,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 const storedUrl = (() => { try { return localStorage.getItem('0kay.minecraft.url') || '' } catch { return '' } })()
 const serviceUrl = ref(storedUrl || `http://${location.hostname || '127.0.0.1'}:8765`)
+const serviceToken = ref('')
+const authHeaders = () => ({ Authorization: `Bearer ${serviceToken.value}` })
 const status = ref(null)
 const world = ref({ waypoints: [], skills: [] })
 const error = ref('')
@@ -38,7 +40,7 @@ function itemLabel(name) {
 
 async function refresh() {
   try {
-    const res = await fetch(`${serviceUrl.value.replace(/\/$/, '')}/status`, { signal: AbortSignal.timeout(6000) })
+    const res = await fetch(`${serviceUrl.value.replace(/\/$/, '')}/status`, { headers: authHeaders(), signal: AbortSignal.timeout(6000) })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     status.value = await res.json()
     error.value = ''
@@ -52,7 +54,7 @@ async function refresh() {
 
 async function fetchWorld() {
   try {
-    const res = await fetch(`${serviceUrl.value.replace(/\/$/, '')}/world`, { signal: AbortSignal.timeout(6000) })
+    const res = await fetch(`${serviceUrl.value.replace(/\/$/, '')}/world`, { headers: authHeaders(), signal: AbortSignal.timeout(6000) })
     if (res.ok) world.value = await res.json()
   } catch { /* keep previous world snapshot */ }
 }
@@ -62,12 +64,12 @@ async function act(action, args = {}) {
   try {
     const res = await fetch(`${serviceUrl.value.replace(/\/$/, '')}/action`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ action, args }),
       signal: AbortSignal.timeout(40000),
     })
     const data = await res.json().catch(() => ({}))
-    if (data.ok === false) throw new Error(data.error || 'action failed')
+    if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`)
     await refresh()
   } catch (e) {
     error.value = e?.message || 'action failed'
@@ -100,6 +102,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
 <template>
   <div class="mc">
+    <label>服务访问令牌 <input v-model="serviceToken" type="password" autocomplete="off" placeholder="MINECRAFT_TOKEN" @change="refresh" /></label>
     <header class="mc-head">
       <div class="mc-title">
         <span class="mc-logo" aria-hidden="true">

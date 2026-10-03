@@ -8,7 +8,7 @@ import CodeEditor from './CodeEditor.vue'
 import MarkdownContent from './MarkdownContent.vue'
 import { renderAsync } from 'docx-preview'
 import { init as initPptx } from 'pptx-preview'
-import * as XLSX from 'xlsx'
+import SpreadsheetWorker from './spreadsheet.worker?worker&inline'
 import DOMPurify from 'dompurify'
 
 const props = defineProps<{
@@ -31,7 +31,21 @@ const rendering = ref(false)
 const sheetNames = ref<string[]>([])
 const activeSheet = ref(0)
 const sheetHtml = ref('')
-let workbook: any = null
+let sheets: string[] = []
+let cancelSpreadsheet: (() => void) | null = null
+
+function parseSpreadsheet(bytes: Uint8Array): Promise<{ names: string[]; sheets: string[] }> {
+  if (bytes.byteLength > 16 * 1024 * 1024) return Promise.reject(new Error('Spreadsheet exceeds 16 MiB preview limit'))
+  return new Promise((resolve, reject) => {
+    const worker = new SpreadsheetWorker()
+    const finish = () => { clearTimeout(timer); worker.terminate(); cancelSpreadsheet = null }
+    const timer = setTimeout(() => { finish(); reject(new Error('Spreadsheet preview timed out')) }, 10000)
+    cancelSpreadsheet = () => { finish(); reject(new Error('Spreadsheet preview cancelled')) }
+    worker.onerror = () => { finish(); reject(new Error('Spreadsheet parsing failed')) }
+    worker.onmessage = ({ data }) => { finish(); data.error ? reject(new Error(data.error)) : resolve(data) }
+    worker.postMessage(bytes)
+  })
+}
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = ''
@@ -41,22 +55,20 @@ function bytesToBase64(bytes: Uint8Array): string {
 }
 
 function clearAssets() {
+  cancelSpreadsheet?.()
   if (pdfUrl.value) { URL.revokeObjectURL(pdfUrl.value); pdfUrl.value = '' }
   dataUrl.value = ''
   sheetNames.value = []
   activeSheet.value = 0
   sheetHtml.value = ''
-  workbook = null
+  sheets = []
   if (docxHost.value) docxHost.value.innerHTML = ''
   if (pptxHost.value) pptxHost.value.innerHTML = ''
 }
 
 // --- spreadsheets (xlsx/xls/ods via SheetJS) ---
 function renderSheet() {
-  if (!workbook) { sheetHtml.value = ''; return }
-  const name = sheetNames.value[activeSheet.value]
-  const ws = name ? workbook.Sheets[name] : null
-  sheetHtml.value = ws ? DOMPurify.sanitize(XLSX.utils.sheet_to_html(ws, { editable: false, header: '', footer: '' })) : ''
+  sheetHtml.value = DOMPurify.sanitize(sheets[activeSheet.value] || '')
 }
 function selectSheet(index: number) { activeSheet.value = index; renderSheet() }
 
@@ -78,9 +90,10 @@ async function render() {
       if (token !== renderToken) { URL.revokeObjectURL(url); return }
       pdfUrl.value = url
     } else if (props.view === 'spreadsheet') {
-      workbook = XLSX.read(bytes, { type: 'array', cellDates: true })
+      const workbook = await parseSpreadsheet(bytes)
       if (token !== renderToken) return
-      sheetNames.value = workbook.SheetNames || []
+      sheetNames.value = workbook.names
+      sheets = workbook.sheets
       activeSheet.value = 0
       renderSheet()
     } else if (props.view === 'image') {
