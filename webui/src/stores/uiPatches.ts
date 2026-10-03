@@ -157,6 +157,7 @@ export const BUILTIN_SETTINGS: SettingsTabItem[] = [
   { id: 'provider', icon: 'cloud', order: 20, component: 'provider' },
   { id: 'security', icon: 'shield', order: 55, component: 'security' },
   { id: 'permissions', icon: 'lock', order: 60, component: 'permissions' },
+  { id: 'connection', icon: 'link', order: 82, label: '杩炴帴' },
   { id: 'mcp', icon: 'plug', order: 78 },
   { id: 'danger', icon: 'warn', order: 100 },
   { id: 'updates', icon: 'download', order: 105 },
