@@ -347,8 +347,17 @@ func localAddresses() []string {
 	if err != nil {
 		return out
 	}
+	virtual := []string{"vethernet", "hyper-v", "vmware", "virtualbox", "vbox", "docker", "wsl", "loopback", "bluetooth", "tap", "tun", "tailscale", "zerotier", "npcap", "radmin", "hamachi"}
 	for _, iface := range ifaces {
-		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+		name := strings.ToLower(iface.Name)
+		isVirtual := false
+		for _, marker := range virtual {
+			if strings.Contains(name, marker) {
+				isVirtual = true
+				break
+			}
+		}
+		if isVirtual || iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
 			continue
 		}
 		list, err := iface.Addrs()

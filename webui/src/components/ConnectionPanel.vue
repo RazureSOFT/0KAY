@@ -14,7 +14,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import qrcodegen from '../vendor/qrcodegen'
 
-const STORAGE_KEY = '0kay.connection.qr.v1'
+const STORAGE_KEY = '0kay.connection.qr.v2'
 
 interface Saved {
   host?: string
@@ -50,7 +50,10 @@ const saved = loadSaved()
 const hostOverride = !!saved.hostOverride
 const host = ref(saved.hostOverride && saved.host ? saved.host : location.hostname)
 const hostEdited = ref(hostOverride)
-const port = ref(saved.port ?? (location.port || (location.protocol === 'https:' ? '443' : '8080')))
+// The WebUI (Vite :3000 in dev) is not where the phone talks to: the API lives
+// on Core. Default to Core's HTTP port; only a standard TLS origin keeps its port.
+const defaultPort = location.protocol === 'https:' ? location.port || '443' : '8080'
+const port = ref(saved.port ?? defaultPort)
 const tls = ref(saved.tls ?? location.protocol === 'https:')
 const token = ref(saved.token ?? '')
 const pin = ref(saved.pin ?? '')
