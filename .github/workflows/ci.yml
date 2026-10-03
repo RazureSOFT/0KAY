@@ -73,3 +73,50 @@ jobs:
       - name: L.I.F.E unit tests
         working-directory: life
         run: python -m pytest tests -q
+      - name: Dependency audit (no known vulnerabilities)
+        run: |
+          python -m pip install pip-audit
+          pip-audit
+
+  # plugin-web 前端面板：依赖审计 + 构建门禁（审计 Q-02）。
+  #
+  # 注意：agent/mcp/minecraft/pm/deepseek-* 是独立仓库（根 .gitignore 排除、
+  # 无 submodule），不会出现在本仓库的 checkout 中，因此它们各自的依赖审计、
+  # 类型检查与测试门禁放在各自仓库的 .github/workflows/ci.yml 里。
+  plugin-web:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dir: plugin-web/agent
+            install: npm ci
+            build: npm run build
+          - dir: plugin-web/life
+            install: npm ci
+            build: npm run build
+          - dir: plugin-web/minecraft
+            install: npm ci
+            build: npm run build
+          - dir: plugin-web/skillsguishow
+            install: npm ci
+            build: npm run build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install
+        working-directory: ${{ matrix.dir }}
+        run: ${{ matrix.install }}
+      - name: Audit dependencies (high/critical gate)
+        working-directory: ${{ matrix.dir }}
+        run: npm audit --audit-level=high
+      - name: Unit tests
+        if: matrix.test
+        working-directory: ${{ matrix.dir }}
+        run: ${{ matrix.test }}
+      - name: Build
+        if: matrix.build
+        working-directory: ${{ matrix.dir }}
+        run: ${{ matrix.build }}
