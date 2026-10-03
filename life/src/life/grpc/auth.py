@@ -16,10 +16,8 @@ Modes (``LIFE_REQUIRE_AUTH``):
 ``0`` / ``false`` / ``off``
     No authentication.  Refused on a non-loopback bind (see ``serve``).
 ``auto`` (default)
-    Require a token as soon as one is known, and always on a non-loopback
-    bind.  The identity token only exists once registration with Core
-    completes, so a loopback-only server tolerates the short pre-registration
-    window instead of dead-locking its own startup.
+    Require a token, including before outbound registration completes.
+    Calls remain unavailable until server credentials are ready.
 """
 from __future__ import annotations
 
@@ -190,9 +188,9 @@ class LifeAuthInterceptor(ServerInterceptor):
             return False
         if self.mode == "on" or self.require_without_tokens:
             return True
-        # auto: enforce only once credentials exist, otherwise the server
-        # would reject its own caller before registration has run.
-        return bool(tokens)
+        # Registration is outbound: rejecting inbound calls cannot deadlock it.
+        # Stay closed until Core has issued our identity.
+        return True
 
     def _warn_once(self, message: str) -> None:
         with self._lock:

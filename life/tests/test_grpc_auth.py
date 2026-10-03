@@ -163,10 +163,11 @@ class InterceptorUnit(unittest.TestCase):
         self.assertEqual(asyncio.run(handler.unary_unary(b"{}", _Context())), "reached")
 
     def test_auto_mode_waits_for_credentials_on_loopback(self):
-        # Registration has not run yet: rejecting would deadlock our own caller.
+        # Outbound registration proceeds while inbound business calls stay closed.
         interceptor = LifeAuthInterceptor(mode="auto")
         handler = asyncio.run(self._run(interceptor, [], _unary_handler(lambda *_: "reached")))
-        self.assertEqual(asyncio.run(handler.unary_unary(b"{}", _Context())), "reached")
+        with self.assertRaises(_Aborted):
+            asyncio.run(handler.unary_unary(b"{}", _Context()))
 
     def test_auto_mode_enforces_once_a_token_exists(self):
         with patch.dict(os.environ, {"LIFE_GRPC_TOKEN": TOKEN}):

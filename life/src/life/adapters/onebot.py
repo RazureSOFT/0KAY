@@ -12,6 +12,17 @@ import websockets
 import httpx
 
 from .. import media
+from ..logging_setup import get_logger
+
+logger = get_logger("onebot")
+
+
+def _redact_url(url: str) -> str:
+    """Host+path only: query strings may carry an access token."""
+    from urllib.parse import urlsplit
+
+    parts = urlsplit(str(url or ""))
+    return f"{parts.scheme}://{parts.netloc}{parts.path}" if parts.netloc else "(unset)"
 
 #: Ceiling on an image we will hand to the vision model (the OneBot server
 #: resolves the bytes; this bounds what we then base64 into memory).
@@ -122,7 +133,7 @@ class OneBotAdapter:
             try:
                 await self._connect_websocket()
             except Exception as e:
-                print(f"OneBot WebSocket error: {e}")
+                logger.warning("OneBot WebSocket error: %s", e)
             if not self._running:
                 break
             # A *clean* return also means the socket closed (e.g. the server
@@ -146,7 +157,7 @@ class OneBotAdapter:
             additional_headers=headers,
         ) as ws:
             self._ws = ws
-            print(f"Connected to OneBot at {self.config.websocket_url}")
+            logger.info("Connected to OneBot at %s", _redact_url(self.config.websocket_url))
 
             async for raw_msg in ws:
                 try:
@@ -159,7 +170,7 @@ class OneBotAdapter:
                 try:
                     await self._handle_event(data)
                 except Exception as error:
-                    print(f"OneBot event handling failed: {error}")
+                    logger.warning("OneBot event handling failed: %s", error)
                     continue
 
     def _is_mentioned(self, data: dict, msg: "OneBotMessage") -> bool:
@@ -188,7 +199,7 @@ class OneBotAdapter:
                     adapter_type="onebot_group" if data.get("group_id") else "onebot",
                 )
             except Exception as error:
-                print(f"recall handler error: {error}")
+                logger.warning("recall handler error: %s", error)
 
     async def _handle_event(self, data: dict):
         """Handle OneBot event."""
@@ -296,7 +307,7 @@ class OneBotAdapter:
             if resp.json().get("retcode", 0) != 0:
                 raise RuntimeError(f"OneBot rejected message: {resp.text}")
         except Exception as e:
-            print(f"Failed to send message: {e}")
+            logger.warning("Failed to send message: %s", e)
             raise
 
     async def send_group_notice(self, group_id: int, content: str):
@@ -310,7 +321,7 @@ class OneBotAdapter:
                 json={"group_id": group_id, "content": content},
             )
         except Exception as e:
-            print(f"Failed to send notice: {e}")
+            logger.warning("Failed to send notice: %s", e)
 
     async def _call(self, action: str, payload: dict):
         if not self._http_client:
@@ -380,7 +391,7 @@ class OneBotAdapter:
             try:
                 captions[ref] = str(await self.config.vision_handler(ref) or "").strip()
             except Exception as error:
-                print(f"OneBot vision caption failed: {error}")
+                logger.warning("OneBot vision caption failed: %s", error)
                 captions[ref] = ""
         if not any(captions.values()):
             return msg.description

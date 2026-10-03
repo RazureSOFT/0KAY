@@ -848,8 +848,11 @@ class LifeEngine:
         cache[digest] = traits.to_dict()
         self._persona_llm_cache_data = cache
         try:
-            (Path(self.data_dir) / "persona_traits_cache.json").write_text(
-                json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8")
+            # tmp + replace：崩溃时不会留下截断的 JSON（审计 L-02）。
+            target = Path(self.data_dir) / "persona_traits_cache.json"
+            temporary = target.with_suffix(".json.tmp")
+            temporary.write_text(json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8")
+            temporary.replace(target)
         except Exception as _exc:
             logger.debug("suppressed error: %s", _exc)
 

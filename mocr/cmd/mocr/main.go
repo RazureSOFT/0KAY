@@ -34,7 +34,7 @@ func main() {
 	sel := selector.NewSelector()
 
 	// Create gRPC server
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(server.AuthUnary), grpc.StreamInterceptor(server.AuthStream))
 
 	// Register service
 	mocrSvc := server.NewMocrServiceServer(sel)

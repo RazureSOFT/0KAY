@@ -138,10 +138,12 @@ class MediaPipeline:
             logger.warning("TTS endpoint host not in TTS_ALLOWED_HOSTS: %s", parsed.hostname)
             return None
         import httpx
+        from .network import PublicHTTPTransport
 
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                async with client.stream("POST", endpoint, json={"text": str(text)[:500]}) as response:
+            async with httpx.AsyncClient(timeout=30, transport=PublicHTTPTransport("LIFE_ALLOW_PRIVATE_TTS")) as client:
+                headers = {"Authorization": "Bearer " + os.environ["TTS_SERVICE_TOKEN"]} if os.getenv("TTS_SERVICE_TOKEN") else {}
+                async with client.stream("POST", endpoint, json={"text": str(text)[:500]}, headers=headers) as response:
                     response.raise_for_status()
                     buffer = bytearray()
                     async for chunk in response.aiter_bytes():

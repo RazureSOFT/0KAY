@@ -92,6 +92,7 @@ class ContentSystem:
         import httpx
 
         from .tools.tools import _assert_public_http_url
+        from .network import PublicHTTPTransport
 
         # News feeds are configured by the owner, but the same settings document
         # is writable over an unauthenticated channel, so the URL is treated as
@@ -102,15 +103,20 @@ class ContentSystem:
         # Redirects are followed manually so every hop is re-validated (a public
         # feed URL must not be able to 302 into 127.0.0.1 or 169.254.169.254).
         current = url
-        async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
+        async with httpx.AsyncClient(timeout=10, follow_redirects=False, transport=PublicHTTPTransport(allow_env)) as client:
             for _ in range(5):
-                response = await client.get(current, headers={"User-Agent": "LIFE/1.0 (+companion)"})
-                if response.is_redirect and response.headers.get("location"):
-                    current = str(httpx.URL(current).join(response.headers["location"]))
-                    _assert_public_http_url(current, allow_env)
-                    continue
-                response.raise_for_status()
-                return response.text
+                async with client.stream("GET", current, headers={"User-Agent": "LIFE/1.0 (+companion)"}) as response:
+                    if response.is_redirect and response.headers.get("location"):
+                        current = str(httpx.URL(current).join(response.headers["location"]))
+                        _assert_public_http_url(current, allow_env)
+                        continue
+                    response.raise_for_status()
+                    data = bytearray()
+                    async for chunk in response.aiter_bytes():
+                        if len(data) + len(chunk) > MAX_XML_CHARS:
+                            raise ValueError("feed response too large")
+                        data.extend(chunk)
+                    return data.decode(response.encoding or "utf-8", errors="replace")
         raise ValueError("too many redirects")
 
     async def collect(self, companion, search: Callable | None = None, interests: list[str] | None = None) -> dict[str, Any]:

@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"sort"
@@ -18,9 +17,10 @@ import (
 // providerHTTPClient pools connections across provider requests. Timeout stays 0
 // because streaming bodies are bounded by the request context.
 var providerHTTPClient = &http.Client{
-	Timeout: 0,
+	Timeout:       0,
+	CheckRedirect: noProviderRedirect,
 	Transport: &http.Transport{
-		DialContext:           (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
+		DialContext:           guardedDial,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ResponseHeaderTimeout: 45 * time.Second,
 		MaxIdleConns:          100,
@@ -104,6 +104,9 @@ type FinishInfo struct {
 
 // Generate streams from a real provider (OpenAI-compatible or Anthropic).
 func Generate(ctx context.Context, opts GenerateOptions, onChunk StreamFunc) (*FinishInfo, error) {
+	if err := validateProviderURL(opts.BaseURL); err != nil {
+		return nil, err
+	}
 	if opts.BaseURL == "" || opts.APIKey == "" {
 		return nil, fmt.Errorf("missing base_url or api_key")
 	}

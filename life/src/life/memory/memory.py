@@ -1679,7 +1679,7 @@ class MemorySystem:
         # the scope must never see session-private or credential facts.  The
         # filter runs for "*" too, because `_scope_visible` still refuses
         # `credential` scope there — otherwise the admin browse leaked passwords.
-        pool = [m for m in pool if _scope_visible(m.metadata.get("scope"), scope)]
+        pool = [m for m in pool if not _is_credential(m) and _scope_visible(m.metadata.get("scope"), scope)]
         needle = (query or "").strip().lower()
         if needle:
             pool = [m for m in pool
@@ -1712,7 +1712,7 @@ class MemorySystem:
         targets: list[Memory] = []
         if fact_ids:
             wanted = set(fact_ids)
-            targets = [m for m in self.short_term.memories + self.long_term.memories if m.id in wanted]
+            targets = [m for m in self.short_term.memories + self.long_term.memories if m.id in wanted and not _is_credential(m)]
         elif (query or "").strip():
             # Admin curation acts across every scope, not just public facts.
             targets = self.recall(query, top_k=max(1, min(int(limit), 20)), scope="*")
@@ -1728,6 +1728,8 @@ class MemorySystem:
         """Nudge a memory's importance (manual curation)."""
         for memory in self.short_term.memories + self.long_term.memories:
             if memory.id == fact_id:
+                if _is_credential(memory):
+                    raise PermissionError("credential facts cannot be edited through the dashboard")
                 memory.importance = max(0.0, min(1.0, memory.importance + float(delta)))
                 self._sync_fact(memory, self._tier_of(memory))
                 return self._fact_dict(memory)

@@ -45,7 +45,10 @@ func (g *Gateway) ttsSynthesize(ctx context.Context, text, voice string) (string
 		return "", nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{Timeout: 90 * time.Second, Transport: netguard.Transport(netguard.Strict())}
+	if token := os.Getenv("TTS_SERVICE_TOKEN"); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	client := &http.Client{Timeout: 90 * time.Second, Transport: netguard.Transport(netguard.Strict()), CheckRedirect: func(req *http.Request, via []*http.Request) error { return http.ErrUseLastResponse }}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", nil, err
@@ -55,9 +58,12 @@ func (g *Gateway) ttsSynthesize(ctx context.Context, text, voice string) (string
 		detail, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return "", nil, fmt.Errorf("TTS %d: %s", resp.StatusCode, strings.TrimSpace(string(detail)))
 	}
-	audio, err := io.ReadAll(io.LimitReader(resp.Body, 32<<20))
+	audio, err := io.ReadAll(io.LimitReader(resp.Body, (32<<20)+1))
 	if err != nil {
 		return "", nil, err
+	}
+	if len(audio) > 32<<20 {
+		return "", nil, fmt.Errorf("TTS response too large")
 	}
 	contentType := resp.Header.Get("Content-Type")
 	if contentType == "" {

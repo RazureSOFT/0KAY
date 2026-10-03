@@ -11,6 +11,15 @@ from life.cognition.model import CognitionConfig  # noqa: E402
 
 
 class MemoryScopePrivacy(unittest.TestCase):
+    def test_dashboard_credential_exits_are_closed(self):
+        secret = self.ms.remember("fake audit password", memory_type="credential", scope="credential")
+        self.assertEqual(self.ms.page_facts(scope="credential")["items"], [])
+        self.assertEqual(self.ms.reinforce_facts(fact_ids=[secret.id]), [])
+        with self.assertRaises(PermissionError):
+            self.ms.adjust_importance(secret.id, 0)
+        # The internal credential retrieval contract is preserved.
+        self.assertTrue(self.ms.recall("fake audit password", scope="credential"))
+
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
         self.ms = MemorySystem(os.path.join(self.dir.name, "memory"))

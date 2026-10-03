@@ -42,7 +42,10 @@ class TaskRecorder:
 
     def _reject(self, event, status) -> None:
         try:
-            with self.path.with_suffix('.rejected.jsonl').open('a', encoding='utf-8') as rejected:
+            target = self.path.with_suffix('.rejected.jsonl')
+            if target.exists() and target.stat().st_size >= 2 * 1024 * 1024:
+                target.replace(target.with_suffix('.jsonl.1'))
+            with target.open('a', encoding='utf-8') as rejected:
                 rejected.write(json.dumps({'event': event, 'status': status}, ensure_ascii=False) + '\n')
         except OSError as error:  # pragma: no cover - best-effort logging
             log.warning("could not write rejected task record: %s", error)

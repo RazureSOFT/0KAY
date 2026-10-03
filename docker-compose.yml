@@ -26,11 +26,14 @@ services:
       - MOCR_ADDRESS=mocr:50052
       # Trust only the compose network; host/LAN callers need CORE_API_TOKEN or pairing.
       - CORE_TRUSTED_NETWORKS=172.28.0.0/16
-      - CORE_API_TOKEN=${CORE_API_TOKEN:-}
-      # When set, every non-builtin plugin must present this shared secret at
-      # registration (defends against name impersonation). Leave unset to keep
-      # the network-trust model.
-      - CORE_PLUGIN_REGISTRATION_TOKEN=${CORE_PLUGIN_REGISTRATION_TOKEN:-}
+      - CORE_API_TOKEN=${CORE_API_TOKEN:?Set a Core API token}
+      # Independent enrollment keys bind first-party names to their services.
+      - CORE_PLUGIN_REGISTRATION_TOKEN=${CORE_PLUGIN_REGISTRATION_TOKEN:?Set a plugin registration secret}
+      - CORE_PLUGIN_TOKEN_LIFE=${LIFE_REGISTRATION_TOKEN:?Set LIFE registration token}
+      - CORE_PLUGIN_TOKEN_AGENT=${AGENT_REGISTRATION_TOKEN:?Set Agent registration token}
+      - CORE_PLUGIN_TOKEN_MOCR=${MOCR_REGISTRATION_TOKEN:?Set mocr registration token}
+      - MOCR_GRPC_TOKEN=${MOCR_GRPC_TOKEN:?Set model service token}
+      - TTS_SERVICE_TOKEN=${TTS_SERVICE_TOKEN:-}
     volumes:
       - core-data:/app/data
     healthcheck:
@@ -53,7 +56,8 @@ services:
       - CORE_HTTP_ADDR=http://core:8080
       - MOCR_ADDRESS=mocr:50052
       - CORE_API_TOKEN=${CORE_API_TOKEN:-}
-      - CORE_PLUGIN_REGISTRATION_TOKEN=${CORE_PLUGIN_REGISTRATION_TOKEN:-}
+      - CORE_PLUGIN_REGISTRATION_TOKEN=${MOCR_REGISTRATION_TOKEN:?Set mocr registration token}
+      - MOCR_GRPC_TOKEN=${MOCR_GRPC_TOKEN:?Set model service token}
 
   # L.I.F.E - Persona Plugin
   life:
@@ -65,13 +69,18 @@ services:
     environment:
       - LIFE_GRPC_PORT=50053
       - LIFE_BIND_HOST=0.0.0.0
+      - LIFE_ALLOW_REMOTE_BIND=1
+      - LIFE_REQUIRE_AUTH=1
       - MOCR_ADDRESS=mocr:50052
       - CORE_ADDRESS=core:50051
       - CORE_HTTP_ADDR=http://core:8080
       - LIFE_ADDRESS=life:50053
       - LIFE_DATA_DIR=/app/data/life
       - CORE_API_TOKEN=${CORE_API_TOKEN:-}
-      - CORE_PLUGIN_REGISTRATION_TOKEN=${CORE_PLUGIN_REGISTRATION_TOKEN:-}
+      - CORE_PLUGIN_REGISTRATION_TOKEN=${LIFE_REGISTRATION_TOKEN:?Set LIFE registration token}
+      - MOCR_GRPC_TOKEN=${MOCR_GRPC_TOKEN:?Set model service token}
+      - TTS_SERVICE_TOKEN=${TTS_SERVICE_TOKEN:-}
+      - MINECRAFT_TOKEN=${MINECRAFT_TOKEN:-}
     volumes:
       - life-data:/app/data/life
     depends_on:
@@ -97,7 +106,8 @@ services:
       - AGENT_DATA_DIR=/app/data/agent
       - MOCR_ADDRESS=mocr:50052
       - CORE_API_TOKEN=${CORE_API_TOKEN:-}
-      - CORE_PLUGIN_REGISTRATION_TOKEN=${CORE_PLUGIN_REGISTRATION_TOKEN:-}
+      - CORE_PLUGIN_REGISTRATION_TOKEN=${AGENT_REGISTRATION_TOKEN:?Set Agent registration token}
+      - MOCR_GRPC_TOKEN=${MOCR_GRPC_TOKEN:?Set model service token}
     depends_on:
       - core
     volumes:

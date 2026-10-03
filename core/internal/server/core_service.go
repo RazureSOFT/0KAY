@@ -630,7 +630,7 @@ func estimateTokens(text string) int32 {
 // mocrClient dials mocr once and reuses the connection (gRPC reconnects lazily).
 func (s *CoreServiceServer) mocrClient() (mocrv1.MocrServiceClient, error) {
 	s.mocrOnce.Do(func() {
-		s.mocrConn, s.mocrErr = grpc.NewClient(s.mocrAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		s.mocrConn, s.mocrErr = grpc.NewClient(s.mocrAddr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithPerRPCCredentials(registry.NewServiceTokenCredentials(modelServiceToken())))
 	})
 	if s.mocrErr != nil {
 		return nil, s.mocrErr
@@ -651,6 +651,13 @@ func (s *CoreServiceServer) dialMocr(ctx context.Context) (mocrv1.MocrServiceCli
 // dialCached returns a process-wide cached gRPC connection for addr. The caller
 // must not Close it; the connection belongs to the server and is reused.
 func (s *CoreServiceServer) dialCached(addr string) (*grpc.ClientConn, error) {
+	if s.registry != nil {
+		for _, plugin := range s.registry.GetPluginsByCapability("agent") {
+			if plugin.Address == addr {
+				return s.lifeDialCached(plugin)
+			}
+		}
+	}
 	s.connMu.Lock()
 	defer s.connMu.Unlock()
 	if s.connPool == nil {

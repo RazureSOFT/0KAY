@@ -6,11 +6,13 @@ from typing import Any, Optional
 import ipaddress
 import json
 import socket
+import ssl
 import uuid
 import asyncio
 from urllib.parse import urlsplit
 
 import httpx
+from ..network import PublicHTTPTransport, SecureIMAP, StartTLSIMAP, SecureSMTP, StartTLSSMTP
 
 
 def _env_flag(name: str) -> bool:
@@ -132,8 +134,10 @@ def test_imap(config: "RuntimeToolConfig") -> dict:
         return {"ok": False, "error": "IMAP 未配置（缺少主机/用户名/密码）"}
     try:
         import imaplib
-        conn = imaplib.IMAP4_SSL(host, port=port, timeout=15) if use_ssl else imaplib.IMAP4(host, port=port)
+        conn = SecureIMAP(host, port=port, timeout=15, ssl_context=ssl.create_default_context()) if use_ssl else StartTLSIMAP(host, port=port, timeout=15)
         try:
+            if not use_ssl:
+                conn.starttls(ssl_context=ssl.create_default_context())
             conn.login(user, password)
             typ, _ = conn.select("INBOX")
             total = 0
@@ -165,9 +169,9 @@ def test_smtp(config: "RuntimeToolConfig") -> dict:
     try:
         import smtplib
         if port == 465:
-            server = smtplib.SMTP_SSL(host, port, timeout=15)
+            server = SecureSMTP(host, port, timeout=15, context=ssl.create_default_context())
         else:
-            server = smtplib.SMTP(host, port, timeout=15)
+            server = StartTLSSMTP(host, port, timeout=15)
             server.ehlo()
             if not server.has_extn("starttls"):
                 try:
@@ -175,7 +179,7 @@ def test_smtp(config: "RuntimeToolConfig") -> dict:
                 except Exception:
                     pass
                 raise RuntimeError("SMTP 服务器未提供 STARTTLS，已拒绝明文登录")
-            server.starttls()
+            server.starttls(context=ssl.create_default_context())
             server.ehlo()
         try:
             server.login(user, password)
@@ -212,9 +216,9 @@ def send_mail(config: "RuntimeToolConfig", to: str, subject: str, body: str) -> 
         msg["To"] = to
 
         if port == 465:
-            server = smtplib.SMTP_SSL(host, port, timeout=20)
+            server = SecureSMTP(host, port, timeout=20, context=ssl.create_default_context())
         else:
-            server = smtplib.SMTP(host, port, timeout=20)
+            server = StartTLSSMTP(host, port, timeout=20)
             server.ehlo()
             if not server.has_extn("starttls"):
                 try:
@@ -222,7 +226,7 @@ def send_mail(config: "RuntimeToolConfig", to: str, subject: str, body: str) -> 
                 except Exception:
                     pass
                 return ToolResult(False, None, "SMTP 服务器未提供 STARTTLS，已拒绝明文发送密码")
-            server.starttls()
+            server.starttls(context=ssl.create_default_context())
             server.ehlo()
         try:
             server.login(user, password)
@@ -352,7 +356,7 @@ class GetMailTool(Tool):
                     return "".join(out)
 
                 def _read():
-                    conn = imaplib.IMAP4_SSL(host, port=port, timeout=15)
+                    conn = SecureIMAP(host, port=port, timeout=15, ssl_context=ssl.create_default_context())
                     try:
                         conn.login(user, password)
                         conn.select("INBOX")
@@ -586,23 +590,23 @@ class WebBrowseTool(Tool):
         # the SSRF guard (a public URL must not be able to 302 into 127.0.0.1).
         current = url
         try:
-            async with httpx.AsyncClient(follow_redirects=False, timeout=30) as client:
+            async with httpx.AsyncClient(follow_redirects=False, timeout=30, transport=PublicHTTPTransport()) as client:
                 for _ in range(4):
-                    resp = await client.get(current)
-                    if resp.is_redirect and resp.headers.get("location"):
-                        current = str(httpx.URL(current).join(resp.headers["location"]))
-                        _assert_public_http_url(current)
-                        continue
-                    resp.raise_for_status()
-                    return ToolResult(
-                        success=True,
-                        data={
-                            "url": current,
-                            "status_code": resp.status_code,
-                            "content": resp.text[:limit],
+                    async with client.stream("GET", current) as resp:
+                        if resp.is_redirect and resp.headers.get("location"):
+                            current = str(httpx.URL(current).join(resp.headers["location"]))
+                            continue
+                        resp.raise_for_status()
+                        data = bytearray()
+                        async for chunk in resp.aiter_bytes():
+                            if len(data) + len(chunk) > 5 * 1024 * 1024:
+                                raise ValueError("web response too large")
+                            data.extend(chunk)
+                        return ToolResult(True, {
+                            "url": current, "status_code": resp.status_code,
+                            "content": data.decode(resp.encoding or "utf-8", errors="replace")[:limit],
                             "content_type": resp.headers.get("content-type", ""),
-                        },
-                    )
+                        })
             return ToolResult(success=False, data=None, error="too many redirects")
         except ValueError as error:
             return ToolResult(success=False, data=None, error=f"URL rejected: {error}")
@@ -818,9 +822,13 @@ class MinecraftTool(Tool):
         if not action:
             return ToolResult(False, None, "action is required")
         base = (self.config.minecraft_url or "http://127.0.0.1:8765").rstrip("/")
+        import os
+        token = os.getenv("MINECRAFT_TOKEN", "")
+        if not token:
+            return ToolResult(False, None, "MINECRAFT_TOKEN is required")
         args = {key: value for key, value in kwargs.items() if value is not None and key != "action"}
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
+            async with httpx.AsyncClient(timeout=30, headers={"Authorization": "Bearer " + token}) as client:
                 if action in ("autopilot_start", "autopilot_stop"):
                     payload = {"goal": args.get("goal"), "intervalMs": args.get("interval_ms"), "modelId": args.get("model_id")}
                     endpoint = f"{base}/autopilot/{'start' if action.endswith('start') else 'stop'}"

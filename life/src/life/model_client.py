@@ -193,7 +193,11 @@ class MocrClient:
                 request.temperature = float(temperature)
             except Exception:
                 pass
-        call = self._stub.Generate(request, timeout=300)
+        token = os.getenv("MOCR_GRPC_TOKEN") or os.getenv("CORE_API_TOKEN")
+        kwargs = {"timeout": 300}
+        if token:
+            kwargs["metadata"] = (("authorization", "Bearer " + token),)
+        call = self._stub.Generate(request, **kwargs)
         try:
             async for response in call:
                 if response.chunk:

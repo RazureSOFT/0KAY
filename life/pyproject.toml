@@ -10,8 +10,7 @@ requires-python = ">=3.10"
 dependencies = [
     # 1.66+: grpc.aio's ServerInterceptor/HandlerCallDetails behaviour that
     # life.grpc.auth relies on; older 1.60 wheels are missing the pieces.
-    "grpcio>=1.66.0",
-    "grpcio-tools>=1.67.0",
+    "grpcio>=1.66.2",
     "protobuf>=4.25.0",
     "numpy>=1.24.0",
     "httpx>=0.25.0",
@@ -27,6 +26,7 @@ research = [
     "python-docx>=1.1.0",
 ]
 dev = [
+    "grpcio-tools>=1.67.0",
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
     "matplotlib>=3.7.0",

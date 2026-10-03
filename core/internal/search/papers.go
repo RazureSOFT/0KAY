@@ -178,10 +178,10 @@ func fetchOpenAlex(ctx context.Context, query string, limit int) ([]Result, erro
 	}
 	var payload struct {
 		Results []struct {
-			Title        string `json:"title"`
-			DOI          string `json:"doi"`
-			Publication  int    `json:"publication_year"`
-			Authorships  []struct {
+			Title       string `json:"title"`
+			DOI         string `json:"doi"`
+			Publication int    `json:"publication_year"`
+			Authorships []struct {
 				Author struct {
 					DisplayName string `json:"display_name"`
 				} `json:"author"`

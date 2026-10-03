@@ -128,6 +128,13 @@ func (s *Session) push(payload []byte) bool {
 
 // dial returns a cached gRPC client connection for a plugin address.
 func (g *Gateway) dial(address string) (*grpc.ClientConn, error) {
+	if g.registry != nil {
+		for _, plugin := range g.registry.GetPluginsByCapability("agent") {
+			if plugin.Address == address {
+				return g.lifeDial(plugin)
+			}
+		}
+	}
 	g.connMu.Lock()
 	defer g.connMu.Unlock()
 	if g.conns == nil {
@@ -136,7 +143,16 @@ func (g *Gateway) dial(address string) (*grpc.ClientConn, error) {
 	if connection, ok := g.conns[address]; ok {
 		return connection, nil
 	}
-	connection, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	options := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	modelAddress := os.Getenv("MOCR_ADDRESS")
+	if address == modelAddress || address == "127.0.0.1:50052" || address == "localhost:50052" {
+		token := os.Getenv("MOCR_GRPC_TOKEN")
+		if token == "" {
+			token = os.Getenv("CORE_API_TOKEN")
+		}
+		options = append(options, grpc.WithPerRPCCredentials(registry.NewServiceTokenCredentials(token)))
+	}
+	connection, err := grpc.NewClient(address, options...)
 	if err != nil {
 		return nil, err
 	}

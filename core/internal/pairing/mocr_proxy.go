@@ -1,12 +1,14 @@
 package pairing
 
 import (
+	"0kay/core/internal/registry"
 	mocrv1 "0kay/gen/mocr/v1"
 	"context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"io"
+	"os"
 )
 
 type MocrProxy struct {
@@ -14,8 +16,15 @@ type MocrProxy struct {
 	Address string
 }
 
+func proxyModelToken() string {
+	if token := os.Getenv("MOCR_GRPC_TOKEN"); token != "" {
+		return token
+	}
+	return os.Getenv("CORE_API_TOKEN")
+}
+
 func (p *MocrProxy) ChooseModels(ctx context.Context, request *mocrv1.ChooseModelsRequest) (*mocrv1.ChooseModelsResponse, error) {
-	conn, err := grpc.NewClient(p.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(p.Address, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithPerRPCCredentials(registry.NewServiceTokenCredentials(proxyModelToken())))
 	if err != nil {
 		return nil, err
 	}
@@ -23,7 +32,7 @@ func (p *MocrProxy) ChooseModels(ctx context.Context, request *mocrv1.ChooseMode
 	return mocrv1.NewMocrServiceClient(conn).ChooseModels(ctx, request)
 }
 func (p *MocrProxy) Generate(request *mocrv1.GenerateRequest, stream mocrv1.MocrService_GenerateServer) error {
-	conn, err := grpc.NewClient(p.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(p.Address, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithPerRPCCredentials(registry.NewServiceTokenCredentials(proxyModelToken())))
 	if err != nil {
 		return err
 	}

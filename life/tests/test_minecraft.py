@@ -4,6 +4,8 @@ import sys
 import tempfile
 import threading
 import unittest
+import os
+from unittest.mock import patch
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
@@ -14,6 +16,9 @@ from life.tools.tools import MinecraftTool, RuntimeToolConfig, ToolResult, creat
 
 class _Handler(BaseHTTPRequestHandler):
     def do_POST(self):
+        if self.headers.get("Authorization") != "Bearer test-minecraft-secret":
+            self.send_error(401)
+            return
         length = int(self.headers.get("Content-Length", 0))
         body = json.loads(self.rfile.read(length) or b"{}")
         self.server.requests.append((self.path, body))
@@ -30,6 +35,9 @@ class _Handler(BaseHTTPRequestHandler):
 
 class MinecraftToolTests(unittest.TestCase):
     def setUp(self):
+        env = patch.dict(os.environ, {"MINECRAFT_TOKEN": "test-minecraft-secret"})
+        env.start()
+        self.addCleanup(env.stop)
         self.server = HTTPServer(("127.0.0.1", 0), _Handler)
         self.server.requests = []
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -44,6 +52,12 @@ class MinecraftToolTests(unittest.TestCase):
         tool = MinecraftTool(RuntimeToolConfig(minecraft_enabled=False, minecraft_url=self.url))
         result = asyncio.run(tool.execute(action="connect", host="example"))
         self.assertFalse(result.success)
+        self.assertEqual(self.server.requests, [])
+
+    def test_missing_token_never_sends_a_request(self):
+        with patch.dict(os.environ, {"MINECRAFT_TOKEN": ""}):
+            tool = MinecraftTool(RuntimeToolConfig(minecraft_enabled=True, minecraft_url=self.url))
+            self.assertFalse(asyncio.run(tool.execute(action="chat", message="hello")).success)
         self.assertEqual(self.server.requests, [])
 
     def test_action_is_forwarded(self):

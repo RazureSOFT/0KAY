@@ -45,6 +45,7 @@ var (
 	breakerMu    sync.Mutex
 	breakerUntil = map[string]time.Time{}
 )
+
 const breakerCooldown = 90 * time.Second
 
 func engineSkipped(name string) bool {
@@ -74,6 +75,7 @@ var (
 	cacheMu sync.Mutex
 	cache   = map[string]cacheEntry{}
 )
+
 const cacheTTL = 90 * time.Second
 
 func cacheKey(preferred string, limit int, query string) string {

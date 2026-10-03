@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"google.golang.org/protobuf/proto"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -119,9 +120,23 @@ func (r *Registry) RegisterAuthenticated(info *pluginv1.PluginInfo, capabilities
 	r.mu.RLock()
 	required := r.registrationToken
 	r.mu.RUnlock()
-	if required != "" && subtle.ConstantTimeCompare([]byte(required), []byte(token)) != 1 {
+	// An explicit per-plugin key takes precedence over shared enrollment.
+	if raw := os.Getenv("CORE_PLUGIN_TOKEN_" + strings.ToUpper(strings.NewReplacer("-", "_", ".", "_").Replace(info.Name))); raw != "" {
+		required = strings.TrimSpace(raw)
+	} else if r.IsTrusted(info.Name) {
+		return "", status.Error(codes.PermissionDenied, "first-party plugin requires a dedicated enrollment key")
+	}
+	if required == "" || subtle.ConstantTimeCompare([]byte(required), []byte(token)) != 1 {
 		return "", status.Error(codes.PermissionDenied, "plugin registration token required")
 	}
+	r.mu.RLock()
+	for _, existing := range r.plugins {
+		if existing.Builtin && existing.Info != nil && existing.Info.Name == info.Name {
+			r.mu.RUnlock()
+			return "", status.Error(codes.PermissionDenied, "reserved builtin plugin name")
+		}
+	}
+	r.mu.RUnlock()
 	return r.Register(info, capabilities, address)
 }
 

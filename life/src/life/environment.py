@@ -142,7 +142,9 @@ class EnvironmentSystem:
             self._weather_cache = fetched
             try:
                 self.data_dir.mkdir(parents=True, exist_ok=True)
-                self._cache_path.write_text(json.dumps(fetched, ensure_ascii=False), encoding="utf-8")
+                temporary = self._cache_path.with_suffix(".json.tmp")
+                temporary.write_text(json.dumps(fetched, ensure_ascii=False), encoding="utf-8")
+                temporary.replace(self._cache_path)
             except OSError:
                 pass
         return self.cached_weather()

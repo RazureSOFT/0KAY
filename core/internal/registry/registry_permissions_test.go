@@ -95,6 +95,25 @@ func TestRegistrationTokenGate(t *testing.T) {
 	}
 }
 
+func TestRegistrationWithoutEnrollmentFailsClosed(t *testing.T) {
+	r := NewRegistry()
+	if _, err := r.RegisterAuthenticated(&pluginv1.PluginInfo{Name: "life"}, nil, "127.0.0.1:1", ""); err == nil {
+		t.Fatal("empty enrollment admitted")
+	}
+	r.SetRegistrationToken("shared")
+	t.Setenv("CORE_PLUGIN_TOKEN_LIFE", "life-only")
+	if _, err := r.RegisterAuthenticated(&pluginv1.PluginInfo{Name: "life"}, nil, "127.0.0.1:1", "shared"); err == nil {
+		t.Fatal("shared token impersonated a separately enrolled plugin")
+	}
+	if _, err := r.RegisterAuthenticated(&pluginv1.PluginInfo{Name: "life"}, nil, "127.0.0.1:1", "life-only"); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = r.RegisterBuiltin(&pluginv1.PluginInfo{Name: "webui"}, nil, "")
+	if _, err := r.RegisterAuthenticated(&pluginv1.PluginInfo{Name: "webui"}, nil, "127.0.0.1:1", "shared"); err == nil {
+		t.Fatal("builtin replaced")
+	}
+}
+
 func TestIsTrusted(t *testing.T) {
 	r := NewRegistry()
 	r.SetTrusted([]string{"agent", "life"})

@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"0kay/core/internal/registry"
-	pluginv1 "0kay/gen/plugin/v1"
 	lifev1 "0kay/gen/life/v1"
+	pluginv1 "0kay/gen/plugin/v1"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"

@@ -219,9 +219,12 @@ class CircadianSystem:
 
     def save(self, path: str) -> None:
         """Save state to file."""
-        data = self.to_dict()
-        with open(path, "w") as f:
-            json.dump(data, f, indent=2)
+        from pathlib import Path
+
+        target = Path(path)
+        temporary = target.with_suffix(target.suffix + ".tmp")
+        temporary.write_text(json.dumps(self.to_dict(), indent=2), encoding="utf-8")
+        temporary.replace(target)
 
     def load(self, path: str) -> None:
         """Load state from file."""

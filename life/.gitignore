@@ -11,3 +11,10 @@ venv/
 
 # Runtime memory / state
 data/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+output/
+working/
