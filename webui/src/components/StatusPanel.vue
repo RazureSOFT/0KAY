@@ -10,7 +10,6 @@ const lifeStore = useLifeStore()
 const ui = useUIPatchesStore()
 const wizard = useWizardStore()
 const now = ref(new Date())
-const rhythm = ref<{ sleep_hour: number; wake_hour: number; observed_days: number } | null>(null)
 const age = computed(() => {
   const raw = wizard.persona.birthDate
   if (!raw) return null
@@ -20,14 +19,6 @@ const age = computed(() => {
   return today.getFullYear() - birth.getFullYear() - Number(today.getMonth() < birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate()))
 })
 let clockTimer: ReturnType<typeof setInterval> | null = null
-let rhythmTimer: ReturnType<typeof setInterval> | null = null
-async function fetchRhythm() {
-  try {
-    const response = await fetch('/api/life/companion')
-    if (response.ok) rhythm.value = (await response.json()).circadian || null
-  } catch { /* keep last known schedule */ }
-}
-const hour = (value: number) => `${String(value).padStart(2, '0')}:00`
 
 /** Resolve dotted path against life store fields. */
 function resolve(path?: string): any {
@@ -127,15 +118,17 @@ watch(
 onMounted(() => {
   if (!memorySection.value) scheduleMemoryPoll()
   clockTimer = setInterval(() => { now.value = new Date() }, 1000)
-  fetchRhythm()
-  rhythmTimer = setInterval(fetchRhythm, 30000)
 })
 onUnmounted(() => {
   if (memTimer) clearInterval(memTimer)
   if (clockTimer) clearInterval(clockTimer)
-  if (rhythmTimer) clearInterval(rhythmTimer)
 })
 
+// The character status bar shows only: 年龄 / 时间 / 时区 (the profile block)
+// plus 心情 (mood) and 情绪 (emotion bars).  Everything else is hidden.
+const visibleSections = computed(() =>
+  ui.statusSections.filter((s) => s.kind === 'mood' || s.kind === 'bars'),
+)
 const moodColor = computed(() => lifeStore.emotionColor)
 const moodMood = computed(() => lifeStore.emotionMood)
 const energyPercent = computed(() => lifeStore.energyPercent)
@@ -159,18 +152,12 @@ const activeTasks = computed(() => lifeStore.activeTasks)
         <div class="section-header"><span class="section-title">{{ wizard.persona.name || t('chat.defaultCharacter') }}</span></div>
         <dl>
           <div><dt>年龄</dt><dd>{{ age === null ? '未设置生日' : `${age} 岁` }}</dd></div>
-          <div><dt>生日</dt><dd>{{ wizard.persona.birthDate || '未设置' }}</dd></div>
-          <div><dt>当前时间</dt><dd><time :datetime="now.toISOString()">{{ now.toLocaleString() }}</time></dd></div>
+          <div><dt>时间</dt><dd><time :datetime="now.toISOString()">{{ now.toLocaleString() }}</time></dd></div>
           <div><dt>时区</dt><dd>{{ Intl.DateTimeFormat().resolvedOptions().timeZone }}</dd></div>
-          <div v-if="wizard.persona.personality"><dt>性格</dt><dd>{{ wizard.persona.personality }}</dd></div>
-          <template v-if="rhythm">
-            <div><dt>习惯作息</dt><dd>{{ hour(rhythm.sleep_hour) }} 入睡 · {{ hour(rhythm.wake_hour) }} 起床</dd></div>
-            <div><dt>作息学习</dt><dd>{{ rhythm.observed_days < 3 ? `观察中（${rhythm.observed_days}/3 天）` : `已观察 ${rhythm.observed_days} 天` }}</dd></div>
-          </template>
         </dl>
       </section>
       <div
-        v-for="section in ui.statusSections"
+        v-for="section in visibleSections"
         :key="section.id"
         class="section"
         :data-section="section.id"

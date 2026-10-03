@@ -24,21 +24,6 @@
       "op": "insert",
       "anchor": "mood",
       "position": "after",
-      "id": "energy",
-      "item": {
-        "id": "energy",
-        "kind": "bar",
-        "title": "精神能量",
-        "titleKey": "status.mentalEnergy",
-        "bind": "life.energyPercent",
-        "order": 20
-      }
-    },
-    {
-      "target": "status",
-      "op": "insert",
-      "anchor": "energy",
-      "position": "after",
       "id": "emotions",
       "item": {
         "id": "emotions",
@@ -52,22 +37,6 @@
           { "key": "connection", "labelKey": "emotion.connection", "color": "#107c10", "scale": "unit" },
           { "key": "irritation", "labelKey": "emotion.irritation", "color": "#d13438", "scale": "unit" }
         ]
-      }
-    },
-    {
-      "target": "status",
-      "op": "insert",
-      "anchor": "emotions",
-      "position": "after",
-      "id": "agents",
-      "item": {
-        "id": "agents",
-        "kind": "count",
-        "title": "Agent",
-        "titleKey": "status.onlineAgents",
-        "countBind": "life.onlineAgents",
-        "totalBind": "life.totalAgents",
-        "order": 40
       }
     },
     {
