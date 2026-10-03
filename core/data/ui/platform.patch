@@ -1,0 +1,57 @@
+{
+  "id": "platform-ui",
+  "name": "0KAY platform pages (chat / plugins / settings / usage)",
+  "version": "0.1.0",
+  "plugin": "webui",
+  "enabled": true,
+  "patches": [
+    {
+      "target": "router",
+      "op": "insert",
+      "id": "chat",
+      "item": {
+        "id": "chat",
+        "path": "/",
+        "name": "chat",
+        "module": "/api/plugins/webui/ui/chat.js?v=1",
+        "titleKey": "nav.chat"
+      }
+    },
+    {
+      "target": "router",
+      "op": "insert",
+      "id": "plugins",
+      "item": {
+        "id": "plugins",
+        "path": "/plugins",
+        "name": "plugins",
+        "module": "/api/plugins/webui/ui/plugins.js?v=1",
+        "titleKey": "nav.plugins"
+      }
+    },
+    {
+      "target": "router",
+      "op": "insert",
+      "id": "settings",
+      "item": {
+        "id": "settings",
+        "path": "/settings",
+        "name": "settings",
+        "module": "/api/plugins/webui/ui/settings.js?v=1",
+        "titleKey": "nav.settings"
+      }
+    },
+    {
+      "target": "router",
+      "op": "insert",
+      "id": "usage",
+      "item": {
+        "id": "usage",
+        "path": "/usage",
+        "name": "usage",
+        "module": "/api/plugins/webui/ui/usage.js?v=1",
+        "title": "用量"
+      }
+    }
+  ]
+}

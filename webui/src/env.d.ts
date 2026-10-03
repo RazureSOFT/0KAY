@@ -22,6 +22,12 @@ interface Window {
   PIXI?: any
   /** Host Vue runtime shared with plugin ESM pages (see public/vendor/vue-bridge.js). */
   __0KAY_VUE__?: typeof import('vue')
+  /** Host i18n / router / pinia runtimes shared with plugin ESM pages. */
+  __0KAY_VUE_I18N__?: typeof import('vue-i18n')
+  __0KAY_VUE_ROUTER__?: typeof import('vue-router')
+  __0KAY_PINIA__?: typeof import('pinia')
+  /** Host shared singletons (api/stores/i18n/components) for plugin pages. */
+  __0KAY_HOST_RUNTIME__?: Record<string, any>
   /** Host UI helpers (native Material dialogs) shared with plugin ESM bundles. */
   __0KAY_UI__?: {
     confirm(options: OkayConfirmOptions | string): Promise<boolean>

@@ -1,9 +1,13 @@
 import { createApp } from 'vue'
 import * as VueRuntime from 'vue'
+import * as VueI18nRuntime from 'vue-i18n'
+import * as VueRouterRuntime from 'vue-router'
+import * as PiniaRuntime from 'pinia'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router, { registerPatchRoutes } from './router'
 import { i18n } from './i18n'
+import hostRuntime from './hostRuntime'
 import { useWizardStore } from './stores/wizard'
 import { useUIPatchesStore } from './stores/uiPatches'
 import { applyThemePatches } from './theme'
@@ -32,6 +36,12 @@ wizard.loadFromStorage()
 // 'vue'` (importmap → public/vendor/vue-bridge.js) or window.__0KAY_VUE__;
 // host router/pinia/i18n stay private.
 window.__0KAY_VUE__ = VueRuntime
+// Same idea for the other runtimes plugin pages need: they must resolve to the
+// host's instances so injection keys (i18n/router/pinia) and stores are shared.
+window.__0KAY_VUE_I18N__ = VueI18nRuntime
+window.__0KAY_VUE_ROUTER__ = VueRouterRuntime
+window.__0KAY_PINIA__ = PiniaRuntime
+window.__0KAY_HOST_RUNTIME__ = hostRuntime
 
 // Shared UI helpers so plugin ESM bundles use the platform's Material dialogs
 // instead of the browser's native window.confirm / window.alert.

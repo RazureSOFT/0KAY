@@ -2,23 +2,15 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { defineComponent, h, shallowRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUIPatchesStore } from '../stores/uiPatches'
-import ChatPage from '../pages/ChatPage.vue'
-import PluginsPage from '../pages/PluginsPage.vue'
-import UsagePage from '../pages/UsagePage.vue'
-import SettingsPage from '../pages/SettingsPage.vue'
 import PatchPage from '../pages/PatchPage.vue'
-
-/** Builtin page components that patches may reference by name. */
-const PATCH_COMPONENTS: Record<string, any> = {
-  plugins: PluginsPage,
-  usage: UsagePage,
-  settings: SettingsPage,
-  chat: ChatPage,
-}
 
 /**
  * Resolves route.meta.module at render time so hot patch updates can change
  * the ESM URL without baking it into a stale addRoute closure.
+ *
+ * Every page in the app is now provided by a plugin bundle (served by Core
+ * from plugin-ui/<name>/ and imported over the importmap bridge): the shell
+ * ships no page components beyond the iframe fallback.
  */
 const PluginModuleHost = defineComponent({
   name: 'PluginModuleHost',
@@ -64,10 +56,9 @@ const installedPatchRoutes = new Map<string, string>()
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', name: 'chat', component: ChatPage, meta: { titleKey: 'nav.chat' } },
-    // /agents is registered at runtime by agent.patch (agent plugin uiPatches).
-    { path: '/plugins', name: 'plugins', component: PluginsPage, meta: { titleKey: 'nav.plugins' } },
-    { path: '/settings', name: 'settings', component: SettingsPage, meta: { titleKey: 'nav.settings' } },
+    // No builtin pages: chat / plugins / settings / usage and plugin pages
+    // (memory, companion, agents, …) are all registered by *.patch files at
+    // runtime.  Until they load, the catch-all hosts an iframe fallback.
     { path: '/:pathMatch(.*)*', name: 'catch-all', component: PatchPage },
   ],
 })
@@ -76,10 +67,8 @@ const router = createRouter({
  * Register extra routes from Core-served .patch files at runtime.
  * Called from main.ts after the uiPatches store has fetched ops.
  *
- * Priority per patch item:
- *  1. module — dynamic ESM component (plugin-native page)
- *  2. component — builtin whitelist page
- *  3. PatchPage — iframe (src) or empty fallback
+ * A route item with `module` resolves to a plugin-native ESM page; anything
+ * else falls back to PatchPage (iframe via `src`).
  */
 export function registerPatchRoutes() {
   const ui = useUIPatchesStore()
@@ -106,8 +95,7 @@ export function registerPatchRoutes() {
       installedPatchRoutes.delete(name)
     }
 
-    const mapped = p.component ? PATCH_COMPONENTS[p.component] : undefined
-    const component = p.module ? PluginModuleHost : mapped || PatchPage
+    const component = p.module ? PluginModuleHost : PatchPage
     router.addRoute({
       path: p.path,
       name,
