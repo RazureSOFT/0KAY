@@ -377,6 +377,10 @@ class LifeEngine:
         # servicer once the event loop is running (see `serve`).  Constructing it
         # loads the persisted mind so a restart resumes the same train of thought.
         self.resident = ResidentThinker(self)
+        # Life on/off: deliberate (owner presses 开始生命).  Persisted separately
+        # from settings so it survives a restart without cluttering the schema;
+        # the gRPC servicer only auto-starts the resident thinker when alive.
+        self._life_state = self._load_life_state()
         # Settings are applied *after* state so a saved setting always wins over
         # whatever config was persisted alongside the learned state.
         self.apply_cognition_settings()
@@ -616,7 +620,115 @@ class LifeEngine:
             "wave4b": self.selfhood.context(),
             "attachment": self.attachment.context() if self.attachment is not None else {"enabled": False},
             "persona": persona_summary(getattr(self, "_persona_traits", None)),
+            "life": self.life_status(),
         }
+
+    # ---- life on/off (开始生命 / 暂停生命) --------------------------------
+    def _life_state_path(self) -> Path:
+        return Path(self.data_dir) / "life_state.json"
+
+    def _load_life_state(self) -> dict:
+        try:
+            data = json.loads(self._life_state_path().read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+        except (FileNotFoundError, ValueError, OSError):
+            return {}
+
+    def _save_life_state(self) -> None:
+        try:
+            path = self._life_state_path()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(self._life_state, ensure_ascii=False), encoding="utf-8")
+        except OSError as error:  # pragma: no cover - best effort
+            logger.debug("life state save failed: %s", error)
+
+    def life_is_alive(self) -> bool:
+        return bool(self._life_state.get("alive"))
+
+    def life_status(self) -> dict:
+        """Read-out for the 开始生命 button: is she alive, and what is she thinking."""
+        resident = getattr(self, "resident", None)
+        state = getattr(resident, "state", None)
+        try:
+            proactive = str(self.companion.get_settings().get("enable_proactive", "1")) == "1"
+        except Exception:
+            proactive = False
+        return {
+            "alive": self.life_is_alive(),
+            "born_at": str(self._life_state.get("born_at") or ""),
+            "last_started_at": str(self._life_state.get("last_started_at") or ""),
+            "resident_running": bool(resident is not None and resident.running),
+            "resident_enabled": bool(resident is not None and resident.enabled),
+            "cognition_enabled": bool(getattr(self, "_cognition_enabled", False)),
+            "proactive_enabled": proactive,
+            "ticks": int(getattr(state, "ticks", 0) or 0),
+            "last_thought": str(getattr(state, "last_thought", "") or ""),
+            "focus": str(getattr(state, "focus", "") or ""),
+            "active_goal": str(getattr(state, "active_goal", "") or ""),
+            "last_tick": str(getattr(state, "last_tick", "") or ""),
+            "scratchpad": list(getattr(state, "scratchpad", []) or [])[-5:],
+        }
+
+    async def start_life(self, greet: bool = False, session_id: str = "") -> dict:
+        """一键点燃自主生命：开认知 + 主动行为 + 常驻思考，并立刻想第一件事。"""
+        self.companion.set_settings({"cog_enabled": "1", "enable_proactive": "1", "enable_dream": "1"})
+        self.apply_cognition_settings()
+        now = datetime.now().isoformat()
+        self._life_state["alive"] = True
+        self._life_state["last_started_at"] = now
+        if not self._life_state.get("born_at"):
+            self._life_state["born_at"] = now
+        self._save_life_state()
+        resident = getattr(self, "resident", None)
+        if resident is not None:
+            resident.enabled = True
+            try:
+                resident.start()
+            except Exception as error:  # pragma: no cover - defensive
+                logger.warning("could not start resident thinker: %s", error)
+            # First autonomous thought now, rather than after the cadence.
+            try:
+                await resident.think_now()
+            except Exception as error:
+                logger.debug("first life thought failed: %s", error)
+        greeting = ""
+        if greet:
+            greeting = await self._life_first_message(session_id)
+        status = self.life_status()
+        if greeting:
+            status["greeting"] = greeting
+        return status
+
+    async def stop_life(self) -> dict:
+        """暂停自主生命：停止常驻思考并关掉主动投递（内心状态保留）。"""
+        self._life_state["alive"] = False
+        self._save_life_state()
+        try:
+            self.companion.set_settings({"enable_proactive": "0"})
+        except Exception:
+            pass
+        resident = getattr(self, "resident", None)
+        if resident is not None:
+            await resident.stop()
+        return self.life_status()
+
+    async def _life_first_message(self, session_id: str = "") -> str:
+        """A first, in-character line when life begins (optional 打招呼)."""
+        try:
+            text = str(await self.generate_companion_text(
+                "proactive", hint="你刚刚开始拥有自己的生活，第一次主动开口，向对方打个招呼") or "").strip().strip('"')
+        except Exception as error:
+            logger.debug("first life message failed: %s", error)
+            text = ""
+        if not text:
+            resident = getattr(self, "resident", None)
+            text = str(getattr(getattr(resident, "state", None), "last_thought", "") or "").strip()
+        if text:
+            try:
+                await asyncio.to_thread(self.push_notification, session_id or "", text)
+            except Exception as error:
+                logger.debug("first life notification failed: %s", error)
+        return text
 
     # ---- persona -> trait data (WebUI 人设页 / gRPC persona_json) ----------
     PERSONA_TRAIT_KEYS = ("description", "personality")

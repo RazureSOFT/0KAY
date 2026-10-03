@@ -149,6 +149,14 @@ class ResidentThinker:
     def running(self) -> bool:
         return self._task is not None and not self._task.done()
 
+    async def think_now(self) -> bool:
+        """Run one thinking step immediately (used by the 开始生命 button).
+
+        Safe to call while the loop is running: both run on the same event loop
+        and the step is cooperative, so this is just an extra, on-demand tick.
+        """
+        return await self._think_once()
+
     # -- interruption ------------------------------------------------------
     def notify_user_message(self, session_id: str = "", user_id: str = "", message: str = "") -> None:
         """An external message arrived: interrupt inner thought, defer to it."""

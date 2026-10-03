@@ -44,8 +44,11 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
         # The resident thinker is the one long-lived process that thinks between
         # runs; it owns its own cadence and is stopped by `engine.close()`.
         try:
-            if self.engine.resident.start():
-                log.info("resident thinker started (interval=%.0fs)", self.engine.resident.interval)
+            if self.engine.life_is_alive():
+                if self.engine.resident.start():
+                    log.info("resident thinker started (interval=%.0fs)", self.engine.resident.interval)
+            else:
+                log.info("life not started; waiting for 开始生命")
         except Exception as e:
             log.warning("could not start resident thinker: %s", e)
 
@@ -618,6 +621,15 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             elif action == "persona_apply":
                 # Save the reviewed persona plus its tuned parameters.
                 result = await asyncio.to_thread(self.engine.persona_apply, payload)
+            elif action == "life_status":
+                result = self.engine.life_status()
+            elif action == "life_start":
+                # 一键点燃自主生命：认知 + 主动行为 + 常驻思考，并立刻想第一件事。
+                result = await self.engine.start_life(
+                    bool(payload.get("greet")),
+                    str(payload.get("session_id") or payload.get("target") or ""))
+            elif action == "life_stop":
+                result = await self.engine.stop_life()
             elif action == "config_export":
                 result = await asyncio.to_thread(self.engine.companion.export_config)
             elif action == "config_import":
