@@ -591,6 +591,39 @@ func (s *Store) handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+	case "/api/pairing/devices":
+		if !local(r.RemoteAddr) || r.Method != "GET" {
+			http.Error(w, "local access only", 403)
+			return
+		}
+		devices := []map[string]string{}
+		for _, device := range s.Devices {
+			devices = append(devices, map[string]string{"id": device.ID, "name": device.Name})
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{"devices": devices})
+	case "/api/pairing/revoke":
+		if !local(r.RemoteAddr) || r.Method != "POST" {
+			http.Error(w, "local access only", 403)
+			return
+		}
+		var body struct {
+			ID string `json:"id"`
+		}
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body) != nil {
+			http.Error(w, "invalid request", 400)
+			return
+		}
+		if _, ok := s.Devices[body.ID]; !ok {
+			http.Error(w, "unknown device", 404)
+			return
+		}
+		delete(s.Devices, body.ID)
+		delete(s.requests, body.ID)
+		if err := s.save(); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 	case "/api/pairing/status":
 		if r.Method != "POST" {
 			http.Error(w, "method not allowed", 405)
