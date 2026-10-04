@@ -2,6 +2,7 @@ package com.razuresoft.okayapp.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -163,7 +164,7 @@ fun UsageScreen(nav: NavHostController) {
             }
         }
         SectionTitle("按天")
-        u.obj("by_day").toSortedMap().entries.takeLast(14).forEach { (day, m) ->
+        u.obj("by_day").toSortedMap().toList().takeLast(14).forEach { (day, m) ->
             val o = m.asObject()
             RowItem(title = day, value = "${o.int("total")} tok")
         }
