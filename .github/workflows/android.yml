@@ -34,7 +34,16 @@ jobs:
           cache-read-only: false
 
       - name: Build APK
-        run: gradle assembleRelease --no-daemon --stacktrace
+        run: |
+          gradle assembleRelease --no-daemon --stacktrace 2>&1 | tee build.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Surface compile errors
+        if: failure()
+        run: |
+          grep -E "^e: |error:|FAILURE: Build" build.log | head -12 | while IFS= read -r line; do
+            echo "::error::$line"
+          done
 
       - name: Rename artifact
         run: |
