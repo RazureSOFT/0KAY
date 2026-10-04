@@ -14,8 +14,11 @@ from world import gates, shadow  # noqa: E402
 
 class ShadowGate(unittest.TestCase):
     def test_shadow_log_and_guarded_update(self):
+        curated_path = ROOT / "data" / "teacher" / "curated.jsonl"
+        if not curated_path.exists():
+            self.skipTest("teacher/curated.jsonl is local data (gitignored) and not present")
         templates = [json.loads(line) for line in (ROOT / "world" / "templates.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
-        curated = [json.loads(line) for line in (ROOT / "data" / "teacher" / "curated.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+        curated = [json.loads(line) for line in curated_path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
         with tempfile.TemporaryDirectory() as tmp:
             log_path = Path(tmp) / "shadow_log.jsonl"
