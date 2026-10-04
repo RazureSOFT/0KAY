@@ -461,6 +461,9 @@ async function onSetupSubmit() {
   background: var(--md-surface-container);
   border-bottom: 1px solid var(--md-outline-variant);
   z-index: 10;
+  /* Chrome is not content: keep the brand + controls out of any select-all /
+     drag selection so copying a chat can never drag "0kay" and nav labels in. */
+  user-select: none;
 }
 
 .brand {
@@ -468,6 +471,7 @@ async function onSetupSubmit() {
   align-items: baseline;
   gap: var(--space-md);
   min-width: 0;
+  user-select: none;
 }
 
 .brand-mark {
@@ -563,6 +567,8 @@ async function onSetupSubmit() {
   background: var(--md-surface-container-low);
   border-right: 1px solid var(--md-outline-variant);
   flex-shrink: 0;
+  /* Nav labels are chrome, not chat: exclude them from selection entirely. */
+  user-select: none;
 }
 
 .nav-item {

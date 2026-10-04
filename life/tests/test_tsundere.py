@@ -128,8 +128,15 @@ class TsundereDynamicsTests(unittest.TestCase):
         system = TsundereSystem(enabled=True, type_key="暴躁傲娇")
         system.dynamics.state.update({"A": 0.95, "T": 0.5, "Y": 0.9})
         self.assertGreaterEqual(system.fixation(), 0.85)
-        self.assertTrue(system.guard())
-        self.assertIn("安全", system.guard())
+        guard = system.guard()
+        self.assertTrue(guard)
+        # The directive is a *private* one (it is injected into the output
+        # prompt), so it is worded to describe the constraint without naming
+        # it — "安全" is deliberately absent, or the character would start
+        # talking about safety in its own voice.
+        self.assertIn("自伤", guard)
+        self.assertIn("不得说出", guard)
+        self.assertNotIn("安全", guard)
 
     def test_no_guard_below_the_safe_band(self):
         system = TsundereSystem(enabled=True)

@@ -39,6 +39,18 @@ dev = [
 # outside a source checkout even if the development PYTHONPATH is correct.
 packages = ["src/life", "world"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# The suite is unittest.TestCase-based and drives coroutines with an explicit
+# `asyncio.run`. Strict mode keeps a bare `async def test_` from being silently
+# skipped as a no-op coroutine.
+asyncio_mode = "strict"
+filterwarnings = [
+    # tantivy 0.26 emits these for its deprecated delete API; we call the
+    # supported one, so the warning only comes from probing its behaviour.
+    "ignore::DeprecationWarning",
+]
+
 [tool.mypy]
 python_version = "3.12"
 warn_return_any = true

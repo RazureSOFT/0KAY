@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css'
 import AppSelect from './AppSelect.vue'
 import { useConfirm } from './confirm'
 import ConfirmDialog from './ConfirmDialog.vue'
+import { friendlyError, injectStyle, lifeAct, lifeGet, lifeKitCss, sleep } from './kit'
 
 const { confirm } = useConfirm()
 const data = ref<any>({ settings: {}, cognition: null })
@@ -15,26 +16,24 @@ const navItems = [
   { key: 'cognition', i: '01', label: '认知', icon: '◉' },
   { key: 'persona', i: '02', label: '人设', icon: '✎' },
   { key: 'world', i: '03', label: '世界', icon: '✦' },
-  { key: 'state', i: '04', label: '状态', icon: '☺' },
+  { key: 'adapters', i: '04', label: '消息平台', icon: '✉' },
+  { key: 'state', i: '05', label: '状态', icon: '☺' },
 ]
+/** The standalone 消息平台 settings tab owns full adapter CRUD now; this panel
+    keeps a read-only summary and sends you there instead of duplicating it. */
+const ADAPTERS_SETTINGS_TAB = 'life_adapters'
 
 function flash(message: string) { notice.value = message; setTimeout(() => { if (notice.value === message) notice.value = '' }, 2500) }
-/** Turn raw gateway/gRPC dial errors into a calm, actionable message. */
-function friendlyError(e: any): string {
-  const text = String(e?.message || e || '')
-  if (/connection refused|Unavailable|actively refused|dial tcp|ECONNREFUSED|LIFE is unavailable|life unavailable|502|503/i.test(text)) {
-    return 'LIFE 服务暂时未就绪（可能正在启动或重启），已自动重试。稍候刷新即可。'
-  }
-  return text || '操作失败'
+/** Open the standalone 消息平台 settings tab. */
+function openAdapterSettings() {
+  const url = `/settings?tab=${ADAPTERS_SETTINGS_TAB}`
+  window.location.href = url
 }
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 async function load(attempt = 0): Promise<void> {
   loading.value = true; error.value = ''
   try {
-    const r = await fetch('/api/life/companion')
-    if (!r.ok) throw Error(await r.text() || String(r.status))
-    data.value = await r.json()
+    data.value = await lifeGet('/api/life/companion')
     syncSettings()
     loading.value = false
   } catch (e: any) {
@@ -44,18 +43,12 @@ async function load(attempt = 0): Promise<void> {
   }
 }
 async function act(action: string, payload: any) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const r = await fetch('/api/life/companion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, payload }) })
-      if (!r.ok) throw Error(await r.text())
-      const body = await r.json().catch(() => ({}))
-      await load(); return body
-    } catch (e: any) {
-      if (attempt < 2 && /connection refused|Unavailable|actively refused|dial tcp|502|503|life unavailable/i.test(String(e?.message || e))) { await sleep(1200); continue }
-      error.value = friendlyError(e); return null
-    }
+  try {
+    const body = await lifeAct(action, payload)
+    await load(); return body
+  } catch (e: any) {
+    error.value = friendlyError(e); return null
   }
-  return null
 }
 function jump(target: string) {
   tab.value = target
@@ -63,12 +56,15 @@ function jump(target: string) {
   const el = pageEl.value
   if (el) el.scrollTo({ top: 0, behavior }); else window.scrollTo({ top: 0, behavior })
 }
+// 适配器状态是实时量（是否已连接），只在进入该页时拉取，不塞进 companion 快照。
+watch(tab, (value) => { if (value === 'adapters') loadAdapters() })
 
 // --- cognition core --------------------------------------------------------
 // Mirrors CompanionSystem.SETTING_DEFAULTS on the backend.  Booleans are stored
 // as '1'/'0' strings; every other knob is numeric except the two enums.
 const COG_DEFAULTS: Record<string, string> = {
   cog_enabled: '1',
+  cog_lite_mode: '0',
   cog_modulate_affect: '1', cog_modulate_language: '1', cog_modulate_social: '1', cog_modulate_selfhood: '1',
   cog_plan_depth: '2', cog_wm_capacity: '5', cog_tau: '0.4', cog_gamma: '0.9',
   cog_alpha_habit: '0.08', cog_alpha_mf: '0.2', cog_theta_pe: '0.25', cog_theta_n: '0.35',
@@ -82,19 +78,42 @@ const COG_DEFAULTS: Record<string, string> = {
   cog_selfhood_enabled: '1', cog_selfhood_discount: '0.1', cog_selfhood_detail: '20',
   cog_attachment_enabled: '0', cog_attachment_type: '依存型',
   cog_tsundere_enabled: '0', cog_tsundere_type: '经典傲娇',
+  cog_personadyn_enabled: '0', cog_personadyn_type: '正常/安全型', cog_personadyn_gender: '未指定',
   // memory & consolidation. On by default — they are what makes lived
   // experience leave a trace; turn one off to ablate it.
   cog_memory_encode: '1', cog_sleep_replay: '1', cog_memory_reconsolidate: '1',
   cog_cls_interleave: '1',
 }
-const COG_BOOL_KEYS = ['cog_enabled', 'cog_modulate_affect', 'cog_modulate_language', 'cog_modulate_social',
+const COG_BOOL_KEYS = ['cog_enabled', 'cog_lite_mode', 'cog_modulate_affect', 'cog_modulate_language', 'cog_modulate_social',
   'cog_modulate_selfhood', 'cog_use_cerebellum', 'cog_use_thalamic_gate', 'cog_use_ofc_map',
   'cog_use_prospection', 'cog_use_limbic_bias', 'cog_affect_enabled', 'cog_affect_somatic', 'cog_affect_persona_llm', 'cog_language_enabled',
   'cog_social_enabled', 'cog_selfhood_enabled', 'cog_attachment_enabled', 'cog_tsundere_enabled',
+  'cog_personadyn_enabled',
   'cog_memory_encode', 'cog_sleep_replay', 'cog_memory_reconsolidate', 'cog_cls_interleave']
-const COG_TEXT_KEYS = ['cog_affect_profile', 'cog_language_framing', 'cog_attachment_type', 'cog_tsundere_type']
+const COG_TEXT_KEYS = ['cog_affect_profile', 'cog_language_framing', 'cog_attachment_type', 'cog_tsundere_type', 'cog_personadyn_type', 'cog_personadyn_gender']
 const attachmentTypeOptions = ['独占型', '依存型', '妄想型', '监视型', '自伤型', '排除型']
 const tsundereTypeOptions = ['经典傲娇', '高冷傲娇', '暴躁傲娇', '迁就傲娇']
+// The 18 research archetypes stay first (they are the ACG family the plugin
+// shipped with); the extended library is grouped so a long list stays usable.
+const personadynTypeOptions = ['正常/安全型', '傲娇型', '病娇型', '傲娇转病娇', '三无/高冷型', '天然呆型',
+  '温柔/治愈型', '元气/活泼型', '腹黑型', '忠犬型', '依赖型', '回避型', '控制/女王型', '小恶魔型',
+  '暴躁型', '理性/冷静型', '自卑/忧郁型', '混沌/疯狂型']
+// Extended type families (187 regions). Kept in a flat list for the select; the
+// panel shows the family label so a long list is still scannable.
+const personadynTypeGroups = [
+  { label: 'ACG 经典', keys: personadynTypeOptions },
+  { label: '依恋与关系', keys: ['安全型', '焦虑型', '恐惧型', '混乱型', '讨好型', '拯救者', '受害者', '迫害者', '反依赖型', '共依型'] },
+  { label: '九型人格', keys: ['1 完美主义', '2 助人者', '3 成就者', '4 自我型', '5 观察者', '6 忠诚者', '7 享乐者', '8 挑战者', '9 和平者'] },
+  { label: 'DISC', keys: ['D 支配', 'I 影响', 'S 稳健', 'C 谨慎'] },
+  { label: '社会角色', keys: ['领导者', '追随者', '照顾者', '隐士', '殉道者', '叛逆者', '改革者', '保守者', '投机者', '调停者', '破坏者', '观察者', '局外人'] },
+  { label: '动机与价值', keys: ['成就型', '权力型', '归属型', '安全型（动机）', '探索型', '秩序型', '审美型', '利他型', '利己型', '享乐型', '自我实现型'] },
+  { label: '认知风格', keys: ['分析型', '直觉型', '系统型', '发散型', '聚合型', '场依存', '场独立', '冲动型', '反思型', '反刍型', '灾难化型', '乐观型', '悲观型'] },
+  { label: '女性 / 中性 ACG', keys: ['御姐', '病弱', '中二', '无口', '毒舌', '弱气', '强气', '黑化', '暴走', '地雷系', '阳角', '阴角', '社恐', '社牛', '纯爱', '修罗场'] },
+  { label: '男性原型', keys: ['安全男', '焦虑男', '回避男', '恐惧男', '混乱男', '讨好男', '拯救者男', '控制男', '反依赖男', '共依男', '依赖男', '霸总', '暖男', '忠犬男', '狼狗', '奶狗', '爹系', '少年', '大叔', '硬汉', '草食男', '肉食男', '海王', '渣男', '直男', '凤凰男', '妈宝男', '巨婴', '软饭男', '接盘侠', '备胎', '舔狗', '工具人', '老实人', '老好人', '暴君', '帝王', '将军', '谋士', '骑士', '浪子', '隐士', '侠客', '反派', '病娇男', '傲娇男', '腹黑男', '中二男', '宅男', '社恐男', '社牛男', '忧郁男', '艺术男', '理工男', '体育男', '金融男', '文艺男', '禁欲系', '清冷男', '疯批男', '病弱男', '黑化男', '龙傲天', '废柴', '逆袭男', '救世主', '殉道者男', '破坏者男', '观察者男', '三无男', '天然呆男', '小恶魔男', '元气男', '高冷男', '纯爱男', '修罗场男', '弱气男', '强气男'] },
+]
+// Flat, de-duplicated option list for the archetype select.
+const personadynAllTypes = [...new Set(personadynTypeGroups.flatMap((g) => g.keys))]
+const personadynGenderOptions = ['未指定', '男性脚本', '女性脚本', '中性', '高传统男性', '低传统男性', '高传统女性', '女性主义']
 const cogProfileOptions = ['typical', 'depression', 'anxiety', 'bpd', 'alexithymia']
 const cogFramingOptions = ['independent', 'interchanging', 'cognitive_determinism', 'weak_whorf',
   'thinking_for_speaking', 'radical_connectionism', 'determinism']
@@ -130,6 +149,37 @@ const wave4a = computed(() => cognition.value?.wave4a || null)
 const wave4b = computed(() => cognition.value?.wave4b || null)
 const personaInfo = computed(() => cognition.value?.persona || null)
 const attachment = computed(() => cognition.value?.attachment || null)
+const tsundere = computed(() => cognition.value?.tsundere || null)
+const personadyn = computed(() => cognition.value?.personadyn || null)
+// Extended read-outs: the backend ships grouped dictionaries; render a compact
+// "top 3" line so the panel stays readable at a glance.
+const big5Line = computed(() => {
+  const b = personadyn.value?.big5
+  if (!b) return '—'
+  const order = ['o_open', 'c_conscientious', 'e_extravert', 'a_agreeable', 'n_neurotic']
+  return order.map((k) => fmtNum(b[k], 2)).join(' · ')
+})
+const hexacoLine = computed(() => {
+  const h = personadyn.value?.hexaco
+  if (!h) return '—'
+  const order = ['h_honesty', 'hex_e', 'hex_x', 'hex_a', 'hex_c', 'hex_o']
+  return order.map((k) => fmtNum(h[k], 2)).join(' · ')
+})
+function topChannel(dict: Record<string, number> | undefined, n = 3): string[] {
+  if (!dict) return []
+  return Object.entries(dict)
+    .filter(([, v]) => typeof v === 'number')
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([k, v]) => `${channelLabel(k)} ${fmtNum(v, 2)}`)
+}
+const topDesires = computed(() => topChannel(personadyn.value?.desires, 3))
+const topEmotions = computed(() => topChannel(personadyn.value?.emotions, 3))
+const learningDrift = computed(() => {
+  const d = personadyn.value?.learning?.theta_drift
+  if (!d) return 0
+  return Object.values(d as Record<string, number>).reduce((s, v) => s + Math.abs(v || 0), 0)
+})
 const episode = computed(() => wave2.value?.episode || null)
 const episodeStateLabel = (value: string) => ({ euthymic: '平稳', subthreshold: '下滑中', episode: '低落发作' } as Record<string, string>)[value] || '—'
 
@@ -167,9 +217,10 @@ function applyPreset(fields: Record<string, any>, label: string) {
   void saveSettings().then(() => flash(`已套用并保存「${label}」`))
 }
 const PRESETS = [
-  { label: '常规', fields: { cog_affect_enabled: true, cog_affect_profile: 'typical', cog_affect_threat: 0.2, cog_affect_reward: 1, cog_attachment_enabled: false, cog_tsundere_enabled: false } },
+  { label: '常规', fields: { cog_affect_enabled: true, cog_affect_profile: 'typical', cog_affect_threat: 0.2, cog_affect_reward: 1, cog_attachment_enabled: false, cog_tsundere_enabled: false, cog_personadyn_enabled: false } },
   { label: '抑郁倾向', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_affect_threat: 0.45, cog_affect_reward: 0.7 } },
   { label: '傲娇', fields: { cog_tsundere_enabled: true, cog_tsundere_type: '经典傲娇' } },
+  { label: '人格动力学', fields: { cog_personadyn_enabled: true, cog_personadyn_type: '傲娇型' } },
   { label: '病娇·独占', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_attachment_enabled: true, cog_attachment_type: '独占型' } },
   { label: '病娇·依存', fields: { cog_affect_enabled: true, cog_attachment_enabled: true, cog_attachment_type: '依存型' } },
   { label: '病娇·妄想', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_attachment_enabled: true, cog_attachment_type: '妄想型' } },
@@ -516,6 +567,28 @@ async function saveSettings() {
   const result = await act('settings_set', { settings })
   if (result?.rejected?.length) flash(`已保存，忽略无效项：${result.rejected.join('、')}`); else flash('设置已保存')
 }
+
+/* ── 消息平台适配器（只读概览） ───────────────────────────────────────────────
+   完整的多适配器增删改与配置文件路由已独立成「设置 → 消息平台」页面
+   （AdapterSettingsPage.vue）。陪伴面板只保留运行状态，避免两处实现漂移。 */
+const adapters = ref<any[]>([])
+const adapterRuntime = ref<any[]>([])
+const adapterBusy = ref(false)
+
+function runtimeOf(id: string) { return adapterRuntime.value.find((r) => r.id === id) || {} }
+
+async function loadAdapters() {
+  const result = await act('adapter_list', {})
+  if (!result) return
+  adapters.value = result.instances || []
+  adapterRuntime.value = result.runtime || []
+}
+async function syncAdapters() {
+  adapterBusy.value = true
+  try { await act('adapter_sync', {}); flash('已按配置重新监听') }
+  finally { adapterBusy.value = false }
+}
+
 async function generateWorld() {
   if (worldBusy.value) return
   const ok = await confirm({
@@ -662,6 +735,9 @@ async function analyzePersona() {
     const result = await act('persona_analyze', { text: body.text, gender: personaForm.value.gender })
     if (result) {
       analysis.value = result
+      // Seed the analyser's gender/social-script pick from the backend's read,
+      // else fall back to the currently-saved setting (identity if unset).
+      analysis.value.personadynGender = result.personadyn?.gender || settingsForm.cog_personadyn_gender || '未指定'
       if (!personaForm.value.gender && result.gender) personaForm.value.gender = result.gender
       flash(result.source === 'llm' ? '已由模型理解，请核对/微调参数' : '模型不可用，已用本地词典理解，请核对')
     }
@@ -686,6 +762,12 @@ async function savePersona() {
       traits,
       attachment: analysis.value.attachment || {},
       tsundere: analysis.value.tsundere || {},
+      personadyn: {
+        ...(analysis.value.personadyn || {}),
+        // The owner may override the archetype's implied gender/social script
+        // after analysis; the backend applies it as the persona's G group.
+        gender: analysis.value.personadynGender || settingsForm.cog_personadyn_gender || '未指定',
+      },
     })
     if (!result) return
     const host = personaHost()
@@ -704,6 +786,11 @@ onMounted(loadPersona)
 watch(tab, (value) => { if (value === 'persona') loadPersona() })
 
 onMounted(load)
+
+/* Install the shared design tokens once per document. A Vue <style scoped>
+   block is compiled per component, so the kit has to be injected at runtime to
+   stay literally identical to the 消息平台 settings page. */
+injectStyle('life-plugin-kit', lifeKitCss('pcp'))
 </script>
 
 <template>
@@ -829,6 +916,21 @@ onMounted(load)
           <p class="hint">文字只是来源，真正保存进 LIFE 的是这里调好的数值。改人设里的关键词即可换型别（口嫌体正直→经典，高冷→高冷，暴躁→暴躁，迁就→迁就）。</p>
         </template>
         <p v-else class="hint">人设里没有傲娇关键词，不启用傲娇动力学（可在下方「傲娇 / 病娇动力学」卡片手动开启）。</p>
+
+        <template v-if="analysis.personadyn && analysis.personadyn.type">
+          <h4>人格动力学 · 由人设关键词决定</h4>
+          <div class="settings-grid">
+            <label><span>人格原型</span><input class="field" :value="analysis.personadyn.type" disabled /></label>
+            <label><span>初始好感 A</span><input v-model.number="analysis.personadyn.initial.A" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>初始焦虑 X</span><input v-model.number="analysis.personadyn.initial.X" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>初始占有 O</span><input v-model.number="analysis.personadyn.initial.O" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>初始信任 Tr</span><input v-model.number="analysis.personadyn.initial.Tr" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>初始自控 K</span><input v-model.number="analysis.personadyn.initial.K" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>性别 / 社会脚本 G</span><AppSelect v-model="analysis.personadynGender" :options="personadynGenderOptions" aria-label="性别社会脚本" /></label>
+          </div>
+          <p class="hint">文字只是来源，真正保存进 LIFE 的是这里调好的数值。改人设里的关键词即可换原型（傲娇→傲娇型，病娇/占有→病娇型，高冷→三无，暴躁→暴躁…）。原型自带 12 族 / 69 维 θ 基线，选「未指定」时沿用原型隐含的社会脚本。</p>
+        </template>
+        <p v-else class="hint">人设里没有匹配的人格原型关键词，不启用人格动力学（可在下方「人格动力学」卡片手动开启）。</p>
       </article>
     </section>
 
@@ -889,6 +991,31 @@ onMounted(load)
             <div class="cog-metric"><span>依恋压力</span><strong>{{ fmtNum(attachment.distress, 2) }}</strong></div>
             <div class="cog-metric"><span>抑郁共病</span><strong>{{ fmtNum(attachment.comorbid_depression, 2) }}</strong></div>
           </template>
+          <template v-if="tsundere?.enabled">
+            <div class="cog-metric"><span>傲娇型别</span><strong>{{ tsundere.label || tsundere.type }}</strong></div>
+            <div class="cog-metric"><span>好感 A</span><strong>{{ fmtNum(tsundere.affection, 2) }}</strong></div>
+            <div class="cog-metric"><span>傲娇表达 T</span><strong>{{ fmtNum(tsundere.expression, 2) }}</strong></div>
+            <div class="cog-metric"><span>病娇执念 Y</span><strong>{{ fmtNum(tsundere.fixation, 2) }} · {{ tsundere.band }}</strong></div>
+            <div class="cog-metric"><span>安全层</span><strong>{{ tsundere.safe_mode ? '已触发' : '正常' }}</strong></div>
+          </template>
+          <template v-if="personadyn?.enabled">
+            <div class="cog-metric"><span>人格原型</span><strong>{{ personadyn.label || personadyn.type }}</strong></div>
+            <div class="cog-metric"><span>涌现模式</span><strong>{{ personadyn.mode_label || personadyn.mode }}</strong></div>
+            <div class="cog-metric"><span>就绪度</span><strong>{{ fmtNum(personadyn.pressure, 2) }} · {{ personadyn.band }}</strong></div>
+            <div class="cog-metric"><span>好感 A / 焦虑 X</span><strong>{{ fmtNum(personadyn.affection, 2) }} / {{ fmtNum(personadyn.anxiety, 2) }}</strong></div>
+            <div class="cog-metric"><span>占有 O / 信任 Tr</span><strong>{{ fmtNum(personadyn.possessiveness, 2) }} / {{ fmtNum(personadyn.trust, 2) }}</strong></div>
+            <div class="cog-metric"><span>自控 K / 抑制 S</span><strong>{{ fmtNum(personadyn.self_control, 2) }} / {{ fmtNum(personadyn.suppression, 2) }}</strong></div>
+            <div v-if="personadyn.gender" class="cog-metric"><span>性别 / 社会脚本 G</span><strong>{{ personadyn.gender }}</strong></div>
+            <div v-if="personadyn.help_seek != null" class="cog-metric"><span>求助倾向</span><strong>{{ fmtNum(personadyn.help_seek, 2) }}</strong></div>
+            <div v-if="personadyn.big5" class="cog-metric"><span>Big5 O·C·E·A·N</span><strong>{{ big5Line }}</strong></div>
+            <div v-if="personadyn.hexaco" class="cog-metric"><span>HEXACO H·E·X·A·C·O</span><strong>{{ hexacoLine }}</strong></div>
+            <div v-if="personadyn.mbti" class="cog-metric"><span>MBTI / DISC</span><strong>{{ personadyn.mbti }} · {{ personadyn.disc || '—' }}</strong></div>
+            <div v-if="personadyn.theta_dim" class="cog-metric"><span>θ 维度 / 区域族</span><strong>{{ personadyn.theta_dim }} 维 · {{ personadyn.family || '—' }}</strong></div>
+            <div v-if="topDesires.length" class="cog-metric"><span>主导欲望</span><strong>{{ topDesires.join(' · ') }}</strong></div>
+            <div v-if="topEmotions.length" class="cog-metric"><span>主导情绪</span><strong>{{ topEmotions.join(' · ') }}</strong></div>
+            <div v-if="personadyn.learning?.enabled" class="cog-metric"><span>学习 Q 状态数 / θ 漂移</span><strong>{{ personadyn.learning.q_size }} · {{ fmtNum(learningDrift, 3) }}</strong></div>
+            <div v-if="personadyn.clinical" class="cog-metric warn"><span>临床标签</span><strong>仿真模式（仅抽象标签）</strong></div>
+          </template>
           <template v-if="episode">
             <div class="cog-metric"><span>情绪病程</span><strong>{{ episodeStateLabel(episode.state) }}</strong></div>
             <div class="cog-metric"><span>病程严重度</span><strong>{{ fmtNum(episode.severity, 2) }}</strong></div>
@@ -905,6 +1032,19 @@ onMounted(load)
           {{ attachment.safe_mode ? '已进入安全层（只表达情绪、不给伤害方法）。' : '低于 0.85 不会触发安全层。' }}
           它与抑郁双向影响：低落会放大不安、依恋压力也会拖累情绪。
         </p>
+        <p v-if="tsundere?.enabled" class="hint">
+          傲娇动力学已开启：{{ tsundere.label || tsundere.type }}。好感 A {{ fmtNum(tsundere.affection, 2) }} / 傲娇表达 T {{ fmtNum(tsundere.expression, 2) }} / 病娇执念 Y {{ fmtNum(tsundere.fixation, 2) }}（{{ tsundere.band }}）。
+          Y 越过 0.60 进入「过渡/黑化倾向」，越过 1.00 视为「病娇」——可逆。它由真实信号驱动：亲密度、回复延迟、被冷落天数，以及对方提及「别人」。
+          {{ tsundere.safe_mode ? '已进入安全层（只表达占有情绪，不给伤害方法）。' : '低于 0.85 不会触发安全层。' }}
+        </p>
+        <p v-if="personadyn?.enabled" class="hint">
+          人格动力学已开启：{{ personadyn.label || personadyn.type }}（{{ personadyn.family || '—' }} 族，θ {{ personadyn.theta_dim }} 维），当前涌现模式「{{ personadyn.mode_label || personadyn.mode }}」。
+          就绪度 {{ fmtNum(personadyn.pressure, 2) }}（{{ personadyn.band }}）由占有 O、焦虑 X、自控 K、信任 Tr 四条件联合给出——模式判定需要四条同时越阈，性欲不是根因。
+          傲娇过滤来自「高好感 × 高抑制」（表达被延迟、被反话包裹）；黑化是近似不可逆的相变（敏化滞后 + 模式—行为锁定）。
+          状态由 16 维欲望 D 与 16 维情绪 x 驱动，可读出 Big5 / HEXACO / MBTI / DISC 与主导欲望、情绪；性别·社会脚本 G 会改变表达抑制与求助倾向（{{ personadyn.gender || '未指定' }}）。
+          {{ personadyn.learning?.enabled ? '学习算子 L 在线：结果会小幅更新 Q 值与 θ 漂移。' : '' }}
+          {{ personadyn.safe_mode ? '已进入安全层（只表达感受、请求陪伴，不给伤害方法）。' : '低于 0.85 不会触发安全层。' }}
+        </p>
         <p v-if="personaInfo?.applied" class="hint">人设特质已生效（{{ personaInfo.source === 'llm' ? 'LLM 精修' : '本地词典' }}）：{{ personaEvidenceText || '—' }}。改人设请到 设置 → 人设，下一条消息自动生效。</p>
         <div v-if="somaticChannels" class="som-channels">
           <div v-for="(value, name) in somaticChannels" :key="name" class="som-chan">
@@ -920,11 +1060,16 @@ onMounted(load)
         <h3>总开关与提示词调节</h3>
         <div class="switches">
           <label class="sw"><input type="checkbox" v-model="settingsForm.cog_enabled" /><span>启用认知内核</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_lite_mode" /><span>极简省 token 模式</span></label>
           <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_affect" /><span>情感影响提示词</span></label>
           <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_language" /><span>语言影响提示词</span></label>
           <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_social" /><span>社会认知影响提示词</span></label>
           <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_selfhood" /><span>自我与时间影响提示词</span></label>
         </div>
+        <p class="hint">
+          极简省 token 模式：把 THINK + OUTPUT 两段长提示词合并为一条最小指令，并跳过工具表、技能表、外部观察与认知波次上下文——
+          每轮消耗显著下降，适合长时间闲聊。角色仍会按人设推理，只是脚手架更少。关掉即恢复完整模式。
+        </p>
       </article>
 
       <article class="card">
@@ -1036,6 +1181,37 @@ onMounted(load)
             系统会自动启用并按人设填初始值：如"口嫌体正直、嘴硬"→经典傲娇，"高冷、冰山"→高冷傲娇，
             "一点就炸、暴躁"→暴躁傲娇，"好脾气、别扭地关心"→迁就傲娇。若人设里还写了"病娇/占有欲"，
             建议同时启用上方「病态依恋」，两者会互相影响。
+          </p>
+        </article>
+
+        <article class="card">
+          <h3>人格动力学（可选 · 完整版）</h3>
+          <p class="hint">
+            把「性格标签」变成参数空间里的动力学系统：慢变人格参数 θ（12 组 / 69 维：大五、HEXACO、
+            依恋、气质、调节、暗黑、动机、认知、关系、价值、临床、表达）+ 快变欲望向量 D（16 维）
+            + 情绪状态 x（16 维）+ 模式状态机 T + 性别/社会脚本参数组 G + 学习/发展算子 L。默认关闭；
+            开启后由真实互动驱动，三种模式会自然涌现：**正常型是稳定吸引子**（扰动后指数回落到基线）、
+            **傲娇是"高好感×高抑制"的过滤态**、**病娇是"高占有×高焦虑×低信任×低自控"的正反馈**——
+            并且傲娇→病娇是可观测、可测试、近似不可逆（敏化滞后）的相变。就绪度 ≥0.85 自动进入安全层。
+          </p>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_personadyn_enabled" /><span>启用人格动力学</span></label>
+          <div class="settings-grid">
+            <label><span>人格原型</span><AppSelect v-model="settingsForm.cog_personadyn_type" :options="personadynAllTypes" aria-label="人格原型" /></label>
+            <label><span>性别 / 社会脚本 G</span><AppSelect v-model="settingsForm.cog_personadyn_gender" :options="personadynGenderOptions" aria-label="性别社会脚本" /></label>
+          </div>
+          <p class="hint">
+            类型库共 187 个区域（依恋 12 · 大五/HEXACO 组合 · 临床仿真 16 · 九型 9 · MBTI 16 自动派生 ·
+            DISC 4 · 社会角色 13 · 动机 11 · 认知风格 13 · ACG 女性/中性 16 · 男性原型 77 + 经典 18）。
+            **类型只是参数空间中的区域，不是硬编码台词**：定义 (θ, D⁰, x_eq, w, g, T, A) 即可新增一种。
+            临床仿真型（边缘/自恋/抑郁…）只做抽象标签且**禁止部署**——面板不会给出具体方法。
+            「性别/社会脚本」是 G=(M,F,GRC,EM,DR,AR,SR,SC,HS)：改变表达增益 g、威胁信号 s、自控 K、
+            共情 C、求助倾向与决策效用 R_G(a)；选「未指定」时所有公式与不带脚本时完全一致。
+          </p>
+          <p class="hint">
+            怎么配：① 打开开关并选原型——原型只改变参数，不是硬编码台词；
+            或 ② 直接在人设里写关键词，系统自动启用并按人设填初始值：如"嘴上不饶人其实很黏"→傲娇型，
+            "病娇、占有欲极强"→病娇型，"霸总、说一不二"→霸总（自动套用「高传统男性」脚本）。
+            它与「傲娇 / 病娇动力学」可以同时开：后者是三变量速写，前者是完整的 θ/D/x/f/g/T/G/L 框架，两者互不冲突。
           </p>
         </article>
 
@@ -1156,6 +1332,37 @@ onMounted(load)
     </section>
 
     <!-- 03 状态 -->
+    <!-- 04 消息平台（只读概览；完整增删改在「设置 → 消息平台」） -->
+    <section v-show="tab === 'adapters'" class="panel">
+      <div class="section-head"><div><h2>消息平台</h2>
+        <p class="desc">把角色接入 QQ / 企业微信 / 飞书 / Discord / Telegram 等平台。L.I.F.E 作为<b>服务端</b>监听反向 WebSocket，由 NapCat 等客户端连入。可同时运行多个机器人，各自独立启停。</p></div>
+        <div class="head-actions">
+          <button class="btn sm" :disabled="adapterBusy" @click="syncAdapters">重新监听</button>
+          <button class="btn filled sm" @click="openAdapterSettings">管理适配器 →</button>
+        </div>
+      </div>
+
+      <article class="card">
+        <h3>适配器 <span class="count-pill">{{ adapters.length }}</span></h3>
+        <p class="hint">
+          这里只显示运行状态。新增、编辑、删除适配器，以及配置文件路由，
+          都在 <b>设置 → 消息平台</b> 页面完成。
+        </p>
+        <div v-if="!adapters.length" class="empty">还没有适配器，点右上角「管理适配器」接入第一个机器人。</div>
+        <ol v-else class="feed">
+          <li v-for="a in adapters" :key="a.id">
+            <strong>{{ a.name || a.id }}</strong>
+            <span class="pill soft" :class="{ ok: runtimeOf(a.id).connected }">
+              {{ runtimeOf(a.id).connected ? '已连接' : (a.enabled ? '等待客户端接入' : '未启用') }}
+            </span>
+            <span class="meta">{{ a.platform }} · ws://{{ a.ws_host }}:{{ a.ws_port }} · 人设 {{ a.config_id }}</span>
+            <span class="meta">{{ runtimeOf(a.id).clients || 0 }} 个客户端 · {{ a.ws_token ? 'Token 已设置' : '无 Token（建议设置）' }}</span>
+          </li>
+        </ol>
+        <div class="actions-row"><button class="btn sm" @click="openAdapterSettings">设置 → 消息平台</button></div>
+      </article>
+    </section>
+
     <section v-show="tab === 'state'" class="panel">
       <div class="section-head"><div><h2>状态</h2><p class="desc">承诺账本、结构化用户模型与价值取向。</p></div></div>
       <article class="card">
@@ -1204,81 +1411,9 @@ onMounted(load)
 </template>
 
 <style scoped>
-.pcp{
-  --r-xs:10px; --r-sm:14px; --r-md:20px; --r-lg:28px; --r-xl:36px;
-  --spring:cubic-bezier(.2,.9,.25,1.15);
-  height:100%;overflow-y:auto;padding:var(--space-xl) var(--space-xl) 96px;
-  background:var(--md-surface);color:var(--md-on-surface);
-  max-width:1240px;margin:0 auto;
-}
-h1,h2,h3,h4{margin:0;letter-spacing:-.01em}
-.eyebrow{margin:0 0 8px;color:var(--md-primary);font:700 12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em}
-.eyebrow b{font-size:9px}
-
-/* Hero */
-.hero{position:relative;border-radius:var(--r-xl);padding:28px 28px 22px;margin-bottom:22px;
-  background:linear-gradient(135deg,var(--md-primary-container),var(--md-surface-container-high) 70%);
-  color:var(--md-on-surface);box-shadow:var(--shadow-1);overflow:hidden}
-.hero::after{content:'';position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;
-  background:radial-gradient(circle,color-mix(in srgb,var(--md-primary) 34%,transparent),transparent 68%);pointer-events:none}
-.hero-main{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start;position:relative;z-index:1}
-.hero-copy h1{font-size:clamp(26px,3.4vw,40px);font-weight:800}
-.sub{margin:8px 0 0;max-width:620px;font-size:14px;line-height:1.6;color:var(--md-on-surface-variant)}
-.hero-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.fab{height:52px;padding:0 22px;border:0;border-radius:18px;background:var(--md-primary);color:var(--md-on-primary,#fff);
-  font:700 14px/1 inherit;display:inline-flex;align-items:center;gap:10px;cursor:pointer;box-shadow:0 6px 18px color-mix(in srgb,var(--md-primary) 34%,transparent);
-  transition:transform .28s var(--spring),box-shadow .28s}
-@media (hover: hover) and (pointer: fine){.fab:hover:not(:disabled){transform:translateY(-2px) scale(1.02)}}
-.fab:disabled{opacity:.6;cursor:not-allowed}
-.fab-ic{font-size:17px}
-.state-row{position:relative;z-index:1;display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
-.pill{padding:6px 14px;border-radius:999px;background:color-mix(in srgb,var(--md-surface-container-lowest) 70%,transparent);font-size:13px;font-weight:700}
-.pill.soft{font-weight:500;color:var(--md-on-surface-variant)}
-.pill.bad{background:#ffdcc6;color:#7a3a00}
-
-.banner{padding:12px 16px;border-radius:var(--r-sm);font-size:13px;margin:0 0 16px}
-.banner.err{background:var(--md-error-container);color:var(--md-on-error-container)}
-.banner.ok{background:var(--md-primary-container);color:var(--md-on-primary-container)}
-
-/* Tabs */
-.tabs{display:flex;gap:8px;overflow-x:auto;padding:6px 4px 14px;margin-bottom:6px;scrollbar-width:thin}
-.tab{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 18px;border:1px solid var(--md-outline-variant);
-  border-radius:999px;background:var(--md-surface-container-low);color:var(--md-on-surface-variant);font:700 13px/1 inherit;cursor:pointer;
-  transition:background .25s,color .25s,transform .25s var(--spring)}
-.tab i{font-style:normal;font:700 12px/1 ui-monospace,monospace;opacity:.6}
-.tab-ic{font-size:14px}
-.tab:hover{background:var(--md-surface-container-high)}
-.tab.active{background:var(--md-primary);color:var(--md-on-primary,#fff);border-color:transparent;transform:translateY(-1px);
-  box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 30%,transparent)}
-.tab.active i{opacity:.85}
-
-.panel{animation:fade .32s var(--spring)}
-@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin:8px 0 18px}
-.section-head h2{font-size:22px;font-weight:800}
-.desc{margin:6px 0 0;font-size:13px;color:var(--md-on-surface-variant);max-width:720px;line-height:1.55}
-.head-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-
-/* Buttons */
-.btn{height:40px;padding:0 16px;border:1px solid transparent;border-radius:999px;font:700 13px/1 inherit;cursor:pointer;
-  display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .22s var(--spring),background .22s,box-shadow .22s}
-.btn.sm{height:34px;padding:0 14px;font-size:13px}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-@media (hover: hover) and (pointer: fine){.btn:hover:not(:disabled){transform:translateY(-1px)}}
-.btn.filled{background:var(--md-primary);color:var(--md-on-primary,#fff)}
-.btn.tonic{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-.btn.text{background:transparent;color:var(--md-primary)}
-.btn.danger{background:var(--md-error-container);color:var(--md-on-error-container)}
-.link{border:0;background:transparent;color:var(--md-primary);font:700 12px/1 inherit;cursor:pointer;padding:4px}
-
-/* Cards */
-.card{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--r-lg);padding:20px;margin-bottom:16px}
-.card > h3{font-size:16px;font-weight:750;margin-bottom:14px;display:flex;align-items:center;gap:8px}
-.card.sub{padding:16px;margin-bottom:0}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
-.sub-label{margin:16px 0 8px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--md-on-surface-variant)}
-.hint{font-size:12px;color:var(--md-on-surface-variant);line-height:1.55;margin:6px 0}
+/* Shared design tokens + component vocabulary come from kit.ts so this page
+   and the standalone 消息平台 settings page stay in lockstep. Only the
+   world-map and cognition-panel rules are page-specific. */
 .world-field{display:block;margin:10px 0}
 .world-label{display:block;font-size:12px;font-weight:600;color:var(--md-on-surface-variant);margin-bottom:4px}
 .world-text{width:100%;min-height:64px;padding:10px 14px;border:1px solid var(--md-outline-variant);border-radius:var(--r-sm);background:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;font-size:13px;line-height:1.5;resize:vertical;outline:none}
@@ -1322,27 +1457,15 @@ h1,h2,h3,h4{margin:0;letter-spacing:-.01em}
 .wm-legend i.k-hw{background:#f08c2e}
 .wm-legend i.k-arterial{background:#f7cf8a}
 .wm-legend i.k-street{background:#fff;border-color:#b9c3cd}
-.meta{font-size:12px;color:var(--md-on-surface-variant);line-height:1.5}
-.empty{padding:14px;text-align:center;font-size:13px;color:var(--md-on-surface-variant)}
 
-/* Fields */
-.field{width:100%;height:48px;padding:0 16px;border:1px solid var(--md-outline-variant);border-radius:var(--r-sm);
-  background:var(--md-surface-container-high);color:var(--md-on-surface);font:400 14px/1.4 inherit;outline:none;transition:border-color .2s,box-shadow .2s}
-.field:focus{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 14%,transparent)}
-.field.tiny{width:104px;height:38px;padding:0 12px;font-size:13px}
-.preset-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.switches{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0}
-.sw{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--md-on-surface-variant);cursor:pointer}
-.sw input{width:18px;height:18px;accent-color:var(--md-primary)}
-.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
-.settings-grid label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}
-.settings-grid .field{height:40px}
 .pfield{display:flex;flex-direction:column;gap:4px;margin-top:10px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}
 .pfield textarea.field{height:auto;min-height:70px;padding:10px 12px;resize:vertical;line-height:1.5}
 .cog-metric{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:var(--r-sm);
   background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant)}
 .cog-metric span{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant)}
 .cog-metric strong{font-size:16px;font-weight:800;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cog-metric.warn{border-color:var(--md-error,#b3261e);background:color-mix(in srgb,var(--md-error,#b3261e) 8%,transparent)}
+.cog-metric.warn span,.cog-metric.warn strong{color:var(--md-error,#b3261e)}
 .som-channels{margin-top:10px;display:flex;flex-direction:column;gap:6px}
 .som-chan{display:grid;grid-template-columns:52px 1fr 48px;align-items:center;gap:10px}
 .som-chan-name{font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}
@@ -1350,37 +1473,12 @@ h1,h2,h3,h4{margin:0;letter-spacing:-.01em}
 .som-chan-bar i{display:block;width:100%;height:100%;border-radius:999px;background:var(--md-primary);transform-origin:left;transition:transform var(--duration-medium) var(--ease-out);will-change:transform}
 .som-chan-val{font-size:12px;font-weight:700;text-align:right;color:var(--md-on-surface-variant)}
 
-/* Chips / status */
 .chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:700;
   background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 .chip.muted{background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-weight:500}
 .chip.ok{background:var(--md-success-container);color:#0d3b1e}
-.count-pill{margin-left:auto;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700}
-.count-pill.ok{background:var(--md-success-container);color:#0d3b1e}
-.actions-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
 
-/* Material 3 Expressive align */
-#app .pcp .card{border-color:color-mix(in srgb,var(--md-outline-variant) 55%,transparent);background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}
-#app .pcp .field{height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high)}
-#app .pcp .field:focus{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}
-#app .pcp .field.tiny{height:40px}
-#app .pcp .settings-grid .field{height:44px}
-#app .pcp .btn{height:44px;padding:0 20px}
-#app .pcp .btn.sm{height:36px;padding:0 15px}
 #app .pcp .cog-metric{background:var(--md-surface-container)}
-
-@media (prefers-reduced-motion: reduce){
-  .panel{animation:none}
-  .fab,.btn,.tab,.som-chan-bar i{transition:none}
-  .fab:hover:not(:disabled),.btn:hover:not(:disabled),.tab.active{transform:none}
-}
-
-@media (prefers-color-scheme: dark){
-  .pill.bad{background:#5a2d00;color:#ffd7b0}
-}
-
-@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}.settings-grid label.wide{grid-column:span 1}}
-@media(max-width:560px){.pcp{padding:var(--space-lg) var(--space-lg) 80px}.hero{padding:20px}.hero-actions{width:100%}}
 </style>
 
 <style>

@@ -1571,13 +1571,13 @@ var uploadNamePattern = regexp.MustCompile(`^file_[0-9]+(\.[A-Za-z0-9]{1,12})?$`
 
 func safeUploadExt(name string) string {
 	ext := strings.ToLower(filepath.Ext(name))
+	if len(ext) > 13 || len(ext) < 2 {
+		return ""
+	}
 	for _, r := range ext[1:] {
 		if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9') {
 			return ""
 		}
-	}
-	if len(ext) > 13 || len(ext) < 2 {
-		return ""
 	}
 	return ext
 }
@@ -1648,7 +1648,10 @@ func (g *Gateway) handleFiles(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", ct)
 		}
 		w.Header().Set("Cache-Control", "public, max-age=86400")
-		w.Header().Set("Content-Disposition", "inline")
+		// Uploads are untrusted documents, never executable same-origin pages.
+		w.Header().Set("Content-Disposition", "attachment")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Content-Security-Policy", "sandbox; default-src 'none'")
 		http.ServeFile(w, r, path)
 
 	default:

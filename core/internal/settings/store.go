@@ -113,6 +113,18 @@ func (s *Store) RegisterSection(sec Section) {
 			}
 		}
 	}
+	// Drop persisted keys this registration no longer declares. A plugin that
+	// retires a setting leaves the old key behind otherwise, and the panel keeps
+	// writing it back because it round-trips whatever it read.
+	declared := make(map[string]struct{}, len(sec.Fields))
+	for _, f := range sec.Fields {
+		declared[f.Key] = struct{}{}
+	}
+	for k := range s.values[sec.ID] {
+		if _, ok := declared[k]; !ok {
+			delete(s.values[sec.ID], k)
+		}
+	}
 	_ = s.saveLocked()
 }
 
@@ -193,16 +205,30 @@ func (s *Store) GetValues(id string) map[string]interface{} {
 }
 
 // SetValues merges partial values into a section.
+//
+// Keys the section does not declare are dropped rather than persisted. A plugin
+// that renames or retires a setting would otherwise leave the old key in the
+// store forever: the panel keeps POSTing it back (it round-trips whatever it
+// read), nothing consumes it, and an operator auditing settings.json sees a
+// knob that no longer exists in any UI.
 func (s *Store) SetValues(id string, vals map[string]interface{}) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, ok := s.sections[id]; !ok {
+	sec, ok := s.sections[id]
+	if !ok {
 		return os.ErrNotExist
 	}
 	if s.values[id] == nil {
 		s.values[id] = map[string]interface{}{}
 	}
+	declared := make(map[string]struct{}, len(sec.Fields))
+	for _, f := range sec.Fields {
+		declared[f.Key] = struct{}{}
+	}
 	for k, v := range vals {
+		if _, ok := declared[k]; !ok {
+			continue
+		}
 		s.values[id][k] = v
 	}
 	return s.saveLocked()

@@ -32,18 +32,22 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
         self.engine = LifeEngine(mocr_address=mocr_address)
         self._sessions: dict[str, asyncio.Task] = {}
         self._sync_task: asyncio.Task | None = None
-        self._onebot_task: asyncio.Task | None = None
-        self._onebot_started = False
-        self._onebot_manager = None
         # Hold references to fire-and-forget tasks; a bare create_task() result
         # can be garbage-collected mid-flight and silently cancelled.
         self._autonomy_tasks: set = set()
         # A full autonomy cycle can outlast the idle-check cadence; guard against
         # stacking overlapping cycles (duplicate proactives/ticks).
         self._autonomy_running = False
+        # Core settings/credential health. A missing or expired enrollment key
+        # makes Core answer 401 forever; retrying silently just leaves the plugin
+        # running on stale defaults, so count failures and surface them loudly.
+        self._settings_auth_failures = 0
+        self._settings_unreachable_failures = 0
+        self._settings_degraded = False
+        self._settings_last_error = ""
 
     async def start_background_tasks(self):
-        """Start background loops (heartbeat + agent sync + optional OneBot)."""
+        """Start background loops (heartbeat + agent sync + message adapters)."""
         self._sync_task = asyncio.create_task(self._background_loop())
         # The resident thinker is the one long-lived process that thinks between
         # runs; it owns its own cadence and is stopped by `engine.close()`.
@@ -56,56 +60,78 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
         except Exception as e:
             log.warning("could not start resident thinker: %s", e)
 
-    async def _start_onebot(self):
-        """Start OneBot adapter if configured (Phase 4)."""
+    async def _sync_adapters(self):
+        """Start/stop reverse-WebSocket servers so they match the registry.
+
+        This replaces the old single outbound OneBot connect loop. LIFE is the
+        *server* now: each enabled instance listens on its own host:port and a
+        platform client (NapCat / aiocqhttp) dials in. Reconciliation is
+        idempotent, so calling it on every poll is cheap and picks up a settings
+        change (enable/disable, port move) without a restart.
+        """
         try:
-            from ..adapters.onebot import OneBotConfig, OneBotManager
+            result = await self.engine.sync_adapters()
+        except Exception as error:
+            log.warning("adapter sync failed: %s", error)
+            return {}
+        if result.get("started") or result.get("stopped") or result.get("failed"):
+            log.info("adapters: %s", result)
+        if result.get("failed"):
+            log.warning("some adapters could not bind: %s", result["failed"])
+        return result
 
-            values = await self._life_settings()
-            ws_url = values.get("onebot_ws_url") or os.environ.get("ONEBOT_WS_URL", "ws://localhost:6700")
-            http_url = values.get("onebot_http_url") or os.environ.get("ONEBOT_HTTP_URL", "http://localhost:6700")
-            token = values.get("onebot_access_token") or os.environ.get("ONEBOT_ACCESS_TOKEN", "")
-            keywords = tuple(k.strip() for k in str(values.get("onebot_trigger_keywords") or "").split(",") if k.strip())
+    # An expired/missing enrollment token is a configuration fault, not a
+    # transient one: no amount of retrying fixes it, and the plugin must not
+    # quietly keep serving on stale defaults. Escalate once, then repeat at a
+    # low cadence instead of spamming every 10s poll.
+    _SETTINGS_AUTH_ESCALATE_AFTER = 3
+    _SETTINGS_AUTH_REPEAT_EVERY = 30
 
-            async def message_handler(session_id: str, user_id: str, message: str, adapter_type: str = "onebot"):
-                async for event in self.engine.process_message(
-                    session_id=session_id,
-                    user_id=user_id,
-                    message=message,
-                    adapter_type=adapter_type,
-                ):
-                    yield event
-
-            manager = OneBotManager(message_handler)
-            self._onebot_manager = manager
-            self.engine.onebot = manager
-            manager.add_adapter(
-                "primary",
-                OneBotConfig(
-                    websocket_url=ws_url,
-                    http_url=http_url,
-                    access_token=token,
-                    trigger_keywords=keywords,
-                    bot_names=tuple(n.strip() for n in str(values.get("onebot_bot_names") or "").split(",") if n.strip()),
-                    observe_group=values.get("onebot_observe_group") is not False,
-                    observer=lambda group_id, user_id, message, name="": asyncio.to_thread(
-                        self.engine.companion.observe_group, group_id, user_id, message, name),
-                    should_reply=lambda group_id, user_id, message, mentioned: asyncio.to_thread(self.engine.group_should_reply, group_id, user_id, message, mentioned),
-                    recall_handler=lambda session_id, user_id, note, adapter_type: asyncio.to_thread(self.engine.companion.timeline_add, "撤回", note[:80], ""),
-                    vision_handler=lambda ref: self.engine.describe_onebot_image(ref),
-                ),
+    def _note_settings_auth_failure(self, error: object) -> None:
+        self._settings_auth_failures += 1
+        self._settings_last_error = str(error)
+        if not self._settings_degraded:
+            self._settings_degraded = True
+            log.error(
+                "life settings rejected by Core (HTTP %s) - the plugin enrollment "
+                "credential is missing or expired; running on stale defaults until "
+                "CORE_PLUGIN_REGISTRATION_TOKEN is fixed",
+                error,
             )
-            self.engine.tool_config.onebot_sender = manager.send_message
-            log.info("OneBot adapter starting -> %s", ws_url)
-            await manager.start_all()
-        except Exception as e:
-            log.warning("OneBot adapter failed: %s", e)
-        finally:
-            if self._onebot_manager:
-                await self._onebot_manager.stop_all()
-            self.engine.tool_config.onebot_sender = None
-            self.engine.onebot = None
-            self._onebot_started = False
+            return
+        if (self._settings_auth_failures % self._SETTINGS_AUTH_REPEAT_EVERY) == 0:
+            log.error(
+                "life settings still rejected after %d attempts (HTTP %s); "
+                "check CORE_PLUGIN_REGISTRATION_TOKEN",
+                self._settings_auth_failures,
+                error,
+            )
+
+    def _note_settings_unreachable(self, error: object) -> None:
+        self._settings_unreachable_failures += 1
+        self._settings_last_error = str(error)
+        # Transient: Core may simply not be up yet. One line, then stay quiet.
+        if self._settings_unreachable_failures == 1 or (
+            self._settings_unreachable_failures % self._SETTINGS_AUTH_REPEAT_EVERY
+        ) == 0:
+            log.warning("could not reach Core for life settings: %s", error)
+
+    def _note_settings_ok(self) -> None:
+        if self._settings_degraded or self._settings_unreachable_failures:
+            log.info("life settings reloaded from Core; credential healthy again")
+        self._settings_auth_failures = 0
+        self._settings_unreachable_failures = 0
+        self._settings_degraded = False
+        self._settings_last_error = ""
+
+    def settings_health(self) -> dict:
+        """Diagnostics for tests/panels: is Core configuration actually working?"""
+        return {
+            "degraded": self._settings_degraded,
+            "auth_failures": self._settings_auth_failures,
+            "unreachable_failures": self._settings_unreachable_failures,
+            "last_error": self._settings_last_error,
+        }
 
     async def _life_settings(self) -> dict:
         import httpx
@@ -114,12 +140,26 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             base = os.getenv("CORE_HTTP_ADDR") or os.getenv("CORE_HTTP") or "http://127.0.0.1:8080"
             async with httpx.AsyncClient(timeout=5) as client:
                 response = await client.get(f"{base}/api/settings/life", headers=auth_headers())
+                if response.status_code in (401, 403):
+                    self._note_settings_auth_failure(f"{response.status_code}")
+                    return {}
                 response.raise_for_status()
-                return response.json().get("values") or {}
+                values = response.json().get("values") or {}
+                self._note_settings_ok()
+                return values
+        except httpx.HTTPStatusError as error:
+            status = error.response.status_code if error.response is not None else "?"
+            if status in (401, 403):
+                self._note_settings_auth_failure(status)
+            else:
+                self._note_settings_unreachable(f"HTTP {status}")
+            return {}
+        except (httpx.ConnectError, httpx.TimeoutException, httpx.ConnectTimeout) as error:
+            # Core down or not listening: transient, self-healing on restart.
+            self._note_settings_unreachable(error)
+            return {}
         except Exception as error:
-            # Core unreachable: the plugin keeps running on stale defaults, which
-            # used to happen with zero signal.
-            log.warning("could not load life settings from Core: %s", error)
+            self._note_settings_unreachable(error)
             return {}
 
     async def _background_loop(self):
@@ -130,15 +170,19 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
         for attempt in range(10):
             if await asyncio.to_thread(core.register):
                 break
+            if core.registration_blocked:
+                # Credential fault: retrying cannot fix it and only delays start.
+                log.error(
+                    "starting without Core integration: %s", core.registration_error
+                )
+                break
             await asyncio.sleep(2)
 
         # Initial agent sync
         count = await asyncio.to_thread(self.engine.sync_agents)
         log.info("Online agents: %s", count)
         await self._refresh_settings()
-        if self.engine.tool_config.onebot_enabled:
-            self._onebot_started = True
-            self._onebot_task = asyncio.create_task(self._start_onebot())
+        await self._sync_adapters()
 
         while True:
             await asyncio.sleep(10)
@@ -174,9 +218,10 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                     self.engine.companion.audit("daily_memory_maintenance", json.dumps(result, ensure_ascii=False))
                     self._maintenance_day = today
                 await asyncio.to_thread(self.engine.memory.process_reflection_queue)
-                if not self._onebot_started and self.engine.tool_config.onebot_enabled:
-                    self._onebot_started = True
-                    self._onebot_task = asyncio.create_task(self._start_onebot())
+                # Reconcile the message-platform servers with the adapter
+                # registry: an enable/disable or port change from the settings
+                # panel takes effect within one poll, without a restart.
+                await self._sync_adapters()
             except Exception as e:
                 log.warning("background loop error: %s", e)
 
@@ -185,10 +230,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
         values = await self._life_settings()
         if values:
             self.engine.apply_tool_settings(values)
-            if not self.engine.tool_config.onebot_enabled and self._onebot_task:
-                self._onebot_task.cancel()
-                await asyncio.gather(self._onebot_task, return_exceptions=True)
-                self._onebot_task = None
 
     async def OnTaskCompleted(self, request, context):
         """Handle task completion callback from Core."""
@@ -700,6 +741,46 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await asyncio.to_thread(self.engine.companion.upsert_world_knowledge, payload.get("kind","worldview"), payload.get("title",""), payload.get("content",""), payload.get("tags",""), payload.get("id",""))
             elif action == "world_delete":
                 result = await asyncio.to_thread(self.engine.companion.delete_world_knowledge, payload.get("id",""))
+            # --- message-platform adapters (multi-instance, AstrBot-style) ---
+            elif action == "adapter_list":
+                result = {"instances": self.engine.adapters.list(),
+                          "runtime": self.engine.adapter_status()}
+            elif action == "adapter_upsert":
+                result = await asyncio.to_thread(self.engine.upsert_adapter, payload.get("instance") or payload)
+                # Apply immediately: the person pressed 保存, so the bot should be
+                # listening (or stop listening) before they close the dialog.
+                if result.get("ok"):
+                    result["sync"] = await self._sync_adapters()
+            elif action == "adapter_delete":
+                result = await asyncio.to_thread(self.engine.delete_adapter, str(payload.get("id", "")))
+                if result.get("ok"):
+                    result["sync"] = await self._sync_adapters()
+            elif action == "adapter_toggle":
+                result = await asyncio.to_thread(
+                    self.engine.set_adapter_enabled, str(payload.get("id", "")), bool(payload.get("enabled")))
+                if result.get("ok"):
+                    result["sync"] = await self._sync_adapters()
+            elif action == "adapter_sync":
+                result = await self._sync_adapters()
+            elif action == "adapter_status":
+                result = {"instances": self.engine.adapter_status()}
+            elif action == "adapter_platforms":
+                # The platform picker: every category the UI may offer, flagged
+                # with whether this build can actually drive it.
+                from ..adapters.platforms import IMPLEMENTED_PLATFORMS, KNOWN_PLATFORMS
+                result = {"platforms": [
+                    {"id": name, "implemented": name in IMPLEMENTED_PLATFORMS}
+                    for name in KNOWN_PLATFORMS]}
+            elif action == "adapter_routes_get":
+                result = self.engine.adapter_routes()
+            elif action == "adapter_routes_set":
+                result = await self.engine.adapter_routes_apply(
+                    payload.get("routes") or [], str(payload.get("default_config_id") or ""))
+            elif action == "session_config":
+                # Which persona config a given conversation resolves to right now.
+                session_id = str(payload.get("session_id") or "")
+                result = {"session_id": session_id,
+                          "config_id": self.engine._config_id_for_session(session_id)}
             else:
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))
@@ -783,16 +864,22 @@ async def serve(mocr_address: str = None):
         await server.wait_for_termination()
     finally:
         log.info("LIFE shutting down")
-        for task in (servicer._sync_task, servicer._onebot_task):
+        for task in (servicer._sync_task,):
             if task:
                 task.cancel()
-        pending = [t for t in (servicer._sync_task, servicer._onebot_task) if t]
+        pending = [t for t in (servicer._sync_task,) if t]
         # In-flight autonomy cycles are fire-and-forget; cancel and await them so
         # shutdown does not race a half-finished tick.
         for task in list(servicer._autonomy_tasks):
             task.cancel()
         pending.extend(list(servicer._autonomy_tasks))
         await asyncio.gather(*pending, return_exceptions=True)
+        # Release the reverse-WebSocket listeners before the data stores close,
+        # so a client cannot be mid-turn against a half-closed database.
+        try:
+            await servicer.engine.adapter_runtime.stop_all()
+        except Exception as error:
+            log.warning("adapter shutdown failed: %s", error)
         await servicer.engine.close()
         core.close()
         await server.stop(grace=5)

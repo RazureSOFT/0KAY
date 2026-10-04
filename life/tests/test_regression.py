@@ -226,6 +226,14 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         for task in list(self.engine._background_tasks):
             await task
+        # Close the engine before removing the directory. Without this the
+        # stores are never released, and Windows refuses to rmdir a tree whose
+        # handles are still open ("WinError 145 目录不是空的") — an intermittent
+        # teardown failure that has nothing to do with what the test asserts.
+        try:
+            await self.engine.close()
+        except Exception:
+            pass
         self.directory.cleanup()
 
     async def test_sessions_streaming_and_history(self):

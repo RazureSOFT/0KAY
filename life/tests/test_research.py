@@ -1,9 +1,11 @@
 """Research toolkit: figures, tables, paper pipeline and experiment runs."""
 import json
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -91,27 +93,55 @@ class ExperimentTest(unittest.TestCase):
 
 
 class CliTest(unittest.TestCase):
-    def test_experiment_command_runs_script(self):
+    def _write_experiment(self, tmp: str):
+        script = Path(tmp) / "exp.py"
+        script.write_text(
+            "def main(seed=0):\n"
+            "    print('running seed', seed)\n"
+            "    return {'seed': seed, 'accuracy': 0.9}\n",
+            encoding="utf-8",
+        )
+        spec = Path(tmp) / "spec.json"
+        spec.write_text(
+            json.dumps({"script": str(script), "name": "exp", "params": {"seed": 3}}),
+            encoding="utf-8",
+        )
+        return spec
+
+    def test_experiment_command_runs_script_when_enabled(self):
         from life.tools.research.__main__ import main
 
         with tempfile.TemporaryDirectory() as tmp:
-            script = Path(tmp) / "exp.py"
-            script.write_text(
-                "def main(seed=0):\n"
-                "    print('running seed', seed)\n"
-                "    return {'seed': seed, 'accuracy': 0.9}\n",
-                encoding="utf-8",
-            )
-            spec = Path(tmp) / "spec.json"
-            spec.write_text(
-                json.dumps({"script": str(script), "name": "exp", "params": {"seed": 3}}),
-                encoding="utf-8",
-            )
-            self.assertEqual(main(["experiment", str(spec), "-o", tmp]), 0)
+            spec = self._write_experiment(tmp)
+            env = {"LIFE_RESEARCH_ALLOW_EXEC": "1", "LIFE_RESEARCH_DIR": tmp}
+            with mock.patch.dict(os.environ, env):
+                self.assertEqual(main(["experiment", str(spec), "-o", tmp]), 0)
             runs = sorted(p for p in Path(tmp).glob("*exp*") if p.is_dir())
             self.assertTrue(runs)
             result = json.loads((runs[0] / "result.json").read_text(encoding="utf-8"))
             self.assertEqual(result, {"seed": 3, "accuracy": 0.9})
+
+    def test_experiment_command_refuses_without_opt_in(self):
+        """Executing a model-authored script must not be on by default."""
+        from life.tools.research.__main__ import main
+
+        with tempfile.TemporaryDirectory() as tmp:
+            spec = self._write_experiment(tmp)
+            environ = dict(os.environ)
+            environ.pop("LIFE_RESEARCH_ALLOW_EXEC", None)
+            with mock.patch.dict(os.environ, environ, clear=True):
+                with self.assertRaises(SystemExit):
+                    main(["experiment", str(spec), "-o", tmp])
+
+    def test_experiment_command_refuses_scripts_outside_allowed_dir(self):
+        from life.tools.research.__main__ import main
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as elsewhere:
+            spec = self._write_experiment(tmp)
+            env = {"LIFE_RESEARCH_ALLOW_EXEC": "1", "LIFE_RESEARCH_DIR": elsewhere}
+            with mock.patch.dict(os.environ, env):
+                with self.assertRaises(SystemExit):
+                    main(["experiment", str(spec), "-o", tmp])
 
     def test_paper_command_writes_outputs(self):
         from life.tools.research.__main__ import main

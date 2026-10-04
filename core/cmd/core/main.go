@@ -373,8 +373,21 @@ func queryStdioModels(runner *stdioprovider.Runner, id, route string) []string {
 		return nil
 	}
 	var buf []byte
-	for chunk := range chunks {
-		buf = append(buf, chunk...)
+	reading := true
+	for reading {
+		select {
+		case <-ctx.Done():
+			return nil
+		case chunk, ok := <-chunks:
+			if !ok {
+				reading = false
+				break
+			}
+			if chunk.Err != nil {
+				return nil
+			}
+			buf = append(buf, chunk.Data...)
+		}
 	}
 	var payload struct {
 		Data []struct {

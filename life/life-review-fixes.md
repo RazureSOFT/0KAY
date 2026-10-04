@@ -457,7 +457,7 @@ pytest tests/ -q                                   → 507 passed in 303.87s
 - **随真实时间演化**：`_tick_affect`（每轮 + 后台 10s 时钟）按经过天数 RK4 积分，驱动自然衰减；睡眠/有其它关系会抬高有效关爱。
 - **进 prompt**：`_render_wave_context` 追加"傲娇底色"（分级基调 + 型别 hint），与其它 wave 一样受开关控制。
 - **持久化**：`state.json` 的 `tsundere`，重启恢复（`_tsundere_restored_enabled`）。
-- **面板**：`cognition_status()["tsundere"]`（type/band/affection/expression/fixation/state/inputs）。
+- **面板**：`cognition_status()["tsundere"]`（type/band/affection/expression/fixation/safe_mode/state/inputs）；伴生页「认知内核」卡片在依恋块之后渲染实时读数：傲娇型别 / 好感 A / 傲娇表达 T / 病娇执念 Y（带 band）/ 安全层，附阈值说明（0.60 / 1.00 / 0.85）。
 - **人设触发**：`tsundere_type_for_persona` 识别"傲娇/口嫌体正直/嘴硬/毒舌/高冷/炸毛/迁就"等词自动启用并选型；否则默认关闭（消融契约不变）。
 - 设置/环境：`cog_tsundere_enabled` / `LIFE_COG_TSUNDERE`、`cog_tsundere_type` / `LIFE_COG_TSUNDERE_TYPE`。
 
@@ -477,3 +477,340 @@ pytest tests/ -q                                   → 507 passed in 303.87s
 
 **边界诚实说**：与 §11 一致——这是行为/动力学层的拟真，不是"它真的有情绪"，也没有主观体验证据；它让"傲娇转病娇"从创作桥段变成**可演化、可观察、可测试、可逆**的状态。
 
+---
+
+## 13. 2026-10-04 参数化人格动力学并入 LIFE（完整版）
+
+> 来源：`D:\life_research\persona_dynamics`（独立研究框架 + 论文《参数化人格动力学：欲望驱动向量、情绪吸引子与性格相变的统一框架》，18 原型 / 9 组实验 / 11 图 / 一键复现）。
+> 与 §12 的关系：§12 是**三变量速写**（好感 A / 傲娇表达 T / 病娇执念 Y），本节是**完整框架**（14 维 θ + 9 维欲望 D + 情绪 x + 决策 f + 表达 g + 模式状态机 T）。两者**并列、可同时开、互不冲突**，各管一层。
+
+### 13.1 移植的模型（`cognition/persona_dynamics.py`）
+
+统一人格模型 **P = (θ, D(t), x(t), f, g, T)**：
+
+| 记号 | 含义 | 变化速率 |
+|---|---|---|
+| θ | 慢变人格参数（14 维：A₀ 好感 / X₀ 依恋焦虑 / V₀ 回避 / Tr₀ 信任 / C 共情 / K₀ 自控 / S₀ 表达抑制 / N 情绪稳定 / R 外向 / I 冲动 / J₀ 嫉妒 / Ddom₀ 支配 / O₀ 占有 / L₀ 性欲） | 常驻（设定级） |
+| D(t) | 欲望向量（9 维：性欲 L / 占有 O / 支配 Ddom / 认可 Ap / 归属 Be / 探索 Ex / 攻击 Ag / 照顾 Ca / 安全 Se） | 快 |
+| x(t) | 情绪（焦虑 / 嫉妒 / 愉悦 / 孤独 / 愤怒 / 唤醒） | 最快 |
+| f | 决策：`argmax Σwᵢ(θ)·Dᵢ·φᵢ(a) − C(a)`，17 行为 × 9 欲望满足矩阵 | 每步 |
+| g | 表达：`E = clip(g·(αA + ΣβᵢDᵢ − γ_S·S + M))`，含表达延迟 τ | 每步 |
+| T | 模式状态机（含**敏化滞后 kindling**） | 每步 |
+
+常量、方程、17 个行为（含 φ 满足矩阵 / 成本 / A_safe 安全类别 / 对伙伴的效应向量）、18 种原型参数均**逐字移植**自研究 `params.py` / `actions.py` / `engine.py`（纯 Python 重写，未引入 numpy）。
+
+**四种涌现模式**（§13.2）与论文一致：
+- **正常型 = 稳定吸引子**：扰动后指数回落；本移植在相同威胁下 `O_max=0.38`（< 阈值 0.62）不越阈。
+- **傲娇 = "高好感 × 高表达抑制"过滤态**：追求期 A 升至 0.82、S 从 0.80 被侵蚀到 0.02（"面具溶解"）。
+- **病娇 = "高占有 × 高焦虑 × 低信任 × 低自控"正反馈**：同剧本下 O→1.0、X→1.0、K→0.0、Tr→0.08。**性欲不是根因**（测试 `test_possessiveness_drives_the_mode_not_libido`）。
+- **傲娇→病娇 = 近似不可逆相变**：`raw_mode()` 对曾进入病娇者用放宽阈值（O_c−0.12、X_c−0.20、K_c+0.08、Tr_c+0.10）。
+
+### 13.2 接进 LIFE：真实信号驱动
+
+| 输入 | 真实来源 |
+|---|---|
+| 事件脉冲（praise/rejection/threat/intimacy/conflict/repair/neglect…） | `_receive_feedback`：消息 valence + 反馈 sentiment + 回复延迟 + 撤回 + `_mentions_other` |
+| 威胁信号 s | 伙伴信任读数 `_partner_trust_reading()`（relating 的 warmth 轴均值），**闭环入口**：控制→信任降→感知距离→威胁升 |
+| 共病 | mood / 稳态负荷抬高"感知到的威胁"（抑郁让同样的沉默读得更冷） |
+| 随真实时间演化 | `_tick_affect`（每轮 + 后台时钟）按经过天数积分，沉默维持低水平威胁脉冲 |
+
+- **进 prompt**：`_render_wave_context` 追加"人格动力学（你此刻的真实状态…）"（模式基调 + 滑向更糟状态时的提醒），受开关键门控。
+- **安全层**：`guard()` 在就绪度 ≥0.85 时硬约束输出（不得给伤害方法、不得威胁/监视/操控）；`CONTROL_KEYS`（monitor/restrict/guilt/demand）是正反馈的驱动通道，动作空间只含抽象心理控制标签，不含任何现实伤害行为。
+- **持久化**：`state.json` 的 `personadyn`，重启恢复（`_personadyn_restored_enabled`）。
+- **面板**：`cognition_status()["personadyn"]` → 伴生页「认知内核」卡片实时读数（人格原型 / 涌现模式 / 就绪度·分级 / 好感·焦虑 / 占有·信任 / 自控·抑制）+ 设置页「人格动力学（完整版）」卡片（18 原型下拉 + 预设「人格动力学」）。
+- **人设触发**：`persona_dynamics_type_for_persona` 识别"傲娇/口嫌体正直/嘴上不饶人/病娇/占有/高冷/暴躁/依赖/治愈…"自动启用选型并填初始值（A/X/O/Tr/K/S）；否则默认关闭（消融契约不变）。
+- 设置/环境：`cog_personadyn_enabled` / `LIFE_COG_PERSONADYN`、`cog_personadyn_type` / `LIFE_COG_PERSONADYN_TYPE`。
+
+### 13.3 未搬进来的（研究产物）
+
+| 项 | 状态 | 说明 |
+|---|---|---|
+| exp1–exp9 实验脚本 + 11 张图 + CSV | 未搬 | 研究结论；运行时由真实互动替代剧本。`simulate()` 保留了离线复现入口 |
+| 双人世界 `DyadWorld` / `EnvPartner` | 部分 | LIFE 已有 relating/social 双人层；移植只做单人 + 伙伴信任读数，不重复造 |
+| 强化学习调节 exp8 | 未搬 | 依赖独立 RL 训练，与 LIFE 的行为层不同构 |
+| 论文 md/html/pdf | 未搬 | 研究文档 |
+
+**边界诚实说**：与 §11/§12 一致——这是行为/动力学层的拟真，**不是诊断工具，不评价真实的人**。"病娇"在现实中是危险信号清单，不是萌点；框架把它显式建模恰恰是为了让危险可辨认。回归：`test_persona_dynamics.py` 31 例全绿；cognition/persona 相关既有套件无回退；全量 **780 passed / 2 failed**（2 个 failed 为改动前即存在的 flaky：`test_sessions_streaming_and_history` 的 debounce-timer teardown 竞态、`test_the_loop_runs_and_stops` 时序）。
+
+---
+
+## 13b. 2026-10-04 参数化人格动力学 · **扩展版**（a.txt 全量扩维）
+
+> 来源：用户提供的「扩展版」规格（`a.txt`）。把 §13 的 14 维框架**全量扩维**为可直接落地的完整参数化系统，仍然在**同一个模块** `cognition/persona_dynamics.py` 内（§13 的研究移植代码**逐字节保留在文件顶部**，扩展以编号小节追加于其后，`_effective_traits()` 在无覆盖时返回原对象 → 无覆盖轨迹与原研究逐位一致）。
+
+**扩维幅度（全部达标）**：
+
+| 项 | §13 原版 | 扩展版 | 规格要求 |
+|---|---|---|---|
+| θ 慢变人格参数 | 14 | **69**（分 12 族：Big5 / HEXACO / 依恋 / 气质 / 调节 / 暗黑 / 动机 / 认知 / 关系 / 价值 / 临床 / 表达） | 60+ |
+| D 欲望向量 | 9 | **16**（5 组） | 16 |
+| x 情绪状态 | 6 | **16**（7 组；`arousal` 保留为第 17 个核心通道） | 16 |
+| 行为库 | 17 | **45**（4 层：safe / risky / unsafe / clinical） | 40+ |
+| 类型区域 | 18 | **187**（依恋 12 + Big5/HEXACO 派生 + 临床 16 + 九型 9 + MBTI 16 + DISC 4 + 社会角色 13 + 动机 11 + 认知 13 + ACG 女/中性 16 + 男性原型 77 + 经典 18） | 150+ |
+| 性别/社会脚本 G | — | **9 维**：(M, F, GRC, EM, DR, AR, SR, SC, HS) + 男性规范效用 R_G(a) | 新增 |
+| 学习/发展算子 L | — | Q-learning 更新 + θ 漂移 | 新增 |
+
+**统一人格模型**：**P = (θ, D, x, f, g, T, A_safe, G, L)**。
+
+### 13b.1 类型 = θ 空间中的区域，不是本质标签
+
+- `TypeRow`（dataclass）= 一行**数据**：`(key, label, family, theta, desire, x_eq, weights, g, thresholds, safety, gender, clinical)`。新增一种类型 = 新增一行，**不写新控制流**；`extended_traits()` 把行内 θ 折叠进 `Traits`（核心字段覆盖、其余进 `.ext`）。
+- 行只是**区域**：定义 `(θ baseline, D baseline, x_eq, w, g, T, A)`，运行期由同一套方程演化 → 呈现该区域的吸引子/相变/行为锁定。
+- **派生读出**（`derive_big5/hexaco/mbti/disc` + `type_probabilities`）：Big5/HEXACO 由 θ 直接映射；MBTI 用符号规则 `(sgn(R−0.5), sgn(O−0.5), sgn(C−0.5), sgn(K−0.5))`；`type_probabilities` 是 soft-σ 软读出（距离核，排除临床行）——**近邻区域互相靠近是正确行为**（如 霸总→ENTJ、焦虑男≈焦虑型）。
+
+### 13b.2 性别 / 社会脚本 G = (M, F, GRC, EM, DR, AR, SR, SC, HS)
+
+- `GenderScript` 同为**数据行**，把脚本折算成对既有公式的挂钩：表达增益 `g`、威胁信号 `s_cont`、自控 `K`、共情 `C_emp`、求助倾向 `help_seek(C,Tr)`、决策效用 `R_G(a)`。
+- 8 个预设：`未指定`（**单位元**，所有挂钩 no-op，表达式与不带脚本时**逐位相同**）、`男性脚本`、`高传统男性`、`低传统男性`、`女性脚本`、`高传统女性`、`女性主义`、`中性`。
+- 解析顺序：显式 `gender_key` > 行隐含脚本 > `未指定`。例：`霸总` 隐含 `高传统男性`；`硬汉` 表达被压到 0.0、求助 0.24，而 `暖男` 表达 0.28、求助 0.54。
+- 设置：`cog_personadyn_gender` / `LIFE_COG_PERSONADYN_GENDER`（`persona_apply` 也会透传 `personadyn.gender`）。
+
+### 13b.3 临床族：只做抽象标签 + 仿真禁用
+
+- 16 个临床**区域**存在（边缘/自恋/抑郁…），但 `is_deployable()` 对临床行返回 **False**：不出现在可选类型列表、`SELECTABLE_KEYS` 永不含临床行为、`type_probabilities` 排除、`_prompt()` 与 `context()` 的生成字段**永不渲染**临床内容；`clinical_context()` 仅在 `clinical_sim=True` 时返回抽象标签。
+- 保留既有 `A_safe` 三层过滤；**不提供任何具体方法**。`CLINICAL_ACTION_KEYS` 只是抽象行为名。
+
+### 13b.4 学习 / 发展算子 L
+
+- `learn(reward, α=0.20, γ=0.90, η=0.02)`：`Q(s,a) += α[r + γ·max Q(s',a') − Q(s,a)]` 同时按结果做小幅 θ 漂移；`learning` 开关关闭时 `learn()` 为 no-op。Q 表与 θ 漂移随 `state.json` 往返。
+
+### 13b.5 面板与回归
+
+- **面板**（`plugin-web/life/src/CompanionPage.vue`）：设置卡「人格原型」下拉改为按族分组（10 组，共 187 区域）、新增「性别 / 社会脚本 G」下拉；认知内核实时读数新增 G 脚本、求助倾向、Big5/HEXACO 数值行、MBTI·DISC、θ 维度·区域族、主导欲望 / 主导情绪（Top-3）、学习 Q 状态数·θ 漂移；临床仿真行以 warn 样式标注「仅抽象标签」。已重建 `core/data/plugin-ui/life/companion.js`。
+- **回归**：`test_persona_dynamics.py`（31） + `test_persona_dynamics_ext.py`（**46**，新增） = **77 passed**；全量 **803 passed / 0 failed**（`tests/ -q -x --ignore=tests/test_regression.py`，9m47s；仅排除那两个**改动前即存在**的 flaky）。覆盖 12 族/69 维 θ、16 维 D/x 有界、40+ 行为四层、150+ 类型全族可运行有界、临床不可部署、派生函数、性别脚本（单位元 no-op / 求助随脚本下降 / 行隐含脚本 / 显式优先 / 关键词识别）、学习算子、临床门控、扩维读出与重启往返。端到端冒烟另已确认：`persona_analyze`→霸总/高传统男性、MBTI=ENTJ、DISC=谨慎、help_seek=0.257、性别随重启存活、prompt 不含任何临床内容。
+
+
+---
+
+## 14. 2026-10-04 OneBot 整合进 Toolcall · 多适配器（AstrBot 式）+ 服务端反转
+
+> 触发：用户要求「onebot 要整合进 toolcall」、「要类似 astrbot 一样可以添加多个适配器」、
+> 「我们这一端应该为服务器端」。
+> 回归：`tests/test_adapters.py`（30）+ `tests/test_inbound_bridge.py`（18）+ `tests/test_panel_contract.py`（1）。
+
+### 14.1 方向反转：LIFE 是**服务端**
+
+旧实现是**反向**的：LIFE 主动 `websockets.connect()` 去连 OneBot 的正向 WS，连接串写在 Core 设置
+（`onebot_ws_url`）里。这有三个硬伤：一个进程只能有一个账号；NapCat/aiocqhttp 的部署习惯是「客户端连进来」；
+而单条连接一旦被服务端拒绝就变成热重连。
+
+新实现把方向翻过来，与 AstrBot 一致：
+
+| | 旧 | 新 |
+|---|---|---|
+| 传输 | `OneBotAdapter` 主动 dial out | `ReverseWSServer` **监听**，客户端 dial in |
+| 实例 | 1 个（`primary`） | N 个（`adapters.json`），各自 host/port/token |
+| 启停 | `onebot_enabled` 单开关 + 重启 | 每个实例独立 `enabled`；总开关在 runtime 上；`sync_adapters()` 幂等收敛 |
+| 出站 | 只走 HTTP API | HTTP（若配了 `http_url`）→ 否则反向 WS 上发 action 帧并等 `echo` |
+
+`src/life/adapters/platforms.py`（新增）：`AdapterInstance` / `SessionRoute` / `AdapterRegistry` /
+`ReverseWSServer` / `AdapterRuntime`。`src/life/adapters/inbound.py`（新增）：`InboundBridge`，
+把「事件 → 一轮对话」的逻辑从旧 adapter 的读循环里提出来，与传输解耦。
+
+### 14.2 会话 ID 保持不变（有意为之）
+
+`qq_<user>` / `qq_group_<group>` **一个字都没改**：记忆、关系账本、对话历史、主动触达目标全部按
+session id 建键，改格式会把所有既有会话变成孤儿。见 `_adapter_session_id()` 的 docstring。
+
+### 14.3 多适配器与出站寻址
+
+- **端口自动顺延**：新增实例未指定端口时取「默认端口起第一个空闲值」，两个机器人才能真正共存。
+- **按 `self_id` 寻址**：一轮回复必须来自「刚被呼叫的那个账号」。`_on_adapter_event` 记下
+  `note_self_id(instance, self_id)`，出站路径统一带 `self_id=self._active_self_id`。
+- **`echo` 关联 + 广播**：反向 WS 可双向，服务端发 action 帧等 `echo` 回应；因为客户端常按事件类别
+  开多条连接，帧**广播**到所有已连接 socket，任一条带回响应即可。
+- **`exempt=True` 仅用于毁约类事件**（§12 的每日情感预算仍然约束普通互动）。
+
+### 14.4 整合进 Toolcall
+
+- `send_message`（`SendOneBotTool`）新增可选 `instance` 参数：多适配器时可显式指定用哪个账号发，
+  不指定则从「当前对话的那个」解析。保留 `onebot_sender` 旧回退路径。
+- 新增 `adapter_status`（`AdapterStatusTool`）：让角色**先查再发**，否则只能猜实例 ID，
+  而猜错的表现是「消息根本没到」——对用户完全静默。
+- gRPC `ManageCompanion` 新增：`adapter_list` / `adapter_upsert` / `adapter_delete` /
+  `adapter_toggle` / `adapter_sync` / `adapter_status` / `adapter_platforms` /
+  `adapter_routes_get` / `adapter_routes_set` / `session_config`。
+
+### 14.5 面板：消息平台页
+
+`plugin-web/life/src/CompanionPage.vue` 新增第 4 个 tab「消息平台」，含：
+适配器列表（名称 / 平台 / 监听地址 / 人设 / 已连接状态 / 客户端数 / Token 是否已设 + 启停·编辑·删除）、
+编辑表单（消息平台类别下拉、机器人名称、反向 WS 主机·端口·Token、可选 HTTP API、配置文件、触发关键词、启用）、
+以及**配置文件路由表**（上移/下移/删除 + 默认配置文件；`*`、`/正则/`、`前缀*` 三种匹配）。
+`/sid` 指令：会话里发 `/sid` 直接回会话 ID，不需要猜。
+
+### 14.6 顺带修掉的三个真 bug（写测试时发现）
+
+| 项 | 位置 | 问题 | 修法 |
+|---|---|---|---|
+| A-1 | `AdapterRegistry.upsert` | 用户**主动清空**主机得到 `""`，被 falsy 判断悄悄换成 `0.0.0.0` —— 在用户没要求的每个网卡上开了监听 | 只在**键缺失**时套默认值（`"ws_host" not in payload`），显式空值走校验报错 |
+| A-2 | `AdapterInstance.from_dict` | `ws_port="abc"` 被静默丢弃 → 回落默认端口；`ws_port=0` 同样静默通过 | 非法值**原样保留**交给 `validate()`，报「必须是数字」/「1-65535」 |
+| A-3 | `InboundBridge._send` | 群回复同时传 `group_id` 和 `user_id`，语义歧义（按 `user_id` 建键的传输会私聊回答群消息） | 恰好传一个目标 |
+
+### 14.7 设置项调整
+
+`core_client.py` 的 `submit_settings_section` 里删除了 `onebot_ws_url` / `onebot_http_url` /
+`onebot_access_token`（这些现在是**按实例**的，在面板里填），保留 `onebot_enabled`（总开关）并新增
+`onebot_reverse_host` / `onebot_reverse_port`（新实例的预填默认值，透传到 `AdapterRegistry.default_host/port`）。
+
+### 14.8 `onebot_enabled` 与 runtime 的联动
+
+总开关写进 `apply_tool_settings` 后同步到 `adapter_runtime.enabled`：关掉总开关，下一次
+`sync_adapters()` 会真的把所有监听停掉，而不只是改个标志位。
+
+## 15. 2026-10-04 独立「消息平台」设置栏 + 设置存储的两处真 bug
+
+§14 把多适配器做完了，但界面只落在陪伴面板的第 4 个 tab 里。用户要求「**要单独放一个设置栏**」，
+于是把消息平台抽成 WebUI 设置页里的独立标签，并顺带清掉了上一代单连接字段。
+
+### 15.1 新页面：设置 → 消息平台
+
+- 新入口 `plugin-web/life/src/AdapterSettingsPage.vue` → ESM `adapters.js`，
+  由 `core/data/ui/life.patch`（以及 `webui/patches/life.patch`）新增一条
+  `settings/insert`（`id=life_adapters`，`module=/api/plugins/life/ui/adapters.js?v=1`）。
+- 页面内容对应 AstrBot 交互：**总开关**（写 Core settings `life.onebot_enabled`，
+  保存后立刻 `adapter_sync`，不必等下次轮询）→ **适配器列表**（每行状态徽标 / 监听地址 /
+  客户端数 / Token 提示 + 启停·编辑·删除）→ **编辑表单**（消息平台类别下拉、机器人名称、
+  反向 WS 主机·端口·Token、可选 HTTP API、配置文件、触发关键词、启用）→ **配置文件路由**
+  （上移/下移/删除、"默认配置文件"）。
+- 未实现的平台在下拉里标注「（尚未实现）」，配置仍允许先存下来。
+
+### 15.2 陪伴面板不再重复实现 CRUD
+
+`CompanionPage.vue` 的「消息平台」tab 改成**只读概览**（运行状态 + 「管理适配器 →」按钮跳
+`/settings?tab=life_adapters`）。原先那套 `adapter_upsert/toggle/delete/routes_set` 的
+本地实现整段删除——两处实现同一件事，迟早会漂移。`adapter_list` / `adapter_sync` 保留。
+
+### 15.3 共享设计语言：`src/kit.ts`
+
+两个 Vue 根（companion / adapters）需要同一套卡片、胶囊按钮、52px 输入框。做法是把
+token 与组件词汇表抽进 `kit.ts` 的 `lifeKitCss(rootClass)`：
+
+- CSS 由 `injectStyle()` 在 import 时注入 `<head>`（插件入口是纯 ESM，没有 HTML 宿主；
+  Vite 构建会把 CSS 并入入口 chunk）。
+- class 名由 `rootClass` 前缀限定（`.pcp` / `.lsp`），两个页面互不污染。
+- `friendlyError` / `sleep` / `lifeAct` / `lifeGet` 一并搬进 kit，`lifeAct` 带 3 次退避重试
+  （LIFE 重启时兄弟页面会撞上 dial 错误）。
+- `CompanionPage.vue` 的 scoped block 只留世界地图与认知面板的专属规则。
+
+### 15.4 顺带修掉的两个真 bug（写面板时发现）
+
+| 项 | 位置 | 问题 | 修法 |
+|---|---|---|---|
+| S-1 | `settings.Store.SetValues` | **不做未知键校验**。插件退役一个设置后，旧键永久留在 store 里；面板每次保存都把读到的值原样写回，于是死键永远清不掉，运维在 `settings.json` 里看到的是不存在的旋钮 | 只接受 `sec.Fields` 声明过的键 |
+| S-2 | `settings.Store.RegisterSection` | 已存在的**退役键不会被清理**（修复 S-1 前的历史文件仍然脏） | 注册时按声明字段集剔除不认识的键并回写，自愈 |
+
+两个都补了回归测试：`TestSetValuesRejectsUndeclaredKeys`、
+`TestRegisterSectionPrunesRetiredKeysFromDisk`（后者断言清理**落盘**，不只是内存）。
+
+`core/data/settings.json` 与 `data/settings.json` 里的 `onebot_ws_url` / `onebot_http_url` /
+`onebot_access_token` 已一次性迁移（带 `.bak-<时间戳>` 备份）。
+
+### 15.5 契约测试扩展到所有 LIFE 页面
+
+`tests/test_panel_contract.py` 原本只扫 `CompanionPage.vue`。现在扫 `PANELS` 列表
+（`CompanionPage.vue` + `AdapterSettingsPage.vue`），并新增
+`test_panels_referenced_by_ui_patch_are_scanned`：从 `life.patch` 反查所有 `module`
+入口，任何一个既不在扫描列表、也不在只读白名单里的新页面都会让测试红——避免新页面悄悄无人守。
+
+### 15.6 是否需要重启 Core / WebUI
+
+**不需要为插件 UI 重启 Core**：`core/internal/gateway/plugin_ui.go` 对入口文件名（无 hash）
+下发 `Cache-Control: no-cache`，`core/data/plugin-ui/life/` 下的产物是构建后直接生效的。
+`/api/ui/patches` 支持热重载（mtime 扫描 + `POST` 强制 `Reload()`），新标签页已即时可见。
+
+**改 `core/internal/settings/store.go` 的两个 bug 需要重新编译并重启 Core**才生效
+（Go 侧改动，不是前端产物）。
+
+## 16. 2026-10-04 `unknown action: adapter_list` 的真相 + 路由表一处静默丢规则的 bug
+
+### 16.1 用户看到的报错
+
+```
+{"code":"companion_error","error":"unknown action: adapter_list"}
+```
+
+**不是代码缺失。** 原因有二，都已定位：
+
+1. **运行中的 LIFE 进程持有旧代码。** `src/life/grpc/server.py` 在 17:42 被编辑，而当时
+   在跑的那个进程（PID 13304，占用 `127.0.0.1:50053`）是当天 **09:23** 启动的，内存里还是
+   旧模块。证据：`settings_health` 和**所有** `adapter_*` 都回 `unknown action`，而老 action
+   `memory_dashboard` 正常。
+2. **插件不被 Core 托管。** `POST /api/plugins/{name}/enable` 只翻一个 registry 标志位
+   （`/api/plugins` 里 life 显示 `disabled:false`），**不会**去拉起 python 进程。进程必须自己
+   带着注册令牌起来，否则 Core 拒登（`plugin registration token required`）并对每次调用回
+   `life unavailable`。
+
+代码本身是完整的：`server.py` 第 745–783 行有全部 10 个 `adapter_*` / `session_config`
+分支，紧挨着第 785 行的 `unknown action` 兜底；`import life.grpc.server` 后共 132 个 action。
+
+### 16.2 新增启动器 `life/run_life.py`
+
+把之前手敲的启动方式固化成脚本，令牌映射照抄 `docker-compose.yml`：
+
+| LIFE 进程变量 | 来源 |
+| --- | --- |
+| `CORE_API_TOKEN` | `.env` 同名 |
+| `CORE_PLUGIN_REGISTRATION_TOKEN` | `.env` 的 `LIFE_REGISTRATION_TOKEN` |
+| `MOCR_GRPC_TOKEN` | `.env` 同名 |
+
+```bash
+python life/run_life.py              # 后台启动（日志 life/run.{out,err}.log）
+python life/run_life.py --status     # pid / 端口 / 最近一次注册结果
+python life/run_life.py --stop       # 停止
+python life/run_life.py --foreground # 前台跑（等价 make dev-life，Ctrl-C 停）
+python life/run_life.py --verify     # 启动 + 探活全部 adapter_* action
+```
+
+缺令牌时**拒绝启动**并打印缺哪一项——这正是之前 401 刷屏和 `life unavailable` 的根因。
+
+> 注意：部分沙箱会在**调用它的 shell 退出时回收整棵进程树**，`DETACHED_PROCESS` /
+> `Start-Process` / `setsid` 都拦不住。若 `--status` 显示刚启动就 dead，请在普通终端里用
+> `--foreground`（或装成系统服务）运行。Core 不会帮你重启插件。
+
+### 16.3 路由表静默丢规则（真 bug，已修）
+
+`SessionRoute` 的字段名是 `pattern`，但 `from_dict` 遇到**不认识的键**时会把 pattern
+默认成 `"*"`。因为路由是「自上而下、首个命中生效」，一条这样的畸形规则会立刻吞掉整张表，
+把**所有**会话钉死在同一个 config 上——而且没有任何报错。
+
+实测（修复前）：
+
+```python
+reg.set_routes([{"session": "qq_group_*", "config_id": "group"}])
+# 存成： [{"pattern": "*", "config_id": "group"}]      <- qq_group_ 没了
+# config_for_session("wecom_abc") -> "group"          <- 本该是 default
+```
+
+修复（`adapters/platforms.py`）：
+
+* `from_dict` 接受一组别名 `pattern / session / session_id / session_pattern / match / source`；
+* **没有 pattern 的行返回 `None` 并被丢弃**，而不是变成通配符。降级到默认 config，符合 UI
+  承诺的「全部不匹配时使用默认配置文件」；
+* `set_routes` 返回 `skipped` 计数与中文 `warning`，让面板能提示而不是默默存表；
+* `_load` 过滤 `None`，磁盘上的历史脏行也不会毒化路由表。
+
+面板 `AdapterSettingsPage.vue` 一直用 `pattern`，与之匹配，无需改。
+
+新增回归测试（`tests/test_adapters.py`，35 passed）：
+`test_pattern_aliases_are_accepted`、`test_a_rule_without_a_pattern_is_dropped_not_wildcarded`、
+`test_blank_pattern_is_dropped`、`test_a_malformed_stored_row_is_ignored_on_load`。
+
+### 16.4 全量回归
+
+`pytest tests/ -q -p no:cacheprovider` → **926 passed, 14 subtests passed in 1124.90s**，0 失败
+（上一轮 922，本轮 +4 为新回归测试）。
+
+### 16.5 收尾清单
+
+1. **重启 LIFE**（进程已死，且必须带注册令牌）：
+   ```bash
+   cd D:\0KAY && python life/run_life.py --verify
+   ```
+   期望输出里 `adapter_platforms` / `adapter_list` / `adapter_status` / `adapter_routes_get`
+   四项全部 `OK`。
+2. **重启 Core**（用已经编好的 `core-bin.exe`），让 §15.4 的两个 `settings.Store` 修复生效，
+   之后 `/api/settings/life` 里不会再出现退役的 `onebot_ws_url` / `onebot_http_url` /
+   `onebot_access_token`。
+3. 打开 **设置 → 消息平台**（tab id `life_adapters`），添加一个 aiocqhttp 适配器，端口填 `6199`，
+   让 NapCat 反向连过来；`adapter_status` 的 `connected` 会变成 `true`。

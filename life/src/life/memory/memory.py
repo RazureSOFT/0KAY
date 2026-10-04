@@ -469,6 +469,11 @@ class MemorySystem:
         self.backup_dir = Path(self.data_dir) / "backups"
         self.backup_dir.mkdir(parents=True, exist_ok=True)
         self._index: dict = {"documents": {}, "avgdl": 0.0, "df": {}, "updated_at": ""}
+        self._index_dirty = False
+        # Set when an incremental Tantivy write fails: the projection may then be
+        # missing or duplicating a document, and the next rebuild must redo it
+        # wholesale. A silently stale lexical index is worse than a slow one.
+        self._tantivy_dirty = False
         self.db_path = Path(self.data_dir) / "memory_center.db"
         self.tantivy_dir = Path(self.data_dir) / "tantivy_memory"
         self._cleanup_stale_tantivy_dirs()
@@ -538,6 +543,26 @@ class MemorySystem:
             logger.warning("wal checkpoint failed: %s", error)
         for suffix in ("-wal", "-shm"):
             Path(str(self.db_path) + suffix).unlink(missing_ok=True)
+        self._release_tantivy_dir()
+
+    def _release_tantivy_dir(self) -> None:
+        """Delete the Tantivy projection so the data dir can actually be removed.
+
+        Tantivy keeps OS file handles open on its segment files; on Windows that
+        makes the containing directory undeletable, which quietly broke the
+        guarantee `close()` documents — that a temp-dir-backed MemorySystem is
+        clean by the time its caller removes it. The projection is derived data
+        (SQLite holds the facts), so removing it is safe *provided* the next
+        search rebuilds it wholesale instead of trusting a partial index.
+        """
+        import gc
+        gc.collect()  # drop any lingering Index/writer objects before unlinking
+        try:
+            shutil.rmtree(self.tantivy_dir, ignore_errors=True)
+        except OSError as error:  # pragma: no cover - best effort
+            logger.warning("tantivy dir cleanup failed: %s", error)
+            return
+        self._tantivy_dirty = True
 
     def _cleanup_stale_tantivy_dirs(self) -> None:
         """Remove leftover ``tantivy-*`` temp dirs left by older code paths.
@@ -1482,6 +1507,7 @@ class MemorySystem:
         self._persist_index()
         tantivy_detail = self._rebuild_tantivy_projection()
         self._index_dirty = False
+        self._tantivy_dirty = False
         self._persist_projection_state(tantivy_detail)
         return {"documents": len(documents), "terms": len(df), "updated_at": self._index["updated_at"], "tantivy": tantivy_detail}
 
@@ -1524,6 +1550,12 @@ class MemorySystem:
                                  "vector": self._vector(memory.content),
                                  "tier": "long_term" if memory.id in long_term_ids else "short_term"}
         idx["avgdl"] = sum(doc["length"] for doc in documents.values()) / max(1, len(documents))
+        # Keep the durable lexical projection in step. Before this, the
+        # incremental path only updated in-memory BM25 and wrote a placeholder
+        # note, so a newly stored memory was invisible to Tantivy until the next
+        # full rebuild - i.e. lexical search silently missed recent memories.
+        if not self._tantivy_upsert_doc(memory):
+            self._tantivy_dirty = True
 
     def _index_remove_doc(self, fact_id: str) -> None:
         """Drop a single document from the in-memory BM25 index (inverse of upsert)."""
@@ -1539,6 +1571,66 @@ class MemorySystem:
             else:
                 df.pop(token, None)
         idx["avgdl"] = sum(doc["length"] for doc in documents.values()) / max(1, len(documents))
+        if not self._tantivy_remove_doc(fact_id):
+            self._tantivy_dirty = True
+
+    def _tantivy_open(self):
+        """Open (creating on first use) the durable lexical index for a write.
+
+        Same open-per-use policy as :func:`_tantivy_schema` documents for reads:
+        a live Tantivy ``Index`` holds OS file handles that block directory
+        deletion on Windows, so it is never cached on the instance.
+        """
+        if tantivy is None:
+            return None
+        self.tantivy_dir.parent.mkdir(parents=True, exist_ok=True)
+        self.tantivy_dir.mkdir(parents=True, exist_ok=True)
+        return tantivy.Index(_tantivy_schema(), path=str(self.tantivy_dir))
+
+    def _tantivy_delete_by_id(self, index, writer, fact_id: str) -> None:
+        """Drop one document by ``id`` from the durable lexical projection.
+
+        ``writer.delete_documents`` is deprecated *and* matches on a raw term,
+        which never matches a tokenised ``text`` field (verified against
+        tantivy 0.26: the delete silently no-ops and re-adding then duplicates
+        the memory). A parsed ``id:<value>`` query is exact and does not bleed
+        onto ids sharing a token prefix.
+        """
+        writer.delete_documents_by_query(index.parse_query(f"id:{fact_id}", ["id"]))
+
+    def _tantivy_upsert_doc(self, memory) -> bool:
+        """Add or refresh one document. Returns False when the caller must rebuild."""
+        if tantivy is None:
+            return True  # projection unavailable by design: nothing to stay in sync with
+        try:
+            index = self._tantivy_open()
+            if index is None:
+                return True
+            writer = index.writer()
+            self._tantivy_delete_by_id(index, writer, str(memory.id))
+            writer.add_document(tantivy.Document(
+                id=str(memory.id), content=memory.content, tags=" ".join(memory.tags)))
+            writer.commit(); writer.wait_merging_threads(); index.reload()
+            return True
+        except Exception as error:
+            logger.warning("tantivy incremental upsert failed: %s", error)
+            return False
+
+    def _tantivy_remove_doc(self, fact_id: str) -> bool:
+        """Remove one document. Returns False when the caller must rebuild."""
+        if tantivy is None:
+            return True
+        try:
+            index = self._tantivy_open()
+            if index is None:
+                return True
+            writer = index.writer()
+            self._tantivy_delete_by_id(index, writer, str(fact_id))
+            writer.commit(); writer.wait_merging_threads(); index.reload()
+            return True
+        except Exception as error:
+            logger.warning("tantivy incremental remove failed: %s", error)
+            return False
 
     def _rebuild_tantivy_projection(self) -> dict:
         if tantivy is None:
@@ -1559,7 +1651,10 @@ class MemorySystem:
 
     @synchronized
     def search(self, query: str, top_k: int = 5, rerank: bool = True, scope: str = "") -> list[dict]:
-        if getattr(self, "_index_dirty", False):
+        # A failed incremental Tantivy write leaves the durable projection
+        # possibly missing (or duplicating) a document; repair it here rather
+        # than serving lexical results that silently omit recent memories.
+        if getattr(self, "_index_dirty", False) or getattr(self, "_tantivy_dirty", False):
             self.rebuild_index()
         docs = self._index.get("documents", {})
         qtokens = self._tokens(query)
@@ -1631,7 +1726,13 @@ class MemorySystem:
             index.reload()
             # CJK bi-grams are additionally handled by vector/token fallback;
             # Tantivy provides the durable lexical candidate ranking.
-            parsed = index.parse_query(query, ["content", "tags"])
+            # Lenient parsing on purpose: a query containing a colon ("srv:25565",
+            # a pasted URL) is ordinary text to the user, but strict parsing reads
+            # it as a field query and raises "Field does not exist".
+            parsed = index.parse_query_lenient(query, ["content", "tags"])
+            # This build returns `(query, errors)`; tolerate both shapes.
+            if isinstance(parsed, tuple):
+                parsed = parsed[0]
             searcher = index.searcher()
             hits = searcher.search(parsed, limit).hits
             out: list[tuple[str, float]] = []

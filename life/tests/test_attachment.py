@@ -63,8 +63,14 @@ class AttachmentDynamicsTests(unittest.TestCase):
         system = AttachmentSystem(enabled=True, type_key="排除型")
         system.dynamics.state.update({"A": 0.9, "Am": 0.9, "Tr": 0.1, "J": 0.95, "X": 0.95, "O": 0.95})
         self.assertGreaterEqual(system.severity(), 0.85)
-        self.assertTrue(system.guard())
-        self.assertIn("安全", system.guard())
+        guard = system.guard()
+        self.assertTrue(guard)
+        # This directive is injected into the output prompt, so it is worded to
+        # constrain behaviour without naming the concept: "安全" is deliberately
+        # absent, or the character would narrate safety in its own voice.
+        self.assertIn("自伤", guard)
+        self.assertIn("不得说出", guard)
+        self.assertNotIn("安全", guard)
 
     def test_no_guard_below_the_safe_band(self):
         system = AttachmentSystem(enabled=True, type_key="依存型")

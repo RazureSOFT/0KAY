@@ -38,6 +38,18 @@ RUN mkdir -p /app/data/life/memory \
 
 EXPOSE 50053
 ENV PROTO_PYTHON_DIR=/app/gen/python
+ENV LIFE_DATA_DIR=/app/data/life
+# The default bind host is 127.0.0.1, which inside a container is unreachable
+# through a mapped port. Docker's network namespace is the boundary here; auth
+# still requires a bearer token (see life.grpc.auth), which is why the remote
+# bind opt-in below is safe to set.
+ENV LIFE_BIND_HOST=0.0.0.0
+ENV LIFE_ALLOW_REMOTE_BIND=1
+
+# The gRPC endpoint speaks HTTP/2 only, so a plain TCP connect is the cheapest
+# liveness signal available without shipping grpc_health_probe.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import socket; socket.create_connection(('127.0.0.1', 50053), 3).close()"
 
 # Run as an unprivileged user: the process parses untrusted RSS/HTML/media and
 # opens network connections, so it must not be root inside the container.

@@ -1107,6 +1107,21 @@ func (s *CoreServiceServer) Egress(ctx context.Context, req *corev1.EgressReques
 	if !ok {
 		return nil, status.Error(codes.Unauthenticated, "unknown plugin identity")
 	}
+	md, _ := metadata.FromIncomingContext(ctx)
+	var token string
+	for _, value := range md.Get("authorization") {
+		if len(value) > 7 && strings.EqualFold(value[:7], "Bearer ") {
+			token = strings.TrimSpace(value[7:])
+			break
+		}
+	}
+	if info.Info == nil {
+		return nil, status.Error(codes.Unauthenticated, "valid plugin identity required")
+	}
+	authenticated, valid := s.registry.Authenticate(info.Info.Name, token)
+	if !valid || authenticated.PluginID != info.PluginID {
+		return nil, status.Error(codes.Unauthenticated, "valid plugin service token required")
+	}
 	allowlist := []string{"*"}
 	if info.Info == nil || !s.registry.IsTrusted(info.Info.Name) {
 		allowlist = nil

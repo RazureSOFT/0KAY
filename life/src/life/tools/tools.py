@@ -81,6 +81,10 @@ class RuntimeToolConfig:
     mcp_enabled: bool = True
     onebot_enabled: bool = False
     onebot_sender: Any = None
+    #: Multi-instance message-platform runtime (see ``adapters.platforms``).
+    #: Preferred over ``onebot_sender`` when present: it can address a specific
+    #: bot account instead of "whichever connection happens to be first".
+    adapter_runtime: Any = None
     minecraft_enabled: bool = False
     minecraft_url: str = "http://127.0.0.1:8765"
 
@@ -482,7 +486,7 @@ class PluginTool(Tool):
 
 
 class SendOneBotTool(Tool):
-    """Allow THINK to send a deliberate proactive OneBot message."""
+    """Allow THINK to send a deliberate proactive message on any platform."""
     def __init__(self, config: RuntimeToolConfig, companion=None):
         self.config = config
         self.companion = companion
@@ -493,18 +497,40 @@ class SendOneBotTool(Tool):
 
     @property
     def description(self) -> str:
-        return "Send a proactive OneBot v11 private or group message. Requires OneBot to be enabled and connected."
+        return ("Send a proactive message to a person or group on a connected "
+                "message platform (QQ/OneBot). Requires a connected adapter.")
 
     def parameters(self) -> dict:
         return {"type": "object", "required": ["message"], "properties": {
-            "message": {"type": "string"}, "user_id": {"type": "integer"}, "group_id": {"type": "integer"},
+            "message": {"type": "string"},
+            "user_id": {"type": "integer", "description": "私聊对象；与 group_id 二选一"},
+            "group_id": {"type": "integer", "description": "群号；与 user_id 二选一"},
+            "instance": {"type": "string", "description": "指定用哪个机器人账号发送（多适配器时）；留空则用当前对话的那个"},
         }}
 
-    async def execute(self, message: str = "", user_id: int | None = None, group_id: int | None = None, **kwargs) -> ToolResult:
-        if not self.config.onebot_enabled:
-            return ToolResult(False, None, "OneBot is disabled in L.I.F.E settings")
-        if self.config.onebot_sender is None:
-            return ToolResult(False, None, "OneBot is not connected")
+    def _transport(self):
+        runtime = getattr(self.config, "adapter_runtime", None)
+        if runtime is not None:
+            return "runtime", runtime
+        if self.config.onebot_sender is not None:
+            return "legacy", self.config.onebot_sender
+        return "", None
+
+    def available_instances(self) -> list:
+        runtime = getattr(self.config, "adapter_runtime", None)
+        if runtime is None:
+            return []
+        return [row for row in runtime.status() if row["connected"]]
+
+    async def execute(self, message: str = "", user_id: int | None = None, group_id: int | None = None,
+                      instance: str = "", **kwargs) -> ToolResult:
+        kind, transport = self._transport()
+        if not kind:
+            return ToolResult(False, None, "没有已连接的消息平台适配器")
+        if not str(message or "").strip():
+            return ToolResult(False, None, "message is required")
+        if not user_id and not group_id:
+            return ToolResult(False, None, "需要 user_id 或 group_id")
         try:
             target = f"group:{group_id}" if group_id else f"user:{user_id}"
             if self.companion:
@@ -512,12 +538,65 @@ class SendOneBotTool(Tool):
                 if not allowed:
                     self.companion.audit("proactive_send", message, target, reason)
                     return ToolResult(False, None, reason)
-            await self.config.onebot_sender(message=message, user_id=user_id, group_id=group_id)
+            if kind == "legacy":
+                await transport(message=message, user_id=user_id, group_id=group_id)
+            else:
+                if instance:
+                    server = transport.servers.get(instance)
+                    if server is None:
+                        return ToolResult(False, None, f"找不到适配器 {instance}（用 adapter_status 查询）")
+                    if not server.connected:
+                        return ToolResult(False, None, f"适配器 {instance} 没有已连接的客户端")
+                    # Send through the chosen server directly rather than letting
+                    # `resolve` pick: with several bots, "which account spoke" is
+                    # exactly what the caller is trying to control.
+                    action = "send_group_msg" if group_id else "send_private_msg"
+                    params = {"message": [{"type": "text", "data": {"text": str(message)}}]}
+                    params["group_id" if group_id else "user_id"] = int(group_id or user_id)
+                    await server.call_api(action, params)
+                else:
+                    await transport.send(message=message, user_id=user_id, group_id=group_id)
             if self.companion:
                 self.companion.record_proactive_send(target, message)
-            return ToolResult(True, {"sent": True, "user_id": user_id, "group_id": group_id})
+            return ToolResult(True, {"sent": True, "user_id": user_id, "group_id": group_id,
+                                     "via": instance or "auto"})
         except Exception as e:
             return ToolResult(False, None, str(e))
+
+
+class AdapterStatusTool(Tool):
+    """Report which message-platform bots are configured and connected.
+
+    Without this the character cannot reason about its own channels: it would
+    either guess an `instance` id or assume a single bot, and a wrong target
+    fails silently from the user's point of view (the message just never
+    arrives).
+    """
+
+    def __init__(self, config: RuntimeToolConfig):
+        self.config = config
+
+    @property
+    def name(self) -> str:
+        return "adapter_status"
+
+    @property
+    def description(self) -> str:
+        return ("List the message-platform bots (adapters) available to send from, "
+                "with whether each is connected. Call this before sending when more "
+                "than one is configured.")
+
+    def parameters(self) -> dict:
+        return {"type": "object", "properties": {}}
+
+    async def execute(self, **kwargs) -> ToolResult:
+        runtime = getattr(self.config, "adapter_runtime", None)
+        if runtime is None:
+            return ToolResult(True, {"instances": [], "note": "本实例未启用消息平台适配器"})
+        rows = [{key: row[key] for key in ("id", "name", "platform", "enabled",
+                                           "running", "connected", "address", "config_id")}
+                for row in runtime.status()]
+        return ToolResult(True, {"instances": rows})
 
 
 class MinecraftTool(Tool):
@@ -955,6 +1034,7 @@ def create_default_registry(core_client=None, config: RuntimeToolConfig | None =
     registry.register(McpTool(core_client, config))
     registry.register(MinecraftTool(config))
     registry.register(SendOneBotTool(config, companion))
+    registry.register(AdapterStatusTool(config))
     if memory is not None:
         registry.register(RememberTool(memory))
         registry.register(RecallTool(memory))

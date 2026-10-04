@@ -54,6 +54,15 @@ not permanently cached from the default provider.
 
 ## LIFE
 
+Message-platform sessions use `bot:<instance-id>:qq_<user-id>` or
+`bot:<instance-id>:qq_group_<group-id>`. On upgrade, exactly one existing
+adapter may retain ownership of the old `qq_*` namespace; that owner is
+persisted in `adapters.json`. Ambiguous legacy multi-bot histories remain
+available for manual inspection, but are not shared into new bot sessions.
+Non-loopback reverse-WebSocket listeners require a nonempty token. Token
+rotation disconnects old clients. Inbound turns use a bounded per-adapter
+queue while socket readers continue resolving outbound API echoes.
+
 Each turn has a local persona, session, user, adapter and message history. Turns
 within a session serialize; independent sessions may run concurrently. Memory
 recall filters private conversation facts by session before ranking. Explicit

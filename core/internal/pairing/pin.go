@@ -385,6 +385,8 @@ func sensitiveRequest(r *http.Request) bool {
 		return method == http.MethodPost
 	case path == "/api/plugins/install", path == "/api/plugins/uninstall", path == "/api/plugins/enable", path == "/api/plugins/disable":
 		return true
+	case path == "/api/plugins/pm/install", path == "/api/plugins/pm/uninstall", path == "/api/plugins/pm/update", path == "/api/life/permissions":
+		return !read
 	case strings.HasPrefix(path, "/api/plugins/") && method == http.MethodPatch:
 		return true
 	case path == "/api/security/pin":

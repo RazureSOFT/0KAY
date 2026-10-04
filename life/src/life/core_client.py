@@ -65,6 +65,14 @@ class CoreClient:
         self._core_stub: Optional[core_pb2_grpc.CoreServiceStub] = None
         self.plugin_id: Optional[str] = None
         self._connected = False
+        # Registration health. A missing/revoked enrollment key makes Core answer
+        # PERMISSION_DENIED forever; that is a configuration fault, not a
+        # transient one, so retrying every heartbeat only floods the log. Mark it
+        # and back off, but keep a slow retry so a fixed token is picked up.
+        self.registration_blocked = False
+        self.registration_error = ""
+        self.registration_failures = 0
+        self._register_blocked_at = 0.0
 
     def connect(self, attempts: int = 3) -> bool:
         """Open channel and create stubs, retrying with bounded backoff.
@@ -137,8 +145,44 @@ class CoreClient:
             pairs.append(("x-0kay-plugin", name))
         return tuple(pairs) or None
 
+    # Core's wording for "your enrollment credential is not accepted".
+    _AUTH_ERROR_MARKERS = ("permission_denied", "enrollment key", "unauthenticated")
+    # How long to stay quiet after an auth rejection before trying once more.
+    REGISTER_AUTH_BACKOFF_SECONDS = 300.0
+
+    @classmethod
+    def _is_auth_error(cls, error: object) -> bool:
+        text = str(error).lower()
+        return any(marker in text for marker in cls._AUTH_ERROR_MARKERS)
+
+    def _mark_registration_blocked(self, message: str) -> None:
+        if not self.registration_blocked:
+            log.error(
+                "Core rejected plugin registration as unauthenticated (%s). "
+                "Set CORE_PLUGIN_REGISTRATION_TOKEN to a valid enrollment key; "
+                "pausing retries for %.0fs.",
+                message,
+                self.REGISTER_AUTH_BACKOFF_SECONDS,
+            )
+        self.registration_blocked = True
+        self.registration_error = message
+        self._register_blocked_at = time.monotonic()
+        self.plugin_id = None
+
+    def registration_health(self) -> dict:
+        """Diagnostics for tests/panels: is registration actually working?"""
+        return {
+            "registered": self.plugin_id is not None,
+            "blocked": self.registration_blocked,
+            "failures": self.registration_failures,
+            "error": self.registration_error,
+        }
+
     def register(self) -> bool:
         """Register L.I.F.E as a persona plugin with Core."""
+        if self.registration_blocked:
+            if time.monotonic() - self._register_blocked_at < self.REGISTER_AUTH_BACKOFF_SECONDS:
+                return False  # credential fault; do not hammer Core every 10s
         if not self._connected and not self.connect():
             return False
 
@@ -226,33 +270,31 @@ class CoreClient:
                             default_value="true",
                             help="允许 THINK 调用 Agent 主机上的 0kay-mcp",
                         ),
+                        # OneBot is now multi-instance and LIFE is the *server*:
+                        # bots are added in the L.I.F.E adapter panel (CRUD over
+                        # `adapters.json`), not by filling in a single set of
+                        # connection fields here. Only the shared trigger
+                        # defaults and a master switch remain as settings.
                         _pb.SettingsField(
                             key="onebot_enabled",
                             type="bool",
-                            label="OneBot v11",
+                            label="消息平台适配器总开关",
                             default_value="false",
-                            help="启用 QQ OneBot 适配器",
+                            help="总开关；具体机器人在「消息平台」面板中添加（L.I.F.E 作为反向 WebSocket 服务端）",
                         ),
                         _pb.SettingsField(
-                            key="onebot_ws_url",
+                            key="onebot_reverse_host",
                             type="text",
-                            label="OneBot WebSocket 地址",
-                            default_value="ws://127.0.0.1:6700",
-                            help="正向 WebSocket 事件地址",
+                            label="反向 WebSocket 默认主机",
+                            default_value="127.0.0.1",
+                            help="新增机器人时的默认监听地址；0.0.0.0 表示接受任意来源（请务必设置 Token）",
                         ),
                         _pb.SettingsField(
-                            key="onebot_http_url",
-                            type="text",
-                            label="OneBot HTTP 地址",
-                            default_value="http://127.0.0.1:6700",
-                            help="发送消息的 OneBot HTTP API 地址",
-                        ),
-                        _pb.SettingsField(
-                            key="onebot_access_token",
-                            type="text",
-                            label="OneBot Access Token",
-                            default_value="",
-                            help="OneBot API 鉴权令牌",
+                            key="onebot_reverse_port",
+                            type="number",
+                            label="反向 WebSocket 默认端口",
+                            default_value="6199",
+                            help="新增机器人时的默认监听端口，多个机器人会自动顺延",
                         ),
                         _pb.SettingsField(
                             key="onebot_trigger_keywords",
@@ -309,6 +351,11 @@ class CoreClient:
             resp = self._plugin_stub.Register(request, timeout=5, metadata=registration_metadata)
             if resp.success:
                 self.plugin_id = resp.plugin_id
+                if self.registration_blocked:
+                    log.info("registration accepted again; credential healthy")
+                self.registration_blocked = False
+                self.registration_error = ""
+                self.registration_failures = 0
                 try:
                     from life.identity import set_identity
                     set_identity("life", resp.service_token)
@@ -317,10 +364,18 @@ class CoreClient:
                 log.info("Registered with Core: plugin_id=%s", self.plugin_id)
                 return True
             else:
-                log.warning("Registration rejected: %s", resp.message)
+                self.registration_failures += 1
+                if self._is_auth_error(resp.message):
+                    self._mark_registration_blocked(resp.message)
+                else:
+                    log.warning("Registration rejected: %s", resp.message)
                 return False
         except Exception as e:
-            log.error("Registration failed: %s", e)
+            self.registration_failures += 1
+            if self._is_auth_error(e):
+                self._mark_registration_blocked(str(e))
+            else:
+                log.error("Registration failed: %s", e)
             return False
 
     def heartbeat(self, active_tasks: int = 0) -> bool:

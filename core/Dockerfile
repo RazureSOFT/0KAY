@@ -1,3 +1,10 @@
+FROM node:22-alpine AS ui
+WORKDIR /src
+COPY webui/ ./webui/
+COPY plugin-web/ ./plugin-web/
+RUN cd webui && npm ci && npm run build:plugin
+RUN for plugin in agent life minecraft skillsguishow; do cd /src/plugin-web/$plugin && npm ci && npm run build; done
+
 FROM golang:1.27-alpine AS builder
 
 WORKDIR /app
@@ -29,7 +36,13 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /app
 
 COPY --from=builder /app/core-server .
+COPY --from=ui /src/core/data/plugin-ui/ /opt/0kay-ui/plugin-ui/
+COPY webui/patches/ /opt/0kay-ui/ui/
+COPY core/data/ui/platform.patch core/data/ui/fluentui.patch core/data/ui/skillsguishow.patch /opt/0kay-ui/ui/
+COPY core/docker-entrypoint.sh /usr/local/bin/0kay-entrypoint
+RUN chmod +x /usr/local/bin/0kay-entrypoint
 
 EXPOSE 50051 8080
 
+ENTRYPOINT ["0kay-entrypoint"]
 CMD ["./core-server"]

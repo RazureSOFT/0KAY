@@ -307,22 +307,48 @@ class CompanionSystem:
             db.execute("INSERT OR IGNORE INTO relationship_accounts(user_id) VALUES(?)", (user_id,))
             return dict(db.execute("SELECT * FROM relationship_accounts WHERE user_id=?", (user_id,)).fetchone())
 
+    #: Total |delta| a single user's relationship may absorb per calendar day.
+    #: Ordinary sentiment nudges are capped by it; see ``exempt``.
+    DAILY_DELTA_BUDGET = 0.30
+
     def apply_relationship_event(self, user_id: str, event_key: str, reason: str, channel: str, delta: float,
-                                 by: str = "event") -> dict[str,Any]:
+                                 by: str = "event", exempt: bool = False) -> dict[str,Any]:
         """Record a relationship event.
 
         ``by`` is provenance for A3 信息不对称性: ``"event"`` = caused by the
         conversation partner (the character may form a belief from it), ``"owner"``
         = forced from the dashboard (the character experiences the *effect* on
         affinity but must never learn the *cause* — it stays opaque to the self).
+
+        ``exempt`` marks an event that must register even after the day's budget
+        is spent. A broken promise or a rupture left unrepaired is exactly the
+        kind of thing that is supposed to cost the relationship; letting the cap
+        swallow it means the character never actually pays.
+
+        Returns the account plus ``suppressed`` (True when the budget rejected
+        the change) and ``requested_delta``, so callers can distinguish "applied"
+        from "discarded" instead of reading a silently unchanged affinity.
         """
         with self.db() as db:
             db.execute("INSERT OR IGNORE INTO relationship_accounts(user_id) VALUES(?)", (user_id,))
             if db.execute("SELECT 1 FROM relationship_ledger WHERE user_id=? AND event_key=?", (user_id,event_key)).fetchone():
-                return dict(db.execute("SELECT * FROM relationship_accounts WHERE user_id=?", (user_id,)).fetchone())
+                account = dict(db.execute("SELECT * FROM relationship_accounts WHERE user_id=?", (user_id,)).fetchone())
+                account["suppressed"] = False
+                account["requested_delta"] = 0.0
+                return account
             day = date.today().isoformat()
             used = db.execute("SELECT COALESCE(SUM(ABS(delta)),0) FROM relationship_ledger WHERE user_id=? AND created_at LIKE ?", (user_id, f"{day}%")).fetchone()[0]
-            delta = max(-0.12, min(0.12, delta)) if used < .30 else 0.0
+            requested = max(-0.12, min(0.12, delta))
+            suppressed = False
+            if exempt or used < self.DAILY_DELTA_BUDGET:
+                delta = requested
+            else:
+                delta = 0.0
+                suppressed = True
+                # Previously this was dropped with no trace at all, so a day of
+                # heavy interaction silently stopped affecting the relationship.
+                self._audit_tx(db, "relationship_budget_exhausted",
+                               f"{reason}:{requested:+.3f} dropped (used {used:.3f})", user_id)
             account = dict(db.execute("SELECT * FROM relationship_accounts WHERE user_id=?", (user_id,)).fetchone())
             score = max(-1.0,min(1.0,float(account["affinity"])+delta))
             old = account["stage"]
@@ -331,7 +357,10 @@ class CompanionSystem:
             db.execute("UPDATE relationship_accounts SET affinity=?, stage=?, last_seen=?, revision=revision+1 WHERE user_id=?", (score,stage,now(),user_id))
             db.execute("INSERT INTO relationship_ledger VALUES(?,?,?,?,?,?,?,?)",
                        (new_id("rel"), user_id, event_key, delta, reason, channel, now(), by))
-            return dict(db.execute("SELECT * FROM relationship_accounts WHERE user_id=?", (user_id,)).fetchone())
+            account = dict(db.execute("SELECT * FROM relationship_accounts WHERE user_id=?", (user_id,)).fetchone())
+            account["suppressed"] = suppressed
+            account["requested_delta"] = requested
+            return account
 
     def observe_user(self, user_id: str, message: str, is_group: bool = False) -> dict[str,Any]:
         lower = message.lower()
@@ -444,6 +473,11 @@ class CompanionSystem:
                         # tracking state (so the dashboard shows it) while its
                         # prompt modulation stays off.
                         "cog_enabled": "1",
+                        # Token-saver: "1" collapses the two-stage THINK/OUTPUT
+                        # prompts into a single minimal directive and skips the
+                        # heavy per-turn context injections.  Off by default so
+                        # behaviour is byte-identical until switched on.
+                        "cog_lite_mode": "0",
                         "cog_modulate_affect": "1", "cog_modulate_language": "1",
                         "cog_modulate_social": "1", "cog_modulate_selfhood": "1",
                         # wave 1: habit / model-based / memory arbitration
@@ -494,11 +528,14 @@ class CompanionSystem:
                         "cog_attachment_enabled": "0", "cog_attachment_type": "依存型",
                         # wave 4d: tsundere <-> yandere emotional dynamics (opt-in)
                         "cog_tsundere_enabled": "0", "cog_tsundere_type": "经典傲娇",
+                        # wave 4e: parameterised persona dynamics (opt-in)
+                        "cog_personadyn_enabled": "0", "cog_personadyn_type": "正常/安全型",
+                        "cog_personadyn_gender": "未指定",
                         # Tuned persona parameters saved from the companion persona
                         # page (LLM/lexicon analysis reviewed by the owner).  When
                         # set they override the raw parse of `persona_text`.
                         "persona_traits_override": "{}", "attachment_override": "{}",
-                        "tsundere_override": "{}",
+                        "tsundere_override": "{}", "personadyn_override": "{}",
                         # A3 信息不对称性：主人从面板改的亲密度/记忆重要性，对"角色自己"
                         # 是不可见的（角色体验到结果，但不知道是主人改的）。默认开启。
                         "owner_opacity": "1"}
@@ -529,6 +566,7 @@ class CompanionSystem:
         "world_places": ("longtext", None), "world_map": ("longtext", None),
         # --- cognition core ---------------------------------------------------
         "cog_enabled": ("bool", None),
+        "cog_lite_mode": ("bool", None),
         "cog_modulate_affect": ("bool", None), "cog_modulate_language": ("bool", None),
         "cog_modulate_social": ("bool", None), "cog_modulate_selfhood": ("bool", None),
         "cog_plan_depth": ("int", (1, 6)), "cog_wm_capacity": ("int", (1, 12)),
@@ -555,8 +593,10 @@ class CompanionSystem:
         "cog_memory_reconsolidate": ("bool", None), "cog_cls_interleave": ("bool", None),
         "cog_attachment_enabled": ("bool", None), "cog_attachment_type": ("choice", None),
         "cog_tsundere_enabled": ("bool", None), "cog_tsundere_type": ("choice", None),
+        "cog_personadyn_enabled": ("bool", None), "cog_personadyn_type": ("choice", None),
+        "cog_personadyn_gender": ("choice", None),
         "persona_traits_override": ("json", None), "attachment_override": ("json", None),
-        "tsundere_override": ("json", None),
+        "tsundere_override": ("json", None), "personadyn_override": ("json", None),
         "owner_opacity": ("bool", None),
     }
     LOCALE_CHOICES = ("zh-CN", "en-US")
@@ -566,6 +606,13 @@ class CompanionSystem:
                    "cog_language_framing": tuple(_FRAMING_MODES),
                    "cog_attachment_type": ("独占型", "依存型", "妄想型", "监视型", "自伤型", "排除型"),
                    "cog_tsundere_type": ("经典傲娇", "高冷傲娇", "暴躁傲娇", "迁就傲娇"),
+                   "cog_personadyn_type": ("正常/安全型", "傲娇型", "病娇型", "傲娇转病娇",
+                                            "三无/高冷型", "天然呆型", "温柔/治愈型",
+                                            "元气/活泼型", "腹黑型", "忠犬型", "依赖型",
+                                            "回避型", "控制/女王型", "小恶魔型", "暴躁型",
+                                            "理性/冷静型", "自卑/忧郁型", "混沌/疯狂型"),
+                   "cog_personadyn_gender": ("未指定", "男性脚本", "女性脚本", "中性",
+                                             "高传统男性", "低传统男性", "高传统女性", "女性主义"),
                    "world_density": ("off", "texture", "full"),
                    "world_fictional": ("real", "fictional")}
     BOOL_VALUES = {"1", "0", "true", "false", "yes", "no", "on", "off"}

@@ -47,10 +47,30 @@
         "titleKey": "status.emotions",
         "order": 30,
         "axes": [
-          { "key": "valence", "labelKey": "emotion.valence", "color": "#0078d4", "scale": "remap01" },
-          { "key": "arousal", "labelKey": "emotion.arousal", "color": "#ffb900", "scale": "unit" },
-          { "key": "connection", "labelKey": "emotion.connection", "color": "#107c10", "scale": "unit" },
-          { "key": "irritation", "labelKey": "emotion.irritation", "color": "#d13438", "scale": "unit" }
+          {
+            "key": "valence",
+            "labelKey": "emotion.valence",
+            "color": "#0078d4",
+            "scale": "remap01"
+          },
+          {
+            "key": "arousal",
+            "labelKey": "emotion.arousal",
+            "color": "#ffb900",
+            "scale": "unit"
+          },
+          {
+            "key": "connection",
+            "labelKey": "emotion.connection",
+            "color": "#107c10",
+            "scale": "unit"
+          },
+          {
+            "key": "irritation",
+            "labelKey": "emotion.irritation",
+            "color": "#d13438",
+            "scale": "unit"
+          }
         ]
       }
     },
@@ -87,8 +107,23 @@
         "icon": "lock",
         "order": 65,
         "label": "L.I.F.E 设置",
-        "description": "邮件、MCP、OneBot 和 Agent 主机权限由 L.I.F.E 插件管理",
+        "description": "模型、邮件、MCP 与 Agent 主机权限；消息平台在独立的「消息平台」标签页中配置",
         "component": "life_settings"
+      }
+    },
+    {
+      "target": "settings",
+      "op": "insert",
+      "anchor": "life_settings",
+      "position": "after",
+      "id": "life_adapters",
+      "item": {
+        "id": "life_adapters",
+        "icon": "plug",
+        "order": 66,
+        "label": "消息平台",
+        "description": "配置 L.I.F.E 的多个聊天平台适配器（反向 WebSocket 服务端）",
+        "module": "/api/plugins/life/ui/adapters.js?v=1"
       }
     },
     {
@@ -107,7 +142,13 @@
       "target": "router",
       "op": "insert",
       "id": "companion",
-      "item": { "id": "companion", "path": "/companion", "name": "companion", "module": "/api/plugins/life/ui/companion.js?v=2", "title": "陪伴面板" }
+      "item": {
+        "id": "companion",
+        "path": "/companion",
+        "name": "companion",
+        "module": "/api/plugins/life/ui/companion.js?v=2",
+        "title": "陪伴面板"
+      }
     },
     {
       "target": "nav",
@@ -129,7 +170,13 @@
       "anchor": "plugins",
       "position": "before",
       "id": "companion",
-      "item": { "id": "companion", "to": "/companion", "label": "陪伴", "icon": "life", "order": 25 }
+      "item": {
+        "id": "companion",
+        "to": "/companion",
+        "label": "陪伴",
+        "icon": "life",
+        "order": 25
+      }
     },
     {
       "target": "settings",

@@ -1262,6 +1262,16 @@ class AffectSystem:
             self.pad.decay(seconds)
         if self.config.use_somatic:
             self.somatic.tick(seconds)
+        # Ascending interoception: the body pushes on the mind.
+        #
+        # `somatic` models the *descending* limb (distress presenting as bodily
+        # symptoms), but nothing carried the other direction - hunger,
+        # exhaustion and ill health only ever changed the wording of a reply.
+        # A tired or hurting body drags mood down on its own, scaled by real
+        # elapsed hours so the loop cadence cannot change the dynamics.
+        if fatigue > 0.0 and self.config.use_mood_attractor:
+            hours = max(0.0, seconds) / 3600.0
+            self.mood.tick(-(0.06 * _clamp(fatigue)) * hours, seconds=seconds)
         self._assess_episode(seconds)
 
     # ---- read-out --------------------------------------------------------

@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"io"
 	"net/http"
 )
@@ -28,7 +29,9 @@ func (g *Gateway) handleStdioProvider(w http.ResponseWriter, r *http.Request) {
 			headers[key] = value
 		}
 	}
-	status, respHeaders, chunks, err := g.stdio.Do(r.Context(), id, r.Method, "/"+rest, headers, body)
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+	status, respHeaders, chunks, err := g.stdio.Do(ctx, id, r.Method, "/"+rest, headers, body)
 	if err != nil {
 		upstreamError(w, err.Error())
 		return
@@ -41,8 +44,22 @@ func (g *Gateway) handleStdioProvider(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(status)
 	flusher, _ := w.(http.Flusher)
-	for chunk := range chunks {
-		if _, err := w.Write(chunk); err != nil {
+	for {
+		var chunkData []byte
+		select {
+		case <-ctx.Done():
+			return
+		case chunk, ok := <-chunks:
+			if !ok {
+				return
+			}
+			if chunk.Err != nil {
+				// Headers may already be sent: abort rather than report a clean EOF.
+				panic(http.ErrAbortHandler)
+			}
+			chunkData = chunk.Data
+		}
+		if _, err := w.Write(chunkData); err != nil {
 			return
 		}
 		if flusher != nil {

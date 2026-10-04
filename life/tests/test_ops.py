@@ -71,12 +71,14 @@ class DailyReviewAndMedia(unittest.IsolatedAsyncioTestCase):
             reviews = engine.companion.list_daily_reviews()
             self.assertEqual(reviews[0]["date"], result["date"])
 
-    async def test_send_media_fail_closed_without_onebot(self):
+    async def test_send_media_fail_closed_without_adapter(self):
         with tempfile.TemporaryDirectory() as directory:
             engine = LifeEngine(directory)
             result = await engine.send_media("tts", "user:1", {"text": "hi"})
+            # Fail closed: no connected platform means no send, and the reason
+            # must be generic now that "OneBot" is one platform among several.
             self.assertFalse(result["ok"])
-            self.assertIn("onebot", result["reason"])
+            self.assertIn("adapter", result["reason"])
 
     async def test_autonomy_actions_are_allowlisted(self):
         from life.tools.tools import ToolResult

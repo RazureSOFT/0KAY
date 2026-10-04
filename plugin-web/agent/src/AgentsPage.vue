@@ -78,6 +78,7 @@ const browserError = ref('')
 const directory = ref<{path:string;parent:string;roots:string[];directories:Array<{name:string;path:string}>}>({path:'',parent:'',roots:[],directories:[]})
 const hostUsage = ref<{cpu_percent:number;memory_percent:number;sampled_at:string}|null>(null)
 const compactNotice = ref('')
+const compacting = ref(false)
 let hostTimer: ReturnType<typeof setInterval> | null = null
 let browseRequest = 0
 let browserExecutor = ''
@@ -198,14 +199,14 @@ async function fetchHost() {
 async function compact() {
   if(!session.value || active.value || busy.value || session.value.state==='archived') return
   const target=selectedId.value
-  busy.value=true;error.value='';compactNotice.value='正在压缩上下文…'
+  busy.value=true;compacting.value=true;error.value='';compactNotice.value='正在压缩上下文…'
   try {
     const response=await fetch('/api/agent/compact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:target,model_id:modelId.value})})
     if(!response.ok) throw new Error(await response.text())
     await response.json();await store.fetchAgents()
     compactNotice.value='上下文已压缩。后续消息使用摘要；原始对话和工具记录仍然保留。';if(draft.value.trim()==='/compact') draft.value=''
   } catch(e:any) {error.value=e.message;compactNotice.value=''}
-  finally {busy.value=false}
+  finally {busy.value=false;compacting.value=false}
 }
 const ringStyle=(value:number)=>({background:`conic-gradient(from -90deg, var(--md-primary) ${Math.max(0,Math.min(100,value))}%, var(--md-outline-variant) 0)`})
 // Ease a number toward its target so the rings sweep instead of snapping.
@@ -1389,7 +1390,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
             </li>
           </ul>
         </section>
-        <div v-if="compactNotice" class="compact-notice">{{ compactNotice }}</div>
+        <div v-if="compactNotice" class="compact-notice" :class="{ running: compacting }"><span v-if="compacting" class="tree-spin small" aria-hidden="true"></span>{{ compactNotice }}</div>
         <div class="options-collapse" :class="{ open: optionsOpen }">
         <div class="execution-options">
           <label>{{ tr('权限','Permissions') }}<AppSelect v-model="permissionMode" :aria-label="tr('权限','Permissions')" :disabled="!!active || busy" :options="[{value:'normal',label:tr('Normal · 全部审批','Normal · Ask every time')},{value:'full_access',label:tr('Full access · 自动执行','Full access · Auto execute')}]" /></label>
@@ -1435,12 +1436,12 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
         <footer class="composer-footer">
           <div class="footer-status">
             <div v-if="contextUsage" class="ctx-usage" tabindex="0" :aria-label="tr('上下文用量','Context usage')"><svg class="ctx-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="ctx-track" cx="10" cy="10" r="8"/></svg><span class="ctx-value">{{ fmtK(contextUsage.tokens) }}</span><div class="ctx-tip" role="tooltip"><strong>{{ tr('上下文用量','Context Usage') }}</strong><div class="ctx-used"><b>{{ fmtK(contextUsage.tokens) }}</b><span>{{ tr('已用 tokens','tokens used') }}</span></div><div class="ctx-row" v-for="row in ctxRows" :key="row.key"><span>{{ row.label }}</span><span>{{ row.value }}</span></div></div></div>
-            <span class="connection-hint"><i :class="{online:store.onlineCount>0}" />{{ active?.kind === 'compact' ? tr('上下文压缩中…','Compacting…') : store.onlineCount ? tr('执行器在线','Executor online') : tr('执行器离线','Executor offline') }}</span>
+            <span class="connection-hint"><span v-if="active?.kind === 'compact'" class="tree-spin small" aria-hidden="true" /><i v-else :class="{online:store.onlineCount>0}" />{{ active?.kind === 'compact' ? tr('上下文压缩中…','Compacting…') : store.onlineCount ? tr('执行器在线','Executor online') : tr('执行器离线','Executor offline') }}</span>
           </div>
           <div class="footer-actions">
             <label class="mode-field"><AppSelect v-model="mode" :disabled="busy" :aria-label="tr('Agent 模式','Agent mode')" :options="[{value:'general',label:tr('通用 Agent','General Agent')},{value:'code',label:tr('编程 Agent','Coding Agent')},{value:'code_explore',label:tr('编程 Agent · 多路探索 (5)','Coding Agent · Explore (5)')},{value:'research',label:tr('调研 Agent','Research Agent')},{value:'science',label:tr('科学 Agent','Science Agent')}]" /></label>
             <button type="button" class="chip-btn" :class="{active:hostOpen}" @click="hostOpen=!hostOpen"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>{{ tr('宿主机','Host') }}</button>
-            <button type="button" class="chip-btn" :disabled="!session || !!active || busy || session.state === 'archived'" @click="compact"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 9h16M4 15h16M9 4v16M15 4v16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>/compact</button>
+            <button type="button" class="chip-btn" :disabled="!session || !!active || busy || session.state === 'archived'" @click="compact"><span v-if="compacting" class="tree-spin small" aria-hidden="true"></span><svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 9h16M4 15h16M9 4v16M15 4v16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>/compact</button>
             <button type="button" class="chip-btn" :class="{active:optionsOpen}" :aria-expanded="optionsOpen" @click="optionsOpen=!optionsOpen"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke="currentColor" stroke-width="1.6"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13.6H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ tr('设置','Settings') }}</button>
           </div>
         </footer>
@@ -2014,7 +2015,9 @@ button.subagent-card-head>strong{font-weight:700}
 .send-fly:hover:not(:disabled){filter:brightness(1.08)}
 .send-fly:disabled{background:var(--md-surface-container);color:var(--md-on-surface-variant);opacity:.7;box-shadow:none}
 .send-fly.stop{background:var(--md-error);color:#fff;box-shadow:0 2px 10px color-mix(in srgb,var(--md-error) 40%,transparent)}
-.compact-notice{font-size:12px;padding:10px 16px;color:var(--md-primary);background:var(--md-primary-container);border-radius:10px;margin:10px 16px 0}
+.compact-notice{display:flex;align-items:center;gap:8px;font-size:12px;padding:10px 16px;color:var(--md-primary);background:var(--md-primary-container);border-radius:10px;margin:10px 16px 0}
+.compact-notice.running{animation:soft-pulse 1.4s var(--ease-emphasized) infinite}
+@media (prefers-reduced-motion: reduce){.compact-notice.running{animation:none}.compact-notice .tree-spin{animation-duration:1.6s}}
 .options-collapse{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--duration-medium) var(--ease-emphasized)}
 .options-collapse.open{grid-template-rows:1fr}
 .options-collapse>.execution-options{overflow:hidden;min-height:0}

@@ -23,6 +23,7 @@ import asyncio
 import json
 import os
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -106,6 +107,9 @@ class ResidentThinker:
     USER_COOLDOWN = 90.0
     #: Per-tick token ceiling: inner thoughts are short by design.
     MAX_TOKENS = 240
+    #: Fallback cadence for writing engine state after a body-clock tick. See
+    #: :meth:`_maybe_persist_body`.
+    BODY_SAVE_INTERVAL = 300.0
 
     def __init__(self, engine, interval_seconds: float | None = None,
                  state_path: str | None = None, enabled: bool = True):
@@ -128,6 +132,11 @@ class ResidentThinker:
         # the long-lived `_run` tick (both mutate `state` and persist it).
         self._think_lock = asyncio.Lock()
         self._save_lock = threading.Lock()
+        # Fallback persistence for the body clock: the gRPC loop saves engine
+        # state every minute, but a LIFE instance not driven through gRPC would
+        # otherwise advance physiology that is never written back.
+        self._last_body_save = 0.0
+        self._body_ticks = 0
         self._load()
 
     # -- lifecycle ---------------------------------------------------------
@@ -194,6 +203,10 @@ class ResidentThinker:
             self._wake.clear()
             if self._stopping:
                 break
+            # The body keeps its own time: mood, HPA axis and allostatic load
+            # advance on this loop even when no thought is produced (asleep,
+            # budget exhausted, or cognition switched off).
+            await self._tick_body_clock()
             if self._interrupted:
                 # Consume the interrupt: the user's turn has priority this tick.
                 self._interrupted = False
@@ -208,6 +221,50 @@ class ResidentThinker:
                 raise
             except Exception as error:  # pragma: no cover - defensive
                 self._log("resident tick failed: %s", error)
+
+    async def _tick_body_clock(self) -> None:
+        """Advance the slow physiology from the resident loop itself.
+
+        ``LifeEngine._tick_affect`` was written to be driven by *both* a
+        conversation turn and a background clock, but the only background
+        caller was Core's gRPC loop. Any LIFE instance not driven through gRPC
+        (embedded use, tests, or Core being down) therefore froze the body
+        between messages - the exact opposite of "it also changes while you are
+        silent". Owning that clock here makes the behaviour depend on LIFE
+        itself rather than on whoever happens to be hosting it.
+        """
+        engine = getattr(self, "engine", None)
+        tick = getattr(engine, "_tick_affect", None)
+        if engine is None or tick is None or getattr(engine, "affect", None) is None:
+            return
+        try:
+            await asyncio.to_thread(tick)
+        except asyncio.CancelledError:
+            raise
+        except Exception as error:
+            self._log("background affect tick failed: %s", error)
+            return
+        self._body_ticks += 1
+        self._maybe_persist_body()
+
+    def _maybe_persist_body(self) -> None:
+        """Write engine state back occasionally so the body clock is not lost.
+
+        Deliberately slower than the gRPC loop's once-a-minute save: that loop
+        is the normal owner of persistence, and this only has to cover the case
+        where nothing else is saving.
+        """
+        now = time.monotonic()
+        if self._last_body_save and (now - self._last_body_save) < self.BODY_SAVE_INTERVAL:
+            return
+        self._last_body_save = now
+        save = getattr(self.engine, "_save_state", None)
+        if save is None:
+            return
+        try:
+            save()
+        except Exception as error:
+            self._log("background state save failed: %s", error)
 
     def _should_think(self) -> bool:
         engine = self.engine

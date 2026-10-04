@@ -110,10 +110,17 @@ class ResidentThinkerTests(unittest.TestCase):
                 return True
             self.resident._think_once = fake_once
             self.assertTrue(self.resident.start())
-            await asyncio.sleep(0.06)
+            # The tick now also runs the body clock, which touches real SQLite
+            # files before the first thought. On a loaded machine that can eat
+            # the whole window, so wait on the observable outcome instead of
+            # guessing a sleep duration (this test was the suite's one flaky).
+            for _ in range(200):
+                if calls:
+                    break
+                await asyncio.sleep(0.01)
             await self.resident.stop()
         asyncio.run(scenario())
-        self.assertTrue(calls)
+        self.assertTrue(calls, "the resident loop never produced a tick")
         self.assertFalse(self.resident.running)
 
     def test_state_survives_a_restart(self):

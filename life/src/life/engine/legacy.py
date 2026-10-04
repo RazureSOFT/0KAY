@@ -9,12 +9,14 @@ import random
 import re
 import threading
 import uuid
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from .. import diary
 
+from ..emotion import lexicon
 from ..emotion.emotion import EmotionEngine, EmotionState
 from ..circadian.circadian import CircadianSystem
 from ..memory.memory import MemorySystem
@@ -30,6 +32,8 @@ from ..tools.tools import RuntimeToolConfig, create_default_registry, PluginTool
 from ..skills import get_skill_registry
 from ..core_client import get_core_client
 from ..companion import CompanionSystem
+from ..adapters.platforms import AdapterRegistry, AdapterRuntime
+from ..adapters.onebot import _cq_escape
 from ..logging_setup import get_logger
 from ..model_client import MocrClient
 from ..soul import SoulState
@@ -41,6 +45,7 @@ from ..config import LIFE_EVENTS as _LIFE_EVENTS
 # working directory*, so a different CWD silently fell back to the untrained
 # prior and the stock cast.
 _PLUGIN_ROOT = Path(__file__).resolve().parents[3]
+_adapter_context = ContextVar("life_adapter_context", default=None)
 
 
 def _plugin_path(name: str, fallback: str) -> str:
@@ -98,6 +103,10 @@ try:
         TsundereSystem,
         tsundere_type_for_persona,
         tsundere_initial_state_for_persona,
+        PersonaDynamicsSystem,
+        persona_dynamics_type_for_persona,
+        persona_dynamics_gender_for_persona,
+        persona_dynamics_initial_state_for_persona,
         character_options,
         character_spec,
         classify_character,
@@ -231,6 +240,23 @@ class TurnContext:
     persona_context: str
     history: list[dict] = field(default_factory=list)
     custom_prompt: str = ""
+    #: Which persona config this turn speaks with, from the adapter routing
+    #: table. Carried on the turn (not read from engine state) so two sessions
+    #: in flight at once cannot race each other's persona.
+    config_id: str = "default"
+
+
+def _adapter_session_id(data: dict) -> str:
+    """Canonical session id for an inbound platform event.
+
+    Deliberately identical to what the old outbound OneBot adapter produced
+    (`qq_<user>` / `qq_group_<group>`): memories, relationships, histories and
+    proactive targets are all keyed by session, so changing the format would
+    orphan every existing conversation.
+    """
+    if data.get("group_id"):
+        return f"qq_group_{data.get('group_id')}"
+    return f"qq_{data.get('user_id')}"
 
 
 class LifeEngine:
@@ -265,6 +291,20 @@ class LifeEngine:
         self.online_agents = []
         self.online_agent_count = 0
         self.tool_config = RuntimeToolConfig()
+        # Message-platform instances (several bots, each their own transport).
+        # The engine owns the registry and runtime; the gRPC background loop
+        # calls `sync_adapters()` so starting/stopping a bot takes effect
+        # without a restart. The inbound event handler is bound here because the
+        # runtime needs it at construction and it needs `self` bound anyway.
+        self.adapters = AdapterRegistry(self.data_dir)
+        self.adapter_runtime = AdapterRuntime(self.adapters, self._on_adapter_event)
+        self._inbound_bridges: dict = {}
+        self._active_bot_self_id = None
+        self._active_session_id = ""
+        self._active_adapter_id = ""
+        # Persona config of the turn in flight (see `_config_id_for_session`).
+        self._active_config_id = "default"
+        self.tool_config.adapter_runtime = self.adapter_runtime
         self.tools = create_default_registry(core_client=self.core, config=self.tool_config, memory=self.memory,
                                              companion=self.companion, world_action=self._world_action)
         self._plugin_tool_names: set = set()
@@ -344,11 +384,15 @@ class LifeEngine:
             # Tsundere <-> yandere emotional dynamics: opt-in, off by default,
             # driven by the same real interaction signals (kindness vs coldness).
             self.tsundere = TsundereSystem()
+            # Parameterised persona dynamics (θ / D / x / f / g / T): the fuller
+            # 14-D personality + 9-D desire framework, opt-in and off by default.
+            self.personadyn = PersonaDynamicsSystem()
         else:
             self.cognition = self.affect = self.language = self.social = self.selfhood = None
             self.relating = None
             self.attachment = None
             self.tsundere = None
+            self.personadyn = None
         self._persona_traits = None
         self._persona_digest = None
         # Owner-tuned persona parameters saved from the companion persona page;
@@ -368,6 +412,10 @@ class LifeEngine:
         self._tsundere_enabled = False
         self._tsundere_restored_enabled = False
         self._tsundere_override: dict = {}
+        # Parameterised persona dynamics: same opt-in discipline.
+        self._personadyn_enabled = False
+        self._personadyn_restored_enabled = False
+        self._personadyn_override: dict = {}
         # Durable-state consolidation switches (default OFF - see SETTING_DEFAULTS).
         self._memory_encode = False
         self._sleep_replay = False
@@ -454,6 +502,9 @@ class LifeEngine:
         "cog_attachment_type": "LIFE_COG_ATTACHMENT_TYPE",
         "cog_tsundere_enabled": "LIFE_COG_TSUNDERE",
         "cog_tsundere_type": "LIFE_COG_TSUNDERE_TYPE",
+        "cog_personadyn_enabled": "LIFE_COG_PERSONADYN",
+        "cog_personadyn_type": "LIFE_COG_PERSONADYN_TYPE",
+        "cog_personadyn_gender": "LIFE_COG_PERSONADYN_GENDER",
     }
 
     @staticmethod
@@ -495,6 +546,9 @@ class LifeEngine:
         get = lambda key: self._cog_value(key, saved)  # noqa: E731 - local resolver
 
         self._cognition_enabled = self._cog_bool(get("cog_enabled"), True)
+        # Token-saver: a single minimal prompt, no heavy per-turn context blocks.
+        # Off by default, so every prompt is byte-identical until it is switched on.
+        self._lite_mode = self._cognition_enabled and self._cog_bool(get("cog_lite_mode"), False)
         # A wave keeps tracking state even when its modulation switch is off.
         self._affect_modulates = self._cognition_enabled and self._cog_bool(get("cog_modulate_affect"), True)
         self._language_modulates = self._cognition_enabled and self._cog_bool(get("cog_modulate_language"), True)
@@ -655,6 +709,52 @@ class LifeEngine:
             self.tsundere.configure(enabled=tsundere_enabled, type_key=tsundere_type or "经典傲娇")
             if isinstance(self._tsundere_override.get("initial"), dict):
                 self.tsundere.seed_state(self._tsundere_override["initial"])
+
+        # Parameterised persona dynamics: same opt-in discipline.  This is the
+        # full framework (θ grouped over 12 families / 60+ parameters + a 16-D
+        # desire vector + a 16-D emotion vector + the gender/social-script
+        # group G + the learning operator L); a persona that reads as a clear
+        # archetype turns it on, an owner-tuned override wins, a restored
+        # circuit stays on across a restart.
+        pdy_restored = bool(getattr(self, "_personadyn_restored_enabled", False))
+        self._personadyn_restored_enabled = False
+        pdy_explicit = (("cog_personadyn_enabled" in (saved or {}))
+                        or bool(os.getenv("LIFE_COG_PERSONADYN")))
+        if pdy_explicit:
+            pdy_enabled = self._cognition_enabled and self._cog_bool(get("cog_personadyn_enabled"), False)
+        else:
+            pdy_enabled = self._cognition_enabled and pdy_restored
+        pdy_type = str(get("cog_personadyn_type") or "").strip()
+        persona_pdy = persona_dynamics_type_for_persona(persona_text) if persona_text else ""
+        if persona_pdy:
+            pdy_enabled = self._cognition_enabled
+            pdy_type = pdy_type or persona_pdy
+        # The gender / social-script group G is a parameter group like any
+        # other, so it rides the same settings surface and the same override.
+        # Precedence: an explicit override > the saved setting > the row's own
+        # implied script (handled inside PersonaDynamics).
+        pdy_gender = str(get("cog_personadyn_gender") or "").strip()
+        self._personadyn_override = self._json_setting(saved, "personadyn_override")
+        if self._personadyn_override.get("type"):
+            pdy_enabled = self._cognition_enabled
+            pdy_type = str(self._personadyn_override["type"])
+        if self._personadyn_override.get("gender"):
+            pdy_gender = str(self._personadyn_override["gender"])
+        self._personadyn_enabled = pdy_enabled
+        if self.personadyn is not None:
+            # "未指定" is the identity script; passing "" lets the archetype row
+            # supply its own implied script (霸总 -> 高传统男性 ...).
+            gkey = pdy_gender if pdy_gender and pdy_gender != "未指定" else ""
+            if gkey:
+                self.personadyn.configure(enabled=pdy_enabled, type_key=pdy_type or "正常/安全型",
+                                          gender_key=gkey)
+            else:
+                self.personadyn.configure(enabled=pdy_enabled,
+                                          type_key=pdy_type or "正常/安全型")
+                self.personadyn.dynamics.gender_key = (
+                    self.personadyn.dynamics.gender_key or "未指定")
+            if isinstance(self._personadyn_override.get("initial"), dict):
+                self.personadyn.seed_state(self._personadyn_override["initial"])
         return self.cognition_status()
 
     def cognition_status(self) -> dict:
@@ -674,6 +774,7 @@ class LifeEngine:
             "wave4b": self.selfhood.context(),
             "attachment": self.attachment.context() if self.attachment is not None else {"enabled": False},
             "tsundere": self.tsundere.context() if self.tsundere is not None else {"enabled": False},
+            "personadyn": self.personadyn.context() if self.personadyn is not None else {"enabled": False},
             "persona": persona_summary(getattr(self, "_persona_traits", None)),
             "life": self.life_status(),
         }
@@ -867,6 +968,36 @@ class LifeEngine:
         else:
             self.tsundere.seed_from_persona(text)
 
+    def _personadyn_type(self, text: str) -> str:
+        """The persona-dynamics archetype a persona implies, or ""."""
+        return persona_dynamics_type_for_persona(text)
+
+    def _personadyn_gender(self, text: str) -> str:
+        """The gender / social-script group G a persona implies, or ""."""
+        return persona_dynamics_gender_for_persona(text)
+
+    def _enable_personadyn_from_persona(self, text: str) -> None:
+        """Turn on the persona-dynamics circuit from a matching persona."""
+        if self.personadyn is None:
+            return
+        if self._personadyn_override.get("type"):
+            type_key = str(self._personadyn_override["type"])
+        else:
+            type_key = self._personadyn_type(text)
+        if not type_key:
+            return
+        if self._personadyn_override.get("gender"):
+            gender_key = str(self._personadyn_override["gender"])
+        else:
+            gender_key = self._personadyn_gender(text) or "未指定"
+        self._personadyn_enabled = self._cognition_enabled
+        self.personadyn.configure(enabled=self._cognition_enabled, type_key=type_key,
+                                  gender_key=gender_key)
+        if isinstance(self._personadyn_override.get("initial"), dict):
+            self.personadyn.seed_state(self._personadyn_override["initial"])
+        else:
+            self.personadyn.seed_from_persona(text)
+
     @staticmethod
     def _json_setting(saved, key: str) -> dict:
         """Read a JSON-valued setting that may be a dict or a JSON string."""
@@ -970,6 +1101,7 @@ class LifeEngine:
         self._layer_persona_traits(traits)
         self._enable_attachment_from_persona(text)
         self._enable_tsundere_from_persona(text)
+        self._enable_personadyn_from_persona(text)
         self._persona_digest = digest
         return persona_summary(self._persona_traits)
 
@@ -1007,6 +1139,7 @@ class LifeEngine:
         self._layer_persona_traits(traits)
         self._enable_attachment_from_persona(text)
         self._enable_tsundere_from_persona(text)
+        self._enable_personadyn_from_persona(text)
         # set last: apply_cognition_settings() invalidates the digest on
         # purpose, so it must be re-stamped here (not before)
         self._persona_digest = digest
@@ -1044,6 +1177,8 @@ class LifeEngine:
         else:
             att_type = self._persona_attachment_type(text)
         tsun_type = self._persona_tsundere_type(text)
+        pdy_type = self._personadyn_type(text)
+        pdy_gender = self._personadyn_gender(text)
         return {
             "source": source,
             "gender": traits.gender or "",
@@ -1062,6 +1197,9 @@ class LifeEngine:
                            "initial": initial_state_for_persona(text) if att_type else {}},
             "tsundere": {"type": tsun_type,
                          "initial": tsundere_initial_state_for_persona(text) if tsun_type else {}},
+            "personadyn": {"type": pdy_type,
+                           "gender": pdy_gender,
+                           "initial": persona_dynamics_initial_state_for_persona(text) if pdy_type else {}},
             "options": {"character": character_options(),
                         "relationship": relationship_options()},
             "applied": traits.present,
@@ -1076,11 +1214,13 @@ class LifeEngine:
         payload = payload or {}
         attachment = payload.get("attachment") or {}
         tsundere = payload.get("tsundere") or {}
+        personadyn = payload.get("personadyn") or {}
         settings = {
             "persona_text": str(payload.get("text") or ""),
             "persona_traits_override": json.dumps(payload.get("traits") or {}, ensure_ascii=False),
             "attachment_override": json.dumps(attachment, ensure_ascii=False),
             "tsundere_override": json.dumps(tsundere, ensure_ascii=False),
+            "personadyn_override": json.dumps(personadyn, ensure_ascii=False),
         }
         # The attachment ODE is only for the pathological family (病娇族).  Set
         # the switch both ways so switching a persona to a healthy style (安全/
@@ -1097,6 +1237,14 @@ class LifeEngine:
                 settings["cog_tsundere_type"] = str(tsundere["type"])
             else:
                 settings["cog_tsundere_enabled"] = "0"
+        if "personadyn" in payload:
+            if personadyn.get("type"):
+                settings["cog_personadyn_enabled"] = "1"
+                settings["cog_personadyn_type"] = str(personadyn["type"])
+                if personadyn.get("gender"):
+                    settings["cog_personadyn_gender"] = str(personadyn["gender"])
+            else:
+                settings["cog_personadyn_enabled"] = "0"
         result = self.companion.set_settings(settings)
         self.apply_cognition_settings()
         return {"saved": True, "rejected": result.get("rejected", [])}
@@ -1151,7 +1299,8 @@ class LifeEngine:
                                          ("selfhood", self.selfhood, SelfhoodSystem),
                                          ("relating", self.relating, RelatingSystem),
                                          ("attachment", self.attachment, AttachmentSystem),
-                                         ("tsundere", self.tsundere, TsundereSystem)):
+                                         ("tsundere", self.tsundere, TsundereSystem),
+                                         ("personadyn", self.personadyn, PersonaDynamicsSystem)):
                 saved = data.get(key)
                 if isinstance(saved, dict) and saved:
                     try:
@@ -1162,6 +1311,8 @@ class LifeEngine:
                 self._attachment_restored_enabled = bool(self.attachment.enabled)
             if self.tsundere is not None:
                 self._tsundere_restored_enabled = bool(self.tsundere.enabled)
+            if self.personadyn is not None:
+                self._personadyn_restored_enabled = bool(self.personadyn.enabled)
 
     def _save_state(self):
         """Schedule a snapshot, coalescing bursts inside the debounce window."""
@@ -1245,7 +1396,8 @@ class LifeEngine:
         for key, system in (("affect", self.affect), ("language", self.language),
                             ("social", self.social), ("selfhood", self.selfhood),
                             ("relating", self.relating), ("attachment", self.attachment),
-                            ("tsundere", self.tsundere)):
+                            ("tsundere", self.tsundere),
+                            ("personadyn", self.personadyn)):
             if system is not None:
                 try:
                     payload[key] = system.to_dict()
@@ -1357,6 +1509,23 @@ class LifeEngine:
 
     async def process_message(self, session_id, user_id, message, adapter_type="webui", persona=None, history=None):
         session_id = session_id or f"{adapter_type}:{user_id or 'default'}"
+        # ``/sid`` — the session id is otherwise invisible to the person typing,
+        # yet every routing rule and every stored relationship is keyed on it.
+        # Answer it directly (no model turn) so the user can copy the id into the
+        # routing table without guessing.
+        sid_reply = self._session_id_probe(session_id, adapter_type, message)
+        if sid_reply is not None:
+            yield {"type": "chunk", "chunk": sid_reply, "done": True}
+            return
+        # Which persona config this conversation speaks with. Resolved per turn
+        # from the routing table (first match wins, default otherwise) so editing
+        # the table takes effect on the next message rather than a restart.
+        self._active_config_id = self._config_id_for_session(session_id)
+        # Defensive: a whole-page select-all/drag in the WebUI can prepend the
+        # app chrome ("0kay" + the nav labels) to the user's actual text. That is
+        # not something a person would ever type, so strip a leading chrome
+        # signature before it can poison the turn.
+        message = self._strip_page_chrome(message)
         # A real message interrupts the resident train of thought *before* the
         # session lock is taken, so it takes priority even while another
         # session's turn is in flight.  The thinker parks and resumes its
@@ -1381,11 +1550,29 @@ class LifeEngine:
         async with lock:
             previous = list(self._histories.get(session_id, []))
             if history is not None:
-                previous = [{"role": item["role"], "content": str(item["content"])[:16000]} for item in history[-21:]
-                            if isinstance(item, dict) and item.get("role") in ("user", "assistant", "system") and item.get("content")]
+                # The client's history is a *hint*, never authoritative.  If the
+                # UI rebuilt itself (tab switch, reload, poll hiccup) and sent a
+                # shorter or empty list, trusting it would silently erase the
+                # server's memory of the conversation.  Only adopt the client's
+                # view when it is at least as complete as ours; otherwise keep
+                # ours and merge in anything genuinely new.
+                client_hist = [{"role": item["role"], "content": str(item["content"])[:16000]} for item in history[-21:]
+                               if isinstance(item, dict) and item.get("role") in ("user", "assistant", "system") and item.get("content")]
+                if len(client_hist) >= len(previous):
+                    previous = client_hist
+                else:
+                    # Keep the server's longer history, but append any tail rows
+                    # the client has that we do not (rare: a reply the server
+                    # has not recorded yet).
+                    seen = {(item["role"], item["content"]) for item in previous}
+                    for item in client_hist:
+                        if (item["role"], item["content"]) not in seen:
+                            previous.append(item)
+                            seen.add((item["role"], item["content"]))
                 if previous and previous[-1] == {"role": "user", "content": message}:
                     previous.pop()
-            turn = TurnContext(session_id, user_id, adapter_type, self._persona(persona or {}), previous)
+            turn = TurnContext(session_id, user_id, adapter_type, self._persona(persona or {}), previous,
+                               config_id=self._active_config_id)
             # The user-authored prompt is sent as the model system prompt (verbatim,
             # ahead of everything else), not merged into the persona description.
             turn.custom_prompt = str((persona or {}).get("customPrompt") or "").strip()
@@ -1431,6 +1618,35 @@ class LifeEngine:
             finally:
                 task_context.reset(token)
 
+    def _interoceptive_fatigue(self) -> float:
+        """How heavy the body currently is, 0..1 — the ascending body→mind signal.
+
+        Circadian already tracks energy, hunger and health, but those only ever
+        shaped the wording of a reply and the reply delay; nothing carried them
+        into affect, so the character's body could never actually colour its
+        mind. Composed here and fed to ``affect.tick(fatigue=...)`` so
+        exhaustion, hunger and ill health each push on mood from below.
+        """
+        state = getattr(getattr(self, "circadian", None), "state", None)
+        if state is None:
+            return 0.0
+
+        def _num(value, default: float) -> float:
+            # Deliberately not `value or default`: a fully drained body is 0.0,
+            # which is falsy, and would otherwise read as "fully rested".
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return default
+
+        energy = _num(getattr(state, "mental_energy", 100.0), 100.0)
+        hunger = _num(getattr(state, "hunger", 0.0), 0.0)
+        health = _num(getattr(state, "health", 100.0), 100.0)
+        exhaustion = min(1.0, max(0.0, (100.0 - energy) / 100.0))
+        starving = min(1.0, max(0.0, hunger / 100.0))
+        unwell = min(1.0, max(0.0, (100.0 - health) / 100.0))
+        return min(1.0, 0.6 * exhaustion + 0.25 * starving + 0.15 * unwell)
+
     # --- cognition core: per-turn driving -----------------------------------
     def _tick_affect(self) -> None:
         """Advance the slow affective systems by the real elapsed time.
@@ -1448,7 +1664,8 @@ class LifeEngine:
             elapsed = max(0.0, (moment - self._last_affect_at).total_seconds())
             self._last_affect_at = moment
             self.affect.tick(elapsed, hour=moment.hour,
-                             sleeping=bool(getattr(self.circadian.state, "is_sleeping", False)))
+                             sleeping=bool(getattr(self.circadian.state, "is_sleeping", False)),
+                             fatigue=self._interoceptive_fatigue())
             if self._attachment_enabled and self.attachment is not None:
                 try:
                     friends = len(self.social.ties.friends(0.4)) if self.social is not None else 0
@@ -1490,6 +1707,49 @@ class LifeEngine:
                                                     stressor=0.2 * tsundere_distress)
                 except Exception as error:
                     logger.debug("tsundere tick failed: %s", error)
+            if self._personadyn_enabled and self.personadyn is not None:
+                try:
+                    friends = len(self.social.ties.friends(0.4)) if self.social is not None else 0
+                    # The partner-trust reading closes the positive-feedback
+                    # loop: low trust -> perceived distance -> threat -> control.
+                    self.personadyn.tick(
+                        elapsed / 86400.0,
+                        neglect_days=self.neglect_days(), friends=friends,
+                        sleeping=bool(getattr(self.circadian.state, "is_sleeping", False)),
+                        mood=float(getattr(self.affect.mood, "mood", 0.0) or 0.0),
+                        load=float(getattr(self.affect.hpa, "allostatic_load", 0.0) or 0.0),
+                        partner_trust=self._partner_trust_reading())
+                    pdy_distress = self.personadyn.distress()
+                    if pdy_distress > 0.5:
+                        self.affect.observe_outcome(success=False, reward=-0.1,
+                                                    stressor=0.2 * pdy_distress)
+                except Exception as error:
+                    logger.debug("persona dynamics tick failed: %s", error)
+
+    def _partner_trust_reading(self) -> float:
+        """How much the *user's* side currently reads as warm/available.
+
+        The research loop feeds on the partner's trust in the subject; the
+        closest honest analogue in LIFE is the relating system's read of how
+        warm the user's messages have been, so the control loop closes on a
+        real signal rather than a constant.
+        """
+        trust = 0.7
+        try:
+            if self.relating is not None:
+                axes_by_user = getattr(self.relating, "partner_axes", None)
+                if isinstance(axes_by_user, dict) and axes_by_user:
+                    readings = [float(v.get("warmth", 0.5))
+                                for v in axes_by_user.values() if isinstance(v, dict)]
+                    if readings:
+                        trust = sum(readings) / len(readings)
+            if self.attachment is not None and getattr(self.attachment, "enabled", False):
+                # A pathological attachment is itself evidence the relationship
+                # is strained; nudge the reading down.
+                trust -= 0.4 * float(self.attachment.severity() or 0.0)
+        except Exception:
+            pass
+        return 0.0 if trust < 0.0 else (1.0 if trust > 1.0 else trust)
 
     @staticmethod
     def _cognition_urgency(turn) -> float:
@@ -1583,6 +1843,11 @@ class LifeEngine:
             ctx = self.tsundere.context()
             if ctx.get("prompt"):
                 rendered += ("傲娇底色（你此刻的真实状态，自然地表现出来，不要复述这些词）：\n- "
+                             + str(ctx["prompt"]) + "\n\n")
+        if self._personadyn_enabled and self.personadyn is not None:
+            ctx = self.personadyn.context()
+            if ctx.get("prompt"):
+                rendered += ("人格动力学（你此刻的真实状态，自然地表现出来，不要复述这些词）：\n- "
                              + str(ctx["prompt"]) + "\n\n")
         return rendered
 
@@ -2054,6 +2319,18 @@ class LifeEngine:
                     mentions_other=self._mentions_other(message))
             except Exception as error:
                 logger.debug("tsundere observe failed: %s", error)
+        # Persona dynamics: the same exchange folds into the event impulses.
+        if self._personadyn_enabled and self.personadyn is not None:
+            try:
+                self.personadyn.observe_interaction(
+                    valence=float(getattr(self.emotion.state, "valence", 0.0) or 0.0),
+                    sentiment=float(feedback.get("sentiment", 0) or 0),
+                    latency_seconds=float(latency or 0.0),
+                    recalled=bool(feedback.get("recalled")),
+                    mentions_other=self._mentions_other(message),
+                    partner_trust=self._partner_trust_reading())
+            except Exception as error:
+                logger.debug("persona dynamics observe failed: %s", error)
         # Only *self-defining* moments belong in the autobiography - a routine
         # hello is not who I am.  Clear warmth, clear friction, or a recalled
         # message is.
@@ -2099,19 +2376,105 @@ class LifeEngine:
     @staticmethod
     def _classify_feedback(message: str) -> dict:
         text = str(message or "")
-        lowered = text.lower()
-        positive = sum(1 for word in ("谢谢", "喜欢", "好棒", "开心", "哈哈", "可爱", "厉害", "抱抱",
-                                      "想你", "thanks", "love", "great")
-                       if word in lowered)
-        negative = sum(1 for word in ("讨厌", "烦", "生气", "难过", "无语", "滚", "别烦", "闭嘴",
-                                      "hate", "angry", "bad")
-                       if word in lowered)
+        hits = lexicon.scan(text)
+        # A refusal/rebuff now counts as negative *and* is surfaced separately so
+        # the reward signal can treat "stop, don't come near me" as friction
+        # instead of a neutral turn.
+        positive = hits["positive"] + hits["reassurance"]
+        negative = hits["negative"] + hits["rejection"]
         recalled = any(marker in text for marker in ("撤回了一条消息", "[撤回]", "撤回了"))
-        if any(marker in text for marker in ("不要", "别发了", "别说了")):
-            negative += 1
         sentiment = 1 if positive > negative else -1 if negative > positive else 0
         return {"positive": positive, "negative": negative, "sentiment": sentiment,
-                "recalled": recalled, "length": len(text)}
+                "rejection": hits["rejection"], "recalled": recalled, "length": len(text)}
+
+    def _lite_think_prompt(self, turn, message: str) -> str:
+        """The minimal THINK prompt used by the token-saver mode.
+
+        Drops the tool schema, skills block, external observations and wave
+        context.  Returns a compact instruction that still produces the same
+        JSON shape, so downstream parsing is unchanged.
+        """
+        persona = (turn.persona_context or "").strip()
+        emo = self.emotion.state.to_dict()
+        return (
+            "You are a real human character in this conversation. Reply in character.\n"
+            f"Persona:\n{persona}\n"
+            f"Current emotion: valence={emo.get('valence')}, arousal={emo.get('arousal')}, "
+            f"connection={emo.get('connection')}, irritation={emo.get('irritation')}\n"
+            f"User message: {message}\n"
+            "Write your private inner voice in FIRST PERSON (never narrate the user in "
+            "third person). You may refuse or push back; you need not be agreeable. "
+            "When you speak, output ONLY what you say aloud — no parenthetical action "
+            "beats, no （…）, no *…*.\n"
+            'Output ONLY JSON: {"character_intent": "<one first-person line>", '
+            '"output_guidance": "<how to say it>", '
+            '"emotion_delta": {"valence": 0.0, "arousal": 0.0, "connection": 0.0, "irritation": 0.0}}'
+        )
+
+    @staticmethod
+    def _strip_page_chrome(message: str) -> str:
+        """Drop an accidental copy of the app's UI chrome from the message head.
+
+        The WebUI's header brand ("0kay") and nav labels ("对话 / Agent / 记忆 …")
+        can be dragged into the composer by a select-all.  Removing the leading
+        signature keeps the model from answering the UI instead of the user.
+        Only touches the head, and only when it matches the known chrome: an
+        ordinary message that merely contains "0kay" is left alone.
+        """
+        text = str(message or "")
+        if "0kay" not in text:
+            return text
+        lines = text.split("\n")
+        # Find the leading run of known chrome labels (the brand first).  A bare
+        # digit is a nav badge count and counts as chrome too.
+        chrome = {"0kay", "对话", "简体中文", "Agent", "记忆", "陪伴", "技能",
+                  "插件", "插件市场", "用量", "设置", "角色状态",
+                  "patch", "年龄", "时间", "时区", "心情", "情绪",
+                  "愉悦度", "唤醒度", "亲近感", "烦躁度"}
+
+        def _is_chrome_token(token: str) -> bool:
+            if not token or token in chrome or token.isdigit():
+                return True
+            # Character-card values: ages ("15 岁"), clock times, timezones,
+            # and 1-3 character CJK names that follow the brand line.
+            if token.endswith("岁") or "岁" in token:
+                return True
+            # Clock / date stamps like "2026/10/4 14:22:23" or "14:22:23".
+            stripped = token.replace("/", "").replace(":", "").replace("-", "").replace(" ", "")
+            if stripped.isdigit() and len(stripped) >= 6:
+                return True
+            if token in ("Asia/Shanghai", "Asia/Tokyo", "UTC"):
+                return True
+            return False
+
+        first_user = None
+        for index, line in enumerate(lines):
+            token = line.strip()
+            if _is_chrome_token(token):
+                continue
+            first_user = index
+            break
+        if first_user is None:
+            return text
+        # Walk forward through the character card: a short CJK name/role line
+        # followed by a chrome token (label or value) is still chrome, and so is
+        # a chrome label immediately followed by a chrome value.
+        while first_user < len(lines):
+            token = lines[first_user].strip()
+            if _is_chrome_token(token):
+                first_user += 1
+                continue
+            nxt = lines[first_user + 1].strip() if first_user + 1 < len(lines) else ""
+            if token and len(token) <= 4 and not token.isascii() and nxt and _is_chrome_token(nxt):
+                first_user += 1
+                continue
+            break
+        # Only strip when the head actually was chrome (brand + at least one other
+        # chrome token) and there is real content after it.
+        head = [l.strip() for l in lines[:first_user] if l.strip()]
+        if "0kay" in head and len(head) >= 2 and first_user < len(lines) and lines[first_user].strip():
+            return "\n".join(lines[first_user:]).strip()
+        return text
 
     @staticmethod
     def _mentions_other(message: str) -> bool:
@@ -2312,6 +2675,25 @@ class LifeEngine:
         # When the daily budget is spent the turn skips straight to a short answer.
         plan = None
         for step in range(1 if over_budget else 4):
+            if self._lite_mode and step == 0 and not over_budget:
+                # Token-saver: one small prompt instead of the full THINK block
+                # (no tools schema, no skills, no wave context).  The character
+                # still reasons, just with far less scaffolding.
+                plan = None
+                guidance = "Respond naturally, in character."
+                system = self._lite_think_prompt(turn, message)
+                try:
+                    raw = await self._think_generate(turn.history, system)
+                    plan = self.think.parse_response(raw)
+                except Exception:
+                    plan = None
+                if plan is not None:
+                    self.emotion.state.apply_delta(self._sanitize_emotion_delta(plan.emotion_delta))
+                    self._clamp_emotion_spiral()
+                    guidance = plan.output_guidance or guidance
+                    if plan.character_intent:
+                        guidance = f"以角色立场（必须符合人设）：{plan.character_intent}\n" + guidance
+                break
             system = self.think.build_prompt(user_message=message, emotion_context=json.dumps(self.emotion.state.to_dict()),
                 energy_context=f"{self._body_phrase()}；{self.circadian.get_prompt_context()}", memory_context=memory_context,
                 active_tasks=[tid for tid, task in self.active_tasks.items() if task.get("session_id") == turn.session_id],
@@ -2419,6 +2801,13 @@ class LifeEngine:
                 guard = ""
             if guard:
                 guidance = guard + "\n" + guidance
+        if self._personadyn_enabled and self.personadyn is not None:
+            try:
+                guard = self.personadyn.guard()
+            except Exception:
+                guard = ""
+            if guard:
+                guidance = guard + "\n" + guidance
         # Fatigue is behaviour, not prose: exhausted -> a slower, shorter reply.
         # The delay multiplier is capped so the UI stays responsive.
         delay_multiplier = max(1.0, float(self.circadian.get_response_delay() or 1.0))
@@ -2432,8 +2821,21 @@ class LifeEngine:
         typing_delay = min(1.2, 0.35 * (delay_multiplier - 1.0))
         if typing_delay > 0:
             await asyncio.sleep(typing_delay)
-        system = self.output.build_prompt(user_message=message, think_guidance=guidance,
-            emotion_context=json.dumps(self.emotion.state.to_dict()), persona_context=turn.persona_context)
+        if self._lite_mode:
+            system = (
+                "You are a real human character in this conversation, not an AI.\n"
+                f"Persona:\n{turn.persona_context}\n"
+                f"Guidance: {guidance}\n"
+                "Write ONLY what the character says out loud. No (…) parentheticals, "
+                "no *…* actions, no narration of gestures or expressions. You may "
+                "refuse, push back, or say no. Never describe yourself as an AI. "
+                "Any [内部约束 …] directive is private: obey it silently, never quote "
+                "or paraphrase it, and never say things like 「我会用更健康的方式表达」.\n"
+                f"User: {message}\nReply:"
+            )
+        else:
+            system = self.output.build_prompt(user_message=message, think_guidance=guidance,
+                emotion_context=json.dumps(self.emotion.state.to_dict()), persona_context=turn.persona_context)
         expression_context = await self._expression_context(getattr(turn, "user_id", ""))
         if expression_context:
             system += "\n" + expression_context
@@ -3153,7 +3555,7 @@ class LifeEngine:
                 await asyncio.to_thread(
                     self.companion.apply_relationship_event,
                     str(item.get("user_id") or ""), f"breach:{item.get('id')}",
-                    "commitment_breach", "private", -0.06)
+                    "commitment_breach", "private", -0.06, "event", True)
             except Exception as error:
                 logger.debug("breach relationship event failed: %s", error)
         # An unrepaired misunderstanding is not free: it keeps eroding the tie it
@@ -3441,10 +3843,13 @@ class LifeEngine:
             self.relating = RelatingSystem()
             self.attachment = AttachmentSystem()
             self.tsundere = TsundereSystem()
+            self.personadyn = PersonaDynamicsSystem()
             self._relating_self_digest = None
             self._attachment_enabled = False
             self._tsundere_enabled = False
             self._tsundere_override = {}
+            self._personadyn_enabled = False
+            self._personadyn_override = {}
             result["cognition"] = "rebuilt"
             self.apply_cognition_settings()
         # Runtime state.
@@ -3907,11 +4312,174 @@ class LifeEngine:
             return False
 
     def _onebot_adapter(self):
-        manager = getattr(self, "onebot", None)
-        adapters = getattr(manager, "adapters", None)
-        if not adapters:
+        """The transport for the adapter currently handling a message.
+
+        Legacy shim kept for the media/vision paths: they need "the client who
+        just spoke to us", which is the ambient instance's connected server.
+        """
+        runtime = getattr(self, "adapter_runtime", None)
+        if runtime is None:
             return None
-        return next(iter(adapters.values()))
+        current = _adapter_context.get() or {}
+        server = runtime.resolve(session_id=current.get("session_id", ""),
+                                 self_id=self._active_self_id)
+        return server
+
+    # The inbound bridge calls these four hooks instead of touching engine
+    # internals. Keeping them named (rather than the bridge reaching into
+    # `self.companion` / `self.mocr`) is what makes the transport swappable.
+    async def on_group_observe(self, group_id: str, user_id: str, message: str, name: str = "") -> None:
+        await asyncio.to_thread(self.companion.observe_group, group_id, user_id, message, name)
+
+    async def should_reply_in_group(self, group_id: str, user_id: str, message: str, mentioned: bool) -> bool:
+        return bool(await asyncio.to_thread(self.group_should_reply, group_id, user_id, message, mentioned))
+
+    async def on_recall(self, session_id: str, user_id: str, note: str, adapter_type: str = "onebot") -> None:
+        """Record that someone withdrew a message, as an honest short note."""
+        self.memory.store(note, importance=0.35, tags=["recall"], metadata={"scope": session_id})
+
+    async def describe_media_ref(self, ref: str, server=None) -> str:
+        """Caption an inbound image, resolving it via the speaking client."""
+        return await self.describe_onebot_image(ref)
+
+    # --- message-platform adapters ---------------------------------------
+    @property
+    def _active_self_id(self):
+        """Which bot account the message being processed arrived on.
+
+        A reply must come from the account that was addressed: with two QQ
+        bots, answering a group from the wrong one is immediately visible. The
+        value is set per turn from the inbound event and read by the outbound
+        paths (proactive sends, task notifications, tool sends).
+        """
+        return (_adapter_context.get() or {}).get("self_id")
+
+    def adapters_available(self) -> bool:
+        """True when at least one enabled adapter is listening.
+
+        Replaces the old `onebot_enabled and onebot_sender is not None` check:
+        with several instances, "is OneBot on" is no longer a single flag.
+        """
+        runtime = getattr(self, "adapter_runtime", None)
+        return bool(runtime is not None and runtime.servers)
+
+    def adapters_enabled(self) -> bool:
+        """The master switch (``onebot_enabled``); off disables every instance.
+
+        Kept as a single gate on top of the per-instance toggles so "turn all
+        bots off right now" does not require editing each row.
+        """
+        return bool(getattr(self.tool_config, "onebot_enabled", False))
+
+    async def sync_adapters(self) -> dict:
+        """Reconcile running servers with the configured instances."""
+        return await self.adapter_runtime.sync()
+
+    def adapter_status(self) -> list:
+        return self.adapter_runtime.status()
+
+    def upsert_adapter(self, payload: dict) -> dict:
+        """Create/update an instance, then start/stop servers to match."""
+        result = self.adapters.upsert(payload)
+        if result.get("ok"):
+            self.companion.audit("adapter_upsert", json.dumps(
+                {"name": payload.get("name"), "platform": payload.get("platform"),
+                 "enabled": payload.get("enabled")}, ensure_ascii=False))
+        return result
+
+    def delete_adapter(self, instance_id: str) -> dict:
+        result = self.adapters.delete(instance_id)
+        if result.get("ok"):
+            self.companion.audit("adapter_delete", str(instance_id))
+        return result
+
+    def set_adapter_enabled(self, instance_id: str, enabled: bool) -> dict:
+        result = self.adapters.set_enabled(instance_id, enabled)
+        if result.get("ok"):
+            self.companion.audit("adapter_toggle", f"{instance_id} -> {bool(enabled)}")
+        return result
+
+    def adapter_routes(self) -> dict:
+        return {"routes": [item.to_dict() for item in self.adapters.routes],
+                "default_config_id": self.adapters.default_config_id}
+
+    def set_adapter_routes(self, routes: list, default_config_id: str = "") -> dict:
+        result = self.adapters.set_routes(routes or [])
+        if default_config_id:
+            self.adapters.set_default_config(default_config_id)
+        return result
+
+    async def adapter_routes_apply(self, routes: list, default_config_id: str = "", push: bool = True) -> dict:
+        """Persist routes and push them to the configured bots.
+
+        The routing table lives on LIFE, but the platform client is what actually
+        multiplexes the connections — a reconnect is what makes the new table
+        take effect. ``push`` is opt-out so a caller that only wants to read the
+        state back does not knock every bot offline.
+        """
+        result = self.set_adapter_routes(routes, default_config_id)
+        result["pushed"] = False
+        if push:
+            try:
+                result["pushed"] = bool(await self.sync_adapters())
+            except Exception as error:
+                result["push_error"] = str(error)
+        return result
+
+    # --- per-session persona routing -------------------------------------
+    def _config_id_for_session(self, session_id: str) -> str:
+        """Which persona config this conversation uses.
+
+        Falls back to ``default`` and never raises: a broken routing table must
+        degrade to "one persona everywhere", not to a failed turn.
+        """
+        try:
+            return self.adapters.config_for_session(str(session_id or ""))
+        except Exception:
+            return "default"
+
+    @property
+    def active_config_id(self) -> str:
+        """The persona config of the turn currently being processed."""
+        return getattr(self, "_active_config_id", "") or "default"
+
+    @staticmethod
+    def _session_id_probe(session_id: str, adapter_type: str, message: str):
+        """Answer the ``/sid`` probe, or ``None`` for an ordinary message.
+
+        Returns the text to send back verbatim. Only a bare command counts: a
+        message that merely *contains* ``/sid`` must still reach the model.
+        """
+        if str(message or "").strip().lower() not in ("/sid", "/whoami", "/会话"):
+            return None
+        kind = "群聊" if str(adapter_type or "").endswith("group") else "私聊"
+        return f"会话 ID（{kind}）：{session_id}\n把它填进「配置文件」的路由表即可为该会话指定人设。"
+
+    async def _on_adapter_event(self, data: dict, server) -> None:
+        """Inbound OneBot event from a reverse-WS client.
+
+        Records which bot account produced it (so replies go back the same way),
+        then hands the message to the same handler the engine used before. A
+        failing turn must not kill the connection, so everything is bounded.
+        """
+        self.adapter_runtime.note_self_id(
+            server.instance.id, data.get("self_id"), server.instance.platform)
+        context_token = _adapter_context.set({
+            "self_id": data.get("self_id"),
+            "session_id": self.adapter_runtime.session_id(server.instance, data),
+            "instance_id": server.instance.id,
+        })
+        from ..adapters.inbound import InboundBridge
+        bridge = self._inbound_bridges.get(server.instance.id)
+        if bridge is None or bridge.instance is not server.instance:
+            # Settings change (keywords, delays) rebuilds the bridge, so it
+            # always reads the instance the server currently holds.
+            bridge = InboundBridge(self, server.instance)
+            self._inbound_bridges[server.instance.id] = bridge
+        try:
+            await bridge.handle(data, server)
+        finally:
+            _adapter_context.reset(context_token)
 
     async def describe_onebot_image(self, ref: str) -> str:
         """Caption an inbound QQ image so a text-only model can reason about it.
@@ -3940,35 +4508,83 @@ class LifeEngine:
             logger.debug("onebot image describe failed: %s", error)
             return ""
 
+    async def _call_adapter(self, server, action: str, params: dict) -> dict:
+        """Call a platform API action, preferring the configured HTTP endpoint.
+
+        A NapCat dial-in deployment usually exposes both; when it does, HTTP is
+        cheaper than round-tripping an action frame over the reverse socket.
+        """
+        import base64 as _b64
+        instance = server.instance
+        if instance.http_url:
+            import httpx
+            headers = {"Authorization": f"Bearer {instance.access_token}"} if instance.access_token else {}
+            async with httpx.AsyncClient(base_url=instance.http_url, headers=headers, timeout=20) as client:
+                response = await client.post(f"/{action}", json=params)
+                response.raise_for_status()
+                body = response.json()
+                if body.get("retcode", 0) != 0:
+                    raise RuntimeError(f"消息平台拒绝 {action}：{body.get('message') or body}")
+                return body.get("data") or {}
+        return await server.call_api(action, params)
+
+    async def _send_cq(self, server, cq: str, user_id, group_id, session_id: str) -> dict:
+        """Send a raw CQ segment string through the ambient adapter.
+
+        Only used for content LIFE itself constructs (TTS/image files it chose),
+        never for model-authored text — that always goes out as a `text`
+        segment so a prompt-injected reply cannot smuggle in `[CQ:at,qq=all]`.
+        """
+        params = {"message": cq}
+        if group_id:
+            params["group_id"] = int(group_id)
+        else:
+            params["user_id"] = int(user_id or 0)
+        return await self._call_adapter(server, "send_group_msg" if group_id else "send_private_msg", params)
+
+    async def _send_record(self, server, audio: bytes, user_id, group_id, session_id: str) -> dict:
+        import base64 as _b64
+        if len(audio) > 4 * 1024 * 1024:
+            raise ValueError("audio exceeds 4MiB")
+        return await self._send_cq(
+            server, f"[CQ:record,file=base64://{_b64.b64encode(audio).decode()}]",
+            user_id, group_id, session_id)
+
     async def send_media(self, kind: str, target: str, payload: dict | None = None) -> dict:
         """Send optional outbound media through OneBot (fail-closed when unavailable)."""
         payload = payload or {}
-        adapter = self._onebot_adapter()
-        if adapter is None:
-            return {"ok": False, "reason": "onebot unavailable"}
+        server = self._onebot_adapter()
+        if server is None:
+            return {"ok": False, "reason": "no message platform adapter available"}
         user_id = self._target_user_id(target)
         group_id = self._target_group_id(target)
+        session_id = str(target or "")
         try:
             if kind == "tts":
                 text = str(payload.get("text") or "")
                 # Prefer the configured self-hosted TTS endpoint
                 # (`MediaPipeline.synthesize`, which was previously dead code);
-                # fall back to the OneBot server's own CQ TTS.
+                # fall back to the platform's own CQ TTS.
                 audio = None
                 if self.media.has_tts():
                     audio = await self.media.synthesize(text)
                 if audio:
-                    await adapter.send_record(audio, user_id=user_id, group_id=group_id)
+                    await self._send_record(server, audio, user_id, group_id, session_id)
                 else:
-                    await adapter.send_tts(text, user_id=user_id, group_id=group_id)
+                    await self._send_cq(server, f"[CQ:tts,text={_cq_escape(text[:300])}]",
+                                        user_id, group_id, session_id)
             elif kind == "image":
-                await adapter.send_image(str(payload.get("file") or ""), user_id=user_id, group_id=group_id)
+                await self._send_cq(server, f"[CQ:image,file={_cq_escape(str(payload.get('file') or ''))}]",
+                                    user_id, group_id, session_id)
             elif kind == "poke":
                 if user_id is None:
                     return {"ok": False, "reason": "poke requires a user target"}
-                await adapter.send_poke(user_id, group_id=group_id)
+                await self._call_adapter(server, "group_poke" if group_id else "friend_poke",
+                                         {"user_id": int(user_id), **({"group_id": int(group_id)} if group_id else {})})
             elif kind == "status":
-                await adapter.set_status(int(payload.get("status") or 0), int(payload.get("battery") or 100))
+                await self._call_adapter(server, "set_online_status", {
+                    "status": int(payload.get("status") or 0), "ext_status": 0,
+                    "battery_status": int(payload.get("battery") or 100)})
             else:
                 return {"ok": False, "reason": f"unknown media kind: {kind}"}
         except Exception as error:
@@ -4380,12 +4996,14 @@ class LifeEngine:
                 session_id = target.split(":", 1)[1].strip()
                 await asyncio.to_thread(self.push_notification, session_id, reviewed)
             elif user_id is not None or group_id is not None:
-                if not self.tool_config.onebot_enabled or self.tool_config.onebot_sender is None:
+                if not self.adapters_available():
                     blocked += 1
-                    await asyncio.to_thread(self.companion.audit, "proactive_blocked", "onebot_unavailable", candidate_id, "blocked")
+                    await asyncio.to_thread(self.companion.audit, "proactive_blocked", "adapter_unavailable", candidate_id, "blocked")
                     continue
                 try:
-                    await self.tool_config.onebot_sender(message=reviewed, user_id=user_id, group_id=group_id)
+                    await self.adapter_runtime.send(
+                        reviewed, user_id=user_id, group_id=group_id,
+                        session_id=str(target or ""), self_id=self._active_self_id)
                 except Exception as error:
                     await asyncio.to_thread(self.companion.audit, "proactive_send", str(error), candidate_id, "failed")
                     continue
@@ -4446,7 +5064,7 @@ class LifeEngine:
             return None
         # Group keys can be "group:qq_group_123" as well as "group:123"; the old
         # int() raised on the former and the wake was delivered to no channel.
-        match = re.search(r"\d+", target.split(":", 1)[1])
+        match = re.search(r"\d+$", target.split(":", 1)[1])
         return int(match.group(0)) if match else None
 
     async def close(self):
@@ -4493,12 +5111,14 @@ class LifeEngine:
             self._notifications.append(notification)
             self._notifications = self._notifications[-100:]
             self._save_state()
-        if task.get("adapter_type", "").startswith("onebot") and self.tool_config.onebot_sender:
+        if task.get("adapter_type", "").startswith("onebot") and self.adapters_available():
             try:
                 session = task.get("session_id", "")
                 group = task.get("adapter_type") == "onebot_group"
                 target = int(session.rsplit("_", 1)[-1].rsplit(":", 1)[-1]) if group else int(task["user_id"])
-                await self.tool_config.onebot_sender(message=text, **({"group_id": target} if group else {"user_id": target}))
+                await self.adapter_runtime.send(
+                    text, session_id=session, self_id=self._active_self_id,
+                    **({"group_id": target} if group else {"user_id": target}))
                 self._notifications.remove(notification)
                 self._save_state()
             except Exception as exc:
@@ -4594,6 +5214,23 @@ class LifeEngine:
         self.tool_config.computer_use = bool(values.get("computer_use", False))
         self.tool_config.mcp_enabled = values.get("mcp_enabled") is not False
         self.tool_config.onebot_enabled = bool(values.get("onebot_enabled", False))
+        # Propagate the master switch to the runtime so the next `sync_adapters`
+        # actually tears the listeners down instead of merely recording the flag.
+        if getattr(self, "adapter_runtime", None) is not None:
+            self.adapter_runtime.enabled = self.tool_config.onebot_enabled
+        # Defaults for newly-created instances (the panel pre-fills these).
+        registry = getattr(self, "adapters", None)
+        if registry is not None:
+            if "onebot_observe_group" in values:
+                for instance in registry.instances:
+                    instance.observe_group = values["onebot_observe_group"] is not False
+            if values.get("onebot_reverse_host"):
+                self.adapters.default_host = str(values["onebot_reverse_host"])
+            if values.get("onebot_reverse_port"):
+                try:
+                    self.adapters.default_port = int(values["onebot_reverse_port"])
+                except (TypeError, ValueError):
+                    pass
         self.tool_config.minecraft_enabled = bool(values.get("minecraft_enabled", False))
         self.tool_config.minecraft_url = str(values.get("minecraft_url") or "http://127.0.0.1:8765")
         self._screen_watch = bool(values.get("screen_watch", False))

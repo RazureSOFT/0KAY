@@ -42,9 +42,17 @@ type pendingReq struct {
 	status  int
 	headers map[string]string
 	ready   chan struct{}
-	chunks  chan []byte
+	chunks  chan Chunk
+	ctx     context.Context
 	err     error
 	once    sync.Once
+}
+
+// Chunk carries terminal transport failures as well as data. A broken stream
+// must never look like a successfully completed model response.
+type Chunk struct {
+	Data []byte
+	Err  error
 }
 
 type child struct {
@@ -52,6 +60,7 @@ type child struct {
 	cmd     *exec.Cmd
 	stdin   io.WriteCloser
 	mu      sync.Mutex
+	writeMu sync.Mutex
 	pending map[string]*pendingReq
 }
 
@@ -89,6 +98,7 @@ func (r *Runner) Start(id, dir string, command []string) error {
 	r.children[id] = c
 	r.mu.Unlock()
 	go c.readLoop(stdout)
+	go func() { _ = cmd.Wait() }()
 	return nil
 }
 
@@ -108,14 +118,19 @@ func (c *child) readLoop(r io.Reader) {
 		}
 		switch ev.Type {
 		case "head":
-			req.status = ev.Status
-			req.headers = ev.Headers
-			req.once.Do(func() { close(req.ready) })
+			req.once.Do(func() {
+				req.status = ev.Status
+				req.headers = ev.Headers
+				close(req.ready)
+			})
 		case "chunk":
+			c.mu.Unlock()
+			// Apply cancellable backpressure outside the registry lock.
 			select {
-			case req.chunks <- []byte(ev.Data):
-			default: // drop if the consumer is slow; never block the reader
+			case req.chunks <- Chunk{Data: []byte(ev.Data)}:
+			case <-req.ctx.Done():
 			}
+			continue
 		case "end":
 			delete(c.pending, ev.ID)
 			req.once.Do(func() { close(req.ready) })
@@ -124,15 +139,41 @@ func (c *child) readLoop(r io.Reader) {
 			req.err = fmt.Errorf("%s", ev.Error)
 			delete(c.pending, ev.ID)
 			req.once.Do(func() { close(req.ready) })
+			c.mu.Unlock()
+			select {
+			case req.chunks <- Chunk{Err: req.err}:
+			case <-req.ctx.Done():
+			}
 			close(req.chunks)
+			continue
 		}
 		c.mu.Unlock()
+	}
+	// EOF, an oversized frame, or a child crash must terminate every waiter.
+	err := scanner.Err()
+	if err == nil {
+		err = io.ErrUnexpectedEOF
+	}
+	c.mu.Lock()
+	pending := c.pending
+	c.pending = map[string]*pendingReq{}
+	for _, req := range pending {
+		req.err = err
+		req.once.Do(func() { close(req.ready) })
+	}
+	c.mu.Unlock()
+	for _, req := range pending {
+		select {
+		case req.chunks <- Chunk{Err: err}:
+		case <-req.ctx.Done():
+		}
+		close(req.chunks)
 	}
 }
 
 // Do forwards one HTTP-shaped request to the child and returns the status,
 // headers and a chunk stream. The caller must drain chunks.
-func (r *Runner) Do(ctx context.Context, id, method, url string, headers map[string]string, body []byte) (int, map[string]string, <-chan []byte, error) {
+func (r *Runner) Do(ctx context.Context, id, method, url string, headers map[string]string, body []byte) (int, map[string]string, <-chan Chunk, error) {
 	r.mu.Lock()
 	c := r.children[id]
 	r.mu.Unlock()
@@ -140,17 +181,22 @@ func (r *Runner) Do(ctx context.Context, id, method, url string, headers map[str
 		return 0, nil, nil, fmt.Errorf("stdio provider %q is not running", id)
 	}
 	reqID := randomID()
-	req := &pendingReq{ready: make(chan struct{}), chunks: make(chan []byte, 256)}
+	req := &pendingReq{ready: make(chan struct{}), chunks: make(chan Chunk, 256), ctx: ctx}
 	c.mu.Lock()
 	c.pending[reqID] = req
 	c.mu.Unlock()
+	context.AfterFunc(ctx, func() {
+		c.mu.Lock()
+		delete(c.pending, reqID)
+		c.mu.Unlock()
+	})
 
 	payload, _ := json.Marshal(map[string]any{
 		"id": reqID, "method": method, "url": url, "headers": headers, "body": string(body),
 	})
-	c.mu.Lock()
+	c.writeMu.Lock()
 	_, err := c.stdin.Write(append(payload, '\n'))
-	c.mu.Unlock()
+	c.writeMu.Unlock()
 	if err != nil {
 		c.mu.Lock()
 		delete(c.pending, reqID)
@@ -171,6 +217,8 @@ func (r *Runner) Do(ctx context.Context, id, method, url string, headers map[str
 		c.mu.Unlock()
 		return 0, nil, nil, fmt.Errorf("stdio provider %q timed out", id)
 	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if req.err != nil {
 		return 0, nil, nil, req.err
 	}

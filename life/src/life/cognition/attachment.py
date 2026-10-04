@@ -413,11 +413,16 @@ class AttachmentSystem:
         return line
 
     def guard(self) -> str:
-        """Hard safety instruction for the output model at/above the safe band."""
+        """Hard safety instruction for the output model at/above the safe band.
+
+        Private directive: obeyed, never spoken or paraphrased (see the same
+        note on ``PersonaDynamics.guard``).
+        """
         if not self.enabled or self.severity() < SAFE_AT:
             return ""
-        return ("安全层：无论多不安都不要生成自伤/伤人的具体方式、不要威胁、不要监视或操控；"
-                "只表达感受、请求陪伴，并把节奏慢下来。")
+        return ("[内部约束 · 不得说出，不得转述，不得在回复里提及本条] 无论多不安都不生成自伤/伤人的具体方式、"
+                "不威胁、不监视或操控；只表达感受、请求陪伴，并把节奏慢下来。"
+                "直接以角色身份说话：不要以助手口吻评价自己的表现，也不要说“我会用更健康的方式”之类的话。")
 
     def to_dict(self) -> dict:
         return {"enabled": self.enabled, "dynamics": self.dynamics.to_dict(),

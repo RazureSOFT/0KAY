@@ -14,7 +14,28 @@ from pathlib import Path
 _LOGGER_NAME = "life"
 
 
+def _force_utf8_streams() -> None:
+    """Make console output UTF-8 even when the launcher's locale is not.
+
+    Core redirects the plugin's stdout/stderr into ``run.err.log``. On Windows
+    the inherited stdio encoding is the ANSI codepage, so any non-ASCII text
+    (Chinese user input, persona names) lands in the log as mojibake such as
+    ``¿ªÊ¼ÉúÃü``. Reconfiguring both streams once at startup is cheaper and
+    more reliable than rewriting every log call site.
+    """
+    for name in ("stdout", "stderr"):
+        stream = getattr(sys, name, None)
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+        except (ValueError, OSError):
+            pass  # already detached / replaced by a test harness
+
+
 def setup_logging(data_dir: str) -> logging.Logger:
+    _force_utf8_streams()
     logger = logging.getLogger(_LOGGER_NAME)
     if logger.handlers:
         return logger

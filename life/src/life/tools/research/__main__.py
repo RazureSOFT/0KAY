@@ -12,7 +12,49 @@ import argparse
 import importlib.util
 import inspect
 import json
+import os
 from pathlib import Path
+
+
+def _exec_allowed() -> bool:
+    """Whether the ``experiment`` command may execute a script at all.
+
+    ``experiment`` is a deliberate code-execution surface, and nothing in
+    ``src/life`` imports ``tools.research`` — as far as the persona engine is
+    concerned it is dead weight that happens to be able to run arbitrary Python
+    from a model-authored spec. That combination is not worth shipping always-on,
+    so execution now needs an explicit opt-in.
+    """
+    return os.getenv("LIFE_RESEARCH_ALLOW_EXEC", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _exec_roots() -> list:
+    """Directories an experiment script may live in."""
+    roots = []
+    configured = os.getenv("LIFE_RESEARCH_DIR", "").strip()
+    if configured:
+        roots.append(Path(configured).resolve())
+    roots.append((Path.cwd() / "research").resolve())
+    return roots
+
+
+def _assert_exec_allowed(script: Path) -> None:
+    if not _exec_allowed():
+        raise SystemExit(
+            "refusing to execute an experiment script: this is a code-execution "
+            "surface, set LIFE_RESEARCH_ALLOW_EXEC=1 to enable it"
+        )
+    for root in _exec_roots():
+        try:
+            if script.is_relative_to(root):
+                return
+        except (OSError, ValueError):
+            continue
+    allowed = ", ".join(str(root) for root in _exec_roots())
+    raise SystemExit(
+        f"experiment script {script} is outside the allowed directories ({allowed}); "
+        "set LIFE_RESEARCH_DIR to permit it"
+    )
 
 
 def _cmd_paper(args) -> int:
@@ -104,8 +146,10 @@ def _cmd_experiment(args) -> int:
     script_path = Path(script)
     if not script_path.is_absolute():
         script_path = Path.cwd() / script_path
+    script_path = script_path.resolve()
     if not script_path.is_file():
         raise SystemExit(f"experiment script not found: {script_path}")
+    _assert_exec_allowed(script_path)
     module = _load_module(script_path)
     fn = getattr(module, "main", None) or getattr(module, "run", None)
     if not callable(fn):

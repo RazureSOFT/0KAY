@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 import json
 
+from . import lexicon
+
 
 @dataclass
 class EmotionState:
@@ -83,21 +85,21 @@ class EmotionEngine:
         message = str(message or "")
         delta = {"valence": 0.0, "arousal": 0.0, "connection": 0.0, "irritation": 0.0}
 
-        positive_words = ["thanks", "good", "great", "love", "happy", "nice", "awesome",
-                          "谢谢", "喜欢", "好棒", "开心", "哈哈", "可爱", "厉害", "抱抱", "想你"]
-        negative_words = ["bad", "hate", "stupid", "annoying", "terrible", "angry",
-                          "讨厌", "滚开", "生气", "难过", "无语", "委屈"]
-
-        msg_lower = message.lower()
-        for word in positive_words:
-            if word in msg_lower:
-                delta["valence"] += 0.1
-                delta["connection"] += 0.05
-
-        for word in negative_words:
-            if word in msg_lower:
-                delta["valence"] -= 0.1
-                delta["irritation"] += 0.1
+        hits = lexicon.scan(message)
+        delta["valence"] += 0.1 * hits["positive"]
+        delta["connection"] += 0.05 * hits["positive"]
+        delta["valence"] -= 0.1 * hits["negative"]
+        delta["irritation"] += 0.1 * hits["negative"]
+        # A refusal / rebuff is felt as *rejection*: valence down and a knotted
+        # connection, not neutral.  This is the cue that used to be missed.
+        if hits["rejection"]:
+            delta["valence"] -= 0.15 * min(2, hits["rejection"])
+            delta["connection"] -= 0.12 * min(2, hits["rejection"])
+            delta["irritation"] += 0.08 * min(2, hits["rejection"])
+        # "别走 / 留下来" — reassurance re-opens the bond even amid tension.
+        if hits["reassurance"]:
+            delta["connection"] += 0.08 * hits["reassurance"]
+            delta["valence"] += 0.05 * hits["reassurance"]
 
         # Increase arousal with longer messages
         delta["arousal"] += min(0.1, len(message) / 1000)

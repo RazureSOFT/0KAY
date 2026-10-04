@@ -40,6 +40,7 @@ export default defineConfig({
       entry: {
         memory: path.join(root, 'memory.js'),
         companion: path.join(root, 'companion.js'),
+        adapters: path.join(root, 'adapters.js'),
       },
       formats: ['es'],
       fileName: (_format, entryName) => `${entryName}.js`,

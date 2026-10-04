@@ -65,6 +65,34 @@ func TestHandleFilesRoundTrip(t *testing.T) {
 	}
 }
 
+func TestUploadsNeverExecuteAndAcceptExtensionlessNames(t *testing.T) {
+	t.Setenv("UPLOAD_FILE_DIR", t.TempDir())
+	for _, filename := range []string{"README", "LICENSE", "page.html", "image.svg", "notes.txt"} {
+		t.Run(filename, func(t *testing.T) {
+			g := &Gateway{}
+			w := httptest.NewRecorder()
+			g.handleFiles(w, uploadRequest(t, "file", filename, "untrusted attachment"))
+			if w.Code != http.StatusOK {
+				t.Fatal(w.Body.String())
+			}
+			var body struct {
+				URL string `json:"url"`
+			}
+			if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
+			w = httptest.NewRecorder()
+			g.handleFiles(w, httptest.NewRequest(http.MethodGet, body.URL, nil))
+			if w.Code != 200 || w.Body.String() != "untrusted attachment" {
+				t.Fatal(w.Body.String())
+			}
+			if w.Header().Get("Content-Disposition") != "attachment" || !strings.Contains(w.Header().Get("Content-Security-Policy"), "sandbox") {
+				t.Fatal(w.Header())
+			}
+		})
+	}
+}
+
 func TestHandleFilesRejectsTraversal(t *testing.T) {
 	t.Setenv("UPLOAD_FILE_DIR", t.TempDir())
 	g := &Gateway{}
