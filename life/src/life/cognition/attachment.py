@@ -206,7 +206,8 @@ class AttachmentDynamics:
              + p["w_A"] * s["Am"] * (1 - s["Tr"]) + p["w_bias"])
         return _clamp(y)
 
-    def step(self, intimacy: float, uncertainty: float, competitor: float, support: float) -> None:
+    def step(self, intimacy: float, uncertainty: float, competitor: float, support: float,
+             dt: float = DT) -> None:
         p, s = self.p, self.state
         c_eff = _clamp(competitor + p["distort"] * uncertainty, 0.0, 1.5)
         # rumination amplifies perceived uncertainty: the positive feedback that
@@ -228,7 +229,7 @@ class AttachmentDynamics:
                - p["delta_O"] * (1 + 1.5 * support) * s["O"])
         for key, delta in (("A", d_a), ("Am", d_am), ("Tr", d_tr), ("J", d_j),
                            ("X", d_x), ("S", d_s), ("O", d_o)):
-            s[key] = _clamp(s[key] + DT * delta)
+            s[key] = _clamp(s[key] + dt * delta)
 
     def action_probs(self) -> list[float]:
         s = self.state
@@ -343,9 +344,20 @@ class AttachmentSystem:
         self.support = _clamp(self.support - 0.3 * self.depression)
         # loneliness keeps the uncertainty gap open
         self.uncertainty = _clamp(max(self.uncertainty, min(0.9, 0.15 + 0.1 * neglect_days)))
-        steps = max(1, min(600, int(abs(days) / DT) or 1))
-        for _ in range(steps):
-            self.dynamics.step(self.intimacy, self.uncertainty, self.competitor, self.support)
+        # Integrate the ODE over the *real* elapsed time in <=DT chunks.  The
+        # old code ran one full DT (0.1 simulated day) per call regardless of
+        # elapsed time - at the 10s background tick that advanced the simulated
+        # relationship ~864x faster than the wall clock (half-life 115 days
+        # became ~19 real minutes) and let trust decay to machine-epsilon
+        # overnight.  With real-time integration the stated time constants
+        # hold in wall-clock terms.
+        remaining = max(0.0, float(days))
+        steps = 0
+        while remaining > 1e-9 and steps < 600:
+            dt = min(DT, remaining)
+            self.dynamics.step(self.intimacy, self.uncertainty, self.competitor, self.support, dt=dt)
+            remaining -= dt
+            steps += 1
         # decay inputs toward baseline; support persists while asleep
         self.intimacy = max(self.BASE_INTIMACY, self.intimacy - 0.35 * days)
         self.uncertainty = max(self.BASE_UNCERTAINTY, self.uncertainty - 0.15 * days)

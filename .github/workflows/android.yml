@@ -1,0 +1,68 @@
+name: Build Android APK (native Compose)
+
+on:
+  push:
+    branches: [main]
+    paths: ['app/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    name: Build release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+          cache-read-only: false
+
+      - name: Build APK
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Rename artifact
+        run: |
+          mkdir -p out
+          cp app/build/outputs/apk/release/app-release.apk out/0kay-app.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: 0kay-app-apk
+          path: app/out/0kay-app.apk
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.2.0
+          name: 0KAY App v0.2.0 (native Compose)
+          body: |
+            Android APK for the 0KAY companion — rewritten in native Jetpack Compose.
+
+            - 连接自托管 0KAY Core（Token / PIN / 扫码配对）
+            - 聊天（SSE 流式、图片/附件、思考摘要、情绪徽章、TTS 口型）
+            - Live2D 形象（Pixi + Cubism 2/4，动作与表情驱动）
+            - 状态、任务与 Agent 审批/提问收件箱
+            - 供应商/模型、动态设置分区、插件、记忆、技能、通知、用量
+
+            APK 使用调试签名，可直接侧载安装。
+          files: app/out/0kay-app.apk
+          fail_on_unmatched_files: true

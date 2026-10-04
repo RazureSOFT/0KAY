@@ -162,9 +162,15 @@ def state_features(index: int) -> list[float]:
 
 def reward_from_signals(valence_delta: float = 0.0, task_success: float = 0.0, task_failure: float = 0.0,
                         user_engagement: float = 0.0, friction: float = 0.0) -> float:
-    """Reward bound to *outcomes*, not actions: how the interaction actually went."""
-    return float(0.5 + 2.0 * valence_delta + 1.0 * task_success - 1.0 * task_failure
-                 + 0.5 * user_engagement - 1.0 * friction)
+    """Reward bound to *outcomes*, not actions: how the interaction actually went.
+
+    Clamped to [-1.5, 2.5] so a single wild signal cannot blow up the TD
+    target (Q would scale as r/(1-gamma) otherwise); the z-score fusion is
+    scale-invariant, this only keeps the value tables human-readable.
+    """
+    raw = float(0.5 + 2.0 * valence_delta + 1.0 * task_success - 1.0 * task_failure
+                + 0.5 * user_engagement - 1.0 * friction)
+    return max(-1.5, min(2.5, raw))
 
 
 @dataclass

@@ -18,8 +18,14 @@ from pathlib import Path
 def _cmd_paper(args) -> int:
     from .paper import build_paper
 
-    text = Path(args.markdown).read_text(encoding="utf-8-sig")
-    paths = build_paper(text, args.out, title=args.title, stem=args.stem)
+    markdown = Path(args.markdown)
+    text = markdown.read_text(encoding="utf-8-sig")
+    meta = {key: getattr(args, key) for key in ("author", "authors", "affiliation", "abstract", "keywords")
+            if getattr(args, key, "")}
+    paths = build_paper(
+        text, args.out, title=args.title, stem=args.stem,
+        base_dirs=[markdown.resolve().parent], meta=meta or None, pdf=getattr(args, "pdf", False),
+    )
     for kind, path in paths.items():
         print(f"{kind}: {path}")
     return 0
@@ -125,11 +131,17 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="life.tools.research")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    paper = sub.add_parser("paper", help="markdown -> html + docx")
+    paper = sub.add_parser("paper", help="markdown -> html + docx (+ pdf)")
     paper.add_argument("markdown")
     paper.add_argument("-o", "--out", default=".")
     paper.add_argument("--title", default="")
     paper.add_argument("--stem", default="paper")
+    paper.add_argument("--author", default="")
+    paper.add_argument("--authors", default="")
+    paper.add_argument("--affiliation", default="")
+    paper.add_argument("--abstract", default="")
+    paper.add_argument("--keywords", default="")
+    paper.add_argument("--pdf", action="store_true", help="also export PDF via LibreOffice if available")
     paper.set_defaults(func=_cmd_paper)
 
     table = sub.add_parser("table", help="three-line table -> html/tex/docx")

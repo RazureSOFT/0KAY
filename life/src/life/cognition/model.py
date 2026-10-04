@@ -597,14 +597,11 @@ class MultiSystemModel:
         reliability = self.model_reliability()
         # Paper 11: group identification scales the DLPFC-OFC bridge.
         coupling = self.groups.coupling(group_id)
-        # Paper 1: the MD gate is set by how well the current context can be
-        # inferred and how much control is currently needed.
-        lateral, _ = self.coglinks.md_signals(self._last_need)
-        gate = lateral if self.config.use_thalamic_gate else 1.0
+        # Paper 1: the MD gate is derived from the freshly estimated need (the
+        # arbitration below returns it), then lets the MD overwrite the
+        # strategy representation at the CogLinks rate.
         mode, scores, need, capacity = self.arbitrate(state, stakes, fatigue, load, distributions,
                                                       reliability, coupling, extra_need)
-        # Re-derive the gate from the freshly estimated need, then let the MD
-        # overwrite the strategy representation at the CogLinks rate.
         lateral, _ = self.coglinks.md_signals(need)
         gate = lateral if self.config.use_thalamic_gate else 1.0
         eta = self.coglinks.update_strategy(str(state), list(distributions["H"]), lateral)

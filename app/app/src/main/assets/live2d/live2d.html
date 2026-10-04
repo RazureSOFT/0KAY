@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; height: 100%; }
+  #stage { width: 100%; height: 100%; }
+  #mood {
+    position: fixed; left: 10px; top: 10px; padding: 2px 10px; border-radius: 999px;
+    background: rgba(20,27,54,.8); color: #e8ecff; font: 12px/1.6 sans-serif; display: none;
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="mood"></div>
+<script>
+(function () {
+  var q = {};
+  location.search.substring(1).split('&').forEach(function (p) {
+    var i = p.indexOf('='); if (i > 0) q[decodeURIComponent(p.substring(0, i))] = decodeURIComponent(p.substring(i + 1));
+  });
+  var base = (q.base || '').replace(/\/$/, '');
+  var modelUrl = q.model || '';
+
+  function load(src) {
+    return new Promise(function (res, rej) {
+      var s = document.createElement('script');
+      s.src = src; s.onload = res; s.onerror = function () { rej(new Error('load fail: ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  var app, model = null, speaking = false, idleTimer = null;
+  var caps = { motionGroups: [], expressionNames: [], lipSyncParam: 'ParamMouthOpenY' };
+
+  window.onerror = function (m) { var d = document.getElementById('mood'); d.style.display = 'block'; d.textContent = 'Live2D error: ' + m; };
+
+  Promise.all([
+    load(base + '/vendor/pixi.min.js'),
+    load('live2d.core.js'),
+    load(base + '/vendor/live2dcubismcore.min.js'),
+    load('cubism2.min.js'),
+    load('pixi-live2d-display.min.js'),
+  ]).then(function () {
+    if (!window.PIXI || !window.PIXI.live2d) throw new Error('runtime missing');
+    PIXI.live2d.config.sound = false; // TTS is handled natively; avoid double audio
+    app = new PIXI.Application({ view: document.getElementById('stage'), backgroundAlpha: 0, resizeTo: window, autoDensity: true, resolution: Math.min(window.devicePixelRatio || 1, 2) });
+    return PIXI.live2d.Live2DModel.from(modelUrl, { autoInteract: false });
+  }).then(function (m) {
+    model = m;
+    app.stage.addChild(m);
+    fit();
+    window.addEventListener('resize', fit);
+    // capability probe
+    try {
+      var internal = m.internalModel;
+      if (internal.settings && internal.settings.motions) caps.motionGroups = Object.keys(internal.settings.motions);
+      if (internal.settings && internal.settings.expressions) caps.expressionNames = internal.settings.expressions.map(function (e) { return e.name; });
+      var core = internal.coreModel;
+      if (core && core.parameters && typeof core.parameters.ids === 'object') {
+        var ids = core.parameters.ids;
+        var lip = ids.filter(function (id) { return /lip/i.test(id); })[0];
+        if (lip) caps.lipSyncParam = lip;
+      }
+    } catch (e) { /* cubism2 fallback keeps default */ }
+    if (internal && internal.motionManager) startIdle();
+    // eye tracking
+    window.addEventListener('pointermove', function (ev) {
+      if (!model) return;
+      var x = ev.clientX / window.innerWidth * 2 - 1;
+      var y = ev.clientY / window.innerHeight * 2 - 1;
+      model.focus(x * 1.2, y * 1.2);
+    });
+    model.on('hit', function (areas) {
+      if (caps.motionGroups.length) {
+        var g = caps.motionGroups[0];
+        setMood('✦ ' + g);
+        model.motion(g);
+      }
+    });
+    window.__0KAY_LIVE2D_READY__ = true;
+  }).catch(function (e) {
+    var d = document.getElementById('mood'); d.style.display = 'block'; d.textContent = 'Live2D: ' + (e && e.message || e);
+  });
+
+  function fit() {
+    if (!model) return;
+    var scale = Math.min(window.innerWidth / model.width, window.innerHeight * 0.88 / model.height) * 1.0;
+    model.scale.set(scale);
+    model.x = window.innerWidth / 2;
+    model.y = window.innerHeight * 0.55;
+    model.anchor.set(0.5, 0.5);
+  }
+
+  function setMood(text) {
+    var d = document.getElementById('mood');
+    d.style.display = 'block'; d.textContent = text;
+    clearTimeout(setMood._t); setMood._t = setTimeout(function () { d.style.display = 'none'; }, 2500);
+  }
+
+  function startIdle() {
+    clearInterval(idleTimer);
+    idleTimer = setInterval(function () {
+      if (!model || speaking || Math.random() > 0.4) return;
+      if (caps.expressionNames.length && Math.random() > 0.5) {
+        model.expression(Math.floor(Math.random() * caps.expressionNames.length));
+      } else if (caps.motionGroups.length) {
+        var g = caps.motionGroups[Math.floor(Math.random() * caps.motionGroups.length)];
+        model.motion(g, undefined, 2 /*FORCE idle-weight*/);
+      }
+    }, 9000);
+  }
+
+  var mouthOpen = 0;
+  function lipTick() {
+    requestAnimationFrame(lipTick);
+    if (!model || !speaking) return;
+    try {
+      var core = model.internalModel.coreModel;
+      if (core.setParameterValueById) core.setParameterValueById(caps.lipSyncParam, mouthOpen);
+      else if (core.setParamFloat) core.setParamFloat('PARAM_MOUTH_OPEN_Y', mouthOpen);
+    } catch (e) { /* ignore */ }
+  }
+  requestAnimationFrame(lipTick);
+
+  function speak(text) {
+    if (!text) return;
+    speaking = true;
+    // text-driven mouth flap: CN chars 140ms, others 80ms
+    var t = 0;
+    var chunks = [];
+    for (var i = 0; i < text.length; i++) {
+      var dur = /[\u4e00-\u9fff\u3040-\u30ff]/.test(text[i]) ? 140 : 80;
+      chunks.push([t, dur]); t += dur;
+    }
+    var start = Date.now();
+    (function frame() {
+      var el = Date.now() - start;
+      var active = chunks.some(function (c) { return el >= c[0] && el < c[0] + c[1]; });
+      mouthOpen = active ? (0.15 + Math.abs(Math.sin(el / 90)) * 0.85) : 0;
+      if (el < t) requestAnimationFrame(frame);
+      else { mouthOpen = 0; speaking = false; }
+    })();
+  }
+
+  window.__0KAY_LIVE2D__ = {
+    speak: function (t) { speak(String(t || '')); },
+    stop: function () { speaking = false; mouthOpen = 0; },
+    motion: function (group, index) {
+      if (!model) return;
+      try {
+        if (group) model.motion(group, index != null ? Number(index) : undefined, 3);
+        else if (caps.motionGroups.length) model.motion(caps.motionGroups[0], Number(index) || 0, 3);
+      } catch (e) { }
+    },
+    expression: function (i) {
+      if (!model) return;
+      try { model.expression(Number(i) || 0); } catch (e) { }
+    },
+    caps: caps,
+  };
+  window.__0KAY_LIVE2D_READY__ = false;
+})();
+</script>
+</body>
+</html>

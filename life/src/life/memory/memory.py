@@ -1641,10 +1641,42 @@ class MemorySystem:
     @synchronized
     def maintenance(self) -> dict:
         consolidated_before = len(self.long_term.memories)
+        recalc = self.recalculate_strengths()
         self.consolidate()
         index = self.rebuild_index()
         return {"consolidated": len(self.long_term.memories) - consolidated_before, "index": index,
+                "strength_recalculated": recalc,
                 "reflections_pruned": self._prune_reflections(), "backup": self.daily_backup()}
+
+    def recalculate_strengths(self) -> int:
+        """Re-apply the forgetting curve to every live memory.
+
+        Strength used to be recomputed only on recall, so a memory nobody
+        recalled kept its stale strength forever and never reached the
+        archival floor.  A daily pass ages the whole store honestly.
+        """
+        from datetime import timedelta
+        now = datetime.now()
+        changed = 0
+        for memory in self.short_term.memories + self.long_term.memories:
+            days = (now - memory.created_at).total_seconds() / 86400
+            effective_lambda = 0.1
+            strength = memory.importance * math.exp(-effective_lambda * max(0.0, days))
+            strength *= (1 + memory.recall_count * 0.2)
+            fresh = min(1.0, max(0.0, strength))
+            if abs(fresh - float(memory.strength)) >= 0.01:
+                memory.strength = fresh
+                changed += 1
+        if changed:
+            self._sync_dirty_tiers()
+        return changed
+
+    def _sync_dirty_tiers(self) -> None:
+        """Persist tier membership after a bulk strength rewrite."""
+        for memory in self.short_term.memories:
+            self._sync_fact(memory, "short_term")
+        for memory in self.long_term.memories:
+            self._sync_fact(memory, "long_term")
 
     # --- Memory console API (dashboard browse / inspect / curate) ---
     def _tier_of(self, memory: Memory) -> str:

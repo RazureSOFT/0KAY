@@ -95,6 +95,9 @@ try:
         PERSONA_JSON_CONTRACT,
         AttachmentSystem,
         attachment_type_for_persona,
+        TsundereSystem,
+        tsundere_type_for_persona,
+        tsundere_initial_state_for_persona,
         character_options,
         character_spec,
         classify_character,
@@ -338,10 +341,14 @@ class LifeEngine:
             # Pathological attachment ("yandere") dynamics: opt-in, off by
             # default, driven by real interaction signals (see apply settings).
             self.attachment = AttachmentSystem()
+            # Tsundere <-> yandere emotional dynamics: opt-in, off by default,
+            # driven by the same real interaction signals (kindness vs coldness).
+            self.tsundere = TsundereSystem()
         else:
             self.cognition = self.affect = self.language = self.social = self.selfhood = None
             self.relating = None
             self.attachment = None
+            self.tsundere = None
         self._persona_traits = None
         self._persona_digest = None
         # Owner-tuned persona parameters saved from the companion persona page;
@@ -357,6 +364,10 @@ class LifeEngine:
         # when its own switch (or a "yandere" persona) turns it on.
         self._attachment_enabled = False
         self._attachment_restored_enabled = False
+        # Tsundere <-> yandere circuit: same opt-in discipline as attachment.
+        self._tsundere_enabled = False
+        self._tsundere_restored_enabled = False
+        self._tsundere_override: dict = {}
         # Durable-state consolidation switches (default OFF - see SETTING_DEFAULTS).
         self._memory_encode = False
         self._sleep_replay = False
@@ -441,6 +452,8 @@ class LifeEngine:
         "cog_selfhood_enabled": "LIFE_COG_SELFHOOD_ENABLED",
         "cog_attachment_enabled": "LIFE_COG_ATTACHMENT",
         "cog_attachment_type": "LIFE_COG_ATTACHMENT_TYPE",
+        "cog_tsundere_enabled": "LIFE_COG_TSUNDERE",
+        "cog_tsundere_type": "LIFE_COG_TSUNDERE_TYPE",
     }
 
     @staticmethod
@@ -615,6 +628,33 @@ class LifeEngine:
             self.attachment.configure(enabled=attachment_enabled, type_key=attachment_type or "依存型")
             if isinstance(self._attachment_override.get("initial"), dict):
                 self.attachment.seed_state(self._attachment_override["initial"])
+
+        # Tsundere <-> yandere dynamics: same opt-in discipline as attachment.
+        # A persona that reads as tsundere turns it on and picks an archetype;
+        # a circuit restored from disk stays on across a restart; an explicit
+        # setting or an owner-tuned override still wins.
+        tsundere_restored = bool(getattr(self, "_tsundere_restored_enabled", False))
+        self._tsundere_restored_enabled = False
+        tsundere_explicit = (("cog_tsundere_enabled" in (saved or {}))
+                             or bool(os.getenv("LIFE_COG_TSUNDERE")))
+        if tsundere_explicit:
+            tsundere_enabled = self._cognition_enabled and self._cog_bool(get("cog_tsundere_enabled"), False)
+        else:
+            tsundere_enabled = self._cognition_enabled and tsundere_restored
+        tsundere_type = str(get("cog_tsundere_type") or "").strip()
+        persona_tsundere = tsundere_type_for_persona(persona_text) if persona_text else ""
+        if persona_tsundere:
+            tsundere_enabled = self._cognition_enabled
+            tsundere_type = tsundere_type or persona_tsundere
+        self._tsundere_override = self._json_setting(saved, "tsundere_override")
+        if self._tsundere_override.get("type"):
+            tsundere_enabled = self._cognition_enabled
+            tsundere_type = str(self._tsundere_override["type"])
+        self._tsundere_enabled = tsundere_enabled
+        if self.tsundere is not None:
+            self.tsundere.configure(enabled=tsundere_enabled, type_key=tsundere_type or "经典傲娇")
+            if isinstance(self._tsundere_override.get("initial"), dict):
+                self.tsundere.seed_state(self._tsundere_override["initial"])
         return self.cognition_status()
 
     def cognition_status(self) -> dict:
@@ -633,6 +673,7 @@ class LifeEngine:
             "wave4a": self.social.context(),
             "wave4b": self.selfhood.context(),
             "attachment": self.attachment.context() if self.attachment is not None else {"enabled": False},
+            "tsundere": self.tsundere.context() if self.tsundere is not None else {"enabled": False},
             "persona": persona_summary(getattr(self, "_persona_traits", None)),
             "life": self.life_status(),
         }
@@ -804,6 +845,28 @@ class LifeEngine:
         else:
             self.attachment.seed_from_persona(text)
 
+    def _persona_tsundere_type(self, text: str) -> str:
+        """The tsundere archetype a persona implies, or "" (see PERSONA_HINTS)."""
+        return tsundere_type_for_persona(text)
+
+    def _enable_tsundere_from_persona(self, text: str) -> None:
+        """Turn on the tsundere circuit from a tsundere persona."""
+        if self.tsundere is None:
+            return
+        if self._tsundere_override.get("type"):
+            # An owner-tuned override wins over the keyword lexicon.
+            type_key = str(self._tsundere_override["type"])
+        else:
+            type_key = self._persona_tsundere_type(text)
+        if not type_key:
+            return
+        self._tsundere_enabled = self._cognition_enabled
+        self.tsundere.configure(enabled=self._cognition_enabled, type_key=type_key)
+        if isinstance(self._tsundere_override.get("initial"), dict):
+            self.tsundere.seed_state(self._tsundere_override["initial"])
+        else:
+            self.tsundere.seed_from_persona(text)
+
     @staticmethod
     def _json_setting(saved, key: str) -> dict:
         """Read a JSON-valued setting that may be a dict or a JSON string."""
@@ -906,6 +969,7 @@ class LifeEngine:
             traits = self._merge_persona_traits(traits, self._persona_traits_override)
         self._layer_persona_traits(traits)
         self._enable_attachment_from_persona(text)
+        self._enable_tsundere_from_persona(text)
         self._persona_digest = digest
         return persona_summary(self._persona_traits)
 
@@ -942,6 +1006,7 @@ class LifeEngine:
             traits = self._merge_persona_traits(traits, self._persona_traits_override)
         self._layer_persona_traits(traits)
         self._enable_attachment_from_persona(text)
+        self._enable_tsundere_from_persona(text)
         # set last: apply_cognition_settings() invalidates the digest on
         # purpose, so it must be re-stamped here (not before)
         self._persona_digest = digest
@@ -978,6 +1043,7 @@ class LifeEngine:
             att_type = relationship_attachment_type(rel_key)
         else:
             att_type = self._persona_attachment_type(text)
+        tsun_type = self._persona_tsundere_type(text)
         return {
             "source": source,
             "gender": traits.gender or "",
@@ -994,6 +1060,8 @@ class LifeEngine:
                              "evidence": relationship.get("evidence", [])},
             "attachment": {"type": att_type,
                            "initial": initial_state_for_persona(text) if att_type else {}},
+            "tsundere": {"type": tsun_type,
+                         "initial": tsundere_initial_state_for_persona(text) if tsun_type else {}},
             "options": {"character": character_options(),
                         "relationship": relationship_options()},
             "applied": traits.present,
@@ -1002,15 +1070,17 @@ class LifeEngine:
     def persona_apply(self, payload: dict) -> dict:
         """Persist a reviewed persona + owner-tuned parameters, then apply.
 
-        The tuned trait/attachment values override the raw parse of the persona
-        text on every subsequent apply (see `apply_cognition_settings`).
+        The tuned trait/attachment/tsundere values override the raw parse of the
+        persona text on every subsequent apply (see `apply_cognition_settings`).
         """
         payload = payload or {}
         attachment = payload.get("attachment") or {}
+        tsundere = payload.get("tsundere") or {}
         settings = {
             "persona_text": str(payload.get("text") or ""),
             "persona_traits_override": json.dumps(payload.get("traits") or {}, ensure_ascii=False),
             "attachment_override": json.dumps(attachment, ensure_ascii=False),
+            "tsundere_override": json.dumps(tsundere, ensure_ascii=False),
         }
         # The attachment ODE is only for the pathological family (病娇族).  Set
         # the switch both ways so switching a persona to a healthy style (安全/
@@ -1021,6 +1091,12 @@ class LifeEngine:
                 settings["cog_attachment_type"] = str(attachment["type"])
             else:
                 settings["cog_attachment_enabled"] = "0"
+        if "tsundere" in payload:
+            if tsundere.get("type"):
+                settings["cog_tsundere_enabled"] = "1"
+                settings["cog_tsundere_type"] = str(tsundere["type"])
+            else:
+                settings["cog_tsundere_enabled"] = "0"
         result = self.companion.set_settings(settings)
         self.apply_cognition_settings()
         return {"saved": True, "rejected": result.get("rejected", [])}
@@ -1074,7 +1150,8 @@ class LifeEngine:
                                          ("social", self.social, SocialSystem),
                                          ("selfhood", self.selfhood, SelfhoodSystem),
                                          ("relating", self.relating, RelatingSystem),
-                                         ("attachment", self.attachment, AttachmentSystem)):
+                                         ("attachment", self.attachment, AttachmentSystem),
+                                         ("tsundere", self.tsundere, TsundereSystem)):
                 saved = data.get(key)
                 if isinstance(saved, dict) and saved:
                     try:
@@ -1083,6 +1160,8 @@ class LifeEngine:
                         logger.warning("could not restore cognition wave %s: %s", key, error)
             if self.attachment is not None:
                 self._attachment_restored_enabled = bool(self.attachment.enabled)
+            if self.tsundere is not None:
+                self._tsundere_restored_enabled = bool(self.tsundere.enabled)
 
     def _save_state(self):
         """Schedule a snapshot, coalescing bursts inside the debounce window."""
@@ -1165,7 +1244,8 @@ class LifeEngine:
             "last_interaction_at": self._last_interaction_at}
         for key, system in (("affect", self.affect), ("language", self.language),
                             ("social", self.social), ("selfhood", self.selfhood),
-                            ("relating", self.relating), ("attachment", self.attachment)):
+                            ("relating", self.relating), ("attachment", self.attachment),
+                            ("tsundere", self.tsundere)):
             if system is not None:
                 try:
                     payload[key] = system.to_dict()
@@ -1392,6 +1472,24 @@ class LifeEngine:
                                                     stressor=0.2 * distress)
                 except Exception as error:
                     logger.debug("attachment tick failed: %s", error)
+            if self._tsundere_enabled and self.tsundere is not None:
+                try:
+                    friends = len(self.social.ties.friends(0.4)) if self.social is not None else 0
+                    # Mood/load widen the *perceived* rejection, which is how the
+                    # behaviourally-comorbid depression colour shows up here.
+                    self.tsundere.tick(
+                        elapsed / 86400.0,
+                        neglect_days=self.neglect_days(), friends=friends,
+                        sleeping=bool(getattr(self.circadian.state, "is_sleeping", False)),
+                        mood=float(getattr(self.affect.mood, "mood", 0.0) or 0.0),
+                        load=float(getattr(self.affect.hpa, "allostatic_load", 0.0) or 0.0))
+                    # A blackening character is itself under chronic strain.
+                    tsundere_distress = self.tsundere.distress()
+                    if tsundere_distress > 0.5:
+                        self.affect.observe_outcome(success=False, reward=-0.1,
+                                                    stressor=0.2 * tsundere_distress)
+                except Exception as error:
+                    logger.debug("tsundere tick failed: %s", error)
 
     @staticmethod
     def _cognition_urgency(turn) -> float:
@@ -1480,6 +1578,11 @@ class LifeEngine:
             ctx = self.attachment.context()
             if ctx.get("prompt"):
                 rendered += ("依恋基调（你此刻的真实状态，自然地表现出来，不要复述这些词）：\n- "
+                             + str(ctx["prompt"]) + "\n\n")
+        if self._tsundere_enabled and self.tsundere is not None:
+            ctx = self.tsundere.context()
+            if ctx.get("prompt"):
+                rendered += ("傲娇底色（你此刻的真实状态，自然地表现出来，不要复述这些词）：\n- "
                              + str(ctx["prompt"]) + "\n\n")
         return rendered
 
@@ -1708,13 +1811,14 @@ class LifeEngine:
         context = entry.get("context") or self._last_context
         control = entry.get("control") or self._last_control
         # Reward on the *change* in valence this turn produced, not its absolute
-        # level (which would double-count the standing mood).
+        # level (which would double-count the standing mood).  No engagement
+        # term here: the reply's own length is self-assessment, not feedback -
+        # the real engagement signal arrives via _receive_feedback.
         valence = float(getattr(self.emotion.state, "valence", 0.0) or 0.0)
         valence_delta = valence - float(entry.get("valence", valence))
         reward = reward_from_signals(
             valence_delta=valence_delta,
-            task_success=tool_success, task_failure=tool_failure,
-            user_engagement=min(1.0, len(response or "") / 400.0))
+            task_success=tool_success, task_failure=tool_failure)
         # done=True: the turn is terminal, so no successor transition is recorded.
         learned = self.cognition.observe(session_id, context, context, reward, done=True)
         self.affect.observe_outcome(success=tool_failure == 0.0, reward=reward, stressor=tool_failure)
@@ -1939,6 +2043,17 @@ class LifeEngine:
                     mentions_other=self._mentions_other(message))
             except Exception as error:
                 logger.debug("attachment observe failed: %s", error)
+        # Tsundere <-> yandere: the same exchange sets the kindness/rejection drives.
+        if self._tsundere_enabled and self.tsundere is not None:
+            try:
+                self.tsundere.observe_interaction(
+                    valence=float(getattr(self.emotion.state, "valence", 0.0) or 0.0),
+                    sentiment=float(feedback.get("sentiment", 0) or 0),
+                    latency_seconds=float(latency or 0.0),
+                    recalled=bool(feedback.get("recalled")),
+                    mentions_other=self._mentions_other(message))
+            except Exception as error:
+                logger.debug("tsundere observe failed: %s", error)
         # Only *self-defining* moments belong in the autobiography - a routine
         # hello is not who I am.  Clear warmth, clear friction, or a recalled
         # message is.
@@ -2293,6 +2408,13 @@ class LifeEngine:
         if self._attachment_enabled and self.attachment is not None:
             try:
                 guard = self.attachment.guard()
+            except Exception:
+                guard = ""
+            if guard:
+                guidance = guard + "\n" + guidance
+        if self._tsundere_enabled and self.tsundere is not None:
+            try:
+                guard = self.tsundere.guard()
             except Exception:
                 guard = ""
             if guard:
@@ -3318,8 +3440,11 @@ class LifeEngine:
             self.selfhood = SelfhoodSystem()
             self.relating = RelatingSystem()
             self.attachment = AttachmentSystem()
+            self.tsundere = TsundereSystem()
             self._relating_self_digest = None
             self._attachment_enabled = False
+            self._tsundere_enabled = False
+            self._tsundere_override = {}
             result["cognition"] = "rebuilt"
             self.apply_cognition_settings()
         # Runtime state.

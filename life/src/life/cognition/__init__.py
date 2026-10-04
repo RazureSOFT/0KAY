@@ -123,6 +123,15 @@ from .attachment import (
     severity_band as attachment_severity_band,
     type_for_persona as attachment_type_for_persona,
 )
+from .tsundere import (
+    BANDS as TSUNDERE_BANDS,
+    TsundereDynamics,
+    TsundereSystem,
+    TYPES as TSUNDERE_TYPES,
+    initial_state_for_persona as tsundere_initial_state_for_persona,
+    regime as tsundere_regime,
+    type_for_persona as tsundere_type_for_persona,
+)
 from .persona_style import (
     CHARACTER_TYPES,
     RELATIONSHIP_TYPES,
@@ -257,4 +266,12 @@ __all__ = [
     "attachment_severity_band",
     "attachment_type_for_persona",
     "initial_state_for_persona",
+    # --- tsundere <-> yandere emotional dynamics ---
+    "TSUNDERE_BANDS",
+    "TSUNDERE_TYPES",
+    "TsundereDynamics",
+    "TsundereSystem",
+    "tsundere_initial_state_for_persona",
+    "tsundere_regime",
+    "tsundere_type_for_persona",
 ]

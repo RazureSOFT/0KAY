@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import sys
+import time
 from datetime import date
 
 import grpc
@@ -160,7 +161,11 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 # mood/HPA/allostatic load must evolve while it is alone, not
                 # only when a message arrives.
                 await asyncio.to_thread(self.engine._tick_affect)
-                await asyncio.to_thread(self.engine._save_state)
+                # Persist at most once a minute: the full state write is safe
+                # to defer and 6x fewer rewrites of the same JSON.
+                if time.monotonic() - getattr(self, "_last_state_save", 0.0) >= 60.0:
+                    self._last_state_save = time.monotonic()
+                    await asyncio.to_thread(self.engine._save_state)
                 # Daily maintenance is intentionally local and bounded: compact
                 # memories, rebuild indexes, and retain seven JSON snapshots.
                 today = date.today().isoformat()

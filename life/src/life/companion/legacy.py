@@ -86,7 +86,7 @@ class CompanionSystem:
         with self.db() as db:
             db.executescript("""
             CREATE TABLE IF NOT EXISTS relationship_accounts (user_id TEXT PRIMARY KEY, affinity REAL NOT NULL DEFAULT 0, stage TEXT NOT NULL DEFAULT '陌生', interaction TEXT NOT NULL DEFAULT '放松', notes TEXT NOT NULL DEFAULT '', last_seen TEXT NOT NULL DEFAULT '', revision INTEGER NOT NULL DEFAULT 0);
-            CREATE TABLE IF NOT EXISTS relationship_ledger (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, event_key TEXT NOT NULL, delta REAL NOT NULL, reason TEXT NOT NULL, channel TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(user_id,event_key));
+            CREATE TABLE IF NOT EXISTS relationship_ledger (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, event_key TEXT NOT NULL, delta REAL NOT NULL, reason TEXT NOT NULL, channel TEXT NOT NULL, created_at TEXT NOT NULL, by TEXT NOT NULL DEFAULT 'event', UNIQUE(user_id,event_key));
             CREATE TABLE IF NOT EXISTS calendar_candidates (id TEXT PRIMARY KEY, title TEXT NOT NULL, when_text TEXT, detail TEXT, kind TEXT NOT NULL, status TEXT NOT NULL, source_event_id TEXT, created_at TEXT NOT NULL, expires_at TEXT, revision INTEGER NOT NULL DEFAULT 1);
             CREATE TABLE IF NOT EXISTS calendar_events (id TEXT PRIMARY KEY, candidate_id TEXT, title TEXT NOT NULL, start_at TEXT, detail TEXT, kind TEXT NOT NULL, status TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS calendar_rules (id TEXT PRIMARY KEY, event_id TEXT NOT NULL, rule_json TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL);
@@ -139,7 +139,10 @@ class CompanionSystem:
                 db.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", (key,value))
             self._migrate(db)
 
-    DB_SCHEMA_VERSION = 1
+    # Bump when a column is added to an existing table so `_migrate` re-runs on
+    # already-initialised databases (a bare ALTER would otherwise be skipped by
+    # the `current >= DB_SCHEMA_VERSION` guard).  v2: relationship_ledger.by.
+    DB_SCHEMA_VERSION = 2
 
     def _migrate(self, db) -> None:
         """Versioned schema migration; CREATE TABLE IF NOT EXISTS covers new tables."""
@@ -489,10 +492,13 @@ class CompanionSystem:
                         "cog_memory_reconsolidate": "1", "cog_cls_interleave": "1",
                         # wave 4c: pathological attachment (opt-in, off by default)
                         "cog_attachment_enabled": "0", "cog_attachment_type": "依存型",
+                        # wave 4d: tsundere <-> yandere emotional dynamics (opt-in)
+                        "cog_tsundere_enabled": "0", "cog_tsundere_type": "经典傲娇",
                         # Tuned persona parameters saved from the companion persona
                         # page (LLM/lexicon analysis reviewed by the owner).  When
                         # set they override the raw parse of `persona_text`.
                         "persona_traits_override": "{}", "attachment_override": "{}",
+                        "tsundere_override": "{}",
                         # A3 信息不对称性：主人从面板改的亲密度/记忆重要性，对"角色自己"
                         # 是不可见的（角色体验到结果，但不知道是主人改的）。默认开启。
                         "owner_opacity": "1"}
@@ -548,7 +554,9 @@ class CompanionSystem:
         "cog_memory_encode": ("bool", None), "cog_sleep_replay": ("bool", None),
         "cog_memory_reconsolidate": ("bool", None), "cog_cls_interleave": ("bool", None),
         "cog_attachment_enabled": ("bool", None), "cog_attachment_type": ("choice", None),
+        "cog_tsundere_enabled": ("bool", None), "cog_tsundere_type": ("choice", None),
         "persona_traits_override": ("json", None), "attachment_override": ("json", None),
+        "tsundere_override": ("json", None),
         "owner_opacity": ("bool", None),
     }
     LOCALE_CHOICES = ("zh-CN", "en-US")
@@ -557,6 +565,7 @@ class CompanionSystem:
     CHOICE_SETS = {"cog_affect_profile": tuple(_ERQ_PROFILES),
                    "cog_language_framing": tuple(_FRAMING_MODES),
                    "cog_attachment_type": ("独占型", "依存型", "妄想型", "监视型", "自伤型", "排除型"),
+                   "cog_tsundere_type": ("经典傲娇", "高冷傲娇", "暴躁傲娇", "迁就傲娇"),
                    "world_density": ("off", "texture", "full"),
                    "world_fictional": ("real", "fictional")}
     BOOL_VALUES = {"1", "0", "true", "false", "yes", "no", "on", "off"}

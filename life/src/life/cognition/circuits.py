@@ -301,8 +301,12 @@ class Prospection:
 
         ``Q_d(s,a) = sum_s' P(s'|s,a) * [r(s') + gamma * V_{d-1}(s')]`` with
         ``V_d(s) = max_a Q_d(s,a)``, memoised per ``(state, depth)``.  ``framing``
-        scales the constructed value (gain vs loss framing) and the retrospective
-        term is added uniformly.
+        scales the constructed value (gain vs loss framing).
+
+        ``retrospection`` is deliberately *not* added here: it is a single
+        scalar, and a scalar added to every action dies in the z-score fusion
+        (mean subtraction) - it could never influence a decision, only mislead
+        tuning.  It is tracked for telemetry instead.
         """
         memo: dict[tuple[int, int], float] = {}
 
@@ -318,7 +322,6 @@ class Prospection:
             return value
 
         return [framing * self._action_value(state, action, self.horizon, best_value, transition_fn, reward_fn)
-                + self.retrospection
                 for action in range(n_actions)]
 
     def _action_value(self, state: int, action: int, depth: int, best_value, transition_fn, reward_fn) -> float:

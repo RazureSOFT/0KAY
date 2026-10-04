@@ -232,13 +232,31 @@ class TestMoodAttractor(unittest.TestCase):
         self.assertGreater(mood.basin_depth, 0.4)
 
     def test_negative_attractor_pulls_mood_down(self):
+        """The attractor pulls over *clock time*, not per message event.
+
+        A message-driven tick (seconds=0) never ages the state on its own -
+        the pull is a slow continuous force the background clock advances.
+        """
         mood = MoodAttractor()
         for _ in range(10):
             mood.tick(0.0, rumination_input=1.0)
         before = mood.mood
         for _ in range(20):
-            mood.tick(0.0, rumination_input=0.0)
+            mood.tick(0.0, rumination_input=0.0, seconds=3600.0)
         self.assertLess(mood.mood, before)
+
+    def test_message_events_do_not_age_the_slow_terms(self):
+        """Idle-while-chatting must not heal rumination/depth: only the clock does."""
+        mood = MoodAttractor()
+        for _ in range(10):
+            mood.tick(0.0, rumination_input=1.0)
+        self.assertAlmostEqual(mood.rumination, mood.rumination, places=6)
+        self.assertGreater(mood.basin_depth, 0.4)
+        frozen_rumination, frozen_depth = mood.rumination, mood.basin_depth
+        for _ in range(50):
+            mood.tick(0.0)
+        self.assertAlmostEqual(mood.rumination, frozen_rumination, places=6)
+        self.assertAlmostEqual(mood.basin_depth, frozen_depth, places=6)
 
     def test_a_positive_input_can_still_escape_a_shallow_basin(self):
         shallow = MoodAttractor(depth=0.05)

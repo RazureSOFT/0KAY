@@ -165,7 +165,14 @@ class Paper4Prospection(unittest.TestCase):
         framed = Prospection(horizon=3).values(0, transition, reward, 1, framing=2.0)
         self.assertAlmostEqual(framed[0], 2.0 * long[0], places=6)
 
-    def test_retrospection_biases_future_value(self):
+    def test_retrospection_is_telemetry_only(self):
+        """Retrospection is tracked, but must not change the value vector.
+
+        A uniform scalar added to every action dies in the z-score fusion, so
+        adding it to ``values()`` could never influence a decision - only
+        mislead tuning.  The values must therefore be invariant while the
+        scalar itself still accumulates for telemetry.
+        """
         task = ToyTask()
         model = task.model()
         model.N[(0, 0)] = {1: 5.0}
@@ -174,7 +181,8 @@ class Paper4Prospection(unittest.TestCase):
         for _ in range(10):
             prospect.observe_outcome(2.0, 0.0)
         after = prospect.values(0, model._successors, model.reward, 2)
-        self.assertGreater(after[0], before[0])
+        self.assertEqual(after, before)
+        self.assertGreater(abs(prospect.retrospection), 0.0)
 
 
 class Paper6to8Social(unittest.TestCase):

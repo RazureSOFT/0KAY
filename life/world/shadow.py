@@ -27,9 +27,19 @@ def log_event(path, record: dict) -> None:
 
 
 def shadow_record(state: dict, event: dict, valence_delta: float = 0.0, reaction: str = "") -> dict:
+    # prior_inputs snapshot the state the *rule prior* reads, so a weekly
+    # update can train against the same prior the runtime used instead of a
+    # neutralised placeholder.
+    mood = state.get("mood") or {}
+    world = state.get("world") or {}
+    circadian = state.get("circadian") or {}
+    ledger = state.get("ledger") or {}
     return {"x": build_features(state), "template_id": event.get("template_id", ""),
             "intensity": int(event.get("intensity", 1)), "valence_delta": float(valence_delta),
-            "reaction": reaction}
+            "reaction": reaction,
+            "prior_inputs": {"hour": world.get("hour", 12), "sleeping": bool(circadian.get("sleeping")),
+                             "valence": mood.get("valence", 0.0), "irritation": mood.get("irritation", 0.0),
+                             "drama_budget": ledger.get("drama_budget", 1.0)}}
 
 
 def _load_log(path) -> list[dict]:
@@ -55,20 +65,28 @@ def weekly_update(log_path, models_dir: str = "models", world_dir: str = "world"
         index = templates_by_id.get(str(row.get("template_id")))
         if index is None:
             continue
-        state = {"mood": {"valence": 0.0, "irritation": 0.0}, "world": {"hour": 12},
-                 "circadian": {"sleeping": False}, "ledger": {"drama_budget": 1.0}}
-        records.append({"x": row["x"], "prior_inputs": {"hour": 12, "sleeping": False, "valence": 0.0,
-                                                        "irritation": 0.0, "drama_budget": 1.0},
+        prior = row.get("prior_inputs") or {}
+        records.append({"x": row["x"],
+                        "prior_inputs": {"hour": prior.get("hour", 12), "sleeping": bool(prior.get("sleeping", False)),
+                                         "valence": prior.get("valence", 0.0), "irritation": prior.get("irritation", 0.0),
+                                         "drama_budget": prior.get("drama_budget", 1.0)},
                         "template_id": index, "deltas": {"valence": float(row.get("valence_delta", 0.0)),
-                                                          "irritation": 0.0, "energy": 0.0},
+                                                         "irritation": 0.0, "energy": 0.0},
                         "intensity": int(row.get("intensity", 1))})
-    if len(records) < 20:
+    if len(records) < 25:
         return {"updated": False, "reason": "not enough shadow data", "records": len(records)}
+    # Evaluate on a held-out tail (25%, min 5 records): scoring the trained
+    # policy on its own training rows inflated the S4 gates instead of
+    # guarding them.
+    n_eval = max(5, len(records) // 4)
+    train_records, eval_records = records[:-n_eval], records[-n_eval:] if n_eval < len(records) else records
 
-    policy = train_mod.train(records, prior_engine, l2=train_mod.gates.THRESHOLDS["l2"],
+    policy = train_mod.train(train_records, prior_engine, l2=train_mod.gates.THRESHOLDS["l2"],
                              ridge_lambda=train_mod.gates.THRESHOLDS["ridge_lambda"],
                              epochs=epochs, lr=lr)
-    report = train_mod.evaluate(policy, records, cast, templates, prior_engine)
+    report = train_mod.evaluate(policy, eval_records, cast, templates, prior_engine)
     report["source"] = "shadow_weekly"
+    report["train_size"] = len(train_records)
+    report["eval_size"] = len(eval_records)
     promoted = train_mod.promote(policy, report, Path(models_dir))
     return {"updated": True, "promoted": promoted, "records": len(records), "report": report}

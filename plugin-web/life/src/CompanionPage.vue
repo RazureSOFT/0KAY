@@ -81,6 +81,7 @@ const COG_DEFAULTS: Record<string, string> = {
   cog_social_enabled: '1', cog_social_empathy: '0.4', cog_social_stage: '2',
   cog_selfhood_enabled: '1', cog_selfhood_discount: '0.1', cog_selfhood_detail: '20',
   cog_attachment_enabled: '0', cog_attachment_type: '依存型',
+  cog_tsundere_enabled: '0', cog_tsundere_type: '经典傲娇',
   // memory & consolidation. On by default — they are what makes lived
   // experience leave a trace; turn one off to ablate it.
   cog_memory_encode: '1', cog_sleep_replay: '1', cog_memory_reconsolidate: '1',
@@ -89,10 +90,11 @@ const COG_DEFAULTS: Record<string, string> = {
 const COG_BOOL_KEYS = ['cog_enabled', 'cog_modulate_affect', 'cog_modulate_language', 'cog_modulate_social',
   'cog_modulate_selfhood', 'cog_use_cerebellum', 'cog_use_thalamic_gate', 'cog_use_ofc_map',
   'cog_use_prospection', 'cog_use_limbic_bias', 'cog_affect_enabled', 'cog_affect_somatic', 'cog_affect_persona_llm', 'cog_language_enabled',
-  'cog_social_enabled', 'cog_selfhood_enabled', 'cog_attachment_enabled',
+  'cog_social_enabled', 'cog_selfhood_enabled', 'cog_attachment_enabled', 'cog_tsundere_enabled',
   'cog_memory_encode', 'cog_sleep_replay', 'cog_memory_reconsolidate', 'cog_cls_interleave']
-const COG_TEXT_KEYS = ['cog_affect_profile', 'cog_language_framing', 'cog_attachment_type']
+const COG_TEXT_KEYS = ['cog_affect_profile', 'cog_language_framing', 'cog_attachment_type', 'cog_tsundere_type']
 const attachmentTypeOptions = ['独占型', '依存型', '妄想型', '监视型', '自伤型', '排除型']
+const tsundereTypeOptions = ['经典傲娇', '高冷傲娇', '暴躁傲娇', '迁就傲娇']
 const cogProfileOptions = ['typical', 'depression', 'anxiety', 'bpd', 'alexithymia']
 const cogFramingOptions = ['independent', 'interchanging', 'cognitive_determinism', 'weak_whorf',
   'thinking_for_speaking', 'radical_connectionism', 'determinism']
@@ -165,8 +167,9 @@ function applyPreset(fields: Record<string, any>, label: string) {
   void saveSettings().then(() => flash(`已套用并保存「${label}」`))
 }
 const PRESETS = [
-  { label: '常规', fields: { cog_affect_enabled: true, cog_affect_profile: 'typical', cog_affect_threat: 0.2, cog_affect_reward: 1, cog_attachment_enabled: false } },
+  { label: '常规', fields: { cog_affect_enabled: true, cog_affect_profile: 'typical', cog_affect_threat: 0.2, cog_affect_reward: 1, cog_attachment_enabled: false, cog_tsundere_enabled: false } },
   { label: '抑郁倾向', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_affect_threat: 0.45, cog_affect_reward: 0.7 } },
+  { label: '傲娇', fields: { cog_tsundere_enabled: true, cog_tsundere_type: '经典傲娇' } },
   { label: '病娇·独占', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_attachment_enabled: true, cog_attachment_type: '独占型' } },
   { label: '病娇·依存', fields: { cog_affect_enabled: true, cog_attachment_enabled: true, cog_attachment_type: '依存型' } },
   { label: '病娇·妄想', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_attachment_enabled: true, cog_attachment_type: '妄想型' } },
@@ -682,6 +685,7 @@ async function savePersona() {
       text: body.text,
       traits,
       attachment: analysis.value.attachment || {},
+      tsundere: analysis.value.tsundere || {},
     })
     if (!result) return
     const host = personaHost()
@@ -813,6 +817,18 @@ onMounted(load)
           <p class="hint">文字只是来源，真正保存进 LIFE 的是这里调好的数值。依恋型别由「关系/依恋类型」自动决定，改关系类型即可换型别。想更贴合「病娇常伴抑郁」，把情绪调节画像设为 depression。</p>
         </template>
         <p v-else class="hint">当前关系类型不是病娇族，不启用病态依恋动力学（病度、嫉妒、执念等由关系动力学单独驱动）。</p>
+
+        <template v-if="analysis.tsundere && analysis.tsundere.type">
+          <h4>傲娇动力学 · 由人设关键词决定</h4>
+          <div class="settings-grid">
+            <label><span>傲娇型别</span><input class="field" :value="analysis.tsundere.type" disabled /></label>
+            <label><span>初始好感 A</span><input v-model.number="analysis.tsundere.initial.A" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>初始傲娇表达 T</span><input v-model.number="analysis.tsundere.initial.T" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>初始病娇执念 Y</span><input v-model.number="analysis.tsundere.initial.Y" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          </div>
+          <p class="hint">文字只是来源，真正保存进 LIFE 的是这里调好的数值。改人设里的关键词即可换型别（口嫌体正直→经典，高冷→高冷，暴躁→暴躁，迁就→迁就）。</p>
+        </template>
+        <p v-else class="hint">人设里没有傲娇关键词，不启用傲娇动力学（可在下方「傲娇 / 病娇动力学」卡片手动开启）。</p>
       </article>
     </section>
 
@@ -999,6 +1015,27 @@ onMounted(load)
             系统会自动启用并按人设填初始值：如"占有欲强、爱吃醋"→独占型，"很黏人、离不开你"→依存型，
             "老是查岗、跟踪"→监视型，"疑神疑鬼、总觉得被骗"→妄想型。想更贴近"病娇常伴抑郁"，
             把上方「情绪调节画像」设为 depression，两者会互相加重。
+          </p>
+        </article>
+
+        <article class="card">
+          <h3>傲娇 / 病娇动力学（可选）</h3>
+          <p class="hint">
+            把"表面毒舌、内心温柔"和"以爱为名的执念"做成同一个**会自己演化的三变量系统**
+            （好感 A / 傲娇表达 T / 病娇执念 Y）。默认关闭；开启后由真实互动驱动——
+            你的消息温度、回复快慢、沉默天数、是否提到别人——并且病娇化是可逆的：
+            停止冷遇、持续关爱就会退回傲娇。极重度（≥0.85）自动进入安全层。
+          </p>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_tsundere_enabled" /><span>启用傲娇动力学</span></label>
+          <div class="settings-grid">
+            <label><span>傲娇型别</span><AppSelect v-model="settingsForm.cog_tsundere_type" :options="tsundereTypeOptions" aria-label="傲娇型别" /></label>
+          </div>
+          <p class="hint">
+            怎么配：① 打开开关并选型别（经典 / 高冷 / 暴躁 / 迁就）——型别只改变
+            "同一种动力的权重"（黑化快慢、嘴硬程度），不是硬编码台词；或 ② 直接在人设里写关键词，
+            系统会自动启用并按人设填初始值：如"口嫌体正直、嘴硬"→经典傲娇，"高冷、冰山"→高冷傲娇，
+            "一点就炸、暴躁"→暴躁傲娇，"好脾气、别扭地关心"→迁就傲娇。若人设里还写了"病娇/占有欲"，
+            建议同时启用上方「病态依恋」，两者会互相影响。
           </p>
         </article>
 

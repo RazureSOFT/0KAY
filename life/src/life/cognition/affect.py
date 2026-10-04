@@ -210,11 +210,15 @@ class VagalTone:
         return 0.2 + 0.8 * self.tone
 
     def to_dict(self) -> dict:
-        return {"tone": self.tone}
+        return {"tone": self.tone, "recovery": self.recovery,
+                "stress_sensitivity": self.stress_sensitivity, "baseline": self.baseline}
 
     @classmethod
     def from_dict(cls, data: dict) -> "VagalTone":
-        return cls(tone=float(data.get("tone", 0.6)))
+        return cls(tone=float(data.get("tone", 0.6)),
+                   recovery=float(data.get("recovery", 0.5)),
+                   stress_sensitivity=float(data.get("stress_sensitivity", 0.4)),
+                   baseline=float(data.get("baseline", 0.7)))
 
 
 class HPAxis:
@@ -507,13 +511,26 @@ class MoodAttractor:
         self.rumination = _clamp(rumination)
         self.depth = _clamp(depth)
 
-    def tick(self, delta: float, rumination_input: float = 0.0, pull: float = 0.3) -> float:
-        """Update mood; rumination deepens and shifts the negative attractor."""
-        self.rumination = _clamp(self.rumination + 0.5 * max(0.0, rumination_input) - 0.02)
-        self.attractor = _clamp(self.attractor - 0.15 * self.rumination, -1.0, 0.5)
-        self.depth = _clamp(self.depth + 0.05 * self.rumination - 0.005)
-        # restore force toward the attractor, scaled by basin depth
-        self.mood += delta + pull * self.depth * (self.attractor - self.mood)
+    def tick(self, delta: float, rumination_input: float = 0.0, pull: float = 0.3,
+             seconds: float = 0.0) -> float:
+        """Update mood; rumination deepens and shifts the negative attractor.
+
+        Event terms (``delta``, ``rumination_input``) are per call; the slow
+        terms are per *time*: rumination fades at 0.12/h, basin depth heals at
+        0.02/h, and the attractor's restoration force acts continuously (a
+        ~8h time constant at depth 0.4).  ``seconds=0`` (message-driven
+        calls) never ages the state on its own - only the clock does.
+        """
+        hours = max(0.0, float(seconds)) / 3600.0
+        # Ruminative content arrives with events and fades on the clock.
+        self.rumination = _clamp(self.rumination + 0.5 * max(0.0, rumination_input) - 0.12 * hours)
+        # Only ruminative *events* deepen the basin and shift the attractor -
+        # keying these to the standing rumination made every no-op message
+        # deepen the depression basin while nothing was actually happening.
+        self.attractor = _clamp(self.attractor - 0.15 * max(0.0, rumination_input), -1.0, 0.5)
+        self.depth = _clamp(self.depth + 0.05 * max(0.0, rumination_input) - 0.02 * hours)
+        # restore force toward the attractor, scaled by basin depth and elapsed time
+        self.mood += delta + pull * self.depth * (self.attractor - self.mood) * min(1.0, 2.0 * hours)
         self.mood = max(-1.0, min(1.0, self.mood))
         return self.mood
 
@@ -593,10 +610,16 @@ class DepressiveEpisode:
     EPISODE = "episode"
     RELAPSE_WINDOW_DAYS = 60
 
-    def __init__(self, onset: float = 0.55, remission: float = 0.32, sustain: int = 2):
+    def __init__(self, onset: float = 0.55, remission: float = 0.32, sustain: int = 2,
+                 min_sustained_hours: float = 6.0):
         self.onset_threshold = float(onset)
         self.remission_threshold = float(remission)
         self.sustain = max(1, int(sustain))
+        # A transition needs ``sustain`` consecutive assessments *spanning* at
+        # least this much clock time: assessments fire per message as well as
+        # per clock tick, so a burst of messages in one conversation must not
+        # count as "sustained".
+        self.min_sustained_hours = max(0.0, float(min_sustained_hours))
         self.state = self.EUTHYMIC
         self.severity = 0.0
         self.clock_seconds = 0.0
@@ -606,6 +629,8 @@ class DepressiveEpisode:
         self.relapses = 0
         self._low = 0
         self._high = 0
+        self._low_since: float | None = None
+        self._high_since: float | None = None
 
     def assess(self, *, mood: float, anhedonia: float, allostatic_load: float, rumination: float,
                fatigue: float, sleep_debt: float, vagal_tone: float, vulnerability: float = 0.5) -> float:
@@ -626,10 +651,15 @@ class DepressiveEpisode:
     def update(self, dt_seconds: float = 0.0) -> str:
         """Advance the course one assessment; returns the (possibly new) state."""
         self.clock_seconds += max(0.0, float(dt_seconds))
+        span_ok = (self.min_sustained_hours <= 0.0 or
+                   (self.clock_seconds - (self._low_since if self._low_since is not None
+                                          else self.clock_seconds)) >= self.min_sustained_hours * 3600.0)
         if self.severity >= self.onset_threshold:
+            if self._low == 0:
+                self._low_since = self.clock_seconds
             self._low += 1
             self._high = 0
-            if self.state != self.EPISODE and self._low >= self.sustain:
+            if self.state != self.EPISODE and self._low >= self.sustain and span_ok:
                 remitted = self.remission_clock is not None
                 self.state = self.EPISODE
                 self.onset_clock = self.clock_seconds
@@ -637,14 +667,21 @@ class DepressiveEpisode:
                 if remitted and (self.clock_seconds - self.remission_clock) <= self.RELAPSE_WINDOW_DAYS * 86400:
                     self.relapses += 1
         elif self.severity <= self.remission_threshold:
+            if self._high == 0:
+                self._high_since = self.clock_seconds
             self._high += 1
             self._low = 0
-            if self.state in (self.EPISODE, self.SUBTHRESHOLD) and self._high >= self.sustain:
+            high_span_ok = (self.min_sustained_hours <= 0.0 or
+                            (self.clock_seconds - (self._high_since if self._high_since is not None
+                                                   else self.clock_seconds)) >= self.min_sustained_hours * 3600.0)
+            if self.state in (self.EPISODE, self.SUBTHRESHOLD) and self._high >= self.sustain and high_span_ok:
                 self.state = self.EUTHYMIC
                 self.remission_clock = self.clock_seconds
         else:
             self._low = 0
             self._high = 0
+            self._low_since = None
+            self._high_since = None
             if self.state == self.EUTHYMIC:
                 self.state = self.SUBTHRESHOLD
         return self.state
@@ -663,17 +700,20 @@ class DepressiveEpisode:
 
     def to_dict(self) -> dict:
         return {"onset_threshold": self.onset_threshold, "remission_threshold": self.remission_threshold,
-                "sustain": self.sustain, "state": self.state, "severity": self.severity,
+                "sustain": self.sustain, "min_sustained_hours": self.min_sustained_hours,
+                "state": self.state, "severity": self.severity,
                 "clock_seconds": self.clock_seconds, "onset_clock": self.onset_clock,
                 "remission_clock": self.remission_clock, "episodes": self.episodes,
-                "relapses": self.relapses, "low": self._low, "high": self._high}
+                "relapses": self.relapses, "low": self._low, "high": self._high,
+                "low_since": self._low_since, "high_since": self._high_since}
 
     @classmethod
     def from_dict(cls, data: dict) -> "DepressiveEpisode":
         data = data or {}
         obj = cls(onset=float(data.get("onset_threshold", 0.55)),
                   remission=float(data.get("remission_threshold", 0.32)),
-                  sustain=int(data.get("sustain", 2)))
+                  sustain=int(data.get("sustain", 2)),
+                  min_sustained_hours=float(data.get("min_sustained_hours", 6.0)))
         obj.state = str(data.get("state", cls.EUTHYMIC))
         obj.severity = float(data.get("severity", 0.0))
         obj.clock_seconds = float(data.get("clock_seconds", 0.0))
@@ -683,6 +723,8 @@ class DepressiveEpisode:
         obj.relapses = int(data.get("relapses", 0))
         obj._low = int(data.get("low", 0))
         obj._high = int(data.get("high", 0))
+        obj._low_since = data.get("low_since")
+        obj._high_since = data.get("high_since")
         return obj
 
 
@@ -841,6 +883,23 @@ class PADState:
             self.fast[i] += self.fast_rate * (target[i] - self.fast[i])
             self.slow[i] += self.slow_rate * (target[i] - self.slow[i])
         return self.blend
+
+    def decay(self, seconds: float) -> None:
+        """Homeostatic leak toward the neutral baseline (0, 0.5, 0.5).
+
+        Without it the PAD is a leak-free integrator: any run of same-sign
+        deltas saturates it and nothing pulls it back.  The fast component
+        relaxes over ~0.5h, the slow (non-amnesic) mood over ~24h.
+        """
+        hours = max(0.0, float(seconds)) / 3600.0
+        if hours <= 0.0:
+            return
+        fast_rate = 1.0 - math.exp(-hours / 0.5)
+        slow_rate = 1.0 - math.exp(-hours / 24.0)
+        baseline = (0.0, 0.5, 0.5)
+        for index in range(3):
+            self.fast[index] += fast_rate * (baseline[index] - self.fast[index])
+            self.slow[index] += slow_rate * (baseline[index] - self.slow[index])
 
     @property
     def blend(self) -> list[float]:
@@ -1020,6 +1079,11 @@ class AffectConfig:
     baseline_vagal: float = 0.6
     threat_baseline: float = 0.2
     reward_baseline: float = 1.0
+    # interoceptive awareness gain: >1 makes the persona "aware but
+    # inaccurate" (awareness > accuracy), which is what gives
+    # InteroceptiveChannel.bias a positive value for the somatization
+    # amplifier.  1.0 (default) keeps bias structurally at zero.
+    awareness_gain: float = 1.0
 
     def to_dict(self) -> dict:
         return {k: getattr(self, k) for k in self.__dataclass_fields__}
@@ -1188,9 +1252,14 @@ class AffectSystem:
         if self.config.use_neuroimmune:
             self.immune.tick(seconds, self.vagal.tone if self.config.use_vagal else 0.5)
         if self.config.use_mood_attractor:
-            # a low tone + high load exert a slow downward pull even with no event
-            drag = -(0.02 * self.hpa.allostatic_load + 0.01 * (1.0 - self.vagal.tone))
-            self.mood.tick(drag)
+            # a low tone + high load exert a slow downward pull even with no
+            # event; scaled by real elapsed time (per-hour rates), never per
+            # tick, so the loop interval cannot change mood dynamics.
+            hours = max(0.0, seconds) / 3600.0
+            drag = -(0.05 * self.hpa.allostatic_load + 0.025 * (1.0 - self.vagal.tone)) * hours
+            self.mood.tick(drag, seconds=seconds)
+        if self.config.use_pad:
+            self.pad.decay(seconds)
         if self.config.use_somatic:
             self.somatic.tick(seconds)
         self._assess_episode(seconds)
