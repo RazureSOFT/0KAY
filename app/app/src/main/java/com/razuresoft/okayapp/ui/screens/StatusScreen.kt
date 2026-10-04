@@ -25,10 +25,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.razuresoft.okayapp.data.asObject
-import com.razuresoft.okayapp.data.dbl
-import com.razuresoft.okayapp.data.int
-import com.razuresoft.okayapp.data.str
 import com.razuresoft.okayapp.ui.LocalRepo
 import com.razuresoft.okayapp.ui.components.CardBox
 import com.razuresoft.okayapp.ui.components.EmptyBox
@@ -43,6 +39,12 @@ import com.razuresoft.okayapp.ui.theme.Warn
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.serialization.json.JsonObject
+import com.razuresoft.okayapp.data.arr
+import com.razuresoft.okayapp.data.asObject
+import com.razuresoft.okayapp.data.dbl
+import com.razuresoft.okayapp.data.int
+import com.razuresoft.okayapp.data.obj
+import com.razuresoft.okayapp.data.str
 
 @Composable
 fun StatusScreen(nav: NavHostController) {

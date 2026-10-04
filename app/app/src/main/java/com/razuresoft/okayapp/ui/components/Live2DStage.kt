@@ -12,14 +12,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import org.json.JSONObject
 import com.razuresoft.okayapp.data.AppRepo
 import com.razuresoft.okayapp.data.asObject
+import com.razuresoft.okayapp.data.obj
 import com.razuresoft.okayapp.data.str
-import org.json.JSONObject
 
 /**
  * Live2D 舞台：WebView 装载 assets/live2d/live2d.html， PIXI 与 Cubism Core
- * 由 Core 静态托管（/vendor/*），模型来自 /api/settings/live2d 的 model_url。
+ * 由 Core 静态托管（vendor 目录），模型来自 /api/settings/live2d 的 model_url。
  * Compose 通过 evaluateJavascript 驱动 speak / motion / expression。
  */
 @SuppressLint("SetJavaScriptEnabled")

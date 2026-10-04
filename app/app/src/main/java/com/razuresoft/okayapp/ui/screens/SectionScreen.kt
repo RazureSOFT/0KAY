@@ -22,10 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.razuresoft.okayapp.data.asObject
-import com.razuresoft.okayapp.data.jsonOf
-import com.razuresoft.okayapp.data.jsStr
-import com.razuresoft.okayapp.data.str
 import com.razuresoft.okayapp.ui.LocalRepo
 import com.razuresoft.okayapp.ui.components.AppTextField
 import com.razuresoft.okayapp.ui.components.CardBox
@@ -37,6 +33,13 @@ import com.razuresoft.okayapp.ui.components.TonalButton
 import com.razuresoft.okayapp.ui.theme.TextDim
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
+import com.razuresoft.okayapp.data.arr
+import com.razuresoft.okayapp.data.asObject
+import com.razuresoft.okayapp.data.jsNum
+import com.razuresoft.okayapp.data.jsStr
+import com.razuresoft.okayapp.data.jsonOf
+import com.razuresoft.okayapp.data.obj
+import com.razuresoft.okayapp.data.str
 
 /**
  * 通用设置分区表单：字段类型 bool/number/text/select/model/models，

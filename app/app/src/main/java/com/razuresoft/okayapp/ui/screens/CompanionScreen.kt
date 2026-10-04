@@ -24,10 +24,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.razuresoft.okayapp.data.asObject
+import com.razuresoft.okayapp.data.arr
 import com.razuresoft.okayapp.data.bool
 import com.razuresoft.okayapp.data.int
 import com.razuresoft.okayapp.data.jsonOf
 import com.razuresoft.okayapp.data.jsStr
+import com.razuresoft.okayapp.data.obj
 import com.razuresoft.okayapp.data.str
 import com.razuresoft.okayapp.ui.LocalRepo
 import com.razuresoft.okayapp.ui.components.DangerTextButton
@@ -39,6 +41,7 @@ import com.razuresoft.okayapp.ui.theme.TextDim
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 
 /** Live2D 形象管理：启用开关、模型列表、上传、删除、保存选择。 */
 @Composable
@@ -92,7 +95,7 @@ fun CompanionScreen(nav: NavHostController) {
                 val form = okhttp3.MultipartBody.Builder().setType(okhttp3.MultipartBody.FORM)
                 parts.forEach { (field, p) ->
                     val mime = guessMime(p.second)
-                    form.addFormDataPart(field, p.second, okhttp3.RequestBody.create(okhttp3.MediaType.parse(mime), p.first))
+                    form.addFormDataPart(field, p.second, okhttp3.RequestBody.create(mime.toMediaTypeOrNull(), p.first))
                 }
                 form.addFormDataPart("paths", JsonArray(paths.map { jsStr(it) }).toString())
                 val rb = okhttp3.Request.Builder()

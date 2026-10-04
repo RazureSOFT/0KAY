@@ -91,8 +91,8 @@ class OkayApi {
         }
 
     suspend fun getBytes(urlOrPath: String): ByteArray = withContext(Dispatchers.IO) {
-        val rb = Request.Builder().url(absoluteUrl(urlOrPath)).auth().build()
-        client.newCall(rb.build()).execute().use { resp ->
+        val req = Request.Builder().url(absoluteUrl(urlOrPath)).auth().build()
+        client.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) throw ApiException(resp.code, null, "HTTP ${resp.code}")
             resp.body?.bytes() ?: ByteArray(0)
         }

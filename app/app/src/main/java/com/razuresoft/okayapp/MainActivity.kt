@@ -36,7 +36,7 @@ class MainActivity : ComponentActivity() {
 
     /** 0kay://pair?url=...&token=...&pin=... 扫码/深链配对 */
     private fun handlePairingIntent(intent: Intent?) {
-        val text = intent?.dataString() ?: return
+        val text = intent?.dataString ?: return
         val cfg = parsePairing(text) ?: return
         lifecycleScope.launch {
             repo.store.save(cfg.baseUrl, cfg.token, cfg.pin)
