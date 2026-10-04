@@ -20,6 +20,7 @@ import com.razuresoft.okayapp.ui.components.SectionTitle
 import com.razuresoft.okayapp.data.arr
 import com.razuresoft.okayapp.data.asObject
 import com.razuresoft.okayapp.data.str
+import kotlinx.serialization.json.JsonObject
 
 /** 设置：来自 /api/settings/sections 的分区列表（含插件注入的 section）。 */
 @Composable

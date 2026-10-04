@@ -34,6 +34,7 @@ import com.razuresoft.okayapp.ui.theme.Danger
 import com.razuresoft.okayapp.ui.theme.Primary
 import com.razuresoft.okayapp.ui.theme.Success
 import com.razuresoft.okayapp.ui.theme.TextDim
+import com.razuresoft.okayapp.ui.theme.TextFaint
 import com.razuresoft.okayapp.ui.theme.TextMain
 import com.razuresoft.okayapp.ui.theme.Warn
 import kotlinx.coroutines.delay
@@ -78,7 +79,7 @@ fun StatusScreen(nav: NavHostController) {
     val connection = emo.dbl("connection")
     val irritation = emo.dbl("irritation")
     val energy = s.dbl("mentalEnergy").coerceIn(0.0, 1.0)
-    val sleeping = s.str("isSleeping").toBooleanStrictOrNull() ?: s.dbl("isSleeping") > 0.0
+    val sleeping = s.str("isSleeping").toBooleanStrictOrNull() ?: (s.dbl("isSleeping") > 0.0)
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         SectionTitle("情绪")

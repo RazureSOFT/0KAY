@@ -72,7 +72,7 @@ fun ProviderEditScreen(nav: NavHostController, id: String) {
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        AppTextField(pid, { pid = it }, label = "ID（唯一标识）", enabled = isNew)
+        AppTextField(pid, { pid = it }, label = "ID（唯一标识）")
         Spacer(Modifier.height(8.dp))
         AppTextField(name, { name = it }, label = "名称")
         Spacer(Modifier.height(8.dp))
