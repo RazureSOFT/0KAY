@@ -12,6 +12,7 @@ import AboutPanel from '../components/AboutPanel.vue'
 import UpdatesPanel from '../components/UpdatesPanel.vue'
 import ProviderPanel from '../components/ProviderPanel.vue'
 import GeneralPanel from '../components/GeneralPanel.vue'
+import ConnectionPanel from '../components/ConnectionPanel.vue'
 import PersonaPanel from '../components/PersonaPanel.vue'
 import PermissionsPanel from '../components/PermissionsPanel.vue'
 import SecurityPanel from '../components/SecurityPanel.vue'
@@ -350,6 +351,7 @@ function save() {
             <!-- shield / security -->
             <svg v-else-if="tab.icon === 'shield'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.2-2.8 7.6-7 9-4.2-1.4-7-4.8-7-9V6l7-3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <!-- lock / permissions -->
+            <svg v-else-if="tab.icon === 'link'" width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><path d="M14 17h7M17.5 13.5v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </span>
           <span class="nav-label">{{ tabLabel(tab.id) }}</span>
@@ -359,6 +361,9 @@ function save() {
       <section class="settings-content">
         <!-- General -->
         <GeneralPanel v-if="activeTab === 'general'" />
+
+        <!-- Connection (scan-to-pair QR for the mobile app) -->
+        <ConnectionPanel v-else-if="activeTab === 'connection'" />
 
         <!-- Provider (multi-provider) — dedicated panel -->
         <template v-else-if="activeTab === 'provider'">
