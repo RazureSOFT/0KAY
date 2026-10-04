@@ -521,7 +521,23 @@ class MemorySystem:
                 conn.close()
 
     def close(self) -> None:
-        """Compatibility hook: connections are closed at the end of each use."""
+        """Checkpoint the WAL into the main db and remove the sidecar files.
+
+        Connections are already closed at the end of each use; this folds any
+        remaining ``-wal`` data back into ``memory_center.db`` and deletes the
+        ``-wal``/``-shm`` sidecars, so a temp dir housing a MemorySystem is
+        clean by the time its caller removes it.
+        """
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=30.0)
+            try:
+                conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            finally:
+                conn.close()
+        except sqlite3.Error as error:  # pragma: no cover - best effort
+            logger.warning("wal checkpoint failed: %s", error)
+        for suffix in ("-wal", "-shm"):
+            Path(str(self.db_path) + suffix).unlink(missing_ok=True)
 
     def _cleanup_stale_tantivy_dirs(self) -> None:
         """Remove leftover ``tantivy-*`` temp dirs left by older code paths.
