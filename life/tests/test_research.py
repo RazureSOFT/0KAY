@@ -108,7 +108,7 @@ class CliTest(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertEqual(main(["experiment", str(spec), "-o", tmp]), 0)
-            runs = list(Path(tmp).glob("*exp*"))
+            runs = sorted(p for p in Path(tmp).glob("*exp*") if p.is_dir())
             self.assertTrue(runs)
             result = json.loads((runs[0] / "result.json").read_text(encoding="utf-8"))
             self.assertEqual(result, {"seed": 3, "accuracy": 0.9})
