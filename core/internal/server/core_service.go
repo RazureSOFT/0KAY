@@ -586,7 +586,6 @@ func (s *CoreServiceServer) appendTaskJournalLocked(changes []persistedTask, rem
 	}
 }
 
-
 // writeFileSync writes data to path and flushes it to the disk before
 // returning, so a subsequent rename cannot publish a half-written snapshot.
 func writeFileSync(path string, data []byte, perm os.FileMode) error {
