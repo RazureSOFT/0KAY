@@ -16,12 +16,12 @@ func TestSensitiveOperationAliases(t *testing.T) {
 	}
 }
 
-// The agent/tool write endpoints reach the same capabilities (file writes,
-// shell, plugin tools, browser actions, compaction) as the routes already
-// gated, so a configured PIN must cover their writes but not the reads the
-// WebUI polls.
+// The agent/tool write endpoints reach the same capabilities (chat turns with
+// full_access, file writes, mkdir, shell, plugin tools, browser actions,
+// compaction, session/task mutation) as the routes already gated, so a
+// configured PIN must cover their writes but not the reads the WebUI polls.
 func TestSensitiveAgentWritePaths(t *testing.T) {
-	for _, path := range []string{"/api/agent/file", "/api/agent/exec", "/api/run", "/api/tools", "/api/tools/", "/api/tools/call", "/api/agent/browser/action", "/api/agent/compact"} {
+	for _, path := range []string{"/api/agent/file", "/api/agent/exec", "/api/run", "/api/tools", "/api/tools/", "/api/tools/call", "/api/agent/browser/action", "/api/agent/compact", "/api/agent/messages", "/api/agent/workspace", "/api/agent/workspaces", "/api/agent/sessions", "/api/tasks"} {
 		if !sensitiveRequest(httptest.NewRequest("POST", path, nil)) {
 			t.Errorf("PIN gate misses POST %s", path)
 		}

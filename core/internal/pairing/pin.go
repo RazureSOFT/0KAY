@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // loginMaxFailures is how many failed PIN/token attempts a host may make before
@@ -139,23 +141,44 @@ func validPIN(pin string) bool {
 //
 // Enabled/LoginEnabled are pointers so an omitted field keeps the default
 // (on) instead of silently turning protection off on an older file.
+// Algo names the PIN hash scheme: "bcrypt" (salt embedded in Hash) or empty,
+// which means the legacy single SHA-256(salt||pin) format. Legacy records are
+// upgraded in place the first time their PIN verifies.
 type pinFile struct {
 	Salt         string   `json:"salt"`
 	Hash         string   `json:"hash"`
+	Algo         string   `json:"algo,omitempty"`
+	SessionHash  string   `json:"session_hash,omitempty"`
 	Enabled      *bool    `json:"enabled,omitempty"`
 	LoginEnabled *bool    `json:"login_enabled,omitempty"`
 	Pages        []string `json:"pages,omitempty"`
 }
 
+// pinAlgoBcrypt marks a stored PIN hashed with bcrypt.
+const pinAlgoBcrypt = "bcrypt"
+
+// pinBcryptCost is the bcrypt work factor. A six-digit PIN has only a million
+// combinations, so the stored form must be expensive to test offline.
+const pinBcryptCost = 10
+
 func (s *Store) securityPath() string {
 	return filepath.Join(filepath.Dir(s.path), "security.json")
 }
 
-func (s *Store) hashPIN(pin string, salt []byte) []byte {
-	digest := sha256.New()
-	digest.Write(salt)
-	digest.Write([]byte(pin))
-	return digest.Sum(nil)
+// storePINCredentialsLocked replaces the stored PIN hash (bcrypt) and rotates
+// the PIN session token, so cookies minted for an older PIN stop validating.
+// Callers must hold s.mu.
+func (s *Store) storePINCredentialsLocked(pin string) error {
+	if pin == "" {
+		s.pinSalt, s.pinHash, s.pinAlgo, s.pinSessionHash = nil, nil, "", nil
+		return nil
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(pin), pinBcryptCost)
+	if err != nil {
+		return err
+	}
+	s.pinSalt, s.pinAlgo, s.pinHash, s.pinSessionHash = nil, pinAlgoBcrypt, hash, nil
+	return nil
 }
 
 func (s *Store) loadPIN() {
@@ -171,12 +194,26 @@ func (s *Store) loadPIN() {
 	s.pinEnabled = saved.Enabled == nil || *saved.Enabled
 	s.loginEnabled = saved.LoginEnabled == nil || *saved.LoginEnabled
 	s.pinPages = saved.Pages
-	salt, err1 := hex.DecodeString(saved.Salt)
-	hash, err2 := hex.DecodeString(saved.Hash)
-	if err1 != nil || err2 != nil || len(salt) == 0 || len(hash) == 0 {
+	hash, err := hex.DecodeString(saved.Hash)
+	if err != nil || len(hash) == 0 {
 		return
 	}
-	s.pinSalt, s.pinHash = salt, hash
+	if saved.Algo == pinAlgoBcrypt {
+		s.pinAlgo = pinAlgoBcrypt
+		s.pinHash = hash
+	} else {
+		// Legacy record: single SHA-256 over salt||pin.
+		salt, saltErr := hex.DecodeString(saved.Salt)
+		if saltErr != nil || len(salt) == 0 {
+			return
+		}
+		s.pinAlgo, s.pinSalt, s.pinHash = "", salt, hash
+	}
+	if saved.SessionHash != "" {
+		if session, sessionErr := hex.DecodeString(saved.SessionHash); sessionErr == nil {
+			s.pinSessionHash = session
+		}
+	}
 }
 
 // HasPIN reports whether an access PIN is configured.
@@ -238,18 +275,17 @@ func (s *Store) SetSecurityPrefs(pinEnabled, loginEnabled *bool, pages *[]string
 func (s *Store) updateSecurity(pin *string, pinEnabled, loginEnabled *bool, pages *[]string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	var salt, hash []byte
+	var hash []byte
 	if pin != nil {
 		value := strings.TrimSpace(*pin)
 		if value != "" {
 			if !validPIN(value) {
 				return fmt.Errorf("PIN must be exactly %d digits", pinLength)
 			}
-			salt = make([]byte, 16)
-			if _, err := rand.Read(salt); err != nil {
+			var err error
+			if hash, err = bcrypt.GenerateFromPassword([]byte(value), pinBcryptCost); err != nil {
 				return err
 			}
-			hash = s.hashPIN(value, salt)
 		}
 	}
 	if pinEnabled != nil {
@@ -262,7 +298,11 @@ func (s *Store) updateSecurity(pin *string, pinEnabled, loginEnabled *bool, page
 		s.pinPages = append([]string(nil), *pages...)
 	}
 	if pin != nil {
-		s.pinSalt, s.pinHash = salt, hash
+		if strings.TrimSpace(*pin) == "" {
+			s.pinSalt, s.pinHash, s.pinAlgo, s.pinSessionHash = nil, nil, "", nil
+		} else {
+			s.pinSalt, s.pinAlgo, s.pinHash, s.pinSessionHash = nil, pinAlgoBcrypt, hash, nil
+		}
 	}
 	return s.saveSecurityLocked()
 }
@@ -296,17 +336,11 @@ func (s *Store) SetPIN(pin string) error {
 	pin = strings.TrimSpace(pin)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if pin == "" {
-		s.pinSalt, s.pinHash = nil, nil
-	} else {
-		if !validPIN(pin) {
-			return fmt.Errorf("PIN must be exactly %d digits", pinLength)
-		}
-		salt := make([]byte, 16)
-		if _, err := rand.Read(salt); err != nil {
-			return err
-		}
-		s.pinSalt, s.pinHash = salt, s.hashPIN(pin, salt)
+	if pin != "" && !validPIN(pin) {
+		return fmt.Errorf("PIN must be exactly %d digits", pinLength)
+	}
+	if err := s.storePINCredentialsLocked(pin); err != nil {
+		return err
 	}
 	return s.saveSecurityLocked()
 }
@@ -316,6 +350,8 @@ func (s *Store) saveSecurityLocked() error {
 	raw, err := json.Marshal(pinFile{
 		Salt:         hex.EncodeToString(s.pinSalt),
 		Hash:         hex.EncodeToString(s.pinHash),
+		Algo:         s.pinAlgo,
+		SessionHash:  hex.EncodeToString(s.pinSessionHash),
 		Enabled:      &enabled,
 		LoginEnabled: &login,
 		Pages:        s.pinPages,
@@ -341,36 +377,91 @@ func (s *Store) PinValid(pin string) bool {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.verifyPINLocked(pin)
+}
+
+// verifyPINLocked reports whether pin matches the configured PIN under the
+// stored scheme. A legacy single-SHA-256 record that verifies is upgraded to
+// bcrypt immediately, so the weak format disappears on first use. Callers must
+// hold s.mu.
+func (s *Store) verifyPINLocked(pin string) bool {
 	if len(s.pinHash) == 0 {
 		return false
 	}
-	return subtle.ConstantTimeCompare(s.hashPIN(pin, s.pinSalt), s.pinHash) == 1
+	if s.pinAlgo == pinAlgoBcrypt {
+		return bcrypt.CompareHashAndPassword(s.pinHash, []byte(pin)) == nil
+	}
+	// Legacy format: one SHA-256 over salt||pin.
+	digest := sha256.New()
+	digest.Write(s.pinSalt)
+	digest.Write([]byte(pin))
+	if subtle.ConstantTimeCompare(digest.Sum(nil), s.pinHash) != 1 {
+		return false
+	}
+	s.upgradeLegacyPINLocked(pin)
+	return true
 }
 
-// pinCookieValue is the session-cookie value minted by a PIN login.
+// upgradeLegacyPINLocked re-hashes a just-verified legacy PIN with bcrypt and
+// persists the new record. A persistence failure keeps the working legacy
+// record; the upgrade is retried on the next successful verification.
+// Callers must hold s.mu.
+func (s *Store) upgradeLegacyPINLocked(pin string) {
+	if err := s.storePINCredentialsLocked(pin); err != nil {
+		log.Printf("upgrade stored PIN hash: %v", err)
+		return
+	}
+	if err := s.saveSecurityLocked(); err != nil {
+		log.Printf("persist upgraded PIN hash: %v", err)
+	}
+}
+
+// pinCookieValue mints the session-cookie value for a fresh PIN login: a random
+// 32-byte token whose SHA-256 is the only stored trace, so security.json cannot
+// be replayed as a bearer credential. Each login rotates the token; older
+// cookies stop validating. Callers must not hold s.mu.
 func (s *Store) pinCookieValue() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if len(s.pinHash) == 0 {
 		return ""
 	}
-	return "pin:" + hex.EncodeToString(s.pinHash)
+	token := make([]byte, 32)
+	if _, err := rand.Read(token); err != nil {
+		return ""
+	}
+	value := hex.EncodeToString(token)
+	s.pinSessionHash = sessionTokenHash([]byte(value))
+	if err := s.saveSecurityLocked(); err != nil {
+		log.Printf("persist PIN session token: %v", err)
+	}
+	return value
 }
 
 func (s *Store) pinCookieValid(value string) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if len(s.pinHash) == 0 || value == "" {
+	if value == "" {
 		return false
 	}
-	return subtle.ConstantTimeCompare([]byte(value), []byte("pin:"+hex.EncodeToString(s.pinHash))) == 1
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.pinSessionHash) == 0 {
+		return false
+	}
+	return subtle.ConstantTimeCompare(sessionTokenHash([]byte(value)), s.pinSessionHash) == 1
+}
+
+// sessionTokenHash derives the stored form of a PIN session cookie value.
+func sessionTokenHash(token []byte) []byte {
+	digest := sha256.Sum256(token)
+	return digest[:]
 }
 
 // sensitiveRequest reports whether a request targets an action a configured PIN
 // must protect: provider/secret/model writes, update and plugin lifecycle,
 // setting changes, Live2D file writes, and state-changing agent/tool calls
-// (file writes, shell execution, plugin tools, browser actions, compaction).
-// Reads are authenticated by the session
+// (chat turns, file writes, shell execution, plugin tools, browser actions,
+// compaction, session/task mutation, workspace mkdir). Reads are authenticated
+// by the session
 // gate but are not re-confirmed, or the WebUI (which loads settings sections on
 // most pages) would prompt for the PIN on every navigation.
 func sensitiveRequest(r *http.Request) bool {
@@ -395,9 +486,14 @@ func sensitiveRequest(r *http.Request) bool {
 		return !read
 	case path == "/api/agent/file", path == "/api/agent/exec", path == "/api/run",
 		path == "/api/tools", path == "/api/tools/", path == "/api/tools/call",
-		path == "/api/agent/browser/action", path == "/api/agent/compact":
+		path == "/api/agent/browser/action", path == "/api/agent/compact",
+		path == "/api/agent/messages", path == "/api/agent/workspace",
+		path == "/api/agent/workspaces", path == "/api/agent/sessions", path == "/api/tasks":
 		// State-changing agent/tool endpoints. Their GET counterparts are polled
-		// by the WebUI (e.g. /api/tools), so only writes are gated.
+		// by the WebUI (e.g. /api/tools, /api/agent/sessions), so only writes are
+		// gated. POST /api/agent/messages is gated for every turn: it can carry
+		// permission_mode=full_access, and this middleware only sees the path, so
+		// the body cannot be inspected here.
 		return !read
 	case strings.HasPrefix(path, "/api/settings/"):
 		return !read
@@ -426,6 +522,10 @@ func looksLikeBrowser(r *http.Request) bool {
 // or unset, the caller is a trusted *machine* client, uses a machine credential,
 // or presents the PIN header. Browser callers from loopback are not exempt.
 //
+// Bad header-PIN attempts count against the same per-host lockout as the login
+// endpoints, so the header cannot be used to brute-force the PIN outside
+// POST /api/auth/session.
+//
 // The per-page scope in PinPages is a WebUI convenience only: X-0kay-Page is
 // client-asserted and cannot be verified, so it must never relax this server
 // check. Scoped pages are challenged by the frontend route guard instead.
@@ -439,8 +539,16 @@ func (s *Store) pinSatisfied(r *http.Request) bool {
 	if token := bearerToken(r.Header.Get("Authorization")); token != "" && (s.valid(token) || apiToken(token)) {
 		return true
 	}
-	if pin := r.Header.Get(PinHeader); pin != "" && s.PinValid(pin) {
-		return true
+	if pin := r.Header.Get(PinHeader); pin != "" {
+		host := remoteHost(r)
+		if blocked, _ := s.loginBlocked(host); blocked {
+			return false
+		}
+		if s.PinValid(pin) {
+			s.loginSucceeded(host)
+			return true
+		}
+		s.loginFailed(host)
 	}
 	return false
 }

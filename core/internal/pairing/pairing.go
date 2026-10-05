@@ -63,9 +63,16 @@ type Store struct {
 	trusted []*net.IPNet
 	// pinSalt/pinHash hold the optional access PIN. When set, sensitive routes
 	// require the X-0kay-Pin header from callers that are not using a machine
-	// credential (paired-device token or CORE_API_TOKEN).
+	// credential (paired-device token or CORE_API_TOKEN). pinAlgo names the
+	// hash scheme ("" = legacy single SHA-256, upgraded on first successful
+	// verification; "bcrypt" embeds its salt in pinHash).
 	pinSalt []byte
 	pinHash []byte
+	pinAlgo string
+	// pinSessionHash is the SHA-256 of the random cookie token minted by a PIN
+	// login. The raw token is only ever held by the browser; security.json
+	// keeps the hash so it cannot be replayed as a bearer credential.
+	pinSessionHash []byte
 	// pinEnabled/loginEnabled are the owner-facing master switches stored in
 	// security.json (both default to on). Disabling the PIN keeps it stored;
 	// disabling login opens the HTTP API to any caller that can reach Core.
@@ -504,8 +511,13 @@ func (s *Store) HTTP(next http.Handler) http.Handler {
 			return
 		}
 		// Sensitive actions re-confirm the PIN unless the caller is a machine
-		// credential or no PIN is configured.
+		// credential or no PIN is configured. A host that burned its failure
+		// budget (bad header PINs count too) gets the same 429 as the login
+		// endpoints instead of the generic challenge.
 		if sensitiveRequest(r) && !s.pinSatisfied(r) {
+			if s.enforceLoginLimit(w, r) {
+				return
+			}
 			writeErr(w, http.StatusForbidden, "pin_required", "PIN required for this action")
 			return
 		}

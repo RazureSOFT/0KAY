@@ -1,6 +1,9 @@
 package pairing
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -588,5 +591,148 @@ func TestLoginGateCannotBeOpenedInLANMode(t *testing.T) {
 	}
 	if s.LoginEnabled() {
 		t.Fatal("sign-in gate not disabled after explicit opt-in")
+	}
+}
+
+// A security.json written by the old single-SHA-256 format must keep working,
+// and the weak record must be re-hashed with the current scheme as soon as its
+// PIN verifies once.
+func TestLegacyPINHashMigratesOnVerify(t *testing.T) {
+	dir := t.TempDir()
+	salt := []byte("0123456789abcdef")
+	digest := sha256.Sum256(append(append([]byte{}, salt...), []byte("424242")...))
+	legacy, err := json.Marshal(map[string]string{
+		"salt": hex.EncodeToString(salt),
+		"hash": hex.EncodeToString(digest[:]),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "security.json"), legacy, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	s, err := New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.PinValid("424242") {
+		t.Fatal("legacy PIN record rejected")
+	}
+	if s.PinValid("000000") {
+		t.Fatal("wrong PIN accepted against legacy record")
+	}
+
+	// The successful verification must have replaced the stored format.
+	raw, err := os.ReadFile(filepath.Join(dir, "security.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var saved pinFile
+	if err := json.Unmarshal(raw, &saved); err != nil {
+		t.Fatal(err)
+	}
+	if saved.Algo != pinAlgoBcrypt {
+		t.Fatalf("security.json still uses algo %q after a successful verify", saved.Algo)
+	}
+	if saved.Hash == hex.EncodeToString(digest[:]) {
+		t.Fatal("weak legacy hash was left on disk")
+	}
+
+	// The migrated record keeps authenticating, including after a reload.
+	if !s.PinValid("424242") {
+		t.Fatal("PIN rejected after in-place migration")
+	}
+	reloaded, err := New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reloaded.PinValid("424242") {
+		t.Fatal("migrated PIN record not persisted")
+	}
+	if reloaded.PinValid("000000") {
+		t.Fatal("wrong PIN accepted against migrated record")
+	}
+}
+
+// A failed legacy verification must leave the legacy record untouched so the
+// owner can still sign in later.
+func TestLegacyPINHashNotMigratedOnFailure(t *testing.T) {
+	dir := t.TempDir()
+	salt := []byte("0123456789abcdef")
+	digest := sha256.Sum256(append(append([]byte{}, salt...), []byte("424242")...))
+	legacy, err := json.Marshal(map[string]string{
+		"salt": hex.EncodeToString(salt),
+		"hash": hex.EncodeToString(digest[:]),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "security.json"), legacy, 0600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.PinValid("000000") {
+		t.Fatal("wrong PIN accepted")
+	}
+	if s.pinAlgo == pinAlgoBcrypt {
+		t.Fatal("failed verification upgraded the record anyway")
+	}
+}
+
+// Bad X-0kay-Pin attempts must count against the same per-host lockout as the
+// login endpoints, or the header becomes a brute-force channel that bypasses
+// POST /api/auth/session rate limiting.
+func TestPINHeaderBruteForceLockout(t *testing.T) {
+	s, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPIN("424242"); err != nil {
+		t.Fatal(err)
+	}
+	handler := s.HTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+
+	// Sign in once so the request reaches the sensitive-action check the way a
+	// browser tab does (session cookie + browser metadata).
+	login := httptest.NewRequest(http.MethodPost, "/api/auth/session", strings.NewReader(`{"pin":"424242"}`))
+	login.RemoteAddr = "203.0.113.9:5000"
+	lw := httptest.NewRecorder()
+	handler.ServeHTTP(lw, login)
+	if lw.Code != http.StatusOK {
+		t.Fatalf("login: %d %s", lw.Code, lw.Body.String())
+	}
+	cookies := lw.Result().Cookies()
+
+	call := func(pin string) int {
+		req := httptest.NewRequest(http.MethodPost, "/api/providers", strings.NewReader("{}"))
+		req.RemoteAddr = "203.0.113.9:5000"
+		req.Header.Set("Referer", "http://localhost:3000/")
+		for _, c := range cookies {
+			req.AddCookie(c)
+		}
+		if pin != "" {
+			req.Header.Set(PinHeader, pin)
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		return w.Code
+	}
+
+	for i := 0; i < loginMaxFailures-1; i++ {
+		if code := call("000000"); code != http.StatusForbidden {
+			t.Fatalf("bad attempt %d = %d, want 403", i, code)
+		}
+	}
+	// The fifth attempt spends the failure budget and is told to back off.
+	if code := call("000000"); code != http.StatusTooManyRequests {
+		t.Fatalf("final bad attempt = %d, want 429", code)
+	}
+	// Locked out: even the correct PIN is refused until the window expires.
+	if code := call("424242"); code != http.StatusTooManyRequests {
+		t.Fatalf("correct header PIN after lockout = %d, want 429", code)
 	}
 }
