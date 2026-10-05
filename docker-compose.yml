@@ -9,7 +9,8 @@ services:
     ports:
       - "127.0.0.1:3000:80"
     depends_on:
-      - core
+      core:
+        condition: service_healthy
 
   # Core - API Gateway & Plugin Registry
   core:

@@ -63,11 +63,17 @@ Pick **one** of the three options below.
 
 ### Docker Compose
 
+Compose refuses to start until its secrets are set: copy the example env file
+and fill in each token (any long random string works; see
+[docs/security.md](docs/security.md)).
+
 ```bash
-docker-compose up -d      # build and start every service
-docker-compose ps         # check status
-docker-compose logs -f    # follow logs
-docker-compose down       # stop
+cp docs/security-runtime.env.example .env   # then edit .env: set every token
+docker-compose up -d                        # build and start core, mocr, L.I.F.E, webui
+docker-compose --profile agent up -d        # also build and start the agent service
+docker-compose ps                           # check status
+docker-compose logs -f                      # follow logs
+docker-compose down                         # stop
 ```
 
 ### Package manager (recommended)

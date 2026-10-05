@@ -42,7 +42,20 @@ COPY core/data/ui/platform.patch core/data/ui/fluentui.patch core/data/ui/skills
 COPY core/docker-entrypoint.sh /usr/local/bin/0kay-entrypoint
 RUN chmod +x /usr/local/bin/0kay-entrypoint
 
+# Run as an unprivileged user. The entrypoint seeds /app/data (plugin UI
+# bundles, UI patches) and the server keeps providers/settings/pairing state
+# there, so it must be writable. Named volumes seed ownership from the image
+# on first mount; a pre-existing root-owned core-data volume needs a one-time
+# `docker compose exec core chown -R 10001:10001 /app/data` (this image ships
+# no su-exec/gosu for a root-owned-volume bootstrap).
+RUN addgroup -S -g 10001 core \
+    && adduser -S -u 10001 -G core -H -h /app core \
+    && mkdir -p /app/data \
+    && chown -R core:core /app/data
+
 EXPOSE 50051 8080
+
+USER core
 
 ENTRYPOINT ["0kay-entrypoint"]
 CMD ["./core-server"]
