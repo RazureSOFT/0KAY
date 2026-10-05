@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, onScopeDispose } from 'vue'
 import { useWizardStore } from './wizard'
 import { useLifeStore } from './life'
+import { i18n } from '../i18n'
 import { uid } from '../uid'
 
 export interface Message {
@@ -294,8 +295,11 @@ export const useChatStore = defineStore('chat', () => {
     console.error('Chat error:', data.error)
     if (data.error) {
       const target = findOrCreateAssistant(data.request_id)
-      if (target && !target.content) {
-        target.content = `⚠ ${data.error}`
+      if (target) {
+        const line = `⚠ ${data.error}`
+        // Keep the failure visible even when the bubble already streams
+        // content: append a warning line instead of dropping it.
+        target.content = target.content ? `${target.content}\n${line}` : line
       }
     }
     isTyping.value = false
@@ -500,7 +504,15 @@ export const useChatStore = defineStore('chat', () => {
     }
 
     if (!sawDone) {
-      // Stream ended without done — treat as complete
+      // Stream ended without a done/error frame (network drop, proxy timeout):
+      // the reply was cut off. Mark the bubble visibly so the truncated text
+      // does not silently persist to history as if it were complete.
+      const target = findOrCreateAssistant(requestId)
+      const marker = i18n.global.t('chat.interrupted')
+      if (target && !target.content.endsWith(marker)) {
+        target.content = target.content ? `${target.content}\n${marker}` : marker
+      }
+      persistHistory()
       isTyping.value = false
     }
     void speakMessage(requestId)

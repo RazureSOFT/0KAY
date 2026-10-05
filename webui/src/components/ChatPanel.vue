@@ -292,17 +292,17 @@ watch(
           <span class="status-dot"></span>
           {{ t('chat.connected') }}
         </span>
-        <span class="hint">上下文约 {{ chatStore.contextTokens.toLocaleString() }} tokens</span>
-        <button class="context-btn" type="button" :class="{ active: chatStore.voiceEnabled }" :title="chatStore.voiceEnabled ? '关闭语音朗读' : '开启语音朗读（Live2D 口型同步）'" @click="chatStore.setVoiceEnabled(!chatStore.voiceEnabled)">
-          {{ chatStore.voiceEnabled ? '🔊 语音开' : '🔇 语音关' }}
+        <span class="hint">{{ t('chat.contextHint', { n: chatStore.contextTokens.toLocaleString() }) }}</span>
+        <button class="context-btn" type="button" :class="{ active: chatStore.voiceEnabled }" :title="chatStore.voiceEnabled ? t('chat.voiceOnTitle') : t('chat.voiceOffTitle')" @click="chatStore.setVoiceEnabled(!chatStore.voiceEnabled)">
+          {{ chatStore.voiceEnabled ? t('chat.voiceOn') : t('chat.voiceOff') }}
         </button>
         <button class="context-btn" type="button" :disabled="chatStore.messages.length === 0" @click="downloadHistory">
           {{ t('chat.download') }}
         </button>
         <button class="context-btn" type="button" :disabled="chatStore.compacting" @click="chatStore.compactContext">
-          {{ chatStore.compacting ? '整理中…' : '整理上下文' }}
+          {{ chatStore.compacting ? t('chat.compacting') : t('chat.compact') }}
         </button>
-        <button class="context-btn danger" type="button" @click="chatStore.clearMessages">清除对话</button>
+        <button class="context-btn danger" type="button" @click="chatStore.clearMessages">{{ t('chat.clear') }}</button>
       </div>
     </div>
   </div>

@@ -75,7 +75,7 @@ const dateTimeStr = computed(() => {
       <div v-if="message.content" class="content">{{ message.content }}</div>
       <div v-if="!isUser && think" class="think-panel">
         <button class="think-toggle" type="button" @click="thinkOpen = !thinkOpen">
-          <span>THINK</span><span>{{ thinkOpen ? '收起' : '展开' }}</span>
+          <span>THINK</span><span>{{ thinkOpen ? t('chat.thinkCollapse') : t('chat.thinkExpand') }}</span>
         </button>
         <div v-if="thinkOpen" class="think-body">
           <pre v-if="think.raw" class="think-raw">{{ think.raw }}</pre>

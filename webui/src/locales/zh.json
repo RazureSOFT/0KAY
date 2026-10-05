@@ -84,7 +84,18 @@
     "download": "下载聊天记录",
     "exportTitle": "0KAY 对话记录",
     "you": "我",
-    "resizePanel": "拖动或使用方向键调整对话面板宽度"
+    "resizePanel": "拖动或使用方向键调整对话面板宽度",
+    "contextHint": "上下文约 {n} tokens",
+    "voiceOnTitle": "关闭语音朗读",
+    "voiceOffTitle": "开启语音朗读（Live2D 口型同步）",
+    "voiceOn": "🔊 语音开",
+    "voiceOff": "🔇 语音关",
+    "compacting": "整理中…",
+    "compact": "整理上下文",
+    "clear": "清除对话",
+    "thinkExpand": "展开",
+    "thinkCollapse": "收起",
+    "interrupted": "（回复被中断）"
   },
   "status": {
     "title": "角色状态",

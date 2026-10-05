@@ -84,7 +84,18 @@
     "download": "Download history",
     "exportTitle": "0KAY Chat History",
     "you": "You",
-    "resizePanel": "Drag or use arrow keys to resize the chat panel"
+    "resizePanel": "Drag or use arrow keys to resize the chat panel",
+    "contextHint": "Context ~ {n} tokens",
+    "voiceOnTitle": "Disable voice playback",
+    "voiceOffTitle": "Enable voice playback (Live2D lip sync)",
+    "voiceOn": "🔊 Voice on",
+    "voiceOff": "🔇 Voice off",
+    "compacting": "Compacting…",
+    "compact": "Compact context",
+    "clear": "Clear chat",
+    "thinkExpand": "Expand",
+    "thinkCollapse": "Collapse",
+    "interrupted": "(response interrupted)"
   },
   "status": {
     "title": "Character Status",

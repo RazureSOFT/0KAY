@@ -161,13 +161,6 @@
   from { opacity: 0; transform: translateY(14px) scale(0.985); }
   to { opacity: 1; transform: none; }
 }
-.content-card::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 6px;
-  background: linear-gradient(90deg, var(--md-primary), color-mix(in srgb, var(--md-primary) 35%, var(--md-tertiary, #7D5260)));
-}
 .content-card h2 {
   font-size: clamp(20px, 2.1vw, 26px);
   font-weight: 800;
@@ -523,7 +516,6 @@
 .file-input { display: none; }
 
 .content-card.danger { border-color: color-mix(in srgb, var(--md-error) 38%, var(--md-outline-variant)); }
-.content-card.danger::before { background: linear-gradient(90deg, var(--md-error), color-mix(in srgb, var(--md-error) 40%, transparent)); }
 .danger-box {
   display: flex; justify-content: space-between; align-items: center; gap: var(--space-lg);
   padding: var(--space-lg); background: var(--md-error-container);
