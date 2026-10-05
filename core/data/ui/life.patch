@@ -99,7 +99,7 @@
         "order": 66,
         "label": "消息平台",
         "description": "配置 L.I.F.E 的多个聊天平台适配器（反向 WebSocket 服务端）",
-        "module": "/api/plugins/life/ui/adapters.js?v=1"
+        "module": "/api/plugins/life/ui/adapters.js?v=3"
       }
     },
     {
@@ -110,7 +110,7 @@
         "id": "memory",
         "path": "/memory",
         "name": "memory",
-        "module": "/api/plugins/life/ui/memory.js?v=2",
+        "module": "/api/plugins/life/ui/memory.js?v=3",
         "title": "记忆管理台"
       }
     },
@@ -122,7 +122,7 @@
         "id": "companion",
         "path": "/companion",
         "name": "companion",
-        "module": "/api/plugins/life/ui/companion.js?v=2",
+        "module": "/api/plugins/life/ui/companion.js?v=3",
         "title": "陪伴面板"
       }
     },
