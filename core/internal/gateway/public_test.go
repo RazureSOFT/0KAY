@@ -28,6 +28,7 @@ func TestHostAllowedAcceptsConfiguredForms(t *testing.T) {
 			t.Setenv("CORE_ALLOWED_HOSTS", "")
 			t.Setenv("CORE_ALLOWED_ORIGINS", "")
 			t.Setenv(testCase.env, testCase.value)
+			resetEnvCaches()
 			for _, host := range []string{"core.example.com", "core.example.com:8443", "CORE.example.com."} {
 				if !hostAllowed(host) {
 					t.Fatalf("%s=%q rejected Host %q", testCase.env, testCase.value, host)
@@ -40,6 +41,7 @@ func TestHostAllowedAcceptsConfiguredForms(t *testing.T) {
 func TestHostAllowedRejectsUnlistedDottedHost(t *testing.T) {
 	t.Setenv("CORE_ALLOWED_HOSTS", "core.example.com")
 	t.Setenv("CORE_ALLOWED_ORIGINS", "")
+	resetEnvCaches()
 	for _, host := range []string{"evil.example", "attacker.test:8080", ""} {
 		if hostAllowed(host) {
 			t.Fatalf("unlisted host %q accepted", host)
@@ -52,6 +54,7 @@ func TestHostAllowedRejectsUnlistedDottedHost(t *testing.T) {
 func TestHostAllowedAcceptsLiteralsAndSingleLabel(t *testing.T) {
 	t.Setenv("CORE_ALLOWED_HOSTS", "")
 	t.Setenv("CORE_ALLOWED_ORIGINS", "")
+	resetEnvCaches()
 	for _, host := range []string{"localhost", "localhost:3000", "core", "127.0.0.1:8080", "[::1]:8080", "::1"} {
 		if !hostAllowed(host) {
 			t.Fatalf("host %q should always be allowed", host)
@@ -62,6 +65,7 @@ func TestHostAllowedAcceptsLiteralsAndSingleLabel(t *testing.T) {
 func TestHostGuardRejectsRebindingHost(t *testing.T) {
 	t.Setenv("CORE_ALLOWED_HOSTS", "")
 	t.Setenv("CORE_ALLOWED_ORIGINS", "")
+	resetEnvCaches()
 	reached := false
 	handler := hostGuard(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { reached = true }))
 

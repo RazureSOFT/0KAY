@@ -49,7 +49,9 @@ func LoadConfig() *Config {
 	}
 
 	if v := os.Getenv("CORE_HEARTBEAT_TIMEOUT"); v != "" {
-		if d, err := time.ParseDuration(v); err == nil {
+		// A non-positive value would panic the heartbeat ticker and mark every
+		// plugin instantly stale, so it is rejected and the default is kept.
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
 			cfg.HeartbeatTimeout = d
 		}
 	}

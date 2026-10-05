@@ -84,7 +84,7 @@ func main() {
 
 	// Register services
 	pluginSvc := server.NewPluginServiceServer(reg, setStore)
-	coreSvc := server.NewCoreServiceServer(reg)
+	coreSvc := server.NewCoreServiceServer(reg, dataDir)
 	coreSvc.SetProviderStore(provStore)
 
 	corev1.RegisterPluginServiceServer(grpcServer, pluginSvc)
@@ -539,12 +539,22 @@ func loadPluginTokenSecret(dataDir string) ([]byte, error) {
 }
 
 func startHeartbeatChecker(reg *registry.Registry, cfg *config.Config) {
-	ticker := time.NewTicker(cfg.HeartbeatTimeout / 2)
+	// Clamp defensively: a zero/negative HeartbeatTimeout would panic NewTicker
+	// and every plugin would be considered instantly stale.
+	timeout := cfg.HeartbeatTimeout
+	if timeout <= 0 {
+		timeout = 30 * time.Second
+	}
+	period := timeout / 2
+	if period <= 0 {
+		period = 15 * time.Second
+	}
+	ticker := time.NewTicker(period)
 	defer ticker.Stop()
 
 	for range ticker.C {
 		reg.TouchBuiltins()
-		stale := reg.CheckStalePlugins(cfg.HeartbeatTimeout)
+		stale := reg.CheckStalePlugins(timeout)
 		for _, id := range stale {
 			log.Printf("Plugin %s marked as unhealthy (no heartbeat)", id)
 		}

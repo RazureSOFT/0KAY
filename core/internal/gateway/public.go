@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"0kay/core/internal/pairing"
@@ -26,6 +27,11 @@ import (
 func Public(next http.Handler) http.Handler {
 	return hostGuard(corsMiddleware(next))
 }
+
+// The host allow-list comes from the environment, which does not change while
+// the process runs, so it is parsed once and reused on every request. Tests
+// that mutate the environment rebuild the snapshot via resetEnvCaches.
+var allowedHosts = sync.OnceValue(hostAllowedHosts)
 
 // hostAllowedHosts is the set of dotted hostnames a request may present.
 // Single-label names (localhost, docker service names like "core") and IP
@@ -80,6 +86,14 @@ func pairingHostIdentity() string {
 	return ""
 }
 
+// resetEnvCaches forces the cached environment snapshots to be recomputed on
+// the next use. Only tests change the environment after startup.
+func resetEnvCaches() {
+	allowedHosts = sync.OnceValue(hostAllowedHosts)
+	allowedOrigins = sync.OnceValue(allowedOriginList)
+	webuiPorts = sync.OnceValue(allowedWebuiPorts)
+}
+
 // hostGuard rejects requests whose Host header cannot belong to this deployment.
 func hostGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +120,7 @@ func hostAllowed(host string) bool {
 	if net.ParseIP(hostname) != nil || !strings.Contains(hostname, ".") {
 		return true
 	}
-	return hostAllowedHosts()[hostname]
+	return allowedHosts()[hostname]
 }
 
 func corsMiddleware(next http.Handler) http.Handler {

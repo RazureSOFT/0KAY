@@ -1037,6 +1037,10 @@ func (g *Gateway) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		log.Printf("WebSocket upgrade failed: %v", err)
 		return
 	}
+	// Bound what a single frame may carry and how long a read may stall: the
+	// chat frames are small JSON documents, so anything larger (or a client
+	// that goes silent) is abuse or a dead connection.
+	conn.SetReadLimit(wsReadLimit)
 
 	// The context must outlive this handler: net/http cancels r.Context() as
 	// soon as ServeHTTP returns, even for a hijacked connection, so deriving
@@ -1071,6 +1075,17 @@ func (g *Gateway) forgetSession(session *Session) {
 	g.mu.Unlock()
 }
 
+// WebSocket limits: a read may stall at most wsReadWait before the connection
+// is treated as dead, every protocol-level pong extends that window, the write
+// pump pings every wsPingPeriod so idle-but-alive clients are kept, and one
+// frame may carry at most wsReadLimit bytes.
+const (
+	wsReadLimit  = 1 << 20
+	wsReadWait   = 60 * time.Second
+	wsWriteWait  = 30 * time.Second
+	wsPingPeriod = 30 * time.Second
+)
+
 func (s *Session) readPump(g *Gateway) {
 	defer func() {
 		s.shutdown()
@@ -1079,7 +1094,16 @@ func (s *Session) readPump(g *Gateway) {
 		s.Registry = nil
 	}()
 
+	// Compliant clients answer the pump's pings automatically; the pong handler
+	// keeps such an idle-but-alive connection open while a silent or hostile
+	// peer hits the deadline and is dropped.
+	_ = s.Conn.SetReadDeadline(time.Now().Add(wsReadWait))
+	s.Conn.SetPongHandler(func(string) error {
+		return s.Conn.SetReadDeadline(time.Now().Add(wsReadWait))
+	})
+
 	for {
+		_ = s.Conn.SetReadDeadline(time.Now().Add(wsReadWait))
 		_, message, err := s.Conn.ReadMessage()
 		if err != nil {
 			break
@@ -1200,11 +1224,21 @@ func (s *Session) writePump() {
 		s.Conn.Close()
 	}()
 
+	ticker := time.NewTicker(wsPingPeriod)
+	defer ticker.Stop()
 	for {
 		select {
 		case message := <-s.Send:
-			_ = s.Conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
+			_ = s.Conn.SetWriteDeadline(time.Now().Add(wsWriteWait))
 			if err := s.Conn.WriteMessage(websocket.TextMessage, message); err != nil {
+				return
+			}
+		case <-ticker.C:
+			// Protocol-level ping: browsers and ws clients answer automatically
+			// and the readPump pong handler extends the read deadline, so an
+			// idle-but-alive chat tab is not dropped.
+			_ = s.Conn.SetWriteDeadline(time.Now().Add(wsWriteWait))
+			if err := s.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
 		case <-s.Done:

@@ -6,6 +6,7 @@ import (
 )
 
 func TestOriginBoundary(t *testing.T) {
+	resetEnvCaches()
 	request := httptest.NewRequest("GET", "http://127.0.0.1:8080/api/providers", nil)
 	request.Header.Set("Origin", "https://untrusted.example")
 	if allowedOrigin(request) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"log"
 	"os"
@@ -44,10 +45,13 @@ type CoreServiceServer struct {
 	taskHistoryPath  string
 	callbackMu       sync.Mutex
 	callbacks        map[string]taskCallback
-	taskFingerprints map[string]string
+	taskFingerprints map[string]uint64
 	taskRevision     uint64
 	taskChanges      map[string]uint64
 	taskRemoved      map[string]uint64
+	// taskDirty records ledger ids mutated (or evicted) since the last persist
+	// so persistTasksLocked only re-marshals rows a mutation actually touched.
+	taskDirty map[string]struct{}
 	// lastJournalSync throttles fsync on the task journal: intermediate
 	// running/pending updates are batched, terminal states are always synced.
 	lastJournalSync time.Time
@@ -55,6 +59,9 @@ type CoreServiceServer struct {
 	// sessions: session_id -> conversation history
 	sessionMu sync.RWMutex
 	sessions  map[string][]*corev1.ChatMessage
+	// sessionActivity tracks the last append per session so a client-controlled
+	// session_id cannot grow the map without bound (maxChatSessions LRU cap).
+	sessionActivity map[string]time.Time
 
 	// usage tracker
 	usageMu sync.Mutex
@@ -117,7 +124,6 @@ type TaskInfo struct {
 	Error     string
 	StartedAt time.Time
 	EndedAt   time.Time
-	CancelFn  context.CancelFunc
 	SessionID string
 	Kind      string
 	ParentID  string
@@ -313,19 +319,29 @@ func lastN(in []UsageRecord, n int) []UsageRecord {
 	return in[len(in)-n:]
 }
 
-// NewCoreServiceServer creates a new CoreServiceServer.
-func NewCoreServiceServer(reg *registry.Registry) *CoreServiceServer {
+// NewCoreServiceServer creates a new CoreServiceServer. The optional dataDir
+// roots the task-ledger and usage snapshots (CORE_DATA_DIR); it defaults to
+// the legacy CWD-relative "data" so existing callers (tests) are unchanged.
+// TASKS_PATH / USAGE_PATH env overrides still win.
+func NewCoreServiceServer(reg *registry.Registry, dataDir ...string) *CoreServiceServer {
 	mocrAddr := os.Getenv("MOCR_ADDRESS")
 	if mocrAddr == "" {
 		mocrAddr = "localhost:50052"
 	}
+	// Resolve the root here rather than keeping a CWD-relative default: with
+	// CORE_DATA_DIR set elsewhere, the split silently read another instance's
+	// task history and scattered callbacks into the wrong directory.
+	root := "data"
+	if len(dataDir) > 0 && dataDir[0] != "" {
+		root = dataDir[0]
+	}
 	usagePath := os.Getenv("USAGE_PATH")
 	if usagePath == "" {
-		usagePath = "data/usage.json"
+		usagePath = filepath.Join(root, "usage.json")
 	}
 	taskPath := os.Getenv("TASKS_PATH")
 	if taskPath == "" {
-		taskPath = "data/tasks.json"
+		taskPath = filepath.Join(root, "tasks.json")
 	}
 	// Task history is restored from the on-disk snapshot so conversations and
 	// their tool steps survive a Core restart. Fields are bounded on write (see
@@ -366,6 +382,7 @@ func NewCoreServiceServer(reg *registry.Registry) *CoreServiceServer {
 		},
 	}
 	instance.replayTaskJournal()
+	instance.seedTaskFingerprints()
 	instance.loadCallbacks()
 	for _, task := range tasks {
 		if task.Kind == "agent" && task.State == "failed" && task.Error == "Core restarted before execution was acknowledged" {
@@ -379,6 +396,9 @@ func NewCoreServiceServer(reg *registry.Registry) *CoreServiceServer {
 		if (task.Kind == "agent" || task.Kind == "") && !strings.HasPrefix(task.SessionID, "agent-session:") {
 			task.SessionID = instance.EnsureAgentSession(task.SessionID, task.CallerID, task.Prompt)
 			task.Kind = "agent"
+			instance.mu.Lock()
+			instance.markTaskDirtyLocked(task.TaskID)
+			instance.mu.Unlock()
 		}
 	}
 	return instance
@@ -485,84 +505,164 @@ func (s *CoreServiceServer) pruneFinishedLocked() {
 		}
 		finished = append(finished, t)
 	}
-	if len(finished) <= persistedNonSessionLimit {
+	if len(finished) > persistedNonSessionLimit {
+		sortTasksNewest(finished)
+		for _, t := range finished[persistedNonSessionLimit:] {
+			delete(s.tasks, t.TaskID)
+			s.markTaskDirtyLocked(t.TaskID)
+		}
+	}
+	s.pruneSessionsLocked()
+}
+
+// pruneSessionsLocked caps the in-memory session ledger at
+// persistedSessionLimit agent_session rows (the snapshot cap), evicting the
+// oldest deleted sessions first, then the oldest archived ones. Live sessions
+// and in-flight work are never evicted. Callers must hold s.mu.
+func (s *CoreServiceServer) pruneSessionsLocked() {
+	total := 0
+	candidates := []*TaskInfo{}
+	for _, t := range s.tasks {
+		if t.Kind != "agent_session" {
+			continue
+		}
+		total++
+		if t.State == "deleted" || t.State == "archived" {
+			candidates = append(candidates, t)
+		}
+	}
+	if total <= persistedSessionLimit {
 		return
 	}
-	sortTasksNewest(finished)
-	for _, t := range finished[persistedNonSessionLimit:] {
+	sort.Slice(candidates, func(i, j int) bool {
+		deleting := candidates[i].State == "deleted"
+		if deleting != (candidates[j].State == "deleted") {
+			return deleting
+		}
+		return candidates[i].StartedAt.Before(candidates[j].StartedAt)
+	})
+	for _, t := range candidates {
+		if total <= persistedSessionLimit {
+			break
+		}
 		delete(s.tasks, t.TaskID)
+		s.markTaskDirtyLocked(t.TaskID)
+		total--
+	}
+}
+
+// markTaskDirtyLocked queues a ledger id for the next persistTasksLocked call.
+// An id no longer present in s.tasks is treated as a removal. Callers must hold
+// s.mu (or run before the server is exposed).
+func (s *CoreServiceServer) markTaskDirtyLocked(id string) {
+	if s.taskDirty == nil {
+		s.taskDirty = map[string]struct{}{}
+	}
+	s.taskDirty[id] = struct{}{}
+}
+
+// taskFingerprint summarizes one persisted task row so change detection does
+// not retain the full marshalled row for every task in memory.
+func taskFingerprint(raw []byte) uint64 {
+	hasher := fnv.New64a()
+	hasher.Write(raw)
+	return hasher.Sum64()
+}
+
+// seedTaskFingerprints records the fingerprint of every restored ledger row so
+// the first mutation in this process journals only what actually changed, while
+// evictions of restored rows are still recognised (and journalled) as removals.
+// Runs during startup, before the server is exposed.
+func (s *CoreServiceServer) seedTaskFingerprints() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.taskFingerprints = make(map[string]uint64, len(s.tasks))
+	for id, t := range s.tasks {
+		raw, _ := json.Marshal(persistedFrom(t))
+		s.taskFingerprints[id] = taskFingerprint(raw)
 	}
 }
 
 // persistTasksLocked advances the in-memory change tracking TaskDelta relies on
-// and appends the delta to the durable journal. Fields are clipped (persistedFrom)
-// so the ledger stays small even while a tool streams large results.
+// and appends the delta to the durable journal. Only rows a mutation marked
+// dirty (markTaskDirtyLocked) are re-examined, so a task update no longer
+// re-marshals the whole ledger under the write lock. Fields are clipped
+// (persistedFrom) so the ledger stays small even while a tool streams large
+// results.
 func (s *CoreServiceServer) persistTasksLocked() {
 	s.pruneFinishedLocked()
-	items := make([]persistedTask, 0, len(s.tasks))
-	for _, t := range s.tasks {
-		items = append(items, persistedFrom(t))
-	}
-	if s.taskFingerprints == nil {
-		s.taskFingerprints = map[string]string{}
-	}
-	changes := []persistedTask{}
-	for _, item := range items {
-		raw, _ := json.Marshal(item)
-		if s.taskFingerprints[item.TaskID] != string(raw) {
-			changes = append(changes, item)
-		}
-	}
-	removed := []string{}
-	for id := range s.taskFingerprints {
-		if s.tasks[id] == nil {
-			removed = append(removed, id)
-		}
-	}
-	if len(changes) == 0 && len(removed) == 0 {
+	if len(s.taskDirty) == 0 {
 		return
 	}
-	if s.taskChanges == nil {
-		s.taskChanges = map[string]uint64{}
-		s.taskRemoved = map[string]uint64{}
+	if s.taskFingerprints == nil {
+		s.taskFingerprints = map[string]uint64{}
 	}
-	s.taskRevision++
-	for _, item := range changes {
-		s.taskChanges[item.TaskID] = s.taskRevision
-		if item.Kind == "agent_session" && item.State == "deleted" {
-			removed = append(removed, item.TaskID)
+	changes := []persistedTask{}
+	removed := []string{}
+	fingerprints := make(map[string]uint64, len(s.taskDirty))
+	for id := range s.taskDirty {
+		task := s.tasks[id]
+		if task == nil {
+			if _, tracked := s.taskFingerprints[id]; tracked {
+				removed = append(removed, id)
+			}
+			continue
 		}
-	}
-	for _, id := range removed {
-		s.taskRemoved[id] = s.taskRevision
-		delete(s.taskChanges, id)
-	}
-	// Bound the removal set: a cursor older than the retained window cannot be
-	// served a correct delta anyway (it will reset), so keep only the newest
-	// resetTaskLimit revisions of removals instead of growing forever.
-	if len(s.taskRemoved) > resetTaskLimit {
-		cutoff := uint64(0)
-		if s.taskRevision > resetTaskLimit {
-			cutoff = s.taskRevision - resetTaskLimit
-		}
-		for id, version := range s.taskRemoved {
-			if version <= cutoff {
-				delete(s.taskRemoved, id)
+		item := persistedFrom(task)
+		raw, _ := json.Marshal(item)
+		fingerprint := taskFingerprint(raw)
+		fingerprints[id] = fingerprint
+		if s.taskFingerprints[id] != fingerprint {
+			changes = append(changes, item)
+			if item.Kind == "agent_session" && item.State == "deleted" {
+				removed = append(removed, id)
 			}
 		}
 	}
-	if s.taskHistoryPath != "" {
-		s.appendTaskJournalLocked(changes, removed)
+	if len(changes) > 0 || len(removed) > 0 {
+		if s.taskChanges == nil {
+			s.taskChanges = map[string]uint64{}
+			s.taskRemoved = map[string]uint64{}
+		}
+		s.taskRevision++
+		for _, item := range changes {
+			s.taskChanges[item.TaskID] = s.taskRevision
+			if item.Kind == "agent_session" && item.State == "deleted" {
+				removed = append(removed, item.TaskID)
+			}
+		}
+		for _, id := range removed {
+			s.taskRemoved[id] = s.taskRevision
+			delete(s.taskChanges, id)
+		}
+		// Bound the removal set: a cursor older than the retained window cannot be
+		// served a correct delta anyway (it will reset), so keep only the newest
+		// resetTaskLimit revisions of removals instead of growing forever.
+		if len(s.taskRemoved) > resetTaskLimit {
+			cutoff := uint64(0)
+			if s.taskRevision > resetTaskLimit {
+				cutoff = s.taskRevision - resetTaskLimit
+			}
+			for id, version := range s.taskRemoved {
+				if version <= cutoff {
+					delete(s.taskRemoved, id)
+				}
+			}
+		}
+		if s.taskHistoryPath != "" {
+			s.appendTaskJournalLocked(changes, removed)
+		}
 	}
-	for _, item := range changes {
-		raw, _ := json.Marshal(item)
-		s.taskFingerprints[item.TaskID] = string(raw)
+	for id, fingerprint := range fingerprints {
+		s.taskFingerprints[id] = fingerprint
 	}
-	for _, id := range removed {
+	for id := range s.taskDirty {
 		if s.tasks[id] == nil {
+			// Evicted from the ledger: stop tracking its fingerprint.
 			delete(s.taskFingerprints, id)
 		}
 	}
+	s.taskDirty = nil
 }
 
 // appendTaskJournalLocked appends the delta to the journal and periodically
@@ -726,6 +826,12 @@ func (s *CoreServiceServer) SessionMessages(sessionID string) []*corev1.ChatMess
 	return append([]*corev1.ChatMessage{}, s.sessions[sessionID]...)
 }
 
+// maxChatSessions bounds how many distinct chat session ids the in-memory
+// history map retains. session_id is client-controlled (CallMocr bodies), so
+// without a cap a stream of random ids grows the map without bound; the least
+// recently active session is evicted once the cap is reached.
+const maxChatSessions = 500
+
 func (s *CoreServiceServer) appendSession(sessionID string, msgs ...*corev1.ChatMessage) {
 	if sessionID == "" {
 		return
@@ -735,6 +841,29 @@ func (s *CoreServiceServer) appendSession(sessionID string, msgs ...*corev1.Chat
 	s.sessions[sessionID] = append(s.sessions[sessionID], msgs...)
 	if len(s.sessions[sessionID]) > 200 {
 		s.sessions[sessionID] = s.sessions[sessionID][len(s.sessions[sessionID])-200:]
+	}
+	if s.sessionActivity == nil {
+		s.sessionActivity = map[string]time.Time{}
+	}
+	s.sessionActivity[sessionID] = time.Now()
+	s.evictIdleSessionsLocked()
+}
+
+// evictIdleSessionsLocked trims the session map to maxChatSessions by dropping
+// the least recently active sessions. Callers must hold s.sessionMu.
+func (s *CoreServiceServer) evictIdleSessionsLocked() {
+	for len(s.sessions) > maxChatSessions {
+		oldest, oldestAt := "", time.Time{}
+		for id, at := range s.sessionActivity {
+			if oldest == "" || at.Before(oldestAt) {
+				oldest, oldestAt = id, at
+			}
+		}
+		if oldest == "" {
+			return
+		}
+		delete(s.sessions, oldest)
+		delete(s.sessionActivity, oldest)
 	}
 }
 
@@ -1020,6 +1149,11 @@ func (s *CoreServiceServer) maybeCompressFrom(sessionID string, history []*corev
 	if sessionID != "" {
 		s.sessionMu.Lock()
 		s.sessions[sessionID] = compressed
+		if s.sessionActivity == nil {
+			s.sessionActivity = map[string]time.Time{}
+		}
+		s.sessionActivity[sessionID] = time.Now()
+		s.evictIdleSessionsLocked()
 		s.sessionMu.Unlock()
 	}
 	return compressed
@@ -1406,6 +1540,7 @@ func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRe
 	s.mu.Lock()
 	s.tasks[req.TaskId].AgentID = agent.PluginID
 	s.tasks[req.TaskId].State = "running"
+	s.markTaskDirtyLocked(req.TaskId)
 	s.persistTasksLocked()
 	s.mu.Unlock()
 
@@ -1574,6 +1709,7 @@ func (s *CoreServiceServer) finishTask(taskID, state, result, errMsg string) {
 		t.Result = result
 		t.Error = errMsg
 		t.EndedAt = time.Now()
+		s.markTaskDirtyLocked(taskID)
 	}
 	s.persistTasksLocked()
 	s.mu.Unlock()
@@ -1689,6 +1825,7 @@ func (s *CoreServiceServer) CancelAgent(ctx context.Context, req *corev1.CancelA
 	if t, ok := s.tasks[req.TaskId]; ok {
 		t.State = "cancelled"
 		t.EndedAt = time.Now()
+		s.markTaskDirtyLocked(req.TaskId)
 	}
 	s.persistTasksLocked()
 	s.mu.Unlock()
@@ -1697,14 +1834,6 @@ func (s *CoreServiceServer) CancelAgent(ctx context.Context, req *corev1.CancelA
 		Success: true,
 		Message: "task cancelled",
 	}, nil
-}
-
-// GetTask returns task info (internal helper).
-func (s *CoreServiceServer) GetTask(taskID string) (*TaskInfo, bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	task, ok := s.tasks[taskID]
-	return task, ok
 }
 
 // taskBlobPattern matches a base64 blob value inside a JSON task result.
@@ -1834,11 +1963,4 @@ func (s *CoreServiceServer) ListTasks() []map[string]interface{} {
 	}
 	sortTaskRows(out)
 	return limitTaskRows(out)
-}
-
-// RemoveTask removes a task (internal helper).
-func (s *CoreServiceServer) RemoveTask(taskID string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.tasks, taskID)
 }

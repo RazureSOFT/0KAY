@@ -102,6 +102,7 @@ func (s *CoreServiceServer) recordTaskLocked(event TaskEvent) error {
 	if isTerminalTaskState(event.State) {
 		task.EndedAt = time.Now()
 	}
+	s.markTaskDirtyLocked(event.TaskID)
 	s.persistTasksLocked()
 	// Activity for inactivity watchdog: match root and nested (task:sub:…) ids.
 	if event.ParentID != "" {
@@ -133,6 +134,7 @@ func (s *CoreServiceServer) RenameAgentSession(id, title string) error {
 		return fmt.Errorf("title required")
 	}
 	session.Prompt = truncateRunes(title, 80)
+	s.markTaskDirtyLocked(id)
 	s.persistTasksLocked()
 	return nil
 }
@@ -165,6 +167,7 @@ func (s *CoreServiceServer) ManageAgentSession(id, action string) error {
 		for key, task := range s.tasks {
 			if task.SessionID == id && key != id {
 				delete(s.tasks, key)
+				s.markTaskDirtyLocked(key)
 			}
 		}
 		session.State = "deleted"
@@ -174,6 +177,7 @@ func (s *CoreServiceServer) ManageAgentSession(id, action string) error {
 	default:
 		return fmt.Errorf("unknown session action")
 	}
+	s.markTaskDirtyLocked(id)
 	s.persistTasksLocked()
 	return nil
 }
@@ -205,6 +209,7 @@ func (s *CoreServiceServer) ForkAgentSession(origin string) (string, error) {
 		TaskID: id, SessionID: id, ParentID: origin, Kind: "agent_session", CallerID: source.CallerID,
 		Prompt: forkTitle(source.Prompt), State: "done", StartedAt: now, EndedAt: now,
 	}
+	s.markTaskDirtyLocked(id)
 	// Copy the turns and their steps up to the fork point into the new session,
 	// remapping task ids and parent links so the lineage stays intact.
 	turns := []*TaskInfo{}
@@ -237,8 +242,8 @@ func (s *CoreServiceServer) ForkAgentSession(origin string) (string, error) {
 		copied.TaskID = newID
 		copied.SessionID = id
 		copied.ParentID = parent
-		copied.CancelFn = nil
 		s.tasks[newID] = &copied
+		s.markTaskDirtyLocked(newID)
 	}
 	s.persistTasksLocked()
 	return id, nil
@@ -290,11 +295,13 @@ func (s *CoreServiceServer) ensureAgentSessionLocked(origin, caller, title strin
 	}
 	if old := s.tasks[id]; old != nil && old.State == "archived" {
 		old.State = "done"
+		s.markTaskDirtyLocked(id)
 		s.persistTasksLocked()
 	}
 	if s.tasks[id] == nil {
 		s.tasks[id] = &TaskInfo{TaskID: id, SessionID: id, ParentID: origin, Kind: "agent_session", CallerID: caller,
 			Prompt: truncateRunes(title, 60), State: "done", StartedAt: time.Now(), EndedAt: time.Now()}
+		s.markTaskDirtyLocked(id)
 		s.persistTasksLocked()
 	}
 	return id

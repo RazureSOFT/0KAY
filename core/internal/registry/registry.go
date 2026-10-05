@@ -41,8 +41,7 @@ type PluginInstance struct {
 type Registry struct {
 	mu       sync.RWMutex
 	plugins  map[string]*PluginInstance // plugin_id -> PluginInstance
-	counter  int64
-	disabled map[string]bool // plugin name -> disabled by admin
+	disabled map[string]bool            // plugin name -> disabled by admin
 	// secret derives each plugin's service token (HMAC). Empty disables tokens.
 	secret []byte
 	// registrationToken, when set, must be presented by non-builtin plugins at
@@ -351,7 +350,6 @@ func (r *Registry) Register(info *pluginv1.PluginInfo, capabilities []string, ad
 		return id, nil
 	}
 
-	r.counter++
 	pluginID := stableID
 
 	now := time.Now()
@@ -625,13 +623,4 @@ func (r *Registry) CheckStalePlugins(timeout time.Duration) []string {
 		}
 	}
 	return stale
-}
-
-// SendShutdownSignal marks a plugin for shutdown (placeholder for actual signal).
-func (r *Registry) SendShutdownSignal(pluginID string) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	_, ok := r.plugins[pluginID]
-	return ok
 }

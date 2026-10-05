@@ -5,6 +5,15 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
+)
+
+// The origin/port allow-lists come from the environment, which does not change
+// while the process runs, so they are parsed once and reused on every request.
+// Tests that mutate the environment rebuild the snapshots via resetEnvCaches.
+var (
+	allowedOrigins = sync.OnceValue(allowedOriginList)
+	webuiPorts     = sync.OnceValue(allowedWebuiPorts)
 )
 
 // allowedOrigin limits browser cross-origin access to loopback frontends served
@@ -19,8 +28,8 @@ func allowedOrigin(r *http.Request) bool {
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		return false
 	}
-	for _, allowed := range strings.Split(os.Getenv("CORE_ALLOWED_ORIGINS"), ",") {
-		if trimmed := strings.TrimSpace(allowed); trimmed != "" && trimmed == origin {
+	for _, allowed := range allowedOrigins() {
+		if allowed == origin {
 			return true
 		}
 	}
@@ -39,11 +48,22 @@ func allowedOrigin(r *http.Request) bool {
 			port = "80"
 		}
 	}
-	return allowedWebuiPorts()[port]
+	return webuiPorts()[port]
 }
 
 func loopbackHost(host string) bool {
 	return host == "localhost" || host == "127.0.0.1" || host == "::1"
+}
+
+// allowedOriginList is the explicit CORE_ALLOWED_ORIGINS origin set.
+func allowedOriginList() []string {
+	out := []string{}
+	for _, allowed := range strings.Split(os.Getenv("CORE_ALLOWED_ORIGINS"), ",") {
+		if trimmed := strings.TrimSpace(allowed); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
 }
 
 // allowedWebuiPorts is the set of loopback ports a browser frontend may use.
