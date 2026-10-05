@@ -13,7 +13,7 @@ from life.engine import LifeEngine
 
 def _fake_model(payload):
     async def generate(self, model_id, messages, system_prompt="", thinking=False,
-                       max_tokens=1024, temperature=None):
+                       max_tokens=1024, temperature=None, usage=None):
         yield payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)
     return generate
 

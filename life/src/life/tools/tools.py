@@ -534,9 +534,9 @@ class SendOneBotTool(Tool):
         try:
             target = f"group:{group_id}" if group_id else f"user:{user_id}"
             if self.companion:
-                allowed, reason = self.companion.can_proactively_send(target)
+                allowed, reason = await asyncio.to_thread(self.companion.can_proactively_send, target)
                 if not allowed:
-                    self.companion.audit("proactive_send", message, target, reason)
+                    await asyncio.to_thread(self.companion.audit, "proactive_send", message, target, reason)
                     return ToolResult(False, None, reason)
             if kind == "legacy":
                 await transport(message=message, user_id=user_id, group_id=group_id)
@@ -557,7 +557,7 @@ class SendOneBotTool(Tool):
                 else:
                     await transport.send(message=message, user_id=user_id, group_id=group_id)
             if self.companion:
-                self.companion.record_proactive_send(target, message)
+                await asyncio.to_thread(self.companion.record_proactive_send, target, message)
             return ToolResult(True, {"sent": True, "user_id": user_id, "group_id": group_id,
                                      "via": instance or "auto"})
         except Exception as e:
@@ -813,7 +813,7 @@ class JournalTool(Tool):
     def parameters(self) -> dict:
         return {"type": "object", "required": ["content"], "properties": {"content": {"type": "string"}}}
     async def execute(self, content="", **kwargs) -> ToolResult:
-        try: return ToolResult(True, self.companion.journal(content, self.kind))
+        try: return ToolResult(True, await asyncio.to_thread(self.companion.journal, content, self.kind))
         except Exception as e: return ToolResult(False, None, str(e))
 
 

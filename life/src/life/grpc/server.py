@@ -215,7 +215,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 today = date.today().isoformat()
                 if getattr(self, "_maintenance_day", "") != today:
                     result = await asyncio.to_thread(self.engine.memory.maintenance)
-                    self.engine.companion.audit("daily_memory_maintenance", json.dumps(result, ensure_ascii=False))
+                    await asyncio.to_thread(self.engine.companion.audit,
+                                            "daily_memory_maintenance", json.dumps(result, ensure_ascii=False))
                     self._maintenance_day = today
                 await asyncio.to_thread(self.engine.memory.process_reflection_queue)
                 # Reconcile the message-platform servers with the adapter
@@ -725,7 +726,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             elif action == "usage_summary":
                 result = self.engine.get_usage()
             elif action == "usage_record":
-                self.engine.usage.record(payload.get("model",""), int(payload.get("input",0)), int(payload.get("output",0)), payload.get("task",""))
+                await asyncio.to_thread(self.engine.usage.record, payload.get("model",""),
+                                        int(payload.get("input",0)), int(payload.get("output",0)), payload.get("task",""))
                 result = self.engine.get_usage()
             elif action == "balance_set":
                 result = self.engine.usage.set_balance(payload.get("provider",""), payload.get("amount"), payload.get("currency",""))

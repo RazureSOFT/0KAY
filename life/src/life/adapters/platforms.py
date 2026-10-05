@@ -26,6 +26,7 @@ import json
 import ipaddress
 import os
 import secrets
+import threading
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
@@ -262,7 +263,10 @@ class AdapterRegistry:
 
     def __init__(self, data_dir: str):
         self.path = Path(data_dir) / "adapters.json"
-        self._lock = asyncio.Lock()
+        # Reentrant threading lock: CRUD runs on to_thread workers while the
+        # event loop's sync()/status() read `instances`, so an asyncio lock is
+        # the wrong primitive (and the loop-side readers cannot take it at all).
+        self._lock = threading.RLock()
         self.instances: list[AdapterInstance] = []
         self.routes: list[SessionRoute] = []
         self.default_config_id = "default"
@@ -316,13 +320,14 @@ class AdapterRegistry:
         return instance
 
     def _save(self) -> None:
-        save_json(self.path, {
-            "instances": [item.to_dict() for item in self.instances],
-            "routes": [item.to_dict() for item in self.routes],
-            "default_config_id": self.default_config_id,
-            "legacy_session_instance": self.legacy_session_instance,
-            "updated_at": _now(),
-        })
+        with self._lock:
+            save_json(self.path, {
+                "instances": [item.to_dict() for item in self.instances],
+                "routes": [item.to_dict() for item in self.routes],
+                "default_config_id": self.default_config_id,
+                "legacy_session_instance": self.legacy_session_instance,
+                "updated_at": _now(),
+            })
 
     # -- CRUD --------------------------------------------------------------
     def list(self) -> list:
@@ -369,11 +374,12 @@ class AdapterRegistry:
         problems = instance.validate()
         if problems:
             return {"ok": False, "error": "；".join(problems), "problems": problems}
-        if existing is None:
-            self.instances.append(instance)
-        else:
-            self.instances[self.instances.index(existing)] = instance
-        self._save()
+        with self._lock:
+            if existing is None:
+                self.instances.append(instance)
+            else:
+                self.instances[self.instances.index(existing)] = instance
+            self._save()
         return {"ok": True, "instance": instance.to_dict()}
 
     def _next_free_port(self) -> int:
@@ -384,21 +390,23 @@ class AdapterRegistry:
         return port
 
     def delete(self, instance_id: str) -> dict:
-        instance = self.get(instance_id)
-        if instance is None:
-            return {"ok": False, "error": "找不到该适配器"}
-        self.instances.remove(instance)
-        self._save()
+        with self._lock:
+            instance = self.get(instance_id)
+            if instance is None:
+                return {"ok": False, "error": "找不到该适配器"}
+            self.instances.remove(instance)
+            self._save()
         return {"ok": True}
 
     def set_enabled(self, instance_id: str, enabled: bool) -> dict:
-        instance = self.get(instance_id)
-        if instance is None:
-            return {"ok": False, "error": "找不到该适配器"}
-        if enabled and not instance.bind_authorized():
-            return {"ok": False, "error": "非本机监听必须配置非空 Token"}
-        instance.enabled = bool(enabled)
-        self._save()
+        with self._lock:
+            instance = self.get(instance_id)
+            if instance is None:
+                return {"ok": False, "error": "找不到该适配器"}
+            if enabled and not instance.bind_authorized():
+                return {"ok": False, "error": "非本机监听必须配置非空 Token"}
+            instance.enabled = bool(enabled)
+            self._save()
         return {"ok": True, "instance": instance.to_dict()}
 
     # -- session -> config routing ----------------------------------------
@@ -407,19 +415,21 @@ class AdapterRegistry:
         # Drop malformed rows instead of turning them into wildcards, and tell
         # the caller how many were rejected so the UI can warn rather than
         # silently saving a table that routes everything to one persona.
-        self.routes = [r for r in parsed if r is not None]
-        skipped = len(parsed) - len(self.routes)
-        self._save()
-        result = {"ok": True, "routes": [item.to_dict() for item in self.routes]}
+        with self._lock:
+            self.routes = [r for r in parsed if r is not None]
+            skipped = len(parsed) - len(self.routes)
+            self._save()
+            result = {"ok": True, "routes": [item.to_dict() for item in self.routes]}
         if skipped:
             result["skipped"] = skipped
             result["warning"] = f"{skipped} 条规则缺少会话匹配条件，已忽略"
         return result
 
     def set_default_config(self, config_id: str) -> dict:
-        self.default_config_id = str(config_id or "default")
-        self._save()
-        return {"ok": True, "default_config_id": self.default_config_id}
+        with self._lock:
+            self.default_config_id = str(config_id or "default")
+            self._save()
+            return {"ok": True, "default_config_id": self.default_config_id}
 
     def config_for_session(self, session_id: str) -> str:
         """First matching rule wins; unmatched sessions use the default config."""
@@ -638,7 +648,9 @@ class AdapterRuntime:
 
     async def sync(self) -> dict:
         """Start/stop/restart servers so they match the registry. Idempotent."""
-        wanted = ({item.id: item for item in self.registry.instances if item.enabled}
+        # Snapshot: CRUD runs on to_thread workers and may mutate the list while
+        # this event-loop coroutine iterates it.
+        wanted = ({item.id: item for item in list(self.registry.instances) if item.enabled}
                   if self.enabled else {})
         started, stopped, failed = [], [], []
 
@@ -745,7 +757,7 @@ class AdapterRuntime:
     def status(self) -> list:
         """Per-instance health for the dashboard."""
         rows = []
-        for instance in self.registry.instances:
+        for instance in list(self.registry.instances):
             server = self.servers.get(instance.id)
             rows.append({
                 "id": instance.id,

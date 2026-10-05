@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import json
+import threading
 from typing import Optional
 
 import grpc
@@ -66,6 +67,10 @@ class CoreClient:
         self._core_stub: Optional[core_pb2_grpc.CoreServiceStub] = None
         self.plugin_id: Optional[str] = None
         self._connected = False
+        # Reentrant lock over channel/registration state: connect runs on
+        # to_thread workers (sync and async paths) while heartbeats and task
+        # callbacks read/mutate `plugin_id` from other threads.
+        self._lock = threading.RLock()
         # Registration health. A missing/revoked enrollment key makes Core answer
         # PERMISSION_DENIED forever; that is a configuration fault, not a
         # transient one, so retrying every heartbeat only floods the log. Mark it
@@ -80,20 +85,22 @@ class CoreClient:
 
         Shared by the sync and async entry points so the two cannot drift.
         """
-        self._channel = grpc.insecure_channel(self.address)
-        # Wait briefly for channel to be ready
-        grpc.channel_ready_future(self._channel).result(timeout=3)
-        self._plugin_stub = core_pb2_grpc.PluginServiceStub(self._channel)
-        self._core_stub = core_pb2_grpc.CoreServiceStub(self._channel)
-        self._connected = True
+        with self._lock:
+            self._channel = grpc.insecure_channel(self.address)
+            # Wait briefly for channel to be ready
+            grpc.channel_ready_future(self._channel).result(timeout=3)
+            self._plugin_stub = core_pb2_grpc.PluginServiceStub(self._channel)
+            self._core_stub = core_pb2_grpc.CoreServiceStub(self._channel)
+            self._connected = True
 
     def _close_channel(self) -> None:
-        if self._channel is not None:
-            try:
-                self._channel.close()
-            except Exception:  # pragma: no cover - best-effort cleanup
-                pass
-            self._channel = None
+        with self._lock:
+            if self._channel is not None:
+                try:
+                    self._channel.close()
+                except Exception:  # pragma: no cover - best-effort cleanup
+                    pass
+                self._channel = None
 
     def connect(self, attempts: int = 3) -> bool:
         """Open channel and create stubs, retrying with bounded backoff.
@@ -122,7 +129,8 @@ class CoreClient:
                 self._close_channel()
                 if attempt < attempts:
                     time.sleep(min(0.5 * (2 ** (attempt - 1)), 2.0))
-        self._connected = False
+        with self._lock:
+            self._connected = False
         log.error("Failed to connect to Core at %s: %s", self.address, last_error)
         return False
 
@@ -146,15 +154,17 @@ class CoreClient:
                 self._close_channel()
                 if attempt < attempts:
                     await asyncio.sleep(min(0.5 * (2 ** (attempt - 1)), 2.0))
-        self._connected = False
+        with self._lock:
+            self._connected = False
         log.error("Failed to connect to Core at %s: %s", self.address, last_error)
         return False
 
     def close(self):
-        if self._channel:
-            self._channel.close()
-            self._channel = None
-            self._connected = False
+        with self._lock:
+            if self._channel:
+                self._channel.close()
+                self._channel = None
+                self._connected = False
 
     @property
     def connected(self) -> bool:
@@ -194,18 +204,19 @@ class CoreClient:
         return any(marker in text for marker in cls._AUTH_ERROR_MARKERS)
 
     def _mark_registration_blocked(self, message: str) -> None:
-        if not self.registration_blocked:
-            log.error(
-                "Core rejected plugin registration as unauthenticated (%s). "
-                "Set CORE_PLUGIN_REGISTRATION_TOKEN to a valid enrollment key; "
-                "pausing retries for %.0fs.",
-                message,
-                self.REGISTER_AUTH_BACKOFF_SECONDS,
-            )
-        self.registration_blocked = True
-        self.registration_error = message
-        self._register_blocked_at = time.monotonic()
-        self.plugin_id = None
+        with self._lock:
+            if not self.registration_blocked:
+                log.error(
+                    "Core rejected plugin registration as unauthenticated (%s). "
+                    "Set CORE_PLUGIN_REGISTRATION_TOKEN to a valid enrollment key; "
+                    "pausing retries for %.0fs.",
+                    message,
+                    self.REGISTER_AUTH_BACKOFF_SECONDS,
+                )
+            self.registration_blocked = True
+            self.registration_error = message
+            self._register_blocked_at = time.monotonic()
+            self.plugin_id = None
 
     def registration_health(self) -> dict:
         """Diagnostics for tests/panels: is registration actually working?"""
@@ -388,12 +399,13 @@ class CoreClient:
             registration_metadata = (("x-0kay-registration-token", reg_token),) if reg_token else None
             resp = self._plugin_stub.Register(request, timeout=5, metadata=registration_metadata)
             if resp.success:
-                self.plugin_id = resp.plugin_id
-                if self.registration_blocked:
-                    log.info("registration accepted again; credential healthy")
-                self.registration_blocked = False
-                self.registration_error = ""
-                self.registration_failures = 0
+                with self._lock:
+                    self.plugin_id = resp.plugin_id
+                    if self.registration_blocked:
+                        log.info("registration accepted again; credential healthy")
+                    self.registration_blocked = False
+                    self.registration_error = ""
+                    self.registration_failures = 0
                 try:
                     from life.identity import set_identity
                     set_identity("life", resp.service_token)
@@ -418,23 +430,38 @@ class CoreClient:
 
     def heartbeat(self, active_tasks: int = 0) -> bool:
         """Send heartbeat to Core."""
-        if not self._connected or not self.plugin_id:
+        with self._lock:
+            plugin_id = self.plugin_id
+        if not self._connected or not plugin_id:
             return False
 
         try:
             request = core_pb2.HeartbeatRequest(
-                plugin_id=self.plugin_id,
+                plugin_id=plugin_id,
                 status=core_pb2.PLUGIN_STATUS_HEALTHY,
                 active_tasks=active_tasks,
             )
             resp = self._plugin_stub.Heartbeat(request, timeout=3, metadata=self._outgoing_metadata())
             if not resp.ok:
-                self.plugin_id = None
-            return resp.ok
+                # An explicit rejection from Core is definitive invalidation.
+                with self._lock:
+                    self.plugin_id = None
+                return False
+            return True
+        except grpc.RpcError as e:
+            # A single dropped heartbeat used to wipe the registration, so a
+            # Core restart turned one transport hiccup into a re-register
+            # storm. Only a definitive NOT_FOUND ("plugin not found") says the
+            # registration is really gone; transient transport errors keep it
+            # and the next tick simply retries.
+            if e.code() == grpc.StatusCode.NOT_FOUND:
+                with self._lock:
+                    self.plugin_id = None
+            else:
+                log.warning("Heartbeat failed: %s", e)
+            return False
         except Exception as e:
             log.warning("Heartbeat failed: %s", e)
-            # Try to re-register
-            self.plugin_id = None
             return False
 
     def list_agents(self, include_unhealthy: bool = False) -> dict:

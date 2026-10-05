@@ -14,6 +14,7 @@ that exists on one side but not the other fails loudly here instead of quietly
 doing nothing when a user flips the switch in the dashboard.
 """
 import asyncio
+import json
 import os
 import re
 import sys
@@ -227,7 +228,16 @@ class CognitionSettingsChain(unittest.TestCase):
         self.engine.companion.set_settings({
             "world_premise": "一段很长的设定文本", "world_actors": "小满|朋友\n阿杰|同事",
             "world_places": "家里, 学校, 湖", "world_country": "中国", "world_city": "星月城"})
-        result = asyncio.run(self.engine.generate_worldview("", map_only=True))
+
+        async def fake_generate(model_id, messages, system_prompt="", thinking=False,
+                                max_tokens=1024, temperature=None, usage=None):
+            yield json.dumps({"districts": [{"name": "旧港区"}],
+                              "water": [{"name": "湖", "kind": "lake"}],
+                              "roads": [{"name": "大道", "kind": "arterial", "from": "家里", "to": "学校"}]},
+                             ensure_ascii=False)
+
+        with patch.object(self.engine.mocr, "generate", fake_generate):
+            result = asyncio.run(self.engine.generate_worldview("", map_only=True))
         self.assertTrue(result.get("map_only"))
         saved = self.engine.companion.get_settings()
         self.assertEqual(saved.get("world_premise"), "一段很长的设定文本")
@@ -236,12 +246,19 @@ class CognitionSettingsChain(unittest.TestCase):
         self.assertEqual(saved.get("world_city"), "星月城")
         self.assertTrue(saved.get("world_map"))
 
-    def test_generate_worldview_falls_back_without_a_model(self):
-        """With no model reachable the engine still persists a usable world+map."""
+    def test_generate_worldview_fails_without_a_model(self):
+        """With no model reachable the engine reports an error and keeps the
+        stored world untouched instead of persisting a rebuilt default."""
+        self.engine.companion.set_settings({
+            "world_premise": "一段很长的设定文本", "world_actors": "小满|朋友",
+            "world_places": "家里, 学校", "world_city": "星月城"})
         result = asyncio.run(self.engine.generate_worldview(""))
-        self.assertTrue(result.get("ok"))
-        self.assertTrue(result["worldview"]["map"]["locations"])
-        self.assertTrue(self.engine.companion.get_settings().get("world_map"))
+        self.assertFalse(result.get("ok"))
+        self.assertTrue(result.get("error"))
+        saved = self.engine.companion.get_settings()
+        self.assertEqual(saved.get("world_premise"), "一段很长的设定文本")
+        self.assertEqual(saved.get("world_actors"), "小满|朋友")
+        self.assertEqual(saved.get("world_city"), "星月城")
 
     # ---------------------------------------------------------- consolidation
     def _turn(self):

@@ -205,8 +205,11 @@ class CompanionSystem:
             if self._setting(db, "last_backup_date", "") == today:
                 return {"skipped": "done"}
         result = self.backup(keep=keep)
-        with self.db() as db:
-            db.execute("INSERT INTO settings(key,value) VALUES('last_backup_date',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (today,))
+        # Stamp the day only when a backup file was actually produced: a
+        # failed backup that still got stamped would not retry until tomorrow.
+        if result.get("backup"):
+            with self.db() as db:
+                db.execute("INSERT INTO settings(key,value) VALUES('last_backup_date',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (today,))
         return result
 
     def journal_count_for_day(self, day: str, kind: str = "journal") -> int:

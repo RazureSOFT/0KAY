@@ -1490,9 +1490,20 @@ class MemorySystem:
         A bare ``write_text`` truncates the target first, so a crash or a
         concurrent reader mid-write would observe a partial/empty index and be
         forced into a full rebuild.
+
+        Only ids/tokens/df/tier are written: the 256-float hashed vector per
+        document is recomputed on load from the deterministic ``_vector`` hash
+        over each memory's content (``rebuild_index``/``_index_upsert_doc``),
+        so persisting it turned every write into a multi-MB JSON dump.  A
+        leftover per-document ``vector``/``embedding`` field from the old
+        format is ignored and overwritten here.
         """
+        slim = dict(self._index)
+        slim["documents"] = {memory_id: {key: value for key, value in doc.items()
+                                         if key not in ("vector", "embedding")}
+                             for memory_id, doc in self._index.get("documents", {}).items()}
         temporary = self.index_path.with_name(self.index_path.name + ".tmp")
-        temporary.write_text(json.dumps(self._index, ensure_ascii=False), encoding="utf-8")
+        temporary.write_text(json.dumps(slim, ensure_ascii=False), encoding="utf-8")
         os.replace(temporary, self.index_path)
 
     @staticmethod

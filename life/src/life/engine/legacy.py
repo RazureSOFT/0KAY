@@ -417,7 +417,11 @@ class LifeEngine:
         self._personadyn_enabled = False
         self._personadyn_restored_enabled = False
         self._personadyn_override: dict = {}
-        # Durable-state consolidation switches (default OFF - see SETTING_DEFAULTS).
+        # Durable-state consolidation switches. These in-memory flags start off
+        # but `apply_cognition_settings` turns them on at startup: the shipped
+        # SETTING_DEFAULTS ship them ON (see companion SETTING_DEFAULTS), since
+        # without them lived experience leaves no trace. Each can still be
+        # ablated individually via its `cog_*` setting.
         self._memory_encode = False
         self._sleep_replay = False
         self._memory_reconsolidate = False
@@ -1495,17 +1499,17 @@ class LifeEngine:
             out.append(entry)
         return out
 
-    async def _think_generate(self, messages, system):
+    async def _think_generate(self, messages, system, usage_info=None):
         """Think-stage generation with a vision fallback: if the chosen model
         rejects images, retry the turn on the configured vision model."""
         model_id = self._model_for("think")
         try:
-            return "".join([chunk async for chunk in self.mocr.generate(model_id, messages, system, thinking=True)])
+            return "".join([chunk async for chunk in self.mocr.generate(model_id, messages, system, thinking=True, usage=usage_info)])
         except Exception as error:
             vision = self._model_for("vision")
             if vision and vision != model_id and self._has_image_parts(messages) and _looks_vision_error(error):
                 await asyncio.to_thread(self.companion.audit, "vision_fallback", f"{model_id} -> {vision}: {error}", "", "failed")
-                return "".join([chunk async for chunk in self.mocr.generate(vision, messages, system, thinking=True)])
+                return "".join([chunk async for chunk in self.mocr.generate(vision, messages, system, thinking=True, usage=usage_info)])
             raise
 
     async def process_message(self, session_id, user_id, message, adapter_type="webui", persona=None, history=None):
@@ -1521,7 +1525,11 @@ class LifeEngine:
         # Which persona config this conversation speaks with. Resolved per turn
         # from the routing table (first match wins, default otherwise) so editing
         # the table takes effect on the next message rather than a restart.
-        self._active_config_id = self._config_id_for_session(session_id)
+        # Captured into a local before the first await: persona refinement below
+        # can take seconds, and a concurrent turn for another session would
+        # otherwise overwrite the shared field before this turn reads it.
+        active_config_id = self._config_id_for_session(session_id)
+        self._active_config_id = active_config_id
         # Defensive: a whole-page select-all/drag in the WebUI can prepend the
         # app chrome ("0kay" + the nav labels) to the user's actual text. That is
         # not something a person would ever type, so strip a leading chrome
@@ -1573,7 +1581,7 @@ class LifeEngine:
                 if previous and previous[-1] == {"role": "user", "content": message}:
                     previous.pop()
             turn = TurnContext(session_id, user_id, adapter_type, self._persona(persona or {}), previous,
-                               config_id=self._active_config_id)
+                               config_id=active_config_id)
             # The user-authored prompt is sent as the model system prompt (verbatim,
             # ahead of everything else), not merged into the persona description.
             turn.custom_prompt = str((persona or {}).get("customPrompt") or "").strip()
@@ -2669,6 +2677,7 @@ class LifeEngine:
         # Each planning turn sees the preceding tool result before choosing another.
         # When the daily budget is spent the turn skips straight to a short answer.
         plan = None
+        think_usage_info: dict = {}
         for step in range(1 if over_budget else 4):
             if self._lite_mode and step == 0 and not over_budget:
                 # Token-saver: one small prompt instead of the full THINK block
@@ -2678,7 +2687,7 @@ class LifeEngine:
                 guidance = "Respond naturally, in character."
                 system = self._lite_think_prompt(turn, message)
                 try:
-                    raw = await self._think_generate(turn.history, system)
+                    raw = await self._think_generate(turn.history, system, usage_info=think_usage_info)
                     plan = self.think.parse_response(raw)
                 except Exception:
                     plan = None
@@ -2700,7 +2709,7 @@ class LifeEngine:
             if custom_prompt:
                 system = custom_prompt + "\n\n" + system
             try:
-                raw = await self._think_generate(turn.history, system)
+                raw = await self._think_generate(turn.history, system, usage_info=think_usage_info)
                 plan = self.think.parse_response(raw)
             except Exception as error:
                 guidance = f"Planning service is unavailable ({type(error).__name__}). Explain that the request was not completed. Do not claim a task was dispatched."
@@ -2837,9 +2846,10 @@ class LifeEngine:
         if custom_prompt:
             system = custom_prompt + "\n\n" + system
         response = ""
+        output_usage_info: dict = {}
         try:
             async for chunk in self.mocr.generate(self._model_for("output"), self._history_text_only(turn.history), system,
-                    max_tokens=output_budget, temperature=self.soul.temperature()):
+                    max_tokens=output_budget, temperature=self.soul.temperature(), usage=output_usage_info):
                 response += chunk
                 yield {"type": "chunk", "chunk": chunk, "done": False}
         except Exception as error:
@@ -2873,8 +2883,12 @@ class LifeEngine:
                                0.5 if raw_arousal is None else float(raw_arousal))
         except Exception as _exc:
             logger.debug("suppressed error: %s", _exc)
-        self.usage.record(self._model_for("think"), task="conversation")
-        self.usage.record(self._model_for("output"), task="conversation")
+        self.usage.record(self._model_for("think"), task="conversation",
+                          input_tokens=int(think_usage_info.get("prompt_tokens") or 0),
+                          output_tokens=int(think_usage_info.get("completion_tokens") or 0))
+        self.usage.record(self._model_for("output"), task="conversation",
+                          input_tokens=int(output_usage_info.get("prompt_tokens") or 0),
+                          output_tokens=int(output_usage_info.get("completion_tokens") or 0))
         if turn.adapter_type == "onebot_group":
             try:
                 group_id = str(turn.session_id).rsplit("_", 1)[-1]
@@ -3146,17 +3160,20 @@ class LifeEngine:
     async def _diary_complete(self, prompt: str, max_tokens: int = 700) -> str:
         """Single model call used by the diary/dream generators."""
         model = self._model_for("journal")
-        self.usage.record(model, task="diary")
         world = await asyncio.to_thread(self.companion.world_context)
         system = prompt_sections.render([
             prompt_sections.section("system.diary", "内心独白作者", "你是 L.I.F.E 的内心独白作者。", source="diary"),
             prompt_sections.section("system.world", "世界与角色设定", world, source="world"),
         ], mode=prompt_sections.RenderMode.LABELED_BLOCK)
         try:
+            usage_info: dict = {}
             text = "".join([chunk async for chunk in self.mocr.generate(
-                model, [{"role": "user", "content": prompt}], system, thinking=False, max_tokens=max_tokens)])
+                model, [{"role": "user", "content": prompt}], system, thinking=False, max_tokens=max_tokens, usage=usage_info)])
         except Exception:
             return ""
+        self.usage.record(model, task="diary",
+                          input_tokens=int(usage_info.get("prompt_tokens") or 0),
+                          output_tokens=int(usage_info.get("completion_tokens") or 0))
         return text.strip().strip('"')
 
     async def _daily_context(self, day: str = "") -> dict:
@@ -3938,16 +3955,30 @@ class LifeEngine:
                   + current
                   + "\n额外要求：" + str(instructions or "无"))
         model = self._model_for("plan")
-        self.usage.record(model, task="world")
         from ..worldsim.worldview import extract_json, input_for_storage, normalize_worldview
         data: dict = {}
+        usage_info: dict = {}
+        error_message = ""
         try:
             raw = "".join([chunk async for chunk in self.mocr.generate(
                 model, [{"role": "user", "content": prompt}], "世界观设计。仅输出 JSON。",
-                thinking=False, temperature=0.2, max_tokens=3400)])
+                thinking=False, temperature=0.2, max_tokens=3400, usage=usage_info)])
             data = extract_json(raw)
         except Exception as error:
-            await asyncio.to_thread(self.companion.audit, "world_generate", str(error), "", "failed")
+            error_message = str(error)
+            await asyncio.to_thread(self.companion.audit, "world_generate", error_message, "", "failed")
+        self.usage.record(model, task="world",
+                          input_tokens=int(usage_info.get("prompt_tokens") or 0),
+                          output_tokens=int(usage_info.get("completion_tokens") or 0))
+        if not data:
+            # A failed/empty model reply must never reach persistence: falling
+            # through used to overwrite the stored world_map (map-only) or the
+            # whole setting text (full) with a rebuilt default city.  Keep the
+            # owner's existing world and report the failure instead.
+            if not error_message:
+                error_message = "model returned no parsable worldview JSON"
+                await asyncio.to_thread(self.companion.audit, "world_generate", error_message, "", "failed")
+            return {"ok": False, "error": f"worldview generation failed: {error_message}"}
         if map_only:
             # Keep the owner's identity verbatim; only lay out the map.
             data.pop("premise", None)
@@ -4064,9 +4095,12 @@ class LifeEngine:
             f"\n当前状态与已有日程：\n{context}"
         )
         model = self._model_for("agenda")
-        self.usage.record(model, task="agenda")
         try:
-            raw = "".join([chunk async for chunk in self.mocr.generate(model, [{"role": "user", "content": prompt}], "为今天安排生活活动。仅输出 JSON。", thinking=False, max_tokens=800)])
+            usage_info: dict = {}
+            raw = "".join([chunk async for chunk in self.mocr.generate(model, [{"role": "user", "content": prompt}], "为今天安排生活活动。仅输出 JSON。", thinking=False, max_tokens=800, usage=usage_info)])
+            self.usage.record(model, task="agenda",
+                              input_tokens=int(usage_info.get("prompt_tokens") or 0),
+                              output_tokens=int(usage_info.get("completion_tokens") or 0))
             plan = json.loads(raw)
         except Exception as error:
             await asyncio.to_thread(self.companion.audit, "daily_agenda", str(error), "", "failed")
@@ -4138,10 +4172,13 @@ class LifeEngine:
             f"当前状态：{context}"
         )
         model = self._model_for("plan")
-        self.usage.record(model, task="plan")
         try:
+            usage_info: dict = {}
             raw = "".join([chunk async for chunk in self.mocr.generate(
-                model, [{"role": "user", "content": prompt}], "自主规划。仅输出 JSON。", thinking=False, max_tokens=800)])
+                model, [{"role": "user", "content": prompt}], "自主规划。仅输出 JSON。", thinking=False, max_tokens=800, usage=usage_info)])
+            self.usage.record(model, task="plan",
+                              input_tokens=int(usage_info.get("prompt_tokens") or 0),
+                              output_tokens=int(usage_info.get("completion_tokens") or 0))
             plan = json.loads(raw)
         except Exception as error:
             await asyncio.to_thread(self.companion.audit, "autonomy_plan", str(error), "", "failed")
@@ -4331,7 +4368,8 @@ class LifeEngine:
 
     async def on_recall(self, session_id: str, user_id: str, note: str, adapter_type: str = "onebot") -> None:
         """Record that someone withdrew a message, as an honest short note."""
-        self.memory.store(note, importance=0.35, tags=["recall"], metadata={"scope": session_id})
+        await asyncio.to_thread(self.memory.store, note, importance=0.35, tags=["recall"],
+                                metadata={"scope": session_id})
 
     async def describe_media_ref(self, ref: str, server=None) -> str:
         """Caption an inbound image, resolving it via the speaking client."""
@@ -5119,7 +5157,7 @@ class LifeEngine:
                 self._notifications.remove(notification)
                 self._save_state()
             except Exception as exc:
-                self.companion.audit("task_notification", str(exc), task_id, "failed")
+                await asyncio.to_thread(self.companion.audit, "task_notification", str(exc), task_id, "failed")
         return text
 
     def get_notifications(self, session_id=""):

@@ -20,7 +20,7 @@ from life.engine.resident import MentalState, ResidentThinker
 
 def _fake_model(payload, hook=None):
     async def generate(self, model_id, messages, system_prompt="", thinking=False,
-                       max_tokens=1024, temperature=None):
+                       max_tokens=1024, temperature=None, usage=None):
         if hook is not None:
             hook()
         yield json.dumps(payload, ensure_ascii=False)

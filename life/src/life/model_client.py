@@ -14,6 +14,16 @@ from .http_auth import auth_headers, require_auth_headers
 MAX_ATTACHMENT_BYTES = 64 * 1024 * 1024
 
 
+def estimate_tokens(text: str) -> int:
+    """Deterministic fallback when a provider reports no usage numbers:
+    roughly 4 ASCII chars per token, one token per non-ASCII (CJK) char."""
+    plain = str(text or "")
+    if not plain:
+        return 0
+    ascii_chars = sum(1 for ch in plain if ord(ch) < 128)
+    return ascii_chars // 4 + (len(plain) - ascii_chars)
+
+
 def _origin(url: str) -> tuple[str, str, int]:
     parts = urlsplit(url)
     scheme = (parts.scheme or "http").lower()
@@ -46,9 +56,12 @@ class MocrClient:
             self._stub = mocr_pb2_grpc.MocrServiceStub(channel)
 
     async def _http_client(self):
-        if self._http is None:
-            self._http = httpx.AsyncClient(timeout=5)
-        return self._http
+        # Guarded so two concurrent first callers cannot each build a client
+        # (leaking one); `close` clears `_http` under the same lock.
+        async with self._connect_lock:
+            if self._http is None:
+                self._http = httpx.AsyncClient(timeout=5)
+            return self._http
 
     async def fetch_file(self, url: str, timeout: float = 30.0) -> bytes:
         """Download an uploaded attachment from Core by its /api/files URL.
@@ -142,13 +155,20 @@ class MocrClient:
                 return "".join(str(part.get("text") or "") for part in content if isinstance(part, dict)).strip()
             return str(content or "").strip()
 
-    async def generate(self, model_id, messages, system_prompt="", thinking=False, max_tokens=1024, temperature=None):
+    async def generate(self, model_id, messages, system_prompt="", thinking=False, max_tokens=1024, temperature=None, usage=None):
+        """Stream text chunks; when ``usage`` is a dict it is filled with the
+        final ``prompt_tokens``/``completion_tokens`` reported by the provider
+        (or a deterministic estimate when none is reported)."""
         record = await self.recorder.start("think" if thinking else "output", messages[-1]["content"] if messages else model_id) if self.recorder else None
         result = ""
         try:
-            async for chunk in self._generate(model_id, messages, system_prompt, thinking, max_tokens, temperature):
+            async for chunk in self._generate(model_id, messages, system_prompt, thinking, max_tokens, temperature, usage=usage):
                 result += chunk
                 yield chunk
+            if usage is not None and not usage.get("prompt_tokens") and not usage.get("completion_tokens"):
+                usage["prompt_tokens"] = estimate_tokens(system_prompt) + sum(
+                    estimate_tokens(str(m.get("content") or "")) for m in messages)
+                usage["completion_tokens"] = estimate_tokens(result)
             if record:
                 await self.recorder.finish(record, result)
         except (asyncio.CancelledError, GeneratorExit):
@@ -173,7 +193,7 @@ class MocrClient:
             )
         return wire
 
-    async def _generate(self, model_id, messages, system_prompt="", thinking=False, max_tokens=1024, temperature=None):
+    async def _generate(self, model_id, messages, system_prompt="", thinking=False, max_tokens=1024, temperature=None, usage=None):
         if not self._stub:
             await self.connect()
         client = await self._http_client()
@@ -220,6 +240,10 @@ class MocrClient:
             async for response in call:
                 if response.chunk:
                     yield response.chunk
+                if usage is not None and response.usage:
+                    # The mocr server reports usage on the final (done) response.
+                    usage["prompt_tokens"] = int(response.usage.prompt_tokens)
+                    usage["completion_tokens"] = int(response.usage.completion_tokens)
                 if response.done:
                     if response.finish_reason in (mocr_pb2.FINISH_REASON_ERROR, mocr_pb2.FINISH_REASON_LENGTH, mocr_pb2.FINISH_REASON_CONTENT_FILTER):
                         raise RuntimeError(f"Model generation failed: {response.finish_reason}")
