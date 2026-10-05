@@ -2,7 +2,6 @@ package gateway
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -82,10 +81,4 @@ func (g *Gateway) forwardLifePermissions(p server.Permissions) {
 		ComputerUse:     p.ComputerUse,
 		ReportAgentHost: p.ReportAgentHost,
 	})
-}
-
-// jsonOK writes a JSON body with 200.
-func jsonOK(w http.ResponseWriter, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(v)
 }

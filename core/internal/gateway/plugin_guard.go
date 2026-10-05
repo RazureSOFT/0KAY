@@ -89,7 +89,9 @@ func (g *Gateway) apiRequiresIdentity(method, path string) bool {
 		if p.Info == nil || p.Info.Permissions == nil {
 			continue
 		}
-		if g.registry.IsTrusted(p.Info.Name) {
+		// Builtin is already on the snapshot; check the trusted-name set directly
+		// so this hot path does not re-scan every plugin via IsTrusted.
+		if p.Builtin || g.registry.IsTrustedName(p.Info.Name) {
 			continue
 		}
 		if apiAllowed(p.Info.Permissions.ApiRequires, method, path) {

@@ -98,9 +98,10 @@ export const useWizardStore = defineStore('wizard', () => {
   }
 
   function saveToStorage() {
+    // Never persist the provider secret: the key is pushed to Core via
+    // pushProvidersToCore(); a plaintext copy in localStorage would leak it.
     const config = {
       provider: provider.value,
-      apiKey: apiKey.value,
       baseUrl: baseUrl.value,
       models: selectedModels.value,
       defaultModel: defaultModel.value,
@@ -176,7 +177,8 @@ export const useWizardStore = defineStore('wizard', () => {
     try {
       const config = JSON.parse(localStorage.getItem('0kay_config') || '{}')
       provider.value = config.provider || provider.value
-      apiKey.value = config.apiKey || apiKey.value
+      // apiKey is intentionally not restored from storage (never persisted);
+      // the wizard re-collects it and pushes it to Core directly.
       baseUrl.value = config.baseUrl || baseUrl.value
       selectedModels.value = config.models || selectedModels.value
       defaultModel.value = config.defaultModel || defaultModel.value

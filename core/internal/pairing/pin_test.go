@@ -498,6 +498,66 @@ func TestInvalidPinLeavesSwitchesUntouched(t *testing.T) {
 	}
 }
 
+// Clearing the PIN removes the global second factor, so a paired-device/API
+// session must re-prove the current PIN; a trusted peer (loopback) may still
+// clear it without one, which is what the WebUI's body-less clearPin relies on.
+func TestClearPinRequiresCurrentPin(t *testing.T) {
+	s, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPIN("424242"); err != nil {
+		t.Fatal(err)
+	}
+	handler := s.HTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+
+	login := httptest.NewRequest(http.MethodPost, "/api/auth/session", strings.NewReader(`{"pin":"424242"}`))
+	login.RemoteAddr = "192.168.1.50:1234"
+	lw := httptest.NewRecorder()
+	handler.ServeHTTP(lw, login)
+	if lw.Code != http.StatusOK {
+		t.Fatalf("login: %d %s", lw.Code, lw.Body.String())
+	}
+	cookies := lw.Result().Cookies()
+
+	clear := func(remote string, cookie *http.Cookie, pin string) int {
+		req := httptest.NewRequest(http.MethodDelete, "/api/security/pin", nil)
+		req.RemoteAddr = remote
+		if cookie != nil {
+			req.AddCookie(cookie)
+		}
+		if pin != "" {
+			req.Header.Set(PinHeader, pin)
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		return w.Code
+	}
+
+	if code := clear("192.168.1.50:1234", cookies[0], ""); code != http.StatusForbidden {
+		t.Fatalf("clear without PIN = %d, want 403", code)
+	}
+	if !s.HasPIN() {
+		t.Fatal("PIN cleared without proof")
+	}
+	if code := clear("192.168.1.50:1234", cookies[0], "000000"); code != http.StatusForbidden {
+		t.Fatalf("clear with wrong PIN = %d, want 403", code)
+	}
+	if code := clear("192.168.1.50:1234", cookies[0], "424242"); code != http.StatusOK {
+		t.Fatalf("clear with PIN = %d, want 200", code)
+	}
+	if s.HasPIN() {
+		t.Fatal("PIN not cleared")
+	}
+
+	if err := s.SetPIN("424242"); err != nil {
+		t.Fatal(err)
+	}
+	if code := clear("127.0.0.1:50000", nil, ""); code != http.StatusOK {
+		t.Fatalf("loopback clear = %d, want 200", code)
+	}
+}
+
 // The sign-in gate may not be opened to the whole LAN without an explicit
 // opt-in, since that exposes the API to every host on the network.
 func TestLoginGateCannotBeOpenedInLANMode(t *testing.T) {

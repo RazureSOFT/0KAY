@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"0kay/core/internal/pairing"
 	"0kay/core/internal/server"
@@ -80,6 +81,38 @@ func (g *Gateway) sessionContextTokens(sessionID string) int {
 		}
 	}
 	return total
+}
+
+// autoCompactAsync folds a session's history in the background once it is idle,
+// so a long summarisation never blocks POST /api/agent/messages. compactSession
+// refuses a session with active work, so the goroutine waits for the turn that
+// just started (and any successor) to settle before folding; the next turn then
+// carries the summary via latestCompactSummary.
+func (g *Gateway) autoCompactAsync(sessionID, modelID string) {
+	if g.localCore == nil || sessionID == "" {
+		return
+	}
+	go func() {
+		deadline := time.Now().Add(10 * time.Minute)
+		for time.Now().Before(deadline) && g.sessionBusy(sessionID) {
+			time.Sleep(time.Second)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+		defer cancel()
+		if _, err := g.compactSession(ctx, sessionID, modelID); err != nil {
+			fmt.Printf("[agent] auto-compact skipped for %s: %v\n", sessionID, err)
+		}
+	}()
+}
+
+// sessionBusy reports whether a session has an in-flight turn or compaction.
+func (g *Gateway) sessionBusy(sessionID string) bool {
+	for _, task := range g.localCore.SessionTasks(sessionID) {
+		if task["state"] == "running" || task["state"] == "pending" {
+			return true
+		}
+	}
+	return false
 }
 
 // transcriptFromHistory renders the history array as a plain transcript.
@@ -389,7 +422,8 @@ func (g *Gateway) handleAgentContextSearch(w http.ResponseWriter, r *http.Reques
 			continue
 		}
 		content := fmt.Sprint(task["prompt"]) + "\n" + fmt.Sprint(task["result"])
-		index := strings.Index(strings.ToLower(content), query)
+		runes := []rune(content)
+		index := foldIndexRunes(content, query)
 		if index < 0 {
 			continue
 		}
@@ -398,18 +432,42 @@ func (g *Gateway) handleAgentContextSearch(w http.ResponseWriter, r *http.Reques
 			start = 0
 		}
 		end := start + snippet
-		if end > len(content) {
-			end = len(content)
+		if end > len(runes) {
+			end = len(runes)
 		}
 		matches = append(matches, map[string]any{
 			"id":      task["task_id"],
 			"kind":    kind,
 			"state":   task["state"],
-			"snippet": content[start:end],
+			"snippet": string(runes[start:end]),
 		})
 		if len(matches) >= 20 {
 			break
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"matches": matches})
+}
+
+// foldIndexRunes returns the rune index of the first case-insensitive occurrence
+// of query (which must already be lowercased) in content, or -1. It scans runes
+// so case folding cannot change byte length and misalign the offsets.
+func foldIndexRunes(content, query string) int {
+	if query == "" {
+		return -1
+	}
+	contentRunes := []rune(content)
+	queryRunes := []rune(query)
+	for i := 0; i+len(queryRunes) <= len(contentRunes); i++ {
+		match := true
+		for j, qr := range queryRunes {
+			if unicode.ToLower(contentRunes[i+j]) != qr {
+				match = false
+				break
+			}
+		}
+		if match {
+			return i
+		}
+	}
+	return -1
 }

@@ -264,8 +264,8 @@ async function onSetupSubmit() {
         <label class="auth-label">{{ t('auth.pinNew') }}</label>
         <PinInput v-model="setupPin" :invalid="setupInvalid" autofocus />
         <label class="auth-label">{{ t('auth.pinConfirm') }}</label>
-        <PinInput v-model="setupConfirm" :invalid="setupInvalid" @complete="onSetupSubmit" />
-        <p v-if="setupError" role="alert" class="auth-error">{{ setupError }}</p>
+        <PinInput v-model="setupConfirm" :invalid="setupInvalid" error-id="setup-pin-error" @complete="onSetupSubmit" />
+        <p v-if="setupError" id="setup-pin-error" role="alert" class="auth-error">{{ setupError }}</p>
         <footer class="auth-actions">
           <button type="submit" class="auth-primary" :disabled="setupBusy">{{ t('auth.savePin') }}</button>
         </footer>
@@ -287,6 +287,7 @@ async function onSetupSubmit() {
           v-if="pinConfigured && !useTokenInput"
           v-model="authToken"
           :invalid="authInvalid"
+          error-id="auth-pin-error"
           autofocus
           @complete="onAuthSubmit"
         />
@@ -298,7 +299,7 @@ async function onSetupSubmit() {
           :placeholder="t('auth.token')"
           autocomplete="current-password"
         />
-        <p v-if="authError" role="alert" class="auth-error">{{ authError }}</p>
+        <p v-if="authError" id="auth-pin-error" role="alert" class="auth-error">{{ authError }}</p>
         <footer class="auth-actions">
           <button type="button" class="auth-secondary" @click="pinConfigured && toggleAuthMode()">
             {{ pinConfigured && !useTokenInput ? t('auth.useToken') : t('auth.usePin') }}
@@ -320,8 +321,8 @@ async function onSetupSubmit() {
         <span class="auth-mark">0kay</span>
         <h2>{{ t('auth.pinTitle') }}</h2>
         <p class="auth-hint">{{ t('auth.pinHint') }}</p>
-        <PinInput v-model="pinInput" :invalid="pinInvalid" autofocus @complete="onPinSubmit" />
-        <p v-if="pinError" role="alert" class="auth-error">{{ pinError }}</p>
+        <PinInput v-model="pinInput" :invalid="pinInvalid" error-id="pin-error" autofocus @complete="onPinSubmit" />
+        <p v-if="pinError" id="pin-error" role="alert" class="auth-error">{{ pinError }}</p>
         <p v-if="pinGuard" class="auth-hint">{{ t('auth.pinGuardHint') }}</p>
         <footer class="auth-actions">
           <button v-if="!pinGuard" type="button" class="auth-secondary" @click="onPinCancel">{{ t('auth.cancel') }}</button>

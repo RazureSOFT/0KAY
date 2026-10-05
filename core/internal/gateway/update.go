@@ -1,14 +1,68 @@
 package gateway
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"0kay/core/internal/update"
 	"0kay/core/internal/version"
 )
+
+// Update checks hit GitHub, so results are cached briefly and a batch of plugin
+// checks is bounded in both concurrency and total time.
+const (
+	updateCacheTTL      = 5 * time.Minute
+	updateErrorTTL      = 30 * time.Second
+	updateFetchTimeout  = 20 * time.Second
+	updateMaxConcurrent = 4
+)
+
+type repositoryRelease struct {
+	release *update.Release
+	err     error
+}
+
+type cachedRelease struct {
+	release *update.Release
+	err     error
+	at      time.Time
+}
+
+var (
+	releaseCacheMu sync.Mutex
+	releaseCache   = map[string]cachedRelease{}
+)
+
+// latestCached returns the newest release for owner/repo, reusing a recent
+// result so repeated checks (and repeated plugin rows) do not each hit GitHub.
+func latestCached(ctx context.Context, owner, repo string) (*update.Release, error) {
+	key := owner + "/" + repo
+	releaseCacheMu.Lock()
+	if entry, ok := releaseCache[key]; ok {
+		ttl := updateCacheTTL
+		if entry.err != nil {
+			ttl = updateErrorTTL
+		}
+		if time.Since(entry.at) < ttl {
+			releaseCacheMu.Unlock()
+			return entry.release, entry.err
+		}
+	}
+	releaseCacheMu.Unlock()
+	release, err := update.LatestContext(ctx, owner, repo)
+	// Do not cache our own deadline/cancellation: the next request should retry.
+	if ctx.Err() == nil {
+		releaseCacheMu.Lock()
+		releaseCache[key] = cachedRelease{release: release, err: err, at: time.Now()}
+		releaseCacheMu.Unlock()
+	}
+	return release, err
+}
 
 type updateCheck struct {
 	Current         string `json:"current"`
@@ -38,7 +92,9 @@ func (g *Gateway) handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 	}
 	owner, repo := update.PlatformRepository()
 	result := updateCheck{Current: version.Version, SourceAvailable: update.SourceAvailable()}
-	release, err := update.Latest(owner, repo)
+	ctx, cancel := context.WithTimeout(r.Context(), updateFetchTimeout)
+	defer cancel()
+	release, err := latestCached(ctx, owner, repo)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
 		return
@@ -94,13 +150,11 @@ func (g *Gateway) handleUpdateCheckPlugins(w http.ResponseWriter, r *http.Reques
 	if !allowMethod(w, r, http.MethodGet) {
 		return
 	}
-	type repositoryRelease struct {
-		release *update.Release
-		err     error
+	type component struct {
+		name, version, pkg, repository string
 	}
-	releases := map[string]*repositoryRelease{}
 	seen := map[string]bool{}
-	result := []pluginUpdateCheck{}
+	components := []component{}
 
 	// add records one updatable component exactly once. Every installed
 	// component is listed (registered plugins AND packages found in the source
@@ -111,25 +165,7 @@ func (g *Gateway) handleUpdateCheckPlugins(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		seen[name] = true
-		row := pluginUpdateCheck{Name: name, Version: version, Package: pkg, Repository: repository, CanUpdate: update.CanUpdate(name)}
-		if owner, repo, ok := githubSlug(repository); ok {
-			key := owner + "/" + repo
-			state, cached := releases[key]
-			if !cached {
-				state = &repositoryRelease{}
-				state.release, state.err = update.Latest(owner, repo)
-				releases[key] = state
-			}
-			if state.err != nil {
-				row.Error = state.err.Error()
-			} else if state.release != nil {
-				row.Latest = update.Normalize(state.release.TagName)
-				row.HasUpdate = update.Newer(state.release.TagName, version)
-			}
-		} else if repository == "" {
-			row.Error = "unknown repository"
-		}
-		result = append(result, row)
+		components = append(components, component{name: name, version: version, pkg: pkg, repository: repository})
 	}
 
 	for _, plugin := range g.registry.GetAllPlugins() {
@@ -150,6 +186,53 @@ func (g *Gateway) handleUpdateCheckPlugins(w http.ResponseWriter, r *http.Reques
 			pkg = plugin.Name
 		}
 		add(name, plugin.Version, pkg, plugin.Repository)
+	}
+
+	// Resolve each distinct repository once, with bounded concurrency and a
+	// single overall deadline so the fan-out cannot take minutes.
+	type slug struct{ owner, repo string }
+	unique := map[string]slug{}
+	for _, c := range components {
+		if owner, repo, ok := githubSlug(c.repository); ok {
+			unique[owner+"/"+repo] = slug{owner: owner, repo: repo}
+		}
+	}
+	releases := map[string]*repositoryRelease{}
+	ctx, cancel := context.WithTimeout(r.Context(), updateFetchTimeout)
+	defer cancel()
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, updateMaxConcurrent)
+	for key, s := range unique {
+		wg.Add(1)
+		go func(key string, s slug) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			release, err := latestCached(ctx, s.owner, s.repo)
+			mu.Lock()
+			releases[key] = &repositoryRelease{release: release, err: err}
+			mu.Unlock()
+		}(key, s)
+	}
+	wg.Wait()
+
+	result := []pluginUpdateCheck{}
+	for _, c := range components {
+		row := pluginUpdateCheck{Name: c.name, Version: c.version, Package: c.pkg, Repository: c.repository, CanUpdate: update.CanUpdate(c.name)}
+		if owner, repo, ok := githubSlug(c.repository); ok {
+			if state := releases[owner+"/"+repo]; state != nil {
+				if state.err != nil {
+					row.Error = state.err.Error()
+				} else if state.release != nil {
+					row.Latest = update.Normalize(state.release.TagName)
+					row.HasUpdate = update.Newer(state.release.TagName, c.version)
+				}
+			}
+		} else if c.repository == "" {
+			row.Error = "unknown repository"
+		}
+		result = append(result, row)
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
 	writeJSON(w, http.StatusOK, map[string]any{"plugins": result})

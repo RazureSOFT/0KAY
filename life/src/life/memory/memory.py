@@ -16,6 +16,7 @@ from functools import wraps, lru_cache
 from collections import deque
 from contextlib import contextmanager
 from ..logging_setup import get_logger
+from ..timeutil import now_utc, parse_utc, to_local_naive
 
 logger = get_logger("memory")
 
@@ -87,8 +88,8 @@ class Memory:
             id=data["id"],
             content=data["content"],
             importance=data["importance"],
-            created_at=datetime.fromisoformat(data["created_at"]),
-            last_recalled=datetime.fromisoformat(data["last_recalled"]),
+            created_at=to_local_naive(datetime.fromisoformat(data["created_at"])),
+            last_recalled=to_local_naive(datetime.fromisoformat(data["last_recalled"])),
             recall_count=data.get("recall_count", 0),
             strength=data.get("strength", 1.0),
             tags=data.get("tags", []),
@@ -474,6 +475,11 @@ class MemorySystem:
         # missing or duplicating a document, and the next rebuild must redo it
         # wholesale. A silently stale lexical index is worse than a slow one.
         self._tantivy_dirty = False
+        # Per-memory token sets, keyed by id and guarded by the content string:
+        # the rerank recomputed `_tokens(memory.content)` for up to ~20 candidates
+        # on every query.  A changed content invalidates the entry, so no write
+        # path has to remember to clear it.
+        self._token_cache: dict[str, tuple[str, frozenset[str]]] = {}
         self.db_path = Path(self.data_dir) / "memory_center.db"
         self.tantivy_dir = Path(self.data_dir) / "tantivy_memory"
         self._cleanup_stale_tantivy_dirs()
@@ -510,50 +516,74 @@ class MemorySystem:
 
     @contextmanager
     def _connect(self):
-        # Close each SQLite handle after use: a long-lived WAL connection locks
-        # the DB on Windows even after the caller has finished with MemorySystem.
-        # Serialise the whole transaction so concurrent calls cannot close/reopen
-        # the last WAL handle underneath one another.
+        # Close each SQLite handle after use: a long-lived connection holds a
+        # file lock on Windows even after the caller has finished with
+        # MemorySystem.  Serialise the whole transaction so concurrent calls
+        # cannot close/reopen the handle underneath one another.
+        #
+        # journal_mode=PERSIST, deliberately NOT WAL: SQLite deletes a WAL
+        # database's ``-wal``/``-shm`` sidecars whenever the *last* connection
+        # closes, so a connect-per-operation loop churns two sidecar files on
+        # every call.  On Windows those deletions surface as Recycle-Bin litter
+        # (thousands of ``.db-wal``/``.db-shm`` entries) and add two syscalls per
+        # operation.  PERSIST keeps one rollback-journal file that is truncated
+        # in place and reused, so there is no per-call churn while commit
+        # atomicity and crash-safety are unchanged.
         with self._lock:
             conn = sqlite3.connect(self.db_path, timeout=30.0)
             conn.row_factory = sqlite3.Row
             try:
-                conn.execute("PRAGMA journal_mode=WAL")
+                conn.execute("PRAGMA journal_mode=PERSIST")
                 conn.execute("PRAGMA busy_timeout=30000")
                 with conn:
                     yield conn
             finally:
                 conn.close()
 
-    def close(self) -> None:
-        """Checkpoint the WAL into the main db and remove the sidecar files.
+    def close(self, release_index: bool = False) -> None:
+        """Checkpoint the store, deleting nothing on the normal path.
 
-        Connections are already closed at the end of each use; this folds any
-        remaining ``-wal`` data back into ``memory_center.db`` and deletes the
-        ``-wal``/``-shm`` sidecars, so a temp dir housing a MemorySystem is
-        clean by the time its caller removes it.
+        The store runs in ``PERSIST`` mode (see ``_connect``), so a close is
+        side-effect free: the rollback journal is reused in place rather than
+        deleted, and there are no ``-wal``/``-shm`` sidecars.  Only a database
+        written by an older WAL build still has sidecars, and those are removed
+        so the legacy files do not linger.
+
+        ``release_index=True`` additionally drops the Tantivy projection, which
+        is what a temp-dir-backed caller wants before it removes the directory.
+        It is off by default because deleting a few thousand index files on
+        every close is pure churn for a long-lived install — the projection is
+        derived data and is rebuilt lazily whenever it is missing.
         """
         try:
             conn = sqlite3.connect(self.db_path, timeout=30.0)
             try:
-                conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                # Migrates a legacy WAL database to PERSIST and checkpoints it.
+                conn.execute("PRAGMA journal_mode=PERSIST")
             finally:
                 conn.close()
         except sqlite3.Error as error:  # pragma: no cover - best effort
-            logger.warning("wal checkpoint failed: %s", error)
+            logger.warning("journal cleanup failed: %s", error)
+        # Only touch a sidecar that actually exists: an unconditional unlink
+        # would itself be a deletion (visible as Recycle-Bin litter on Windows)
+        # on every single close, for a file PERSIST never creates.
         for suffix in ("-wal", "-shm"):
-            Path(str(self.db_path) + suffix).unlink(missing_ok=True)
-        self._release_tantivy_dir()
+            sidecar = Path(str(self.db_path) + suffix)
+            if sidecar.exists():
+                sidecar.unlink(missing_ok=True)
+        if release_index:
+            self._release_tantivy_dir()
 
     def _release_tantivy_dir(self) -> None:
         """Delete the Tantivy projection so the data dir can actually be removed.
 
-        Tantivy keeps OS file handles open on its segment files; on Windows that
-        makes the containing directory undeletable, which quietly broke the
-        guarantee `close()` documents — that a temp-dir-backed MemorySystem is
-        clean by the time its caller removes it. The projection is derived data
-        (SQLite holds the facts), so removing it is safe *provided* the next
-        search rebuilds it wholesale instead of trusting a partial index.
+        Only called from ``close(release_index=True)`` — a temp-dir-backed
+        MemorySystem wants the directory gone before its caller removes it, and
+        Tantivy keeps OS file handles open on its segment files, which on
+        Windows makes the containing directory undeletable.  A long-lived
+        install does NOT want this: the projection is derived data (SQLite holds
+        the facts), deleting thousands of segment files on every close is pure
+        churn, and a missing projection is simply rebuilt on the next search.
         """
         import gc
         gc.collect()  # drop any lingering Index/writer objects before unlinking
@@ -967,6 +997,11 @@ class MemorySystem:
         payload = dict(metadata or {})
         payload.update({"memory_type": "episode", "scope": scope or "public",
                         "prediction_error": float(prediction_error), "novelty": float(novelty)})
+        # `reconsolidate` compares a new reward against the reward the trace
+        # *recorded*.  Persist it here (defaulting to the same importance the
+        # reader falls back to) so an episode without an explicit reward is not
+        # silently compared against ~1.0 and pushed into the recreate branch.
+        payload.setdefault("reward", _clamp01(strength))
         if supersedes_id:
             payload["supersedes_id"] = supersedes_id
         memory = self.store(text, importance=_clamp01(strength), tags=list(tags or []), metadata=payload)
@@ -1047,10 +1082,8 @@ class MemorySystem:
         stamp = str(memory.metadata.get("last_reactivated") or "")
         if not stamp:
             return {"labile": False, "branch": "not_reactivated", "id": memory_id}
-        try:
-            age = (datetime.now() - datetime.fromisoformat(stamp)).total_seconds()
-        except (TypeError, ValueError):
-            age = float("inf")
+        reactivated = parse_utc(stamp)
+        age = float("inf") if reactivated is None else (now_utc() - reactivated).total_seconds()
         return {"labile": age <= window, "branch": "labile" if age <= window else "expired",
                 "id": memory_id, "age_seconds": round(age, 1), "window_seconds": window}
 
@@ -1451,12 +1484,6 @@ class MemorySystem:
         return notes
 
     # --- Local retrieval pipeline: BM25 + hashed vectors + RRF + rerank ---
-    def _load_index(self) -> None:
-        try:
-            self._index = json.loads(self.index_path.read_text(encoding="utf-8"))
-        except (FileNotFoundError, json.JSONDecodeError):
-            self.rebuild_index()
-
     def _persist_index(self) -> None:
         """Atomically persist the in-memory BM25 index (tmp + ``os.replace``).
 
@@ -1474,6 +1501,20 @@ class MemorySystem:
         cjk = re.findall(r"[\u4e00-\u9fff]", text)
         cjk_bigrams = ["".join(cjk[i:i + 2]) for i in range(max(0, len(cjk) - 1))]
         return ascii_words + cjk + cjk_bigrams
+
+    def _memory_tokens(self, memory: Memory) -> frozenset[str]:
+        """Token set for one memory, memoised until its content changes.
+
+        The rerank scores candidates on every query; re-tokenising each one was
+        pure repeated work.  The cached entry carries the content it was built
+        from, so an edited memory misses the cache and is re-tokenised.
+        """
+        cached = self._token_cache.get(memory.id)
+        if cached is not None and cached[0] == memory.content:
+            return cached[1]
+        tokens = frozenset(self._tokens(memory.content))
+        self._token_cache[memory.id] = (memory.content, tokens)
+        return tokens
 
     @classmethod
     def _vector(cls, text: str, dimensions: int = 256) -> list[float]:
@@ -1508,6 +1549,9 @@ class MemorySystem:
         tantivy_detail = self._rebuild_tantivy_projection()
         self._index_dirty = False
         self._tantivy_dirty = False
+        # A full rebuild re-reads every memory, so drop the memoised token sets
+        # (stale entries for since-removed ids would otherwise linger).
+        self._token_cache.clear()
         self._persist_projection_state(tantivy_detail)
         return {"documents": len(documents), "terms": len(df), "updated_at": self._index["updated_at"], "tantivy": tantivy_detail}
 
@@ -1695,14 +1739,19 @@ class MemorySystem:
         lookup = {m.id: m for m in self.short_term.memories + self.long_term.memories}
         ranked = sorted(rrf.items(), key=lambda item: item[1], reverse=True)[:max(top_k * 5, 20)]
         if rerank:
+            _pe, _n, _medium, _severe, decay = self._thresholds()
+            # Freshness uses the same forgetting rate as `recall_engrams`: the
+            # half-life `decay` implies, so the configured setting actually
+            # affects search ranking instead of a hardcoded 90-day constant.
+            half_life = math.log(2) / max(float(decay), 1e-9)
             qset = set(qtokens)
             reranked = []
             for memory_id, score in ranked:
                 memory = lookup.get(memory_id)
                 if not memory: continue
-                overlap = len(qset & set(self._tokens(memory.content)))
+                overlap = len(qset & self._memory_tokens(memory))
                 tag_boost = sum(1 for tag in memory.tags if tag.lower() in query.lower())
-                freshness = max(0.0, 1 - (datetime.now() - memory.last_recalled).total_seconds() / (86400 * 90))
+                freshness = max(0.0, 1 - (datetime.now() - memory.last_recalled).total_seconds() / half_life)
                 reranked.append((memory_id, score + overlap * .03 + tag_boost * .05 + memory.importance * .04 + freshness * .01))
             ranked = sorted(reranked, key=lambda item: item[1], reverse=True)
         result = []
@@ -1712,8 +1761,12 @@ class MemorySystem:
             memory.recall_count += 1
             memory.last_recalled = datetime.now()
             memory.strength = min(1.0, memory.strength + .03)
-            self._sync_fact(memory, self._index["documents"][memory_id]["tier"])
-            result.append({"id": memory.id, "content": memory.content, "score": round(score, 5), "tier": self._index["documents"][memory_id]["tier"], "tags": memory.tags})
+            # The index normally carries the tier, but a memory missing from it
+            # (mid-rebuild / incremental drift) must not discard the whole
+            # result: derive the tier from the live memory instead.
+            tier = (docs.get(memory_id) or {}).get("tier") or self._tier_of(memory)
+            self._sync_fact(memory, tier)
+            result.append({"id": memory.id, "content": memory.content, "score": round(score, 5), "tier": tier, "tags": memory.tags})
         return result
 
     def _tantivy_search(self, query: str, limit: int) -> list[tuple[str, float]]:

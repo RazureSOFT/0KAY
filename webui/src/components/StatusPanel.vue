@@ -151,9 +151,9 @@ const activeTasks = computed(() => lifeStore.activeTasks)
       <section class="section character-profile">
         <div class="section-header"><span class="section-title">{{ wizard.persona.name || t('chat.defaultCharacter') }}</span></div>
         <dl>
-          <div><dt>年龄</dt><dd>{{ age === null ? '未设置生日' : `${age} 岁` }}</dd></div>
-          <div><dt>时间</dt><dd><time :datetime="now.toISOString()">{{ now.toLocaleString() }}</time></dd></div>
-          <div><dt>时区</dt><dd>{{ Intl.DateTimeFormat().resolvedOptions().timeZone }}</dd></div>
+          <div><dt>{{ t('status.age') }}</dt><dd>{{ age === null ? t('status.birthdayUnset') : t('status.ageValue', { age }) }}</dd></div>
+          <div><dt>{{ t('status.time') }}</dt><dd><time :datetime="now.toISOString()">{{ now.toLocaleString() }}</time></dd></div>
+          <div><dt>{{ t('status.timezone') }}</dt><dd>{{ Intl.DateTimeFormat().resolvedOptions().timeZone }}</dd></div>
         </dl>
       </section>
       <div

@@ -471,8 +471,12 @@ func (g *Gateway) handlePlugins(w http.ResponseWriter, r *http.Request) {
 	seen := map[string]bool{}
 	var result []PluginInfo
 	for _, p := range plugins {
+		if p.Info == nil {
+			// A plugin without a manifest has nothing to list.
+			continue
+		}
 		var perms any
-		if p.Info != nil && p.Info.Permissions != nil {
+		if p.Info.Permissions != nil {
 			perms = map[string]any{
 				"api_requires": p.Info.Permissions.ApiRequires,
 				"api_exposes":  p.Info.Permissions.ApiExposes,
@@ -491,9 +495,7 @@ func (g *Gateway) handlePlugins(w http.ResponseWriter, r *http.Request) {
 			Builtin:      p.Builtin,
 			Permissions:  perms,
 		})
-		if p.Info != nil {
-			seen[p.Info.Name] = true
-		}
+		seen[p.Info.Name] = true
 	}
 	for _, name := range disabledNames {
 		if seen[name] {
@@ -927,11 +929,15 @@ func (g *Gateway) handleLifeChat(w http.ResponseWriter, r *http.Request) {
 			flusher.Flush()
 			return
 		}
-		data, _ := json.Marshal(map[string]interface{}{
+		payload := map[string]interface{}{
 			"request_id": req.RequestID, "chunk": resp.Chunk, "done": resp.Done, "task_id": resp.TaskStarted,
-			"think_summary": resp.ThinkSummary,
-			"emotion":       map[string]float64{"valence": resp.EmotionState.Valence, "arousal": resp.EmotionState.Arousal, "connection": resp.EmotionState.Connection, "irritation": resp.EmotionState.Irritation}, "mental_energy": resp.MentalEnergy,
-		})
+			"think_summary": resp.ThinkSummary, "mental_energy": resp.MentalEnergy,
+		}
+		// EmotionState is only sent on the first frame; later frames leave it nil.
+		if emotion := resp.GetEmotionState(); emotion != nil {
+			payload["emotion"] = map[string]float64{"valence": emotion.Valence, "arousal": emotion.Arousal, "connection": emotion.Connection, "irritation": emotion.Irritation}
+		}
+		data, _ := json.Marshal(payload)
 		fmt.Fprintf(w, "event: chunk\ndata: %s\n\n", data)
 		flusher.Flush()
 		if resp.Done {

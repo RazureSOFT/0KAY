@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import { useFocusTrap } from '../composables/focusTrap'
 
 type Approval = { id: string; tool: string; detail: string; created_at: string }
 
 const items = ref<Approval[]>([])
 const busy = ref(false)
+const dialog = ref<HTMLElement | null>(null)
+const denyBtn = ref<HTMLButtonElement | null>(null)
+const { onKeydown } = useFocusTrap(() => items.value.length > 0, dialog, denyBtn)
 let timer: number | undefined
 
 function toolLabel(tool: string) {
@@ -46,7 +50,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer) })
 <template>
   <Teleport to="body">
     <div v-if="items.length" class="la-scrim" role="presentation">
-      <section class="la-dialog" role="alertdialog" aria-modal="true" aria-labelledby="la-title">
+      <section ref="dialog" class="la-dialog" role="alertdialog" aria-modal="true" aria-labelledby="la-title" tabindex="-1" @keydown="onKeydown">
         <span class="la-icon" aria-hidden="true">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.9"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
@@ -56,7 +60,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer) })
         <pre v-if="items[0].detail" class="la-detail">{{ items[0].detail }}</pre>
         <p v-if="items.length > 1" class="la-more">还有 {{ items.length - 1 }} 个待确认请求…</p>
         <footer>
-          <button class="la-btn la-deny" type="button" :disabled="busy" @click="decide(items[0], false)">拒绝</button>
+          <button ref="denyBtn" class="la-btn la-deny" type="button" :disabled="busy" @click="decide(items[0], false)">拒绝</button>
           <button class="la-btn la-allow" type="button" :disabled="busy" @click="decide(items[0], true)">允许</button>
         </footer>
       </section>

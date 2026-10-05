@@ -66,8 +66,20 @@ func TestHandleEgress(t *testing.T) {
 	req2.Header.Set("Authorization", "Bearer "+token)
 	rec2 := httptest.NewRecorder()
 	g.handleEgress(rec2, req2)
-	if rec2.Code != http.StatusBadGateway {
-		t.Fatalf("blocked egress: got %d, want 502", rec2.Code)
+	// Consistent with CoreService.Egress: the failure travels in the payload's
+	// error field (status 0) instead of a transport error.
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("blocked egress: got %d, want 200", rec2.Code)
+	}
+	var blockedPayload struct {
+		Status int    `json:"status"`
+		Error  string `json:"error"`
+	}
+	if err := json.Unmarshal(rec2.Body.Bytes(), &blockedPayload); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if blockedPayload.Status != 0 || blockedPayload.Error == "" {
+		t.Fatalf("blocked egress payload: %+v", blockedPayload)
 	}
 }
 

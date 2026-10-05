@@ -111,6 +111,12 @@ func (g *Gateway) handleSettingsTest(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return
 	}
+	// Only the TTS-backed section has a synthesise test; anything else is 404 so
+	// POST /api/settings/<anything>/test cannot be used as a free TTS endpoint.
+	if id := r.PathValue("id"); id != "deepseek-tts" {
+		writeErr(w, http.StatusNotFound, "not_found", "no test available for this section")
+		return
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
 	defer cancel()
 	contentType, audio, err := g.ttsSynthesize(ctx, "你好，这是一段语音测试。", "")

@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { useSettingsSectionsStore } from '../stores/settingsSections'
 import { useUIPatchesStore } from '../stores/uiPatches'
 import { useConfirm } from '../composables/confirm'
+import { useFocusTrap } from '../composables/focusTrap'
 import MarkdownContent from '../components/MarkdownContent.vue'
 
 const { t } = useI18n()
@@ -65,6 +66,13 @@ const uninstalling = ref<string>('')
 let timer: ReturnType<typeof setInterval> | null = null
 
 const detail = ref<PluginRow | null>(null)
+const detailDialog = ref<HTMLElement | null>(null)
+const detailCloseBtn = ref<HTMLButtonElement | null>(null)
+const { onKeydown: onDialogKeydown } = useFocusTrap(
+  () => !!detail.value,
+  detailDialog,
+  detailCloseBtn,
+)
 const readme = ref('')
 const readmeLoading = ref(false)
 const readmeError = ref('')
@@ -459,7 +467,7 @@ onUnmounted(() => {
     <Teleport to="body">
       <Transition name="pd">
       <div v-if="detail" class="pd-scrim" @click.self="closeDetail">
-        <section class="pd-dialog" role="dialog" aria-modal="true" :aria-label="`${detail.name} 详情`">
+        <section ref="detailDialog" class="pd-dialog" role="dialog" aria-modal="true" :aria-label="`${detail.name} 详情`" tabindex="-1" @keydown="onDialogKeydown">
           <header class="pd-head">
             <div class="pd-titles">
               <h2>
@@ -468,7 +476,7 @@ onUnmounted(() => {
               </h2>
               <span class="pd-pkg">{{ detail.packageName }}</span>
             </div>
-            <button class="pd-close" type="button" aria-label="关闭" @click="closeDetail">×</button>
+            <button ref="detailCloseBtn" class="pd-close" type="button" aria-label="关闭" @click="closeDetail">×</button>
           </header>
 
           <div class="pd-meta">

@@ -15,3 +15,18 @@ func TestSensitiveOperationAliases(t *testing.T) {
 		t.Fatal("permission reads should not prompt")
 	}
 }
+
+// The agent/tool write endpoints reach the same capabilities (file writes,
+// shell, plugin tools, browser actions, compaction) as the routes already
+// gated, so a configured PIN must cover their writes but not the reads the
+// WebUI polls.
+func TestSensitiveAgentWritePaths(t *testing.T) {
+	for _, path := range []string{"/api/agent/file", "/api/agent/exec", "/api/run", "/api/tools", "/api/tools/", "/api/tools/call", "/api/agent/browser/action", "/api/agent/compact"} {
+		if !sensitiveRequest(httptest.NewRequest("POST", path, nil)) {
+			t.Errorf("PIN gate misses POST %s", path)
+		}
+		if sensitiveRequest(httptest.NewRequest("GET", path, nil)) {
+			t.Errorf("PIN gate should not cover GET %s", path)
+		}
+	}
+}

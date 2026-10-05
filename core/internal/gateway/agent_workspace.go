@@ -229,8 +229,14 @@ func (g *Gateway) handleAgentFileWrite(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleAgentExec POST /api/agent/exec {executor_id,command,cwd,timeout} — run a
-// shell command on the chosen executor for the WebUI terminal console.
+// shell command on the chosen executor for the WebUI terminal console. It
+// proxies straight to the agent, so the ComputerUse permission is enforced here
+// (RunDirect's gate only covers /api/run).
 func (g *Gateway) handleAgentExec(w http.ResponseWriter, r *http.Request) {
+	if g.localCore != nil && !g.localCore.GetPermissions().ComputerUse {
+		writeErr(w, http.StatusForbidden, "computer_use_disabled", "computer_use permission is disabled")
+		return
+	}
 	g.runDirectPost(w, r, "terminal_exec", 320*time.Second)
 }
 

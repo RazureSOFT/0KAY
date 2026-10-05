@@ -271,7 +271,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .btn.sm{min-height:44px;padding:0 13px;font-size:13px}
 #app .mc .btn.filled{background:var(--md-primary);color:var(--md-on-primary);box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 30%,transparent)}
 #app .mc .btn.tonic{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-#app .mc .btn.danger{background:var(--md-error-container);color:var(--md-on-error-container,var(--md-on-error-container))}
+#app .mc .btn.danger{background:var(--md-error-container);color:var(--md-on-error-container,#410e0b)}
 
 /* Inputs */
 #app .mc .url,
@@ -313,8 +313,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .bar-label{width:36px;color:var(--md-on-surface-variant);flex-shrink:0}
 #app .mc .bar{flex:1;height:12px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}
 #app .mc .bar i{display:block;width:100%;height:100%;border-radius:999px;transform-origin:left;transform:scaleX(0);transition:transform var(--duration-long,360ms) var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}
-#app .mc .bar i.hp{background:linear-gradient(90deg,#e35d5d,#ff9a9a)}
-#app .mc .bar i.food{background:linear-gradient(90deg,#d99a37,#f0c060)}
+#app .mc .bar i.hp{background:linear-gradient(90deg,var(--md-error),color-mix(in srgb,var(--md-error) 55%,var(--md-surface-container-lowest)))}
+#app .mc .bar i.food{background:linear-gradient(90deg,var(--md-warning),color-mix(in srgb,var(--md-warning) 55%,var(--md-surface-container-lowest)))}
 #app .mc .bar-num{width:54px;text-align:right;color:var(--md-on-surface-variant);flex-shrink:0}
 
 /* Lists */

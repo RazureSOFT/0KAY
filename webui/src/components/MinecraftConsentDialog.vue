@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useFocusTrap } from '../composables/focusTrap'
 
 const { t } = useI18n()
 
@@ -8,6 +9,9 @@ type Pending = { id: string; action?: string; detail?: string; created_at?: stri
 
 const pending = ref<Pending | null>(null)
 const busy = ref(false)
+const dialog = ref<HTMLElement | null>(null)
+const denyBtn = ref<HTMLButtonElement | null>(null)
+const { onKeydown } = useFocusTrap(() => !!pending.value, dialog, denyBtn)
 let timer: ReturnType<typeof setTimeout> | null = null
 let failures = 0
 const POLL_OK = 3000
@@ -68,7 +72,7 @@ onUnmounted(() => {
 <template>
   <Teleport to="body">
     <div v-if="pending" class="mc-consent-scrim">
-      <section class="mc-consent-dialog" role="alertdialog" aria-modal="true" aria-labelledby="mc-consent-title">
+      <section ref="dialog" class="mc-consent-dialog" role="alertdialog" aria-modal="true" aria-labelledby="mc-consent-title" tabindex="-1" @keydown="onKeydown">
         <div class="mc-consent-icon" aria-hidden="true">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <path d="M12 4l9 16H3L12 4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
@@ -80,7 +84,7 @@ onUnmounted(() => {
           <p>{{ pending.detail || pending.action }}</p>
         </div>
         <footer>
-          <button type="button" :disabled="busy" @click="reply(false)">{{ t('minecraftConsent.deny') }}</button>
+          <button ref="denyBtn" type="button" :disabled="busy" @click="reply(false)">{{ t('minecraftConsent.deny') }}</button>
           <button type="button" class="primary" :disabled="busy" @click="reply(true)">{{ t('minecraftConsent.approve') }}</button>
         </footer>
       </section>

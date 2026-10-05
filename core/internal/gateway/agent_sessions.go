@@ -149,6 +149,7 @@ func (g *Gateway) handleAgentMessage(w http.ResponseWriter, r *http.Request) {
 		Intensity   string       `json:"thinking_intensity"`
 		Permission  string       `json:"permission_mode"`
 		Language    string       `json:"language"`
+		MinimalMode bool         `json:"minimal_mode"`
 		Attachments []Attachment `json:"attachments"`
 	}
 	if !decodeBody(w, r, &body, maxAgentBody) {
@@ -192,19 +193,18 @@ func (g *Gateway) handleAgentMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Auto-compact (opencode-style): when the live context approaches the
-	// threshold, fold it before dispatching. Best effort — a failure must not
-	// block the turn.
-	if g.sessionContextTokens(body.SessionID) >= autoCompactTokens() {
-		if _, err := g.compactSession(r.Context(), body.SessionID, body.ModelID); err != nil {
-			fmt.Printf("[agent] auto-compact skipped for %s: %v\n", body.SessionID, err)
-		}
-	}
+	// threshold, fold it in the background so up to 120s of summarisation never
+	// blocks the request. Best effort — a failure must not affect the turn.
+	compactNeeded := g.sessionContextTokens(body.SessionID) >= autoCompactTokens()
 	// Carry an earlier /compact summary into this turn: the agent has no
 	// cross-turn memory, so without prepending it the summary would be cosmetic.
 	if summary := g.latestCompactSummary(body.SessionID); summary != "" {
 		body.Prompt = "Summary of earlier context in this session (carry it forward). If you need exact details that were folded away, call session_context_search with keywords and then session_context_decompress with a returned id.\n" + summary + "\n\n---\n\n" + body.Prompt
 	}
 	metadata := map[string]string{"session_id": body.SessionID, "executor_id": body.ExecutorID, "workdir": body.Workdir, "model_id": body.ModelID, "thinking_intensity": body.Intensity, "permission_mode": body.Permission, "language": body.Language}
+	if body.MinimalMode {
+		metadata["minimal_mode"] = "1"
+	}
 	if encoded := encodeAttachments(body.Attachments); encoded != "" {
 		metadata["attachments"] = encoded
 	}
@@ -212,6 +212,9 @@ func (g *Gateway) handleAgentMessage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeErr(w, http.StatusBadGateway, "upstream_error", err.Error())
 		return
+	}
+	if compactNeeded {
+		g.autoCompactAsync(body.SessionID, body.ModelID)
 	}
 	status := http.StatusAccepted
 	if !response.Accepted {

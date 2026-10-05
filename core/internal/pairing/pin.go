@@ -368,7 +368,9 @@ func (s *Store) pinCookieValid(value string) bool {
 
 // sensitiveRequest reports whether a request targets an action a configured PIN
 // must protect: provider/secret/model writes, update and plugin lifecycle,
-// setting changes, Live2D file writes. Reads are authenticated by the session
+// setting changes, Live2D file writes, and state-changing agent/tool calls
+// (file writes, shell execution, plugin tools, browser actions, compaction).
+// Reads are authenticated by the session
 // gate but are not re-confirmed, or the WebUI (which loads settings sections on
 // most pages) would prompt for the PIN on every navigation.
 func sensitiveRequest(r *http.Request) bool {
@@ -390,6 +392,12 @@ func sensitiveRequest(r *http.Request) bool {
 	case strings.HasPrefix(path, "/api/plugins/") && method == http.MethodPatch:
 		return true
 	case path == "/api/security/pin":
+		return !read
+	case path == "/api/agent/file", path == "/api/agent/exec", path == "/api/run",
+		path == "/api/tools", path == "/api/tools/", path == "/api/tools/call",
+		path == "/api/agent/browser/action", path == "/api/agent/compact":
+		// State-changing agent/tool endpoints. Their GET counterparts are polled
+		// by the WebUI (e.g. /api/tools), so only writes are gated.
 		return !read
 	case strings.HasPrefix(path, "/api/settings/"):
 		return !read
@@ -470,9 +478,16 @@ func (s *Store) seedPIN(existingInstall bool) {
 		log.Printf("generate PIN: %v", err)
 		return
 	}
+	// The PIN is a secret: never write it to the log (which is a world-readable
+	// file). Drop it in a 0600 file next to security.json and log only the path.
+	pinPath := filepath.Join(filepath.Dir(s.path), "initial-pin.txt")
+	if err := os.WriteFile(pinPath, []byte(pin+"\n"), 0600); err != nil {
+		log.Printf("write initial PIN file: %v", err)
+		return
+	}
 	log.Printf("==============================================================")
-	log.Printf("  0KAY initial access PIN: %s", pin)
-	log.Printf("  Change it under Settings, or set CORE_PIN to override.")
+	log.Printf("  0KAY initial access PIN written to: %s", pinPath)
+	log.Printf("  Read it, then delete the file. Change it under Settings.")
 	log.Printf("==============================================================")
 }
 
@@ -560,6 +575,27 @@ func (s *Store) handlePIN(w http.ResponseWriter, r *http.Request) {
 		if ok, _ := s.authorized(r); !ok {
 			writeErr(w, http.StatusUnauthorized, "unauthenticated", "sign in first")
 			return
+		}
+		// Clearing the PIN removes the global second factor, so a paired-device
+		// or API token must not be enough: re-confirm the current PIN unless the
+		// caller is a trusted peer (loopback / CORE_TRUSTED_NETWORKS), which is
+		// what the WebUI relies on when it clears the PIN without a body.
+		if s.HasPIN() && !s.trustedPeer(r.RemoteAddr) {
+			current := strings.TrimSpace(r.Header.Get(PinHeader))
+			if current == "" {
+				var body struct {
+					Current string `json:"current"`
+				}
+				if r.Body != nil {
+					_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body)
+				}
+				current = strings.TrimSpace(body.Current)
+			}
+			if !s.PinValid(current) {
+				s.loginFailed(remoteHost(r))
+				writeErr(w, http.StatusForbidden, "pin_required", "current PIN required")
+				return
+			}
 		}
 		if err := s.SetPIN(""); err != nil {
 			writeErr(w, http.StatusInternalServerError, "internal", err.Error())

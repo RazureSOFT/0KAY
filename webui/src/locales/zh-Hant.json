@@ -83,10 +83,16 @@
     "removeFile": "移除檔案",
     "download": "下載對話紀錄",
     "exportTitle": "0KAY 對話紀錄",
-    "you": "我"
+    "you": "我",
+    "resizePanel": "拖曳或使用方向鍵調整對話面板寬度"
   },
   "status": {
     "title": "角色狀態",
+    "age": "年齡",
+    "ageValue": "{age} 歲",
+    "birthdayUnset": "未設定生日",
+    "time": "時間",
+    "timezone": "時區",
     "mood": "心情",
     "mentalEnergy": "精神能量",
     "emotions": "情緒",
@@ -291,6 +297,7 @@
       "live2d": "Live2D",
       "security": "安全性",
       "permissions": "權限",
+      "connection": "連線",
       "danger": "危險區",
       "updates": "外掛更新",
       "about": "關於"

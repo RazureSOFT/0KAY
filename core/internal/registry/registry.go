@@ -94,6 +94,19 @@ func (r *Registry) IsTrusted(name string) bool {
 	return false
 }
 
+// IsTrustedName reports whether name is in the first-party trusted set, without
+// scanning registered plugins. Hot paths that already hold the PluginInstance
+// can check its Builtin flag directly and use this for the name allow-list,
+// avoiding the nested scan IsTrusted performs.
+func (r *Registry) IsTrustedName(name string) bool {
+	if name == "" {
+		return false
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.trusted[name]
+}
+
 // SetSecret installs the HMAC key used to derive per-plugin service tokens.
 // Call before any plugin registers so tokens are stable across process restarts.
 func (r *Registry) SetSecret(secret []byte) {

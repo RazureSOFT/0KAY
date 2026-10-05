@@ -468,6 +468,31 @@ class RuntimeStatusTests(unittest.TestCase):
         self.assertTrue(instance.public_dict()["has_ws_token"])
         self.assertNotIn("hunter2", json.dumps(instance.public_dict()))
 
+    def test_public_dict_redacts_both_credentials(self):
+        instance = AdapterInstance(name="t", ws_token="hunter2", access_token="swordfish")
+        public = instance.public_dict()
+        self.assertEqual(public["ws_token"], "")
+        self.assertEqual(public["access_token"], "")
+        self.assertTrue(public["has_ws_token"])
+        self.assertTrue(public["has_access_token"])
+        blob = json.dumps(public)
+        self.assertNotIn("hunter2", blob)
+        self.assertNotIn("swordfish", blob)
+
+    def test_registry_list_and_status_never_emit_credentials(self):
+        # `to_dict()` carries the raw tokens for the owner panel's own save
+        # round-trip; every *read* path the dashboard or diagnostics use must go
+        # through `public_dict()` instead.
+        registry = AdapterRegistry(self._dir.name)
+        registry.upsert({"name": "t", "ws_token": "hunter2", "access_token": "swordfish"})
+        listed = json.dumps(registry.list(), ensure_ascii=False)
+        self.assertNotIn("hunter2", listed)
+        self.assertNotIn("swordfish", listed)
+        runtime = AdapterRuntime(registry, lambda data, server: None)
+        status = json.dumps(runtime.status(), ensure_ascii=False)
+        self.assertNotIn("hunter2", status)
+        self.assertNotIn("swordfish", status)
+
     def test_new_instance_id_is_unique(self):
         self.assertNotEqual(new_instance_id(), new_instance_id())
 

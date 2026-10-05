@@ -29,7 +29,14 @@ from __future__ import annotations
 
 import math
 
+from ..logging_setup import get_logger
+
+logger = get_logger("cognition.attachment")
+
 DT = 0.1  # days per integration step
+#: Upper bound on Euler steps for one `tick`.  A larger offline gap is covered
+#: by widening the step rather than by stopping early (see `tick`).
+MAX_TICK_STEPS = 600
 
 SEVERITY_BANDS = ((0.25, "正常依恋"), (0.45, "轻度"), (0.65, "中度"),
                   (0.85, "重度"), (1.01, "极端"))
@@ -344,17 +351,23 @@ class AttachmentSystem:
         self.support = _clamp(self.support - 0.3 * self.depression)
         # loneliness keeps the uncertainty gap open
         self.uncertainty = _clamp(max(self.uncertainty, min(0.9, 0.15 + 0.1 * neglect_days)))
-        # Integrate the ODE over the *real* elapsed time in <=DT chunks.  The
+        # Integrate the ODE over the *real* elapsed time in bounded chunks.  The
         # old code ran one full DT (0.1 simulated day) per call regardless of
         # elapsed time - at the 10s background tick that advanced the simulated
         # relationship ~864x faster than the wall clock (half-life 115 days
         # became ~19 real minutes) and let trust decay to machine-epsilon
         # overnight.  With real-time integration the stated time constants
-        # hold in wall-clock terms.
+        # hold in wall-clock terms.  A fixed DT capped at 600 steps covered only
+        # 60 simulated days, so a longer offline gap was silently truncated;
+        # widen the step for long spans (logged) instead of under-integrating.
         remaining = max(0.0, float(days))
+        step = DT if remaining <= DT * MAX_TICK_STEPS else remaining / MAX_TICK_STEPS
+        if step > DT:
+            logger.warning("attachment tick: integrating %.1f days in %d steps (dt=%.3f)",
+                           remaining, MAX_TICK_STEPS, step)
         steps = 0
-        while remaining > 1e-9 and steps < 600:
-            dt = min(DT, remaining)
+        while remaining > 1e-9 and steps < MAX_TICK_STEPS:
+            dt = min(step, remaining)
             self.dynamics.step(self.intimacy, self.uncertainty, self.competitor, self.support, dt=dt)
             remaining -= dt
             steps += 1

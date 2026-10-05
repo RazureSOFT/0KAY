@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 import json
 
+from ..timeutil import to_local_naive
+
 
 @dataclass
 class CircadianState:
@@ -214,8 +216,8 @@ class CircadianSystem:
         self._learned_day = data.get('learned_day', '')
         self._wake_day = data.get('wake_day', datetime.now().date().isoformat())
         for key in ('last_tick', 'sleep_start'):
-            if data.get(key): setattr(self.state, key, datetime.fromisoformat(data[key]))
-        if data.get('last_interaction'): self.last_interaction = datetime.fromisoformat(data['last_interaction'])
+            if data.get(key): setattr(self.state, key, to_local_naive(datetime.fromisoformat(data[key])))
+        if data.get('last_interaction'): self.last_interaction = to_local_naive(datetime.fromisoformat(data['last_interaction']))
 
     def save(self, path: str) -> None:
         """Save state to file."""

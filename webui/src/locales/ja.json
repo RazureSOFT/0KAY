@@ -83,10 +83,16 @@
     "removeFile": "ファイルを削除",
     "download": "履歴をダウンロード",
     "exportTitle": "0KAY 会話履歴",
-    "you": "あなた"
+    "you": "あなた",
+    "resizePanel": "ドラッグまたは矢印キーでチャットパネルの幅を変更"
   },
   "status": {
     "title": "キャラクター状態",
+    "age": "年齢",
+    "ageValue": "{age} 歳",
+    "birthdayUnset": "誕生日未設定",
+    "time": "時間",
+    "timezone": "タイムゾーン",
     "mood": "気分",
     "mentalEnergy": "精神力",
     "emotions": "感情",
@@ -287,6 +293,7 @@
       "live2d": "Live2D",
       "security": "セキュリティ",
       "permissions": "権限",
+      "connection": "接続",
       "danger": "危険",
       "updates": "プラグイン更新",
       "about": "情報"

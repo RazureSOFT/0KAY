@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { emotionMoodColor, emotionMoodOf } from '../emotion'
 
 export interface EmotionState {
   valence: number
@@ -48,33 +49,15 @@ export const useLifeStore = defineStore('life', () => {
     if (isSleeping.value) return 'sleeping'
     if (mentalEnergy.value < 20) return 'exhausted'
     if (mentalEnergy.value < 50) return 'drowsy'
-    if (emotion.value.irritation > 0.7) return 'irritated'
-    if (emotion.value.valence > 0.5) return 'happy'
-    if (emotion.value.valence < -0.3) return 'sad'
-    return 'neutral'
+    return emotionMoodOf(emotion.value)
   })
 
   const emotionColor = computed(() => {
     switch (emotionMood.value) {
-      case 'happy': return '#107c10'
-      case 'sad': return '#0078d4'
-      case 'irritated': return '#d13438'
       case 'sleeping': return '#8a8886'
       case 'exhausted': return '#a19f9d'
       case 'drowsy': return '#ffb900'
-      default: return '#0078d4'
-    }
-  })
-
-  const emotionLabel = computed(() => {
-    switch (emotionMood.value) {
-      case 'happy': return 'Happy'
-      case 'sad': return 'Down'
-      case 'irritated': return 'Irritated'
-      case 'sleeping': return 'Sleeping'
-      case 'exhausted': return 'Exhausted'
-      case 'drowsy': return 'Drowsy'
-      default: return 'Neutral'
+      default: return emotionMoodColor(emotionMoodOf(emotion.value))
     }
   })
 
@@ -173,7 +156,6 @@ export const useLifeStore = defineStore('life', () => {
     lastFetchedAt,
     emotionMood,
     emotionColor,
-    emotionLabel,
     energyPercent,
     energyColor,
     connect,

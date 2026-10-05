@@ -143,5 +143,56 @@ class DailyReviewAndMedia(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(images[0]["imageUrl"].startswith("data:image/png;base64,"))
 
 
+class PersonReset(unittest.TestCase):
+    """`reset_person_data` must complete even when one table cannot be cleared."""
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.companion = CompanionSystem(self.directory.name)
+
+    def tearDown(self):
+        self.directory.cleanup()
+
+    def test_a_failed_delete_still_completes_and_logs(self):
+        import sqlite3
+        from contextlib import contextmanager
+
+        class _FailFirstDelete:
+            """Delegates to the real connection, failing the first DELETE."""
+
+            def __init__(self, conn):
+                self._conn = conn
+                self._failed = False
+
+            def execute(self, sql, params=()):
+                if not self._failed and sql.lstrip().upper().startswith("DELETE FROM "):
+                    self._failed = True
+                    raise sqlite3.Error("simulated delete failure")
+                return self._conn.execute(sql, params)
+
+            def __getattr__(self, name):
+                return getattr(self._conn, name)
+
+        real_db = self.companion.db
+
+        @contextmanager
+        def flaky_db():
+            with real_db() as conn:
+                yield _FailFirstDelete(conn)
+
+        self.companion.db = flaky_db
+        with self.assertLogs("life.companion", level="WARNING") as captured:
+            result = self.companion.reset_person_data()
+        self.assertIn("tables", result)
+        self.assertTrue(any("could not clear" in line for line in captured.output))
+
+    def test_reset_keeps_owner_settings(self):
+        with self.companion.db() as db:
+            db.execute("INSERT INTO settings(key,value) VALUES('proactive_daily_limit','9') "
+                       "ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+        self.companion.reset_person_data()
+        self.assertEqual(self.companion.get_settings().get("proactive_daily_limit"), "9")
+
+
 if __name__ == "__main__":
     unittest.main()

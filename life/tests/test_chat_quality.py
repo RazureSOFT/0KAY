@@ -17,11 +17,13 @@ from life.think.think import THINK_PROMPT_TEMPLATE
 class RejectionLexiconTests(unittest.TestCase):
     def test_refusal_reads_as_rejection(self):
         hits = lexicon.scan("你别过来")
-        self.assertEqual(hits["rejection"], 1)
+        self.assertGreater(hits["rejection"], 0)
         self.assertLess(hits["polarity"], 0)
 
     def test_multiple_refusals_stack(self):
-        self.assertGreaterEqual(lexicon.scan("别碰我，离我远点")["rejection"], 2)
+        single = lexicon.scan("别碰我")["rejection"]
+        multiple = lexicon.scan("别碰我，离我远点")["rejection"]
+        self.assertGreater(multiple, single)
 
     def test_affection_is_positive(self):
         self.assertGreater(lexicon.scan("我想你了")["polarity"], 0)

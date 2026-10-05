@@ -8,10 +8,14 @@ export class ApiError extends Error {
   }
 }
 
-/** Parse a JSON response, turning non-JSON bodies (404/HTML) into readable errors. */
-export async function readApiResponse(res: Response): Promise<any> {
+/** Parse a JSON response, turning non-JSON bodies (404/HTML) into readable errors.
+ *
+ *  The body shape is endpoint-specific and genuinely dynamic, so callers supply
+ *  `T` (default `unknown`); this helper only guarantees parsed JSON or an
+ *  `ApiError` — it does not validate the shape at runtime. */
+export async function readApiResponse<T = unknown>(res: Response): Promise<T | null> {
   const text = await res.text()
-  let data: any = null
+  let data: unknown = null
   if (text) {
     try {
       data = JSON.parse(text)
@@ -19,23 +23,26 @@ export async function readApiResponse(res: Response): Promise<any> {
       throw new ApiError(text.trim().slice(0, 200) || `HTTP ${res.status}`, res.status)
     }
   }
-  if (!res.ok) throw new ApiError(data?.error || `HTTP ${res.status}`, res.status)
-  return data
+  if (!res.ok) {
+    const message = (data as { error?: string } | null)?.error
+    throw new ApiError(message || `HTTP ${res.status}`, res.status)
+  }
+  return data as T | null
 }
 
-export async function apiGet<T = any>(path: string): Promise<T> {
-  return readApiResponse(await fetch(path))
+export async function apiGet<T = unknown>(path: string): Promise<T | null> {
+  return readApiResponse<T>(await fetch(path))
 }
 
-export async function apiSend<T = any>(path: string, method: string, body?: unknown): Promise<T> {
-  return readApiResponse(await fetch(path, {
+export async function apiSend<T = unknown>(path: string, method: string, body?: unknown): Promise<T | null> {
+  return readApiResponse<T>(await fetch(path, {
     method,
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
   }))
 }
 
-export const apiPost = <T = any>(path: string, body?: unknown) => apiSend<T>(path, 'POST', body)
-export const apiPut = <T = any>(path: string, body?: unknown) => apiSend<T>(path, 'PUT', body)
-export const apiPatch = <T = any>(path: string, body?: unknown) => apiSend<T>(path, 'PATCH', body)
-export const apiDelete = <T = any>(path: string) => apiSend<T>(path, 'DELETE')
+export const apiPost = <T = unknown>(path: string, body?: unknown) => apiSend<T>(path, 'POST', body)
+export const apiPut = <T = unknown>(path: string, body?: unknown) => apiSend<T>(path, 'PUT', body)
+export const apiPatch = <T = unknown>(path: string, body?: unknown) => apiSend<T>(path, 'PATCH', body)
+export const apiDelete = <T = unknown>(path: string) => apiSend<T>(path, 'DELETE')

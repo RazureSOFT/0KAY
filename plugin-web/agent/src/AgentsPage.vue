@@ -34,7 +34,7 @@ async function addFiles(files: File[]) {
       const data = await response.json()
       attachments.value.push({ name: data.name || file.name, url: data.url, mime: data.mime || file.type || 'application/octet-stream', size: data.size ?? file.size })
     }
-  } catch (e: any) { attachError.value = e.message }
+  } catch (e: any) { attachError.value = friendlyError(e?.message || String(e)) }
   finally { uploading.value = false }
 }
 async function onFilesPicked(event: Event) {
@@ -63,6 +63,7 @@ function savedIntensity(value:unknown):number {
 }
 const modelId = ref('MOCR')
 const permissionMode = ref('normal')
+const minimalMode = ref<'on'|'off'>('off')
 const folderName = ref('')
 async function createFolder() {
   if(!folderName.value.trim() || !executor.value || browserBusy.value)return
@@ -780,8 +781,9 @@ function loadOptions() {
     executorId.value = saved.executor_id || ''; workdir.value = saved.workdir || ''
     intensity.value = savedIntensity(saved.thinking_intensity); modelId.value = saved.model_id || 'MOCR'
     permissionMode.value=saved.permission_mode==='full_access'?'full_access':'normal'
+    minimalMode.value=saved.minimal_mode?'on':'off'
     draft.value=saved.draft || '';mode.value=saved.mode || 'general'
-  } catch { executorId.value='';workdir.value='';intensity.value=50;modelId.value='MOCR';draft.value='';mode.value='general' }
+  } catch { executorId.value='';workdir.value='';intensity.value=50;modelId.value='MOCR';draft.value='';mode.value='general';minimalMode.value='off' }
 }
 const providerNames = ref<Record<string, string>>({})
 function modelLabel(model: { id: string; provider: string; provider_id?: string; provider_name?: string }) {
@@ -809,7 +811,7 @@ async function fetchModels() {
     }
   } catch { /* provider names are optional */ }
 }
-function options() { const level=intensity.value===0?'off':intensity.value<35?'low':intensity.value<62.5?'medium':intensity.value<87.5?'high':'max';return { executor_id: executorId.value, workdir: workdir.value.trim(), thinking_intensity: level, model_id: modelId.value, permission_mode:permissionMode.value, language:locale.value } }
+function options() { const level=intensity.value===0?'off':intensity.value<35?'low':intensity.value<62.5?'medium':intensity.value<87.5?'high':'max';return { executor_id: executorId.value, workdir: workdir.value.trim(), thinking_intensity: level, model_id: modelId.value, permission_mode:permissionMode.value, minimal_mode: minimalMode.value==='on', language:locale.value } }
 const busy = ref(false)
 const error = ref('')
 const showArchived = ref(false)
@@ -1394,6 +1396,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
         <div class="options-collapse" :class="{ open: optionsOpen }">
         <div class="execution-options">
           <label>{{ tr('权限','Permissions') }}<AppSelect v-model="permissionMode" :aria-label="tr('权限','Permissions')" :disabled="!!active || busy" :options="[{value:'normal',label:tr('Normal · 全部审批','Normal · Ask every time')},{value:'full_access',label:tr('Full access · 自动执行','Full access · Auto execute')}]" /></label>
+          <label :title="tr('推理与修改过程只用英文、输出极简、按最小改动编辑；仅提问与结论使用你的语言','English-only internals, terse output, smallest edits; only questions and the final answer use your language')">{{ tr('极简模式','Minimal mode') }}<AppSelect v-model="minimalMode" :aria-label="tr('极简模式','Minimal mode')" :disabled="!!active || busy" :options="[{value:'off',label:tr('关闭 · 完整输出','Off · Full output')},{value:'on',label:tr('开启 · 省 Token','On · Save tokens')}]" /></label>
           <label>{{ tr('执行器','Executor') }}<AppSelect v-model="executorId" :aria-label="tr('执行器','Executor')" :disabled="!!active || busy" :options="[{value:'',label:tr('自动选择在线执行器','Automatic executor')},...store.agents.map(agent=>({value:agent.plugin_id,label:`${agent.host?.hostname || agent.name} · ${agent.plugin_id}`,disabled:!store.isHealthy(agent)}))]" /></label>
           <label>{{ tr('工作区','Workspace') }}<button type="button" class="workspace-select" :disabled="!!active || busy || !executor" :title="workdir || executor?.host?.workdir" @click="browse(workdir || executor?.host?.workdir || '')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ workdir || tr('选择目录…','Select folder…') }}</button></label>
           <ThinkingSlider v-model="intensity" :disabled="!!active || busy" />

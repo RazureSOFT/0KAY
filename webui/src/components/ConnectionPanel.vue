@@ -21,8 +21,6 @@ interface Saved {
   hostOverride?: boolean
   port?: string
   tls?: boolean
-  token?: string
-  pin?: string
   name?: string
 }
 
@@ -55,8 +53,10 @@ const hostEdited = ref(hostOverride)
 const defaultPort = location.protocol === 'https:' ? location.port || '443' : '8080'
 const port = ref(saved.port ?? defaultPort)
 const tls = ref(saved.tls ?? location.protocol === 'https:')
-const token = ref(saved.token ?? '')
-const pin = ref(saved.pin ?? '')
+// Token / PIN are secrets and are never persisted or pre-filled; the user
+// re-enters them each time (or leaves them blank for a trusted LAN).
+const token = ref('')
+const pin = ref('')
 const name = ref(saved.name ?? '0KAY')
 const coreId = ref('')
 const lanEnabled = ref(false)
@@ -78,7 +78,7 @@ onMounted(async () => {
   }
 })
 
-watch([host, port, tls, token, pin, name, hostEdited], () => {
+watch([host, port, tls, name, hostEdited], () => {
   localStorage.setItem(
     STORAGE_KEY,
     JSON.stringify({
@@ -86,8 +86,6 @@ watch([host, port, tls, token, pin, name, hostEdited], () => {
       hostOverride: hostEdited.value,
       port: port.value,
       tls: tls.value,
-      token: token.value,
-      pin: pin.value,
       name: name.value,
     } satisfies Saved),
   )

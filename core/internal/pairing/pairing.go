@@ -569,7 +569,7 @@ func (s *Store) handle(w http.ResponseWriter, r *http.Request) {
 			Code  string `json:"code"`
 			Allow bool   `json:"allow"`
 		}
-		if json.NewDecoder(r.Body).Decode(&body) != nil {
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body) != nil {
 			http.Error(w, "invalid request", 400)
 			return
 		}
@@ -633,7 +633,7 @@ func (s *Store) handle(w http.ResponseWriter, r *http.Request) {
 			ID     string `json:"id"`
 			Secret string `json:"secret"`
 		}
-		if json.NewDecoder(r.Body).Decode(&body) != nil {
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body) != nil {
 			http.Error(w, "invalid request", 400)
 			return
 		}

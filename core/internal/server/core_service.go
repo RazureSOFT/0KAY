@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"0kay/core/internal/egress"
@@ -472,10 +473,32 @@ func snapshotTasks(items []persistedTask) []persistedTask {
 	return append(sessions, others...)
 }
 
+// pruneFinishedLocked drops the oldest finished non-session rows once the
+// in-memory ledger exceeds persistedNonSessionLimit, mirroring the snapshot cap
+// so terminal tasks (output/tool/agent turns) cannot grow s.tasks without bound.
+// Session rows and in-flight work are always kept. Callers must hold s.mu.
+func (s *CoreServiceServer) pruneFinishedLocked() {
+	finished := make([]*TaskInfo, 0, len(s.tasks))
+	for _, t := range s.tasks {
+		if t.Kind == "agent_session" || t.State == "" || t.State == "running" || t.State == "pending" {
+			continue
+		}
+		finished = append(finished, t)
+	}
+	if len(finished) <= persistedNonSessionLimit {
+		return
+	}
+	sortTasksNewest(finished)
+	for _, t := range finished[persistedNonSessionLimit:] {
+		delete(s.tasks, t.TaskID)
+	}
+}
+
 // persistTasksLocked advances the in-memory change tracking TaskDelta relies on
 // and appends the delta to the durable journal. Fields are clipped (persistedFrom)
 // so the ledger stays small even while a tool streams large results.
 func (s *CoreServiceServer) persistTasksLocked() {
+	s.pruneFinishedLocked()
 	items := make([]persistedTask, 0, len(s.tasks))
 	for _, t := range s.tasks {
 		items = append(items, persistedFrom(t))
@@ -513,6 +536,20 @@ func (s *CoreServiceServer) persistTasksLocked() {
 	for _, id := range removed {
 		s.taskRemoved[id] = s.taskRevision
 		delete(s.taskChanges, id)
+	}
+	// Bound the removal set: a cursor older than the retained window cannot be
+	// served a correct delta anyway (it will reset), so keep only the newest
+	// resetTaskLimit revisions of removals instead of growing forever.
+	if len(s.taskRemoved) > resetTaskLimit {
+		cutoff := uint64(0)
+		if s.taskRevision > resetTaskLimit {
+			cutoff = s.taskRevision - resetTaskLimit
+		}
+		for id, version := range s.taskRemoved {
+			if version <= cutoff {
+				delete(s.taskRemoved, id)
+			}
+		}
 	}
 	if s.taskHistoryPath != "" {
 		s.appendTaskJournalLocked(changes, removed)
@@ -1012,6 +1049,30 @@ func truncateRunes(s string, n int) string {
 	return string(r[:n]) + "…"
 }
 
+// foldIndexRunes returns the rune index of the first case-insensitive occurrence
+// of query (which must already be lowercased) in content, or -1. It scans runes
+// so case folding cannot change byte length and misalign the offsets.
+func foldIndexRunes(content, query string) int {
+	if query == "" {
+		return -1
+	}
+	contentRunes := []rune(content)
+	queryRunes := []rune(query)
+	for i := 0; i+len(queryRunes) <= len(contentRunes); i++ {
+		match := true
+		for j, qr := range queryRunes {
+			if unicode.ToLower(contentRunes[i+j]) != qr {
+				match = false
+				break
+			}
+		}
+		if match {
+			return i
+		}
+	}
+	return -1
+}
+
 // ListAgents returns all registered Agent plugins.
 func (s *CoreServiceServer) ListAgents(ctx context.Context, req *corev1.ListAgentsRequest) (*corev1.ListAgentsResponse, error) {
 	onlineOnly := !req.IncludeUnhealthy
@@ -1057,9 +1118,10 @@ func (s *CoreServiceServer) RunDirect(ctx context.Context, req *corev1.RunDirect
 		return nil, status.Error(codes.InvalidArgument, "tool is required")
 	}
 
-	// Permission gates for dangerous tools
+	// Permission gates for dangerous tools. terminal_exec runs the same shell
+	// capability as shell/computeruse, so it must be gated identically.
 	perm := s.GetPermissions()
-	if req.Tool == "computeruse" || req.Tool == "shell" {
+	if req.Tool == "computeruse" || req.Tool == "shell" || req.Tool == "terminal_exec" {
 		if !perm.ComputerUse {
 			return &corev1.RunDirectResponse{
 				Success: false,
@@ -1194,7 +1256,8 @@ func (s *CoreServiceServer) searchSessionContext(sessionID, query string) []map[
 			continue
 		}
 		content := fmt.Sprint(task["prompt"]) + "\n" + fmt.Sprint(task["result"])
-		index := strings.Index(strings.ToLower(content), query)
+		runes := []rune(content)
+		index := foldIndexRunes(content, query)
 		if index < 0 {
 			continue
 		}
@@ -1203,14 +1266,14 @@ func (s *CoreServiceServer) searchSessionContext(sessionID, query string) []map[
 			start = 0
 		}
 		end := start + snippet
-		if end > len(content) {
-			end = len(content)
+		if end > len(runes) {
+			end = len(runes)
 		}
 		out = append(out, map[string]any{
 			"id":      task["task_id"],
 			"kind":    kind,
 			"state":   task["state"],
-			"snippet": content[start:end],
+			"snippet": string(runes[start:end]),
 		})
 		if len(out) >= 20 {
 			break
@@ -1743,9 +1806,12 @@ func (s *CoreServiceServer) sessionDeletedLocked(t *TaskInfo) bool {
 // sortTaskRows orders rows newest-first, tie-broken by task id.
 func sortTaskRows(out []map[string]interface{}) {
 	sort.Slice(out, func(i, j int) bool {
-		a, b := out[i]["started_at"].(string), out[j]["started_at"].(string)
+		a, _ := out[i]["started_at"].(string)
+		b, _ := out[j]["started_at"].(string)
 		if a == b {
-			return out[i]["task_id"].(string) < out[j]["task_id"].(string)
+			idA, _ := out[i]["task_id"].(string)
+			idB, _ := out[j]["task_id"].(string)
+			return idA < idB
 		}
 		return a > b
 	})

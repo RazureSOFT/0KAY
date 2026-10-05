@@ -2,12 +2,13 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Message } from '../stores/chat'
+import { emotionMoodColor, emotionMoodOf } from '../emotion'
 
 const props = defineProps<{
   message: Message
 }>()
 
-const { locale } = useI18n()
+const { t, locale } = useI18n()
 
 const isUser = computed(() => props.message.role === 'user')
 const thinkOpen = ref(false)
@@ -85,30 +86,14 @@ const dateTimeStr = computed(() => {
         <span class="time">{{ dateTimeStr }}</span>
         <template v-if="!isUser && message.emotion">
           <span class="separator">·</span>
-          <span class="emotion" :style="{ color: getEmotionColor(message.emotion) }">
-            {{ getEmotionLabel(message.emotion) }}
+          <span class="emotion" :style="{ color: emotionMoodColor(emotionMoodOf(message.emotion)) }">
+            {{ t(`emotion.${emotionMoodOf(message.emotion)}`) }}
           </span>
         </template>
       </div>
     </div>
   </div>
 </template>
-
-<script lang="ts">
-function getEmotionColor(emotion: any): string {
-  if (emotion.irritation > 0.7) return '#d13438'
-  if (emotion.valence > 0.5) return '#107c10'
-  if (emotion.valence < -0.3) return '#0078d4'
-  return '#8a8886'
-}
-
-function getEmotionLabel(emotion: any): string {
-  if (emotion.irritation > 0.7) return 'Irritated'
-  if (emotion.valence > 0.5) return 'Happy'
-  if (emotion.valence < -0.3) return 'Down'
-  return 'Neutral'
-}
-</script>
 
 <style scoped>
 .message {

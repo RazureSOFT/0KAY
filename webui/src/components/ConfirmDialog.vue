@@ -225,6 +225,13 @@ function onKeydown(event: KeyboardEvent) {
   outline: 3px solid var(--md-primary);
   outline-offset: 3px;
 }
+/* Defined locally (not just in the global theme.css) so the enter animation
+   cannot be lost if the component is used without the global sheet. */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dialog-arrive {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
 @media (prefers-reduced-motion: reduce) {
   .confirm-scrim,
   .confirm-dialog,

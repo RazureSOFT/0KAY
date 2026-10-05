@@ -5,7 +5,8 @@ import { apiGet, apiPost, ApiError } from '../api'
 
 const { t } = useI18n()
 const pluginsLoading = ref(false)
-const pluginResults = ref<Array<{ name: string; version: string; latest?: string; has_update: boolean; repository?: string; package?: string; can_update?: boolean; error?: string }> | null>(null)
+type PluginResult = { name: string; version: string; latest?: string; has_update: boolean; repository?: string; package?: string; can_update?: boolean; error?: string }
+const pluginResults = ref<PluginResult[] | null>(null)
 const pluginsError = ref('')
 
 type ApplyState = {
@@ -41,7 +42,7 @@ async function applyUpdate(plugin: string, version?: string) {
   if (applyState.value?.status === 'running') return
   applyError.value = ''
   try {
-    applyState.value = await apiPost('/api/plugins/pm/update', { plugin, version: version || '' })
+    applyState.value = await apiPost<ApplyState>('/api/plugins/pm/update', { plugin, version: version || '' })
     startPolling()
   } catch (error: unknown) {
     applyError.value = error instanceof Error ? error.message : String(error)
@@ -50,7 +51,7 @@ async function applyUpdate(plugin: string, version?: string) {
 
 async function refreshApply() {
   try {
-    applyState.value = await apiGet('/api/plugins/pm/status')
+    applyState.value = await apiGet<ApplyState>('/api/plugins/pm/status')
   } catch {
     return // Core is restarting after a self-update; keep polling.
   }
@@ -84,8 +85,8 @@ async function checkPluginUpdates() {
   pluginsLoading.value = true
   pluginsError.value = ''
   try {
-    const data = await apiGet('/api/plugins/pm/check-plugins')
-    pluginResults.value = data.plugins || []
+    const data = await apiGet<{ plugins?: PluginResult[] }>('/api/plugins/pm/check-plugins')
+    pluginResults.value = data?.plugins || []
   } catch (error: unknown) {
     pluginsError.value = error instanceof ApiError && error.status === 404
       ? t('settings.about.unsupported')
@@ -99,7 +100,7 @@ async function loadProxy() {
   proxyLoading.value = true
   proxyError.value = ''
   try {
-    const data = await apiGet('/api/settings/updates')
+    const data = await apiGet<{ values?: { github_proxy?: string } }>('/api/settings/updates')
     const value = String(data?.values?.github_proxy ?? '')
     githubProxy.value = value
     savedProxy.value = value
@@ -134,8 +135,8 @@ function setProxy(value: string) {
 onMounted(() => {
   void checkPluginUpdates()
   void loadProxy()
-  void apiGet('/api/plugins/pm/status')
-    .then((state: ApplyState) => {
+  void apiGet<ApplyState>('/api/plugins/pm/status')
+    .then((state: ApplyState | null) => {
       applyState.value = state
       if (state?.status === 'running') startPolling()
     })

@@ -17,7 +17,21 @@ const pendingFiles = ref<Array<{ name: string; url: string; mime?: string; size?
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
 
+// Follow new content only while the reader is already near the bottom, so a
+// streaming reply never yanks them away from history they are reading.
+const NEAR_BOTTOM_PX = 80
+const atBottom = ref(true)
+let forceScroll = false
+
+function onScroll() {
+  const el = chatContainer.value
+  if (!el) return
+  atBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight <= NEAR_BOTTOM_PX
+}
+
 function sendMessage() {
+  // A reply is streaming; the store refuses new sends, so keep the draft.
+  if (chatStore.isTyping) return
   const text = inputText.value.trim()
   if (!text && pendingImages.value.length === 0 && pendingFiles.value.length === 0) return
 
@@ -25,6 +39,7 @@ function sendMessage() {
   const files = pendingFiles.value.map((file) => ({ ...file }))
   pendingImages.value = []
   pendingFiles.value = []
+  forceScroll = true
   chatStore.sendMessage(text, images, files)
   inputText.value = ''
 }
@@ -146,17 +161,21 @@ watch(
   () => chatStore.messages.length,
   async () => {
     await nextTick()
-    if (chatContainer.value) {
-      chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+    const el = chatContainer.value
+    if (!el) return
+    if (atBottom.value || forceScroll) {
+      el.scrollTop = el.scrollHeight
+      atBottom.value = true
     }
+    forceScroll = false
   }
 )
 </script>
 
 <template>
   <div class="chat-panel">
-    <div class="chat-container" ref="chatContainer">
-      <div class="messages">
+    <div class="chat-container" ref="chatContainer" @scroll="onScroll">
+      <div class="messages" role="log" aria-live="polite" aria-relevant="additions text">
         <div v-if="chatStore.messages.length === 0" class="empty-state">
           <div class="empty-icon">
             <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
@@ -257,7 +276,7 @@ watch(
         <button
           class="send-button"
           @click="sendMessage"
-          :disabled="(!inputText.trim() && !pendingImages.length && !pendingFiles.length) || !chatStore.isConnected"
+          :disabled="(!inputText.trim() && !pendingImages.length && !pendingFiles.length) || !chatStore.isConnected || chatStore.isTyping"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M18 2L9 11M18 2L12 18L9 11M18 2L2 8L9 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>

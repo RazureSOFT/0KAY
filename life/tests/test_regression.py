@@ -422,21 +422,23 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ConcurrentSQLiteTests(unittest.TestCase):
-    """Regression: WAL mode + per-call connection churn raised
+    """Regression: per-call connection churn raised
     ``sqlite3.OperationalError: attempt to write a readonly database``.
 
     ``CompanionSystem.db()`` and ``MemorySystem._connect()`` each open a fresh
     connection per call and close it again, and callers reach them from
     arbitrary worker threads (the engine wraps most companion/memory work in
-    ``asyncio.to_thread``).  In WAL mode SQLite deletes the ``-wal``/``-shm``
-    sidecars when the *last* connection closes, so a connection opening
-    concurrently with that teardown can fail its first write with
-    ``SQLITE_READONLY`` (code 8) on Windows.  That is a race rather than a lock
-    timeout, so ``busy_timeout`` does not help; both systems now serialize
-    access with an RLock.
+    ``asyncio.to_thread``).  Both stores used to run in WAL mode, where SQLite
+    deletes the ``-wal``/``-shm`` sidecars when the *last* connection closes, so
+    a connection opening concurrently with that teardown could fail its first
+    write with ``SQLITE_READONLY`` (code 8) on Windows.  That was a race rather
+    than a lock timeout, so ``busy_timeout`` did not help.  The stores now run
+    in ``journal_mode=PERSIST`` (which reuses one rollback journal in place and
+    never tears sidecars down under a concurrent opener) *and* serialize access
+    with an RLock.
 
-    These tests pin the contract that removes the race -- a second caller must
-    not be able to open the database while the first still holds it -- which is
+    These tests pin the serialization contract -- a second caller must not be
+    able to open the database while the first still holds it -- which is
     deterministic, unlike probing for the intermittent write error itself.
     """
 
@@ -477,6 +479,38 @@ class ConcurrentSQLiteTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             memory = MemorySystem(directory)
             self._assert_serialized(memory._connect)
+
+    def test_stores_do_not_run_in_wal(self):
+        """The stores must stay off WAL.
+
+        Both open a fresh connection per call and close it again.  A WAL
+        database deletes its ``-wal``/``-shm`` sidecars on every
+        last-connection close, so that pattern churns two files per operation —
+        visible on Windows as thousands of ``.db-wal``/``.db-shm`` entries in
+        the Recycle Bin.  ``journal_mode=PERSIST`` reuses one rollback journal
+        in place instead, so pin the mode and the absence of sidecars.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            companion = CompanionSystem(directory)
+            with companion.db() as db:
+                self.assertEqual(str(db.execute("PRAGMA journal_mode").fetchone()[0]).lower(), "persist")
+            companion_dir = os.path.join(directory, "companion")
+            sidecars = [n for n in os.listdir(companion_dir) if n.endswith(("-wal", "-shm"))]
+            self.assertEqual(sidecars, [], "companion must not leave WAL sidecars")
+
+            memory = MemorySystem(os.path.join(directory, "memory"))
+            with memory._connect() as db:
+                self.assertEqual(str(db.execute("PRAGMA journal_mode").fetchone()[0]).lower(), "persist")
+            memory.close()
+            memory_dir = os.path.join(directory, "memory")
+            # A normal close must delete nothing: the reused journal may stay,
+            # but a WAL sidecar never may (that is the churn being pinned here).
+            sidecars = [n for n in os.listdir(memory_dir) if n.endswith(("-wal", "-shm"))]
+            self.assertEqual(sidecars, [], "close() must not leave WAL sidecars")
+            self.assertTrue(os.path.exists(os.path.join(memory_dir, "memory_center.db")))
+            # release_index=True is the temp-dir path: it does drop the projection.
+            memory.close(release_index=True)
+            self.assertFalse(os.path.isdir(os.path.join(memory_dir, "tantivy_memory")))
 
 
 class WorldPackageImportTests(unittest.TestCase):

@@ -37,7 +37,7 @@ func (s *CoreServiceServer) resetTaskIDsLocked() map[string]bool {
 }
 
 func (s *CoreServiceServer) TaskDelta(cursor string) map[string]interface{} {
-	s.mu.Lock()
+	s.mu.RLock()
 	generation := taskGeneration
 	var previous uint64
 	prefix := generation + ":"
@@ -48,7 +48,7 @@ func (s *CoreServiceServer) TaskDelta(cursor string) map[string]interface{} {
 	}
 	revision := s.taskRevision
 	if valid && previous == revision {
-		s.mu.Unlock()
+		s.mu.RUnlock()
 		return map[string]interface{}{"tasks": []map[string]interface{}{}, "removed": []string{}, "reset": false, "cursor": cursor}
 	}
 	ids := map[string]bool{}
@@ -82,7 +82,7 @@ func (s *CoreServiceServer) TaskDelta(cursor string) map[string]interface{} {
 		}
 		result = append(result, s.taskRowLocked(t))
 	}
-	s.mu.Unlock()
+	s.mu.RUnlock()
 	sortTaskRows(result)
 	result = limitTaskRows(result)
 	return map[string]interface{}{"tasks": result, "removed": removed, "reset": !valid, "cursor": fmt.Sprintf("%s:%d", generation, revision)}

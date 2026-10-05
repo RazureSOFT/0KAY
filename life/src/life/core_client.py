@@ -1,5 +1,6 @@
 """Core client for L.I.F.E - register, heartbeat, query agents, dispatch tasks."""
 
+import asyncio
 import os
 import sys
 import time
@@ -74,6 +75,26 @@ class CoreClient:
         self.registration_failures = 0
         self._register_blocked_at = 0.0
 
+    def _connect_once(self) -> None:
+        """Open the channel and build the stubs; raises on failure.
+
+        Shared by the sync and async entry points so the two cannot drift.
+        """
+        self._channel = grpc.insecure_channel(self.address)
+        # Wait briefly for channel to be ready
+        grpc.channel_ready_future(self._channel).result(timeout=3)
+        self._plugin_stub = core_pb2_grpc.PluginServiceStub(self._channel)
+        self._core_stub = core_pb2_grpc.CoreServiceStub(self._channel)
+        self._connected = True
+
+    def _close_channel(self) -> None:
+        if self._channel is not None:
+            try:
+                self._channel.close()
+            except Exception:  # pragma: no cover - best-effort cleanup
+                pass
+            self._channel = None
+
     def connect(self, attempts: int = 3) -> bool:
         """Open channel and create stubs, retrying with bounded backoff.
 
@@ -85,29 +106,46 @@ class CoreClient:
         token and prompts travel in plaintext.  It is therefore only safe when
         ``CORE_ADDRESS`` points at a loopback/local Core; do not point it at a
         remote host without adding TLS (``secure_channel`` + Core's CA).
+
+        Blocking: async callers must use :meth:`connect_async`, which offloads
+        the ready-wait and awaits the backoff instead of sleeping on the loop.
         """
         attempts = max(1, int(attempts))
         last_error: Optional[Exception] = None
         for attempt in range(1, attempts + 1):
             try:
-                self._channel = grpc.insecure_channel(self.address)
-                # Wait briefly for channel to be ready
-                grpc.channel_ready_future(self._channel).result(timeout=3)
-                self._plugin_stub = core_pb2_grpc.PluginServiceStub(self._channel)
-                self._core_stub = core_pb2_grpc.CoreServiceStub(self._channel)
-                self._connected = True
+                self._connect_once()
                 return True
             except Exception as e:
                 last_error = e
                 log.warning("Core connect attempt %d/%d to %s failed: %s", attempt, attempts, self.address, e)
-                if self._channel is not None:
-                    try:
-                        self._channel.close()
-                    except Exception:  # pragma: no cover - best-effort cleanup
-                        pass
-                    self._channel = None
+                self._close_channel()
                 if attempt < attempts:
                     time.sleep(min(0.5 * (2 ** (attempt - 1)), 2.0))
+        self._connected = False
+        log.error("Failed to connect to Core at %s: %s", self.address, last_error)
+        return False
+
+    async def connect_async(self, attempts: int = 3) -> bool:
+        """Async counterpart to :meth:`connect`.
+
+        ``connect`` blocks (``channel_ready_future(...).result`` and
+        ``time.sleep``), so calling it from async startup code stalls the event
+        loop.  This variant runs the ready-wait in a worker thread and awaits the
+        backoff, keeping the loop free.
+        """
+        attempts = max(1, int(attempts))
+        last_error: Optional[Exception] = None
+        for attempt in range(1, attempts + 1):
+            try:
+                await asyncio.to_thread(self._connect_once)
+                return True
+            except Exception as e:
+                last_error = e
+                log.warning("Core connect attempt %d/%d to %s failed: %s", attempt, attempts, self.address, e)
+                self._close_channel()
+                if attempt < attempts:
+                    await asyncio.sleep(min(0.5 * (2 ** (attempt - 1)), 2.0))
         self._connected = False
         log.error("Failed to connect to Core at %s: %s", self.address, last_error)
         return False

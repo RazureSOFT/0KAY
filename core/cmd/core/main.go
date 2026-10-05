@@ -186,11 +186,20 @@ func main() {
 		<-sigCh
 		fmt.Println("\nShutting down...")
 
-		// Stop HTTP server
-		httpServer.Shutdown(context.Background())
+		// Stop HTTP server. Bound the drain so a stuck SSE/WS connection cannot
+		// hang shutdown forever; force-close whatever is left when it expires.
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			log.Printf("HTTP shutdown: %v", err)
+			_ = httpServer.Close()
+		}
+		shutdownCancel()
 
 		// Stop gRPC server
 		grpcServer.GracefulStop()
+
+		// Kill provider child processes so they are not orphaned.
+		stdioRunner.Stop()
 
 		cancel()
 	}()

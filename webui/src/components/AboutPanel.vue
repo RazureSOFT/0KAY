@@ -17,7 +17,8 @@ const avatarOf = (login: string, size = 96) => `https://github.com/${login}.png?
 
 // Platform (0KAY core) update check and apply.
 const aboutLoading = ref(false)
-const updateResult = ref<{ current: string; latest?: string; has_update: boolean; url?: string; name?: string; notes?: string; published_at?: string; source_available?: boolean } | null>(null)
+type PlatformCheck = { current: string; latest?: string; has_update: boolean; url?: string; name?: string; notes?: string; published_at?: string; source_available?: boolean }
+const updateResult = ref<PlatformCheck | null>(null)
 const updateError = ref('')
 
 type ApplyState = {
@@ -42,7 +43,7 @@ async function applyUpdate(plugin: string, version?: string) {
   if (applyState.value?.status === 'running') return
   applyError.value = ''
   try {
-    applyState.value = await apiPost('/api/plugins/pm/update', { plugin, version: version || '' })
+    applyState.value = await apiPost<ApplyState>('/api/plugins/pm/update', { plugin, version: version || '' })
     startPolling()
   } catch (error: unknown) {
     applyError.value = error instanceof Error ? error.message : String(error)
@@ -51,7 +52,7 @@ async function applyUpdate(plugin: string, version?: string) {
 
 async function refreshApply() {
   try {
-    applyState.value = await apiGet('/api/plugins/pm/status')
+    applyState.value = await apiGet<ApplyState>('/api/plugins/pm/status')
   } catch {
     return // Core is restarting after a self-update; keep polling.
   }
@@ -89,7 +90,7 @@ async function checkUpdates() {
   aboutLoading.value = true
   updateError.value = ''
   try {
-    const result = await apiGet('/api/plugins/pm/check')
+    const result = await apiGet<PlatformCheck>('/api/plugins/pm/check')
     updateResult.value = result
     if (result?.current) currentVersion.value = String(result.current)
   } catch (error: unknown) {
@@ -144,8 +145,8 @@ async function fetchContributors() {
 onMounted(() => {
   void checkUpdates()
   void fetchContributors()
-  void apiGet('/api/plugins/pm/status')
-    .then((state: ApplyState) => {
+  void apiGet<ApplyState>('/api/plugins/pm/status')
+    .then((state: ApplyState | null) => {
       applyState.value = state
       if (state?.status === 'running') startPolling()
     })

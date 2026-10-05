@@ -83,10 +83,16 @@
     "removeFile": "Remove file",
     "download": "Download history",
     "exportTitle": "0KAY Chat History",
-    "you": "You"
+    "you": "You",
+    "resizePanel": "Drag or use arrow keys to resize the chat panel"
   },
   "status": {
     "title": "Character Status",
+    "age": "Age",
+    "ageValue": "{age} y/o",
+    "birthdayUnset": "Birthday not set",
+    "time": "Time",
+    "timezone": "Timezone",
     "mood": "Mood",
     "mentalEnergy": "Mental Energy",
     "emotions": "Emotions",
@@ -291,6 +297,7 @@
       "live2d": "Live2D",
       "security": "Security",
       "permissions": "Permissions",
+      "connection": "Connection",
       "danger": "Danger",
       "updates": "Plugin updates",
       "about": "About"

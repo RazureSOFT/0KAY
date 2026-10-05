@@ -232,10 +232,11 @@ async function runMaintenance() {
   catch (cause: any) { error.value = cause?.message || '维护失败' }
 }
 
-let searchTimer: ReturnType<typeof setTimeout> | null = null
-watch(query, () => { offset.value = 0; if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(loadMemories, 250) })
+let memorySearchTimer: ReturnType<typeof setTimeout> | null = null
+let noteSearchTimer: ReturnType<typeof setTimeout> | null = null
+watch(query, () => { offset.value = 0; if (memorySearchTimer) clearTimeout(memorySearchTimer); memorySearchTimer = setTimeout(loadMemories, 250) })
 watch([tier, sort], () => { offset.value = 0; loadMemories() })
-watch(noteQuery, () => { if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(loadNotes, 250) })
+watch(noteQuery, () => { if (noteSearchTimer) clearTimeout(noteSearchTimer); noteSearchTimer = setTimeout(loadNotes, 250) })
 watch(reflectionStatus, loadReflections)
 watch(tab, refresh)
 onMounted(async () => { await loadMemories(); await loadStats(); await loadDashboard() })
@@ -510,7 +511,7 @@ onMounted(async () => { await loadMemories(); await loadStats(); await loadDashb
 .tier-short{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 .tier-long{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#4a2230)}
 .chip-ok{background:var(--md-success-container);color:#0D3B1E}
-.chip-warn{background:#FFF1DC;color:#7A4400}
+.chip-warn{background:var(--md-warning-container);color:var(--md-on-warning-container)}
 
 .error-banner{padding:12px 16px;border-radius:12px;background:var(--md-error-container);color:var(--md-on-error-container);font-size:13px;margin:var(--space-lg) 0}
 .notice{padding:10px 16px;border-radius:12px;background:var(--md-primary-container);color:var(--md-on-primary-container);font-size:13px;margin-top:var(--space-md)}

@@ -60,7 +60,9 @@ func (g *Gateway) handleEgress(w http.ResponseWriter, r *http.Request) {
 		Timeout: time.Duration(req.TimeoutMS) * time.Millisecond,
 	}, allowlist)
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, "egress_failed", err.Error())
+		// Mirror CoreService.Egress: a blocked or failed egress is reported in
+		// the payload's error field (status 0) rather than as a transport error.
+		writeJSON(w, http.StatusOK, map[string]any{"status": 0, "error": err.Error()})
 		return
 	}
 	body := string(resp.Body)

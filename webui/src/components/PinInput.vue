@@ -7,7 +7,9 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   autofocus?: boolean
   invalid?: boolean
-}>(), { modelValue: '', length: 6, disabled: false, autofocus: false, invalid: false })
+  /** id of an external error element to associate via aria-describedby. */
+  errorId?: string
+}>(), { modelValue: '', length: 6, disabled: false, autofocus: false, invalid: false, errorId: '' })
 
 const emit = defineEmits<{ 'update:modelValue': [string]; complete: [string] }>()
 
@@ -65,7 +67,11 @@ onMounted(() => { if (props.autofocus) focusAt(0) })
 </script>
 
 <template>
-  <div class="pin-boxes" :class="{ invalid }">
+  <div
+    class="pin-boxes"
+    :class="{ invalid }"
+    :style="{ gridTemplateColumns: `repeat(${length}, 1fr)` }"
+  >
     <input
       v-for="(digit, index) in boxes"
       :key="index"
@@ -77,6 +83,8 @@ onMounted(() => { if (props.autofocus) focusAt(0) })
       maxlength="1"
       :disabled="disabled"
       :value="digit"
+      :aria-invalid="invalid"
+      :aria-describedby="invalid && errorId ? errorId : undefined"
       @input="onInput(index, $event)"
       @keydown="onKeydown(index, $event)"
       @focus="($event.target as HTMLInputElement).select()"
@@ -85,7 +93,7 @@ onMounted(() => { if (props.autofocus) focusAt(0) })
 </template>
 
 <style scoped>
-.pin-boxes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.pin-boxes { display: grid; gap: 10px; }
 .pin-boxes.invalid { animation: pin-shake 0.32s; }
 .pin-box {
   width: 100%;

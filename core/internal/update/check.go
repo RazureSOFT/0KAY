@@ -2,6 +2,7 @@
 package update
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -45,8 +46,14 @@ func apiBase() string {
 // a component that only tags (for example v0.0.8 without a matching release) is
 // still discoverable. It returns (nil, nil) when neither exists.
 func Latest(owner, repo string) (*Release, error) {
+	return LatestContext(context.Background(), owner, repo)
+}
+
+// LatestContext is Latest with a caller deadline, so a batch of update checks
+// can be bounded by one overall timeout.
+func LatestContext(ctx context.Context, owner, repo string) (*Release, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/releases/latest", apiBase(), owner, repo)
-	release, status, err := getJSON[Release](url)
+	release, status, err := getJSONContext[Release](ctx, url)
 	if err != nil {
 		return nil, err
 	}
@@ -54,19 +61,19 @@ func Latest(owner, repo string) (*Release, error) {
 	case http.StatusOK:
 		return release, nil
 	case http.StatusNotFound:
-		return latestTag(owner, repo)
+		return latestTagContext(ctx, owner, repo)
 	default:
 		return nil, fmt.Errorf("github releases: HTTP %d", status)
 	}
 }
 
-// latestTag returns the highest semver tag of owner/repo as a synthetic release
-// (no notes), or (nil, nil) when the repository has no tags.
-func latestTag(owner, repo string) (*Release, error) {
+// latestTagContext returns the highest semver tag of owner/repo as a synthetic
+// release (no notes), or (nil, nil) when the repository has no tags.
+func latestTagContext(ctx context.Context, owner, repo string) (*Release, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/tags?per_page=100", apiBase(), owner, repo)
-	tags, status, err := getJSON[[]struct {
+	tags, status, err := getJSONContext[[]struct {
 		Name string `json:"name"`
-	}](url)
+	}](ctx, url)
 	if err != nil {
 		return nil, err
 	}
@@ -95,10 +102,10 @@ func latestTag(owner, repo string) (*Release, error) {
 	}, nil
 }
 
-// getJSON performs a GET and decodes a JSON body. The status code is returned
-// for every response so callers can branch on 404 without an error.
-func getJSON[T any](url string) (*T, int, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+// getJSONContext performs a GET and decodes a JSON body. The status code is
+// returned for every response so callers can branch on 404 without an error.
+func getJSONContext[T any](ctx context.Context, url string) (*T, int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, 0, err
 	}

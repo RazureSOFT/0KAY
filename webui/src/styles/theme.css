@@ -576,13 +576,25 @@ textarea.input, .textarea { resize: vertical; min-height: 80px; }
 }
 
 /* ============ Reduced motion ============
-   Reduce, don't remove: keep color/opacity state changes, drop all movement. */
+   Reduce, don't remove: keep colour/opacity state cues, drop movement.
+   Zeroing the motion tokens (instead of a blanket
+   `* { transition-duration: 1ms !important }`) leaves component-level
+   reduced-motion handling in charge and keeps non-motion transitions. */
 @media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-instant: 1ms;
+    --duration-short: 1ms;
+    --duration-medium: 1ms;
+    --duration-long: 1ms;
+    --transition-fast: 1ms var(--ease-out);
+    --transition-normal: 1ms var(--ease-out);
+    --transition-slow: 1ms var(--ease-out);
+    --transition-spring: 1ms var(--ease-spring);
+  }
   *, *::before, *::after {
     animation-duration: 1ms !important;
     animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 1ms !important;
     scroll-behavior: auto !important;
   }
   #app .nav-item::before,

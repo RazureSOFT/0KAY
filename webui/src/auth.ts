@@ -91,7 +91,9 @@ type Waiter = { resolve: () => void; reject: (reason: Error) => void }
 const waiters: Waiter[] = []
 let nativeFetch: typeof fetch | null = null
 let installed = false
-let loginInFlight: Promise<SessionState> | null = null
+// In-flight logins keyed by the submitted credential, so two concurrent
+// submits with different tokens do not resolve to the same result.
+const loginInFlight = new Map<string, Promise<SessionState>>()
 
 function settleWaiters(ok: boolean): void {
   const pending = waiters.splice(0, waiters.length)
@@ -323,10 +325,11 @@ export async function verifyPin(pin: string): Promise<boolean> {
 
 /** POST a token (paired-device or API token) and mint the session cookie. */
 export async function submitLogin(token: string): Promise<SessionState> {
-  if (loginInFlight) return loginInFlight
+  const typed = token.trim()
+  const existing = loginInFlight.get(typed)
+  if (existing) return existing
   const doFetch = nativeFetch ?? window.fetch
-  loginInFlight = (async () => {
-    const typed = token.trim()
+  const promise = (async () => {
     const res = await doFetch('/api/auth/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -348,10 +351,11 @@ export async function submitLogin(token: string): Promise<SessionState> {
     settleWaiters(true)
     return data as SessionState
   })()
+  loginInFlight.set(typed, promise)
   try {
-    return await loginInFlight
+    return await promise
   } finally {
-    loginInFlight = null
+    loginInFlight.delete(typed)
   }
 }
 

@@ -39,6 +39,7 @@ from ..model_client import MocrClient
 from ..soul import SoulState
 from ..task_records import TaskRecorder, task_context
 from ..config import LIFE_EVENTS as _LIFE_EVENTS
+from ..timeutil import now_utc, parse_utc
 
 # The plugin's own root (``…/life``).  The shipped ``world/`` assets and the
 # trained ``models/`` checkpoints used to be resolved relative to the *process
@@ -2164,10 +2165,10 @@ class LifeEngine:
         """Days since the last real exchange (0 when it just happened)."""
         if not self._last_interaction_at:
             return 0.0
-        try:
-            delta = datetime.now() - datetime.fromisoformat(self._last_interaction_at)
-        except (ValueError, TypeError):
+        stamp = parse_utc(self._last_interaction_at)
+        if stamp is None:
             return 0.0
+        delta = now_utc() - stamp
         return max(0.0, delta.total_seconds() / 86400.0)
 
     def _record_self_narrative(self, event: str, valence: float) -> None:
@@ -2285,11 +2286,8 @@ class LifeEngine:
         entry = self._awaiting_feedback.pop(session_id, None)
         if not entry or self.cognition is None or not self._cognition_enabled:
             return
-        now = datetime.now()
-        try:
-            latency = max(0.0, (now - datetime.fromisoformat(entry.get("sent_at", ""))).total_seconds())
-        except (ValueError, TypeError):
-            latency = None
+        sent_at = parse_utc(entry.get("sent_at", ""))
+        latency = None if sent_at is None else max(0.0, (now_utc() - sent_at).total_seconds())
         feedback = self._classify_feedback(message)
         reward = self._feedback_reward(entry, latency, feedback)
         # The person who just spoke is a real partner: build the reciprocal tie
@@ -2499,12 +2497,8 @@ class LifeEngine:
         if not user_id:
             return
         stats = self._feedback_stats.setdefault(user_id, {})
-        now = datetime.now()
-        try:
-            last = datetime.fromisoformat(stats.get("last_decay", ""))
-            factor = 0.5 ** (max(0.0, (now - last).total_seconds()) / (30 * 86400.0))
-        except (ValueError, TypeError):
-            factor = 1.0
+        last = parse_utc(stats.get("last_decay", ""))
+        factor = 1.0 if last is None else 0.5 ** (max(0.0, (now_utc() - last).total_seconds()) / (30 * 86400.0))
         for key in ("weighted_replies", "weighted_positive", "weighted_negative"):
             stats[key] = float(stats.get(key, 0.0)) * factor
         stats["replies"] = int(stats.get("replies", 0)) + 1
@@ -2519,6 +2513,7 @@ class LifeEngine:
             stats["recalled"] = int(stats.get("recalled", 0)) + 1
         if latency is not None:
             stats["last_latency_s"] = round(latency, 1)
+        now = datetime.now()
         stats["last_feedback"] = now.isoformat()
         stats["last_decay"] = now.isoformat()
 
@@ -3241,15 +3236,15 @@ class LifeEngine:
     def _agenda_position(agenda: list[dict], now: datetime) -> tuple[dict | None, dict | None]:
         """The agenda item being lived now and the next one (for near-term detail)."""
         current = following = None
+        now_utc_dt = parse_utc(now)
         for item in agenda or []:
             start = str(item.get("start_at") or "").replace("T", " ").strip()
             if not start:
                 continue
-            try:
-                start_dt = datetime.fromisoformat(start)
-            except ValueError:
+            start_dt = parse_utc(start)
+            if start_dt is None:
                 continue
-            if start_dt <= now:
+            if start_dt <= now_utc_dt:
                 current = item
             elif following is None:
                 following = item
@@ -4435,7 +4430,9 @@ class LifeEngine:
         """
         try:
             return self.adapters.config_for_session(str(session_id or ""))
-        except Exception:
+        except Exception as error:
+            logger.warning("adapter routing failed for session %r; using default config: %s",
+                           session_id, error)
             return "default"
 
     @property
@@ -4917,17 +4914,17 @@ class LifeEngine:
     @staticmethod
     def _proactive_due(candidate: dict, now: datetime) -> bool:
         """Respect the candidate's preferred/expiry window instead of firing immediately."""
+        now_utc_dt = parse_utc(now)
         for key, must_be_after in (("preferred_at", True), ("best_until", False), ("expires_at", False)):
             value = str(candidate.get(key) or "").strip()
             if not value:
                 continue
-            try:
-                moment = datetime.fromisoformat(value.replace("Z", ""))
-            except ValueError:
+            moment = parse_utc(value)
+            if moment is None:
                 continue
-            if must_be_after and moment > now:
+            if must_be_after and moment > now_utc_dt:
                 return False
-            if not must_be_after and moment < now:
+            if not must_be_after and moment < now_utc_dt:
                 return False
         return True
 
@@ -4962,7 +4959,7 @@ class LifeEngine:
             min_interval = 5
         tts_on = str(settings.get("proactive_tts", "0")) == "1"
         last = await asyncio.to_thread(self.companion.last_delivery_at)
-        if last and (now - last).total_seconds() < max(0, min_interval) * 60:
+        if last and (now_utc() - last).total_seconds() < max(0, min_interval) * 60:
             return {"skipped": "min_interval", "delivered": 0, "blocked": 0, "candidates": len(candidates)}
         delivered = 0
         blocked = 0

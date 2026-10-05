@@ -88,6 +88,9 @@ export const useChatStore = defineStore('chat', () => {
   let activeSseController: AbortController | null = null
   let notificationTimer: ReturnType<typeof setInterval> | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  // Set when we close the socket ourselves (dispose) so onclose does not
+  // reschedule a reconnect loop against a server we no longer want to reach.
+  let intentionalClose = false
 
   const lastMessage = computed(() =>
     messages.value.length > 0 ? messages.value[messages.value.length - 1] : null
@@ -124,6 +127,7 @@ export const useChatStore = defineStore('chat', () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const wsUrl = `${protocol}//${window.location.host}/ws`
 
+    intentionalClose = false
     ws = new WebSocket(wsUrl)
     if (!notificationTimer) {
       notificationTimer = setInterval(async () => {
@@ -169,6 +173,7 @@ export const useChatStore = defineStore('chat', () => {
     ws.onclose = () => {
       isConnected.value = false
       console.log('WebSocket disconnected')
+      if (intentionalClose) return
       if (reconnectTimer) clearTimeout(reconnectTimer)
       reconnectTimer = setTimeout(connect, 3000)
     }
@@ -187,7 +192,7 @@ export const useChatStore = defineStore('chat', () => {
   function dispose() {
     if (notificationTimer) { clearInterval(notificationTimer); notificationTimer = null }
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
-    if (ws) { ws.onclose = null; ws.close(); ws = null }
+    if (ws) { intentionalClose = true; ws.onclose = null; ws.close(); ws = null }
     activeSseController?.abort()
   }
   onScopeDispose(dispose)
@@ -329,6 +334,9 @@ export const useChatStore = defineStore('chat', () => {
    * Fallback: WebSocket when HTTP/SSE fails.
    */
   async function sendMessage(content: string, images: string[] = [], files: Array<{ name: string; url: string; mime?: string; size?: number }> = []) {
+    // A reply is already streaming: refuse the new send rather than silently
+    // aborting the in-flight one (which used to happen in sendViaSSE).
+    if (isTyping.value) return
     messages.value.push({
       id: `msg_${++messageIdCounter}`,
       role: 'user',
@@ -392,7 +400,6 @@ export const useChatStore = defineStore('chat', () => {
     history: Array<{ role: string; content: string }>,
     attachments: Array<{ name: string; url: string; mime?: string; size?: number }> = []
   ): Promise<void> {
-    abortActiveSse()
     const controller = new AbortController()
     activeSseController = controller
 

@@ -72,6 +72,19 @@ function onPointerUp() {
   document.body.style.userSelect = ''
 }
 
+/** Arrow keys move the divider; the chat column grows/shrinks with it. */
+function onResizerKeydown(e: KeyboardEvent) {
+  if (isMobile.value) return
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const el = pageEl.value
+  if (!el) return
+  e.preventDefault()
+  const rect = el.getBoundingClientRect()
+  const chatPx = chatRatio.value * rect.width
+  const next = e.key === 'ArrowLeft' ? chatPx + 24 : chatPx - 24
+  saveRatio(clampRatio(rect.width, next))
+}
+
 function checkMobile() {
   const wasMobile = isMobile.value
   isMobile.value = window.innerWidth <= 960
@@ -134,8 +147,13 @@ function toggleStatus() {
       v-if="!isMobile && hasChat && stageSlots.length"
       ref="resizer"
       class="page-resizer"
-      title="Drag to resize"
+      role="separator"
+      aria-orientation="vertical"
+      tabindex="0"
+      :aria-label="t('chat.resizePanel')"
+      :title="t('chat.resizePanel')"
       @pointerdown="onPointerDown"
+      @keydown="onResizerKeydown"
     ></div>
 
     <!-- @ui-ext:chat-panel — conversation column from patches -->

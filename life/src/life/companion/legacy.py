@@ -18,6 +18,10 @@ from typing import Any
 from uuid import uuid4
 
 from ..i18n import translate
+from ..logging_setup import get_logger
+from ..timeutil import now_utc, parse_utc
+
+logger = get_logger("companion")
 
 # The cognition subsystems own the authoritative enums of emotion-regulation
 # profiles and linguistic framing modes.  Import them so the settings layer
@@ -56,17 +60,16 @@ class CompanionSystem:
         #
         # `db()` opens a *fresh* connection per call and closes it again, and
         # callers reach it from arbitrary worker threads (the engine wraps most
-        # companion work in `asyncio.to_thread`).  In WAL mode SQLite deletes
-        # the `-wal`/`-shm` sidecar files when the *last* connection closes, so
-        # a connection opening concurrently with that teardown can find the
-        # sidecars gone and fail the next write with `SQLITE_READONLY`
-        # ("attempt to write a readonly database") on Windows.  That is a
-        # genuine race, not a lock timeout, so `busy_timeout` does not help.
+        # companion work in `asyncio.to_thread`).  The store runs in
+        # `journal_mode=PERSIST`, which reuses one rollback journal in place:
+        # there is no `-wal`/`-shm` teardown for a concurrent opener to race
+        # against (that race — `SQLITE_READONLY` on Windows — is exactly why the
+        # mode moved off WAL) and no per-call sidecar churn.
         #
         # Companion traffic is low-frequency (relationship events, journals,
-        # audits), so serializing it costs nothing measurable and removes the
-        # race at its source.  A re-entrant lock keeps nested `db()` blocks
-        # legal.  See tests/test_regression.py::EngineTests.
+        # audits), so serializing it costs nothing measurable.  A re-entrant
+        # lock keeps nested `db()` blocks legal.
+        # See tests/test_regression.py::EngineTests.
         self._lock = threading.RLock()
         self._init()
 
@@ -76,7 +79,12 @@ class CompanionSystem:
             conn = sqlite3.connect(self.path, timeout=10.0)
             conn.row_factory = sqlite3.Row
             try:
-                conn.execute("PRAGMA journal_mode=WAL")
+                # PERSIST, not WAL: WAL deletes its ``-wal``/``-shm`` sidecars on
+                # every last-connection close, which both churns two files per
+                # call (Windows Recycle-Bin litter) and is the source of the
+                # SQLITE_READONLY race described above.  PERSIST reuses a single
+                # rollback journal in place — same atomicity, no sidecar churn.
+                conn.execute("PRAGMA journal_mode=PERSIST")
                 yield conn
                 conn.commit()
             finally:
@@ -289,7 +297,7 @@ class CompanionSystem:
                     continue
                 try:
                     removed[table] = db.execute(f"DELETE FROM {table}").rowcount
-                except sqlite3.Error as error:  # pragma: no cover - defensive
+                except sqlite3.Error as error:
                     logger.warning("reset: could not clear %s: %s", table, error)
             self._audit_tx(db, "reset_person", "dashboard_full_reset", "", "ok")
         return {"tables": len(removed), "rows": sum(removed.values())}
@@ -769,13 +777,8 @@ class CompanionSystem:
             for row in db.execute("SELECT user_id, affinity, last_seen FROM relationship_accounts").fetchall():
                 if float(row["affinity"]) <= 0:
                     continue
-                last = str(row["last_seen"] or "")
-                quiet = True
-                if last:
-                    try:
-                        quiet = (datetime.now() - datetime.fromisoformat(last)).total_seconds() >= after * 86400
-                    except ValueError:
-                        quiet = True
+                last = parse_utc(row["last_seen"])
+                quiet = last is None or (now_utc() - last).total_seconds() >= after * 86400
                 if not quiet:
                     continue
                 new_score = max(0.0, float(row["affinity"]) - rate)
@@ -1152,10 +1155,8 @@ class CompanionSystem:
             row = db.execute("SELECT paused_until FROM outreach_state WHERE target=?", (target,)).fetchone()
         if not row or not row["paused_until"]:
             return False
-        try:
-            return datetime.fromisoformat(row["paused_until"]) > datetime.now()
-        except ValueError:
-            return False
+        paused_until = parse_utc(row["paused_until"])
+        return paused_until is not None and paused_until > now_utc()
 
     def can_proactively_send(self, target: str, ignore_quiet: bool = False) -> tuple[bool,str]:
         """Whether outreach to ``target`` is allowed now.
@@ -1196,10 +1197,7 @@ class CompanionSystem:
             row = db.execute("SELECT created_at FROM proactive_receipts WHERE phase='delivered' ORDER BY created_at DESC LIMIT 1").fetchone()
         if not row or not row["created_at"]:
             return None
-        try:
-            return datetime.fromisoformat(row["created_at"])
-        except ValueError:
-            return None
+        return parse_utc(row["created_at"])
 
     def record_proactive_send(self, target: str, content: str) -> None:
         candidate = self.create_proactive_candidate(target,"manual_tool",content)
@@ -1600,10 +1598,8 @@ class CompanionSystem:
             row = db.execute("SELECT last_spoke,last_topic FROM group_bot_state WHERE group_id=?", (group_id,)).fetchone()
         if not row or not row["last_spoke"]:
             return False
-        try:
-            if (datetime.now() - datetime.fromisoformat(row["last_spoke"])).total_seconds() > window_minutes * 60:
-                return False
-        except ValueError:
+        last_spoke = parse_utc(row["last_spoke"])
+        if last_spoke is None or (now_utc() - last_spoke).total_seconds() > window_minutes * 60:
             return False
         previous = {term for term in str(row["last_topic"] or "").split() if term}
         current = set(self.group_terms(message))

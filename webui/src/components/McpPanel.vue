@@ -115,7 +115,7 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const data = await apiGet('/api/settings/mcp')
+    const data = await apiGet<{ values?: { servers?: string } }>('/api/settings/mcp')
     const raw = data?.values?.servers
     let list: any[] = []
     if (typeof raw === 'string' && raw.trim()) {
