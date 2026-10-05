@@ -1,4 +1,5 @@
 """Research toolkit: figures, tables, paper pipeline and experiment runs."""
+import base64
 import json
 import os
 import sys
@@ -10,6 +11,8 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
+
+from docx import Document  # noqa: E402
 
 from life.tools.research import (  # noqa: E402
     bar, build_paper, line, markdown_to_html, run_experiment,
@@ -65,6 +68,80 @@ class PaperTest(unittest.TestCase):
             self.assertTrue(paths["docx"].is_file())
             self.assertGreater(paths["docx"].stat().st_size, 0)
             self.assertTrue(paths["docx"].read_bytes()[:2] == b"PK")
+
+
+class PaperLayoutTest(unittest.TestCase):
+    """Layout regressions: figure rows, indents, heading colours, links, footer."""
+
+    PNG_1PX = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAAAAADhZOFXAAAAI0lEQVR4nGNggAERKGDQgAIGGyh"
+        "gCIAChhQoYKiAAoYeKAAAihcRgUPxg80AAAAASUVORK5CYII=")
+
+    def test_consecutive_figures_form_one_row(self):
+        html = markdown_to_html("![甲](a.png)\n![乙](b.png){width=30%}\n")
+        self.assertIn('class="fig-group"', html)
+        self.assertIn("图 1(a)", html)
+        self.assertIn("图 1(b)", html)
+        # 30% explicit + equal share of the rest fills the row.
+        self.assertIn('data-frac="0.3000"', html)
+        self.assertIn('data-frac="0.7000"', html)
+        html = markdown_to_html("![甲](a.png)\n![乙](b.png)\n![丙](c.png)\n")
+        self.assertEqual(html.count('data-frac="0.3333"'), 3)
+        # A blank line breaks the group: separate numbered figures again.
+        html = markdown_to_html("![甲](a.png)\n\n![乙](b.png)\n")
+        self.assertNotIn('class="fig-group"', html)
+        self.assertIn("图 1", html)
+        self.assertIn("图 2", html)
+
+    def test_docx_figure_group_shares_one_row(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for name in ("a.png", "b.png"):
+                (Path(tmp) / name).write_bytes(self.PNG_1PX)
+            paths = build_paper("![甲](a.png)\n![乙](b.png)\n\n正文一段。\n", tmp, title="论文")
+            document = Document(paths["docx"])
+            self.assertEqual(len(document.tables), 1)
+            table = document.tables[0]
+            self.assertEqual(len(table.rows), 1)
+            self.assertEqual(len(table.columns), 2)
+            cells = table.rows[0].cells
+            for cell in cells:
+                self.assertIn("<w:drawing>", cell._tc.xml)
+            widths = sorted(cell.width.cm for cell in cells)
+            self.assertAlmostEqual(widths[0], 8.1, delta=0.3)
+            self.assertIn('w:val="none"', table._tbl.tblPr.xml)
+            self.assertIn("图 1(a)", cells[0].text)
+            self.assertIn("图 1(b)", cells[1].text)
+
+    def test_single_figure_stays_a_paragraph(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "a.png").write_bytes(self.PNG_1PX)
+            paths = build_paper("![甲](a.png)\n", tmp, title="论文")
+            document = Document(paths["docx"])
+            self.assertEqual(len(document.tables), 0)
+            self.assertTrue(document.inline_shapes)
+
+    def test_docx_styles_indent_and_page_number(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = build_paper("# 标题\n\n正文段落，检查首行缩进。\n", tmp, title="论文")
+            document = Document(paths["docx"])
+            self.assertEqual(str(document.styles["Heading 1"].font.color.rgb), "1B2430")
+            self.assertEqual(document.styles["Title"].font.size.pt, 17.0)
+            body = next(p for p in document.paragraphs if p.text == "正文段落，检查首行缩进。")
+            self.assertAlmostEqual(body.paragraph_format.first_line_indent.pt, 21.0)
+            footer = document.sections[0].footer
+            self.assertIn("PAGE", footer.paragraphs[0]._p.xml)
+
+    def test_docx_hyperlinks_are_real_links(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            markdown = "参见[官方文档](https://example.com/docs)与[本地](javascript:alert(1))。\n"
+            paths = build_paper(markdown, tmp, title="论文")
+            document = Document(paths["docx"])
+            links = document.element.body.xpath(".//w:hyperlink")
+            self.assertEqual(len(links), 1)
+            self.assertEqual(links[0].xpath("./w:r/w:t/text()"), ["官方文档"])
+            targets = [rel.target_ref for rel in document.part.rels.values()]
+            self.assertTrue(any("example.com" in target for target in targets))
+            self.assertFalse(any("javascript" in target for target in targets))
 
 
 class ExperimentTest(unittest.TestCase):

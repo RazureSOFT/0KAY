@@ -98,6 +98,7 @@ def table_to_docx(header, rows, *, caption: str = "", path=None):
     if caption:
         paragraph = document.add_paragraph(caption)
         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        paragraph.paragraph_format.keep_with_next = True
     table = document.add_table(rows=1 + len(rows), cols=max(1, len(header)))
     table.style = "Table Grid"
     for column, cell in enumerate(header):
