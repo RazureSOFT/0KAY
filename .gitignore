@@ -57,3 +57,8 @@ life/models/
 
 # Local build backups.
 *.exe.bak
+*.exe.orig
+
+# Local runtime artifacts (never commit these).
+life/run.pid
+core/data/*.bak-*
