@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head>
+<!doctype html><html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Settings and UI Patches · 0KAY</title><style>
 :root{
@@ -35,7 +35,10 @@ html{scroll-behavior:smooth}
 body{
   margin:0; min-height:100vh; background:var(--md-surface); color:var(--md-on-surface);
   font:400 15.5px/1.75 'Roboto','Segoe UI Variable','Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
-  -webkit-font-smoothing:antialiased;
+  /* Deliberately NOT -webkit-font-smoothing:antialiased — the WebUI disables it
+     for the same reason (see webui/src/styles/theme.css): on Windows Chrome/Edge
+     it turns off ClearType subpixel rendering and the whole page reads blurry. */
+  -moz-osx-font-smoothing:grayscale;
 }
 ::selection{background:var(--md-primary-container); color:var(--md-on-primary-container)}
 a{color:var(--md-primary); text-decoration:none}
@@ -93,8 +96,16 @@ pre{
 }
 pre code{background:none; padding:0; font-size:13.5px; line-height:1.7}
 /* ---------- Tables ---------- */
+/* `.table-scroll` (emitted by markdown_body) owns the horizontal scrolling. A
+   table with `width:100%` still cannot shrink below the sum of its columns'
+   min-content widths, so a wide API table overflows the article; without this
+   wrapper the previous `overflow:hidden` simply cut the trailing columns off. */
+.table-scroll{
+  overflow-x:auto; max-width:100%; margin:1.2em 0; border-radius:var(--radius-lg);
+  -webkit-overflow-scrolling:touch;
+}
 table{
-  border-collapse:separate; border-spacing:0; width:100%; margin:1.2em 0; font-size:14px;
+  border-collapse:separate; border-spacing:0; width:100%; margin:0; font-size:14px;
   background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
   border-radius:var(--radius-lg); overflow:hidden;
 }
@@ -191,7 +202,7 @@ POST /api/settings/{section_id}
     &quot;module&quot;: &quot;/api/plugins/darkmode/ui/index.js?v=5&quot;
   }
 }
-</code></pre><p>A module tab keeps the panel fully plugin-owned: the host only mounts your default-exported Vue component and never injects its own Save button. <code>module</code> and <code>fields</code> are mutually exclusive; when both are present <code>module</code> wins.</p><h3>Theme items</h3><p>A <code>theme</code> op lets a plugin replace or layer over the Material 3 Expressive palette without shipping any JavaScript: Core stores the item verbatim and the WebUI compiles it into a <code>&lt;style&gt;</code> element in <code>&lt;head&gt;</code>.</p><table><tr><th>Field</th><th>Meaning</th></tr><tr><td><code>tokens</code></td><td>Flat <code>{"--md-primary": "#6750A4"}</code> map (both schemes) <strong>or</strong> <code>{ "light": {…}, "dark": {…} }</code></td></tr><tr><td><code>css</code></td><td>Raw CSS appended after the token declarations (any selector or at-rule)</td></tr><tr><td><code>cssUrl</code></td><td>Stylesheet URL served by Core, e.g. <code>/api/plugins/{name}/ui/theme.css</code></td></tr><tr><td><code>order</code></td><td>Cascade order, ascending; the higher <code>order</code> wins</td></tr></table><pre><code>{
+</code></pre><p>A module tab keeps the panel fully plugin-owned: the host only mounts your default-exported Vue component and never injects its own Save button. <code>module</code> and <code>fields</code> are mutually exclusive; when both are present <code>module</code> wins.</p><h3>Theme items</h3><p>A <code>theme</code> op lets a plugin replace or layer over the Material 3 Expressive palette without shipping any JavaScript: Core stores the item verbatim and the WebUI compiles it into a <code>&lt;style&gt;</code> element in <code>&lt;head&gt;</code>.</p><div class="table-scroll"><table><tr><th>Field</th><th>Meaning</th></tr><tr><td><code>tokens</code></td><td>Flat <code>{"--md-primary": "#6750A4"}</code> map (both schemes) <strong>or</strong> <code>{ "light": {…}, "dark": {…} }</code></td></tr><tr><td><code>css</code></td><td>Raw CSS appended after the token declarations (any selector or at-rule)</td></tr><tr><td><code>cssUrl</code></td><td>Stylesheet URL served by Core, e.g. <code>/api/plugins/{name}/ui/theme.css</code></td></tr><tr><td><code>order</code></td><td>Cascade order, ascending; the higher <code>order</code> wins</td></tr></table></div><pre><code>{
   &quot;target&quot;: &quot;theme&quot;,
   &quot;op&quot;: &quot;insert&quot;,
   &quot;id&quot;: &quot;midnight&quot;,

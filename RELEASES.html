@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head>
+<!doctype html><html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Releases and Updates · 0KAY</title><style>
 :root{
@@ -35,7 +35,10 @@ html{scroll-behavior:smooth}
 body{
   margin:0; min-height:100vh; background:var(--md-surface); color:var(--md-on-surface);
   font:400 15.5px/1.75 'Roboto','Segoe UI Variable','Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
-  -webkit-font-smoothing:antialiased;
+  /* Deliberately NOT -webkit-font-smoothing:antialiased — the WebUI disables it
+     for the same reason (see webui/src/styles/theme.css): on Windows Chrome/Edge
+     it turns off ClearType subpixel rendering and the whole page reads blurry. */
+  -moz-osx-font-smoothing:grayscale;
 }
 ::selection{background:var(--md-primary-container); color:var(--md-on-primary-container)}
 a{color:var(--md-primary); text-decoration:none}
@@ -93,8 +96,16 @@ pre{
 }
 pre code{background:none; padding:0; font-size:13.5px; line-height:1.7}
 /* ---------- Tables ---------- */
+/* `.table-scroll` (emitted by markdown_body) owns the horizontal scrolling. A
+   table with `width:100%` still cannot shrink below the sum of its columns'
+   min-content widths, so a wide API table overflows the article; without this
+   wrapper the previous `overflow:hidden` simply cut the trailing columns off. */
+.table-scroll{
+  overflow-x:auto; max-width:100%; margin:1.2em 0; border-radius:var(--radius-lg);
+  -webkit-overflow-scrolling:touch;
+}
 table{
-  border-collapse:separate; border-spacing:0; width:100%; margin:1.2em 0; font-size:14px;
+  border-collapse:separate; border-spacing:0; width:100%; margin:0; font-size:14px;
   background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
   border-radius:var(--radius-lg); overflow:hidden;
 }
@@ -127,12 +138,12 @@ tbody tr:hover td{background:color-mix(in srgb, var(--md-primary) 5%, transparen
     <div>MIT · © 2026 RazureSOFT</div>
   </div>
 </aside>
-<main class="article" data-page="RELEASES"><h1>Releases and Updates</h1><h2>Repositories</h2><p>The platform is split across independent repositories, each with its own <code>v0.1.2</code> release:</p><table><tr><th>Repository</th><th>Contents</th></tr><tr><td><code>RazureSOFT/0KAY</code></td><td>Core, mocr, LIFE, WebUI, plugin web UIs, local search, umbrella manifest and docs</td></tr><tr><td><code>RazureSOFT/0KAY-agent</code></td><td>Agent task-execution plugin</td></tr><tr><td><code>RazureSOFT/0KAY-mcp</code></td><td>MCP client gateway (<code>@0kay/mcp</code>) and the shared <code>proto/</code> contracts</td></tr><tr><td><code>RazureSOFT/0KAY-pm</code></td><td>Package manager CLI</td></tr><tr><td><code>razureink/0KAY-minecraft</code></td><td>Minecraft companion bot plugin</td></tr></table><p>All modules share the release tag <code>v0.1.2</code>. The tag always points at the current <code>main</code> commit, so <code>@0.1.2</code> and <code>main</code> currently resolve to the same source.</p><h2>Install</h2><pre><code>npm install -g ./pm                       # install the CLI
+<main class="article" data-page="RELEASES"><h1>Releases and Updates</h1><h2>Repositories</h2><p>The platform is split across independent repositories, each with its own <code>v0.1.2</code> release:</p><div class="table-scroll"><table><tr><th>Repository</th><th>Contents</th></tr><tr><td><code>RazureSOFT/0KAY</code></td><td>Core, mocr, LIFE, WebUI, plugin web UIs, local search, umbrella manifest and docs</td></tr><tr><td><code>RazureSOFT/0KAY-agent</code></td><td>Agent task-execution plugin</td></tr><tr><td><code>RazureSOFT/0KAY-mcp</code></td><td>MCP client gateway (<code>@0kay/mcp</code>) and the shared <code>proto/</code> contracts</td></tr><tr><td><code>RazureSOFT/0KAY-pm</code></td><td>Package manager CLI</td></tr><tr><td><code>razureink/0KAY-minecraft</code></td><td>Minecraft companion bot plugin</td></tr></table></div><p>All modules share the release tag <code>v0.1.2</code>. The tag always points at the current <code>main</code> commit, so <code>@0.1.2</code> and <code>main</code> currently resolve to the same source.</p><h2>Install</h2><pre><code>npm install -g ./pm                       # install the CLI
 0kay-pm install @razuresoft/0kay@0.1.2     # platform (Core, mocr, LIFE, WebUI, plugin UIs)
 0kay-pm install @razuresoft/0kay-agent@0.1.2
 </code></pre><p>Each installable module declares its identity, version, build commands and optional start command in <code>manifest.json</code>. The umbrella manifest declares the agent and mcp repositories as sub-repositories, so one install assembles the full platform. Plugin web bundles are built by the umbrella manifest and served by Core; they do not need a separate server process.</p><p>Installing the agent also fetches <code>@razuresoft/0kay-mcp</code> (which supplies <code>mcp/</code> and the shared <code>proto/</code>) and arranges the sibling layout the agent expects.</p><p>Interactive installation asks for Core HTTP, Core gRPC and WebUI ports as applicable; press Enter for the default. Source release archives are downloaded without git; Go, Node.js and Python are still build prerequisites.</p><h2>Update</h2><pre><code>0kay-pm update @razuresoft/0kay-agent@0.1.2
 0kay-pm start @razuresoft/0kay-agent
-</code></pre><p>Without a version suffix, update uses the <code>main</code> branch (the <strong>beta</strong> channel). Update carries over <code>runtime-env.json</code> and the standard component data directories, and retains the previous installation as an <code>.old-&lt;id&gt;</code> recovery copy. Stop a component before updating it, then restart it.</p><h2>One-click updates (Settings → About)</h2><p>Settings → About checks GitHub Releases and can run updates directly.</p><ul><li><strong>立即更新 / Update now</strong> — installs the latest published release tag.</li><li><strong>测试版（同步仓库） / Beta (sync repo)</strong> — installs the latest <code>main</code> branch.</li></ul><p>Core exposes:</p><table><tr><th>Method</th><th>Path</th><th>Purpose</th></tr><tr><td>GET</td><td><code>/api/update/check</code></td><td>latest platform release vs the running version</td></tr><tr><td>GET</td><td><code>/api/update/check-plugins</code></td><td>latest release vs every installed component</td></tr><tr><td>POST</td><td><code>/api/update/apply</code></td><td>start an update for one component</td></tr><tr><td>GET</td><td><code>/api/update/status</code></td><td>progress of the most recent update</td></tr></table><pre><code>// POST /api/update/apply
+</code></pre><p>Without a version suffix, update uses the <code>main</code> branch (the <strong>beta</strong> channel). Update carries over <code>runtime-env.json</code> and the standard component data directories, and retains the previous installation as an <code>.old-&lt;id&gt;</code> recovery copy. Stop a component before updating it, then restart it.</p><h2>One-click updates (Settings → About)</h2><p>Settings → About checks GitHub Releases and can run updates directly.</p><ul><li><strong>立即更新 / Update now</strong> — installs the latest published release tag.</li><li><strong>测试版（同步仓库） / Beta (sync repo)</strong> — installs the latest <code>main</code> branch.</li></ul><p>Core exposes:</p><div class="table-scroll"><table><tr><th>Method</th><th>Path</th><th>Purpose</th></tr><tr><td>GET</td><td><code>/api/update/check</code></td><td>latest platform release vs the running version</td></tr><tr><td>GET</td><td><code>/api/update/check-plugins</code></td><td>latest release vs every installed component</td></tr><tr><td>POST</td><td><code>/api/update/apply</code></td><td>start an update for one component</td></tr><tr><td>GET</td><td><code>/api/update/status</code></td><td>progress of the most recent update</td></tr></table></div><pre><code>// POST /api/update/apply
 // {&quot;plugin&quot;: &quot;core&quot;}            → beta: sync main
 // {&quot;plugin&quot;: &quot;agent&quot;, &quot;version&quot;:&quot;0.1.2&quot;} → pinned release
 {&quot;plugin&quot;:&quot;core&quot;,&quot;package&quot;:&quot;@razuresoft/0kay-core&quot;,&quot;mode&quot;:&quot;source&quot;,
