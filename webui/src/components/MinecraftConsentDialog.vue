@@ -14,6 +14,8 @@ const denyBtn = ref<HTMLButtonElement | null>(null)
 const { onKeydown } = useFocusTrap(() => !!pending.value, dialog, denyBtn)
 let timer: ReturnType<typeof setTimeout> | null = null
 let failures = 0
+let inFlight = false
+let unmounted = false
 const POLL_OK = 3000
 const POLL_MAX = 60000
 
@@ -24,11 +26,17 @@ function base() {
 function schedule() {
   // Back off while the service is unreachable so a stopped Minecraft bot does
   // not spam ERR_CONNECTION_REFUSED every few seconds.
+  if (unmounted) return
   const delay = failures === 0 ? POLL_OK : Math.min(POLL_OK * 2 ** failures, POLL_MAX)
   timer = setTimeout(() => { void poll() }, delay)
 }
 
 async function poll() {
+  // Only one poll at a time. reply() starts a fresh poll while the scheduled
+  // one may still be in flight; both finally-blocks would then call schedule()
+  // and orphan a timer that keeps polling after the dialog unmounts.
+  if (inFlight) return
+  inFlight = true
   try {
     const res = await fetch(`${base()}/status`, { signal: AbortSignal.timeout(4000) })
     if (!res.ok) { pending.value = null; failures = 0; return }
@@ -39,6 +47,7 @@ async function poll() {
     pending.value = null // service offline / not configured
     failures = Math.min(failures + 1, 6)
   } finally {
+    inFlight = false
     schedule()
   }
 }
@@ -56,7 +65,7 @@ async function reply(approve: boolean) {
   pending.value = null
   busy.value = false
   failures = 0
-  if (timer) clearTimeout(timer)
+  if (timer) { clearTimeout(timer); timer = null }
   void poll()
 }
 
@@ -65,7 +74,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (timer) clearTimeout(timer)
+  unmounted = true
+  if (timer) { clearTimeout(timer); timer = null }
 })
 </script>
 

@@ -109,7 +109,7 @@ func Start(ctx context.Context, opts Options) {
 		opts.PluginName = "mocr"
 	}
 	if opts.Version == "" {
-		opts.Version = ManifestVersion("0.1.2")
+		opts.Version = ManifestVersion("0.1.3")
 	}
 	if len(opts.Capabilities) == 0 {
 		opts.Capabilities = []string{"mocr"}

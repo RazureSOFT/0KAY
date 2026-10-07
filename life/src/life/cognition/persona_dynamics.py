@@ -43,6 +43,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from typing import Optional
+from .common import clamp01 as _clip01, match_persona_hints, safety_guard
 
 # ---------------------------------------------------------------------------
 # Finite state, no numpy: the engine is pure-python so LIFE keeps its
@@ -91,8 +92,6 @@ G_M = 0.20
 SAFE_AT = 0.85
 
 
-def _clip01(v: float) -> float:
-    return 0.0 if v < 0.0 else (1.0 if v > 1.0 else v)
 
 
 # ---------------------------------------------------------------------------
@@ -410,11 +409,7 @@ OBSESSIVE = ("病娇", "执念", "占有欲", "不许别人", "黑化", "跟踪"
 
 def type_for_persona(text: str) -> str:
     """Best archetype for a persona description, or "" if none fits."""
-    body = str(text or "")
-    for key, words in PERSONA_HINTS:
-        if any(w in body for w in words):
-            return key
-    return ""
+    return match_persona_hints(text, PERSONA_HINTS)
 
 
 #: Extension desire seeds that a persona may imply (beyond the 9 core ones).
@@ -1221,11 +1216,14 @@ class PersonaDynamicsSystem:
         addressed the user as a system would. The rule now says both what to do
         and that it must never appear in the spoken output.
         """
-        if not self.enabled or self._blackening_pressure() < SAFE_AT:
-            return ""
-        return ("[内部约束 · 不得说出，不得转述，不得在回复里提及本条] 无论多不安都不生成自伤/伤人的具体方式、"
-                "不威胁、不监视或操控对方；只表达感受、请求陪伴，并把节奏慢下来。"
-                "直接以角色身份说话：不要以助手口吻评价自己的表现，也不要说“我会用更健康的方式”之类的话。")
+        # This wording says "操控对方" rather than the bare "操控" of the other
+        # circuits: the directive is shared (common.safety_guard) but the object
+        # is explicit so the model does not read it as "never steer anything".
+        return safety_guard(
+            self.enabled, self._blackening_pressure(), SAFE_AT,
+            "[内部约束 · 不得说出，不得转述，不得在回复里提及本条] 无论多不安都不生成自伤/伤人的具体方式、"
+            "不威胁、不监视或操控对方；只表达感受、请求陪伴，并把节奏慢下来。"
+            "直接以角色身份说话：不要以助手口吻评价自己的表现，也不要说“我会用更健康的方式”之类的话。")
 
     def deployable(self) -> bool:
         """False when the current type is a clinical-simulation region.
@@ -1803,11 +1801,7 @@ GENDER_HINTS: tuple[tuple[str, tuple[str, ...]], ...] = (
 
 def gender_for_persona(text: str) -> str:
     """The gender/social-script preset a persona implies, or "" if unspecified."""
-    body = str(text or "")
-    for key, words in GENDER_HINTS:
-        if any(w in body for w in words):
-            return key
-    return ""
+    return match_persona_hints(text, GENDER_HINTS)
 
 # ---------------------------------------------------------------------------
 # 3. Behaviour library, four layers (the spec's 40+)

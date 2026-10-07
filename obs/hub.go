@@ -73,6 +73,7 @@ func (h *logHub) record(r slog.Record) {
 
 func (h *logHub) publish(rec LogRecord) {
 	h.mu.Lock()
+	defer h.mu.Unlock()
 	if len(h.ring) < h.limit {
 		h.ring = append(h.ring, rec)
 	} else {
@@ -80,12 +81,13 @@ func (h *logHub) publish(rec LogRecord) {
 		h.next = (h.next + 1) % h.limit
 		h.full = true
 	}
-	subs := make([]chan LogRecord, 0, len(h.subs))
+	// Fan out while still holding the lock. subscribe()'s cancel deletes the
+	// subscriber and closes its channel under this same lock, so a publisher
+	// that captured the channel before deletion would otherwise send on a
+	// closed channel and panic the whole process. The send is non-blocking
+	// (the default case), so holding the lock cannot stall on a slow
+	// subscriber.
 	for _, ch := range h.subs {
-		subs = append(subs, ch)
-	}
-	h.mu.Unlock()
-	for _, ch := range subs {
 		select {
 		case ch <- rec:
 		default:

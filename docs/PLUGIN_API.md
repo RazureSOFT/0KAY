@@ -135,7 +135,7 @@ and `Host` cannot be overridden):
 The gRPC equivalent is `core.v1.CoreService/Egress`. A blocked host returns
 `502 {"code":"egress_failed"}`. Both require a plugin identity.
 
-### 0.1.2 Declared capabilities (everything is a plugin)
+### 0.1.3 Declared capabilities (everything is a plugin)
 
 A package may also contribute behaviours (DeepSeek-Harness-style "everything is
 a plugin"). Core aggregates every installed package's declarations and serves

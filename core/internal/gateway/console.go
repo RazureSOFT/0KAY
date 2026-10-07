@@ -22,8 +22,9 @@ var consoleLog = obs.Component("console")
 // obsRoutes serves the WebUI console: a bounded snapshot of recent logs and
 // spans, a live SSE feed of both, and a level control.
 //
-// Everything here is read-only except the level and clear endpoints, and the
-// level write is a PUT so it is covered by the PIN gate's settings rule.
+// The snapshot and stream routes are read-only. The level and clear endpoints
+// mutate process state, and sensitiveRequest gates the whole /api/console
+// family by method, so they require the PIN like any other write.
 func (g *Gateway) obsRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/console/logs", g.handleConsoleLogs)
 	mux.HandleFunc("GET /api/console/spans", g.handleConsoleSpans)

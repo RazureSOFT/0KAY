@@ -428,7 +428,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/search/papers", g.handlePapersSearch)
 	mux.HandleFunc("/api/search/apidocs", g.handleApiDocsSearch)
 	mux.HandleFunc("/api/stdio-provider/{id}/{path...}", g.handleStdioProvider)
-	mux.Handle("/live2d/models/", http.StripPrefix("/live2d/models/", http.FileServer(http.Dir(live2DRoot()))))
+	mux.Handle("/live2d/models/", live2DStaticHandler())
 	mux.HandleFunc("/api/tasks", g.handleTasks)
 	mux.HandleFunc("/api/tasks/events", g.handleTaskEvents)
 	mux.HandleFunc("/api/providers", g.handleProviders)
@@ -650,8 +650,22 @@ func (g *Gateway) persistDisabledPlugins() {
 		return
 	}
 	b, _ := json.Marshal(names)
-	_ = os.MkdirAll(dataDir, 0o755)
-	_ = os.WriteFile(path, b, 0o644)
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		obsLog.Warn("disabled_plugins: cannot create data dir", "err", err)
+		return
+	}
+	// tmp + rename, like every other store: a crash or a partial write must not
+	// leave a truncated file behind, because loadDisabledPlugins treats an
+	// unparseable file as "nothing disabled" and would silently re-enable every
+	// plugin the admin turned off.
+	temporary := path + ".tmp"
+	if err := os.WriteFile(temporary, b, 0o600); err != nil {
+		obsLog.Warn("disabled_plugins: write failed", "err", err)
+		return
+	}
+	if err := os.Rename(temporary, path); err != nil {
+		obsLog.Warn("disabled_plugins: rename failed", "err", err)
+	}
 }
 
 func (g *Gateway) loadDisabledPlugins() {
@@ -664,9 +678,12 @@ func (g *Gateway) loadDisabledPlugins() {
 		return
 	}
 	var names []string
-	if json.Unmarshal(b, &names) == nil {
-		g.registry.LoadDisabled(names)
+	if json.Unmarshal(b, &names) != nil {
+		// Fail loudly rather than silently re-enabling every disabled plugin.
+		obsLog.Warn("disabled_plugins: file is corrupt; ignoring it", "path", filepath.Join(dataDir, "disabled_plugins.json"))
+		return
 	}
+	g.registry.LoadDisabled(names)
 }
 
 func (g *Gateway) handleChat(w http.ResponseWriter, r *http.Request) {
@@ -1537,6 +1554,24 @@ func live2DRoot() string {
 		return filepath.Join("..", "webui", "public", "live2d", "models")
 	}
 	return filepath.Join("data", "live2d", "models")
+}
+
+// live2DStaticHandler serves uploaded model assets from live2DRoot.
+//
+// Uploads are untrusted: a folder with a valid manifest can also contain an
+// evil.html, which the plain FileServer would serve as text/html from Core's
+// own origin — where it inherits the session cookie and could drive the
+// authenticated API (stored XSS). nosniff stops content sniffing and the
+// sandbox CSP neutralises scripts if the file is opened directly; ordinary
+// asset loads (textures, .moc3, motions) are unaffected, since a response CSP
+// only constrains the resource when it is rendered as a document.
+func live2DStaticHandler() http.Handler {
+	fileServer := http.StripPrefix("/live2d/models/", http.FileServer(http.Dir(live2DRoot())))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Content-Security-Policy", "sandbox; default-src 'none'")
+		fileServer.ServeHTTP(w, r)
+	})
 }
 
 // imagesRoot stores chat image uploads.

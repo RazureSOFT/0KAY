@@ -49,6 +49,33 @@ class RuntimeGate(unittest.TestCase):
         result = self.runtime.tick(self.engine, "full")  # full also needs no LLM
         self.assertTrue(result is None or "event" in result)
 
+    def test_legacy_state_without_somatic_still_ticks(self):
+        """States persisted before the somatic key existed must not die every tick.
+
+        A real install logged ``worldsim tick failed: 'somatic'`` every 20
+        minutes for a day: _load() replaced the fresh state wholesale with a
+        pre-schemas-version-2 file, and _advance_clock() indexed
+        state["somatic"] directly.
+        """
+        import json
+        payload = {
+            "state": {k: v for k, v in self.runtime.sim.state.items() if k != "somatic"},
+            "ledger": self.runtime.sim.ledger,
+            "obligations": self.runtime.sim.obligations,
+            "due_echoes": self.runtime.sim.due_echoes,
+            "now_step": 5,
+            "world_key": self.runtime.world_key,
+            "actor_locations": dict(self.runtime.actor_locations),
+            "events": [],
+        }
+        self.runtime.path.parent.mkdir(parents=True, exist_ok=True)
+        self.runtime.path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        revived = WorldRuntime(world_dir=str(ROOT / "world"), models_dir=str(ROOT / "models"),
+                               data_dir=str(Path(self.tmp.name) / "worldsim"), seed=3)
+        self.assertIn("somatic", revived.sim.state)
+        self.assertIn("burden", revived.sim.state["somatic"])
+        revived.tick(self.engine, "texture")  # _advance_clock must not KeyError
+
 
 if __name__ == "__main__":
     unittest.main()

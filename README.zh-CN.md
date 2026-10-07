@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo/okay-logo.svg" width="128" alt="0KAY logo"></p>
+
 # 0KAY
 
 **在自己电脑上跑的 AI 伙伴：它记得你，而且真能替你干活。**
@@ -75,7 +77,7 @@ npm install -g ./pm
 
 `0kay-pm install` 会构建每个模块并把它作为**后台服务**启动（Linux systemd user
 unit / macOS LaunchAgent / Windows 登录任务），所以之后**不需要**再手动运行任何东西。
-可加 `@0.1.2` 固定版本；用 `0kay-pm status <包名>` 查看状态、`0kay-pm stop <包名>` 停止。
+可加 `@0.1.3` 固定版本；用 `0kay-pm status <包名>` 查看状态、`0kay-pm stop <包名>` 停止。
 
 ### 从源码运行（开发）
 

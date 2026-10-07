@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import math
 from datetime import datetime
+from .common import clamp as _clamp
 
 # One axis set for *both* sides.  Every axis is on [0, 1].  The names are
 # deliberately behavioural, not moral: they describe how someone communicates,
@@ -61,8 +62,6 @@ AXIS_WEIGHTS: dict[str, float] = {
 }
 
 
-def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
-    return max(low, min(high, value))
 
 
 def _hit(text: str, words) -> bool:

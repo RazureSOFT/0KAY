@@ -5,7 +5,7 @@
 //  1. Listens   — SubscribeMessages, logging every message it is allowed to see
 //  2. Sends     — replies in the conversation it just saw, via SendMessage
 //  3. Gates     — vetoes messages containing a configured word, so L.I.F.E
-//                 never answers them (the plugin owns those instead)
+//     never answers them (the plugin owns those instead)
 //
 // It also serves plugin.v1.MessageService because Core calls DecideInbound on
 // it. SendMessage/ListAdapters are implemented as thin forwards so the file

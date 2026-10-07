@@ -35,11 +35,21 @@ BUNDLE = ROOT.parent / "core" / "data" / "plugin-ui" / "life" / "companion.js"
 
 
 def panel_cog_keys() -> set[str]:
-    """Extract the keys of the panel's COG_DEFAULTS object literal."""
+    """Extract the keys of the panel's COG_DEFAULTS object literal.
+
+    Entries are either plain properties (``cog_x: '1'``) or accessors
+    (``get cog_x() { ... }``) whose default depends on the active locale, so the
+    pattern has to accept both forms — matching only ``key:`` silently dropped
+    the four enum defaults and reported a drift that did not exist.
+    """
     source = PANEL.read_text(encoding="utf-8")
     match = re.search(r"const COG_DEFAULTS[^{]*\{(.*?)\n\}", source, re.S)
     assert match, "COG_DEFAULTS not found in CompanionPage.vue"
-    return set(re.findall(r"([A-Za-z_][A-Za-z0-9_]*)\s*:", match.group(1)))
+    # Anchor each key to a property position (start of line, or after ',' / '{')
+    # so identifiers inside an accessor body (e.g. `return zhValue(...)`) are not
+    # mistaken for keys.
+    return set(re.findall(r"(?:^|[,{])\s*(?:(?:get|set)\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*[:(]",
+                          match.group(1), re.M))
 
 
 class PanelBackendContract(unittest.TestCase):
@@ -62,8 +72,16 @@ class PanelBackendContract(unittest.TestCase):
         if not BUNDLE.exists():
             self.skipTest("panel bundle not built (run `npm run build` in plugin-web/life)")
         text = BUNDLE.read_text(encoding="utf-8")
-        for needle in ("认知内核", "cog_enabled", "cog-metric"):
+        # Labels are localized: the bundle carries the i18n *keys* and the text
+        # lives in the shipped strings.xml, so assert on the key plus the
+        # structural markers the cognition section renders — not a hardcoded
+        # Chinese literal, which moved into strings.xml when the panel was
+        # localized.
+        for needle in ("life.companion.cognition.title", "cog_enabled", "cog-metric"):
             self.assertIn(needle, text, f"{needle!r} absent from built panel bundle")
+        zh_strings = BUNDLE.parent / "strings" / "values-zh" / "strings.xml"
+        self.assertIn("认知内核", zh_strings.read_text(encoding="utf-8"),
+                      "cognition label missing from the shipped zh strings")
 
     def test_panel_readout_keys_exist_in_status(self):
         """Every field the panel reads must exist in cognition_status().

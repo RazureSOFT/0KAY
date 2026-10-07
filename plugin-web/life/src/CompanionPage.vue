@@ -111,6 +111,7 @@ const COG_DEFAULTS: Record<string, string> = {
   cog_selfhood_enabled: '1', cog_selfhood_discount: '0.1', cog_selfhood_detail: '20',
   cog_attachment_enabled: '0', get cog_attachment_type() { return zhValue('life.companion.attach.dependent') },
   cog_tsundere_enabled: '0', get cog_tsundere_type() { return zhValue('life.companion.tsundere.classic') },
+  cog_yandere_enabled: '0', get cog_yandere_type() { return zhValue('life.companion.yandere.mode.yandere') },
   cog_personadyn_enabled: '0', get cog_personadyn_type() { return zhValue('life.companion.pdt.0') }, get cog_personadyn_gender() { return zhValue('life.companion.pdGender.unspecified') },
   // memory & consolidation. On by default — they are what makes lived
   // experience leave a trace; turn one off to ablate it.
@@ -121,11 +122,15 @@ const COG_BOOL_KEYS = ['cog_enabled', 'cog_lite_mode', 'cog_modulate_affect', 'c
   'cog_modulate_selfhood', 'cog_use_cerebellum', 'cog_use_thalamic_gate', 'cog_use_ofc_map',
   'cog_use_prospection', 'cog_use_limbic_bias', 'cog_affect_enabled', 'cog_affect_somatic', 'cog_affect_persona_llm', 'cog_language_enabled',
   'cog_social_enabled', 'cog_selfhood_enabled', 'cog_attachment_enabled', 'cog_tsundere_enabled',
+  'cog_yandere_enabled',
   'cog_personadyn_enabled',
   'cog_memory_encode', 'cog_sleep_replay', 'cog_memory_reconsolidate', 'cog_cls_interleave']
-const COG_TEXT_KEYS = ['cog_affect_profile', 'cog_language_framing', 'cog_attachment_type', 'cog_tsundere_type', 'cog_personadyn_type', 'cog_personadyn_gender']
+const COG_TEXT_KEYS = ['cog_affect_profile', 'cog_language_framing', 'cog_attachment_type', 'cog_tsundere_type', 'cog_yandere_type', 'cog_personadyn_type', 'cog_personadyn_gender']
 const attachmentTypeOptions = computed(() => enumOptions(['attach.secluded', 'attach.dependent', 'attach.delusional', 'attach.monitoring', 'attach.selfHarm', 'attach.exclusion']))
 const tsundereTypeOptions = computed(() => enumOptions(['tsundere.classic', 'tsundere.cold', 'tsundere.gruff', 'tsundere.indulgent']))
+// The yandere circuit's four archetypes. Their canonical stored values are the
+// zh strings, so the option value is zhValue(...) like the tsundere enum.
+const yandereTypeOptions = computed(() => enumOptions(['yandere.mode.yandere', 'yandere.mode.tsundere', 'yandere.mode.neutral', 'yandere.mode.hybrid']))
 // The 18 research archetypes stay first (they are the ACG family the plugin
 // shipped with); the extended library is grouped so a long list stays usable.
 const PD_GROUP_KEYS: string[][] = [
@@ -187,6 +192,7 @@ const wave4b = computed(() => cognition.value?.wave4b || null)
 const personaInfo = computed(() => cognition.value?.persona || null)
 const attachment = computed(() => cognition.value?.attachment || null)
 const tsundere = computed(() => cognition.value?.tsundere || null)
+const yandere = computed(() => cognition.value?.yandere || null)
 const personadyn = computed(() => cognition.value?.personadyn || null)
 // Extended read-outs: the backend ships grouped dictionaries; render a compact
 // "top 3" line so the panel stays readable at a glance.
@@ -290,6 +296,128 @@ const userModels = computed(() => data.value.user_model || [])
 const valuesList = computed(() => Object.entries(data.value.values || {})
   .map(([k, v]) => ({ k, v: Number(v) })).sort((a: any, b: any) => Math.abs(b.v) - Math.abs(a.v)).slice(0, 20))
 function parseList(text: string) { try { const v = JSON.parse(text || '[]'); return Array.isArray(v) ? v : [] } catch { return [] } }
+
+// --- intuitive read-outs ("她现在") ------------------------------------------
+// The snapshot already carries the raw numbers; this block turns them into
+// gauges with a one-line "what it changes" so the panel reads at a glance.
+const emotionNow = computed<any>(() => data.value.emotion || null)
+const circadianNow = computed<any>(() => data.value.circadian || null)
+const relationships = computed<any[]>(() => data.value.relationships || [])
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
+const moodDot = computed(() => {
+  const e = emotionNow.value || {}
+  const valence = Math.max(-1, Math.min(1, Number(e.valence) || 0))
+  const arousal = clamp01(Number(e.arousal ?? 0.5))
+  // viewBox 0 0 120 120; the frame spans 10..110, arousal points up.
+  return { x: (10 + ((valence + 1) / 2) * 100).toFixed(1), y: (110 - arousal * 100).toFixed(1) }
+})
+const russellQuadrant = computed(() => {
+  const e = emotionNow.value
+  if (!e) return 'life.companion.quadrant.serene'
+  const pleasant = Number(e.valence) >= 0
+  const hot = Number(e.arousal) >= 0.5
+  return pleasant ? (hot ? 'life.companion.quadrant.excited' : 'life.companion.quadrant.serene')
+                  : (hot ? 'life.companion.quadrant.tense' : 'life.companion.quadrant.gloomy')
+})
+type Gauge = { label: string; value: number; max: number; kind: 'good' | 'bad' | 'neutral'; signed: boolean; effect: string; display: string; alias: string; state: string; stateTone: string }
+const SIGNED_BAND = 0.15
+const signedBand = (v: number) => (v <= -SIGNED_BAND ? 'lo' : v >= SIGNED_BAND ? 'hi' : 'mid')
+/**
+ * One builder per metric id: the id resolves the effect line, the
+ * plain-language alias next to the term, and the 3-band state word
+ * ("很沉着 / 还算稳 / 容易慌") so numbers read as words. `kind` is the
+ * metric's good/bad direction (neutral = read by distance from zero).
+ */
+function gg(id: string, label: string, raw: any, opts: { max: number; kind: Gauge['kind']; signed?: boolean }): Gauge | null {
+  const value = Number(raw)
+  if (!isFinite(value)) return null
+  const frac = clamp01(value / opts.max)
+  const band = opts.signed ? signedBand(value) : frac < 0.34 ? 'lo' : frac < 0.67 ? 'mid' : 'hi'
+  const g: Gauge = {
+    label, value, max: opts.max, kind: opts.kind, signed: !!opts.signed,
+    effect: t(`life.companion.effect.${id}`),
+    display: fmtNum(value, 2),
+    alias: t(`life.companion.alias.${id}`),
+    state: t(`life.companion.gw.${id}.${band}`),
+    stateTone: 'mid',
+  }
+  g.stateTone = g.signed ? (g.value >= 0 ? 'good' : 'bad') : gaugeTone(g)
+  return g
+}
+function gaugeFrac(g: Gauge): number { return clamp01(g.value / g.max) }
+function gaugeTone(g: Gauge): string {
+  const r = gaugeFrac(g)
+  if (g.kind === 'neutral') return 'mid'
+  if (g.kind === 'bad') return r >= 0.67 ? 'bad' : r < 0.34 ? 'good' : 'mid'
+  return r >= 0.67 ? 'good' : r < 0.34 ? 'bad' : 'mid'
+}
+function signedBarStyle(value: number) {
+  const width = clamp01(Math.abs(value)) * 50
+  return { width: `${width}%`, left: value >= 0 ? '50%' : `${50 - width}%` }
+}
+const gauges = (rows: Array<Gauge | null>): Gauge[] => rows.filter((g): g is Gauge => g !== null)
+const emotionGauges = computed<Gauge[]>(() => {
+  const e = emotionNow.value || {}
+  return gauges([
+    gg('valence', t('life.companion.gauge.valence'), e.valence, { max: 1, kind: 'neutral', signed: true }),
+    gg('arousal', t('life.companion.gauge.arousal'), e.arousal, { max: 1, kind: 'neutral' }),
+    gg('connection', t('life.companion.gauge.connection'), e.connection, { max: 1, kind: 'good' }),
+    gg('irritation', t('life.companion.gauge.irritation'), e.irritation, { max: 1, kind: 'bad' }),
+  ])
+})
+const bodyGauges = computed<Gauge[]>(() => {
+  const c = circadianNow.value || {}
+  return gauges([
+    gg('energy', t('life.companion.body.energy'), c.mental_energy, { max: 100, kind: 'good' }),
+    gg('hunger', t('life.companion.body.hunger'), c.hunger, { max: 100, kind: 'bad' }),
+    gg('health', t('life.companion.body.health'), c.health, { max: 100, kind: 'good' }),
+  ])
+})
+const moodGauges = computed<Gauge[]>(() => gauges([
+  gg('mood', t('life.companion.gauge.mood'), wave2.value?.mood, { max: 1, kind: 'neutral', signed: true }),
+  gg('vagal', t('life.companion.gauge.vagal'), wave2.value?.vagal_tone, { max: 1, kind: 'good' }),
+  gg('somatization', t('life.companion.gauge.somatization'), wave2.value?.somatization_index, { max: 1, kind: 'bad' }),
+  gg('healthAnxiety', t('life.companion.gauge.healthAnxiety'), wave2.value?.health_anxiety, { max: 1, kind: 'bad' }),
+  gg('somaticBurden', t('life.companion.gauge.somaticBurden'), wave2.value?.somatic_burden, { max: 1, kind: 'bad' }),
+  gg('allostatic', t('life.companion.gauge.allostatic'), wave2.value?.allostatic_load, { max: 1, kind: 'bad' }),
+  gg('loneliness', t('life.companion.gauge.loneliness'), wave2.value?.loneliness, { max: 1, kind: 'bad' }),
+]))
+const socialGauges = computed<Gauge[]>(() => gauges([
+  gg('empathy', t('life.companion.gauge.empathy'), wave4a.value?.empathy, { max: 1, kind: 'good' }),
+  gg('patience', t('life.companion.gauge.patience'), wave4b.value?.patience, { max: 1, kind: 'good' }),
+]))
+const attachGauges = computed<Gauge[]>(() => gauges([
+  gg('distress', t('life.companion.gauge.distress'), attachment.value?.distress, { max: 1, kind: 'bad' }),
+  gg('comorbid', t('life.companion.gauge.comorbid'), attachment.value?.comorbid_depression, { max: 1, kind: 'bad' }),
+]))
+const tsundereGauges = computed<Gauge[]>(() => gauges([
+  gg('affection', t('life.companion.gauge.affection'), tsundere.value?.affection, { max: 1, kind: 'good' }),
+  gg('tsun', t('life.companion.gauge.tsun'), tsundere.value?.expression, { max: 1, kind: 'neutral' }),
+  gg('fixation', t('life.companion.gauge.fixation'), tsundere.value?.fixation, { max: 1, kind: 'bad' }),
+]))
+const yandereGauges = computed<Gauge[]>(() => gauges([
+  gg('jealousy', t('life.companion.gauge.jealousy'), yandere.value?.jealousy, { max: 1, kind: 'bad' }),
+  gg('intensity', t('life.companion.gauge.intensity'), yandere.value?.intensity, { max: 1, kind: 'neutral' }),
+  gg('darkness', t('life.companion.gauge.darkness'), yandere.value?.darkness, { max: 1, kind: 'bad' }),
+]))
+const pdGauges = computed<Gauge[]>(() => gauges([
+  gg('pdPressure', t('life.companion.gauge.pdPressure'), personadyn.value?.pressure, { max: 1, kind: 'bad' }),
+  gg('pdAffection', t('life.companion.gauge.pdAffection'), personadyn.value?.affection, { max: 1, kind: 'good' }),
+  gg('pdAnxiety', t('life.companion.gauge.pdAnxiety'), personadyn.value?.anxiety, { max: 1, kind: 'bad' }),
+  gg('pdPossession', t('life.companion.gauge.pdPossession'), personadyn.value?.possessiveness, { max: 1, kind: 'bad' }),
+  gg('pdTrust', t('life.companion.gauge.pdTrust'), personadyn.value?.trust, { max: 1, kind: 'good' }),
+  gg('pdSelfControl', t('life.companion.gauge.pdSelfControl'), personadyn.value?.self_control, { max: 1, kind: 'good' }),
+  gg('pdSuppression', t('life.companion.gauge.pdSuppression'), personadyn.value?.suppression, { max: 1, kind: 'bad' }),
+]))
+// Relationship stages / interaction modes are stored as canonical zh strings
+// (see CompanionState.RELATIONSHIP_STAGES / INTERACTION_LIMITS); the label is
+// localized per UI locale, the value stays zh.
+const REL_STAGES = ['警惕', '疏离', '陌生', '认识', '熟悉', '友好', '亲近', '亲密']
+const INTERACTIONS = ['回避', '受伤', '放松', '活泼', '温暖', '亲近', '爱意']
+const stageLabel = (s: string) => (REL_STAGES.includes(s) ? t(`life.companion.relStage.${s}`) : (s || '—'))
+const relStageIndex = (s: string) => REL_STAGES.indexOf(s)
+const interactionLabel = (i: string) => (INTERACTIONS.includes(i) ? t(`life.companion.interaction.${i}`) : (i || '—'))
+const interactionEffect = (i: string) => (INTERACTIONS.includes(i) ? t(`life.companion.interactionEffect.${i}`) : '')
 
 const settingsForm = ref<Record<string, any>>({})
 const worldDensity = ref('off')
@@ -1047,77 +1175,192 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
       <article class="card">
         <h3>{{ t('life.companion.realtime.title') }} <span class="count-pill" :class="{ ok: cognition?.enabled }">{{ cognition?.enabled ? t('life.companion.status.running') : t('life.companion.status.stopped') }}</span><span v-if="stateUpdatedAt" class="count-pill sync-pill">{{ t('life.companion.realtime.updatedAt', { time: stateUpdatedAt }) }}</span></h3>
         <div v-if="!cognition" class="empty">{{ t('life.companion.realtime.empty') }}</div>
-        <div v-else class="settings-grid">
-          <div class="cog-metric"><span>{{ t('life.companion.metric.arbitrationMode') }}</span><strong>{{ lastControl?.mode || '—' }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.currentStrategy') }}</span><strong>{{ lastControl?.action || '—' }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.controlNeed') }}</span><strong>{{ fmtNum(lastControl?.need) }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.confidence') }}</span><strong>{{ fmtNum(lastControl?.confidence) }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.decidedTurns') }}</span><strong>{{ wave1?.turns ?? 0 }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.engrams') }}</span><strong>{{ wave1?.engrams ?? 0 }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.reliability') }}</span><strong>{{ fmtNum(wave1?.reliability) }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.mood') }}</span><strong>{{ fmtNum(wave2?.mood) }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.vagalTone') }}</span><strong>{{ fmtNum(wave2?.vagal_tone) }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.somatizationIndex') }}</span><strong>{{ fmtNum(wave2?.somatization_index) }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.healthAnxiety') }}</span><strong>{{ fmtNum(wave2?.health_anxiety) }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.somaticBurden') }}</span><strong>{{ fmtNum(wave2?.somatic_burden) }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.personaTraits') }}</span><strong>{{ personaInfo?.applied ? (personaInfo.source === 'llm' ? t('life.companion.metric.appliedLlm') : t('life.companion.metric.appliedLocal')) : t('life.companion.metric.notParsed') }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.lexicon') }}</span><strong>{{ wave3?.lexicon_size ?? 0 }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.empathy') }}</span><strong>{{ fmtNum(wave4a?.empathy) }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.perspectiveStage') }}</span><strong>{{ wave4a?.perspective_name || '—' }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.attentionState') }}</span><strong>{{ wave4b?.attention_state || '—' }}</strong></div>
-          <div class="cog-metric"><span>{{ t('life.companion.metric.patience') }}</span><strong>{{ fmtNum(wave4b?.patience) }}</strong></div>
+        <template v-else>
+          <!-- 她现在: Russell circumplex + the moment's emotion/body gauges. -->
+          <div class="sub-label">{{ t('life.companion.realtime.atAGlance') }}</div>
+          <p class="hint">{{ t('life.companion.realtime.atAGlanceHint') }}</p>
+          <div class="at-a-glance">
+            <div v-if="emotionNow" class="mood-plot-wrap" role="img" :aria-label="t(russellQuadrant)">
+              <span class="plot-label plot-n">{{ t('life.companion.axis.arousalHigh') }}</span>
+              <span class="plot-label plot-s">{{ t('life.companion.axis.arousalLow') }}</span>
+              <span class="plot-label plot-w">{{ t('life.companion.axis.valenceLow') }}</span>
+              <span class="plot-label plot-e">{{ t('life.companion.axis.valenceHigh') }}</span>
+              <svg class="mood-plot" viewBox="0 0 120 120" aria-hidden="true">
+                <rect class="plot-frame" x="10" y="10" width="100" height="100" rx="12" />
+                <line class="plot-grid" x1="60" y1="10" x2="60" y2="110" />
+                <line class="plot-grid" x1="10" y1="60" x2="110" y2="60" />
+                <circle class="plot-halo" :cx="moodDot.x" :cy="moodDot.y" r="12" />
+                <circle class="plot-dot" :cx="moodDot.x" :cy="moodDot.y" r="5" />
+              </svg>
+              <span class="plot-quadrant">{{ t(russellQuadrant) }}</span>
+            </div>
+            <div class="glance-col">
+              <p class="glance-title">{{ t('life.companion.realtime.section.mood') }}</p>
+              <div v-for="g in emotionGauges" :key="g.label" class="gauge" :title="g.effect">
+                <span class="gauge-head"><span class="gauge-name">{{ g.label }}<em class="gauge-alias">{{ g.alias }}</em></span><span class="gauge-val"><b class="gauge-state" :class="g.stateTone">{{ g.state }}</b> {{ g.display }}</span></span>
+                <span class="gauge-bar" :class="{ signed: g.signed }"><i class="gauge-fill" :class="g.signed ? (g.value >= 0 ? 'good' : 'bad') : gaugeTone(g)" :style="g.signed ? signedBarStyle(g.value) : { width: (gaugeFrac(g) * 100).toFixed(1) + '%' }"></i></span>
+                <span class="gauge-effect">{{ g.effect }}</span>
+              </div>
+            </div>
+            <div class="glance-col">
+              <p class="glance-title">{{ t('life.companion.body.title') }} <span class="chip" :class="{ muted: circadianNow?.is_sleeping, ok: circadianNow && !circadianNow.is_sleeping }">{{ circadianNow ? (circadianNow.is_sleeping ? t('life.companion.body.sleeping') : t('life.companion.body.awake')) : '—' }}</span></p>
+              <div v-for="g in bodyGauges" :key="g.label" class="gauge" :title="g.effect">
+                <span class="gauge-head"><span class="gauge-name">{{ g.label }}<em class="gauge-alias">{{ g.alias }}</em></span><span class="gauge-val"><b class="gauge-state" :class="g.stateTone">{{ g.state }}</b> {{ g.display }}</span></span>
+                <span class="gauge-bar" :class="{ signed: g.signed }"><i class="gauge-fill" :class="g.signed ? (g.value >= 0 ? 'good' : 'bad') : gaugeTone(g)" :style="g.signed ? signedBarStyle(g.value) : { width: (gaugeFrac(g) * 100).toFixed(1) + '%' }"></i></span>
+                <span class="gauge-effect">{{ g.effect }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 情绪与身体 (第二波 slow physiology) -->
+          <div class="sub-label">{{ t('life.companion.realtime.section.mood') }}</div>
+          <p class="hint">{{ t('life.companion.realtime.sectionSub.mood') }}</p>
+          <div class="gauge-grid">
+            <div v-for="g in moodGauges" :key="g.label" class="gauge" :title="g.effect">
+              <span class="gauge-head"><span class="gauge-name">{{ g.label }}<em class="gauge-alias">{{ g.alias }}</em></span><span class="gauge-val"><b class="gauge-state" :class="g.stateTone">{{ g.state }}</b> {{ g.display }}</span></span>
+              <span class="gauge-bar" :class="{ signed: g.signed }"><i class="gauge-fill" :class="g.signed ? (g.value >= 0 ? 'good' : 'bad') : gaugeTone(g)" :style="g.signed ? signedBarStyle(g.value) : { width: (gaugeFrac(g) * 100).toFixed(1) + '%' }"></i></span>
+              <span class="gauge-effect">{{ g.effect }}</span>
+            </div>
+          </div>
+          <div v-if="somaticChannels" class="som-channels">
+            <div v-for="(value, name) in somaticChannels" :key="name" class="som-chan">
+              <span class="som-chan-name">{{ channelLabel(name) }}</span>
+              <span class="som-chan-bar"><i :style="{ transform: 'scaleX(' + somScale(value) + ')' }"></i></span>
+              <span class="som-chan-val">{{ fmtNum(value, 2) }}</span>
+            </div>
+            <p v-if="Number(wave2?.somatic_chronicity) > 0.1" class="hint">{{ t('life.companion.realtime.somaticChronicity', { value: fmtNum(wave2?.somatic_chronicity) }) }}</p>
+          </div>
+
+          <!-- 社会认知 -->
+          <template v-if="wave4a || wave4b">
+            <div class="sub-label">{{ t('life.companion.realtime.section.social') }}</div>
+            <p class="hint">{{ t('life.companion.realtime.sectionSub.social') }}</p>
+            <div class="gauge-grid">
+              <div v-for="g in socialGauges" :key="g.label" class="gauge" :title="g.effect">
+                <span class="gauge-head"><span class="gauge-name">{{ g.label }}<em class="gauge-alias">{{ g.alias }}</em></span><span class="gauge-val"><b class="gauge-state" :class="g.stateTone">{{ g.state }}</b> {{ g.display }}</span></span>
+                <span class="gauge-bar" :class="{ signed: g.signed }"><i class="gauge-fill" :class="g.signed ? (g.value >= 0 ? 'good' : 'bad') : gaugeTone(g)" :style="g.signed ? signedBarStyle(g.value) : { width: (gaugeFrac(g) * 100).toFixed(1) + '%' }"></i></span>
+                <span class="gauge-effect">{{ g.effect }}</span>
+              </div>
+            </div>
+            <div class="chip-row">
+              <span class="chip muted">{{ t('life.companion.metric.perspectiveStage') }} {{ wave4a?.perspective_name || '—' }}</span>
+              <span class="chip muted">{{ t('life.companion.metric.attentionState') }} {{ wave4b?.attention_state || '—' }}</span>
+            </div>
+          </template>
+
+          <!-- 依恋 -->
           <template v-if="attachment?.enabled">
-            <div class="cog-metric"><span>{{ t('life.companion.metric.attachmentType') }}</span><strong>{{ attachment.label || attachment.type }}</strong></div>
-            <div class="cog-metric"><span>{{ t('life.companion.metric.severity') }}</span><strong>{{ fmtNum(attachment.severity, 2) }} · {{ attachment.band }}</strong></div>
-            <div class="cog-metric"><span>{{ t('life.companion.metric.dominantTendency') }}</span><strong>{{ attachment.dominant || '—' }}</strong></div>
-            <div class="cog-metric"><span>{{ t('life.companion.metric.attachmentDistress') }}</span><strong>{{ fmtNum(attachment.distress, 2) }}</strong></div>
-            <div class="cog-metric"><span>{{ t('life.companion.metric.comorbidDepression') }}</span><strong>{{ fmtNum(attachment.comorbid_depression, 2) }}</strong></div>
+            <div class="sub-label">{{ t('life.companion.realtime.section.attachment') }}</div>
+            <p class="hint">{{ t('life.companion.realtime.sectionSub.attachment') }}</p>
+            <div class="chip-row">
+              <span class="chip">{{ attachment.label || attachment.type }}</span>
+              <span class="chip muted">{{ t('life.companion.metric.severity') }} {{ fmtNum(attachment.severity, 2) }} · {{ attachment.band }}</span>
+              <span class="chip muted">{{ t('life.companion.metric.dominantTendency') }} {{ attachment.dominant || '—' }}</span>
+              <span class="chip" :class="attachment.safe_mode ? 'warn' : 'muted'">{{ t('life.companion.metric.safetyLayer') }} {{ attachment.safe_mode ? t('life.companion.metric.triggered') : t('life.companion.metric.normal') }}</span>
+            </div>
+            <div class="gauge-grid">
+              <div v-for="g in attachGauges" :key="g.label" class="gauge" :title="g.effect">
+                <span class="gauge-head"><span class="gauge-name">{{ g.label }}<em class="gauge-alias">{{ g.alias }}</em></span><span class="gauge-val"><b class="gauge-state" :class="g.stateTone">{{ g.state }}</b> {{ g.display }}</span></span>
+                <span class="gauge-bar" :class="{ signed: g.signed }"><i class="gauge-fill" :class="g.signed ? (g.value >= 0 ? 'good' : 'bad') : gaugeTone(g)" :style="g.signed ? signedBarStyle(g.value) : { width: (gaugeFrac(g) * 100).toFixed(1) + '%' }"></i></span>
+                <span class="gauge-effect">{{ g.effect }}</span>
+              </div>
+            </div>
           </template>
+
+          <!-- 傲娇 -->
           <template v-if="tsundere?.enabled">
-            <div class="cog-metric"><span>{{ t('life.companion.persona.tsundereType') }}</span><strong>{{ tsundere.label || tsundere.type }}</strong></div>
-            <div class="cog-metric"><span>{{ t('life.companion.metric.affectionA') }}</span><strong>{{ fmtNum(tsundere.affection, 2) }}</strong></div>
-            <div class="cog-metric"><span>{{ t('life.companion.metric.tsunExpressionT') }}</span><strong>{{ fmtNum(tsundere.expression, 2) }}</strong></div>
-            <div class="cog-metric"><span>{{ t('life.companion.metric.yandereY') }}</span><strong>{{ fmtNum(tsundere.fixation, 2) }} · {{ tsundere.band }}</strong></div>
-            <div class="cog-metric"><span>{{ t('life.companion.metric.safetyLayer') }}</span><strong>{{ tsundere.safe_mode ? t('life.companion.metric.triggered') : t('life.companion.metric.normal') }}</strong></div>
+            <div class="sub-label">{{ t('life.companion.realtime.section.tsundere') }}</div>
+            <p class="hint">{{ t('life.companion.realtime.sectionSub.tsundere') }}</p>
+            <div class="chip-row">
+              <span class="chip">{{ tsundere.label || tsundere.type }}</span>
+              <span class="chip" :class="tsundere.safe_mode ? 'warn' : 'muted'">{{ t('life.companion.metric.safetyLayer') }} {{ tsundere.safe_mode ? t('life.companion.metric.triggered') : t('life.companion.metric.normal') }}</span>
+            </div>
+            <div class="gauge-grid">
+              <div v-for="g in tsundereGauges" :key="g.label" class="gauge" :title="g.effect">
+                <span class="gauge-head"><span class="gauge-name">{{ g.label }}<em class="gauge-alias">{{ g.alias }}</em></span><span class="gauge-val"><b class="gauge-state" :class="g.stateTone">{{ g.state }}</b> {{ g.display }}</span></span>
+                <span class="gauge-bar" :class="{ signed: g.signed }"><i class="gauge-fill" :class="g.signed ? (g.value >= 0 ? 'good' : 'bad') : gaugeTone(g)" :style="g.signed ? signedBarStyle(g.value) : { width: (gaugeFrac(g) * 100).toFixed(1) + '%' }"></i></span>
+                <span class="gauge-effect">{{ g.effect }}</span>
+              </div>
+            </div>
           </template>
+
+          <!-- 病娇 -->
+          <template v-if="yandere?.enabled">
+            <div class="sub-label">{{ t('life.companion.realtime.section.yandere') }}</div>
+            <p class="hint">{{ t('life.companion.realtime.sectionSub.yandere') }}</p>
+            <div class="chip-row">
+              <span class="chip">{{ yandere.label || yandere.type }}</span>
+              <span class="chip muted">{{ t('life.companion.metric.yandereMode') }} {{ yandere.mode }} · {{ yandere.label_russell }}</span>
+              <span class="chip" :class="yandere.safe_mode ? 'warn' : 'muted'">{{ t('life.companion.metric.safetyLayer') }} {{ yandere.safe_mode ? t('life.companion.metric.triggered') : t('life.companion.metric.normal') }}</span>
+            </div>
+            <div class="gauge-grid">
+              <div v-for="g in yandereGauges" :key="g.label" class="gauge" :title="g.effect">
+                <span class="gauge-head"><span class="gauge-name">{{ g.label }}<em class="gauge-alias">{{ g.alias }}</em></span><span class="gauge-val"><b class="gauge-state" :class="g.stateTone">{{ g.state }}</b> {{ g.display }}</span></span>
+                <span class="gauge-bar" :class="{ signed: g.signed }"><i class="gauge-fill" :class="g.signed ? (g.value >= 0 ? 'good' : 'bad') : gaugeTone(g)" :style="g.signed ? signedBarStyle(g.value) : { width: (gaugeFrac(g) * 100).toFixed(1) + '%' }"></i></span>
+                <span class="gauge-effect">{{ g.effect }}</span>
+              </div>
+            </div>
+          </template>
+
+          <!-- 人格动力 -->
           <template v-if="personadyn?.enabled">
-            <div class="cog-metric"><span>{{ t('life.companion.persona.personaArchetype') }}</span><strong>{{ personadyn.label || personadyn.type }}</strong></div>
-            <div class="cog-metric"><span>{{ t('life.companion.metric.emergentMode') }}</span><strong>{{ personadyn.mode_label || personadyn.mode }}</strong></div>
-            <div class="cog-metric"><span>{{ t('life.companion.metric.readiness') }}</span><strong>{{ fmtNum(personadyn.pressure, 2) }} · {{ personadyn.band }}</strong></div>
-            <div class="cog-metric"><span>{{ t('life.companion.metric.affectionAnxiety') }}</span><strong>{{ fmtNum(personadyn.affection, 2) }} / {{ fmtNum(personadyn.anxiety, 2) }}</strong></div>
-            <div class="cog-metric"><span>{{ t('life.companion.metric.possessionTrust') }}</span><strong>{{ fmtNum(personadyn.possessiveness, 2) }} / {{ fmtNum(personadyn.trust, 2) }}</strong></div>
-            <div class="cog-metric"><span>{{ t('life.companion.metric.selfControlSuppression') }}</span><strong>{{ fmtNum(personadyn.self_control, 2) }} / {{ fmtNum(personadyn.suppression, 2) }}</strong></div>
-            <div v-if="personadyn.gender" class="cog-metric"><span>{{ t('life.companion.persona.genderSocialScript') }}</span><strong>{{ personadyn.gender }}</strong></div>
-            <div v-if="personadyn.help_seek != null" class="cog-metric"><span>{{ t('life.companion.metric.helpSeeking') }}</span><strong>{{ fmtNum(personadyn.help_seek, 2) }}</strong></div>
-            <div v-if="personadyn.big5" class="cog-metric"><span>Big5 O·C·E·A·N</span><strong>{{ big5Line }}</strong></div>
-            <div v-if="personadyn.hexaco" class="cog-metric"><span>HEXACO H·E·X·A·C·O</span><strong>{{ hexacoLine }}</strong></div>
-            <div v-if="personadyn.mbti" class="cog-metric"><span>MBTI / DISC</span><strong>{{ personadyn.mbti }} · {{ personadyn.disc || '—' }}</strong></div>
-            <div v-if="personadyn.theta_dim" class="cog-metric"><span>{{ t('life.companion.metric.thetaDim') }}</span><strong>{{ t('life.companion.dimensionsValue', { n: personadyn.theta_dim }) }} · {{ personadyn.family || '—' }}</strong></div>
-            <div v-if="topDesires.length" class="cog-metric"><span>{{ t('life.companion.metric.topDesires') }}</span><strong>{{ topDesires.join(' · ') }}</strong></div>
-            <div v-if="topEmotions.length" class="cog-metric"><span>{{ t('life.companion.metric.topEmotions') }}</span><strong>{{ topEmotions.join(' · ') }}</strong></div>
-            <div v-if="personadyn.learning?.enabled" class="cog-metric"><span>{{ t('life.companion.metric.learningState') }}</span><strong>{{ personadyn.learning.q_size }} · {{ fmtNum(learningDrift, 3) }}</strong></div>
-            <div v-if="personadyn.clinical" class="cog-metric warn"><span>{{ t('life.companion.metric.clinicalLabel') }}</span><strong>{{ t('life.companion.simulationMode') }}</strong></div>
+            <div class="sub-label">{{ t('life.companion.realtime.section.pd') }}</div>
+            <p class="hint">{{ t('life.companion.realtime.sectionSub.pd') }}</p>
+            <div class="chip-row">
+              <span class="chip">{{ personadyn.label || personadyn.type }}</span>
+              <span class="chip muted">{{ t('life.companion.metric.emergentMode') }} {{ personadyn.mode_label || personadyn.mode }} · {{ personadyn.band }}</span>
+              <span v-if="personadyn.gender" class="chip muted">{{ personadyn.gender }}</span>
+              <span v-if="personadyn.clinical" class="chip warn">{{ t('life.companion.simulationMode') }}</span>
+            </div>
+            <div class="gauge-grid">
+              <div v-for="g in pdGauges" :key="g.label" class="gauge" :title="g.effect">
+                <span class="gauge-head"><span class="gauge-name">{{ g.label }}<em class="gauge-alias">{{ g.alias }}</em></span><span class="gauge-val"><b class="gauge-state" :class="g.stateTone">{{ g.state }}</b> {{ g.display }}</span></span>
+                <span class="gauge-bar" :class="{ signed: g.signed }"><i class="gauge-fill" :class="g.signed ? (g.value >= 0 ? 'good' : 'bad') : gaugeTone(g)" :style="g.signed ? signedBarStyle(g.value) : { width: (gaugeFrac(g) * 100).toFixed(1) + '%' }"></i></span>
+                <span class="gauge-effect">{{ g.effect }}</span>
+              </div>
+            </div>
+            <details class="pdetails">
+              <summary>{{ t('life.companion.realtime.moreReadouts') }}</summary>
+              <div class="settings-grid" style="margin-top:10px">
+                <div v-if="personadyn.help_seek != null" class="cog-metric"><span>{{ t('life.companion.metric.helpSeeking') }}</span><strong>{{ fmtNum(personadyn.help_seek, 2) }}</strong></div>
+                <div v-if="personadyn.big5" class="cog-metric"><span>Big5 O·C·E·A·N</span><strong>{{ big5Line }}</strong></div>
+                <div v-if="personadyn.hexaco" class="cog-metric"><span>HEXACO H·E·X·A·C·O</span><strong>{{ hexacoLine }}</strong></div>
+                <div v-if="personadyn.mbti" class="cog-metric"><span>MBTI / DISC</span><strong>{{ personadyn.mbti }} · {{ personadyn.disc || '—' }}</strong></div>
+                <div v-if="personadyn.theta_dim" class="cog-metric"><span>{{ t('life.companion.metric.thetaDim') }}</span><strong>{{ t('life.companion.dimensionsValue', { n: personadyn.theta_dim }) }} · {{ personadyn.family || '—' }}</strong></div>
+                <div v-if="topDesires.length" class="cog-metric"><span>{{ t('life.companion.metric.topDesires') }}</span><strong>{{ topDesires.join(' · ') }}</strong></div>
+                <div v-if="topEmotions.length" class="cog-metric"><span>{{ t('life.companion.metric.topEmotions') }}</span><strong>{{ topEmotions.join(' · ') }}</strong></div>
+                <div v-if="personadyn.learning?.enabled" class="cog-metric"><span>{{ t('life.companion.metric.learningState') }}</span><strong>{{ personadyn.learning.q_size }} · {{ fmtNum(learningDrift, 3) }}</strong></div>
+              </div>
+            </details>
           </template>
-          <template v-if="episode">
-            <div class="cog-metric"><span>{{ t('life.companion.metric.episodeCourse') }}</span><strong>{{ episodeStateLabel(episode.state) }}</strong></div>
-            <div class="cog-metric"><span>{{ t('life.companion.metric.episodeSeverity') }}</span><strong>{{ fmtNum(episode.severity, 2) }}</strong></div>
-            <div class="cog-metric"><span>{{ t('life.companion.metric.episodesRelapses') }}</span><strong>{{ episode.episodes }} / {{ episode.relapses }}</strong></div>
-            <div v-if="episode.state === 'episode'" class="cog-metric"><span>{{ t('life.companion.metric.duration') }}</span><strong>{{ t('life.companion.daysValue', { n: fmtNum(episode.days_in_episode, 1) }) }}</strong></div>
-          </template>
-        </div>
+
+          <!-- 内核原始读数 -->
+          <details class="pdetails">
+            <summary>{{ t('life.companion.realtime.moreReadouts') }}</summary>
+            <div class="settings-grid" style="margin-top:10px">
+              <div class="cog-metric"><span>{{ t('life.companion.metric.arbitrationMode') }}</span><strong>{{ lastControl?.mode || '—' }}</strong></div>
+              <div class="cog-metric"><span>{{ t('life.companion.metric.currentStrategy') }}</span><strong>{{ lastControl?.action || '—' }}</strong></div>
+              <div class="cog-metric"><span>{{ t('life.companion.metric.controlNeed') }}</span><strong>{{ fmtNum(lastControl?.need) }}</strong></div>
+              <div class="cog-metric"><span>{{ t('life.companion.metric.confidence') }}</span><strong>{{ fmtNum(lastControl?.confidence) }}</strong></div>
+              <div class="cog-metric"><span>{{ t('life.companion.metric.decidedTurns') }}</span><strong>{{ wave1?.turns ?? 0 }}</strong></div>
+              <div class="cog-metric"><span>{{ t('life.companion.metric.engrams') }}</span><strong>{{ wave1?.engrams ?? 0 }}</strong></div>
+              <div class="cog-metric"><span>{{ t('life.companion.metric.reliability') }}</span><strong>{{ fmtNum(wave1?.reliability) }}</strong></div>
+              <div class="cog-metric"><span>{{ t('life.companion.metric.personaTraits') }}</span><strong>{{ personaInfo?.applied ? (personaInfo.source === 'llm' ? t('life.companion.metric.appliedLlm') : t('life.companion.metric.appliedLocal')) : t('life.companion.metric.notParsed') }}</strong></div>
+              <div class="cog-metric"><span>{{ t('life.companion.metric.lexicon') }}</span><strong>{{ wave3?.lexicon_size ?? 0 }}</strong></div>
+              <template v-if="episode">
+                <div class="cog-metric"><span>{{ t('life.companion.metric.episodeCourse') }}</span><strong>{{ episodeStateLabel(episode.state) }}</strong></div>
+                <div class="cog-metric"><span>{{ t('life.companion.metric.episodeSeverity') }}</span><strong>{{ fmtNum(episode.severity, 2) }}</strong></div>
+                <div class="cog-metric"><span>{{ t('life.companion.metric.episodesRelapses') }}</span><strong>{{ episode.episodes }} / {{ episode.relapses }}</strong></div>
+                <div v-if="episode.state === 'episode'" class="cog-metric"><span>{{ t('life.companion.metric.duration') }}</span><strong>{{ t('life.companion.daysValue', { n: fmtNum(episode.days_in_episode, 1) }) }}</strong></div>
+              </template>
+            </div>
+          </details>
+        </template>
         <p v-if="episode" class="hint">{{ t('life.companion.realtime.episodeHint') }}</p>
         <p v-if="attachment?.enabled" class="hint">{{ t('life.companion.realtime.attachmentHint', { label: attachment.label, severity: fmtNum(attachment.severity, 2), band: attachment.band, safety: attachment.safe_mode ? t('life.companion.realtime.safetyOnEmotion') : t('life.companion.realtime.safetyOff') }) }}</p>
         <p v-if="tsundere?.enabled" class="hint">{{ t('life.companion.realtime.tsundereHint', { label: tsundere.label || tsundere.type, affection: fmtNum(tsundere.affection, 2), expression: fmtNum(tsundere.expression, 2), fixation: fmtNum(tsundere.fixation, 2), band: tsundere.band, safety: tsundere.safe_mode ? t('life.companion.realtime.safetyOnFeeling') : t('life.companion.realtime.safetyOff') }) }}</p>
         <p v-if="personadyn?.enabled" class="hint">{{ t('life.companion.realtime.personadynHint', { label: personadyn.label || personadyn.type, family: personadyn.family || '—', theta: personadyn.theta_dim, mode: personadyn.mode_label || personadyn.mode, pressure: fmtNum(personadyn.pressure, 2), band: personadyn.band, gender: personadyn.gender || zhValue('life.companion.pdGender.unspecified'), learning: personadyn.learning?.enabled ? t('life.companion.realtime.learningOnline') : '', safety: personadyn.safe_mode ? t('life.companion.realtime.safetyOnFeeling') : t('life.companion.realtime.safetyOff') }) }}</p>
         <p v-if="personaInfo?.applied" class="hint">{{ t('life.companion.realtime.personaApplied', { source: personaInfo.source === 'llm' ? t('life.companion.realtime.personaSourceLlm') : t('life.companion.realtime.personaSourceLocal'), evidence: personaEvidenceText || '—' }) }}</p>
-        <div v-if="somaticChannels" class="som-channels">
-          <div v-for="(value, name) in somaticChannels" :key="name" class="som-chan">
-            <span class="som-chan-name">{{ channelLabel(name) }}</span>
-            <span class="som-chan-bar"><i :style="{ transform: 'scaleX(' + somScale(value) + ')' }"></i></span>
-            <span class="som-chan-val">{{ fmtNum(value, 2) }}</span>
-          </div>
-          <p v-if="Number(wave2?.somatic_chronicity) > 0.1" class="hint">{{ t('life.companion.realtime.somaticChronicity', { value: fmtNum(wave2?.somatic_chronicity) }) }}</p>
-        </div>
       </article>
 
       <article class="card">
@@ -1222,6 +1465,16 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
             <label><span>{{ t('life.companion.persona.tsundereType') }}</span><AppSelect v-model="settingsForm.cog_tsundere_type" :options="tsundereTypeOptions" :aria-label="t('life.companion.persona.tsundereType')" /></label>
           </div>
           <p class="hint">{{ t('life.companion.tsundereCard.hint2') }}</p>
+        </article>
+
+        <article class="card">
+          <h3>{{ t('life.companion.yandereCard.title') }}</h3>
+          <p class="hint">{{ t('life.companion.yandereCard.hint') }}</p>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_yandere_enabled" /><span>{{ t('life.companion.yandereCard.enable') }}</span></label>
+          <div class="settings-grid">
+            <label><span>{{ t('life.companion.yandereCard.type') }}</span><AppSelect v-model="settingsForm.cog_yandere_type" :options="yandereTypeOptions" :aria-label="t('life.companion.yandereCard.type')" /></label>
+          </div>
+          <p class="hint">{{ t('life.companion.yandereCard.hint2') }}</p>
         </article>
 
         <article class="card">
@@ -1363,13 +1616,44 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
     <section v-show="tab === 'state'" data-panel="state" class="panel">
       <div class="section-head"><div><h2>{{ t('life.companion.state.title') }}</h2><p class="desc">{{ t('life.companion.state.desc') }}</p></div></div>
       <article class="card">
+        <h3>{{ t('life.companion.state.relationships') }} <span class="count-pill">{{ relationships.length }}</span></h3>
+        <p class="hint">{{ t('life.companion.state.relationshipsHint') }}</p>
+        <ol class="feed">
+          <li v-for="r in relationships" :key="r.user_id" class="rel-card">
+            <div class="rel-head">
+              <strong>{{ r.user_id }}</strong>
+              <span class="meta">{{ t('life.companion.state.lastSeenLabel') }} {{ (r.last_seen || '').slice(0, 16).replace('T', ' ') || '—' }}</span>
+            </div>
+            <div class="rel-track-row">
+              <span class="rel-track-label">{{ t('life.companion.state.stage') }}</span>
+              <span class="rel-track" role="img" :aria-label="stageLabel(r.stage)">
+                <span v-for="(s, i) in REL_STAGES" :key="s" class="rel-seg" :class="{ done: i < relStageIndex(r.stage), cur: i === relStageIndex(r.stage) }"></span>
+              </span>
+              <span class="rel-stage-name">{{ stageLabel(r.stage) }}</span>
+            </div>
+            <div class="gauge" :title="t('life.companion.effect.affinity')">
+              <span class="gauge-head"><span class="gauge-name">{{ t('life.companion.state.affinity') }}<em class="gauge-alias">{{ t('life.companion.alias.affinity') }}</em></span><span class="gauge-val"><b class="gauge-state" :class="Number(r.affinity) >= 0 ? 'good' : 'bad'">{{ t('life.companion.gw.affinity.' + signedBand(Number(r.affinity) || 0)) }}</b> {{ fmtNum(r.affinity, 2) }}</span></span>
+              <span class="gauge-bar signed"><i class="gauge-fill" :class="Number(r.affinity) >= 0 ? 'good' : 'bad'" :style="signedBarStyle(Number(r.affinity) || 0)"></i></span>
+              <span class="gauge-effect">{{ t('life.companion.effect.affinity') }}</span>
+            </div>
+            <div v-if="r.interaction" class="rel-mode">
+              <span class="chip">{{ t('life.companion.state.interaction') }} · {{ interactionLabel(r.interaction) }}</span>
+              <span class="meta">{{ interactionEffect(r.interaction) }}</span>
+            </div>
+          </li>
+          <li v-if="!relationships.length" class="empty">{{ t('life.companion.state.noRelationships') }}</li>
+        </ol>
+      </article>
+      <article class="card">
         <h3>{{ t('life.companion.state.commitments') }} <span class="count-pill">{{ commitments.length }}</span></h3>
+        <p class="hint">{{ t('life.companion.state.commitmentsHint') }}</p>
         <ol class="feed"><li v-for="c in commitments" :key="c.id"><strong>{{ c.text }}</strong><span class="meta">{{ c.user_id }}</span></li>
           <li v-if="!commitments.length" class="empty">{{ t('life.companion.state.noCommitments') }}</li></ol>
       </article>
       <div class="grid2">
         <article class="card">
           <h3>{{ t('life.companion.state.userModel') }}</h3>
+          <p class="hint">{{ t('life.companion.state.userModelHint') }}</p>
           <ol class="feed"><li v-for="m in userModels" :key="m.user_id"><strong>{{ m.user_id }}</strong>
             <span class="meta">{{ t('life.companion.state.likes', { items: parseList(m.preferences).join(t('life.companion.listSeparator')) || '—' }) }}</span>
             <span class="meta">{{ t('life.companion.state.taboos', { items: parseList(m.taboos).join(t('life.companion.listSeparator')) || '—' }) }}</span>
@@ -1378,8 +1662,15 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
         </article>
         <article class="card">
           <h3>{{ t('life.companion.state.values') }}</h3>
-          <ol class="feed"><li v-for="v in valuesList" :key="v.k"><strong>{{ v.k }}</strong><span class="meta">{{ Number(v.v).toFixed(2) }}</span></li>
-            <li v-if="!valuesList.length" class="empty">{{ t('life.companion.state.noValues') }}</li></ol>
+          <p class="hint">{{ t('life.companion.state.valuesHint') }}</p>
+          <ol class="feed">
+            <li v-for="v in valuesList" :key="v.k" class="value-row">
+              <span class="value-name">{{ v.k }}</span>
+              <span class="value-bar"><i :class="v.v >= 0 ? 'good' : 'bad'" :style="signedBarStyle(v.v)"></i></span>
+              <span class="value-num">{{ v.v.toFixed(2) }}</span>
+            </li>
+            <li v-if="!valuesList.length" class="empty">{{ t('life.companion.state.noValues') }}</li>
+          </ol>
         </article>
       </div>
     </section>
@@ -1477,6 +1768,66 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
 .som-chan-bar{display:block;height:8px;border-radius:999px;background:var(--md-surface-container);overflow:hidden}
 .som-chan-bar i{display:block;width:100%;height:100%;border-radius:999px;background:var(--md-primary);transform-origin:left;transition:transform var(--duration-medium) var(--ease-out);will-change:transform}
 .som-chan-val{font-size:12px;font-weight:700;text-align:right;color:var(--md-on-surface-variant)}
+
+/* ── intuitive read-outs ────────────────────────────────────────────────────
+   Gauges carry a one-line "what it changes"; the fill color encodes whether
+   the current value is good / middling / bad for that metric's direction. */
+.at-a-glance{display:grid;grid-template-columns:190px minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start;margin:8px 0 4px}
+@media(max-width:900px){.at-a-glance{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.at-a-glance{grid-template-columns:1fr}}
+.mood-plot-wrap{position:relative;width:190px;padding:26px 22px 40px;background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 60%,transparent);border-radius:var(--r-md);box-sizing:border-box}
+.mood-plot{display:block;width:100%}
+.plot-frame{fill:var(--md-surface-container-lowest);stroke:var(--md-outline-variant)}
+.plot-grid{stroke:var(--md-outline-variant);stroke-width:1;stroke-dasharray:3 4}
+.plot-dot{fill:var(--md-primary)}
+.plot-halo{fill:var(--md-primary);opacity:.22}
+.plot-label{position:absolute;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant);pointer-events:none}
+.plot-n{top:6px;left:50%;transform:translateX(-50%)}
+.plot-s{bottom:26px;left:50%;transform:translateX(-50%)}
+.plot-w{left:8px;top:50%;transform:translateY(-58%)}
+.plot-e{right:8px;top:50%;transform:translateY(-58%)}
+.plot-quadrant{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:12px;font-weight:800;color:var(--md-primary)}
+.glance-col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.glance-title{display:flex;align-items:center;gap:8px;margin:0;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--md-on-surface-variant)}
+.gauge-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin:8px 0}
+.gauge{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border-radius:var(--r-sm);background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);min-width:0}
+.gauge-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.gauge-name{font-size:12px;font-weight:700;color:var(--md-on-surface-variant);overflow-wrap:anywhere}
+/* plain-language restatement riding next to the term: "迷走平静 · 有多沉着" */
+.gauge-alias{font-style:normal;font-weight:500;font-size:11px;color:var(--md-on-surface-variant);opacity:.8;margin-left:6px}
+.gauge-val{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.gauge-state{font-weight:800;margin-right:2px}
+.gauge-state.good{color:var(--md-success)}
+.gauge-state.mid{color:var(--md-primary)}
+.gauge-state.bad{color:var(--md-error)}
+.gauge-bar{position:relative;display:block;height:8px;border-radius:999px;background:var(--md-surface-container-highest);overflow:visible}
+/* center tick for signed (-1..1) tracks */
+.gauge-bar.signed::before{content:'';position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;border-radius:1px;background:var(--md-outline-variant)}
+.gauge-fill{position:absolute;top:0;bottom:0;border-radius:999px;transition:width .35s var(--ease-out,.25s ease),left .35s var(--ease-out,.25s ease)}
+.gauge-fill.good{background:var(--md-success)}
+.gauge-fill.mid{background:var(--md-primary)}
+.gauge-fill.bad{background:var(--md-error)}
+.gauge-effect{font-size:11px;line-height:1.45;color:var(--md-on-surface-variant)}
+.chip-row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.chip.warn{background:var(--md-error-container);color:var(--md-on-error-container)}
+.rel-card{display:flex;flex-direction:column;gap:10px}
+.rel-head{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.rel-track-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
+.rel-track-label,.rel-stage-name{font-size:11px;font-weight:800;letter-spacing:.04em;color:var(--md-on-surface-variant);white-space:nowrap}
+.rel-stage-name{color:var(--md-primary)}
+.rel-track{display:flex;gap:3px;height:10px;border-radius:999px;overflow:hidden;background:var(--md-surface-container-highest)}
+.rel-seg{flex:1 1 0;background:color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}
+.rel-seg.done{background:color-mix(in srgb,var(--md-primary) 45%,transparent)}
+.rel-seg.cur{background:var(--md-primary)}
+.rel-mode{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.value-row{display:grid;grid-template-columns:minmax(72px,140px) minmax(0,1fr) 44px;gap:10px;align-items:center}
+.value-name{font-size:13px;font-weight:700;overflow-wrap:anywhere}
+.value-bar{position:relative;display:block;height:8px;border-radius:999px;background:var(--md-surface-container-highest)}
+.value-bar::before{content:'';position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;border-radius:1px;background:var(--md-outline-variant)}
+.value-bar i{position:absolute;top:0;bottom:0;border-radius:999px;transition:width .35s var(--ease-out,.25s ease),left .35s var(--ease-out,.25s ease)}
+.value-bar i.good{background:var(--md-success)}
+.value-bar i.bad{background:var(--md-error)}
+.value-num{font-size:12px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;color:var(--md-on-surface-variant)}
 
 .chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:700;
   background:var(--md-secondary-container);color:var(--md-on-secondary-container)}

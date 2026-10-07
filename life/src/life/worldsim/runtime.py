@@ -93,12 +93,27 @@ class WorldRuntime:
             data = json.loads(self.path.read_text(encoding="utf-8"))
         except (FileNotFoundError, ValueError):
             return
+        if not isinstance(data, dict):
+            # Valid JSON that is not an object (hand-edited/truncated file);
+            # everything below indexes it as a mapping.
+            return
         # A changed worldview must not inherit the previous world's actors.
         if data.get("world_key") not in (None, self.world_key):
             return
+        # Schema migration: a state persisted by an older version can lack keys
+        # the current sim indexes directly (e.g. "somatic" was added with
+        # feature_schema_version 2; every tick then died on KeyError). Fill
+        # missing top-level keys (and their sub-keys) from the fresh defaults.
+        default_state = self.sim.state
         for key in ("state", "ledger", "obligations", "due_echoes"):
             if key in data:
                 setattr(self.sim, key, data[key])
+        for key, default in default_state.items():
+            if key not in self.sim.state:
+                self.sim.state[key] = default
+            elif isinstance(default, dict) and isinstance(self.sim.state[key], dict):
+                for sub_key, sub_default in default.items():
+                    self.sim.state[key].setdefault(sub_key, sub_default)
         self.sim.now_step = int(data.get("now_step", 0))
         self.sim.events = data.get("events", [])[-200:]
         if data.get("actor_locations"):

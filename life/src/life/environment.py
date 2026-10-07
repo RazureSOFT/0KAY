@@ -114,9 +114,13 @@ class EnvironmentSystem:
             return
         self._loaded = True
         try:
-            self._weather_cache = json.loads(self._cache_path.read_text(encoding="utf-8"))
+            data = json.loads(self._cache_path.read_text(encoding="utf-8"))
         except (FileNotFoundError, ValueError):
-            self._weather_cache = {}
+            data = {}
+        # A hand-edited or truncated cache can still be valid JSON without being
+        # an object; weather() reads it with .get(), so hold the dict invariant
+        # here rather than raising on every lookup.
+        self._weather_cache = data if isinstance(data, dict) else {}
 
     def cached_weather(self) -> dict[str, Any]:
         self._load_cache()

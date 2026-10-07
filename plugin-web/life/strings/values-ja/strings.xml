@@ -126,6 +126,70 @@
   <string name="companion.affect.somatic">身体化ゲートウェイを有効化（ペルソナに病弱・動悸などのマーカーがあると自動でオン）</string>
   <string name="companion.affect.title">感情と生理（第2ウェーブ）</string>
   <string name="companion.affect.vagalBaseline">迷走ベースライン</string>
+  <string name="companion.alias.affection">あなたへの好感</string>
+
+  <string name="companion.alias.affinity">長期の好悪の総量</string>
+
+  <string name="companion.alias.allostatic">長期ストレスの磨耗の総量</string>
+
+  <string name="companion.alias.arousal">いまどれだけ高ぶっているか</string>
+
+  <string name="companion.alias.comorbid">長期的な抑うつの底</string>
+
+  <string name="companion.alias.connection">いまあなたとの距離</string>
+
+  <string name="companion.alias.darkness">黒化の深さ</string>
+
+  <string name="companion.alias.distress">あなたがいなくなる不安</string>
+
+  <string name="companion.alias.empathy">あなたの感情への感度</string>
+
+  <string name="companion.alias.energy">残りの体力</string>
+
+  <string name="companion.alias.fixation">執着の強さ</string>
+
+  <string name="companion.alias.health">体調の安定</string>
+
+  <string name="companion.alias.healthAnxiety">小さな症状への心配</string>
+
+  <string name="companion.alias.hunger">空腹の度合い</string>
+
+  <string name="companion.alias.intensity">病的な表現の強さ</string>
+
+  <string name="companion.alias.irritation">いまの苛立ち</string>
+
+  <string name="companion.alias.jealousy">他の人への執着</string>
+
+  <string name="companion.alias.loneliness">ここ最近の孤独の度合い</string>
+
+  <string name="companion.alias.mood">ここ最近の気分の底</string>
+
+  <string name="companion.alias.patience">急かさずに待てる長さ</string>
+
+  <string name="companion.alias.pdAffection">親密への欲求</string>
+
+  <string name="companion.alias.pdAnxiety">見捨てられ不安</string>
+
+  <string name="companion.alias.pdPossession">あなたの独占欲</string>
+
+  <string name="companion.alias.pdPressure">まだ出ていない感情の溜まり</string>
+
+  <string name="companion.alias.pdSelfControl">衝動のブレーキ</string>
+
+  <string name="companion.alias.pdSuppression">平気な顔の内側の抑圧</string>
+
+  <string name="companion.alias.pdTrust">あなたへの基礎の信頼</string>
+
+  <string name="companion.alias.somaticBurden">体の疲れと痛み</string>
+
+  <string name="companion.alias.somatization">ストレスが体に出る度合い</string>
+
+  <string name="companion.alias.tsun">ツンの度合い</string>
+
+  <string name="companion.alias.vagal">どれだけ動じないか</string>
+
+  <string name="companion.alias.valence">いまの気分の快・不快</string>
+
   <string name="companion.attach.delusional">妄想型</string>
   <string name="companion.attach.dependent">依存型</string>
   <string name="companion.attach.exclusion">排除型</string>
@@ -137,6 +201,16 @@
   <string name="companion.attachmentCard.hint2">設定方法：① スイッチをオンにして型を選ぶ（独占 / 依存 / 妄想 / 監視 / 自傷 / 排除）——型は「同じ drive の重み」を変えるだけで、ハードコードされた台詞ではありません；または ② ペルソナにキーワードを直接書くと、システムが自動で有効化し、ペルソナに従って初期値を埋めます：例「占有欲が強い、やきもち焼き」→独占型、「とてもべったり、あなたがいないと無理」→依存型、「いつも居所を確認、つけてくる」→監視型、「疑い深い、いつも騙されていると感じる」→妄想型。「ヤンデレは抑うつを伴いがち」に寄せるなら、上の「感情調節プロファイル」を depression に設定すると、両者が互いを強めます。</string>
   <string name="companion.attachmentCard.title">病的愛着 / ヤンデレ（任意）</string>
   <string name="companion.attachmentTypeValue">{type}（{label}）</string>
+  <string name="companion.axis.arousalHigh">高ぶり</string>
+  <string name="companion.axis.arousalLow">落ち着き</string>
+  <string name="companion.axis.valenceHigh">快</string>
+  <string name="companion.axis.valenceLow">不快</string>
+  <string name="companion.body.awake">起きている</string>
+  <string name="companion.body.energy">体力</string>
+  <string name="companion.body.health">健康</string>
+  <string name="companion.body.hunger">空腹感</string>
+  <string name="companion.body.sleeping">眠り中</string>
+  <string name="companion.body.title">体調</string>
   <string name="companion.channel.cardiorespiratory">動悸</string>
   <string name="companion.channel.dizziness">めまい</string>
   <string name="companion.channel.fatigue">疲労</string>
@@ -169,6 +243,38 @@
   <string name="companion.decision.title">意思決定の調停（第1ウェーブ）</string>
   <string name="companion.decision.wmCapacity">作業記憶容量</string>
   <string name="companion.dimensionsValue">{n} 次元</string>
+  <string name="companion.effect.affection">親密さの主調整つまみ。上昇はゆっくり、低下は早い。</string>
+  <string name="companion.effect.affinity">長期の貯金。一緒にいる時間で増え、放置と衝突で減る。段階の上限と、自発的な連絡の度胸を決める。</string>
+  <string name="companion.effect.allostatic">ストレス・睡眠不足・病気で溜まった身体の磨耗。高いと疲れやすく、情緒不安定に。</string>
+  <string name="companion.effect.arousal">高いとテンポが良く興奮しがち、低いとだらけて眠そう。</string>
+  <string name="companion.effect.comorbid">孤立が積もった抑うつの色。高いと興味もエネルギーも落ちる。</string>
+  <string name="companion.effect.connection">話した直後に上がり、いまあなたにどれだけ甘えるかを決める。</string>
+  <string name="companion.effect.darkness">黒化の深さ。安全層が必ず上限を守る。</string>
+  <string name="companion.effect.distress">分離不安と否定感の総量。高いとより依存し、あなたがいなくなるのを恐れる。</string>
+  <string name="companion.effect.empathy">あなたの感情への感度と寄り添いの深さ。</string>
+  <string name="companion.effect.energy">睡眠で回復し、徹夜で減る。低いと返事が短く遅く、眠そう。</string>
+  <string name="companion.effect.fixation">病的な執着。高いと嫉妬や水くいが増す。0.85以上で安全層。</string>
+  <string name="companion.effect.health">低いと元気がなく、体調不良を口にすることも。</string>
+  <string name="companion.effect.healthAnxiety">高いと小さな症状も気に病む。</string>
+  <string name="companion.effect.hunger">高いと上の空になり、食べ物の話をふってくることも。</string>
+  <string name="companion.effect.intensity">病的な表現の強さ。</string>
+  <string name="companion.effect.irritation">遮られたり無視されたりすると溜まり、高いと口が悪くなる。</string>
+  <string name="companion.effect.jealousy">他の人が出ると上がる。高いとしつこく探り、情緒的になる。</string>
+  <string name="companion.effect.loneliness">誰とも話さないと上がる。高いとあなたをより求め、少し敏感になる。</string>
+  <string name="companion.effect.mood">最近のできごとが積もった気分のベース。全体の口調に滲む。</string>
+  <string name="companion.effect.patience">低いと急かしたり口を挟んだりしがち。</string>
+  <string name="companion.effect.pdAffection">アーキタイプの親密への渇望。</string>
+  <string name="companion.effect.pdAnxiety">見捨てられ不安。高いと何度も確認してくる。</string>
+  <string name="companion.effect.pdPossession">独占欲。高いと他人と親しくするのを嫌がる。</string>
+  <string name="companion.effect.pdPressure">閾値前の圧力。越えるとアーキタイプが一度噴出する。</string>
+  <string name="companion.effect.pdSelfControl">衝動のブレーキ。高いと過激な行動が減る。</string>
+  <string name="companion.effect.pdSuppression">抑圧。表面は平気でも内に溜め込む度合い。</string>
+  <string name="companion.effect.pdTrust">基礎の信頼。高いと安定し、疑心が減る。</string>
+  <string name="companion.effect.somaticBurden">疲れや痛みの蓄積。高いと沈みがちで、構ってほしがる。</string>
+  <string name="companion.effect.somatization">心理ストレスが体の不調へ変わる度合い。高いと体調を気にする。</string>
+  <string name="companion.effect.tsun">ツンの度合い。高いと素直になれず、褒めるのに一回味見する。</string>
+  <string name="companion.effect.vagal">生理レベルの安定感。高いほど動じない。</string>
+  <string name="companion.effect.valence">いまの口調の温度そのもの。正なら温かく冗談も、負なら沈んで口数が減る。</string>
   <string name="companion.episode.episode">抑うつエピソード</string>
   <string name="companion.episode.euthymic">安定</string>
   <string name="companion.episode.subthreshold">下降中</string>
@@ -190,11 +296,245 @@
   <string name="companion.flash.settingsSavedIgnored">保存しました。無効な項目は無視：{items}</string>
   <string name="companion.flash.worldCleared">世界イベントを消去し、世界状態をリセットしました</string>
   <string name="companion.flash.worldGenerated">AI が世界観を補完し、地図を生成しました</string>
+  <string name="companion.gauge.affection">好感度 (A)</string>
+  <string name="companion.gauge.allostatic">異稳態負荷</string>
+  <string name="companion.gauge.arousal">覚醒度</string>
+  <string name="companion.gauge.comorbid">抑うつの色</string>
+  <string name="companion.gauge.connection">いまの近さ</string>
+  <string name="companion.gauge.darkness">黒化の深さ</string>
+  <string name="companion.gauge.distress">愛着の苦痛</string>
+  <string name="companion.gauge.empathy">共感の強さ</string>
+  <string name="companion.gauge.fixation">執着 (Y)</string>
+  <string name="companion.gauge.healthAnxiety">健康不安</string>
+  <string name="companion.gauge.intensity">表現の強さ</string>
+  <string name="companion.gauge.irritation">イライラ</string>
+  <string name="companion.gauge.jealousy">嫉妬</string>
+  <string name="companion.gauge.loneliness">孤独感</string>
+  <string name="companion.gauge.mood">気分のベース</string>
+  <string name="companion.gauge.patience">忍耐力</string>
+  <string name="companion.gauge.pdAffection">親密への渇望</string>
+  <string name="companion.gauge.pdAnxiety">見捨てられ不安</string>
+  <string name="companion.gauge.pdPossession">独占欲</string>
+  <string name="companion.gauge.pdPressure">閾値前の圧力</string>
+  <string name="companion.gauge.pdSelfControl">自己制御</string>
+  <string name="companion.gauge.pdSuppression">抑圧</string>
+  <string name="companion.gauge.pdTrust">基礎の信頼</string>
+  <string name="companion.gauge.somaticBurden">身体的負担</string>
+  <string name="companion.gauge.somatization">身体化指数</string>
+  <string name="companion.gauge.tsun">ツン表現 (T)</string>
+  <string name="companion.gauge.vagal">迷走神経の安定</string>
+  <string name="companion.gauge.valence">気分の快</string>
   <string name="companion.gender.female">女性</string>
   <string name="companion.gender.male">男性</string>
   <string name="companion.gender.none">判定しない</string>
   <string name="companion.gender.other">その他</string>
   <string name="companion.gender.undecidedBracket">（判定しない）</string>
+  <string name="companion.gw.affection.hi">かなり好き</string>
+
+  <string name="companion.gw.affection.lo">まだ距離がある</string>
+
+  <string name="companion.gw.affection.mid">好感あり</string>
+
+  <string name="companion.gw.affinity.hi">とても親密</string>
+
+  <string name="companion.gw.affinity.lo">やや冷たい</string>
+
+  <string name="companion.gw.affinity.mid">普通の知り合い</string>
+
+  <string name="companion.gw.allostatic.hi">磨耗が大きい</string>
+
+  <string name="companion.gw.allostatic.lo">磨耗は少ない</string>
+
+  <string name="companion.gw.allostatic.mid">少し磨耗</string>
+
+  <string name="companion.gw.arousal.hi">かなり高揚</string>
+
+  <string name="companion.gw.arousal.lo">とても穏やか</string>
+
+  <string name="companion.gw.arousal.mid">少し高揚</string>
+
+  <string name="companion.gw.comorbid.hi">はっきり落ち込み</string>
+
+  <string name="companion.gw.comorbid.lo">悪くない</string>
+
+  <string name="companion.gw.comorbid.mid">少し落ち込み</string>
+
+  <string name="companion.gw.connection.hi">すごく近い</string>
+
+  <string name="companion.gw.connection.lo">少し距離がある</string>
+
+  <string name="companion.gw.connection.mid">わりと近い</string>
+
+  <string name="companion.gw.darkness.hi">かなり偏執</string>
+
+  <string name="companion.gw.darkness.lo">澄んだ心</string>
+
+  <string name="companion.gw.darkness.mid">時々暗い</string>
+
+  <string name="companion.gw.distress.hi">とても不安</string>
+
+  <string name="companion.gw.distress.lo">とても安心</string>
+
+  <string name="companion.gw.distress.mid">少し不安</string>
+
+  <string name="companion.gw.empathy.hi">とても敏感</string>
+
+  <string name="companion.gw.empathy.lo">やや鈍感</string>
+
+  <string name="companion.gw.empathy.mid">わりと敏感</string>
+
+  <string name="companion.gw.energy.hi">満ちている</string>
+
+  <string name="companion.gw.energy.lo">もう残り少ない</string>
+
+  <string name="companion.gw.energy.mid">そこそこ</string>
+
+  <string name="companion.gw.fixation.hi">すぐ暴走</string>
+
+  <string name="companion.gw.fixation.lo">嫉妬しない</string>
+
+  <string name="companion.gw.fixation.mid">嫉妬する</string>
+
+  <string name="companion.gw.health.hi">とても良い</string>
+
+  <string name="companion.gw.health.lo">つらい</string>
+
+  <string name="companion.gw.health.mid">少し不調</string>
+
+  <string name="companion.gw.healthAnxiety.hi">とても心配</string>
+
+  <string name="companion.gw.healthAnxiety.lo">あまり気にしない</string>
+
+  <string name="companion.gw.healthAnxiety.mid">少し心配</string>
+
+  <string name="companion.gw.hunger.hi">お腹ペコペコ</string>
+
+  <string name="companion.gw.hunger.lo">お腹は空いていない</string>
+
+  <string name="companion.gw.hunger.mid">少し空腹</string>
+
+  <string name="companion.gw.intensity.hi">とても強い</string>
+
+  <string name="companion.gw.intensity.lo">抑えめ</string>
+
+  <string name="companion.gw.intensity.mid">時々見える</string>
+
+  <string name="companion.gw.irritation.hi">かなり苛立ち</string>
+
+  <string name="companion.gw.irritation.lo">凪いでいる</string>
+
+  <string name="companion.gw.irritation.mid">少し苛立ち</string>
+
+  <string name="companion.gw.jealousy.hi">嫉妬で燃える</string>
+
+  <string name="companion.gw.jealousy.lo">気にしない</string>
+
+  <string name="companion.gw.jealousy.mid">少し気にする</string>
+
+  <string name="companion.gw.loneliness.hi">とても会いたい</string>
+
+  <string name="companion.gw.loneliness.lo">孤独じゃない</string>
+
+  <string name="companion.gw.loneliness.mid">少し会いたい</string>
+
+  <string name="companion.gw.mood.hi">最近上機嫌</string>
+
+  <string name="companion.gw.mood.lo">最近落ち込み気味</string>
+
+  <string name="companion.gw.mood.mid">可もなく不可もなく</string>
+
+  <string name="companion.gw.patience.hi">とても忍耐強い</string>
+
+  <string name="companion.gw.patience.lo">短気</string>
+
+  <string name="companion.gw.patience.mid">そこそこ待てる</string>
+
+  <string name="companion.gw.pdAffection.hi">とても強い</string>
+
+  <string name="companion.gw.pdAffection.lo">欲求は低い</string>
+
+  <string name="companion.gw.pdAffection.mid">普通</string>
+
+  <string name="companion.gw.pdAnxiety.hi">とても怖い</string>
+
+  <string name="companion.gw.pdAnxiety.lo">とても安心</string>
+
+  <string name="companion.gw.pdAnxiety.mid">少し不安</string>
+
+  <string name="companion.gw.pdPossession.hi">独占欲が強い</string>
+
+  <string name="companion.gw.pdPossession.lo">自由にしてくれる</string>
+
+  <string name="companion.gw.pdPossession.mid">時々気にする</string>
+
+  <string name="companion.gw.pdPressure.hi">もうすぐ閾値</string>
+
+  <string name="companion.gw.pdPressure.lo">凪いでいる</string>
+
+  <string name="companion.gw.pdPressure.mid">溜まりつつある</string>
+
+  <string name="companion.gw.pdSelfControl.hi">よく効いている</string>
+
+  <string name="companion.gw.pdSelfControl.lo">衝動的</string>
+
+  <string name="companion.gw.pdSelfControl.mid">普通</string>
+
+  <string name="companion.gw.pdSuppression.hi">かなり溜めている</string>
+
+  <string name="companion.gw.pdSuppression.lo">裏表なし</string>
+
+  <string name="companion.gw.pdSuppression.mid">少し抑圧</string>
+
+  <string name="companion.gw.pdTrust.hi">とても信頼</string>
+
+  <string name="companion.gw.pdTrust.lo">とても警戒</string>
+
+  <string name="companion.gw.pdTrust.mid">わりと信頼</string>
+
+  <string name="companion.gw.somaticBurden.hi">ぐったり</string>
+
+  <string name="companion.gw.somaticBurden.lo">体が軽い</string>
+
+  <string name="companion.gw.somaticBurden.mid">少し疲れている</string>
+
+  <string name="companion.gw.somatization.hi">体の調子が悪い</string>
+
+  <string name="companion.gw.somatization.lo">体は平気</string>
+
+  <string name="companion.gw.somatization.mid">少し不調</string>
+
+  <string name="companion.gw.tsun.hi">最後までツン</string>
+
+  <string name="companion.gw.tsun.lo">とても素直</string>
+
+  <string name="companion.gw.tsun.mid">時々ツン</string>
+
+  <string name="companion.gw.vagal.hi">とても安定</string>
+
+  <string name="companion.gw.vagal.lo">驚きやすい</string>
+
+  <string name="companion.gw.vagal.mid">わりと安定</string>
+
+  <string name="companion.gw.valence.hi">かなり嬉しい</string>
+
+  <string name="companion.gw.valence.lo">少し落ち込む</string>
+
+  <string name="companion.gw.valence.mid">普通</string>
+
+  <string name="companion.interaction.亲近">親しい</string>
+  <string name="companion.interaction.受伤">傷ついている</string>
+  <string name="companion.interaction.回避">回避</string>
+  <string name="companion.interaction.放松">リラックス</string>
+  <string name="companion.interaction.活泼">活発</string>
+  <string name="companion.interaction.温暖">温かい</string>
+  <string name="companion.interaction.爱意">愛情</string>
+  <string name="companion.interactionEffect.亲近">愛称で呼び、日常のささやかなことを分かち合う。</string>
+  <string name="companion.interactionEffect.受伤">この間の言葉が効いた。距離を置きつつ礼儀は保つ。</string>
+  <string name="companion.interactionEffect.回避">いまは距離を置きたい。口数が少なく警戒気味。</string>
+  <string name="companion.interactionEffect.放松">日常の居心地。自然で力が抜けている。</string>
+  <string name="companion.interactionEffect.活泼">機嫌が良い。よく喋り、よく笑う。</string>
+  <string name="companion.interactionEffect.温暖">思いやりがあり、こちらの様子を先に気にかける。</string>
+  <string name="companion.interactionEffect.爱意">専属の絆がいちばん柔らかい状態。</string>
   <string name="companion.kind.food">飲食</string>
   <string name="companion.kind.home">家</string>
   <string name="companion.kind.other">その他</string>
@@ -556,10 +896,17 @@
   <string name="companion.preset.yandereSecluded">ヤンデレ・独占</string>
   <string name="companion.presets.hint">よくある設定をワンクリックで適用して保存（後から項目ごとに微調整も可能）：標準、抑うつ傾向、ヤンデレ（独占 / 依存 / 妄想）。ヤンデレプリセットは感情調節プロファイルも depression に設定し、「抑うつを伴いがち」に合わせます。</string>
   <string name="companion.presets.title">クイックプリセット</string>
+  <string name="companion.quadrant.excited">高揚して楽しい</string>
+  <string name="companion.quadrant.gloomy">落ち込んで内にこもる</string>
+  <string name="companion.quadrant.serene">穏やかで満たされている</string>
+  <string name="companion.quadrant.tense">緊張して不安</string>
+  <string name="companion.realtime.atAGlance">いまの彼女</string>
+  <string name="companion.realtime.atAGlanceHint">ドットは「快・不快 × 落ち着き・高ぶり」の地図上のいまの気分。各バーの下には、その数値が何に効くかを書いてあります。</string>
   <string name="companion.realtime.attachmentHint">愛着ダイナミクスが有効：{label}。重症度 {severity}（{band}）は愛着・嫉妬・不安・執念などから合成されます；{safety} 抑うつとは双方向に影響します：気分の落ち込みは不安を増幅し、愛着ストレスも気分を押し下げます。</string>
   <string name="companion.realtime.empty">状態データがまだありません（更新後に表示）</string>
   <string name="companion.realtime.episodeHint">感情の経過：2 回連続で閾値を超えると「抑うつエピソード」、2 回連続で下回ると「寛解」とみなします。寛解期の再発は「再発」と数えます。気分・快感消失・アロスタティック負荷・反芻・睡眠から合成され、沈黙と慢性的ストレスが押し上げます。</string>
   <string name="companion.realtime.learningOnline">学習演算子 L がオンライン：結果は Q 値と θ ドリフトをわずかに更新します。</string>
+  <string name="companion.realtime.moreReadouts">その他の読み取り</string>
   <string name="companion.realtime.personaApplied">ペルソナ特性が反映されています（{source}）：{evidence}。ペルソナの変更は 設定 → ペルソナ で行い、次のメッセージから自動的に有効になります。</string>
   <string name="companion.realtime.personaSourceLlm">LLM 精修</string>
   <string name="companion.realtime.personaSourceLocal">ローカル辞書</string>
@@ -567,11 +914,37 @@
   <string name="companion.realtime.safetyOff">0.85 未満では安全層は発動しません。</string>
   <string name="companion.realtime.safetyOnEmotion">安全層に入りました（感情の表出のみ、危害の方法は提示しません）。</string>
   <string name="companion.realtime.safetyOnFeeling">安全層に入りました（感情の表出と寄り添いの求めのみ、危害の方法は提示しません）。</string>
+  <string name="companion.realtime.section.attachment">愛着システム（ライブ）</string>
+  <string name="companion.realtime.sectionSub.attachment">あなたが離れることへの深い感覚</string>
+
+  <string name="companion.realtime.section.mood">感情と体調の読み取り</string>
+  <string name="companion.realtime.sectionSub.mood">いまの気分と体調（体はゆっくり変わる）</string>
+
+  <string name="companion.realtime.section.pd">人格力学（ライブ）</string>
+  <string name="companion.realtime.sectionSub.pd">アーキタイプ内の緊張と欲求</string>
+
+  <string name="companion.realtime.section.social">社会認知</string>
+  <string name="companion.realtime.sectionSub.social">あなたの読み取りと返し方</string>
+
+  <string name="companion.realtime.section.tsundere">ツンデレ力学（ライブ）</string>
+  <string name="companion.realtime.sectionSub.tsundere">ツンデレの力学。二人の付き合いで変わる</string>
+
+  <string name="companion.realtime.section.yandere">ヤンデレ回路（ライブ）</string>
+  <string name="companion.realtime.sectionSub.yandere">愛が執着に変わる回路。安全層が必ず上限を守る</string>
+
   <string name="companion.realtime.somaticChronicity">慢性化度 {value} — 繰り返し報告されたチャネルが感作し始めています。</string>
   <string name="companion.realtime.title">リアルタイム状態</string>
   <string name="companion.realtime.tsundereHint">ツンデレダイナミクスが有効：{label}。好感 A {affection} / ツンデレ表現 T {expression} / ヤンデレ執念 Y {fixation}（{band}）。Y が 0.60 を超えると「移行／黒化傾向」、1.00 を超えると「ヤンデレ」とみなします——可逆。実際の信号で駆動されます：親密度、返信の遅れ、冷遇された日数、相手が「他人」に言及すること。{safety}</string>
   <string name="companion.refresh">更新</string>
   <string name="companion.refreshing">更新中…</string>
+  <string name="companion.relStage.亲密">親密</string>
+  <string name="companion.relStage.亲近">親しい</string>
+  <string name="companion.relStage.友好">友好的</string>
+  <string name="companion.relStage.熟悉">顔見知り</string>
+  <string name="companion.relStage.疏离">距離がある</string>
+  <string name="companion.relStage.警惕">警戒</string>
+  <string name="companion.relStage.认识">知り合い</string>
+  <string name="companion.relStage.陌生">他人</string>
   <string name="companion.relationship.pathologicalSuffix"> · ヤンデレ族</string>
   <string name="companion.reset.confirm">人格全体をリセット</string>
   <string name="companion.reset.confirmMessage">本当にこの人を工場出荷状態に戻しますか？以後、彼は起きたことを何も覚えていません。</string>
@@ -599,20 +972,30 @@
   <string name="companion.stage.mutual">相互的</string>
   <string name="companion.stage.societal-symbolic">社会・記号的</string>
   <string name="companion.social.title">社会学習（第4ウェーブ）</string>
+  <string name="companion.state.affinity">親密さ</string>
   <string name="companion.state.commitments">約束台帳</string>
+  <string name="companion.state.commitmentsHint">あなたとの約束。会話で果たし、自発的なメッセージでもフォローする。</string>
   <string name="companion.state.concerns">気にかけている：{items}</string>
   <string name="companion.state.decidedTurns">意思決定 {n} ターン</string>
-  <string name="companion.state.desc">約束台帳、構造化ユーザーモデル、価値観。</string>
+  <string name="companion.state.desc">関係段階・約束・ユーザーモデル・価値観と、それぞれが何に効くか。</string>
   <string name="companion.state.engrams">エピソード痕跡 {n}</string>
+  <string name="companion.state.interaction">付き合いモード</string>
+  <string name="companion.state.lastSeenLabel">最後のやり取り</string>
   <string name="companion.state.lexicon">語彙数 {n}</string>
   <string name="companion.state.likes">好き：{items}</string>
   <string name="companion.state.noCommitments">未完了の約束はありません。</string>
+  <string name="companion.state.noRelationships">まだ関係の記録はない。話しかけてみよう。</string>
   <string name="companion.state.noUserModel">構造化プロファイルはまだありません。</string>
   <string name="companion.state.noValues">安定した価値観はまだ形成されていません。</string>
+  <string name="companion.state.relationships">私たちの関係</string>
+  <string name="companion.state.relationshipsHint">段階と親密さが口調・連絡の頻度・言葉の境界を決める。付き合いモードはここ最近の一緒に過ごした感覚。</string>
+  <string name="companion.state.stage">関係段階</string>
   <string name="companion.state.taboos">地雷：{items}</string>
   <string name="companion.state.title">状態</string>
   <string name="companion.state.userModel">ユーザーモデル</string>
+  <string name="companion.state.userModelHint">会話からまとめたあなたの好きなもの・地雷・近況。地雷を避け、好みに合わせて話す。</string>
   <string name="companion.state.values">価値観</string>
+  <string name="companion.state.valuesHint">それぞれ彼女が大事にするようになったもの（-1 嫌い ↔ +1 重視）。物事の評価と、人格が長期的に変わる方向です。</string>
   <string name="companion.status.running">稼働中</string>
   <string name="companion.status.stopped">停止中</string>
   <string name="companion.status.unavailable">利用不可</string>
@@ -874,4 +1257,16 @@
   <string name="memory.clearAllConfirmMessage">本当にすべての記憶・ノート・反省案・ローカルバックアップを消去しますか？関係・目標・自己物語は残りますが、起こったことはもう思い出せなくなります。この操作は元に戻せません。</string>
   <string name="memory.clearAllConfirmTitle">もう一度確認</string>
   <string name="memory.dangerTitle">危険な操作</string>
+  <string name="companion.metric.yandereExpression">表出 / 暗さ</string>
+  <string name="companion.metric.yandereJealousy">嫉妬</string>
+  <string name="companion.metric.yandereMode">モード · 感情円環の象限</string>
+  <string name="companion.yandere.mode.hybrid">ツンデレ→ヤンデレ</string>
+  <string name="companion.yandere.mode.neutral">ニュートラル</string>
+  <string name="companion.yandere.mode.tsundere">ツンデレ</string>
+  <string name="companion.yandere.mode.yandere">ヤンデレ</string>
+  <string name="companion.yandereCard.enable">感情急変ダイナミクス（感情円環）を有効にする</string>
+  <string name="companion.yandereCard.hint">柳朋輝・米澤朋子（2023）の形式化：内部状態は Russell の感情円環上の点で、好意 A が超線形の反応利得を駆動する——同じ出来事でも愛が深いほど感情は急変する——さらに超線形の表出強度を持つ。NORMAL / DERE / YAMI は遅滞つきで切り替わるため、黒化したあと一度の優しい言葉では戻らない。既定はオフ。実際のやり取り（温かさ・返信の遅れ・沈黙日数・他人の話題）で駆動される。</string>
+  <string name="companion.yandereCard.hint2">設定方法：スイッチを入れて原型（ヤンデレ / ツンデレ / ニュートラル / ツンデレ→ヤンデレ）を選ぶか、ペルソナにキーワード（「ヤンデレ」「執着」など）を書くと自動で有効になり初期値も埋まる。上のツンデレ ODE と人格ダイナミクスとは独立で、同時に使える。暗さ≥0.70 で安全レイヤーに入る。</string>
+  <string name="companion.yandereCard.title">感情急変ダイナミクス · 感情円環（任意）</string>
+  <string name="companion.yandereCard.type">原型</string>
 </resources>

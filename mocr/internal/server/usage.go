@@ -24,8 +24,13 @@ var usageLog = obs.Component("usage")
 const usageOutboxMax = 512
 const usageOutboxTTL = 7 * 24 * time.Hour
 
-var usageLock sync.Mutex
-var usageWg sync.WaitGroup
+// usageLock guards the drain bookkeeping only; the outbox flush runs without it
+// so a slow Core cannot block new reports.
+var (
+	usageLock     sync.Mutex
+	usageDraining bool
+	usageDirty    bool
+)
 
 func coreAuth(req *http.Request) {
 	// Attribute the call with the plugin identity issued at registration so Core
@@ -63,77 +68,104 @@ func reportUsage(requestID, sessionID, model string, prompt, completion int32) {
 		usageLog.Error("write usage", "err", err)
 		return
 	}
-	usageWg.Add(1)
-	go func() {
-		defer usageWg.Done()
+	// At most one drain runs at a time. The previous design started a goroutine
+	// per report, so a burst of generations queued one goroutine (and one full
+	// outbox sweep) per request behind a single mutex. A burst now coalesces
+	// into a single follow-up sweep.
+	usageLock.Lock()
+	if usageDraining {
+		usageDirty = true
+		usageLock.Unlock()
+		return
+	}
+	usageDraining = true
+	usageLock.Unlock()
+	go usageDrainLoop(directory)
+}
+
+// usageDrainLoop flushes the outbox, then sweeps again if another report landed
+// while it was working. It exits once the outbox is quiet, so the process never
+// accumulates idle drainers.
+func usageDrainLoop(directory string) {
+	for {
+		flushUsageOutbox(directory)
 		usageLock.Lock()
-		defer usageLock.Unlock()
-		entries, _ := os.ReadDir(directory)
-		var files []string
-		for _, entry := range entries {
-			if !entry.IsDir() {
-				files = append(files, filepath.Join(directory, entry.Name()))
-			}
+		if !usageDirty {
+			usageDraining = false
+			usageLock.Unlock()
+			return
 		}
-		sortUsageFilesByAge(files)
-		for _, file := range files {
-			info, err := os.Stat(file)
-			if err != nil {
-				continue
-			}
-			if time.Since(info.ModTime()) > usageOutboxTTL {
-				os.Remove(file)
-			}
+		usageDirty = false
+		usageLock.Unlock()
+	}
+}
+
+func flushUsageOutbox(directory string) {
+	entries, _ := os.ReadDir(directory)
+	var files []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			files = append(files, filepath.Join(directory, entry.Name()))
 		}
-		entries, _ = os.ReadDir(directory)
-		files = files[:0]
-		for _, entry := range entries {
-			if !entry.IsDir() {
-				files = append(files, filepath.Join(directory, entry.Name()))
-			}
+	}
+	sortUsageFilesByAge(files)
+	for _, file := range files {
+		info, err := os.Stat(file)
+		if err != nil {
+			continue
 		}
-		sortUsageFilesByAge(files)
-		for len(files) > usageOutboxMax {
-			os.Remove(files[0])
-			files = files[1:]
-		}
-		failures := 0
-		for _, file := range files {
-			data, err := os.ReadFile(file)
-			if err != nil {
-				continue
-			}
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			request, _ := http.NewRequestWithContext(ctx, "POST", coreHTTPBase()+"/api/usage/record", bytes.NewReader(data))
-			request.Header.Set("Content-Type", "application/json")
-			coreAuth(request)
-			response, err := http.DefaultClient.Do(request)
-			if err == nil {
-				response.Body.Close()
-			}
-			cancel()
-			if err != nil {
-				failures++
-				usageLog.Error("post usage outbox", "err", err)
-				if failures >= 3 {
-					return
-				}
-				continue
-			}
-			if response.StatusCode >= 300 {
-				failures++
-				usageLog.Error("post usage outbox", "status", response.StatusCode)
-				if failures >= 3 {
-					return
-				}
-				if response.StatusCode >= 400 && response.StatusCode < 500 && response.StatusCode != 429 {
-					os.Remove(file)
-				}
-				continue
-			}
+		if time.Since(info.ModTime()) > usageOutboxTTL {
 			os.Remove(file)
 		}
-	}()
+	}
+	entries, _ = os.ReadDir(directory)
+	files = files[:0]
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			files = append(files, filepath.Join(directory, entry.Name()))
+		}
+	}
+	sortUsageFilesByAge(files)
+	for len(files) > usageOutboxMax {
+		os.Remove(files[0])
+		files = files[1:]
+	}
+	failures := 0
+	for _, file := range files {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		request, _ := http.NewRequestWithContext(ctx, "POST", coreHTTPBase()+"/api/usage/record", bytes.NewReader(data))
+		request.Header.Set("Content-Type", "application/json")
+		coreAuth(request)
+		response, err := http.DefaultClient.Do(request)
+		if err == nil {
+			response.Body.Close()
+		}
+		cancel()
+		if err != nil {
+			failures++
+			usageLog.Error("post usage outbox", "err", err)
+			if failures >= 3 {
+				return
+			}
+			continue
+		}
+		if response.StatusCode >= 300 {
+			failures++
+			usageLog.Error("post usage outbox", "status", response.StatusCode)
+			if failures >= 3 {
+				return
+			}
+			if response.StatusCode >= 400 && response.StatusCode < 500 && response.StatusCode != 429 {
+				os.Remove(file)
+			}
+			continue
+		}
+		os.Remove(file)
+	}
 }
 func sortUsageFilesByAge(files []string) {
 	type fileInfo struct {

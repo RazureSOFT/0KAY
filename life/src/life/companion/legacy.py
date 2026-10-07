@@ -14,6 +14,7 @@ from pathlib import Path
 import re
 import sqlite3
 import threading
+import time
 from typing import Any
 from uuid import uuid4
 
@@ -71,6 +72,11 @@ class CompanionSystem:
         # lock keeps nested `db()` blocks legal.
         # See tests/test_regression.py::EngineTests.
         self._lock = threading.RLock()
+        # Stored settings are re-read many times per turn (and per resident
+        # tick) and each read was a full table scan on a fresh connection.
+        # Cache the row dict for a couple of seconds; every writer busts it.
+        self._settings_cache: tuple[float, dict[str, str]] | None = None
+        self._settings_cache_ttl = 2.0
         self._init()
 
     @contextmanager
@@ -210,6 +216,7 @@ class CompanionSystem:
         if result.get("backup"):
             with self.db() as db:
                 db.execute("INSERT INTO settings(key,value) VALUES('last_backup_date',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (today,))
+            self._invalidate_settings_cache()
         return result
 
     def journal_count_for_day(self, day: str, kind: str = "journal") -> int:
@@ -539,6 +546,10 @@ class CompanionSystem:
                         "cog_attachment_enabled": "0", "cog_attachment_type": "依存型",
                         # wave 4d: tsundere <-> yandere emotional dynamics (opt-in)
                         "cog_tsundere_enabled": "0", "cog_tsundere_type": "经典傲娇",
+                        # wave 4f: yandere affect dynamics — the published-paper
+                        # formalisation (circumplex + superlinear gain + hysteretic
+                        # normal/dere/yami machine).  Opt-in, off by default.
+                        "cog_yandere_enabled": "0", "cog_yandere_type": "病娇",
                         # wave 4e: parameterised persona dynamics (opt-in)
                         "cog_personadyn_enabled": "0", "cog_personadyn_type": "正常/安全型",
                         "cog_personadyn_gender": "未指定",
@@ -604,6 +615,7 @@ class CompanionSystem:
         "cog_memory_reconsolidate": ("bool", None), "cog_cls_interleave": ("bool", None),
         "cog_attachment_enabled": ("bool", None), "cog_attachment_type": ("choice", None),
         "cog_tsundere_enabled": ("bool", None), "cog_tsundere_type": ("choice", None),
+        "cog_yandere_enabled": ("bool", None), "cog_yandere_type": ("choice", None),
         "cog_personadyn_enabled": ("bool", None), "cog_personadyn_type": ("choice", None),
         "cog_personadyn_gender": ("choice", None),
         "persona_traits_override": ("json", None), "attachment_override": ("json", None),
@@ -617,6 +629,7 @@ class CompanionSystem:
                    "cog_language_framing": tuple(_FRAMING_MODES),
                    "cog_attachment_type": ("独占型", "依存型", "妄想型", "监视型", "自伤型", "排除型"),
                    "cog_tsundere_type": ("经典傲娇", "高冷傲娇", "暴躁傲娇", "迁就傲娇"),
+                   "cog_yandere_type": ("病娇", "傲娇", "中性", "傲娇→病娇"),
                    "cog_personadyn_type": ("正常/安全型", "傲娇型", "病娇型", "傲娇转病娇",
                                             "三无/高冷型", "天然呆型", "温柔/治愈型",
                                             "元气/活泼型", "腹黑型", "忠犬型", "依赖型",
@@ -691,17 +704,26 @@ class CompanionSystem:
                 return old  # dropping requires clearing the band, not grazing it
         return target
 
-    def _id_set(self, key: str) -> set[str]:
-        raw = str((self.get_settings() or {}).get(key) or "")
+    def _id_set(self, key: str, settings: dict | None = None) -> set[str]:
+        """Parse a comma-separated id list out of the settings.
+
+        ``settings`` lets a caller that already read them pass the dict in: a
+        stored-settings read is a full table scan over a fresh connection, and
+        ``user_role`` + ``relationship_expression`` used to do three of them per
+        turn to answer one question about one user.
+        """
+        source = self.get_settings() if settings is None else settings
+        raw = str((source or {}).get(key) or "")
         return {part.strip() for part in raw.replace("，", ",").split(",") if part.strip()}
 
-    def user_role(self, user_id: str) -> str:
+    def user_role(self, user_id: str, settings: dict | None = None) -> str:
         value = str(user_id or "").strip()
         if not value:
             return "other"
-        if value in self._id_set("owner_user_ids"):
+        settings = self.get_settings() if settings is None else settings
+        if value in self._id_set("owner_user_ids", settings):
             return "owner"
-        if value in self._id_set("secondary_user_ids"):
+        if value in self._id_set("secondary_user_ids", settings):
             return "secondary"
         return "other"
 
@@ -738,8 +760,8 @@ class CompanionSystem:
         0) and neutral was misread as low.
         """
         account = self.relationship(user_id)
-        role = self.user_role(user_id)
         settings = self.get_settings()
+        role = self.user_role(user_id, settings)
         affinity = float(account.get("affinity") or 0.0)
         stage = self._cap_stage(str(account.get("stage") or "陌生"), role, settings)
         bond = (role == "owner" and str(settings.get("enable_exclusive_bond", "1")) == "1"
@@ -790,6 +812,7 @@ class CompanionSystem:
                 decayed += 1
             db.execute("INSERT INTO settings(key,value) VALUES('affinity_decay_date',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (today,))
             self._audit_tx(db, "relationship_decay", f"decayed={decayed}", "", "ok")
+        self._invalidate_settings_cache()
         return {"decayed": decayed}
 
     # Unfinished topics / light portrait / outreach deceleration -----------
@@ -1219,6 +1242,7 @@ class CompanionSystem:
                 db.execute("INSERT INTO settings(key,value) VALUES('quiet_start',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(max(0, min(23, int(quiet_start)))),))
             if quiet_end is not None:
                 db.execute("INSERT INTO settings(key,value) VALUES('quiet_end',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (str(max(0, min(23, int(quiet_end)))),))
+        self._invalidate_settings_cache()
 
     def get_policy(self) -> dict:
         with self.db() as db:
@@ -1805,6 +1829,9 @@ class CompanionSystem:
             return {"deleted": bool(cursor.rowcount), "id": edge_id}
 
     # Configuration / diagnostics ------------------------------------------
+    def _invalidate_settings_cache(self) -> None:
+        self._settings_cache = None
+
     def stored_settings(self) -> dict[str,str]:
         """Only what the user actually saved - no defaults merged in.
 
@@ -1813,8 +1840,13 @@ class CompanionSystem:
         indistinguishable from one deliberately set to its default value, so the
         environment tier could never win.
         """
+        cached = self._settings_cache
+        if cached is not None and time.monotonic() - cached[0] < self._settings_cache_ttl:
+            return cached[1]
         with self.db() as db:
-            return {r["key"]: r["value"] for r in db.execute("SELECT key,value FROM settings").fetchall()}
+            values = {r["key"]: r["value"] for r in db.execute("SELECT key,value FROM settings").fetchall()}
+        self._settings_cache = (time.monotonic(), values)
+        return values
 
     def get_settings(self) -> dict[str,str]:
         return {**self.SETTING_DEFAULTS, **self.stored_settings()}
@@ -1834,6 +1866,7 @@ class CompanionSystem:
             for key, value in cleaned.items():
                 db.execute("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
             self._audit_tx(db, "settings_update", ",".join(sorted(cleaned)) or "(none)", ",".join(rejected), "ok")
+        self._invalidate_settings_cache()
         return {**self.get_settings(), "rejected": rejected}
 
     def audit_query(self, kind: str = "", outcome: str = "", target: str = "", limit: int = 100, offset: int = 0) -> dict[str,Any]:
@@ -1897,6 +1930,7 @@ class CompanionSystem:
                     db.execute("INSERT OR IGNORE INTO important_dates VALUES(?,?,?,?,?,?,?)", (item.get("id") or new_id("date"), item["title"], item["date_text"], item.get("kind", "date"), int(item.get("repeat_yearly", 1)), item.get("note", ""), item.get("created_at") or now()))
             applied["important_dates"] = len(snapshot.get("important_dates") or [])
             self._audit_tx(db, "config_import", json.dumps(applied, ensure_ascii=False), "", "ok")
+        self._invalidate_settings_cache()
         return {"applied": applied}
 
     SETTING_MIGRATIONS = {"daily_limit": "proactive_daily_limit", "per_target_limit": "proactive_target_limit",

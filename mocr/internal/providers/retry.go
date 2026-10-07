@@ -6,7 +6,11 @@ import (
 	"strings"
 )
 
-var providerStatusRe = regexp.MustCompile(`provider error (\d{3})`)
+// The status code reaches us in two shapes: the Anthropic/OpenAI SDK-style
+// path wraps it as "provider error <code>", while the OpenAI-compatible request
+// path (compatibility.go) returns "upstream HTTP <code>". Both must be
+// recognised, or max_retries silently does nothing for the compatible path.
+var providerStatusRe = regexp.MustCompile(`(?:provider error|upstream HTTP) (\d{3})`)
 
 // IsRetryable reports whether a Generate error is transient and worth retrying
 // against the same model (429/5xx and network/timeout failures).

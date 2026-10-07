@@ -136,6 +136,14 @@ func (s *uiPatchStore) Reload() {
 	s.mu.Unlock()
 }
 
+// LoadedAt reports when the patch set was last scanned from disk. Reading the
+// field directly from a handler would race the refresh above.
+func (s *uiPatchStore) LoadedAt() time.Time {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.loaded
+}
+
 // List returns enabled patches (or all when includeDisabled).
 // Patches owned by an admin-disabled plugin are always omitted.
 func (s *uiPatchStore) List(includeDisabled bool) []UIPatchFile {

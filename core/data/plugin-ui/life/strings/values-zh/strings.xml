@@ -126,6 +126,70 @@
   <string name="companion.affect.somatic">启用躯体化网关（人设含体弱、心慌等标记时自动开启）</string>
   <string name="companion.affect.title">情感与生理（第二波）</string>
   <string name="companion.affect.vagalBaseline">迷走基线</string>
+  <string name="companion.alias.affection">她对你有多亲近</string>
+
+  <string name="companion.alias.affinity">长期累积的好恶总分</string>
+
+  <string name="companion.alias.allostatic">长期压力留下的磨损总账</string>
+
+  <string name="companion.alias.arousal">此刻有多亢奋</string>
+
+  <string name="companion.alias.comorbid">长期低落的底子</string>
+
+  <string name="companion.alias.connection">此刻想离你多近</string>
+
+  <string name="companion.alias.darkness">黑化念头有多深</string>
+
+  <string name="companion.alias.distress">有多怕你离开</string>
+
+  <string name="companion.alias.empathy">察觉并回应你情绪的能力</string>
+
+  <string name="companion.alias.energy">身上还剩多少电</string>
+
+  <string name="companion.alias.fixation">吃醋上头的程度</string>
+
+  <string name="companion.alias.health">身体状态如何</string>
+
+  <string name="companion.alias.healthAnxiety">对小毛病的担心程度</string>
+
+  <string name="companion.alias.hunger">有多想吃东西</string>
+
+  <string name="companion.alias.intensity">病娇表达有多浓</string>
+
+  <string name="companion.alias.irritation">此刻有多不耐烦</string>
+
+  <string name="companion.alias.jealousy">对「别人」的在意程度</string>
+
+  <string name="companion.alias.loneliness">最近有没有人陪</string>
+
+  <string name="companion.alias.mood">最近心情的总趋势</string>
+
+  <string name="companion.alias.patience">能忍多久不催你</string>
+
+  <string name="companion.alias.pdAffection">她多需要和你亲近</string>
+
+  <string name="companion.alias.pdAnxiety">多怕被你丢下</string>
+
+  <string name="companion.alias.pdPossession">多不想你和别人走近</string>
+
+  <string name="companion.alias.pdPressure">攒着没发作的情绪量</string>
+
+  <string name="companion.alias.pdSelfControl">压住冲动的能力</string>
+
+  <string name="companion.alias.pdSuppression">表面平静下压了多少</string>
+
+  <string name="companion.alias.pdTrust">对你的基础信任</string>
+
+  <string name="companion.alias.somaticBurden">身体累不累、疼不疼</string>
+
+  <string name="companion.alias.somatization">压力变成身体不适的程度</string>
+
+  <string name="companion.alias.tsun">嘴硬的程度</string>
+
+  <string name="companion.alias.vagal">有多沉着、多不容易慌</string>
+
+  <string name="companion.alias.valence">现在的心情偏正还是偏负</string>
+
   <string name="companion.attach.delusional">妄想型</string>
   <string name="companion.attach.dependent">依存型</string>
   <string name="companion.attach.exclusion">排除型</string>
@@ -137,6 +201,16 @@
   <string name="companion.attachmentCard.hint2">怎么配：① 打开开关并选型别（独占 / 依存 / 妄想 / 监视 / 自伤 / 排除）——型别只改变"同一种动力的权重"，不是硬编码台词；或 ② 直接在人设里写关键词，系统会自动启用并按人设填初始值：如"占有欲强、爱吃醋"→独占型，"很黏人、离不开你"→依存型，"老是查岗、跟踪"→监视型，"疑神疑鬼、总觉得被骗"→妄想型。想更贴近"病娇常伴抑郁"，把上方「情绪调节画像」设为 depression，两者会互相加重。</string>
   <string name="companion.attachmentCard.title">病态依恋 / 病娇（可选）</string>
   <string name="companion.attachmentTypeValue">{type}（{label}）</string>
+  <string name="companion.axis.arousalHigh">激动</string>
+  <string name="companion.axis.arousalLow">平静</string>
+  <string name="companion.axis.valenceHigh">愉悦</string>
+  <string name="companion.axis.valenceLow">低落</string>
+  <string name="companion.body.awake">清醒</string>
+  <string name="companion.body.energy">精力</string>
+  <string name="companion.body.health">健康</string>
+  <string name="companion.body.hunger">饥饿感</string>
+  <string name="companion.body.sleeping">正在睡觉</string>
+  <string name="companion.body.title">身体状态</string>
   <string name="companion.channel.cardiorespiratory">心慌</string>
   <string name="companion.channel.dizziness">头晕</string>
   <string name="companion.channel.fatigue">疲劳</string>
@@ -169,6 +243,38 @@
   <string name="companion.decision.title">决策仲裁（第一波）</string>
   <string name="companion.decision.wmCapacity">工作记忆容量</string>
   <string name="companion.dimensionsValue">{n} 维</string>
+  <string name="companion.effect.affection">亲近的主旋钮：决定语气亲密度和主动程度。涨得慢，掉得快。</string>
+  <string name="companion.effect.affinity">长期账户：日常相处慢慢涨，冷落和冲突会掉。决定关系阶段的上限，以及她主动找你时的底气。</string>
+  <string name="companion.effect.allostatic">压力、缺觉、生病累积出的身体磨损总账；高时更容易疲惫、情绪不稳。</string>
+  <string name="companion.effect.arousal">高时反应快、兴奋或紧张；低时安静慵懒。</string>
+  <string name="companion.effect.comorbid">长期孤立感累积出的抑郁底色，高时兴趣和能量都下降。</string>
+  <string name="companion.effect.connection">刚聊完天会升高，决定她此刻对你多热情。</string>
+  <string name="companion.effect.darkness">黑化深度：越高念头越偏执；安全层会兜底。</string>
+  <string name="companion.effect.distress">分离焦虑与被否定感的综合；高时更黏你、更怕你走。</string>
+  <string name="companion.effect.empathy">决定她对你情绪的敏感度与回应深度。</string>
+  <string name="companion.effect.energy">睡觉恢复、熬夜掉；低时回复变短变慢、容易犯困。</string>
+  <string name="companion.effect.fixation">病娇执念：越高越容易吃醋、翻旧账；≥0.85 自动进安全层。</string>
+  <string name="companion.effect.health">低时整个人发蔫、语气没劲，可能会说身体不舒服。</string>
+  <string name="companion.effect.healthAnxiety">高时容易疑病，小毛病也担心。</string>
+  <string name="companion.effect.hunger">高时她会分心想着吃的，可能主动提起。</string>
+  <string name="companion.effect.intensity">病娇表达的浓烈程度。</string>
+  <string name="companion.effect.irritation">被打断、被冷落会累积，高时语气冲、容易呛你。</string>
+  <string name="companion.effect.jealousy">提到别人会涨；高时追问、试探、情绪化。</string>
+  <string name="companion.effect.loneliness">没人说话会涨；高时更想你，也可能更敏感多心。</string>
+  <string name="companion.effect.mood">近期经历累积出的心情底色，给整体语气上色。</string>
+  <string name="companion.effect.patience">低时更容易催你、抢话或直接下结论。</string>
+  <string name="companion.effect.pdAffection">人格原型对亲密的渴求程度。</string>
+  <string name="companion.effect.pdAnxiety">被抛弃焦虑：高时怕被丢下、反复确认关系。</string>
+  <string name="companion.effect.pdPossession">占有欲：高时不喜欢你和别人走近。</string>
+  <string name="companion.effect.pdPressure">阈下压力：攒到越线时，人格原型会发作一次。</string>
+  <string name="companion.effect.pdSelfControl">自控力：高时能压住冲动，少做过激的事。</string>
+  <string name="companion.effect.pdSuppression">压抑度：表面平静、内里积压的程度。</string>
+  <string name="companion.effect.pdTrust">基础信任：高时更稳、更少疑神疑鬼。</string>
+  <string name="companion.effect.somaticBurden">累积的疲惫与疼痛，高时语气更丧、更想被关心。</string>
+  <string name="companion.effect.somatization">心理压力转化成身体不适的程度，高时她会说自己这里那里不舒服。</string>
+  <string name="companion.effect.tsun">傲娇面具：高时嘴硬心软，夸你也要绕个弯。</string>
+  <string name="companion.effect.vagal">生理层面的平静：越高越有安全感、不容易慌。</string>
+  <string name="companion.effect.valence">直接决定此刻语气的温度：越正越暖、越爱开玩笑；越负越低落、话变少。</string>
   <string name="companion.episode.episode">低落发作</string>
   <string name="companion.episode.euthymic">平稳</string>
   <string name="companion.episode.subthreshold">下滑中</string>
@@ -190,11 +296,245 @@
   <string name="companion.flash.settingsSavedIgnored">已保存，忽略无效项：{items}</string>
   <string name="companion.flash.worldCleared">已清除世界事件并重置世界状态</string>
   <string name="companion.flash.worldGenerated">已由 AI 完善世界观并生成地图</string>
+  <string name="companion.gauge.affection">好感 (A)</string>
+  <string name="companion.gauge.allostatic">异稳态负荷</string>
+  <string name="companion.gauge.arousal">激动程度</string>
+  <string name="companion.gauge.comorbid">抑郁底色</string>
+  <string name="companion.gauge.connection">此刻亲近感</string>
+  <string name="companion.gauge.darkness">黑化深度</string>
+  <string name="companion.gauge.distress">依恋痛苦</string>
+  <string name="companion.gauge.empathy">共情强度</string>
+  <string name="companion.gauge.fixation">执念 (Y)</string>
+  <string name="companion.gauge.healthAnxiety">健康焦虑</string>
+  <string name="companion.gauge.intensity">表达强度</string>
+  <string name="companion.gauge.irritation">烦躁度</string>
+  <string name="companion.gauge.jealousy">嫉妒</string>
+  <string name="companion.gauge.loneliness">孤独感</string>
+  <string name="companion.gauge.mood">心情底色</string>
+  <string name="companion.gauge.patience">耐心</string>
+  <string name="companion.gauge.pdAffection">情感渴求</string>
+  <string name="companion.gauge.pdAnxiety">被弃焦虑</string>
+  <string name="companion.gauge.pdPossession">占有欲</string>
+  <string name="companion.gauge.pdPressure">阈下压力</string>
+  <string name="companion.gauge.pdSelfControl">自控力</string>
+  <string name="companion.gauge.pdSuppression">压抑度</string>
+  <string name="companion.gauge.pdTrust">基础信任</string>
+  <string name="companion.gauge.somaticBurden">身体负担</string>
+  <string name="companion.gauge.somatization">躯体化指数</string>
+  <string name="companion.gauge.tsun">傲娇表达 (T)</string>
+  <string name="companion.gauge.vagal">迷走平静</string>
+  <string name="companion.gauge.valence">情绪愉悦度</string>
   <string name="companion.gender.female">女</string>
   <string name="companion.gender.male">男</string>
   <string name="companion.gender.none">不判定</string>
   <string name="companion.gender.other">其它</string>
   <string name="companion.gender.undecidedBracket">（不判定）</string>
+  <string name="companion.gw.affection.hi">非常喜欢</string>
+
+  <string name="companion.gw.affection.lo">还不熟</string>
+
+  <string name="companion.gw.affection.mid">有好感</string>
+
+  <string name="companion.gw.affinity.hi">很亲近</string>
+
+  <string name="companion.gw.affinity.lo">有些冷淡</string>
+
+  <string name="companion.gw.affinity.mid">普通认识</string>
+
+  <string name="companion.gw.allostatic.hi">磨损很重</string>
+
+  <string name="companion.gw.allostatic.lo">磨损少</string>
+
+  <string name="companion.gw.allostatic.mid">有些磨损</string>
+
+  <string name="companion.gw.arousal.hi">很兴奋</string>
+
+  <string name="companion.gw.arousal.lo">很平静</string>
+
+  <string name="companion.gw.arousal.mid">有点来劲</string>
+
+  <string name="companion.gw.comorbid.hi">明显低落</string>
+
+  <string name="companion.gw.comorbid.lo">状态不错</string>
+
+  <string name="companion.gw.comorbid.mid">有点低落</string>
+
+  <string name="companion.gw.connection.hi">特别亲近</string>
+
+  <string name="companion.gw.connection.lo">有点疏远</string>
+
+  <string name="companion.gw.connection.mid">还算亲近</string>
+
+  <string name="companion.gw.darkness.hi">很偏执</string>
+
+  <string name="companion.gw.darkness.lo">心思干净</string>
+
+  <string name="companion.gw.darkness.mid">偶尔阴暗</string>
+
+  <string name="companion.gw.distress.hi">很不安</string>
+
+  <string name="companion.gw.distress.lo">很有安全感</string>
+
+  <string name="companion.gw.distress.mid">有点不安</string>
+
+  <string name="companion.gw.empathy.hi">很能共情</string>
+
+  <string name="companion.gw.empathy.lo">比较迟钝</string>
+
+  <string name="companion.gw.empathy.mid">还算敏感</string>
+
+  <string name="companion.gw.energy.hi">很充沛</string>
+
+  <string name="companion.gw.energy.lo">快没电了</string>
+
+  <string name="companion.gw.energy.mid">还算有劲</string>
+
+  <string name="companion.gw.fixation.hi">极易上头</string>
+
+  <string name="companion.gw.fixation.lo">不吃醋</string>
+
+  <string name="companion.gw.fixation.mid">会吃醋</string>
+
+  <string name="companion.gw.health.hi">很健康</string>
+
+  <string name="companion.gw.health.lo">很不舒服</string>
+
+  <string name="companion.gw.health.mid">有点不适</string>
+
+  <string name="companion.gw.healthAnxiety.hi">很担心</string>
+
+  <string name="companion.gw.healthAnxiety.lo">不太担心</string>
+
+  <string name="companion.gw.healthAnxiety.mid">有点担心</string>
+
+  <string name="companion.gw.hunger.hi">饿透了</string>
+
+  <string name="companion.gw.hunger.lo">不饿</string>
+
+  <string name="companion.gw.hunger.mid">有点饿</string>
+
+  <string name="companion.gw.intensity.hi">非常浓烈</string>
+
+  <string name="companion.gw.intensity.lo">很克制</string>
+
+  <string name="companion.gw.intensity.mid">偶有流露</string>
+
+  <string name="companion.gw.irritation.hi">很烦躁</string>
+
+  <string name="companion.gw.irritation.lo">心平气和</string>
+
+  <string name="companion.gw.irritation.mid">有点烦躁</string>
+
+  <string name="companion.gw.jealousy.hi">妒火中烧</string>
+
+  <string name="companion.gw.jealousy.lo">不在意</string>
+
+  <string name="companion.gw.jealousy.mid">有点在意</string>
+
+  <string name="companion.gw.loneliness.hi">非常想你</string>
+
+  <string name="companion.gw.loneliness.lo">不孤独</string>
+
+  <string name="companion.gw.loneliness.mid">有点想你</string>
+
+  <string name="companion.gw.mood.hi">最近很开心</string>
+
+  <string name="companion.gw.mood.lo">最近很丧</string>
+
+  <string name="companion.gw.mood.mid">不好不坏</string>
+
+  <string name="companion.gw.patience.hi">很有耐心</string>
+
+  <string name="companion.gw.patience.lo">没什么耐心</string>
+
+  <string name="companion.gw.patience.mid">还算耐心</string>
+
+  <string name="companion.gw.pdAffection.hi">很需要</string>
+
+  <string name="companion.gw.pdAffection.lo">需求不大</string>
+
+  <string name="companion.gw.pdAffection.mid">一般</string>
+
+  <string name="companion.gw.pdAnxiety.hi">非常怕</string>
+
+  <string name="companion.gw.pdAnxiety.lo">很安心</string>
+
+  <string name="companion.gw.pdAnxiety.mid">有点怕</string>
+
+  <string name="companion.gw.pdPossession.hi">占有欲很强</string>
+
+  <string name="companion.gw.pdPossession.lo">给足自由</string>
+
+  <string name="companion.gw.pdPossession.mid">偶尔介意</string>
+
+  <string name="companion.gw.pdPressure.hi">快要越线</string>
+
+  <string name="companion.gw.pdPressure.lo">风平浪静</string>
+
+  <string name="companion.gw.pdPressure.mid">正在积攒</string>
+
+  <string name="companion.gw.pdSelfControl.hi">自控很好</string>
+
+  <string name="companion.gw.pdSelfControl.lo">容易冲动</string>
+
+  <string name="companion.gw.pdSelfControl.mid">一般</string>
+
+  <string name="companion.gw.pdSuppression.hi">压了很多</string>
+
+  <string name="companion.gw.pdSuppression.lo">表里如一</string>
+
+  <string name="companion.gw.pdSuppression.mid">有些压抑</string>
+
+  <string name="companion.gw.pdTrust.hi">非常信任</string>
+
+  <string name="companion.gw.pdTrust.lo">很提防</string>
+
+  <string name="companion.gw.pdTrust.mid">还算信任</string>
+
+  <string name="companion.gw.somaticBurden.hi">疲惫不堪</string>
+
+  <string name="companion.gw.somaticBurden.lo">一身轻松</string>
+
+  <string name="companion.gw.somaticBurden.mid">有些疲惫</string>
+
+  <string name="companion.gw.somatization.hi">浑身不对劲</string>
+
+  <string name="companion.gw.somatization.lo">身体无恙</string>
+
+  <string name="companion.gw.somatization.mid">有些不适</string>
+
+  <string name="companion.gw.tsun.hi">嘴硬到不行</string>
+
+  <string name="companion.gw.tsun.lo">很直球</string>
+
+  <string name="companion.gw.tsun.mid">偶尔口是心非</string>
+
+  <string name="companion.gw.vagal.hi">很沉着</string>
+
+  <string name="companion.gw.vagal.lo">容易慌</string>
+
+  <string name="companion.gw.vagal.mid">还算稳</string>
+
+  <string name="companion.gw.valence.hi">很开心</string>
+
+  <string name="companion.gw.valence.lo">有点丧</string>
+
+  <string name="companion.gw.valence.mid">平静</string>
+
+  <string name="companion.interaction.亲近">亲近</string>
+  <string name="companion.interaction.受伤">受伤</string>
+  <string name="companion.interaction.回避">回避</string>
+  <string name="companion.interaction.放松">放松</string>
+  <string name="companion.interaction.活泼">活泼</string>
+  <string name="companion.interaction.温暖">温暖</string>
+  <string name="companion.interaction.爱意">爱意</string>
+  <string name="companion.interactionEffect.亲近">用昵称，主动分享日常琐事。</string>
+  <string name="companion.interactionEffect.受伤">最近的话让她受伤了：收敛、有距离，但不失礼。</string>
+  <string name="companion.interactionEffect.回避">现在想躲着你：语气简短、有防备。</string>
+  <string name="companion.interactionEffect.放松">日常的放松：自然随意。</string>
+  <string name="companion.interactionEffect.活泼">心情好：话多、爱开玩笑。</string>
+  <string name="companion.interactionEffect.温暖">语气体贴，会主动关心你在做什么。</string>
+  <string name="companion.interactionEffect.爱意">独占的亲密联结，是她最柔软的一面。</string>
   <string name="companion.kind.food">餐饮</string>
   <string name="companion.kind.home">家</string>
   <string name="companion.kind.other">其他</string>
@@ -556,10 +896,17 @@
   <string name="companion.preset.yandereSecluded">病娇·独占</string>
   <string name="companion.presets.hint">一键套用常见配置并保存（套用后仍可逐项微调）：常规、抑郁倾向、病娇（独占 / 依存 / 妄想）。病娇预设会同时把情绪调节画像设为 depression，贴合"常伴抑郁"。</string>
   <string name="companion.presets.title">快速预设</string>
+  <string name="companion.quadrant.excited">兴奋愉悦</string>
+  <string name="companion.quadrant.gloomy">低落消沉</string>
+  <string name="companion.quadrant.serene">平静愉悦</string>
+  <string name="companion.quadrant.tense">紧张不安</string>
+  <string name="companion.realtime.atAGlance">她现在</string>
+  <string name="companion.realtime.atAGlanceHint">情绪点是她在「愉悦↔低落 × 平静↔激动」地图上的此刻位置；下面每根仪表条都写明它影响什么。</string>
   <string name="companion.realtime.attachmentHint">依恋动力学已开启：{label}。病度 {severity}（{band}）由依恋、嫉妒、焦虑、执念等合成；{safety} 它与抑郁双向影响：低落会放大不安、依恋压力也会拖累情绪。</string>
   <string name="companion.realtime.empty">尚无状态数据（刷新后显示）</string>
   <string name="companion.realtime.episodeHint">情绪病程：连续两次评估越过阈值才算「低落发作」，连续两次回落才算「缓解」；缓解期内再次发作计为「复发」。它由情绪、快感缺失、稳态负荷、反刍、睡眠合成——沉默与慢性压力会把它推高。</string>
   <string name="companion.realtime.learningOnline">学习算子 L 在线：结果会小幅更新 Q 值与 θ 漂移。</string>
+  <string name="companion.realtime.moreReadouts">更多内核读数</string>
   <string name="companion.realtime.personaApplied">人设特质已生效（{source}）：{evidence}。改人设请到 设置 → 人设，下一条消息自动生效。</string>
   <string name="companion.realtime.personaSourceLlm">LLM 精修</string>
   <string name="companion.realtime.personaSourceLocal">本地词典</string>
@@ -567,11 +914,37 @@
   <string name="companion.realtime.safetyOff">低于 0.85 不会触发安全层。</string>
   <string name="companion.realtime.safetyOnEmotion">已进入安全层（只表达情绪、不给伤害方法）。</string>
   <string name="companion.realtime.safetyOnFeeling">已进入安全层（只表达感受、请求陪伴，不给伤害方法）。</string>
+  <string name="companion.realtime.section.attachment">依恋系统（实时）</string>
+  <string name="companion.realtime.sectionSub.attachment">她对「你会不会离开」的深层感受</string>
+
+  <string name="companion.realtime.section.mood">情绪与身体读数</string>
+  <string name="companion.realtime.sectionSub.mood">她此刻的心情与身体感受（身体类是慢变量，一天里缓缓变化）</string>
+
+  <string name="companion.realtime.section.pd">人格动力（实时）</string>
+  <string name="companion.realtime.sectionSub.pd">人格原型内部的张力与需求</string>
+
+  <string name="companion.realtime.section.social">社会认知</string>
+  <string name="companion.realtime.sectionSub.social">她怎么读懂你、回应你</string>
+
+  <string name="companion.realtime.section.tsundere">傲娇动力学（实时）</string>
+  <string name="companion.realtime.sectionSub.tsundere">嘴硬心软的动力系统，会随你们的互动自己演化</string>
+
+  <string name="companion.realtime.section.yandere">病娇回路（实时）</string>
+  <string name="companion.realtime.sectionSub.yandere">以爱为名的执念回路，安全层始终兜底</string>
+
   <string name="companion.realtime.somaticChronicity">慢性化程度 {value} — 反复报告的通道已开始敏化。</string>
   <string name="companion.realtime.title">实时状态</string>
   <string name="companion.realtime.tsundereHint">傲娇动力学已开启：{label}。好感 A {affection} / 傲娇表达 T {expression} / 病娇执念 Y {fixation}（{band}）。Y 越过 0.60 进入「过渡/黑化倾向」，越过 1.00 视为「病娇」——可逆。它由真实信号驱动：亲密度、回复延迟、被冷落天数，以及对方提及「别人」。{safety}</string>
   <string name="companion.refresh">刷新</string>
   <string name="companion.refreshing">刷新中…</string>
+  <string name="companion.relStage.亲密">亲密</string>
+  <string name="companion.relStage.亲近">亲近</string>
+  <string name="companion.relStage.友好">友好</string>
+  <string name="companion.relStage.熟悉">熟悉</string>
+  <string name="companion.relStage.疏离">疏离</string>
+  <string name="companion.relStage.警惕">警惕</string>
+  <string name="companion.relStage.认识">认识</string>
+  <string name="companion.relStage.陌生">陌生</string>
   <string name="companion.relationship.pathologicalSuffix"> · 病娇族</string>
   <string name="companion.reset.confirm">重置整个人</string>
   <string name="companion.reset.confirmMessage">真的要把这个人恢复到出厂状态吗？之后他不会再记得发生过的任何事。</string>
@@ -599,20 +972,30 @@
   <string name="companion.stage.mutual">相互</string>
   <string name="companion.stage.societal-symbolic">社会符号</string>
   <string name="companion.social.title">社会学习（第四波）</string>
+  <string name="companion.state.affinity">亲密度</string>
   <string name="companion.state.commitments">承诺账本</string>
+  <string name="companion.state.commitmentsHint">她答应过你的事。会在聊天里兑现，也会在主动消息里跟进。</string>
   <string name="companion.state.concerns">关心：{items}</string>
   <string name="companion.state.decidedTurns">已决策 {n} 轮</string>
-  <string name="companion.state.desc">承诺账本、结构化用户模型与价值取向。</string>
+  <string name="companion.state.desc">关系阶段、承诺账本、用户模型与价值取向——以及这些数据各自影响什么。</string>
   <string name="companion.state.engrams">情景痕迹 {n}</string>
+  <string name="companion.state.interaction">相处模式</string>
+  <string name="companion.state.lastSeenLabel">最近互动</string>
   <string name="companion.state.lexicon">词汇量 {n}</string>
   <string name="companion.state.likes">喜欢：{items}</string>
   <string name="companion.state.noCommitments">没有未了结的承诺。</string>
+  <string name="companion.state.noRelationships">还没有关系记录——去和她聊聊天吧。</string>
   <string name="companion.state.noUserModel">还没有结构化画像。</string>
   <string name="companion.state.noValues">还没有形成稳定价值取向。</string>
+  <string name="companion.state.relationships">我们的关系</string>
+  <string name="companion.state.relationshipsHint">阶段和亲密度决定她的语气、多主动找你、以及她说话的边界；相处模式是这几天相处下来的感受。</string>
+  <string name="companion.state.stage">关系阶段</string>
   <string name="companion.state.taboos">雷区：{items}</string>
   <string name="companion.state.title">状态</string>
   <string name="companion.state.userModel">用户模型</string>
+  <string name="companion.state.userModelHint">她从聊天里总结出的你的喜好、雷区和近况——说话时会避开雷区、投其所好。</string>
   <string name="companion.state.values">价值取向</string>
+  <string name="companion.state.valuesHint">每条是她在意的一件事（-1 反感 ↔ +1 看重）。影响她怎么评价事件、爱聊什么，也是人格长期演化的方向。</string>
   <string name="companion.status.running">运行中</string>
   <string name="companion.status.stopped">已停止</string>
   <string name="companion.status.unavailable">不可用</string>
@@ -874,4 +1257,16 @@
   <string name="memory.clearAllConfirmMessage">真的要清空全部记忆、笔记、反思提案与本地备份吗？关系、目标与自我叙事都会保留，但她将不再记得发生过的一切。此操作无法撤销。</string>
   <string name="memory.clearAllConfirmTitle">再确认一次</string>
   <string name="memory.dangerTitle">危险操作</string>
+  <string name="companion.metric.yandereExpression">表达 / 阴暗</string>
+  <string name="companion.metric.yandereJealousy">嫉妒</string>
+  <string name="companion.metric.yandereMode">模式 · 情感圆环象限</string>
+  <string name="companion.yandere.mode.hybrid">傲娇→病娇</string>
+  <string name="companion.yandere.mode.neutral">中性</string>
+  <string name="companion.yandere.mode.tsundere">傲娇</string>
+  <string name="companion.yandere.mode.yandere">病娇</string>
+  <string name="companion.yandereCard.enable">启用情感急变动力学（情感圆环）</string>
+  <string name="companion.yandereCard.hint">柳朋輝・米澤朋子（2023）的论文形式化：内部状态是 Russell 情感圆环上的一个点，好感 A 驱动超线性的反应增益——同一件事，爱得越深情绪塌得越猛——以及超线性的表达强度。NORMAL / DERE / YAMI 三模式带迟滞切换，黑化后不会因为一句好话就立刻复原。默认关闭；由真实互动驱动（温柔度、回复延迟、沉默天数、是否提到别人）。</string>
+  <string name="companion.yandereCard.hint2">配置方式：打开开关并选择原型（病娇 / 傲娇 / 中性 / 傲娇→病娇），或在人设里写关键词（“病娇、占有欲强” / “傲娇”），系统会自动开启并从人设填充初始值。与上方的傲娇 ODE、完整人格动力学框架互不冲突，可同时开启；阴暗度≥0.70 自动进入安全层。</string>
+  <string name="companion.yandereCard.title">情感急变动力学 · 情感圆环（可选）</string>
+  <string name="companion.yandereCard.type">原型</string>
 </resources>

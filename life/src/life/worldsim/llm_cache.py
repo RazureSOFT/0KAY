@@ -29,7 +29,13 @@ class LLMCache:
         path = self._path(prompt, model)
         if path.exists():
             self.hits += 1
-            return json.loads(path.read_text(encoding="utf-8")).get("response")
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except (ValueError, OSError):
+                # A truncated cache entry must read as a miss, not crash the
+                # caller that is only asking for a cached response.
+                return None
+            return payload.get("response") if isinstance(payload, dict) else None
         self.misses += 1
         return None
 

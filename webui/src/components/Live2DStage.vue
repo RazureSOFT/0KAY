@@ -104,6 +104,9 @@ let dragOffset = { x: 0, y: 0 }
 
 // --- lip sync: drive the mouth while speech plays (audio RMS, or text-timed fallback) ---
 let audioEl: HTMLAudioElement | null = null
+// The blob URL currently assigned to audioEl. TTS audio arrives as a per-reply
+// object URL, so the stage owns it and revokes the previous one on replacement.
+let audioObjectUrl: string | null = null
 let audioCtx: AudioContext | null = null
 let analyser: AnalyserNode | null = null
 let audioData: Uint8Array<ArrayBuffer> | null = null
@@ -173,6 +176,12 @@ async function speak(url: string, text = '') {
       audioEl.crossOrigin = 'anonymous'
       audioEl.addEventListener('ended', () => { mouthMode = 'off'; mouthSmoothed = 0; setMouth(0) })
     }
+    // Revoke the blob URL we are about to replace: one is minted per spoken
+    // reply, so without this every reply leaks a blob for the page's lifetime.
+    if (audioObjectUrl && audioObjectUrl !== url) {
+      try { URL.revokeObjectURL(audioObjectUrl) } catch { /* ignore */ }
+    }
+    audioObjectUrl = url
     audioEl.src = url
     if (!audioCtx) {
       const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
@@ -723,6 +732,7 @@ onUnmounted(() => {
   window.removeEventListener('live2d-motion',onLive2DMotion as EventListener)
   stopAutonomy()
   stopSpeaking()
+  if (audioObjectUrl) { try { URL.revokeObjectURL(audioObjectUrl) } catch { /* ignore */ } audioObjectUrl = null }
   try { audioCtx?.close() } catch { /* ignore */ }
   audioCtx = null
   loadToken++

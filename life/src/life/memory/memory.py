@@ -484,6 +484,15 @@ class MemorySystem:
         self.tantivy_dir = Path(self.data_dir) / "tantivy_memory"
         self._cleanup_stale_tantivy_dirs()
         self._init_fact_store()
+        # The fact store keeps credential-scoped facts, so tighten the database
+        # and its directory to owner-only rather than the umask default
+        # (0644/0755, readable by every local user on a shared POSIX host). On
+        # Windows the call only affects the read-only bit.
+        for target, mode in ((Path(self.data_dir), 0o700), (self.db_path, 0o600)):
+            try:
+                os.chmod(target, mode)
+            except OSError:
+                pass
         self._migrate_json_projection()
         self._reload_facts()
         with self._connect() as db:

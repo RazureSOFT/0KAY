@@ -262,8 +262,10 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 
 	// Seed the span with Core's request id so this generation joins the trace
 	// the browser started rather than appearing as an unrelated island. Everything
-	// below (retries, auto-switches, provider calls) then hangs off it.
-	ctx, genSpan := obs.StartWithID(stream.Context(), requestID, "mocr.generate", obs.KindServer)
+	// below (retries, auto-switches, provider calls) then hangs off it. Parent it
+	// on the deadline ctx above, not stream.Context(): otherwise the span (and
+	// every call made under it) would escape MOCR_GENERATION_TIMEOUT.
+	ctx, genSpan := obs.StartWithID(ctx, requestID, "mocr.generate", obs.KindServer)
 	defer genSpan.End()
 	genSpan.Attr("model", req.ModelId)
 	genSpan.Attr("provider", req.Provider)

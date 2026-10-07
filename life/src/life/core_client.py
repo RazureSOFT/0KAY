@@ -21,7 +21,7 @@ from core.v1 import core_pb2, core_pb2_grpc
 from plugin.v1 import plugin_pb2
 
 
-def _manifest_version(fallback: str = "0.1.2") -> str:
+def _manifest_version(fallback: str = "0.1.3") -> str:
     """Read the plugin version from manifest.json in the working directory."""
     try:
         manifest = os.path.join(os.path.dirname(__file__), '..', '..', 'manifest.json')
@@ -595,11 +595,19 @@ class CoreClient:
 
 # Module-level singleton
 _core_client: Optional[CoreClient] = None
+_core_client_lock = threading.Lock()
 
 
 def get_core_client() -> CoreClient:
-    """Get or create the singleton CoreClient."""
+    """Get or create the singleton CoreClient.
+
+    Guarded because first use can race: the event loop and ``to_thread`` workers
+    both call this, and an unguarded check-then-set would build two clients (and
+    two gRPC channels) that then shadow one another.
+    """
     global _core_client
     if _core_client is None:
-        _core_client = CoreClient()
+        with _core_client_lock:
+            if _core_client is None:
+                _core_client = CoreClient()
     return _core_client

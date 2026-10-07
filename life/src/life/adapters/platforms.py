@@ -109,11 +109,18 @@ def load_json(path: Path, default):
 
 
 def save_json(path: Path, payload) -> None:
-    """Atomically write JSON: a crash mid-write must not truncate the file."""
+    """Atomically write JSON: a crash mid-write must not truncate the file.
+
+    The file is created 0o600 because this payload carries adapter secrets
+    (``ws_token`` / ``access_token``) and, on a shared POSIX host, the umask
+    default of 0o644 would expose them to every local user. On Windows the mode
+    only affects the read-only bit, so it is harmless there.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
-    with open(temporary, "w", encoding="utf-8") as handle:
-        json.dump(payload, handle, ensure_ascii=False, indent=2)
+    handle = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(handle, "w", encoding="utf-8") as stream:
+        json.dump(payload, stream, ensure_ascii=False, indent=2)
     os.replace(temporary, path)
 
 

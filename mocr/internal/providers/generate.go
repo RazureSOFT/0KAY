@@ -14,6 +14,13 @@ import (
 	"time"
 )
 
+// maxSSELineBytes bounds one SSE line while streaming. A single `data:` frame
+// can carry a whole tool call's arguments (or a base64 image), which easily
+// exceeds the 1 MiB the previous cap allowed and would surface as a bogus
+// "token too long" stream failure. bufio allocates the buffer lazily, so a
+// larger ceiling costs nothing on ordinary responses.
+const maxSSELineBytes = 8 << 20
+
 // providerHTTPClient pools connections across provider requests. Timeout stays 0
 // because streaming bodies are bounded by the request context.
 var providerHTTPClient = &http.Client{
@@ -442,7 +449,7 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 	idle := time.AfterFunc(streamIdleTimeout(), func() { resp.Body.Close() })
 	defer idle.Stop()
 	scanner := bufio.NewScanner(resp.Body)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxSSELineBytes)
 	var finish string
 	completed := false
 	var pt, ot int32
@@ -782,7 +789,7 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 	idle := time.AfterFunc(streamIdleTimeout(), func() { resp.Body.Close() })
 	defer idle.Stop()
 	scanner := bufio.NewScanner(resp.Body)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxSSELineBytes)
 	var finish string
 	var pt, ot int32
 	// current tool_use block being streamed

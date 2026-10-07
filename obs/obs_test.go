@@ -423,3 +423,52 @@ func TestConcurrentLoggingAndTracing(t *testing.T) {
 }
 
 func obs_SpanFrom(ctx context.Context) *Span { return SpanFrom(ctx) }
+
+// TestCancelDuringPublishDoesNotPanic guards the send-on-closed-channel race:
+// a publisher used to snapshot subscriber channels under the lock and then send
+// outside it, while cancel deleted the subscriber and closed its channel — a
+// publish that captured the channel first would then send on a closed channel
+// and crash the process. Publishers run flat out here while subscribers
+// subscribe and immediately cancel, so the old code panics within a few
+// thousand iterations.
+func TestCancelDuringPublishDoesNotPanic(t *testing.T) {
+	ResetLogs()
+	ResetSpans()
+	t.Cleanup(func() { ResetLogs(); ResetSpans() })
+
+	stop := make(chan struct{})
+	var publishers sync.WaitGroup
+	for i := 0; i < 4; i++ {
+		publishers.Add(1)
+		go func() {
+			defer publishers.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				Component("race").Info("publishing")
+				_, s := Start(context.Background(), "race", KindInternal)
+				s.End()
+			}
+		}()
+	}
+
+	var subscribers sync.WaitGroup
+	for i := 0; i < 4; i++ {
+		subscribers.Add(1)
+		go func() {
+			defer subscribers.Done()
+			for j := 0; j < 2000; j++ {
+				_, cancelLogs := SubscribeLogs()
+				_, cancelSpans := SubscribeSpans(8)
+				cancelLogs()
+				cancelSpans()
+			}
+		}()
+	}
+	subscribers.Wait()
+	close(stop)
+	publishers.Wait()
+}

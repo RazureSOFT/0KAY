@@ -34,9 +34,15 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Keep the heavy Live2D/WebGL runtime and vendor code out of the main
-        // chunk so the app shell stays small and cacheable.
+        // chunk so the app shell stays small and cacheable. pixi-live2d-display
+        // must NOT be forced into the eager pixi chunk: its cubism2 submodule
+        // asserts window.Live2D at import time, and live2d-runtime only injects
+        // that runtime right before its own dynamic import. Eager evaluation
+        // (prod-only, dev keeps dynamic imports lazy) crashed every static
+        // deployment before main.ts ever ran. As a purely-dynamic import it
+        // lands in its own lazy chunk, preserving dev's ordering.
         manualChunks: {
-          pixi: ['pixi.js', 'pixi-live2d-display'],
+          pixi: ['pixi.js'],
           vendor: ['vue', 'vue-router', 'pinia', 'vue-i18n'],
           markdown: ['marked', 'dompurify'],
         },

@@ -435,16 +435,14 @@ body > :not(#app):not(script):not(style):not(link)
 #app .app-header { height: 76px; flex-shrink: 0; background: transparent; border: 0; padding: 0 28px; }
 #app .brand { align-items: center; gap: 18px; }
 #app .brand-mark {
-  background: none;
-  -webkit-background-clip: border-box;
-  background-clip: border-box;
-  -webkit-text-fill-color: var(--md-on-surface);
-  color: var(--md-on-surface);
-  border-radius: 0;
-  padding: 0;
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.7px;
+  /* The handwritten Okay mark (transparent mono SVG) as a CSS mask, so the
+     strokes follow the theme's on-surface color. Replaces the wordmark. */
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  background-color: var(--md-on-surface);
+  -webkit-mask: url('/okay-logo-mono.svg') no-repeat center / contain;
+  mask: url('/okay-logo-mono.svg') no-repeat center / contain;
 }
 #app .page-title { font-size: 17px; font-weight: 650; color: var(--md-on-surface); }
 #app .header-actions { gap: 10px; }
@@ -650,7 +648,7 @@ body > :not(#app):not(script):not(style):not(link)
   #app .nav-rail { width: 100%; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); gap: 2px; overflow-y: hidden; background: var(--md-surface-container); }
   #app .nav-item { min-height: 58px; min-width: 60px; padding: 7px 4px; font-size: 12px; }
   #app .nav-item::before { top: 2px; width: 52px; height: 32px; }
-  #app .brand-mark { font-size: 19px; padding: 0; border-radius: 0; }
+  #app .brand-mark { width: 26px; height: 26px; }
   #app .conversation-header { padding: 16px; flex-wrap: wrap; }
   #app .conversation-header h2 { font-size: 18px; }
   #app .execution-options label { min-width: 100px; }

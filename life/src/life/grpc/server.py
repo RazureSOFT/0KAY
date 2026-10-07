@@ -231,8 +231,15 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
     async def _refresh_settings(self):
         """Poll the Core-owned settings document; Core remains the secret store."""
         values = await self._life_settings()
-        if values:
-            self.engine.apply_tool_settings(values)
+        if not values:
+            return
+        # Core re-sends the same document every poll; applying it costs sqlite
+        # reads/writes (proactive policy) and a plugin-tool refresh, so only
+        # re-apply when the document actually changed.
+        if values == getattr(self, "_last_applied_settings", None):
+            return
+        self._last_applied_settings = values
+        self.engine.apply_tool_settings(values)
 
     async def OnTaskCompleted(self, request, context):
         """Handle task completion callback from Core."""
@@ -472,15 +479,18 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await asyncio.to_thread(self.engine.companion.journal, payload.get("content", ""), "dream" if action == "dream" else "journal")
             elif action == "memory_maintenance":
                 result = await asyncio.to_thread(self.engine.memory.maintenance)
-                self.engine.companion.audit("memory_maintenance", json.dumps(result, ensure_ascii=False))
+                await asyncio.to_thread(self.engine.companion.audit,
+                                        "memory_maintenance", json.dumps(result, ensure_ascii=False))
             elif action == "delete_memory":
                 memory_id = payload.get("id", "")
                 deleted = await asyncio.to_thread(self.engine.memory.delete_fact, memory_id, "dashboard_delete")
                 result = {"deleted": deleted, "id": memory_id}
-                self.engine.companion.audit("memory_delete", memory_id, memory_id, "ok" if deleted else "not_found")
+                await asyncio.to_thread(self.engine.companion.audit,
+                                        "memory_delete", memory_id, memory_id, "ok" if deleted else "not_found")
             elif action == "clear_all_memory":
                 result = await self.engine.clear_memory()
-                self.engine.companion.audit("memory_clear_all", json.dumps(result, ensure_ascii=False), outcome="ok")
+                await asyncio.to_thread(self.engine.companion.audit,
+                                        "memory_clear_all", json.dumps(result, ensure_ascii=False), outcome="ok")
             elif action == "reset_person":
                 result = await self.engine.reset_person()
             elif action == "ack_notifications":
@@ -512,7 +522,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = {"reflections": await asyncio.to_thread(self.engine.memory.list_reflections, payload.get("status",""), int(payload.get("limit",50)))}
             elif action == "memory_reflection_review":
                 result = await asyncio.to_thread(self.engine.memory.review_reflection, payload.get("id",""), bool(payload.get("accept", True)))
-                self.engine.companion.audit("memory_reflection_review", json.dumps(result, ensure_ascii=False), str(payload.get("id","")), "ok")
+                await asyncio.to_thread(self.engine.companion.audit,
+                                        "memory_reflection_review", json.dumps(result, ensure_ascii=False), str(payload.get("id","")), "ok")
             elif action == "memory_importance":
                 result = await asyncio.to_thread(self.engine.memory.adjust_importance, payload.get("id",""), float(payload.get("delta",0.1)))
             elif action == "memory_export":

@@ -132,6 +132,31 @@ from .tsundere import (
     regime as tsundere_regime,
     type_for_persona as tsundere_type_for_persona,
 )
+from .common import (
+    SAFETY_GUARD,
+    clamp,
+    clamp01,
+    clamp_signed,
+    emotion_label,
+    match_persona_hints,
+    safety_guard,
+)
+from .yandere import (
+    EVENT_EFFECTS as YANDERE_EVENTS,
+    MODES as YANDERE_MODES,
+    TYPES as YANDERE_TYPES,
+    BigFive,
+    DereProfile,
+    Event,
+    YANDERE_SIGNATURE,
+    YandereDynamics,
+    YandereSystem,
+    emotion_label as yandere_emotion_label,
+    initial_state_for_persona as yandere_initial_state_for_persona,
+    traits_to_profile,
+    type_for_persona as yandere_type_for_persona,
+    yandere_signature_score,
+)
 from .persona_dynamics import (
     ACTIONS as PERSONA_ACTIONS,
     ACTION_LAYERS as PERSONA_ACTION_LAYERS,
@@ -303,6 +328,21 @@ __all__ = [
     "tsundere_initial_state_for_persona",
     "tsundere_regime",
     "tsundere_type_for_persona",
+    # --- yandere affect dynamics (柳・米澤 2023: circumplex + C1/C2/C3) ---
+    "YANDERE_EVENTS",
+    "YANDERE_MODES",
+    "YANDERE_SIGNATURE",
+    "YANDERE_TYPES",
+    "BigFive",
+    "DereProfile",
+    "Event",
+    "YandereDynamics",
+    "YandereSystem",
+    "traits_to_profile",
+    "yandere_emotion_label",
+    "yandere_initial_state_for_persona",
+    "yandere_signature_score",
+    "yandere_type_for_persona",
     # --- parameterised persona dynamics (θ / D / x / f / g / T / G / L) ---
     "PERSONA_ACTIONS",
     "PERSONA_ACTION_LAYERS",

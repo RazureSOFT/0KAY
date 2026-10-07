@@ -262,7 +262,7 @@ async function onSetupSubmit() {
       :aria-label="t('auth.setupTitle')"
     >
       <form class="auth-dialog" @submit.prevent="onSetupSubmit">
-        <span class="auth-mark">0kay</span>
+        <span class="auth-mark" role="img" aria-label="0kay"></span>
         <h2>{{ t('auth.setupTitle') }}</h2>
         <p class="auth-hint">{{ t('auth.setupHint') }}</p>
         <label class="auth-label">{{ t('auth.pinNew') }}</label>
@@ -286,7 +286,7 @@ async function onSetupSubmit() {
       :aria-label="t('auth.title')"
     >
       <form class="auth-dialog" @submit.prevent="onAuthSubmit">
-        <span class="auth-mark">0kay</span>
+        <span class="auth-mark" role="img" aria-label="0kay"></span>
         <h2>{{ t('auth.title') }}</h2>
         <p class="auth-hint">{{ t('auth.hint') }}</p>
         <PinInput
@@ -326,7 +326,7 @@ async function onSetupSubmit() {
       :aria-label="t('auth.pinTitle')"
     >
       <form class="auth-dialog" @submit.prevent="onPinSubmit">
-        <span class="auth-mark">0kay</span>
+        <span class="auth-mark" role="img" aria-label="0kay"></span>
         <h2>{{ t('auth.pinTitle') }}</h2>
         <p class="auth-hint">{{ t('auth.pinHint') }}</p>
         <PinInput v-model="pinInput" :invalid="pinInvalid" error-id="pin-error" autofocus @complete="onPinSubmit" />
@@ -355,7 +355,7 @@ async function onSetupSubmit() {
 <MinecraftConsentDialog />
     <header class="app-header">
       <div class="brand">
-        <span class="brand-mark">0kay</span>
+        <span class="brand-mark" role="img" aria-label="0kay"></span>
         <span class="page-title">{{ pageTitle }}</span>
       </div>
 
@@ -644,10 +644,14 @@ async function onSetupSubmit() {
 }
 
 .auth-mark {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  color: var(--md-on-surface);
+  /* Same handwritten mark as the header brand, via a mask so the strokes
+     follow the dialog's on-surface color. */
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  background-color: var(--md-on-surface);
+  -webkit-mask: url('/okay-logo-mono.svg') no-repeat center / contain;
+  mask: url('/okay-logo-mono.svg') no-repeat center / contain;
 }
 
 .auth-dialog h2 {

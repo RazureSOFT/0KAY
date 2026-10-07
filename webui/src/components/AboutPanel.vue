@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { apiGet, apiPost, ApiError } from '../api'
 
 const { t } = useI18n()
-const currentVersion = ref('0.1.2')
+const currentVersion = ref('0.1.3')
 
 type Contributor = { login: string; avatar_url?: string; html_url?: string; contributions?: number }
 const contributors = ref<Contributor[]>([])
@@ -160,7 +160,7 @@ onUnmounted(stopPolling)
   <div class="content-card about">
     <!-- Identity -->
     <header class="identity">
-      <div class="app-icon" aria-hidden="true">0K</div>
+      <img class="app-icon" src="/okay-logo.svg" alt="" aria-hidden="true" />
       <div class="app-id">
         <h2>0KAY <span class="ver-badge">v{{ currentVersion }}</span></h2>
         <p class="app-desc">{{ t('settings.about.description') }}</p>
@@ -281,15 +281,9 @@ onUnmounted(stopPolling)
   flex: none;
   width: 56px;
   height: 56px;
-  border-radius: 16px;
-  background: var(--md-primary);
-  color: var(--md-on-primary);
-  display: grid;
-  place-items: center;
-  font-size: 20px;
-  font-weight: 750;
-  letter-spacing: -1px;
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--md-primary) 35%, transparent);
+  /* the SVG tile carries its own squircle silhouette; drop-shadow keeps the
+     glow on that outline instead of a rectangular halo. */
+  filter: drop-shadow(0 6px 16px color-mix(in srgb, var(--md-primary) 25%, transparent));
 }
 .app-id { flex: 1; min-width: 0; }
 .app-id h2 { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }

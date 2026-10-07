@@ -168,19 +168,19 @@ Served from `$CORE_DATA_DIR/plugin-ui/{name}` (default `data/plugin-ui/{name}`).
 
 ```json
 // GET /api/update/check
-{"current": "0.1.2", "latest": "0.1.2", "has_update": false,
- "url": "https://github.com/RazureSOFT/0KAY/releases/tag/v0.1.2",
- "name": "0KAY 0.1.2", "notes": "release notes / changelog body",
+{"current": "0.1.3", "latest": "0.1.3", "has_update": false,
+ "url": "https://github.com/RazureSOFT/0KAY/releases/tag/v0.1.3",
+ "name": "0KAY 0.1.3", "notes": "release notes / changelog body",
  "published_at": "2026-10-01T00:00:00Z"}
 
 // GET /api/update/check-plugins
-{"plugins": [{"name": "agent", "version": "0.1.2", "latest": "0.1.2",
+{"plugins": [{"name": "agent", "version": "0.1.3", "latest": "0.1.3",
   "has_update": false, "repository": "https://github.com/RazureSOFT/0KAY-agent",
   "package": "@razuresoft/0kay-agent", "can_update": true}]}
 
 // POST /api/update/apply
 // {"plugin": "core"}                      → beta (sync main)
-// {"plugin": "agent", "version": "0.1.2"} → pinned release
+// {"plugin": "agent", "version": "0.1.3"} → pinned release
 // → 202 Accepted
 {"plugin":"core","package":"@razuresoft/0kay-core","mode":"source",
  "status":"running","started":"2026-09-26T05:42:52Z"}

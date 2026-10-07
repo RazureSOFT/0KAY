@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo/okay-logo.svg" width="128" alt="0KAY logo"></p>
+
 # 0KAY
 
 **A self-hosted AI companion that remembers you — with a real agent underneath.**
@@ -94,7 +96,7 @@ npm install -g ./pm
 
 `0kay-pm install` builds each module and starts it as a background service
 (systemd user unit / LaunchAgent / logon task), so there is nothing else to run
-afterwards. Pin a release with `@0.1.2`, check with `0kay-pm status <package>`,
+afterwards. Pin a release with `@0.1.3`, check with `0kay-pm status <package>`,
 and stop with `0kay-pm stop <package>`.
 
 ### From source (development)

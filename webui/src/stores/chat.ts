@@ -71,6 +71,15 @@ export const useChatStore = defineStore('chat', () => {
     }
     seenL2DMarkers.set(message.id, seen)
   }
+  // Drop marker bookkeeping for messages that no longer exist, so the map does
+  // not grow for the whole session as compaction/clearing removes bubbles.
+  function pruneL2DMarkers() {
+    if (!seenL2DMarkers.size) return
+    const live = new Set(messages.value.map((message) => message.id))
+    for (const id of seenL2DMarkers.keys()) {
+      if (!live.has(id)) seenL2DMarkers.delete(id)
+    }
+  }
   const isConnected = ref(false)
   const isTyping = ref(false)
   const unread = ref(0)
@@ -88,6 +97,10 @@ export const useChatStore = defineStore('chat', () => {
   let ws: WebSocket | null = null
   let messageIdCounter = 0
   let activeSseController: AbortController | null = null
+  // Bumped whenever the conversation is reset. readSSE swallows AbortError and
+  // returns normally, so an in-flight send has to compare this epoch after the
+  // stream ends to know its bubble was cleared and must not be recreated.
+  let streamEpoch = 0
   let notificationTimer: ReturnType<typeof setInterval> | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   // Set when we close the socket ourselves (dispose) so onclose does not
@@ -407,6 +420,7 @@ export const useChatStore = defineStore('chat', () => {
   ): Promise<void> {
     const controller = new AbortController()
     activeSseController = controller
+    const epoch = streamEpoch
 
     const persona = useWizardStore().persona
     const res = await fetch('/api/life/chat', {
@@ -452,6 +466,9 @@ export const useChatStore = defineStore('chat', () => {
       await readSSE(
         res,
         ({ event: eventName, data }) => {
+          // The chat was cleared while this stream was open; drop late frames
+          // instead of resurrecting a bubble the user already dismissed.
+          if (epoch !== streamEpoch) return
           let payload: any = null
           try {
             payload = JSON.parse(data)
@@ -479,6 +496,14 @@ export const useChatStore = defineStore('chat', () => {
       if (activeSseController === controller) activeSseController = null
       isTyping.value = false
       persistHistory()
+    }
+
+    if (epoch !== streamEpoch) {
+      // clearMessages() aborted this stream and emptied the conversation.
+      // readSSE returns normally on abort, so without this guard the
+      // "ended without done" branch below would recreate an assistant bubble
+      // (with the interrupted marker) that survives a reload.
+      return
     }
 
     if (!sawDone) {
@@ -539,7 +564,11 @@ export const useChatStore = defineStore('chat', () => {
 
   function clearMessages() {
     abortActiveSse()
+    // Bump the epoch so the aborted stream's continuation (which readSSE lets
+    // return normally) cannot recreate a bubble after the clear.
+    streamEpoch++
     messages.value = []
+    seenL2DMarkers.clear()
     lastUsage.value = null
     contextSummary.value = ''
     sessionId.value = `webui:${uid()}`
@@ -561,6 +590,7 @@ export const useChatStore = defineStore('chat', () => {
       contextSummary.value = body.summary || ''
       // Keep a short visible tail after compaction while the summary holds continuity.
       messages.value = messages.value.slice(-6)
+      pruneL2DMarkers()
       persistHistory()
     } finally { compacting.value = false }
   }

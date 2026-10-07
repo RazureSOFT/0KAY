@@ -203,20 +203,18 @@ var store = &spanStore{limit: defaultSpans, subs: map[int]chan SpanRecord{}}
 
 func (s *spanStore) publish(rec SpanRecord) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	if len(s.ring) < s.limit {
 		s.ring = append(s.ring, rec)
 	} else {
 		s.ring[s.next] = rec
 		s.next = (s.next + 1) % s.limit
 	}
-	subs := make([]chan SpanRecord, 0, len(s.subs))
+	// Fan out under the lock: Subscribe()'s cancel closes the channel under the
+	// same lock, so a snapshot-then-send outside it could send on a closed
+	// channel and panic. The send is non-blocking, so a slow subscriber only
+	// drops records here; it cannot stall the request that produced the span.
 	for _, ch := range s.subs {
-		subs = append(subs, ch)
-	}
-	s.mu.Unlock()
-	for _, ch := range subs {
-		// A subscriber that is not keeping up must not stall the request that
-		// produced the span, so overflow drops for that subscriber.
 		select {
 		case ch <- rec:
 		default:

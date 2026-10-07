@@ -78,6 +78,9 @@ const readme = ref('')
 const readmeLoading = ref(false)
 const readmeError = ref('')
 const readmeCache = new Map<string, string>()
+// Monotonic token so a slow README fetch for plugin A cannot overwrite the
+// README of plugin B opened right after it.
+let readmeToken = 0
 
 const healthyCount = computed(() => plugins.value.filter((p) => p.runtime && isHealthy(p)).length)
 const disabledCount = computed(() => plugins.value.filter((p) => p.runtime && p.disabled).length)
@@ -119,6 +122,7 @@ async function loadReadme(p: PluginRow) {
     readme.value = cached
     return
   }
+  const token = ++readmeToken
   readmeLoading.value = true
   readmeError.value = ''
   readme.value = ''
@@ -128,19 +132,21 @@ async function loadReadme(p: PluginRow) {
     // repository's default branch.
     for (const file of README_FILES) {
       const res = await fetch(`https://raw.githubusercontent.com/${slug}/HEAD/${file}`)
+      if (token !== readmeToken) return
       if (res.ok) {
         text = await res.text()
         break
       }
       if (res.status !== 404) throw new Error(`README HTTP ${res.status}`)
     }
+    if (token !== readmeToken) return
     if (!text.trim()) throw new Error(t('plugins.readmeNotFound'))
     readmeCache.set(slug, text)
     readme.value = text
   } catch (e: any) {
-    readmeError.value = e?.message || String(e)
+    if (token === readmeToken) readmeError.value = e?.message || String(e)
   } finally {
-    readmeLoading.value = false
+    if (token === readmeToken) readmeLoading.value = false
   }
 }
 

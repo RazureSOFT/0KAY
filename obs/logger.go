@@ -136,6 +136,10 @@ func ParseLevelStrict(name string) (slog.Level, bool) {
 //	CORE_LOG_FORMAT json | text                      (default text for stderr)
 //	CORE_LOG_FILE   path; enables the rotating JSON file sink
 func Init() {
+	// A later Init replaces the sinks (see the doc comment), so release the
+	// previous file sink first. Without this, every extra Init call would open
+	// another descriptor and leak the old one until Close.
+	_ = closeOpenFiles()
 	level.Set(ParseLevel(os.Getenv("CORE_LOG_LEVEL")))
 
 	var handlers []slog.Handler

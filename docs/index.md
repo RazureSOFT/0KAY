@@ -73,5 +73,5 @@ and starts each component after a successful build. See
 
 - The running implementation is the behavioral authority. This documentation
   describes the public plugin boundary and does not promise private helpers.
-- The platform release version is `0.1.2` (`core/internal/version`, every
+- The platform release version is `0.1.3` (`core/internal/version`, every
   `manifest.json` and every Git tag).

@@ -126,6 +126,70 @@
   <string name="companion.affect.somatic">Enable somatization gateway (auto-on when the persona has frail / palpitations markers)</string>
   <string name="companion.affect.title">Affect &amp; physiology (wave 2)</string>
   <string name="companion.affect.vagalBaseline">Vagal baseline</string>
+  <string name="companion.alias.affection">How close she feels to you</string>
+
+  <string name="companion.alias.affinity">The long-run like/dislike account</string>
+
+  <string name="companion.alias.allostatic">The wear stress has banked up over time</string>
+
+  <string name="companion.alias.arousal">How activated she is right now</string>
+
+  <string name="companion.alias.comorbid">Her long-run depressive baseline</string>
+
+  <string name="companion.alias.connection">How close she wants to be right now</string>
+
+  <string name="companion.alias.darkness">How deep the dark thoughts go</string>
+
+  <string name="companion.alias.distress">How afraid she is that you will leave</string>
+
+  <string name="companion.alias.empathy">How well she picks up and answers your feelings</string>
+
+  <string name="companion.alias.energy">How much battery she has left</string>
+
+  <string name="companion.alias.fixation">How obsessive she can get</string>
+
+  <string name="companion.alias.health">How her body feels</string>
+
+  <string name="companion.alias.healthAnxiety">How much she frets over small symptoms</string>
+
+  <string name="companion.alias.hunger">How much she wants to eat</string>
+
+  <string name="companion.alias.intensity">How strongly the yandere tone shows</string>
+
+  <string name="companion.alias.irritation">How short her temper is right now</string>
+
+  <string name="companion.alias.jealousy">How much 'the others' get to her</string>
+
+  <string name="companion.alias.loneliness">How starved of company she has been</string>
+
+  <string name="companion.alias.mood">The overall trend of her mood these days</string>
+
+  <string name="companion.alias.patience">How long she waits before rushing you</string>
+
+  <string name="companion.alias.pdAffection">How much closeness she needs</string>
+
+  <string name="companion.alias.pdAnxiety">How afraid of being left she is</string>
+
+  <string name="companion.alias.pdPossession">How much she minds you nearing others</string>
+
+  <string name="companion.alias.pdPressure">Built-up emotion that has not acted out yet</string>
+
+  <string name="companion.alias.pdSelfControl">How well she brakes her impulses</string>
+
+  <string name="companion.alias.pdSuppression">How much is held in behind a calm face</string>
+
+  <string name="companion.alias.pdTrust">Her baseline trust in you</string>
+
+  <string name="companion.alias.somaticBurden">How tired and achy her body is</string>
+
+  <string name="companion.alias.somatization">How much stress turns into bodily complaints</string>
+
+  <string name="companion.alias.tsun">How prickly her mask is</string>
+
+  <string name="companion.alias.vagal">How composed and hard to rattle she is</string>
+
+  <string name="companion.alias.valence">How pleasant her mood is right now</string>
+
   <string name="companion.attach.delusional">Delusional</string>
   <string name="companion.attach.dependent">Dependent</string>
   <string name="companion.attach.exclusion">Excluding</string>
@@ -137,6 +201,16 @@
   <string name="companion.attachmentCard.hint2">How to configure: ① turn on the switch and pick a type (exclusive / dependent / delusional / monitoring / self-harm / excluding) — the type only changes "the weight of the same drive", not hard-coded lines; or ② write keywords directly in the persona and the system enables it automatically and fills initial values from the persona: e.g. "strongly possessive, easily jealous"→exclusive, "very clingy, cannot live without you"→dependent, "always checking up, following"→monitoring, "paranoid, always feeling deceived"→delusional. To better match "yandere often comes with depression", set the "emotion-regulation profile" above to depression; the two aggravate each other.</string>
   <string name="companion.attachmentCard.title">Pathological attachment / yandere (optional)</string>
   <string name="companion.attachmentTypeValue">{type} ({label})</string>
+  <string name="companion.axis.arousalHigh">activated</string>
+  <string name="companion.axis.arousalLow">calm</string>
+  <string name="companion.axis.valenceHigh">pleasant</string>
+  <string name="companion.axis.valenceLow">low</string>
+  <string name="companion.body.awake">Awake</string>
+  <string name="companion.body.energy">Energy</string>
+  <string name="companion.body.health">Health</string>
+  <string name="companion.body.hunger">Hunger</string>
+  <string name="companion.body.sleeping">Sleeping</string>
+  <string name="companion.body.title">Body</string>
   <string name="companion.channel.cardiorespiratory">Palpitations</string>
   <string name="companion.channel.dizziness">Dizziness</string>
   <string name="companion.channel.fatigue">Fatigue</string>
@@ -169,6 +243,38 @@
   <string name="companion.decision.title">Decision arbitration (wave 1)</string>
   <string name="companion.decision.wmCapacity">Working-memory capacity</string>
   <string name="companion.dimensionsValue">{n} dims</string>
+  <string name="companion.effect.affection">The main dial of closeness: drives tone intimacy and how proactive she is. Rises slowly, drops fast.</string>
+  <string name="companion.effect.affinity">The long-term account: daily time together grows it, neglect and conflict drain it. It sets the stage ceiling and how bold her proactive messages are.</string>
+  <string name="companion.effect.allostatic">The body's accumulated wear from stress, lost sleep and illness; high -> more tired, more volatile.</string>
+  <string name="companion.effect.arousal">How charged her replies feel: high -> fast and excitable, low -> sleepy and laid-back.</string>
+  <string name="companion.effect.comorbid">Long-term depressive tint from isolation; high -> less interest, less energy.</string>
+  <string name="companion.effect.connection">Rises right after you two talk; sets how warm she acts toward you this moment.</string>
+  <string name="companion.effect.darkness">How far the dark thoughts go; the safety layer always caps it.</string>
+  <string name="companion.effect.distress">Separation anxiety plus felt rejection; high -> clingier, more afraid you will leave.</string>
+  <string name="companion.effect.empathy">How strongly she picks up and responds to your feelings.</string>
+  <string name="companion.effect.energy">Sleep restores it, staying up drains it; low -> shorter, slower replies, more yawning.</string>
+  <string name="companion.effect.fixation">Obsessive fixation; high -> jealousy and score-keeping. 0.85+ trips the safety layer.</string>
+  <string name="companion.effect.health">Low -> listless and weak in tone; she may say she feels unwell.</string>
+  <string name="companion.effect.healthAnxiety">High -> worries about small symptoms, anxious about checkups.</string>
+  <string name="companion.effect.hunger">High -> distracted, may bring up food out of nowhere.</string>
+  <string name="companion.effect.intensity">How strongly the yandere tone colors her words.</string>
+  <string name="companion.effect.irritation">Builds when interrupted or ignored; high -> short temper, may snap at you.</string>
+  <string name="companion.effect.jealousy">Spikes when others come up; high -> probing questions and mood swings.</string>
+  <string name="companion.effect.loneliness">Grows when nobody talks to her; high -> misses you more, and gets a little oversensitive.</string>
+  <string name="companion.effect.mood">The slow background mood accumulated from recent events; tints her overall tone.</string>
+  <string name="companion.effect.patience">Low -> more likely to rush you, cut in, or jump to conclusions.</string>
+  <string name="companion.effect.pdAffection">How much closeness the archetype craves.</string>
+  <string name="companion.effect.pdAnxiety">Fear of being abandoned; high -> repeated reassurance-seeking.</string>
+  <string name="companion.effect.pdPossession">Dislikes watching you grow close to others.</string>
+  <string name="companion.effect.pdPressure">Sub-threshold pressure; when it crosses the line the archetype acts out once.</string>
+  <string name="companion.effect.pdSelfControl">Brakes on impulses; high -> fewer overreactions.</string>
+  <string name="companion.effect.pdSuppression">Suppressed feelings piling up under a calm surface.</string>
+  <string name="companion.effect.pdTrust">Baseline trust; high -> steadier, fewer paranoid spirals.</string>
+  <string name="companion.effect.somaticBurden">Accumulated fatigue and aches; high -> gloomier, wants to be cared for.</string>
+  <string name="companion.effect.somatization">How much psychological stress turns into bodily complaints.</string>
+  <string name="companion.effect.tsun">The tsun mask: high -> sharp tongue, soft heart; compliments take a detour.</string>
+  <string name="companion.effect.vagal">Physiological calm: high -> secure and hard to rattle.</string>
+  <string name="companion.effect.valence">Sets the warmth of her wording right now: positive -> playful and warm, negative -> quiet and down.</string>
   <string name="companion.episode.episode">Depressive episode</string>
   <string name="companion.episode.euthymic">Stable</string>
   <string name="companion.episode.subthreshold">Declining</string>
@@ -190,11 +296,245 @@
   <string name="companion.flash.settingsSavedIgnored">Saved, ignored invalid items: {items}</string>
   <string name="companion.flash.worldCleared">World events cleared and world state reset</string>
   <string name="companion.flash.worldGenerated">Worldview refined by AI and map generated</string>
+  <string name="companion.gauge.affection">Affection (A)</string>
+  <string name="companion.gauge.allostatic">Wear &amp; tear load</string>
+  <string name="companion.gauge.arousal">Activation</string>
+  <string name="companion.gauge.comorbid">Depressive tint</string>
+  <string name="companion.gauge.connection">Closeness now</string>
+  <string name="companion.gauge.darkness">Darkness</string>
+  <string name="companion.gauge.distress">Attachment distress</string>
+  <string name="companion.gauge.empathy">Empathy</string>
+  <string name="companion.gauge.fixation">Fixation (Y)</string>
+  <string name="companion.gauge.healthAnxiety">Health anxiety</string>
+  <string name="companion.gauge.intensity">Expression intensity</string>
+  <string name="companion.gauge.irritation">Irritation</string>
+  <string name="companion.gauge.jealousy">Jealousy</string>
+  <string name="companion.gauge.loneliness">Loneliness</string>
+  <string name="companion.gauge.mood">Background mood</string>
+  <string name="companion.gauge.patience">Patience</string>
+  <string name="companion.gauge.pdAffection">Craving for closeness</string>
+  <string name="companion.gauge.pdAnxiety">Abandonment anxiety</string>
+  <string name="companion.gauge.pdPossession">Possessiveness</string>
+  <string name="companion.gauge.pdPressure">Sub-threshold pressure</string>
+  <string name="companion.gauge.pdSelfControl">Self-control</string>
+  <string name="companion.gauge.pdSuppression">Suppression</string>
+  <string name="companion.gauge.pdTrust">Baseline trust</string>
+  <string name="companion.gauge.somaticBurden">Bodily burden</string>
+  <string name="companion.gauge.somatization">Somatization</string>
+  <string name="companion.gauge.tsun">Tsun mask (T)</string>
+  <string name="companion.gauge.vagal">Vagal calm</string>
+  <string name="companion.gauge.valence">Mood pleasure</string>
   <string name="companion.gender.female">Female</string>
   <string name="companion.gender.male">Male</string>
   <string name="companion.gender.none">Undetermined</string>
   <string name="companion.gender.other">Other</string>
   <string name="companion.gender.undecidedBracket">(Undetermined)</string>
+  <string name="companion.gw.affection.hi">very fond</string>
+
+  <string name="companion.gw.affection.lo">still distant</string>
+
+  <string name="companion.gw.affection.mid">warmed up</string>
+
+  <string name="companion.gw.affinity.hi">very warm</string>
+
+  <string name="companion.gw.affinity.lo">rather cold</string>
+
+  <string name="companion.gw.affinity.mid">plainly acquainted</string>
+
+  <string name="companion.gw.allostatic.hi">heavy wear</string>
+
+  <string name="companion.gw.allostatic.lo">little wear</string>
+
+  <string name="companion.gw.allostatic.mid">some wear</string>
+
+  <string name="companion.gw.arousal.hi">very excited</string>
+
+  <string name="companion.gw.arousal.lo">very calm</string>
+
+  <string name="companion.gw.arousal.mid">a bit energized</string>
+
+  <string name="companion.gw.comorbid.hi">clearly low</string>
+
+  <string name="companion.gw.comorbid.lo">feels fine</string>
+
+  <string name="companion.gw.comorbid.mid">a bit low</string>
+
+  <string name="companion.gw.connection.hi">very close</string>
+
+  <string name="companion.gw.connection.lo">a bit distant</string>
+
+  <string name="companion.gw.connection.mid">fairly close</string>
+
+  <string name="companion.gw.darkness.hi">quite paranoid</string>
+
+  <string name="companion.gw.darkness.lo">clean heart</string>
+
+  <string name="companion.gw.darkness.mid">occasionally dark</string>
+
+  <string name="companion.gw.distress.hi">very uneasy</string>
+
+  <string name="companion.gw.distress.lo">secure</string>
+
+  <string name="companion.gw.distress.mid">slightly uneasy</string>
+
+  <string name="companion.gw.empathy.hi">highly attuned</string>
+
+  <string name="companion.gw.empathy.lo">a bit dense</string>
+
+  <string name="companion.gw.empathy.mid">fairly attuned</string>
+
+  <string name="companion.gw.energy.hi">fully charged</string>
+
+  <string name="companion.gw.energy.lo">almost out</string>
+
+  <string name="companion.gw.energy.mid">some left</string>
+
+  <string name="companion.gw.fixation.hi">jeal override</string>
+
+  <string name="companion.gw.fixation.lo">doesn't jeal</string>
+
+  <string name="companion.gw.fixation.mid">does jeal</string>
+
+  <string name="companion.gw.health.hi">in good shape</string>
+
+  <string name="companion.gw.health.lo">quite unwell</string>
+
+  <string name="companion.gw.health.mid">slightly off</string>
+
+  <string name="companion.gw.healthAnxiety.hi">very worried</string>
+
+  <string name="companion.gw.healthAnxiety.lo">barely worries</string>
+
+  <string name="companion.gw.healthAnxiety.mid">slightly worried</string>
+
+  <string name="companion.gw.hunger.hi">starving</string>
+
+  <string name="companion.gw.hunger.lo">not hungry</string>
+
+  <string name="companion.gw.hunger.mid">a bit peckish</string>
+
+  <string name="companion.gw.intensity.hi">overwhelming</string>
+
+  <string name="companion.gw.intensity.lo">restrained</string>
+
+  <string name="companion.gw.intensity.mid">occasional</string>
+
+  <string name="companion.gw.irritation.hi">very testy</string>
+
+  <string name="companion.gw.irritation.lo">at ease</string>
+
+  <string name="companion.gw.irritation.mid">a bit testy</string>
+
+  <string name="companion.gw.jealousy.hi">green-eyed</string>
+
+  <string name="companion.gw.jealousy.lo">unbothered</string>
+
+  <string name="companion.gw.jealousy.mid">a bit bothered</string>
+
+  <string name="companion.gw.loneliness.hi">misses you a lot</string>
+
+  <string name="companion.gw.loneliness.lo">not lonely</string>
+
+  <string name="companion.gw.loneliness.mid">misses you some</string>
+
+  <string name="companion.gw.mood.hi">cheerful lately</string>
+
+  <string name="companion.gw.mood.lo">gloomy lately</string>
+
+  <string name="companion.gw.mood.mid">even keel</string>
+
+  <string name="companion.gw.patience.hi">plenty</string>
+
+  <string name="companion.gw.patience.lo">thin</string>
+
+  <string name="companion.gw.patience.mid">moderate</string>
+
+  <string name="companion.gw.pdAffection.hi">craves closeness</string>
+
+  <string name="companion.gw.pdAffection.lo">low need</string>
+
+  <string name="companion.gw.pdAffection.mid">moderate</string>
+
+  <string name="companion.gw.pdAnxiety.hi">terrified</string>
+
+  <string name="companion.gw.pdAnxiety.lo">at ease</string>
+
+  <string name="companion.gw.pdAnxiety.mid">a bit afraid</string>
+
+  <string name="companion.gw.pdPossession.hi">very possessive</string>
+
+  <string name="companion.gw.pdPossession.lo">gives space</string>
+
+  <string name="companion.gw.pdPossession.mid">occasionally minds</string>
+
+  <string name="companion.gw.pdPressure.hi">near the edge</string>
+
+  <string name="companion.gw.pdPressure.lo">calm waters</string>
+
+  <string name="companion.gw.pdPressure.mid">building up</string>
+
+  <string name="companion.gw.pdSelfControl.hi">well braked</string>
+
+  <string name="companion.gw.pdSelfControl.lo">impulsive</string>
+
+  <string name="companion.gw.pdSelfControl.mid">moderate</string>
+
+  <string name="companion.gw.pdSuppression.hi">bottled up</string>
+
+  <string name="companion.gw.pdSuppression.lo">what you see</string>
+
+  <string name="companion.gw.pdSuppression.mid">some held in</string>
+
+  <string name="companion.gw.pdTrust.hi">fully trusting</string>
+
+  <string name="companion.gw.pdTrust.lo">guarded</string>
+
+  <string name="companion.gw.pdTrust.mid">fairly trusting</string>
+
+  <string name="companion.gw.somaticBurden.hi">worn out</string>
+
+  <string name="companion.gw.somaticBurden.lo">light and easy</string>
+
+  <string name="companion.gw.somaticBurden.mid">somewhat tired</string>
+
+  <string name="companion.gw.somatization.hi">aches all over</string>
+
+  <string name="companion.gw.somatization.lo">body feels fine</string>
+
+  <string name="companion.gw.somatization.mid">some discomfort</string>
+
+  <string name="companion.gw.tsun.hi">utterly tsun</string>
+
+  <string name="companion.gw.tsun.lo">very direct</string>
+
+  <string name="companion.gw.tsun.mid">occasionally prickly</string>
+
+  <string name="companion.gw.vagal.hi">very composed</string>
+
+  <string name="companion.gw.vagal.lo">startles easily</string>
+
+  <string name="companion.gw.vagal.mid">fairly steady</string>
+
+  <string name="companion.gw.valence.hi">quite happy</string>
+
+  <string name="companion.gw.valence.lo">a bit down</string>
+
+  <string name="companion.gw.valence.mid">level</string>
+
+  <string name="companion.interaction.亲近">Affectionate</string>
+  <string name="companion.interaction.受伤">Hurt</string>
+  <string name="companion.interaction.回避">Avoiding</string>
+  <string name="companion.interaction.放松">Relaxed</string>
+  <string name="companion.interaction.活泼">Playful</string>
+  <string name="companion.interaction.温暖">Warm</string>
+  <string name="companion.interaction.爱意">Devoted</string>
+  <string name="companion.interactionEffect.亲近">Uses nicknames and shares the small daily things.</string>
+  <string name="companion.interactionEffect.受伤">Recent words cut her: reserved and distant, still polite.</string>
+  <string name="companion.interactionEffect.回避">Wants space right now: short, guarded replies.</string>
+  <string name="companion.interactionEffect.放松">Everyday ease: natural and unforced.</string>
+  <string name="companion.interactionEffect.活泼">Good mood: chatty, jokes more.</string>
+  <string name="companion.interactionEffect.温暖">Attentive and caring; checks in on you first.</string>
+  <string name="companion.interactionEffect.爱意">An exclusive bond at its softest.</string>
   <string name="companion.kind.food">Food</string>
   <string name="companion.kind.home">Home</string>
   <string name="companion.kind.other">Other</string>
@@ -556,10 +896,17 @@
   <string name="companion.preset.yandereSecluded">Yandere · Exclusive</string>
   <string name="companion.presets.hint">Apply a common configuration in one click and save (you can still tune item by item afterwards): regular, depressive tendency, yandere (exclusive / dependent / delusional). The yandere presets also set the emotion-regulation profile to depression, matching "often accompanied by depression".</string>
   <string name="companion.presets.title">Quick presets</string>
+  <string name="companion.quadrant.excited">Excited &amp; pleasant</string>
+  <string name="companion.quadrant.gloomy">Low &amp; withdrawn</string>
+  <string name="companion.quadrant.serene">Calm &amp; content</string>
+  <string name="companion.quadrant.tense">Tense &amp; uneasy</string>
+  <string name="companion.realtime.atAGlance">Right now</string>
+  <string name="companion.realtime.atAGlanceHint">The dot is her current mood on the pleasant ↔ activation map; every bar below states what it changes.</string>
   <string name="companion.realtime.attachmentHint">Attachment dynamics is on: {label}. Severity {severity} ({band}) is synthesised from attachment, jealousy, anxiety, fixation etc.; {safety} It is bidirectionally linked with depression: a low mood amplifies insecurity, and attachment distress also drags the mood down.</string>
   <string name="companion.realtime.empty">No state data yet (shown after refresh)</string>
   <string name="companion.realtime.episodeHint">Mood course: two consecutive assessments above the threshold count as a "depressive episode", and two consecutive falls back count as "remission"; a new episode during remission counts as a "relapse". It is synthesised from mood, anhedonia, allostatic load, rumination and sleep — silence and chronic stress push it up.</string>
   <string name="companion.realtime.learningOnline">Learning operator L is online: outcomes slightly update the Q values and θ drift.</string>
+  <string name="companion.realtime.moreReadouts">More core read-outs</string>
   <string name="companion.realtime.personaApplied">Persona traits are in effect ({source}): {evidence}. To edit the persona go to Settings → Persona; it takes effect on the next message.</string>
   <string name="companion.realtime.personaSourceLlm">LLM refined</string>
   <string name="companion.realtime.personaSourceLocal">Local dictionary</string>
@@ -567,11 +914,37 @@
   <string name="companion.realtime.safetyOff">below 0.85 the safety layer is not triggered.</string>
   <string name="companion.realtime.safetyOnEmotion">entered the safety layer (only expressing emotion, no methods of harm).</string>
   <string name="companion.realtime.safetyOnFeeling">entered the safety layer (only expressing feelings and asking for company, no methods of harm).</string>
+  <string name="companion.realtime.section.attachment">Attachment system (live)</string>
+  <string name="companion.realtime.sectionSub.attachment">How she feels about you possibly leaving</string>
+
+  <string name="companion.realtime.section.mood">Emotion &amp; body read-outs</string>
+  <string name="companion.realtime.sectionSub.mood">Her mood and body right now (the body gauges are slow movers)</string>
+
+  <string name="companion.realtime.section.pd">Persona dynamics (live)</string>
+  <string name="companion.realtime.sectionSub.pd">The archetype's inner tensions and needs</string>
+
+  <string name="companion.realtime.section.social">Social mind</string>
+  <string name="companion.realtime.sectionSub.social">How she reads you and responds</string>
+
+  <string name="companion.realtime.section.tsundere">Tsundere dynamics (live)</string>
+  <string name="companion.realtime.sectionSub.tsundere">The prickly-soft-hearted system; it evolves with how you two interact</string>
+
+  <string name="companion.realtime.section.yandere">Yandere circuit (live)</string>
+  <string name="companion.realtime.sectionSub.yandere">The devotion-turned-obsession circuit; the safety layer always caps it</string>
+
   <string name="companion.realtime.somaticChronicity">Chronicity {value} — repeatedly reported channels have begun to sensitise.</string>
   <string name="companion.realtime.title">Real-time state</string>
   <string name="companion.realtime.tsundereHint">Tsundere dynamics is on: {label}. Affection A {affection} / tsundere expression T {expression} / yandere fixation Y {fixation} ({band}). Y past 0.60 enters "transition / darkening tendency", past 1.00 counts as "yandere" — reversible. It is driven by real signals: intimacy, reply delay, days left cold, and the other person mentioning "someone else". {safety}</string>
   <string name="companion.refresh">Refresh</string>
   <string name="companion.refreshing">Refreshing…</string>
+  <string name="companion.relStage.亲密">Intimate</string>
+  <string name="companion.relStage.亲近">Close</string>
+  <string name="companion.relStage.友好">Friendly</string>
+  <string name="companion.relStage.熟悉">Familiar</string>
+  <string name="companion.relStage.疏离">Distant</string>
+  <string name="companion.relStage.警惕">Wary</string>
+  <string name="companion.relStage.认识">Acquaintance</string>
+  <string name="companion.relStage.陌生">Stranger</string>
   <string name="companion.relationship.pathologicalSuffix"> · pathological family</string>
   <string name="companion.reset.confirm">Reset the whole person</string>
   <string name="companion.reset.confirmMessage">Really reset this person to factory state? Afterwards they will no longer remember anything that happened.</string>
@@ -599,20 +972,30 @@ This action cannot be undone.</string>
   <string name="companion.stage.mutual">Mutual</string>
   <string name="companion.stage.societal-symbolic">Societal-symbolic</string>
   <string name="companion.social.title">Social learning (wave 4)</string>
+  <string name="companion.state.affinity">Affinity</string>
   <string name="companion.state.commitments">Commitment ledger</string>
+  <string name="companion.state.commitmentsHint">Things she promised you. She will honor them in chat and follow up in proactive messages.</string>
   <string name="companion.state.concerns">Cares about: {items}</string>
   <string name="companion.state.decidedTurns">Decided {n} turns</string>
-  <string name="companion.state.desc">Commitment ledger, structured user model and value orientations.</string>
+  <string name="companion.state.desc">Commitments, structured user model and value axes.</string>
   <string name="companion.state.engrams">Episodic traces {n}</string>
+  <string name="companion.state.interaction">Interaction mode</string>
+  <string name="companion.state.lastSeenLabel">Last interaction</string>
   <string name="companion.state.lexicon">Vocabulary {n}</string>
   <string name="companion.state.likes">Likes: {items}</string>
   <string name="companion.state.noCommitments">No open commitments.</string>
+  <string name="companion.state.noRelationships">No relationship records yet — go talk to her.</string>
   <string name="companion.state.noUserModel">No structured profile yet.</string>
   <string name="companion.state.noValues">No stable value orientations formed yet.</string>
+  <string name="companion.state.relationships">Our relationship</string>
+  <string name="companion.state.relationshipsHint">Stage and affinity decide her tone, how often she reaches out, and what she allows herself to say; the interaction mode is how these past days together have felt.</string>
+  <string name="companion.state.stage">Stage</string>
   <string name="companion.state.taboos">Taboos: {items}</string>
   <string name="companion.state.title">State</string>
   <string name="companion.state.userModel">User model</string>
+  <string name="companion.state.userModelHint">What she has summarized about you from chats - likes, sore spots, recent concerns. She avoids the landmines and plays to the likes.</string>
   <string name="companion.state.values">Value orientations</string>
+  <string name="companion.state.valuesHint">Each line is something she has learned to care about (-1 dislike ↔ +1 prize). It steers how she judges events and where her persona drifts long-term.</string>
   <string name="companion.status.running">Running</string>
   <string name="companion.status.stopped">Stopped</string>
   <string name="companion.status.unavailable">Unavailable</string>
@@ -874,4 +1257,16 @@ This action cannot be undone.</string>
   <string name="memory.clearAllConfirmMessage">Really clear all memories, notes, reflection proposals and local backups? Relationships, goals and the self-narrative are kept, but nothing that happened will be remembered any more. This cannot be undone.</string>
   <string name="memory.clearAllConfirmTitle">Confirm once more</string>
   <string name="memory.dangerTitle">Danger zone</string>
+  <string name="companion.metric.yandereExpression">Expression / darkness</string>
+  <string name="companion.metric.yandereJealousy">Jealousy</string>
+  <string name="companion.metric.yandereMode">Mode · circumplex octant</string>
+  <string name="companion.yandere.mode.hybrid">Tsundere→Yandere</string>
+  <string name="companion.yandere.mode.neutral">Neutral</string>
+  <string name="companion.yandere.mode.tsundere">Tsundere</string>
+  <string name="companion.yandere.mode.yandere">Yandere</string>
+  <string name="companion.yandereCard.enable">Enable affect-flip dynamics (circumplex)</string>
+  <string name="companion.yandereCard.hint">The published formalisation of 柳・米澤 (2023): the internal state is a point on Russell's affect circumplex, and affection A drives a superlinear reaction gain — the same event moves a deeply-attached heart far more violently — plus a superlinear expression intensity. NORMAL / DERE / YAMI switch with hysteresis, so a blackened character does not snap back on the first kind word. Off by default; driven by real interaction (warmth, reply delay, silence, mentions of someone else).</string>
+  <string name="companion.yandereCard.hint2">How to configure: turn on the switch and pick an archetype (yandere / tsundere / neutral / tsundere→yandere), or write the keywords in the persona ("yandere, possessive" / "tsundere") and the circuit turns on with its initial values filled from the persona. Independent of the tsundere ODE and the full persona-dynamics framework; extreme darkness (≥0.70) enters the safety layer.</string>
+  <string name="companion.yandereCard.title">Affect-flip dynamics · circumplex (optional)</string>
+  <string name="companion.yandereCard.type">Archetype</string>
 </resources>

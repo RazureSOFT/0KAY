@@ -517,6 +517,11 @@ func sensitiveRequest(r *http.Request) bool {
 		return !read
 	case strings.HasPrefix(path, "/api/live2d"):
 		return method == http.MethodPost || method == http.MethodDelete
+	// The console's level write (PUT) and clear (POST) mutate process state, and
+	// the clear also destroys the in-memory log/span buffer (audit evidence).
+	// The snapshot and SSE routes are GETs, so reads stay exempt.
+	case strings.HasPrefix(path, "/api/console"):
+		return !read
 	}
 	return false
 }

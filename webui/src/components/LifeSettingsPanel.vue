@@ -55,7 +55,7 @@ onMounted(load)
         <p class="ls-sub">{{ t('lifeSettings.subtitle') }}</p>
       </div>
       <button class="ls-save" :disabled="saving" @click="save">
-        <span class="ls-save-ic" aria-hidden="true">✓</span>{{ saving ? t('lifeSettings.saving') : t('lifeSettings.save') }}
+        <span class="ls-save-ic" aria-hidden="true">✓</span>{{ saving ? t('common.saving') : t('common.save') }}
       </button>
     </header>
 

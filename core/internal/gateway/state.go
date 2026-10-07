@@ -107,7 +107,7 @@ func (g *Gateway) handleUIPatches(w http.ResponseWriter, r *http.Request) {
 		"ops":    ops,
 		"files":  names,
 		"count":  len(ops),
-		"loaded": g.uiPatches.loaded.UTC().Format(time.RFC3339),
+		"loaded": g.uiPatches.LoadedAt().UTC().Format(time.RFC3339),
 	})
 }
 

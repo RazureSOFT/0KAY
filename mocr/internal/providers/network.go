@@ -37,7 +37,7 @@ func guardedDial(ctx context.Context, network, address string) (net.Conn, error)
 	if err != nil {
 		return nil, err
 	}
-	if strings.HasPrefix(strings.ToLower(host), "metadata.") || host == "metadata" {
+	if strings.HasPrefix(strings.ToLower(host), "metadata.") || strings.EqualFold(host, "metadata") {
 		return nil, fmt.Errorf("metadata host blocked")
 	}
 	ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)

@@ -8,6 +8,7 @@ import os
 import random
 import re
 import threading
+import time
 import uuid
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -41,7 +42,7 @@ from ..model_client import MocrClient
 from ..soul import SoulState
 from ..task_records import TaskRecorder, task_context
 from ..config import LIFE_EVENTS as _LIFE_EVENTS
-from ..timeutil import now_utc, parse_utc
+from ..timeutil import now_utc, parse_utc, to_local_naive
 
 # The plugin's own root (``…/life``).  The shipped ``world/`` assets and the
 # trained ``models/`` checkpoints used to be resolved relative to the *process
@@ -106,6 +107,9 @@ try:
         TsundereSystem,
         tsundere_type_for_persona,
         tsundere_initial_state_for_persona,
+        YandereSystem,
+        yandere_type_for_persona,
+        yandere_initial_state_for_persona,
         PersonaDynamicsSystem,
         persona_dynamics_type_for_persona,
         persona_dynamics_gender_for_persona,
@@ -392,6 +396,10 @@ class LifeEngine:
             # Tsundere <-> yandere emotional dynamics: opt-in, off by default,
             # driven by the same real interaction signals (kindness vs coldness).
             self.tsundere = TsundereSystem()
+            # Yandere affect dynamics: the published-paper formalisation
+            # (circumplex + superlinear gain + hysteretic normal/dere/yami).
+            # Opt-in, off by default, driven by the same interaction signals.
+            self.yandere = YandereSystem()
             # Parameterised persona dynamics (θ / D / x / f / g / T): the fuller
             # 14-D personality + 9-D desire framework, opt-in and off by default.
             self.personadyn = PersonaDynamicsSystem()
@@ -400,6 +408,7 @@ class LifeEngine:
             self.relating = None
             self.attachment = None
             self.tsundere = None
+            self.yandere = None
             self.personadyn = None
         self._persona_traits = None
         self._persona_digest = None
@@ -420,6 +429,10 @@ class LifeEngine:
         self._tsundere_enabled = False
         self._tsundere_restored_enabled = False
         self._tsundere_override: dict = {}
+        # Yandere affect dynamics: same opt-in discipline as tsundere.
+        self._yandere_enabled = False
+        self._yandere_restored_enabled = False
+        self._yandere_override: dict = {}
         # Parameterised persona dynamics: same opt-in discipline.
         self._personadyn_enabled = False
         self._personadyn_restored_enabled = False
@@ -514,6 +527,8 @@ class LifeEngine:
         "cog_attachment_type": "LIFE_COG_ATTACHMENT_TYPE",
         "cog_tsundere_enabled": "LIFE_COG_TSUNDERE",
         "cog_tsundere_type": "LIFE_COG_TSUNDERE_TYPE",
+        "cog_yandere_enabled": "LIFE_COG_YANDERE",
+        "cog_yandere_type": "LIFE_COG_YANDERE_TYPE",
         "cog_personadyn_enabled": "LIFE_COG_PERSONADYN",
         "cog_personadyn_type": "LIFE_COG_PERSONADYN_TYPE",
         "cog_personadyn_gender": "LIFE_COG_PERSONADYN_GENDER",
@@ -545,6 +560,66 @@ class LifeEngine:
             if from_env not in (None, ""):
                 return str(from_env)
         return str(self.companion.SETTING_DEFAULTS.get(key, ""))
+
+    #: The opt-in relationship/persona circuits. They all share one facade
+    #: contract (configure / seed / observe / tick / context / guard /
+    #: to_dict), so the dashboard read-out, the prompt render, the safety-guard
+    #: injection and the reset are driven from this table instead of four
+    #: hand-written copies.
+    CIRCUIT_KEYS = ("attachment", "tsundere", "yandere", "personadyn")
+
+    #: How each circuit's tone is introduced in the generation prompt.
+    CIRCUIT_PROMPT_LABELS = {
+        "attachment": "依恋基调",
+        "tsundere": "傲娇底色",
+        "yandere": "情感急变基调",
+        "personadyn": "人格动力学",
+    }
+
+    def _circuit_contexts(self) -> dict:
+        """Dashboard read-out for every opt-in circuit (see ``CIRCUIT_KEYS``)."""
+        out = {}
+        for key in self.CIRCUIT_KEYS:
+            system = getattr(self, key, None)
+            out[key] = system.context() if system is not None else {"enabled": False}
+        return out
+
+    def _resolve_circuit(self, key: str, saved, get, persona_text: str,
+                         default_type: str, persona_resolver, env_name: str):
+        """Resolve the opt-in state of one cognition circuit.
+
+        Every relationship/persona circuit follows the same precedence, so it
+        lives once here instead of four times in ``apply_cognition_settings``:
+
+        1. an explicit saved setting (or its env override) wins;
+        2. otherwise a circuit restored from disk stays on across a restart;
+        3. a persona that reads as the archetype forces it on and picks the type
+           (unless the setting already named one);
+        4. an owner-tuned override beats all of the above.
+
+        Returns ``(enabled, type_key)``; the caller configures the system
+        (personadyn additionally threads a gender key through ``configure``).
+        """
+        restored = bool(getattr(self, f"_{key}_restored_enabled", False))
+        setattr(self, f"_{key}_restored_enabled", False)
+        explicit = (f"cog_{key}_enabled" in (saved or {})) or bool(os.getenv(env_name))
+        if explicit:
+            enabled = self._cognition_enabled and self._cog_bool(get(f"cog_{key}_enabled"), False)
+        else:
+            enabled = self._cognition_enabled and restored
+        type_key = str(get(f"cog_{key}_type") or "").strip()
+        if persona_text:
+            persona_type = persona_resolver(persona_text)
+            if persona_type:
+                enabled = self._cognition_enabled
+                type_key = type_key or persona_type
+        override = self._json_setting(saved, f"{key}_override")
+        setattr(self, f"_{key}_override", override)
+        if override.get("type"):
+            enabled = self._cognition_enabled
+            type_key = str(override["type"])
+        setattr(self, f"_{key}_enabled", enabled)
+        return enabled, (type_key or default_type)
 
     def apply_cognition_settings(self, values: dict | None = None) -> dict:
         """Reconfigure the cognition core from settings, preserving learned state.
@@ -665,104 +740,60 @@ class LifeEngine:
         selfhood.detail_scale = self._cog_num(get("cog_selfhood_detail"), selfhood.detail_scale)
         self.selfhood.reconfigure(selfhood)
 
-        # wave 4c: pathological attachment ("yandere") - opt-in, off by default.
-        # A persona that reads as possessive/jealous turns it on and picks a type.
-        # An attachment circuit restored from disk stays on across a restart
-        # (the persona that enabled it is re-sent with the next message); an
-        # explicit setting still overrides, and a persona edit re-evaluates.
-        restored = bool(getattr(self, "_attachment_restored_enabled", False))
-        self._attachment_restored_enabled = False
-        # A saved/env switch wins; otherwise an attachment circuit restored from
-        # disk stays on across a restart (the enabling persona is re-sent later).
-        explicit = ("cog_attachment_enabled" in (saved or {})) or bool(os.getenv("LIFE_COG_ATTACHMENT"))
-        if explicit:
-            attachment_enabled = self._cognition_enabled and self._cog_bool(get("cog_attachment_enabled"), False)
-        else:
-            attachment_enabled = self._cognition_enabled and restored
-        attachment_type = str(get("cog_attachment_type") or "").strip()
-        persona_type = self._persona_attachment_type(persona_text) if persona_text else ""
-        if persona_type:
-            attachment_enabled = self._cognition_enabled
-            attachment_type = attachment_type or persona_type
-        # Owner-tuned attachment config (type + initial values from analysis).
-        self._attachment_override = self._json_setting(saved, "attachment_override")
-        if self._attachment_override.get("type"):
-            attachment_enabled = self._cognition_enabled
-            attachment_type = str(self._attachment_override["type"])
-        self._attachment_enabled = attachment_enabled
+        # wave 4c/4d/4f/4e: the opt-in relationship and persona circuits.
+        # They all share one precedence (explicit setting > restored state >
+        # persona keyword > owner-tuned override), resolved by
+        # ``_resolve_circuit``, so only the persona-type resolver and the
+        # default archetype differ.
+        attachment_enabled, attachment_type = self._resolve_circuit(
+            "attachment", saved, get, persona_text, "依存型",
+            self._persona_attachment_type, "LIFE_COG_ATTACHMENT")
         if self.attachment is not None:
-            self.attachment.configure(enabled=attachment_enabled, type_key=attachment_type or "依存型")
+            self.attachment.configure(enabled=attachment_enabled, type_key=attachment_type)
             if isinstance(self._attachment_override.get("initial"), dict):
                 self.attachment.seed_state(self._attachment_override["initial"])
 
-        # Tsundere <-> yandere dynamics: same opt-in discipline as attachment.
-        # A persona that reads as tsundere turns it on and picks an archetype;
-        # a circuit restored from disk stays on across a restart; an explicit
-        # setting or an owner-tuned override still wins.
-        tsundere_restored = bool(getattr(self, "_tsundere_restored_enabled", False))
-        self._tsundere_restored_enabled = False
-        tsundere_explicit = (("cog_tsundere_enabled" in (saved or {}))
-                             or bool(os.getenv("LIFE_COG_TSUNDERE")))
-        if tsundere_explicit:
-            tsundere_enabled = self._cognition_enabled and self._cog_bool(get("cog_tsundere_enabled"), False)
-        else:
-            tsundere_enabled = self._cognition_enabled and tsundere_restored
-        tsundere_type = str(get("cog_tsundere_type") or "").strip()
-        persona_tsundere = tsundere_type_for_persona(persona_text) if persona_text else ""
-        if persona_tsundere:
-            tsundere_enabled = self._cognition_enabled
-            tsundere_type = tsundere_type or persona_tsundere
-        self._tsundere_override = self._json_setting(saved, "tsundere_override")
-        if self._tsundere_override.get("type"):
-            tsundere_enabled = self._cognition_enabled
-            tsundere_type = str(self._tsundere_override["type"])
-        self._tsundere_enabled = tsundere_enabled
+        # Tsundere <-> yandere dynamics: a three-variable ODE (A/T/Y).
+        tsundere_enabled, tsundere_type = self._resolve_circuit(
+            "tsundere", saved, get, persona_text, "经典傲娇",
+            tsundere_type_for_persona, "LIFE_COG_TSUNDERE")
         if self.tsundere is not None:
-            self.tsundere.configure(enabled=tsundere_enabled, type_key=tsundere_type or "经典傲娇")
+            self.tsundere.configure(enabled=tsundere_enabled, type_key=tsundere_type)
             if isinstance(self._tsundere_override.get("initial"), dict):
                 self.tsundere.seed_state(self._tsundere_override["initial"])
 
-        # Parameterised persona dynamics: same opt-in discipline.  This is the
-        # full framework (θ grouped over 12 families / 60+ parameters + a 16-D
-        # desire vector + a 16-D emotion vector + the gender/social-script
-        # group G + the learning operator L); a persona that reads as a clear
-        # archetype turns it on, an owner-tuned override wins, a restored
-        # circuit stays on across a restart.
-        pdy_restored = bool(getattr(self, "_personadyn_restored_enabled", False))
-        self._personadyn_restored_enabled = False
-        pdy_explicit = (("cog_personadyn_enabled" in (saved or {}))
-                        or bool(os.getenv("LIFE_COG_PERSONADYN")))
-        if pdy_explicit:
-            pdy_enabled = self._cognition_enabled and self._cog_bool(get("cog_personadyn_enabled"), False)
-        else:
-            pdy_enabled = self._cognition_enabled and pdy_restored
-        pdy_type = str(get("cog_personadyn_type") or "").strip()
-        persona_pdy = persona_dynamics_type_for_persona(persona_text) if persona_text else ""
-        if persona_pdy:
-            pdy_enabled = self._cognition_enabled
-            pdy_type = pdy_type or persona_pdy
-        # The gender / social-script group G is a parameter group like any
-        # other, so it rides the same settings surface and the same override.
-        # Precedence: an explicit override > the saved setting > the row's own
-        # implied script (handled inside PersonaDynamics).
+        # Yandere affect dynamics: the published-paper formalisation
+        # (circumplex + superlinear gain + hysteretic normal/dere/yami).
+        yandere_enabled, yandere_type = self._resolve_circuit(
+            "yandere", saved, get, persona_text, "病娇",
+            yandere_type_for_persona, "LIFE_COG_YANDERE")
+        if self.yandere is not None:
+            self.yandere.configure(enabled=yandere_enabled, type_key=yandere_type)
+            if isinstance(self._yandere_override.get("initial"), dict):
+                self.yandere.seed_state(self._yandere_override["initial"])
+
+        # Parameterised persona dynamics: the full framework (theta grouped
+        # over 12 families / 60+ parameters + a 16-D desire vector + a 16-D
+        # emotion vector + the gender/social-script group G + the learning
+        # operator L).  The gender group rides the same settings surface and
+        # the same override: an explicit override > the saved setting > the
+        # row's own implied script (handled inside PersonaDynamics).
+        pdy_enabled, pdy_type = self._resolve_circuit(
+            "personadyn", saved, get, persona_text, "正常/安全型",
+            persona_dynamics_type_for_persona, "LIFE_COG_PERSONADYN")
         pdy_gender = str(get("cog_personadyn_gender") or "").strip()
-        self._personadyn_override = self._json_setting(saved, "personadyn_override")
-        if self._personadyn_override.get("type"):
-            pdy_enabled = self._cognition_enabled
-            pdy_type = str(self._personadyn_override["type"])
         if self._personadyn_override.get("gender"):
             pdy_gender = str(self._personadyn_override["gender"])
         self._personadyn_enabled = pdy_enabled
         if self.personadyn is not None:
-            # "未指定" is the identity script; passing "" lets the archetype row
-            # supply its own implied script (霸总 -> 高传统男性 ...).
+            # "未指定" is the identity script; passing "" lets the archetype
+            # row supply its own implied script.
             gkey = pdy_gender if pdy_gender and pdy_gender != "未指定" else ""
             if gkey:
-                self.personadyn.configure(enabled=pdy_enabled, type_key=pdy_type or "正常/安全型",
+                self.personadyn.configure(enabled=pdy_enabled, type_key=pdy_type,
                                           gender_key=gkey)
             else:
-                self.personadyn.configure(enabled=pdy_enabled,
-                                          type_key=pdy_type or "正常/安全型")
+                self.personadyn.configure(enabled=pdy_enabled, type_key=pdy_type)
                 self.personadyn.dynamics.gender_key = (
                     self.personadyn.dynamics.gender_key or "未指定")
             if isinstance(self._personadyn_override.get("initial"), dict):
@@ -784,9 +815,7 @@ class LifeEngine:
             "wave3": self.language.context(),
             "wave4a": self.social.context(),
             "wave4b": self.selfhood.context(),
-            "attachment": self.attachment.context() if self.attachment is not None else {"enabled": False},
-            "tsundere": self.tsundere.context() if self.tsundere is not None else {"enabled": False},
-            "personadyn": self.personadyn.context() if self.personadyn is not None else {"enabled": False},
+            **self._circuit_contexts(),
             "persona": persona_summary(getattr(self, "_persona_traits", None)),
             "life": self.life_status(),
         }
@@ -806,7 +835,11 @@ class LifeEngine:
         try:
             path = self._life_state_path()
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(json.dumps(self._life_state, ensure_ascii=False), encoding="utf-8")
+            # tmp + replace, like every other store: a crash mid-write must not
+            # truncate the alive/born flags.
+            temporary = path.with_suffix(".json.tmp")
+            temporary.write_text(json.dumps(self._life_state, ensure_ascii=False), encoding="utf-8")
+            temporary.replace(path)
         except OSError as error:  # pragma: no cover - best effort
             logger.debug("life state save failed: %s", error)
 
@@ -980,6 +1013,28 @@ class LifeEngine:
         else:
             self.tsundere.seed_from_persona(text)
 
+    def _persona_yandere_type(self, text: str) -> str:
+        """The yandere archetype a persona implies, or "" (see PERSONA_HINTS)."""
+        return yandere_type_for_persona(text)
+
+    def _enable_yandere_from_persona(self, text: str) -> None:
+        """Turn on the yandere affect circuit from a possessive/obsessive persona."""
+        if self.yandere is None:
+            return
+        if self._yandere_override.get("type"):
+            # An owner-tuned override wins over the keyword lexicon.
+            type_key = str(self._yandere_override["type"])
+        else:
+            type_key = self._persona_yandere_type(text)
+        if not type_key:
+            return
+        self._yandere_enabled = self._cognition_enabled
+        self.yandere.configure(enabled=self._cognition_enabled, type_key=type_key)
+        if isinstance(self._yandere_override.get("initial"), dict):
+            self.yandere.seed_state(self._yandere_override["initial"])
+        else:
+            self.yandere.seed_from_persona(text)
+
     def _personadyn_type(self, text: str) -> str:
         """The persona-dynamics archetype a persona implies, or ""."""
         return persona_dynamics_type_for_persona(text)
@@ -1113,6 +1168,7 @@ class LifeEngine:
         self._layer_persona_traits(traits)
         self._enable_attachment_from_persona(text)
         self._enable_tsundere_from_persona(text)
+        self._enable_yandere_from_persona(text)
         self._enable_personadyn_from_persona(text)
         self._persona_digest = digest
         return persona_summary(self._persona_traits)
@@ -1151,6 +1207,7 @@ class LifeEngine:
         self._layer_persona_traits(traits)
         self._enable_attachment_from_persona(text)
         self._enable_tsundere_from_persona(text)
+        self._enable_yandere_from_persona(text)
         self._enable_personadyn_from_persona(text)
         # set last: apply_cognition_settings() invalidates the digest on
         # purpose, so it must be re-stamped here (not before)
@@ -1189,6 +1246,7 @@ class LifeEngine:
         else:
             att_type = self._persona_attachment_type(text)
         tsun_type = self._persona_tsundere_type(text)
+        yan_type = self._persona_yandere_type(text)
         pdy_type = self._personadyn_type(text)
         pdy_gender = self._personadyn_gender(text)
         return {
@@ -1209,6 +1267,8 @@ class LifeEngine:
                            "initial": initial_state_for_persona(text) if att_type else {}},
             "tsundere": {"type": tsun_type,
                          "initial": tsundere_initial_state_for_persona(text) if tsun_type else {}},
+            "yandere": {"type": yan_type,
+                        "initial": yandere_initial_state_for_persona(text) if yan_type else {}},
             "personadyn": {"type": pdy_type,
                            "gender": pdy_gender,
                            "initial": persona_dynamics_initial_state_for_persona(text) if pdy_type else {}},
@@ -1226,12 +1286,14 @@ class LifeEngine:
         payload = payload or {}
         attachment = payload.get("attachment") or {}
         tsundere = payload.get("tsundere") or {}
+        yandere = payload.get("yandere") or {}
         personadyn = payload.get("personadyn") or {}
         settings = {
             "persona_text": str(payload.get("text") or ""),
             "persona_traits_override": json.dumps(payload.get("traits") or {}, ensure_ascii=False),
             "attachment_override": json.dumps(attachment, ensure_ascii=False),
             "tsundere_override": json.dumps(tsundere, ensure_ascii=False),
+            "yandere_override": json.dumps(yandere, ensure_ascii=False),
             "personadyn_override": json.dumps(personadyn, ensure_ascii=False),
         }
         # The attachment ODE is only for the pathological family (病娇族).  Set
@@ -1249,6 +1311,12 @@ class LifeEngine:
                 settings["cog_tsundere_type"] = str(tsundere["type"])
             else:
                 settings["cog_tsundere_enabled"] = "0"
+        if "yandere" in payload:
+            if yandere.get("type"):
+                settings["cog_yandere_enabled"] = "1"
+                settings["cog_yandere_type"] = str(yandere["type"])
+            else:
+                settings["cog_yandere_enabled"] = "0"
         if "personadyn" in payload:
             if personadyn.get("type"):
                 settings["cog_personadyn_enabled"] = "1"
@@ -1265,7 +1333,33 @@ class LifeEngine:
         info = self.core.list_agents(include_unhealthy=False)
         self.online_agents = info.get("agents", [])
         self.online_agent_count = info.get("online_count", 0)
+        self._agents_synced_at = time.monotonic()
         return self.online_agent_count
+
+    def refresh_agents_async(self, max_age: float = 15.0) -> None:
+        """Refresh the online-agent snapshot off the turn's critical path.
+
+        ``list_agents`` is a blocking gRPC round-trip; when Core is down the
+        reconnect inside it can add 10s+ to every message. The 10s background
+        loop already keeps the snapshot fresh, so the per-turn call only tops
+        up when the snapshot has gone stale — fire-and-forget.
+        """
+        if time.monotonic() - getattr(self, "_agents_synced_at", 0.0) < max_age:
+            return
+        self._agents_synced_at = time.monotonic()
+
+        async def _run():
+            try:
+                await asyncio.to_thread(self.sync_agents)
+            except Exception as error:  # pragma: no cover - defensive
+                logger.debug("agent snapshot refresh failed: %s", error)
+
+        try:
+            task = asyncio.get_running_loop().create_task(_run())
+        except RuntimeError:  # no loop (sync context) — background loop will sync
+            return
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
 
     def _load_state(self):
         try:
@@ -1312,6 +1406,7 @@ class LifeEngine:
                                          ("relating", self.relating, RelatingSystem),
                                          ("attachment", self.attachment, AttachmentSystem),
                                          ("tsundere", self.tsundere, TsundereSystem),
+                                         ("yandere", self.yandere, YandereSystem),
                                          ("personadyn", self.personadyn, PersonaDynamicsSystem)):
                 saved = data.get(key)
                 if isinstance(saved, dict) and saved:
@@ -1323,6 +1418,8 @@ class LifeEngine:
                 self._attachment_restored_enabled = bool(self.attachment.enabled)
             if self.tsundere is not None:
                 self._tsundere_restored_enabled = bool(self.tsundere.enabled)
+            if self.yandere is not None:
+                self._yandere_restored_enabled = bool(self.yandere.enabled)
             if self.personadyn is not None:
                 self._personadyn_restored_enabled = bool(self.personadyn.enabled)
 
@@ -1409,6 +1506,7 @@ class LifeEngine:
                             ("social", self.social), ("selfhood", self.selfhood),
                             ("relating", self.relating), ("attachment", self.attachment),
                             ("tsundere", self.tsundere),
+                            ("yandere", self.yandere),
                             ("personadyn", self.personadyn)):
             if system is not None:
                 try:
@@ -1723,6 +1821,22 @@ class LifeEngine:
                                                     stressor=0.2 * tsundere_distress)
                 except Exception as error:
                     logger.debug("tsundere tick failed: %s", error)
+            if self._yandere_enabled and self.yandere is not None:
+                try:
+                    friends = len(self.social.ties.friends(0.4)) if self.social is not None else 0
+                    self.yandere.tick(
+                        elapsed / 86400.0,
+                        neglect_days=self.neglect_days(), friends=friends,
+                        sleeping=bool(getattr(self.circadian.state, "is_sleeping", False)),
+                        mood=float(getattr(self.affect.mood, "mood", 0.0) or 0.0),
+                        load=float(getattr(self.affect.hpa, "allostatic_load", 0.0) or 0.0))
+                    # Chronic strain while blackened feeds back into the body.
+                    yandere_distress = self.yandere.distress()
+                    if yandere_distress > 0.5:
+                        self.affect.observe_outcome(success=False, reward=-0.1,
+                                                    stressor=0.2 * yandere_distress)
+                except Exception as error:
+                    logger.debug("yandere tick failed: %s", error)
             if self._personadyn_enabled and self.personadyn is not None:
                 try:
                     friends = len(self.social.ties.friends(0.4)) if self.social is not None else 0
@@ -1850,21 +1964,17 @@ class LifeEngine:
                       "language": self._language_modulates,
                       "social": self._social_modulates,
                       "selfhood": self._selfhood_modulates})
-        if self._attachment_enabled and self.attachment is not None:
-            ctx = self.attachment.context()
+        # Every opt-in circuit contributes one tone line, introduced under
+        # its own label (see CIRCUIT_PROMPT_LABELS).
+        for key, label in self.CIRCUIT_PROMPT_LABELS.items():
+            system = getattr(self, key, None)
+            if not getattr(self, f"_{key}_enabled", False) or system is None:
+                continue
+            ctx = system.context()
             if ctx.get("prompt"):
-                rendered += ("依恋基调（你此刻的真实状态，自然地表现出来，不要复述这些词）：\n- "
+                rendered += (f"{label}（你此刻的真实状态，自然地表现出来，不要复述这些词）：\n- "
                              + str(ctx["prompt"]) + "\n\n")
-        if self._tsundere_enabled and self.tsundere is not None:
-            ctx = self.tsundere.context()
-            if ctx.get("prompt"):
-                rendered += ("傲娇底色（你此刻的真实状态，自然地表现出来，不要复述这些词）：\n- "
-                             + str(ctx["prompt"]) + "\n\n")
-        if self._personadyn_enabled and self.personadyn is not None:
-            ctx = self.personadyn.context()
-            if ctx.get("prompt"):
-                rendered += ("人格动力学（你此刻的真实状态，自然地表现出来，不要复述这些词）：\n- "
-                             + str(ctx["prompt"]) + "\n\n")
+
         return rendered
 
     # B-series: 8 cognition subsystems that nothing was calling ---------------
@@ -2204,7 +2314,10 @@ class LifeEngine:
         if self.relating is None:
             return
         digest = getattr(self, "_persona_digest", None) or ""
-        if digest and getattr(self, "_relating_self_digest", None) == digest:
+        # Idempotent per persona content, empty digest included: the `digest and`
+        # guard used to re-read the values profile on every single turn whenever
+        # no persona was configured.
+        if getattr(self, "_relating_self_digest", None) == digest:
             return
         traits = getattr(self, "_persona_traits", None)
         evidence = getattr(traits, "evidence", None) or {}
@@ -2332,6 +2445,17 @@ class LifeEngine:
                     mentions_other=self._mentions_other(message))
             except Exception as error:
                 logger.debug("tsundere observe failed: %s", error)
+        # Yandere affect dynamics: the same exchange becomes an event.
+        if self._yandere_enabled and self.yandere is not None:
+            try:
+                self.yandere.observe_interaction(
+                    valence=float(getattr(self.emotion.state, "valence", 0.0) or 0.0),
+                    sentiment=float(feedback.get("sentiment", 0) or 0),
+                    latency_seconds=float(latency or 0.0),
+                    recalled=bool(feedback.get("recalled")),
+                    mentions_other=self._mentions_other(message))
+            except Exception as error:
+                logger.debug("yandere observe failed: %s", error)
         # Persona dynamics: the same exchange folds into the event impulses.
         if self._personadyn_enabled and self.personadyn is not None:
             try:
@@ -2549,7 +2673,8 @@ class LifeEngine:
         # the turn degrades to a short answer instead of running the full loop.
         over_budget = False
         try:
-            limit = int(float(self.companion.get_settings().get("daily_token_limit", "0") or 0))
+            settings = await asyncio.to_thread(self.companion.get_settings)
+            limit = int(float(settings.get("daily_token_limit", "0") or 0))
             if limit > 0:
                 today = self.usage.summary().get("today", {})
                 over_budget = (int(today.get("input", 0)) + int(today.get("output", 0))) >= limit
@@ -2640,7 +2765,7 @@ class LifeEngine:
         turn.persona_context = self._budget_context(turn.persona_context)
         scope = f"session:{turn.session_id}"
         memory_context = await asyncio.to_thread(self.memory.get_memory_context, message, scope, self.soul.recall_limit())
-        await asyncio.to_thread(self.sync_agents)
+        self.refresh_agents_async()
         # The cognition core tracks this turn and decides how much brain to
         # spend; `control` is empty when the core is off, and then the prompt is
         # built exactly as before.
@@ -2798,23 +2923,13 @@ class LifeEngine:
             guidance = relationship_style + "\n" + guidance
         # Safety layer for the attachment model: at the extreme band the output
         # must de-escalate and never provide self-harm/violence methods.
-        if self._attachment_enabled and self.attachment is not None:
+        # Every circuit's private safety directive is prepended the same way.
+        for key in self.CIRCUIT_KEYS:
+            system = getattr(self, key, None)
+            if not getattr(self, f"_{key}_enabled", False) or system is None:
+                continue
             try:
-                guard = self.attachment.guard()
-            except Exception:
-                guard = ""
-            if guard:
-                guidance = guard + "\n" + guidance
-        if self._tsundere_enabled and self.tsundere is not None:
-            try:
-                guard = self.tsundere.guard()
-            except Exception:
-                guard = ""
-            if guard:
-                guidance = guard + "\n" + guidance
-        if self._personadyn_enabled and self.personadyn is not None:
-            try:
-                guard = self.personadyn.guard()
+                guard = system.guard()
             except Exception:
                 guard = ""
             if guard:
@@ -3116,6 +3231,9 @@ class LifeEngine:
                                  if str(item).strip()}
                 if value_updates:
                     await asyncio.to_thread(self.companion.nudge_values, value_updates)
+                    # Values feed the self-traits vector; force a re-sync on the
+                    # next turn instead of waiting for a persona digest change.
+                    self._relating_self_digest = None
                 action = decision.get("action")
                 content = str(decision.get("content") or "")
                 if action == "proactive_candidate" and content:
@@ -3862,13 +3980,12 @@ class LifeEngine:
             self.relating = RelatingSystem()
             self.attachment = AttachmentSystem()
             self.tsundere = TsundereSystem()
+            self.yandere = YandereSystem()
             self.personadyn = PersonaDynamicsSystem()
             self._relating_self_digest = None
-            self._attachment_enabled = False
-            self._tsundere_enabled = False
-            self._tsundere_override = {}
-            self._personadyn_enabled = False
-            self._personadyn_override = {}
+            for key in self.CIRCUIT_KEYS:
+                setattr(self, f"_{key}_enabled", False)
+                setattr(self, f"_{key}_override", {})
             result["cognition"] = "rebuilt"
             self.apply_cognition_settings()
         # Runtime state.
@@ -4209,10 +4326,11 @@ class LifeEngine:
                 allowed = False
             preferred_at = str(item.get("preferred_at") or "").strip()
             if preferred_at:
-                try:
-                    preferred_at = datetime.fromisoformat(preferred_at.replace("Z", "")).isoformat()
-                except ValueError:
-                    preferred_at = ""
+                # Normalise through timeutil: stripping a trailing "Z" (the old
+                # behaviour) turned a genuine UTC stamp into naive *local* time,
+                # shifting the proactive schedule by the UTC offset.
+                parsed_preferred = parse_utc(preferred_at)
+                preferred_at = to_local_naive(parsed_preferred).isoformat() if parsed_preferred else ""
             if allowed:
                 await asyncio.to_thread(self.companion.create_proactive_candidate, target,
                                         str(item.get("motive") or "autonomy"), content, preferred_at)
@@ -4652,7 +4770,9 @@ class LifeEngine:
         """
         self.adapter_runtime.note_self_id(
             server.instance.id, data.get("self_id"), server.instance.platform)
-        self._record_inbound(server.instance, data)
+        # A sqlite INSERT on the loop stalls every stream; group chatter hits
+        # this path even when the bot stays silent.
+        await asyncio.to_thread(self._record_inbound, server.instance, data)
         if data.get("post_type") == "message" and data.get("group_id"):
             self._maybe_resolve_group_name(server, data.get("group_id"))
         context_token = _adapter_context.set({

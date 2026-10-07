@@ -40,12 +40,11 @@ from __future__ import annotations
 import math
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
+from .common import clamp as _clamp
 
 EPS = 1e-9
 
 
-def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
-    return max(low, min(high, value))
 
 
 def _softmax(scores: dict) -> dict:

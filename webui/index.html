@@ -65,10 +65,127 @@
   </head>
   <body>
     <!-- Splash stands in until Vue mounts (theme.css is bundled, so keep the
-         styling inline) — no more blank white frame on slow connections. -->
-    <div id="app">
-      <div style="height:100%;display:flex;align-items:center;justify-content:center;font:700 22px/1 system-ui,sans-serif;letter-spacing:-.5px;color:#5944c6">0kay</div>
+         styling inline). It is a fixed overlay *outside* #app: main.ts fades
+         it out after mount, so the boot sequence ends in a reveal instead of
+         an abrupt swap. Colors track the pre-boot data-theme above. -->
+    <style>
+      #splash {
+        --splash-bg: #fbf8ff;
+        --splash-fg: #211d2a;
+        --splash-muted: #60596d;
+        --splash-primary: #5944c6;
+        --splash-track: #e8e1f1;
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        background: var(--splash-bg);
+        color: var(--splash-fg);
+        font-family: 'Segoe UI Variable', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+        transition: opacity 0.45s ease;
+        user-select: none;
+      }
+      html[data-theme='dark'] #splash {
+        --splash-bg: #141218;
+        --splash-fg: #e6e0e9;
+        --splash-muted: #b7abce;
+        --splash-primary: #d0bcff;
+        --splash-track: #2b2930;
+      }
+      #splash.splash--done {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .splash__logo {
+        position: relative;
+        width: 64px;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .splash__mark {
+        width: 40px;
+        height: 40px;
+        display: block;
+        /* drop-shadow (not box-shadow) so the glow follows the squircle's
+           transparent corners instead of painting a rectangular halo. */
+        filter: drop-shadow(0 5px 14px rgba(31, 36, 40, 0.45));
+      }
+      .splash__ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 3px solid transparent;
+        border-top-color: var(--splash-primary);
+        animation: splash-spin 0.9s linear infinite;
+      }
+      .splash__word {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+      .splash__bar {
+        width: 132px;
+        height: 4px;
+        border-radius: 999px;
+        background: var(--splash-track);
+        overflow: hidden;
+      }
+      .splash__bar-fill {
+        width: 40%;
+        height: 100%;
+        border-radius: 999px;
+        background: var(--splash-primary);
+        animation: splash-slide 1.4s ease-in-out infinite;
+      }
+      .splash__hint {
+        font-size: 12px;
+        color: var(--splash-muted);
+      }
+      @keyframes splash-spin {
+        to { transform: rotate(360deg); }
+      }
+      @keyframes splash-slide {
+        0% { transform: translateX(-120%); }
+        100% { transform: translateX(320%); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash { transition: none; }
+        #splash .splash__ring,
+        #splash .splash__bar-fill { animation: none; }
+      }
+    </style>
+    <div id="splash" role="status" aria-live="polite">
+      <div class="splash__logo">
+        <div class="splash__ring"></div>
+        <img class="splash__mark" src="/okay-logo.svg" alt="" />
+      </div>
+      <div class="splash__word">0kay</div>
+      <div class="splash__bar"><div class="splash__bar-fill"></div></div>
+      <div class="splash__hint" id="splash-hint">Starting…</div>
     </div>
+    <script>
+      // Pre-i18n hint text: mirror i18n.ts locale resolution (saved lang, then
+      // navigator.language) closely enough for one static string.
+      (function () {
+        try {
+          var lang = (localStorage.getItem('0kay_lang') || navigator.language || 'en').toLowerCase()
+          var hint = 'Starting…'
+          if (/^zh/.test(lang)) {
+            hint = /(tw|hk|mo|hant)/.test(lang) ? '正在啟動…' : '正在启动…'
+          } else if (/^ja/.test(lang)) {
+            hint = '起動中…'
+          }
+          document.getElementById('splash-hint').textContent = hint
+        } catch (e) { /* keep the English default */ }
+      })();
+    </script>
+    <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

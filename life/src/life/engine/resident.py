@@ -197,7 +197,7 @@ class ResidentThinker:
     async def _run(self) -> None:
         while not self._stopping:
             try:
-                await asyncio.wait_for(self._wake.wait(), timeout=self._effective_interval())
+                await asyncio.wait_for(self._wake.wait(), timeout=await self._effective_interval())
             except asyncio.TimeoutError:
                 pass
             self._wake.clear()
@@ -297,7 +297,7 @@ class ResidentThinker:
         except Exception:
             return False
 
-    def _effective_interval(self) -> float:
+    async def _effective_interval(self) -> float:
         """Momentum, not a metronome: think sooner when something is live.
 
         A goal, an unfinished thread or someone in the character's own world
@@ -309,7 +309,8 @@ class ResidentThinker:
         active = bool(self.state.focus or self.state.pending)
         if not active:
             try:
-                active = any(g.get("status") == "active" for g in self.engine.companion.list_goals("active"))
+                goals = await asyncio.to_thread(self.engine.companion.list_goals, "active")
+                active = any(g.get("status") == "active" for g in goals)
             except Exception:
                 active = False
         if not active:
@@ -332,7 +333,7 @@ class ResidentThinker:
                 self.state.pending = thought or self.state.pending
                 self._save()
                 return False
-            self._apply(thought, focus, goal_logs, goal_adds)
+            await self._apply(thought, focus, goal_logs, goal_adds)
             self.state.pending = ""
             self.state.ticks += 1
             self.state.last_tick = _now()
@@ -344,7 +345,7 @@ class ResidentThinker:
 
     async def _generate(self) -> tuple[str, str, list[dict], list[dict]]:
         engine = self.engine
-        context = self._inner_context()
+        context = await self._inner_context()
         prompt = (
             "这是你的常驻内心时间。没有用户指令，你可以延续上一刻的念头，也可以想一件你自己在意的事。\n"
             "只返回 JSON：{\"thought\":\"此刻第一人称的念头，<=60字\","
@@ -369,28 +370,34 @@ class ResidentThinker:
         goal_logs = [item for item in (data.get("goal_log") or []) if isinstance(item, dict)][:2]
         return thought, focus, goal_logs, goal_adds
 
-    def _apply(self, thought: str, focus: str, goal_logs: list[dict], goal_adds: list[dict]) -> None:
+    async def _apply(self, thought: str, focus: str, goal_logs: list[dict], goal_adds: list[dict]) -> None:
         engine = self.engine
         if thought:
             self.state.add_thought(thought)
             try:
-                engine.companion.record_self_statement(thought, "resident")
+                await asyncio.to_thread(engine.companion.record_self_statement, thought, "resident")
             except Exception as error:  # pragma: no cover - defensive
                 self._log("resident self-statement failed: %s", error)
         if focus:
             self.state.focus = focus
         if goal_adds:
+            try:
+                active_self_goals = [g for g in await asyncio.to_thread(engine.companion.list_goals, "active")
+                                     if g.get("kind") == "self"]
+            except Exception:
+                active_self_goals = []
             for item in goal_adds:
                 title = str(item.get("title") or "").strip()[:160]
-                if title and len([g for g in engine.companion.list_goals("active") if g.get("kind") == "self"]) < 3:
+                if title and len(active_self_goals) < 3:
                     try:
-                        engine.companion.add_goal(title, str(item.get("detail") or "")[:500], "self")
+                        await asyncio.to_thread(engine.companion.add_goal, title, str(item.get("detail") or "")[:500], "self")
                         self.state.active_goal = title
                     except Exception as error:  # pragma: no cover - defensive
                         self._log("resident goal_add failed: %s", error)
         if goal_logs:
             try:
-                goals = {str(g.get("title")): g.get("id") for g in engine.companion.list_goals("")}
+                goals = {str(g.get("title")): g.get("id")
+                         for g in await asyncio.to_thread(engine.companion.list_goals, "")}
             except Exception:
                 goals = {}
             for item in goal_logs:
@@ -398,8 +405,8 @@ class ResidentThinker:
                 if not goal_id:
                     continue
                 try:
-                    engine.companion.add_goal_log(goal_id, str(item.get("evidence") or "")[:300],
-                                                  item.get("progress"))
+                    await asyncio.to_thread(engine.companion.add_goal_log, goal_id,
+                                            str(item.get("evidence") or "")[:300], item.get("progress"))
                 except Exception as error:  # pragma: no cover - defensive
                     self._log("resident goal_log failed: %s", error)
 
@@ -417,7 +424,7 @@ class ResidentThinker:
             parts.append(f"（被打断、待续的念头：{self.state.pending}）")
         return "\n".join(parts)
 
-    def _inner_context(self) -> str:
+    async def _inner_context(self) -> str:
         engine = self.engine
         bits = []
         if self.state.focus:
@@ -427,7 +434,7 @@ class ResidentThinker:
         if self.state.scratchpad:
             bits.append("最近的念头：" + "；".join(self.state.scratchpad[-3:]))
         try:
-            active = [g for g in engine.companion.list_goals("active")][:4]
+            active = [g for g in await asyncio.to_thread(engine.companion.list_goals, "active")][:4]
             if active:
                 bits.append("你的目标：" + "、".join(
                     f"{g.get('title')}(进度{float(g.get('progress', 0) or 0):.2f})" for g in active))
@@ -456,6 +463,10 @@ class ResidentThinker:
         try:
             data = json.loads(self.state_path.read_text(encoding="utf-8"))
         except (FileNotFoundError, ValueError, OSError):
+            return
+        if not isinstance(data, dict):
+            # A hand-edited/truncated file can be valid JSON without being an
+            # object; from_dict expects a mapping.
             return
         self.state = MentalState.from_dict(data)
 

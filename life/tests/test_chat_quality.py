@@ -130,17 +130,44 @@ class SafetyGuardVoiceTests(unittest.TestCase):
     """
 
     def test_all_guards_are_marked_private(self):
-        from life.cognition.persona_dynamics import PersonaDynamicsSystem
-        from life.cognition.attachment import AttachmentSystem
-        from life.cognition.tsundere import TsundereSystem
+        """Every circuit's safety directive must be a *private* one.
 
-        # The literal used by every guard() implementation.
+        Checked by driving each circuit into its safe band and reading the guard
+        it actually emits, rather than by grepping the source: the directive now
+        lives once in ``cognition/common.py``, so a source scan would only prove
+        the literal exists somewhere — not that each circuit still emits it.
+        """
+        from life.cognition.attachment import AttachmentSystem
+        from life.cognition.persona_dynamics import PersonaDynamicsSystem
+        from life.cognition.tsundere import TsundereSystem
+        from life.cognition.yandere import YandereSystem
+
         marker = "不得说出"
-        for module in ("persona_dynamics.py", "attachment.py", "tsundere.py"):
-            import pathlib
-            path = pathlib.Path(__file__).resolve().parents[1] / "src" / "life" / "cognition" / module
-            text = path.read_text(encoding="utf-8")
-            self.assertIn(marker, text, f"{module} guard lost its private marker")
+
+        attachment = AttachmentSystem(enabled=True, type_key="排除型")
+        attachment.dynamics.state.update(
+            {"A": 0.9, "Am": 0.9, "Tr": 0.1, "J": 0.95, "X": 0.95, "O": 0.95})
+
+        tsundere = TsundereSystem(enabled=True, type_key="暴躁傲娇")
+        tsundere.dynamics.state.update({"A": 0.95, "T": 0.5, "Y": 0.9})
+
+        yandere = YandereSystem(enabled=True, type_key="病娇")
+        yandere.dynamics.primary().affection = 0.9
+        yandere.dynamics.v = -0.9  # deep in the YAMI region
+
+        personadyn = PersonaDynamicsSystem(enabled=True, type_key="病娇型")
+        personadyn.dynamics.A = 1.0
+        personadyn.dynamics.X = 1.0
+        personadyn.dynamics.Tr = 0.0
+        personadyn.dynamics.K = 0.0
+        personadyn.dynamics.D["O"] = 1.0
+
+        for system in (attachment, tsundere, yandere, personadyn):
+            name = type(system).__name__
+            guard = system.guard()
+            self.assertTrue(guard, f"{name} emitted no guard at the safe band")
+            self.assertIn(marker, guard, f"{name} guard lost its private marker")
+            self.assertIn("自伤", guard, f"{name} guard lost its self-harm clause")
 
     def test_output_prompt_forbids_paraphrasing_safety(self):
         self.assertIn("PRIVATE", OUTPUT_PROMPT_TEMPLATE)

@@ -14,6 +14,7 @@ import json
 import sqlite3
 import threading
 import uuid
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
@@ -44,13 +45,28 @@ class ChatLog:
         self._lock = threading.RLock()
         self._init()
 
-    def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.path, timeout=10)
-        conn.row_factory = sqlite3.Row
-        return conn
+    @contextmanager
+    def _connect(self):
+        """Open a connection, run the body in a transaction, then close it.
+
+        A bare ``with sqlite3.Connection`` block only wraps the *transaction*
+        (commit/rollback); it never closes the handle.  Reusing that idiom with
+        a connection returned from ``_connect`` leaked one open handle per call,
+        which on Windows keeps ``chatlog.db`` locked and makes the owning data
+        directory undeletable.  Open and close inside one context manager, the
+        same shape the companion and memory stores use.
+        """
+        with self._lock:
+            conn = sqlite3.connect(self.path, timeout=10)
+            conn.row_factory = sqlite3.Row
+            try:
+                with conn:
+                    yield conn
+            finally:
+                conn.close()
 
     def _init(self) -> None:
-        with self._lock, self._connect() as db:
+        with self._connect() as db:
             db.execute(
                 """CREATE TABLE IF NOT EXISTS chat_messages (
                     id TEXT PRIMARY KEY,
@@ -89,7 +105,7 @@ class ChatLog:
             json.dumps(media or [], ensure_ascii=False), str(message_id or ""), _now(),
         )
         try:
-            with self._lock, self._connect() as db:
+            with self._connect() as db:
                 db.execute("INSERT INTO chat_messages VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", row)
             return True
         except Exception as error:  # pragma: no cover - storage fault
@@ -98,7 +114,7 @@ class ChatLog:
 
     def conversations(self, limit: int = 100) -> list:
         """One row per conversation, newest activity first."""
-        with self._lock, self._connect() as db:
+        with self._connect() as db:
             rows = db.execute(
                 "SELECT conversation, MAX(created_at) AS last_at FROM chat_messages "
                 "GROUP BY conversation ORDER BY last_at DESC LIMIT ?", (int(limit),)
@@ -139,7 +155,7 @@ class ChatLog:
             return out
 
     def name(self, conversation: str) -> str:
-        with self._lock, self._connect() as db:
+        with self._connect() as db:
             row = db.execute("SELECT name FROM chat_meta WHERE conversation=?", (conversation,)).fetchone()
         return (row["name"] if row else "") or ""
 
@@ -148,7 +164,7 @@ class ChatLog:
         if not name:
             return
         try:
-            with self._lock, self._connect() as db:
+            with self._connect() as db:
                 db.execute(
                     "INSERT INTO chat_meta(conversation, name) VALUES(?,?) "
                     "ON CONFLICT(conversation) DO UPDATE SET name=excluded.name",
@@ -159,7 +175,7 @@ class ChatLog:
 
     def messages(self, conversation: str, limit: int = 200, before: str = "") -> list:
         """Messages of one conversation, oldest-first for display."""
-        with self._lock, self._connect() as db:
+        with self._connect() as db:
             params: list = [conversation]
             sql = "SELECT * FROM chat_messages WHERE conversation=?"
             if before:

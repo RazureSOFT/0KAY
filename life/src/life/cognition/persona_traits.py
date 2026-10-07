@@ -43,6 +43,7 @@ from .persona_style import (
     style_axes,
 )
 from .somatic import SomaticSymptomSystem
+from .common import clamp as _clamp
 
 # ---------------------------------------------------------------------------
 # The lexicon: dimension -> (keywords, trait deltas).  Every delta is a small,
@@ -179,8 +180,6 @@ FIELD_AXES = (
 )
 
 
-def _clamp(value: float, low: float, high: float) -> float:
-    return max(low, min(high, float(value)))
 
 
 @dataclass

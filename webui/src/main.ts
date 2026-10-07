@@ -133,6 +133,16 @@ ui.$subscribe(() => {
 }, { detached: true })
 
 app.mount('#app')
+
+// The app shell took over: retire the pre-boot splash from index.html with a
+// short fade instead of an abrupt swap. Removed from the DOM afterwards so a
+// HMR reload starts from a clean body.
+const splash = document.getElementById('splash')
+if (splash) {
+  splash.classList.add('splash--done')
+  window.setTimeout(() => splash.remove(), 500)
+}
+
 void bootstrapSession()
 const disposeMotion = installInteractionMotion()
 if (import.meta.hot) import.meta.hot.dispose(disposeMotion)
