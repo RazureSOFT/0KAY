@@ -3,7 +3,7 @@
 // highlighted <pre>. Both share identical font metrics and padding; the textarea
 // owns scrolling and the backdrop follows it, so the text and colors stay in
 // lockstep as you type.
-import { nextTick, ref } from 'vue'
+import { nextTick, onUnmounted, ref, watch } from 'vue'
 import HighlightedCode from './HighlightedCode.vue'
 
 const props = defineProps<{ modelValue: string; path?: string }>()
@@ -11,6 +11,18 @@ const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
 const textarea = ref<HTMLTextAreaElement | null>(null)
 const backdrop = ref<HTMLElement | null>(null)
+
+// Highlighting is O(n) over the whole buffer, so feeding the raw model value
+// re-highlighted on every keystroke. The textarea itself is uncontrolled-fast
+// (its own value updates instantly); the backdrop trails typing by a short
+// debounce instead. Real value stays exact for save/dirty tracking.
+const highlightSource = ref(props.modelValue)
+let highlightTimer: ReturnType<typeof setTimeout> | null = null
+watch(() => props.modelValue, (value) => {
+  if (highlightTimer) clearTimeout(highlightTimer)
+  highlightTimer = setTimeout(() => { highlightTimer = null; highlightSource.value = value }, 150)
+})
+onUnmounted(() => { if (highlightTimer) clearTimeout(highlightTimer) })
 
 function onInput(event: Event) {
   emit('update:modelValue', (event.target as HTMLTextAreaElement).value)
@@ -43,7 +55,7 @@ defineExpose({ focus })
 <template>
   <div class="code-editor">
     <div ref="backdrop" class="code-editor-backdrop" aria-hidden="true">
-      <HighlightedCode :code="(modelValue || '') + '\n'" :path="path" />
+      <HighlightedCode :code="(highlightSource || '') + '\n'" :path="path" />
     </div>
     <textarea
       ref="textarea"

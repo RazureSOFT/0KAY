@@ -13,6 +13,8 @@ import ConfirmDialog from './components/ConfirmDialog.vue'
 import AppSelect from './components/AppSelect.vue'
 import LifeApprovalDialog from './components/LifeApprovalDialog.vue'
 import MinecraftConsentDialog from './components/MinecraftConsentDialog.vue'
+import NavIcon from './components/NavIcon.vue'
+import ToastHost from './components/ToastHost.vue'
 import { setLanguage, getLanguage, LOCALES } from './i18n'
 import { authRequired, submitLogin, cancelLogin, pinRequired, submitPin, cancelPin, verifyPin, pinConfigured, pinSetupRequired, setPin, pinGuard, pinUnlocked, pinPages, pinEnabled, pageRequiresPin, requirePagePin } from './auth'
 import PinInput from './components/PinInput.vue'
@@ -248,8 +250,10 @@ async function onSetupSubmit() {
 </script>
 
 <template>
+  <ToastHost />
   <Teleport to="body">
     <!-- First run / upgrade: choose a 6-digit access PIN -->
+    <Transition name="auth">
     <div
       v-if="pinSetupRequired && !authRequired"
       class="auth-scrim"
@@ -271,7 +275,9 @@ async function onSetupSubmit() {
         </footer>
       </form>
     </div>
+    </Transition>
 
+    <Transition name="auth">
     <div
       v-if="authRequired"
       class="auth-scrim"
@@ -309,7 +315,9 @@ async function onSetupSubmit() {
         </footer>
       </form>
     </div>
+    </Transition>
 
+    <Transition name="auth">
     <div
       v-if="pinRequired"
       class="auth-scrim"
@@ -329,14 +337,17 @@ async function onSetupSubmit() {
         </footer>
       </form>
     </div>
+    </Transition>
   </Teleport>
 
-  <SetupWizard
-    v-if="!wizard.isCompleted"
-    @complete="onWizardComplete"
-  />
+  <Transition name="shell" mode="out-in">
+    <SetupWizard
+      v-if="!wizard.isCompleted"
+      key="wizard"
+      @complete="onWizardComplete"
+    />
 
-  <div v-else class="app-shell">
+    <div v-else key="shell" class="app-shell">
     <GlobalAgentInbox />
     <ComputerUsePip />
     <ConfirmDialog />
@@ -352,6 +363,8 @@ async function onSetupSubmit() {
         <span
           class="conn-dot"
           :class="{ on: life.isConnected }"
+          role="img"
+          :aria-label="life.isConnected ? t('status.connected') : t('status.disconnected')"
           :title="life.isConnected ? t('status.connected') : t('status.disconnected')"
         ></span>
         <AppSelect
@@ -389,45 +402,7 @@ async function onSetupSubmit() {
           @click="!(item.to && !item.external && !item.href) && onNav(item)"
         >
           <span class="nav-icon">
-            <!-- chat -->
-            <svg v-if="item.icon === 'chat' || item.id === 'chat'" width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path d="M4 6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H9l-5 4V6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-            </svg>
-            <!-- agents / life -->
-            <svg v-else-if="item.icon === 'agents' || item.id === 'agents' || item.id === 'life'" width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <rect x="4" y="7" width="16" height="12" rx="4" stroke="currentColor" stroke-width="2"/>
-              <circle cx="9" cy="13" r="1.5" fill="currentColor"/>
-              <circle cx="15" cy="13" r="1.5" fill="currentColor"/>
-              <path d="M12 7V4M8 4h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            <!-- plugins -->
-            <svg v-else-if="item.icon === 'plugins' || item.id === 'plugins'" width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path d="M8 3v4M16 3v4M3 10h18M7 14h4v7H7v-7zM13 14h4v4h-4v-4z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            <!-- usage -->
-            <svg v-else-if="item.icon === 'usage' || item.id === 'usage'" width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path d="M4 19V5M4 19h16" stroke="currentColor" stroke-width="2"/>
-              <path d="M8 15v-4M12 15V8M16 15v-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            <!-- updates -->
-            <svg v-else-if="item.icon === 'updates' || item.id === 'updates'" width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path d="M12 4v10M12 14l-3.5-3.5M12 14l3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M5 17.5A4 4 0 0 0 8.5 20h7a4 4 0 0 0 .5-7.97" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            <!-- settings -->
-            <svg v-else-if="item.icon === 'settings' || item.id === 'settings'" width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
-              <path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            <!-- search / default -->
-            <svg v-else-if="item.icon === 'search' || item.id === 'search'" width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="2"/>
-              <path d="M16 16l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            <svg v-else width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <rect x="5" y="5" width="14" height="14" rx="3" stroke="currentColor" stroke-width="2"/>
-              <circle cx="12" cy="12" r="2" fill="currentColor"/>
-            </svg>
+            <NavIcon :name="item.icon || item.id" />
           </span>
           <span class="nav-label">{{ navLabel(item) }}</span>
           <span v-if="navBadge(item) != null" class="badge">{{ navBadge(item) }}</span>
@@ -443,24 +418,32 @@ async function onSetupSubmit() {
       </main>
     </div>
   </div>
+  </Transition>
 </template>
 
 <style scoped>
+/* ---------------------------------------------------------------------------
+ * The app chrome is owned by styles/theme.css.
+ *
+ * Every `#app .app-header` / `.nav-rail` / `.nav-item` / `.app-main` rule there
+ * is an ID selector — (1,1,0) or higher — and always beats a scoped rule in
+ * this file (0,2,0). Only the declarations theme.css does NOT set are kept
+ * below. The rest (heights, padding, gaps, radii, backgrounds, borders, font
+ * sizes, and the whole nav-indicator box) used to sit here carrying *different*
+ * values from the ones that actually rendered — header 64px here vs 76px there,
+ * rail 88px vs 100px — which made this block actively misleading to anyone
+ * editing it. Change the chrome in styles/theme.css.
+ * ------------------------------------------------------------------------- */
 .app-shell {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--md-surface);
 }
 
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 64px;
-  padding: 0 var(--space-lg);
-  background: var(--md-surface-container);
-  border-bottom: 1px solid var(--md-outline-variant);
   z-index: 10;
   /* Chrome is not content: keep the brand + controls out of any select-all /
      drag selection so copying a chat can never drag "0kay" and nav labels in. */
@@ -469,26 +452,11 @@ async function onSetupSubmit() {
 
 .brand {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-md);
   min-width: 0;
   user-select: none;
 }
 
-.brand-mark {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  background: linear-gradient(135deg, var(--md-primary), #9C4FFF);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
 .page-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--md-on-surface-variant);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -497,7 +465,6 @@ async function onSetupSubmit() {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
 }
 
 .conn-dot {
@@ -506,19 +473,22 @@ async function onSetupSubmit() {
   border-radius: 50%;
   background: var(--md-outline);
   margin-right: 4px;
+  transition: background-color var(--duration-medium, 220ms) var(--ease-out, ease-out),
+    box-shadow var(--duration-medium, 220ms) var(--ease-out, ease-out);
 }
 .conn-dot.on {
   background: var(--md-success);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--md-success) 20%, transparent);
 }
 
+/* Box (44x44, radius 18, surface background) comes from `#app .icon-btn` in
+   theme.css. `.icon-btn.active` is deliberately NOT kept here: the platform
+   rule's `background` is (1,1,0) and beat this block's `.icon-btn.active`
+   (0,3,0), so the settings button never painted its active surface. That state
+   now lives in theme.css, where it can win. */
 .icon-btn {
-  min-width: 40px;
-  height: 40px;
   padding: 0 12px;
   border: none;
-  border-radius: var(--radius-full);
-  background: transparent;
   color: var(--md-on-surface-variant);
   font-weight: 600;
   font-size: 13px;
@@ -530,10 +500,6 @@ async function onSetupSubmit() {
 }
 .icon-btn:hover {
   background: color-mix(in srgb, var(--md-on-surface) 8%, transparent);
-}
-.icon-btn.active {
-  background: var(--md-secondary-container);
-  color: var(--md-on-secondary-container);
 }
 
 .lang-select {
@@ -562,29 +528,23 @@ async function onSetupSubmit() {
 .nav-rail {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  width: 88px;
-  padding: var(--space-md) var(--space-sm);
-  background: var(--md-surface-container-low);
-  border-right: 1px solid var(--md-outline-variant);
   flex-shrink: 0;
   /* Nav labels are chrome, not chat: exclude them from selection entirely. */
   user-select: none;
 }
 
+/* Layout only. Width, padding, gap, radius, font-size and the active pill
+   (`.nav-item::before`) all come from theme.css, which out-ranks this block —
+   the values here used to disagree with the rendered ones (rail 88px vs 100px,
+   item padding 12px 4px vs 9px 6px). */
 .nav-item {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 12px 4px;
-  border-radius: var(--radius-md);
   color: var(--md-on-surface-variant);
   text-decoration: none;
-  font-size: 12px;
   font-weight: 500;
-  transition: background var(--transition-fast), color var(--transition-fast);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -593,23 +553,6 @@ async function onSetupSubmit() {
 
 .nav-item:hover {
   background: color-mix(in srgb, var(--md-on-surface) 6%, transparent);
-}
-
-.nav-item.active {
-  color: var(--md-on-secondary-container);
-}
-
-.nav-item.active::before {
-  content: '';
-  position: absolute;
-  top: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-full);
-  background: var(--md-secondary-container);
-  z-index: -1;
 }
 
 .nav-icon {
@@ -644,31 +587,20 @@ async function onSetupSubmit() {
   overflow: hidden;
 }
 
+/* Mobile: the rail becomes a bottom bar. Its width, padding, item box and the
+   active pill all come from the `max-width: 720px` block in theme.css — only
+   the direction, overflow and the badge offset are ours. */
 @media (max-width: 720px) {
   .app-body {
     flex-direction: column-reverse;
   }
   .nav-rail {
-    width: 100%;
     flex-direction: row;
     justify-content: space-around;
-    padding: 6px var(--space-sm) calc(6px + env(safe-area-inset-bottom));
-    border-right: none;
-    border-top: 1px solid var(--md-outline-variant);
     overflow-x: auto;
   }
   .nav-item {
     flex: 1;
-    padding: 8px 4px;
-    border-radius: var(--radius-lg);
-    min-width: 56px;
-  }
-  .nav-item.active::before {
-    top: auto;
-    bottom: auto;
-    width: 56px;
-    height: 32px;
-    border-radius: var(--radius-full);
   }
   .badge { right: calc(50% - 24px); }
   .page-title { display: none; }
@@ -677,13 +609,27 @@ async function onSetupSubmit() {
 .auth-scrim {
   position: fixed;
   inset: 0;
-  z-index: 14000;
+  z-index: var(--z-auth, 7000);
   display: grid;
   place-items: center;
   padding: 20px;
   background: color-mix(in srgb, var(--md-scrim, #000) 45%, transparent);
   backdrop-filter: blur(6px);
 }
+
+/* Auth gate enters with the shared dialog rise; leaves accelerate out so the
+   hand-off to the app shell never feels like a flash cut. */
+.auth-enter-active { transition: opacity var(--duration-medium, 220ms) var(--ease-out, ease-out); }
+.auth-leave-active { transition: opacity var(--duration-short, 140ms) var(--ease-emphasized-accel, ease-in); }
+.auth-enter-from,
+.auth-leave-to { opacity: 0; }
+.auth-enter-active .auth-dialog { animation: dialog-arrive var(--duration-long, 360ms) var(--ease-spring, ease-out) both; }
+
+/* Wizard -> shell swap: the wizard shrinks away, the shell fades in. */
+.shell-enter-active { transition: opacity var(--duration-medium, 220ms) var(--ease-out, ease-out); }
+.shell-leave-active { transition: opacity var(--duration-short, 140ms) var(--ease-emphasized-accel, ease-in), transform var(--duration-short, 140ms) var(--ease-emphasized-accel, ease-in); }
+.shell-enter-from { opacity: 0; }
+.shell-leave-to { opacity: 0; transform: scale(0.985); }
 
 .auth-dialog {
   width: min(420px, 100%);
@@ -694,17 +640,14 @@ async function onSetupSubmit() {
   border-radius: 28px;
   background: var(--md-surface);
   color: var(--md-on-surface);
-  box-shadow: 0 24px 70px rgb(0 0 0 / 25%);
+  box-shadow: var(--shadow-4, 0 22px 60px #30205724);
 }
 
 .auth-mark {
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.5px;
-  background: linear-gradient(135deg, var(--md-primary), #9C4FFF);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--md-on-surface);
 }
 
 .auth-dialog h2 {

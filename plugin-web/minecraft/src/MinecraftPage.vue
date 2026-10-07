@@ -1,23 +1,73 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { i18n, useConfirm } from '@0kay/host'
 
-const storedUrl = (() => { try { return localStorage.getItem('0kay.minecraft.url') || '' } catch { return '' } })()
-const serviceUrl = ref(storedUrl || `http://${location.hostname || '127.0.0.1'}:8765`)
-const serviceToken = ref('')
-const authHeaders = () => ({ Authorization: `Bearer ${serviceToken.value}` })
+const t = (key, named) => i18n.global.t(key, named ?? {})
+
+// Core proxies to the plugin service and injects its token, so the panel talks
+// to Core same-origin with the owner session and never handles the secret.
+const API = '/api/plugins/minecraft/proxy'
 const status = ref(null)
 const world = ref({ waypoints: [], skills: [] })
-const error = ref('')
 const loading = ref(true)
-const busy = ref(false)
 const showConnect = ref(false)
-const form = ref({ edition: 'java', host: '', port: '', username: 'XingYao', password: '' })
+const form = ref({ edition: 'java', host: '', port: '', username: '', password: '' })
 let timer = null
+
+// Two error classes: connection problems (poll fetch threw / 5xx) vs action
+// failures (unknown skill, bad args, per-action timeout). Each gets its own
+// banner copy and styling; action success gets a transient toast instead.
+const connError = ref('')
+const actionError = ref('')
+const toast = ref('')
+let toastTimer = null
+
+// Per-action busy state, keyed by action (plus args identity) so parallel
+// actions each light up only their own button.
+const busyActions = reactive(new Set())
+const anyBusy = computed(() => busyActions.size > 0)
+function busyKey(action, args) {
+  return args && Object.keys(args).length ? `${action}:${JSON.stringify(args)}` : action
+}
+function actBusy(action, args) { return busyActions.has(busyKey(action, args)) }
+
+// Host confirm dialog when the bridge provides it; two-step button otherwise.
+let hostConfirm = null
+try {
+  const c = useConfirm()
+  if (c && typeof c.confirm === 'function') hostConfirm = c.confirm
+} catch { /* older host bridge without useConfirm */ }
+const armedDisconnect = ref(false)
+let armTimer = null
+
+// Read-only action log: one entry per act(), newest first, capped at 50.
+const actionLog = ref([])
+let logId = 0
+function pushLog(action, ok, detail) {
+  actionLog.value.unshift({ id: ++logId, time: new Date().toLocaleTimeString(), action, ok, detail })
+  if (actionLog.value.length > 50) actionLog.value.length = 50
+}
 
 const bot = computed(() => status.value?.bot || null)
 const connected = computed(() => !!bot.value?.connected)
 const autopilot = computed(() => status.value?.autopilot || { running: false })
 const playerName = computed(() => bot.value?.username || '')
+
+// Raw `bot.state` enums are English; map known ones through i18n and fall back
+// to the raw value for anything new.
+const STATE_KEYS = {
+  idle: 'minecraft.stateIdle',
+  connecting: 'minecraft.stateConnecting',
+  connected: 'minecraft.stateConnected',
+  spawning: 'minecraft.stateSpawning',
+  error: 'minecraft.stateError',
+}
+const stateText = computed(() => {
+  const s = bot.value?.state
+  if (!s) return t('minecraft.disconnected')
+  const key = STATE_KEYS[s]
+  return key ? t(key) : s
+})
 
 function pct(v, max = 20) {
   const n = Number(v)
@@ -34,19 +84,47 @@ function slot(s) { return itemBySlot.value[s] || null }
 const hotbar = computed(() => Array.from({ length: 9 }, (_, i) => ({ slot: 36 + i, item: slot(36 + i) })))
 const backpack = computed(() => Array.from({ length: 27 }, (_, i) => ({ slot: 9 + i, item: slot(9 + i) })))
 
+// Slots whose contents changed since the previous poll flash once (600ms) so
+// pickups and drops are noticeable without watching the whole grid.
+const flashSlots = ref({})
+let prevInv = null
+let flashTimer = null
+function diffInventory() {
+  const now = {}
+  for (const item of bot.value?.inventory || []) now[item.slot] = `${item.name}#${item.count ?? 1}`
+  if (prevInv) {
+    const changed = {}
+    for (const [slotKey, sig] of Object.entries(now)) {
+      const s = Number(slotKey)
+      if (prevInv[s] !== sig) changed[s] = true
+    }
+    for (const slotKey of Object.keys(prevInv)) {
+      const s = Number(slotKey)
+      if (!(s in now)) changed[s] = true
+    }
+    if (Object.keys(changed).length) {
+      flashSlots.value = changed
+      clearTimeout(flashTimer)
+      flashTimer = setTimeout(() => { flashSlots.value = {} }, 700)
+    }
+  }
+  prevInv = now
+}
+
 function itemLabel(name) {
   return String(name || '').replace(/_/g, ' ')
 }
 
 async function refresh() {
   try {
-    const res = await fetch(`${serviceUrl.value.replace(/\/$/, '')}/status`, { headers: authHeaders(), signal: AbortSignal.timeout(6000) })
+    const res = await fetch(`${API}/status`, { signal: AbortSignal.timeout(6000) })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     status.value = await res.json()
-    error.value = ''
+    connError.value = ''
+    diffInventory()
     fetchWorld()
   } catch (e) {
-    error.value = e?.message || 'unreachable'
+    connError.value = t('minecraft.unreachable', { error: e?.message || 'unreachable' })
   } finally {
     loading.value = false
   }
@@ -54,28 +132,61 @@ async function refresh() {
 
 async function fetchWorld() {
   try {
-    const res = await fetch(`${serviceUrl.value.replace(/\/$/, '')}/world`, { headers: authHeaders(), signal: AbortSignal.timeout(6000) })
+    const res = await fetch(`${API}/world`, { signal: AbortSignal.timeout(6000) })
     if (res.ok) world.value = await res.json()
   } catch { /* keep previous world snapshot */ }
 }
 
 async function act(action, args = {}) {
-  busy.value = true
+  const key = busyKey(action, args)
+  if (busyActions.has(key)) return
+  busyActions.add(key)
+  actionError.value = ''
+  clearTimeout(toastTimer)
+  toast.value = ''
   try {
-    const res = await fetch(`${serviceUrl.value.replace(/\/$/, '')}/action`, {
+    const res = await fetch(`${API}/action`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, args }),
       signal: AbortSignal.timeout(40000),
     })
     const data = await res.json().catch(() => ({}))
-    if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`)
+    if (res.status >= 500) {
+      // Service-side trouble: same class as a poll failure.
+      connError.value = t('minecraft.unreachable', { error: `HTTP ${res.status}` })
+      pushLog(action, false, `HTTP ${res.status}`)
+      return
+    }
+    if (!res.ok || data.ok === false) {
+      const msg = data.error || `HTTP ${res.status}`
+      actionError.value = t('minecraft.actionFailed', { error: msg })
+      pushLog(action, false, msg)
+      return
+    }
     await refresh()
+    toast.value = t('minecraft.actionOk')
+    showToast()
+    pushLog(action, true, t('minecraft.logOk'))
   } catch (e) {
-    error.value = e?.message || 'action failed'
+    if (e?.name === 'TimeoutError' || e?.name === 'AbortError') {
+      const msg = t('minecraft.actionTimeout')
+      actionError.value = msg
+      pushLog(action, false, msg)
+    } else {
+      // fetch() itself threw (network down): connection-class error.
+      const msg = e?.message || 'unreachable'
+      connError.value = t('minecraft.unreachable', { error: msg })
+      pushLog(action, false, msg)
+    }
   } finally {
-    busy.value = false
+    busyActions.delete(key)
   }
+}
+
+function showToast() {
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toast.value = '' }, 3000)
 }
 
 async function connect() {
@@ -88,9 +199,27 @@ async function connect() {
   })
 }
 
-function saveUrl() {
-  try { localStorage.setItem('0kay.minecraft.url', serviceUrl.value) } catch { /* ignore */ }
-  refresh()
+async function disconnect() {
+  if (hostConfirm) {
+    const ok = await hostConfirm({
+      title: t('minecraft.disconnect'),
+      message: t('minecraft.disconnectConfirm'),
+      danger: true,
+      confirmLabel: t('minecraft.disconnect'),
+    })
+    if (ok) await act('disconnect')
+    return
+  }
+  // Two-step fallback: first click arms the button, second click within 3s fires.
+  if (!armedDisconnect.value) {
+    armedDisconnect.value = true
+    clearTimeout(armTimer)
+    armTimer = setTimeout(() => { armedDisconnect.value = false }, 3000)
+    return
+  }
+  clearTimeout(armTimer)
+  armedDisconnect.value = false
+  await act('disconnect')
 }
 
 onMounted(() => {
@@ -102,7 +231,6 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
 <template>
   <div class="mc">
-    <label>服务访问令牌 <input v-model="serviceToken" type="password" autocomplete="off" placeholder="MINECRAFT_TOKEN" @change="refresh" /></label>
     <header class="mc-head">
       <div class="mc-title">
         <span class="mc-logo" aria-hidden="true">
@@ -111,114 +239,159 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div class="mc-copy">
           <h1>Minecraft</h1>
           <p class="mc-sub">
-            <span class="dot" :class="connected ? 'on' : (error ? 'err' : 'off')" />
-            {{ connected ? (playerName || '已连接') : (bot?.state || '未连接') }}
-            <span v-if="autopilot.running" class="tag">AI 自动游玩</span>
+            <span class="dot" :class="connected ? 'on' : (connError ? 'err' : 'off')" />
+            {{ connected ? (playerName || t('minecraft.connected')) : stateText }}
+            <span v-if="autopilot.running" class="tag">{{ t('minecraft.autopilot') }}</span>
           </p>
         </div>
       </div>
       <div class="mc-actions">
-        <input v-model="serviceUrl" class="url" spellcheck="false" aria-label="服务地址" />
-        <button class="btn tonic" :disabled="busy" @click="refresh">刷新</button>
-        <button class="btn filled" :disabled="busy" @click="showConnect = !showConnect">{{ showConnect ? '收起' : '连接' }}</button>
-        <button v-if="connected" class="btn danger" :disabled="busy" @click="act('disconnect')">断开</button>
+        <button class="btn tonic" :disabled="anyBusy" @click="refresh">{{ t('minecraft.refresh') }}</button>
+        <button class="btn filled" :disabled="anyBusy" @click="showConnect = !showConnect">{{ showConnect ? t('minecraft.collapse') : t('minecraft.connectSettings') }}</button>
+        <button v-if="connected" class="btn danger" :class="{ armed: armedDisconnect }" :disabled="actBusy('disconnect')" @click="disconnect">
+          <span v-if="actBusy('disconnect')" class="spinner" aria-hidden="true" />
+          {{ actBusy('disconnect') ? t('minecraft.acting') : (armedDisconnect && !hostConfirm ? t('minecraft.confirmDisconnect') : t('minecraft.disconnect')) }}
+        </button>
       </div>
     </header>
 
-    <p v-if="error" class="err">服务不可达：{{ error }}（地址 {{ serviceUrl }}）</p>
+    <Transition name="toast">
+      <p v-if="toast" class="toast" role="status">{{ toast }}</p>
+    </Transition>
+    <p v-if="connError" class="err">{{ connError }}</p>
+    <p v-if="actionError" class="err action-err">{{ actionError }}</p>
 
-    <section v-if="showConnect" class="card connect">
-      <h2>连接到服务器</h2>
-      <div class="connect-grid">
-        <label><span>版本</span>
-          <select v-model="form.edition"><option value="java">Java</option><option value="bedrock">Bedrock</option></select>
-        </label>
-        <label><span>服务器地址</span><input v-model="form.host" placeholder="如 razure.ink" spellcheck="false" /></label>
-        <label><span>端口</span><input v-model="form.port" placeholder="Java 25565 / Bedrock 19132" spellcheck="false" /></label>
-        <label><span>昵称</span><input v-model="form.username" placeholder="XingYao" spellcheck="false" /></label>
-        <label class="wide"><span>服务器密码</span><input v-model="form.password" placeholder="留空自动使用 LIFE 记忆里的密码" spellcheck="false" /></label>
+    <Transition name="fold">
+      <div v-if="showConnect" class="fold">
+        <section class="card connect">
+          <h2>{{ t('minecraft.connectTitle') }}</h2>
+          <div class="connect-grid">
+            <label><span>{{ t('minecraft.edition') }}</span>
+              <select v-model="form.edition"><option value="java">Java</option><option value="bedrock">Bedrock</option></select>
+            </label>
+            <label><span>{{ t('minecraft.host') }}</span><input v-model="form.host" :placeholder="t('minecraft.hostPlaceholder')" spellcheck="false" /></label>
+            <label><span>{{ t('minecraft.port') }}</span><input v-model="form.port" :placeholder="t('minecraft.portPlaceholder')" spellcheck="false" /></label>
+            <label><span>{{ t('minecraft.username') }}</span><input v-model="form.username" :placeholder="t('minecraft.usernamePlaceholder')" spellcheck="false" /></label>
+            <label class="wide"><span>{{ t('minecraft.password') }}</span><input v-model="form.password" :placeholder="t('minecraft.passwordPlaceholder')" spellcheck="false" /></label>
+          </div>
+          <div class="actions">
+            <button class="btn filled" :disabled="actBusy('connect') || !form.host.trim()" @click="connect">
+              <span v-if="actBusy('connect')" class="spinner" aria-hidden="true" />
+              {{ actBusy('connect') ? t('minecraft.acting') : t('minecraft.connect') }}
+            </button>
+          </div>
+        </section>
       </div>
-      <div class="actions"><button class="btn filled" :disabled="busy || !form.host.trim()" @click="connect">连接</button></div>
+    </Transition>
+
+    <section class="card log-card">
+      <h2>{{ t('minecraft.actionLog') }}</h2>
+      <p v-if="!actionLog.length" class="muted log-empty">{{ t('minecraft.logEmpty') }}</p>
+      <ul v-else class="log">
+        <li v-for="entry in actionLog" :key="entry.id" :class="entry.ok ? 'ok' : 'fail'">
+          <span class="log-time">{{ entry.time }}</span>
+          <code class="log-action">{{ entry.action }}</code>
+          <span class="log-detail">{{ entry.detail }}</span>
+        </li>
+      </ul>
     </section>
 
-    <template v-if="bot">
-      <section class="grid">
-        <div class="card">
-          <h2>服务器</h2>
-          <dl>
-            <dt>地址</dt><dd>{{ bot.host || '-' }}:{{ bot.port || '-' }}</dd>
-            <dt>版本</dt><dd>{{ bot.edition === 'bedrock' ? 'Bedrock' : 'Java' }} {{ bot.version || '' }}</dd>
-            <dt>维度</dt><dd>{{ bot.dimension || '-' }}</dd>
-            <dt>坐标</dt><dd>{{ bot.position ? `${bot.position.x}, ${bot.position.y}, ${bot.position.z}` : '-' }}</dd>
-            <dt>手持</dt><dd>{{ itemLabel(bot.held) || '空' }}</dd>
-          </dl>
-        </div>
+    <Transition name="dash">
+      <div v-if="bot" class="dash">
+        <section class="grid">
+          <div class="card">
+            <h2>{{ t('minecraft.server') }}</h2>
+            <dl>
+              <dt>{{ t('minecraft.address') }}</dt><dd>{{ bot.host || '-' }}:{{ bot.port || '-' }}</dd>
+              <dt>{{ t('minecraft.edition') }}</dt><dd>{{ bot.edition === 'bedrock' ? 'Bedrock' : 'Java' }} {{ bot.version || '' }}</dd>
+              <dt>{{ t('minecraft.dimension') }}</dt><dd>{{ bot.dimension || '-' }}</dd>
+              <dt>{{ t('minecraft.position') }}</dt><dd>{{ bot.position ? `${bot.position.x}, ${bot.position.y}, ${bot.position.z}` : '-' }}</dd>
+              <dt>{{ t('minecraft.held') }}</dt><dd>{{ itemLabel(bot.held) || t('minecraft.emptySlot') }}</dd>
+            </dl>
+          </div>
 
-        <div class="card">
-          <h2>状态</h2>
-          <div class="bar-row"><span class="bar-label">生命</span><div class="bar"><i class="hp" :style="{ transform: `scaleX(${pct(bot.health) / 100})` }" /></div><span class="bar-num">{{ bot.health ?? '-' }}/20</span></div>
-          <div class="bar-row"><span class="bar-label">饥饿</span><div class="bar"><i class="food" :style="{ transform: `scaleX(${pct(bot.food) / 100})` }" /></div><span class="bar-num">{{ bot.food ?? '-' }}/20</span></div>
-          <p v-if="bot.error" class="err small">{{ bot.error }}</p>
-        </div>
+          <div class="card">
+            <h2>{{ t('minecraft.status') }}</h2>
+            <div class="bar-row"><span class="bar-label">{{ t('minecraft.health') }}</span><div class="bar"><i class="hp" :style="{ transform: `scaleX(${pct(bot.health) / 100})` }" /></div><span class="bar-num">{{ bot.health ?? '-' }}/20</span></div>
+            <div class="bar-row"><span class="bar-label">{{ t('minecraft.food') }}</span><div class="bar"><i class="food" :style="{ transform: `scaleX(${pct(bot.food) / 100})` }" /></div><span class="bar-num">{{ bot.food ?? '-' }}/20</span></div>
+            <p v-if="bot.error" class="err small">{{ bot.error }}</p>
+          </div>
 
-        <div class="card">
-          <h2>玩家 <span class="muted">{{ (bot.players || []).length }}</span></h2>
+          <div class="card">
+            <h2>{{ t('minecraft.players') }} <span class="muted">{{ (bot.players || []).length }}</span></h2>
+            <ul class="list">
+              <TransitionGroup name="list">
+                <li v-for="p in bot.players || []" :key="p.name">
+                  <b>{{ p.name }}</b>
+                  <span class="muted">{{ p.position ? `${Math.round(p.position.x)}, ${Math.round(p.position.y)}, ${Math.round(p.position.z)}` : '' }}</span>
+                  <span v-if="p.ping != null" class="chip muted">{{ p.ping }}ms</span>
+                </li>
+              </TransitionGroup>
+              <li v-if="!(bot.players || []).length" class="muted">{{ t('minecraft.noPlayers') }}</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>{{ t('minecraft.waypoints') }} <span class="muted">{{ (world.waypoints || []).length }}</span></h2>
           <ul class="list">
-            <li v-for="p in bot.players || []" :key="p.name">
-              <b>{{ p.name }}</b>
-              <span class="muted">{{ p.position ? `${Math.round(p.position.x)}, ${Math.round(p.position.y)}, ${Math.round(p.position.z)}` : '' }}</span>
-              <span v-if="p.ping != null" class="chip muted">{{ p.ping }}ms</span>
-            </li>
-            <li v-if="!(bot.players || []).length" class="muted">暂无其他玩家</li>
+            <TransitionGroup name="list">
+              <li v-for="w in world.waypoints || []" :key="w.id">
+                <b>{{ w.name }}</b>
+                <span class="muted">{{ Math.round(w.x) }}, {{ Math.round(w.y) }}, {{ Math.round(w.z) }} · {{ w.type }}</span>
+                <button class="btn sm tonic" :disabled="actBusy('waypoint_goto', { name: w.name })" @click="act('waypoint_goto', { name: w.name })">
+                  <span v-if="actBusy('waypoint_goto', { name: w.name })" class="spinner" aria-hidden="true" />
+                  {{ actBusy('waypoint_goto', { name: w.name }) ? t('minecraft.acting') : t('minecraft.goto') }}
+                </button>
+              </li>
+            </TransitionGroup>
+            <li v-if="!(world.waypoints || []).length" class="muted">{{ t('minecraft.noWaypoints') }}</li>
           </ul>
-        </div>
-      </section>
+        </section>
 
-      <section class="card">
-        <h2>记忆的地点 <span class="muted">{{ (world.waypoints || []).length }}</span></h2>
-        <ul class="list">
-          <li v-for="w in world.waypoints || []" :key="w.id">
-            <b>{{ w.name }}</b>
-            <span class="muted">{{ Math.round(w.x) }}, {{ Math.round(w.y) }}, {{ Math.round(w.z) }} · {{ w.type }}</span>
-            <button class="btn sm tonic" :disabled="busy" @click="act('waypoint_goto', { name: w.name })">前往</button>
-          </li>
-          <li v-if="!(world.waypoints || []).length" class="muted">暂无，机器人会随游玩自动记录</li>
-        </ul>
-      </section>
+        <section class="card">
+          <h2>{{ t('minecraft.skills') }} <span class="muted">{{ (world.skills || []).length }}</span></h2>
+          <ul class="list">
+            <TransitionGroup name="list">
+              <li v-for="s in world.skills || []" :key="s.id">
+                <b>{{ s.name }}</b>
+                <span class="muted">{{ t('minecraft.skillRuns', { steps: (s.steps || []).length, runs: s.runs || 0 }) }}</span>
+                <button class="btn sm tonic" :disabled="actBusy('skill_run', { name: s.name })" @click="act('skill_run', { name: s.name })">
+                  <span v-if="actBusy('skill_run', { name: s.name })" class="spinner" aria-hidden="true" />
+                  {{ actBusy('skill_run', { name: s.name }) ? t('minecraft.acting') : t('minecraft.run') }}
+                </button>
+              </li>
+            </TransitionGroup>
+            <li v-if="!(world.skills || []).length" class="muted">{{ t('minecraft.noSkills') }}</li>
+          </ul>
+        </section>
 
-      <section class="card">
-        <h2>学会的技能 <span class="muted">{{ (world.skills || []).length }}</span></h2>
-        <ul class="list">
-          <li v-for="s in world.skills || []" :key="s.id">
-            <b>{{ s.name }}</b>
-            <span class="muted">{{ (s.steps || []).length }} 步 · 用过 {{ s.runs || 0 }} 次</span>
-            <button class="btn sm tonic" :disabled="busy" @click="act('skill_run', { name: s.name })">执行</button>
-          </li>
-          <li v-if="!(world.skills || []).length" class="muted">暂无，LIFE 会定期复盘并沉淀技能</li>
-        </ul>
-      </section>
-
-      <section class="card">
-        <h2>物品栏 <span class="muted">快捷栏</span></h2>
-        <div class="inv hotbar">
-          <div v-for="s in hotbar" :key="s.slot" class="cell" :title="s.item ? `${itemLabel(s.item.name)} x${s.item.count}` : '空'">
-            <span v-if="s.item" class="it">{{ itemLabel(s.item.name) }}<b v-if="s.item.count > 1">×{{ s.item.count }}</b></span>
+        <section class="card">
+          <h2>{{ t('minecraft.inventory') }} <span class="muted">{{ t('minecraft.hotbar') }}</span></h2>
+          <div class="inv-wrap">
+            <div class="inv hotbar">
+              <div v-for="s in hotbar" :key="s.slot" class="cell" :class="{ flash: flashSlots[s.slot] }" :title="s.item ? `${itemLabel(s.item.name)} x${s.item.count}` : t('minecraft.emptySlot')">
+                <span v-if="s.item" class="it">{{ itemLabel(s.item.name) }}<b v-if="s.item.count > 1">×{{ s.item.count }}</b></span>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section class="card">
-        <h2>背包</h2>
-        <div class="inv">
-          <div v-for="s in backpack" :key="s.slot" class="cell" :title="s.item ? `${itemLabel(s.item.name)} x${s.item.count}` : '空'">
-            <span v-if="s.item" class="it">{{ itemLabel(s.item.name) }}<b v-if="s.item.count > 1">×{{ s.item.count }}</b></span>
+        <section class="card">
+          <h2>{{ t('minecraft.backpack') }}</h2>
+          <div class="inv-wrap">
+            <div class="inv">
+              <div v-for="s in backpack" :key="s.slot" class="cell" :class="{ flash: flashSlots[s.slot] }" :title="s.item ? `${itemLabel(s.item.name)} x${s.item.count}` : t('minecraft.emptySlot')">
+                <span v-if="s.item" class="it">{{ itemLabel(s.item.name) }}<b v-if="s.item.count > 1">×{{ s.item.count }}</b></span>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
-    </template>
+        </section>
+      </div>
+    </Transition>
 
-    <p v-else-if="loading" class="muted pad">正在加载…</p>
-    <p v-else-if="!error" class="muted pad">未连接。点「连接」填写服务器，或让 L.I.F.E 说「连到 xxx 服务器」。</p>
+    <p v-if="!bot && loading" class="muted pad">{{ t('minecraft.loading') }}</p>
+    <p v-else-if="!bot && !connError" class="muted pad">{{ t('minecraft.notConnectedHint') }}</p>
   </div>
 </template>
 
@@ -248,14 +421,29 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 }
 #app .mc .mc-copy h1{font-size:22px;font-weight:800}
 #app .mc .mc-sub{display:flex;align-items:center;gap:8px;margin:6px 0 0;font-size:13px;color:var(--md-on-surface-variant);flex-wrap:wrap}
-#app .mc .dot{width:9px;height:9px;border-radius:50%;background:var(--md-outline);flex-shrink:0}
-#app .mc .dot.on{background:var(--md-success);box-shadow:0 0 0 4px color-mix(in srgb,var(--md-success) 22%,transparent)}
+#app .mc .dot{
+  width:9px;height:9px;border-radius:50%;background:var(--md-outline);flex-shrink:0;
+  transition:background-color var(--duration-short,180ms) ease,box-shadow var(--duration-short,180ms) ease;
+}
+#app .mc .dot.on{background:var(--md-success);box-shadow:0 0 0 4px color-mix(in srgb,var(--md-success) 22%,transparent);animation:mc-breath 2s ease-in-out infinite}
 #app .mc .dot.err{background:var(--md-error);box-shadow:0 0 0 4px color-mix(in srgb,var(--md-error) 20%,transparent)}
+@keyframes mc-breath{
+  0%,100%{box-shadow:0 0 0 4px color-mix(in srgb,var(--md-success) 22%,transparent)}
+  50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--md-success) 8%,transparent)}
+}
 #app .mc .tag{
   font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;
-  background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e);
+  background:var(--md-success-container);color:var(--md-on-success-container);
 }
 #app .mc .mc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* Success toast (auto-dismisses after 3s) */
+#app .mc .toast{
+  margin:0 0 14px;padding:11px 16px;border-radius:16px;font-size:13px;font-weight:700;
+  background:var(--md-success-container);color:var(--md-on-success-container);box-shadow:var(--shadow-1);
+}
+#app .mc .toast-enter-active,#app .mc .toast-leave-active{transition:opacity var(--duration-short,180ms) ease,transform var(--duration-short,180ms) var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}
+#app .mc .toast-enter-from,#app .mc .toast-leave-to{opacity:0;transform:translateY(-6px)}
 
 /* Buttons */
 #app .mc .btn{
@@ -271,18 +459,27 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .btn.sm{min-height:44px;padding:0 13px;font-size:13px}
 #app .mc .btn.filled{background:var(--md-primary);color:var(--md-on-primary);box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 30%,transparent)}
 #app .mc .btn.tonic{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-#app .mc .btn.danger{background:var(--md-error-container);color:var(--md-on-error-container,#410e0b)}
+#app .mc .btn.danger{background:var(--md-error-container);color:var(--md-on-error-container)}
+#app .mc .btn.danger.armed{background:var(--md-error);color:var(--md-on-error)}
 
-/* Inputs */
-#app .mc .url,
+/* Inline action spinner */
+#app .mc .spinner{
+  width:14px;height:14px;flex-shrink:0;border-radius:50%;
+  border:2px solid color-mix(in srgb,currentColor 30%,transparent);border-top-color:currentColor;
+  animation:mc-spin 700ms linear infinite;
+}
+@keyframes mc-spin{to{transform:rotate(360deg)}}
+
+/* Inputs. `.url` used to be grouped in here and given `width:238px`, but no
+   element in the template ever carries that class (the connect form uses
+   `.connect input/select`), so the rules were dead and are removed. */
 #app .mc .connect input,
 #app .mc .connect select{
   height:44px;padding:0 14px;border:1px solid transparent;border-radius:14px;
   background:var(--md-surface-container-high);color:var(--md-on-surface);font:400 14px/1.4 inherit;outline:none;
   transition:background-color 180ms,border-color 180ms,box-shadow 200ms;
 }
-#app .mc .url{width:238px}
-#app .mc .url:focus-visible,#app .mc .connect input:focus-visible,#app .mc .connect select:focus-visible{
+#app .mc .connect input:focus-visible,#app .mc .connect select:focus-visible{
   border-color:var(--md-primary);background:var(--md-surface-container-lowest);
   box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent);
 }
@@ -303,6 +500,28 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .connect-grid label.wide{grid-column:1/-1}
 #app .mc .connect .actions{display:flex;justify-content:flex-end;margin-top:14px}
 
+/* Connect form fold: grid-rows 0fr→1fr expansion (200ms height + fade) */
+#app .mc .fold{
+  display:grid;grid-template-rows:1fr;margin-bottom:16px;
+  transition:grid-template-rows 200ms ease,opacity 200ms ease;
+}
+#app .mc .fold > .card{min-height:0;overflow:hidden;margin-bottom:0}
+#app .mc .fold-enter-from,#app .mc .fold-leave-to{grid-template-rows:0fr;opacity:0}
+#app .mc .fold-enter-active,#app .mc .fold-leave-active{transition:grid-template-rows 200ms ease,opacity 200ms ease}
+
+/* Dashboard entrance: fade via <Transition>, staggered card rise inside */
+#app .mc .dash-leave-active{transition:opacity var(--duration-short,180ms) ease}
+#app .mc .dash-leave-to{opacity:0}
+#app .mc .dash > section{animation:mc-rise 320ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)) both}
+#app .mc .dash > section:nth-child(2){animation-delay:40ms}
+#app .mc .dash > section:nth-child(3){animation-delay:80ms}
+#app .mc .dash > section:nth-child(4){animation-delay:120ms}
+#app .mc .dash > section:nth-child(5){animation-delay:160ms}
+#app .mc .grid .card{animation:mc-rise 320ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)) both}
+#app .mc .grid .card:nth-child(2){animation-delay:40ms}
+#app .mc .grid .card:nth-child(3){animation-delay:80ms}
+@keyframes mc-rise{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+
 /* Definition lists */
 #app .mc dl{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:0;font-size:13px}
 #app .mc dt{color:var(--md-on-surface-variant)}
@@ -310,7 +529,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
 /* Bars */
 #app .mc .bar-row{display:flex;align-items:center;gap:12px;margin:10px 0;font-size:13px}
-#app .mc .bar-label{width:36px;color:var(--md-on-surface-variant);flex-shrink:0}
+#app .mc .bar-label{min-width:36px;white-space:nowrap;color:var(--md-on-surface-variant);flex-shrink:0}
 #app .mc .bar{flex:1;height:12px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}
 #app .mc .bar i{display:block;width:100%;height:100%;border-radius:999px;transform-origin:left;transform:scaleX(0);transition:transform var(--duration-long,360ms) var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}
 #app .mc .bar i.hp{background:linear-gradient(90deg,var(--md-error),color-mix(in srgb,var(--md-error) 55%,var(--md-surface-container-lowest)))}
@@ -318,12 +537,16 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .bar-num{width:54px;text-align:right;color:var(--md-on-surface-variant);flex-shrink:0}
 
 /* Lists */
-#app .mc .list{list-style:none;margin:0;padding:0;font-size:13px;display:flex;flex-direction:column;gap:2px}
+#app .mc .list{list-style:none;margin:0;padding:0;font-size:13px;display:flex;flex-direction:column;gap:2px;position:relative}
 #app .mc .list li{display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}
 #app .mc .list li:last-child{border-bottom:none}
 #app .mc .list li .btn{margin-left:auto}
 #app .mc .list li span.muted,#app .mc .list li .chip{margin-left:auto}
 #app .mc .list li b + span.muted{flex:1;min-width:0}
+/* TransitionGroup: entering/leaving rows fade+slide, siblings glide via .list-move */
+#app .mc .list-move,#app .mc .list-enter-active,#app .mc .list-leave-active{transition:opacity 200ms ease,transform 260ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}
+#app .mc .list-enter-from,#app .mc .list-leave-to{opacity:0;transform:translateY(-4px)}
+#app .mc .list-leave-active{position:absolute;width:auto;min-width:60%}
 
 /* Chips */
 #app .mc .chip{
@@ -333,10 +556,26 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .chip.muted{background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-weight:600}
 #app .mc .muted{color:var(--md-on-surface-variant)}
 #app .mc .err{color:var(--md-error);font-size:13px;background:var(--md-error-container);padding:11px 16px;border-radius:16px;margin-bottom:14px}
+#app .mc .err.action-err{border-left:4px solid var(--md-error);border-radius:10px 16px 16px 10px}
 #app .mc .err.small{font-size:12px;margin:8px 0 0;background:transparent;padding:0}
 #app .mc .pad{padding:8px 0}
 
+/* Action log */
+#app .mc .log-card .log-empty{font-size:13px;margin:0}
+#app .mc .log{
+  list-style:none;margin:0;padding:0;max-height:220px;overflow-y:auto;font-size:12.5px;
+  display:flex;flex-direction:column;gap:2px;
+}
+#app .mc .log li{display:flex;gap:10px;align-items:baseline;padding:5px 0 5px 12px;border-left:3px solid transparent}
+#app .mc .log li.ok{border-left-color:var(--md-success)}
+#app .mc .log li.fail{border-left-color:var(--md-error)}
+#app .mc .log .log-time{color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums;flex-shrink:0}
+#app .mc .log .log-action{font-family:ui-monospace,monospace;font-size:12px;font-weight:700;flex-shrink:0}
+#app .mc .log .log-detail{color:var(--md-on-surface-variant);overflow-wrap:anywhere;min-width:0}
+#app .mc .log li.fail .log-detail{color:var(--md-error)}
+
 /* Inventory */
+#app .mc .inv-wrap{overflow-x:auto}
 #app .mc .inv{display:grid;grid-template-columns:repeat(9,1fr);gap:8px}
 #app .mc .inv.hotbar{margin-bottom:10px}
 #app .mc .cell{
@@ -350,11 +589,21 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 }
 #app .mc .cell .it{font-size:11px;line-height:1.1;text-align:center;word-break:break-word}
 #app .mc .cell .it b{display:block;font-size:11px;color:var(--md-primary);font-weight:800}
+/* One-shot highlight when a slot's contents changed since the last poll */
+#app .mc .cell.flash{animation:mc-cell-flash 600ms ease-out}
+@keyframes mc-cell-flash{
+  0%{outline:2px solid var(--md-primary);outline-offset:1px;background:color-mix(in srgb,var(--md-primary) 22%,var(--md-surface-container-high))}
+  100%{outline:2px solid transparent;outline-offset:1px;background:var(--md-surface-container-high)}
+}
 
 @media(max-width:640px){
-  #app .mc .url{width:100%}
   #app .mc .mc-actions{width:100%}
-  #app .mc .inv{grid-template-columns:repeat(5,1fr)}
+  /* Keep the 9-column slot mapping on mobile: shrink cells (~30px min) and let
+     the wrapper scroll horizontally rather than reflowing the grid. */
+  #app .mc .inv{grid-template-columns:repeat(9,minmax(30px,1fr));min-width:min(100%,306px)}
+  #app .mc .cell{border-radius:10px;padding:2px}
+  #app .mc .cell .it{font-size:9px}
+  #app .mc .cell .it b{font-size:9px}
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -366,5 +615,6 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
   }
   #app .mc .btn:hover:not(:disabled),
   #app .mc .card:hover{transform:none}
+  #app .mc .dot.on{animation:none}
 }
 </style>

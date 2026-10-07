@@ -6,15 +6,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
+
+	"0kay/obs"
 )
 
+// provLog tags the provider-adapter layer's records.
+var provLog = obs.Component("providers")
+
 var unsupportedPattern = regexp.MustCompile(`(?i)(?:unsupported parameter|unrecognized request argument|unknown parameter)\s*:?\s*['"` + "`" + `]?([a-z_]+)`)
+
+// Some aggregator relays phrase it differently, e.g.
+// "Parameter 'temperature'=0.5 is not supported for kimi-k3 model."
+var rejectedParamPattern = regexp.MustCompile(`(?i)\bparameter\s+['"` + "`" + `]?([a-z_][a-z0-9_]*)`)
 var compatibilityCache = struct {
 	sync.Mutex
 	entries map[string]map[string]time.Time
@@ -38,6 +46,8 @@ func optionalRejectedField(data []byte) string {
 	match := unsupportedPattern.FindStringSubmatch(payload.Error.Message)
 	if len(match) > 1 {
 		field = match[1]
+	} else if alt := rejectedParamPattern.FindStringSubmatch(payload.Error.Message); len(alt) > 1 {
+		field = alt[1]
 	}
 	if field == "" || !(strings.Contains(message, "not supported") || strings.Contains(message, "unsupported") || strings.Contains(message, "unrecognized") || strings.Contains(message, "unknown parameter")) {
 		return ""
@@ -84,7 +94,7 @@ func compatibleRequest(ctx context.Context, client *http.Client, url, key, model
 		field := optionalRejectedField(data)
 		_, present := body[field]
 		if (response.StatusCode == 400 || response.StatusCode == 422) && field != "" && present && attempt < 5 {
-			log.Printf("compatibility: dropping optional field %q for model %q after HTTP %d", field, model, response.StatusCode)
+			provLog.Info("dropping unsupported optional parameter", "field", field, "model", model, "status", response.StatusCode)
 			delete(body, field)
 			compatibilityCache.Lock()
 			if len(compatibilityCache.entries) >= 512 {

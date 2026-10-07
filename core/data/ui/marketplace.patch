@@ -7,7 +7,8 @@
       "target": "nav",
       "op": "insert",
       "id": "marketplace",
-      "item": { "id": "marketplace", "to": "/marketplace", "label": "插件市场", "icon": "plugins", "order": 35 }
+      "item": { "id": "marketplace", "to": "/marketplace",       "label": "插件市场",
+      "labelKey": "nav.marketplace", "icon": "plugins", "order": 35 }
     },
     {
       "target": "router",

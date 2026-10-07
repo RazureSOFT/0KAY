@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const form = reactive<Record<string, any>>({
   screen_watch: false, computer_use: false, report_agent_host: '',
   // Fail closed: mail approval defaults ON so an unloaded/failed settings read
@@ -27,19 +29,19 @@ async function load() {
       const body = await catalog.json()
       modelCards.value = Array.isArray(body.models) ? body.models.map((model: any) => ({ id: model.id, provider: model.provider || 'custom', supports_thinking: model.supports_thinking })).filter((model: any) => model.id) : []
       models.value = modelCards.value.map((model) => model.id)
-      modelSource.value = 'mocr 当前模型目录（由 Core 同步）'
+      modelSource.value = t('lifeSettings.sourceFromCore')
     }
-  } catch { state.value = '无法读取 LIFE 设置或模型目录' }
+  } catch { state.value = t('lifeSettings.loadFailed') }
 }
 async function save() {
-  if (!loaded.value) { state.value = '设置尚未加载，已阻止保存以避免写回默认值'; return }
+  if (!loaded.value) { state.value = t('lifeSettings.notLoaded'); return }
   saving.value = true; state.value = ''
   try {
     const response = await fetch('/api/settings/life', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ values: form }) })
     if (!response.ok) throw new Error(String(response.status))
     await fetch('/api/life/permissions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ screen_watch: form.screen_watch, computer_use: form.computer_use, report_agent_host: form.report_agent_host }) })
-    state.value = '已保存，LIFE 会在下一次设置轮询时应用。'
-  } catch { state.value = '保存失败' } finally { saving.value = false }
+    state.value = t('lifeSettings.savedNotice')
+  } catch { state.value = t('lifeSettings.saveFailed') } finally { saving.value = false }
 }
 onMounted(load)
 </script>
@@ -49,70 +51,70 @@ onMounted(load)
     <header class="ls-hero">
       <div class="ls-hero-main">
         <span class="ls-eyebrow">L.I.F.E · INTEGRATIONS</span>
-        <h2>L.I.F.E 专属设置</h2>
-        <p class="ls-sub">敏感功能默认关闭；凭据仅保存在本机 Core settings 文件。</p>
+        <h2>{{ t('lifeSettings.title') }}</h2>
+        <p class="ls-sub">{{ t('lifeSettings.subtitle') }}</p>
       </div>
       <button class="ls-save" :disabled="saving" @click="save">
-        <span class="ls-save-ic" aria-hidden="true">✓</span>{{ saving ? '保存中…' : '保存' }}
+        <span class="ls-save-ic" aria-hidden="true">✓</span>{{ saving ? t('lifeSettings.saving') : t('lifeSettings.save') }}
       </button>
     </header>
 
     <div class="ls-grid">
       <article class="ls-card">
-        <div class="ls-card-head"><span class="ls-ic tone-1">◉</span><h3>Agent 主机权限</h3></div>
-        <label class="ls-switch"><input v-model="form.screen_watch" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>允许屏幕观察</b><small>读取当前屏幕内容</small></span></label>
-        <label class="ls-switch"><input v-model="form.computer_use" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>允许计算机操作</b><small>执行鼠标/键盘操作</small></span></label>
-        <label class="ls-field"><span>指定 Agent 主机（可选）</span><input v-model="form.report_agent_host" placeholder="hostname 或地址" /></label>
+        <div class="ls-card-head"><span class="ls-ic tone-1">◉</span><h3>{{ t('lifeSettings.hostPerms') }}</h3></div>
+        <label class="ls-switch"><input v-model="form.screen_watch" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>{{ t('lifeSettings.screenWatch') }}</b><small>{{ t('lifeSettings.screenWatchDesc') }}</small></span></label>
+        <label class="ls-switch"><input v-model="form.computer_use" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>{{ t('lifeSettings.computerUse') }}</b><small>{{ t('lifeSettings.computerUseDesc') }}</small></span></label>
+        <label class="ls-field"><span>{{ t('lifeSettings.agentHost') }}</span><input v-model="form.report_agent_host" :placeholder="t('lifeSettings.agentHostPlaceholder')" /></label>
       </article>
 
       <article class="ls-card">
-        <div class="ls-card-head"><span class="ls-ic tone-2">✦</span><h3>THINK / OUTPUT 模型</h3></div>
-        <p class="ls-note">{{ modelSource || '正在读取 mocr 模型目录…' }}</p>
-        <p class="ls-label">THINK · 内部思考、记忆与工具规划</p>
+        <div class="ls-card-head"><span class="ls-ic tone-2">✦</span><h3>{{ t('lifeSettings.thinkOutput') }}</h3></div>
+        <p class="ls-note">{{ modelSource || t('lifeSettings.loadingModels') }}</p>
+        <p class="ls-label">{{ t('lifeSettings.thinkLabel') }}</p>
         <div class="ls-models">
           <button v-for="model in modelCards" :key="'think-' + model.id" type="button" class="ls-model" :class="{ selected: form.think_model === model.id }" @click="form.think_model = model.id">
             <b>{{ model.id }}</b><span>{{ model.provider }} · {{ model.supports_thinking ? 'thinking' : 'standard' }}</span>
           </button>
-          <span v-if="!modelCards.length" class="ls-empty">暂无模型</span>
+          <span v-if="!modelCards.length" class="ls-empty">{{ t('lifeSettings.noModels') }}</span>
         </div>
-        <p class="ls-label">OUTPUT · 最终人格化回复</p>
+        <p class="ls-label">{{ t('lifeSettings.outputLabel') }}</p>
         <div class="ls-models">
           <button v-for="model in modelCards" :key="'output-' + model.id" type="button" class="ls-model" :class="{ selected: form.output_model === model.id }" @click="form.output_model = model.id">
             <b>{{ model.id }}</b><span>{{ model.provider }} · output</span>
           </button>
-          <span v-if="!modelCards.length" class="ls-empty">暂无模型</span>
+          <span v-if="!modelCards.length" class="ls-empty">{{ t('lifeSettings.noModels') }}</span>
         </div>
       </article>
 
       <article class="ls-card">
-        <div class="ls-card-head"><span class="ls-ic tone-3">✉</span><h3>邮件收发</h3></div>
-        <p class="ls-note">邮件（收信 IMAP / 发信 SMTP）由内置的 <code>0kay-mcp</code> mail 服务器提供。请到「设置 → MCP」的服务器列表中配置 <code>mail</code> 服务器的 SMTP/IMAP 凭据。</p>
-        <label class="ls-switch"><input v-model="form.mail_auto_approve_all" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>全部自动审批</b><small>所有需确认的权限直接通过，不再弹窗询问</small></span></label>
-        <label class="ls-switch"><input v-model="form.mail_require_approval" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>邮件操作需弹窗确认</b><small>读取 / 发送邮件前先在 WebUI 询问你</small></span></label>
+        <div class="ls-card-head"><span class="ls-ic tone-3">✉</span><h3>{{ t('lifeSettings.mail') }}</h3></div>
+        <p class="ls-note">{{ t('lifeSettings.mailNote', { mcp: '0kay-mcp', mail: 'mail' }) }}</p>
+        <label class="ls-switch"><input v-model="form.mail_auto_approve_all" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>{{ t('lifeSettings.mailAutoApprove') }}</b><small>{{ t('lifeSettings.mailAutoApproveDesc') }}</small></span></label>
+        <label class="ls-switch"><input v-model="form.mail_require_approval" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>{{ t('lifeSettings.mailRequireApproval') }}</b><small>{{ t('lifeSettings.mailRequireApprovalDesc') }}</small></span></label>
       </article>
 
       <article class="ls-card">
         <div class="ls-card-head"><span class="ls-ic tone-4">⌘</span><h3>0kay-mcp</h3></div>
-        <label class="ls-switch"><input v-model="form.mcp_enabled" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>允许调用 MCP 工具</b><small>服务清单在 Agent 设置中维护</small></span></label>
+        <label class="ls-switch"><input v-model="form.mcp_enabled" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>{{ t('lifeSettings.mcpEnabled') }}</b><small>{{ t('lifeSettings.mcpEnabledDesc') }}</small></span></label>
       </article>
 
       <article class="ls-card ls-card-wide">
-        <div class="ls-card-head"><span class="ls-ic tone-5">☷</span><h3>OneBot v11 与主动行为</h3></div>
+        <div class="ls-card-head"><span class="ls-ic tone-5">☷</span><h3>{{ t('lifeSettings.onebot') }}</h3></div>
         <div class="ls-row">
-          <label class="ls-switch"><input v-model="form.onebot_enabled" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>启用 OneBot</b></span></label>
-          <label class="ls-switch"><input v-model="form.onebot_observe_group" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>仅观察群聊</b><small>未触发时不回复</small></span></label>
+          <label class="ls-switch"><input v-model="form.onebot_enabled" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>{{ t('lifeSettings.onebotEnable') }}</b></span></label>
+          <label class="ls-switch"><input v-model="form.onebot_observe_group" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>{{ t('lifeSettings.onebotObserve') }}</b><small>{{ t('lifeSettings.onebotObserveDesc') }}</small></span></label>
         </div>
         <div class="ls-row">
-          <label class="ls-field"><span>WebSocket 地址</span><input v-model="form.onebot_ws_url" placeholder="ws://127.0.0.1:6700" /></label>
-          <label class="ls-field"><span>HTTP API 地址</span><input v-model="form.onebot_http_url" placeholder="http://127.0.0.1:6700" /></label>
+          <label class="ls-field"><span>{{ t('lifeSettings.onebotWs') }}</span><input v-model="form.onebot_ws_url" placeholder="ws://127.0.0.1:6700" /></label>
+          <label class="ls-field"><span>{{ t('lifeSettings.onebotHttp') }}</span><input v-model="form.onebot_http_url" placeholder="http://127.0.0.1:6700" /></label>
         </div>
         <div class="ls-row">
           <label class="ls-field"><span>Access Token</span><input v-model="form.onebot_access_token" type="password" placeholder="••••••••" /></label>
-          <label class="ls-field"><span>触发关键词（逗号分隔，留空=全部）</span><input v-model="form.onebot_trigger_keywords" placeholder="bot,在吗" /></label>
+          <label class="ls-field"><span>{{ t('lifeSettings.onebotKeywords') }}</span><input v-model="form.onebot_trigger_keywords" :placeholder="t('lifeSettings.onebotKeywordsPlaceholder')" /></label>
         </div>
         <div class="ls-row">
-          <label class="ls-field"><span>每日主动上限</span><input v-model.number="form.proactive_daily_limit" type="number" min="0" placeholder="3" /></label>
-          <label class="ls-field"><span>单目标上限</span><input v-model.number="form.proactive_target_limit" type="number" min="0" placeholder="1" /></label>
+          <label class="ls-field"><span>{{ t('lifeSettings.proactiveDaily') }}</span><input v-model.number="form.proactive_daily_limit" type="number" min="0" placeholder="3" /></label>
+          <label class="ls-field"><span>{{ t('lifeSettings.proactiveTarget') }}</span><input v-model.number="form.proactive_target_limit" type="number" min="0" placeholder="1" /></label>
         </div>
       </article>
     </div>
@@ -303,6 +305,12 @@ onMounted(load)
   background: var(--md-primary); color: var(--md-on-primary);
   font-size: 12px; font-weight: 900;
 }
+/* Restated under `#app` so they survive the platform's
+ * `#app button { border-radius: 18px }` (1,0,1), which beat this file's scoped
+ * rules (0,2,0) and silently flattened the selected card's clipped corner — the
+ * shape that signals "this one is chosen" never rendered. */
+#app .ls-model { border-radius: 20px; }
+#app .ls-model.selected { border-radius: 20px 20px 20px 8px; }
 .ls-model b { font-size: 13px; word-break: break-all; }
 .ls-model span { font-size: 12px; color: var(--md-on-surface-variant); }
 

@@ -27,7 +27,7 @@
         "id": "minecraft",
         "path": "/minecraft",
         "name": "minecraft",
-        "module": "/api/plugins/minecraft/ui/index.js",
+        "module": "/api/plugins/minecraft/ui/index.js?v=1",
         "title": "Minecraft"
       }
     }

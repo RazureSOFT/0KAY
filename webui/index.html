@@ -1,11 +1,55 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>0kay</title>
-    <script src="/vendor/live2dcubismcore.min.js"></script>
+    <script>
+      // Pre-boot theme + language, before the first paint. The darkmode plugin
+      // is a bootstrap module that only loads after Vue mounts, so without this
+      // every dark-mode reload paints a white flash first. This mirrors the
+      // plugin's resolve(): 'auto' -> system preference, 'schedule' -> HH:MM
+      // window (wraps past midnight), otherwise the stored literal. The plugin
+      // re-applying the same value afterwards is harmless and idempotent.
+      (function () {
+        try {
+          var mode = localStorage.getItem('0kay_theme_mode') || 'auto'
+          var dark = false
+          if (mode === 'dark') dark = true
+          else if (mode === 'schedule') {
+            var from = null, until = null
+            try {
+              var saved = JSON.parse(localStorage.getItem('0kay_theme_schedule') || 'null')
+              if (saved && typeof saved.darkFrom === 'string' && typeof saved.darkUntil === 'string') {
+                from = saved.darkFrom; until = saved.darkUntil
+              }
+            } catch (e) { /* defaults below */ }
+            from = from || '19:00'; until = until || '07:00'
+            function toMin(v) {
+              var p = String(v).split(':')
+              var h = parseInt(p[0], 10), m = parseInt(p[1], 10)
+              return isNaN(h) || isNaN(m) ? NaN : h * 60 + m
+            }
+            var a = toMin(from), b = toMin(until)
+            var now = new Date(), cur = now.getHours() * 60 + now.getMinutes()
+            dark = !isNaN(a) && !isNaN(b) && a !== b && (a < b ? (cur >= a && cur < b) : (cur >= a || cur < b))
+          } else if (mode !== 'light') {
+            dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+          }
+          var root = document.documentElement
+          root.dataset.theme = dark ? 'dark' : 'light'
+          root.style.colorScheme = dark ? 'dark' : 'light'
+          // Match <html lang> to the saved UI language; en is only the default.
+          var lang = localStorage.getItem('0kay_lang')
+          if (lang) root.lang = lang
+        } catch (e) { /* ignore */ }
+      })();
+    </script>
+    <!-- Cubism runtime is a global the Live2D stage reads lazily after mount;
+         defer keeps it off the critical rendering path but still ordered
+         before the app's module scripts. -->
+    <script src="/vendor/live2dcubismcore.min.js" defer></script>
     <!-- Plugin ESM: bare `vue` imports resolve to the host bridge (one runtime). -->
     <script type="importmap">
       {
@@ -20,7 +64,11 @@
     </script>
   </head>
   <body>
-    <div id="app"></div>
+    <!-- Splash stands in until Vue mounts (theme.css is bundled, so keep the
+         styling inline) — no more blank white frame on slow connections. -->
+    <div id="app">
+      <div style="height:100%;display:flex;align-items:center;justify-content:center;font:700 22px/1 system-ui,sans-serif;letter-spacing:-.5px;color:#5944c6">0kay</div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -448,8 +448,12 @@ function useCustomModels() {
 
         <footer class="wizard-footer">
           <button class="btn btn-tonal" @click="wizard.prevStep()" :disabled="wizard.currentStep === 1">{{ t('wizard.back') }}</button>
-          <button v-if="wizard.currentStep < 8" class="btn btn-primary" @click="wizard.nextStep()" :disabled="!wizard.canProceed">{{ t('wizard.next') }}</button>
-          <button v-else class="btn btn-primary" :disabled="savingPin" @click="finish">{{ t('wizard.startChatting') }}</button>
+          <div class="footer-right">
+            <!-- A greyed Next with no explanation is a dead end; name the blocker. -->
+            <p v-if="!wizard.canProceed && wizard.blockedHint" class="blocked-hint" role="status">{{ t(wizard.blockedHint) }}</p>
+            <button v-if="wizard.currentStep < 8" class="btn btn-primary" @click="wizard.nextStep()" :disabled="!wizard.canProceed">{{ t('wizard.next') }}</button>
+            <button v-else class="btn btn-primary" :disabled="savingPin" @click="finish">{{ t('wizard.startChatting') }}</button>
+          </div>
         </footer>
       </section>
     </div>
@@ -697,6 +701,8 @@ function useCustomModels() {
 /* Footer */
 #app .wizard-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 32px; border-top: 1px solid var(--md-outline-variant); background: var(--md-surface); }
 #app .wizard-footer .btn-primary { background: var(--md-primary); color: var(--md-on-primary); }
+.footer-right { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.blocked-hint { margin: 0; font-size: 12.5px; color: var(--md-error); text-align: right; }
 
 @keyframes sheet-in { from { opacity: 0; transform: translateY(22px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes pane-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

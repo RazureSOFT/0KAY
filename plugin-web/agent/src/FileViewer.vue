@@ -4,6 +4,7 @@
 // blob URL; docx/pptx are rendered by docx-preview / pptx-preview; images show
 // inline.
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { i18n } from '@0kay/host'
 import CodeEditor from './CodeEditor.vue'
 import MarkdownContent from './MarkdownContent.vue'
 import { renderAsync } from 'docx-preview'
@@ -21,9 +22,11 @@ const props = defineProps<{
   mdSource: boolean
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
+const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {})
 
 const docxHost = ref<HTMLElement | null>(null)
 const pptxHost = ref<HTMLElement | null>(null)
+const sheetGrid = ref<HTMLElement | null>(null)
 const pdfUrl = ref('')
 const dataUrl = ref('')
 const renderError = ref('')
@@ -67,8 +70,16 @@ function clearAssets() {
 }
 
 // --- spreadsheets (xlsx/xls/ods via SheetJS) ---
-function renderSheet() {
+async function renderSheet() {
   sheetHtml.value = DOMPurify.sanitize(sheets[activeSheet.value] || '')
+  // Generated cells are truncated by CSS; expose the full text on hover.
+  await nextTick()
+  const grid = sheetGrid.value
+  if (!grid) return
+  for (const cell of Array.from(grid.querySelectorAll('td'))) {
+    const text = cell.textContent || ''
+    if (text) cell.setAttribute('title', text)
+  }
 }
 function selectSheet(index: number) { activeSheet.value = index; renderSheet() }
 
@@ -132,14 +143,17 @@ onBeforeUnmount(() => { renderToken++; clearAssets() })
       <div v-if="sheetNames.length > 1" class="sheet-tabs">
         <button v-for="(name, i) in sheetNames" :key="name" type="button" :class="{ active: i === activeSheet }" @click="selectSheet(i)">{{ name }}</button>
       </div>
-      <div class="sheet-grid" v-html="sheetHtml" />
+      <div ref="sheetGrid" class="sheet-grid" v-html="sheetHtml" />
     </div>
     <div v-else-if="view === 'image'" class="fv-scroll fv-center"><img v-if="dataUrl" class="fv-img" :src="dataUrl" :alt="path" /></div>
     <div v-else-if="view === 'docx'" ref="docxHost" class="fv-scroll fv-docx" />
     <div v-else-if="view === 'pptx'" ref="pptxHost" class="fv-scroll fv-pptx" />
-    <div v-else-if="view === 'text'" class="fv-scroll fv-text"><pre class="fv-plain">{{ text || '（没有可提取的文本）' }}</pre></div>
-    <div v-else class="fv-msg">{{ rendering ? '渲染中…' : '无法预览此文件' }}</div>
-    <div v-if="rendering" class="fv-loading"><span class="fv-spin" aria-hidden="true"></span>{{ '渲染中…' }}</div>
+    <div v-else-if="view === 'text'" class="fv-scroll fv-text"><pre class="fv-plain">{{ text || t('agent.file.noText') }}</pre></div>
+    <div v-else class="fv-msg">{{ rendering ? t('agent.file.rendering') : t('agent.file.cannotPreview') }}</div>
+    <!-- Fade the loading overlay out so it does not hard-cut to the content. -->
+    <Transition name="fv-fade">
+      <div v-if="rendering" class="fv-loading"><span class="fv-spin" aria-hidden="true"></span>{{ t('agent.file.rendering') }}</div>
+    </Transition>
     <div v-if="renderError" class="fv-error">{{ renderError }}</div>
   </div>
 </template>
@@ -149,7 +163,7 @@ onBeforeUnmount(() => { renderToken++; clearAssets() })
 #app .fv-scroll{flex:1;min-height:0;overflow:auto}
 #app .fv-md{padding:18px 22px}
 #app .fv-md :deep(.markdown-content){max-width:820px;margin:0 auto}
-#app .fv-pdf{flex:1;min-height:0;width:100%;border:0;border-top:1px solid var(--md-outline-variant);background:#fff}
+#app .fv-pdf{flex:1;min-height:0;width:100%;border:0;border-top:1px solid var(--md-outline-variant);background:var(--md-surface-container-lowest, #fff)}
 #app .fv-center{display:flex;align-items:center;justify-content:center;padding:16px;background:var(--md-surface-container)}
 #app .fv-img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:var(--shadow-2)}
 #app .fv-sheet{padding:0}
@@ -171,5 +185,7 @@ onBeforeUnmount(() => { renderToken++; clearAssets() })
 #app .fv-loading{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;gap:9px;background:color-mix(in srgb,var(--md-surface-container-lowest) 70%,transparent);color:var(--md-on-surface-variant);font-size:12.5px}
 #app .fv-spin{width:16px;height:16px;border-radius:50%;border:2px solid color-mix(in srgb,var(--md-primary) 28%,transparent);border-top-color:var(--md-primary);animation:fv-spin .7s linear infinite}
 @keyframes fv-spin{to{transform:rotate(360deg)}}
+.fv-fade-enter-active,.fv-fade-leave-active{transition:opacity 150ms var(--ease-out)}
+.fv-fade-enter-from,.fv-fade-leave-to{opacity:0}
 #app .fv-error{position:absolute;left:12px;right:12px;bottom:12px;z-index:3;padding:8px 12px;border-radius:10px;background:var(--md-error-container);color:var(--md-on-error-container);font-size:12px;overflow-wrap:anywhere;box-shadow:var(--shadow-2)}
 </style>

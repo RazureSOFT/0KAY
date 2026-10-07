@@ -175,6 +175,26 @@ class CoreServiceStub:
                 request_serializer=core_dot_v1_dot_core__pb2.CallPluginToolRequest.SerializeToString,
                 response_deserializer=core_dot_v1_dot_core__pb2.CallPluginToolResponse.FromString,
                 _registered_method=True)
+        self.PublishInboundMessage = channel.unary_unary(
+                '/core.v1.CoreService/PublishInboundMessage',
+                request_serializer=core_dot_v1_dot_core__pb2.PublishInboundMessageRequest.SerializeToString,
+                response_deserializer=core_dot_v1_dot_core__pb2.PublishInboundMessageResponse.FromString,
+                _registered_method=True)
+        self.SubscribeMessages = channel.unary_stream(
+                '/core.v1.CoreService/SubscribeMessages',
+                request_serializer=core_dot_v1_dot_core__pb2.SubscribeMessagesRequest.SerializeToString,
+                response_deserializer=core_dot_v1_dot_core__pb2.SubscribeMessagesResponse.FromString,
+                _registered_method=True)
+        self.SendMessage = channel.unary_unary(
+                '/core.v1.CoreService/SendMessage',
+                request_serializer=core_dot_v1_dot_core__pb2.SendMessageRequest.SerializeToString,
+                response_deserializer=core_dot_v1_dot_core__pb2.SendMessageResponse.FromString,
+                _registered_method=True)
+        self.ListAdapters = channel.unary_unary(
+                '/core.v1.CoreService/ListAdapters',
+                request_serializer=core_dot_v1_dot_core__pb2.ListAdaptersRequest.SerializeToString,
+                response_deserializer=core_dot_v1_dot_core__pb2.ListAdaptersResponse.FromString,
+                _registered_method=True)
 
 
 class CoreServiceServicer:
@@ -240,6 +260,49 @@ class CoreServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def PublishInboundMessage(self, request, context):
+        """PublishInboundMessage reports one inbound adapter message into Core's
+        message bus. Adapter plugins (L.I.F.E for QQ/OneBot, or a third-party
+        bridge) call this for every message they observe.
+
+        Two things happen: Core records the caller as the adapter's owner — which
+        is what later lets SendMessage route back to it — and fans the message out
+        to every subscriber whose declared permissions cover it. Requires
+        permissions.messages.publish_adapters to list the adapter.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SubscribeMessages(self, request, context):
+        """SubscribeMessages opens a stream of inbound adapter messages the caller is
+        allowed to read. Delivery is filtered by the caller's declared
+        permissions.messages (read_mode / read_adapters / read_conversations), and
+        the stream ends when the plugin disconnects or is disabled.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SendMessage(self, request, context):
+        """SendMessage asks Core to deliver an outbound message through an adapter.
+        Core checks permissions.messages.send_adapters, routes the send to the
+        adapter's owning plugin (MessageService.SendMessage) and returns its
+        result.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListAdapters(self, request, context):
+        """ListAdapters reports the adapters the caller may use, with the
+        conversations it may address. A plugin uses this to discover valid
+        adapter_id / conversation values before calling SendMessage.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_CoreServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -282,6 +345,26 @@ def add_CoreServiceServicer_to_server(servicer, server):
                     servicer.CallPluginTool,
                     request_deserializer=core_dot_v1_dot_core__pb2.CallPluginToolRequest.FromString,
                     response_serializer=core_dot_v1_dot_core__pb2.CallPluginToolResponse.SerializeToString,
+            ),
+            'PublishInboundMessage': grpc.unary_unary_rpc_method_handler(
+                    servicer.PublishInboundMessage,
+                    request_deserializer=core_dot_v1_dot_core__pb2.PublishInboundMessageRequest.FromString,
+                    response_serializer=core_dot_v1_dot_core__pb2.PublishInboundMessageResponse.SerializeToString,
+            ),
+            'SubscribeMessages': grpc.unary_stream_rpc_method_handler(
+                    servicer.SubscribeMessages,
+                    request_deserializer=core_dot_v1_dot_core__pb2.SubscribeMessagesRequest.FromString,
+                    response_serializer=core_dot_v1_dot_core__pb2.SubscribeMessagesResponse.SerializeToString,
+            ),
+            'SendMessage': grpc.unary_unary_rpc_method_handler(
+                    servicer.SendMessage,
+                    request_deserializer=core_dot_v1_dot_core__pb2.SendMessageRequest.FromString,
+                    response_serializer=core_dot_v1_dot_core__pb2.SendMessageResponse.SerializeToString,
+            ),
+            'ListAdapters': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListAdapters,
+                    request_deserializer=core_dot_v1_dot_core__pb2.ListAdaptersRequest.FromString,
+                    response_serializer=core_dot_v1_dot_core__pb2.ListAdaptersResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -501,6 +584,114 @@ class CoreService:
             '/core.v1.CoreService/CallPluginTool',
             core_dot_v1_dot_core__pb2.CallPluginToolRequest.SerializeToString,
             core_dot_v1_dot_core__pb2.CallPluginToolResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def PublishInboundMessage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/core.v1.CoreService/PublishInboundMessage',
+            core_dot_v1_dot_core__pb2.PublishInboundMessageRequest.SerializeToString,
+            core_dot_v1_dot_core__pb2.PublishInboundMessageResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SubscribeMessages(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/core.v1.CoreService/SubscribeMessages',
+            core_dot_v1_dot_core__pb2.SubscribeMessagesRequest.SerializeToString,
+            core_dot_v1_dot_core__pb2.SubscribeMessagesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SendMessage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/core.v1.CoreService/SendMessage',
+            core_dot_v1_dot_core__pb2.SendMessageRequest.SerializeToString,
+            core_dot_v1_dot_core__pb2.SendMessageResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListAdapters(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/core.v1.CoreService/ListAdapters',
+            core_dot_v1_dot_core__pb2.ListAdaptersRequest.SerializeToString,
+            core_dot_v1_dot_core__pb2.ListAdaptersResponse.FromString,
             options,
             channel_credentials,
             insecure,

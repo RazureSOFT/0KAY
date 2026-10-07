@@ -34,6 +34,34 @@ func TestUnsupportedTemperatureRetriesAndCaches(t *testing.T) {
 		t.Fatalf("expected reject+retry then cached request, got %d", calls)
 	}
 }
+
+// Aggregator-style relays say "Parameter 'x'=v is not supported for <model>"
+// instead of "Unsupported parameter: 'x'". Both must trigger the drop+retry.
+func TestUnsupportedTemperatureAggregatorWordingRetries(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		var body map[string]interface{}
+		json.NewDecoder(r.Body).Decode(&body)
+		if _, ok := body["temperature"]; ok {
+			w.WriteHeader(400)
+			w.Write([]byte(`{"error":{"message":"Parameter 'temperature'=0.5 is not supported for kimi-k3 model.","type":"invalid_request_error","param":"","code":"invalid_parameter_error"}}`))
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Write([]byte("data: {\"choices\":[{\"delta\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"))
+	}))
+	defer server.Close()
+	text := ""
+	_, err := Generate(context.Background(), GenerateOptions{BaseURL: server.URL, APIKey: "mock", ModelID: "kimi-k3", Stream: true}, func(chunk string) bool { text += chunk; return true })
+	if err != nil || text != "ok" {
+		t.Fatalf("text=%s error=%v", text, err)
+	}
+	if calls != 2 {
+		t.Fatalf("expected reject+retry, got %d calls", calls)
+	}
+}
+
 func TestEssentialParametersNotSilentlyRemoved(t *testing.T) {
 	for _, field := range []string{"tools", "messages", "reasoning_effort", "max_tokens"} {
 		raw, _ := json.Marshal(map[string]interface{}{"error": map[string]string{"param": field, "message": "parameter not supported"}})

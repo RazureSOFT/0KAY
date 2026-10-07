@@ -1,9 +1,13 @@
 package update
 
 import (
-	"log"
 	"strings"
+
+	"0kay/obs"
 )
+
+// updateLog tags updater and git-proxy records.
+var updateLog = obs.Component("update")
 
 // githubProxy is the global GitHub mirror/reverse-proxy prefix (for example
 // "https://gh-proxy.com"). Empty means direct access.
@@ -22,7 +26,10 @@ func SetGitHubProxy(proxy string) {
 	// that could break out of a quoted argument (quotes, whitespace, control
 	// characters). A valid proxy prefix is a bare URL with neither.
 	if strings.ContainsAny(proxy, "\"'` \t\r\n") {
-		log.Printf("ignoring invalid GitHub proxy value")
+		// The rejected value itself is not logged: it came from settings and is
+		// echoed back in the API response, so there is no need to copy it into a
+		// world-readable log.
+		updateLog.Warn("ignoring invalid GitHub proxy value")
 		githubProxy = ""
 		return
 	}

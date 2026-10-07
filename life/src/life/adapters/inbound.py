@@ -13,9 +13,11 @@ from __future__ import annotations
 
 import asyncio
 import json
+from datetime import datetime, timezone
 from typing import AsyncIterator, Callable, Optional
 
 from .. import media
+from ..core_client import get_core_client
 from ..logging_setup import get_logger
 from .onebot import OneBotMessage
 
@@ -98,7 +100,12 @@ class InboundBridge:
                 except Exception as error:
                     logger.debug("group observer failed: %s", error)
 
-        if not await self._should_reply(data, msg, content):
+        # The wake verdict decides whether *L.I.F.E* would answer, not whether
+        # the message exists. Publishing happens either way: Core applies each
+        # subscriber's own filter (is_wake separates the two), and a subscriber
+        # on read_mode "all" is entitled to traffic L.I.F.E itself ignores.
+        wake = await self._should_reply(data, msg, content)
+        if not await self._publish(msg, content, wake):
             return
 
         session_id = self._session_id(data)
@@ -143,6 +150,83 @@ class InboundBridge:
         if keywords and not any(key in content.lower() for key in keywords):
             return False
         return True
+
+    @staticmethod
+    def _conversation(msg: OneBotMessage) -> str:
+        """The bus addressing key.
+
+        Deliberately the same ``group:<id>`` / ``private:<id>`` shape that
+        ``ManageCompanion{chat_send}`` and ``MessageService.SendMessage`` take,
+        so a plugin can send back to a conversation it learned off the bus
+        without translating between two id schemes.
+        """
+        if msg.is_group:
+            return f"group:{msg.group_id}"
+        return f"private:{msg.user_id}"
+
+    @staticmethod
+    def _media_refs(msg: OneBotMessage) -> list:
+        refs = []
+        for seg in msg.segments:
+            if seg["type"] == "text":
+                continue
+            ref = str(seg["data"].get("url") or seg["data"].get("file") or "")
+            if ref:
+                refs.append(ref)
+        return refs
+
+    async def _publish(self, msg: OneBotMessage, content: str, wake: bool) -> bool:
+        """Report one observed message to Core's bus and return the verdict.
+
+        Returns whether L.I.F.E should run its reply pipeline: normally ``wake``,
+        but a gate plugin may override it — vetoing a message L.I.F.E would have
+        answered, or asking for one it would have skipped.
+
+        Falls back to ``wake`` whenever Core cannot arbitrate (not connected, the
+        adapter was not claimed, the call failed). A bus outage must not mute the
+        assistant, and it must not be mistaken for a veto.
+
+        The gRPC client is blocking, so the call runs on a worker thread and the
+        WebSocket read loop keeps draining meanwhile.
+        """
+        try:
+            client = get_core_client()
+        except Exception as error:  # pragma: no cover - defensive
+            logger.debug("core client unavailable: %s", error)
+            return wake
+        if client is None:
+            return wake
+        try:
+            result = await asyncio.to_thread(
+                client.publish_inbound_message,
+                adapter_id=str(self.instance.id),
+                platform=str(getattr(self.instance, "platform", "") or ""),
+                conversation=self._conversation(msg),
+                kind="group" if msg.is_group else "private",
+                peer_id=str(msg.group_id if msg.is_group else msg.user_id),
+                sender_id=str(msg.user_id),
+                sender_name=msg.sender_name,
+                text=content,
+                media=self._media_refs(msg),
+                at=datetime.now(timezone.utc).isoformat(),
+                message_id=str(msg.message_id or ""),
+                is_wake=wake,
+            )
+        except Exception as error:
+            logger.debug("bus publish failed on adapter %s: %s", self.instance.id, error)
+            return wake
+
+        if not result.get("accepted"):
+            return wake
+        verdict = result.get("should_process")
+        if verdict is None:
+            return wake
+        if bool(verdict) != wake:
+            logger.info(
+                "gate %s overrode the wake verdict for %s (process=%s): %s",
+                result.get("decided_by") or "unknown", self._conversation(msg),
+                bool(verdict), result.get("reason") or "no reason given")
+        return bool(verdict)
 
     async def _describe(self, msg: OneBotMessage, server) -> str:
         """Render segments, captioning images when a vision handler is wired."""

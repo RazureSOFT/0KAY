@@ -16,11 +16,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'ge
 from life.v1 import life_pb2
 from life.v1 import life_pb2_grpc
 from plugin.v1 import plugin_pb2
+from plugin.v1 import plugin_pb2_grpc
 
 from ..engine import LifeEngine
 from ..core_client import get_core_client
 from ..logging_setup import get_logger, setup_logging
 from .auth import build_interceptor, resolve_mode
+from .messaging import MessageServiceServicer
 
 log = get_logger("grpc.server")
 
@@ -778,6 +780,31 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             elif action == "adapter_routes_set":
                 result = await self.engine.adapter_routes_apply(
                     payload.get("routes") or [], str(payload.get("default_config_id") or ""))
+            # --- QQ-style transcript viewer ---
+            elif action == "chat_conversations":
+                result = {"conversations": await asyncio.to_thread(
+                    self.engine.chat_conversations, int(payload.get("limit") or 100))}
+            elif action == "chat_messages":
+                result = {"messages": await asyncio.to_thread(
+                    self.engine.chat_messages, str(payload.get("conversation") or ""),
+                    int(payload.get("limit") or 200), str(payload.get("before") or ""))}
+            elif action == "chat_send":
+                result = await self.engine.send_chat(
+                    str(payload.get("conversation") or ""), str(payload.get("text") or ""),
+                    str(payload.get("adapter_id") or ""))
+            elif action == "chat_resolve_groups":
+                result = await self.engine.resolve_group_names()
+            # --- Bilibili accounts (unofficial web API) ---
+            elif action == "bili_list":
+                result = self.engine.bili_list()
+            elif action == "bili_qr_start":
+                result = await self.engine.bili_qr_start()
+            elif action == "bili_qr_poll":
+                result = await self.engine.bili_qr_poll(str(payload.get("qrcode_key") or ""))
+            elif action == "bili_set_cookie":
+                result = await self.engine.bili_set_cookie(str(payload.get("cookie") or ""))
+            elif action == "bili_delete":
+                result = await asyncio.to_thread(self.engine.bili_delete, str(payload.get("id") or ""))
             elif action == "session_config":
                 # Which persona config a given conversation resolves to right now.
                 session_id = str(payload.get("session_id") or "")
@@ -846,6 +873,12 @@ async def serve(mocr_address: str = None):
         log.exception("LIFE failed during initialization")
         raise
     life_pb2_grpc.add_LifeServiceServicer_to_server(servicer, server)
+    # L.I.F.E is also the chat-adapter owner Core routes outbound sends to, so
+    # it serves plugin.v1.MessageService on the same endpoint. Registered from
+    # the same engine instance: the dashboard's chat_send and a plugin's
+    # SendMessage must not be able to diverge.
+    plugin_pb2_grpc.add_MessageServiceServicer_to_server(
+        MessageServiceServicer(servicer.engine), server)
 
     # Set life address on core client so Core can call us back
     core = get_core_client()

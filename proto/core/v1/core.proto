@@ -47,6 +47,33 @@ service CoreService {
 
   // CallPluginTool routes a tool call to the owning plugin's ToolService.
   rpc CallPluginTool(CallPluginToolRequest) returns (CallPluginToolResponse);
+
+  // PublishInboundMessage reports one inbound adapter message into Core's
+  // message bus. Adapter plugins (L.I.F.E for QQ/OneBot, or a third-party
+  // bridge) call this for every message they observe.
+  //
+  // Two things happen: Core records the caller as the adapter's owner — which
+  // is what later lets SendMessage route back to it — and fans the message out
+  // to every subscriber whose declared permissions cover it. Requires
+  // permissions.messages.publish_adapters to list the adapter.
+  rpc PublishInboundMessage(PublishInboundMessageRequest) returns (PublishInboundMessageResponse);
+
+  // SubscribeMessages opens a stream of inbound adapter messages the caller is
+  // allowed to read. Delivery is filtered by the caller's declared
+  // permissions.messages (read_mode / read_adapters / read_conversations), and
+  // the stream ends when the plugin disconnects or is disabled.
+  rpc SubscribeMessages(SubscribeMessagesRequest) returns (stream SubscribeMessagesResponse);
+
+  // SendMessage asks Core to deliver an outbound message through an adapter.
+  // Core checks permissions.messages.send_adapters, routes the send to the
+  // adapter's owning plugin (MessageService.SendMessage) and returns its
+  // result.
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+
+  // ListAdapters reports the adapters the caller may use, with the
+  // conversations it may address. A plugin uses this to discover valid
+  // adapter_id / conversation values before calling SendMessage.
+  rpc ListAdapters(ListAdaptersRequest) returns (ListAdaptersResponse);
 }
 
 // RegisterRequest is the request for PluginService.Register.
@@ -362,6 +389,156 @@ message CallPluginToolResponse {
   bool success = 1;
   string result = 2;
   string error = 3;
+}
+
+// PublishInboundMessageRequest is the request for
+// CoreService.PublishInboundMessage.
+message PublishInboundMessageRequest {
+  // caller_id is the plugin id reporting the message (Core fills it from the
+  // authenticated plugin identity, so a plugin cannot report as another).
+  string caller_id = 1;
+
+  // message is the observed adapter message.
+  plugin.v1.InboundMessage message = 2;
+}
+
+// PublishInboundMessageResponse is the response for
+// CoreService.PublishInboundMessage.
+message PublishInboundMessageResponse {
+  // accepted indicates Core recorded and fanned out the message.
+  bool accepted = 1;
+
+  // delivered is how many subscribers received it. Zero is normal — it means
+  // nobody declared an interest in this adapter/conversation.
+  int32 delivered = 2;
+
+  // error is a human-readable error when accepted is false.
+  string error = 3;
+
+  // should_process is the arbitration verdict the publisher must apply: false
+  // means a gate plugin vetoed this message, so the publisher (L.I.F.E) must
+  // not run its reply pipeline. true covers both "no gate objected and the
+  // publisher's own wake rule fired" and "a gate asked for processing the wake
+  // rule would have skipped".
+  //
+  // Core computes it as: any "deny" → false; else any "allow" → true; else the
+  // message's own is_wake flag. A publisher that cannot reach Core at all
+  // should fall back to its own wake rule rather than treat the silence as a
+  // veto.
+  bool should_process = 4;
+
+  // decided_by names the gate plugin that produced the deciding verdict, and
+  // reason is its explanation. Both empty when every gate abstained — which is
+  // also the answer when no gate plugin is installed, and costs no RPC.
+  string decided_by = 5;
+  string reason = 6;
+}
+
+// SubscribeMessagesRequest is the request for CoreService.SubscribeMessages.
+message SubscribeMessagesRequest {
+  // caller_id is the subscribing plugin id (Core fills it from the
+  // authenticated plugin identity).
+  string caller_id = 1;
+
+  // replay_last requests that Core deliver the most recent matching message
+  // immediately on subscribe, so a plugin that reconnects can catch up. Zero
+  // (the default) starts from now.
+  int32 replay_last = 2;
+}
+
+// SubscribeMessagesResponse is one delivery on the CoreService.SubscribeMessages
+// stream. It wraps the message rather than streaming it bare so the RPC keeps
+// room to add per-delivery metadata without a breaking change.
+message SubscribeMessagesResponse {
+  // message is the inbound adapter message.
+  plugin.v1.InboundMessage message = 1;
+
+  // subscriber is the plugin id this delivery was addressed to. Echoed so a
+  // plugin that multiplexes several subscriptions can tell them apart.
+  string subscriber = 2;
+}
+
+// SendMessageRequest is the request for CoreService.SendMessage.
+message SendMessageRequest {
+  // caller_id is the sending plugin id (Core fills it from the authenticated
+  // plugin identity).
+  string caller_id = 1;
+
+  // adapter_id is the adapter to send through. Empty selects the only adapter
+  // the caller may use, and is an error when there is more than one.
+  string adapter_id = 2;
+
+  // conversation is the target: "group:<id>" or "private:<id>".
+  string conversation = 3;
+
+  // text is the message body.
+  string text = 4;
+
+  // media lists attachment references to send alongside the text.
+  repeated string media = 5;
+}
+
+// SendMessageResponse is the response for CoreService.SendMessage.
+message SendMessageResponse {
+  bool success = 1;
+
+  // message_id is the adapter's id for the delivered message, when it has one.
+  string message_id = 2;
+
+  // error is a human-readable error when success is false.
+  string error = 3;
+}
+
+// ListAdaptersRequest is the request for CoreService.ListAdapters.
+message ListAdaptersRequest {
+  // caller_id is the requesting plugin id (Core fills it from the
+  // authenticated plugin identity).
+  string caller_id = 1;
+}
+
+// AdapterInfo describes one adapter instance Core knows about.
+message AdapterInfo {
+  // adapter_id is the stable instance id.
+  string adapter_id = 1;
+
+  // platform is the platform family ("onebot", "bilibili", …).
+  string platform = 2;
+
+  // name is the instance's display name.
+  string name = 3;
+
+  // owner_plugin is the plugin that reported messages for this adapter and
+  // therefore receives its outbound sends.
+  string owner_plugin = 4;
+
+  // can_read is true when the caller's declared permissions cover reading
+  // this adapter.
+  bool can_read = 5;
+
+  // can_send is true when the caller's declared permissions cover sending
+  // through this adapter.
+  bool can_send = 6;
+
+  // conversations are the conversations the caller may address on this
+  // adapter, when the caller may send. Empty when can_send is false.
+  repeated ConversationInfo conversations = 7;
+}
+
+// ConversationInfo is one addressable conversation on an adapter.
+message ConversationInfo {
+  // conversation is the addressing key: "group:<id>" or "private:<id>".
+  string conversation = 1;
+
+  // kind is "group" or "private".
+  string kind = 2;
+
+  // name is the group / peer display name when known.
+  string name = 3;
+}
+
+// ListAdaptersResponse is the response for CoreService.ListAdapters.
+message ListAdaptersResponse {
+  repeated AdapterInfo adapters = 1;
 }
 
 // MocrContext provides additional context for model selection.

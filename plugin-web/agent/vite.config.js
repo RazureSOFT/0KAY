@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
@@ -30,8 +31,29 @@ function injectCss(styleId) {
   }
 }
 
+/**
+ * Copy the plugin's string resources next to its bundle.
+ *
+ * Core serves them from CORE_DATA_DIR/plugin-ui/agent/strings, the same place
+ * the ESM bundle lands, and the WebUI fetches them from
+ * /api/plugins/agent/strings. It has to run *after* the bundle is written:
+ * `emptyOutDir: true` wipes the output directory at the start of every build.
+ * The source stays in plugin-web/agent/strings and is tracked.
+ */
+function copyStrings() {
+  return {
+    name: 'copy-strings',
+    apply: 'build',
+    async closeBundle() {
+      const from = path.join(root, 'strings')
+      if (!fs.existsSync(from)) return
+      await fs.promises.cp(from, path.join(outDir, 'strings'), { recursive: true })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [vue(), injectCss('agent-plugin-style')],
+  plugins: [vue(), injectCss('agent-plugin-style'), copyStrings()],
   // Some bundled preview libraries (pptx-preview → zrender) reference `process`
   // at module-evaluation time. The plugin runs in the browser, so shim it.
   define: {
@@ -49,7 +71,7 @@ export default defineConfig({
       fileName: () => 'index.js',
     },
     rollupOptions: {
-      external: ['vue'],
+      external: ['vue', '@0kay/host'],
       output: {
         // `process` shim for libraries that touch process.nextTick/env at load.
         banner: 'var process=globalThis.process||{env:{NODE_ENV:"production"},nextTick:(fn,...a)=>Promise.resolve().then(()=>fn(...a))};',

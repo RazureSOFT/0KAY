@@ -1,136 +1,81 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConfirm } from '../composables/confirm'
 import MarkdownContent from './MarkdownContent.vue'
+import ModalShell from './ModalShell.vue'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const { confirmState, settle } = useConfirm()
-const dialog = ref<HTMLElement | null>(null)
-const cancelBtn = ref<HTMLButtonElement | null>(null)
-let previousFocus: HTMLElement | null = null
 
-const title = () => {
+const title = computed(() => {
   const state = confirmState.value
   if (state?.options.title) return state.options.title
-  return locale.value === 'en' ? 'Confirm' : '请确认'
-}
-const confirmLabel = () => confirmState.value?.options.confirmLabel
-  || (locale.value === 'en' ? 'Confirm' : '确认')
-const cancelLabel = () => confirmState.value?.options.cancelLabel
-  || t('settings.cancel')
-
-watch(() => !!confirmState.value, async (open) => {
-  if (open) {
-    previousFocus = document.activeElement as HTMLElement
-    await nextTick()
-    dialog.value?.focus()
-    cancelBtn.value?.focus()
-  } else {
-    dialog.value = null
-    previousFocus?.focus?.()
-  }
+  return t('confirm.title')
 })
-
-function onKeydown(event: KeyboardEvent) {
-  if (!confirmState.value) return
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    settle(false)
-    return
-  }
-  if (event.key !== 'Tab' || !dialog.value) return
-  const focusable = [...dialog.value.querySelectorAll<HTMLElement>('button:not(:disabled)')]
-  if (!focusable.length) return
-  const first = focusable[0]
-  const last = focusable[focusable.length - 1]
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault()
-    first.focus()
-  }
-}
+const confirmLabel = computed(
+  () => confirmState.value?.options.confirmLabel || t('confirm.confirm'),
+)
+const cancelLabel = computed(() => confirmState.value?.options.cancelLabel || t('settings.cancel'))
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="confirmState"
-      class="confirm-scrim"
-      role="presentation"
-      @click.self="settle(false)"
-      @keydown="onKeydown"
-    >
-      <section
-        ref="dialog"
-        class="confirm-dialog"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="confirm-dialog-title"
-        aria-describedby="confirm-dialog-message"
-        tabindex="-1"
-      >
-        <header class="confirm-head">
-          <img
-            v-if="confirmState.options.icon"
-            class="confirm-icon"
-            :src="confirmState.options.icon"
-            alt=""
-            loading="lazy"
-          />
-          <div class="confirm-headtext">
-            <h2 id="confirm-dialog-title">{{ title() }}</h2>
-            <p v-if="confirmState.options.description" class="confirm-desc">{{ confirmState.options.description }}</p>
-          </div>
-        </header>
-        <p id="confirm-dialog-message">{{ confirmState.options.message }}</p>
-        <ul v-if="confirmState.options.details?.length" class="confirm-details">
-          <li v-for="(item, i) in confirmState.options.details" :key="i">{{ item }}</li>
-        </ul>
-        <div v-if="confirmState.options.readme" class="confirm-readme">
-          <MarkdownContent :content="confirmState.options.readme" />
+  <!--
+    Scrim, focus trap, Escape handling and focus restore now live in ModalShell.
+    ConfirmDialog keeps only its content, which is why the panel width and the
+    header/body styling below are unchanged.
+  -->
+  <ModalShell
+    :open="!!confirmState"
+    :title="title"
+    panel-class="confirm-dialog"
+    max-height="min(88vh, 900px)"
+    labelled-by="confirm-dialog-title"
+    described-by="confirm-dialog-message"
+    :on-dismiss="() => settle(false)"
+    role="alertdialog"
+  >
+    <template v-if="confirmState">
+      <header class="confirm-head">
+        <img
+          v-if="confirmState.options.icon"
+          class="confirm-icon"
+          :src="confirmState.options.icon"
+          alt=""
+          loading="lazy"
+        />
+        <div class="confirm-headtext">
+          <h2 id="confirm-dialog-title">{{ title }}</h2>
+          <p v-if="confirmState.options.description" class="confirm-desc">{{ confirmState.options.description }}</p>
         </div>
-        <footer>
-          <button ref="cancelBtn" type="button" @click="settle(false)">{{ cancelLabel() }}</button>
-          <button
-            type="button"
-            class="confirm-primary"
-            :class="{ danger: confirmState.options.danger !== false }"
-            @click="settle(true)"
-          >{{ confirmLabel() }}</button>
-        </footer>
-      </section>
-    </div>
-  </Teleport>
+      </header>
+      <p id="confirm-dialog-message">{{ confirmState.options.message }}</p>
+      <ul v-if="confirmState.options.details?.length" class="confirm-details">
+        <li v-for="(item, i) in confirmState.options.details" :key="i">{{ item }}</li>
+      </ul>
+      <div v-if="confirmState.options.readme" class="confirm-readme">
+        <MarkdownContent :content="confirmState.options.readme" />
+      </div>
+      <footer>
+        <button type="button" @click="settle(false)">{{ cancelLabel }}</button>
+        <button
+          type="button"
+          class="confirm-primary"
+          :class="{ danger: confirmState.options.danger !== false }"
+          @click="settle(true)"
+        >{{ confirmLabel }}</button>
+      </footer>
+    </template>
+  </ModalShell>
 </template>
 
 <style>
-.confirm-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal, 4000);
-  background: #21173566;
-  backdrop-filter: blur(6px);
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  animation: fadeIn 180ms ease-out;
-}
+/* Scoped to the shared shell: the shell owns .modal-panel's geometry, this only
+   widens the reading measure and restyles the interior. */
 .confirm-dialog {
   width: min(680px, 100%);
-  max-height: min(88vh, 900px);
-  display: flex;
-  flex-direction: column;
   background: var(--md-surface-container-high, var(--md-surface, #fff));
-  color: var(--md-on-surface);
   border: 1px solid var(--md-outline-variant, transparent);
-  border-radius: 28px;
-  padding: 28px;
-  box-shadow: 0 24px 70px #18132d33;
-  animation: dialog-arrive 320ms var(--ease-emphasized, ease-out) both;
-  outline: none;
 }
 .confirm-head {
   display: flex;
@@ -199,7 +144,8 @@ function onKeydown(event: KeyboardEvent) {
   justify-content: flex-end;
   gap: 12px;
   margin-top: 24px;
-}.confirm-dialog footer button {
+}
+.confirm-dialog footer button {
   border: 0;
   border-radius: 999px;
   padding: 12px 22px;
@@ -225,18 +171,8 @@ function onKeydown(event: KeyboardEvent) {
   outline: 3px solid var(--md-primary);
   outline-offset: 3px;
 }
-/* Defined locally (not just in the global theme.css) so the enter animation
-   cannot be lost if the component is used without the global sheet. */
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes dialog-arrive {
-  from { opacity: 0; transform: translateY(16px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
 @media (prefers-reduced-motion: reduce) {
-  .confirm-scrim,
-  .confirm-dialog,
   .confirm-dialog footer button {
-    animation: none;
     transition: none;
   }
 }

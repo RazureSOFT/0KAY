@@ -71,6 +71,7 @@ onUnmounted(() => {
 
 <template>
   <Teleport to="body">
+    <Transition name="mc-consent">
     <div v-if="pending" class="mc-consent-scrim">
       <section ref="dialog" class="mc-consent-dialog" role="alertdialog" aria-modal="true" aria-labelledby="mc-consent-title" tabindex="-1" @keydown="onKeydown">
         <div class="mc-consent-icon" aria-hidden="true">
@@ -89,13 +90,14 @@ onUnmounted(() => {
         </footer>
       </section>
     </div>
+    </Transition>
   </Teleport>
 </template>
 
 <style scoped>
 .mc-consent-scrim {
-  position: fixed; inset: 0; z-index: 13100;
-  background: #21173566; backdrop-filter: blur(6px);
+  position: fixed; inset: 0; z-index: var(--z-modal, 4000);
+  background: var(--md-scrim, rgba(18, 15, 26, 0.45)); backdrop-filter: blur(6px);
   display: grid; place-items: center; padding: 20px;
 }
 .mc-consent-dialog {
@@ -105,7 +107,7 @@ onUnmounted(() => {
   border: 1px solid var(--md-outline-variant);
   border-radius: 28px; padding: 24px;
   display: grid; grid-template-columns: auto 1fr; gap: 16px;
-  box-shadow: 0 24px 70px #18132d33;
+  box-shadow: var(--shadow-4);
 }
 .mc-consent-icon {
   width: 46px; height: 46px; border-radius: 16px; display: grid; place-items: center;
@@ -120,4 +122,14 @@ onUnmounted(() => {
 }
 .mc-consent-dialog footer button.primary { background: var(--md-primary); color: var(--md-on-primary); }
 .mc-consent-dialog footer button:disabled { opacity: .6; cursor: default; }
+
+/* Enter via the shared dialog rise; leave accelerates out (the only one of the
+   five hand-written dialogs that had neither). */
+.mc-consent-enter-active { transition: opacity var(--duration-medium, 220ms) var(--ease-out, ease-out); }
+.mc-consent-enter-active .mc-consent-dialog { animation: dialog-arrive var(--duration-long, 360ms) var(--ease-spring, ease-out) both; }
+.mc-consent-leave-active { transition: opacity var(--duration-short, 140ms) var(--ease-emphasized-accel, ease-in); }
+.mc-consent-enter-from, .mc-consent-leave-to { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .mc-consent-enter-active .mc-consent-dialog { animation: none; }
+}
 </style>

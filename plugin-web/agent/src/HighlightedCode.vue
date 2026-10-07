@@ -20,14 +20,18 @@ const html = computed(() => highlightCode(props.code, props.path))
 .hl-code :deep(.hljs-variable),.hl-code :deep(.hljs-template-variable),.hl-code :deep(.hljs-symbol),.hl-code :deep(.hljs-bullet),.hl-code :deep(.hljs-link){color:#e36209}
 .hl-code :deep(.hljs-tag),.hl-code :deep(.hljs-meta),.hl-code :deep(.hljs-deletion){color:#22863a}
 .hl-code :deep(.hljs-type),.hl-code :deep(.hljs-class .hljs-title),.hl-code :deep(.hljs-params){color:#005cc5}
-@media (prefers-color-scheme: dark){
-  .hl-code :deep(.hljs-comment),.hl-code :deep(.hljs-quote){color:#8b949e}
-  .hl-code :deep(.hljs-keyword),.hl-code :deep(.hljs-selector-tag),.hl-code :deep(.hljs-doctag),.hl-code :deep(.hljs-formula){color:#ff7b72}
-  .hl-code :deep(.hljs-string),.hl-code :deep(.hljs-regexp),.hl-code :deep(.hljs-addition){color:#a5d6ff}
-  .hl-code :deep(.hljs-number),.hl-code :deep(.hljs-literal),.hl-code :deep(.hljs-attr),.hl-code :deep(.hljs-attribute),.hl-code :deep(.hljs-built_in),.hl-code :deep(.hljs-selector-attr),.hl-code :deep(.hljs-selector-pseudo),.hl-code :deep(.hljs-meta .hljs-keyword){color:#79c0ff}
-  .hl-code :deep(.hljs-title),.hl-code :deep(.hljs-section),.hl-code :deep(.hljs-name),.hl-code :deep(.hljs-selector-id),.hl-code :deep(.hljs-selector-class){color:#d2a8ff}
-  .hl-code :deep(.hljs-variable),.hl-code :deep(.hljs-template-variable),.hl-code :deep(.hljs-symbol),.hl-code :deep(.hljs-bullet),.hl-code :deep(.hljs-link){color:#ffa657}
-  .hl-code :deep(.hljs-tag),.hl-code :deep(.hljs-meta),.hl-code :deep(.hljs-deletion){color:#7ee787}
-  .hl-code :deep(.hljs-type),.hl-code :deep(.hljs-class .hljs-title),.hl-code :deep(.hljs-params){color:#79c0ff}
-}
+</style>
+<style>
+/* Dark token colors ride on the host's html[data-theme] toggle rather than the
+   OS media query (a manual light/dark choice in Settings must be honored).
+   Unscoped because scoped styles cannot express an html-level selector; the
+   #app prefix keeps the rules from leaking. */
+html[data-theme="dark"] #app .hl-code .hljs-comment,html[data-theme="dark"] #app .hl-code .hljs-quote{color:#8b949e}
+html[data-theme="dark"] #app .hl-code .hljs-keyword,html[data-theme="dark"] #app .hl-code .hljs-selector-tag,html[data-theme="dark"] #app .hl-code .hljs-doctag,html[data-theme="dark"] #app .hl-code .hljs-formula{color:#ff7b72}
+html[data-theme="dark"] #app .hl-code .hljs-string,html[data-theme="dark"] #app .hl-code .hljs-regexp,html[data-theme="dark"] #app .hl-code .hljs-addition{color:#a5d6ff}
+html[data-theme="dark"] #app .hl-code .hljs-number,html[data-theme="dark"] #app .hl-code .hljs-literal,html[data-theme="dark"] #app .hl-code .hljs-attr,html[data-theme="dark"] #app .hl-code .hljs-attribute,html[data-theme="dark"] #app .hl-code .hljs-built_in,html[data-theme="dark"] #app .hl-code .hljs-selector-attr,html[data-theme="dark"] #app .hl-code .hljs-selector-pseudo,html[data-theme="dark"] #app .hl-code .hljs-meta .hljs-keyword{color:#79c0ff}
+html[data-theme="dark"] #app .hl-code .hljs-title,html[data-theme="dark"] #app .hl-code .hljs-section,html[data-theme="dark"] #app .hl-code .hljs-name,html[data-theme="dark"] #app .hl-code .hljs-selector-id,html[data-theme="dark"] #app .hl-code .hljs-selector-class{color:#d2a8ff}
+html[data-theme="dark"] #app .hl-code .hljs-variable,html[data-theme="dark"] #app .hl-code .hljs-template-variable,html[data-theme="dark"] #app .hl-code .hljs-symbol,html[data-theme="dark"] #app .hl-code .hljs-bullet,html[data-theme="dark"] #app .hl-code .hljs-link{color:#ffa657}
+html[data-theme="dark"] #app .hl-code .hljs-tag,html[data-theme="dark"] #app .hl-code .hljs-meta,html[data-theme="dark"] #app .hl-code .hljs-deletion{color:#7ee787}
+html[data-theme="dark"] #app .hl-code .hljs-type,html[data-theme="dark"] #app .hl-code .hljs-class .hljs-title,html[data-theme="dark"] #app .hl-code .hljs-params{color:#79c0ff}
 </style>

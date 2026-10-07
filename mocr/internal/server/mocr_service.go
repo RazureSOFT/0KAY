@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -14,10 +13,16 @@ import (
 	mocrv1 "0kay/gen/mocr/v1"
 	prov "0kay/mocr/internal/providers"
 	"0kay/mocr/internal/selector"
+	"0kay/obs"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
+
+// genLog tags model-generation records: retries, auto-switches and the
+// deliberate offline refusals. These are the lines that explain why a reply
+// took four seconds or came back empty.
+var genLog = obs.Component("mocr")
 
 // isFakeKey reports placeholder keys that must not hit the network.
 func isFakeKey(key string) bool {
@@ -149,7 +154,7 @@ func (s *MocrServiceServer) ChooseModels(ctx context.Context, req *mocrv1.Choose
 				}, nil
 			}
 		}
-		log.Printf("[mocr] default_model %q not found in catalog; falling back to selector", dm)
+		genLog.WarnContext(ctx, "default_model not in catalog; falling back to the selector", "model", dm)
 	}
 
 	difficulty := 0.5
@@ -204,7 +209,7 @@ func (s *MocrServiceServer) Generate(req *mocrv1.GenerateRequest, stream mocrv1.
 	}
 
 	// No credentials configured — surface an explicit offline marker (not a silent echo).
-	log.Printf("[mocr] no credentials for model=%s, offline fallback", req.ModelId)
+	genLog.Warn("no provider credentials configured; refusing to fabricate a reply", "model", req.ModelId)
 	return status.Error(codes.FailedPrecondition, "no provider credentials configured")
 }
 
@@ -233,7 +238,7 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 
 	// Fake/test keys hang or 401 on the wire; fail fast offline (explicit, not echo)
 	if isFakeKey(req.ApiKey) {
-		log.Printf("[mocr] fake key, offline fallback model=%s", req.ModelId)
+		genLog.Warn("placeholder API key; refusing to call the provider", "model", req.ModelId)
 		return status.Error(codes.FailedPrecondition, "placeholder API key")
 	}
 
@@ -254,6 +259,21 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 	}
 	requestID := firstMeta(stream.Context(), "x-0kay-request-id")
 	sessionID := firstMeta(stream.Context(), "x-0kay-session-id")
+
+	// Seed the span with Core's request id so this generation joins the trace
+	// the browser started rather than appearing as an unrelated island. Everything
+	// below (retries, auto-switches, provider calls) then hangs off it.
+	ctx, genSpan := obs.StartWithID(stream.Context(), requestID, "mocr.generate", obs.KindServer)
+	defer genSpan.End()
+	genSpan.Attr("model", req.ModelId)
+	genSpan.Attr("provider", req.Provider)
+	if sessionID != "" {
+		genSpan.Attr("session", sessionID)
+	}
+	genSpan.Attr("tools", fmt.Sprintf("%d", len(req.Tools)))
+	genSpan.Attr("messages", fmt.Sprintf("%d", len(msgs)))
+	// Note: req.ApiKey is deliberately never attached. The credential lives on
+	// the request for the duration of the call and must not reach a log buffer.
 
 	// Model/credentials actually in use (swapped on auto-switch).
 	curModel, curProvider, curBaseURL, curKey := req.ModelId, req.Provider, req.BaseUrl, req.ApiKey
@@ -322,7 +342,8 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 				break
 			}
 			t := targets[attempt-1]
-			log.Printf("[mocr] auto-switch %d/%d: model %s -> %s", attempt, attempts-1, curModel, t.model)
+			genLog.InfoContext(ctx, "auto-switching model", "attempt", attempt, "attempts", attempts-1, "from", curModel, "to", t.model)
+			genSpan.Event("auto_switch", map[string]string{"from": curModel, "to": t.model, "attempt": fmt.Sprintf("%d", attempt)})
 			curModel, curProvider, curBaseURL, curKey = t.model, t.cred.Provider, t.cred.BaseURL, t.cred.APIKey
 		}
 
@@ -349,7 +370,8 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 			if backoff > 5*time.Second {
 				backoff = 5 * time.Second
 			}
-			log.Printf("[mocr] retry %d/%d model=%s after error: %v (backoff %s)", try+1, innerTries-1, curModel, err, backoff)
+			genLog.WarnContext(ctx, "retrying after provider error", "try", try+1, "tries", innerTries-1, "model", curModel, "backoff", backoff.String(), "err", err)
+			genSpan.Event("retry", map[string]string{"model": curModel, "backoff": backoff.String(), "err": err.Error()})
 			select {
 			case <-ctx.Done():
 			case <-time.After(backoff):
@@ -362,16 +384,19 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 				return finishGenerate(req, curModel, lastErr, info, &fullText, requestID, sessionID, stream)
 			}
 			// Empty response (no text / tool calls / reasoning) → switch model.
-			log.Printf("[mocr] empty response model=%s; trying next model", curModel)
+			genLog.WarnContext(ctx, "empty response; trying the next model", "model", curModel)
+			genSpan.Event("empty_response", map[string]string{"model": curModel})
 			sawEmpty = true
 			continue
 		}
 		if chunks > 0 || thinkingChunks > 0 {
 			// Content/thinking was already streamed — retrying would duplicate output.
-			log.Printf("[mocr] provider failed mid-stream model=%s: %v", curModel, err)
+			genLog.ErrorContext(ctx, "provider failed mid-stream; not retrying", "model", curModel, "err", err)
+			genSpan.Fail(err)
 			return status.Error(codes.Unavailable, "provider error: "+err.Error())
 		}
-		log.Printf("[mocr] real generate failed model=%s: %v", curModel, err)
+		genLog.ErrorContext(ctx, "generate failed", "model", curModel, "err", err)
+		genSpan.Fail(err)
 		lastErr = err
 		sawEmpty = false
 	}

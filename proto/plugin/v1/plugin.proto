@@ -88,6 +88,229 @@ message CallToolResponse {
   string error = 3;
 }
 
+// InboundMessage is one message observed on a chat adapter (QQ/OneBot, …).
+//
+// It is the unit Core's message bus carries: an adapter plugin reports it with
+// CoreService.PublishInboundMessage, Core fans it out to subscribers, and each
+// subscriber receives the same shape. `conversation` is the stable addressing
+// key — "group:<id>" or "private:<id>" — and is what SendMessage takes back.
+message InboundMessage {
+  // adapter_id identifies the adapter instance the message arrived on, as
+  // reported by its owning plugin (e.g. a L.I.F.E adapter instance id).
+  string adapter_id = 1;
+
+  // platform is the adapter's platform family: "onebot", "bilibili", "webui", …
+  string platform = 2;
+
+  // conversation is the addressing key: "group:<id>" or "private:<id>".
+  string conversation = 3;
+
+  // kind is "group" or "private".
+  string kind = 4;
+
+  // peer_id is the group id or the other party's user id.
+  string peer_id = 5;
+
+  // peer_name is the group name / display name when the adapter knows it.
+  string peer_name = 6;
+
+  // sender_id is the user id that authored the message.
+  string sender_id = 7;
+
+  // sender_name is the author's display name when the adapter knows it.
+  string sender_name = 8;
+
+  // text is the message body with non-text segments removed.
+  string text = 9;
+
+  // media lists attachment references (URLs or adapter-local handles).
+  repeated string media = 10;
+
+  // at is the RFC 3339 timestamp the adapter observed the message.
+  string at = 11;
+
+  // message_id is the adapter's own id for this message, when it has one.
+  string message_id = 12;
+
+  // is_wake is true when the message already matched a wake rule (bot
+  // @-mention, configured keyword, or continuing topic). Subscribers on
+  // read_mode "wake" only ever see messages with this set; subscribers on
+  // "all" see both and can use the flag to tell them apart.
+  bool is_wake = 13;
+
+  // raw_json carries the adapter's original event, for plugins that need a
+  // field this shape does not model. Adapters may leave it empty.
+  string raw_json = 14;
+}
+
+// MessageService is implemented by plugins that drive a chat adapter. Core
+// routes an outbound send to the adapter's owning plugin here — the plugin that
+// claimed the adapter via CoreService.PublishInboundMessage or advertised it
+// with ListAdapters.
+//
+// Naming note: `SendMessageRequest` / `ListAdaptersRequest` also exist in
+// `core.v1`, because the same verb is seen from two directions. The package
+// says which side you are on — `plugin.v1` is the adapter receiving a delivery,
+// `core.v1` is a plugin asking Core to deliver. Generated bindings are
+// package-qualified (`pluginv1.SendMessageRequest` vs `corev1.SendMessageRequest`).
+service MessageService {
+  // SendMessage delivers one outbound message through an adapter this plugin
+  // owns.
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+
+  // ListAdapters advertises the adapters this plugin drives, so Core can offer
+  // them to subscribers before any message has arrived on them. Optional: a
+  // plugin that only reports inbound traffic can leave this unimplemented, and
+  // Core will learn its adapters from the first PublishInboundMessage.
+  rpc ListAdapters(ListAdaptersRequest) returns (ListAdaptersResponse);
+
+  // DecideInbound arbitrates one inbound message before the default assistant
+  // processes it. Core calls this only on plugins that declared
+  // permissions.messages.gate, and only for messages their read scope covers.
+  //
+  // Optional in practice: a plugin without `gate` is never called, and one that
+  // declares it but leaves this unimplemented answers Unimplemented, which Core
+  // treats as "abstain".
+  rpc DecideInbound(DecideInboundRequest) returns (DecideInboundResponse);
+}
+
+// DecideInboundRequest is the request for MessageService.DecideInbound.
+message DecideInboundRequest {
+  // caller_id is "core": Core arbitrates, it is not acting for a plugin here.
+  string caller_id = 1;
+
+  // message is the inbound message awaiting a verdict.
+  InboundMessage message = 2;
+}
+
+// DecideInboundResponse is the verdict for one message.
+//
+// Arbitration is deliberately asymmetric: any "deny" wins outright, "allow"
+// only applies when nobody denied, and "abstain" defers to the publisher's own
+// wake rule. A veto must not be overridable by another plugin, or the last gate
+// to answer would decide everything.
+message DecideInboundResponse {
+  // action is the verdict:
+  //
+  //   "abstain" — no opinion; fall through to the publisher's own decision.
+  //   "allow"   — the assistant should process this message. This can force a
+  //               message the publisher's wake rule would have skipped, so it
+  //               only reaches a plugin that gated with read_mode "all".
+  //   "deny"    — the assistant must not process this message. The gate is
+  //               taking responsibility for it (answering itself, or dropping
+  //               it). Hard veto.
+  //
+  // An empty value means "abstain".
+  string action = 1;
+
+  // reason explains the verdict. Surfaced in Core's log and in the publisher's
+  // response, so "why did the bot ignore me?" has an answer.
+  string reason = 2;
+}
+
+// SendMessageRequest is the request for MessageService.SendMessage: one
+// outbound delivery Core is handing to this adapter plugin.
+message SendMessageRequest {
+  // caller_id is the plugin Core is acting for ("core" when Core initiates the
+  // send on behalf of a subscriber).
+  string caller_id = 1;
+
+  // adapter_id is the adapter instance to send through.
+  string adapter_id = 2;
+
+  // conversation is the target: "group:<id>" or "private:<id>".
+  string conversation = 3;
+
+  // text is the message body.
+  string text = 4;
+
+  // media lists attachment references to send alongside the text.
+  repeated string media = 5;
+}
+
+// SendMessageResponse is the response for MessageService.SendMessage.
+message SendMessageResponse {
+  // success indicates the adapter accepted the message.
+  bool success = 1;
+
+  // message_id is the adapter's id for the delivered message, when it has one.
+  string message_id = 2;
+
+  // error is a human-readable error when success is false.
+  string error = 3;
+}
+
+// ListAdaptersRequest is the request for MessageService.ListAdapters.
+message ListAdaptersRequest {
+  // caller_id is the plugin asking ("core" when Core enumerates adapters).
+  string caller_id = 1;
+}
+
+// ListAdaptersResponse is the response for MessageService.ListAdapters.
+message ListAdaptersResponse {
+  repeated AdapterDescriptor adapters = 1;
+}
+
+// AdapterDescriptor is one adapter instance a plugin drives.
+message AdapterDescriptor {
+  // adapter_id is the stable instance id used in InboundMessage.adapter_id and
+  // in CoreService.SendMessage.
+  string adapter_id = 1;
+
+  // platform is the platform family ("onebot", "bilibili", …).
+  string platform = 2;
+
+  // name is the instance's display name.
+  string name = 3;
+
+  // conversations are the conversations this adapter can currently address.
+  // Adapters that cannot enumerate cheaply may leave it empty.
+  repeated AdapterConversation conversations = 4;
+}
+
+// AdapterConversation is one addressable conversation on an adapter.
+message AdapterConversation {
+  // conversation is the addressing key: "group:<id>" or "private:<id>".
+  string conversation = 1;
+
+  // kind is "group" or "private".
+  string kind = 2;
+
+  // name is the group / peer display name when known.
+  string name = 3;
+}
+
+// AdapterSendRequest is the request for MessageService.SendMessage.
+message AdapterSendRequest {
+  // caller_id is the plugin asking for the send ("core" when Core initiates it
+  // on behalf of a subscriber).
+  string caller_id = 1;
+
+  // adapter_id is the adapter instance to send through.
+  string adapter_id = 2;
+
+  // conversation is the target: "group:<id>" or "private:<id>".
+  string conversation = 3;
+
+  // text is the message body.
+  string text = 4;
+
+  // media lists attachment references to send alongside the text.
+  repeated string media = 5;
+}
+
+// AdapterSendResponse is the response for MessageService.SendMessage.
+message AdapterSendResponse {
+  // success indicates the adapter accepted the message.
+  bool success = 1;
+
+  // message_id is the adapter's id for the delivered message, when it has one.
+  string message_id = 2;
+
+  // error is a human-readable error when success is false.
+  string error = 3;
+}
+
 // PluginPermission is a plugin's declared permission set, mirrored from its
 // package manifest (`permissions`) at registration time.
 message PluginPermission {
@@ -104,6 +327,76 @@ message PluginPermission {
   // as a hostname, "host:port" or IP (e.g. "api.open-meteo.com"). A leading
   // "*." matches any subdomain.
   repeated string egress = 3;
+
+  // messages declares the plugin's chat-messaging permissions: what it may
+  // read off the message bus, which adapters it may publish for, and which
+  // adapters it may send through. Core enforces all three; an empty
+  // `messages` (or an absent one) means the plugin can neither read nor send.
+  PluginMessages messages = 4;
+}
+
+// PluginMessages is a plugin's declared chat-messaging permission set.
+//
+// Read and send are separate grants on purpose: "read the user's QQ" and "speak
+// as the bot" are different powers, and a plugin that only wants to react to
+// mentions should not also be able to broadcast.
+message PluginMessages {
+  // read_mode selects how much inbound traffic the plugin may receive:
+  //
+  //   "none"  (default, also the meaning of an empty string)
+  //           — no inbound delivery at all.
+  //   "wake"  — only messages that already matched a wake rule on the adapter
+  //             (@-mention of the bot, a configured keyword, or a continuing
+  //             topic). This is the same filter L.I.F.E uses to decide whether
+  //             to answer, so a plugin on "wake" sees exactly the traffic the
+  //             bot was going to act on anyway, and nothing else.
+  //   "all"   — every message on the adapters listed in read_adapters.
+  //
+  // "all" is a privacy-sensitive grant: it exposes conversations the user never
+  // addressed to the bot. Core still requires the adapters and conversations to
+  // be named explicitly (read_adapters / read_conversations) unless the plugin
+  // is first-party.
+  string read_mode = 1;
+
+  // read_adapters restricts inbound delivery to these adapter ids. Empty means
+  // no adapter (not "all"); use "*" to mean every adapter.
+  repeated string read_adapters = 2;
+
+  // read_conversations further restricts inbound delivery to these
+  // conversations, written as "group:<id>" or "private:<id>". Empty means every
+  // conversation on the allowed adapters; use "*" to state that explicitly.
+  repeated string read_conversations = 3;
+
+  // send_adapters lists the adapters this plugin may send through. Empty means
+  // none; use "*" to mean every adapter.
+  repeated string send_adapters = 4;
+
+  // publish_adapters lists the adapters this plugin may report inbound
+  // messages for (CoreService.PublishInboundMessage). This is how an adapter
+  // plugin — L.I.F.E for QQ/OneBot, or a third-party bridge — claims ownership
+  // of an adapter, which is also what makes Core route SendMessage calls for
+  // that adapter back to it. Empty means none; use "*" to mean every adapter.
+  repeated string publish_adapters = 5;
+
+  // gate declares that this plugin wants to arbitrate inbound messages before
+  // the default assistant (L.I.F.E) processes them. Core calls the plugin's
+  // MessageService.DecideInbound for every message its read scope covers, and
+  // the returned verdict decides whether L.I.F.E runs its reply pipeline.
+  //
+  // A gate is consulted only for messages the plugin could read, so it needs a
+  // read_mode other than "none". Gate "wake" to arbitrate exactly the traffic
+  // L.I.F.E would have answered; gate "all" to also be able to force a message
+  // L.I.F.E would have skipped.
+  bool gate = 6;
+
+  // gate_on_error is the verdict Core assumes when this plugin cannot be
+  // reached or misses the decision deadline: "abstain" (the default) or
+  // "deny".
+  //
+  // The default is deliberately fail-open. A gate that crashes must not be able
+  // to mute the assistant indefinitely — but a moderation gate genuinely wants
+  // the opposite, so it can declare "deny" and keep its veto even while down.
+  string gate_on_error = 7;
 }
 
 // PluginType categorizes the plugin's role in the system.
@@ -122,6 +415,11 @@ enum PluginType {
 
   // PLUGIN_TYPE_SERVICE is a generic service plugin.
   PLUGIN_TYPE_SERVICE = 4;
+
+  // PLUGIN_TYPE_MESSAGING is a plugin that consumes the chat-message bus —
+  // it subscribes to inbound messages and/or sends outbound ones, without
+  // necessarily driving an adapter of its own.
+  PLUGIN_TYPE_MESSAGING = 5;
 }
 
 // SettingsField is one declarative form field inside a settings section.

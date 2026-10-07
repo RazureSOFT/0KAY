@@ -79,3 +79,204 @@ class ToolService:
             timeout,
             metadata,
             _registered_method=True)
+
+
+class MessageServiceStub:
+    """MessageService is implemented by plugins that drive a chat adapter. Core
+    routes an outbound send to the adapter's owning plugin here — the plugin that
+    claimed the adapter via CoreService.PublishInboundMessage or advertised it
+    with ListAdapters.
+
+    Naming note: `SendMessageRequest` / `ListAdaptersRequest` also exist in
+    `core.v1`, because the same verb is seen from two directions. The package
+    says which side you are on — `plugin.v1` is the adapter receiving a delivery,
+    `core.v1` is a plugin asking Core to deliver. Generated bindings are
+    package-qualified (`pluginv1.SendMessageRequest` vs `corev1.SendMessageRequest`).
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.SendMessage = channel.unary_unary(
+                '/plugin.v1.MessageService/SendMessage',
+                request_serializer=plugin_dot_v1_dot_plugin__pb2.SendMessageRequest.SerializeToString,
+                response_deserializer=plugin_dot_v1_dot_plugin__pb2.SendMessageResponse.FromString,
+                _registered_method=True)
+        self.ListAdapters = channel.unary_unary(
+                '/plugin.v1.MessageService/ListAdapters',
+                request_serializer=plugin_dot_v1_dot_plugin__pb2.ListAdaptersRequest.SerializeToString,
+                response_deserializer=plugin_dot_v1_dot_plugin__pb2.ListAdaptersResponse.FromString,
+                _registered_method=True)
+        self.DecideInbound = channel.unary_unary(
+                '/plugin.v1.MessageService/DecideInbound',
+                request_serializer=plugin_dot_v1_dot_plugin__pb2.DecideInboundRequest.SerializeToString,
+                response_deserializer=plugin_dot_v1_dot_plugin__pb2.DecideInboundResponse.FromString,
+                _registered_method=True)
+
+
+class MessageServiceServicer:
+    """MessageService is implemented by plugins that drive a chat adapter. Core
+    routes an outbound send to the adapter's owning plugin here — the plugin that
+    claimed the adapter via CoreService.PublishInboundMessage or advertised it
+    with ListAdapters.
+
+    Naming note: `SendMessageRequest` / `ListAdaptersRequest` also exist in
+    `core.v1`, because the same verb is seen from two directions. The package
+    says which side you are on — `plugin.v1` is the adapter receiving a delivery,
+    `core.v1` is a plugin asking Core to deliver. Generated bindings are
+    package-qualified (`pluginv1.SendMessageRequest` vs `corev1.SendMessageRequest`).
+    """
+
+    def SendMessage(self, request, context):
+        """SendMessage delivers one outbound message through an adapter this plugin
+        owns.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListAdapters(self, request, context):
+        """ListAdapters advertises the adapters this plugin drives, so Core can offer
+        them to subscribers before any message has arrived on them. Optional: a
+        plugin that only reports inbound traffic can leave this unimplemented, and
+        Core will learn its adapters from the first PublishInboundMessage.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DecideInbound(self, request, context):
+        """DecideInbound arbitrates one inbound message before the default assistant
+        processes it. Core calls this only on plugins that declared
+        permissions.messages.gate, and only for messages their read scope covers.
+
+        Optional in practice: a plugin without `gate` is never called, and one that
+        declares it but leaves this unimplemented answers Unimplemented, which Core
+        treats as "abstain".
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_MessageServiceServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'SendMessage': grpc.unary_unary_rpc_method_handler(
+                    servicer.SendMessage,
+                    request_deserializer=plugin_dot_v1_dot_plugin__pb2.SendMessageRequest.FromString,
+                    response_serializer=plugin_dot_v1_dot_plugin__pb2.SendMessageResponse.SerializeToString,
+            ),
+            'ListAdapters': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListAdapters,
+                    request_deserializer=plugin_dot_v1_dot_plugin__pb2.ListAdaptersRequest.FromString,
+                    response_serializer=plugin_dot_v1_dot_plugin__pb2.ListAdaptersResponse.SerializeToString,
+            ),
+            'DecideInbound': grpc.unary_unary_rpc_method_handler(
+                    servicer.DecideInbound,
+                    request_deserializer=plugin_dot_v1_dot_plugin__pb2.DecideInboundRequest.FromString,
+                    response_serializer=plugin_dot_v1_dot_plugin__pb2.DecideInboundResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'plugin.v1.MessageService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('plugin.v1.MessageService', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class MessageService:
+    """MessageService is implemented by plugins that drive a chat adapter. Core
+    routes an outbound send to the adapter's owning plugin here — the plugin that
+    claimed the adapter via CoreService.PublishInboundMessage or advertised it
+    with ListAdapters.
+
+    Naming note: `SendMessageRequest` / `ListAdaptersRequest` also exist in
+    `core.v1`, because the same verb is seen from two directions. The package
+    says which side you are on — `plugin.v1` is the adapter receiving a delivery,
+    `core.v1` is a plugin asking Core to deliver. Generated bindings are
+    package-qualified (`pluginv1.SendMessageRequest` vs `corev1.SendMessageRequest`).
+    """
+
+    @staticmethod
+    def SendMessage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/plugin.v1.MessageService/SendMessage',
+            plugin_dot_v1_dot_plugin__pb2.SendMessageRequest.SerializeToString,
+            plugin_dot_v1_dot_plugin__pb2.SendMessageResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListAdapters(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/plugin.v1.MessageService/ListAdapters',
+            plugin_dot_v1_dot_plugin__pb2.ListAdaptersRequest.SerializeToString,
+            plugin_dot_v1_dot_plugin__pb2.ListAdaptersResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DecideInbound(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/plugin.v1.MessageService/DecideInbound',
+            plugin_dot_v1_dot_plugin__pb2.DecideInboundRequest.SerializeToString,
+            plugin_dot_v1_dot_plugin__pb2.DecideInboundResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)

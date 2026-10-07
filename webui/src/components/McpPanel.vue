@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { apiGet, apiPost } from '../api'
+
+const { t } = useI18n()
 
 type McpTransport = 'stdio' | 'http' | 'builtin'
 
@@ -88,7 +91,7 @@ function toWire(draft: McpServerDraft): Record<string, unknown> {
       try {
         out.headers = JSON.parse(draft.headersText)
       } catch {
-        throw new Error(`服务「${draft.id || '(未命名)'}」的 Headers 不是合法 JSON`)
+        throw new Error(t('mcp.headersInvalid', { id: draft.id || '(unnamed)' }))
       }
     }
   } else {
@@ -123,7 +126,7 @@ async function load() {
         const parsed = JSON.parse(raw)
         if (Array.isArray(parsed)) list = parsed
       } catch {
-        error.value = '已保存的 MCP 配置不是合法 JSON，已忽略。'
+        error.value = t('mcp.configInvalid')
       }
     }
     servers.value = list.map(toDraft)
@@ -166,20 +169,20 @@ onMounted(load)
   <div class="mcp-panel">
     <header class="mcp-head">
       <div>
-        <h2>MCP 服务</h2>
-        <p class="subtitle">配置外部 MCP（模型上下文协议）服务。保存后 Agent 与 L.I.F.E 共用同一份配置。</p>
+        <h2>{{ t('mcp.title') }}</h2>
+        <p class="subtitle">{{ t('mcp.subtitle') }}</p>
       </div>
       <div class="mcp-actions">
-        <button class="btn btn-tonal" type="button" @click="addServer">添加服务</button>
+        <button class="btn btn-tonal" type="button" @click="addServer">{{ t('mcp.addServer') }}</button>
         <button class="btn primary" type="button" :disabled="saving" @click="save">
-          {{ saving ? '保存中…' : '保存' }}
+          {{ saving ? t('common.saving') : t('common.save') }}
         </button>
       </div>
     </header>
 
     <div v-if="error" class="error-banner">{{ error }}</div>
-    <div v-if="saved" class="notice-banner">已保存</div>
-    <p v-if="loading" class="hint">加载中…</p>
+    <div v-if="saved" class="notice-banner">{{ t('settings.saved') }}</div>
+    <p v-if="loading" class="hint">{{ t('common.loading') }}</p>
 
     <div v-else class="mcp-list">
       <article v-for="(s, i) in servers" :key="i" class="mcp-card" :class="{ 'is-builtin': s.transport === 'builtin' }">
@@ -189,27 +192,27 @@ onMounted(load)
             <input v-model="s.id" :readonly="s.transport === 'builtin'" placeholder="filesystem" />
           </label>
           <label class="mcp-field">
-            <span>传输</span>
+            <span>{{ t('mcp.transport') }}</span>
             <select v-model="s.transport" @change="onTransportChange(s)">
               <option value="stdio">stdio</option>
               <option value="http">http</option>
-              <option value="builtin">内置邮件 (mail)</option>
+              <option value="builtin">{{ t('mcp.builtinMail') }}</option>
             </select>
           </label>
           <label class="mcp-toggle">
             <input type="checkbox" v-model="s.enabled" />
-            <span>启用</span>
+            <span>{{ t('mcp.enabled') }}</span>
           </label>
-          <button class="mcp-remove" type="button" @click="servers.splice(i, 1)">删除</button>
+          <button class="mcp-remove" type="button" @click="servers.splice(i, 1)">{{ t('common.delete') }}</button>
         </div>
 
         <template v-if="s.transport === 'stdio'">
           <label class="mcp-field">
-            <span>命令</span>
+            <span>{{ t('mcp.command') }}</span>
             <input v-model="s.command" placeholder="npx" />
           </label>
           <label class="mcp-field">
-            <span>参数（每行一个）</span>
+            <span>{{ t('mcp.args') }}</span>
             <textarea v-model="s.argsText" rows="2" placeholder="-y&#10;@modelcontextprotocol/server-filesystem&#10;C:\work" />
           </label>
         </template>
@@ -226,38 +229,38 @@ onMounted(load)
         </template>
 
         <template v-else>
-          <p class="builtin-note">内置 0kay-mcp 邮件服务器：L.I.F.E 的 <code>getmail</code> / <code>sendmail</code> 工具经此收发邮件。留空表示不启用对应方向。</p>
+          <p class="builtin-note">{{ t('mcp.builtinNote') }}</p>
           <div class="mail-grid">
             <div class="mail-col">
-              <p class="mail-label">收信 · IMAP</p>
-              <label class="mcp-field"><span>主机</span><input v-model="s.imapHost" placeholder="imap.example.com" autocomplete="off" /></label>
+              <p class="mail-label">{{ t('mcp.imap') }}</p>
+              <label class="mcp-field"><span>{{ t('mcp.host') }}</span><input v-model="s.imapHost" placeholder="imap.example.com" autocomplete="off" /></label>
               <div class="mail-row">
-                <label class="mcp-field"><span>端口</span><input v-model.number="s.imapPort" type="number" placeholder="993" /></label>
+                <label class="mcp-field"><span>{{ t('mcp.port') }}</span><input v-model.number="s.imapPort" type="number" placeholder="993" /></label>
                 <label class="mcp-toggle"><input type="checkbox" v-model="s.imapSsl" /><span>SSL</span></label>
               </div>
-              <label class="mcp-field"><span>用户名</span><input v-model="s.imapUser" placeholder="user@example.com" autocomplete="off" /></label>
-              <label class="mcp-field"><span>密码 / 应用专用密码</span><input v-model="s.imapPassword" type="password" placeholder="••••••••" autocomplete="new-password" /></label>
+              <label class="mcp-field"><span>{{ t('mcp.username') }}</span><input v-model="s.imapUser" placeholder="user@example.com" autocomplete="off" /></label>
+              <label class="mcp-field"><span>{{ t('mcp.password') }}</span><input v-model="s.imapPassword" type="password" placeholder="••••••••" autocomplete="new-password" /></label>
             </div>
 
             <div class="mail-col">
-              <p class="mail-label">发信 · SMTP</p>
-              <label class="mcp-field"><span>主机</span><input v-model="s.smtpHost" placeholder="smtp.example.com" autocomplete="off" /></label>
+              <p class="mail-label">{{ t('mcp.smtp') }}</p>
+              <label class="mcp-field"><span>{{ t('mcp.host') }}</span><input v-model="s.smtpHost" placeholder="smtp.example.com" autocomplete="off" /></label>
               <div class="mail-row">
-                <label class="mcp-field"><span>端口</span><input v-model.number="s.smtpPort" type="number" placeholder="465" /></label>
+                <label class="mcp-field"><span>{{ t('mcp.port') }}</span><input v-model.number="s.smtpPort" type="number" placeholder="465" /></label>
                 <label class="mcp-toggle"><input type="checkbox" v-model="s.smtpSecure" /><span>SSL（465）</span></label>
               </div>
-              <label class="mcp-field"><span>用户名</span><input v-model="s.smtpUser" placeholder="user@example.com" autocomplete="off" /></label>
-              <label class="mcp-field"><span>密码 / 应用专用密码</span><input v-model="s.smtpPassword" type="password" placeholder="••••••••" autocomplete="new-password" /></label>
+              <label class="mcp-field"><span>{{ t('mcp.username') }}</span><input v-model="s.smtpUser" placeholder="user@example.com" autocomplete="off" /></label>
+              <label class="mcp-field"><span>{{ t('mcp.password') }}</span><input v-model="s.smtpPassword" type="password" placeholder="••••••••" autocomplete="new-password" /></label>
               <div class="mail-row">
-                <label class="mcp-field grow"><span>发件人地址（可选）</span><input v-model="s.from" placeholder="留空用 SMTP 用户名" autocomplete="off" /></label>
-                <label class="mcp-field"><span>发件人昵称</span><input v-model="s.fromName" placeholder="0KAY" autocomplete="off" /></label>
+                <label class="mcp-field grow"><span>{{ t('mcp.from') }}</span><input v-model="s.from" :placeholder="t('mcp.fromPlaceholder')" autocomplete="off" /></label>
+                <label class="mcp-field"><span>{{ t('mcp.fromName') }}</span><input v-model="s.fromName" placeholder="0KAY" autocomplete="off" /></label>
               </div>
             </div>
           </div>
         </template>
       </article>
 
-      <p v-if="!servers.length" class="hint">还没有 MCP 服务，点击「添加服务」。传输选择「内置邮件」可配置邮箱收发。</p>
+      <p v-if="!servers.length" class="hint">{{ t('mcp.emptyServers') }}</p>
     </div>
   </div>
 </template>
@@ -350,6 +353,14 @@ onMounted(load)
 .btn-tonal { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
 .btn.primary { background: var(--md-primary); color: var(--md-on-primary); }
 .btn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* Restated under `#app .mcp-panel` so they survive the platform layer —
+ * `#app button { border-radius: 18px }` and
+ * `#app :is(input, select, textarea) { border-radius: 14px }` are (1,0,1) and
+ * beat this file's scoped rules (0,2,0), which silently squared off every pill
+ * button and every 12px field corner in this panel. */
+#app .mcp-panel :is(.btn, .mcp-remove) { border-radius: 999px; }
+#app .mcp-panel .mcp-field :is(input, select, textarea) { border-radius: 12px; }
 
 @media (max-width: 720px) {
   .mail-grid { grid-template-columns: 1fr; }

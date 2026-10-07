@@ -2,59 +2,71 @@
 import { computed, ref, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import {useI18n} from 'vue-i18n'
 import {uid} from '../uid'
-const {locale}=useI18n()
+const {t}=useI18n()
 defineOptions({ inheritAttrs:false })
 type Option = { value: string; label: string; disabled?: boolean }
-const props = withDefaults(defineProps<{ modelValue?: string; options: Array<string | Option>; disabled?: boolean; placeholder?: string; ariaLabel?: string }>(), { modelValue:'', placeholder:'请选择', disabled:false })
+const props = withDefaults(defineProps<{ modelValue?: string; options: Array<string | Option>; disabled?: boolean; placeholder?: string; ariaLabel?: string; searchable?: boolean }>(), { modelValue:'', placeholder:'', disabled:false, searchable:false })
 const emit = defineEmits<{ 'update:modelValue':[value:string]; change:[value:string]; focus:[event:FocusEvent]; open:[] }>()
-const trigger=ref<HTMLButtonElement|null>(null), menu=ref<HTMLElement|null>(null)
+const trigger=ref<HTMLButtonElement|null>(null), menu=ref<HTMLElement|null>(null), searchInput=ref<HTMLInputElement|null>(null)
 const opened=ref(false),active=ref(-1),position=ref<Record<string,string>>({}),upwards=ref(false)
+const searchQuery=ref('')
 const id=uid('select')
 const items=computed<Option[]>(()=>props.options.map(option=>typeof option==='string'?{value:option,label:option}:option))
-const label=computed(()=>items.value.find(item=>item.value===props.modelValue)?.label || props.modelValue || props.placeholder)
-let query='',lastKey=0
+const visible=computed<Option[]>(()=>{
+ if(!props.searchable||!searchQuery.value.trim())return items.value
+ const needle=searchQuery.value.trim().toLocaleLowerCase()
+ return items.value.filter(item=>item.label.toLocaleLowerCase().includes(needle)||item.value.toLocaleLowerCase().includes(needle))
+})
+const label=computed(()=>items.value.find(item=>item.value===props.modelValue)?.label || props.modelValue || props.placeholder || t('appSelect.placeholder'))
+let typeAhead='',lastKey=0
 function layout(){
  const rect=trigger.value?.getBoundingClientRect();if(!rect)return
  const height=window.visualViewport?.height || innerHeight,width=window.visualViewport?.width || innerWidth
  const below=height-rect.bottom-10,above=rect.top-10
- upwards.value=below<Math.min(280,items.value.length*46+12)&&above>below
+ const estimate=visible.value.length*46+(props.searchable?58:12)
+ upwards.value=below<Math.min(280,estimate)&&above>below
  const maxHeight=Math.max(48,Math.min(340,upwards.value?above:below))
  const menuWidth=Math.min(Math.max(rect.width,220),width-16)
  position.value={position:'fixed',left:`${Math.max(8,Math.min(rect.left,width-menuWidth-8))}px`,width:`${menuWidth}px`,maxHeight:`${maxHeight}px`,...(upwards.value?{bottom:`${height-rect.top+8}px`}:{top:`${rect.bottom+8}px`})}
 }
-function close(restore=false){opened.value=false;query='';if(restore)trigger.value?.focus()}
+function close(restore=false){opened.value=false;searchQuery.value='';typeAhead='';if(restore)trigger.value?.focus()}
 async function show(){
  if(props.disabled||opened.value)return
- opened.value=true;active.value=items.value.findIndex(item=>item.value===props.modelValue&&!item.disabled)
- if(active.value<0)active.value=items.value.findIndex(item=>!item.disabled)
- layout();emit('open');await nextTick();reveal()
+ opened.value=true;searchQuery.value=''
+ active.value=visible.value.findIndex(item=>item.value===props.modelValue&&!item.disabled)
+ if(active.value<0)active.value=visible.value.findIndex(item=>!item.disabled)
+ layout();emit('open');await nextTick()
+ if(props.searchable)searchInput.value?.focus()
+ reveal()
 }
 function reveal(){menu.value?.querySelector<HTMLElement>(`[data-index="${active.value}"]`)?.scrollIntoView({block:'nearest'})}
-function choose(index:number){const item=items.value[index];if(!item||item.disabled)return;emit('update:modelValue',item.value);emit('change',item.value);close(true)}
+function choose(index:number){const item=visible.value[index];if(!item||item.disabled)return;emit('update:modelValue',item.value);emit('change',item.value);close(true)}
 async function keydown(event:KeyboardEvent){
  if(props.disabled||event.isComposing)return
  if(event.key==='Tab'){close();return}
  if(event.key==='Escape'){if(opened.value){event.preventDefault();close(true)}return}
  if(['ArrowDown','ArrowUp','Home','End','Enter',' '].includes(event.key)){
+  if(props.searchable&&event.key===' '&&event.target===searchInput.value)return
   event.preventDefault()
   if(!opened.value){await show();return}
-  if(event.key==='Enter'||event.key===' '){choose(active.value);return}
-  const enabled=items.value.map((item,index)=>item.disabled?-1:index).filter(index=>index>=0)
+  if(event.key==='Enter'){choose(active.value);return}
+  const enabled=visible.value.map((item,index)=>item.disabled?-1:index).filter(index=>index>=0)
   if(!enabled.length)return
   const current=enabled.indexOf(active.value)
   active.value=event.key==='Home'?enabled[0]:event.key==='End'?enabled[enabled.length-1]:enabled[(current+(event.key==='ArrowDown'?1:-1)+enabled.length)%enabled.length]
   await nextTick();reveal();return
  }
- if(event.key.length===1&&!event.ctrlKey&&!event.metaKey&&!event.altKey){
-  await show();const now=Date.now();query=now-lastKey>700?event.key:query+event.key;lastKey=now
-  const index=items.value.findIndex(item=>!item.disabled&&item.label.toLocaleLowerCase().startsWith(query.toLocaleLowerCase()))
+ if(!props.searchable&&event.key.length===1&&!event.ctrlKey&&!event.metaKey&&!event.altKey){
+  await show();const now=Date.now();typeAhead=now-lastKey>700?event.key:typeAhead+event.key;lastKey=now
+  const index=visible.value.findIndex(item=>!item.disabled&&item.label.toLocaleLowerCase().startsWith(typeAhead.toLocaleLowerCase()))
   if(index>=0){active.value=index;await nextTick();reveal()}
  }
 }
 function outside(event:PointerEvent){const node=event.target as Node;if(!trigger.value?.contains(node)&&!menu.value?.contains(node))close()}
 function scroll(event:Event){if(opened.value&&(!(event.target instanceof Node)||!menu.value?.contains(event.target)))layout()}
 watch(()=>props.disabled,value=>{if(value)close()})
-watch(items,()=>{if(opened.value){if(active.value>=items.value.length)active.value=items.value.findIndex(item=>!item.disabled);nextTick(layout)}})
+watch(visible,()=>{if(opened.value){if(active.value>=visible.value.length)active.value=visible.value.findIndex(item=>!item.disabled);nextTick(layout)}})
+watch(searchQuery,()=>{if(opened.value){active.value=visible.value.findIndex(item=>!item.disabled);nextTick(reveal)}})
 onMounted(()=>{document.addEventListener('pointerdown',outside,true);window.addEventListener('resize',layout);window.addEventListener('scroll',scroll,true)})
 onUnmounted(()=>{document.removeEventListener('pointerdown',outside,true);window.removeEventListener('resize',layout);window.removeEventListener('scroll',scroll,true)})
 </script>
@@ -63,9 +75,11 @@ onUnmounted(()=>{document.removeEventListener('pointerdown',outside,true);window
   <button ref="trigger" type="button" class="app-select-trigger" role="combobox" aria-haspopup="listbox" :aria-expanded="opened" :aria-controls="opened?id:undefined" :aria-activedescendant="opened&&active>=0?`${id}-${active}`:undefined" :aria-label="ariaLabel" :disabled="disabled" @click="opened?close():show()" @keydown="keydown" @focus="emit('focus',$event)">
    <span class="app-select-value">{{ label }}</span><span class="app-select-chevron" aria-hidden="true"><svg :class="{'is-open':opened}" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
   </button>
-  <Teleport to="body"><Transition name="select-menu"><div v-if="opened" :id="id" ref="menu" class="app-select-menu" :class="{'opens-up':upwards}" :style="position" role="listbox" :aria-label="ariaLabel || '选项'" @pointerdown.prevent>
-   <div v-for="(item,index) in items" :id="`${id}-${index}`" :key="`${item.value}:${index}`" role="option" :aria-selected="item.value===modelValue" :aria-disabled="!!item.disabled" :data-index="index" class="app-select-option" :class="{highlighted:active===index,selected:item.value===modelValue,disabled:item.disabled}" @pointermove="!item.disabled&&(active=index)" @click.stop="choose(index)"><span>{{ item.label }}</span><span v-if="item.value===modelValue" class="app-select-check" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4L19 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
-   <div v-if="!items.length" class="app-select-empty">{{ locale==='en'?'No options available':'暂无可选项' }}</div>
+  <Teleport to="body"><Transition name="select-menu"><div v-if="opened" :id="id" ref="menu" class="app-select-menu" :class="{'opens-up':upwards}" :style="position" role="listbox" :aria-label="ariaLabel || t('appSelect.label')" @pointerdown.prevent>
+   <label v-if="searchable" class="app-select-search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><input ref="searchInput" v-model="searchQuery" type="text" :placeholder="t('appSelect.searchPlaceholder')" @keydown="keydown" /></label>
+   <div v-for="(item,index) in visible" :id="`${id}-${index}`" :key="`${item.value}:${index}`" role="option" :aria-selected="item.value===modelValue" :aria-disabled="!!item.disabled" :data-index="index" class="app-select-option" :class="{highlighted:active===index,selected:item.value===modelValue,disabled:item.disabled}" @pointermove="!item.disabled&&(active=index)" @click.stop="choose(index)"><span>{{ item.label }}</span><span v-if="item.value===modelValue" class="app-select-check" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4L19 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+   <div v-if="!items.length" class="app-select-empty">{{ t('appSelect.empty') }}</div>
+   <div v-else-if="!visible.length" class="app-select-empty">{{ t('appSelect.noMatches') }}</div>
   </div></Transition></Teleport>
  </div>
 </template>
@@ -119,4 +133,9 @@ onUnmounted(()=>{document.removeEventListener('pointerdown',outside,true);window
 .select-menu-enter-active{transition:opacity var(--duration-short) var(--ease-out),transform var(--duration-medium) var(--ease-spring)}
 .select-menu-leave-active{transition:opacity var(--duration-short) var(--ease-out),transform var(--duration-short) var(--ease-out)}
 .select-menu-enter-from,.select-menu-leave-to{opacity:0;transform:translateY(-6px) scale(.97)}
+@media (prefers-reduced-motion: reduce){
+ .app-select-chevron,.app-select-chevron svg,.app-select-option{transition:none}
+ .select-menu-enter-active,.select-menu-leave-active{transition:opacity var(--duration-short)}
+ .select-menu-enter-from,.select-menu-leave-to{transform:none}
+}
 </style>

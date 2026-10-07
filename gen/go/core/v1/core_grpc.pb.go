@@ -167,14 +167,18 @@ var PluginService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	CoreService_CallMocr_FullMethodName        = "/core.v1.CoreService/CallMocr"
-	CoreService_UseAgent_FullMethodName        = "/core.v1.CoreService/UseAgent"
-	CoreService_CancelAgent_FullMethodName     = "/core.v1.CoreService/CancelAgent"
-	CoreService_ListAgents_FullMethodName      = "/core.v1.CoreService/ListAgents"
-	CoreService_RunDirect_FullMethodName       = "/core.v1.CoreService/RunDirect"
-	CoreService_Egress_FullMethodName          = "/core.v1.CoreService/Egress"
-	CoreService_ListPluginTools_FullMethodName = "/core.v1.CoreService/ListPluginTools"
-	CoreService_CallPluginTool_FullMethodName  = "/core.v1.CoreService/CallPluginTool"
+	CoreService_CallMocr_FullMethodName              = "/core.v1.CoreService/CallMocr"
+	CoreService_UseAgent_FullMethodName              = "/core.v1.CoreService/UseAgent"
+	CoreService_CancelAgent_FullMethodName           = "/core.v1.CoreService/CancelAgent"
+	CoreService_ListAgents_FullMethodName            = "/core.v1.CoreService/ListAgents"
+	CoreService_RunDirect_FullMethodName             = "/core.v1.CoreService/RunDirect"
+	CoreService_Egress_FullMethodName                = "/core.v1.CoreService/Egress"
+	CoreService_ListPluginTools_FullMethodName       = "/core.v1.CoreService/ListPluginTools"
+	CoreService_CallPluginTool_FullMethodName        = "/core.v1.CoreService/CallPluginTool"
+	CoreService_PublishInboundMessage_FullMethodName = "/core.v1.CoreService/PublishInboundMessage"
+	CoreService_SubscribeMessages_FullMethodName     = "/core.v1.CoreService/SubscribeMessages"
+	CoreService_SendMessage_FullMethodName           = "/core.v1.CoreService/SendMessage"
+	CoreService_ListAdapters_FullMethodName          = "/core.v1.CoreService/ListAdapters"
 )
 
 // CoreServiceClient is the client API for CoreService service.
@@ -202,6 +206,29 @@ type CoreServiceClient interface {
 	ListPluginTools(ctx context.Context, in *ListPluginToolsRequest, opts ...grpc.CallOption) (*ListPluginToolsResponse, error)
 	// CallPluginTool routes a tool call to the owning plugin's ToolService.
 	CallPluginTool(ctx context.Context, in *CallPluginToolRequest, opts ...grpc.CallOption) (*CallPluginToolResponse, error)
+	// PublishInboundMessage reports one inbound adapter message into Core's
+	// message bus. Adapter plugins (L.I.F.E for QQ/OneBot, or a third-party
+	// bridge) call this for every message they observe.
+	//
+	// Two things happen: Core records the caller as the adapter's owner — which
+	// is what later lets SendMessage route back to it — and fans the message out
+	// to every subscriber whose declared permissions cover it. Requires
+	// permissions.messages.publish_adapters to list the adapter.
+	PublishInboundMessage(ctx context.Context, in *PublishInboundMessageRequest, opts ...grpc.CallOption) (*PublishInboundMessageResponse, error)
+	// SubscribeMessages opens a stream of inbound adapter messages the caller is
+	// allowed to read. Delivery is filtered by the caller's declared
+	// permissions.messages (read_mode / read_adapters / read_conversations), and
+	// the stream ends when the plugin disconnects or is disabled.
+	SubscribeMessages(ctx context.Context, in *SubscribeMessagesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SubscribeMessagesResponse], error)
+	// SendMessage asks Core to deliver an outbound message through an adapter.
+	// Core checks permissions.messages.send_adapters, routes the send to the
+	// adapter's owning plugin (MessageService.SendMessage) and returns its
+	// result.
+	SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
+	// ListAdapters reports the adapters the caller may use, with the
+	// conversations it may address. A plugin uses this to discover valid
+	// adapter_id / conversation values before calling SendMessage.
+	ListAdapters(ctx context.Context, in *ListAdaptersRequest, opts ...grpc.CallOption) (*ListAdaptersResponse, error)
 }
 
 type coreServiceClient struct {
@@ -301,6 +328,55 @@ func (c *coreServiceClient) CallPluginTool(ctx context.Context, in *CallPluginTo
 	return out, nil
 }
 
+func (c *coreServiceClient) PublishInboundMessage(ctx context.Context, in *PublishInboundMessageRequest, opts ...grpc.CallOption) (*PublishInboundMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PublishInboundMessageResponse)
+	err := c.cc.Invoke(ctx, CoreService_PublishInboundMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreServiceClient) SubscribeMessages(ctx context.Context, in *SubscribeMessagesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SubscribeMessagesResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &CoreService_ServiceDesc.Streams[1], CoreService_SubscribeMessages_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[SubscribeMessagesRequest, SubscribeMessagesResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type CoreService_SubscribeMessagesClient = grpc.ServerStreamingClient[SubscribeMessagesResponse]
+
+func (c *coreServiceClient) SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendMessageResponse)
+	err := c.cc.Invoke(ctx, CoreService_SendMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreServiceClient) ListAdapters(ctx context.Context, in *ListAdaptersRequest, opts ...grpc.CallOption) (*ListAdaptersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAdaptersResponse)
+	err := c.cc.Invoke(ctx, CoreService_ListAdapters_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CoreServiceServer is the server API for CoreService service.
 // All implementations must embed UnimplementedCoreServiceServer
 // for forward compatibility.
@@ -326,6 +402,29 @@ type CoreServiceServer interface {
 	ListPluginTools(context.Context, *ListPluginToolsRequest) (*ListPluginToolsResponse, error)
 	// CallPluginTool routes a tool call to the owning plugin's ToolService.
 	CallPluginTool(context.Context, *CallPluginToolRequest) (*CallPluginToolResponse, error)
+	// PublishInboundMessage reports one inbound adapter message into Core's
+	// message bus. Adapter plugins (L.I.F.E for QQ/OneBot, or a third-party
+	// bridge) call this for every message they observe.
+	//
+	// Two things happen: Core records the caller as the adapter's owner — which
+	// is what later lets SendMessage route back to it — and fans the message out
+	// to every subscriber whose declared permissions cover it. Requires
+	// permissions.messages.publish_adapters to list the adapter.
+	PublishInboundMessage(context.Context, *PublishInboundMessageRequest) (*PublishInboundMessageResponse, error)
+	// SubscribeMessages opens a stream of inbound adapter messages the caller is
+	// allowed to read. Delivery is filtered by the caller's declared
+	// permissions.messages (read_mode / read_adapters / read_conversations), and
+	// the stream ends when the plugin disconnects or is disabled.
+	SubscribeMessages(*SubscribeMessagesRequest, grpc.ServerStreamingServer[SubscribeMessagesResponse]) error
+	// SendMessage asks Core to deliver an outbound message through an adapter.
+	// Core checks permissions.messages.send_adapters, routes the send to the
+	// adapter's owning plugin (MessageService.SendMessage) and returns its
+	// result.
+	SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error)
+	// ListAdapters reports the adapters the caller may use, with the
+	// conversations it may address. A plugin uses this to discover valid
+	// adapter_id / conversation values before calling SendMessage.
+	ListAdapters(context.Context, *ListAdaptersRequest) (*ListAdaptersResponse, error)
 	mustEmbedUnimplementedCoreServiceServer()
 }
 
@@ -359,6 +458,18 @@ func (UnimplementedCoreServiceServer) ListPluginTools(context.Context, *ListPlug
 }
 func (UnimplementedCoreServiceServer) CallPluginTool(context.Context, *CallPluginToolRequest) (*CallPluginToolResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CallPluginTool not implemented")
+}
+func (UnimplementedCoreServiceServer) PublishInboundMessage(context.Context, *PublishInboundMessageRequest) (*PublishInboundMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PublishInboundMessage not implemented")
+}
+func (UnimplementedCoreServiceServer) SubscribeMessages(*SubscribeMessagesRequest, grpc.ServerStreamingServer[SubscribeMessagesResponse]) error {
+	return status.Error(codes.Unimplemented, "method SubscribeMessages not implemented")
+}
+func (UnimplementedCoreServiceServer) SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendMessage not implemented")
+}
+func (UnimplementedCoreServiceServer) ListAdapters(context.Context, *ListAdaptersRequest) (*ListAdaptersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAdapters not implemented")
 }
 func (UnimplementedCoreServiceServer) mustEmbedUnimplementedCoreServiceServer() {}
 func (UnimplementedCoreServiceServer) testEmbeddedByValue()                     {}
@@ -518,6 +629,71 @@ func _CoreService_CallPluginTool_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreService_PublishInboundMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PublishInboundMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreServiceServer).PublishInboundMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreService_PublishInboundMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreServiceServer).PublishInboundMessage(ctx, req.(*PublishInboundMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreService_SubscribeMessages_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SubscribeMessagesRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(CoreServiceServer).SubscribeMessages(m, &grpc.GenericServerStream[SubscribeMessagesRequest, SubscribeMessagesResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type CoreService_SubscribeMessagesServer = grpc.ServerStreamingServer[SubscribeMessagesResponse]
+
+func _CoreService_SendMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreServiceServer).SendMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreService_SendMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreServiceServer).SendMessage(ctx, req.(*SendMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreService_ListAdapters_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAdaptersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreServiceServer).ListAdapters(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreService_ListAdapters_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreServiceServer).ListAdapters(ctx, req.(*ListAdaptersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CoreService_ServiceDesc is the grpc.ServiceDesc for CoreService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -553,11 +729,28 @@ var CoreService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "CallPluginTool",
 			Handler:    _CoreService_CallPluginTool_Handler,
 		},
+		{
+			MethodName: "PublishInboundMessage",
+			Handler:    _CoreService_PublishInboundMessage_Handler,
+		},
+		{
+			MethodName: "SendMessage",
+			Handler:    _CoreService_SendMessage_Handler,
+		},
+		{
+			MethodName: "ListAdapters",
+			Handler:    _CoreService_ListAdapters_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "CallMocr",
 			Handler:       _CoreService_CallMocr_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "SubscribeMessages",
+			Handler:       _CoreService_SubscribeMessages_Handler,
 			ServerStreams: true,
 		},
 	},

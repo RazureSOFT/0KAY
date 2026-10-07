@@ -49,6 +49,20 @@ export const useWizardStore = defineStore('wizard', () => {
     }
   })
 
+  /** i18n key naming what blocks Next on the current step; '' when unblocked. */
+  const blockedHint = computed(() => {
+    switch (currentStep.value) {
+      case 3: return 'wizard.needProvider'
+      case 4:
+        if (apiKey.value === '' && baseUrl.value === '') return 'wizard.needKeyAndUrl'
+        if (apiKey.value === '') return 'wizard.needApiKey'
+        return 'wizard.needBaseUrl'
+      case 5: return 'wizard.needModel'
+      case 6: return 'wizard.needName'
+      default: return ''
+    }
+  })
+
   function setProvider(providerId: string, defaultBaseUrl: string) {
     provider.value = providerId
     baseUrl.value = defaultBaseUrl
@@ -226,6 +240,7 @@ export const useWizardStore = defineStore('wizard', () => {
     persona,
     live2d,
     canProceed,
+    blockedHint,
     setProvider,
     setApiKey,
     setBaseUrl,

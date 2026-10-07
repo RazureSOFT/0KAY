@@ -35,6 +35,10 @@ const (
 	PluginType_PLUGIN_TYPE_TOOL PluginType = 3
 	// PLUGIN_TYPE_SERVICE is a generic service plugin.
 	PluginType_PLUGIN_TYPE_SERVICE PluginType = 4
+	// PLUGIN_TYPE_MESSAGING is a plugin that consumes the chat-message bus —
+	// it subscribes to inbound messages and/or sends outbound ones, without
+	// necessarily driving an adapter of its own.
+	PluginType_PLUGIN_TYPE_MESSAGING PluginType = 5
 )
 
 // Enum value maps for PluginType.
@@ -45,6 +49,7 @@ var (
 		2: "PLUGIN_TYPE_PERSONA",
 		3: "PLUGIN_TYPE_TOOL",
 		4: "PLUGIN_TYPE_SERVICE",
+		5: "PLUGIN_TYPE_MESSAGING",
 	}
 	PluginType_value = map[string]int32{
 		"PLUGIN_TYPE_UNSPECIFIED": 0,
@@ -52,6 +57,7 @@ var (
 		"PLUGIN_TYPE_PERSONA":     2,
 		"PLUGIN_TYPE_TOOL":        3,
 		"PLUGIN_TYPE_SERVICE":     4,
+		"PLUGIN_TYPE_MESSAGING":   5,
 	}
 )
 
@@ -471,6 +477,830 @@ func (x *CallToolResponse) GetError() string {
 	return ""
 }
 
+// InboundMessage is one message observed on a chat adapter (QQ/OneBot, …).
+//
+// It is the unit Core's message bus carries: an adapter plugin reports it with
+// CoreService.PublishInboundMessage, Core fans it out to subscribers, and each
+// subscriber receives the same shape. `conversation` is the stable addressing
+// key — "group:<id>" or "private:<id>" — and is what SendMessage takes back.
+type InboundMessage struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// adapter_id identifies the adapter instance the message arrived on, as
+	// reported by its owning plugin (e.g. a L.I.F.E adapter instance id).
+	AdapterId string `protobuf:"bytes,1,opt,name=adapter_id,json=adapterId,proto3" json:"adapter_id,omitempty"`
+	// platform is the adapter's platform family: "onebot", "bilibili", "webui", …
+	Platform string `protobuf:"bytes,2,opt,name=platform,proto3" json:"platform,omitempty"`
+	// conversation is the addressing key: "group:<id>" or "private:<id>".
+	Conversation string `protobuf:"bytes,3,opt,name=conversation,proto3" json:"conversation,omitempty"`
+	// kind is "group" or "private".
+	Kind string `protobuf:"bytes,4,opt,name=kind,proto3" json:"kind,omitempty"`
+	// peer_id is the group id or the other party's user id.
+	PeerId string `protobuf:"bytes,5,opt,name=peer_id,json=peerId,proto3" json:"peer_id,omitempty"`
+	// peer_name is the group name / display name when the adapter knows it.
+	PeerName string `protobuf:"bytes,6,opt,name=peer_name,json=peerName,proto3" json:"peer_name,omitempty"`
+	// sender_id is the user id that authored the message.
+	SenderId string `protobuf:"bytes,7,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
+	// sender_name is the author's display name when the adapter knows it.
+	SenderName string `protobuf:"bytes,8,opt,name=sender_name,json=senderName,proto3" json:"sender_name,omitempty"`
+	// text is the message body with non-text segments removed.
+	Text string `protobuf:"bytes,9,opt,name=text,proto3" json:"text,omitempty"`
+	// media lists attachment references (URLs or adapter-local handles).
+	Media []string `protobuf:"bytes,10,rep,name=media,proto3" json:"media,omitempty"`
+	// at is the RFC 3339 timestamp the adapter observed the message.
+	At string `protobuf:"bytes,11,opt,name=at,proto3" json:"at,omitempty"`
+	// message_id is the adapter's own id for this message, when it has one.
+	MessageId string `protobuf:"bytes,12,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	// is_wake is true when the message already matched a wake rule (bot
+	// @-mention, configured keyword, or continuing topic). Subscribers on
+	// read_mode "wake" only ever see messages with this set; subscribers on
+	// "all" see both and can use the flag to tell them apart.
+	IsWake bool `protobuf:"varint,13,opt,name=is_wake,json=isWake,proto3" json:"is_wake,omitempty"`
+	// raw_json carries the adapter's original event, for plugins that need a
+	// field this shape does not model. Adapters may leave it empty.
+	RawJson       string `protobuf:"bytes,14,opt,name=raw_json,json=rawJson,proto3" json:"raw_json,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InboundMessage) Reset() {
+	*x = InboundMessage{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InboundMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InboundMessage) ProtoMessage() {}
+
+func (x *InboundMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InboundMessage.ProtoReflect.Descriptor instead.
+func (*InboundMessage) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *InboundMessage) GetAdapterId() string {
+	if x != nil {
+		return x.AdapterId
+	}
+	return ""
+}
+
+func (x *InboundMessage) GetPlatform() string {
+	if x != nil {
+		return x.Platform
+	}
+	return ""
+}
+
+func (x *InboundMessage) GetConversation() string {
+	if x != nil {
+		return x.Conversation
+	}
+	return ""
+}
+
+func (x *InboundMessage) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *InboundMessage) GetPeerId() string {
+	if x != nil {
+		return x.PeerId
+	}
+	return ""
+}
+
+func (x *InboundMessage) GetPeerName() string {
+	if x != nil {
+		return x.PeerName
+	}
+	return ""
+}
+
+func (x *InboundMessage) GetSenderId() string {
+	if x != nil {
+		return x.SenderId
+	}
+	return ""
+}
+
+func (x *InboundMessage) GetSenderName() string {
+	if x != nil {
+		return x.SenderName
+	}
+	return ""
+}
+
+func (x *InboundMessage) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *InboundMessage) GetMedia() []string {
+	if x != nil {
+		return x.Media
+	}
+	return nil
+}
+
+func (x *InboundMessage) GetAt() string {
+	if x != nil {
+		return x.At
+	}
+	return ""
+}
+
+func (x *InboundMessage) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+func (x *InboundMessage) GetIsWake() bool {
+	if x != nil {
+		return x.IsWake
+	}
+	return false
+}
+
+func (x *InboundMessage) GetRawJson() string {
+	if x != nil {
+		return x.RawJson
+	}
+	return ""
+}
+
+// DecideInboundRequest is the request for MessageService.DecideInbound.
+type DecideInboundRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// caller_id is "core": Core arbitrates, it is not acting for a plugin here.
+	CallerId string `protobuf:"bytes,1,opt,name=caller_id,json=callerId,proto3" json:"caller_id,omitempty"`
+	// message is the inbound message awaiting a verdict.
+	Message       *InboundMessage `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DecideInboundRequest) Reset() {
+	*x = DecideInboundRequest{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DecideInboundRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DecideInboundRequest) ProtoMessage() {}
+
+func (x *DecideInboundRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DecideInboundRequest.ProtoReflect.Descriptor instead.
+func (*DecideInboundRequest) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *DecideInboundRequest) GetCallerId() string {
+	if x != nil {
+		return x.CallerId
+	}
+	return ""
+}
+
+func (x *DecideInboundRequest) GetMessage() *InboundMessage {
+	if x != nil {
+		return x.Message
+	}
+	return nil
+}
+
+// DecideInboundResponse is the verdict for one message.
+//
+// Arbitration is deliberately asymmetric: any "deny" wins outright, "allow"
+// only applies when nobody denied, and "abstain" defers to the publisher's own
+// wake rule. A veto must not be overridable by another plugin, or the last gate
+// to answer would decide everything.
+type DecideInboundResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// action is the verdict:
+	//
+	//	"abstain" — no opinion; fall through to the publisher's own decision.
+	//	"allow"   — the assistant should process this message. This can force a
+	//	            message the publisher's wake rule would have skipped, so it
+	//	            only reaches a plugin that gated with read_mode "all".
+	//	"deny"    — the assistant must not process this message. The gate is
+	//	            taking responsibility for it (answering itself, or dropping
+	//	            it). Hard veto.
+	//
+	// An empty value means "abstain".
+	Action string `protobuf:"bytes,1,opt,name=action,proto3" json:"action,omitempty"`
+	// reason explains the verdict. Surfaced in Core's log and in the publisher's
+	// response, so "why did the bot ignore me?" has an answer.
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DecideInboundResponse) Reset() {
+	*x = DecideInboundResponse{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DecideInboundResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DecideInboundResponse) ProtoMessage() {}
+
+func (x *DecideInboundResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DecideInboundResponse.ProtoReflect.Descriptor instead.
+func (*DecideInboundResponse) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *DecideInboundResponse) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *DecideInboundResponse) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// SendMessageRequest is the request for MessageService.SendMessage: one
+// outbound delivery Core is handing to this adapter plugin.
+type SendMessageRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// caller_id is the plugin Core is acting for ("core" when Core initiates the
+	// send on behalf of a subscriber).
+	CallerId string `protobuf:"bytes,1,opt,name=caller_id,json=callerId,proto3" json:"caller_id,omitempty"`
+	// adapter_id is the adapter instance to send through.
+	AdapterId string `protobuf:"bytes,2,opt,name=adapter_id,json=adapterId,proto3" json:"adapter_id,omitempty"`
+	// conversation is the target: "group:<id>" or "private:<id>".
+	Conversation string `protobuf:"bytes,3,opt,name=conversation,proto3" json:"conversation,omitempty"`
+	// text is the message body.
+	Text string `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
+	// media lists attachment references to send alongside the text.
+	Media         []string `protobuf:"bytes,5,rep,name=media,proto3" json:"media,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendMessageRequest) Reset() {
+	*x = SendMessageRequest{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendMessageRequest) ProtoMessage() {}
+
+func (x *SendMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendMessageRequest.ProtoReflect.Descriptor instead.
+func (*SendMessageRequest) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SendMessageRequest) GetCallerId() string {
+	if x != nil {
+		return x.CallerId
+	}
+	return ""
+}
+
+func (x *SendMessageRequest) GetAdapterId() string {
+	if x != nil {
+		return x.AdapterId
+	}
+	return ""
+}
+
+func (x *SendMessageRequest) GetConversation() string {
+	if x != nil {
+		return x.Conversation
+	}
+	return ""
+}
+
+func (x *SendMessageRequest) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *SendMessageRequest) GetMedia() []string {
+	if x != nil {
+		return x.Media
+	}
+	return nil
+}
+
+// SendMessageResponse is the response for MessageService.SendMessage.
+type SendMessageResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// success indicates the adapter accepted the message.
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	// message_id is the adapter's id for the delivered message, when it has one.
+	MessageId string `protobuf:"bytes,2,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	// error is a human-readable error when success is false.
+	Error         string `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendMessageResponse) Reset() {
+	*x = SendMessageResponse{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendMessageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendMessageResponse) ProtoMessage() {}
+
+func (x *SendMessageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendMessageResponse.ProtoReflect.Descriptor instead.
+func (*SendMessageResponse) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *SendMessageResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *SendMessageResponse) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+func (x *SendMessageResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+// ListAdaptersRequest is the request for MessageService.ListAdapters.
+type ListAdaptersRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// caller_id is the plugin asking ("core" when Core enumerates adapters).
+	CallerId      string `protobuf:"bytes,1,opt,name=caller_id,json=callerId,proto3" json:"caller_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAdaptersRequest) Reset() {
+	*x = ListAdaptersRequest{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAdaptersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAdaptersRequest) ProtoMessage() {}
+
+func (x *ListAdaptersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAdaptersRequest.ProtoReflect.Descriptor instead.
+func (*ListAdaptersRequest) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ListAdaptersRequest) GetCallerId() string {
+	if x != nil {
+		return x.CallerId
+	}
+	return ""
+}
+
+// ListAdaptersResponse is the response for MessageService.ListAdapters.
+type ListAdaptersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Adapters      []*AdapterDescriptor   `protobuf:"bytes,1,rep,name=adapters,proto3" json:"adapters,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAdaptersResponse) Reset() {
+	*x = ListAdaptersResponse{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAdaptersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAdaptersResponse) ProtoMessage() {}
+
+func (x *ListAdaptersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAdaptersResponse.ProtoReflect.Descriptor instead.
+func (*ListAdaptersResponse) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ListAdaptersResponse) GetAdapters() []*AdapterDescriptor {
+	if x != nil {
+		return x.Adapters
+	}
+	return nil
+}
+
+// AdapterDescriptor is one adapter instance a plugin drives.
+type AdapterDescriptor struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// adapter_id is the stable instance id used in InboundMessage.adapter_id and
+	// in CoreService.SendMessage.
+	AdapterId string `protobuf:"bytes,1,opt,name=adapter_id,json=adapterId,proto3" json:"adapter_id,omitempty"`
+	// platform is the platform family ("onebot", "bilibili", …).
+	Platform string `protobuf:"bytes,2,opt,name=platform,proto3" json:"platform,omitempty"`
+	// name is the instance's display name.
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// conversations are the conversations this adapter can currently address.
+	// Adapters that cannot enumerate cheaply may leave it empty.
+	Conversations []*AdapterConversation `protobuf:"bytes,4,rep,name=conversations,proto3" json:"conversations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdapterDescriptor) Reset() {
+	*x = AdapterDescriptor{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdapterDescriptor) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdapterDescriptor) ProtoMessage() {}
+
+func (x *AdapterDescriptor) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdapterDescriptor.ProtoReflect.Descriptor instead.
+func (*AdapterDescriptor) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *AdapterDescriptor) GetAdapterId() string {
+	if x != nil {
+		return x.AdapterId
+	}
+	return ""
+}
+
+func (x *AdapterDescriptor) GetPlatform() string {
+	if x != nil {
+		return x.Platform
+	}
+	return ""
+}
+
+func (x *AdapterDescriptor) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AdapterDescriptor) GetConversations() []*AdapterConversation {
+	if x != nil {
+		return x.Conversations
+	}
+	return nil
+}
+
+// AdapterConversation is one addressable conversation on an adapter.
+type AdapterConversation struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// conversation is the addressing key: "group:<id>" or "private:<id>".
+	Conversation string `protobuf:"bytes,1,opt,name=conversation,proto3" json:"conversation,omitempty"`
+	// kind is "group" or "private".
+	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
+	// name is the group / peer display name when known.
+	Name          string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdapterConversation) Reset() {
+	*x = AdapterConversation{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdapterConversation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdapterConversation) ProtoMessage() {}
+
+func (x *AdapterConversation) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdapterConversation.ProtoReflect.Descriptor instead.
+func (*AdapterConversation) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *AdapterConversation) GetConversation() string {
+	if x != nil {
+		return x.Conversation
+	}
+	return ""
+}
+
+func (x *AdapterConversation) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *AdapterConversation) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+// AdapterSendRequest is the request for MessageService.SendMessage.
+type AdapterSendRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// caller_id is the plugin asking for the send ("core" when Core initiates it
+	// on behalf of a subscriber).
+	CallerId string `protobuf:"bytes,1,opt,name=caller_id,json=callerId,proto3" json:"caller_id,omitempty"`
+	// adapter_id is the adapter instance to send through.
+	AdapterId string `protobuf:"bytes,2,opt,name=adapter_id,json=adapterId,proto3" json:"adapter_id,omitempty"`
+	// conversation is the target: "group:<id>" or "private:<id>".
+	Conversation string `protobuf:"bytes,3,opt,name=conversation,proto3" json:"conversation,omitempty"`
+	// text is the message body.
+	Text string `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
+	// media lists attachment references to send alongside the text.
+	Media         []string `protobuf:"bytes,5,rep,name=media,proto3" json:"media,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdapterSendRequest) Reset() {
+	*x = AdapterSendRequest{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdapterSendRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdapterSendRequest) ProtoMessage() {}
+
+func (x *AdapterSendRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdapterSendRequest.ProtoReflect.Descriptor instead.
+func (*AdapterSendRequest) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *AdapterSendRequest) GetCallerId() string {
+	if x != nil {
+		return x.CallerId
+	}
+	return ""
+}
+
+func (x *AdapterSendRequest) GetAdapterId() string {
+	if x != nil {
+		return x.AdapterId
+	}
+	return ""
+}
+
+func (x *AdapterSendRequest) GetConversation() string {
+	if x != nil {
+		return x.Conversation
+	}
+	return ""
+}
+
+func (x *AdapterSendRequest) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *AdapterSendRequest) GetMedia() []string {
+	if x != nil {
+		return x.Media
+	}
+	return nil
+}
+
+// AdapterSendResponse is the response for MessageService.SendMessage.
+type AdapterSendResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// success indicates the adapter accepted the message.
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	// message_id is the adapter's id for the delivered message, when it has one.
+	MessageId string `protobuf:"bytes,2,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	// error is a human-readable error when success is false.
+	Error         string `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdapterSendResponse) Reset() {
+	*x = AdapterSendResponse{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdapterSendResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdapterSendResponse) ProtoMessage() {}
+
+func (x *AdapterSendResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdapterSendResponse.ProtoReflect.Descriptor instead.
+func (*AdapterSendResponse) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AdapterSendResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *AdapterSendResponse) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+func (x *AdapterSendResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 // PluginPermission is a plugin's declared permission set, mirrored from its
 // package manifest (`permissions`) at registration time.
 type PluginPermission struct {
@@ -485,14 +1315,19 @@ type PluginPermission struct {
 	// egress lists the hosts the plugin may reach through Core's egress proxy,
 	// as a hostname, "host:port" or IP (e.g. "api.open-meteo.com"). A leading
 	// "*." matches any subdomain.
-	Egress        []string `protobuf:"bytes,3,rep,name=egress,proto3" json:"egress,omitempty"`
+	Egress []string `protobuf:"bytes,3,rep,name=egress,proto3" json:"egress,omitempty"`
+	// messages declares the plugin's chat-messaging permissions: what it may
+	// read off the message bus, which adapters it may publish for, and which
+	// adapters it may send through. Core enforces all three; an empty
+	// `messages` (or an absent one) means the plugin can neither read nor send.
+	Messages      *PluginMessages `protobuf:"bytes,4,opt,name=messages,proto3" json:"messages,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PluginPermission) Reset() {
 	*x = PluginPermission{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[4]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -504,7 +1339,7 @@ func (x *PluginPermission) String() string {
 func (*PluginPermission) ProtoMessage() {}
 
 func (x *PluginPermission) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[4]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -517,7 +1352,7 @@ func (x *PluginPermission) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PluginPermission.ProtoReflect.Descriptor instead.
 func (*PluginPermission) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{4}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *PluginPermission) GetApiRequires() []string {
@@ -541,6 +1376,153 @@ func (x *PluginPermission) GetEgress() []string {
 	return nil
 }
 
+func (x *PluginPermission) GetMessages() *PluginMessages {
+	if x != nil {
+		return x.Messages
+	}
+	return nil
+}
+
+// PluginMessages is a plugin's declared chat-messaging permission set.
+//
+// Read and send are separate grants on purpose: "read the user's QQ" and "speak
+// as the bot" are different powers, and a plugin that only wants to react to
+// mentions should not also be able to broadcast.
+type PluginMessages struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// read_mode selects how much inbound traffic the plugin may receive:
+	//
+	//	"none"  (default, also the meaning of an empty string)
+	//	        — no inbound delivery at all.
+	//	"wake"  — only messages that already matched a wake rule on the adapter
+	//	          (@-mention of the bot, a configured keyword, or a continuing
+	//	          topic). This is the same filter L.I.F.E uses to decide whether
+	//	          to answer, so a plugin on "wake" sees exactly the traffic the
+	//	          bot was going to act on anyway, and nothing else.
+	//	"all"   — every message on the adapters listed in read_adapters.
+	//
+	// "all" is a privacy-sensitive grant: it exposes conversations the user never
+	// addressed to the bot. Core still requires the adapters and conversations to
+	// be named explicitly (read_adapters / read_conversations) unless the plugin
+	// is first-party.
+	ReadMode string `protobuf:"bytes,1,opt,name=read_mode,json=readMode,proto3" json:"read_mode,omitempty"`
+	// read_adapters restricts inbound delivery to these adapter ids. Empty means
+	// no adapter (not "all"); use "*" to mean every adapter.
+	ReadAdapters []string `protobuf:"bytes,2,rep,name=read_adapters,json=readAdapters,proto3" json:"read_adapters,omitempty"`
+	// read_conversations further restricts inbound delivery to these
+	// conversations, written as "group:<id>" or "private:<id>". Empty means every
+	// conversation on the allowed adapters; use "*" to state that explicitly.
+	ReadConversations []string `protobuf:"bytes,3,rep,name=read_conversations,json=readConversations,proto3" json:"read_conversations,omitempty"`
+	// send_adapters lists the adapters this plugin may send through. Empty means
+	// none; use "*" to mean every adapter.
+	SendAdapters []string `protobuf:"bytes,4,rep,name=send_adapters,json=sendAdapters,proto3" json:"send_adapters,omitempty"`
+	// publish_adapters lists the adapters this plugin may report inbound
+	// messages for (CoreService.PublishInboundMessage). This is how an adapter
+	// plugin — L.I.F.E for QQ/OneBot, or a third-party bridge — claims ownership
+	// of an adapter, which is also what makes Core route SendMessage calls for
+	// that adapter back to it. Empty means none; use "*" to mean every adapter.
+	PublishAdapters []string `protobuf:"bytes,5,rep,name=publish_adapters,json=publishAdapters,proto3" json:"publish_adapters,omitempty"`
+	// gate declares that this plugin wants to arbitrate inbound messages before
+	// the default assistant (L.I.F.E) processes them. Core calls the plugin's
+	// MessageService.DecideInbound for every message its read scope covers, and
+	// the returned verdict decides whether L.I.F.E runs its reply pipeline.
+	//
+	// A gate is consulted only for messages the plugin could read, so it needs a
+	// read_mode other than "none". Gate "wake" to arbitrate exactly the traffic
+	// L.I.F.E would have answered; gate "all" to also be able to force a message
+	// L.I.F.E would have skipped.
+	Gate bool `protobuf:"varint,6,opt,name=gate,proto3" json:"gate,omitempty"`
+	// gate_on_error is the verdict Core assumes when this plugin cannot be
+	// reached or misses the decision deadline: "abstain" (the default) or
+	// "deny".
+	//
+	// The default is deliberately fail-open. A gate that crashes must not be able
+	// to mute the assistant indefinitely — but a moderation gate genuinely wants
+	// the opposite, so it can declare "deny" and keep its veto even while down.
+	GateOnError   string `protobuf:"bytes,7,opt,name=gate_on_error,json=gateOnError,proto3" json:"gate_on_error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PluginMessages) Reset() {
+	*x = PluginMessages{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PluginMessages) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PluginMessages) ProtoMessage() {}
+
+func (x *PluginMessages) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PluginMessages.ProtoReflect.Descriptor instead.
+func (*PluginMessages) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *PluginMessages) GetReadMode() string {
+	if x != nil {
+		return x.ReadMode
+	}
+	return ""
+}
+
+func (x *PluginMessages) GetReadAdapters() []string {
+	if x != nil {
+		return x.ReadAdapters
+	}
+	return nil
+}
+
+func (x *PluginMessages) GetReadConversations() []string {
+	if x != nil {
+		return x.ReadConversations
+	}
+	return nil
+}
+
+func (x *PluginMessages) GetSendAdapters() []string {
+	if x != nil {
+		return x.SendAdapters
+	}
+	return nil
+}
+
+func (x *PluginMessages) GetPublishAdapters() []string {
+	if x != nil {
+		return x.PublishAdapters
+	}
+	return nil
+}
+
+func (x *PluginMessages) GetGate() bool {
+	if x != nil {
+		return x.Gate
+	}
+	return false
+}
+
+func (x *PluginMessages) GetGateOnError() string {
+	if x != nil {
+		return x.GateOnError
+	}
+	return ""
+}
+
 // SettingsField is one declarative form field inside a settings section.
 type SettingsField struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -562,7 +1544,7 @@ type SettingsField struct {
 
 func (x *SettingsField) Reset() {
 	*x = SettingsField{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[5]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -574,7 +1556,7 @@ func (x *SettingsField) String() string {
 func (*SettingsField) ProtoMessage() {}
 
 func (x *SettingsField) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[5]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -587,7 +1569,7 @@ func (x *SettingsField) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettingsField.ProtoReflect.Descriptor instead.
 func (*SettingsField) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{5}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SettingsField) GetKey() string {
@@ -653,7 +1635,7 @@ type SettingsSection struct {
 
 func (x *SettingsSection) Reset() {
 	*x = SettingsSection{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[6]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -665,7 +1647,7 @@ func (x *SettingsSection) String() string {
 func (*SettingsSection) ProtoMessage() {}
 
 func (x *SettingsSection) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[6]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -678,7 +1660,7 @@ func (x *SettingsSection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettingsSection.ProtoReflect.Descriptor instead.
 func (*SettingsSection) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{6}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SettingsSection) GetId() string {
@@ -754,12 +1736,84 @@ const file_plugin_v1_plugin_proto_rawDesc = "" +
 	"\x10CallToolResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x16\n" +
 	"\x06result\x18\x02 \x01(\tR\x06result\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error\"n\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"\x84\x03\n" +
+	"\x0eInboundMessage\x12\x1d\n" +
+	"\n" +
+	"adapter_id\x18\x01 \x01(\tR\tadapterId\x12\x1a\n" +
+	"\bplatform\x18\x02 \x01(\tR\bplatform\x12\"\n" +
+	"\fconversation\x18\x03 \x01(\tR\fconversation\x12\x12\n" +
+	"\x04kind\x18\x04 \x01(\tR\x04kind\x12\x17\n" +
+	"\apeer_id\x18\x05 \x01(\tR\x06peerId\x12\x1b\n" +
+	"\tpeer_name\x18\x06 \x01(\tR\bpeerName\x12\x1b\n" +
+	"\tsender_id\x18\a \x01(\tR\bsenderId\x12\x1f\n" +
+	"\vsender_name\x18\b \x01(\tR\n" +
+	"senderName\x12\x12\n" +
+	"\x04text\x18\t \x01(\tR\x04text\x12\x14\n" +
+	"\x05media\x18\n" +
+	" \x03(\tR\x05media\x12\x0e\n" +
+	"\x02at\x18\v \x01(\tR\x02at\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\f \x01(\tR\tmessageId\x12\x17\n" +
+	"\ais_wake\x18\r \x01(\bR\x06isWake\x12\x19\n" +
+	"\braw_json\x18\x0e \x01(\tR\arawJson\"h\n" +
+	"\x14DecideInboundRequest\x12\x1b\n" +
+	"\tcaller_id\x18\x01 \x01(\tR\bcallerId\x123\n" +
+	"\amessage\x18\x02 \x01(\v2\x19.plugin.v1.InboundMessageR\amessage\"G\n" +
+	"\x15DecideInboundResponse\x12\x16\n" +
+	"\x06action\x18\x01 \x01(\tR\x06action\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x9e\x01\n" +
+	"\x12SendMessageRequest\x12\x1b\n" +
+	"\tcaller_id\x18\x01 \x01(\tR\bcallerId\x12\x1d\n" +
+	"\n" +
+	"adapter_id\x18\x02 \x01(\tR\tadapterId\x12\"\n" +
+	"\fconversation\x18\x03 \x01(\tR\fconversation\x12\x12\n" +
+	"\x04text\x18\x04 \x01(\tR\x04text\x12\x14\n" +
+	"\x05media\x18\x05 \x03(\tR\x05media\"d\n" +
+	"\x13SendMessageResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\x02 \x01(\tR\tmessageId\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"2\n" +
+	"\x13ListAdaptersRequest\x12\x1b\n" +
+	"\tcaller_id\x18\x01 \x01(\tR\bcallerId\"P\n" +
+	"\x14ListAdaptersResponse\x128\n" +
+	"\badapters\x18\x01 \x03(\v2\x1c.plugin.v1.AdapterDescriptorR\badapters\"\xa8\x01\n" +
+	"\x11AdapterDescriptor\x12\x1d\n" +
+	"\n" +
+	"adapter_id\x18\x01 \x01(\tR\tadapterId\x12\x1a\n" +
+	"\bplatform\x18\x02 \x01(\tR\bplatform\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12D\n" +
+	"\rconversations\x18\x04 \x03(\v2\x1e.plugin.v1.AdapterConversationR\rconversations\"a\n" +
+	"\x13AdapterConversation\x12\"\n" +
+	"\fconversation\x18\x01 \x01(\tR\fconversation\x12\x12\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\x9e\x01\n" +
+	"\x12AdapterSendRequest\x12\x1b\n" +
+	"\tcaller_id\x18\x01 \x01(\tR\bcallerId\x12\x1d\n" +
+	"\n" +
+	"adapter_id\x18\x02 \x01(\tR\tadapterId\x12\"\n" +
+	"\fconversation\x18\x03 \x01(\tR\fconversation\x12\x12\n" +
+	"\x04text\x18\x04 \x01(\tR\x04text\x12\x14\n" +
+	"\x05media\x18\x05 \x03(\tR\x05media\"d\n" +
+	"\x13AdapterSendResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\x02 \x01(\tR\tmessageId\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"\xa5\x01\n" +
 	"\x10PluginPermission\x12!\n" +
 	"\fapi_requires\x18\x01 \x03(\tR\vapiRequires\x12\x1f\n" +
 	"\vapi_exposes\x18\x02 \x03(\tR\n" +
 	"apiExposes\x12\x16\n" +
-	"\x06egress\x18\x03 \x03(\tR\x06egress\"\x9e\x01\n" +
+	"\x06egress\x18\x03 \x03(\tR\x06egress\x125\n" +
+	"\bmessages\x18\x04 \x01(\v2\x19.plugin.v1.PluginMessagesR\bmessages\"\x89\x02\n" +
+	"\x0ePluginMessages\x12\x1b\n" +
+	"\tread_mode\x18\x01 \x01(\tR\breadMode\x12#\n" +
+	"\rread_adapters\x18\x02 \x03(\tR\freadAdapters\x12-\n" +
+	"\x12read_conversations\x18\x03 \x03(\tR\x11readConversations\x12#\n" +
+	"\rsend_adapters\x18\x04 \x03(\tR\fsendAdapters\x12)\n" +
+	"\x10publish_adapters\x18\x05 \x03(\tR\x0fpublishAdapters\x12\x12\n" +
+	"\x04gate\x18\x06 \x01(\bR\x04gate\x12\"\n" +
+	"\rgate_on_error\x18\a \x01(\tR\vgateOnError\"\x9e\x01\n" +
 	"\rSettingsField\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x14\n" +
@@ -773,14 +1827,15 @@ const file_plugin_v1_plugin_proto_rawDesc = "" +
 	"\x04icon\x18\x03 \x01(\tR\x04icon\x12\x14\n" +
 	"\x05order\x18\x04 \x01(\x05R\x05order\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x120\n" +
-	"\x06fields\x18\x06 \x03(\v2\x18.plugin.v1.SettingsFieldR\x06fields*\x8a\x01\n" +
+	"\x06fields\x18\x06 \x03(\v2\x18.plugin.v1.SettingsFieldR\x06fields*\xa5\x01\n" +
 	"\n" +
 	"PluginType\x12\x1b\n" +
 	"\x17PLUGIN_TYPE_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13PLUGIN_TYPE_ADAPTER\x10\x01\x12\x17\n" +
 	"\x13PLUGIN_TYPE_PERSONA\x10\x02\x12\x14\n" +
 	"\x10PLUGIN_TYPE_TOOL\x10\x03\x12\x17\n" +
-	"\x13PLUGIN_TYPE_SERVICE\x10\x04*\x9d\x01\n" +
+	"\x13PLUGIN_TYPE_SERVICE\x10\x04\x12\x19\n" +
+	"\x15PLUGIN_TYPE_MESSAGING\x10\x05*\x9d\x01\n" +
 	"\tTaskState\x12\x1a\n" +
 	"\x16TASK_STATE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12TASK_STATE_PENDING\x10\x01\x12\x16\n" +
@@ -789,7 +1844,11 @@ const file_plugin_v1_plugin_proto_rawDesc = "" +
 	"\x11TASK_STATE_FAILED\x10\x04\x12\x18\n" +
 	"\x14TASK_STATE_CANCELLED\x10\x052R\n" +
 	"\vToolService\x12C\n" +
-	"\bCallTool\x12\x1a.plugin.v1.CallToolRequest\x1a\x1b.plugin.v1.CallToolResponseBV\n" +
+	"\bCallTool\x12\x1a.plugin.v1.CallToolRequest\x1a\x1b.plugin.v1.CallToolResponse2\x83\x02\n" +
+	"\x0eMessageService\x12L\n" +
+	"\vSendMessage\x12\x1d.plugin.v1.SendMessageRequest\x1a\x1e.plugin.v1.SendMessageResponse\x12O\n" +
+	"\fListAdapters\x12\x1e.plugin.v1.ListAdaptersRequest\x1a\x1f.plugin.v1.ListAdaptersResponse\x12R\n" +
+	"\rDecideInbound\x12\x1f.plugin.v1.DecideInboundRequest\x1a .plugin.v1.DecideInboundResponseBV\n" +
 	"\x15ai.zero.kay.plugin.v1P\x01Z\x1b0kay/gen/plugin/v1;pluginv1\xa2\x02\bZKPlugin\xaa\x02\x12Zero.Kay.Plugin.V1b\x06proto3"
 
 var (
@@ -805,30 +1864,52 @@ func file_plugin_v1_plugin_proto_rawDescGZIP() []byte {
 }
 
 var file_plugin_v1_plugin_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_plugin_v1_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_plugin_v1_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_plugin_v1_plugin_proto_goTypes = []any{
-	(PluginType)(0),          // 0: plugin.v1.PluginType
-	(TaskState)(0),           // 1: plugin.v1.TaskState
-	(*PluginInfo)(nil),       // 2: plugin.v1.PluginInfo
-	(*PluginTool)(nil),       // 3: plugin.v1.PluginTool
-	(*CallToolRequest)(nil),  // 4: plugin.v1.CallToolRequest
-	(*CallToolResponse)(nil), // 5: plugin.v1.CallToolResponse
-	(*PluginPermission)(nil), // 6: plugin.v1.PluginPermission
-	(*SettingsField)(nil),    // 7: plugin.v1.SettingsField
-	(*SettingsSection)(nil),  // 8: plugin.v1.SettingsSection
+	(PluginType)(0),               // 0: plugin.v1.PluginType
+	(TaskState)(0),                // 1: plugin.v1.TaskState
+	(*PluginInfo)(nil),            // 2: plugin.v1.PluginInfo
+	(*PluginTool)(nil),            // 3: plugin.v1.PluginTool
+	(*CallToolRequest)(nil),       // 4: plugin.v1.CallToolRequest
+	(*CallToolResponse)(nil),      // 5: plugin.v1.CallToolResponse
+	(*InboundMessage)(nil),        // 6: plugin.v1.InboundMessage
+	(*DecideInboundRequest)(nil),  // 7: plugin.v1.DecideInboundRequest
+	(*DecideInboundResponse)(nil), // 8: plugin.v1.DecideInboundResponse
+	(*SendMessageRequest)(nil),    // 9: plugin.v1.SendMessageRequest
+	(*SendMessageResponse)(nil),   // 10: plugin.v1.SendMessageResponse
+	(*ListAdaptersRequest)(nil),   // 11: plugin.v1.ListAdaptersRequest
+	(*ListAdaptersResponse)(nil),  // 12: plugin.v1.ListAdaptersResponse
+	(*AdapterDescriptor)(nil),     // 13: plugin.v1.AdapterDescriptor
+	(*AdapterConversation)(nil),   // 14: plugin.v1.AdapterConversation
+	(*AdapterSendRequest)(nil),    // 15: plugin.v1.AdapterSendRequest
+	(*AdapterSendResponse)(nil),   // 16: plugin.v1.AdapterSendResponse
+	(*PluginPermission)(nil),      // 17: plugin.v1.PluginPermission
+	(*PluginMessages)(nil),        // 18: plugin.v1.PluginMessages
+	(*SettingsField)(nil),         // 19: plugin.v1.SettingsField
+	(*SettingsSection)(nil),       // 20: plugin.v1.SettingsSection
 }
 var file_plugin_v1_plugin_proto_depIdxs = []int32{
-	0, // 0: plugin.v1.PluginInfo.plugin_type:type_name -> plugin.v1.PluginType
-	6, // 1: plugin.v1.PluginInfo.permissions:type_name -> plugin.v1.PluginPermission
-	3, // 2: plugin.v1.PluginInfo.tools:type_name -> plugin.v1.PluginTool
-	7, // 3: plugin.v1.SettingsSection.fields:type_name -> plugin.v1.SettingsField
-	4, // 4: plugin.v1.ToolService.CallTool:input_type -> plugin.v1.CallToolRequest
-	5, // 5: plugin.v1.ToolService.CallTool:output_type -> plugin.v1.CallToolResponse
-	5, // [5:6] is the sub-list for method output_type
-	4, // [4:5] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: plugin.v1.PluginInfo.plugin_type:type_name -> plugin.v1.PluginType
+	17, // 1: plugin.v1.PluginInfo.permissions:type_name -> plugin.v1.PluginPermission
+	3,  // 2: plugin.v1.PluginInfo.tools:type_name -> plugin.v1.PluginTool
+	6,  // 3: plugin.v1.DecideInboundRequest.message:type_name -> plugin.v1.InboundMessage
+	13, // 4: plugin.v1.ListAdaptersResponse.adapters:type_name -> plugin.v1.AdapterDescriptor
+	14, // 5: plugin.v1.AdapterDescriptor.conversations:type_name -> plugin.v1.AdapterConversation
+	18, // 6: plugin.v1.PluginPermission.messages:type_name -> plugin.v1.PluginMessages
+	19, // 7: plugin.v1.SettingsSection.fields:type_name -> plugin.v1.SettingsField
+	4,  // 8: plugin.v1.ToolService.CallTool:input_type -> plugin.v1.CallToolRequest
+	9,  // 9: plugin.v1.MessageService.SendMessage:input_type -> plugin.v1.SendMessageRequest
+	11, // 10: plugin.v1.MessageService.ListAdapters:input_type -> plugin.v1.ListAdaptersRequest
+	7,  // 11: plugin.v1.MessageService.DecideInbound:input_type -> plugin.v1.DecideInboundRequest
+	5,  // 12: plugin.v1.ToolService.CallTool:output_type -> plugin.v1.CallToolResponse
+	10, // 13: plugin.v1.MessageService.SendMessage:output_type -> plugin.v1.SendMessageResponse
+	12, // 14: plugin.v1.MessageService.ListAdapters:output_type -> plugin.v1.ListAdaptersResponse
+	8,  // 15: plugin.v1.MessageService.DecideInbound:output_type -> plugin.v1.DecideInboundResponse
+	12, // [12:16] is the sub-list for method output_type
+	8,  // [8:12] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_plugin_v1_plugin_proto_init() }
@@ -842,9 +1923,9 @@ func file_plugin_v1_plugin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_plugin_v1_plugin_proto_rawDesc), len(file_plugin_v1_plugin_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   7,
+			NumMessages:   19,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_plugin_v1_plugin_proto_goTypes,
 		DependencyIndexes: file_plugin_v1_plugin_proto_depIdxs,

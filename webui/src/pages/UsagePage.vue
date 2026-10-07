@@ -32,15 +32,20 @@ let timer: number | undefined
 
 const PALETTE = ['#5944c6', '#9b405e', '#27633e', '#8a5a00', '#1a6fb4', '#7b4bb7', '#0d8a5f', '#b5473c']
 
-async function fetchUsage() {
-  loading.value = true
-  error.value = ''
+async function fetchUsage(background = false) {
+  // Background polling must not touch loading/error: flipping loading every
+  // 15s disabled the buttons in a visible rhythm, and it wiped an error banner
+  // the user had not read yet.
+  if (!background) {
+    loading.value = true
+    error.value = ''
+  }
   try {
     const res = await fetch('/api/usage')
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     usage.value = await res.json()
   } catch (e: any) {
-    error.value = e?.message || 'failed'
+    if (!background) error.value = e?.message || t('usage.loadFailed')
   } finally {
     loading.value = false
   }
@@ -63,7 +68,7 @@ async function clearUsage() {
     await fetchUsage()
     setTimeout(() => { clearMsg.value = '' }, 2000)
   } catch (e: any) {
-    error.value = e?.message || 'failed'
+    error.value = e?.message || t('usage.loadFailed')
   }
 }
 
@@ -120,7 +125,7 @@ function dayLabel(day: string) {
 
 onMounted(() => {
   fetchUsage()
-  timer = window.setInterval(fetchUsage, 15000)
+  timer = window.setInterval(() => fetchUsage(true), 15000)
 })
 onUnmounted(() => {
   if (timer) window.clearInterval(timer)
@@ -133,17 +138,25 @@ onUnmounted(() => {
       <div class="hero-copy">
         <p class="eyebrow">0KAY · USAGE</p>
         <h1>{{ t('usage.title') }}</h1>
-        <p class="subtitle">按模型与日期统计的 token 用量、请求与会话。</p>
+        <p class="subtitle">{{ t('usage.subtitle') }}</p>
       </div>
       <div class="hero-actions">
-        <button class="btn btn-tonal" :disabled="loading" @click="fetchUsage">{{ t('memory.refresh') }}</button>
-        <button class="btn btn-danger" :disabled="loading" @click="clearUsage">{{ t('usage.clear') }}</button>
+        <button class="btn btn-tonal" :disabled="loading" @click="fetchUsage()">{{ t('memory.refresh') }}</button>
+        <button class="btn btn-danger-tonal" :disabled="loading" @click="clearUsage">{{ t('usage.clear') }}</button>
       </div>
     </header>
 
-    <div v-if="error" class="banner err">{{ error }}</div>
-    <div v-if="clearMsg" class="banner ok">{{ clearMsg }}</div>
+    <div v-if="error" class="banner err" role="alert">{{ error }}</div>
+    <div v-if="clearMsg" class="banner ok" role="status">{{ clearMsg }}</div>
 
+    <!-- First load: skeleton instead of a flash of zero-value cards. -->
+    <div v-if="loading && !usage" class="usage-loading" aria-hidden="true">
+      <div class="skeleton sk-donut"></div>
+      <div class="skeleton sk-card"></div>
+      <div class="skeleton sk-card"></div>
+    </div>
+
+    <template v-else>
     <!-- Overview -->
     <section class="overview">
       <article class="card donut-card">
@@ -170,7 +183,7 @@ onUnmounted(() => {
             <b class="big">{{ n(total) }}</b>
           </div>
         </div>
-        <div class="compose" role="img" :aria-label="`prompt ${promptShare}% / completion ${completionShare}%`">
+        <div class="compose" role="img" :aria-label="t('usage.composeAria', { prompt: promptShare, completion: completionShare })">
           <span class="seg prompt" :style="{ width: `${promptShare}%` }"></span>
           <span class="seg completion" :style="{ width: `${completionShare}%` }"></span>
         </div>
@@ -191,7 +204,7 @@ onUnmounted(() => {
         </article>
         <article class="mini">
           <span class="mini-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v18M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
-          <div><b>{{ n(avgPerRequest) }}</b><span>tokens / 请求</span></div>
+          <div><b>{{ n(avgPerRequest) }}</b><span>{{ t('usage.tokensPerRequest') }}</span></div>
         </article>
       </div>
     </section>
@@ -200,7 +213,7 @@ onUnmounted(() => {
     <section class="panel">
       <div class="panel-head">
         <h2>{{ t('usage.byDay') }}</h2>
-        <span v-if="peakDay" class="panel-note">峰值 {{ dayLabel(peakDay.day) }} · {{ compact(peakDay.total) }}</span>
+        <span v-if="peakDay" class="panel-note">{{ t('usage.peak', { label: dayLabel(peakDay.day), value: compact(peakDay.total) }) }}</span>
       </div>
       <div v-if="chartDays.length === 0" class="empty">{{ t('usage.empty') }}</div>
       <div v-else class="chart">
@@ -223,7 +236,7 @@ onUnmounted(() => {
     <section class="panel">
       <div class="panel-head">
         <h2>{{ t('usage.byModel') }}</h2>
-        <span class="panel-note">{{ modelRows.length }} 个模型</span>
+        <span class="panel-note">{{ t('usage.modelsCount', { n: modelRows.length }) }}</span>
       </div>
       <div v-if="modelRows.length === 0" class="empty">{{ t('usage.empty') }}</div>
       <div v-else class="model-grid">
@@ -233,16 +246,17 @@ onUnmounted(() => {
             <code class="mc-name">{{ row.model }}</code>
             <span class="mc-share">{{ share(row.total).replace('%', '') }}%</span>
           </div>
-          <b class="mc-total">{{ n(row.total) }} <small>tokens</small></b>
+          <b class="mc-total">{{ n(row.total) }} <small>{{ t('usage.tokens') }}</small></b>
           <div class="mc-track"><div class="mc-fill" :style="{ transform: `scaleX(${share(row.total)})` }"></div></div>
           <div class="mc-meta">
             <span><b>{{ n(row.prompt) }}</b>{{ t('usage.promptTokens') }}</span>
             <span><b>{{ n(row.completion) }}</b>{{ t('usage.completionTokens') }}</span>
-            <span><b>{{ n(row.count) }}</b>次请求</span>
+            <span><b>{{ n(row.count) }}</b> {{ t('usage.requestsSuffix') }}</span>
           </div>
         </article>
       </div>
     </section>
+    </template>
   </div>
 </template>
 
@@ -268,17 +282,18 @@ onUnmounted(() => {
 .banner.err { background: var(--md-error-container); color: var(--md-on-error-container); }
 .banner.ok { background: var(--md-success-container); color: var(--md-on-success-container); }
 
-#app .usage-page .btn {
-  height: 46px; padding: 0 22px; border: 1px solid transparent; border-radius: 999px;
-  font-weight: 700; font-size: 14px; cursor: pointer; color: var(--md-on-surface); background: var(--md-surface-container-high);
-  transition: transform var(--duration-medium) var(--ease-spring), background-color var(--duration-short) var(--ease-out), box-shadow var(--duration-medium) var(--ease-out);
-}
-@media (hover: hover) and (pointer: fine) {
-  #app .usage-page .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-1); }
-}
-#app .usage-page .btn:disabled { opacity: .55; cursor: not-allowed; }
-#app .usage-page .btn-tonal { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
-#app .usage-page .btn-danger { background: var(--md-error-container); color: var(--md-on-error-container); }
+  /* Shape only — see the note in PluginsPage: a background/color here would
+     out-specify the design system's .btn-* variants and force this page to keep
+     its own copies of them. */
+  #app .usage-page .btn {
+    height: 46px; padding: 0 22px; border: 1px solid transparent; border-radius: 999px;
+    font-weight: 700; font-size: 14px; cursor: pointer;
+    transition: transform var(--duration-medium) var(--ease-spring), background-color var(--duration-short) var(--ease-out), box-shadow var(--duration-medium) var(--ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    #app .usage-page .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-1); }
+  }
+  #app .usage-page .btn:disabled { opacity: .55; cursor: not-allowed; }
 
 /* Overview */
 .overview { display: grid; grid-template-columns: minmax(220px, 0.9fr) minmax(280px, 1.5fr) minmax(200px, 1fr); gap: var(--space-lg); margin-bottom: var(--space-xl); }
@@ -382,6 +397,24 @@ onUnmounted(() => {
 
 .empty { padding: var(--space-xl); text-align: center; color: var(--md-on-surface-variant); background: var(--md-surface-container); border-radius: 20px; }
 
+/* First-load skeleton: three quiet blocks that shimmer until /api/usage answers. */
+.usage-loading { display: grid; grid-template-columns: minmax(220px, 0.9fr) 1.5fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-xl); }
+.skeleton {
+  border-radius: 32px; background: var(--md-surface-container-low); min-height: 180px;
+  animation: sk-shimmer 1.4s ease-in-out infinite;
+}
+.sk-donut { min-height: 220px; }
+@keyframes sk-shimmer { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+@media (max-width: 980px) {
+  .usage-loading { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .usage-loading { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; opacity: .7; }
+}
+
 @keyframes up { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
 
 @media (max-width: 980px) {
@@ -394,5 +427,12 @@ onUnmounted(() => {
   .chart { height: 200px; padding-left: 34px; }
   .grid span i { left: -34px; width: 28px; }
   .axis span { font-size: 11px; }
+}
+/* 14 date labels do not fit on a phone: on a 360px screen each column is ~17px
+   wide while "10/06" is ~27px even at 10px, and `white-space: nowrap` meant the
+   neighbours overlapped rather than wrapping. Show every other one. */
+@media (max-width: 560px) {
+  .axis span { font-size: 10px; }
+  .axis span:nth-child(even) { visibility: hidden; }
 }
 </style>

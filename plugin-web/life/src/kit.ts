@@ -6,17 +6,27 @@
  * field sizing. Extracting the transport helpers and the design-token block
  * keeps them in lockstep instead of drifting into two dialects.
  */
+import { i18n } from '@0kay/host'
+
+const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {})
 
 /** Turn raw gateway/gRPC dial errors into a calm, actionable message. */
 export function friendlyError(e: any): string {
   const text = String(e?.message || e || '')
   if (/connection refused|Unavailable|actively refused|dial tcp|ECONNREFUSED|LIFE is unavailable|life unavailable|502|503/i.test(text)) {
-    return 'LIFE 服务暂时未就绪（可能正在启动或重启），已自动重试。稍候刷新即可。'
+    return t('life.kit.notReady')
   }
-  return text || '操作失败'
+  return text || t('life.kit.actionFailed')
 }
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * How long a success/error banner stays on screen, shared by every L.I.F.E
+ * page so the three roots feel like one product (the adapters page already
+ * shipped 3.2s — that value won, the others follow).
+ */
+export const FLASH_MS = 3200
 
 /**
  * POST one ManageCompanion action to L.I.F.E through the Core gateway.
@@ -117,7 +127,7 @@ ${r} .fab-ic{font-size:17px}
 ${r} .state-row{position:relative;z-index:1;display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
 ${r} .pill{padding:6px 14px;border-radius:999px;background:color-mix(in srgb,var(--md-surface-container-lowest) 70%,transparent);font-size:13px;font-weight:700}
 ${r} .pill.soft{font-weight:500;color:var(--md-on-surface-variant)}
-${r} .pill.bad{background:#ffdcc6;color:#7a3a00}
+${r} .pill.bad{background:var(--md-warning-container);color:var(--md-on-warning-container)}
 
 ${r} .banner{padding:12px 16px;border-radius:var(--r-sm);font-size:13px;margin:0 0 16px}
 ${r} .banner.err{background:var(--md-error-container);color:var(--md-on-error-container)}
@@ -137,6 +147,12 @@ ${r} .tab.active i{opacity:.85}
 
 ${r} .panel{animation:fade .32s var(--spring)}
 @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+/* The v-show panels are permanently mounted, so the entrance animation only
+   plays on first paint. A page that switches tabs replays it by toggling this
+   class (distinct keyframes, otherwise re-adding the same computed animation
+   would not restart it). See CompanionPage replayPanel(). */
+${r} .panel-replay{animation:fadeReplay .32s var(--spring)}
+@keyframes fadeReplay{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 ${r} .section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin:8px 0 18px}
 ${r} .section-head h2{font-size:22px;font-weight:800}
 ${r} .desc{margin:6px 0 0;font-size:13px;color:var(--md-on-surface-variant);max-width:720px;line-height:1.55}
@@ -156,13 +172,16 @@ ${r} .link{border:0;background:transparent;color:var(--md-primary);font:700 12px
 
 /* Cards */
 ${r} .card{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--r-lg);padding:20px;margin-bottom:16px}
-${r} .card > h3{font-size:16px;font-weight:750;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+${r} .card > h3{font-size:16px;font-weight:750;margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 ${r} .card.sub{padding:16px;margin-bottom:0}
-${r} .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
-${r} .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+/* minmax(0, 1fr) rather than 1fr: a bare 1fr track has an auto minimum, so one
+   child with a large min-content width (a long model id, a URL) blows the track
+   past the container instead of shrinking. */
+${r} .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+${r} .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
 ${r} .sub-label{margin:16px 0 8px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--md-on-surface-variant)}
 ${r} .hint{font-size:12px;color:var(--md-on-surface-variant);line-height:1.55;margin:6px 0}
-${r} .meta{font-size:12px;color:var(--md-on-surface-variant);line-height:1.5}
+${r} .meta{font-size:12px;color:var(--md-on-surface-variant);line-height:1.5;overflow-wrap:anywhere}
 ${r} .empty{padding:14px;text-align:center;font-size:13px;color:var(--md-on-surface-variant)}
 
 /* Fields */
@@ -179,8 +198,8 @@ ${r} .settings-grid .field{height:40px}
 ${r} .fld{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant);min-width:180px}
 
 /* Chips / status */
-${r} .count-pill{margin-left:auto;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700}
-${r} .count-pill.ok{background:var(--md-success-container);color:#0d3b1e}
+${r} .count-pill{margin-left:auto;flex:0 0 auto;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700}
+${r} .count-pill.ok{background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e)}
 ${r} .actions-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
 
 /* Feed list (adapters, routes, commitments …) */
@@ -188,7 +207,16 @@ ${r} .feed{list-style:none;padding:0;margin:0;display:flex;flex-direction:column
 ${r} .feed > li{padding:14px 16px;border-radius:var(--r-md);background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 60%,transparent)}
 ${r} .feed > li.empty{background:none;border:0}
 
-/* Material 3 Expressive align */
+/* Material 3 Expressive align.
+ *
+ * Read this block as the source of truth for in-host sizing. These #app-prefixed
+ * rules are (1,2,0) and supersede the base layer above, so the base .field
+ * height/radius/background, .btn height, .field.tiny height and
+ * .settings-grid .field height never render while the page is mounted in the
+ * host. The base values are kept on purpose as the standalone fallback for a
+ * page rendered without an #app ancestor — they are not dead, just shadowed.
+ *
+ * (No backticks in these comments: the whole sheet is a JS template literal.) */
 #app ${r} .card{border-color:color-mix(in srgb,var(--md-outline-variant) 55%,transparent);background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}
 #app ${r} .field{height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high)}
 #app ${r} .field:focus{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}
@@ -197,12 +225,16 @@ ${r} .feed > li.empty{background:none;border:0}
 #app ${r} .btn{height:44px;padding:0 20px}
 #app ${r} .btn.sm{height:36px;padding:0 15px}
 
+/* Theme-specific overrides key off html[data-theme] — the darkmode plugin's
+   toggle — not prefers-color-scheme, so a manual light/dark choice in Settings
+   is honored (the injected CSS is global, so html-level selectors are fine). */
 @media (prefers-reduced-motion: reduce){
   ${r} .panel{animation:none}
+  ${r} .panel-replay{animation:none}
   ${r} .fab,${r} .btn,${r} .tab{transition:none}
   ${r} .fab:hover:not(:disabled),${r} .btn:hover:not(:disabled),${r} .tab.active{transform:none}
 }
-@media (prefers-color-scheme: dark){${r} .pill.bad{background:#5a2d00;color:#ffd7b0}}
+html[data-theme="dark"] ${r} .pill.bad{background:#5a2d00;color:#ffd7b0}
 @media(max-width:820px){${r} .grid2,${r} .grid3{grid-template-columns:1fr}}
 @media(max-width:560px){${r}{padding:var(--space-lg) var(--space-lg) 80px}${r} .hero{padding:20px}${r} .hero-actions{width:100%}}
 `

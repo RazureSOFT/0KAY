@@ -56,7 +56,10 @@ html{scroll-behavior:smooth}
 body{
   margin:0; min-height:100vh; background:var(--md-surface); color:var(--md-on-surface);
   font:400 15.5px/1.75 'Roboto','Segoe UI Variable','Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
-  -webkit-font-smoothing:antialiased;
+  /* Deliberately NOT -webkit-font-smoothing:antialiased — the WebUI disables it
+     for the same reason (see webui/src/styles/theme.css): on Windows Chrome/Edge
+     it turns off ClearType subpixel rendering and the whole page reads blurry. */
+  -moz-osx-font-smoothing:grayscale;
 }
 ::selection{background:var(--md-primary-container); color:var(--md-on-primary-container)}
 a{color:var(--md-primary); text-decoration:none}
@@ -114,8 +117,16 @@ pre{
 }
 pre code{background:none; padding:0; font-size:13.5px; line-height:1.7}
 /* ---------- Tables ---------- */
+/* `.table-scroll` (emitted by markdown_body) owns the horizontal scrolling. A
+   table with `width:100%` still cannot shrink below the sum of its columns'
+   min-content widths, so a wide API table overflows the article; without this
+   wrapper the previous `overflow:hidden` simply cut the trailing columns off. */
+.table-scroll{
+  overflow-x:auto; max-width:100%; margin:1.2em 0; border-radius:var(--radius-lg);
+  -webkit-overflow-scrolling:touch;
+}
 table{
-  border-collapse:separate; border-spacing:0; width:100%; margin:1.2em 0; font-size:14px;
+  border-collapse:separate; border-spacing:0; width:100%; margin:0; font-size:14px;
   background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
   border-radius:var(--radius-lg); overflow:hidden;
 }
@@ -175,7 +186,7 @@ def markdown_body(text: str) -> str:
             body.append("</ul>")
             list_open = False
         if table_open:
-            body.append("</table>")
+            body.append("</table></div>")
             table_open = False
 
     for raw in text.splitlines():
@@ -212,7 +223,11 @@ def markdown_body(text: str) -> str:
             cells = [c.strip() for c in line.strip().strip("|").split("|")]
             if not table_open:
                 table_open = True
-                body.append("<table>")
+                # Wrapped so a wide API table scrolls instead of being clipped:
+                # `width: 100%` cannot shrink a table below the sum of its
+                # columns' min-content widths, so long paths push it past the
+                # article and the old `overflow: hidden` cut the last columns off.
+                body.append('<div class="table-scroll"><table>')
                 body.append("<tr>" + "".join(f"<th>{inline(c)}</th>" for c in cells) + "</tr>")
             elif re.fullmatch(r"[\s|:-]+", line):
                 continue
@@ -223,7 +238,7 @@ def markdown_body(text: str) -> str:
         if item:
             flush_paragraph()
             if table_open:
-                body.append("</table>")
+                body.append("</table></div>")
                 table_open = False
             if not list_open:
                 body.append("<ul>")
@@ -249,7 +264,7 @@ def first_heading(path: Path, fallback: str) -> str:
 
 
 def render(text: str, stem: str, title: str, nav: str) -> str:
-    return f"""<!doctype html><html lang="en"><head>
+    return f"""<!doctype html><html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(title)} · 0KAY</title><style>{STYLE}</style></head>
 <body><div class="shell">

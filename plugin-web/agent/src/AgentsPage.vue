@@ -4,13 +4,11 @@ import { useAgentsStore, type TaskRow } from './store'
 import MarkdownContent from './MarkdownContent.vue'
 import ToolStepCard from './ToolStepCard.vue'
 import FileViewer from './FileViewer.vue'
-import AppSelect from './AppSelect.vue'
 import ThinkingSlider from './ThinkingSlider.vue'
 import ThinkChain from './ThinkChain.vue'
+import { AppSelect, useConfirm, i18n } from '@0kay/host'
 import { locale, syncLocale } from './locale'
-import { useConfirm } from './confirm'
-import ConfirmDialog from './ConfirmDialog.vue'
-const tr=(zh:string,en:string)=>locale.value==='en'?en:zh
+const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {})
 const { confirm } = useConfirm()
 
 const store = useAgentsStore()
@@ -49,6 +47,29 @@ function onPaste(event: ClipboardEvent) {
   event.preventDefault()
   void addFiles(files)
 }
+// Narrow screens used to hide the tool dock entirely (browser/tree/terminal
+// unreachable); it now collapses to its toggle instead, collapsed by default
+// when there is no saved choice.
+const dockOpen = ref((() => {
+  try { const saved = localStorage.getItem('0kay.agent.dock.open'); if (saved === '1' || saved === '0') return saved === '1' } catch { /* storage unavailable */ }
+  return (window.innerWidth || 1280) > 800
+})())
+function toggleDock() {
+  dockOpen.value = !dockOpen.value
+  try { localStorage.setItem('0kay.agent.dock.open', dockOpen.value ? '1' : '0') } catch { /* storage unavailable */ }
+}
+function dismissError() { error.value = ''; store.error = '' }
+// Auto-grow the composer with its content, capped so it never swallows the
+// transcript (min-height lives in CSS).
+const composerArea = ref<HTMLTextAreaElement | null>(null)
+function autosizeComposer() {
+  const el = composerArea.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+}
+watch(draft, () => void nextTick(autosizeComposer))
+onMounted(autosizeComposer)
 const search = ref('')
 const source = ref('all')
 const mode = ref('general')
@@ -105,7 +126,7 @@ async function fetchSkills() {
     else skillsLoaded = false
   } catch { skillsLoaded = false }
 }
-const slashCommands = [{ name: 'compact', description: tr('压缩当前会话上下文','Compact the session context') }]
+const slashCommands = [{ name: 'compact', description: t('agent.page.slashCompact') }]
 const slashQuery = computed(() => { const match = /^\/([^\s]*)$/.exec(draft.value); return match ? match[1].toLowerCase() : null })
 const slashItems = computed(() => {
   const query = slashQuery.value
@@ -163,7 +184,7 @@ function onTranscriptScroll() {
   if(element) followLatest.value=element.scrollHeight-element.scrollTop-element.clientHeight<100
 }
 async function browse(path = '') {
-  if (!executor.value) {error.value='请先选择在线执行器';return}
+  if (!executor.value) {error.value=t('agent.page.selectOnlineExecutor');return}
   const request=++browseRequest
   browserExecutor=executor.value.plugin_id
   browserOpen.value=true;browserBusy.value=true;browserError.value=''
@@ -200,12 +221,12 @@ async function fetchHost() {
 async function compact() {
   if(!session.value || active.value || busy.value || session.value.state==='archived') return
   const target=selectedId.value
-  busy.value=true;compacting.value=true;error.value='';compactNotice.value='正在压缩上下文…'
+  busy.value=true;compacting.value=true;error.value='';compactNotice.value=t('agent.page.compacting')
   try {
     const response=await fetch('/api/agent/compact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:target,model_id:modelId.value})})
     if(!response.ok) throw new Error(await response.text())
     await response.json();await store.fetchAgents()
-    compactNotice.value='上下文已压缩。后续消息使用摘要；原始对话和工具记录仍然保留。';if(draft.value.trim()==='/compact') draft.value=''
+    compactNotice.value=t('agent.page.compacted');if(draft.value.trim()==='/compact') draft.value=''
   } catch(e:any) {error.value=e.message;compactNotice.value=''}
   finally {busy.value=false;compacting.value=false}
 }
@@ -247,16 +268,20 @@ async function fetchBrowserStatus() {
 }
 const browserLabel = computed(() => {
   const b = browserStatus.value
-  if (!b) return tr('浏览器 · 离线', 'Browser · offline')
-  if (!b.enabled) return tr('浏览器 · 未启用', 'Browser · disabled')
-  if (b.running) return `${tr('浏览器运行中', 'Browser running')}${b.tabs ? ` · ${b.tabs} ${tr('标签', 'tabs')}` : ''}`
-  if (b.available) return tr('浏览器 · 空闲', 'Browser · idle')
-  return tr('浏览器 · 不可用', 'Browser · unavailable')
+  if (!b) return t('agent.page.browserOffline')
+  if (!b.enabled) return t('agent.page.browserDisabled')
+  if (b.running) return `${t('agent.page.browserRunning')}${b.tabs ? ` · ${b.tabs} ${t('agent.page.tabs')}` : ''}`
+  if (b.available) return t('agent.page.browserIdle')
+  return t('agent.page.browserUnavailable')
 })
 const browserTooltip = computed(() => {
   const b = browserStatus.value
-  if (!b) return tr('无法获取浏览器状态', 'Browser status unavailable')
-  const parts = [b.enabled ? 'enabled' : 'disabled', b.available ? 'available' : 'not installed', b.running ? 'running' : 'stopped']
+  if (!b) return t('agent.page.browserStatusUnavailable')
+  const parts = [
+    b.enabled ? t('agent.page.browserStateEnabled') : t('agent.page.browserStateDisabled'),
+    b.available ? t('agent.page.browserStateAvailable') : t('agent.page.browserStateNotInstalled'),
+    b.running ? t('agent.page.browserStateRunning') : t('agent.page.browserStateStopped'),
+  ]
   if (b.url) parts.push(b.url)
   return parts.join(' · ')
 })
@@ -403,6 +428,10 @@ function onViewWheel(event: WheelEvent) {
   sendBrowserInput({ action: 'wheel', x: p.x, y: p.y, deltaX: event.deltaX, deltaY: event.deltaY })
 }
 function onViewKey(event: KeyboardEvent) {
+  // Never swallow Escape or modifier combos: they must keep working for the
+  // surrounding page (close panels, browser shortcuts, screen-reader
+  // navigation), otherwise the viewport becomes a keyboard trap.
+  if (event.key === 'Escape' || event.ctrlKey || event.altKey || event.metaKey) return
   const key = event.key
   if (key.length === 1 && !event.ctrlKey && !event.metaKey) sendBrowserInput({ action: 'type', text: key })
   else if (key !== 'Shift' && key !== 'Control' && key !== 'Alt' && key !== 'Meta') sendBrowserInput({ action: 'press', key: key === ' ' ? 'space' : key })
@@ -486,9 +515,9 @@ async function openFilePreview(path: string, opts: { confirmDiscard?: boolean } 
     if (!opts.confirmDiscard) return
     const same = fileData.value?.path === path
     const ok = await confirm({
-      title: tr('放弃修改？', 'Discard changes?'),
-      message: same ? tr('重新加载会丢失未保存的修改。', 'Reloading will lose unsaved changes.') : tr('打开其他文件会丢失未保存的修改。', 'Opening another file will lose unsaved changes.'),
-      confirmLabel: tr('放弃', 'Discard'), danger: true,
+      title: t('agent.page.discardChanges'),
+      message: same ? t('agent.page.reloadLoseChanges') : t('agent.page.openOtherLoseChanges'),
+      confirmLabel: t('agent.page.discard'), danger: true,
     })
     if (!ok) return
   }
@@ -567,7 +596,7 @@ async function saveFile() {
     })
     if (!res.ok) throw new Error(await res.text())
     fileData.value = { ...fileData.value, content: fileDraft.value, totalLines: fileDraft.value.split(/\r?\n/).length }
-    fileNotice.value = tr('已保存', 'Saved')
+    fileNotice.value = t('agent.page.saved')
     window.setTimeout(() => { if (fileNotice.value) fileNotice.value = '' }, 2200)
   } catch (e: any) { fileError.value = e?.message || 'save failed' }
   finally { fileSaving.value = false }
@@ -578,7 +607,7 @@ function onFileEditorKey(event: KeyboardEvent) {
 function reloadFile() { if (fileData.value) void openFilePreview(fileData.value.path, { confirmDiscard: true }) }
 async function closeFilePanel() {
   if (fileDirty.value) {
-    const ok = await confirm({ title: tr('放弃修改？', 'Discard changes?'), message: tr('有未保存的修改，关闭会丢失。', 'You have unsaved changes. Closing will lose them.'), confirmLabel: tr('放弃', 'Discard'), danger: true })
+    const ok = await confirm({ title: t('agent.page.discardChanges'), message: t('agent.page.closeLoseChanges'), confirmLabel: t('agent.page.discard'), danger: true })
     if (!ok) return
   }
   fileOpen.value = false
@@ -617,7 +646,7 @@ function termChangeExecutor(id: string) {
   termExecutorId.value = id
   const agent = store.agents.find(a => a.plugin_id === id)
   termCwd.value = agent?.host?.workdir || ''
-  termPush('note', tr(`已切换到 ${agent?.host?.hostname || id}${termCwd.value ? ' · ' + termCwd.value : ''}`, `Switched to ${agent?.host?.hostname || id}${termCwd.value ? ' · ' + termCwd.value : ''}`))
+  termPush('note', t('agent.page.switchedTo', { target: `${agent?.host?.hostname || id}${termCwd.value ? ' · ' + termCwd.value : ''}` }))
   void termScroll()
 }
 // Resolve a cd target against the current directory without a shell round-trip,
@@ -654,7 +683,7 @@ async function termRun() {
     await termScroll()
     return
   }
-  if (!termExecutorId.value) { termPush('err', tr('请先选择执行器', 'Choose an executor first')); await termScroll(); return }
+  if (!termExecutorId.value) { termPush('err', t('agent.page.chooseExecutorFirst')); await termScroll(); return }
   termBusy.value = true
   try {
     const res = await fetch('/api/agent/exec', {
@@ -667,8 +696,8 @@ async function termRun() {
     if (data.cwd) termCwd.value = data.cwd
     if (data.stdout) termPush('out', String(data.stdout).replace(/\s+$/, ''))
     if (data.stderr) termPush('err', String(data.stderr).replace(/\s+$/, ''))
-    if (data.exitCode !== undefined && data.exitCode !== 0) termPush('note', tr(`退出码 ${data.exitCode}`, `exit code ${data.exitCode}`))
-    if (data.truncated) termPush('note', tr('输出已截断', 'output truncated'))
+    if (data.exitCode !== undefined && data.exitCode !== 0) termPush('note', t('agent.page.exitCode', { code: data.exitCode }))
+    if (data.truncated) termPush('note', t('agent.page.outputTruncated'))
   } catch (e: any) { termPush('err', e?.message || 'command failed') }
   finally { termBusy.value = false; await termScroll() }
 }
@@ -795,7 +824,7 @@ function modelLabel(model: { id: string; provider: string; provider_id?: string;
 async function fetchModels() {
   try {
     const response = await fetch('/api/models')
-    if (!response.ok) throw new Error(`模型目录 HTTP ${response.status}`)
+    if (!response.ok) throw new Error(t('agent.page.modelCatalogHttp', { status: response.status }))
     models.value = (await response.json()).models || []
   } catch (e: any) { error.value = e.message }
   try {
@@ -876,7 +905,7 @@ const isExpanded = (id: string) => expandedGroups.value.has(id)
 function toggleExpanded(id: string) { const next = new Set(expandedGroups.value); if (next.has(id)) next.delete(id); else next.add(id); expandedGroups.value = next }
 const visibleSessions = (group: { id: string; sessions: TaskRow[] }) => isExpanded(group.id) ? group.sessions : group.sessions.slice(0, 5)
 async function addWorkspace() {
-  if (!executor.value) { error.value = tr('请先选择在线执行器', 'Select an online executor first'); return }
+  if (!executor.value) { error.value = t('agent.page.selectOnlineExecutor'); return }
   workspacePick.value = true
   await browse('')
 }
@@ -885,26 +914,49 @@ async function createIn(workspaceId: string) {
   if (workspace) { workdir.value = workspace.path; executorId.value = executor.value?.plugin_id || executorId.value }
   await create()
 }
-async function renameWorkspace(workspace: WorkspaceRow) {
-  const title = window.prompt(tr('工作区名称', 'Workspace name'), workspace.title)
-  if (title == null || !title.trim()) return
-  try { await workspaceAction('rename', { id: workspace.id, to: title.trim() }) } catch (e: any) { error.value = e.message }
+// In-page rename modal (native window.prompt cannot be styled and blocks the
+// whole UI thread, so it was replaced; Enter confirms, Esc cancels).
+const renameOpen = ref(false)
+const renameValue = ref('')
+const renameTarget = ref<WorkspaceRow | null>(null)
+const renameInput = ref<HTMLInputElement | null>(null)
+function openRename(workspace: WorkspaceRow) {
+  renameTarget.value = workspace
+  renameValue.value = workspace.title
+  renameOpen.value = true
+  void nextTick(() => renameInput.value?.focus())
 }
+async function confirmRename() {
+  const workspace = renameTarget.value
+  const title = renameValue.value.trim()
+  if (!workspace || !title) return
+  try { await workspaceAction('rename', { id: workspace.id, to: title }) } catch (e: any) { error.value = e.message }
+  renameOpen.value = false
+}
+function cancelRename() { renameOpen.value = false }
+function onRenameKey(event: KeyboardEvent) { if (event.key === 'Escape') { event.preventDefault(); cancelRename() } }
 async function deleteWorkspace(workspace: WorkspaceRow) {
   const ok = await confirm({
-    title: tr('移除工作区', 'Remove workspace'),
-    message: tr('只移除登记，目录与会话都会保留；其中的会话进入未分组。', 'Only the registration is removed; the directory and sessions are kept. Its sessions move to Ungrouped.'),
-    confirmLabel: tr('移除', 'Remove'), danger: true,
+    title: t('agent.page.removeWorkspace'),
+    message: t('agent.page.removeWorkspaceMessage'),
+    confirmLabel: t('agent.page.remove'), danger: true,
   })
   if (!ok) return
   try { await workspaceAction('delete', { id: workspace.id }) } catch (e: any) { error.value = e.message }
 }
 let dragWorkspace = ''
+// Track the hovered group so dragover can outline the drop target and the
+// source group can dim itself via `.drag-source`.
+const dragOverId = ref('')
 function onGroupDragStart(id: string) { dragWorkspace = id }
+function onGroupDragOver(id: string) { if (dragWorkspace && dragWorkspace !== id) dragOverId.value = id }
+function onGroupDragEnd() { dragWorkspace = ''; dragOverId.value = '' }
 async function onGroupDrop(targetId: string) {
-  if (!dragWorkspace || dragWorkspace === targetId) return
-  try { await workspaceAction('reorder', { id: dragWorkspace, before: targetId }) } catch (e: any) { error.value = e.message }
+  const source = dragWorkspace
   dragWorkspace = ''
+  dragOverId.value = ''
+  if (!source || source === targetId) return
+  try { await workspaceAction('reorder', { id: source, before: targetId }) } catch (e: any) { error.value = e.message }
 }
 let workspaceTimer: ReturnType<typeof setInterval> | null = null
 watch([executor, () => store.sessions.length], () => void fetchWorkspaces())
@@ -957,6 +1009,9 @@ async function moveSessionTo(item: TaskRow, workspaceId: string) {
 function onMoveChange(item: TaskRow, event: Event) { const value = (event.target as HTMLSelectElement).value; if (value) void moveSessionTo(item, value) }
 const turns = computed(() => store.tasks.filter(item => item.kind === 'agent' && item.session_id === selectedId.value)
   .sort((a,b) => (a.started_at || '').localeCompare(b.started_at || '') || a.task_id.localeCompare(b.task_id)))
+// Turns load async per session; while that fetch is in flight the transcript
+// shows a skeleton instead of flashing the welcome screen before the rows land.
+const turnsLoading = computed(() => !!selectedId.value && store.turnsPending[selectedId.value] === true && !turns.value.length)
 const active = computed(() => store.tasks.find(item => item.session_id===selectedId.value && ['agent','compact'].includes(item.kind || '') && ['running','pending'].includes(item.state)))
 const runningTasks = computed(() => store.tasks.filter(item => item.session_id === selectedId.value && ['running', 'pending'].includes(item.state) && ['agent', 'compact', 'tool', 'subagent'].includes(item.kind || '')))
 const todos = computed<Array<{ content: string; status: string }>>(() => {
@@ -993,18 +1048,34 @@ const ctxRows = computed(() => {
   const breakdown = contextUsage.value?.breakdown || {}
   const k = (value: unknown) => fmtK(Number(value) || 0)
   return [
-    { key: 'system', label: tr('系统提示', 'System Prompt'), value: k(breakdown.system) },
-    { key: 'tools', label: tr('工具', 'Tools'), value: k(breakdown.tools) },
-    { key: 'conversation', label: tr('对话', 'Conversation'), value: k(breakdown.conversation) },
+    { key: 'system', label: t('agent.page.contextSystemPrompt'), value: k(breakdown.system) },
+    { key: 'tools', label: t('agent.page.contextTools'), value: k(breakdown.tools) },
+    { key: 'conversation', label: t('agent.page.contextConversation'), value: k(breakdown.conversation) },
     { key: 'mcp', label: 'MCP', value: k(breakdown.mcp) },
-    { key: 'skills', label: tr('技能', 'Skills'), value: k(breakdown.skills) },
+    { key: 'skills', label: t('agent.page.contextSkills'), value: k(breakdown.skills) },
   ]
 })
 const contextSummary = computed(() => {
   const done = store.tasks.filter(item => item.kind === 'compact' && item.session_id === selectedId.value && item.state === 'done' && (item.result || '').trim())
   return done.length ? done.reduce((latest, item) => (item.started_at || '') >= (latest.started_at || '') ? item : latest) : null
 })
-const stateName = (value: string) => (locale.value==='en'?{pending:'Queued',running:'Running',done:'Completed',failed:'Failed',cancelled:'Stopped'}:{ pending:'等待执行', running:'执行中', done:'完成', failed:'失败', cancelled:'已停止' })[value] || value
+// Fill arc for the usage ring (tokens / context window). Null = the backend
+// gave no window size, so the ring stays the hollow track it always was.
+const CTX_RING_RADIUS = 8
+const CTX_RING_CIRCUMFERENCE = 2 * Math.PI * CTX_RING_RADIUS
+const contextRatio = computed(() => {
+  const limit = Number(contextUsage.value?.window) || 0
+  if (!limit) return null
+  return Math.max(0, Math.min(1, (Number(contextUsage.value?.tokens) || 0) / limit))
+})
+const contextRingColor = computed(() => {
+  const ratio = contextRatio.value
+  if (ratio === null) return ''
+  if (ratio > 0.95) return 'var(--md-error)'
+  if (ratio > 0.8) return 'var(--md-warning)'
+  return 'var(--md-primary)'
+})
+const stateName = (value: string) => ({ pending: t('agent.page.statePending'), running: t('agent.page.stateRunning'), done: t('agent.page.stateDone'), failed: t('agent.page.stateFailed'), cancelled: t('agent.page.stateCancelled') })[value] || value
 const time = (value?: string) => value ? new Date(value).toLocaleString() : ''
 // The model that actually produced a think step, from mocr's report (a fallback
 // model may differ from the requested one).
@@ -1017,7 +1088,7 @@ function modelInfo(step: TaskRow) {
 }
 function modelAnnotation(step: TaskRow): string {
   const info = modelInfo(step)
-  if (info.fellBack) return tr(`${info.requested} 不可用，已回退 ${info.actual}`, `${info.requested} unavailable · fell back to ${info.actual}`)
+  if (info.fellBack) return t('agent.page.modelFallback', { requested: info.requested, actual: info.actual })
   return info.actual || String(step.prompt || '')
 }
 function modelReason(step: TaskRow): string { return modelInfo(step).reason }
@@ -1057,16 +1128,16 @@ function subFinal(step: TaskRow | null): string {
 }
 function friendlyError(message?: string) {
   if (!message) return ''
-  if (/User denied permission for task/i.test(message)) return tr('你拒绝了这次子 Agent 调用', 'You denied this sub-agent call')
-  if (/User denied permission for (\S+)/i.test(message)) return tr(`你拒绝了 ${RegExp.$1} 权限`, `You denied permission for ${RegExp.$1}`)
-  if (/Permission request expired/i.test(message)) return tr('权限请求已超时', 'Permission request expired')
+  if (/User denied permission for task/i.test(message)) return t('agent.page.permissionDeniedSubagent')
+  if (/User denied permission for (\S+)/i.test(message)) return t('agent.page.permissionDeniedFor', { name: RegExp.$1 })
+  if (/Permission request expired/i.test(message)) return t('agent.page.permissionExpired')
   return message
 }
 function stepLabel(step: TaskRow) {
-  if (step.kind === 'subagent') return tr('子 Agent', 'Subagent')
-  if (step.kind === 'tool') return tr('工具', 'Tool')
-  if (step.kind === 'think') return tr('模型', 'Model')
-  return step.kind || tr('步骤', 'Step')
+  if (step.kind === 'subagent') return t('agent.page.subagent')
+  if (step.kind === 'tool') return t('agent.page.tool')
+  if (step.kind === 'think') return t('agent.page.model')
+  return step.kind || t('agent.page.step')
 }
 function subChildCount(step: TaskRow) { return childSteps(step).length }
 function hasFinalReply(turn: TaskRow) {
@@ -1076,9 +1147,9 @@ async function manage(action: 'archive' | 'restore' | 'delete') {
   if (!session.value || busy.value) return
   if (action === 'delete') {
     const ok = await confirm({
-      title: tr('删除会话', 'Delete session'),
-      message: tr('永久删除此会话及其中的消息和工具记录？', 'Permanently delete this session and its messages and tool records?'),
-      confirmLabel: tr('永久删除', 'Delete'),
+      title: t('agent.page.deleteSession'),
+      message: t('agent.page.deleteSessionMessage'),
+      confirmLabel: t('agent.page.deletePermanently'),
       danger: true,
     })
     if (!ok) return
@@ -1094,10 +1165,10 @@ async function manage(action: 'archive' | 'restore' | 'delete') {
   } catch (e: any) { error.value = e.message }
   finally {busy.value=false}
 }
-function choose(id: string) { if(busy.value)return;rememberEditor();selectedId.value = id; localStorage.setItem('0kay.agent.selected', id) }
+function choose(id: string) { rememberEditor();selectedId.value = id; localStorage.setItem('0kay.agent.selected', id) }
 async function create() {
   busy.value = true; error.value = ''
-  try { const id=await store.createSession('新对话');rememberEditor();selectedId.value=id;localStorage.setItem('0kay.agent.selected',id);showArchived.value=false } catch (e: any) { error.value = e.message }
+  try { const id=await store.createSession(t('agent.page.newChat'));rememberEditor();selectedId.value=id;localStorage.setItem('0kay.agent.selected',id);showArchived.value=false } catch (e: any) { error.value = e.message }
   finally { busy.value = false }
 }
 async function send() {
@@ -1107,20 +1178,23 @@ async function send() {
   busy.value = true; error.value = ''
   try {
     const requestOptions: Record<string, any> = options()
-    const message = draft.value.trim() || tr('请查看我上传的附件。','Please review the attached files.')
+    const message = draft.value.trim() || t('agent.page.attachedFilesFallback')
     const agentMode=mode.value
     if (!session.value) {
       const id=await store.createSession(message.slice(0,60))
       localStorage.setItem(`0kay.agent.editor:${id}`,JSON.stringify({...requestOptions,draft:message,mode:agentMode}))
       selectedId.value=id;localStorage.setItem('0kay.agent.selected',id)
     }
-    rememberEditor()
+    // The session list stays usable while sending, so pin the target: the user
+    // may switch sessions between the awaits above.
+    const target = selectedId.value
+    rememberEditor(target)
     if (hasAttachments) requestOptions.attachments = attachments.value.map(item => ({ ...item }))
-    await store.sendTask(selectedId.value, message, agentMode, requestOptions)
+    await store.sendTask(target, message, agentMode, requestOptions)
     draft.value = ''
     attachments.value = []
     attachError.value = ''
-    rememberEditor();followLatest.value=true;await scrollBottom()
+    rememberEditor(target);followLatest.value=true;await scrollBottom()
   } catch (e: any) { error.value = e.message }
   finally { busy.value = false }
 }
@@ -1131,6 +1205,13 @@ async function stop() {
 async function stopAll() {
   const ids = runningTasks.value.map(item => item.task_id)
   if (!ids.length) return
+  const ok = await confirm({
+    title: t('agent.page.stopAll'),
+    message: t('agent.page.stopAllMessage', { count: ids.length }),
+    confirmLabel: t('agent.page.stop'),
+    danger: true,
+  })
+  if (!ok) return
   const results = await Promise.allSettled(ids.map(id => store.cancelTask(id)))
   const failed = results.find(r => r.status === 'rejected') as PromiseRejectedResult | undefined
   if (failed) error.value = failed.reason?.message || String(failed.reason)
@@ -1229,158 +1310,166 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
 <template>
   <main class="workspace">
     <aside class="sessions">
-      <header><h1>Agent</h1><button @click="create" :disabled="busy" :title="tr('新建会话','New session')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> {{ tr('新对话','New chat') }}</button></header>
-      <div class="connection"><i :class="{online:store.onlineCount>0}" />{{ store.onlineCount }} {{ tr('个执行器在线','executors online') }} <button @click="store.fetchAgents()" :title="tr('刷新','Refresh')" aria-label="refresh"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-      <input v-model="search" :placeholder="tr('搜索会话…','Search sessions…')" :aria-label="tr('搜索会话','Search sessions')" />
-      <nav class="filter-bar"><button v-for="filter in [{id:'all',label:tr('全部','All')},{id:'life',label:tr('LIFE 发起','From LIFE')},{id:'user',label:tr('我的对话','My chats')}]" :key="filter.id" :class="{chosen:source===filter.id}" @click="source=filter.id">{{ filter.label }}</button></nav>
+      <header><h1>Agent</h1><button @click="create" :disabled="busy" :title="t('agent.page.newSession')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> {{ t('agent.page.newChat') }}</button></header>
+      <div class="connection"><i :class="{online:store.onlineCount>0}" />{{ store.onlineCount }} {{ t('agent.page.executorsOnline') }} <button @click="store.fetchAgents()" :title="t('agent.page.refresh')" aria-label="refresh"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+      <input v-model="search" :placeholder="t('agent.page.searchSessions')" :aria-label="t('agent.page.searchSessionsLabel')" />
+      <nav class="filter-bar"><button v-for="filter in [{id:'all',label:t('agent.page.all')},{id:'life',label:t('agent.page.fromLife')},{id:'user',label:t('agent.page.myChats')}]" :key="filter.id" :class="{chosen:source===filter.id}" @click="source=filter.id">{{ filter.label }}</button></nav>
       <div class="sidebar-toggles">
-        <label class="muted"><input v-model="showArchived" type="checkbox" /> {{ tr('显示已归档会话','Show archived sessions') }}</label>
-        <nav class="order-toggle"><button type="button" :class="{chosen:orderMode==='manual'}" @click="setOrderMode('manual')">{{ tr('手动','Manual') }}</button><button type="button" :class="{chosen:orderMode==='recent'}" @click="setOrderMode('recent')">{{ tr('最近','Recent') }}</button></nav>
+        <label class="muted"><input v-model="showArchived" type="checkbox" /> {{ t('agent.page.showArchived') }}</label>
+        <nav class="order-toggle"><button type="button" :class="{chosen:orderMode==='manual'}" @click="setOrderMode('manual')">{{ t('agent.page.manual') }}</button><button type="button" :class="{chosen:orderMode==='recent'}" @click="setOrderMode('recent')">{{ t('agent.page.recent') }}</button></nav>
       </div>
       <div class="session-list">
         <section v-if="search.trim()" class="ws-group">
-          <header class="ws-head static"><span class="ws-title">{{ tr('搜索结果','Search results') }}</span><span class="ws-count">{{ searchResults.length }}</span></header>
+          <header class="ws-head static"><span class="ws-title">{{ t('agent.page.searchResults') }}</span><span class="ws-count">{{ searchResults.length }}</span></header>
           <div class="ws-sessions">
             <div v-for="item in searchResults" :key="item.task_id" class="session-row" :class="{selected:selectedId===item.session_id}">
-              <button class="session-card" :disabled="busy" @click="choose(item.session_id!)">
-                <span class="origin">{{ isLife(item) ? 'LIFE → Agent' : tr('你 ↔ Agent','You ↔ Agent') }}</span>
-                <strong>{{ item.prompt || tr('未命名会话','Untitled session') }}</strong>
+              <button class="session-card" @click="choose(item.session_id!)">
+                <span class="origin">{{ isLife(item) ? 'LIFE → Agent' : t('agent.page.youAgent') }}</span>
+                <strong>{{ item.prompt || t('agent.page.untitledSession') }}</strong>
                 <small>{{ snippetFor(item.session_id) || time(item.started_at) }}</small>
               </button>
               <span class="row-actions">
-                <button type="button" :disabled="busy" :title="tr('Fork 会话','Fork session')" @click.stop="forkSession(item)">⑂</button>
-                <select :disabled="busy || !workspaces.length" :title="tr('移动到工作区','Move to workspace')" @click.stop @change="onMoveChange(item, $event)"><option value="">↪</option><option v-for="ws in workspaces" :key="ws.id" :value="ws.id">{{ ws.title }}</option></select>
+                <button type="button" :disabled="busy" :title="t('agent.page.forkSession')" :aria-label="t('agent.page.forkSession')" @click.stop="forkSession(item)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="6" cy="6" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="6" cy="18" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="8" r="2.4" stroke="currentColor" stroke-width="1.7"/><path d="M6 8.4v7.2M18 10.4c0 2.4-2 4.3-4.4 4.3H8.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+                <select :disabled="busy || !workspaces.length" :aria-label="t('agent.page.moveToWorkspace')" :title="t('agent.page.moveToWorkspace')" @click.stop @change="onMoveChange(item, $event)"><option value="">{{ t('agent.page.moveSelect') }}</option><option v-for="ws in workspaces" :key="ws.id" :value="ws.id">{{ ws.title }}</option></select>
               </span>
             </div>
-            <p v-if="!searchResults.length" class="muted ws-empty">{{ tr('无匹配会话','No matches') }}</p>
+            <p v-if="!searchResults.length" class="muted ws-empty">{{ t('agent.page.noMatches') }}</p>
           </div>
         </section>
 
         <template v-else>
-          <section v-for="group in sessionGroups.groups" :key="group.id" class="ws-group" :class="{collapsed:collapsed.has(group.id)}" @dragover.prevent @drop="onGroupDrop(group.id)">
+          <section v-for="group in sessionGroups.groups" :key="group.id" class="ws-group" :class="{collapsed:collapsed.has(group.id),'drag-source':dragWorkspace===group.id,'drag-over':dragOverId===group.id}" @dragover.prevent="onGroupDragOver(group.id)" @drop.prevent="onGroupDrop(group.id)" @dragend="onGroupDragEnd">
             <header class="ws-head" draggable="true" @dragstart="onGroupDragStart(group.id)">
-              <button type="button" class="ws-toggle" @click="toggleGroup(group.id)" :aria-expanded="!collapsed.has(group.id)" :title="collapsed.has(group.id) ? tr('展开','Expand') : tr('折叠','Collapse')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-              <span class="ws-title" :title="group.path">{{ group.title }}<i v-if="!group.exists" class="ws-missing" :title="tr('目录不存在','Missing directory')">!</i></span>
+              <button type="button" class="ws-toggle" @click="toggleGroup(group.id)" :aria-expanded="!collapsed.has(group.id)" :title="collapsed.has(group.id) ? t('agent.page.expand') : t('agent.page.collapse')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <span class="ws-title" :title="group.path">{{ group.title }}<i v-if="!group.exists" class="ws-missing" :title="t('agent.page.missingDirectory')">!</i></span>
               <span class="ws-count">{{ group.sessions.length }}</span>
               <span class="ws-actions">
-                <button type="button" @click.stop="createIn(group.id)" :disabled="busy" :title="tr('在此工作区新建会话','New session here')">+</button>
-                <button type="button" @click.stop="renameWorkspace(group)" :title="tr('重命名','Rename')">✎</button>
-                <button type="button" class="danger" @click.stop="deleteWorkspace(group)" :title="tr('移除工作区','Remove workspace')">×</button>
+                <button type="button" @click.stop="createIn(group.id)" :disabled="busy" :title="t('agent.page.newSessionHere')">+</button>
+                <button type="button" @click.stop="openRename(group)" :title="t('agent.page.rename')">✎</button>
+                <button type="button" class="danger" @click.stop="deleteWorkspace(group)" :title="t('agent.page.removeWorkspace')">×</button>
               </span>
             </header>
             <div class="ws-sessions">
               <div v-for="item in visibleSessions(group)" :key="item.task_id" class="session-row" :class="{selected:selectedId===item.session_id}">
-                <button class="session-card" :disabled="busy" @click="choose(item.session_id!)">
-                  <span class="origin">{{ isLife(item) ? 'LIFE → Agent' : tr('你 ↔ Agent','You ↔ Agent') }}</span>
-                  <strong>{{ item.prompt || tr('未命名会话','Untitled session') }}</strong><small>{{ time(item.started_at) }}</small>
+                <button class="session-card" @click="choose(item.session_id!)">
+                  <span class="origin">{{ isLife(item) ? 'LIFE → Agent' : t('agent.page.youAgent') }}</span>
+                  <strong>{{ item.prompt || t('agent.page.untitledSession') }}</strong><small>{{ time(item.started_at) }}</small>
                 </button>
                 <span class="row-actions">
-                  <button type="button" :disabled="busy" :title="tr('Fork 会话','Fork session')" @click.stop="forkSession(item)">⑂</button>
-                  <select :disabled="busy || !workspaces.length" :title="tr('移动到工作区','Move to workspace')" @click.stop @change="onMoveChange(item, $event)"><option value="">↪</option><option v-for="ws in workspaces" :key="ws.id" :value="ws.id">{{ ws.title }}</option></select>
+                  <button type="button" :disabled="busy" :title="t('agent.page.forkSession')" :aria-label="t('agent.page.forkSession')" @click.stop="forkSession(item)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="6" cy="6" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="6" cy="18" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="8" r="2.4" stroke="currentColor" stroke-width="1.7"/><path d="M6 8.4v7.2M18 10.4c0 2.4-2 4.3-4.4 4.3H8.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+                  <select :disabled="busy || !workspaces.length" :aria-label="t('agent.page.moveToWorkspace')" :title="t('agent.page.moveToWorkspace')" @click.stop @change="onMoveChange(item, $event)"><option value="">{{ t('agent.page.moveSelect') }}</option><option v-for="ws in workspaces" :key="ws.id" :value="ws.id">{{ ws.title }}</option></select>
                 </span>
               </div>
-              <button v-if="group.sessions.length > 5" class="ws-more" @click="toggleExpanded(group.id)">{{ isExpanded(group.id) ? tr('收起','Show less') : tr('展开其余','Show more') + ` (${group.sessions.length - 5})` }}</button>
-              <p v-if="!group.sessions.length" class="muted ws-empty">{{ tr('暂无会话','No sessions') }}</p>
+              <button v-if="group.sessions.length > 5" class="ws-more" @click="toggleExpanded(group.id)">{{ isExpanded(group.id) ? t('agent.page.showLess') : t('agent.page.showMore') + ` (${group.sessions.length - 5})` }}</button>
+              <p v-if="!group.sessions.length" class="muted ws-empty">{{ t('agent.page.noSessions') }}</p>
             </div>
           </section>
 
           <section v-if="sessionGroups.ungrouped.length" class="ws-group">
-            <header class="ws-head static"><span class="ws-title">{{ tr('未分组','Ungrouped') }}</span><span class="ws-count">{{ sessionGroups.ungrouped.length }}</span></header>
+            <header class="ws-head static"><span class="ws-title">{{ t('agent.page.ungrouped') }}</span><span class="ws-count">{{ sessionGroups.ungrouped.length }}</span></header>
             <div class="ws-sessions">
               <div v-for="item in sessionGroups.ungrouped" :key="item.task_id" class="session-row" :class="{selected:selectedId===item.session_id}">
-                <button class="session-card" :disabled="busy" @click="choose(item.session_id!)">
-                  <span class="origin">{{ isLife(item) ? 'LIFE → Agent' : tr('你 ↔ Agent','You ↔ Agent') }}</span>
-                  <strong>{{ item.prompt || tr('未命名会话','Untitled session') }}</strong><small>{{ time(item.started_at) }}</small>
+                <button class="session-card" @click="choose(item.session_id!)">
+                  <span class="origin">{{ isLife(item) ? 'LIFE → Agent' : t('agent.page.youAgent') }}</span>
+                  <strong>{{ item.prompt || t('agent.page.untitledSession') }}</strong><small>{{ time(item.started_at) }}</small>
                 </button>
                 <span class="row-actions">
-                  <button type="button" :disabled="busy" :title="tr('Fork 会话','Fork session')" @click.stop="forkSession(item)">⑂</button>
-                  <select :disabled="busy || !workspaces.length" :title="tr('移动到工作区','Move to workspace')" @click.stop @change="onMoveChange(item, $event)"><option value="">↪</option><option v-for="ws in workspaces" :key="ws.id" :value="ws.id">{{ ws.title }}</option></select>
+                  <button type="button" :disabled="busy" :title="t('agent.page.forkSession')" :aria-label="t('agent.page.forkSession')" @click.stop="forkSession(item)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="6" cy="6" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="6" cy="18" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="8" r="2.4" stroke="currentColor" stroke-width="1.7"/><path d="M6 8.4v7.2M18 10.4c0 2.4-2 4.3-4.4 4.3H8.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+                  <select :disabled="busy || !workspaces.length" :aria-label="t('agent.page.moveToWorkspace')" :title="t('agent.page.moveToWorkspace')" @click.stop @change="onMoveChange(item, $event)"><option value="">{{ t('agent.page.moveSelect') }}</option><option v-for="ws in workspaces" :key="ws.id" :value="ws.id">{{ ws.title }}</option></select>
                 </span>
               </div>
             </div>
           </section>
 
-          <button v-if="executor" class="ws-add" :disabled="busy" @click="addWorkspace()">+ {{ tr('添加工作区…','Add workspace…') }}</button>
-          <p v-if="!sessions.length && !workspaces.length" class="muted">{{ tr('暂无会话。直接发送消息，或等待 LIFE 委派工作。','No sessions yet. Send a message or wait for LIFE to delegate work.') }}</p>
+          <button v-if="executor" class="ws-add" :disabled="busy" @click="addWorkspace()">+ {{ t('agent.page.addWorkspace') }}</button>
+          <p v-if="!sessions.length && !workspaces.length" class="muted">{{ t('agent.page.noSessionsHint') }}</p>
         </template>
       </div>
     </aside>
 
     <section class="conversation">
       <header class="conversation-header">
-        <div class="conversation-heading"><h2>{{ session?.prompt || '与 Agent 对话' }}</h2><p>{{ session && isLife(session) ? 'LIFE 发起的工作会话 · 你可以查看过程，也可以直接继续对话' : '持续对话 · 编程、调研与工具执行' }}</p></div>
+        <div class="conversation-heading"><h2>{{ session?.prompt || t('agent.page.conversationTitle') }}</h2><p>{{ session && isLife(session) ? t('agent.page.lifeSessionSubtitle') : t('agent.page.ongoingSubtitle') }}</p></div>
         <div class="conversation-actions">
           <span class="browser-status" :class="{on:browserStatus?.running,off:browserStatus&&!browserStatus.enabled}" :title="browserTooltip"><i aria-hidden="true" />{{ browserLabel }}</span>
-          <span v-if="active" class="running">{{ tr('正在执行','Running') }}</span>
+          <span v-if="active" class="running">{{ t('agent.page.running') }}</span>
           <div v-if="session" class="session-actions">
-            <button type="button" class="icon-btn" :disabled="!!active" :title="session.state === 'archived' ? tr('恢复','Restore') : tr('归档','Archive')" @click="manage(session.state === 'archived' ? 'restore' : 'archive')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M6 7v11a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7M9.5 11h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-            <button type="button" class="icon-btn danger" :disabled="!!active" :title="tr('删除','Delete')" @click="manage('delete')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M8 7l1 12h6l1-12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button type="button" class="icon-btn" :disabled="!!active" :title="session.state === 'archived' ? t('agent.page.restore') : t('agent.page.archive')" @click="manage(session.state === 'archived' ? 'restore' : 'archive')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M6 7v11a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7M9.5 11h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button type="button" class="icon-btn danger" :disabled="!!active" :title="t('agent.page.delete')" @click="manage('delete')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M8 7l1 12h6l1-12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           </div>
         </div>
       </header>
-      <div v-if="error || store.error" class="error" role="alert">{{ error || store.error }}</div>
+      <div v-if="error || store.error" class="error error-bar" role="alert"><span class="error-text">{{ error || store.error }}</span><button type="button" class="error-close" :aria-label="t('agent.page.close')" :title="t('agent.page.close')" @click="dismissError"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
       <div ref="transcript" class="transcript" @scroll.passive="onTranscriptScroll">
-        <div v-if="activeSub" class="sub-view">
+        <Transition name="view-swap" mode="out-in">
+        <div v-if="activeSub" key="sub" class="sub-view">
           <header class="sub-view-header">
-            <button type="button" @click="closeSub">← {{ subStack.length > 1 ? tr('返回上一层', 'Back one level') : tr('返回会话', 'Back to chat') }}</button>
+            <button type="button" @click="closeSub">← {{ subStack.length > 1 ? t('agent.page.backOneLevel') : t('agent.page.backToChat') }}</button>
             <div>
-              <h3>{{ tr('子 Agent', 'Subagent') }}</h3>
+              <h3>{{ t('agent.page.subagent') }}</h3>
               <p class="muted">{{ activeSub.prompt }}</p>
             </div>
             <span :class="activeSub.state">{{ stateName(activeSub.state) }}</span>
           </header>
           <div class="sub-view-body">
-            <div class="bubble user"><div class="message-head"><b>{{ tr('父 Agent', 'Parent agent') }}</b><time>{{ time(activeSub.started_at) }}</time></div><div class="message-text">{{ activeSub.prompt }}</div></div>
+            <div class="bubble user"><div class="message-head"><b>{{ t('agent.page.parentAgent') }}</b><time>{{ time(activeSub.started_at) }}</time></div><div class="message-text">{{ activeSub.prompt }}</div></div>
             <template v-for="step in childSteps(activeSub)" :key="step.task_id">
-              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="modelAnnotation(step)" class="muted model-annotation" :class="{fallback: modelInfo(step).fellBack}" :title="modelReason(step)">{{ modelAnnotation(step) }}</small><ThinkChain v-if="step.reasoning" :reasoning="step.reasoning" :open="step.state === 'running' && !step.result" :label="tr('思维链', 'Reasoning')" /><template v-if="step.result"><MarkdownContent :content="step.result" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">{{ tr('子 Agent 正在生成回复…', 'Subagent is drafting a reply…') }}</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
+              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="modelAnnotation(step)" class="muted model-annotation" :class="{fallback: modelInfo(step).fellBack}" :title="modelReason(step)">{{ modelAnnotation(step) }}</small><ThinkChain v-if="step.reasoning" :reasoning="step.reasoning" :open="step.state === 'running' && !step.result" :label="t('agent.page.reasoning')" /><template v-if="step.result"><MarkdownContent :content="step.result" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">{{ t('agent.page.subagentDrafting') }}</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
               <div v-else-if="step.kind === 'subagent'" class="subagent-card nested">
-                <button type="button" class="subagent-card-head" @click="openSub(step)"><span :class="step.state">●</span><strong>{{ tr('子 Agent', 'Subagent') }}</strong><span class="subagent-prompt">{{ step.prompt }}</span><small>{{ stateName(step.state) }}</small><span class="subagent-chevron" aria-hidden="true">▸</span></button>
+                <button type="button" class="subagent-card-head" @click="openSub(step)"><span :class="step.state">●</span><strong>{{ t('agent.page.subagent') }}</strong><span class="subagent-prompt">{{ step.prompt }}</span><small>{{ stateName(step.state) }}</small><span class="subagent-chevron" aria-hidden="true">▸</span></button>
               </div>
               <ToolStepCard v-else-if="step.kind === 'tool'" :step="step" :format-error="friendlyError" @open="(path) => openFilePreview(path, { confirmDiscard: true })" />
-              <details v-else-if="step.kind !== 'think'"><summary><span :class="step.state">●</span> {{ stepLabel(step) }} · {{ step.prompt }} <small>{{ stateName(step.state) }}</small></summary><pre>{{ step.result || step.error || (step.state === 'running' ? '执行中…' : '执行完成，无输出') }}</pre></details>
+              <details v-else-if="step.kind !== 'think'"><summary><span :class="step.state">●</span> {{ stepLabel(step) }} · {{ step.prompt }} <small>{{ stateName(step.state) }}</small></summary><pre>{{ step.result || step.error || (step.state === 'running' ? t('agent.page.executing') : t('agent.page.completedNoOutput')) }}</pre></details>
             </template>
             <div v-if="subFinal(activeSub)" class="agent-speech"><MarkdownContent :content="subFinal(activeSub)" /></div>
             <p v-if="activeSub.error" class="error">{{ friendlyError(activeSub.error) }}</p>
-            <p v-if="!childSteps(activeSub).length && !subFinal(activeSub) && !activeSub.error" class="muted">{{ activeSub.state === 'running' ? tr('子 Agent 正在执行…', 'Subagent is running…') : tr('没有子步骤记录', 'No child steps recorded') }}</p>
+            <p v-if="!childSteps(activeSub).length && !subFinal(activeSub) && !activeSub.error" class="muted">{{ activeSub.state === 'running' ? t('agent.page.subagentRunning') : t('agent.page.noChildSteps') }}</p>
           </div>
         </div>
-        <template v-else>
-        <div v-if="!turns.length && !contextSummary" class="welcome"><h2>想让 Agent 帮你做什么？</h2><p>直接描述目标，Agent 会在这个会话里回复并使用工具完成工作。</p><p>左侧的「LIFE 发起」会话可以查看 LIFE 与 Agent 的交流，也支持你继续提问。</p></div>
+        <div v-else key="main" class="main-view">
+        <div v-if="turnsLoading" class="turns-skeleton" role="status" :aria-label="t('agent.page.loading')">
+          <div class="skeleton-row right"><span class="skeleton-bar user" /></div>
+          <div class="skeleton-row"><span class="skeleton-bar agent" /></div>
+          <div class="skeleton-row right"><span class="skeleton-bar user short" /></div>
+          <div class="skeleton-row"><span class="skeleton-bar agent long" /></div>
+        </div>
+        <div v-else-if="!turns.length && !contextSummary" class="welcome"><h2>{{ t('agent.page.welcomeTitle') }}</h2><p>{{ t('agent.page.welcomeBody') }}</p><p>{{ t('agent.page.welcomeLife') }}</p></div>
         <article v-if="contextSummary" class="context-summary">
-          <div class="context-summary-head"><strong>{{ tr('上下文摘要', 'Context summary') }}</strong><time>{{ time(contextSummary.started_at) }}</time></div>
+          <div class="context-summary-head"><strong>{{ t('agent.page.contextSummary') }}</strong><time>{{ time(contextSummary.started_at) }}</time></div>
           <MarkdownContent :content="contextSummary.result || ''" />
         </article>
-        <button v-if="store.hasOlderTurns(selectedId)" class="load-earlier" type="button" @click="store.olderSessionTurns(selectedId)">{{ tr('加载更早的记录','Load earlier messages') }}</button>
+        <button v-if="store.hasOlderTurns(selectedId)" class="load-earlier" type="button" @click="store.olderSessionTurns(selectedId)">{{ t('agent.page.loadEarlier') }}</button>
         <article v-for="turn in turns" :key="turn.task_id" class="turn">
-          <div class="bubble user"><div class="message-head"><b>{{ isLife(turn) ? 'LIFE' : '你' }}</b><time>{{ time(turn.started_at) }}</time></div><div class="message-text">{{ turn.prompt?.replace(/^\[thinking_intensity=\w+\]\s*/, '') }}</div></div>
+          <div class="bubble user"><div class="message-head"><b>{{ isLife(turn) ? 'LIFE' : t('agent.page.you') }}</b><time>{{ time(turn.started_at) }}</time></div><div class="message-text">{{ turn.prompt?.replace(/^\[thinking_intensity=\w+\]\s*/, '') }}</div></div>
           <div class="bubble agent"><div class="message-head"><b>Agent</b><span :class="turn.state">{{ stateName(turn.state) }}</span></div>
             <div v-if="steps(turn).length" class="steps"><template v-for="step in steps(turn)" :key="step.task_id">
-              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="modelAnnotation(step)" class="muted model-annotation" :class="{fallback: modelInfo(step).fellBack}" :title="modelReason(step)">{{ modelAnnotation(step) }}</small><ThinkChain v-if="step.reasoning" :reasoning="step.reasoning" :open="step.state === 'running' && !step.result" :label="tr('思维链', 'Reasoning')" /><template v-if="step.result"><MarkdownContent :content="step.result" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">Agent 正在生成回复…</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
+              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="modelAnnotation(step)" class="muted model-annotation" :class="{fallback: modelInfo(step).fellBack}" :title="modelReason(step)">{{ modelAnnotation(step) }}</small><ThinkChain v-if="step.reasoning" :reasoning="step.reasoning" :open="step.state === 'running' && !step.result" :label="t('agent.page.reasoning')" /><template v-if="step.result"><MarkdownContent :content="step.result" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">{{ t('agent.page.agentDrafting') }}</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
               <div v-else-if="step.kind === 'subagent'" class="subagent-card">
                 <button type="button" class="subagent-card-head" @click="openSub(step)">
                   <span :class="step.state">●</span>
-                  <strong>{{ tr('子 Agent', 'Subagent') }}</strong>
+                  <strong>{{ t('agent.page.subagent') }}</strong>
                   <span class="subagent-prompt">{{ step.prompt }}</span>
-                  <small>{{ stateName(step.state) }}<template v-if="subChildCount(step)"> · {{ subChildCount(step) }} {{ tr('步', 'steps') }}</template></small>
+                  <small>{{ stateName(step.state) }}<template v-if="subChildCount(step)"> · {{ subChildCount(step) }} {{ t('agent.page.steps') }}</template></small>
                   <span class="subagent-chevron" aria-hidden="true">▸</span>
                 </button>
                 <p v-if="step.error" class="error subagent-card-error">{{ friendlyError(step.error) }}</p>
               </div>
               <ToolStepCard v-else-if="step.kind === 'tool'" :step="step" :format-error="friendlyError" @open="(path) => openFilePreview(path, { confirmDiscard: true })" />
-              <details v-else-if="step.kind !== 'think'"><summary><span :class="step.state">●</span> {{ stepLabel(step) }} · {{ step.prompt }} <small>{{ stateName(step.state) }}</small></summary><pre>{{ step.result || step.error || (step.state === 'running' ? '执行中…' : '执行完成，无输出') }}</pre></details>
+              <details v-else-if="step.kind !== 'think'"><summary><span :class="step.state">●</span> {{ stepLabel(step) }} · {{ step.prompt }} <small>{{ stateName(step.state) }}</small></summary><pre>{{ step.result || step.error || (step.state === 'running' ? t('agent.page.executing') : t('agent.page.completedNoOutput')) }}</pre></details>
             </template></div>
             <MarkdownContent v-if="turn.result && !hasFinalReply(turn)" :content="turn.result" />
             <div v-if="turn.error" class="error">{{ friendlyError(turn.error) }}</div>
-            <p v-if="['running','pending'].includes(turn.state)" class="muted">Agent 正在处理，执行过程会自动更新…</p>
+            <p v-if="['running','pending'].includes(turn.state)" class="muted">{{ t('agent.page.agentProcessing') }}</p>
           </div>
         </article>
-        </template>
+        </div>
+        </Transition>
       </div>
       <form v-if="!activeSub" class="composer" @submit.prevent="send">
-        <section v-if="todos.length" class="todo-panel" :class="{ collapsed: !todoOpen }" :aria-label="tr('待办清单','Todo list')">
+        <section v-if="todos.length" class="todo-panel" :class="{ collapsed: !todoOpen }" :aria-label="t('agent.page.todoList')">
           <header>
             <button type="button" class="todo-toggle" :aria-expanded="todoOpen" @click="todoOpen = !todoOpen">
-              <strong>{{ tr('待办','Todo') }}</strong>
+              <strong>{{ t('agent.page.todo') }}</strong>
               <span>{{ todoDone }}/{{ todos.length }}</span>
               <span class="todo-caret" aria-hidden="true">▸</span>
             </button>
@@ -1395,77 +1484,96 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
         <div v-if="compactNotice" class="compact-notice" :class="{ running: compacting }"><span v-if="compacting" class="tree-spin small" aria-hidden="true"></span>{{ compactNotice }}</div>
         <div class="options-collapse" :class="{ open: optionsOpen }">
         <div class="execution-options">
-          <label>{{ tr('权限','Permissions') }}<AppSelect v-model="permissionMode" :aria-label="tr('权限','Permissions')" :disabled="!!active || busy" :options="[{value:'normal',label:tr('Normal · 全部审批','Normal · Ask every time')},{value:'full_access',label:tr('Full access · 自动执行','Full access · Auto execute')}]" /></label>
-          <label :title="tr('推理与修改过程只用英文、输出极简、按最小改动编辑；仅提问与结论使用你的语言','English-only internals, terse output, smallest edits; only questions and the final answer use your language')">{{ tr('极简模式','Minimal mode') }}<AppSelect v-model="minimalMode" :aria-label="tr('极简模式','Minimal mode')" :disabled="!!active || busy" :options="[{value:'off',label:tr('关闭 · 完整输出','Off · Full output')},{value:'on',label:tr('开启 · 精简输出','On · Terse output')}]" /></label>
-          <label>{{ tr('执行器','Executor') }}<AppSelect v-model="executorId" :aria-label="tr('执行器','Executor')" :disabled="!!active || busy" :options="[{value:'',label:tr('自动选择在线执行器','Automatic executor')},...store.agents.map(agent=>({value:agent.plugin_id,label:`${agent.host?.hostname || agent.name} · ${agent.plugin_id}`,disabled:!store.isHealthy(agent)}))]" /></label>
-          <label>{{ tr('工作区','Workspace') }}<button type="button" class="workspace-select" :disabled="!!active || busy || !executor" :title="workdir || executor?.host?.workdir" @click="browse(workdir || executor?.host?.workdir || '')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ workdir || tr('选择目录…','Select folder…') }}</button></label>
+          <label>{{ t('agent.page.permissions') }}<AppSelect v-model="permissionMode" :aria-label="t('agent.page.permissions')" :disabled="!!active || busy" :options="[{value:'normal',label:t('agent.page.permNormal')},{value:'full_access',label:t('agent.page.permFullAccess')}]" /></label>
+          <label :title="t('agent.page.minimalModeHint')">{{ t('agent.page.minimalMode') }}<AppSelect v-model="minimalMode" :aria-label="t('agent.page.minimalMode')" :disabled="!!active || busy" :options="[{value:'off',label:t('agent.page.minimalOff')},{value:'on',label:t('agent.page.minimalOn')}]" /></label>
+          <label>{{ t('agent.page.executor') }}<AppSelect v-model="executorId" :aria-label="t('agent.page.executor')" :disabled="!!active || busy" :options="[{value:'',label:t('agent.page.autoExecutor')},...store.agents.map(agent=>({value:agent.plugin_id,label:`${agent.host?.hostname || agent.name} · ${agent.plugin_id}`,disabled:!store.isHealthy(agent)}))]" /></label>
+          <label>{{ t('agent.page.workspace') }}<button type="button" class="workspace-select" :disabled="!!active || busy || !executor" :title="workdir || executor?.host?.workdir" @click="browse(workdir || executor?.host?.workdir || '')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ workdir || t('agent.page.selectFolder') }}</button></label>
           <ThinkingSlider v-model="intensity" :disabled="!!active || busy" />
-          <label>{{ tr('模型','Model') }}<AppSelect v-model="modelId" searchable :aria-label="tr('模型','Model')" :disabled="!!active || busy" @open="fetchModels" :options="[{value:'MOCR',label:tr('MOCR · 自动选型','MOCR · Automatic')},...models.map(model=>({value:model.id,label:modelLabel(model)}))]" /></label>
+          <label>{{ t('agent.page.model') }}<AppSelect v-model="modelId" searchable :aria-label="t('agent.page.model')" :disabled="!!active || busy" @open="fetchModels" :options="[{value:'MOCR',label:t('agent.page.mocrAuto')},...models.map(model=>({value:model.id,label:modelLabel(model)}))]" /></label>
         </div>
         </div>
         <input ref="fileInput" type="file" multiple hidden @change="onFilesPicked" />
         <div ref="composerInput" class="composer-input">
           <Teleport to="body">
-            <div v-if="slashOpen" class="slash-menu" :style="slashMenuStyle" role="listbox" :aria-label="tr('技能与命令','Skills and commands')">
+            <Transition name="slash-menu">
+            <div v-if="slashOpen" class="slash-menu" :style="slashMenuStyle" role="listbox" :aria-label="t('agent.page.skillsAndCommands')">
               <button v-for="(item, index) in slashItems" :key="item.name" type="button" class="slash-item" :class="{ active: index === slashIndex }" role="option" :aria-selected="index === slashIndex" @mousedown.prevent="applySlash(item)" @mouseenter="slashIndex = index">
                 <span class="slash-name">/{{ item.name }}</span>
                 <span class="slash-desc">{{ item.description }}</span>
               </button>
             </div>
+            </Transition>
           </Teleport>
           <div v-if="attachments.length || attachError" class="attach-chips">
             <span v-for="(file, index) in attachments" :key="index" class="attach-chip" :title="`${file.mime} · ${file.size} B`">
-              {{ file.name }}
-              <button type="button" :aria-label="tr('移除附件','Remove attachment')" :title="tr('移除','Remove')" @click="removeAttachment(index)">×</button>
+              <span class="attach-chip-name">{{ file.name }}</span>
+              <button type="button" :aria-label="t('agent.page.removeAttachment')" :title="t('agent.page.remove')" @click="removeAttachment(index)">×</button>
             </span>
             <span v-if="attachError" class="attach-error">{{ attachError }}</span>
           </div>
-          <textarea v-model="draft" :disabled="busy || session?.state === 'archived'" :placeholder="session?.state === 'archived' ? '恢复会话后可以继续对话' : '给 Agent 发消息…（Enter 发送，Shift+Enter 换行，可 Ctrl+V 粘贴图片/文件）'" aria-label="给 Agent 发消息" @keydown="onComposerKey" @paste="onPaste" />
+          <textarea ref="composerArea" v-model="draft" :disabled="busy || session?.state === 'archived'" :placeholder="session?.state === 'archived' ? t('agent.page.restoreToChat') : t('agent.page.composerPlaceholder')" :aria-label="t('agent.page.composerAria')" @keydown="onComposerKey" @paste="onPaste" />
           <div class="composer-actions">
-            <button type="button" class="attach-fly" :disabled="!!active || busy || uploading || session?.state === 'archived'" :aria-label="tr('添加附件','Add attachment')" :title="uploading ? tr('上传中…','Uploading…') : tr('添加附件（也可 Ctrl+V 粘贴）','Attach (or Ctrl+V to paste)')" @click="pickFiles">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16.5 6.5 8.9 14.1a2.5 2.5 0 0 0 3.5 3.5l7.6-7.6a4.5 4.5 0 0 0-6.4-6.4l-8.3 8.3a6.5 6.5 0 0 0 9.2 9.2l5.6-5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <button type="button" class="attach-fly" :disabled="!!active || busy || uploading || session?.state === 'archived'" :aria-label="t('agent.page.addAttachment')" :title="uploading ? t('agent.page.uploading') : t('agent.page.attachHint')" @click="pickFiles">
+              <span v-if="uploading" class="tree-spin small" aria-hidden="true"></span>
+              <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16.5 6.5 8.9 14.1a2.5 2.5 0 0 0 3.5 3.5l7.6-7.6a4.5 4.5 0 0 0-6.4-6.4l-8.3 8.3a6.5 6.5 0 0 0 9.2 9.2l5.6-5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
-            <button v-if="active?.kind !== 'agent'" type="submit" class="send-fly" :disabled="busy || !!active || !draft.trim() || session?.state === 'archived'" :aria-label="tr('发送','Send')" :title="tr('发送','Send')">
+            <button v-if="active?.kind !== 'agent'" type="submit" class="send-fly" :disabled="busy || !!active || (!draft.trim() && !attachments.length) || session?.state === 'archived'" :aria-label="t('agent.page.send')" :title="t('agent.page.send')">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21.5 2.5 10.8 13.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M21.5 2.5 14.5 21.5l-3.7-8.3-8.3-3.7 19-7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
             </button>
-            <button v-else type="button" class="send-fly stop" @click="stop" :aria-label="tr('停止','Stop')" :title="tr('停止','Stop')">
+            <button v-else type="button" class="send-fly stop" @click="stop" :aria-label="t('agent.page.stop')" :title="t('agent.page.stop')">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>
             </button>
-            <button v-if="runningTasks.length > 1" type="button" class="send-fly stop-all" @click="stopAll" :aria-label="tr('停止全部','Stop all')" :title="tr('停止全部','Stop all')">
+            <button v-if="runningTasks.length > 1" type="button" class="send-fly stop-all" @click="stopAll" :aria-label="t('agent.page.stopAll')" :title="t('agent.page.stopAll')">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="8" width="14" height="9" rx="2" fill="currentColor"/><path d="M8 5h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             </button>
           </div>
         </div>
         <footer class="composer-footer">
           <div class="footer-status">
-            <div v-if="contextUsage" class="ctx-usage" tabindex="0" :aria-label="tr('上下文用量','Context usage')"><svg class="ctx-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="ctx-track" cx="10" cy="10" r="8"/></svg><span class="ctx-value">{{ fmtK(contextUsage.tokens) }}</span><div class="ctx-tip" role="tooltip"><strong>{{ tr('上下文用量','Context Usage') }}</strong><div class="ctx-used"><b>{{ fmtK(contextUsage.tokens) }}</b><span>{{ tr('已用 tokens','tokens used') }}</span></div><div class="ctx-row" v-for="row in ctxRows" :key="row.key"><span>{{ row.label }}</span><span>{{ row.value }}</span></div></div></div>
-            <span class="connection-hint"><span v-if="active?.kind === 'compact'" class="tree-spin small" aria-hidden="true" /><i v-else :class="{online:store.onlineCount>0}" />{{ active?.kind === 'compact' ? tr('上下文压缩中…','Compacting…') : store.onlineCount ? tr('执行器在线','Executor online') : tr('执行器离线','Executor offline') }}</span>
+            <div v-if="contextUsage" class="ctx-usage" tabindex="0" :aria-label="t('agent.page.contextUsage')"><svg class="ctx-ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="ctx-track" cx="10" cy="10" r="8"/><circle v-if="contextRatio !== null" class="ctx-arc" cx="10" cy="10" r="8" :stroke="contextRingColor" :stroke-dasharray="`${(contextRatio * CTX_RING_CIRCUMFERENCE).toFixed(2)} ${CTX_RING_CIRCUMFERENCE.toFixed(2)}`"/></svg><span class="ctx-value">{{ fmtK(contextUsage.tokens) }}</span><div class="ctx-tip" role="tooltip"><strong>{{ t('agent.page.contextUsage') }}</strong><div class="ctx-used"><b>{{ fmtK(contextUsage.tokens) }}</b><span>{{ t('agent.page.tokensUsed') }}</span></div><div class="ctx-row" v-for="row in ctxRows" :key="row.key"><span>{{ row.label }}</span><span>{{ row.value }}</span></div></div></div>
+            <span class="connection-hint"><span v-if="active?.kind === 'compact'" class="tree-spin small" aria-hidden="true" /><i v-else :class="{online:store.onlineCount>0}" />{{ active?.kind === 'compact' ? t('agent.page.compacting') : store.onlineCount ? t('agent.page.executorOnline') : t('agent.page.executorOffline') }}</span>
           </div>
           <div class="footer-actions">
-            <label class="mode-field"><AppSelect v-model="mode" :disabled="busy" :aria-label="tr('Agent 模式','Agent mode')" :options="[{value:'general',label:tr('通用 Agent','General Agent')},{value:'code',label:tr('编程 Agent','Coding Agent')},{value:'code_explore',label:tr('编程 Agent · 多路探索 (5)','Coding Agent · Explore (5)')},{value:'research',label:tr('调研 Agent','Research Agent')},{value:'science',label:tr('科学 Agent','Science Agent')}]" /></label>
-            <button type="button" class="chip-btn" :class="{active:hostOpen}" @click="hostOpen=!hostOpen"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>{{ tr('宿主机','Host') }}</button>
+            <label class="mode-field"><AppSelect v-model="mode" :disabled="busy" :aria-label="t('agent.page.agentMode')" :options="[{value:'general',label:t('agent.page.modeGeneral')},{value:'code',label:t('agent.page.modeCode')},{value:'code_explore',label:t('agent.page.modeCodeExplore')},{value:'research',label:t('agent.page.modeResearch')},{value:'science',label:t('agent.page.modeScience')}]" /></label>
+            <button type="button" class="chip-btn" :class="{active:hostOpen}" @click="hostOpen=!hostOpen"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>{{ t('agent.page.host') }}</button>
             <button type="button" class="chip-btn" :disabled="!session || !!active || busy || session.state === 'archived'" @click="compact"><span v-if="compacting" class="tree-spin small" aria-hidden="true"></span><svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 9h16M4 15h16M9 4v16M15 4v16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>/compact</button>
-            <button type="button" class="chip-btn" :class="{active:optionsOpen}" :aria-expanded="optionsOpen" @click="optionsOpen=!optionsOpen"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke="currentColor" stroke-width="1.6"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13.6H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ tr('设置','Settings') }}</button>
+            <button type="button" class="chip-btn" :class="{active:optionsOpen}" :aria-expanded="optionsOpen" @click="optionsOpen=!optionsOpen"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke="currentColor" stroke-width="1.6"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13.6H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ t('agent.page.settings') }}</button>
           </div>
         </footer>
       </form>
     </section>
-    <div v-if="browserOpen" class="directory-backdrop" @click.self="closeBrowser"><section class="directory-dialog" role="dialog" aria-modal="true" aria-label="选择工作区目录" tabindex="-1"><header><h2>选择 {{ executor?.host?.hostname || '执行器' }} 的工作区</h2><button @click="closeBrowser">关闭</button></header><div class="directory-roots"><button v-for="root in directory.roots" :key="root" :disabled="browserBusy" @click="browse(root)">{{ root }}</button><button :disabled="browserBusy" @click="browse(executor?.host?.workdir || '')">默认目录</button></div><code>{{ directory.path }}</code><form class="new-folder" @submit.prevent="createFolder"><input v-model="folderName" placeholder="新文件夹名称" aria-label="新文件夹名称" :disabled="browserBusy"/><button :disabled="browserBusy || !folderName.trim() || !directory.path">新建文件夹</button></form><p v-if="browserError" class="error">{{ browserError }}</p><p v-if="browserBusy">正在读取目录…</p><div v-else class="directory-list"><button v-if="directory.parent!==directory.path" @click="browse(directory.parent)">上一级</button><button v-for="folder in directory.directories" :key="folder.path" @click="browse(folder.path)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ folder.name }}</button><p v-if="!directory.directories.length" class="muted">没有子目录</p></div><footer><button :disabled="browserBusy || !!browserError || !directory.path" @click="selectDirectory">选择当前目录</button></footer></section></div>
-    <aside class="dock" :aria-label="tr('工具','Tools')">
-      <button type="button" class="dock-btn" :class="{active:browserViewOpen}" :disabled="!browserStatus?.running" :title="tr('浏览器画面','Browser view')" @click="toggleBrowserView">
+    <div v-if="browserOpen" class="directory-backdrop" @click.self="closeBrowser"><section class="directory-dialog" role="dialog" aria-modal="true" :aria-label="t('agent.page.selectWorkspaceDirAria')" tabindex="-1"><header><h2>{{ t('agent.page.directoryTitle', { name: executor?.host?.hostname || t('agent.page.executor') }) }}</h2><button @click="closeBrowser">{{ t('agent.page.close') }}</button></header><div class="directory-roots"><button v-for="root in directory.roots" :key="root" :disabled="browserBusy" @click="browse(root)">{{ root }}</button><button :disabled="browserBusy" @click="browse(executor?.host?.workdir || '')">{{ t('agent.page.defaultDirectory') }}</button></div><code>{{ directory.path }}</code><form class="new-folder" @submit.prevent="createFolder"><input v-model="folderName" :placeholder="t('agent.page.newFolderName')" :aria-label="t('agent.page.newFolderName')" :disabled="browserBusy"/><button :disabled="browserBusy || !folderName.trim() || !directory.path">{{ t('agent.page.createFolder') }}</button></form><p v-if="browserError" class="error">{{ browserError }}</p><p v-if="browserBusy">{{ t('agent.page.readingDirectory') }}</p><div v-else class="directory-list"><button v-if="directory.parent!==directory.path" @click="browse(directory.parent)">{{ t('agent.page.parentDirectory') }}</button><button v-for="folder in directory.directories" :key="folder.path" @click="browse(folder.path)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ folder.name }}</button><p v-if="!directory.directories.length" class="muted">{{ t('agent.page.noSubdirectories') }}</p></div><footer><button :disabled="browserBusy || !!browserError || !directory.path" @click="selectDirectory">{{ t('agent.page.selectCurrentDirectory') }}</button></footer></section></div>
+    <!-- Workspace rename: an in-page modal (Enter confirms, Esc cancels) so the
+         flow can be styled and does not block on native window.prompt. -->
+    <div v-if="renameOpen" class="directory-backdrop" @click.self="cancelRename">
+      <section class="directory-dialog rename-dialog" role="dialog" aria-modal="true" :aria-label="t('agent.page.rename')" @keydown="onRenameKey">
+        <h2>{{ t('agent.page.rename') }}</h2>
+        <input ref="renameInput" v-model="renameValue" :placeholder="t('agent.page.workspaceName')" :aria-label="t('agent.page.workspaceName')" @keydown.enter.prevent="confirmRename" />
+        <footer>
+          <button type="button" @click="cancelRename">{{ t('agent.page.cancel') }}</button>
+          <button type="button" :disabled="!renameValue.trim()" @click="confirmRename">{{ t('agent.page.rename') }}</button>
+        </footer>
+      </section>
+    </div>
+    <aside class="dock" :class="{open:dockOpen}" :aria-label="t('agent.page.contextTools')">
+      <button type="button" class="dock-btn dock-toggle" :title="dockOpen ? t('agent.page.collapse') : t('agent.page.contextTools')" :aria-expanded="dockOpen" @click="toggleDock">
+        <svg v-if="!dockOpen" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="14" y="4" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="14" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="14" y="14" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.7"/></svg>
+        <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <button type="button" class="dock-btn" :class="{active:browserViewOpen}" :disabled="!browserStatus?.running" :title="t('agent.page.browserView')" @click="toggleBrowserView">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="15" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M3 8.5h18" stroke="currentColor" stroke-width="1.7"/><circle cx="6.2" cy="6.3" r=".7" fill="currentColor"/><circle cx="8.7" cy="6.3" r=".7" fill="currentColor"/></svg>
         <span class="dock-dot" :class="{on:browserStatus?.running}" />
       </button>
-      <button type="button" class="dock-btn" :class="{active:treeOpen}" :title="tr('项目树','Project tree')" @click="toggleTree">
+      <button type="button" class="dock-btn" :class="{active:treeOpen}" :title="t('agent.page.projectTree')" @click="toggleTree">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
       </button>
-      <button type="button" class="dock-btn" :class="{active:termOpen}" :title="tr('终端','Terminal')" @click="toggleTerm">
+      <button type="button" class="dock-btn" :class="{active:termOpen}" :title="t('agent.page.terminal')" @click="toggleTerm">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M7.5 9l3 3-3 3M13 15h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
-      <button type="button" class="dock-btn" :class="{active:usageOpen}" :title="tr('上下文用量','Context usage')" @click="toggleUsage">
+      <button type="button" class="dock-btn" :class="{active:usageOpen}" :title="t('agent.page.contextUsage')" @click="toggleUsage">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
-      <button type="button" class="dock-btn" :class="{active:hostOpen}" :title="tr('宿主机','Host')" @click="hostOpen=!hostOpen">
+      <button type="button" class="dock-btn" :class="{active:hostOpen}" :title="t('agent.page.host')" @click="hostOpen=!hostOpen">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
       </button>
     </aside>
@@ -1474,27 +1582,27 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
     <section v-if="browserViewOpen" class="browser-panel" :style="panelStyle">
       <div class="browser-toolbar" @pointerdown="onToolbarDown">
         <span class="browser-grab" aria-hidden="true">⠿</span>
-        <button type="button" :disabled="!browserStatus?.running || !browserStatus?.canGoBack || browserBusyAction" :title="tr('后退','Back')" @click="postBrowserAction({ action: 'back' })">◀</button>
-        <button type="button" :disabled="!browserStatus?.running || !browserStatus?.canGoForward || browserBusyAction" :title="tr('前进','Forward')" @click="postBrowserAction({ action: 'forward' })">▶</button>
-        <button type="button" :disabled="!browserStatus?.running || browserBusyAction" :title="tr('刷新','Reload')" @click="postBrowserAction({ action: 'reload' })">⟳</button>
+        <button type="button" :disabled="!browserStatus?.running || !browserStatus?.canGoBack || browserBusyAction" :title="t('agent.page.back')" @click="postBrowserAction({ action: 'back' })">◀</button>
+        <button type="button" :disabled="!browserStatus?.running || !browserStatus?.canGoForward || browserBusyAction" :title="t('agent.page.forward')" @click="postBrowserAction({ action: 'forward' })">▶</button>
+        <button type="button" :disabled="!browserStatus?.running || browserBusyAction" :title="t('agent.page.browserReload')" @click="postBrowserAction({ action: 'reload' })">⟳</button>
         <form class="browser-url" @submit.prevent="browserGoto">
           <span class="browser-lock" :class="{on:browserStatus?.running}">●</span>
           <input v-model="browserUrlInput" :placeholder="browserStatus?.url || 'about:blank'" @focus="browserUrlFocused = true" @blur="browserUrlFocused = false" />
         </form>
-        <button type="button" :title="tr('关闭','Close')" @click="toggleBrowserView">✕</button>
+        <button type="button" :title="t('agent.page.close')" @click="toggleBrowserView">✕</button>
       </div>
       <div v-if="browserTabs.length" class="browser-tabbar">
         <button v-for="tab in browserTabs" :key="tab.id" type="button" class="browser-tab" :class="{active:tab.active}" :title="tab.url" @click="browserActivateTab(tab.id)">
           <span class="browser-tab-title">{{ tab.title || tab.url || 'about:blank' }}</span>
-          <span class="browser-tab-close" :title="tr('关闭标签','Close tab')" @click.stop="browserCloseTab(tab.id)">✕</span>
+          <span class="browser-tab-close" :title="t('agent.page.closeTab')" @click.stop="browserCloseTab(tab.id)">✕</span>
         </button>
-        <button type="button" class="browser-tab-new" :title="tr('新标签页','New tab')" @click="browserNewTab">+</button>
+        <button type="button" class="browser-tab-new" :title="t('agent.page.newTab')" @click="browserNewTab">+</button>
       </div>
       <div class="browser-viewport" tabindex="0" @wheel="onViewWheel" @pointerdown="onViewDown" @pointermove="onViewMove" @pointerup="onViewUp" @keydown="onViewKey" @contextmenu.prevent>
         <img v-if="browserStreamSrc" ref="browserImg" :src="browserStreamSrc" alt="browser viewport" draggable="false" @error="onBrowserStreamError" />
-        <p v-else class="browser-empty">{{ browserStatus?.error || (browserStatus?.running ? tr('正在连接画面…','Connecting…') : tr('浏览器未运行','Browser is not running')) }}</p>
+        <p v-else class="browser-empty">{{ browserStatus?.error || (browserStatus?.running ? t('agent.page.connecting') : t('agent.page.browserNotRunning')) }}</p>
       </div>
-      <span class="browser-resize" :title="tr('调整大小','Resize')" @pointerdown="onResizeDown"></span>
+      <span class="browser-resize" :title="t('agent.page.resize')" @pointerdown="onResizeDown"></span>
     </section>
     </Transition>
 
@@ -1502,18 +1610,18 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
     <section v-if="treeOpen" class="tree-panel" :style="treePanelStyle">
       <div class="browser-toolbar" @pointerdown="onTreeDown">
         <span class="browser-grab" aria-hidden="true">⠿</span>
-        <strong class="tree-title">{{ tr('项目树','Project tree') }}</strong>
-        <button type="button" :title="tr('回到工作区根目录','Workspace root')" @click="treeReload(treeRootPathFor())"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 11l8-7 8 7M6 10v9h12v-9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <button type="button" :title="tr('刷新','Refresh')" @click="treeReload(treeRootPath)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <button type="button" :title="tr('关闭','Close')" @click="treeOpen=false"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+        <strong class="tree-title">{{ t('agent.page.projectTree') }}</strong>
+        <button type="button" :title="t('agent.page.workspaceRootAction')" @click="treeReload(treeRootPathFor())"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 11l8-7 8 7M6 10v9h12v-9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button type="button" :title="t('agent.page.refresh')" @click="treeReload(treeRootPath)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button type="button" :title="t('agent.page.close')" @click="treeOpen=false"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
       </div>
       <div class="tree-crumb" :title="treeRootPath || executor?.host?.workdir || ''">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-        <span>{{ treeRootPath || executor?.host?.workdir || tr('工作区根目录','Workspace root') }}</span>
+        <span>{{ treeRootPath || executor?.host?.workdir || t('agent.page.workspaceRoot') }}</span>
       </div>
       <div class="tree-body">
         <div class="tree-list" role="tree">
-          <div v-if="treeLoading" class="tree-state"><span class="tree-spin" aria-hidden="true"></span>{{ tr('加载中…','Loading…') }}</div>
+          <div v-if="treeLoading" class="tree-state"><span class="tree-spin" aria-hidden="true"></span>{{ t('agent.page.loading') }}</div>
           <div v-else-if="treeError" class="tree-state error">{{ treeError }}</div>
           <template v-else>
             <button v-for="row in treeRows" :key="row.path" type="button" class="tree-row" :class="{dir:row.dir,sel:fileData?.path===row.path}" :style="{ paddingLeft: (10 + row.depth * 16) + 'px' }" :title="row.path" @click="treeToggle(row)">
@@ -1527,11 +1635,11 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
               </span>
               <span class="tree-name">{{ row.name }}</span>
             </button>
-            <div v-if="!treeRows.length" class="tree-state">{{ tr('空目录','Empty folder') }}</div>
+            <div v-if="!treeRows.length" class="tree-state">{{ t('agent.page.emptyFolder') }}</div>
           </template>
         </div>
       </div>
-      <span class="browser-resize" :title="tr('调整大小','Resize')" @pointerdown="onTreeResizeDown"></span>
+      <span class="browser-resize" :title="t('agent.page.resize')" @pointerdown="onTreeResizeDown"></span>
     </section>
     </Transition>
 
@@ -1539,16 +1647,16 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
     <section v-if="usageOpen" class="usage-panel" :style="usagePanelStyle">
       <div class="browser-toolbar" @pointerdown="onUsageDown">
         <span class="browser-grab" aria-hidden="true">⠿</span>
-        <strong class="tree-title">{{ tr('上下文用量','Context usage') }}</strong>
-        <button type="button" :title="tr('刷新','Refresh')" @click="fetchContextUsage()">⟳</button>
-        <button type="button" :title="tr('关闭','Close')" @click="usageOpen=false">✕</button>
+        <strong class="tree-title">{{ t('agent.page.contextUsage') }}</strong>
+        <button type="button" :title="t('agent.page.refresh')" @click="fetchContextUsage()">⟳</button>
+        <button type="button" :title="t('agent.page.close')" @click="usageOpen=false">✕</button>
       </div>
       <div class="usage-body">
-        <div class="usage-big"><b>{{ fmtK(contextUsage?.tokens || 0) }}</b><span>{{ tr('已用 tokens','tokens used') }}</span></div>
+        <div class="usage-big"><b>{{ fmtK(contextUsage?.tokens || 0) }}</b><span>{{ t('agent.page.tokensUsed') }}</span></div>
         <div class="ctx-row" v-for="row in ctxRows" :key="row.key"><span>{{ row.label }}</span><span>{{ row.value }}</span></div>
-        <p v-if="!ctxRows.length" class="tree-msg">{{ tr('暂无数据','No data') }}</p>
+        <p v-if="!ctxRows.length" class="tree-msg">{{ t('agent.page.noData') }}</p>
       </div>
-      <span class="browser-resize" :title="tr('调整大小','Resize')" @pointerdown="onUsageResizeDown"></span>
+      <span class="browser-resize" :title="t('agent.page.resize')" @pointerdown="onUsageResizeDown"></span>
     </section>
     </Transition>
 
@@ -1556,34 +1664,34 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
     <section v-if="hostOpen" class="host-window" :style="hostPanelStyle">
       <div class="browser-toolbar" @pointerdown="onHostDown">
         <span class="browser-grab" aria-hidden="true">⠿</span>
-        <strong class="tree-title">{{ tr('宿主机','Host') }}</strong>
-        <button type="button" :title="tr('刷新','Refresh')" @click="fetchHost()">⟳</button>
-        <button type="button" :title="tr('关闭','Close')" @click="hostOpen=false">✕</button>
+        <strong class="tree-title">{{ t('agent.page.host') }}</strong>
+        <button type="button" :title="t('agent.page.refresh')" @click="fetchHost()">⟳</button>
+        <button type="button" :title="t('agent.page.close')" @click="hostOpen=false">✕</button>
       </div>
       <div class="host-body">
         <template v-if="executor">
           <div class="host-head">
             <span class="host-name">{{ executor.host?.hostname || executor.name }}</span>
-            <span class="host-status" :class="store.isHealthy(executor) ? 'ok' : 'off'">{{ store.isHealthy(executor) ? tr('在线','Online') : tr('离线','Offline') }}</span>
+            <span class="host-status" :class="store.isHealthy(executor) ? 'ok' : 'off'">{{ store.isHealthy(executor) ? t('agent.page.online') : t('agent.page.offline') }}</span>
           </div>
           <div class="usage-rings">
             <div class="usage-metric"><div class="usage-ring" :style="ringStyle(cpuDisplay)"><b>{{ Math.round(cpuDisplay) }}%</b></div><span>CPU</span></div>
-            <div class="usage-metric"><div class="usage-ring" :style="ringStyle(memDisplay)"><b>{{ Math.round(memDisplay) }}%</b></div><span>{{ tr('内存','Memory') }}</span></div>
-            <small class="host-sampled">{{ hostUsage ? tr('采样','Sampled') + ' ' + time(hostUsage.sampled_at) : tr('等待采样…','Sampling…') }}</small>
+            <div class="usage-metric"><div class="usage-ring" :style="ringStyle(memDisplay)"><b>{{ Math.round(memDisplay) }}%</b></div><span>{{ t('agent.page.memory') }}</span></div>
+            <small class="host-sampled">{{ hostUsage ? t('agent.page.sampled') + ' ' + time(hostUsage.sampled_at) : t('agent.page.sampling') }}</small>
           </div>
           <dl class="host-details">
-            <div><dt>{{ tr('地址','Address') }}</dt><dd>{{ executor.address }}</dd></div>
-            <div><dt>{{ tr('系统','OS') }}</dt><dd>{{ executor.host?.os || '—' }} / {{ executor.host?.arch || '—' }}</dd></div>
-            <div><dt>CPU</dt><dd>{{ executor.host?.cpu_model || '—' }} · {{ executor.host?.cpu_cores || '—' }} {{ tr('核','cores') }}</dd></div>
-            <div><dt>{{ tr('内存','Memory') }}</dt><dd>{{ gib(executor.host?.memory_available_bytes) }} / {{ gib(executor.host?.memory_total_bytes) }}</dd></div>
-            <div><dt>{{ tr('活跃任务','Active') }}</dt><dd>{{ executor.active_tasks }}</dd></div>
-            <div><dt>{{ tr('心跳','Heartbeat') }}</dt><dd>{{ executor.last_heartbeat_age_seconds }}s</dd></div>
-            <div><dt>{{ tr('工作目录','Workdir') }}</dt><dd>{{ executor.host?.workdir || '—' }}</dd></div>
+            <div><dt>{{ t('agent.page.address') }}</dt><dd>{{ executor.address }}</dd></div>
+            <div><dt>{{ t('agent.page.os') }}</dt><dd>{{ executor.host?.os || '—' }} / {{ executor.host?.arch || '—' }}</dd></div>
+            <div><dt>CPU</dt><dd>{{ executor.host?.cpu_model || '—' }} · {{ executor.host?.cpu_cores || '—' }} {{ t('agent.page.cores') }}</dd></div>
+            <div><dt>{{ t('agent.page.memory') }}</dt><dd>{{ gib(executor.host?.memory_available_bytes) }} / {{ gib(executor.host?.memory_total_bytes) }}</dd></div>
+            <div><dt>{{ t('agent.page.activeTasks') }}</dt><dd>{{ executor.active_tasks }}</dd></div>
+            <div><dt>{{ t('agent.page.heartbeat') }}</dt><dd>{{ executor.last_heartbeat_age_seconds }}s</dd></div>
+            <div><dt>{{ t('agent.page.workdir') }}</dt><dd>{{ executor.host?.workdir || '—' }}</dd></div>
           </dl>
         </template>
-        <p v-else class="host-empty">{{ tr('没有可用的执行器宿主机信息。','No executor host info.') }}</p>
+        <p v-else class="host-empty">{{ t('agent.page.noHostInfo') }}</p>
       </div>
-      <span class="browser-resize" :title="tr('调整大小','Resize')" @pointerdown="onHostResizeDown"></span>
+      <span class="browser-resize" :title="t('agent.page.resize')" @pointerdown="onHostResizeDown"></span>
     </section>
     </Transition>
 
@@ -1591,25 +1699,25 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
     <section v-if="fileOpen" class="file-panel" :style="filePanelStyle">
       <div class="browser-toolbar" @pointerdown="onFileDown">
         <span class="browser-grab" aria-hidden="true">⠿</span>
-        <strong class="tree-title" :title="fileData?.path">{{ baseName(fileData?.path) || tr('文件','File') }}</strong>
-        <span v-if="fileDirty" class="file-dirty" :title="tr('未保存','Unsaved')" aria-hidden="true"></span>
-        <button v-if="fileView === 'markdown'" type="button" :title="mdSource ? tr('渲染预览','Rendered preview') : tr('查看源码','View source')" @click="mdSource = !mdSource"><svg v-if="mdSource" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg><svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8.5 6 3 12l5.5 6M15.5 6 21 12l-5.5 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <button v-if="fileEditable || fileDirty" type="button" :disabled="!fileDirty || fileSaving" :title="tr('保存 (Ctrl+S)','Save (Ctrl+S)')" @click="saveFile"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 3h11l3 3v15H5V3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 3v6h8M8 21v-7h8v7" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></button>
-        <button type="button" :disabled="!fileData || fileLoading" :title="tr('重新加载','Reload')" @click="reloadFile"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <button type="button" :title="tr('关闭','Close')" @click="closeFilePanel"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+        <strong class="tree-title" :title="fileData?.path">{{ baseName(fileData?.path) || t('agent.page.file') }}</strong>
+        <span v-if="fileDirty" class="file-dirty" :title="t('agent.page.unsaved')" aria-hidden="true"></span>
+        <button v-if="fileView === 'markdown'" type="button" :title="mdSource ? t('agent.page.renderedPreview') : t('agent.page.viewSource')" @click="mdSource = !mdSource"><svg v-if="mdSource" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg><svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8.5 6 3 12l5.5 6M15.5 6 21 12l-5.5 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button v-if="fileEditable || fileDirty" type="button" :disabled="!fileDirty || fileSaving" :title="t('agent.page.saveShortcut')" @click="saveFile"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 3h11l3 3v15H5V3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 3v6h8M8 21v-7h8v7" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></button>
+        <button type="button" :disabled="!fileData || fileLoading" :title="t('agent.page.reload')" @click="reloadFile"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button type="button" :title="t('agent.page.close')" @click="closeFilePanel"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
       </div>
-      <p v-if="fileLoading" class="tree-msg">{{ tr('加载中…','Loading…') }}</p>
+      <p v-if="fileLoading" class="tree-msg">{{ t('agent.page.loading') }}</p>
       <p v-else-if="fileError" class="tree-msg error">{{ fileError }}</p>
       <FileViewer v-else-if="fileData" v-model="fileDraft" :path="fileData.path" :view="fileView" :bytes="fileBytes" :mime="fileMime" :text="fileText" :md-source="mdSource" @keydown="onFileEditorKey" />
-      <p v-else class="tree-msg">{{ tr('没有文件','No file') }}</p>
+      <p v-else class="tree-msg">{{ t('agent.page.noFile') }}</p>
       <footer v-if="fileData" class="file-foot">
         <span :title="fileData.path">{{ fileData.path }}</span>
         <small v-if="fileNotice" class="file-saved">{{ fileNotice }}</small>
-        <small v-else-if="fileEditable && fileDirty" class="file-unsaved">{{ tr('未保存','Unsaved') }}</small>
+        <small v-else-if="fileEditable && fileDirty" class="file-unsaved">{{ t('agent.page.unsaved') }}</small>
         <small v-else-if="fileByteLength">{{ humanSize(fileByteLength) }}</small>
-        <small v-else-if="fileData.totalLines">{{ fileData.totalLines }} {{ tr('行','lines') }}</small>
+        <small v-else-if="fileData.totalLines">{{ fileData.totalLines }} {{ t('agent.page.lines') }}</small>
       </footer>
-      <span class="browser-resize" :title="tr('调整大小','Resize')" @pointerdown="onFileResizeDown"></span>
+      <span class="browser-resize" :title="t('agent.page.resize')" @pointerdown="onFileResizeDown"></span>
     </section>
     </Transition>
 
@@ -1617,28 +1725,27 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
     <section v-if="termOpen" class="term-panel" :style="termPanelStyle">
       <div class="browser-toolbar" @pointerdown="onTermDown">
         <span class="browser-grab" aria-hidden="true">⠿</span>
-        <strong class="tree-title">{{ tr('终端','Terminal') }}</strong>
+        <strong class="tree-title">{{ t('agent.page.terminal') }}</strong>
         <div class="term-exec">
-          <AppSelect :model-value="termExecutorId" :aria-label="tr('执行器','Executor')" :options="executorOptions" :placeholder="tr('选择执行器','Choose executor')" @change="termChangeExecutor" />
+          <AppSelect :model-value="termExecutorId" :aria-label="t('agent.page.executor')" :options="executorOptions" :placeholder="t('agent.page.chooseExecutor')" @change="termChangeExecutor" />
         </div>
-        <button type="button" :title="tr('清屏','Clear')" @click="termClear"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M7 7l1 12h8l1-12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <button type="button" :title="tr('关闭','Close')" @click="termOpen=false"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+        <button type="button" :title="t('agent.page.clear')" @click="termClear"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M7 7l1 12h8l1-12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button type="button" :title="t('agent.page.close')" @click="termOpen=false"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
       </div>
       <div ref="termBody" class="term-body">
-        <p v-if="!termLines.length" class="term-hint">{{ tr('选择执行器，输入命令，按 Enter 运行。会沿用当前目录，cd 可直接切换。','Pick an executor, type a command and press Enter. The working directory persists; use cd to change it.') }}</p>
+        <p v-if="!termLines.length" class="term-hint">{{ t('agent.page.terminalHint') }}</p>
         <div v-for="(line, index) in termLines" :key="index" class="term-line" :class="line.kind">{{ line.text }}</div>
-        <div v-if="termBusy" class="term-line note term-running"><span class="tree-spin small" aria-hidden="true"></span>{{ tr('运行中…','Running…') }}</div>
+        <div v-if="termBusy" class="term-line note term-running"><span class="tree-spin small" aria-hidden="true"></span>{{ t('agent.page.terminalRunning') }}</div>
       </div>
       <form class="term-input" @submit.prevent="termRun">
         <span class="term-prompt" aria-hidden="true">❯</span>
-        <input v-model="termInput" :disabled="termBusy" spellcheck="false" autocomplete="off" autocapitalize="off" :aria-label="tr('命令','Command')" :placeholder="termBusy ? tr('命令执行中…','Running…') : tr('输入命令…','Type a command…')" @keydown="termKey" />
-        <button type="submit" :disabled="termBusy || !termInput.trim()">{{ tr('运行','Run') }}</button>
+        <input v-model="termInput" :disabled="termBusy" spellcheck="false" autocomplete="off" autocapitalize="off" :aria-label="t('agent.page.command')" :placeholder="termBusy ? t('agent.page.commandRunning') : t('agent.page.typeCommand')" @keydown="termKey" />
+        <button type="submit" :disabled="termBusy || !termInput.trim()">{{ t('agent.page.run') }}</button>
       </form>
-      <span class="browser-resize" :title="tr('调整大小','Resize')" @pointerdown="onTermResizeDown"></span>
+      <span class="browser-resize" :title="t('agent.page.resize')" @pointerdown="onTermResizeDown"></span>
     </section>
     </Transition>
   </main>
-  <ConfirmDialog />
 </template>
 
 <style scoped>
@@ -1677,6 +1784,9 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .session-card.selected{background:var(--md-secondary-container);border-color:transparent;border-radius:12px 12px 12px 4px}
 .session-card.selected:hover{background:var(--md-secondary-container)}
 .session-card strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;font-weight:600;font-size:14px}
+/* The snippet/time line is a flex item in a column; a long unbroken token
+   (path, hash, URL) would otherwise widen the card past the sidebar. */
+.session-card small{min-width:0;overflow-wrap:anywhere}
 .origin,small,.sessions .muted{font-size:12px;color:var(--md-on-surface-variant)}
 .origin{font-weight:600;letter-spacing:.02em}
 .ledger-button{text-align:left;border-radius:10px;background:var(--md-surface-container-lowest);font-size:13px;font-weight:550}
@@ -1737,7 +1847,7 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .connection-hint{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--md-on-surface-variant);white-space:nowrap}
 .connection-hint i{width:8px;height:8px;border-radius:50%;background:var(--md-outline)}
 .connection-hint i.online{background:var(--md-success)}
-.browser-panel,.tree-panel,.usage-panel,.host-window,.file-panel,.term-panel{position:fixed;left:0;top:0;z-index:var(--z-panel);display:flex;flex-direction:column;border:1px solid var(--md-outline-variant);border-radius:14px;overflow:hidden;background:var(--md-surface-container-low);box-shadow:var(--shadow-4)}
+.browser-panel,.tree-panel,.usage-panel,.host-window,.file-panel,.term-panel{position:fixed;left:0;top:0;z-index:var(--z-panel, 3000);display:flex;flex-direction:column;border:1px solid var(--md-outline-variant);border-radius:14px;overflow:hidden;background:var(--md-surface-container-low);box-shadow:var(--shadow-4)}
 .browser-panel-enter-active{transition:opacity 240ms var(--ease-emphasized-decel),transform 240ms var(--ease-emphasized-decel)}
 .browser-panel-leave-active{transition:opacity 140ms var(--ease-emphasized-accel),transform 140ms var(--ease-emphasized-accel)}
 .browser-panel-enter-from,.browser-panel-leave-to{opacity:0;transform:translateY(-6px) scale(.99)}
@@ -1776,6 +1886,8 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 /* ---- right dock ---- */
 .dock{width:58px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 0;border-radius:28px;background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}
 .dock-btn{position:relative;width:42px;height:42px;display:grid;place-items:center;border:0;border-radius:14px;background:transparent;color:var(--md-on-surface-variant);transition:background-color 160ms,color 160ms,transform 160ms var(--ease-emphasized-decel)}
+/* The collapse toggle only exists on narrow screens (see media query below). */
+.dock-toggle{display:none}
 .dock-btn:hover:not(:disabled){background:var(--md-secondary-container);color:var(--md-on-surface)}
 .dock-btn:active:not(:disabled){transform:scale(.94)}
 .dock-btn.active{background:color-mix(in srgb,var(--md-primary) 18%,transparent);color:var(--md-primary)}
@@ -1783,7 +1895,13 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .dock-btn:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}
 .dock-dot{position:absolute;right:6px;top:6px;width:8px;height:8px;border-radius:50%;background:var(--md-outline)}
 .dock-dot.on{background:var(--md-success)}
-@media(max-width:800px){.dock{display:none}}
+/* Narrow screens: the dock collapses to its toggle (default collapsed) so the
+   browser/tree/terminal stay reachable instead of being hidden outright. */
+@media(max-width:800px){
+  .dock-toggle{display:grid}
+  .dock:not(.open) .dock-btn:not(.dock-toggle){display:none}
+  .dock:not(.open){gap:0}
+}
 
 /* ---- project tree window ---- */
 .tree-title{flex:1;min-width:0;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1819,14 +1937,6 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .tree-icon.doc{color:#c07c1a}
 .tree-icon.image{color:#9b5cf6}
 .tree-icon.archive{color:#7c8598}
-@media (prefers-color-scheme: dark){
-  .tree-icon.dir{color:#e5bd6a}
-  .tree-icon.code{color:#9aa8ff}
-  .tree-icon.data{color:#4dd4c4}
-  .tree-icon.doc{color:#e0a84e}
-  .tree-icon.image{color:#c39bff}
-  .tree-icon.archive{color:#9aa4b5}
-}
 @media (prefers-reduced-motion: reduce){.tree-chev{transition-duration:1ms}.tree-spin{animation-duration:1.6s}}
 .tree-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* ---- file preview window ---- */
@@ -1899,6 +2009,28 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .welcome h2{color:var(--md-on-surface);font-size:24px;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}
 .welcome p{margin:6px 0;font-size:14px}
 
+/* ---- turns skeleton (shown while a session's history loads) ---- */
+.turns-skeleton{max-width:920px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.turns-skeleton .skeleton-row{display:flex}
+.turns-skeleton .skeleton-row.right{justify-content:flex-end}
+/* Shimmer reuses the `sheen` keyframes shared with the running caret sheen. */
+.skeleton-bar{display:block;height:56px;background:linear-gradient(100deg,var(--md-surface-container-high) 40%,var(--md-surface-container-highest) 50%,var(--md-surface-container-high) 60%);background-size:280% 100%;animation:sheen 1.4s linear infinite}
+.skeleton-bar.user{width:min(62%,340px);border-radius:16px 16px 4px 16px}
+.skeleton-bar.agent{width:min(84%,560px);border-radius:16px 16px 16px 4px}
+.skeleton-bar.short{width:min(38%,220px)}
+.skeleton-bar.long{width:min(88%,640px);height:88px}
+
+/* ---- main transcript ↔ subagent view swap ---- */
+.view-swap-enter-active,.view-swap-leave-active{transition:opacity 200ms var(--ease-emphasized),transform 200ms var(--ease-emphasized)}
+.view-swap-enter-from{opacity:0;transform:translateY(8px)}
+.view-swap-leave-to{opacity:0;transform:translateY(-8px)}
+
+/* ---- top error bar with dismiss ---- */
+.error-bar{display:flex;align-items:flex-start;gap:10px}
+.error-bar .error-text{flex:1;min-width:0}
+.error-bar .error-close{flex:none;width:22px;height:22px;display:inline-grid;place-items:center;border:0;border-radius:50%;background:transparent;color:inherit;padding:0}
+.error-bar .error-close:hover:not(:disabled){background:color-mix(in srgb,currentColor 14%,transparent);box-shadow:none}
+
 /* ---- message bubbles ---- */
 .load-earlier{display:block;margin:0 auto 22px;padding:8px 16px;border:1px solid var(--md-outline-variant);border-radius:999px;background:var(--md-surface-container-low);color:var(--md-on-surface-variant);font-size:13px;cursor:pointer;transition:background 150ms var(--ease-emphasized-decel),color 150ms var(--ease-emphasized-decel)}
 .load-earlier:hover{background:var(--md-surface-container);color:var(--md-on-surface)}
@@ -1917,7 +2049,7 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 
 /* agent speech / markdown inside response */
 .agent-speech{margin:6px 0;padding:2px 0;line-height:1.7}
-.model-annotation{display:block;font-size:12px;opacity:.7;margin-bottom:4px;font-family:var(--code-font)}
+.model-annotation{display:block;font-size:12px;opacity:.7;margin-bottom:4px;font-family:var(--code-font);overflow-wrap:anywhere}
 .model-annotation.fallback{opacity:1;color:var(--md-error)}
 .think-chain{margin:2px 0 8px;border:0;border-radius:10px;background:var(--md-surface-container-low);overflow:hidden}
 .think-chain>summary{display:inline-flex;align-items:center;gap:5px;cursor:pointer;list-style:none;padding:3px 10px;font-size:11px;font-weight:600;letter-spacing:.03em;color:var(--md-on-surface-variant);user-select:none;border-radius:999px;background:var(--md-surface-container)}
@@ -1975,6 +2107,9 @@ button.subagent-card-head>strong{font-weight:700}
 .todo-panel li.completed{opacity:.6}
 .todo-panel li.completed .todo-text{text-decoration:line-through}
 .todo-panel li.in_progress .todo-text{font-weight:650}
+/* `li` is a row flex container, so the text needs an explicit shrink floor and
+   a break opportunity for long paths / URLs. */
+.todo-text{min-width:0;overflow-wrap:anywhere}
 .todo-mark{flex:none;width:16px;text-align:center;color:var(--md-primary);transition:color .2s,transform .2s}
 .todo-panel li.completed .todo-mark{color:var(--md-success,#3ba55c)}
 .composer .todo-panel{border-radius:28px 28px 0 0}
@@ -1983,6 +2118,9 @@ button.subagent-card-head>strong{font-weight:700}
 .ctx-usage{position:relative;display:inline-flex;align-items:center;gap:6px;flex:none;outline:none;order:99;margin-left:6px;cursor:default}
 .ctx-ring{width:20px;height:20px;flex:none}
 .ctx-track{fill:none;stroke:var(--md-outline-variant);stroke-width:2.2}
+/* Usage arc: dasharray is bound from tokens/window; rotated so it starts at 12
+   o'clock. No window data = no arc (stays the hollow track). */
+.ctx-arc{fill:none;stroke-width:2.2;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dasharray var(--duration-long) var(--ease-emphasized),stroke var(--duration-medium) var(--ease-out)}
 .ctx-value{font-size:11px;color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums}
 .ctx-tip{position:absolute;bottom:calc(100% + 12px);left:0;right:auto;transform-origin:bottom left;transform:translateY(4px) scale(.97);z-index:var(--z-popover);width:max-content;min-width:216px;max-width:280px;padding:12px 14px;border-radius:14px;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);box-shadow:var(--shadow-3);color:var(--md-on-surface);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 160ms var(--ease-emphasized-decel),transform 160ms var(--ease-emphasized-decel),visibility 160ms;font-size:12px;text-align:left}
 .ctx-usage:hover .ctx-tip,.ctx-usage:focus-visible .ctx-tip,.ctx-usage:focus-within .ctx-tip{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
@@ -1996,20 +2134,31 @@ button.subagent-card-head>strong{font-weight:700}
 /* ---- composer ---- */
 .composer{flex-shrink:0;margin:0 20px 18px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-lowest);overflow:visible;box-shadow:var(--shadow-1)}
 .composer-input{position:relative}
-.composer-input textarea{font-size:14px;width:100%;display:block;min-height:96px;padding:15px 124px 15px 16px;line-height:1.6;resize:vertical;border:0;border-radius:0;background:transparent}
+/* Reserve the full actions gutter. `.composer-actions` holds up to three 42px
+   buttons (attach + send/stop + stop-all) with 8px gaps, pinned 10px from the
+   right edge: 10 + 3*42 + 2*8 = 152px, +8px breathing = 160px. The old 124px
+   only covered two buttons, so the third overlaid the draft text. */
+.composer-input textarea{font-size:14px;width:100%;display:block;min-height:96px;max-height:120px;padding:15px 160px 15px 16px;line-height:1.6;resize:none;border:0;border-radius:0;background:transparent}
 .composer-input textarea:focus{box-shadow:none;border:0}
 .slash-menu{position:fixed;z-index:var(--z-popover);background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:14px;box-shadow:var(--shadow-3);padding:6px;max-height:min(320px,42vh);overflow:auto}
+/* Same pattern as ThinkingSlider's popover menu (short rise-in). */
+.slash-menu-enter-active,.slash-menu-leave-active{transition:opacity 130ms,transform 130ms}
+.slash-menu-enter-from,.slash-menu-leave-to{opacity:0;transform:translateY(4px)}
 .slash-item{display:flex;align-items:baseline;gap:10px;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:var(--md-on-surface);cursor:pointer}
 .slash-item.active{background:var(--md-secondary-container)}
 .slash-name{flex:none;font-family:var(--code-font);font-weight:650;font-size:13px;color:var(--md-primary)}
-.slash-desc{font-size:12px;color:var(--md-on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slash-desc{font-size:12px;color:var(--md-on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .attach-chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px 0}
 .composer-actions{position:absolute;right:10px;bottom:10px;z-index:2;display:flex;align-items:center;gap:8px}
 .attach-fly{width:42px;height:42px;flex:none;aspect-ratio:1/1;display:inline-flex;align-items:center;justify-content:center;line-height:0;border:0;border-radius:50%;padding:0;margin:0;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 .attach-fly svg{width:18px;height:18px;display:block}
 .attach-fly:hover:not(:disabled){filter:brightness(1.05)}
 .attach-fly:disabled{opacity:.5;cursor:default}
-.attach-chip{display:inline-flex;align-items:center;gap:6px;max-width:220px;font-size:12px;padding:4px 6px 4px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attach-chip{display:inline-flex;align-items:center;gap:6px;max-width:220px;font-size:12px;padding:4px 6px 4px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);overflow:hidden}
+/* `text-overflow` is a block-container feature. On the inline-flex chip itself
+   it was silently ignored and long file names were hard-clipped mid-glyph; the
+   inner span is what actually ellipsises. */
+.attach-chip-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .attach-chip button{border:0;background:transparent;cursor:pointer;font-size:14px;line-height:1;padding:0 4px;color:var(--md-on-surface-variant)}
 .attach-chip button:hover{color:var(--md-error)}
 .attach-error{font-size:12px;color:var(--md-error)}
@@ -2033,11 +2182,12 @@ button.subagent-card-head>strong{font-weight:700}
 .composer footer{display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap;border-top:1px solid var(--md-outline-variant)}
 .composer-footer .mode-field :deep(.app-select-trigger){min-height:30px;font-size:12.5px;border-radius:999px;background:var(--md-surface-container-high);border-color:transparent}
 
-/* ---- host panel / rings ---- */
-.host-panel>strong{font-size:14px}
-.host-panel dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;font-size:12px}
-.host-panel dt{color:var(--md-on-surface-variant);font-weight:600}
-.host-panel dd{margin:4px 0 0;overflow-wrap:anywhere}
+/* ---- host panel / rings ----
+   The host window is styled by `.host-window` / `.host-body` / `.host-details`
+   above; a `.host-panel*` block used to sit here and never matched anything
+   (the template renders `class="host-window"`). Removed rather than renamed:
+   its `margin` would have shifted the fixed-position window off its inline
+   left/top. */
 .usage-rings{display:flex;align-items:center;gap:24px;padding:14px 0;flex-wrap:wrap}
 .usage-metric{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px}
 .usage-ring{width:88px;height:88px;border-radius:50%;display:grid;place-items:center}
@@ -2057,6 +2207,13 @@ button.subagent-card-head>strong{font-weight:700}
 .directory-dialog code{overflow-wrap:anywhere;font-size:12px;background:var(--md-surface-container);padding:8px 10px;border-radius:8px}
 .directory-dialog>footer{display:flex;justify-content:flex-end}
 .directory-dialog>footer button{background:var(--md-primary);color:var(--md-on-primary,#fff);border-color:transparent;font-weight:600}
+/* Rename modal: narrower than the directory picker, panel-toned surface. */
+#app .workspace .rename-dialog{width:min(420px,100%);background:var(--md-surface-container)}
+#app .workspace .rename-dialog>h2{margin:0;font-size:16px;font-weight:650}
+#app .workspace .rename-dialog>footer{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
+#app .workspace .rename-dialog>footer button{min-height:36px;padding:0 16px;border-radius:999px;font-weight:600}
+#app .workspace .rename-dialog>footer button:first-child{background:var(--md-surface-container-high);color:var(--md-on-surface);border-color:transparent}
+#app .workspace .rename-dialog>footer button:last-child{background:var(--md-primary);color:var(--md-on-primary,#fff);border-color:transparent}
 .permission-request{margin:12px;padding:16px;border-radius:16px;background:var(--md-tertiary-container)}
 .permission-request small{display:block;margin:8px 0}
 .permission-request pre{max-height:160px;overflow:auto}
@@ -2064,6 +2221,15 @@ button.subagent-card-head>strong{font-weight:700}
 
 /* ============ Material 3 Expressive polish ============ */
 #app .workspace{gap:12px;padding-left:6px;background:var(--md-surface-container)}
+
+/* The host's `#app button{min-height:36px}` (theme.css) is (1,0,1) and beats
+   every scoped rule in this file (0,2,0), which inflated each compact icon
+   control here — 22x22 → 22x36, 24x24 → 24x36, 28x28 → 28x36. These (1,3,0)
+   selectors win the declared boxes back. The `::before` hit areas on
+   `.row-actions` / `.ws-actions` / `.ws-toggle` keep the touch targets at 44px,
+   so nothing gets harder to tap. */
+#app .workspace :is(.row-actions, .ws-actions, .browser-toolbar, .term-input) button,
+#app .workspace :is(.ws-toggle, .icon-btn, .chip-btn, .session-actions button, .order-toggle button) { min-height: 0; }
 #app .workspace .sessions{
   width:296px;gap:14px;padding:18px 14px;border:0;border-radius:28px;
   background:var(--md-surface-container-low);box-shadow:var(--shadow-1);
@@ -2183,7 +2349,6 @@ button.subagent-card-head>strong{font-weight:700}
 #app .workspace .composer footer>button{border-radius:999px;min-height:36px;padding-inline:15px;background:var(--md-surface-container-high);border-color:transparent}
 
 /* host panel + rings */
-#app .workspace .host-panel{margin:0 22px 10px;border-radius:24px;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 #app .workspace .usage-ring b{background:var(--md-surface-container-lowest)}
 #app .workspace .directory-dialog{border-radius:32px;border-color:transparent;box-shadow:var(--shadow-4);background:var(--md-surface-container-low)}
 #app .workspace .directory-list button{background:var(--md-surface-container-lowest);border-color:transparent;border-radius:16px;min-height:46px}
@@ -2254,10 +2419,19 @@ button.subagent-card-head>strong{font-weight:700}
   .state.running,.running,.agent-speech:has(.running)::after{animation:none}
   .tool-card:hover,.subagent-card:hover,.icon-btn:hover:not(:disabled),.session-card:hover:not(:disabled){transform:none}
   .transcript{scroll-behavior:auto}
+  .skeleton-bar{animation:none}
+  .view-swap-enter-active,.view-swap-leave-active,.slash-menu-enter-active,.slash-menu-leave-active{transition-duration:1ms}
+  .ctx-arc{transition:none}
 }
 
-@media(max-width:800px){.sessions{width:214px;padding:12px 10px}.transcript{padding:14px}.composer{margin:0 12px 12px}.connection-hint{display:none}.conversation-header{padding:14px 16px}.welcome{margin:30px auto 0}.turn{margin-bottom:22px}}
-@media(max-width:560px){.workspace{flex-direction:column}.sessions{width:100%;max-height:230px;border-right:0;border-bottom:1px solid var(--md-outline-variant)}.sessions>input,.filter-bar,.connection{display:none}.session-list{display:flex;gap:6px;overflow-x:auto}.session-card{min-width:160px;width:160px;margin-bottom:0}.ledger-button{padding:5px;font-size:12px}}
+/* Narrow-screen rules MUST repeat the `#app .workspace` prefix.
+ * The M3 polish layer above declares `#app .workspace .sessions{width:296px}`,
+ * `… .transcript{padding:28px 30px}` etc. at (1,2,0). A bare `.sessions` in a
+ * media query compiles to `.sessions[data-v-x]` (0,2,0) and therefore loses
+ * regardless of source order — which is why the sidebar stayed 296px and the
+ * padding never shrank on phones. */
+@media(max-width:800px){#app .workspace .sessions{width:214px;padding:12px 10px}#app .workspace .transcript{padding:14px}#app .workspace .composer{margin:0 12px 12px}#app .workspace .connection-hint{display:none}#app .workspace .conversation-header{padding:14px 16px}#app .workspace .welcome{margin:30px auto 0}#app .workspace .turn{margin-bottom:22px}}
+@media(max-width:560px){#app .workspace{flex-direction:column}#app .workspace .sessions{width:100%;max-height:230px;border-right:0;border-bottom:1px solid var(--md-outline-variant)}#app .workspace .sessions>input,#app .workspace .filter-bar,#app .workspace .connection{display:none}#app .workspace .session-list{display:flex;gap:6px;overflow-x:auto}#app .workspace .session-card{min-width:160px;width:160px;margin-bottom:0}#app .workspace .ledger-button{padding:5px;font-size:12px}}
 /* ---- sidebar order toggle + session row actions ---- */
 .sidebar-toggles{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .order-toggle{display:inline-flex;padding:2px;border-radius:999px;background:var(--md-surface-container-high)}
@@ -2267,7 +2441,17 @@ button.subagent-card-head>strong{font-weight:700}
 .session-row .row-actions{position:absolute;top:6px;right:6px;display:none;align-items:center;gap:8px}
 .session-row:hover .row-actions,
 .session-row:focus-within .row-actions{display:inline-flex}
-@media (hover: none){.session-row .row-actions{display:inline-flex}}
+/* Touch has no hover, so an always-visible absolute overlay sat permanently on
+   top of the `.origin` label. On a 160px card (the ≤560px horizontal scroller)
+   the actions are ~110px wide, which covered essentially the whole row. Reveal
+   them on the selected row instead — the same "act on what you tapped" pattern
+   as iOS swipe actions — and reserve their width on that row's first line so
+   the label ellipsises rather than sliding underneath. */
+@media (hover: none){
+  .session-row .row-actions{display:none}
+  .session-row.selected .row-actions{display:inline-flex}
+  .session-row.selected .session-card .origin{padding-right:106px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
 .row-actions button{position:relative;width:24px;height:24px;border:0;border-radius:7px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:13px;line-height:1}
 .row-actions button::before{content:'';position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
 .row-actions button:hover:not(:disabled){background:var(--md-primary);color:var(--md-on-primary,#fff)}
@@ -2276,6 +2460,9 @@ button.subagent-card-head>strong{font-weight:700}
 
 /* ---- workspace groups (dsh-style) ---- */
 .ws-group{margin:0 0 10px;border:1px solid var(--md-outline-variant);border-radius:12px;overflow:hidden;background:var(--md-surface-container-lowest);display:grid;grid-template-rows:auto 1fr;transition:grid-template-rows var(--duration-medium) var(--ease-emphasized)}
+/* Drag-to-reorder feedback: source dims, hovered drop target gets an outline. */
+.ws-group.drag-source{opacity:.45}
+.ws-group.drag-over{outline:2px dashed var(--md-primary);outline-offset:-2px}
 .ws-group.collapsed{opacity:.92;grid-template-rows:auto 0fr}
 .ws-head{display:flex;align-items:center;gap:6px;padding:8px 8px 8px 6px;background:var(--md-surface-container);cursor:grab}
 .ws-head.static{cursor:default}
@@ -2300,4 +2487,16 @@ button.subagent-card-head>strong{font-weight:700}
 .ws-more{margin:2px 0 4px;border:0;background:transparent;color:var(--md-primary);font-size:12.5px;font-weight:600;cursor:pointer}
 .ws-add{width:100%;margin-top:2px;padding:9px;border:1.5px dashed var(--md-outline-variant);border-radius:10px;background:transparent;color:var(--md-on-surface-variant);font-size:13px;font-weight:600}
 .ws-add:hover:not(:disabled){border-color:var(--md-primary);color:var(--md-primary)}
+</style>
+<style>
+/* Dark palette swaps ride on the host's html[data-theme] toggle, not the OS
+   setting (the darkmode plugin flips data-theme; a media query would disagree
+   with a manual light/dark choice). Scoped styles cannot express an html-level
+   selector, so these live unscoped under #app like the host's own overrides. */
+html[data-theme="dark"] #app .tree-icon.dir{color:#e5bd6a}
+html[data-theme="dark"] #app .tree-icon.code{color:#9aa8ff}
+html[data-theme="dark"] #app .tree-icon.data{color:#4dd4c4}
+html[data-theme="dark"] #app .tree-icon.doc{color:#e0a84e}
+html[data-theme="dark"] #app .tree-icon.image{color:#c39bff}
+html[data-theme="dark"] #app .tree-icon.archive{color:#9aa4b5}
 </style>

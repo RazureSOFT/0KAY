@@ -56,10 +56,12 @@ class PanelActionContract(unittest.TestCase):
         # Entry bundle → Vue root that compiles to it.
         ENTRY_TO_PANEL = {
             "companion.js": "CompanionPage.vue",
-            "adapters.js": "AdapterSettingsPage.vue",
         }
         # Read-only pages that never dispatch an action are allowed to be absent.
-        READ_ONLY = {"memory.js"}
+        # adapters.js is embedded in the companion page (社交账号 tab) and so is no
+        # longer its own patch entry, but AdapterSettingsPage.vue stays in PANELS.
+        # social.js is a bootstrap module (global window), not a routed page.
+        READ_ONLY = {"memory.js", "social.js"}
         covered = set(ENTRY_TO_PANEL) | READ_ONLY
         uncovered = entries - covered
         self.assertEqual(

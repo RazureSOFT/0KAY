@@ -139,6 +139,18 @@
 - 默认 **cnbing**；偏好读取：Core `/api/settings/search` → 内置默认
 - `GET/POST /api/search`；Agent 的 `websearch` 与 L.I.F.E 的 `SearchTool` 都调它
 
+### 2.7 消息总线（Core 内置）
+
+- 无独立进程；`core/internal/messaging` 在 Core 内维护订阅表、适配器归属与扇出
+- **定位**：把「QQ/OneBot 接入」从 L.I.F.E 的内部特性提升为平台能力。任何插件都能消费消息、发送消息、驱动适配器，或裁决消息要不要交给助手
+- **入站**：适配器插件（L.I.F.E 之于 QQ/OneBot，或第三方桥）用 `CoreService.PublishInboundMessage` 上报。Core 记录该插件为这个适配器的 owner（后续 `SendMessage` 据此路由回它），并按每个订阅者声明的权限扇出
+- **订阅**：`CoreService.SubscribeMessages` 服务端流。过滤在**发布路径**上按订阅者自己的 `permissions.messages` 执行，插件发什么都无法扩大自己能看到的内容
+- **出站**：`CoreService.SendMessage` 校验 `send_adapters` 后，路由到适配器 owner 的 `plugin.v1.MessageService.SendMessage`
+- **裁决（gate）**：声明 `messages.gate` 的插件，其 `DecideInbound` 会在 L.I.F.E 处理前被调用，返回 `abstain` / `allow` / `deny`。规则：**任一 deny 直接否决**，否则任一 allow 强制处理，否则沿用消息自身的 `is_wake`。拒绝只拦助手，不拦总线——其它订阅者仍能看到该消息
+- **背压**：每个订阅者一个有界队列（256），满则丢弃该订阅者并计数，绝不阻塞适配器的读取循环
+- **可观测**：`GET /api/messaging` 返回适配器、归属、会话数与 `published/delivered/dropped/rejected` 计数（只报会话存在，不报内容）
+- **权限**：`permissions.messages` 的 read 与 send 是分开的授权——「读用户的 QQ」和「以机器人身份发言」是两种权力。未声明即全无；`read_mode` 默认 `none`，内置插件也不会因为"受信任"而自动订阅
+
 ---
 
 ## 3. 通信矩阵

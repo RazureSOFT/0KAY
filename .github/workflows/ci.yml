@@ -17,6 +17,14 @@ jobs:
             core/go.sum
             mocr/go.sum
             gen/go/go.sum
+            obs/go.sum
+      - name: Lint, vet and test obs
+        working-directory: obs
+        run: |
+          test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+          go vet ./...
+          go test ./...
+          go test -race ./...
       - name: Lint, vet and test core
         working-directory: core
         run: |

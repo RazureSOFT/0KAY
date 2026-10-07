@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppSelect from './AppSelect.vue'
 
-const { locale } = useI18n()
+const { t } = useI18n()
 
 const props = defineProps<{ modelValue: string; options: string[] }>()
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
@@ -31,18 +31,18 @@ function move(index: number, delta: number) {
         <span class="models-rank">{{ index + 1 }}</span>
         <span class="models-name" :title="id">{{ id }}</span>
         <span class="models-actions">
-          <button type="button" :disabled="index === 0" :aria-label="locale === 'en' ? 'Higher priority' : '提高优先级'" @click="move(index, -1)">↑</button>
-          <button type="button" :disabled="index === list.length - 1" :aria-label="locale === 'en' ? 'Lower priority' : '降低优先级'" @click="move(index, 1)">↓</button>
-          <button type="button" :aria-label="locale === 'en' ? 'Remove' : '移除'" @click="remove(id)">✕</button>
+          <button type="button" :disabled="index === 0" :aria-label="t('models.higher')" @click="move(index, -1)">↑</button>
+          <button type="button" :disabled="index === list.length - 1" :aria-label="t('models.lower')" @click="move(index, 1)">↓</button>
+          <button type="button" :aria-label="t('common.remove')" @click="remove(id)">✕</button>
         </span>
       </li>
     </ol>
-    <p v-else class="models-empty">{{ locale === 'en' ? 'No fallback models — provider catalog order is used.' : '暂无备选模型，将按供应商目录顺序尝试。' }}</p>
+    <p v-else class="models-empty">{{ t('models.empty') }}</p>
     <AppSelect
       v-if="available.length"
       :options="available"
       model-value=""
-      :placeholder="locale === 'en' ? '+ Add fallback model…' : '+ 添加备选模型…'"
+      :placeholder="t('models.addPlaceholder')"
       @update:model-value="add"
     />
   </div>

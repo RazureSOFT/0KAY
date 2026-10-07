@@ -487,6 +487,161 @@ a settings section (edition, server, username, password, autopilot, …). It
 exposes a local HTTP tool API (default `127.0.0.1:8765`) that LIFE reaches
 through Core.
 
+### Messaging plugins (QQ / OneBot, …)
+
+Core owns a **chat-message bus**, so "reach the assistant where you already are"
+is a platform capability rather than a L.I.F.E-internal one. Any plugin can
+consume messages, send them, drive an adapter, or arbitrate whether the
+assistant should answer — all through one contract.
+
+```
+adapter plugin ──PublishInboundMessage──▶ Core bus ──SubscribeMessages──▶ consumers
+      ▲                                     │
+      └──────────SendMessage────────────────┘   (routed to the adapter's owner)
+                                              └──DecideInbound──▶ gate plugins
+```
+
+#### Declaring what you may do
+
+Everything is gated on `permissions.messages` in `manifest.json`. **Read and
+send are separate grants on purpose** — "read the user's QQ" and "speak as the
+bot" are different powers, and a plugin that only reacts to mentions should not
+also be able to broadcast.
+
+```json
+"permissions": {
+  "messages": {
+    "read_mode": "wake",
+    "read_adapters": ["qq-main"],
+    "read_conversations": ["group:123456"],
+    "send_adapters": ["qq-main"],
+    "publish_adapters": [],
+    "gate": true,
+    "gate_on_error": "abstain"
+  }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `read_mode` | `"none"` (default) · `"wake"` — only messages that already matched a wake rule (@-mention, configured keyword, continuing topic) · `"all"` — everything on the allowed adapters |
+| `read_adapters` | Adapter ids this plugin may read. Empty = **none** for a third-party plugin; `"*"` = any |
+| `read_conversations` | Further narrows to `"group:<id>"` / `"private:<id>"`. Empty = every conversation on the allowed adapters |
+| `send_adapters` | Adapters this plugin may send through. Empty = none; `"*"` = any |
+| `publish_adapters` | Adapters this plugin may report inbound messages for. Claiming one is also what makes Core route its outbound sends back to you |
+| `gate` | Ask to arbitrate messages before the assistant processes them (below) |
+| `gate_on_error` | What Core assumes when your gate cannot answer: `"abstain"` (default) or `"deny"` |
+
+`"wake"` is the recommended default for a consumer: it exposes exactly the
+traffic the bot was already going to act on, and nothing else. `"all"` is a
+privacy-sensitive grant — it reveals conversations the user never addressed to
+the bot.
+
+First-party plugins (`life`, `agent`, `webui`, `minecraft`, `mcp`, `pm`) may
+leave the adapter lists empty and get `"*"`. They still have to declare
+`read_mode`: being built-in must not silently subscribe a component to every
+message.
+
+#### Consuming messages
+
+```proto
+rpc SubscribeMessages(SubscribeMessagesRequest) returns (stream SubscribeMessagesResponse);
+```
+
+Open the stream and read `SubscribeMessagesResponse.message` (`InboundMessage`).
+Filtering happens on the publish path from **your** declared scope, so nothing
+you send here can widen what you receive. `replay_last` asks for up to that many
+of the most recent matching messages immediately, so a plugin that reconnects can
+catch up.
+
+`InboundMessage.is_wake` tells you whether the message already matched a wake
+rule. On `read_mode: "wake"` every message has it set; on `"all"` you see both
+and can use it to tell "the bot was addressed" from "someone was chatting".
+
+#### Sending messages
+
+```proto
+rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+rpc ListAdapters(ListAdaptersRequest) returns (ListAdaptersResponse);
+```
+
+`ListAdapters` reports the adapters you may use, with the conversations you may
+address, so you can discover valid `adapter_id` / `conversation` values before
+sending. `SendMessage` checks `send_adapters`, routes the send to the adapter's
+owning plugin, and returns its result. `adapter_id` may be left empty when
+exactly one adapter is available; with several it must be named.
+
+#### Providing an adapter
+
+A plugin that drives a platform (L.I.F.E for QQ/OneBot, or a third-party
+bridge) implements `plugin.v1.MessageService`:
+
+```proto
+service MessageService {
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+  rpc ListAdapters(ListAdaptersRequest) returns (ListAdaptersResponse);
+  rpc DecideInbound(DecideInboundRequest) returns (DecideInboundResponse);
+}
+```
+
+and reports what it observes with `PublishInboundMessage`. Register with the
+capability `"messaging"` (or `PLUGIN_TYPE_ADAPTER` / `PLUGIN_TYPE_MESSAGING`) so
+Core knows to ask you for your adapter list. Ownership is learned from the first
+`PublishInboundMessage` for an adapter, and refreshed by `ListAdapters`.
+
+`SendMessage` and `ListAdapters` are the only two you must implement.
+`DecideInbound` may be left unimplemented — Core treats `Unimplemented` as
+"abstain".
+
+#### Deciding whether the assistant processes a message
+
+This is the arbitration hook. Declare `"gate": true` and Core calls your
+`DecideInbound` for every message your read scope covers, **before** L.I.F.E
+runs its reply pipeline. You return one of:
+
+| `action` | Effect |
+|---|---|
+| `"abstain"` (default) | No opinion; the message's own wake verdict stands |
+| `"allow"` | The assistant should process it. On `read_mode: "all"` this can **force** a message the wake rule would have skipped |
+| `"deny"` | Hard veto — the assistant must not process it. Use this when you are answering the message yourself, or dropping it |
+
+Combination rule: **any `deny` wins outright**; otherwise any `allow` forces
+processing; otherwise the wake verdict stands. Deny beating allow is deliberate —
+if a later `allow` could cancel an earlier veto, which gate "won" would depend on
+map iteration order.
+
+A gate is only consulted for messages it could itself read: arbitrating traffic
+you are not allowed to see would let a plugin influence conversations it has no
+business knowing about.
+
+If your gate cannot be reached or exceeds its 2-second budget, Core applies
+`gate_on_error`. The default `"abstain"` is fail-open so a crashed gate cannot
+mute the assistant indefinitely; a moderation gate that would rather keep its
+veto declares `"deny"`.
+
+The verdict comes back to the adapter plugin on `PublishInboundMessageResponse`:
+
+| Field | Meaning |
+|---|---|
+| `should_process` | The verdict to apply. `false` = do not run your reply pipeline |
+| `decided_by` / `reason` | Which gate decided, and why. Empty when every gate abstained |
+
+A publisher that cannot reach Core at all should fall back to its own wake rule
+rather than read the silence as a veto.
+
+#### Inspecting the bus
+
+`GET /api/messaging` returns the adapters Core knows about, who owns each, the
+conversations seen on them, and delivery counters (`published` / `delivered` /
+`dropped` / `rejected`). It reports that a conversation exists, never what was
+said in it.
+
+`dropped` counts messages lost to a subscriber that fell more than 256
+deliveries behind — a slow plugin loses messages rather than stalling the
+adapter's read loop. `rejected` counts publishes and sends refused by the
+permission layer, which is the first thing to check when a plugin reports "I
+declared it but nothing arrives".
+
 ## 4. HTTP gateway surface
 
 The full per-endpoint request/response, auth and query details are in the

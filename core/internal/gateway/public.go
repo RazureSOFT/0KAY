@@ -2,7 +2,7 @@ package gateway
 
 import (
 	"bufio"
-	"log"
+	"fmt"
 	"net"
 	"net/http"
 	"net/url"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"0kay/core/internal/pairing"
+	"0kay/obs"
 )
 
 // Public wraps the authenticated handler chain with the browser-facing guards.
@@ -191,11 +192,79 @@ func (r *statusRecorder) Push(target string, opts *http.PushOptions) error {
 	return http.ErrNotSupported
 }
 
+// Unwrap lets http.ResponseController reach the underlying writer. Without it
+// every optional-capability check fails, including the SetWriteDeadline and
+// Flush calls that long-lived stream handlers depend on.
+func (r *statusRecorder) Unwrap() http.ResponseWriter { return r.ResponseWriter }
+
+// streamPaths are the long-lived responses whose measured duration is the length
+// of the stream rather than the cost of serving the request. Logging them as a
+// single "slow request" would be noise, so they are marked and logged at debug.
+var streamPaths = map[string]bool{
+	"/api/chat":                     true,
+	"/api/life/chat":                true,
+	"/api/tasks/events":             true,
+	"/api/agent/browser/stream":     true,
+	"/api/agent/computeruse/stream": true,
+	"/ws":                           true,
+}
+
+// obsLog is the access logger. It is a package var rather than an inline call so
+// tests can swap it, and so the component tag lives in one place.
+var obsLog = obs.Component("http")
+
+// logMiddleware gives every request an id, a root span and a structured access
+// log line. The id is taken from an inbound X-0kay-Request-Id when present so a
+// browser retry or the agent's own correlation id survives the hop into Core,
+// and is echoed back on the response.
 func logMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestID := strings.TrimSpace(r.Header.Get(RequestIDHeader))
+		if requestID == "" {
+			requestID = obs.NewID()
+		}
+		w.Header().Set(RequestIDHeader, requestID)
+
+		ctx, span := obs.StartWithID(r.Context(), requestID, r.Method+" "+r.URL.Path, obs.KindServer)
+		span.Attr("method", r.Method)
+		span.Attr("path", r.URL.Path)
+		if v := r.Header.Get(PluginHeader); v != "" {
+			span.Attr("plugin", v)
+		}
+		if v := r.Header.Get(pairing.PinHeader); v != "" {
+			// Presence only. The value is a credential and must never be logged.
+			span.Attr("pin", "presented")
+		}
+
 		started := time.Now()
 		recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
-		next.ServeHTTP(recorder, r)
-		log.Printf("%s %s %d %s", r.Method, r.URL.Path, recorder.status, time.Since(started).Round(time.Millisecond))
+		next.ServeHTTP(recorder, r.WithContext(ctx))
+		elapsed := time.Since(started)
+
+		status := recorder.status
+		attrs := []any{
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", status,
+			"duration_ms", elapsed.Milliseconds(),
+		}
+		if q := r.URL.RawQuery; q != "" {
+			attrs = append(attrs, "query", q)
+		}
+		switch {
+		case streamPaths[r.URL.Path]:
+			// Duration here is the stream length, not the handler cost.
+			span.Event("stream_closed", nil)
+			span.Attr("stream", "true")
+			obsLog.DebugContext(ctx, "stream closed", attrs...)
+		case status >= 500:
+			span.Fail(fmt.Errorf("http %d", status))
+			obsLog.ErrorContext(ctx, "request failed", attrs...)
+		case status >= 400:
+			obsLog.WarnContext(ctx, "request rejected", attrs...)
+		default:
+			obsLog.DebugContext(ctx, "request", attrs...)
+		}
+		span.End()
 	})
 }

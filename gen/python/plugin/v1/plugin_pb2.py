@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16plugin/v1/plugin.proto\x12\tplugin.v1\"\x98\x02\n\nPluginInfo\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n\x07version\x18\x02 \x01(\tR\x07version\x12 \n\x0b\x64\x65scription\x18\x03 \x01(\tR\x0b\x64\x65scription\x12\x16\n\x06\x61uthor\x18\x04 \x01(\tR\x06\x61uthor\x12\x36\n\x0bplugin_type\x18\x05 \x01(\x0e\x32\x15.plugin.v1.PluginTypeR\npluginType\x12=\n\x0bpermissions\x18\x06 \x01(\x0b\x32\x1b.plugin.v1.PluginPermissionR\x0bpermissions\x12+\n\x05tools\x18\x07 \x03(\x0b\x32\x15.plugin.v1.PluginToolR\x05tools\"\xa1\x01\n\nPluginTool\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12 \n\x0b\x64\x65scription\x18\x02 \x01(\tR\x0b\x64\x65scription\x12\'\n\x0fparameters_json\x18\x03 \x01(\tR\x0eparametersJson\x12\x1c\n\tdangerous\x18\x04 \x01(\x08R\tdangerous\x12\x16\n\x06scopes\x18\x05 \x03(\tR\x06scopes\"~\n\x0f\x43\x61llToolRequest\x12\x1b\n\tcaller_id\x18\x01 \x01(\tR\x08\x63\x61llerId\x12\x12\n\x04tool\x18\x02 \x01(\tR\x04tool\x12\x1b\n\targs_json\x18\x03 \x01(\tR\x08\x61rgsJson\x12\x1d\n\nsession_id\x18\x04 \x01(\tR\tsessionId\"Z\n\x10\x43\x61llToolResponse\x12\x18\n\x07success\x18\x01 \x01(\x08R\x07success\x12\x16\n\x06result\x18\x02 \x01(\tR\x06result\x12\x14\n\x05\x65rror\x18\x03 \x01(\tR\x05\x65rror\"n\n\x10PluginPermission\x12!\n\x0c\x61pi_requires\x18\x01 \x03(\tR\x0b\x61piRequires\x12\x1f\n\x0b\x61pi_exposes\x18\x02 \x03(\tR\napiExposes\x12\x16\n\x06\x65gress\x18\x03 \x03(\tR\x06\x65gress\"\x9e\x01\n\rSettingsField\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n\x04type\x18\x02 \x01(\tR\x04type\x12\x14\n\x05label\x18\x03 \x01(\tR\x05label\x12#\n\rdefault_value\x18\x04 \x01(\tR\x0c\x64\x65\x66\x61ultValue\x12\x18\n\x07options\x18\x05 \x03(\tR\x07options\x12\x12\n\x04help\x18\x06 \x01(\tR\x04help\"\xb5\x01\n\x0fSettingsSection\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n\x05label\x18\x02 \x01(\tR\x05label\x12\x12\n\x04icon\x18\x03 \x01(\tR\x04icon\x12\x14\n\x05order\x18\x04 \x01(\x05R\x05order\x12 \n\x0b\x64\x65scription\x18\x05 \x01(\tR\x0b\x64\x65scription\x12\x30\n\x06\x66ields\x18\x06 \x03(\x0b\x32\x18.plugin.v1.SettingsFieldR\x06\x66ields*\x8a\x01\n\nPluginType\x12\x1b\n\x17PLUGIN_TYPE_UNSPECIFIED\x10\x00\x12\x17\n\x13PLUGIN_TYPE_ADAPTER\x10\x01\x12\x17\n\x13PLUGIN_TYPE_PERSONA\x10\x02\x12\x14\n\x10PLUGIN_TYPE_TOOL\x10\x03\x12\x17\n\x13PLUGIN_TYPE_SERVICE\x10\x04*\x9d\x01\n\tTaskState\x12\x1a\n\x16TASK_STATE_UNSPECIFIED\x10\x00\x12\x16\n\x12TASK_STATE_PENDING\x10\x01\x12\x16\n\x12TASK_STATE_RUNNING\x10\x02\x12\x13\n\x0fTASK_STATE_DONE\x10\x03\x12\x15\n\x11TASK_STATE_FAILED\x10\x04\x12\x18\n\x14TASK_STATE_CANCELLED\x10\x05\x32R\n\x0bToolService\x12\x43\n\x08\x43\x61llTool\x12\x1a.plugin.v1.CallToolRequest\x1a\x1b.plugin.v1.CallToolResponseBV\n\x15\x61i.zero.kay.plugin.v1P\x01Z\x1b\x30kay/gen/plugin/v1;pluginv1\xa2\x02\x08ZKPlugin\xaa\x02\x12Zero.Kay.Plugin.V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16plugin/v1/plugin.proto\x12\tplugin.v1\"\x98\x02\n\nPluginInfo\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n\x07version\x18\x02 \x01(\tR\x07version\x12 \n\x0b\x64\x65scription\x18\x03 \x01(\tR\x0b\x64\x65scription\x12\x16\n\x06\x61uthor\x18\x04 \x01(\tR\x06\x61uthor\x12\x36\n\x0bplugin_type\x18\x05 \x01(\x0e\x32\x15.plugin.v1.PluginTypeR\npluginType\x12=\n\x0bpermissions\x18\x06 \x01(\x0b\x32\x1b.plugin.v1.PluginPermissionR\x0bpermissions\x12+\n\x05tools\x18\x07 \x03(\x0b\x32\x15.plugin.v1.PluginToolR\x05tools\"\xa1\x01\n\nPluginTool\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12 \n\x0b\x64\x65scription\x18\x02 \x01(\tR\x0b\x64\x65scription\x12\'\n\x0fparameters_json\x18\x03 \x01(\tR\x0eparametersJson\x12\x1c\n\tdangerous\x18\x04 \x01(\x08R\tdangerous\x12\x16\n\x06scopes\x18\x05 \x03(\tR\x06scopes\"~\n\x0f\x43\x61llToolRequest\x12\x1b\n\tcaller_id\x18\x01 \x01(\tR\x08\x63\x61llerId\x12\x12\n\x04tool\x18\x02 \x01(\tR\x04tool\x12\x1b\n\targs_json\x18\x03 \x01(\tR\x08\x61rgsJson\x12\x1d\n\nsession_id\x18\x04 \x01(\tR\tsessionId\"Z\n\x10\x43\x61llToolResponse\x12\x18\n\x07success\x18\x01 \x01(\x08R\x07success\x12\x16\n\x06result\x18\x02 \x01(\tR\x06result\x12\x14\n\x05\x65rror\x18\x03 \x01(\tR\x05\x65rror\"\x84\x03\n\x0eInboundMessage\x12\x1d\n\nadapter_id\x18\x01 \x01(\tR\tadapterId\x12\x1a\n\x08platform\x18\x02 \x01(\tR\x08platform\x12\"\n\x0c\x63onversation\x18\x03 \x01(\tR\x0c\x63onversation\x12\x12\n\x04kind\x18\x04 \x01(\tR\x04kind\x12\x17\n\x07peer_id\x18\x05 \x01(\tR\x06peerId\x12\x1b\n\tpeer_name\x18\x06 \x01(\tR\x08peerName\x12\x1b\n\tsender_id\x18\x07 \x01(\tR\x08senderId\x12\x1f\n\x0bsender_name\x18\x08 \x01(\tR\nsenderName\x12\x12\n\x04text\x18\t \x01(\tR\x04text\x12\x14\n\x05media\x18\n \x03(\tR\x05media\x12\x0e\n\x02\x61t\x18\x0b \x01(\tR\x02\x61t\x12\x1d\n\nmessage_id\x18\x0c \x01(\tR\tmessageId\x12\x17\n\x07is_wake\x18\r \x01(\x08R\x06isWake\x12\x19\n\x08raw_json\x18\x0e \x01(\tR\x07rawJson\"h\n\x14\x44\x65\x63ideInboundRequest\x12\x1b\n\tcaller_id\x18\x01 \x01(\tR\x08\x63\x61llerId\x12\x33\n\x07message\x18\x02 \x01(\x0b\x32\x19.plugin.v1.InboundMessageR\x07message\"G\n\x15\x44\x65\x63ideInboundResponse\x12\x16\n\x06\x61\x63tion\x18\x01 \x01(\tR\x06\x61\x63tion\x12\x16\n\x06reason\x18\x02 \x01(\tR\x06reason\"\x9e\x01\n\x12SendMessageRequest\x12\x1b\n\tcaller_id\x18\x01 \x01(\tR\x08\x63\x61llerId\x12\x1d\n\nadapter_id\x18\x02 \x01(\tR\tadapterId\x12\"\n\x0c\x63onversation\x18\x03 \x01(\tR\x0c\x63onversation\x12\x12\n\x04text\x18\x04 \x01(\tR\x04text\x12\x14\n\x05media\x18\x05 \x03(\tR\x05media\"d\n\x13SendMessageResponse\x12\x18\n\x07success\x18\x01 \x01(\x08R\x07success\x12\x1d\n\nmessage_id\x18\x02 \x01(\tR\tmessageId\x12\x14\n\x05\x65rror\x18\x03 \x01(\tR\x05\x65rror\"2\n\x13ListAdaptersRequest\x12\x1b\n\tcaller_id\x18\x01 \x01(\tR\x08\x63\x61llerId\"P\n\x14ListAdaptersResponse\x12\x38\n\x08\x61\x64\x61pters\x18\x01 \x03(\x0b\x32\x1c.plugin.v1.AdapterDescriptorR\x08\x61\x64\x61pters\"\xa8\x01\n\x11\x41\x64\x61pterDescriptor\x12\x1d\n\nadapter_id\x18\x01 \x01(\tR\tadapterId\x12\x1a\n\x08platform\x18\x02 \x01(\tR\x08platform\x12\x12\n\x04name\x18\x03 \x01(\tR\x04name\x12\x44\n\rconversations\x18\x04 \x03(\x0b\x32\x1e.plugin.v1.AdapterConversationR\rconversations\"a\n\x13\x41\x64\x61pterConversation\x12\"\n\x0c\x63onversation\x18\x01 \x01(\tR\x0c\x63onversation\x12\x12\n\x04kind\x18\x02 \x01(\tR\x04kind\x12\x12\n\x04name\x18\x03 \x01(\tR\x04name\"\x9e\x01\n\x12\x41\x64\x61pterSendRequest\x12\x1b\n\tcaller_id\x18\x01 \x01(\tR\x08\x63\x61llerId\x12\x1d\n\nadapter_id\x18\x02 \x01(\tR\tadapterId\x12\"\n\x0c\x63onversation\x18\x03 \x01(\tR\x0c\x63onversation\x12\x12\n\x04text\x18\x04 \x01(\tR\x04text\x12\x14\n\x05media\x18\x05 \x03(\tR\x05media\"d\n\x13\x41\x64\x61pterSendResponse\x12\x18\n\x07success\x18\x01 \x01(\x08R\x07success\x12\x1d\n\nmessage_id\x18\x02 \x01(\tR\tmessageId\x12\x14\n\x05\x65rror\x18\x03 \x01(\tR\x05\x65rror\"\xa5\x01\n\x10PluginPermission\x12!\n\x0c\x61pi_requires\x18\x01 \x03(\tR\x0b\x61piRequires\x12\x1f\n\x0b\x61pi_exposes\x18\x02 \x03(\tR\napiExposes\x12\x16\n\x06\x65gress\x18\x03 \x03(\tR\x06\x65gress\x12\x35\n\x08messages\x18\x04 \x01(\x0b\x32\x19.plugin.v1.PluginMessagesR\x08messages\"\x89\x02\n\x0ePluginMessages\x12\x1b\n\tread_mode\x18\x01 \x01(\tR\x08readMode\x12#\n\rread_adapters\x18\x02 \x03(\tR\x0creadAdapters\x12-\n\x12read_conversations\x18\x03 \x03(\tR\x11readConversations\x12#\n\rsend_adapters\x18\x04 \x03(\tR\x0csendAdapters\x12)\n\x10publish_adapters\x18\x05 \x03(\tR\x0fpublishAdapters\x12\x12\n\x04gate\x18\x06 \x01(\x08R\x04gate\x12\"\n\rgate_on_error\x18\x07 \x01(\tR\x0bgateOnError\"\x9e\x01\n\rSettingsField\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n\x04type\x18\x02 \x01(\tR\x04type\x12\x14\n\x05label\x18\x03 \x01(\tR\x05label\x12#\n\rdefault_value\x18\x04 \x01(\tR\x0c\x64\x65\x66\x61ultValue\x12\x18\n\x07options\x18\x05 \x03(\tR\x07options\x12\x12\n\x04help\x18\x06 \x01(\tR\x04help\"\xb5\x01\n\x0fSettingsSection\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n\x05label\x18\x02 \x01(\tR\x05label\x12\x12\n\x04icon\x18\x03 \x01(\tR\x04icon\x12\x14\n\x05order\x18\x04 \x01(\x05R\x05order\x12 \n\x0b\x64\x65scription\x18\x05 \x01(\tR\x0b\x64\x65scription\x12\x30\n\x06\x66ields\x18\x06 \x03(\x0b\x32\x18.plugin.v1.SettingsFieldR\x06\x66ields*\xa5\x01\n\nPluginType\x12\x1b\n\x17PLUGIN_TYPE_UNSPECIFIED\x10\x00\x12\x17\n\x13PLUGIN_TYPE_ADAPTER\x10\x01\x12\x17\n\x13PLUGIN_TYPE_PERSONA\x10\x02\x12\x14\n\x10PLUGIN_TYPE_TOOL\x10\x03\x12\x17\n\x13PLUGIN_TYPE_SERVICE\x10\x04\x12\x19\n\x15PLUGIN_TYPE_MESSAGING\x10\x05*\x9d\x01\n\tTaskState\x12\x1a\n\x16TASK_STATE_UNSPECIFIED\x10\x00\x12\x16\n\x12TASK_STATE_PENDING\x10\x01\x12\x16\n\x12TASK_STATE_RUNNING\x10\x02\x12\x13\n\x0fTASK_STATE_DONE\x10\x03\x12\x15\n\x11TASK_STATE_FAILED\x10\x04\x12\x18\n\x14TASK_STATE_CANCELLED\x10\x05\x32R\n\x0bToolService\x12\x43\n\x08\x43\x61llTool\x12\x1a.plugin.v1.CallToolRequest\x1a\x1b.plugin.v1.CallToolResponse2\x83\x02\n\x0eMessageService\x12L\n\x0bSendMessage\x12\x1d.plugin.v1.SendMessageRequest\x1a\x1e.plugin.v1.SendMessageResponse\x12O\n\x0cListAdapters\x12\x1e.plugin.v1.ListAdaptersRequest\x1a\x1f.plugin.v1.ListAdaptersResponse\x12R\n\rDecideInbound\x12\x1f.plugin.v1.DecideInboundRequest\x1a .plugin.v1.DecideInboundResponseBV\n\x15\x61i.zero.kay.plugin.v1P\x01Z\x1b\x30kay/gen/plugin/v1;pluginv1\xa2\x02\x08ZKPlugin\xaa\x02\x12Zero.Kay.Plugin.V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,10 +32,10 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'plugin.v1.plugin_pb2', _glo
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\025ai.zero.kay.plugin.v1P\001Z\0330kay/gen/plugin/v1;pluginv1\242\002\010ZKPlugin\252\002\022Zero.Kay.Plugin.V1'
-  _globals['_PLUGINTYPE']._serialized_start=1162
-  _globals['_PLUGINTYPE']._serialized_end=1300
-  _globals['_TASKSTATE']._serialized_start=1303
-  _globals['_TASKSTATE']._serialized_end=1460
+  _globals['_PLUGINTYPE']._serialized_start=2986
+  _globals['_PLUGINTYPE']._serialized_end=3151
+  _globals['_TASKSTATE']._serialized_start=3154
+  _globals['_TASKSTATE']._serialized_end=3311
   _globals['_PLUGININFO']._serialized_start=38
   _globals['_PLUGININFO']._serialized_end=318
   _globals['_PLUGINTOOL']._serialized_start=321
@@ -44,12 +44,38 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_CALLTOOLREQUEST']._serialized_end=610
   _globals['_CALLTOOLRESPONSE']._serialized_start=612
   _globals['_CALLTOOLRESPONSE']._serialized_end=702
-  _globals['_PLUGINPERMISSION']._serialized_start=704
-  _globals['_PLUGINPERMISSION']._serialized_end=814
-  _globals['_SETTINGSFIELD']._serialized_start=817
-  _globals['_SETTINGSFIELD']._serialized_end=975
-  _globals['_SETTINGSSECTION']._serialized_start=978
-  _globals['_SETTINGSSECTION']._serialized_end=1159
-  _globals['_TOOLSERVICE']._serialized_start=1462
-  _globals['_TOOLSERVICE']._serialized_end=1544
+  _globals['_INBOUNDMESSAGE']._serialized_start=705
+  _globals['_INBOUNDMESSAGE']._serialized_end=1093
+  _globals['_DECIDEINBOUNDREQUEST']._serialized_start=1095
+  _globals['_DECIDEINBOUNDREQUEST']._serialized_end=1199
+  _globals['_DECIDEINBOUNDRESPONSE']._serialized_start=1201
+  _globals['_DECIDEINBOUNDRESPONSE']._serialized_end=1272
+  _globals['_SENDMESSAGEREQUEST']._serialized_start=1275
+  _globals['_SENDMESSAGEREQUEST']._serialized_end=1433
+  _globals['_SENDMESSAGERESPONSE']._serialized_start=1435
+  _globals['_SENDMESSAGERESPONSE']._serialized_end=1535
+  _globals['_LISTADAPTERSREQUEST']._serialized_start=1537
+  _globals['_LISTADAPTERSREQUEST']._serialized_end=1587
+  _globals['_LISTADAPTERSRESPONSE']._serialized_start=1589
+  _globals['_LISTADAPTERSRESPONSE']._serialized_end=1669
+  _globals['_ADAPTERDESCRIPTOR']._serialized_start=1672
+  _globals['_ADAPTERDESCRIPTOR']._serialized_end=1840
+  _globals['_ADAPTERCONVERSATION']._serialized_start=1842
+  _globals['_ADAPTERCONVERSATION']._serialized_end=1939
+  _globals['_ADAPTERSENDREQUEST']._serialized_start=1942
+  _globals['_ADAPTERSENDREQUEST']._serialized_end=2100
+  _globals['_ADAPTERSENDRESPONSE']._serialized_start=2102
+  _globals['_ADAPTERSENDRESPONSE']._serialized_end=2202
+  _globals['_PLUGINPERMISSION']._serialized_start=2205
+  _globals['_PLUGINPERMISSION']._serialized_end=2370
+  _globals['_PLUGINMESSAGES']._serialized_start=2373
+  _globals['_PLUGINMESSAGES']._serialized_end=2638
+  _globals['_SETTINGSFIELD']._serialized_start=2641
+  _globals['_SETTINGSFIELD']._serialized_end=2799
+  _globals['_SETTINGSSECTION']._serialized_start=2802
+  _globals['_SETTINGSSECTION']._serialized_end=2983
+  _globals['_TOOLSERVICE']._serialized_start=3313
+  _globals['_TOOLSERVICE']._serialized_end=3395
+  _globals['_MESSAGESERVICE']._serialized_start=3398
+  _globals['_MESSAGESERVICE']._serialized_end=3657
 # @@protoc_insertion_point(module_scope)

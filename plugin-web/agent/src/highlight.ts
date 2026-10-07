@@ -79,3 +79,24 @@ export function highlightCode(code: string, path?: string): string {
     return hljs.highlightAuto(value).value
   } catch { return escapeHtml(value) }
 }
+
+// Fence info-strings use language names (`typescript`, `golang`, `c++`) while
+// files use extensions, so both need their own alias table before falling back
+// to auto-detection.
+const FENCE_ALIAS: Record<string, string> = {
+  javascript: 'javascript', node: 'javascript', typescript: 'typescript',
+  python: 'python', golang: 'go', shell: 'bash', console: 'bash', terminal: 'bash',
+  html: 'xml', vue: 'xml', svelte: 'xml', yml: 'yaml', 'c++': 'cpp', 'c#': 'csharp',
+  text: 'plaintext', txt: 'plaintext', output: 'plaintext',
+}
+
+export function highlightFence(code: string, lang?: string): string {
+  const value = code ?? ''
+  if (!value) return ''
+  const name = FENCE_ALIAS[(lang || '').toLowerCase()] || (lang && hljs.getLanguage(lang) ? lang : '')
+  try {
+    if (name && name !== 'plaintext' && hljs.getLanguage(name)) return hljs.highlight(value, { language: name, ignoreIllegals: true }).value
+    if (name === 'plaintext') return escapeHtml(value)
+    return hljs.highlightAuto(value).value
+  } catch { return escapeHtml(value) }
+}

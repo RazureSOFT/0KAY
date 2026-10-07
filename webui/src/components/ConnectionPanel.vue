@@ -12,7 +12,10 @@
  * scan and connect with no manual typing. Editing the host pins it.
  */
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import qrcodegen from '../vendor/qrcodegen'
+
+const { t } = useI18n()
 
 const STORAGE_KEY = '0kay.connection.qr.v2'
 
@@ -134,55 +137,53 @@ async function copyLink() {
 
 <template>
   <div class="content-card">
-    <h2>连接手机</h2>
+    <h2>{{ t('connection.title') }}</h2>
     <p class="card-desc">
-      用 0KAY 安卓 App 扫描下方二维码即可连接。默认使用本机局域网 IP；若通过 FRP /
-      反向代理暴露，请把下方 <strong>对外主机 / 端口 / TLS</strong> 改成外网可达地址
-      （Core 本身无需修改）。Token / PIN 可留空（可信局域网）；公网访问请填写以便 App 直接认证。
+      {{ t('connection.lead') }}
     </p>
 
     <div class="connection-grid">
       <div class="connection-form">
         <div class="field">
-          <label>对外主机 / IP（默认局域网 IP）</label>
+          <label>{{ t('connection.remoteHost') }}</label>
           <input
             v-model="host"
             class="input"
-            placeholder="192.168.1.10 或 your.domain.com"
+            :placeholder="t('connection.hostPlaceholder')"
             @input="hostEdited = true"
           />
         </div>
         <div class="field">
-          <label>端口</label>
+          <label>{{ t('connection.port') }}</label>
           <input v-model="port" class="input" inputmode="numeric" placeholder="8080" />
         </div>
         <label class="toggle-label">
           <input type="checkbox" v-model="tls" />
           <span class="toggle-slider"></span>
-          <span>使用 TLS (https / wss)</span>
+          <span>{{ t('connection.useTls') }}</span>
         </label>
         <div class="field">
-          <label>API Token（可选）</label>
-          <input v-model="token" class="input" type="password" placeholder="留空则使用可信局域网" autocomplete="off" />
+          <label>{{ t('connection.token') }}</label>
+          <input v-model="token" class="input" type="password" :placeholder="t('connection.tokenPlaceholder')" autocomplete="off" />
         </div>
         <div class="field">
-          <label>访问 PIN（可选）</label>
-          <input v-model="pin" class="input" type="password" placeholder="敏感操作 PIN" autocomplete="off" />
+          <label>{{ t('connection.pin') }}</label>
+          <input v-model="pin" class="input" type="password" :placeholder="t('connection.pinPlaceholder')" autocomplete="off" />
         </div>
         <div class="field">
-          <label>设备显示名称（可选）</label>
+          <label>{{ t('connection.deviceName') }}</label>
           <input v-model="name" class="input" placeholder="0KAY" />
         </div>
 
         <div class="helper-text">
-          连接地址：<code>{{ baseUrl }}</code>
+          {{ t('connection.address') }}<code>{{ baseUrl }}</code>
           <span v-if="coreId"> · Core: {{ coreId }}</span>
-          <span v-if="lanEnabled"> · LAN 模式</span>
+          <span v-if="lanEnabled">{{ t('connection.lanMode') }}</span>
         </div>
 
         <div class="actions-row">
           <button class="btn btn-tonal" type="button" @click="copyLink">
-            {{ copied ? '已复制' : '复制连接串' }}
+            {{ copied ? t('common.copied') : t('connection.copyLink') }}
           </button>
         </div>
       </div>
@@ -216,13 +217,21 @@ async function copyLink() {
 <style scoped>
 .connection-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) auto;
+  /* Both tracks must be shrinkable. The old `minmax(280px, 1fr) auto` refused
+     to go below 280px + 264px, and `.content-card { overflow: hidden }`
+     (settings.css) clipped the QR instead of scrolling — the code became
+     unscannable on any viewport where the content column is under ~570px,
+     which is every laptop width between 801px and ~1100px. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 264px);
   gap: 24px;
   align-items: start;
 }
-@media (max-width: 760px) {
+/* Stack well before the settings sidebar collapses (settings.css: 800px):
+   between 801px and ~1000px the content column is only ~470-640px wide, so a
+   dedicated QR column would squeeze the form under 200px. */
+@media (max-width: 1000px) {
   .connection-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 .connection-form .field {
@@ -238,13 +247,23 @@ async function copyLink() {
   background: #fff;
   border-radius: 8px;
   padding: 6px;
+  /* The SVG carries width/height="264" attributes for intrinsic sizing; the
+     viewBox keeps the aspect ratio when the column is narrower. */
+  width: 100%;
+  max-width: 264px;
+  height: auto;
 }
 .connection-link {
-  max-width: 280px;
+  max-width: 100%;
   word-break: break-all;
   font-size: 11px;
   opacity: 0.7;
   text-align: center;
+}
+/* A long hostname / IPv6 literal / core id has no break opportunity of its own
+   and would push the card wider than its column. */
+.helper-text {
+  overflow-wrap: anywhere;
 }
 .toggle-label {
   display: flex;

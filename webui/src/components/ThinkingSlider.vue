@@ -2,10 +2,10 @@
 import {computed,ref,watch,nextTick,onMounted,onUnmounted} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {uid} from '../uid'
-const {locale}=useI18n();const en=computed(()=>locale.value==='en')
+const { t }=useI18n()
 const props=defineProps<{modelValue:number;disabled?:boolean}>()
 const emit=defineEmits<{'update:modelValue':[value:number]}>()
-const stops=computed(()=>[{value:0,label:en.value?'Off':'关闭思考'},{value:20,label:en.value?'Low':'低'},{value:50,label:en.value?'Medium':'中'},{value:75,label:en.value?'High':'高'},{value:100,label:en.value?'Max':'最高'}])
+const stops=computed(()=>[{value:0,label:t('thinking.levelOff')},{value:20,label:t('thinking.levelLow')},{value:50,label:t('thinking.levelMedium')},{value:75,label:t('thinking.levelHigh')},{value:100,label:t('thinking.levelMax')}])
 const index=computed(()=>props.modelValue===0?0:props.modelValue<35?1:props.modelValue<62.5?2:props.modelValue<87.5?3:4)
 const opened=ref(false),position=ref<Record<string,string>>({}),trigger=ref<HTMLButtonElement|null>(null),panel=ref<HTMLElement|null>(null),range=ref<HTMLInputElement|null>(null)
 const dragValue=ref(index.value*25),pulse=ref(false)
@@ -27,17 +27,17 @@ onUnmounted(()=>{clearTimeout(timer);document.removeEventListener('pointerdown',
 </script>
 <template>
  <div class="thinking-control" :class="{full,pulse}">
-  <span class="thinking-caption">{{ en?'Thinking effort':'思考强度' }}</span>
-  <button ref="trigger" type="button" class="thinking-trigger" :disabled="disabled" aria-label="思考强度" aria-haspopup="dialog" :aria-expanded="opened" :aria-controls="opened?id:undefined" @click="toggle" @keydown.esc="close"><span>{{ full?'✦ ':'' }}{{ stops[index].label }}</span><span aria-hidden="true">⌄</span></button>
-  <Teleport to="body"><Transition name="thinking-menu"><section v-if="opened" :id="id" ref="panel" class="thinking-popover" :class="{full,pulse}" :style="position" role="dialog" aria-label="调整思考强度" @keydown.esc.prevent.stop="close">
-   <header><strong>{{ en?'Thinking effort':'思考强度' }}</strong><output>{{ full?'✦ ':'' }}{{ stops[index].label }}</output></header>
+  <span class="thinking-caption">{{ t('thinking.effort') }}</span>
+  <button ref="trigger" type="button" class="thinking-trigger" :disabled="disabled" :aria-label="t('thinking.effort')" aria-haspopup="dialog" :aria-expanded="opened" :aria-controls="opened?id:undefined" @click="toggle" @keydown.esc="close"><span>{{ full?'✦ ':'' }}{{ stops[index].label }}</span><span aria-hidden="true">⌄</span></button>
+  <Teleport to="body"><Transition name="thinking-menu"><section v-if="opened" :id="id" ref="panel" class="thinking-popover" :class="{full,pulse}" :style="position" role="dialog" :aria-label="t('thinking.adjust')" @keydown.esc.prevent.stop="close">
+   <header><strong>{{ t('thinking.effort') }}</strong><output>{{ full?'✦ ':'' }}{{ stops[index].label }}</output></header>
    <div class="thinking-track" :style="{'--intensity':`${dragValue}%`}">
     <div class="thinking-capsule" aria-hidden="true"><div class="thinking-fill"/><span v-for="(_,i) in stops" :key="i" class="thinking-tick" :class="{passed:dragValue>=i*25}" :style="{left:`${i*25}%`}"/></div>
-    <input ref="range" type="range" min="0" max="100" step="0.1" :value="dragValue" aria-label="思考强度滑块" :aria-valuetext="stops[index].label" @input="update" @change="dragValue=index*25" @keydown.home.prevent="select(0)" @keydown.end.prevent="select(4)" @keydown.arrow-right.prevent="select(Math.min(4,index+1))" @keydown.arrow-left.prevent="select(Math.max(0,index-1))"/><span v-if="full" class="energy-wave" aria-hidden="true" />
+    <input ref="range" type="range" min="0" max="100" step="0.1" :value="dragValue" :aria-label="t('thinking.slider')" :aria-valuetext="stops[index].label" @input="update" @change="dragValue=index*25" @keydown.home.prevent="select(0)" @keydown.end.prevent="select(4)" @keydown.arrow-right.prevent="select(Math.min(4,index+1))" @keydown.arrow-left.prevent="select(Math.max(0,index-1))"/><span v-if="full" class="energy-wave" aria-hidden="true" />
    </div>
    <div class="thinking-stops"><button v-for="(stop,i) in stops" :key="stop.value" type="button" :class="{selected:index===i}" :aria-pressed="index===i" @click="select(i)">{{ stop.label }}</button></div>
-   <p>{{ en?(index===0?'Disable model reasoning':full?'Maximum effort':'Drag to adjust; release to snap to a level'):(index===0?'不启用模型思考模式':full?'全力思考 · 已达到最高档':'拖动滑块调整，松开后定位到对应档位') }}</p>
-   <p class="thinking-provider-note">{{ en?'Actual reasoning controls depend on the selected provider. Max may map to High.':'实际推理参数取决于供应商；最高档可能映射为高档。' }}</p>
+   <p>{{ index === 0 ? t('thinking.disable') : full ? t('thinking.max') : t('thinking.drag') }}</p>
+   <p class="thinking-provider-note">{{ t('thinking.providerNote') }}</p>
   </section></Transition></Teleport>
  </div>
 </template>

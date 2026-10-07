@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 
 // WEBUI_PORT, WEBUI_HOST, CORE_HTTP_ADDR come from runtime-env.json when
@@ -22,6 +22,14 @@ const sameOrigin = (proxy: any) => {
 
 export default defineConfig({
   plugins: [vue()],
+  test: {
+    // Vitest stubs CSS modules by default, which makes `import css from
+    // './x.css?raw'` yield an empty string. One test asserts that every `btn-*`
+    // variant used in the app has a rule in the design system — the check that
+    // catches a button silently rendering untitled because it names a variant
+    // that does not exist. That needs the stylesheet as text.
+    css: true,
+  },
   build: {
     rollupOptions: {
       output: {

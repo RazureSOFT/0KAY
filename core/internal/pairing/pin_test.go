@@ -162,9 +162,107 @@ func TestNodeFetchIsNotABrowser(t *testing.T) {
 	}
 	// A browser tab with no session is stopped at the door (401) — it cannot
 	// even reach the sensitive-action check, let alone dismiss past it.
-	for _, header := range []string{"Sec-Fetch-Site", "Origin", "Referer"} {
-		if code := call(header, "http://localhost:3000/"); code != http.StatusUnauthorized {
+	// Sec-Fetch-Site carries one of four enum values, not a URL; a caller that
+	// sets it to anything else is treated as a machine client.
+	for header, value := range map[string]string{
+		"Sec-Fetch-Site": "same-origin",
+		"Origin":         "http://localhost:3000/",
+		"Referer":        "http://localhost:3000/",
+	} {
+		if code := call(header, value); code != http.StatusUnauthorized {
 			t.Fatalf("browser %s = %d, want 401", header, code)
+		}
+	}
+	// A value outside the enum is not browser evidence, so it must not be
+	// mistaken for one.
+	if code := call("Sec-Fetch-Site", "http://localhost:3000/"); code != http.StatusOK {
+		t.Fatalf("bogus Sec-Fetch-Site = %d, want 200 (treated as machine)", code)
+	}
+	// The owner's session cookie is the other reliable browser signal.
+	withCookie := func() int {
+		req := httptest.NewRequest(http.MethodGet, "/api/providers/credentials", nil)
+		req.RemoteAddr = "127.0.0.1:50000"
+		req.AddCookie(&http.Cookie{Name: SessionCookie, Value: "whatever"})
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+		return w.Code
+	}
+	if code := withCookie(); code != http.StatusUnauthorized {
+		t.Fatalf("session-cookie request = %d, want 401", code)
+	}
+}
+
+// The PIN gate hands out an exemption to trusted peers that do not look like a
+// browser, so its browser test must fail closed: anything it cannot positively
+// identify as a browser is challenged rather than waved through.
+func TestBrowserDetectionFailsClosed(t *testing.T) {
+	cases := []struct {
+		name    string
+		mutate  func(*http.Request)
+		browser bool
+	}{
+		{"bare undici fetch", func(r *http.Request) { r.Header.Set("Sec-Fetch-Mode", "cors") }, false},
+		{"forged Sec-Fetch-Site", func(r *http.Request) { r.Header.Set("Sec-Fetch-Site", "yes please") }, false},
+		{"empty Sec-Fetch-Site", func(r *http.Request) { r.Header.Set("Sec-Fetch-Site", "") }, false},
+		{"same-origin", func(r *http.Request) { r.Header.Set("Sec-Fetch-Site", "same-origin") }, true},
+		{"cross-site", func(r *http.Request) { r.Header.Set("Sec-Fetch-Site", "cross-site") }, true},
+		{"uppercase enum", func(r *http.Request) { r.Header.Set("Sec-Fetch-Site", "Same-Origin") }, true},
+		{"origin only", func(r *http.Request) { r.Header.Set("Origin", "http://x/") }, true},
+		{"session cookie", func(r *http.Request) { r.AddCookie(&http.Cookie{Name: SessionCookie, Value: "v"}) }, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			tc.mutate(req)
+			if got := looksLikeBrowser(req); got != tc.browser {
+				t.Fatalf("looksLikeBrowser = %v, want %v", got, tc.browser)
+			}
+		})
+	}
+}
+
+// The gate is a literal list of paths, so a route addressed with a path
+// parameter is easy to forget: the parameterised ones below were all ungated
+// while their bare collections were protected. Lock the coverage in.
+func TestSensitiveRequestCoversParameterisedRoutes(t *testing.T) {
+	gated := []struct{ method, path string }{
+		{http.MethodPost, "/api/agent/sessions"},
+		{http.MethodPost, "/api/agent/sessions/fork"},
+		{http.MethodPatch, "/api/agent/sessions/abc123"},
+		{http.MethodDelete, "/api/agent/sessions/abc123"},
+		{http.MethodPost, "/api/tasks"},
+		{http.MethodPost, "/api/tasks/t1/cancel"},
+		{http.MethodDelete, "/api/usage"},
+		{http.MethodDelete, "/api/usage/clear"},
+		{http.MethodPost, "/api/chat"},
+		{http.MethodPost, "/api/life/chat"},
+		{http.MethodPost, "/api/tools/call"},
+		{http.MethodPost, "/api/models/fetch"},
+		{http.MethodPost, "/api/update/apply"},
+		{http.MethodPut, "/api/settings/mocr"},
+		{http.MethodPost, "/api/live2d"},
+	}
+	for _, tc := range gated {
+		if !sensitiveRequest(httptest.NewRequest(tc.method, tc.path, nil)) {
+			t.Errorf("%s %s is not PIN-gated", tc.method, tc.path)
+		}
+	}
+
+	// Reads and per-turn bookkeeping stay exempt: gating these would either nag
+	// the user on every poll or cost a bcrypt verification per chat turn.
+	open := []struct{ method, path string }{
+		{http.MethodGet, "/api/providers"},
+		{http.MethodGet, "/api/agent/sessions"},
+		{http.MethodGet, "/api/agent/sessions/search"},
+		{http.MethodGet, "/api/tasks"},
+		{http.MethodGet, "/api/tasks/events"},
+		{http.MethodGet, "/api/usage"},
+		{http.MethodPost, "/api/usage/record"},
+		{http.MethodGet, "/health"},
+	}
+	for _, tc := range open {
+		if sensitiveRequest(httptest.NewRequest(tc.method, tc.path, nil)) {
+			t.Errorf("%s %s should not be PIN-gated", tc.method, tc.path)
 		}
 	}
 }

@@ -2,8 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-const { locale } = useI18n()
-const en = computed(() => locale.value === 'en')
+const { t } = useI18n()
 
 type TaskRow = { task_id?: string; prompt?: string; state?: string }
 
@@ -181,7 +180,7 @@ onUnmounted(() => {
     <Transition name="cu-fab">
       <button v-if="active && !visible" class="cu-fab" @click="open">
         <span class="cu-fab-dot"></span>
-        {{ en ? 'AI is using the computer' : 'AI 正在操作电脑' }}
+        {{ t('computerUse.inUse') }}
       </button>
     </Transition>
     <Transition name="cu-win">
@@ -192,27 +191,27 @@ onUnmounted(() => {
         :class="{ dragging, resizing }"
         :style="style"
         role="dialog"
-        :aria-label="en ? 'AI computer use' : 'AI 操作电脑'"
+        :aria-label="t('computerUse.ariaInUse')"
         @pointermove="onDrag"
         @pointerup="endDrag"
         @pointercancel="endDrag"
       >
         <header class="cu-head" @pointerdown="startDrag">
           <span class="cu-dot" :class="{ live: active }"></span>
-          <span class="cu-title">{{ en ? 'AI is using the computer' : 'AI 正在操作电脑' }}</span>
-          <button class="cu-close" :title="en ? 'Close' : '关闭'" :aria-label="en ? 'Close' : '关闭'" @click="close">✕</button>
+          <span class="cu-title">{{ t('computerUse.inUse') }}</span>
+          <button class="cu-close" :title="t('common.close')" :aria-label="t('common.close')" @click="close">✕</button>
         </header>
         <div class="cu-body">
-          <img v-if="streamSrc" class="cu-video" :src="streamSrc" :alt="en ? 'Live desktop' : '实时桌面'" />
+          <img v-if="streamSrc" class="cu-video" :src="streamSrc" :alt="t('computerUse.liveDesktop')" />
           <div v-else class="cu-placeholder">
-            <p v-if="status === 'off'">{{ en ? 'Computer use is off for this agent.' : '该 Agent 未开启电脑操作。' }}</p>
-            <p v-else-if="status === 'unknown'">{{ en ? 'No reachable agent yet.' : '暂时没有可用的 Agent。' }}</p>
-            <p v-else>{{ en ? 'Waiting for the desktop…' : '等待桌面画面…' }}</p>
+            <p v-if="status === 'off'">{{ t('computerUse.off') }}</p>
+            <p v-else-if="status === 'unknown'">{{ t('computerUse.noAgent') }}</p>
+            <p v-else>{{ t('computerUse.waiting') }}</p>
           </div>
         </div>
         <span
           class="cu-resize"
-          :title="en ? 'Resize' : '调整大小'"
+          :title="t('computerUse.resize')"
           @pointerdown="startResize"
           @pointermove="onResize"
           @pointerup="endResize"
@@ -258,8 +257,8 @@ onUnmounted(() => {
   background: var(--md-outline);
 }
 .cu-dot.live {
-  background: #22c55e;
-  box-shadow: 0 0 0 4px #22c55e33;
+  background: var(--md-success);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--md-success) 20%, transparent);
   animation: cu-pulse 1.6s var(--ease-emphasized) infinite;
 }
 .cu-title {
@@ -340,7 +339,7 @@ onUnmounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #22c55e;
+  background: var(--md-success);
   animation: cu-pulse 1.6s var(--ease-emphasized) infinite;
 }
 @keyframes cu-pulse {

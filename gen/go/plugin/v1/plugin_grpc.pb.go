@@ -125,3 +125,229 @@ var ToolService_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "plugin/v1/plugin.proto",
 }
+
+const (
+	MessageService_SendMessage_FullMethodName   = "/plugin.v1.MessageService/SendMessage"
+	MessageService_ListAdapters_FullMethodName  = "/plugin.v1.MessageService/ListAdapters"
+	MessageService_DecideInbound_FullMethodName = "/plugin.v1.MessageService/DecideInbound"
+)
+
+// MessageServiceClient is the client API for MessageService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// MessageService is implemented by plugins that drive a chat adapter. Core
+// routes an outbound send to the adapter's owning plugin here — the plugin that
+// claimed the adapter via CoreService.PublishInboundMessage or advertised it
+// with ListAdapters.
+//
+// Naming note: `SendMessageRequest` / `ListAdaptersRequest` also exist in
+// `core.v1`, because the same verb is seen from two directions. The package
+// says which side you are on — `plugin.v1` is the adapter receiving a delivery,
+// `core.v1` is a plugin asking Core to deliver. Generated bindings are
+// package-qualified (`pluginv1.SendMessageRequest` vs `corev1.SendMessageRequest`).
+type MessageServiceClient interface {
+	// SendMessage delivers one outbound message through an adapter this plugin
+	// owns.
+	SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
+	// ListAdapters advertises the adapters this plugin drives, so Core can offer
+	// them to subscribers before any message has arrived on them. Optional: a
+	// plugin that only reports inbound traffic can leave this unimplemented, and
+	// Core will learn its adapters from the first PublishInboundMessage.
+	ListAdapters(ctx context.Context, in *ListAdaptersRequest, opts ...grpc.CallOption) (*ListAdaptersResponse, error)
+	// DecideInbound arbitrates one inbound message before the default assistant
+	// processes it. Core calls this only on plugins that declared
+	// permissions.messages.gate, and only for messages their read scope covers.
+	//
+	// Optional in practice: a plugin without `gate` is never called, and one that
+	// declares it but leaves this unimplemented answers Unimplemented, which Core
+	// treats as "abstain".
+	DecideInbound(ctx context.Context, in *DecideInboundRequest, opts ...grpc.CallOption) (*DecideInboundResponse, error)
+}
+
+type messageServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewMessageServiceClient(cc grpc.ClientConnInterface) MessageServiceClient {
+	return &messageServiceClient{cc}
+}
+
+func (c *messageServiceClient) SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendMessageResponse)
+	err := c.cc.Invoke(ctx, MessageService_SendMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) ListAdapters(ctx context.Context, in *ListAdaptersRequest, opts ...grpc.CallOption) (*ListAdaptersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAdaptersResponse)
+	err := c.cc.Invoke(ctx, MessageService_ListAdapters_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) DecideInbound(ctx context.Context, in *DecideInboundRequest, opts ...grpc.CallOption) (*DecideInboundResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DecideInboundResponse)
+	err := c.cc.Invoke(ctx, MessageService_DecideInbound_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// MessageServiceServer is the server API for MessageService service.
+// All implementations must embed UnimplementedMessageServiceServer
+// for forward compatibility.
+//
+// MessageService is implemented by plugins that drive a chat adapter. Core
+// routes an outbound send to the adapter's owning plugin here — the plugin that
+// claimed the adapter via CoreService.PublishInboundMessage or advertised it
+// with ListAdapters.
+//
+// Naming note: `SendMessageRequest` / `ListAdaptersRequest` also exist in
+// `core.v1`, because the same verb is seen from two directions. The package
+// says which side you are on — `plugin.v1` is the adapter receiving a delivery,
+// `core.v1` is a plugin asking Core to deliver. Generated bindings are
+// package-qualified (`pluginv1.SendMessageRequest` vs `corev1.SendMessageRequest`).
+type MessageServiceServer interface {
+	// SendMessage delivers one outbound message through an adapter this plugin
+	// owns.
+	SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error)
+	// ListAdapters advertises the adapters this plugin drives, so Core can offer
+	// them to subscribers before any message has arrived on them. Optional: a
+	// plugin that only reports inbound traffic can leave this unimplemented, and
+	// Core will learn its adapters from the first PublishInboundMessage.
+	ListAdapters(context.Context, *ListAdaptersRequest) (*ListAdaptersResponse, error)
+	// DecideInbound arbitrates one inbound message before the default assistant
+	// processes it. Core calls this only on plugins that declared
+	// permissions.messages.gate, and only for messages their read scope covers.
+	//
+	// Optional in practice: a plugin without `gate` is never called, and one that
+	// declares it but leaves this unimplemented answers Unimplemented, which Core
+	// treats as "abstain".
+	DecideInbound(context.Context, *DecideInboundRequest) (*DecideInboundResponse, error)
+	mustEmbedUnimplementedMessageServiceServer()
+}
+
+// UnimplementedMessageServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedMessageServiceServer struct{}
+
+func (UnimplementedMessageServiceServer) SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendMessage not implemented")
+}
+func (UnimplementedMessageServiceServer) ListAdapters(context.Context, *ListAdaptersRequest) (*ListAdaptersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAdapters not implemented")
+}
+func (UnimplementedMessageServiceServer) DecideInbound(context.Context, *DecideInboundRequest) (*DecideInboundResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DecideInbound not implemented")
+}
+func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}
+func (UnimplementedMessageServiceServer) testEmbeddedByValue()                        {}
+
+// UnsafeMessageServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to MessageServiceServer will
+// result in compilation errors.
+type UnsafeMessageServiceServer interface {
+	mustEmbedUnimplementedMessageServiceServer()
+}
+
+func RegisterMessageServiceServer(s grpc.ServiceRegistrar, srv MessageServiceServer) {
+	// If the following call panics, it indicates UnimplementedMessageServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&MessageService_ServiceDesc, srv)
+}
+
+func _MessageService_SendMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).SendMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_SendMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).SendMessage(ctx, req.(*SendMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_ListAdapters_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAdaptersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).ListAdapters(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_ListAdapters_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).ListAdapters(ctx, req.(*ListAdaptersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_DecideInbound_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DecideInboundRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).DecideInbound(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_DecideInbound_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).DecideInbound(ctx, req.(*DecideInboundRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var MessageService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "plugin.v1.MessageService",
+	HandlerType: (*MessageServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "SendMessage",
+			Handler:    _MessageService_SendMessage_Handler,
+		},
+		{
+			MethodName: "ListAdapters",
+			Handler:    _MessageService_ListAdapters_Handler,
+		},
+		{
+			MethodName: "DecideInbound",
+			Handler:    _MessageService_DecideInbound_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "plugin/v1/plugin.proto",
+}

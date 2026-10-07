@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
@@ -30,8 +31,29 @@ function injectCss(styleId) {
   }
 }
 
+/**
+ * Copy the plugin's string resources next to its bundles.
+ *
+ * Core serves them from CORE_DATA_DIR/plugin-ui/minecraft/strings, the same place
+ * the ESM bundles land, and the WebUI fetches them from /api/plugins/minecraft/strings.
+ * This has to run *after* the bundle is written: `emptyOutDir: true` wipes the
+ * output directory at the start of every build, so anything placed there earlier
+ * would be deleted. The source stays in plugin-web/minecraft/strings and is tracked.
+ */
+function copyStrings() {
+  return {
+    name: 'copy-strings',
+    apply: 'build',
+    async closeBundle() {
+      const from = path.join(root, 'strings')
+      if (!fs.existsSync(from)) return
+      await fs.promises.cp(from, path.join(outDir, 'strings'), { recursive: true })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [vue(), injectCss('minecraft-plugin-style')],
+  plugins: [vue(), injectCss('minecraft-plugin-style'), copyStrings()],
   build: {
     outDir,
     emptyOutDir: true,
@@ -42,7 +64,7 @@ export default defineConfig({
       fileName: () => 'index.js',
     },
     rollupOptions: {
-      external: ['vue'],
+      external: ['vue', '@0kay/host'],
       output: {
         entryFileNames: 'index.js',
         chunkFileNames: 'assets/[name]-[hash].js',

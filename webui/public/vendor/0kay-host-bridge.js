@@ -10,7 +10,8 @@ if (!H) {
 export default H
 
 export const {
-  ApiError, readApiResponse, apiGet, apiSend, apiPost, apiPut, apiPatch, apiDelete,
+  ApiError, SSEError, readApiResponse, apiGet, apiSend, apiPost, apiPut, apiPatch, apiDelete,
+  streamSSE, readSSE,
   LOCALES, i18n, setLanguage, getLanguage,
   uid,
   THEME_STYLE_PREFIX, THEME_LINK_PREFIX, resolveTokenSets, buildThemeCSS,
@@ -22,4 +23,5 @@ export const {
   useConfirm, useSettingsMeta,
   DEFAULT_LIVE2D_MODELS, DEFAULT_LIVE2D_MODEL_URL, PROVIDERS, WIZARD_STEPS,
   AppSelect, ConfirmDialog, MarkdownContent, PinInput,
+  ModalShell, NavIcon, PluginModuleHost,
 } = H

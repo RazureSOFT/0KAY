@@ -6,6 +6,7 @@ import { useSettingsSectionsStore } from '../stores/settingsSections'
 import { useUIPatchesStore } from '../stores/uiPatches'
 import { useConfirm } from '../composables/confirm'
 import { useFocusTrap } from '../composables/focusTrap'
+import { toast } from '../composables/toast'
 import MarkdownContent from '../components/MarkdownContent.vue'
 
 const { t } = useI18n()
@@ -110,7 +111,7 @@ const README_FILES = [
 async function loadReadme(p: PluginRow) {
   const slug = repoSlug(p)
   if (!slug) {
-    readmeError.value = '该插件未提供仓库地址'
+    readmeError.value = t('plugins.noRepo')
     return
   }
   const cached = readmeCache.get(slug)
@@ -133,7 +134,7 @@ async function loadReadme(p: PluginRow) {
       }
       if (res.status !== 404) throw new Error(`README HTTP ${res.status}`)
     }
-    if (!text.trim()) throw new Error('未找到 README')
+    if (!text.trim()) throw new Error(t('plugins.readmeNotFound'))
     readmeCache.set(slug, text)
     readme.value = text
   } catch (e: any) {
@@ -159,9 +160,14 @@ function isHealthy(p: PluginRow) {
   return p.status.includes('HEALTHY') || p.status === 'HEALTHY'
 }
 
-async function fetchPlugins() {
-  loading.value = true
-  error.value = ''
+async function fetchPlugins(background = false) {
+  // Background polling must not flip loading or clear error: it made the
+  // Refresh button flash "Refreshing" every 5s and silently wiped an error
+  // banner the user was still reading.
+  if (!background) {
+    loading.value = true
+    error.value = ''
+  }
   try {
     const [rtRes, instRes] = await Promise.all([fetch('/api/plugins'), fetch('/api/plugins/pm/installed')])
     const runtime: RuntimePlugin[] = rtRes.ok ? await rtRes.json() : []
@@ -227,7 +233,7 @@ async function fetchPlugins() {
       }
     }
   } catch (e: any) {
-    error.value = e.message || 'failed'
+    if (!background) error.value = e.message || t('plugins.actionFailed')
   } finally {
     loading.value = false
   }
@@ -247,7 +253,10 @@ async function togglePlugin(p: PluginRow) {
     // switch, and main.ts re-applies ops (nav/routes/theme) on every store change.
     await Promise.all([fetchPlugins(), sections.fetchSections(), uiPatches.fetchPatches()])
   } catch (e: any) {
-    error.value = e.message || 'failed'
+    error.value = e.message || t('plugins.actionFailed')
+    // The banner sits at the top of a long list; the switch the user just
+    // flipped is mid-page. Say it where they are looking, too.
+    toast(e.message || t('plugins.actionFailed'), 'error')
   } finally {
     toggling.value = ''
   }
@@ -260,17 +269,17 @@ async function waitForOp() {
     if (!res.ok) continue
     const state = await res.json()
     if (state.status === 'done') return
-    if (state.status === 'error') throw new Error(state.error || '操作失败')
+    if (state.status === 'error') throw new Error(state.error || t('plugins.actionFailed'))
   }
-  throw new Error('操作超时')
+  throw new Error(t('plugins.timeout'))
 }
 
 async function uninstall(p: PluginRow) {
   const pkg = p.packageName
   const ok = await confirm({
-    title: '卸载插件',
-    message: `确定卸载 ${pkg}？该操作会移除插件文件与已应用的界面补丁。`,
-    confirmLabel: '卸载',
+    title: t('plugins.uninstallTitle'),
+    message: t('plugins.uninstallConfirm', { pkg }),
+    confirmLabel: t('plugins.uninstall'),
     danger: true,
   })
   if (!ok) return
@@ -287,10 +296,11 @@ async function uninstall(p: PluginRow) {
       throw new Error(data.error || `HTTP ${res.status}`)
     }
     await waitForOp()
-    notice.value = `已卸载 ${pkg}`
+    notice.value = t('plugins.uninstalled', { pkg })
     await Promise.all([fetchPlugins(), sections.fetchSections()])
   } catch (e: any) {
-    error.value = e.message || 'failed'
+    error.value = e.message || t('plugins.actionFailed')
+    toast(e.message || t('plugins.actionFailed'), 'error')
   } finally {
     uninstalling.value = ''
   }
@@ -310,12 +320,12 @@ function openSettings(p: PluginRow) {
 function statusLabel(p: PluginRow) {
   if (p.disabled) return t('plugins.disabled')
   if (p.runtime) return isHealthy(p) ? t('agents.healthy') : p.status
-  return p.installedSource === 'pm' ? '已安装' : '平台组件'
+  return p.installedSource === 'pm' ? t('plugins.installedLabel') : t('plugins.platformComponent')
 }
 
 function sourceLabel(p: PluginRow) {
-  if (p.runtime) return '运行时'
-  return p.installedSource === 'pm' ? '第三方' : '平台'
+  if (p.runtime) return t('plugins.runtime')
+  return p.installedSource === 'pm' ? t('plugins.thirdParty') : t('plugins.platform')
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -327,7 +337,7 @@ onMounted(() => {
   sections.fetchSections()
   window.addEventListener('keydown', onKeydown)
   timer = setInterval(() => {
-    if (!uninstalling.value && !toggling.value && !detail.value) fetchPlugins()
+    if (!uninstalling.value && !toggling.value && !detail.value) fetchPlugins(true)
   }, 5000)
 })
 
@@ -345,19 +355,23 @@ onUnmounted(() => {
         <h1>{{ t('plugins.title') }}</h1>
         <p class="subtitle">{{ t('plugins.subtitle') }}</p>
       </div>
-      <button class="btn btn-tonal" @click="fetchPlugins" :disabled="loading">
+      <button class="btn btn-tonal" @click="fetchPlugins()" :disabled="loading">
         {{ loading ? t('agents.refreshing') : t('agents.refresh') }}
       </button>
     </header>
 
-    <div v-if="error" class="error-banner">{{ error }}</div>
-    <div v-if="notice" class="notice-banner">{{ notice }}</div>
+    <Transition name="banner">
+    <div v-if="error" class="error-banner" role="alert">{{ error }}</div>
+    </Transition>
+    <Transition name="banner">
+    <div v-if="notice" class="notice-banner" role="status">{{ notice }}</div>
+    </Transition>
 
     <section class="pp-stats" v-if="plugins.length">
-      <div class="pp-stat tone-primary"><b>{{ plugins.length }}</b><span>插件总数</span></div>
-      <div class="pp-stat tone-success"><b>{{ healthyCount }}</b><span>运行健康</span></div>
-      <div class="pp-stat tone-muted"><b>{{ disabledCount }}</b><span>已禁用</span></div>
-      <div class="pp-stat tone-muted"><b>{{ removableCount }}</b><span>可卸载</span></div>
+      <div class="pp-stat tone-primary"><b>{{ plugins.length }}</b><span>{{ t('plugins.total') }}</span></div>
+      <div class="pp-stat tone-success"><b>{{ healthyCount }}</b><span>{{ t('plugins.healthy') }}</span></div>
+      <div class="pp-stat tone-muted"><b>{{ disabledCount }}</b><span>{{ t('plugins.disabled') }}</span></div>
+      <div class="pp-stat tone-muted"><b>{{ removableCount }}</b><span>{{ t('plugins.removable') }}</span></div>
     </section>
 
     <div class="plugin-grid">
@@ -369,9 +383,10 @@ onUnmounted(() => {
         :style="{ animationDelay: `${Math.min(i, 12) * 40}ms` }"
         role="button"
         tabindex="0"
-        :title="`查看 ${p.name} 详情`"
+        :title="t('plugins.viewDetails', { name: p.name })"
         @click="openDetail(p)"
         @keydown.enter.prevent="openDetail(p)"
+        @keydown.space.prevent="openDetail(p)"
       >
         <div class="plugin-top">
           <div class="plugin-icon">
@@ -428,11 +443,11 @@ onUnmounted(() => {
           </label>
           <button
             v-if="p.installedSource === 'pm'"
-            class="btn btn-danger"
+            class="btn btn-danger-tonal"
             :disabled="uninstalling === p.packageName"
             @click="uninstall(p)"
           >
-            {{ uninstalling === p.packageName ? '卸载中…' : '卸载' }}
+            {{ uninstalling === p.packageName ? t('plugins.uninstalling') : t('plugins.uninstall') }}
           </button>
           <button
             v-if="sectionFor(p)"
@@ -454,7 +469,7 @@ onUnmounted(() => {
             :href="repoUrl(p)"
             target="_blank"
             rel="noopener noreferrer"
-          >仓库</a>
+          >{{ t('plugins.repo') }}</a>
         </div>
       </article>
 
@@ -467,7 +482,7 @@ onUnmounted(() => {
     <Teleport to="body">
       <Transition name="pd">
       <div v-if="detail" class="pd-scrim" @click.self="closeDetail">
-        <section ref="detailDialog" class="pd-dialog" role="dialog" aria-modal="true" :aria-label="`${detail.name} 详情`" tabindex="-1" @keydown="onDialogKeydown">
+        <section ref="detailDialog" class="pd-dialog" role="dialog" aria-modal="true" :aria-label="t('plugins.detailsLabel', { name: detail.name })" tabindex="-1" @keydown="onDialogKeydown">
           <header class="pd-head">
             <div class="pd-titles">
               <h2>
@@ -476,7 +491,7 @@ onUnmounted(() => {
               </h2>
               <span class="pd-pkg">{{ detail.packageName }}</span>
             </div>
-            <button ref="detailCloseBtn" class="pd-close" type="button" aria-label="关闭" @click="closeDetail">×</button>
+            <button ref="detailCloseBtn" class="pd-close" type="button" :aria-label="t('common.close')" @click="closeDetail">×</button>
           </header>
 
           <div class="pd-meta">
@@ -494,30 +509,30 @@ onUnmounted(() => {
 
           <div class="pd-body">
             <div v-if="detail.builtin" class="pd-perms builtin">
-              内置插件 · 权限与出网已全部放行
+              {{ t('plugins.builtinFullPerms') }}
             </div>
             <div v-else-if="detail.permissions" class="pd-perms">
               <div v-if="detail.permissions.api_requires?.length">
-                <h4>调用 Core API</h4>
+                <h4>{{ t('plugins.callsCore') }}</h4>
                 <ul><li v-for="x in detail.permissions.api_requires" :key="x">{{ x }}</li></ul>
               </div>
               <div v-if="detail.permissions.api_exposes?.length">
-                <h4>对外暴露 API</h4>
+                <h4>{{ t('plugins.exposes') }}</h4>
                 <ul><li v-for="x in detail.permissions.api_exposes" :key="x">{{ x }}</li></ul>
               </div>
               <div v-if="detail.permissions.egress?.length">
-                <h4>出网访问</h4>
+                <h4>{{ t('plugins.egress') }}</h4>
                 <ul><li v-for="x in detail.permissions.egress" :key="x">{{ x }}</li></ul>
               </div>
               <p
                 v-if="!detail.permissions.api_requires?.length && !detail.permissions.api_exposes?.length && !detail.permissions.egress?.length"
                 class="pd-hint"
-              >未申请任何额外权限</p>
+              >{{ t('plugins.noExtraPerms') }}</p>
             </div>
-            <p v-if="readmeLoading" class="pd-hint">正在加载 README…</p>
+            <p v-if="readmeLoading" class="pd-hint">{{ t('plugins.loadingReadme') }}</p>
             <p v-else-if="readmeError" class="pd-hint err">{{ readmeError }}</p>
             <MarkdownContent v-else-if="readme" :content="readme" />
-            <p v-else class="pd-hint">暂无 README</p>
+            <p v-else class="pd-hint">{{ t('plugins.noReadme') }}</p>
           </div>
 
           <footer class="pd-foot">
@@ -527,7 +542,7 @@ onUnmounted(() => {
               :href="repoUrl(detail)"
               target="_blank"
               rel="noopener noreferrer"
-            >打开原仓库</a>
+            >{{ t('plugins.openRepo') }}</a>
             <button
               v-if="detail.runtime"
               class="btn btn-tonal"
@@ -537,11 +552,11 @@ onUnmounted(() => {
             >{{ detail.disabled ? t('plugins.enable') : t('plugins.disable') }}</button>
             <button
               v-if="detail.installedSource === 'pm'"
-              class="btn btn-danger"
+              class="btn btn-danger-tonal"
               type="button"
               :disabled="uninstalling === detail.packageName"
               @click="uninstall(detail)"
-            >{{ uninstalling === detail.packageName ? '卸载中…' : '卸载' }}</button>
+            >{{ uninstalling === detail.packageName ? t('plugins.uninstalling') : t('plugins.uninstall') }}</button>
             <button class="btn btn-tonal" type="button" @click="closeDetail">{{ t('settings.close') }}</button>
           </footer>
         </section>
@@ -577,6 +592,9 @@ onUnmounted(() => {
 
 .error-banner { padding: 14px 18px; border-radius: 18px; background: var(--md-error-container); color: var(--md-on-error-container); margin-bottom: var(--space-lg); }
 .notice-banner { padding: 14px 18px; border-radius: 18px; background: var(--md-secondary-container); color: var(--md-on-secondary-container); margin-bottom: var(--space-lg); }
+.banner-enter-active { transition: opacity var(--duration-medium) var(--ease-emphasized-decel), transform var(--duration-medium) var(--ease-emphasized-decel); }
+.banner-leave-active { transition: opacity var(--duration-short) var(--ease-emphasized-accel); }
+.banner-enter-from, .banner-leave-to { opacity: 0; transform: translateY(-6px); }
 
 .pp-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-lg); }
 .pp-stat { border-radius: 24px; padding: 18px 20px; display: flex; flex-direction: column; gap: 4px; box-shadow: var(--shadow-1); }
@@ -666,18 +684,21 @@ onUnmounted(() => {
 .plugin-switch.busy { opacity: .6; cursor: wait; }
 .plugin-switch-label { white-space: nowrap; }
 
-#app .plugins-page .btn {
-  height: 46px; padding: 0 22px; border: 1px solid transparent; border-radius: 999px;
-  font-weight: 700; font-size: 14px; color: var(--md-on-surface); background: var(--md-surface-container-high);
-  display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer;
-  transition: transform var(--duration-medium) var(--ease-spring), background-color var(--duration-short) var(--ease-out), box-shadow var(--duration-medium) var(--ease-out);
-}
-@media (hover: hover) and (pointer: fine) {
-  #app .plugins-page .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-1); }
-}
-#app .plugins-page .btn:disabled { opacity: .6; cursor: not-allowed; }
-#app .plugins-page .btn-tonal { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
-#app .plugins-page .btn-danger { background: var(--md-error-container); color: var(--md-on-error-container); }
+  /* Shape only. Setting background/color here out-specifies the design system's
+     bare .btn-* variants (0,1,0), which is why this page used to carry its own
+     copy of .btn-tonal and .btn-danger: they had to be re-declared at matching
+     specificity just to survive. Colour belongs to the variant, so the variant
+     classes now come from theme.css and are not restated here. */
+  #app .plugins-page .btn {
+    height: 46px; padding: 0 22px; border: 1px solid transparent; border-radius: 999px;
+    font-weight: 700; font-size: 14px;
+    display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer;
+    transition: transform var(--duration-medium) var(--ease-spring), background-color var(--duration-short) var(--ease-out), box-shadow var(--duration-medium) var(--ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    #app .plugins-page .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-1); }
+  }
+  #app .plugins-page .btn:disabled { opacity: .6; cursor: not-allowed; }
 
 .empty-state { grid-column: 1 / -1; padding: var(--space-xxl); text-align: center; background: var(--md-surface-container); border-radius: 32px; color: var(--md-on-surface-variant); }
 .empty-state p { margin: 0; font-size: 15px; font-weight: 600; color: var(--md-on-surface); }
@@ -723,10 +744,8 @@ onUnmounted(() => {
 .pd-hint { margin: 0; padding: 24px; text-align: center; color: var(--md-on-surface-variant); font-size: 14px; }
 .pd-hint.err { color: var(--md-error); }
 .pd-foot { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
-.pd-foot .btn { height: 46px; padding: 0 22px; border: 1px solid transparent; border-radius: 999px; font-weight: 700; font-size: 14px; color: var(--md-on-surface); background: var(--md-surface-container-high); display: inline-flex; align-items: center; text-decoration: none; cursor: pointer; }
-.pd-foot .btn-tonal { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
-.pd-foot .btn-danger { background: var(--md-error-container); color: var(--md-on-error-container); }
-.pd-foot .btn:disabled { opacity: .6; cursor: not-allowed; }
+  .pd-foot .btn { height: 46px; padding: 0 22px; border: 1px solid transparent; border-radius: 999px; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; text-decoration: none; cursor: pointer; }
+  .pd-foot .btn:disabled { opacity: .6; cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) {
   .pd-enter-active, .pd-leave-active,
   .pd-enter-active .pd-dialog, .pd-leave-active .pd-dialog { transition: none; }

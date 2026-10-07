@@ -46,6 +46,17 @@ function onKeydown(index: number, event: KeyboardEvent) {
   else if (event.key === 'ArrowRight') { focusAt(index + 1); event.preventDefault() }
 }
 
+function onPaste(index: number, event: ClipboardEvent) {
+  // maxlength=1 truncates a pasted code in the browser before any input event,
+  // so "paste the 6-digit code" must be handled here explicitly.
+  const digits = (event.clipboardData?.getData('text') || '').replace(/\D/g, '')
+  if (!digits) return
+  event.preventDefault()
+  for (let k = 0; k < digits.length && index + k < props.length; k++) boxes.value[index + k] = digits[k]
+  focusAt(index + digits.length)
+  emitValue()
+}
+
 function clear() {
   boxes.value = Array.from({ length: props.length }, () => '')
   emitValue()
@@ -87,6 +98,7 @@ onMounted(() => { if (props.autofocus) focusAt(0) })
       :aria-describedby="invalid && errorId ? errorId : undefined"
       @input="onInput(index, $event)"
       @keydown="onKeydown(index, $event)"
+      @paste="onPaste(index, $event)"
       @focus="($event.target as HTMLInputElement).select()"
     />
   </div>

@@ -34,6 +34,10 @@ const SHARED_PATHS = [
   'composables/confirm.ts', 'composables/settingsMeta.ts', 'composables/wizard.ts',
   'components/AppSelect.vue', 'components/ConfirmDialog.vue',
   'components/MarkdownContent.vue', 'components/PinInput.vue',
+  // Shell chrome shared with plugin pages. ModalShell in particular must be the
+  // host's instance: it owns a Teleport to body and the focus-restore logic, and
+  // a second copy would stack two scrims over one another.
+  'components/ModalShell.vue', 'components/NavIcon.vue', 'components/PluginModuleHost.vue',
 ]
 /** Normalised absolute paths, for case-insensitive membership tests. */
 const SHARED = new Set(SHARED_PATHS.map((p) => norm(path.join(src, p))))
@@ -134,6 +138,7 @@ export default defineConfig({
         plugins: path.join(root, 'plugin/entries/plugins.js'),
         settings: path.join(root, 'plugin/entries/settings.js'),
         usage: path.join(root, 'plugin/entries/usage.js'),
+        console: path.join(root, 'plugin/entries/console.js'),
       },
       formats: ['es'],
       fileName: (_format, entryName) => `${entryName}.js`,

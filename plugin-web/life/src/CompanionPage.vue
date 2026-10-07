@@ -2,32 +2,52 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import AppSelect from './AppSelect.vue'
-import { useConfirm } from './confirm'
-import ConfirmDialog from './ConfirmDialog.vue'
-import { friendlyError, injectStyle, lifeAct, lifeGet, lifeKitCss, sleep } from './kit'
+// The importmap maps `vue-router` to the host's shared bridge, so this is the
+// app's own router instance (not a private copy) and SPA navigation keeps the
+// shell's player/i18n state alive.
+import { useRouter } from 'vue-router'
+import { AppSelect, useConfirm, i18n } from '@0kay/host'
+import { FLASH_MS, friendlyError, injectStyle, lifeAct, lifeGet, lifeKitCss, sleep } from './kit'
+import AdapterSettingsPage from './AdapterSettingsPage.vue'
 
 const { confirm } = useConfirm()
+const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {})
+//inject() must run in setup context, so grab the host router once here (it is
+// undefined when this page is rendered outside the WebUI shell).
+const router = useRouter()
+// Canonical enum value for a settings key. The L.I.F.E backend keys these enums
+// on the exact zh strings (life/src/life/cognition/persona_dynamics.py maps
+// "傲娇型"/"依赖型"/… and companion/legacy.py validates the same tuples), so the
+// persisted value is read from the zh catalog no matter the UI locale — only
+// the option *label* is localized. Do not translate the persisted value.
+const zhValue = (key: string) => (i18n.global.t as any)(key, {}, { locale: 'zh' }) as string
+const enumOptions = (keys: string[]) => keys.map((k) => ({ value: zhValue(`life.companion.${k}`), label: t(`life.companion.${k}`) }))
 const data = ref<any>({ settings: {}, cognition: null })
 const loading = ref(false); const error = ref(''); const notice = ref('')
 const tab = ref('cognition')
 const pageEl = ref<HTMLElement | null>(null)
 const navItems = [
-  { key: 'cognition', i: '01', label: '认知', icon: '◉' },
-  { key: 'persona', i: '02', label: '人设', icon: '✎' },
-  { key: 'world', i: '03', label: '世界', icon: '✦' },
-  { key: 'adapters', i: '04', label: '消息平台', icon: '✉' },
-  { key: 'state', i: '05', label: '状态', icon: '☺' },
+  { key: 'cognition', i: '01', labelKey: 'life.companion.nav.cognition', icon: '◉' },
+  { key: 'persona', i: '02', labelKey: 'life.companion.nav.persona', icon: '✎' },
+  { key: 'world', i: '03', labelKey: 'life.companion.nav.world', icon: '✦' },
+  { key: 'adapters', i: '04', labelKey: 'life.companion.nav.adapters', icon: '✉' },
+  { key: 'state', i: '05', labelKey: 'life.companion.nav.state', icon: '☺' },
 ]
 /** The standalone 消息平台 settings tab owns full adapter CRUD now; this panel
     keeps a read-only summary and sends you there instead of duplicating it. */
 const ADAPTERS_SETTINGS_TAB = 'life_adapters'
 
-function flash(message: string) { notice.value = message; setTimeout(() => { if (notice.value === message) notice.value = '' }, 2500) }
-/** Open the standalone 消息平台 settings tab. */
+function flash(message: string) { notice.value = message; setTimeout(() => { if (notice.value === message) notice.value = '' }, FLASH_MS) }
+/** Open the standalone 消息平台 settings tab.
+ *
+ *  The host shell does not expose a navigation API on `@0kay/host`, but its
+ *  importmap maps `vue-router` to a bridge that re-exports the app's own
+ *  router, so `router.push` is a true SPA navigation (no full reload, so the
+ *  chat socket and i18n state survive). location.href stays as a fallback for
+ *  a context where the shell's router is not injected. */
 function openAdapterSettings() {
-  const url = `/settings?tab=${ADAPTERS_SETTINGS_TAB}`
-  window.location.href = url
+  if (router) { void router.push({ path: '/settings', query: { tab: ADAPTERS_SETTINGS_TAB } }); return }
+  window.location.href = `/settings?tab=${ADAPTERS_SETTINGS_TAB}`
 }
 
 async function load(attempt = 0): Promise<void> {
@@ -56,6 +76,19 @@ function jump(target: string) {
   const el = pageEl.value
   if (el) el.scrollTo({ top: 0, behavior }); else window.scrollTo({ top: 0, behavior })
 }
+/** Replay the kit's entrance animation on the newly shown tab panel. The five
+    panels are v-show-mounted once, so the .panel animation would otherwise only
+    play on first paint; toggling the replay class (with a reflow in between)
+    restarts it on every tab switch. */
+function replayPanel(key: string) {
+  const el = pageEl.value?.querySelector<HTMLElement>(`section[data-panel="${key}"]`)
+  if (!el) return
+  el.classList.remove('panel-replay')
+  void el.offsetWidth // flush styles so re-adding the class restarts the animation
+  el.classList.add('panel-replay')
+  el.addEventListener('animationend', () => el.classList.remove('panel-replay'), { once: true })
+}
+watch(tab, (value) => { nextTick(() => replayPanel(value)) })
 // 适配器状态是实时量（是否已连接），只在进入该页时拉取，不塞进 companion 快照。
 watch(tab, (value) => { if (value === 'adapters') loadAdapters() })
 
@@ -76,9 +109,9 @@ const COG_DEFAULTS: Record<string, string> = {
   cog_language_enabled: '1', cog_language_framing: 'weak_whorf', cog_language_boundary: '0.6',
   cog_social_enabled: '1', cog_social_empathy: '0.4', cog_social_stage: '2',
   cog_selfhood_enabled: '1', cog_selfhood_discount: '0.1', cog_selfhood_detail: '20',
-  cog_attachment_enabled: '0', cog_attachment_type: '依存型',
-  cog_tsundere_enabled: '0', cog_tsundere_type: '经典傲娇',
-  cog_personadyn_enabled: '0', cog_personadyn_type: '正常/安全型', cog_personadyn_gender: '未指定',
+  cog_attachment_enabled: '0', get cog_attachment_type() { return zhValue('life.companion.attach.dependent') },
+  cog_tsundere_enabled: '0', get cog_tsundere_type() { return zhValue('life.companion.tsundere.classic') },
+  cog_personadyn_enabled: '0', get cog_personadyn_type() { return zhValue('life.companion.pdt.0') }, get cog_personadyn_gender() { return zhValue('life.companion.pdGender.unspecified') },
   // memory & consolidation. On by default — they are what makes lived
   // experience leave a trace; turn one off to ablate it.
   cog_memory_encode: '1', cog_sleep_replay: '1', cog_memory_reconsolidate: '1',
@@ -91,36 +124,40 @@ const COG_BOOL_KEYS = ['cog_enabled', 'cog_lite_mode', 'cog_modulate_affect', 'c
   'cog_personadyn_enabled',
   'cog_memory_encode', 'cog_sleep_replay', 'cog_memory_reconsolidate', 'cog_cls_interleave']
 const COG_TEXT_KEYS = ['cog_affect_profile', 'cog_language_framing', 'cog_attachment_type', 'cog_tsundere_type', 'cog_personadyn_type', 'cog_personadyn_gender']
-const attachmentTypeOptions = ['独占型', '依存型', '妄想型', '监视型', '自伤型', '排除型']
-const tsundereTypeOptions = ['经典傲娇', '高冷傲娇', '暴躁傲娇', '迁就傲娇']
+const attachmentTypeOptions = computed(() => enumOptions(['attach.secluded', 'attach.dependent', 'attach.delusional', 'attach.monitoring', 'attach.selfHarm', 'attach.exclusion']))
+const tsundereTypeOptions = computed(() => enumOptions(['tsundere.classic', 'tsundere.cold', 'tsundere.gruff', 'tsundere.indulgent']))
 // The 18 research archetypes stay first (they are the ACG family the plugin
 // shipped with); the extended library is grouped so a long list stays usable.
-const personadynTypeOptions = ['正常/安全型', '傲娇型', '病娇型', '傲娇转病娇', '三无/高冷型', '天然呆型',
-  '温柔/治愈型', '元气/活泼型', '腹黑型', '忠犬型', '依赖型', '回避型', '控制/女王型', '小恶魔型',
-  '暴躁型', '理性/冷静型', '自卑/忧郁型', '混沌/疯狂型']
-// Extended type families (187 regions). Kept in a flat list for the select; the
-// panel shows the family label so a long list is still scannable.
-const personadynTypeGroups = [
-  { label: 'ACG 经典', keys: personadynTypeOptions },
-  { label: '依恋与关系', keys: ['安全型', '焦虑型', '恐惧型', '混乱型', '讨好型', '拯救者', '受害者', '迫害者', '反依赖型', '共依型'] },
-  { label: '九型人格', keys: ['1 完美主义', '2 助人者', '3 成就者', '4 自我型', '5 观察者', '6 忠诚者', '7 享乐者', '8 挑战者', '9 和平者'] },
-  { label: 'DISC', keys: ['D 支配', 'I 影响', 'S 稳健', 'C 谨慎'] },
-  { label: '社会角色', keys: ['领导者', '追随者', '照顾者', '隐士', '殉道者', '叛逆者', '改革者', '保守者', '投机者', '调停者', '破坏者', '观察者', '局外人'] },
-  { label: '动机与价值', keys: ['成就型', '权力型', '归属型', '安全型（动机）', '探索型', '秩序型', '审美型', '利他型', '利己型', '享乐型', '自我实现型'] },
-  { label: '认知风格', keys: ['分析型', '直觉型', '系统型', '发散型', '聚合型', '场依存', '场独立', '冲动型', '反思型', '反刍型', '灾难化型', '乐观型', '悲观型'] },
-  { label: '女性 / 中性 ACG', keys: ['御姐', '病弱', '中二', '无口', '毒舌', '弱气', '强气', '黑化', '暴走', '地雷系', '阳角', '阴角', '社恐', '社牛', '纯爱', '修罗场'] },
-  { label: '男性原型', keys: ['安全男', '焦虑男', '回避男', '恐惧男', '混乱男', '讨好男', '拯救者男', '控制男', '反依赖男', '共依男', '依赖男', '霸总', '暖男', '忠犬男', '狼狗', '奶狗', '爹系', '少年', '大叔', '硬汉', '草食男', '肉食男', '海王', '渣男', '直男', '凤凰男', '妈宝男', '巨婴', '软饭男', '接盘侠', '备胎', '舔狗', '工具人', '老实人', '老好人', '暴君', '帝王', '将军', '谋士', '骑士', '浪子', '隐士', '侠客', '反派', '病娇男', '傲娇男', '腹黑男', '中二男', '宅男', '社恐男', '社牛男', '忧郁男', '艺术男', '理工男', '体育男', '金融男', '文艺男', '禁欲系', '清冷男', '疯批男', '病弱男', '黑化男', '龙傲天', '废柴', '逆袭男', '救世主', '殉道者男', '破坏者男', '观察者男', '三无男', '天然呆男', '小恶魔男', '元气男', '高冷男', '纯爱男', '修罗场男', '弱气男', '强气男'] },
+const PD_GROUP_KEYS: string[][] = [
+  Array.from({ length: 18 }, (_, i) => `pdt.${i}`),
+  Array.from({ length: 10 }, (_, i) => `pdt.${18 + i}`),
+  Array.from({ length: 9 }, (_, i) => `pdt.${28 + i}`),
+  Array.from({ length: 4 }, (_, i) => `pdt.${37 + i}`),
+  Array.from({ length: 13 }, (_, i) => `pdt.${41 + i}`),
+  Array.from({ length: 11 }, (_, i) => `pdt.${54 + i}`),
+  Array.from({ length: 13 }, (_, i) => `pdt.${65 + i}`),
+  Array.from({ length: 16 }, (_, i) => `pdt.${78 + i}`),
+  Array.from({ length: 78 }, (_, i) => `pdt.${94 + i}`),
 ]
-// Flat, de-duplicated option list for the archetype select.
-const personadynAllTypes = [...new Set(personadynTypeGroups.flatMap((g) => g.keys))]
-const personadynGenderOptions = ['未指定', '男性脚本', '女性脚本', '中性', '高传统男性', '低传统男性', '高传统女性', '女性主义']
-const cogProfileOptions = ['typical', 'depression', 'anxiety', 'bpd', 'alexithymia']
-const cogFramingOptions = ['independent', 'interchanging', 'cognitive_determinism', 'weak_whorf',
+const personadynTypeGroups = computed(() => PD_GROUP_KEYS.map((keys, g) => ({ label: t(`life.companion.pdg.${g}`), keys })))
+const personadynAllTypes = computed(() => [...new Set(PD_GROUP_KEYS.flat())].map((k) => ({ value: zhValue(`life.companion.${k}`), label: t(`life.companion.${k}`) })))
+const personadynGenderOptions = computed(() => enumOptions(['pdGender.unspecified', 'pdGender.maleScript', 'pdGender.femaleScript', 'pdGender.neutral', 'pdGender.highTradMale', 'pdGender.lowTradMale', 'pdGender.highTradFemale', 'pdGender.feminist']))
+// The affect-profile / language-framing enums are persisted by their internal
+// key ('typical', 'bpd', 'weak_whorf', …), so only the label is localized here
+// (see companion.profile.* / companion.framing.* in strings.xml).
+const cogProfileOptions = computed(() => ['typical', 'depression', 'anxiety', 'bpd', 'alexithymia']
+  .map((v) => ({ value: v, label: t(`life.companion.profile.${v}`) })))
+const cogFramingOptions = computed(() => ['independent', 'interchanging', 'cognitive_determinism', 'weak_whorf',
   'thinking_for_speaking', 'radical_connectionism', 'determinism']
-const cogStageOptions = ['0 · egocentric', '1 · subjective', '2 · self-reflective', '3 · mutual', '4 · societal-symbolic']
+  .map((v) => ({ value: v, label: t(`life.companion.framing.${v}`) })))
+// Selman's perspective-taking stages. The setting persists the stage *number*;
+// the label is localized (unlike the archetype enums, whose canonical values
+// are zh strings — see zhValue above).
+const STAGE_NAMES = ['egocentric', 'subjective', 'self-reflective', 'mutual', 'societal-symbolic']
+const cogStageOptions = computed(() => STAGE_NAMES.map((name, n) => ({ value: String(n), label: t(`life.companion.stage.${name}`) })))
 const cogStageValue = computed({
-  get: () => `${Number(settingsForm.value.cog_social_stage ?? 2)} · ${['egocentric', 'subjective', 'self-reflective', 'mutual', 'societal-symbolic'][Number(settingsForm.value.cog_social_stage ?? 2)] || 'self-reflective'}`,
-  set: (value: string) => { settingsForm.value.cog_social_stage = Number(String(value).split('·')[0].trim()) },
+  get: () => String(Number(settingsForm.value.cog_social_stage ?? 2)),
+  set: (value: string) => { settingsForm.value.cog_social_stage = Number(value) },
 })
 function cogRaw(key: string) { return String(data.value.settings?.[key] ?? COG_DEFAULTS[key] ?? '') }
 function syncCogSettings() {
@@ -181,11 +218,17 @@ const learningDrift = computed(() => {
   return Object.values(d as Record<string, number>).reduce((s, v) => s + Math.abs(v || 0), 0)
 })
 const episode = computed(() => wave2.value?.episode || null)
-const episodeStateLabel = (value: string) => ({ euthymic: '平稳', subthreshold: '下滑中', episode: '低落发作' } as Record<string, string>)[value] || '—'
+const episodeStateLabel = (value: string) => {
+  const keys: Record<string, string> = { euthymic: 'life.companion.episode.euthymic', subthreshold: 'life.companion.episode.subthreshold', episode: 'life.companion.episode.episode' }
+  return keys[value] ? t(keys[value]) : '—'
+}
 
 // --- life on/off (开始生命 / 暂停生命) -------------------------------------
 const life = computed(() => cognition.value?.life || null)
 const lifeBusy = ref(false)
+/** Which of the two actions is in flight, so the button can say "Starting…" or
+    "Pausing…" instead of a bare ellipsis. */
+const lifeBusyAction = ref<'start' | 'stop'>('start')
 const lifeGreet = ref(true)
 function lifeAgeText() {
   const born = life.value?.born_at
@@ -194,49 +237,54 @@ function lifeAgeText() {
   if (!isFinite(ms) || ms < 0) return '—'
   const days = Math.floor(ms / 86400000)
   const hours = Math.floor((ms % 86400000) / 3600000)
-  return days > 0 ? `${days} 天 ${hours} 小时` : `${hours} 小时`
+  return days > 0 ? t('life.companion.life.ageDaysHours', { days, hours }) : t('life.companion.life.ageHours', { hours })
+}
+function lifeBusyLabel() {
+  return lifeBusyAction.value === 'start' ? t('life.companion.life.starting') : t('life.companion.life.pausing')
 }
 async function startLife() {
-  lifeBusy.value = true
+  lifeBusy.value = true; lifeBusyAction.value = 'start'
   try {
     const result = await act('life_start', { greet: lifeGreet.value })
-    if (result) flash(result.greeting ? `她开始生活了：${result.greeting}` : '生命已开始：她开始有自己的生活了')
+    if (result) flash(result.greeting ? t('life.companion.flash.lifeStartedGreeting', { greeting: result.greeting }) : t('life.companion.flash.lifeStarted'))
   } finally { lifeBusy.value = false }
 }
 async function stopLife() {
-  lifeBusy.value = true
+  lifeBusy.value = true; lifeBusyAction.value = 'stop'
   try {
     const result = await act('life_stop', {})
-    if (result) flash('已暂停：她不再主动思考，记忆与内心状态保留')
+    if (result) flash(t('life.companion.flash.lifeStopped'))
   } finally { lifeBusy.value = false }
 }
 
 // One-click configurations: set the relevant knobs then save.
 function applyPreset(fields: Record<string, any>, label: string) {
   Object.assign(settingsForm.value, fields)
-  void saveSettings().then(() => flash(`已套用并保存「${label}」`))
+  void saveSettings().then(() => flash(t('life.companion.flash.presetApplied', { label })))
 }
 const PRESETS = [
-  { label: '常规', fields: { cog_affect_enabled: true, cog_affect_profile: 'typical', cog_affect_threat: 0.2, cog_affect_reward: 1, cog_attachment_enabled: false, cog_tsundere_enabled: false, cog_personadyn_enabled: false } },
-  { label: '抑郁倾向', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_affect_threat: 0.45, cog_affect_reward: 0.7 } },
-  { label: '傲娇', fields: { cog_tsundere_enabled: true, cog_tsundere_type: '经典傲娇' } },
-  { label: '人格动力学', fields: { cog_personadyn_enabled: true, cog_personadyn_type: '傲娇型' } },
-  { label: '病娇·独占', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_attachment_enabled: true, cog_attachment_type: '独占型' } },
-  { label: '病娇·依存', fields: { cog_affect_enabled: true, cog_attachment_enabled: true, cog_attachment_type: '依存型' } },
-  { label: '病娇·妄想', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_attachment_enabled: true, cog_attachment_type: '妄想型' } },
+  { labelKey: 'life.companion.preset.regular', fields: { cog_affect_enabled: true, cog_affect_profile: 'typical', cog_affect_threat: 0.2, cog_affect_reward: 1, cog_attachment_enabled: false, cog_tsundere_enabled: false, cog_personadyn_enabled: false } },
+  { labelKey: 'life.companion.preset.depression', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_affect_threat: 0.45, cog_affect_reward: 0.7 } },
+  { labelKey: 'life.companion.preset.tsundere', fields: { cog_tsundere_enabled: true, cog_tsundere_type: zhValue('life.companion.tsundere.classic') } },
+  { labelKey: 'life.companion.preset.personadyn', fields: { cog_personadyn_enabled: true, cog_personadyn_type: zhValue('life.companion.pdt.1') } },
+  { labelKey: 'life.companion.preset.yandereSecluded', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_attachment_enabled: true, cog_attachment_type: zhValue('life.companion.attach.secluded') } },
+  { labelKey: 'life.companion.preset.yandereDependent', fields: { cog_affect_enabled: true, cog_attachment_enabled: true, cog_attachment_type: zhValue('life.companion.attach.dependent') } },
+  { labelKey: 'life.companion.preset.yandereDelusional', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_attachment_enabled: true, cog_attachment_type: zhValue('life.companion.attach.delusional') } },
 ]
 const somaticChannels = computed(() => cognition.value?.wave2?.somatic_channels || null)
-const channelLabel = (name: string) => ({ fatigue: '疲劳', pain: '疼痛', cardiorespiratory: '心慌',
-  gastrointestinal: '胃肠', dizziness: '头晕', sleep: '睡眠' } as Record<string, string>)[name] || name
+const channelLabel = (name: string) => {
+  const keys: Record<string, string> = { fatigue: 'channel.fatigue', pain: 'channel.pain', cardiorespiratory: 'channel.cardiorespiratory', gastrointestinal: 'channel.gastrointestinal', dizziness: 'channel.dizziness', sleep: 'channel.sleep' }
+  return keys[name] ? t(`life.companion.${keys[name]}`) : name
+}
 const somScale = (value: any) => Math.max(0.02, Math.min(1, Number(value))).toFixed(3)
 const personaEvidenceText = computed(() => {
   const evidence = personaInfo.value?.evidence || {}
-  return Object.entries(evidence).map(([dim, words]) => `${dim}(${(words as string[]).join('、')})`).join('；')
+  return Object.entries(evidence).map(([dim, words]) => t('life.companion.evidencePair', { dim, words: (words as string[]).join(t('life.companion.listSeparator')) })).join(t('life.companion.evidenceSeparator'))
 })
 function fmtNum(value: any, digits = 3) { return value == null || value === '' ? '—' : Number(value).toFixed(digits) }
 
 // --- worldsim / state ------------------------------------------------------
-const worldEvents = computed(() => (data.value.timeline || []).filter((t: any) => t.topic === '世界').slice(0, 30))
+const worldEvents = computed(() => (data.value.timeline || []).filter((item: any) => item.topic === zhValue('life.companion.val.world')).slice(0, 30))
 const commitments = computed(() => data.value.commitments || [])
 const userModels = computed(() => data.value.user_model || [])
 const valuesList = computed(() => Object.entries(data.value.values || {})
@@ -245,7 +293,11 @@ function parseList(text: string) { try { const v = JSON.parse(text || '[]'); ret
 
 const settingsForm = ref<Record<string, any>>({})
 const worldDensity = ref('off')
-const worldDensityOptions = [{ value: 'off', label: '关闭' }, { value: 'texture', label: '纹理（只记录）' }, { value: 'full', label: '完整（可主动提及）' }]
+const worldDensityOptions = computed(() => [
+  { value: 'off', label: t('life.companion.worldDensity.off') },
+  { value: 'texture', label: t('life.companion.worldDensity.texture') },
+  { value: 'full', label: t('life.companion.worldDensity.full') },
+])
 const worldFictional = ref('fictional')
 const worldCountry = ref('')
 const worldCity = ref('')
@@ -256,7 +308,10 @@ const worldActors = ref('')
 const worldPlaces = ref('')
 const worldBusy = ref(false)
 const personBusy = ref(false)
-const worldFictionalOptions = [{ value: 'fictional', label: '虚构' }, { value: 'real', label: '真实' }]
+const worldFictionalOptions = computed(() => [
+  { value: 'fictional', label: t('life.companion.worldFictional.fictional') },
+  { value: 'real', label: t('life.companion.worldFictional.real') },
+])
 
 // worldview snapshot (identity + renderable map + current actor positions)
 const worldview = computed(() => data.value.worldview || null)
@@ -264,7 +319,7 @@ const worldMap = computed(() => worldview.value?.map || { locations: [], edges: 
 const actorLocations = computed(() => worldview.value?.actor_locations || {})
 function locById(id: string) { return (worldMap.value.locations || []).find((l: any) => l.id === id) || null }
 const MAP_KINDS = ['home', 'work', 'shop', 'food', 'park', 'transit', 'other']
-const KIND_LABEL: Record<string, string> = { home: '家', work: '工作', shop: '商店', food: '餐饮', park: '公园', transit: '交通', other: '其他' }
+const KIND_LABEL: Record<string, string> = { home: 'life.companion.kind.home', work: 'life.companion.kind.work', shop: 'life.companion.kind.shop', food: 'life.companion.kind.food', park: 'life.companion.kind.park', transit: 'life.companion.kind.transit', other: 'life.companion.kind.other' }
 const KIND_COLOR: Record<string, string> = { home: '#e07a5f', work: '#5b8def', shop: '#e0a23d', food: '#57a773', park: '#3faead', transit: '#8b6fd6', other: '#8a94a6' }
 const usedKinds = computed(() => MAP_KINDS.filter(k => (worldMap.value.locations || []).some((l: any) => (l.kind || 'other') === k)))
 function escapeHtml(value: any) {
@@ -334,7 +389,7 @@ function ensureMap() {
   if (kind === 'real') {
     offlineHint.value = false
     leafletMap = L.map(mapEl.value, { zoomControl: true, attributionControl: true }).setView([35, 105], 5)
-    const tiles = L.tileLayer(TILE_URL, { subdomains: ['1', '2', '3', '4'], maxZoom: 19, minZoom: 3, attribution: '© 高德地图' })
+    const tiles = L.tileLayer(TILE_URL, { subdomains: ['1', '2', '3', '4'], maxZoom: 19, minZoom: 3, attribution: t('life.companion.map.attribution') })
     tiles.on('tileerror', () => { offlineHint.value = true })
     tiles.on('load', () => { offlineHint.value = false })
     tiles.addTo(leafletMap)
@@ -406,8 +461,8 @@ function renderMap(keepView = false) {
     // parks
     ;(worldMap.value.parks || []).forEach((pk: any) => {
       L.polygon(path(pk.points), { pane: 'pParks', color: '#a9d3a0', weight: 1, fillColor: '#c9e6c4', fillOpacity: 1 }).addTo(markerLayer)
-      ;(pk.trees || []).forEach((t: any) => L.circleMarker(xy(t[0], t[1]), { pane: 'pParks', radius: 2.6, stroke: false, fillColor: '#82bd79', fillOpacity: 1 }).addTo(markerLayer))
-      if (pk.name && pk.name !== '公园') L.marker(path(pk.points)[0], { pane: 'pLabels', interactive: false, icon: routeLabel(pk.name, '#5a9e52') }).addTo(markerLayer)
+      ;(pk.trees || []).forEach((tree: any) => L.circleMarker(xy(tree[0], tree[1]), { pane: 'pParks', radius: 2.6, stroke: false, fillColor: '#82bd79', fillOpacity: 1 }).addTo(markerLayer))
+      if (pk.name && pk.name !== zhValue('life.companion.val.park')) L.marker(path(pk.points)[0], { pane: 'pLabels', interactive: false, icon: routeLabel(pk.name, '#5a9e52') }).addTo(markerLayer)
     })
     // buildings: drop shadow, footprint, and a rooftop inset for "towers"
     const buildingLabels: { x: number; y: number; text: string; color: string }[] = []
@@ -558,14 +613,22 @@ function syncSettings() {
   worldActors.value = String(data.value.settings?.world_actors || '')
   worldPlaces.value = String(data.value.settings?.world_places || '')
 }
+/** Set by saveSettings while the request is in flight: the FAB and the two
+    section-head save buttons disable on it, so a slow gateway cannot stack
+    duplicate settings_set calls. */
+const saving = ref(false)
 async function saveSettings() {
-  const settings = { ...cogPayload(), world_density: worldDensity.value,
-    world_fictional: worldFictional.value, world_country: worldCountry.value,
-    world_city: worldCity.value, world_district: worldDistrict.value,
-    world_premise: worldPremise.value, world_actors: worldActors.value, world_places: worldPlaces.value,
-    persona_text: personaText.value }
-  const result = await act('settings_set', { settings })
-  if (result?.rejected?.length) flash(`已保存，忽略无效项：${result.rejected.join('、')}`); else flash('设置已保存')
+  if (saving.value) return
+  saving.value = true
+  try {
+    const settings = { ...cogPayload(), world_density: worldDensity.value,
+      world_fictional: worldFictional.value, world_country: worldCountry.value,
+      world_city: worldCity.value, world_district: worldDistrict.value,
+      world_premise: worldPremise.value, world_actors: worldActors.value, world_places: worldPlaces.value,
+      persona_text: personaText.value }
+    const result = await act('settings_set', { settings })
+    if (result?.rejected?.length) flash(t('life.companion.flash.settingsSavedIgnored', { items: result.rejected.join(t('life.companion.listSeparator')) })); else flash(t('life.companion.flash.settingsSaved'))
+  } finally { saving.value = false }
 }
 
 /* ── 消息平台适配器（只读概览） ───────────────────────────────────────────────
@@ -585,23 +648,23 @@ async function loadAdapters() {
 }
 async function syncAdapters() {
   adapterBusy.value = true
-  try { await act('adapter_sync', {}); flash('已按配置重新监听') }
+  try { await act('adapter_sync', {}); flash(t('life.companion.flash.adaptersRelistened')) }
   finally { adapterBusy.value = false }
 }
 
 async function generateWorld() {
   if (worldBusy.value) return
   const ok = await confirm({
-    title: '✦ AI 重写设定',
-    message: '这会用模型结果覆盖上面的 国家 / 城市 / 前言 / 演员 / 地点 等设定。只想更新地图，请用「只生成地图（保留设定）」',
-    confirmLabel: '覆盖并生成',
+    title: t('life.companion.world.rewriteTitle'),
+    message: t('life.companion.world.rewriteMessage'),
+    confirmLabel: t('life.companion.world.overwriteConfirm'),
     danger: true,
   })
   if (!ok) return
   worldBusy.value = true
   try {
     const result = await act('world_generate', { instructions: '' })
-    if (result?.worldview) flash('已由 AI 完善世界观并生成地图')
+    if (result?.worldview) flash(t('life.companion.flash.worldGenerated'))
   } finally {
     worldBusy.value = false
   }
@@ -611,60 +674,55 @@ async function generateMapOnly() {
   worldBusy.value = true
   try {
     const result = await act('world_map_generate', { instructions: '' })
-    if (result?.worldview) flash('已按当前设定重新生成地图（设定未改动）')
+    if (result?.worldview) flash(t('life.companion.flash.mapRegenerated'))
   } finally {
     worldBusy.value = false
   }
 }
 async function clearWorld() {
   const ok = await confirm({
-    title: '清除世界事件',
-    message: '会删除时间线里所有「世界」事件、世界触发的主动消息与相关记忆，并重置世界状态（演员位置等）。此操作不可撤销。',
-    confirmLabel: '清除',
+    title: t('life.companion.world.clearTitle'),
+    message: t('life.companion.world.clearMessage'),
+    confirmLabel: t('life.companion.world.clearConfirm'),
     danger: true,
   })
   if (!ok) return
   const result = await act('world_clear', {})
-  if (result) flash('已清除世界事件并重置世界状态')
+  if (result) flash(t('life.companion.flash.worldCleared'))
 }
 async function resetPerson() {
   const first = await confirm({
-    title: '重置整个人',
-    message:
-      '这是唯一一次可以「重来」的操作——日常里删除一条记忆或撤回一句话都是不可逆的。\n\n' +
-      '会清空：全部记忆与本地备份、关系与亲密度、承诺、目标与进展日志、未完成话题、用户画像与用户模型、' +
-      '价值取向、人设演化、日记与梦境、每日复盘、技能与常用表达、社交节点与边、群内关系、时间线与见闻、' +
-      '主动消息与回执，以及认知内核（自我叙事、互惠关系、情感历史、学到的价值表）。\n\n' +
-      '会保留：你自己的设置（限额、端点、群策略、日历规则）。\n\n此操作不可撤销。',
-    confirmLabel: '继续',
+    title: t('life.companion.reset.title'),
+    message: t('life.companion.reset.message'),
+    confirmLabel: t('life.companion.reset.continue'),
     danger: true,
   })
   if (!first) return
   const second = await confirm({
-    title: '再确认一次',
-    message: '真的要把这个人恢复到出厂状态吗？之后他不会再记得发生过的任何事。',
-    confirmLabel: '重置整个人',
+    title: t('life.companion.reset.confirmTitle'),
+    message: t('life.companion.reset.confirmMessage'),
+    confirmLabel: t('life.companion.reset.confirm'),
     danger: true,
   })
   if (!second) return
   personBusy.value = true
   try {
     await act('reset_person', {})
-    flash('已重置整个人')
+    flash(t('life.companion.flash.personReset'))
     await load()
   } finally { personBusy.value = false }
 }
 // --- persona (moved out of Settings → 人设) --------------------------------
 type PersonaForm = { name: string; avatar: string; birthDate: string; gender: string; description: string; personality: string; greeting: string; customPrompt: string }
 const emptyPersona = (): PersonaForm => ({ name: '', avatar: '', birthDate: '', gender: '', description: '', personality: '', greeting: '', customPrompt: '' })
-const genderOptions = [
-  { value: '', label: '不判定' },
-  { value: 'female', label: '女' },
-  { value: 'male', label: '男' },
-  { value: 'other', label: '其它' },
-]
+const genderOptions = computed(() => [
+  { value: '', label: t('life.companion.gender.none') },
+  { value: 'female', label: t('life.companion.gender.female') },
+  { value: 'male', label: t('life.companion.gender.male') },
+  { value: 'other', label: t('life.companion.gender.other') },
+])
 function genderLabel(value: string) {
-  return (genderOptions.find((o) => o.value === value) || genderOptions[0]).label
+  return (genderOptions.value.find((o) => o.value === value) || genderOptions.value[0]).label
 }
 const personaForm = ref<PersonaForm>(emptyPersona())
 const personaBusy = ref(false)
@@ -687,16 +745,15 @@ function loadPersona() {
 // parameters, the owner reviews/tunes them, and only then can it be persisted.
 const analysis = ref<any | null>(null)
 const analyzeBusy = ref(false)
-const erqOptions = ['typical', 'depression', 'anxiety', 'bpd', 'alexithymia']
 const characterSelectOptions = computed(() => [
-  { value: '', label: '（不判定）' },
+  { value: '', label: t('life.companion.gender.undecidedBracket') },
   ...((analysis.value?.options?.character || []) as any[]).map((o) => ({ value: o.key, label: o.label })),
 ])
 const relationshipSelectOptions = computed(() => [
-  { value: '', label: '（不判定）' },
+  { value: '', label: t('life.companion.gender.undecidedBracket') },
   ...((analysis.value?.options?.relationship || []) as any[]).map((o) => ({
     value: o.key,
-    label: o.label + (o.pathological ? ' · 病娇族' : ''),
+    label: o.label + (o.pathological ? t('life.companion.relationship.pathologicalSuffix') : ''),
   })),
 ])
 function personaBody() {
@@ -729,7 +786,7 @@ watch(() => analysis.value?.attachment?.type, (type) => {
 })
 async function analyzePersona() {
   const body = personaBody()
-  if (!body.text.trim()) { flash('请先填写「描述」或「性格」'); return }
+  if (!body.text.trim()) { flash(t('life.companion.flash.needDescriptionOrPersonality')); return }
   analyzeBusy.value = true
   try {
     const result = await act('persona_analyze', { text: body.text, gender: personaForm.value.gender })
@@ -737,14 +794,14 @@ async function analyzePersona() {
       analysis.value = result
       // Seed the analyser's gender/social-script pick from the backend's read,
       // else fall back to the currently-saved setting (identity if unset).
-      analysis.value.personadynGender = result.personadyn?.gender || settingsForm.cog_personadyn_gender || '未指定'
+      analysis.value.personadynGender = result.personadyn?.gender || settingsForm.cog_personadyn_gender || zhValue('life.companion.pdGender.unspecified')
       if (!personaForm.value.gender && result.gender) personaForm.value.gender = result.gender
-      flash(result.source === 'llm' ? '已由模型理解，请核对/微调参数' : '模型不可用，已用本地词典理解，请核对')
+      flash(result.source === 'llm' ? t('life.companion.flash.analyzedLlm') : t('life.companion.flash.analyzedLocal'))
     }
   } finally { analyzeBusy.value = false }
 }
 async function savePersona() {
-  if (!analysis.value) { flash('请先点「LLM 理解」并核对参数，再保存'); return }
+  if (!analysis.value) { flash(t('life.companion.flash.needLlmFirst')); return }
   personaBusy.value = true
   try {
     const body = personaBody()
@@ -766,7 +823,7 @@ async function savePersona() {
         ...(analysis.value.personadyn || {}),
         // The owner may override the archetype's implied gender/social script
         // after analysis; the backend applies it as the persona's G group.
-        gender: analysis.value.personadynGender || settingsForm.cog_personadyn_gender || '未指定',
+        gender: analysis.value.personadynGender || settingsForm.cog_personadyn_gender || zhValue('life.companion.pdGender.unspecified'),
       },
     })
     if (!result) return
@@ -779,13 +836,38 @@ async function savePersona() {
       cfg.persona = { ...(cfg.persona || {}), ...personaForm.value }
       localStorage.setItem('0kay_config', JSON.stringify(cfg))
     }
-    flash('人设与参数已保存')
+    flash(t('life.companion.flash.personaSaved'))
   } finally { personaBusy.value = false }
 }
 onMounted(loadPersona)
 watch(tab, (value) => { if (value === 'persona') loadPersona() })
 
 onMounted(load)
+
+// --- live refresh of the 实时状态 card --------------------------------------
+// The card never refreshed on its own; poll a fresh snapshot every 12s while
+// the page is visible (paused in a hidden tab) and stamp when it updated.
+// Deliberately NOT load(): that would flip `loading` and re-sync the settings
+// form, clobbering edits the user has not saved yet.
+const stateUpdatedAt = ref('')
+let pollTimer: ReturnType<typeof setInterval> | undefined
+async function pollCompanion() {
+  if (document.visibilityState !== 'visible') return
+  try {
+    data.value = await lifeGet('/api/life/companion')
+    stateUpdatedAt.value = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  } catch { /* keep the last snapshot */ }
+}
+function onVisibilityChange() { if (document.visibilityState === 'visible') void pollCompanion() }
+onMounted(() => {
+  pollTimer = setInterval(() => { void pollCompanion() }, 12000)
+  // Returning to the tab should not wait up to 12s for fresh numbers.
+  document.addEventListener('visibilitychange', onVisibilityChange)
+})
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+})
 
 /* Install the shared design tokens once per document. A Vue <style scoped>
    block is compiled per component, so the kit has to be injected at runtime to
@@ -799,510 +881,449 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
       <div class="hero-main">
         <div class="hero-copy">
           <p class="eyebrow"><b>◉</b> L.I.F.E / COGNITION</p>
-          <h1>陪伴面板 · 认知内核</h1>
-          <p class="sub">五套认知回路（决策仲裁 / 情感生理 / 语言习得 / 社会学习 / 自我与时间）。它们始终在后台记录状态；只有打开对应的「调节」开关，状态才会写进提示词。全部关闭时行为与旧版完全一致。</p>
+          <h1>{{ t('life.companion.title') }}</h1>
+          <p class="sub">{{ t('life.companion.subtitle') }}</p>
         </div>
         <div class="hero-actions">
-          <button class="btn" :class="{ tonic: !life?.alive }" :disabled="lifeBusy || loading" @click="life?.alive ? stopLife() : startLife()">{{ lifeBusy ? '…' : (life?.alive ? '⏸ 暂停生命' : '❍ 开始生命') }}</button>
-          <button class="fab" :disabled="loading" @click="saveSettings"><span class="fab-ic">✦</span>保存设置</button>
-          <button class="btn tonic" :disabled="loading" @click="load">{{ loading ? '刷新中…' : '刷新' }}</button>
+          <button class="btn" :class="{ tonic: !life?.alive }" :disabled="lifeBusy || loading" @click="life?.alive ? stopLife() : startLife()">{{ lifeBusy ? lifeBusyLabel() : (life?.alive ? t('life.companion.life.pause') : t('life.companion.life.start')) }}</button>
+          <button class="fab" :disabled="saving || loading" @click="saveSettings"><span class="fab-ic">✦</span>{{ saving ? t('life.companion.saving') : t('life.companion.saveSettings') }}</button>
+          <button class="btn tonic" :disabled="loading" @click="load">{{ loading ? t('life.companion.refreshing') : t('life.companion.refresh') }}</button>
         </div>
       </div>
 
       <div class="state-row">
-        <span class="pill" :class="{ bad: cognition && !cognition.enabled }">认知内核 {{ cognition?.available === false ? '不可用' : cognition?.enabled ? '运行中' : '已停止' }}</span>
-        <span class="pill soft">已决策 {{ wave1?.turns ?? 0 }} 轮</span>
-        <span class="pill soft">情景痕迹 {{ wave1?.engrams ?? 0 }}</span>
-        <span class="pill soft">词汇量 {{ wave3?.lexicon_size ?? 0 }}</span>
+        <span class="pill" :class="{ bad: cognition && !cognition.enabled }">{{ t('life.companion.cognitionCore') }} {{ cognition?.available === false ? t('life.companion.status.unavailable') : cognition?.enabled ? t('life.companion.status.running') : t('life.companion.status.stopped') }}</span>
+        <span class="pill soft">{{ t('life.companion.state.decidedTurns', { n: wave1?.turns ?? 0 }) }}</span>
+        <span class="pill soft">{{ t('life.companion.state.engrams', { n: wave1?.engrams ?? 0 }) }}</span>
+        <span class="pill soft">{{ t('life.companion.state.lexicon', { n: wave3?.lexicon_size ?? 0 }) }}</span>
       </div>
     </header>
 
     <p v-if="error" class="banner err">{{ error }}</p>
     <p v-if="notice" class="banner ok">{{ notice }}</p>
 
-    <nav class="tabs" aria-label="视图">
+    <nav class="tabs" :aria-label="t('life.companion.view')">
       <button v-for="item in navItems" :key="item.key" class="tab" :class="{ active: tab === item.key }" @click="jump(item.key)">
-        <i>{{ item.i }}</i><span class="tab-ic">{{ item.icon }}</span>{{ item.label }}
+        <i>{{ item.i }}</i><span class="tab-ic">{{ item.icon }}</span>{{ t(item.labelKey) }}
       </button>
     </nav>
 
     <!-- 02 人设（原设置页 → 人设，移到陪伴） -->
-    <section v-show="tab === 'persona'" class="panel">
-      <div class="section-head"><div><h2>人设</h2><p class="desc">角色的名字、描述与性格。描述 + 性格是模型读取人设的全部来源：它同时驱动情绪画像、依恋动力学（病娇）的型别与初始值、以及抑郁倾向。改完文字后必须先用「LLM 理解」解析成参数、核对微调，才能保存。</p></div>
+    <section v-show="tab === 'persona'" data-panel="persona" class="panel">
+      <div class="section-head"><div><h2>{{ t('life.companion.persona.title') }}</h2><p class="desc">{{ t('life.companion.persona.desc') }}</p></div>
         <div class="head-actions">
-          <button class="btn tonic sm" :disabled="analyzeBusy || loading" @click="analyzePersona">{{ analyzeBusy ? '理解中…' : 'LLM 理解' }}</button>
-          <button class="btn filled sm" :disabled="personaBusy || !analysis" @click="savePersona">保存人设</button>
+          <button class="btn tonic sm" :disabled="analyzeBusy || loading" @click="analyzePersona">{{ analyzeBusy ? t('life.companion.persona.analyzing') : t('life.companion.persona.analyze') }}</button>
+          <button class="btn filled sm" :disabled="personaBusy || !analysis" @click="savePersona">{{ t('life.companion.persona.save') }}</button>
         </div>
       </div>
       <article class="card">
         <div class="settings-grid">
-          <label><span>名字</span><input v-model="personaForm.name" class="field" /></label>
-          <label><span>性别</span><AppSelect v-model="personaForm.gender" :options="genderOptions" aria-label="性别" /></label>
-          <label><span>头像 URL</span><input v-model="personaForm.avatar" class="field" /></label>
-          <label><span>生日</span><input v-model="personaForm.birthDate" type="date" class="field" /></label>
+          <label><span>{{ t('life.companion.persona.name') }}</span><input v-model="personaForm.name" class="field" /></label>
+          <label><span>{{ t('life.companion.persona.gender') }}</span><AppSelect v-model="personaForm.gender" :options="genderOptions" :aria-label="t('life.companion.persona.gender')" /></label>
+          <label><span>{{ t('life.companion.persona.avatarUrl') }}</span><input v-model="personaForm.avatar" class="field" /></label>
+          <label><span>{{ t('life.companion.persona.birthday') }}</span><input v-model="personaForm.birthDate" type="date" class="field" /></label>
         </div>
-        <label class="pfield"><span>描述</span><textarea v-model="personaForm.description" rows="3" class="field"></textarea></label>
-        <label class="pfield"><span>性格</span><textarea v-model="personaForm.personality" rows="3" class="field"></textarea></label>
-        <label class="pfield"><span>问候语</span><textarea v-model="personaForm.greeting" rows="2" class="field"></textarea></label>
-        <label class="pfield"><span>自定义提示词（作为 system 提示逐字发送）</span><textarea v-model="personaForm.customPrompt" rows="5" class="field"></textarea></label>
-        <p class="hint">填写/修改「描述」或「性格」后，先点右上角「LLM 理解」：模型会把文字解析成下面的参数，你核对或微调后「保存人设」才会写回；改了文字需要重新理解。</p>
+        <label class="pfield"><span>{{ t('life.companion.persona.description') }}</span><textarea v-model="personaForm.description" rows="3" class="field"></textarea></label>
+        <label class="pfield"><span>{{ t('life.companion.persona.personality') }}</span><textarea v-model="personaForm.personality" rows="3" class="field"></textarea></label>
+        <label class="pfield"><span>{{ t('life.companion.persona.greeting') }}</span><textarea v-model="personaForm.greeting" rows="2" class="field"></textarea></label>
+        <label class="pfield"><span>{{ t('life.companion.persona.customPrompt') }}</span><textarea v-model="personaForm.customPrompt" rows="5" class="field"></textarea></label>
+        <p class="hint">{{ t('life.companion.persona.hint') }}</p>
       </article>
       <article v-if="analysis" class="card">
-        <h3>解析结果 <span class="count-pill ok">{{ analysis.source === 'llm' ? '模型理解' : '本地词典' }}</span></h3>
+        <h3>{{ t('life.companion.persona.analysisResult') }} <span class="count-pill ok">{{ analysis.source === 'llm' ? t('life.companion.persona.sourceLlm') : t('life.companion.persona.sourceLocal') }}</span></h3>
         <div class="settings-grid">
-          <label><span>性别</span><AppSelect v-model="analysis.gender" :options="genderOptions" aria-label="性别" /></label>
-          <label><span>性格原型</span><AppSelect v-model="analysis.character.key" :options="characterSelectOptions" aria-label="性格原型" /></label>
-          <label><span>关系 / 依恋类型</span><AppSelect v-model="analysis.relationship.key" :options="relationshipSelectOptions" aria-label="关系类型" /></label>
+          <label><span>{{ t('life.companion.persona.gender') }}</span><AppSelect v-model="analysis.gender" :options="genderOptions" :aria-label="t('life.companion.persona.gender')" /></label>
+          <label><span>{{ t('life.companion.persona.characterArchetype') }}</span><AppSelect v-model="analysis.character.key" :options="characterSelectOptions" :aria-label="t('life.companion.persona.characterArchetype')" /></label>
+          <label><span>{{ t('life.companion.persona.relationshipType') }}</span><AppSelect v-model="analysis.relationship.key" :options="relationshipSelectOptions" :aria-label="t('life.companion.persona.relationshipTypeAria')" /></label>
         </div>
         <p class="hint">
-          性别：{{ genderLabel(analysis.gender) }}。
+          {{ t('life.companion.persona.genderLine', { gender: genderLabel(analysis.gender) }) }}
           <template v-if="analysis.relationship?.label">
-            关系判定：{{ analysis.relationship.label }}
-            <template v-if="analysis.relationship.pathological">（病娇族 → 才会启用依恋动力学）</template>
-            <template v-else>（健康型 → 不启用病态依恋）</template>
+            {{ t('life.companion.persona.relationshipLine', { label: analysis.relationship.label }) }}
+            <template v-if="analysis.relationship.pathological">{{ t('life.companion.persona.pathologicalNote') }}</template>
+            <template v-else>{{ t('life.companion.persona.healthyNote') }}</template>
           </template>
         </p>
-        <p v-if="analysis.character?.expression || analysis.expression" class="hint">说话风格：{{ analysis.character?.expression || analysis.expression }}</p>
+        <p v-if="analysis.character?.expression || analysis.expression" class="hint">{{ t('life.companion.persona.speakingStyle', { style: analysis.character?.expression || analysis.expression }) }}</p>
 
-        <h4>情绪 / 躯体参数</h4>
+        <h4>{{ t('life.companion.persona.emotionSomatic') }}</h4>
         <div class="settings-grid">
-          <label><span>威胁基线</span><input v-model.number="analysis.traits.threat_baseline" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-          <label><span>奖赏基线</span><input v-model.number="analysis.traits.reward_baseline" type="number" step="0.1" min="0" max="2" class="field tiny" /></label>
-          <label><span>灾难化</span><input v-model.number="analysis.traits.catastrophizing" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-          <label><span>情绪调节画像</span><AppSelect v-model="analysis.traits.erq_profile" :options="erqOptions" aria-label="情绪调节画像" /></label>
-          <label><span>作息（睡眠小时 0-23）</span><input v-model.number="analysis.traits.sleep_hour" type="number" min="0" max="23" class="field tiny" /></label>
+          <label><span>{{ t('life.companion.persona.threatBaseline') }}</span><input v-model.number="analysis.traits.threat_baseline" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          <label><span>{{ t('life.companion.persona.rewardBaseline') }}</span><input v-model.number="analysis.traits.reward_baseline" type="number" step="0.1" min="0" max="2" class="field tiny" /></label>
+          <label><span>{{ t('life.companion.persona.catastrophizing') }}</span><input v-model.number="analysis.traits.catastrophizing" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          <label><span>{{ t('life.companion.persona.erqProfile') }}</span><AppSelect v-model="analysis.traits.erq_profile" :options="cogProfileOptions" :aria-label="t('life.companion.persona.erqProfile')" /></label>
+          <label><span>{{ t('life.companion.persona.sleepHour') }}</span><input v-model.number="analysis.traits.sleep_hour" type="number" min="0" max="23" class="field tiny" /></label>
         </div>
 
-        <h4>性格维度</h4>
+        <h4>{{ t('life.companion.persona.personalityDims') }}</h4>
         <div class="settings-grid">
-          <label><span>外向性</span><input v-model.number="analysis.traits.extraversion" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-          <label><span>宜人性</span><input v-model.number="analysis.traits.agreeableness" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-          <label><span>尽责性</span><input v-model.number="analysis.traits.conscientiousness" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-          <label><span>开放性</span><input v-model.number="analysis.traits.openness" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-          <label><span>依恋焦虑</span><input v-model.number="analysis.traits.attach_anxiety" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-          <label><span>依恋回避</span><input v-model.number="analysis.traits.attach_avoidance" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          <label><span>{{ t('life.companion.persona.extraversion') }}</span><input v-model.number="analysis.traits.extraversion" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          <label><span>{{ t('life.companion.persona.agreeableness') }}</span><input v-model.number="analysis.traits.agreeableness" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          <label><span>{{ t('life.companion.persona.conscientiousness') }}</span><input v-model.number="analysis.traits.conscientiousness" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          <label><span>{{ t('life.companion.persona.openness') }}</span><input v-model.number="analysis.traits.openness" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          <label><span>{{ t('life.companion.persona.attachAnxiety') }}</span><input v-model.number="analysis.traits.attach_anxiety" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+          <label><span>{{ t('life.companion.persona.attachAvoidance') }}</span><input v-model.number="analysis.traits.attach_avoidance" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
         </div>
         <details class="pdetails">
-          <summary>更多风格参数（表达 / 语气）</summary>
+          <summary>{{ t('life.companion.persona.moreStyle') }}</summary>
           <div class="settings-grid" style="margin-top:10px">
-            <label><span>表达欲</span><input v-model.number="analysis.traits.expressiveness" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>主动性</span><input v-model.number="analysis.traits.initiative" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>幽默</span><input v-model.number="analysis.traits.humor" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>亲和</span><input v-model.number="analysis.traits.warmth" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>正式程度</span><input v-model.number="analysis.traits.formality" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>强势 / 支配</span><input v-model.number="analysis.traits.assertiveness" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.expressiveness') }}</span><input v-model.number="analysis.traits.expressiveness" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.initiative') }}</span><input v-model.number="analysis.traits.initiative" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.humor') }}</span><input v-model.number="analysis.traits.humor" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.warmth') }}</span><input v-model.number="analysis.traits.warmth" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.formality') }}</span><input v-model.number="analysis.traits.formality" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.assertiveness') }}</span><input v-model.number="analysis.traits.assertiveness" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
           </div>
         </details>
 
         <template v-if="analysis.attachment.type">
-          <h4>病态依恋 · 由关系类型「{{ analysis.relationship.label }}」决定</h4>
+          <h4>{{ t('life.companion.persona.attachmentHeading', { label: analysis.relationship.label }) }}</h4>
           <div class="settings-grid">
-            <label><span>依恋型别（随关系类型）</span><input class="field" :value="analysis.attachment.type + '（' + (analysis.relationship.label || '') + '）'" disabled /></label>
-            <label><span>初始焦虑 X</span><input v-model.number="analysis.attachment.initial.X" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>初始安全感 S</span><input v-model.number="analysis.attachment.initial.S" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.attachTypeByRelationship') }}</span><input class="field" :value="t('life.companion.attachmentTypeValue', { type: analysis.attachment.type, label: analysis.relationship.label || '' })" disabled /></label>
+            <label><span>{{ t('life.companion.persona.initialAnxietyX') }}</span><input v-model.number="analysis.attachment.initial.X" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.initialSecurityS') }}</span><input v-model.number="analysis.attachment.initial.S" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
           </div>
-          <p class="hint">文字只是来源，真正保存进 LIFE 的是这里调好的数值。依恋型别由「关系/依恋类型」自动决定，改关系类型即可换型别。想更贴合「病娇常伴抑郁」，把情绪调节画像设为 depression。</p>
+          <p class="hint">{{ t('life.companion.persona.attachmentHint') }}</p>
         </template>
-        <p v-else class="hint">当前关系类型不是病娇族，不启用病态依恋动力学（病度、嫉妒、执念等由关系动力学单独驱动）。</p>
+        <p v-else class="hint">{{ t('life.companion.persona.attachmentDisabled') }}</p>
 
         <template v-if="analysis.tsundere && analysis.tsundere.type">
-          <h4>傲娇动力学 · 由人设关键词决定</h4>
+          <h4>{{ t('life.companion.persona.tsundereHeading') }}</h4>
           <div class="settings-grid">
-            <label><span>傲娇型别</span><input class="field" :value="analysis.tsundere.type" disabled /></label>
-            <label><span>初始好感 A</span><input v-model.number="analysis.tsundere.initial.A" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>初始傲娇表达 T</span><input v-model.number="analysis.tsundere.initial.T" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>初始病娇执念 Y</span><input v-model.number="analysis.tsundere.initial.Y" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.tsundereType') }}</span><input class="field" :value="analysis.tsundere.type" disabled /></label>
+            <label><span>{{ t('life.companion.persona.initialAffectionA') }}</span><input v-model.number="analysis.tsundere.initial.A" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.initialTsunExpressionT') }}</span><input v-model.number="analysis.tsundere.initial.T" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.initialYandereY') }}</span><input v-model.number="analysis.tsundere.initial.Y" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
           </div>
-          <p class="hint">文字只是来源，真正保存进 LIFE 的是这里调好的数值。改人设里的关键词即可换型别（口嫌体正直→经典，高冷→高冷，暴躁→暴躁，迁就→迁就）。</p>
+          <p class="hint">{{ t('life.companion.persona.tsundereHint') }}</p>
         </template>
-        <p v-else class="hint">人设里没有傲娇关键词，不启用傲娇动力学（可在下方「傲娇 / 病娇动力学」卡片手动开启）。</p>
+        <p v-else class="hint">{{ t('life.companion.persona.tsundereDisabled') }}</p>
 
         <template v-if="analysis.personadyn && analysis.personadyn.type">
-          <h4>人格动力学 · 由人设关键词决定</h4>
+          <h4>{{ t('life.companion.persona.personadynHeading') }}</h4>
           <div class="settings-grid">
-            <label><span>人格原型</span><input class="field" :value="analysis.personadyn.type" disabled /></label>
-            <label><span>初始好感 A</span><input v-model.number="analysis.personadyn.initial.A" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>初始焦虑 X</span><input v-model.number="analysis.personadyn.initial.X" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>初始占有 O</span><input v-model.number="analysis.personadyn.initial.O" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>初始信任 Tr</span><input v-model.number="analysis.personadyn.initial.Tr" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>初始自控 K</span><input v-model.number="analysis.personadyn.initial.K" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>性别 / 社会脚本 G</span><AppSelect v-model="analysis.personadynGender" :options="personadynGenderOptions" aria-label="性别社会脚本" /></label>
+            <label><span>{{ t('life.companion.persona.personaArchetype') }}</span><input class="field" :value="analysis.personadyn.type" disabled /></label>
+            <label><span>{{ t('life.companion.persona.initialAffectionA') }}</span><input v-model.number="analysis.personadyn.initial.A" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.initialAnxietyX') }}</span><input v-model.number="analysis.personadyn.initial.X" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.initialPossessionO') }}</span><input v-model.number="analysis.personadyn.initial.O" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.initialTrustTr') }}</span><input v-model.number="analysis.personadyn.initial.Tr" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.initialSelfControlK') }}</span><input v-model.number="analysis.personadyn.initial.K" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.genderSocialScript') }}</span><AppSelect v-model="analysis.personadynGender" :options="personadynGenderOptions" :aria-label="t('life.companion.persona.genderSocialScriptAria')" /></label>
           </div>
-          <p class="hint">文字只是来源，真正保存进 LIFE 的是这里调好的数值。改人设里的关键词即可换原型（傲娇→傲娇型，病娇/占有→病娇型，高冷→三无，暴躁→暴躁…）。原型自带 12 族 / 69 维 θ 基线，选「未指定」时沿用原型隐含的社会脚本。</p>
+          <p class="hint">{{ t('life.companion.persona.personadynHint') }}</p>
         </template>
-        <p v-else class="hint">人设里没有匹配的人格原型关键词，不启用人格动力学（可在下方「人格动力学」卡片手动开启）。</p>
+        <p v-else class="hint">{{ t('life.companion.persona.personadynDisabled') }}</p>
       </article>
     </section>
 
     <!-- 01 认知 -->
-    <section v-show="tab === 'cognition'" class="panel">
-      <div class="section-head"><div><h2>认知内核</h2><p class="desc">实时状态与全部参数。改动后点右上角「保存设置」才会生效。</p></div>
-        <div class="head-actions"><button class="btn filled sm" @click="saveSettings">保存设置</button></div>
+    <section v-show="tab === 'cognition'" data-panel="cognition" class="panel">
+      <div class="section-head"><div><h2>{{ t('life.companion.cognition.title') }}</h2><p class="desc">{{ t('life.companion.cognition.desc') }}</p></div>
+        <div class="head-actions"><button class="btn filled sm" :disabled="saving" @click="saveSettings">{{ saving ? t('life.companion.saving') : t('life.companion.saveSettings') }}</button></div>
       </div>
 
       <article class="card">
-        <h3>生命 <span class="count-pill" :class="{ ok: life?.alive }">{{ life?.alive ? '活着' : '未开始 / 已暂停' }}</span></h3>
+        <h3>{{ t('life.companion.life.title') }} <span class="count-pill" :class="{ ok: life?.alive }">{{ life?.alive ? t('life.companion.life.alive') : t('life.companion.life.notStarted') }}</span></h3>
         <div class="settings-grid">
-          <div class="cog-metric"><span>状态</span><strong>{{ life?.alive ? '活着' : '未开始 / 已暂停' }}</strong></div>
-          <div class="cog-metric"><span>已活</span><strong>{{ lifeAgeText() }}</strong></div>
-          <div class="cog-metric"><span>思考步数</span><strong>{{ life?.ticks ?? 0 }}</strong></div>
-          <div class="cog-metric"><span>常驻思考</span><strong>{{ life?.resident_running ? '运行中' : '停止' }}</strong></div>
-          <div class="cog-metric"><span>主动行为</span><strong>{{ life?.proactive_enabled ? '开' : '关' }}</strong></div>
-          <div class="cog-metric"><span>上次思考</span><strong>{{ (life?.last_tick || '').slice(0, 16).replace('T', ' ') || '—' }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.life.status') }}</span><strong>{{ life?.alive ? t('life.companion.life.alive') : t('life.companion.life.notStarted') }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.life.livedFor') }}</span><strong>{{ lifeAgeText() }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.life.ticks') }}</span><strong>{{ life?.ticks ?? 0 }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.life.residentThinking') }}</span><strong>{{ life?.resident_running ? t('life.companion.status.running') : t('life.companion.status.stopped') }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.life.proactive') }}</span><strong>{{ life?.proactive_enabled ? t('life.companion.on') : t('life.companion.off') }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.life.lastThought') }}</span><strong>{{ (life?.last_tick || '').slice(0, 16).replace('T', ' ') || '—' }}</strong></div>
         </div>
-        <p v-if="life?.last_thought" class="hint">此刻的念头：{{ life.last_thought }}</p>
-        <p v-if="life?.focus" class="hint">当前专注：{{ life.focus }}</p>
-        <p v-if="life?.active_goal" class="hint">想推进的目标：{{ life.active_goal }}</p>
+        <p v-if="life?.last_thought" class="hint">{{ t('life.companion.life.currentThought', { text: life.last_thought }) }}</p>
+        <p v-if="life?.focus" class="hint">{{ t('life.companion.life.focus', { text: life.focus }) }}</p>
+        <p v-if="life?.active_goal" class="hint">{{ t('life.companion.life.goal', { text: life.active_goal }) }}</p>
         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px">
-          <label class="sw"><input type="checkbox" v-model="lifeGreet" /><span>开始时让她先主动说一句</span></label>
+          <label class="sw"><input type="checkbox" v-model="lifeGreet" /><span>{{ t('life.companion.life.greetOnStart') }}</span></label>
           <button class="btn sm" :class="{ filled: !life?.alive }" :disabled="lifeBusy || loading" @click="life?.alive ? stopLife() : startLife()">
-            {{ lifeBusy ? '…' : (life?.alive ? '⏸ 暂停生命' : '❍ 开始生命') }}
+            {{ lifeBusy ? lifeBusyLabel() : (life?.alive ? t('life.companion.life.pause') : t('life.companion.life.start')) }}
           </button>
         </div>
-        <p class="hint">「开始生命」一次打开：认知内核 + 常驻思考 + 主动行为（主动消息/做梦），并立刻让她想第一件事。暂停后不再自主思考，但内心状态与记忆都保留。</p>
+        <p class="hint">{{ t('life.companion.life.hint') }}</p>
       </article>
 
       <article class="card">
-        <h3>实时状态 <span class="count-pill" :class="{ ok: cognition?.enabled }">{{ cognition?.enabled ? '运行中' : '已停止' }}</span></h3>
-        <div v-if="!cognition" class="empty">尚无状态数据（刷新后显示）</div>
+        <h3>{{ t('life.companion.realtime.title') }} <span class="count-pill" :class="{ ok: cognition?.enabled }">{{ cognition?.enabled ? t('life.companion.status.running') : t('life.companion.status.stopped') }}</span><span v-if="stateUpdatedAt" class="count-pill sync-pill">{{ t('life.companion.realtime.updatedAt', { time: stateUpdatedAt }) }}</span></h3>
+        <div v-if="!cognition" class="empty">{{ t('life.companion.realtime.empty') }}</div>
         <div v-else class="settings-grid">
-          <div class="cog-metric"><span>仲裁模式</span><strong>{{ lastControl?.mode || '—' }}</strong></div>
-          <div class="cog-metric"><span>本轮策略</span><strong>{{ lastControl?.action || '—' }}</strong></div>
-          <div class="cog-metric"><span>控制需求</span><strong>{{ fmtNum(lastControl?.need) }}</strong></div>
-          <div class="cog-metric"><span>置信度</span><strong>{{ fmtNum(lastControl?.confidence) }}</strong></div>
-          <div class="cog-metric"><span>已决策轮数</span><strong>{{ wave1?.turns ?? 0 }}</strong></div>
-          <div class="cog-metric"><span>情景痕迹</span><strong>{{ wave1?.engrams ?? 0 }}</strong></div>
-          <div class="cog-metric"><span>模型可靠性</span><strong>{{ fmtNum(wave1?.reliability) }}</strong></div>
-          <div class="cog-metric"><span>心境</span><strong>{{ fmtNum(wave2?.mood) }}</strong></div>
-          <div class="cog-metric"><span>迷走张力</span><strong>{{ fmtNum(wave2?.vagal_tone) }}</strong></div>
-          <div class="cog-metric"><span>躯体化指数</span><strong>{{ fmtNum(wave2?.somatization_index) }}</strong></div>
-          <div class="cog-metric"><span>健康焦虑</span><strong>{{ fmtNum(wave2?.health_anxiety) }}</strong></div>
-          <div class="cog-metric"><span>躯体负担</span><strong>{{ fmtNum(wave2?.somatic_burden) }}</strong></div>
-          <div class="cog-metric"><span>人设特质</span><strong>{{ personaInfo?.applied ? (personaInfo.source === 'llm' ? '已应用 · LLM' : '已应用 · 词典') : '未解析' }}</strong></div>
-          <div class="cog-metric"><span>词汇量</span><strong>{{ wave3?.lexicon_size ?? 0 }}</strong></div>
-          <div class="cog-metric"><span>共情权重</span><strong>{{ fmtNum(wave4a?.empathy) }}</strong></div>
-          <div class="cog-metric"><span>视角阶段</span><strong>{{ wave4a?.perspective_name || '—' }}</strong></div>
-          <div class="cog-metric"><span>注意状态</span><strong>{{ wave4b?.attention_state || '—' }}</strong></div>
-          <div class="cog-metric"><span>耐心</span><strong>{{ fmtNum(wave4b?.patience) }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.arbitrationMode') }}</span><strong>{{ lastControl?.mode || '—' }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.currentStrategy') }}</span><strong>{{ lastControl?.action || '—' }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.controlNeed') }}</span><strong>{{ fmtNum(lastControl?.need) }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.confidence') }}</span><strong>{{ fmtNum(lastControl?.confidence) }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.decidedTurns') }}</span><strong>{{ wave1?.turns ?? 0 }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.engrams') }}</span><strong>{{ wave1?.engrams ?? 0 }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.reliability') }}</span><strong>{{ fmtNum(wave1?.reliability) }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.mood') }}</span><strong>{{ fmtNum(wave2?.mood) }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.vagalTone') }}</span><strong>{{ fmtNum(wave2?.vagal_tone) }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.somatizationIndex') }}</span><strong>{{ fmtNum(wave2?.somatization_index) }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.healthAnxiety') }}</span><strong>{{ fmtNum(wave2?.health_anxiety) }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.somaticBurden') }}</span><strong>{{ fmtNum(wave2?.somatic_burden) }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.personaTraits') }}</span><strong>{{ personaInfo?.applied ? (personaInfo.source === 'llm' ? t('life.companion.metric.appliedLlm') : t('life.companion.metric.appliedLocal')) : t('life.companion.metric.notParsed') }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.lexicon') }}</span><strong>{{ wave3?.lexicon_size ?? 0 }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.empathy') }}</span><strong>{{ fmtNum(wave4a?.empathy) }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.perspectiveStage') }}</span><strong>{{ wave4a?.perspective_name || '—' }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.attentionState') }}</span><strong>{{ wave4b?.attention_state || '—' }}</strong></div>
+          <div class="cog-metric"><span>{{ t('life.companion.metric.patience') }}</span><strong>{{ fmtNum(wave4b?.patience) }}</strong></div>
           <template v-if="attachment?.enabled">
-            <div class="cog-metric"><span>依恋型别</span><strong>{{ attachment.label || attachment.type }}</strong></div>
-            <div class="cog-metric"><span>病度</span><strong>{{ fmtNum(attachment.severity, 2) }} · {{ attachment.band }}</strong></div>
-            <div class="cog-metric"><span>主导倾向</span><strong>{{ attachment.dominant || '—' }}</strong></div>
-            <div class="cog-metric"><span>依恋压力</span><strong>{{ fmtNum(attachment.distress, 2) }}</strong></div>
-            <div class="cog-metric"><span>抑郁共病</span><strong>{{ fmtNum(attachment.comorbid_depression, 2) }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.attachmentType') }}</span><strong>{{ attachment.label || attachment.type }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.severity') }}</span><strong>{{ fmtNum(attachment.severity, 2) }} · {{ attachment.band }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.dominantTendency') }}</span><strong>{{ attachment.dominant || '—' }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.attachmentDistress') }}</span><strong>{{ fmtNum(attachment.distress, 2) }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.comorbidDepression') }}</span><strong>{{ fmtNum(attachment.comorbid_depression, 2) }}</strong></div>
           </template>
           <template v-if="tsundere?.enabled">
-            <div class="cog-metric"><span>傲娇型别</span><strong>{{ tsundere.label || tsundere.type }}</strong></div>
-            <div class="cog-metric"><span>好感 A</span><strong>{{ fmtNum(tsundere.affection, 2) }}</strong></div>
-            <div class="cog-metric"><span>傲娇表达 T</span><strong>{{ fmtNum(tsundere.expression, 2) }}</strong></div>
-            <div class="cog-metric"><span>病娇执念 Y</span><strong>{{ fmtNum(tsundere.fixation, 2) }} · {{ tsundere.band }}</strong></div>
-            <div class="cog-metric"><span>安全层</span><strong>{{ tsundere.safe_mode ? '已触发' : '正常' }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.persona.tsundereType') }}</span><strong>{{ tsundere.label || tsundere.type }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.affectionA') }}</span><strong>{{ fmtNum(tsundere.affection, 2) }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.tsunExpressionT') }}</span><strong>{{ fmtNum(tsundere.expression, 2) }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.yandereY') }}</span><strong>{{ fmtNum(tsundere.fixation, 2) }} · {{ tsundere.band }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.safetyLayer') }}</span><strong>{{ tsundere.safe_mode ? t('life.companion.metric.triggered') : t('life.companion.metric.normal') }}</strong></div>
           </template>
           <template v-if="personadyn?.enabled">
-            <div class="cog-metric"><span>人格原型</span><strong>{{ personadyn.label || personadyn.type }}</strong></div>
-            <div class="cog-metric"><span>涌现模式</span><strong>{{ personadyn.mode_label || personadyn.mode }}</strong></div>
-            <div class="cog-metric"><span>就绪度</span><strong>{{ fmtNum(personadyn.pressure, 2) }} · {{ personadyn.band }}</strong></div>
-            <div class="cog-metric"><span>好感 A / 焦虑 X</span><strong>{{ fmtNum(personadyn.affection, 2) }} / {{ fmtNum(personadyn.anxiety, 2) }}</strong></div>
-            <div class="cog-metric"><span>占有 O / 信任 Tr</span><strong>{{ fmtNum(personadyn.possessiveness, 2) }} / {{ fmtNum(personadyn.trust, 2) }}</strong></div>
-            <div class="cog-metric"><span>自控 K / 抑制 S</span><strong>{{ fmtNum(personadyn.self_control, 2) }} / {{ fmtNum(personadyn.suppression, 2) }}</strong></div>
-            <div v-if="personadyn.gender" class="cog-metric"><span>性别 / 社会脚本 G</span><strong>{{ personadyn.gender }}</strong></div>
-            <div v-if="personadyn.help_seek != null" class="cog-metric"><span>求助倾向</span><strong>{{ fmtNum(personadyn.help_seek, 2) }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.persona.personaArchetype') }}</span><strong>{{ personadyn.label || personadyn.type }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.emergentMode') }}</span><strong>{{ personadyn.mode_label || personadyn.mode }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.readiness') }}</span><strong>{{ fmtNum(personadyn.pressure, 2) }} · {{ personadyn.band }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.affectionAnxiety') }}</span><strong>{{ fmtNum(personadyn.affection, 2) }} / {{ fmtNum(personadyn.anxiety, 2) }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.possessionTrust') }}</span><strong>{{ fmtNum(personadyn.possessiveness, 2) }} / {{ fmtNum(personadyn.trust, 2) }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.selfControlSuppression') }}</span><strong>{{ fmtNum(personadyn.self_control, 2) }} / {{ fmtNum(personadyn.suppression, 2) }}</strong></div>
+            <div v-if="personadyn.gender" class="cog-metric"><span>{{ t('life.companion.persona.genderSocialScript') }}</span><strong>{{ personadyn.gender }}</strong></div>
+            <div v-if="personadyn.help_seek != null" class="cog-metric"><span>{{ t('life.companion.metric.helpSeeking') }}</span><strong>{{ fmtNum(personadyn.help_seek, 2) }}</strong></div>
             <div v-if="personadyn.big5" class="cog-metric"><span>Big5 O·C·E·A·N</span><strong>{{ big5Line }}</strong></div>
             <div v-if="personadyn.hexaco" class="cog-metric"><span>HEXACO H·E·X·A·C·O</span><strong>{{ hexacoLine }}</strong></div>
             <div v-if="personadyn.mbti" class="cog-metric"><span>MBTI / DISC</span><strong>{{ personadyn.mbti }} · {{ personadyn.disc || '—' }}</strong></div>
-            <div v-if="personadyn.theta_dim" class="cog-metric"><span>θ 维度 / 区域族</span><strong>{{ personadyn.theta_dim }} 维 · {{ personadyn.family || '—' }}</strong></div>
-            <div v-if="topDesires.length" class="cog-metric"><span>主导欲望</span><strong>{{ topDesires.join(' · ') }}</strong></div>
-            <div v-if="topEmotions.length" class="cog-metric"><span>主导情绪</span><strong>{{ topEmotions.join(' · ') }}</strong></div>
-            <div v-if="personadyn.learning?.enabled" class="cog-metric"><span>学习 Q 状态数 / θ 漂移</span><strong>{{ personadyn.learning.q_size }} · {{ fmtNum(learningDrift, 3) }}</strong></div>
-            <div v-if="personadyn.clinical" class="cog-metric warn"><span>临床标签</span><strong>仿真模式（仅抽象标签）</strong></div>
+            <div v-if="personadyn.theta_dim" class="cog-metric"><span>{{ t('life.companion.metric.thetaDim') }}</span><strong>{{ t('life.companion.dimensionsValue', { n: personadyn.theta_dim }) }} · {{ personadyn.family || '—' }}</strong></div>
+            <div v-if="topDesires.length" class="cog-metric"><span>{{ t('life.companion.metric.topDesires') }}</span><strong>{{ topDesires.join(' · ') }}</strong></div>
+            <div v-if="topEmotions.length" class="cog-metric"><span>{{ t('life.companion.metric.topEmotions') }}</span><strong>{{ topEmotions.join(' · ') }}</strong></div>
+            <div v-if="personadyn.learning?.enabled" class="cog-metric"><span>{{ t('life.companion.metric.learningState') }}</span><strong>{{ personadyn.learning.q_size }} · {{ fmtNum(learningDrift, 3) }}</strong></div>
+            <div v-if="personadyn.clinical" class="cog-metric warn"><span>{{ t('life.companion.metric.clinicalLabel') }}</span><strong>{{ t('life.companion.simulationMode') }}</strong></div>
           </template>
           <template v-if="episode">
-            <div class="cog-metric"><span>情绪病程</span><strong>{{ episodeStateLabel(episode.state) }}</strong></div>
-            <div class="cog-metric"><span>病程严重度</span><strong>{{ fmtNum(episode.severity, 2) }}</strong></div>
-            <div class="cog-metric"><span>发作 / 复发</span><strong>{{ episode.episodes }} / {{ episode.relapses }}</strong></div>
-            <div v-if="episode.state === 'episode'" class="cog-metric"><span>已持续</span><strong>{{ fmtNum(episode.days_in_episode, 1) }} 天</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.episodeCourse') }}</span><strong>{{ episodeStateLabel(episode.state) }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.episodeSeverity') }}</span><strong>{{ fmtNum(episode.severity, 2) }}</strong></div>
+            <div class="cog-metric"><span>{{ t('life.companion.metric.episodesRelapses') }}</span><strong>{{ episode.episodes }} / {{ episode.relapses }}</strong></div>
+            <div v-if="episode.state === 'episode'" class="cog-metric"><span>{{ t('life.companion.metric.duration') }}</span><strong>{{ t('life.companion.daysValue', { n: fmtNum(episode.days_in_episode, 1) }) }}</strong></div>
           </template>
         </div>
-        <p v-if="episode" class="hint">
-          情绪病程：连续两次评估越过阈值才算「低落发作」，连续两次回落才算「缓解」；缓解期内再次发作计为「复发」。
-          它由情绪、快感缺失、稳态负荷、反刍、睡眠合成——沉默与慢性压力会把它推高。
-        </p>
-        <p v-if="attachment?.enabled" class="hint">
-          依恋动力学已开启：{{ attachment.label }}。病度 {{ fmtNum(attachment.severity, 2) }}（{{ attachment.band }}）由依恋、嫉妒、焦虑、执念等合成；
-          {{ attachment.safe_mode ? '已进入安全层（只表达情绪、不给伤害方法）。' : '低于 0.85 不会触发安全层。' }}
-          它与抑郁双向影响：低落会放大不安、依恋压力也会拖累情绪。
-        </p>
-        <p v-if="tsundere?.enabled" class="hint">
-          傲娇动力学已开启：{{ tsundere.label || tsundere.type }}。好感 A {{ fmtNum(tsundere.affection, 2) }} / 傲娇表达 T {{ fmtNum(tsundere.expression, 2) }} / 病娇执念 Y {{ fmtNum(tsundere.fixation, 2) }}（{{ tsundere.band }}）。
-          Y 越过 0.60 进入「过渡/黑化倾向」，越过 1.00 视为「病娇」——可逆。它由真实信号驱动：亲密度、回复延迟、被冷落天数，以及对方提及「别人」。
-          {{ tsundere.safe_mode ? '已进入安全层（只表达占有情绪，不给伤害方法）。' : '低于 0.85 不会触发安全层。' }}
-        </p>
-        <p v-if="personadyn?.enabled" class="hint">
-          人格动力学已开启：{{ personadyn.label || personadyn.type }}（{{ personadyn.family || '—' }} 族，θ {{ personadyn.theta_dim }} 维），当前涌现模式「{{ personadyn.mode_label || personadyn.mode }}」。
-          就绪度 {{ fmtNum(personadyn.pressure, 2) }}（{{ personadyn.band }}）由占有 O、焦虑 X、自控 K、信任 Tr 四条件联合给出——模式判定需要四条同时越阈，性欲不是根因。
-          傲娇过滤来自「高好感 × 高抑制」（表达被延迟、被反话包裹）；黑化是近似不可逆的相变（敏化滞后 + 模式—行为锁定）。
-          状态由 16 维欲望 D 与 16 维情绪 x 驱动，可读出 Big5 / HEXACO / MBTI / DISC 与主导欲望、情绪；性别·社会脚本 G 会改变表达抑制与求助倾向（{{ personadyn.gender || '未指定' }}）。
-          {{ personadyn.learning?.enabled ? '学习算子 L 在线：结果会小幅更新 Q 值与 θ 漂移。' : '' }}
-          {{ personadyn.safe_mode ? '已进入安全层（只表达感受、请求陪伴，不给伤害方法）。' : '低于 0.85 不会触发安全层。' }}
-        </p>
-        <p v-if="personaInfo?.applied" class="hint">人设特质已生效（{{ personaInfo.source === 'llm' ? 'LLM 精修' : '本地词典' }}）：{{ personaEvidenceText || '—' }}。改人设请到 设置 → 人设，下一条消息自动生效。</p>
+        <p v-if="episode" class="hint">{{ t('life.companion.realtime.episodeHint') }}</p>
+        <p v-if="attachment?.enabled" class="hint">{{ t('life.companion.realtime.attachmentHint', { label: attachment.label, severity: fmtNum(attachment.severity, 2), band: attachment.band, safety: attachment.safe_mode ? t('life.companion.realtime.safetyOnEmotion') : t('life.companion.realtime.safetyOff') }) }}</p>
+        <p v-if="tsundere?.enabled" class="hint">{{ t('life.companion.realtime.tsundereHint', { label: tsundere.label || tsundere.type, affection: fmtNum(tsundere.affection, 2), expression: fmtNum(tsundere.expression, 2), fixation: fmtNum(tsundere.fixation, 2), band: tsundere.band, safety: tsundere.safe_mode ? t('life.companion.realtime.safetyOnFeeling') : t('life.companion.realtime.safetyOff') }) }}</p>
+        <p v-if="personadyn?.enabled" class="hint">{{ t('life.companion.realtime.personadynHint', { label: personadyn.label || personadyn.type, family: personadyn.family || '—', theta: personadyn.theta_dim, mode: personadyn.mode_label || personadyn.mode, pressure: fmtNum(personadyn.pressure, 2), band: personadyn.band, gender: personadyn.gender || zhValue('life.companion.pdGender.unspecified'), learning: personadyn.learning?.enabled ? t('life.companion.realtime.learningOnline') : '', safety: personadyn.safe_mode ? t('life.companion.realtime.safetyOnFeeling') : t('life.companion.realtime.safetyOff') }) }}</p>
+        <p v-if="personaInfo?.applied" class="hint">{{ t('life.companion.realtime.personaApplied', { source: personaInfo.source === 'llm' ? t('life.companion.realtime.personaSourceLlm') : t('life.companion.realtime.personaSourceLocal'), evidence: personaEvidenceText || '—' }) }}</p>
         <div v-if="somaticChannels" class="som-channels">
           <div v-for="(value, name) in somaticChannels" :key="name" class="som-chan">
             <span class="som-chan-name">{{ channelLabel(name) }}</span>
             <span class="som-chan-bar"><i :style="{ transform: 'scaleX(' + somScale(value) + ')' }"></i></span>
             <span class="som-chan-val">{{ fmtNum(value, 2) }}</span>
           </div>
-          <p v-if="Number(wave2?.somatic_chronicity) > 0.1" class="hint">慢性化程度 {{ fmtNum(wave2?.somatic_chronicity) }} — 反复报告的通道已开始敏化。</p>
+          <p v-if="Number(wave2?.somatic_chronicity) > 0.1" class="hint">{{ t('life.companion.realtime.somaticChronicity', { value: fmtNum(wave2?.somatic_chronicity) }) }}</p>
         </div>
       </article>
 
       <article class="card">
-        <h3>总开关与提示词调节</h3>
+        <h3>{{ t('life.companion.switches.title') }}</h3>
         <div class="switches">
-          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_enabled" /><span>启用认知内核</span></label>
-          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_lite_mode" /><span>极简省 token 模式</span></label>
-          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_affect" /><span>情感影响提示词</span></label>
-          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_language" /><span>语言影响提示词</span></label>
-          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_social" /><span>社会认知影响提示词</span></label>
-          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_selfhood" /><span>自我与时间影响提示词</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_enabled" /><span>{{ t('life.companion.switches.enableCognition') }}</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_lite_mode" /><span>{{ t('life.companion.switches.liteMode') }}</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_affect" /><span>{{ t('life.companion.switches.modulateAffect') }}</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_language" /><span>{{ t('life.companion.switches.modulateLanguage') }}</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_social" /><span>{{ t('life.companion.switches.modulateSocial') }}</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_modulate_selfhood" /><span>{{ t('life.companion.switches.modulateSelfhood') }}</span></label>
         </div>
-        <p class="hint">
-          极简省 token 模式：把 THINK + OUTPUT 两段长提示词合并为一条最小指令，并跳过工具表、技能表、外部观察与认知波次上下文——
-          每轮消耗显著下降，适合长时间闲聊。角色仍会按人设推理，只是脚手架更少。关掉即恢复完整模式。
-        </p>
+        <p class="hint">{{ t('life.companion.switches.hint') }}</p>
       </article>
 
       <article class="card">
-        <h3>快速预设</h3>
-        <p class="hint">一键套用常见配置并保存（套用后仍可逐项微调）：常规、抑郁倾向、病娇（独占 / 依存 / 妄想）。病娇预设会同时把情绪调节画像设为 depression，贴合"常伴抑郁"。</p>
+        <h3>{{ t('life.companion.presets.title') }}</h3>
+        <p class="hint">{{ t('life.companion.presets.hint') }}</p>
         <div class="preset-row">
-          <button v-for="preset in PRESETS" :key="preset.label" type="button" class="btn sm" @click="applyPreset(preset.fields, preset.label)">{{ preset.label }}</button>
+          <button v-for="preset in PRESETS" :key="preset.label" type="button" class="btn sm" @click="applyPreset(preset.fields, preset.label)">{{ t(preset.labelKey) }}</button>
         </div>
       </article>
 
       <div class="grid2">
         <article class="card">
-          <h3>决策仲裁（第一波）</h3>
+          <h3>{{ t('life.companion.decision.title') }}</h3>
           <div class="settings-grid">
-            <label><span>规划深度</span><input v-model.number="settingsForm.cog_plan_depth" type="number" min="1" max="6" class="field tiny" /></label>
-            <label><span>工作记忆容量</span><input v-model.number="settingsForm.cog_wm_capacity" type="number" min="1" max="12" class="field tiny" /></label>
-            <label><span>策略温度 τ</span><input v-model.number="settingsForm.cog_tau" type="number" step="0.05" min="0.05" max="1" class="field tiny" /></label>
-            <label><span>折扣 γ</span><input v-model.number="settingsForm.cog_gamma" type="number" step="0.01" min="0" max="0.999" class="field tiny" /></label>
-            <label><span>习惯学习率</span><input v-model.number="settingsForm.cog_alpha_habit" type="number" step="0.01" min="0" max="1" class="field tiny" /></label>
-            <label><span>无模型学习率</span><input v-model.number="settingsForm.cog_alpha_mf" type="number" step="0.01" min="0" max="1" class="field tiny" /></label>
-            <label><span>惊讶阈值 θ_pe</span><input v-model.number="settingsForm.cog_theta_pe" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>新颖阈值 θ_n</span><input v-model.number="settingsForm.cog_theta_n" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>前瞻视野</span><input v-model.number="settingsForm.cog_prospection_horizon" type="number" min="1" max="8" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.planDepth') }}</span><input v-model.number="settingsForm.cog_plan_depth" type="number" min="1" max="6" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.wmCapacity') }}</span><input v-model.number="settingsForm.cog_wm_capacity" type="number" min="1" max="12" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.strategyTemp') }}</span><input v-model.number="settingsForm.cog_tau" type="number" step="0.05" min="0.05" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.discount') }}</span><input v-model.number="settingsForm.cog_gamma" type="number" step="0.01" min="0" max="0.999" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.habitRate') }}</span><input v-model.number="settingsForm.cog_alpha_habit" type="number" step="0.01" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.modelfreeRate') }}</span><input v-model.number="settingsForm.cog_alpha_mf" type="number" step="0.01" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.surpriseThreshold') }}</span><input v-model.number="settingsForm.cog_theta_pe" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.noveltyThreshold') }}</span><input v-model.number="settingsForm.cog_theta_n" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.prospectionHorizon') }}</span><input v-model.number="settingsForm.cog_prospection_horizon" type="number" min="1" max="8" class="field tiny" /></label>
           </div>
           <div class="switches">
-            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_use_thalamic_gate" /><span>丘脑门控</span></label>
-            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_use_cerebellum" /><span>小脑预测误差</span></label>
-            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_use_ofc_map" /><span>OFC 认知地图</span></label>
-            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_use_prospection" /><span>未来奖赏前瞻</span></label>
-            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_use_limbic_bias" /><span>边缘系统偏向</span></label>
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_use_thalamic_gate" /><span>{{ t('life.companion.decision.thalamicGate') }}</span></label>
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_use_cerebellum" /><span>{{ t('life.companion.decision.cerebellum') }}</span></label>
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_use_ofc_map" /><span>{{ t('life.companion.decision.ofcMap') }}</span></label>
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_use_prospection" /><span>{{ t('life.companion.decision.prospection') }}</span></label>
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_use_limbic_bias" /><span>{{ t('life.companion.decision.limbicBias') }}</span></label>
           </div>
         </article>
 
         <article class="card">
-          <h3>情感与生理（第二波）</h3>
+          <h3>{{ t('life.companion.affect.title') }}</h3>
           <div class="settings-grid">
-            <label><span>情绪调节画像</span><AppSelect v-model="settingsForm.cog_affect_profile" :options="cogProfileOptions" aria-label="情绪调节画像" /></label>
-            <label><span>迷走基线</span><input v-model.number="settingsForm.cog_affect_vagal" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>威胁基线</span><input v-model.number="settingsForm.cog_affect_threat" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>奖赏基线</span><input v-model.number="settingsForm.cog_affect_reward" type="number" step="0.1" min="0" max="2" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.erqProfile') }}</span><AppSelect v-model="settingsForm.cog_affect_profile" :options="cogProfileOptions" :aria-label="t('life.companion.persona.erqProfile')" /></label>
+            <label><span>{{ t('life.companion.affect.vagalBaseline') }}</span><input v-model.number="settingsForm.cog_affect_vagal" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.threatBaseline') }}</span><input v-model.number="settingsForm.cog_affect_threat" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.rewardBaseline') }}</span><input v-model.number="settingsForm.cog_affect_reward" type="number" step="0.1" min="0" max="2" class="field tiny" /></label>
           </div>
-          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_affect_enabled" /><span>启用情感与生理回路</span></label>
-          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_affect_somatic" /><span>启用躯体化网关（人设含体弱、心慌等标记时自动开启）</span></label>
-          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_affect_persona_llm" /><span>人设特质由模型理解（改动人设后下一条消息精修一次，失败自动回退本地词典）</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_affect_enabled" /><span>{{ t('life.companion.affect.enable') }}</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_affect_somatic" /><span>{{ t('life.companion.affect.somatic') }}</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_affect_persona_llm" /><span>{{ t('life.companion.affect.personaLlm') }}</span></label>
         </article>
 
         <article class="card">
-          <h3>语言习得（第三波）</h3>
+          <h3>{{ t('life.companion.language.title') }}</h3>
           <div class="settings-grid">
-            <label><span>语言-思维耦合</span><AppSelect v-model="settingsForm.cog_language_framing" :options="cogFramingOptions" aria-label="语言-思维耦合" /></label>
-            <label><span>分词边界阈值</span><input v-model.number="settingsForm.cog_language_boundary" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.language.framing') }}</span><AppSelect v-model="settingsForm.cog_language_framing" :options="cogFramingOptions" :aria-label="t('life.companion.language.framing')" /></label>
+            <label><span>{{ t('life.companion.language.boundary') }}</span><input v-model.number="settingsForm.cog_language_boundary" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
           </div>
-          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_language_enabled" /><span>启用语言习得回路</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_language_enabled" /><span>{{ t('life.companion.language.enable') }}</span></label>
         </article>
 
         <article class="card">
-          <h3>社会学习（第四波）</h3>
+          <h3>{{ t('life.companion.social.title') }}</h3>
           <div class="settings-grid">
-            <label><span>共情权重</span><input v-model.number="settingsForm.cog_social_empathy" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>观点采择阶段</span><AppSelect v-model="cogStageValue" :options="cogStageOptions" aria-label="观点采择阶段" /></label>
+            <label><span>{{ t('life.companion.metric.empathy') }}</span><input v-model.number="settingsForm.cog_social_empathy" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.social.perspectiveStage') }}</span><AppSelect v-model="cogStageValue" :options="cogStageOptions" :aria-label="t('life.companion.social.perspectiveStage')" /></label>
           </div>
-          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_social_enabled" /><span>启用社会学习回路</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_social_enabled" /><span>{{ t('life.companion.social.enable') }}</span></label>
         </article>
 
         <article class="card">
-          <h3>自我与时间（第四波）</h3>
+          <h3>{{ t('life.companion.selfhood.title') }}</h3>
           <div class="settings-grid">
-            <label><span>时间折扣 k</span><input v-model.number="settingsForm.cog_selfhood_discount" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>人设细节尺度</span><input v-model.number="settingsForm.cog_selfhood_detail" type="number" step="1" min="1" max="50" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.selfhood.timeDiscount') }}</span><input v-model.number="settingsForm.cog_selfhood_discount" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.selfhood.detailScale') }}</span><input v-model.number="settingsForm.cog_selfhood_detail" type="number" step="1" min="1" max="50" class="field tiny" /></label>
           </div>
-          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_selfhood_enabled" /><span>启用自我与时间回路</span></label>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_selfhood_enabled" /><span>{{ t('life.companion.selfhood.enable') }}</span></label>
         </article>
 
         <article class="card">
-          <h3>病态依恋 / 病娇（可选）</h3>
-          <p class="hint">
-            把"占有欲、嫉妒、黏人、多疑"做成一个**会自己演化的状态**，而不是一句人设标签。默认关闭；
-            开启后由真实互动驱动——你的消息、回复快慢、沉默天数、是否提到别人、睡眠——并和抑郁互相影响。
-            无论多严重，极重度（≥0.85）都会自动进入安全层：只表达情绪、请求陪伴，不生成自伤或伤人的方法。
-          </p>
-          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_attachment_enabled" /><span>启用依恋动力学</span></label>
+          <h3>{{ t('life.companion.attachmentCard.title') }}</h3>
+          <p class="hint">{{ t('life.companion.attachmentCard.hint') }}</p>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_attachment_enabled" /><span>{{ t('life.companion.attachmentCard.enable') }}</span></label>
           <div class="settings-grid">
-            <label><span>依恋型别</span><AppSelect v-model="settingsForm.cog_attachment_type" :options="attachmentTypeOptions" aria-label="依恋型别" /></label>
+            <label><span>{{ t('life.companion.metric.attachmentType') }}</span><AppSelect v-model="settingsForm.cog_attachment_type" :options="attachmentTypeOptions" :aria-label="t('life.companion.metric.attachmentType')" /></label>
           </div>
-          <p class="hint">
-            怎么配：① 打开开关并选型别（独占 / 依存 / 妄想 / 监视 / 自伤 / 排除）——
-            型别只改变"同一种动力的权重"，不是硬编码台词；或 ② 直接在人设里写关键词，
-            系统会自动启用并按人设填初始值：如"占有欲强、爱吃醋"→独占型，"很黏人、离不开你"→依存型，
-            "老是查岗、跟踪"→监视型，"疑神疑鬼、总觉得被骗"→妄想型。想更贴近"病娇常伴抑郁"，
-            把上方「情绪调节画像」设为 depression，两者会互相加重。
-          </p>
+          <p class="hint">{{ t('life.companion.attachmentCard.hint2') }}</p>
         </article>
 
         <article class="card">
-          <h3>傲娇 / 病娇动力学（可选）</h3>
-          <p class="hint">
-            把"表面毒舌、内心温柔"和"以爱为名的执念"做成同一个**会自己演化的三变量系统**
-            （好感 A / 傲娇表达 T / 病娇执念 Y）。默认关闭；开启后由真实互动驱动——
-            你的消息温度、回复快慢、沉默天数、是否提到别人——并且病娇化是可逆的：
-            停止冷遇、持续关爱就会退回傲娇。极重度（≥0.85）自动进入安全层。
-          </p>
-          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_tsundere_enabled" /><span>启用傲娇动力学</span></label>
+          <h3>{{ t('life.companion.tsundereCard.title') }}</h3>
+          <p class="hint">{{ t('life.companion.tsundereCard.hint') }}</p>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_tsundere_enabled" /><span>{{ t('life.companion.tsundereCard.enable') }}</span></label>
           <div class="settings-grid">
-            <label><span>傲娇型别</span><AppSelect v-model="settingsForm.cog_tsundere_type" :options="tsundereTypeOptions" aria-label="傲娇型别" /></label>
+            <label><span>{{ t('life.companion.persona.tsundereType') }}</span><AppSelect v-model="settingsForm.cog_tsundere_type" :options="tsundereTypeOptions" :aria-label="t('life.companion.persona.tsundereType')" /></label>
           </div>
-          <p class="hint">
-            怎么配：① 打开开关并选型别（经典 / 高冷 / 暴躁 / 迁就）——型别只改变
-            "同一种动力的权重"（黑化快慢、嘴硬程度），不是硬编码台词；或 ② 直接在人设里写关键词，
-            系统会自动启用并按人设填初始值：如"口嫌体正直、嘴硬"→经典傲娇，"高冷、冰山"→高冷傲娇，
-            "一点就炸、暴躁"→暴躁傲娇，"好脾气、别扭地关心"→迁就傲娇。若人设里还写了"病娇/占有欲"，
-            建议同时启用上方「病态依恋」，两者会互相影响。
-          </p>
+          <p class="hint">{{ t('life.companion.tsundereCard.hint2') }}</p>
         </article>
 
         <article class="card">
-          <h3>人格动力学（可选 · 完整版）</h3>
-          <p class="hint">
-            把「性格标签」变成参数空间里的动力学系统：慢变人格参数 θ（12 组 / 69 维：大五、HEXACO、
-            依恋、气质、调节、暗黑、动机、认知、关系、价值、临床、表达）+ 快变欲望向量 D（16 维）
-            + 情绪状态 x（16 维）+ 模式状态机 T + 性别/社会脚本参数组 G + 学习/发展算子 L。默认关闭；
-            开启后由真实互动驱动，三种模式会自然涌现：**正常型是稳定吸引子**（扰动后指数回落到基线）、
-            **傲娇是"高好感×高抑制"的过滤态**、**病娇是"高占有×高焦虑×低信任×低自控"的正反馈**——
-            并且傲娇→病娇是可观测、可测试、近似不可逆（敏化滞后）的相变。就绪度 ≥0.85 自动进入安全层。
-          </p>
-          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_personadyn_enabled" /><span>启用人格动力学</span></label>
+          <h3>{{ t('life.companion.personadynCard.title') }}</h3>
+          <p class="hint">{{ t('life.companion.personadynCard.hint') }}</p>
+          <label class="sw"><input type="checkbox" v-model="settingsForm.cog_personadyn_enabled" /><span>{{ t('life.companion.personadynCard.enable') }}</span></label>
           <div class="settings-grid">
-            <label><span>人格原型</span><AppSelect v-model="settingsForm.cog_personadyn_type" :options="personadynAllTypes" aria-label="人格原型" /></label>
-            <label><span>性别 / 社会脚本 G</span><AppSelect v-model="settingsForm.cog_personadyn_gender" :options="personadynGenderOptions" aria-label="性别社会脚本" /></label>
+            <label><span>{{ t('life.companion.persona.personaArchetype') }}</span><AppSelect v-model="settingsForm.cog_personadyn_type" :options="personadynAllTypes" :aria-label="t('life.companion.persona.personaArchetype')" /></label>
+            <label><span>{{ t('life.companion.persona.genderSocialScript') }}</span><AppSelect v-model="settingsForm.cog_personadyn_gender" :options="personadynGenderOptions" :aria-label="t('life.companion.persona.genderSocialScriptAria')" /></label>
           </div>
-          <p class="hint">
-            类型库共 187 个区域（依恋 12 · 大五/HEXACO 组合 · 临床仿真 16 · 九型 9 · MBTI 16 自动派生 ·
-            DISC 4 · 社会角色 13 · 动机 11 · 认知风格 13 · ACG 女性/中性 16 · 男性原型 77 + 经典 18）。
-            **类型只是参数空间中的区域，不是硬编码台词**：定义 (θ, D⁰, x_eq, w, g, T, A) 即可新增一种。
-            临床仿真型（边缘/自恋/抑郁…）只做抽象标签且**禁止部署**——面板不会给出具体方法。
-            「性别/社会脚本」是 G=(M,F,GRC,EM,DR,AR,SR,SC,HS)：改变表达增益 g、威胁信号 s、自控 K、
-            共情 C、求助倾向与决策效用 R_G(a)；选「未指定」时所有公式与不带脚本时完全一致。
-          </p>
-          <p class="hint">
-            怎么配：① 打开开关并选原型——原型只改变参数，不是硬编码台词；
-            或 ② 直接在人设里写关键词，系统自动启用并按人设填初始值：如"嘴上不饶人其实很黏"→傲娇型，
-            "病娇、占有欲极强"→病娇型，"霸总、说一不二"→霸总（自动套用「高传统男性」脚本）。
-            它与「傲娇 / 病娇动力学」可以同时开：后者是三变量速写，前者是完整的 θ/D/x/f/g/T/G/L 框架，两者互不冲突。
-          </p>
+          <p class="hint">{{ t('life.companion.personadynCard.hint2') }}</p>
+          <p class="hint">{{ t('life.companion.personadynCard.hint3') }}</p>
         </article>
 
         <article class="card">
-          <h3>记忆与巩固（默认开启）</h3>
-          <p class="hint">这四项决定「经历会不会留下痕迹」：写入情景记忆、睡眠期回放、日终再巩固、交错学习（CLS）。默认开启——关掉时人格被固定在人设上，经历不留痕，行为与无认知内核时完全一致（可逐个消融）。</p>
+          <h3>{{ t('life.companion.memoryCard.title') }}</h3>
+          <p class="hint">{{ t('life.companion.memoryCard.hint') }}</p>
           <div class="switches">
-            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_memory_encode" /><span>选择性情景编码</span></label>
-            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_sleep_replay" /><span>睡眠期回放巩固</span></label>
-            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_memory_reconsolidate" /><span>日终痕迹再巩固</span></label>
-            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_cls_interleave" /><span>交错学习 + 一致性门控（CLS）</span></label>
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_memory_encode" /><span>{{ t('life.companion.memoryCard.selectiveEncoding') }}</span></label>
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_sleep_replay" /><span>{{ t('life.companion.memoryCard.sleepReplay') }}</span></label>
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_memory_reconsolidate" /><span>{{ t('life.companion.memoryCard.reconsolidate') }}</span></label>
+            <label class="sw"><input type="checkbox" v-model="settingsForm.cog_cls_interleave" /><span>{{ t('life.companion.memoryCard.cls') }}</span></label>
           </div>
         </article>
       </div>
     </section>
 
     <!-- 02 世界 -->
-    <section v-show="tab === 'world'" class="panel">
-      <div class="section-head"><div><h2>世界</h2><p class="desc">本地小模型驱动的虚构生活世界：事件、演员表与账本。默认关闭。</p></div>
-        <div class="head-actions"><button class="btn filled sm" @click="saveSettings">保存设置</button></div>
+    <section v-show="tab === 'world'" data-panel="world" class="panel">
+      <div class="section-head"><div><h2>{{ t('life.companion.world.title') }}</h2><p class="desc">{{ t('life.companion.world.desc') }}</p></div>
+        <div class="head-actions"><button class="btn filled sm" @click="saveSettings">{{ t('life.companion.saveSettings') }}</button></div>
       </div>
       <article class="card">
-        <h3>虚构浓度</h3>
+        <h3>{{ t('life.companion.world.density') }}</h3>
         <div class="settings-grid">
-          <label><span>world_density</span><AppSelect v-model="worldDensity" :options="worldDensityOptions" aria-label="虚构浓度" /></label>
+          <label><span>{{ t('life.companion.world.density') }}</span><AppSelect v-model="worldDensity" :options="worldDensityOptions" :aria-label="t('life.companion.world.densityAria')" /></label>
         </div>
-        <p class="hint">off 完全不影响现有行为；texture 只把事件写进时间线与记忆；full 允许作为主动话题提及（上线需你明确确认）。</p>
+        <p class="hint">{{ t('life.companion.world.densityHint') }}</p>
       </article>
       <article class="card">
-        <h3>人设 → 特质数据</h3>
-        <p class="hint">把角色人设写在这里（性格、体质、作息、情绪风格）。保存后解析为认知内核的特质参数（威胁、奖赏基线、情绪调节画像、躯体化增益、作息等）：默认先由本地词典即时生效，并由模型对改动人设做一次精修（失败自动回退词典）。写明「体弱多病 / 心慌失眠」等会自动开启躯体化网关。</p>
-        <label class="world-field"><span class="world-label">人设文本</span>
-          <textarea v-model="personaText" class="world-text" rows="4" placeholder="例：她性格开朗但容易焦虑，体质偏弱，经常心慌失眠，遇到事爱钻牛角尖。"></textarea>
+        <h3>{{ t('life.companion.world.personaTraits') }}</h3>
+        <p class="hint">{{ t('life.companion.world.personaTraitsHint') }}</p>
+        <label class="world-field"><span class="world-label">{{ t('life.companion.world.personaText') }}</span>
+          <textarea v-model="personaText" class="world-text" rows="4" :placeholder="t('life.companion.world.personaPlaceholder')"></textarea>
         </label>
       </article>
       <article class="card">
-        <h3>世界观 · 定位</h3>
-        <p class="hint">说清这是哪里：国家 / 城市 / 小区（可真实可虚构）。填不全也没关系——点「AI 完善」会补全设定并生成一份带坐标的地图。改了演员或地点后，之前生成的事件会作废、重新开始。</p>
+        <h3>{{ t('life.companion.world.location') }}</h3>
+        <p class="hint">{{ t('life.companion.world.locationHint') }}</p>
         <div class="settings-grid">
-          <label><span>世界类型</span><AppSelect v-model="worldFictional" :options="worldFictionalOptions" aria-label="世界类型" /></label>
-          <label><span>国家</span><input v-model="worldCountry" class="field" placeholder="中国 / 架空：曦京" /></label>
-          <label><span>城市</span><input v-model="worldCity" class="field" placeholder="杭州 / 临海市" /></label>
-          <label><span>城区 · 小区</span><input v-model="worldDistrict" class="field" placeholder="西湖区 · 文一西路" /></label>
+          <label><span>{{ t('life.companion.world.worldType') }}</span><AppSelect v-model="worldFictional" :options="worldFictionalOptions" :aria-label="t('life.companion.world.worldType')" /></label>
+          <label><span>{{ t('life.companion.world.country') }}</span><input v-model="worldCountry" class="field" :placeholder="t('life.companion.world.countryPlaceholder')" /></label>
+          <label><span>{{ t('life.companion.world.city') }}</span><input v-model="worldCity" class="field" :placeholder="t('life.companion.world.cityPlaceholder')" /></label>
+          <label><span>{{ t('life.companion.world.district') }}</span><input v-model="worldDistrict" class="field" :placeholder="t('life.companion.world.districtPlaceholder')" /></label>
         </div>
-        <label class="world-field"><span class="world-label">世界设定 / 前言</span>
-          <textarea v-model="worldPremise" class="world-text" rows="3" placeholder="例：她住在一座临海小城，开着一家旧书店，养了一只叫煤球的猫。"></textarea>
+        <label class="world-field"><span class="world-label">{{ t('life.companion.world.premiseLabel') }}</span>
+          <textarea v-model="worldPremise" class="world-text" rows="3" :placeholder="t('life.companion.world.premisePlaceholder')"></textarea>
         </label>
-        <label class="world-field"><span class="world-label">演员表（每行一个：名字 — 名字|关系；关系可为 朋友/同事/家人）</span>
-          <textarea v-model="worldActors" class="world-text" rows="4" placeholder="林小满|朋友&#10;阿哲|同事&#10;妈妈|家人"></textarea>
+        <label class="world-field"><span class="world-label">{{ t('life.companion.world.actorsLabel') }}</span>
+          <textarea v-model="worldActors" class="world-text" rows="4" :placeholder="t('life.companion.world.actorsPlaceholder')"></textarea>
         </label>
-        <label class="world-field"><span class="world-label">地点（逗号或换行分隔）</span>
-          <textarea v-model="worldPlaces" class="world-text" rows="2" placeholder="楼下便利店, 常去的咖啡馆, 城西书店"></textarea>
+        <label class="world-field"><span class="world-label">{{ t('life.companion.world.placesLabel') }}</span>
+          <textarea v-model="worldPlaces" class="world-text" rows="2" :placeholder="t('life.companion.world.placesPlaceholder')"></textarea>
         </label>
         <div class="world-actions">
-          <button class="btn filled sm" type="button" :disabled="worldBusy" @click="generateMapOnly">{{ worldBusy ? '生成中…' : '✦ 只生成地图（保留设定）' }}</button>
-          <button class="btn tonic sm" type="button" :disabled="worldBusy" @click="generateWorld">{{ worldBusy ? '生成中…' : 'AI 完善设定 + 生成地图' }}</button>
-          <span class="hint">「只生成地图」不会动上面的设定文本；「完善设定」会用它重写设定。</span>
+          <button class="btn filled sm" type="button" :disabled="worldBusy" @click="generateMapOnly">{{ worldBusy ? t('life.companion.world.generating') : t('life.companion.world.generateMapOnly') }}</button>
+          <button class="btn tonic sm" type="button" :disabled="worldBusy" @click="generateWorld">{{ worldBusy ? t('life.companion.world.generating') : t('life.companion.world.generateWorld') }}</button>
+          <span class="hint">{{ t('life.companion.world.generateHint') }}</span>
         </div>
       </article>
       <article class="card">
         <div class="wm-head">
-          <h3>世界地图 <span class="count-pill">{{ worldMap.locations.length }}</span></h3>
-          <span v-if="worldview" class="wm-place">{{ worldview.fictional ? '虚构' : '真实' }} · {{ [worldview.country, worldview.city, worldview.district].filter(Boolean).join(' / ') || '未命名' }}</span>
+          <h3>{{ t('life.companion.world.map') }} <span class="count-pill">{{ worldMap.locations.length }}</span></h3>
+          <span v-if="worldview" class="wm-place">{{ worldview.fictional ? t('life.companion.worldFictional.fictional') : t('life.companion.worldFictional.real') }} · {{ [worldview.country, worldview.city, worldview.district].filter(Boolean).join(' / ') || t('life.companion.world.unnamed') }}</span>
         </div>
         <p v-if="worldview?.premise" class="hint wm-premise">{{ worldview.premise }}</p>
         <div class="wm-map-wrap">
           <div ref="mapEl" class="world-map-leaflet" :class="{ 'is-empty': !worldMap.locations.length }"></div>
-          <div v-if="offlineHint" class="wm-offline">底图加载失败（可能离线），仍可查看城市标记</div>
+          <div v-if="offlineHint" class="wm-offline">{{ t('life.companion.world.offline') }}</div>
           <template v-if="worldMap.locations.length">
-            <button v-if="worldMap.kind !== 'real' && worldMap.nation" type="button" class="wm-scope" @click="toggleScope">{{ scope === 'city' ? '全国视图' : '城市视图' }}</button>
-            <button type="button" class="wm-reset" @click="resetView">⟲ 复位视角</button>
+            <button v-if="worldMap.kind !== 'real' && worldMap.nation" type="button" class="wm-scope" @click="toggleScope">{{ scope === 'city' ? t('life.companion.world.nationView') : t('life.companion.world.cityView') }}</button>
+            <button type="button" class="wm-reset" @click="resetView">{{ t('life.companion.world.resetView') }}</button>
             <div v-if="worldMap.kind !== 'real' && scope === 'city'" class="wm-compass" aria-hidden="true"><i>N</i></div>
           </template>
         </div>
-        <p v-if="!worldMap.locations.length" class="empty">还没有地图。点上面的「AI 完善并生成地图」。</p>
+        <p v-if="!worldMap.locations.length" class="empty">{{ t('life.companion.world.noMap') }}</p>
         <div v-if="worldMap.locations.length" class="wm-legend">
-          <span v-for="k in usedKinds" :key="k"><i :class="'k-' + k"></i>{{ KIND_LABEL[k] }}</span>
-          <span><i class="k-actor"></i>角色（{{ worldMap.actors.length }}）</span>
+          <span v-for="k in usedKinds" :key="k"><i :class="'k-' + k"></i>{{ t(KIND_LABEL[k]) }}</span>
+          <span><i class="k-actor"></i>{{ t('life.companion.world.actorsCount', { n: worldMap.actors.length }) }}</span>
           <template v-if="worldMap.kind !== 'real'">
-            <span><i class="k-hw"></i>高速/环线</span>
-            <span><i class="k-arterial"></i>主干道</span>
-            <span><i class="k-street"></i>街道</span>
-            <span><i class="k-metro"></i>地铁</span>
-            <span><i class="k-bus"></i>公交</span>
-            <span><i class="k-park2"></i>公园</span>
-            <span><i class="k-water"></i>水域</span>
+            <span><i class="k-hw"></i>{{ t('life.companion.world.highwayLoop') }}</span>
+            <span><i class="k-arterial"></i>{{ t('life.companion.world.arterial') }}</span>
+            <span><i class="k-street"></i>{{ t('life.companion.world.street') }}</span>
+            <span><i class="k-metro"></i>{{ t('life.companion.world.metro') }}</span>
+            <span><i class="k-bus"></i>{{ t('life.companion.world.bus') }}</span>
+            <span><i class="k-park2"></i>{{ t('life.companion.kind.park') }}</span>
+            <span><i class="k-water"></i>{{ t('life.companion.world.water') }}</span>
           </template>
         </div>
         <div v-if="worldMap.locations.length && worldMap.kind !== 'real' && scope === 'city'" class="wm-routes">
           <div v-if="(worldMap.metro || []).length" class="wm-routes-col">
-            <h4>地铁线路表</h4>
+            <h4>{{ t('life.companion.world.metroRoutes') }}</h4>
             <ul>
               <li v-for="(m, i) in worldMap.metro" :key="'m' + i">
                 <b :style="{ color: m.color }">{{ m.name }}</b>
@@ -1311,7 +1332,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
             </ul>
           </div>
           <div v-if="(worldMap.bus || []).length" class="wm-routes-col">
-            <h4>公交线路表</h4>
+            <h4>{{ t('life.companion.world.busRoutes') }}</h4>
             <ul>
               <li v-for="(b, i) in worldMap.bus" :key="'b' + i">
                 <b :style="{ color: b.color }">{{ b.name }}</b>
@@ -1323,91 +1344,66 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
       </article>
       <article class="card">
         <div class="wm-head">
-          <h3>最近世界事件 <span class="count-pill">{{ worldEvents.length }}</span></h3>
-          <button v-if="worldEvents.length" type="button" class="btn tonic sm" @click="clearWorld">清除世界事件</button>
+          <h3>{{ t('life.companion.world.recentEvents') }} <span class="count-pill">{{ worldEvents.length }}</span></h3>
+          <button v-if="worldEvents.length" type="button" class="btn tonic sm" @click="clearWorld">{{ t('life.companion.world.clearTitle') }}</button>
         </div>
         <ol class="feed"><li v-for="e in worldEvents" :key="e.id"><span class="meta">{{ e.created_at }}</span><strong>{{ e.summary }}</strong></li>
-          <li v-if="!worldEvents.length" class="empty">还没有世界事件（开启后由本地模型生成）。</li></ol>
+          <li v-if="!worldEvents.length" class="empty">{{ t('life.companion.world.noEvents') }}</li></ol>
       </article>
     </section>
 
     <!-- 03 状态 -->
     <!-- 04 消息平台（只读概览；完整增删改在「设置 → 消息平台」） -->
-    <section v-show="tab === 'adapters'" class="panel">
-      <div class="section-head"><div><h2>消息平台</h2>
-        <p class="desc">把角色接入 QQ / 企业微信 / 飞书 / Discord / Telegram 等平台。L.I.F.E 作为<b>服务端</b>监听反向 WebSocket，由 NapCat 等客户端连入。可同时运行多个机器人，各自独立启停。</p></div>
-        <div class="head-actions">
-          <button class="btn sm" :disabled="adapterBusy" @click="syncAdapters">重新监听</button>
-          <button class="btn filled sm" @click="openAdapterSettings">管理适配器 →</button>
-        </div>
-      </div>
-
-      <article class="card">
-        <h3>适配器 <span class="count-pill">{{ adapters.length }}</span></h3>
-        <p class="hint">
-          这里只显示运行状态。新增、编辑、删除适配器，以及配置文件路由，
-          都在 <b>设置 → 消息平台</b> 页面完成。
-        </p>
-        <div v-if="!adapters.length" class="empty">还没有适配器，点右上角「管理适配器」接入第一个机器人。</div>
-        <ol v-else class="feed">
-          <li v-for="a in adapters" :key="a.id">
-            <strong>{{ a.name || a.id }}</strong>
-            <span class="pill soft" :class="{ ok: runtimeOf(a.id).connected }">
-              {{ runtimeOf(a.id).connected ? '已连接' : (a.enabled ? '等待客户端接入' : '未启用') }}
-            </span>
-            <span class="meta">{{ a.platform }} · ws://{{ a.ws_host }}:{{ a.ws_port }} · 人设 {{ a.config_id }}</span>
-            <span class="meta">{{ runtimeOf(a.id).clients || 0 }} 个客户端 · {{ a.ws_token ? 'Token 已设置' : '无 Token（建议设置）' }}</span>
-          </li>
-        </ol>
-        <div class="actions-row"><button class="btn sm" @click="openAdapterSettings">设置 → 消息平台</button></div>
-      </article>
+    <section v-show="tab === 'adapters'" data-panel="adapters" class="panel">
+      <!-- The full messaging-platform CRUD (accounts) lives here now; it used to
+           be a separate Settings tab. -->
+      <AdapterSettingsPage />
     </section>
 
-    <section v-show="tab === 'state'" class="panel">
-      <div class="section-head"><div><h2>状态</h2><p class="desc">承诺账本、结构化用户模型与价值取向。</p></div></div>
+    <section v-show="tab === 'state'" data-panel="state" class="panel">
+      <div class="section-head"><div><h2>{{ t('life.companion.state.title') }}</h2><p class="desc">{{ t('life.companion.state.desc') }}</p></div></div>
       <article class="card">
-        <h3>承诺账本 <span class="count-pill">{{ commitments.length }}</span></h3>
+        <h3>{{ t('life.companion.state.commitments') }} <span class="count-pill">{{ commitments.length }}</span></h3>
         <ol class="feed"><li v-for="c in commitments" :key="c.id"><strong>{{ c.text }}</strong><span class="meta">{{ c.user_id }}</span></li>
-          <li v-if="!commitments.length" class="empty">没有未了结的承诺。</li></ol>
+          <li v-if="!commitments.length" class="empty">{{ t('life.companion.state.noCommitments') }}</li></ol>
       </article>
       <div class="grid2">
         <article class="card">
-          <h3>用户模型</h3>
+          <h3>{{ t('life.companion.state.userModel') }}</h3>
           <ol class="feed"><li v-for="m in userModels" :key="m.user_id"><strong>{{ m.user_id }}</strong>
-            <span class="meta">喜欢：{{ parseList(m.preferences).join('、') || '—' }}</span>
-            <span class="meta">雷区：{{ parseList(m.taboos).join('、') || '—' }}</span>
-            <span class="meta">关心：{{ parseList(m.concerns).join('、') || '—' }}</span></li>
-            <li v-if="!userModels.length" class="empty">还没有结构化画像。</li></ol>
+            <span class="meta">{{ t('life.companion.state.likes', { items: parseList(m.preferences).join(t('life.companion.listSeparator')) || '—' }) }}</span>
+            <span class="meta">{{ t('life.companion.state.taboos', { items: parseList(m.taboos).join(t('life.companion.listSeparator')) || '—' }) }}</span>
+            <span class="meta">{{ t('life.companion.state.concerns', { items: parseList(m.concerns).join(t('life.companion.listSeparator')) || '—' }) }}</span></li>
+            <li v-if="!userModels.length" class="empty">{{ t('life.companion.state.noUserModel') }}</li></ol>
         </article>
         <article class="card">
-          <h3>价值取向</h3>
+          <h3>{{ t('life.companion.state.values') }}</h3>
           <ol class="feed"><li v-for="v in valuesList" :key="v.k"><strong>{{ v.k }}</strong><span class="meta">{{ Number(v.v).toFixed(2) }}</span></li>
-            <li v-if="!valuesList.length" class="empty">还没有形成稳定价值取向。</li></ol>
+            <li v-if="!valuesList.length" class="empty">{{ t('life.companion.state.noValues') }}</li></ol>
         </article>
       </div>
     </section>
 
     <section class="section">
       <div class="section-head">
-        <div><h2>危险操作</h2>
-          <p class="desc">日常操作不可撤销：撤回一句话、删除一条记忆都是永久的。这里保留唯一一次「重来」的机会。</p>
+        <div><h2>{{ t('life.companion.danger.title') }}</h2>
+          <p class="desc">{{ t('life.companion.danger.desc') }}</p>
         </div>
       </div>
       <div class="grid2">
         <article class="card">
-          <h3>重置整个人</h3>
-          <p class="hint">清空记忆与备份、关系、承诺、目标、日记与梦境、价值取向、人设演化与认知内核，回到出厂状态。你自己的设置会保留。</p>
-          <p class="hint" style="margin-top:10px"><strong>需要二次确认。</strong></p>
+          <h3>{{ t('life.companion.danger.reset') }}</h3>
+          <p class="hint">{{ t('life.companion.danger.resetHint') }}</p>
+          <p class="hint" style="margin-top:10px"><strong>{{ t('life.companion.danger.doubleConfirm') }}</strong></p>
           <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn danger" :disabled="personBusy" @click="resetPerson">
-              {{ personBusy ? '重置中…' : '重置整个人' }}
+              {{ personBusy ? t('life.companion.danger.resetting') : t('life.companion.danger.reset') }}
             </button>
           </div>
         </article>
       </div>
     </section>
   </main>
-  <ConfirmDialog />
 </template>
 
 <style scoped>
@@ -1425,15 +1421,15 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
 .wm-map-wrap{position:relative;margin-top:8px}
 .world-map-leaflet{height:clamp(460px, 72vh, 820px);border-radius:16px;overflow:hidden;border:1px solid var(--md-outline-variant);background:#e8edf2}
 .world-map-leaflet.is-empty{display:none}
-.wm-reset{position:absolute;top:10px;right:10px;z-index:var(--z-overlay);border:1px solid var(--md-outline-variant);background:rgba(255,255,255,.94);color:#33404c;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.wm-reset{position:absolute;top:10px;right:10px;z-index:var(--z-overlay,2000);border:1px solid var(--md-outline-variant);background:rgba(255,255,255,.94);color:#33404c;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.18)}
 .wm-reset:hover{background:#fff}
-.wm-compass{position:absolute;left:12px;bottom:12px;z-index:var(--z-overlay);width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.92);border:1px solid #b9c3cd;box-shadow:0 1px 4px rgba(0,0,0,.18);display:grid;place-items:center}
+.wm-compass{position:absolute;left:12px;bottom:12px;z-index:var(--z-overlay,2000);width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.92);border:1px solid #b9c3cd;box-shadow:0 1px 4px rgba(0,0,0,.18);display:grid;place-items:center}
 .wm-compass i{font-style:normal;font-size:12px;font-weight:800;color:#d64545;position:relative}
 .wm-compass i::before{content:'';position:absolute;left:50%;top:-9px;transform:translateX(-50%);border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:9px solid #33404c}
-.wm-scope{position:absolute;bottom:12px;right:12px;z-index:var(--z-overlay);border:1px solid var(--md-outline-variant);background:rgba(255,255,255,.94);color:#33404c;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.wm-scope{position:absolute;bottom:12px;right:12px;z-index:var(--z-overlay,2000);border:1px solid var(--md-outline-variant);background:rgba(255,255,255,.94);color:#33404c;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.18)}
 .wm-scope:hover{background:#fff}
-.wm-offline{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:var(--z-overlay);background:rgba(209,73,91,.94);color:#fff;font-size:12px;font-weight:600;padding:5px 12px;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
-.wm-routes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-top:14px}
+.wm-offline{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:var(--z-overlay,2000);background:rgba(209,73,91,.94);color:#fff;font-size:12px;font-weight:600;padding:5px 12px;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.wm-routes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:18px;margin-top:14px}
 .wm-routes h4{margin:0 0 6px;font-size:13px;font-weight:800}
 .wm-routes ul{list-style:none;margin:0;padding:0}
 .wm-routes li{display:flex;gap:10px;padding:4px 0;border-bottom:1px dashed color-mix(in srgb,var(--md-outline-variant) 70%,transparent);font-size:12.5px}
@@ -1459,7 +1455,13 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
 .wm-legend i.k-street{background:#fff;border-color:#b9c3cd}
 
 .pfield{display:flex;flex-direction:column;gap:4px;margin-top:10px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}
-.pfield textarea.field{height:auto;min-height:70px;padding:10px 12px;resize:vertical;line-height:1.5}
+/* `#app .pcp .field{height:52px}` in kit.ts is (1,2,0) and out-ranks a scoped
+   `.pfield textarea.field` (0,2,2), so `height:auto` never applied and the
+   multi-line persona fields sat at a fixed 70px (the scoped `min-height`) with
+   an inner scrollbar instead of growing with their content. Repeating the
+   `#app .pcp` prefix here wins the declaration back — the same trick
+   MemoryPage already uses for its own textareas. */
+#app .pcp .pfield textarea.field{height:auto;min-height:70px;padding:10px 12px;resize:vertical;line-height:1.5}
 .cog-metric{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:var(--r-sm);
   background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant)}
 .cog-metric span{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant)}
@@ -1467,8 +1469,11 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
 .cog-metric.warn{border-color:var(--md-error,#b3261e);background:color-mix(in srgb,var(--md-error,#b3261e) 8%,transparent)}
 .cog-metric.warn span,.cog-metric.warn strong{color:var(--md-error,#b3261e)}
 .som-channels{margin-top:10px;display:flex;flex-direction:column;gap:6px}
-.som-chan{display:grid;grid-template-columns:52px 1fr 48px;align-items:center;gap:10px}
-.som-chan-name{font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}
+/* The label track was a fixed 52px, which a longer localised channel name
+   ("Cardiorespiratory", "心血管") could not fit — it spilled over the bar. Give
+   it room to grow up to 88px and let an unbreakable word wrap inside that. */
+.som-chan{display:grid;grid-template-columns:minmax(52px,88px) minmax(0,1fr) 48px;align-items:center;gap:10px}
+.som-chan-name{font-size:12px;font-weight:600;color:var(--md-on-surface-variant);overflow-wrap:anywhere}
 .som-chan-bar{display:block;height:8px;border-radius:999px;background:var(--md-surface-container);overflow:hidden}
 .som-chan-bar i{display:block;width:100%;height:100%;border-radius:999px;background:var(--md-primary);transform-origin:left;transition:transform var(--duration-medium) var(--ease-out);will-change:transform}
 .som-chan-val{font-size:12px;font-weight:700;text-align:right;color:var(--md-on-surface-variant)}
@@ -1476,9 +1481,26 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
 .chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:700;
   background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 .chip.muted{background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-weight:500}
-.chip.ok{background:var(--md-success-container);color:#0d3b1e}
+.chip.ok{background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e)}
 
 #app .pcp .cog-metric{background:var(--md-surface-container)}
+/* "Updated at HH:MM" stamp on the real-time card — quieter than the status pill. */
+.sync-pill{font-weight:500;opacity:.85}
+</style>
+
+<style>
+/* Map chrome dark variants ride on the host's html[data-theme] toggle (scoped
+   styles cannot express an html-level selector). The map canvas palette itself
+   is drawn by Leaflet and stays a light "paper map" in both themes. */
+html[data-theme="dark"] #app .pcp .world-map-leaflet{background:#10151c}
+html[data-theme="dark"] #app .pcp .wm-reset,
+html[data-theme="dark"] #app .pcp .wm-scope{background:color-mix(in srgb,var(--md-surface-container-high) 94%,transparent);color:var(--md-on-surface)}
+html[data-theme="dark"] #app .pcp .wm-reset:hover,
+html[data-theme="dark"] #app .pcp .wm-scope:hover{background:var(--md-surface-container-highest)}
+html[data-theme="dark"] #app .pcp .wm-compass{background:color-mix(in srgb,var(--md-surface-container-high) 92%,transparent);border-color:var(--md-outline-variant)}
+html[data-theme="dark"] .wm-district-inner{color:#aeb9c4;text-shadow:none}
+html[data-theme="dark"] .wm-station .wm-route-inner{background:#1a2230;color:#d7dee6}
+html[data-theme="dark"] .leaflet-container{background:#10151c}
 </style>
 
 <style>

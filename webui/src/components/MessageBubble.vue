@@ -3,9 +3,13 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Message } from '../stores/chat'
 import { emotionMoodColor, emotionMoodOf } from '../emotion'
+import MarkdownContent from './MarkdownContent.vue'
 
 const props = defineProps<{
   message: Message
+  /** True while this bubble is still receiving streamed tokens; markdown renders
+   * only on the settled text, because half-received markup flickers badly. */
+  streaming?: boolean
 }>()
 
 const { t, locale } = useI18n()
@@ -19,9 +23,9 @@ const think = computed(() => {
     if (typeof parsed.raw === 'string' && parsed.raw.trim()) return { raw: parsed.raw }
     if (typeof parsed.summary === 'string' && parsed.summary.trim()) return parsed
     // Normalize summaries persisted by the previous non-linear THINK UI.
-    const intent = parsed.intent || '他好像是在和我打招呼'
-    const strategy = parsed.strategy || '温柔地接住这句话'
-    return { summary: `嗯，我听懂啦：${intent}。我现在心里暖暖的，想用轻松一点的方式回应他；先${strategy}，再陪他继续聊下去。` }
+    const intent = parsed.intent || t('messageBubble.intentDefault')
+    const strategy = parsed.strategy || t('messageBubble.strategyDefault')
+    return { summary: t('messageBubble.summary', { intent, strategy }) }
   } catch { return { summary: props.message.thinkSummary } }
 })
 const dateTimeStr = computed(() => {
@@ -70,16 +74,32 @@ const dateTimeStr = computed(() => {
           rel="noopener noreferrer"
           class="msg-file"
           :title="file.mime || ''"
-        >{{ file.name }}</a>
+        ><span class="msg-file-name">{{ file.name }}</span></a>
       </div>
-      <div v-if="message.content" class="content">{{ message.content }}</div>
+      <div
+        v-if="message.content"
+        class="content"
+        :class="{ 'content-markdown': !isUser && !streaming }"
+      >
+        <MarkdownContent v-if="!isUser && !streaming" :content="message.content" />
+        <template v-else>{{ message.content }}</template>
+      </div>
       <div v-if="!isUser && think" class="think-panel">
-        <button class="think-toggle" type="button" @click="thinkOpen = !thinkOpen">
-          <span>THINK</span><span>{{ thinkOpen ? t('chat.thinkCollapse') : t('chat.thinkExpand') }}</span>
+        <button
+          class="think-toggle"
+          type="button"
+          :aria-expanded="thinkOpen"
+          @click="thinkOpen = !thinkOpen"
+        >
+          <span>{{ t('chat.thinkLabel') }}</span><span>{{ thinkOpen ? t('chat.thinkCollapse') : t('chat.thinkExpand') }}</span>
         </button>
-        <div v-if="thinkOpen" class="think-body">
-          <pre v-if="think.raw" class="think-raw">{{ think.raw }}</pre>
-          <p v-else-if="think.summary" class="think-summary">{{ think.summary }}</p>
+        <div class="collapse-grid" :class="{ open: thinkOpen }">
+          <div>
+            <div class="think-body">
+              <pre v-if="think.raw" class="think-raw">{{ think.raw }}</pre>
+              <p v-else-if="think.summary" class="think-summary">{{ think.summary }}</p>
+            </div>
+          </div>
         </div>
       </div>
       <div class="meta">
@@ -160,6 +180,12 @@ const dateTimeStr = computed(() => {
   font-size: var(--font-size-xs);
   text-decoration: none;
   overflow: hidden;
+}
+/* `text-overflow` only applies to block containers; on the inline-flex link the
+   file name was hard-clipped with no ellipsis. The inner span carries it. */
+.msg-file-name {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -179,6 +205,12 @@ const dateTimeStr = computed(() => {
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* Markdown output brings its own block structure; pre-wrap would double every
+   newline the renderer already turned into paragraphs. */
+.content-markdown {
+  white-space: normal;
 }
 
 .user .content {

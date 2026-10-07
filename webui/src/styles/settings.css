@@ -385,7 +385,7 @@
 .provider-identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .provider-logo {
   width: 40px; height: 40px; object-fit: contain; flex-shrink: 0;
-  background: #fff; border: 1px solid var(--md-outline-variant); border-radius: 14px; padding: 5px;
+  background: var(--md-surface-container-lowest); border: 1px solid var(--md-outline-variant); border-radius: 14px; padding: 5px;
 }
 .provider-logo-fallback {
   display: inline-flex; align-items: center; justify-content: center;
@@ -414,7 +414,7 @@
 .model-chip-card-title { font-size: 13px; font-weight: 700; color: var(--md-on-surface); }
 .model-chip-card-hint { font-size: 12px; color: var(--md-on-surface-variant); }
 .model-chip-card .model-toggle-list { margin-bottom: 0; }
-.model-toggle-default { color: #d4a017; font-size: 12px; }
+.model-toggle-default { color: var(--md-warning); font-size: 12px; font-weight: 600; }
 .fetch-note { margin-top: 4px; }
 
 .provider-row {
@@ -653,10 +653,14 @@
 }
 #app .settings-page .provider-runtime h3 { font-size: 16px; font-weight: 750; margin-bottom: 6px; }
 
-/* Declarative plugin settings: responsive field grid + model pickers. */
+/* Declarative plugin settings: responsive field grid + model pickers.
+   `min(300px, 100%)` matters: with a bare 300px the track refuses to shrink
+   below 300px, and on a 360px phone the card's inner width is only ~272px — the
+   row then overflows and `.content-card { overflow: hidden }` silently clips
+   the right edge of every plugin field. */
 .section-fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
   gap: 16px 22px;
   align-items: start;
 }
@@ -694,3 +698,34 @@
   #app .settings-page .nav-label { display: none; }
   .field-row { grid-template-columns: 1fr; }
 }
+
+/* ============ Settings tab transition + save feedback (SettingsPage) ============ */
+.tab-enter-active { transition: opacity var(--duration-medium) var(--ease-emphasized-decel), transform var(--duration-medium) var(--ease-emphasized-decel); }
+.tab-leave-active { transition: opacity var(--duration-short) var(--ease-emphasized-accel); }
+.tab-enter-from { opacity: 0; transform: translateY(8px); }
+.tab-leave-to { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .tab-enter-active, .tab-leave-active { transition-duration: 1ms; }
+  .tab-enter-from { transform: none; }
+}
+
+/* Save result: success and failure were both a neutral grey line before;
+   failure must look like one. */
+.msg-success { color: var(--md-success); font-weight: 600; }
+.msg-error { color: var(--md-error); font-weight: 650; }
+.tab-unknown { color: var(--md-on-surface-variant); }
+
+/* ---------- Compact button variants (declared once, for every settings panel) ----------
+ *
+ * AboutPanel, UpdatesPanel and ProviderPanel each used to declare their own
+ * `.btn.sm` / `.btn.xs` with different heights (34/30, 34/30, 32/28). All of
+ * them lost twice over: to the platform's `#app button { min-height: 36px }`
+ * (theme.css, (1,0,1)) and to this sheet's 52px primary-action rule above
+ * ((1,2,1)). The visible result was a 52px `.btn-primary.xs` sitting next to a
+ * 36px `.btn-tonal.xs` in the same row.
+ *
+ * Declared here at (1,3,0) — after every other button rule in this sheet — so
+ * it wins regardless of which panel renders the button. `min-height: 0` is what
+ * releases the platform floor; `height` then sets the size. */
+#app .settings-page .btn.sm { min-height: 0; height: 34px; padding-inline: 16px; font-size: 13px; }
+#app .settings-page .btn.xs { min-height: 0; height: 30px; padding-inline: 12px; font-size: 12px; }

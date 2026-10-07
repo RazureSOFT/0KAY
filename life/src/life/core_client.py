@@ -43,11 +43,24 @@ def _manifest_permissions():
     requires = api.get("requires") or []
     exposes = api.get("exposes") or []
     egress = perms.get("egress") or []
-    if not (requires or exposes or egress):
+    messages = perms.get("messages") or {}
+    if not (requires or exposes or egress or messages):
         return None
-    return plugin_pb2.PluginPermission(
+    permission = plugin_pb2.PluginPermission(
         api_requires=requires, api_exposes=exposes, egress=egress
     )
+    if messages:
+        # Chat-messaging grants. L.I.F.E is the QQ/OneBot adapter owner, so it
+        # publishes inbound traffic and sends outbound; it does not subscribe to
+        # the bus it feeds, hence read_mode "none".
+        permission.messages.CopyFrom(plugin_pb2.PluginMessages(
+            read_mode=str(messages.get("read_mode") or ""),
+            read_adapters=[str(v) for v in (messages.get("read_adapters") or [])],
+            read_conversations=[str(v) for v in (messages.get("read_conversations") or [])],
+            send_adapters=[str(v) for v in (messages.get("send_adapters") or [])],
+            publish_adapters=[str(v) for v in (messages.get("publish_adapters") or [])],
+        ))
+    return permission
 
 
 class CoreClient:
@@ -250,7 +263,10 @@ class CoreClient:
                 info.permissions.CopyFrom(permissions)
             request = core_pb2.RegisterRequest(
                 plugin_info=info,
-                capabilities=["life", "requires:mocr"],
+                # "messaging" tells Core this plugin drives chat adapters, so it
+                # can be asked to enumerate them (MessageService.ListAdapters)
+                # and be handed their outbound sends.
+                capabilities=["life", "requires:mocr", "messaging"],
                 address=self.life_address,
             )
             if hasattr(request, "settings_sections"):
@@ -319,46 +335,11 @@ class CoreClient:
                             default_value="true",
                             help="允许 THINK 调用 Agent 主机上的 0kay-mcp",
                         ),
-                        # OneBot is now multi-instance and LIFE is the *server*:
-                        # bots are added in the L.I.F.E adapter panel (CRUD over
-                        # `adapters.json`), not by filling in a single set of
-                        # connection fields here. Only the shared trigger
-                        # defaults and a master switch remain as settings.
-                        _pb.SettingsField(
-                            key="onebot_enabled",
-                            type="bool",
-                            label="消息平台适配器总开关",
-                            default_value="false",
-                            help="总开关；具体机器人在「消息平台」面板中添加（L.I.F.E 作为反向 WebSocket 服务端）",
-                        ),
-                        _pb.SettingsField(
-                            key="onebot_reverse_host",
-                            type="text",
-                            label="反向 WebSocket 默认主机",
-                            default_value="127.0.0.1",
-                            help="新增机器人时的默认监听地址；0.0.0.0 表示接受任意来源（请务必设置 Token）",
-                        ),
-                        _pb.SettingsField(
-                            key="onebot_reverse_port",
-                            type="number",
-                            label="反向 WebSocket 默认端口",
-                            default_value="6199",
-                            help="新增机器人时的默认监听端口，多个机器人会自动顺延",
-                        ),
-                        _pb.SettingsField(
-                            key="onebot_trigger_keywords",
-                            type="text",
-                            label="OneBot 触发关键词",
-                            default_value="",
-                            help="逗号分隔；群聊仅命中关键词或 @Bot 时回复，留空则回复所有消息",
-                        ),
-                        _pb.SettingsField(
-                            key="onebot_observe_group",
-                            type="bool",
-                            label="OneBot 群聊观察",
-                            default_value="true",
-                            help="未触发回复时也记录有限的群聊话题和成员活跃度",
-                        ),
+                        # OneBot is now fully per-adapter: a bot's host, port,
+                        # token, direction, trigger keywords and group
+                        # observation all live on its own row (CRUD over
+                        # `adapters.json` in the 「消息平台」 panel). There is no
+                        # shared master switch or default to configure here.
                         _pb.SettingsField(
                             key="proactive_daily_limit",
                             type="number",
@@ -556,6 +537,60 @@ class CoreClient:
             return {"success": resp.success, "message": resp.message}
         except Exception as e:
             return {"success": False, "message": str(e)}
+
+    def publish_inbound_message(self, **fields) -> dict:
+        """Report one observed adapter message to Core's chat-message bus.
+
+        Called by the adapter bridge for every message it sees, not only the
+        ones L.I.F.E answers: Core applies the per-subscriber read filter
+        (``is_wake`` distinguishes the two), so deciding here what to publish
+        would silently narrow what other plugins are allowed to see.
+
+        Returns a result dict instead of raising — a bus hiccup must never break
+        the adapter's socket or swallow the conversation turn.
+
+        Deliberately does NOT call connect(): this sits on the inbound message
+        path, and ``connect()`` retries with a multi-second channel-ready
+        timeout. A Core that is down would otherwise add that stall to every
+        message the adapter sees. Connection state is owned by the registration
+        and heartbeat loop; here we only use a channel that is already up.
+        """
+        if not self._connected or self._core_stub is None:
+            return {"accepted": False, "error": "Core not connected"}
+        try:
+            message = plugin_pb2.InboundMessage(
+                adapter_id=str(fields.get("adapter_id") or ""),
+                platform=str(fields.get("platform") or ""),
+                conversation=str(fields.get("conversation") or ""),
+                kind=str(fields.get("kind") or ""),
+                peer_id=str(fields.get("peer_id") or ""),
+                peer_name=str(fields.get("peer_name") or ""),
+                sender_id=str(fields.get("sender_id") or ""),
+                sender_name=str(fields.get("sender_name") or ""),
+                text=str(fields.get("text") or ""),
+                media=[str(v) for v in (fields.get("media") or [])],
+                at=str(fields.get("at") or ""),
+                message_id=str(fields.get("message_id") or ""),
+                is_wake=bool(fields.get("is_wake")),
+            )
+            response = self._core_stub.PublishInboundMessage(
+                core_pb2.PublishInboundMessageRequest(
+                    caller_id=self.plugin_id or "life",
+                    message=message,
+                ),
+                timeout=5,
+                metadata=self._outgoing_metadata(),
+            )
+            return {
+                "accepted": response.accepted,
+                "delivered": response.delivered,
+                "error": response.error,
+                "should_process": response.should_process,
+                "decided_by": response.decided_by,
+                "reason": response.reason,
+            }
+        except Exception as error:
+            return {"accepted": False, "error": str(error)}
 
 
 # Module-level singleton

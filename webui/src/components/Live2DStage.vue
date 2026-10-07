@@ -18,6 +18,14 @@ const errorMsg = ref('')
 const enabled = computed(() => wizard.live2d.enabled)
 const modelUrl = computed(() => wizard.live2d.modelUrl.trim())
 const mood = computed(() => life.emotionMood)
+const moodLabel = computed(() => {
+  const m = String(mood.value || '')
+  if (!m) return ''
+  const key = `emotion.${m}`
+  const s = t(key)
+  // Unknown mood ids fall back to the raw value instead of a raw key path.
+  return s === key ? m : s
+})
 const accent = computed(() => life.emotionColor)
 
 const builtInModels = ref<{ id: string; label: string; url: string }[]>([])
@@ -535,6 +543,9 @@ function endDrag(e?: PointerEvent) {
 
 function onStageWheel(e: WheelEvent) {
   if (!live2dModel || loadState.value !== 'ok') return
+  // Plain wheel belongs to the page — hovering the stage must not trap
+  // scrolling of the surrounding panel. Ctrl/Cmd+wheel is the zoom affordance.
+  if (!e.ctrlKey && !e.metaKey) return
   e.preventDefault()
   const step = e.deltaY < 0 ? 1.06 : 0.94
   const next = clamp(live2dModel.scale.x * step, 0.08, 3.2)
@@ -771,12 +782,20 @@ watch(mood, (value) => {
       >⟲</button>
 
       <div class="stage-gradient"></div>
-      <div class="stage-hint">{{ mood }}</div>
+      <div class="stage-hint">{{ moodLabel }}</div>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* Register --mood as a real color so the emotion gradient cross-fades instead
+   of snapping when the mood changes. */
+@property --mood {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #6750A4;
+}
+
 .live2d-stage {
   display: flex;
   flex-direction: column;
@@ -792,13 +811,17 @@ watch(mood, (value) => {
   flex: 1;
   min-height: 260px;
   overflow: hidden;
-  touch-action: none;
+  /* pan-y: vertical touch gestures scroll the page; horizontal drag still
+     reaches the pointer handlers. The stage must not trap page scrolling. */
+  touch-action: pan-y;
   cursor: grab;
   user-select: none;
+  /* Registered as a color above, so mood changes cross-fade. */
+  transition: --mood var(--duration-long, 360ms) var(--ease-out, ease-out);
   background:
     radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--mood, #6750A4) 22%, transparent), transparent 55%),
     radial-gradient(circle at 70% 80%, color-mix(in srgb, var(--mood, #6750A4) 12%, transparent), transparent 50%),
-    linear-gradient(180deg, #f3edf7 0%, #e7e0ec 55%, #d0bcff33 100%);
+    linear-gradient(180deg, var(--md-surface-container-low) 0%, var(--md-surface-container) 55%, color-mix(in srgb, var(--md-primary) 20%, transparent) 100%);
 }
 
 .stage-viewport:active {

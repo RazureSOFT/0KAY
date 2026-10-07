@@ -15,7 +15,7 @@ import {
   setPin,
 } from '../auth'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const { confirm } = useConfirm()
 const ui = useUIPatchesStore()
 
@@ -105,7 +105,7 @@ async function onRemovePin() {
   const ok = await confirm({
     title: t('security.removePin'),
     message: t('security.removePinConfirm'),
-    confirmLabel: locale.value === 'en' ? 'Delete' : '删除',
+    confirmLabel: t('common.delete'),
     danger: true,
   })
   if (!ok) return

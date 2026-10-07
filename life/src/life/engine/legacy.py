@@ -33,6 +33,8 @@ from ..skills import get_skill_registry
 from ..core_client import get_core_client
 from ..companion import CompanionSystem
 from ..adapters.platforms import AdapterRegistry, AdapterRuntime
+from ..adapters.chatlog import ChatLog, conversation_key
+from ..adapters.bilibili import BilibiliStore, BilibiliClient, parse_cookie_string
 from ..adapters.onebot import _cq_escape
 from ..logging_setup import get_logger
 from ..model_client import MocrClient
@@ -306,6 +308,11 @@ class LifeEngine:
         # Persona config of the turn in flight (see `_config_id_for_session`).
         self._active_config_id = "default"
         self.tool_config.adapter_runtime = self.adapter_runtime
+        # Raw transcript of the busy-messaging traffic, for the QQ-style viewer.
+        self.chatlog = ChatLog(self.data_dir)
+        self.adapter_runtime.chatlog = self.chatlog
+        # Bilibili accounts (unofficial web API; polled separately from OneBot).
+        self.bilibili = BilibiliStore(self.data_dir)
         self.tools = create_default_registry(core_client=self.core, config=self.tool_config, memory=self.memory,
                                              companion=self.companion, world_action=self._world_action)
         self._plugin_tool_names: set = set()
@@ -4397,12 +4404,158 @@ class LifeEngine:
         return bool(runtime is not None and runtime.servers)
 
     def adapters_enabled(self) -> bool:
-        """The master switch (``onebot_enabled``); off disables every instance.
+        """True when the runtime is accepting adapters.
 
-        Kept as a single gate on top of the per-instance toggles so "turn all
-        bots off right now" does not require editing each row.
+        There is no separate master switch any more: the runtime is always on
+        and each adapter's own ``enabled`` flag decides whether it runs.
         """
-        return bool(getattr(self.tool_config, "onebot_enabled", False))
+        runtime = getattr(self, "adapter_runtime", None)
+        return bool(runtime is not None and runtime.enabled)
+
+    # -- QQ-style chat transcript -----------------------------------------
+    def _record_inbound(self, instance, data: dict) -> None:
+        """Log an inbound chat message for the viewer. Never raises."""
+        log = getattr(self, "chatlog", None)
+        if log is None or data.get("post_type") != "message":
+            return
+        try:
+            from ..adapters.onebot import OneBotMessage
+            msg = OneBotMessage(data)
+            media = [seg["type"] for seg in msg.segments if seg["type"] != "text"]
+            log.record(
+                adapter_id=instance.id, platform=instance.platform,
+                conversation=conversation_key(data.get("group_id"), data.get("user_id")),
+                kind="group" if data.get("group_id") else "private",
+                peer_id=str(data.get("group_id") or data.get("user_id") or ""),
+                peer_name=msg.sender_name, direction="in",
+                self_id=str(data.get("self_id") or ""), text=msg.text,
+                media=media, message_id=str(data.get("message_id") or ""),
+            )
+        except Exception as error:
+            logger.debug("inbound chatlog failed: %s", error)
+
+    def _maybe_resolve_group_name(self, server, group_id) -> None:
+        """Fetch a group's real name once, so the viewer never titles it after a
+        member's nickname (a OneBot message event carries only the group id)."""
+        log = getattr(self, "chatlog", None)
+        if log is None or not group_id:
+            return
+        conv = conversation_key(group_id, None)
+        if log.name(conv):
+            return
+        try:
+            task = asyncio.get_running_loop().create_task(
+                self._fetch_group_name(server, conv, group_id))
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
+        except RuntimeError:  # no running loop (unit tests)
+            pass
+
+    async def _fetch_group_name(self, server, conv: str, group_id) -> None:
+        try:
+            info = await server.call_api("get_group_info", {"group_id": int(group_id)})
+        except Exception as error:
+            logger.debug("get_group_info failed for %s: %s", group_id, error)
+            return
+        name = str((info or {}).get("group_name") or "").strip()
+        if name:
+            self.chatlog.set_name(conv, name)
+
+    # -- Bilibili accounts (unofficial web API) ---------------------------
+    def bili_list(self) -> dict:
+        return {"accounts": self.bilibili.list()}
+
+    def bili_delete(self, account_id: str) -> dict:
+        return self.bilibili.delete(account_id)
+
+    async def bili_qr_start(self) -> dict:
+        from ..adapters import bilibili as api
+        return await api.qr_generate()
+
+    async def bili_qr_poll(self, qrcode_key: str) -> dict:
+        from ..adapters import bilibili as api
+        res = await api.qr_poll(qrcode_key)
+        if res.get("status") == "ok":
+            account = await self._bili_account_from_cookies(res.get("cookies") or {})
+            if account is None:
+                return {"status": "invalid"}
+            res["account"] = account
+        return res
+
+    async def bili_set_cookie(self, raw: str) -> dict:
+        account = await self._bili_account_from_cookies(parse_cookie_string(raw))
+        return {"ok": True, "account": account} if account else {"ok": False, "error": "Cookie 无效或已过期"}
+
+    async def _bili_account_from_cookies(self, cookies: dict):
+        if not str(cookies.get("SESSDATA") or "").strip():
+            return None
+        try:
+            nav = await BilibiliClient(cookies).nav()
+        except Exception as error:
+            logger.warning("bilibili nav failed: %s", error)
+            return None
+        if not nav.get("isLogin"):
+            return None
+        uid = str(nav.get("mid") or cookies.get("DedeUserID") or "")
+        uname = str(nav.get("uname") or "")
+        existing = next((a for a in self.bilibili.accounts if uid and a.uid == uid), None)
+        payload = {
+            "sessdata": cookies.get("SESSDATA", ""),
+            "bili_jct": cookies.get("bili_jct", ""),
+            "dede_user_id": str(cookies.get("DedeUserID") or uid),
+            "uid": uid, "uname": uname, "name": uname or uid or "Bilibili",
+        }
+        if existing is not None:
+            payload["id"] = existing.id
+        result = self.bilibili.upsert(payload)
+        return result.get("account") if result.get("ok") else None
+
+    def chat_conversations(self, limit: int = 100) -> list:
+        log = getattr(self, "chatlog", None)
+        return log.conversations(limit) if log is not None else []
+
+    async def resolve_group_names(self) -> dict:
+        """Kick off get_group_info for any named-less group conversation.
+
+        Called when the viewer opens, so an existing group shows its name
+        immediately instead of waiting for the next message. Async because it
+        schedules tasks on the running loop (a to_thread worker has none)."""
+        log = getattr(self, "chatlog", None)
+        runtime = getattr(self, "adapter_runtime", None)
+        if log is None or runtime is None:
+            return {"ok": False}
+        connected = [s for s in runtime.servers.values() if s.connected]
+        server = connected[0] if connected else next(iter(runtime.servers.values()), None)
+        if server is None:
+            return {"ok": True, "pending": 0}
+        pending = 0
+        for conv in log.conversations(200):
+            if conv.get("kind") == "group" and not conv.get("name"):
+                self._maybe_resolve_group_name(server, conv.get("peer_id"))
+                pending += 1
+        return {"ok": True, "pending": pending}
+
+    def chat_messages(self, conversation: str, limit: int = 200, before: str = "") -> list:
+        log = getattr(self, "chatlog", None)
+        return log.messages(conversation, limit, before) if log is not None else []
+
+    async def send_chat(self, conversation: str, text: str, adapter_id: str = "") -> dict:
+        """Send as the bot from the QQ viewer, then log it via the runtime."""
+        text = str(text or "")
+        if not text.strip():
+            return {"ok": False, "error": "消息不能为空"}
+        kind, _, peer = str(conversation or "").partition(":")
+        if kind not in ("group", "private") or not peer:
+            return {"ok": False, "error": "无效的会话"}
+        group_id = peer if kind == "group" else None
+        user_id = peer if kind == "private" else None
+        try:
+            await self.adapter_runtime.send(
+                text, user_id=user_id, group_id=group_id,
+                session_id=str(conversation), instance_id=str(adapter_id or ""))
+            return {"ok": True}
+        except Exception as error:
+            return {"ok": False, "error": str(error)}
 
     async def sync_adapters(self) -> dict:
         """Reconcile running servers with the configured instances."""
@@ -4499,6 +4652,9 @@ class LifeEngine:
         """
         self.adapter_runtime.note_self_id(
             server.instance.id, data.get("self_id"), server.instance.platform)
+        self._record_inbound(server.instance, data)
+        if data.get("post_type") == "message" and data.get("group_id"):
+            self._maybe_resolve_group_name(server, data.get("group_id"))
         context_token = _adapter_context.set({
             "self_id": data.get("self_id"),
             "session_id": self.adapter_runtime.session_id(server.instance, data),
@@ -5248,24 +5404,10 @@ class LifeEngine:
         self.tool_config.mail_auto_approve_all = bool(values.get("mail_auto_approve_all", False))
         self.tool_config.computer_use = bool(values.get("computer_use", False))
         self.tool_config.mcp_enabled = values.get("mcp_enabled") is not False
-        self.tool_config.onebot_enabled = bool(values.get("onebot_enabled", False))
-        # Propagate the master switch to the runtime so the next `sync_adapters`
-        # actually tears the listeners down instead of merely recording the flag.
-        if getattr(self, "adapter_runtime", None) is not None:
-            self.adapter_runtime.enabled = self.tool_config.onebot_enabled
-        # Defaults for newly-created instances (the panel pre-fills these).
-        registry = getattr(self, "adapters", None)
-        if registry is not None:
-            if "onebot_observe_group" in values:
-                for instance in registry.instances:
-                    instance.observe_group = values["onebot_observe_group"] is not False
-            if values.get("onebot_reverse_host"):
-                self.adapters.default_host = str(values["onebot_reverse_host"])
-            if values.get("onebot_reverse_port"):
-                try:
-                    self.adapters.default_port = int(values["onebot_reverse_port"])
-                except (TypeError, ValueError):
-                    pass
+        # Adapters are fully self-contained: each row carries its own host, port,
+        # token, direction, trigger keywords and group observation. Nothing here
+        # writes back into the registry or gates the runtime; the runtime stays
+        # enabled and each adapter's own `enabled` flag is the only switch.
         self.tool_config.minecraft_enabled = bool(values.get("minecraft_enabled", False))
         self.tool_config.minecraft_url = str(values.get("minecraft_url") or "http://127.0.0.1:8765")
         self._screen_watch = bool(values.get("screen_watch", False))

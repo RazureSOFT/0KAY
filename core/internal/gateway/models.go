@@ -70,11 +70,46 @@ func (g *Gateway) handleFetchModels(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// sameEndpoint reports whether two provider base URLs address the same endpoint,
+// ignoring a trailing slash, the query string and the fragment. Comparison is
+// case-insensitive because the host part is.
+func sameEndpoint(a, b string) bool {
+	norm := func(raw string) string {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			return ""
+		}
+		parsed, err := url.Parse(raw)
+		if err != nil {
+			return strings.ToLower(strings.TrimSuffix(raw, "/"))
+		}
+		parsed.RawQuery = ""
+		parsed.Fragment = ""
+		parsed.Path = strings.TrimSuffix(parsed.Path, "/")
+		return strings.ToLower(parsed.Scheme + "://" + parsed.Host + parsed.Path)
+	}
+	left := norm(a)
+	return left != "" && left == norm(b)
+}
+
 // resolveModelAPIKey returns the credential to send upstream for a model-catalog
 // fetch. GET /api/providers is masked now, so the browser only ever holds a
-// masked (or empty) key; resolve it server-side by id, then by (provider,
-// base_url). A masked key is never forwarded: leaking the mask upstream would
-// turn a working endpoint into a confusing 401 from the provider.
+// masked (or empty) key; resolve it server-side instead. A masked key is never
+// forwarded: leaking the mask upstream would turn a working endpoint into a
+// confusing 401 from the provider.
+//
+// A stored secret is only ever handed to the endpoint it was registered for.
+// This binding is the whole point: the request carries both the credential id
+// and the destination URL, and any caller that can reach POST /api/models/fetch
+// (an in-origin plugin bundle using the owner's session cookie qualifies) could
+// otherwise pair a legitimate id with an attacker-controlled base_url and have
+// Core put that provider's plaintext key in an Authorization header aimed at the
+// attacker. Matching on id alone turned the masked-key design into no
+// protection at all.
+//
+// The cost is that editing a provider's base_url makes the catalog request fall
+// back to the built-in defaults until the key is re-entered, which is reported
+// back to the caller in ModelsResponse.Error rather than failing silently.
 func (g *Gateway) resolveModelAPIKey(req ModelsRequest) string {
 	if req.APIKey != "" && !providers.IsMasked(req.APIKey, "") {
 		return req.APIKey
@@ -82,26 +117,20 @@ func (g *Gateway) resolveModelAPIKey(req ModelsRequest) string {
 	if g.providerStore == nil {
 		return ""
 	}
-	if req.ID != "" {
-		if key := g.providerStore.Secret(req.ID); key != "" {
-			return key
-		}
-	}
-	norm := func(u string) string { return strings.TrimSuffix(strings.TrimSpace(u), "/") }
-	target := norm(req.BaseURL)
-	if target == "" {
-		return ""
-	}
 	for _, p := range g.providerStore.SnapshotRaw().Providers {
-		if req.Provider != "" && p.Provider != req.Provider {
+		if p.APIKey == "" || !sameEndpoint(p.BaseURL, req.BaseURL) {
 			continue
 		}
-		if norm(p.BaseURL) != target {
+		if req.ID != "" {
+			if strings.EqualFold(p.ID, req.ID) {
+				return p.APIKey
+			}
 			continue
 		}
-		if key := g.providerStore.Secret(p.ID); key != "" {
-			return key
+		if req.Provider != "" && !strings.EqualFold(p.Provider, req.Provider) {
+			continue
 		}
+		return p.APIKey
 	}
 	return ""
 }

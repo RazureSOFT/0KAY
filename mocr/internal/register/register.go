@@ -3,7 +3,6 @@ package register
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"os"
 	"strings"
 	"sync"
@@ -11,11 +10,15 @@ import (
 
 	corev1 "0kay/gen/core/v1"
 	pluginv1 "0kay/gen/plugin/v1"
+	"0kay/obs"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
+
+// regLog tags the plugin-registration lifecycle.
+var regLog = obs.Component("register")
 
 var (
 	identityMu    sync.RWMutex
@@ -118,7 +121,7 @@ func Start(ctx context.Context, opts Options) {
 	go func() {
 		conn, err := grpc.NewClient(opts.CoreAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			log.Printf("[mocr-register] dial core %s: %v", opts.CoreAddress, err)
+			regLog.ErrorContext(ctx, "dial core failed", "addr", opts.CoreAddress, "err", err)
 			return
 		}
 		defer conn.Close()
@@ -146,16 +149,16 @@ func Start(ctx context.Context, opts Options) {
 				SettingsSections: opts.SettingsSections,
 			})
 			if err != nil {
-				log.Printf("[mocr-register] register failed: %v", err)
+				regLog.ErrorContext(ctx, "registration failed", "err", err)
 				return false
 			}
 			if !resp.Success {
-				log.Printf("[mocr-register] rejected: %s", resp.Message)
+				regLog.ErrorContext(ctx, "registration rejected", "message", resp.Message)
 				return false
 			}
 			pluginID = resp.PluginId
 			SetIdentity(opts.PluginName, resp.ServiceToken)
-			log.Printf("[mocr-register] registered with Core: plugin_id=%s", pluginID)
+			regLog.InfoContext(ctx, "registered with Core", "plugin_id", pluginID)
 			return true
 		}
 

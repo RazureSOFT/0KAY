@@ -23,8 +23,9 @@ import AppSelect from '../components/AppSelect.vue'
 import ModelsField from '../components/ModelsField.vue'
 import { useConfirm } from '../composables/confirm'
 import { useSettingsMeta } from '../composables/settingsMeta'
+import { toast } from '../composables/toast'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const { confirm } = useConfirm()
 const wizard = useWizardStore()
 const sectionsStore = useSettingsSectionsStore()
@@ -63,12 +64,15 @@ const uploadMsg = ref('')
 /** Plugin section draft values */
 const sectionDrafts = ref<Record<string, Record<string, unknown>>>({})
 const sectionMsg = ref('')
+const sectionMsgKind = ref<'ok' | 'error'>('ok')
+const sectionSaving = ref(false)
 const sectionTesting = ref(false)
 const sectionTestMsg = ref('')
+const live2dSaving = ref(false)
 
 /** Model catalog for `model` / `models` settings fields (dropdowns). */
 const availableModels = ref<string[]>([])
-const modelAutoLabel = computed(() => (locale.value === 'en' ? 'Auto (by strategy)' : '自动（按策略）'))
+const modelAutoLabel = computed(() => t('settings.modelAuto'))
 const modelOptions = computed(() => [
   { value: '', label: modelAutoLabel.value },
   ...availableModels.value.map((id) => ({ value: id, label: id })),
@@ -93,7 +97,7 @@ async function testPluginSection(id: string) {
       const url = URL.createObjectURL(await res.blob())
       try { await new Audio(url).play() } catch { /* autoplay may be blocked */ }
       window.dispatchEvent(new CustomEvent('live2d-speak', { detail: { url } }))
-      sectionTestMsg.value = '测试成功，正在播放…'
+      sectionTestMsg.value = t('settings.testSuccess')
     } else {
       const data: { error?: string } = await res.json().catch(() => ({}))
       sectionTestMsg.value = data.error || `HTTP ${res.status}`
@@ -180,6 +184,8 @@ async function loadPatchFields(id: string) {
 
 async function savePatchFields(id: string) {
   const meta = tabMeta(id)
+  if (sectionSaving.value) return
+  sectionSaving.value = true
   sectionMsg.value = ''
   try {
     const body = sectionDrafts.value[id] || {}
@@ -192,20 +198,30 @@ async function savePatchFields(id: string) {
       if (!res.ok) throw new Error(String(res.status))
     }
     sectionMsg.value = t('settings.saved')
-    setTimeout(() => { sectionMsg.value = '' }, 1500)
+    sectionMsgKind.value = 'ok'
+    setTimeout(() => { sectionMsg.value = '' }, 3000)
   } catch {
     sectionMsg.value = t('settings.permFailed')
+    sectionMsgKind.value = 'error'
+  } finally {
+    sectionSaving.value = false
   }
 }
 
 async function saveSection(id: string) {
+  if (sectionSaving.value) return
+  sectionSaving.value = true
   sectionMsg.value = ''
   try {
     await sectionsStore.saveValues(id, sectionDrafts.value[id] || {})
     sectionMsg.value = t('settings.saved')
-    setTimeout(() => { sectionMsg.value = '' }, 1500)
+    sectionMsgKind.value = 'ok'
+    setTimeout(() => { sectionMsg.value = '' }, 3000)
   } catch {
     sectionMsg.value = t('settings.permFailed')
+    sectionMsgKind.value = 'error'
+  } finally {
+    sectionSaving.value = false
   }
 }
 
@@ -223,8 +239,8 @@ async function loadUploadedModels() {
 async function deleteModel(model: {id:string;url:string;label:string}) {
   const ok = await confirm({
     title: t('settings.live2d'),
-    message: `删除模型 ${model.label} 及所在模型文件夹中的全部资源？`,
-    confirmLabel: locale.value === 'en' ? 'Delete' : '删除',
+    message: t('settings.deleteModelConfirm', { label: model.label }),
+    confirmLabel: t('common.delete'),
     danger: true,
   })
   if (!ok) return
@@ -234,7 +250,7 @@ async function deleteModel(model: {id:string;url:string;label:string}) {
     const body=await response.json();uploadedModels.value=body.models || []
     const folder=model.url.slice(0,model.url.indexOf('/', '/live2d/models/'.length)+1)
     if(wizard.live2d.modelUrl.startsWith(folder)) {wizard.live2d.modelUrl='';wizard.live2d.enabled=false;wizard.saveToStorage()}
-    await saveLive2D();uploadMsg.value='模型已删除'
+    await saveLive2D();uploadMsg.value=t('settings.modelDeleted')
     window.dispatchEvent(new Event('live2d-models-changed'))
   }catch(error:any){uploadMsg.value=error.message}
 }
@@ -242,6 +258,22 @@ async function saveLive2D() {
   wizard.saveToStorage()
   const response=await fetch('/api/settings/live2d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({values:{enabled:wizard.live2d.enabled,model_url:wizard.live2d.modelUrl}})})
   if(!response.ok)throw new Error(await response.text())
+}
+
+async function saveLive2DNow() {
+  if (live2dSaving.value) return
+  live2dSaving.value = true
+  uploadMsg.value = ''
+  try {
+    await saveLive2D()
+    uploadMsg.value = t('settings.saved')
+    setTimeout(() => { if (uploadMsg.value === t('settings.saved')) uploadMsg.value = '' }, 3000)
+  } catch (error: any) {
+    uploadMsg.value = error.message
+    toast(t('settings.permFailed'), 'error')
+  } finally {
+    live2dSaving.value = false
+  }
 }
 
 function openFolderPicker() {
@@ -290,6 +322,11 @@ onMounted(async () => {
   void loadAvailableModels()
   await sectionsStore.fetchSections()
   for (const sec of sectionsStore.sections) loadSectionDraft(sec.id)
+  // A stale/hand-typed ?tab= must not land on an arbitrary pane (it used to
+  // fall through to the danger panel via the v-else at the end of the chain).
+  if (!allTabs.value.some((tab) => tab.id === activeTab.value) && !isBuiltinTab(activeTab.value)) {
+    activeTab.value = 'general'
+  }
 })
 
 function selectTab(id: string) {
@@ -300,7 +337,20 @@ function selectTab(id: string) {
 
 function save() {
   wizard.saveToStorage()
-  if(activeTab.value==='live2d') void saveLive2D().catch(error=>{uploadMsg.value=error.message})
+  if (activeTab.value === 'live2d') {
+    // Never report success when the settings write failed — the header button
+    // used to flip to "Saved" unconditionally, even on a rejected POST.
+    saveLive2D()
+      .then(() => {
+        saved.value = true
+        setTimeout(() => { saved.value = false }, 1500)
+      })
+      .catch((error: any) => {
+        uploadMsg.value = error.message
+        toast(t('settings.permFailed'), 'error')
+      })
+    return
+  }
   saved.value = true
   setTimeout(() => { saved.value = false }, 1500)
 }
@@ -313,7 +363,11 @@ function save() {
         <h1>{{ t('settings.title') }}</h1>
         <p class="subtitle">{{ t('settings.pageDesc') }}</p>
       </div>
-      <button v-if="activeTab !== 'about' && !moduleTab" class="btn btn-primary" @click="save">
+      <button
+        v-if="isBuiltinTab(activeTab) && activeTab !== 'about' && activeTab !== 'updates' && activeTab !== 'danger'"
+        class="btn btn-primary"
+        @click="save"
+      >
         <span v-if="saved">{{ t('settings.saved') }}</span>
         <span v-else>{{ t('settings.save') }}</span>
       </button>
@@ -326,6 +380,10 @@ function save() {
           :key="tab.id"
           class="nav-item"
           :class="{ active: activeTab === tab.id }"
+          :aria-current="activeTab === tab.id ? 'true' : undefined"
+          :data-tab-id="tab.id"
+          :title="tabLabel(tab.id)"
+          :aria-label="tabLabel(tab.id)"
           @click="selectTab(tab.id)"
         >
           <span class="nav-indicator"></span>
@@ -359,11 +417,12 @@ function save() {
       </nav>
 
       <section class="settings-content">
+        <Transition name="tab" mode="out-in">
         <!-- General -->
-        <GeneralPanel v-if="activeTab === 'general'" />
+        <GeneralPanel v-if="activeTab === 'general'" key="general" />
 
         <!-- Connection (scan-to-pair QR for the mobile app) -->
-        <ConnectionPanel v-else-if="activeTab === 'connection'" />
+        <ConnectionPanel v-else-if="activeTab === 'connection'" key="connection" />
 
         <!-- Provider (multi-provider) — dedicated panel -->
         <template v-else-if="activeTab === 'provider'">
@@ -414,9 +473,9 @@ function save() {
                 <p v-if="f.help" class="helper-text">{{ f.help }}</p>
               </template>
             </div>
-            <div v-if="sectionMsg" class="helper-text">{{ sectionMsg }}</div>
+            <div v-if="sectionMsg" class="helper-text" :class="sectionMsgKind === 'error' ? 'msg-error' : 'msg-success'" role="status">{{ sectionMsg }}</div>
             <div class="actions-row">
-              <button class="btn btn-primary" type="button" @click="saveSection('provider')">
+              <button class="btn btn-primary" type="button" :disabled="sectionSaving" @click="saveSection('provider')">
                 {{ t('settings.save') }}
               </button>
             </div>
@@ -427,7 +486,7 @@ function save() {
         <PersonaPanel v-else-if="activeTab === 'persona'" />
 
         <!-- Live2D (component pane — metadata may come from life.patch) -->
-        <div v-else-if="activeTab === 'live2d'" class="content-card">
+        <div v-else-if="activeTab === 'live2d'" key="live2d" class="content-card">
           <h2>{{ tabLabel('live2d') }}</h2>
           <p class="card-desc">{{ tabMeta('live2d')?.descriptionKey ? t(tabMeta('live2d')!.descriptionKey!) : t('settings.live2dDesc') }}</p>
 
@@ -472,8 +531,8 @@ function save() {
             </p>
           </div>
 
-          <p class="helper-text">支持 Cubism 2（.model.json + .moc）与 Cubism 3/4（.model3.json + .moc3）。请选择完整模型文件夹，包含纹理、动作等资源。</p>
-          <button class="btn btn-tonal" @click="saveLive2D().catch(error => uploadMsg = error.message)">保存 LIFE 的 Live2D 设置</button>
+          <p class="helper-text">{{ t('settings.live2dHelper') }}</p>
+          <button class="btn btn-tonal" :disabled="live2dSaving" @click="saveLive2DNow">{{ live2dSaving ? t('settings.saving') : t('settings.saveLife2d') }}</button>
 
           <div class="field">
             <label>{{ t('settings.uploadFolder') }}</label>
@@ -506,7 +565,7 @@ function save() {
                 />
                 <span>{{ m.label }}</span>
                 <code>{{ m.url }}</code>
-                <button type="button" class="btn btn-danger" @click.prevent="deleteModel(m)">删除模型</button>
+                <button type="button" class="btn btn-danger" @click.prevent="deleteModel(m)">{{ t('settings.deleteModel') }}</button>
               </label>
             </div>
           </div>
@@ -525,6 +584,7 @@ function save() {
         <!-- Plugin-registered settings sections (declarative fields) -->
         <div
           v-else-if="isPluginSection(activeTab) && pluginSection(activeTab)"
+          :key="`section-${activeTab}`"
           class="content-card"
         >
           <h2>{{ pluginSection(activeTab)!.label }}</h2>
@@ -574,7 +634,7 @@ function save() {
               <label>{{ f.label }}</label>
               <div class="actions-row">
                 <button class="btn btn-tonal" type="button" :disabled="sectionTesting" @click="testPluginSection(activeTab)">
-                  {{ sectionTesting ? t('settings.testing') : (f.label || '测试') }}
+                  {{ sectionTesting ? t('settings.testing') : (f.label || t('settings.test')) }}
                 </button>
                 <span v-if="sectionTestMsg" class="helper-text">{{ sectionTestMsg }}</span>
               </div>
@@ -592,9 +652,9 @@ function save() {
             </template>
           </div>
 
-          <div v-if="sectionMsg" class="helper-text">{{ sectionMsg }}</div>
+          <div v-if="sectionMsg" class="helper-text" :class="sectionMsgKind === 'error' ? 'msg-error' : 'msg-success'" role="status">{{ sectionMsg }}</div>
           <div class="actions-row">
-            <button class="btn btn-primary" type="button" @click="saveSection(activeTab)">
+            <button class="btn btn-primary" type="button" :disabled="sectionSaving" @click="saveSection(activeTab)">
               {{ t('settings.save') }}
             </button>
           </div>
@@ -610,6 +670,7 @@ function save() {
         <!-- Patch-declared settings tab (fields + loadApi/saveApi, not a builtin pane) -->
         <div
           v-else-if="!isBuiltinTab(activeTab) && tabMeta(activeTab)?.fields?.length"
+          :key="`patch-${activeTab}`"
           class="content-card"
         >
           <h2>{{ tabLabel(activeTab) }}</h2>
@@ -673,19 +734,26 @@ function save() {
             </template>
           </div>
 
-          <div v-if="sectionMsg" class="helper-text">{{ sectionMsg }}</div>
+          <div v-if="sectionMsg" class="helper-text" :class="sectionMsgKind === 'error' ? 'msg-error' : 'msg-success'" role="status">{{ sectionMsg }}</div>
           <div class="actions-row">
-            <button class="btn btn-primary" type="button" @click="savePatchFields(activeTab)">
+            <button class="btn btn-primary" type="button" :disabled="sectionSaving" @click="savePatchFields(activeTab)">
               {{ t('settings.save') }}
             </button>
           </div>
         </div>
 
-        <AboutPanel v-else-if="activeTab === 'about'" />
-        <UpdatesPanel v-else-if="activeTab === 'updates'" />
+        <AboutPanel v-else-if="activeTab === 'about'" key="about" />
+        <UpdatesPanel v-else-if="activeTab === 'updates'" key="updates" />
 
         <!-- Danger -->
-        <DangerPanel v-else />
+        <DangerPanel v-else-if="activeTab === 'danger'" key="danger" />
+
+        <!-- Unknown tab: an explicit dead end, never a fall-through into the
+             reset-everything panel. -->
+        <div v-else key="unknown" class="content-card tab-unknown">
+          <p>{{ t('settings.tabNotFound') }}</p>
+        </div>
+        </Transition>
       </section>
     </div>
   </div>

@@ -4,6 +4,7 @@ import { useWizardStore } from './wizard'
 import { useLifeStore } from './life'
 import { i18n } from '../i18n'
 import { uid } from '../uid'
+import { readSSE } from '../api'
 
 export interface Message {
   id: string
@@ -389,7 +390,7 @@ export const useChatStore = defineStore('chat', () => {
         // Remove the empty assistant bubble; WS path will create its own
         const idx = messages.value.findIndex((m) => m.requestId === requestId && !m.content)
         if (idx >= 0) messages.value.splice(idx, 1)
-        appendChunk(requestId, '⚠ LIFE 对话服务不可用，未回退到基础模型以避免丢失人设。')
+        appendChunk(requestId, i18n.global.t('chat.lifeUnavailable'))
         isTyping.value = false
       } else {
         isTyping.value = false
@@ -444,60 +445,37 @@ export const useChatStore = defineStore('chat', () => {
       throw new Error('No response body')
     }
 
-    const reader = res.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
     let sawDone = false
-
     try {
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-
-        // SSE frames separated by blank line
-        const parts = buffer.split('\n\n')
-        buffer = parts.pop() || ''
-
-        for (const part of parts) {
-          const eventMatch = part.match(/^event:\s*(.+)$/m)
-          const dataMatch = part.match(/^data:\s*(.+)$/m)
-          if (!eventMatch || !dataMatch) continue
-          const eventName = eventMatch[1].trim()
+      // Shared frame parser: multi-line `data:` blocks are joined per the SSE
+      // spec instead of being truncated to their first line.
+      await readSSE(
+        res,
+        ({ event: eventName, data }) => {
           let payload: any = null
           try {
-            payload = JSON.parse(dataMatch[1])
+            payload = JSON.parse(data)
           } catch {
-            continue
+            return
           }
-
           if (eventName === 'chunk') {
             if (payload.error) {
               handleError({ request_id: requestId, error: payload.error })
               sawDone = true
-              break
+              return
             }
             appendChunk(requestId, payload.chunk || '', false, payload)
             if (payload.task_id) currentTaskId.value = payload.task_id
-            if (payload.done) {
-              sawDone = true
-            }
+            if (payload.done) sawDone = true
           } else if (eventName === 'done') {
             sawDone = true
           } else if (eventName === 'error') {
             handleError({ request_id: requestId, error: payload.error || payload })
             sawDone = true
-            break
           }
-        }
-        if (sawDone) break
-      }
+        },
+      )
     } finally {
-      try {
-        reader.releaseLock()
-      } catch {
-        /* ignore */
-      }
       if (activeSseController === controller) activeSseController = null
       isTyping.value = false
       persistHistory()

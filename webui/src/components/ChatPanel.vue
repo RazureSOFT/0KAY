@@ -3,19 +3,32 @@ import { ref, nextTick, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useChatStore } from '../stores/chat'
 import { useWizardStore } from '../stores/wizard'
+import { useConfirm } from '../composables/confirm'
+import { toast } from '../composables/toast'
 import MessageBubble from './MessageBubble.vue'
 
 const { t, locale } = useI18n()
 const chatStore = useChatStore()
 const wizard = useWizardStore()
+const { confirm } = useConfirm()
 
 const inputText = ref('')
 const chatContainer = ref<HTMLElement | null>(null)
+const messageInput = ref<HTMLTextAreaElement | null>(null)
 const pendingImages = ref<string[]>([])
 const imageInput = ref<HTMLInputElement | null>(null)
 const pendingFiles = ref<Array<{ name: string; url: string; mime?: string; size?: number }>>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
+
+function autoResize() {
+  const el = messageInput.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+}
+
+watch(inputText, () => nextTick(autoResize))
 
 // Follow new content only while the reader is already near the bottom, so a
 // streaming reply never yanks them away from history they are reading.
@@ -46,6 +59,8 @@ function sendMessage() {
 
 function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter' && !e.shiftKey) {
+    // IME: Enter confirms the candidate list, it must not send the half-typed draft.
+    if (e.isComposing || e.keyCode === 229) return
     e.preventDefault()
     sendMessage()
   }
@@ -68,6 +83,8 @@ async function onImagePicked(e: Event) {
     }
   } catch (err) {
     console.error('image upload failed:', err)
+    const failed = files.length === 1 ? files[0].name : ''
+    toast(failed ? t('chat.uploadFailedNamed', { name: failed }) : t('chat.uploadFailed'), 'error')
   } finally {
     uploading.value = false
   }
@@ -93,6 +110,8 @@ async function onFilesPicked(e: Event) {
     }
   } catch (err) {
     console.error('file upload failed:', err)
+    const failed = files.length === 1 ? files[0].name : ''
+    toast(failed ? t('chat.uploadFailedNamed', { name: failed }) : t('chat.uploadFailed'), 'error')
   } finally {
     uploading.value = false
   }
@@ -114,9 +133,20 @@ async function onPaste(e: ClipboardEvent) {
     }
   } catch (err) {
     console.error('paste upload failed:', err)
+    toast(t('chat.uploadFailed'), 'error')
   } finally {
     uploading.value = false
   }
+}
+
+async function clearChat() {
+  const ok = await confirm({
+    title: t('chat.clear'),
+    message: t('chat.clearConfirm'),
+    confirmLabel: t('chat.clear'),
+    danger: true,
+  })
+  if (ok) chatStore.clearMessages()
 }
 
 function downloadHistory() {
@@ -189,9 +219,10 @@ watch(
         </div>
 
         <MessageBubble
-          v-for="message in chatStore.messages"
+          v-for="(message, i) in chatStore.messages"
           :key="message.id"
           :message="message"
+          :streaming="chatStore.isTyping && i === chatStore.messages.length - 1"
         />
 
         <div v-if="chatStore.isTyping" class="typing-indicator">
@@ -208,17 +239,21 @@ watch(
     </div>
 
     <div class="input-area">
-      <div v-if="pendingImages.length" class="pending-images">
+      <div v-if="pendingImages.length || uploading" class="pending-images">
         <div v-for="url in pendingImages" :key="url" class="pending-thumb">
           <img :src="url" alt="" />
-          <button class="remove-img" type="button" :title="t('chat.removeImage')" @click="removePendingImage(url)">
+          <button class="remove-img" type="button" :aria-label="t('chat.removeImage')" :title="t('chat.removeImage')" @click="removePendingImage(url)">
             ×
           </button>
+        </div>
+        <!-- Upload in flight: a shimmer slot so the user sees why nothing appeared yet. -->
+        <div v-if="uploading" class="pending-thumb uploading" aria-hidden="true">
+          <span class="upload-spinner"></span>
         </div>
       </div>
       <div v-if="pendingFiles.length" class="pending-files">
         <span v-for="file in pendingFiles" :key="file.url" class="pending-file" :title="`${file.mime || ''} · ${file.size || 0} B`">
-          {{ file.name }}
+          <span class="pending-file-name">{{ file.name }}</span>
           <button class="remove-file" type="button" :title="t('chat.removeFile')" @click="removePendingFile(file.url)">
             ×
           </button>
@@ -265,6 +300,7 @@ watch(
           </svg>
         </button>
         <textarea
+          ref="messageInput"
           v-model="inputText"
           class="message-input"
           :placeholder="t('chat.inputPlaceholder')"
@@ -275,6 +311,8 @@ watch(
         ></textarea>
         <button
           class="send-button"
+          :aria-label="t('chat.send')"
+          :title="t('chat.send')"
           @click="sendMessage"
           :disabled="(!inputText.trim() && !pendingImages.length && !pendingFiles.length) || !chatStore.isConnected || chatStore.isTyping"
         >
@@ -302,7 +340,7 @@ watch(
         <button class="context-btn" type="button" :disabled="chatStore.compacting" @click="chatStore.compactContext">
           {{ chatStore.compacting ? t('chat.compacting') : t('chat.compact') }}
         </button>
-        <button class="context-btn danger" type="button" @click="chatStore.clearMessages">{{ t('chat.clear') }}</button>
+        <button class="context-btn danger" type="button" @click="clearChat">{{ t('chat.clear') }}</button>
       </div>
     </div>
   </div>
@@ -458,6 +496,12 @@ watch(
   font-size: var(--font-size-xs);
   color: var(--neutral-gray-50);
   overflow: hidden;
+}
+/* `text-overflow` is ignored on a flex container, so the name was hard-clipped.
+   The inner span is the block box that actually ellipsises. */
+.pending-file-name {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -495,8 +539,8 @@ watch(
   position: absolute;
   top: 2px;
   right: 2px;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   border: none;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.65);
@@ -507,6 +551,33 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Upload-in-flight slot: shimmering placeholder until the thumbnail arrives. */
+.pending-thumb.uploading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--md-surface-container-high);
+  animation: thumb-shimmer 1.2s infinite;
+}
+
+.upload-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--md-outline-variant);
+  border-top-color: var(--md-primary);
+  animation: upload-spin 0.8s linear infinite;
+}
+
+@keyframes upload-spin { to { transform: rotate(360deg); } }
+@keyframes thumb-shimmer {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pending-thumb.uploading { animation: none; }
 }
 
 .attach-btn {

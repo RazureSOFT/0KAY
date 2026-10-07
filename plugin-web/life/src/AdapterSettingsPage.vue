@@ -10,13 +10,12 @@
  * Layout: 总开关 → 适配器列表 (CRUD) → 配置文件路由 → 群聊观察与主动行为.
  * The clockwork lives in the LIFE plugin; this page only reads and writes it.
  */
-import { computed, onMounted, ref } from 'vue'
-import AppSelect from './AppSelect.vue'
-import { useConfirm } from './confirm'
-import ConfirmDialog from './ConfirmDialog.vue'
-import { friendlyError, lifeAct, lifeKitCss, readSection, writeSection } from './kit'
+import { computed, nextTick, onMounted, ref } from 'vue'
+import { AppSelect, useConfirm, i18n } from '@0kay/host'
+import { FLASH_MS, friendlyError, lifeAct, lifeKitCss } from './kit'
 
 const { confirm } = useConfirm()
+const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {})
 
 const loading = ref(true)
 const error = ref('')
@@ -24,29 +23,18 @@ const notice = ref('')
 
 function flash(message: string) {
   notice.value = message
-  setTimeout(() => { if (notice.value === message) notice.value = '' }, 3200)
+  setTimeout(() => { if (notice.value === message) notice.value = '' }, FLASH_MS)
 }
 
-/* ── 总开关与共享默认值 ───────────────────────────────────────────────────────
-   这些留在 Core settings（section id = life），因为它们不是机器人的属性：
-   总开关决定整个反向 WS 运行时是否启动，后面的默认值只影响「新增」时的表单取值。 */
-const master = ref({
-  onebot_enabled: false,
-   onebot_reverse_host: '127.0.0.1',
-  onebot_reverse_port: 6199,
-})
-const shared = ref({
-  onebot_trigger_keywords: '',
-  onebot_observe_group: true,
-  proactive_daily_limit: 3,
-  proactive_target_limit: 1,
-})
-const settingsBusy = ref(false)
+/* Every adapter is self-contained: there is no shared master switch or default
+   host/port/limits on this page — each row carries its own settings. The
+   character-level proactive limits live in 「L.I.F.E 设置」. */
 
 /* ── 适配器实例 ─────────────────────────────────────────────────────────────── */
 interface Adapter {
   id: string; name: string; platform: string; enabled: boolean
-  ws_host: string; ws_port: number; ws_token: string
+  direction: string; ws_path: string
+  ws_host: string; ws_port: number; ws_token: string; has_ws_token?: boolean
   http_url: string; access_token: string
   config_id: string; trigger_keywords: string[]
   created_at?: string
@@ -63,13 +51,18 @@ const busy = ref(false)
 /** null = editor closed, '' = adding a new bot, otherwise the edited id. */
 const editing = ref<string | null>(null)
 const form = ref<any>(emptyForm())
+/** Editor card element, so "Add adapter" can scroll it into view. */
+const editorEl = ref<HTMLElement | null>(null)
 
 function emptyForm() {
   return {
     id: '', name: '', platform: 'aiocqhttp', enabled: true,
+    // reverse = LIFE listens (client dials in); connect = LIFE dials out to
+    // the platform's own WS server at ws://host:port/ws_path.
+    direction: 'reverse', ws_path: '/ws',
     ws_host: '127.0.0.1', ws_port: 6199, ws_token: '',
     http_url: '', access_token: '',
-    config_id: 'default', trigger_keywords: '',
+    config_id: 'default', trigger_keywords: '', observe_group: true,
   }
 }
 
@@ -80,10 +73,13 @@ function runtimeOf(id: string): RuntimeState {
 /** Human-readable listener state for one row. */
 function stateOf(a: Adapter): { label: string; tone: string } {
   const r = runtimeOf(a.id)
-  if (!a.enabled) return { label: '未启用', tone: 'muted' }
-  if (r.connected) return { label: `已连接 · ${r.clients || 0} 客户端`, tone: 'ok' }
-  if (r.running) return { label: '等待客户端接入', tone: 'wait' }
-  return { label: r.error ? '监听失败' : '未监听', tone: 'bad' }
+  if (!a.enabled) return { label: t('life.adapters.stateDisabled'), tone: 'muted' }
+  if (r.connected) return { label: t('life.adapters.stateConnected', { n: r.clients || 0 }), tone: 'ok' }
+  if (r.running) return {
+    label: t(a.direction === 'connect' ? 'life.adapters.stateConnecting' : 'life.adapters.stateWaiting'),
+    tone: 'wait',
+  }
+  return { label: r.error ? t('life.adapters.stateFailed') : t('life.adapters.stateIdle'), tone: 'bad' }
 }
 
 const implemented = computed(() => platforms.value.filter((p) => p.implemented).map((p) => p.id))
@@ -92,55 +88,44 @@ const pending = computed(() => platforms.value.filter((p) => !p.implemented).map
 async function load() {
   loading.value = true; error.value = ''
   try {
-    const [list, facts, routesResponse, section] = await Promise.all([
+    const [list, facts, routesResponse] = await Promise.all([
       lifeAct('adapter_list'),
       lifeAct('adapter_platforms'),
       lifeAct('adapter_routes_get'),
-      readSection('life').catch(() => ({} as Record<string, any>)),
     ])
     adapters.value = list?.instances || []
     runtime.value = list?.runtime || []
     platforms.value = facts?.platforms || []
-    routes.value = routesResponse?.routes || []
+    routes.value = (routesResponse?.routes || []).map(keyRoute)
     defaultConfig.value = routesResponse?.default_config_id || 'default'
-    master.value = {
-      onebot_enabled: section.onebot_enabled === true,
-      onebot_reverse_host: String(section.onebot_reverse_host ?? '127.0.0.1') || '127.0.0.1',
-      onebot_reverse_port: Number(section.onebot_reverse_port ?? 6199) || 6199,
-    }
-    shared.value = {
-      onebot_trigger_keywords: String(section.onebot_trigger_keywords ?? ''),
-      onebot_observe_group: section.onebot_observe_group !== false,
-      proactive_daily_limit: Number(section.proactive_daily_limit ?? 3),
-      proactive_target_limit: Number(section.proactive_target_limit ?? 1),
-    }
-    // Seed the "add" form from the global defaults so a new bot starts sane.
-    form.value = { ...emptyForm(), ws_host: master.value.onebot_reverse_host,
-      ws_port: nextFreePort(), trigger_keywords: shared.value.onebot_trigger_keywords }
+    // A new bot starts from built-in defaults; there is no shared default
+    // host/port to seed from any more.
+    form.value = { ...emptyForm(), ws_port: nextFreePort() }
   } catch (e: any) {
     error.value = friendlyError(e)
   } finally { loading.value = false }
 }
 
-/** First unused port at or after the global default. */
+/** First unused port at or after the built-in default. */
 function nextFreePort(): number {
   const used = new Set(adapters.value.map((a) => Number(a.ws_port) || 0))
-  let port = master.value.onebot_reverse_port || 6199
+  let port = 6199
   while (used.has(port) && port < 65535) port += 1
   return port
 }
 
-function startAdd() {
+async function startAdd() {
   editing.value = ''
   form.value = {
     ...emptyForm(),
-    ws_host: master.value.onebot_reverse_host || '127.0.0.1',
     ws_port: nextFreePort(),
-    trigger_keywords: shared.value.onebot_trigger_keywords,
   }
+  // The editor sits below the list; without this the click looks like a no-op.
+  await nextTick()
+  editorEl.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
-function startEdit(row: Adapter) {
+async function startEdit(row: Adapter) {
   editing.value = row.id
   form.value = {
     ...emptyForm(), ...row,
@@ -148,6 +133,8 @@ function startEdit(row: Adapter) {
       ? row.trigger_keywords.join(',')
       : (row.trigger_keywords || ''),
   }
+  await nextTick()
+  editorEl.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
 async function saveAdapter() {
@@ -167,13 +154,13 @@ async function saveAdapter() {
     else delete payload.ws_port
     if (!payload.id) delete payload.id
     const result = await lifeAct('adapter_upsert', { instance: payload })
-    if (result && result.ok === false) throw Error(result.error || '保存失败')
+    if (result && result.ok === false) throw Error(result.error || t('life.adapters.saveFailed'))
     // A saved bot must actually take effect; say so if the listener did not bind.
     const sync = result?.sync
     if (sync?.failed?.includes(result?.instance?.id) && payload.enabled) {
-      flash('已保存，但未能开始监听（端口可能被占用），请检查端口后点「重新监听」')
+      flash(t('life.adapters.savedUnlistened'))
     } else {
-      flash(payload.enabled === false ? '已保存（未启用）' : '适配器已保存并开始监听')
+      flash(payload.enabled === false ? t('life.adapters.savedDisabled') : t('life.adapters.savedListening'))
     }
     editing.value = null
     await load()
@@ -186,22 +173,22 @@ async function toggleAdapter(row: Adapter) {
   busy.value = true
   try {
     await lifeAct('adapter_toggle', { id: row.id, enabled: !row.enabled })
-    flash(row.enabled ? `已停用「${row.name}」` : `已启用「${row.name}」`)
+    flash(row.enabled ? t('life.adapters.toggledDisabled', { name: row.name }) : t('life.adapters.toggledEnabled', { name: row.name }))
     await load()
   } catch (e: any) { error.value = friendlyError(e) } finally { busy.value = false }
 }
 
 async function removeAdapter(row: Adapter) {
   const ok = await confirm({
-    title: '删除该适配器',
-    message: `将停止「${row.name}」的监听并删除它的连接配置。该机器人的会话记忆、关系与人设选择不会受影响。`,
-    confirmLabel: '删除', danger: true,
+    title: t('life.adapters.deleteTitle'),
+    message: t('life.adapters.deleteMessage', { name: row.name }),
+    confirmLabel: t('life.adapters.delete'), danger: true,
   })
   if (!ok) return
   busy.value = true
   try {
     await lifeAct('adapter_delete', { id: row.id })
-    flash('适配器已删除')
+    flash(t('life.adapters.deleted'))
     if (editing.value === row.id) editing.value = null
     await load()
   } catch (e: any) { error.value = friendlyError(e) } finally { busy.value = false }
@@ -213,45 +200,33 @@ async function resync() {
     const result = await lifeAct('adapter_sync')
     const failed = result?.failed || []
     flash(failed.length
-      ? `重新监听完成，${failed.length} 个适配器失败：${failed.join('、')}`
-      : '已按配置重新监听')
+      ? t('life.adapters.resyncFailed', { count: failed.length, names: failed.join(t('life.adapters.listSeparator')) })
+      : t('life.adapters.resynced'))
     await load()
   } catch (e: any) { error.value = friendlyError(e) } finally { busy.value = false }
-}
-
-async function saveMaster() {
-  settingsBusy.value = true
-  try {
-    await writeSection('life', {
-      ...master.value,
-      onebot_reverse_port: Number(master.value.onebot_reverse_port) || 6199,
-      ...shared.value,
-      proactive_daily_limit: Number(shared.value.proactive_daily_limit) || 0,
-      proactive_target_limit: Number(shared.value.proactive_target_limit) || 0,
-    })
-    // The master switch flips a runtime gate; make it take effect immediately
-    // instead of waiting for the next settings poll.
-    await lifeAct('adapter_sync').catch(() => null)
-    flash(master.value.onebot_enabled ? '已开启消息平台总开关并重新监听' : '已关闭消息平台总开关，所有适配器停止监听')
-    await load()
-  } catch (e: any) {
-    error.value = friendlyError(e)
-  } finally { settingsBusy.value = false }
 }
 
 /* ── 配置文件路由 ───────────────────────────────────────────────────────────
    第一条命中的规则生效，全部不命中时用默认配置文件。`*` 通配、`/正则/`、
    后缀 `*` 都支持；会话 ID 可以在对话里发 /sid 获取。 */
-interface Route { pattern: string; config_id: string }
+interface Route { pattern: string; config_id: string; _key?: string }
 const routes = ref<Route[]>([])
 const defaultConfig = ref('default')
 const routeDraft = ref<Route>({ pattern: '*', config_id: 'default' })
 const routeBusy = ref(false)
 
+// Stable per-rule identity: index keys would make the TransitionGroup FLIP
+// animate the wrong rows on ↑↓ reorder. The key never leaves the plugin.
+let routeKeySeq = 0
+function keyRoute(route: Route): Route {
+  return { ...route, _key: `rule-${++routeKeySeq}` }
+}
+const routeWireFormat = (route: Route) => ({ pattern: route.pattern, config_id: route.config_id })
+
 function addRoute() {
   const pattern = String(routeDraft.value.pattern || '').trim()
-  if (!pattern) { error.value = '会话匹配不能为空'; return }
-  routes.value = [...routes.value, { pattern, config_id: String(routeDraft.value.config_id || 'default').trim() || 'default' }]
+  if (!pattern) { error.value = t('life.adapters.routePatternRequired'); return }
+  routes.value = [...routes.value, keyRoute({ pattern, config_id: String(routeDraft.value.config_id || 'default').trim() || 'default' })]
   routeDraft.value = { pattern: '*', config_id: 'default' }
   error.value = ''
 }
@@ -268,10 +243,10 @@ async function saveRoutes() {
   routeBusy.value = true
   try {
     await lifeAct('adapter_routes_set', {
-      routes: routes.value,
+      routes: routes.value.map(routeWireFormat),
       default_config_id: String(defaultConfig.value || 'default').trim() || 'default',
     })
-    flash('路由已保存；规则自上而下，首条命中生效')
+    flash(t('life.adapters.routesSaved'))
   } catch (e: any) { error.value = friendlyError(e) } finally { routeBusy.value = false }
 }
 
@@ -284,22 +259,40 @@ if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
   el.id = STYLE_ID
   el.textContent = lifeKitCss('lsp') + `
 .lsp .adapter-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
-.lsp .adapter-row strong{font-size:15px;font-weight:750}
+.lsp .adapter-row strong{font-size:15px;font-weight:750;overflow-wrap:anywhere}
 .lsp .adapter-row .meta{flex:1 1 100%}
 .lsp .adapter-actions{display:flex;gap:8px;flex-wrap:wrap;flex:1 1 100%}
 .lsp .rule-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+/* A route pattern is an unbreakable regex / path; without this it pushes the
+   row (and the card) wider than its column. */
 .lsp .rule-row code{font:600 12px/1.4 ui-monospace,monospace;background:var(--md-surface-container-high);
-  padding:2px 8px;border-radius:8px;color:var(--md-on-surface)}
+  padding:2px 8px;border-radius:8px;color:var(--md-on-surface);overflow-wrap:anywhere;max-width:100%}
 .lsp .rule-row .idx{font:700 12px/1 ui-monospace,monospace;color:var(--md-on-surface-variant);min-width:20px}
 .lsp .rule-row .to{color:var(--md-primary);font-weight:700;font-size:13px}
-.lsp .pill.wait{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-.lsp .pill.ok{background:var(--md-success-container);color:#0d3b1e}
+.lsp .pill{font-size:12px;padding:4px 12px;transition:background .3s,color .3s}
+.lsp .pill.wait{background:var(--md-secondary-container);color:var(--md-on-secondary-container);display:inline-flex;align-items:center;gap:6px}
+/* "Waiting for a client" breathes so it reads as alive, not frozen. */
+.lsp .pill.wait::before{content:'';flex:0 0 auto;width:7px;height:7px;border-radius:50%;background:currentColor;animation:lsp-breath 1.6s ease-in-out infinite}
+@keyframes lsp-breath{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+.lsp .pill.ok{background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e)}
 .lsp .pill.muted{background:var(--md-surface-container-high);color:var(--md-on-surface-variant)}
 .lsp .pill.bad{background:var(--md-error-container);color:var(--md-on-error-container)}
-.lsp .pill{font-size:12px;padding:4px 12px}
 .lsp .platform-note{margin:10px 0 0}
 .lsp .token-warn{color:var(--md-error,#b3261e);font-weight:700}
 .lsp .editor-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+/* Editor card fade-in when "Add/Edit adapter" mounts it. */
+.lsp .lsp-fade-enter-active{transition:opacity 220ms var(--ease-emphasized-decel),transform 220ms var(--ease-emphasized-decel)}
+.lsp .lsp-fade-enter-from{opacity:0;transform:translateY(6px)}
+/* Route-rule FLIP: rows glide to their new position on ↑↓ reorder. */
+.lsp .rule-flip-move{transition:transform 260ms var(--ease-emphasized)}
+.lsp .rule-flip-enter-active{transition:opacity 200ms var(--ease-emphasized-decel),transform 200ms var(--ease-emphasized-decel)}
+.lsp .rule-flip-enter-from{opacity:0;transform:translateY(4px)}
+.lsp .rule-flip-leave-active{transition:opacity 140ms var(--ease-emphasized-accel)}
+.lsp .rule-flip-leave-to{opacity:0}
+@media (prefers-reduced-motion: reduce){
+  .lsp .pill.wait::before{animation:none}
+  .lsp .lsp-fade-enter-active,.lsp .rule-flip-move,.lsp .rule-flip-enter-active,.lsp .rule-flip-leave-active{transition-duration:1ms}
+}
 `
   document.head.appendChild(el)
 }
@@ -313,77 +306,35 @@ onMounted(load)
       <div class="hero-main">
         <div class="hero-copy">
           <p class="eyebrow"><b>●</b> L.I.F.E · MESSAGING PLATFORMS</p>
-          <h1>消息平台</h1>
+          <h1>{{ t('life.adapters.title') }}</h1>
           <p class="sub">
-            把角色接入 QQ / 企业微信 / 飞书 / Discord / Telegram。L.I.F.E 是<b>服务端</b>：
-            在这里配置反向 WebSocket 的监听地址与 Token，由 NapCat 等客户端主动连入。
-            可以同时添加多个机器人，各自独立启停、互不影响。
+            {{ t('life.adapters.subtitleBefore') }}<b>{{ t('life.adapters.subtitleServer') }}</b>{{ t('life.adapters.subtitleAfter') }}
           </p>
         </div>
         <div class="hero-actions">
           <button class="fab" :disabled="busy || loading" @click="resync">
-            <span class="fab-ic" aria-hidden="true">↻</span>{{ busy ? '处理中…' : '重新监听' }}
+            <span class="fab-ic" aria-hidden="true">↻</span>{{ busy ? t('life.adapters.processing') : t('life.adapters.relisten') }}
           </button>
         </div>
       </div>
       <div class="state-row">
-        <span class="pill soft">{{ adapters.length }} 个适配器</span>
-        <span class="pill soft">{{ adapters.filter(a => a.enabled).length }} 个已启用</span>
-        <span class="pill soft">{{ runtime.filter(r => r.connected).length }} 个已连接</span>
-        <span class="pill soft" :class="master.onebot_enabled ? '' : 'muted'">
-          总开关 {{ master.onebot_enabled ? '已开启' : '已关闭' }}
-        </span>
+        <span class="pill soft">{{ t('life.adapters.adapterCount', { n: adapters.length }) }}</span>
+        <span class="pill soft">{{ t('life.adapters.enabledCount', { n: adapters.filter(a => a.enabled).length }) }}</span>
+        <span class="pill soft">{{ t('life.adapters.connectedCount', { n: runtime.filter(r => r.connected).length }) }}</span>
       </div>
     </header>
 
     <p v-if="error" class="banner err">{{ error }}</p>
     <p v-if="notice" class="banner ok">{{ notice }}</p>
-    <p v-if="loading" class="card empty">正在读取适配器配置…</p>
+    <p v-if="loading" class="card empty">{{ t('life.adapters.loadingConfig') }}</p>
 
     <template v-if="!loading">
-      <!-- 总开关 -->
-      <article class="card">
-        <h3>总开关与默认值</h3>
-        <p class="hint">
-          关闭总开关会停止<b>全部</b>反向 WebSocket 监听，与逐个停用适配器等效；
-          保留适配器配置，方便下次一键恢复。下面的监听地址与端口只作为新增机器人时的默认取值。
-        </p>
-        <label class="sw">
-          <input v-model="master.onebot_enabled" type="checkbox" />
-          <span>启用消息平台适配器</span>
-        </label>
-        <div class="settings-grid" style="margin-top:12px">
-          <label><span>反向 WebSocket 默认主机</span>
-            <input v-model="master.onebot_reverse_host" class="field" placeholder="0.0.0.0" /></label>
-          <label><span>反向 WebSocket 默认端口</span>
-            <input v-model.number="master.onebot_reverse_port" class="field" type="number" min="1" max="65535" placeholder="6199" /></label>
-          <label><span>群聊触发关键词（逗号分隔，留空=全部）</span>
-            <input v-model="shared.onebot_trigger_keywords" class="field" placeholder="bot,在吗" /></label>
-          <label><span>每日主动消息上限</span>
-            <input v-model.number="shared.proactive_daily_limit" class="field" type="number" min="0" placeholder="3" /></label>
-          <label><span>单目标每日上限</span>
-            <input v-model.number="shared.proactive_target_limit" class="field" type="number" min="0" placeholder="1" /></label>
-        </div>
-        <label class="sw" style="margin-top:12px">
-          <input v-model="shared.onebot_observe_group" type="checkbox" />
-          <span>群聊观察（未触发回复时仍记录有限的话题与成员活跃度）</span>
-        </label>
-        <p class="hint">
-          主机填 <code>0.0.0.0</code> 会接受来自任意网卡的连接，此时<b>务必</b>为每个适配器设置 Token。
-        </p>
-        <div class="actions-row">
-          <button class="btn filled sm" :disabled="settingsBusy" @click="saveMaster">
-            {{ settingsBusy ? '保存中…' : '保存并生效' }}
-          </button>
-        </div>
-      </article>
-
       <!-- 适配器列表 -->
       <article class="card">
-        <h3>适配器 <span class="count-pill">{{ adapters.length }}</span>
-          <button class="btn filled sm" style="margin-left:auto" @click="startAdd">＋ 添加适配器</button>
+        <h3>{{ t('life.adapters.adaptersHeading') }} <span class="count-pill">{{ adapters.length }}</span>
+          <button class="btn filled sm" style="margin-left:auto" @click="startAdd">{{ t('life.adapters.addAdapter') }}</button>
         </h3>
-        <p v-if="!adapters.length" class="empty">还没有适配器。点「添加适配器」接入第一个机器人。</p>
+        <p v-if="!adapters.length" class="empty">{{ t('life.adapters.emptyAdapters') }}</p>
         <ol v-else class="feed">
           <li v-for="a in adapters" :key="a.id">
             <div class="adapter-row">
@@ -392,106 +343,126 @@ onMounted(load)
               <span class="pill muted">{{ a.platform }}</span>
             </div>
             <div class="meta" style="margin-top:6px">
-              监听 ws://{{ a.ws_host }}:{{ a.ws_port }} · 人设 <code>{{ a.config_id }}</code>
+              <span class="pill soft">{{ a.direction === 'connect' ? t('life.adapters.directionConnect') : t('life.adapters.directionReverse') }}</span>
+              {{ a.direction === 'connect'
+                  ? t('life.adapters.connectingTo', { target: `${a.ws_host}:${a.ws_port}${a.ws_path || ''}` })
+                  : t('life.adapters.listening', { host: a.ws_host, port: a.ws_port }) }}
+              · {{ t('life.adapters.personaInline') }} <code>{{ a.config_id }}</code>
               <template v-if="a.http_url"> · HTTP {{ a.http_url }}</template>
             </div>
             <div class="meta">
-              <span :class="{ 'token-warn': !a.ws_token && a.ws_host === '0.0.0.0' }">
-                {{ a.ws_token ? 'Token 已设置' : '未设置 Token' }}
+              <span :class="{ 'token-warn': !a.has_ws_token && a.ws_host === '0.0.0.0' }">
+                {{ a.has_ws_token ? t('life.adapters.tokenSet') : t('life.adapters.tokenUnset') }}
               </span>
               <template v-if="a.trigger_keywords && a.trigger_keywords.length">
-                · 触发词 {{ a.trigger_keywords.join('、') }}
+                · {{ t('life.adapters.triggerWords') }} {{ a.trigger_keywords.join(t('life.adapters.listSeparator')) }}
               </template>
             </div>
             <p v-if="runtimeOf(a.id).error" class="hint" style="color:var(--md-error,#b3261e)">
-              监听错误：{{ runtimeOf(a.id).error }}
+              {{ t('life.adapters.listenError', { error: runtimeOf(a.id).error }) }}
             </p>
             <div class="adapter-actions">
-              <button class="btn sm" :disabled="busy" @click="toggleAdapter(a)">{{ a.enabled ? '停用' : '启用' }}</button>
-              <button class="btn sm" @click="startEdit(a)">编辑</button>
-              <button class="btn sm danger" :disabled="busy" @click="removeAdapter(a)">删除</button>
+              <button class="btn sm" :disabled="busy" @click="toggleAdapter(a)">{{ a.enabled ? t('life.adapters.disable') : t('life.adapters.enable') }}</button>
+              <button class="btn sm" @click="startEdit(a)">{{ t('life.adapters.edit') }}</button>
+              <button class="btn sm danger" :disabled="busy" @click="removeAdapter(a)">{{ t('life.adapters.delete') }}</button>
             </div>
           </li>
         </ol>
       </article>
 
       <!-- 编辑表单 -->
-      <article v-if="editing !== null" class="card">
-        <h3>{{ form.id ? '编辑适配器' : '添加适配器' }}</h3>
+      <Transition name="lsp-fade">
+        <article v-if="editing !== null" ref="editorEl" class="card">
+        <h3>{{ form.id ? t('life.adapters.editAdapterTitle') : t('life.adapters.addAdapterTitle') }}</h3>
         <div class="settings-grid">
-          <label><span>消息平台类别</span>
+          <label><span>{{ t('life.adapters.platformCategory') }}</span>
             <AppSelect
               v-model="form.platform"
-              :options="platforms.map((p) => ({ value: p.id, label: p.id + (p.implemented ? '' : '（尚未实现）') }))"
+              :options="platforms.map((p) => ({ value: p.id, label: p.id + (p.implemented ? '' : t('life.adapters.notImplemented')) }))"
             />
           </label>
-          <label><span>机器人名称</span>
+          <label><span>{{ t('life.adapters.direction') }}</span>
+            <AppSelect
+              v-model="form.direction"
+              :options="[
+                { value: 'reverse', label: t('life.adapters.directionReverse') },
+                { value: 'connect', label: t('life.adapters.directionConnect') },
+              ]"
+            />
+          </label>
+          <label><span>{{ t('life.adapters.botName') }}</span>
             <input v-model="form.name" class="field" placeholder="napcat" /></label>
-          <label><span>反向 WebSocket 主机</span>
+          <label><span>{{ t('life.adapters.wsHost') }}</span>
             <input v-model="form.ws_host" class="field" placeholder="0.0.0.0" /></label>
-          <label><span>反向 WebSocket 端口</span>
+          <label><span>{{ t('life.adapters.wsPort') }}</span>
             <input v-model.number="form.ws_port" class="field" type="number" min="1" max="65535" placeholder="6199" /></label>
-          <label><span>反向 WebSocket Token</span>
-            <input v-model="form.ws_token" class="field" type="password" placeholder="留空则不启用 Token 验证" /></label>
-          <label><span>HTTP API 地址（可选）</span>
-            <input v-model="form.http_url" class="field" placeholder="http://127.0.0.1:3000；留空则只走反向 WS" /></label>
-          <label><span>Access Token（可选）</span>
-            <input v-model="form.access_token" class="field" placeholder="HTTP API 鉴权" /></label>
-          <label><span>配置文件</span>
+          <label v-if="form.direction === 'connect'"><span>{{ t('life.adapters.wsPath') }}</span>
+            <input v-model="form.ws_path" class="field" :placeholder="t('life.adapters.wsPathPlaceholder')" /></label>
+          <label><span>{{ t('life.adapters.wsToken') }}</span>
+            <input v-model="form.ws_token" class="field" type="password" :placeholder="t('life.adapters.wsTokenPlaceholder')" /></label>
+          <label><span>{{ t('life.adapters.httpUrl') }}</span>
+            <input v-model="form.http_url" class="field" :placeholder="t('life.adapters.httpUrlPlaceholder')" /></label>
+          <label><span>{{ t('life.adapters.accessToken') }}</span>
+            <input v-model="form.access_token" class="field" :placeholder="t('life.adapters.accessTokenPlaceholder')" /></label>
+          <label><span>{{ t('life.adapters.configFile') }}</span>
             <input v-model="form.config_id" class="field" placeholder="default" /></label>
-          <label><span>触发关键词（逗号分隔，留空=继承全局）</span>
-            <input v-model="form.trigger_keywords" class="field" placeholder="bot,在吗" /></label>
+          <label><span>{{ t('life.adapters.triggerKeywordsInherit') }}</span>
+            <input v-model="form.trigger_keywords" class="field" :placeholder="t('life.adapters.triggerKeywordsPlaceholder')" /></label>
         </div>
+        <p class="hint">{{ t('life.adapters.directionHint') }}</p>
         <label class="sw" style="margin-top:12px">
           <input v-model="form.enabled" type="checkbox" />
-          <span>启用该适配器（未启用则不会监听，对应平台收不到消息）</span>
+          <span>{{ t('life.adapters.enableThisAdapter') }}</span>
+        </label>
+        <label class="sw" style="margin-top:12px">
+          <input v-model="form.observe_group" type="checkbox" />
+          <span>{{ t('life.adapters.observeGroup') }}</span>
         </label>
         <p v-if="pending.length" class="hint platform-note">
-          已注册但尚无实现的平台：{{ pending.join('、') }}。选择它们可以先把配置存下来，等实现后无需重新录入。
+          {{ t('life.adapters.pendingPlatforms', { names: pending.join(t('life.adapters.listSeparator')) }) }}
         </p>
         <div class="editor-actions">
-          <button class="btn filled sm" :disabled="busy" @click="saveAdapter">{{ busy ? '保存中…' : '保存' }}</button>
-          <button class="btn sm" @click="editing = null">取消</button>
+          <button class="btn filled sm" :disabled="busy" @click="saveAdapter">{{ busy ? t('life.adapters.saving') : t('life.adapters.save') }}</button>
+          <button class="btn sm" @click="editing = null">{{ t('life.adapters.cancel') }}</button>
         </div>
-      </article>
+        </article>
+      </Transition>
 
       <!-- 配置文件路由 -->
       <article class="card">
-        <h3>配置文件路由</h3>
+        <h3>{{ t('life.adapters.routesTitle') }}</h3>
         <p class="hint">
-          消息下发时，按<b>从上到下</b>的顺序匹配首个符合条件的配置文件。使用 <code>*</code> 匹配所有会话，
-          也支持 <code>/正则/</code> 与 <code>前缀*</code>。全部不匹配时使用默认配置文件。
-          在任意会话里发送 <code>/sid</code> 即可获取该会话 ID。
+          {{ t('life.adapters.routesHintBefore') }}<b>{{ t('life.adapters.routesHintOrder') }}</b>{{ t('life.adapters.routesHintAfterOrder') }}<code>*</code>{{ t('life.adapters.routesHintMatchAll') }}<code>{{ t('life.adapters.routeRegexExample') }}</code>{{ t('life.adapters.routesHintAnd') }}<code>{{ t('life.adapters.routePrefixExample') }}</code>{{ t('life.adapters.routesHintTail') }}<code>/sid</code>{{ t('life.adapters.routesHintSid') }}
         </p>
-        <ol class="feed">
-          <li v-for="(r, i) in routes" :key="i" class="rule-row">
+        <!-- TransitionGroup FLIP: stable per-rule keys, so ↑↓ glides rows. -->
+        <TransitionGroup tag="ol" name="rule-flip" class="feed">
+          <li v-for="(r, i) in routes" :key="r._key" class="rule-row">
             <span class="idx">{{ i + 1 }}</span>
             <code>{{ r.pattern }}</code>
             <span class="to">→ {{ r.config_id }}</span>
             <span style="margin-left:auto;display:flex;gap:8px">
-              <button class="btn sm" :disabled="i === 0" @click="moveRoute(i, -1)">↑</button>
-              <button class="btn sm" :disabled="i === routes.length - 1" @click="moveRoute(i, 1)">↓</button>
-              <button class="btn sm danger" @click="removeRoute(i)">删除</button>
+              <button class="btn sm" :disabled="i === 0" :aria-label="t('life.adapters.moveUp')" :title="t('life.adapters.moveUp')" @click="moveRoute(i, -1)">↑</button>
+              <button class="btn sm" :disabled="i === routes.length - 1" :aria-label="t('life.adapters.moveDown')" :title="t('life.adapters.moveDown')" @click="moveRoute(i, 1)">↓</button>
+              <button class="btn sm danger" :aria-label="t('life.adapters.delete')" @click="removeRoute(i)">{{ t('life.adapters.delete') }}</button>
             </span>
           </li>
-          <li v-if="!routes.length" class="empty">还没有规则，所有会话都使用默认配置文件。</li>
-        </ol>
+        </TransitionGroup>
+        <p v-if="!routes.length" class="empty">{{ t('life.adapters.emptyRoutes') }}</p>
         <div class="settings-grid" style="margin-top:14px">
-          <label><span>会话 *</span>
-            <input v-model="routeDraft.pattern" class="field" placeholder="qq_group_* 或 /^qq_.*/" /></label>
-          <label><span>配置文件</span>
+          <label><span>{{ t('life.adapters.sessionPattern') }}*</span>
+            <input v-model="routeDraft.pattern" class="field" :placeholder="t('life.adapters.sessionPatternPlaceholder')" /></label>
+          <label><span>{{ t('life.adapters.configFile') }}</span>
             <input v-model="routeDraft.config_id" class="field" placeholder="default" /></label>
         </div>
         <div class="actions-row">
-          <button class="btn sm" @click="addRoute">添加规则</button>
-          <label class="fld" style="margin-left:auto"><span>默认配置文件</span>
+          <button class="btn sm" @click="addRoute">{{ t('life.adapters.addRule') }}</button>
+          <label class="fld" style="margin-left:auto"><span>{{ t('life.adapters.defaultConfig') }}</span>
             <input v-model="defaultConfig" class="field" placeholder="default" /></label>
           <button class="btn filled sm" :disabled="routeBusy" @click="saveRoutes">
-            {{ routeBusy ? '保存中…' : '保存路由' }}
+            {{ routeBusy ? t('life.adapters.saving') : t('life.adapters.saveRoutes') }}
           </button>
         </div>
       </article>
     </template>
   </main>
-  <ConfirmDialog />
 </template>

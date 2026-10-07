@@ -120,6 +120,10 @@
   --duration-short: 140ms;
   --duration-medium: 220ms;
   --duration-long: 360ms;
+  /* Route transitions sit between medium and long; declared so callers can
+     retune them in one place (theme.css:440 used to reference an undefined
+     name and silently run on its fallback). */
+  --duration-enter: 280ms;
   --transition-fast: var(--duration-short) var(--ease-out);
   --transition-normal: var(--duration-medium) var(--ease-out);
   --transition-slow: var(--duration-long) var(--ease-out);
@@ -138,6 +142,10 @@
   --z-modal: 4000;
   --z-popover: 5000;
   --z-toast: 6000;
+  /* The pre-auth / sensitive-action gate must bury every dialog, including
+     ones already mounted at --z-modal (dialogs at equal z-index stack by DOM
+     order, which would let an earlier plugin dialog paint over the PIN gate). */
+  --z-auth: 7000;
 }
 
 /* ============ Base ============ */
@@ -206,6 +214,15 @@ body { background: var(--md-surface-container); }
 .btn-ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--md-primary) 8%, transparent); }
 
 .btn-danger { background: var(--md-error); color: var(--md-on-error); }
+/* Tonal danger: for a destructive action inside a list or toolbar, where a
+   filled alarm-red pill is too loud next to everything else. Three call sites
+   (usage clear, plugin uninstall, device disconnect) each hand-rolled this with
+   their own `#app .<page> .btn-danger` override before it existed here, so the
+   variant lives in the design system now rather than in each page.
+   Note .btn sets `border: none`, so a danger treatment must change the
+   background — setting only `border-color` paints a border that has no width. */
+.btn-danger-tonal { background: var(--md-error-container); color: var(--md-on-error-container); }
+.btn-danger-tonal:hover:not(:disabled) { box-shadow: var(--shadow-1); }
 
 /* ============ MD3 Inputs ============ */
 .input {
@@ -296,6 +313,26 @@ textarea.input, .textarea { resize: vertical; min-height: 80px; }
   to { transform: rotate(0) scale(1); opacity: 1; }
 }
 
+/* Collapse: height animation without measuring anything. Wrap the collapsible
+   content in `.collapse-grid` and toggle `.open`; the inner element must be a
+   direct child (it gets min-height:0 + overflow:hidden). The duration rides
+   --duration-medium, so prefers-reduced-motion flattens it for free. */
+.collapse-grid {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--duration-medium) var(--ease-emphasized);
+}
+.collapse-grid.open { grid-template-rows: 1fr; }
+.collapse-grid > * { min-height: 0; overflow: hidden; }
+
+/* Focus ring for teleported layers (dialogs, toasts, popovers). The #app rule
+   below cannot reach them — they are siblings of #app, not descendants. */
+body > :not(#app):not(script):not(style):not(link)
+  :is(button, a, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+  outline: 3px solid var(--md-primary);
+  outline-offset: 3px;
+}
+
 .animate-fadeIn { animation: fadeIn var(--transition-normal); }
 .animate-slideUp { animation: slideUp var(--duration-medium) var(--ease-emphasized-decel); }
 .animate-pulse { animation: pulse 2s infinite; }
@@ -320,6 +357,21 @@ textarea.input, .textarea { resize: vertical; min-height: 80px; }
 }
 #app button:active:not(:disabled) { transform: scale(0.96); border-radius: 11px; }
 #app button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Compact affordances opt out of the 36px floor above.
+ *
+ * `#app button` is (1,0,1) and beats every component's scoped `.x[data-v]`
+ * (0,2,0), so without this a 22x22 remove chip renders 22x36 and a 30x30 star
+ * renders 30x36 — the declared box simply loses. These selectors are (1,1,0)+
+ * and win the box back.
+ *
+ * The list is explicit on purpose: relaxing the global floor would shrink every
+ * normal control, and this is the app's visual system (see the cascade note
+ * above), so the exceptions belong here rather than in each component. */
+#app :is(.remove-img, .remove-file, .link) { min-height: 0; }
+#app .models-actions button,
+#app .pp-star { min-height: 0; border-radius: 8px; }
+#app .stage-reset { min-height: 0; border-radius: 50%; }
 
 #app :is(.btn-primary, button[type="submit"]) {
   background: var(--md-primary);
@@ -351,7 +403,34 @@ textarea.input, .textarea { resize: vertical; min-height: 80px; }
 #app h2 { letter-spacing: -0.35px; font-weight: 650; }
 #app :is(.subtitle, .page > header > div > span) { line-height: 1.6; }
 
-/* Floating app frame and expressive navigation rail. */
+/* Floating app frame and expressive navigation rail.
+ *
+ * CASCADE WARNING — read before adding component styles.
+ *
+ * Everything below is `#app`-prefixed, which is an ID selector. A component's
+ * `scoped` style compiles to `.selector[data-v-hash]` — two class-level selectors
+ * — so `#app .selector` (1,1,0) always beats it regardless of source order.
+ * That is deliberate: this block is the app's visual system, and letting each
+ * component restyle the shared chrome is how a design system drifts.
+ *
+ * The practical consequence: adding a `.nav-item` / `.composer` / `.app-header`
+ * rule inside App.vue's <style scoped> has NO effect. Change it here instead, or
+ * give the new element its own class and set it in this file. App.vue's scoped
+ * block has been stripped down to only the declarations this file does not set,
+ * so it no longer carries a second, disagreeing copy of the chrome.
+ *
+ * Same trap, one level up: `#app button { min-height: 36px }` above is (1,0,1)
+ * and beats every component's `.x[data-v]` (0,2,0). A compact icon control must
+ * opt out explicitly — see the exception list next to that rule.
+ *
+ * This block also carries deliberate later-wins duplicates from successive design
+ * passes. The pairs that currently disagree are:
+ *   .session-item.selected   457 (secondary-container) -> 497 (primary-container)
+ *   .composer                468 -> 493 (radius/background restated)
+ *   .nav-item.active::before 385/400 -> 498 (radius)
+ * The last declaration is what renders. Consolidating them is safe but is a
+ * visual change, so it is left explicit rather than silently tidied.
+ */
 #app .app-shell { background: var(--md-surface-container); }
 #app .app-header { height: 76px; flex-shrink: 0; background: transparent; border: 0; padding: 0 28px; }
 #app .brand { align-items: center; gap: 18px; }
@@ -370,6 +449,10 @@ textarea.input, .textarea { resize: vertical; min-height: 80px; }
 #app .page-title { font-size: 17px; font-weight: 650; color: var(--md-on-surface); }
 #app .header-actions { gap: 10px; }
 #app .icon-btn { background: var(--md-surface-container-lowest); width: 44px; height: 44px; border-radius: 18px; }
+/* The active state has to live here, not in App.vue: the `background` above is
+   (1,1,0) and beat App.vue's scoped `.icon-btn.active` (0,3,0), so the settings
+   button never painted its selected surface. */
+#app .icon-btn.active { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
 #app .app-body { gap: 12px; padding: 0 16px 16px 8px; }
 #app .nav-rail { background: transparent; border: 0; width: 100px; padding: 8px 4px; gap: 6px; overflow-y: auto; }
 #app .nav-item {

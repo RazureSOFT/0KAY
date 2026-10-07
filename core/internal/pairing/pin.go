@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/big"
 	"net"
 	"net/http"
@@ -18,7 +17,13 @@ import (
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
+
+	"0kay/obs"
 )
+
+// pinLog tags the pairing/PIN layer's records so the console can filter
+// authentication events as one stream.
+var pinLog = obs.Component("auth")
 
 // loginMaxFailures is how many failed PIN/token attempts a host may make before
 // it is locked out for loginLockout.
@@ -408,11 +413,11 @@ func (s *Store) verifyPINLocked(pin string) bool {
 // Callers must hold s.mu.
 func (s *Store) upgradeLegacyPINLocked(pin string) {
 	if err := s.storePINCredentialsLocked(pin); err != nil {
-		log.Printf("upgrade stored PIN hash: %v", err)
+		pinLog.Error("upgrade stored PIN hash", "err", err)
 		return
 	}
 	if err := s.saveSecurityLocked(); err != nil {
-		log.Printf("persist upgraded PIN hash: %v", err)
+		pinLog.Error("persist upgraded PIN hash", "err", err)
 	}
 }
 
@@ -433,7 +438,7 @@ func (s *Store) pinCookieValue() string {
 	value := hex.EncodeToString(token)
 	s.pinSessionHash = sessionTokenHash([]byte(value))
 	if err := s.saveSecurityLocked(); err != nil {
-		log.Printf("persist PIN session token: %v", err)
+		pinLog.Error("persist PIN session token", "err", err)
 	}
 	return value
 }
@@ -485,16 +490,29 @@ func sensitiveRequest(r *http.Request) bool {
 	case path == "/api/security/pin":
 		return !read
 	case path == "/api/agent/file", path == "/api/agent/exec", path == "/api/run",
-		path == "/api/tools", path == "/api/tools/", path == "/api/tools/call",
 		path == "/api/agent/browser/action", path == "/api/agent/compact",
 		path == "/api/agent/messages", path == "/api/agent/workspace",
-		path == "/api/agent/workspaces", path == "/api/agent/sessions", path == "/api/tasks":
-		// State-changing agent/tool endpoints. Their GET counterparts are polled
-		// by the WebUI (e.g. /api/tools, /api/agent/sessions), so only writes are
-		// gated. POST /api/agent/messages is gated for every turn: it can carry
-		// permission_mode=full_access, and this middleware only sees the path, so
-		// the body cannot be inspected here.
+		path == "/api/agent/workspaces":
 		return !read
+	case strings.HasPrefix(path, "/api/tools"):
+		return !read
+	// These families address their resource with a path parameter
+	// (/api/agent/sessions/{id}, /api/agent/sessions/fork,
+	// /api/tasks/{id}/cancel), so an exact-match entry would have silently left
+	// every mutating route in the family ungated. Reads stay exempt: the WebUI
+	// polls /api/tasks/events and /api/agent/sessions/search.
+	case strings.HasPrefix(path, "/api/agent/sessions"),
+		strings.HasPrefix(path, "/api/tasks"):
+		return !read
+	// Only the destructive usage routes. POST /api/usage/record is machine
+	// bookkeeping fired on every turn, so gating it would cost a PIN
+	// verification per turn to protect nothing.
+	case strings.HasPrefix(path, "/api/usage"):
+		return method == http.MethodDelete
+	// A chat turn can carry permission_mode=full_access, and this middleware only
+	// sees the path, so the body cannot be inspected here: gate every turn.
+	case path == "/api/chat", path == "/api/life/chat":
+		return true
 	case strings.HasPrefix(path, "/api/settings/"):
 		return !read
 	case strings.HasPrefix(path, "/api/live2d"):
@@ -503,18 +521,44 @@ func sensitiveRequest(r *http.Request) bool {
 	return false
 }
 
+// browserFetchSites are the only values Fetch metadata ever carries. A client
+// that sends one of them is a browser: no HTTP client library populates
+// Sec-Fetch-Site, so the header cannot be produced by accident.
+var browserFetchSites = map[string]bool{
+	"same-origin": true,
+	"same-site":   true,
+	"cross-site":  true,
+	"none":        true,
+}
+
+// HasBrowserFetchMetadata reports whether the request carries browser Fetch
+// metadata. This is positive proof of a browser and is therefore safe to use as
+// the basis for relaxing a check. Header *presence* is not: Node's undici sets
+// Sec-Fetch-Mode on every request and Origin/Referer can be forged by any
+// client, so gates that hand out an exemption must key on this instead.
+func HasBrowserFetchMetadata(r *http.Request) bool {
+	return browserFetchSites[strings.ToLower(strings.TrimSpace(r.Header.Get("Sec-Fetch-Site")))]
+}
+
 // looksLikeBrowser distinguishes a browser tab (sends Fetch metadata / Origin)
 // from a machine client such as LIFE, the agent or a script. Browser callers
 // face the PIN even when they reach Core over loopback.
 //
-// Sec-Fetch-Mode alone is deliberately ignored: Node's undici fetch (used by
+// This check deliberately errs toward "browser", because the alternative is
+// skipping the PIN. Sec-Fetch-Mode alone is ignored: Node's undici fetch (used by
 // the agent and plugin proxies) always sends "Sec-Fetch-Mode: cors" without any
 // of the other signals, so treating it as a browser would deny every Node
-// machine client. Real browsers additionally send Sec-Fetch-Site, and their
-// same-origin fetch/XHR also carries Referer (and Origin for cross-origin).
+// machine client.
 func looksLikeBrowser(r *http.Request) bool {
-	return r.Header.Get("Sec-Fetch-Site") != "" ||
-		r.Header.Get("Origin") != "" ||
+	if HasBrowserFetchMetadata(r) {
+		return true
+	}
+	// The owner's session cookie is browser-side state that a plugin process
+	// cannot hold, so it is the second reliable signal.
+	if _, err := r.Cookie(SessionCookie); err == nil {
+		return true
+	}
+	return r.Header.Get("Origin") != "" ||
 		r.Header.Get("Referer") != ""
 }
 
@@ -571,32 +615,35 @@ func (s *Store) seedPIN(existingInstall bool) {
 	}
 	if env := strings.TrimSpace(os.Getenv("CORE_PIN")); env != "" {
 		if err := s.SetPIN(env); err != nil {
-			log.Printf("CORE_PIN rejected: %v", err)
+			pinLog.Error("CORE_PIN rejected", "err", err)
 		} else {
-			log.Printf("PIN initialised from CORE_PIN")
+			pinLog.Info("PIN initialised from CORE_PIN")
 		}
 		return
 	}
 	if existingInstall {
-		log.Printf("No access PIN set. Open the WebUI and set a 6-digit PIN to continue.")
+		pinLog.Warn("no access PIN set; open the WebUI and choose a 6-digit PIN to continue")
 		return
 	}
 	pin := randomPIN()
 	if err := s.SetPIN(pin); err != nil {
-		log.Printf("generate PIN: %v", err)
+		pinLog.Error("generate PIN", "err", err)
 		return
 	}
 	// The PIN is a secret: never write it to the log (which is a world-readable
 	// file). Drop it in a 0600 file next to security.json and log only the path.
 	pinPath := filepath.Join(filepath.Dir(s.path), "initial-pin.txt")
 	if err := os.WriteFile(pinPath, []byte(pin+"\n"), 0600); err != nil {
-		log.Printf("write initial PIN file: %v", err)
+		pinLog.Error("write initial PIN file", "err", err)
 		return
 	}
-	log.Printf("==============================================================")
-	log.Printf("  0KAY initial access PIN written to: %s", pinPath)
-	log.Printf("  Read it, then delete the file. Change it under Settings.")
-	log.Printf("==============================================================")
+	// Logged as separate records rather than one boxed banner: the console
+	// renders one line per record, and a multi-line message would arrive as a
+	// single unreadable row.
+	pinLog.Warn("==============================================================")
+	pinLog.Warn("0KAY initial access PIN written to a private file", "path", pinPath)
+	pinLog.Warn("Read it, then delete the file. Change it under Settings.")
+	pinLog.Warn("==============================================================")
 }
 
 // handlePIN serves GET/POST/PUT/DELETE /api/security/pin. The route doubles as

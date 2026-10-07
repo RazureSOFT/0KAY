@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -18,6 +17,7 @@ import (
 	"unicode/utf8"
 
 	"0kay/core/internal/egress"
+	"0kay/core/internal/messaging"
 	"0kay/core/internal/pairing"
 	"0kay/core/internal/registry"
 	agentv1 "0kay/gen/agent/v1"
@@ -25,6 +25,7 @@ import (
 	lifev1 "0kay/gen/life/v1"
 	mocrv1 "0kay/gen/mocr/v1"
 	pluginv1 "0kay/gen/plugin/v1"
+	"0kay/obs"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -33,6 +34,10 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
+
+// svcLog tags every record this file emits, so the console can filter the gRPC
+// layer (agent dispatch, model calls, task lifecycle) as one unit.
+var svcLog = obs.Component("grpc")
 
 // CoreServiceServer implements the CoreService gRPC service.
 type CoreServiceServer struct {
@@ -99,6 +104,12 @@ type CoreServiceServer struct {
 
 	// providerStore resolves model credentials for real generation (nil = offline).
 	providerStore ProviderStore
+
+	// bus is Core's chat-message bus (internal/messaging). It is created in the
+	// constructor and lazily on first use, so a CoreServiceServer built directly
+	// (tests, the echo plugin) still serves the messaging RPCs.
+	busOnce sync.Once
+	bus     *messaging.Bus
 }
 
 // ProviderStore is the subset of providers.Store CallMocr needs.
@@ -380,6 +391,7 @@ func NewCoreServiceServer(reg *registry.Registry, dataDir ...string) *CoreServic
 			ScreenWatch: false,
 			ComputerUse: false,
 		},
+		bus: messaging.NewBus(),
 	}
 	instance.replayTaskJournal()
 	instance.seedTaskFingerprints()
@@ -671,7 +683,7 @@ func (s *CoreServiceServer) appendTaskJournalLocked(changes []persistedTask, rem
 	_ = os.MkdirAll(filepath.Dir(s.taskHistoryPath), 0700)
 	journal, err := os.OpenFile(s.taskHistoryPath+".journal", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Printf("task journal: %v", err)
+		svcLog.Error("task journal write failed", "err", err)
 		return
 	}
 	raw, _ := json.Marshal(struct {
@@ -690,7 +702,7 @@ func (s *CoreServiceServer) appendTaskJournalLocked(changes []persistedTask, rem
 	}
 	journal.Close()
 	if err != nil {
-		log.Printf("task journal write: %v", err)
+		svcLog.Error("task journal rewrite failed", "err", err)
 		return
 	}
 	info, _ := os.Stat(s.taskHistoryPath + ".journal")
@@ -708,7 +720,7 @@ func (s *CoreServiceServer) appendTaskJournalLocked(changes []persistedTask, rem
 		temporary := s.taskHistoryPath + ".tmp"
 		if err := writeFileSync(temporary, data, 0o600); err == nil {
 			if err = os.Rename(temporary, s.taskHistoryPath); err != nil {
-				log.Printf("persist tasks: %v", err)
+				svcLog.Error("persist tasks failed", "err", err)
 			} else {
 				// Make the rename itself durable before dropping the journal,
 				// otherwise a crash could resurrect the old snapshot with an
@@ -718,7 +730,7 @@ func (s *CoreServiceServer) appendTaskJournalLocked(changes []persistedTask, rem
 				s.lastJournalSync = time.Now()
 			}
 		} else {
-			log.Printf("persist tasks: %v", err)
+			svcLog.Error("persist tasks failed", "err", err)
 		}
 	}
 }
@@ -1002,7 +1014,7 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 
 	client, closeFn, err := s.dialMocr(ctx)
 	if err != nil {
-		log.Printf("[CallMocr] dial mocr failed: %v", err)
+		svcLog.ErrorContext(ctx, "dial mocr failed", "err", err)
 		return s.failStream(req, stream, "mocr unavailable: "+err.Error())
 	}
 	defer closeFn()
@@ -1063,7 +1075,7 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 
 	genStream, err := client.Generate(ctx, genReq)
 	if err != nil {
-		log.Printf("[CallMocr] generate failed: %v", err)
+		svcLog.ErrorContext(ctx, "generate failed to start", "err", err)
 		return s.failStream(req, stream, "generation failed to start: "+err.Error())
 	}
 
@@ -1074,11 +1086,11 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 			// mocr always terminates with either a Done frame or a non-OK
 			// status. Reaching EOF without one means the stream was truncated;
 			// treat it as a failure rather than a silent success.
-			log.Printf("[CallMocr] stream ended without a terminal frame")
+			svcLog.ErrorContext(ctx, "mocr stream ended without a terminal frame")
 			return s.failStream(req, stream, "generation stream ended without a completion frame")
 		}
 		if err != nil {
-			log.Printf("[CallMocr] stream recv: %v", err)
+			svcLog.ErrorContext(ctx, "mocr stream recv failed", "err", err)
 			return s.failStream(req, stream, "generation failed: "+err.Error())
 		}
 		if resp.Chunk != "" {
@@ -1544,8 +1556,7 @@ func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRe
 	s.persistTasksLocked()
 	s.mu.Unlock()
 
-	log.Printf("[UseAgent] Task %s dispatched to agent %s (addr=%s)",
-		req.TaskId, agent.PluginID, agent.Address)
+	svcLog.InfoContext(ctx, "agent task dispatched", "task_id", req.TaskId, "agent", agent.PluginID, "addr", agent.Address)
 
 	// Dispatch asynchronously
 	go s.dispatchToAgent(req, agent)
@@ -1561,7 +1572,7 @@ func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRe
 func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *registry.PluginInstance) {
 	agentAddr := agent.Address
 	if agentAddr == "" {
-		log.Printf("[UseAgent] Agent %s has no address, failing task %s", agent.PluginID, req.TaskId)
+		svcLog.Error("agent has no address", "agent", agent.PluginID, "task_id", req.TaskId)
 		s.failTask(req.TaskId, "agent has no address")
 		return
 	}
@@ -1583,7 +1594,7 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 	go func() {
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				log.Printf("[UseAgent] inactivity watcher recovered from panic: %v", recovered)
+				svcLog.Error("inactivity watcher recovered from panic", "panic", recovered)
 			}
 		}()
 		ticker := time.NewTicker(time.Minute)
@@ -1601,7 +1612,7 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 				return
 			}
 			if time.Since(last) > idleTimeout {
-				log.Printf("[UseAgent] Task %s inactivity timeout after %s", req.TaskId, idleTimeout)
+				svcLog.Warn("agent task inactivity timeout", "task_id", req.TaskId, "idle_timeout", idleTimeout.String())
 				cancel()
 				return
 			}
@@ -1618,7 +1629,7 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 		}),
 	)
 	if err != nil {
-		log.Printf("[UseAgent] Failed to connect to agent %s: %v", agentAddr, err)
+		svcLog.Error("connect to agent failed", "addr", agentAddr, "err", err)
 		s.failTask(req.TaskId, fmt.Sprintf("failed to connect to agent: %v", err))
 		return
 	}
@@ -1655,13 +1666,13 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 	})
 
 	if err != nil {
-		log.Printf("[UseAgent] Task %s failed: %v", req.TaskId, err)
+		svcLog.Error("agent task failed", "task_id", req.TaskId, "err", err)
 		s.finishTask(req.TaskId, "failed", "", err.Error())
 		s.notifyLifeTaskCompleted(req.TaskId, pluginv1.TaskState_TASK_STATE_FAILED, "", err.Error())
 		return
 	}
 
-	log.Printf("[UseAgent] Task %s completed with state %s", req.TaskId, resp.State.String())
+	svcLog.InfoContext(ctx, "agent task finished", "task_id", req.TaskId, "state", resp.State.String())
 	stateName := "done"
 	switch resp.State {
 	case pluginv1.TaskState_TASK_STATE_FAILED:
@@ -1736,13 +1747,13 @@ func (s *CoreServiceServer) notifyLifeTaskCompleted(taskID string, state pluginv
 func (s *CoreServiceServer) deliverTaskCallback(taskID string, state pluginv1.TaskState, result, errMsg string) {
 	lifes := s.registry.GetPluginsByCapability("life")
 	if len(lifes) == 0 {
-		log.Printf("[TaskCompleted] No L.I.F.E plugin registered, skipping notification for task %s", taskID)
+		svcLog.Warn("no LIFE plugin registered, skipping task notification", "task_id", taskID)
 		return
 	}
 
 	life := lifes[0]
 	if life.Address == "" {
-		log.Printf("[TaskCompleted] L.I.F.E has no address, skipping")
+		svcLog.Warn("LIFE has no address, skipping task notification", "task_id", taskID)
 		return
 	}
 
@@ -1751,7 +1762,7 @@ func (s *CoreServiceServer) deliverTaskCallback(taskID string, state pluginv1.Ta
 
 	conn, err := s.lifeDialCached(life)
 	if err != nil {
-		log.Printf("[TaskCompleted] Failed to connect to L.I.F.E at %s: %v", life.Address, err)
+		svcLog.ErrorContext(ctx, "connect to LIFE failed", "addr", life.Address, "err", err)
 		return
 	}
 
@@ -1764,11 +1775,11 @@ func (s *CoreServiceServer) deliverTaskCallback(taskID string, state pluginv1.Ta
 		Error:  errMsg,
 	})
 	if err != nil {
-		log.Printf("[TaskCompleted] Failed to notify L.I.F.E for task %s: %v", taskID, err)
+		svcLog.ErrorContext(ctx, "notify LIFE of task completion failed", "task_id", taskID, "err", err)
 		return
 	}
 
-	log.Printf("[TaskCompleted] L.I.F.E acknowledged task %s: %s", taskID, resp.ResponseText)
+	svcLog.InfoContext(ctx, "LIFE acknowledged task completion", "task_id", taskID, "reply", resp.ResponseText)
 	if resp.Acknowledged {
 		s.callbackMu.Lock()
 		delete(s.callbacks, taskID)

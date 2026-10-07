@@ -11,7 +11,7 @@
  * Keeping it as one object means the plugin build only ever externalizes
  * `@0kay/host`, and there is exactly one instance of every store.
  */
-import { ApiError, readApiResponse, apiGet, apiSend, apiPost, apiPut, apiPatch, apiDelete } from './api'
+import { ApiError, SSEError, readApiResponse, apiGet, apiSend, apiPost, apiPut, apiPatch, apiDelete, streamSSE, readSSE } from './api'
 import { LOCALES, i18n, setLanguage, getLanguage } from './i18n'
 import { uid } from './uid'
 import {
@@ -37,10 +37,14 @@ import AppSelect from './components/AppSelect.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import MarkdownContent from './components/MarkdownContent.vue'
 import PinInput from './components/PinInput.vue'
+import ModalShell from './components/ModalShell.vue'
+import NavIcon from './components/NavIcon.vue'
+import PluginModuleHost from './components/PluginModuleHost.vue'
 
 const hostRuntime = {
   // api
-  ApiError, readApiResponse, apiGet, apiSend, apiPost, apiPut, apiPatch, apiDelete,
+  ApiError, SSEError, readApiResponse, apiGet, apiSend, apiPost, apiPut, apiPatch, apiDelete,
+  streamSSE, readSSE,
   // i18n
   LOCALES, i18n, setLanguage, getLanguage,
   // misc
@@ -57,6 +61,7 @@ const hostRuntime = {
   DEFAULT_LIVE2D_MODELS, DEFAULT_LIVE2D_MODEL_URL, PROVIDERS, WIZARD_STEPS,
   // shared components
   AppSelect, ConfirmDialog, MarkdownContent, PinInput,
+  ModalShell, NavIcon, PluginModuleHost,
 }
 
 export default hostRuntime

@@ -11,6 +11,7 @@ WORKDIR /app
 
 # Copy go mod files
 COPY gen/go/go.mod gen/go/go.sum ./gen/go/
+COPY obs/go.mod ./obs/
 COPY core/go.mod core/go.sum ./core/
 
 # Download dependencies
@@ -22,6 +23,7 @@ RUN go mod download
 
 # Copy source code
 COPY gen/go/ /app/gen/go/
+COPY obs/ /app/obs/
 COPY core/ /app/core/
 
 # Build

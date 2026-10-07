@@ -23,7 +23,7 @@ const { tabLabel, tabMeta } = useSettingsMeta()
         <input v-model="wizard.persona.avatar" :placeholder="t('wizard.avatarPlaceholder')" class="input" />
       </div>
       <div class="field">
-        <label>出生日期</label>
+          <label>{{ t('settings.personaBirthDate') }}</label>
         <input v-model="wizard.persona.birthDate" type="date" class="input" />
       </div>
     </div>

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
 	"mime"
 	"net/http"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"0kay/core/internal/messaging"
 	"0kay/core/internal/providers"
 	"0kay/core/internal/registry"
 	"0kay/core/internal/server"
@@ -24,6 +24,7 @@ import (
 	"0kay/core/internal/stdioprovider"
 	corev1 "0kay/gen/core/v1"
 	lifev1 "0kay/gen/life/v1"
+	"0kay/obs"
 
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
@@ -95,6 +96,11 @@ type LocalCore interface {
 	ManageAgentSession(string, string) error
 	RenameAgentSession(string, string) error
 	ForkAgentSession(string) (string, error)
+	// Messaging bus. DropPluginMessaging runs when a plugin is disabled or
+	// uninstalled, so its subscriptions and adapter ownership go away with it.
+	DropPluginMessaging(string)
+	MessagingStats() messaging.Stats
+	MessagingAdapters() []*messaging.Adapter
 }
 
 // Config holds gateway configuration.
@@ -334,6 +340,10 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("POST /api/plugins/uninstall", g.handlePluginUninstall)
 	mux.HandleFunc("GET /api/plugins/installed", g.handlePluginInstalled)
 	mux.HandleFunc("GET /api/plugins/capabilities", g.handlePluginCapabilities)
+	// Chat-message bus: which adapters Core knows about, who owns them, and
+	// whether the bus is keeping up. Read-only; the bus itself is driven by the
+	// gRPC surface (PublishInboundMessage / SubscribeMessages / SendMessage).
+	mux.HandleFunc("GET /api/messaging", g.handleMessaging)
 	// pm plugin: the single install/update entry point. The marketplace, the
 	// Settings "plugin updates" panel and the About "0kay update" panel all call
 	// these; the legacy /api/plugins/{install,uninstall,installed,install/status}
@@ -347,6 +357,12 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("GET /api/plugins/pm/check-plugins", g.handleUpdateCheckPlugins)
 	// Plugin front-end ESM bundles (scheme C): CORE_DATA_DIR/plugin-ui/{name}/
 	mux.HandleFunc("/api/plugins/{name}/ui/{path...}", g.handlePluginUI)
+	// Plugin string resources, next to the ESM bundle:
+	// CORE_DATA_DIR/plugin-ui/{name}/strings/values*/strings.xml
+	mux.HandleFunc("GET /api/plugins/{name}/strings", g.handlePluginStrings)
+	// HTTP proxy to a plugin's own service endpoint. Core injects the plugin's
+	// service token, so the WebUI panel never handles it (same-origin, owner auth).
+	mux.HandleFunc("/api/plugins/{name}/proxy/{path...}", g.handlePluginProxy)
 	mux.HandleFunc("/api/agents", g.handleAgents)
 	mux.HandleFunc("/api/agent/sessions", g.handleAgentSessions)
 	mux.HandleFunc("PATCH /api/agent/sessions/{session_id}", g.handleAgentSessionItem)
@@ -424,6 +440,8 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/settings/", g.handleSettingsSection)
 	mux.HandleFunc("POST /api/settings/{id}/test", g.handleSettingsTest)
 	mux.HandleFunc("/ws", g.handleWebSocket)
+	// Observability console: bounded snapshots plus a live SSE feed.
+	g.obsRoutes(mux)
 
 	return logMiddleware(g.pluginGuard(mux))
 }
@@ -580,6 +598,12 @@ func (g *Gateway) setPluginEnabled(name string, enable bool, w http.ResponseWrit
 	}
 	g.registry.SetEnabled(name, enable)
 	g.persistDisabledPlugins()
+	// Drop the plugin's message-bus footprint: a disabled subscriber must stop
+	// receiving, and a disabled adapter owner must stop being handed sends it
+	// can no longer deliver.
+	if g.localCore != nil {
+		g.localCore.DropPluginMessaging(name)
+	}
 	// Close cached gRPC connections for the disabled plugin.
 	if !enable && g.registry != nil {
 		for _, plugin := range g.registry.GetAllPlugins() {
@@ -671,6 +695,16 @@ func (g *Gateway) handleChat(w http.ResponseWriter, r *http.Request) {
 
 	if req.RequestID == "" {
 		req.RequestID = fmt.Sprintf("chat_%d", time.Now().UnixNano())
+	}
+	// Reuse the client-supplied id as the request correlation id so the browser,
+	// Core's access log, the mocr call and the WebUI response all agree on one
+	// value. The middleware generated one already; the body's id is the more
+	// specific one and is what the client will show the user.
+	r.Header.Set(RequestIDHeader, req.RequestID)
+	if span := obs.SpanFrom(r.Context()); span != nil {
+		span.Attr("request_id", req.RequestID)
+		span.Attr("model", req.ModelID)
+		span.Attr("session", sessionIDOf(req.SessionID))
 	}
 	sessionID := req.SessionID
 	if sessionID == "" {
@@ -1034,7 +1068,7 @@ func (g *Gateway) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	conn, err := g.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("WebSocket upgrade failed: %v", err)
+		obs.Component("ws").Warn("websocket upgrade failed", "err", err)
 		return
 	}
 	// Bound what a single frame may carry and how long a read may stall: the

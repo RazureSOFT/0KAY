@@ -156,12 +156,15 @@ function toggleStatus() {
       @keydown="onResizerKeydown"
     ></div>
 
-    <!-- @ui-ext:chat-panel — conversation column from patches -->
+    <!-- @ui-ext:chat-panel — conversation column from patches.
+         No `v-show` here: `display:none` cannot transition, and toggling it in
+         the same frame as `.open` made the mobile drawer pop instead of slide.
+         The closed state is now `translateX(100%) + visibility:hidden` so it
+         still animates and stays out of the tab order. -->
     <div
       v-if="hasChat"
       class="chat-column"
-      :class="{ open: showStatus && isMobile }"
-      v-show="showStatus || !isMobile"
+      :class="{ open: showStatus || !isMobile }"
     >
       <template v-for="slot in chatSlots" :key="slot.id">
         <ChatPanel v-if="slot.component === 'chat'" />
@@ -310,10 +313,15 @@ function toggleStatus() {
     z-index: 5;
     box-shadow: var(--shadow-8);
     transform: translateX(100%);
-    transition: transform var(--transition-normal);
+    /* Delayed so the slide-out completes before the panel stops being
+       hit-testable; a rendered-but-off-screen panel would stay tab-reachable. */
+    visibility: hidden;
+    transition: transform var(--transition-normal), visibility 0s linear var(--duration-medium);
   }
   .chat-column.open {
     transform: translateX(0);
+    visibility: visible;
+    transition: transform var(--transition-normal), visibility 0s linear 0s;
   }
 }
 </style>

@@ -13,7 +13,7 @@
         "id": "chat",
         "path": "/",
         "name": "chat",
-        "module": "/api/plugins/webui/ui/chat.js?v=1",
+        "module": "/api/plugins/webui/ui/chat.js?v=2",
         "titleKey": "nav.chat"
       }
     },
@@ -25,7 +25,7 @@
         "id": "plugins",
         "path": "/plugins",
         "name": "plugins",
-        "module": "/api/plugins/webui/ui/plugins.js?v=1",
+        "module": "/api/plugins/webui/ui/plugins.js?v=2",
         "titleKey": "nav.plugins"
       }
     },
@@ -37,7 +37,7 @@
         "id": "settings",
         "path": "/settings",
         "name": "settings",
-        "module": "/api/plugins/webui/ui/settings.js?v=1",
+        "module": "/api/plugins/webui/ui/settings.js?v=2",
         "titleKey": "nav.settings"
       }
     },
@@ -49,8 +49,20 @@
         "id": "usage",
         "path": "/usage",
         "name": "usage",
-        "module": "/api/plugins/webui/ui/usage.js?v=1",
+        "module": "/api/plugins/webui/ui/usage.js?v=2",
         "title": "用量"
+      }
+    },
+    {
+      "target": "router",
+      "op": "insert",
+      "id": "console",
+      "item": {
+        "id": "console",
+        "path": "/console",
+        "name": "console",
+        "module": "/api/plugins/webui/ui/console.js?v=2",
+        "titleKey": "nav.console"
       }
     }
   ]

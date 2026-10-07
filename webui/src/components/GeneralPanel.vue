@@ -15,21 +15,25 @@ function changeLanguage(code: string) {
 
 <template>
   <div class="content-card">
-    <PairingPanel />
+    <!-- h2 first: a heading outline that starts with an h3 (from PairingPanel)
+         before any h2 reads as a broken document to assistive tech. -->
     <h2>{{ t('settings.tabs.general') }}</h2>
     <p class="card-desc">{{ t('settings.generalDesc') }}</p>
 
     <div class="field">
       <label>{{ t('settings.language') }}</label>
-      <div class="segmented">
+      <div class="segmented" role="group" :aria-label="t('settings.language')">
         <button
           v-for="option in LOCALES"
           :key="option.code"
           class="seg"
           :class="{ active: currentLang === option.code }"
+          :aria-pressed="currentLang === option.code"
           @click="changeLanguage(option.code)"
         >{{ option.label }}</button>
       </div>
     </div>
+
+    <PairingPanel />
   </div>
 </template>

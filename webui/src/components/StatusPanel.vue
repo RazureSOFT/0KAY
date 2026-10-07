@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useLifeStore } from '../stores/life'
 import { useWizardStore } from '../stores/wizard'
-import { useUIPatchesStore, type StatusSection, type StatusAxis } from '../stores/uiPatches'
+import { useUIPatchesStore, type StatusAxis } from '../stores/uiPatches'
 
 const { t } = useI18n()
 const lifeStore = useLifeStore()
@@ -50,94 +50,26 @@ function axisValue(axis: StatusAxis): number {
   return raw
 }
 
-function sectionValue(s: StatusSection): string {
-  if (s.value) return s.value
-  if (s.valueKey) {
-    const v = t(s.valueKey)
-    if (v !== s.valueKey) return v
-  }
-  return '—'
-}
-
-function emptyText(s: StatusSection): string {
-  if (s.empty) return s.empty
-  if (s.emptyKey) {
-    const v = t(s.emptyKey)
-    if (v !== s.emptyKey) return v
-  }
-  return '—'
-}
-
-function listItems(s: StatusSection): string[] {
-  const v = resolve(s.listBind)
-  return Array.isArray(v) ? v.map(String) : []
-}
-
-// --- memory widget state (kind: memory, endpoint from patch) ---
-const memoryStats = ref<{ working: number; shortTerm: number; longTerm: number; avgStrength: number } | null>(null)
-const memories = ref<{ id: string; content: string; strength: number }[]>([])
-const memoryLoading = ref(false)
-const memorySection = computed(() => ui.statusSections.find((s) => s.kind === 'memory') || null)
-
-async function fetchMemory(endpoint?: string) {
-  const url = endpoint || memorySection.value?.endpoint || '/api/life/memories'
-  memoryLoading.value = true
-  try {
-    const res = await fetch(url)
-    if (res.ok) {
-      const data = await res.json()
-      memoryStats.value = data.stats || null
-      memories.value = data.memories || []
-    }
-  } catch {
-    memoryStats.value = null
-    memories.value = []
-  } finally {
-    memoryLoading.value = false
-  }
-}
-
-let memTimer: ReturnType<typeof setInterval> | null = null
-
-function scheduleMemoryPoll() {
-  if (memTimer) clearInterval(memTimer)
-  memTimer = null
-  if (memorySection.value) {
-    const ms = memorySection.value.pollMs || 15000
-    fetchMemory(memorySection.value.endpoint)
-    memTimer = setInterval(() => fetchMemory(memorySection.value?.endpoint), ms)
-  }
-}
-
-watch(
-  () => [memorySection.value?.endpoint, memorySection.value?.pollMs, ui.loaded],
-  scheduleMemoryPoll,
-  { immediate: true },
-)
+/* Only 年龄 / 时间 / 时区 (the profile block) plus 心情 (mood) and 情绪 (emotion
+   bars) are rendered — see `visibleSections` below. The `bar` / `count` /
+   `tasks` / `list` / `memory` / `connection` / kv branches, their helpers
+   (`sectionValue` / `emptyText` / `listItems`) and the memory polling that used
+   to live here could never be reached: the filter never yields those kinds, so
+   they were a permanently dead network poll. Re-add the branch, its helper and
+   the filter together if one of those widgets is wanted back. */
 
 onMounted(() => {
-  if (!memorySection.value) scheduleMemoryPoll()
   clockTimer = setInterval(() => { now.value = new Date() }, 1000)
 })
 onUnmounted(() => {
-  if (memTimer) clearInterval(memTimer)
   if (clockTimer) clearInterval(clockTimer)
 })
 
-// The character status bar shows only: 年龄 / 时间 / 时区 (the profile block)
-// plus 心情 (mood) and 情绪 (emotion bars).  Everything else is hidden.
 const visibleSections = computed(() =>
   ui.statusSections.filter((s) => s.kind === 'mood' || s.kind === 'bars'),
 )
 const moodColor = computed(() => lifeStore.emotionColor)
 const moodMood = computed(() => lifeStore.emotionMood)
-const energyPercent = computed(() => lifeStore.energyPercent)
-const energyColor = computed(() => lifeStore.energyColor)
-const onlineAgents = computed(() => lifeStore.onlineAgents)
-const totalAgents = computed(() => lifeStore.totalAgents)
-const isConnected = computed(() => lifeStore.isConnected)
-const source = computed(() => lifeStore.source)
-const activeTasks = computed(() => lifeStore.activeTasks)
 </script>
 
 <template>
@@ -165,18 +97,6 @@ const activeTasks = computed(() => lifeStore.activeTasks)
       >
         <div class="section-header">
           <span class="section-title">{{ labelOf(section) }}</span>
-          <span v-if="section.kind === 'bar'" class="section-value">{{ energyPercent }}%</span>
-          <span v-else-if="section.kind === 'count'" class="section-value">{{ onlineAgents }}</span>
-          <span v-else-if="section.kind === 'tasks'" class="section-value">{{ activeTasks.length }}</span>
-          <button
-            v-else-if="section.kind === 'memory'"
-            class="link-btn"
-            type="button"
-            :disabled="memoryLoading"
-            @click="fetchMemory(section.endpoint)"
-          >
-            {{ t('memory.refresh') }}
-          </button>
         </div>
 
         <!-- mood -->
@@ -219,14 +139,6 @@ const activeTasks = computed(() => lifeStore.activeTasks)
           </div>
         </div>
 
-        <!-- bar (mental energy) -->
-        <div v-else-if="section.kind === 'bar'" class="energy-bar">
-          <div
-            class="energy-fill"
-            :style="{ transform: `scaleX(${energyPercent / 100})`, backgroundColor: energyColor }"
-          ></div>
-        </div>
-
         <!-- bars (emotion axes) -->
         <div v-else-if="section.kind === 'bars'" class="emotion-bars">
           <div v-for="axis in section.axes || []" :key="axis.key" class="emotion-row">
@@ -241,75 +153,6 @@ const activeTasks = computed(() => lifeStore.activeTasks)
               ></div>
             </div>
           </div>
-        </div>
-
-        <!-- count (online agents) -->
-        <div v-else-if="section.kind === 'count'" class="agents-display">
-          <div class="agent-count">
-            <span class="agent-number" :class="{ online: onlineAgents > 0 }">{{ onlineAgents }}</span>
-            <span class="agent-label">{{ t('status.agentsOnline') }}</span>
-          </div>
-          <div v-if="totalAgents > onlineAgents" class="agent-offline">
-            {{ totalAgents - onlineAgents }} {{ t('status.agentsOffline') }}
-          </div>
-        </div>
-
-        <!-- tasks -->
-        <div v-else-if="section.kind === 'tasks'">
-          <div v-if="activeTasks.length === 0" class="empty-tasks">{{ emptyText(section) }}</div>
-          <div v-else class="task-list">
-            <div v-for="task in activeTasks" :key="task" class="task-item">
-              <span class="task-id">{{ task.substring(0, 8) }}...</span>
-              <span class="task-status">{{ t('status.running') }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- list generic -->
-        <div v-else-if="section.kind === 'list'">
-          <div v-if="listItems(section).length === 0" class="empty-tasks">{{ emptyText(section) }}</div>
-          <div v-else class="task-list">
-            <div v-for="item in listItems(section)" :key="item" class="task-item">
-              <span class="task-id">{{ item }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- memory -->
-        <div v-else-if="section.kind === 'memory'">
-          <div v-if="memoryStats" class="memory-stats">
-            <div class="memory-stat">
-              <span class="memory-stat-label">{{ t('memory.working') }}</span>
-              <span class="memory-stat-value">{{ memoryStats.working }}</span>
-            </div>
-            <div class="memory-stat">
-              <span class="memory-stat-label">{{ t('memory.shortTerm') }}</span>
-              <span class="memory-stat-value">{{ memoryStats.shortTerm }}</span>
-            </div>
-            <div class="memory-stat">
-              <span class="memory-stat-label">{{ t('memory.longTerm') }}</span>
-              <span class="memory-stat-value">{{ memoryStats.longTerm }}</span>
-            </div>
-          </div>
-          <div v-if="memories.length === 0" class="empty-tasks">{{ t('memory.empty') }}</div>
-          <div v-else class="memory-list">
-            <div v-for="m in memories.slice(0, 5)" :key="m.id" class="memory-item" :title="m.content">
-              <span class="memory-text">{{ m.content }}</span>
-              <span class="memory-strength">{{ Math.round((m.strength || 0) * 100) }}%</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- connection -->
-        <div v-else-if="section.kind === 'connection'" class="connection-info">
-          <span class="connection-dot" :class="{ connected: isConnected }"></span>
-          <span>{{ isConnected ? t('status.connectedTo') : t('chat.disconnected') }}</span>
-          <span v-if="source === 'core'" class="state-source">Core</span>
-        </div>
-
-        <!-- kv fallback -->
-        <div v-else class="connection-info">
-          <span>{{ sectionValue(section) }}</span>
         </div>
       </div>
 
@@ -381,11 +224,6 @@ const activeTasks = computed(() => lifeStore.activeTasks)
   letter-spacing: 0.5px;
 }
 
-.section-value {
-  font-size: var(--font-size-sm);
-  color: var(--neutral-gray-30);
-}
-
 .mood-display {
   display: flex;
   flex-direction: column;
@@ -402,21 +240,6 @@ const activeTasks = computed(() => lifeStore.activeTasks)
 .mood-label {
   font-size: var(--font-size-md);
   font-weight: 600;
-}
-
-.energy-bar {
-  height: 8px;
-  background: var(--neutral-gray-6);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.energy-fill {
-  height: 100%;
-  width: 100%;
-  transform-origin: left;
-  border-radius: var(--radius-sm);
-  transition: transform var(--duration-medium) var(--ease-out), background-color var(--duration-medium) var(--ease-out);
 }
 
 .emotion-bars {
@@ -453,6 +276,9 @@ const activeTasks = computed(() => lifeStore.activeTasks)
   transition: transform var(--duration-medium) var(--ease-out);
 }
 
+/* `.empty-tasks` is still used by the "no status sections" fallback below;
+   everything that followed it belonged to the removed task / connection /
+   memory / agent branches and has been deleted with them. */
 .empty-tasks {
   padding: var(--space-md);
   text-align: center;
@@ -462,158 +288,4 @@ const activeTasks = computed(() => lifeStore.activeTasks)
   border-radius: var(--radius-sm);
 }
 
-.task-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.task-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-sm) var(--space-md);
-  background: var(--neutral-gray-4);
-  border-radius: var(--radius-sm);
-}
-
-.task-id {
-  font-family: monospace;
-  font-size: var(--font-size-sm);
-  color: var(--neutral-gray-50);
-}
-
-.task-status {
-  font-size: var(--font-size-xs);
-  color: var(--brand-primary);
-}
-
-.connection-info {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  font-size: var(--font-size-sm);
-  color: var(--neutral-gray-40);
-}
-
-.link-btn {
-  border: none;
-  background: none;
-  color: var(--brand-primary);
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-  padding: 0;
-}
-.link-btn:disabled { opacity: 0.5; cursor: default; }
-
-.memory-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-sm);
-  margin-bottom: var(--space-sm);
-}
-
-.memory-stat {
-  padding: var(--space-sm);
-  background: var(--neutral-gray-4);
-  border-radius: var(--radius-sm);
-  text-align: center;
-}
-
-.memory-stat-label {
-  display: block;
-  font-size: var(--font-size-xs);
-  color: var(--neutral-gray-30);
-  margin-bottom: 2px;
-}
-
-.memory-stat-value {
-  font-size: var(--font-size-md);
-  font-weight: 600;
-  color: var(--neutral-gray-50);
-}
-
-.memory-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.memory-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm);
-  background: var(--neutral-gray-4);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-}
-
-.memory-text {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--neutral-gray-50);
-}
-
-.memory-strength {
-  font-size: var(--font-size-xs);
-  color: var(--brand-primary);
-  font-weight: 600;
-}
-
-.connection-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--error);
-}
-
-.connection-dot.connected {
-  background: var(--success);
-}
-
-.state-source {
-  margin-left: auto;
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  color: var(--brand-primary);
-  letter-spacing: 0.5px;
-}
-
-.agents-display {
-  padding: var(--space-md);
-  background: var(--neutral-gray-4);
-  border-radius: var(--radius-md);
-}
-
-.agent-count {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-sm);
-}
-
-.agent-number {
-  font-size: var(--font-size-xl);
-  font-weight: 700;
-  color: var(--neutral-gray-30);
-}
-
-.agent-number.online {
-  color: var(--success);
-}
-
-.agent-label {
-  font-size: var(--font-size-sm);
-  color: var(--neutral-gray-40);
-}
-
-.agent-offline {
-  margin-top: var(--space-xs);
-  font-size: var(--font-size-xs);
-  color: var(--neutral-gray-20);
-}
 </style>

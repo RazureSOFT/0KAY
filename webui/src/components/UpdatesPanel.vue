@@ -228,12 +228,12 @@ onUnmounted(stopPolling)
       <p v-if="pluginsError" class="alert" role="alert">{{ pluginsError }}</p>
       <div v-if="pluginResults" class="us-table">
         <div class="us-row us-thead">
-          <span>Plugin</span><span>Version</span><span>Status</span><span></span>
+          <span>{{ t('plugins.updatesColPlugin') }}</span><span>{{ t('plugins.updatesColVersion') }}</span><span>{{ t('plugins.updatesColStatus') }}</span><span></span>
         </div>
         <div v-for="plugin in pluginResults" :key="plugin.name" class="us-row">
           <span class="us-name">
             <span class="us-dot" :class="plugin.error ? 'bad' : (plugin.has_update ? 'warn' : (plugin.latest ? 'ok' : ''))"></span>
-            {{ plugin.name }}
+            <span class="us-name-text">{{ plugin.name }}</span>
           </span>
           <span class="us-ver">
             <em>v{{ plugin.version || '—' }}</em>
@@ -241,7 +241,7 @@ onUnmounted(stopPolling)
             <b :class="{ good: !!plugin.latest }">{{ plugin.latest ? `v${plugin.latest}` : '—' }}</b>
           </span>
           <span class="us-status" :class="plugin.error ? 'bad' : (plugin.has_update ? 'warn' : (plugin.latest ? 'ok' : ''))">
-            {{ plugin.error || t(plugin.has_update ? 'settings.about.available' : (plugin.latest ? 'settings.about.latest' : 'settings.about.noRelease')) }}
+            <span class="us-status-text">{{ plugin.error || t(plugin.has_update ? 'settings.about.available' : (plugin.latest ? 'settings.about.latest' : 'settings.about.noRelease')) }}</span>
           </span>
           <span class="us-actions">
             <button
@@ -260,7 +260,7 @@ onUnmounted(stopPolling)
             >
               {{ isUpdating(plugin.name) ? t('settings.about.updating') : t('settings.about.syncNow') }}
             </button>
-            <a v-if="plugin.repository" class="us-repo" :href="plugin.repository" target="_blank" rel="noopener noreferrer" :title="plugin.repository">Repo ↗</a>
+            <a v-if="plugin.repository" class="us-repo" :href="plugin.repository" target="_blank" rel="noopener noreferrer" :title="plugin.repository">{{ t('plugins.updatesColRepo') }} ↗</a>
           </span>
         </div>
         <p v-if="!pluginResults.length" class="us-empty">{{ t('settings.about.noPlugins') }}</p>
@@ -428,7 +428,11 @@ onUnmounted(stopPolling)
   transition: background-color 140ms;
 }
 .us-row:not(.us-thead):hover { background: var(--md-surface-container-low); }
-.us-name { display: inline-flex; align-items: center; gap: 8px; font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.us-name { display: inline-flex; align-items: center; gap: 8px; font-weight: 650; min-width: 0; overflow: hidden; }
+/* `text-overflow` is a block-container feature and is ignored on these flex
+   containers — the plugin name and status text were hard-clipped. The inner
+   spans are the boxes that actually ellipsise. */
+.us-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .us-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--md-outline); }
 .us-dot.ok { background: var(--md-success); }
 .us-dot.warn { background: #e0a800; }
@@ -445,8 +449,9 @@ onUnmounted(stopPolling)
   font-size: 12px; font-weight: 600;
   background: var(--md-surface-container-highest);
   color: var(--md-on-surface-variant);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow: hidden;
 }
+.us-status-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .us-status.ok { background: var(--md-success-container); color: #0d1f06; }
 .us-status.warn { background: #ffdf9e; color: #4a3800; }
 .us-status.bad { background: var(--md-error-container); color: var(--md-on-error-container); }
@@ -457,8 +462,8 @@ onUnmounted(stopPolling)
 .us-foot-hint { margin: 0; font-size: 12.5px; color: var(--md-on-surface-variant); }
 .us-foot-hint code { background: var(--md-surface-container); padding: 3px 8px; border-radius: 6px; font-size: 12px; }
 
-.btn.sm { height: 34px; padding-inline: 16px; font-size: 13px; }
-.btn.xs { height: 30px; padding-inline: 12px; font-size: 12px; }
+/* `.btn.sm` / `.btn.xs` shapes live in styles/settings.css so every panel
+   agrees on one height (they used to drift between 34/30, 34/30 and 32/28). */
 .alert { color: var(--md-error); }
 
 @media (max-width: 720px) {

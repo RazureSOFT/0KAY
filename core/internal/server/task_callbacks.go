@@ -3,7 +3,6 @@ package server
 import (
 	pluginv1 "0kay/gen/plugin/v1"
 	"encoding/json"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -26,7 +25,7 @@ func (s *CoreServiceServer) loadCallbacks() {
 	}
 	if data, err := os.ReadFile(s.callbackPath()); err == nil {
 		if err = json.Unmarshal(data, &s.callbacks); err != nil {
-			log.Printf("callback recovery: %v", err)
+			svcLog.Error("recover task callbacks", "err", err)
 		}
 	}
 }
@@ -43,7 +42,7 @@ func (s *CoreServiceServer) saveCallbacksLocked() {
 		err = os.Rename(s.callbackPath()+".tmp", s.callbackPath())
 	}
 	if err != nil {
-		log.Printf("callback persistence: %v", err)
+		svcLog.Error("persist task callbacks", "err", err)
 	}
 }
 func (s *CoreServiceServer) retryCallbacks() {

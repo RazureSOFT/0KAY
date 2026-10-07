@@ -2,7 +2,79 @@
 // Fully self-contained Material 3 Expressive page. Uses an `skg-` namespace so
 // no platform/global styles leak in, and replaces its <style> on every load.
 // Bare `vue` import comes from the WebUI importmap → host bridge.
-import { h, ref, onMounted, computed } from 'vue'
+// `@0kay/host` provides the shared i18n composer; this plugin's copy ships as
+// Android-style strings/ resources (copied next to the bundle at build time)
+// and the WebUI merges them under the `skillsguishow` namespace.
+import { h, ref, onMounted, onUnmounted, computed } from 'vue'
+import { i18n } from '@0kay/host'
+
+// Fallback copy (the pre-i18n Chinese strings). Used until the host merges the
+// plugin's strings/ resources, or if a key is missing there, so the UI never
+// renders raw key paths.
+const FALLBACK = {
+  title: '技能管理',
+  subtitle: '浏览、上传、删除 Agent 技能。技能由 Agent 插件加载；在对话框输入 /技能名 可强制套用该技能。',
+  refresh: '刷新',
+  refreshing: '刷新中…',
+  uploadFolder: '上传文件夹',
+  uploadSkill: '上传技能',
+  collapseUpload: '收起上传',
+  statTotal: '技能总数',
+  statTotalHint: '含内置与文件技能',
+  statFile: '文件技能',
+  statFileHint: '可编辑、可删除',
+  statBuiltin: '内置技能',
+  statBuiltinHint: 'code / research / general',
+  statDir: '技能目录',
+  dirValue: '目录',
+  uploadTitle: '上传 / 覆盖技能',
+  uploadHint: '单个 Markdown 文件或直接粘贴内容。名称仅限英文、数字、-、_，将成为 /斜杠调用名。',
+  namePlaceholder: '技能名，例如 code-review',
+  pickFile: '选择 .md 文件',
+  contentPlaceholder: '# 技能名\n\n一句话描述。\n\n1. 步骤…',
+  batchImport: '批量导入',
+  batchImportHint: '选择包含多个 .md 的整个文件夹，逐个创建或覆盖（文件名即技能名）。',
+  chooseFolder: '选择文件夹',
+  uploading: '上传中…',
+  cancel: '取消',
+  saveSkill: '保存技能',
+  searchAria: '搜索技能',
+  searchPlaceholder: '搜索技能名称、描述或标签…',
+  emptyErrorTitle: '无法读取技能列表',
+  emptyErrorHint: '确认 Agent 在线后重试。',
+  emptyNoMatch: '没有匹配的技能',
+  emptyNoneTitle: '暂无技能',
+  emptyNoneHint: '点击右上角「上传技能」或「上传文件夹」创建。',
+  pillBuiltin: '内置',
+  pillFile: '文件',
+  noDesc: '（无描述）',
+  slashHint: '对话输入 /{name}',
+  delete: '删除',
+  confirmDelete: '确认删除？',
+  close: '关闭',
+  saved: '已保存 {name}',
+  deleted: '已删除 {name}',
+  folderNoMd: '所选文件夹里没有找到 .md 文件',
+  folderDone: '文件夹上传完成：成功 {ok} 个',
+  folderDoneFailed: '文件夹上传完成：成功 {ok} 个 · 失败 {failed} 个',
+  progress: '{done}/{total} · {name}',
+}
+
+function tr(key, named) {
+  const full = `skillsguishow.${key}`
+  let out = null
+  try {
+    const msg = i18n.global.t(full, named ?? {})
+    // vue-i18n returns the key path itself when the messages are not (yet)
+    // merged — fall back to the built-in copy in that case.
+    if (msg && msg !== full) return msg
+  } catch { /* host bridge unavailable */ }
+  out = FALLBACK[key] ?? key
+  if (named) {
+    for (const [k, v] of Object.entries(named)) out = out.split(`{${k}}`).join(String(v))
+  }
+  return out
+}
 
 const CSS = `
 /* ============ Skills GUI · Material 3 Expressive ============ */
@@ -54,13 +126,23 @@ const CSS = `
 }
 #app .skg .skg-btn.skg-primary{background:var(--md-primary);color:var(--md-on-primary);box-shadow:0 8px 20px color-mix(in srgb,var(--md-primary) 32%,transparent)}
 #app .skg .skg-btn.skg-tonal{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-#app .skg .skg-btn.skg-danger{background:var(--md-error-container);color:var(--md-on-error-container,var(--md-on-error-container))}
+#app .skg .skg-btn.skg-danger{background:var(--md-error-container);color:var(--md-on-error-container)}
 #app .skg .skg-btn.skg-sm{min-height:44px;padding:0 15px;font-size:13px}
 
 /* ---------- Banners ---------- */
-.skg-banner{padding:13px 18px;border-radius:18px;font-size:13px;margin-bottom:14px;font-weight:600}
-.skg-banner.err{background:var(--md-error-container);color:var(--md-on-error-container,var(--md-on-error-container))}
-.skg-banner.ok{background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e)}
+.skg-banner{
+  padding:13px 18px;border-radius:18px;font-size:13px;margin-bottom:14px;font-weight:600;
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  animation:skg-rise var(--duration-medium,220ms) var(--skg-spring) both;
+}
+.skg-banner.err{background:var(--md-error-container);color:var(--md-on-error-container)}
+.skg-banner.ok{background:var(--md-success-container);color:var(--md-on-success-container)}
+.skg-banner-close{
+  flex-shrink:0;width:26px;height:26px;margin:-4px -6px 0 0;display:grid;place-items:center;
+  border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer;font-size:17px;line-height:1;
+  opacity:.65;transition:opacity 160ms,background-color 160ms;
+}
+.skg-banner-close:hover{opacity:1;background:color-mix(in srgb,currentColor 12%,transparent)}
 
 /* ---------- Stats ---------- */
 .skg-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:18px;margin-bottom:22px}
@@ -77,7 +159,7 @@ const CSS = `
 .skg-stat span{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.78}
 .skg-stat.t1{background:var(--md-primary-container);color:var(--md-on-primary-container)}
 .skg-stat.t2{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-.skg-stat.t3{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#421326)}
+.skg-stat.t3{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}
 .skg-stat.t4{background:var(--md-surface-container-low);color:var(--md-on-surface)}
 .skg-stat.t4 .skg-ic{background:var(--md-surface-container-high)}
 .skg-dir{font:11.5px/1.55 ui-monospace,monospace;word-break:break-all;opacity:.85;margin-top:2px}
@@ -118,6 +200,15 @@ const CSS = `
 .skg-folder b{font-size:14px;font-weight:800}
 .skg-folder span{flex:1;min-width:180px;font-size:13px;line-height:1.55;opacity:.88}
 .skg-folder .skg-btn{min-height:44px;padding:0 18px;background:var(--md-on-secondary-container);color:var(--md-secondary-container)}
+/* Batch-import progress bar (percent fill while a folder upload runs) */
+.skg-progress{
+  flex:1 1 100%;height:8px;border-radius:999px;overflow:hidden;
+  background:color-mix(in srgb,var(--md-on-secondary-container) 22%,transparent);
+}
+.skg-progress-fill{
+  height:100%;border-radius:999px;background:var(--md-on-secondary-container);
+  transition:width 240ms var(--skg-spring);
+}
 .skg-upload-actions{display:flex;justify-content:flex-end;gap:10px}
 
 /* ---------- Toolbar ---------- */
@@ -229,8 +320,22 @@ export default {
     const newName = ref('')
     const newContent = ref('')
     const deleting = ref('')
-    const folderProgress = ref('')
     const folderInput = ref(null)
+    // Batch-import progress bar state (0 total = not importing).
+    const folderDone = ref(0)
+    const folderTotal = ref(0)
+    const folderCurrent = ref('')
+    const folderImporting = computed(() => folderTotal.value > 0)
+    const folderPct = computed(() =>
+      folderTotal.value ? Math.round((folderDone.value / folderTotal.value) * 100) : 0)
+
+    let flashTimer = null
+    function setFlash(message) {
+      flash.value = message
+      clearTimeout(flashTimer)
+      // Success banners self-clear after 4s; errors stay until dismissed.
+      flashTimer = setTimeout(() => { flash.value = '' }, 4000)
+    }
 
     const visible = computed(() => {
       const q = query.value.trim().toLowerCase()
@@ -266,7 +371,7 @@ export default {
       flash.value = ''
       try {
         await api('POST', '/api/skills', { name: newName.value, content: newContent.value })
-        flash.value = `已保存 ${newName.value.trim()}`
+        setFlash(tr('saved', { name: newName.value.trim() }))
         newName.value = ''
         newContent.value = ''
         showUpload.value = false
@@ -278,15 +383,31 @@ export default {
       }
     }
 
-    async function remove(name) {
-      if (deleting.value !== name) { deleting.value = name; return }
+    // Two-step delete: first click arms ("确认删除？"), the second within 3s
+    // fires; the arm auto-reverts after 3s and Esc cancels it.
+    let deleteTimer = null
+    function disarmDelete() {
+      clearTimeout(deleteTimer)
       deleting.value = ''
+    }
+    function onKeydown(e) {
+      if (e.key === 'Escape' && deleting.value) disarmDelete()
+    }
+
+    async function remove(name) {
+      if (deleting.value !== name) {
+        clearTimeout(deleteTimer)
+        deleting.value = name
+        deleteTimer = setTimeout(disarmDelete, 3000)
+        return
+      }
+      disarmDelete()
       busy.value = true
       error.value = ''
       flash.value = ''
       try {
         await api('DELETE', `/api/skills?name=${encodeURIComponent(name)}`)
-        flash.value = `已删除 ${name}`
+        setFlash(tr('deleted', { name }))
         await refresh()
       } catch (e) {
         error.value = String(e?.message || e)
@@ -311,31 +432,43 @@ export default {
       const files = Array.from(ev.target.files || [])
       ev.target.value = ''
       const mdFiles = files.filter((f) => /\.md$/i.test(f.name) || f.type === 'text/markdown' || f.type === 'text/plain')
-      if (!mdFiles.length) { error.value = '所选文件夹里没有找到 .md 文件'; return }
+      if (!mdFiles.length) { error.value = tr('folderNoMd'); return }
       busy.value = true
       error.value = ''
       flash.value = ''
+      folderDone.value = 0
+      folderTotal.value = mdFiles.length
       let ok = 0
       let failed = 0
       for (let i = 0; i < mdFiles.length; i++) {
         const file = mdFiles[i]
         const name = skillName(file.name)
-        folderProgress.value = `${i + 1}/${mdFiles.length} · ${name || file.name}`
-        if (!name) { failed++; continue }
+        folderCurrent.value = name || file.name
+        if (!name) { failed++; folderDone.value = i + 1; continue }
         try {
           const content = await file.text()
           await api('POST', '/api/skills', { name, content })
           ok++
         } catch { failed++ }
+        folderDone.value = i + 1
       }
-      folderProgress.value = ''
-      flash.value = `文件夹上传完成：成功 ${ok} 个${failed ? ` · 失败 ${failed} 个` : ''}`
+      folderTotal.value = 0
+      folderCurrent.value = ''
+      setFlash(failed ? tr('folderDoneFailed', { ok, failed }) : tr('folderDone', { ok }))
       showUpload.value = false
       await refresh()
       busy.value = false
     }
 
-    onMounted(refresh)
+    onMounted(() => {
+      refresh()
+      window.addEventListener('keydown', onKeydown)
+    })
+    onUnmounted(() => {
+      window.removeEventListener('keydown', onKeydown)
+      clearTimeout(flashTimer)
+      clearTimeout(deleteTimer)
+    })
 
     const stat = (tone, ic, value, label, hint) =>
       h('div', { class: `skg-stat ${tone}` }, [
@@ -362,70 +495,95 @@ export default {
             h('span', { class: 'skg-logo' }, builtinIcon()),
             h('div', {}, [
               h('span', { class: 'skg-eyebrow' }, 'AGENT · SKILLS'),
-              h('h1', {}, '技能管理'),
-              h('p', { class: 'skg-sub' }, '浏览、上传、删除 Agent 技能。技能由 Agent 插件加载；在对话框输入 /技能名 可强制套用该技能。'),
+              h('h1', {}, tr('title')),
+              h('p', { class: 'skg-sub' }, tr('subtitle')),
             ]),
           ]),
           h('div', { class: 'skg-hero-actions' }, [
-            h('button', { class: 'skg-btn skg-tonal', disabled: busy.value, onClick: refresh }, [refreshIcon(), busy.value ? '刷新中…' : '刷新']),
-            h('button', { class: 'skg-btn skg-tonal', disabled: busy.value, onClick: () => folderInput.value?.click() }, [folderIcon(), '上传文件夹']),
-            h('button', { class: 'skg-btn skg-primary', onClick: () => (showUpload.value = !showUpload.value) }, [uploadIcon(), showUpload.value ? '收起上传' : '上传技能']),
+            h('button', { class: 'skg-btn skg-tonal', disabled: busy.value, onClick: refresh }, [refreshIcon(), busy.value ? tr('refreshing') : tr('refresh')]),
+            h('button', { class: 'skg-btn skg-tonal', disabled: busy.value, onClick: () => folderInput.value?.click() }, [folderIcon(), tr('uploadFolder')]),
+            h('button', { class: 'skg-btn skg-primary', onClick: () => (showUpload.value = !showUpload.value) }, [uploadIcon(), showUpload.value ? tr('collapseUpload') : tr('uploadSkill')]),
           ]),
         ]),
 
-        error.value ? h('div', { class: 'skg-banner err' }, error.value) : null,
+        error.value
+          ? h('div', { class: 'skg-banner err' }, [
+              h('span', {}, error.value),
+              h('button', { class: 'skg-banner-close', 'aria-label': tr('close'), title: tr('close'), onClick: () => (error.value = '') }, '×'),
+            ])
+          : null,
         flash.value ? h('div', { class: 'skg-banner ok' }, flash.value) : null,
 
         h('section', { class: 'skg-stats' }, [
-          stat('t1', bookIcon(), String(skills.value.length), '技能总数', '含内置与文件技能'),
-          stat('t2', fileIcon(), String(fileCount.value), '文件技能', '可编辑、可删除'),
-          stat('t3', builtinIcon(), String(builtinCount.value), '内置技能', 'code / research / general'),
-          stat('t4', folderIcon(), dir.value ? '目录' : '—', '技能目录', dir.value || '—'),
+          stat('t1', bookIcon(), String(skills.value.length), tr('statTotal'), tr('statTotalHint')),
+          stat('t2', fileIcon(), String(fileCount.value), tr('statFile'), tr('statFileHint')),
+          stat('t3', builtinIcon(), String(builtinCount.value), tr('statBuiltin'), tr('statBuiltinHint')),
+          stat('t4', folderIcon(), dir.value ? tr('dirValue') : '—', tr('statDir'), dir.value || '—'),
         ]),
 
         showUpload.value
           ? h('section', { class: 'skg-upload' }, [
-              h('h2', {}, '上传 / 覆盖技能'),
-              h('p', { class: 'skg-hint' }, '单个 Markdown 文件或直接粘贴内容。名称仅限英文、数字、-、_，将成为 /斜杠调用名。'),
+              h('h2', {}, tr('uploadTitle')),
+              h('p', { class: 'skg-hint' }, tr('uploadHint')),
               h('div', { class: 'skg-upload-row' }, [
-                h('input', { type: 'text', placeholder: '技能名，例如 code-review', value: newName.value, onInput: (e) => (newName.value = e.target.value) }),
-                h('label', { class: 'skg-file' }, ['选择 .md 文件', h('input', { type: 'file', accept: '.md,text/markdown,text/plain', onChange: pickFile })]),
+                h('input', { type: 'text', placeholder: tr('namePlaceholder'), value: newName.value, onInput: (e) => (newName.value = e.target.value) }),
+                h('label', { class: 'skg-file' }, [tr('pickFile'), h('input', { type: 'file', accept: '.md,text/markdown,text/plain', onChange: pickFile })]),
               ]),
-              h('textarea', { class: 'skg-textarea', placeholder: '# 技能名\n\n一句话描述。\n\n1. 步骤…', value: newContent.value, onInput: (e) => (newContent.value = e.target.value) }),
+              h('textarea', { class: 'skg-textarea', placeholder: tr('contentPlaceholder'), value: newContent.value, onInput: (e) => (newContent.value = e.target.value) }),
               h('div', { class: 'skg-folder' }, [
-                h('b', {}, '批量导入'),
-                h('span', {}, `选择包含多个 .md 的整个文件夹，逐个创建或覆盖（文件名即技能名）。${folderProgress.value ? '  ' + folderProgress.value : ''}`),
-                h('button', { class: 'skg-btn', disabled: busy.value, onClick: () => folderInput.value?.click() }, folderProgress.value ? '上传中…' : '选择文件夹'),
+                h('b', {}, tr('batchImport')),
+                h('span', {}, folderImporting.value
+                  ? tr('progress', { done: folderDone.value, total: folderTotal.value, name: folderCurrent.value })
+                  : tr('batchImportHint')),
+                folderImporting.value
+                  ? h('div', { class: 'skg-progress' }, [
+                      h('div', { class: 'skg-progress-fill', style: { width: `${folderPct.value}%` } }),
+                    ])
+                  : null,
+                h('button', { class: 'skg-btn', disabled: busy.value, onClick: () => folderInput.value?.click() }, folderImporting.value ? tr('uploading') : tr('chooseFolder')),
               ]),
               h('div', { class: 'skg-upload-actions' }, [
-                h('button', { class: 'skg-btn skg-tonal', disabled: busy.value, onClick: () => (showUpload.value = false) }, '取消'),
-                h('button', { class: 'skg-btn skg-primary', disabled: busy.value || !newName.value.trim() || !newContent.value.trim(), onClick: save }, '保存技能'),
+                h('button', { class: 'skg-btn skg-tonal', disabled: busy.value, onClick: () => (showUpload.value = false) }, tr('cancel')),
+                h('button', { class: 'skg-btn skg-primary', disabled: busy.value || !newName.value.trim() || !newContent.value.trim(), onClick: save }, tr('saveSkill')),
               ]),
             ])
           : null,
 
         h('section', { class: 'skg-toolbar' }, [
-          h('label', { class: 'skg-search' }, [searchIcon(), h('input', { 'aria-label': '搜索技能', placeholder: '搜索技能名称、描述或标签…', value: query.value, onInput: (e) => (query.value = e.target.value) })]),
+          h('label', { class: 'skg-search' }, [searchIcon(), h('input', { 'aria-label': tr('searchAria'), placeholder: tr('searchPlaceholder'), value: query.value, onInput: (e) => (query.value = e.target.value) })]),
           h('span', { class: 'skg-count' }, `${visible.value.length} / ${skills.value.length}`),
         ]),
 
         visible.value.length === 0
           ? h('div', { class: 'skg-empty' }, [
-              h('b', {}, error.value ? '无法读取技能列表' : query.value ? '没有匹配的技能' : '暂无技能'),
-              h('p', {}, error.value ? '确认 Agent 在线后重试。' : '点击右上角「上传技能」或「上传文件夹」创建。'),
+              h('b', {}, error.value ? tr('emptyErrorTitle') : query.value ? tr('emptyNoMatch') : tr('emptyNoneTitle')),
+              h('p', {}, error.value ? tr('emptyErrorHint') : tr('emptyNoneHint')),
             ])
           : h('section', { class: 'skg-grid' },
-              visible.value.map((s) =>
-                h('article', { class: 'skg-card', key: s.name }, [
+              visible.value.map((s, i) =>
+                h('article', {
+                  class: 'skg-card',
+                  key: s.name,
+                  // Staggered entrance: 40ms per index, capped at ~400ms. Newly
+                  // matched/added cards replay the rise animation on mount.
+                  style: { animationDelay: `${Math.min(i * 40, 400)}ms` },
+                }, [
                   h('div', { class: 'skg-card-top' }, [
                     h('code', { class: 'skg-name' }, `/${s.name}`),
-                    h('span', { class: `skg-pill${s.source === 'builtin' ? ' builtin' : ''}` }, s.source === 'builtin' ? '内置' : '文件'),
+                    h('span', { class: `skg-pill${s.source === 'builtin' ? ' builtin' : ''}` }, s.source === 'builtin' ? tr('pillBuiltin') : tr('pillFile')),
                   ]),
-                  h('p', { class: 'skg-desc' }, s.description || '（无描述）'),
+                  h('p', { class: 'skg-desc' }, s.description || tr('noDesc')),
                   s.tags && s.tags.length ? h('div', { class: 'skg-tags' }, s.tags.map((t) => h('span', { class: 'skg-chip', key: t }, `#${t}`))) : null,
                   h('div', { class: 'skg-card-foot' }, [
-                    h('span', { class: 'skg-slash' }, `对话输入 /${s.name}`),
-                    h('button', { class: `skg-btn skg-sm ${deleting.value === s.name ? 'skg-danger' : 'skg-tonal'}`, disabled: busy.value, onClick: () => remove(s.name) }, deleting.value === s.name ? '确认删除？' : '删除'),
+                    h('span', { class: 'skg-slash' }, tr('slashHint', { name: s.name })),
+                    // Built-in skills are managed by the plugin itself — no delete.
+                    s.source !== 'builtin'
+                      ? h('button', {
+                          class: `skg-btn skg-sm ${deleting.value === s.name ? 'skg-danger' : 'skg-tonal'}`,
+                          disabled: busy.value,
+                          onClick: () => remove(s.name),
+                        }, deleting.value === s.name ? tr('confirmDelete') : tr('delete'))
+                      : null,
                   ]),
                 ]),
               ),

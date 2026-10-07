@@ -24,7 +24,14 @@ function page() {
       return {}
     },
   }
-  const require = (name: string) => name === 'vue' ? vue : name === './kit' ? transport : name === './confirm' ? { useConfirm: () => ({ confirm: async () => true }) } : {}
+  const host = {
+    i18n: { global: { t: (key: string) => key } },
+    // The page imports the shared confirm composable and AppSelect from the
+    // host runtime (local copies were removed when the plugin unified on it).
+    useConfirm: () => ({ confirm: async () => true }),
+    AppSelect: {},
+  }
+  const require = (name: string) => name === 'vue' ? vue : name === '@0kay/host' ? host : name === './kit' ? transport : {}
   new Function('require', 'module', 'exports', executable)(require, module, module.exports)
   return { state: module.exports.default.setup({}, { expose: () => {} }), calls }
 }
@@ -33,9 +40,16 @@ describe('adapter settings API contract', () => {
   it('loads existing routes and saves them without erasing them', async () => {
     const { state, calls } = page()
     await state.load()
-    expect(state.routes.value).toEqual([{ pattern: 'qq_9', config_id: 'work' }])
+    // `_key` is the page's stable list key for FLIP animations; it must exist
+    // on loaded rows but never travels back over the wire (see saveRoutes).
+    expect(state.routes.value.map(({ _key, ...rest }: any) => rest)).toEqual([
+      { pattern: 'qq_9', config_id: 'work' },
+    ])
+    expect(state.routes.value[0]._key).toBeTruthy()
     await state.saveRoutes()
-    expect(calls.find(([action]) => action === 'adapter_routes_set')?.[1].routes).toEqual(state.routes.value)
+    const sent = calls.find(([action]) => action === 'adapter_routes_set')?.[1].routes
+    expect(sent).toEqual([{ pattern: 'qq_9', config_id: 'work' }])
+    expect(sent[0]._key).toBeUndefined()
   })
   it('shows a running listener without clients as waiting', async () => {
     const { state } = page()

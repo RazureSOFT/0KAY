@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"0kay/core/internal/pairing"
 	"0kay/core/internal/registry"
 	pluginv1 "0kay/gen/plugin/v1"
 )
@@ -94,10 +95,38 @@ func TestPluginGuardRequiresIdentityForDeclaredAPI(t *testing.T) {
 
 func TestPluginGuardAllowsBrowser(t *testing.T) {
 	g := guardTestGateway(t)
+	// Fetch metadata: what a browser actually sends, and something no HTTP
+	// client library emits.
 	req := httptest.NewRequest(http.MethodGet, "/api/models", nil)
-	req.Header.Set("Referer", "http://127.0.0.1:3000/")
+	req.Header.Set("Sec-Fetch-Site", "same-origin")
 	if rec := doGuarded(g, req); rec.Code != http.StatusOK {
 		t.Fatalf("browser call: got %d, want 200", rec.Code)
+	}
+	// The owner's session cookie is the other proof of a browser.
+	withCookie := httptest.NewRequest(http.MethodGet, "/api/models", nil)
+	withCookie.AddCookie(&http.Cookie{Name: pairing.SessionCookie, Value: "v"})
+	if rec := doGuarded(g, withCookie); rec.Code != http.StatusOK {
+		t.Fatalf("session-cookie call: got %d, want 200", rec.Code)
+	}
+}
+
+// Regression: attribution used to be skippable by setting any one of
+// Sec-Fetch-Site / Origin / Referer, so an unattributed machine caller could
+// reach APIs a plugin never declared — including the egress proxy — by adding a
+// single forged header. Every one of them must now be treated as a machine
+// client that owes Core an identity.
+func TestPluginGuardRejectsForgedBrowserHeaders(t *testing.T) {
+	for _, header := range []string{"Sec-Fetch-Site", "Origin", "Referer"} {
+		t.Run(header, func(t *testing.T) {
+			g := guardTestGateway(t)
+			req := httptest.NewRequest(http.MethodGet, "/api/models", nil)
+			// A URL is not a valid Sec-Fetch-Site value; the enum is
+			// same-origin / same-site / cross-site / none.
+			req.Header.Set(header, "http://127.0.0.1:3000/")
+			if rec := doGuarded(g, req); rec.Code != http.StatusForbidden {
+				t.Fatalf("forged %s: got %d, want 403", header, rec.Code)
+			}
+		})
 	}
 }
 

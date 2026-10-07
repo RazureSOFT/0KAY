@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import {computed,ref,watch,nextTick,onMounted,onUnmounted} from 'vue'
-import {locale} from './locale'
-import {uid} from './uid'
-const en=computed(()=>locale.value==='en')
+import {i18n,uid} from '@0kay/host'
+const t=(key:string,named?:Record<string,unknown>)=>i18n.global.t(key,named??{})
 const props=defineProps<{modelValue:number;disabled?:boolean}>()
 const emit=defineEmits<{'update:modelValue':[value:number]}>()
-const stops=computed(()=>[{value:0,label:en.value?'Off':'关闭思考'},{value:20,label:en.value?'Low':'低'},{value:50,label:en.value?'Medium':'中'},{value:75,label:en.value?'High':'高'},{value:100,label:en.value?'Max':'最高'}])
+const stops=computed(()=>[{value:0,label:t('agent.thinking.off')},{value:20,label:t('agent.thinking.low')},{value:50,label:t('agent.thinking.medium')},{value:75,label:t('agent.thinking.high')},{value:100,label:t('agent.thinking.max')}])
 const index=computed(()=>props.modelValue===0?0:props.modelValue<35?1:props.modelValue<62.5?2:props.modelValue<87.5?3:4)
 const opened=ref(false),position=ref<Record<string,string>>({}),trigger=ref<HTMLButtonElement|null>(null),panel=ref<HTMLElement|null>(null),range=ref<HTMLInputElement|null>(null)
 const dragValue=ref(index.value*25),pulse=ref(false)
@@ -27,22 +26,27 @@ onUnmounted(()=>{clearTimeout(timer);document.removeEventListener('pointerdown',
 </script>
 <template>
  <div class="thinking-control" :class="{full,pulse}">
-  <span class="thinking-caption">{{ en?'Thinking effort':'思考强度' }}</span>
-  <button ref="trigger" type="button" class="thinking-trigger" :disabled="disabled" aria-label="思考强度" aria-haspopup="dialog" :aria-expanded="opened" :aria-controls="opened?id:undefined" @click="toggle" @keydown.esc="close"><span>{{ full?'✦ ':'' }}{{ stops[index].label }}</span><span aria-hidden="true">⌄</span></button>
-  <Teleport to="body"><Transition name="thinking-menu"><section v-if="opened" :id="id" ref="panel" class="thinking-popover" :class="{full,pulse}" :style="position" role="dialog" aria-label="调整思考强度" @keydown.esc.prevent.stop="close">
-   <header><strong>{{ en?'Thinking effort':'思考强度' }}</strong><output>{{ full?'✦ ':'' }}{{ stops[index].label }}</output></header>
+  <span class="thinking-caption">{{ t('agent.thinking.effort') }}</span>
+  <button ref="trigger" type="button" class="thinking-trigger" :disabled="disabled" :aria-label="t('agent.thinking.effort')" aria-haspopup="dialog" :aria-expanded="opened" :aria-controls="opened?id:undefined" @click="toggle" @keydown.esc="close"><span>{{ full?'✦ ':'' }}{{ stops[index].label }}</span><span aria-hidden="true">⌄</span></button>
+  <Teleport to="body"><Transition name="thinking-menu"><section v-if="opened" :id="id" ref="panel" class="thinking-popover" :class="{full,pulse}" :style="position" role="dialog" :aria-label="t('agent.thinking.adjustAria')" @keydown.esc.prevent.stop="close">
+   <header><strong>{{ t('agent.thinking.effort') }}</strong><output>{{ full?'✦ ':'' }}{{ stops[index].label }}</output></header>
    <div class="thinking-track" :style="{'--intensity':`${dragValue}%`}">
     <div class="thinking-capsule" aria-hidden="true"><div class="thinking-fill"/><span v-for="(_,i) in stops" :key="i" class="thinking-tick" :class="{passed:dragValue>=i*25}" :style="{left:`${i*25}%`}"/></div>
-    <input ref="range" type="range" min="0" max="100" step="0.1" :value="dragValue" aria-label="思考强度滑块" :aria-valuetext="stops[index].label" @input="update" @change="dragValue=index*25" @keydown.home.prevent="select(0)" @keydown.end.prevent="select(4)" @keydown.arrow-right.prevent="select(Math.min(4,index+1))" @keydown.arrow-left.prevent="select(Math.max(0,index-1))"/><span v-if="full" class="energy-wave" aria-hidden="true" />
+    <input ref="range" type="range" min="0" max="100" step="0.1" :value="dragValue" :aria-label="t('agent.thinking.sliderAria')" :aria-valuetext="stops[index].label" @input="update" @change="dragValue=index*25" @keydown.home.prevent="select(0)" @keydown.end.prevent="select(4)" @keydown.arrow-right.prevent="select(Math.min(4,index+1))" @keydown.arrow-left.prevent="select(Math.max(0,index-1))"/><span v-if="full" class="energy-wave" aria-hidden="true" />
    </div>
    <div class="thinking-stops"><button v-for="(stop,i) in stops" :key="stop.value" type="button" :class="{selected:index===i}" :aria-pressed="index===i" @click="select(i)">{{ stop.label }}</button></div>
-   <p>{{ en?(index===0?'Disable model reasoning':full?'Maximum effort':'Drag to adjust; release to snap to a level'):(index===0?'不启用模型思考模式':full?'全力思考 · 已达到最高档':'拖动滑块调整，松开后定位到对应档位') }}</p>
-   <p class="thinking-provider-note">{{ en?'Actual reasoning controls depend on the selected provider. Max may map to High.':'实际推理参数取决于供应商；最高档可能映射为高档。' }}</p>
+   <p>{{ index===0 ? t('agent.thinking.hintOff') : full ? t('agent.thinking.hintMax') : t('agent.thinking.hintAdjust') }}</p>
+   <p class="thinking-provider-note">{{ t('agent.thinking.providerNote') }}</p>
   </section></Transition></Teleport>
  </div>
 </template>
-<style>
-.thinking-control{min-width:110px;flex:1;display:flex;flex-direction:column;gap:5px}.thinking-caption{font-size:12px}#app .thinking-trigger{display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:9px 12px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);font-size:12px;border-radius:9px}.thinking-popover{position:fixed;z-index:var(--z-popover,5000);padding:16px;border-radius:14px;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);box-shadow:0 10px 32px #16244026;color:var(--md-on-surface);font-family:var(--font-family)}.thinking-popover header{display:flex;justify-content:space-between;gap:12px;font-size:13px}.thinking-popover output{color:var(--md-primary);font-weight:600}.thinking-track{position:relative;padding:22px 4px 16px;display:flex;align-items:center}.thinking-track input{appearance:none;-webkit-appearance:none;width:100%;height:5px;padding:0;margin:0;border:0;border-radius:5px;background:linear-gradient(to right,var(--md-primary) var(--intensity),var(--md-outline-variant) var(--intensity));cursor:pointer;z-index:1}.thinking-track input::-webkit-slider-thumb{appearance:none;width:17px;height:17px;border-radius:50%;background:var(--md-primary);border:2px solid var(--md-surface);box-shadow:0 1px 4px #24345d40}.thinking-track input::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--md-primary);border:2px solid var(--md-surface)}.thinking-track input:focus-visible{outline:2px solid var(--md-primary);outline-offset:7px}.thinking-stops{display:flex;justify-content:space-between;gap:3px}.thinking-stops button{font:inherit;font-size:12px;border:0;background:transparent;color:var(--md-on-surface-variant);padding:6px 5px;border-radius:6px;cursor:pointer}.thinking-stops button.selected{background:var(--md-primary-container);color:var(--md-primary);font-weight:700}.thinking-popover p{font-size:12px;line-height:1.5;color:var(--md-on-surface-variant);margin:12px 0 0}.thinking-control.full .thinking-trigger,.thinking-popover.full{--md-primary:#a050db;border-color:#a050db88;box-shadow:0 0 16px #a050db25}.thinking-popover.full .energy-wave{position:absolute;inset:14px 0 8px;pointer-events:none;border-radius:20px;box-shadow:0 0 12px #a050db66}.thinking-popover.pulse,.thinking-control.pulse .thinking-trigger{animation:thinking-boost 850ms ease-out}.thinking-popover.pulse .energy-wave{animation:thinking-wave 850ms ease-out}@keyframes thinking-boost{0%{box-shadow:0 0 0 0 #a050db66}45%{box-shadow:0 0 0 5px #a050db20,0 0 30px #a050db40}100%{box-shadow:0 0 16px #a050db25}}@keyframes thinking-wave{from{transform:scale(.95);opacity:1}to{transform:scale(1.15,2);opacity:0}}.thinking-menu-enter-active,.thinking-menu-leave-active{transition:opacity 130ms,transform 130ms}.thinking-menu-enter-from,.thinking-menu-leave-to{opacity:0;transform:translateY(4px)}@media(prefers-reduced-motion:reduce){.thinking-popover.pulse,.thinking-control.pulse .thinking-trigger,.thinking-popover.pulse .energy-wave{animation:none}}
+<style scoped>
+/* Scoped is required: the host ships `webui/src/components/ThinkingSlider.vue`
+   with the exact same class names (`.thinking-control`, `.thinking-popover`,
+   `.thinking-trigger`, …). Unscoped, this file's rules leaked into the host
+   component and vice versa. Teleported popover content still carries the
+   component's `data-v` attribute, so scoping does not break the popover. */
+.thinking-control{min-width:110px;flex:1;display:flex;flex-direction:column;gap:5px}.thinking-caption{font-size:12px}#app .thinking-trigger{display:flex;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:9px 12px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);font-size:12px;border-radius:9px}.thinking-popover{position:fixed;z-index:var(--z-popover,5000);padding:16px;border-radius:14px;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);box-shadow:0 10px 32px #16244026;color:var(--md-on-surface);font-family:var(--font-family)}.thinking-popover header{display:flex;justify-content:space-between;gap:12px;font-size:13px}.thinking-popover output{color:var(--md-primary);font-weight:600}.thinking-track{position:relative;padding:22px 4px 16px;display:flex;align-items:center}.thinking-track input{appearance:none;-webkit-appearance:none;width:100%;height:5px;padding:0;margin:0;border:0;border-radius:5px;background:linear-gradient(to right,var(--md-primary) var(--intensity),var(--md-outline-variant) var(--intensity));cursor:pointer;z-index:1}.thinking-track input::-webkit-slider-thumb{appearance:none;width:17px;height:17px;border-radius:50%;background:var(--md-primary);border:2px solid var(--md-surface);box-shadow:0 1px 4px #24345d40}.thinking-track input::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--md-primary);border:2px solid var(--md-surface)}.thinking-track input:focus-visible{outline:2px solid var(--md-primary);outline-offset:7px}.thinking-stops{display:flex;justify-content:space-between;gap:3px}.thinking-stops button{font:inherit;font-size:12px;border:0;background:transparent;color:var(--md-on-surface-variant);padding:6px 5px;border-radius:6px;cursor:pointer}.thinking-stops button.selected{background:var(--md-primary-container);color:var(--md-primary);font-weight:700}.thinking-popover p{font-size:12px;line-height:1.5;color:var(--md-on-surface-variant);margin:12px 0 0}.thinking-control.full .thinking-trigger,.thinking-popover.full{--md-primary:var(--md-tertiary);border-color:color-mix(in srgb,var(--md-tertiary) 55%,transparent);box-shadow:0 0 16px color-mix(in srgb,var(--md-tertiary) 16%,transparent)}.thinking-popover.full .energy-wave{position:absolute;inset:14px 0 8px;pointer-events:none;border-radius:20px;box-shadow:0 0 12px color-mix(in srgb,var(--md-tertiary) 40%,transparent)}.thinking-popover.pulse,.thinking-control.pulse .thinking-trigger{animation:thinking-boost 850ms ease-out}.thinking-popover.pulse .energy-wave{animation:thinking-wave 850ms ease-out}@keyframes thinking-boost{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--md-tertiary) 40%,transparent)}45%{box-shadow:0 0 0 5px color-mix(in srgb,var(--md-tertiary) 13%,transparent),0 0 30px color-mix(in srgb,var(--md-tertiary) 25%,transparent)}100%{box-shadow:0 0 16px color-mix(in srgb,var(--md-tertiary) 16%,transparent)}}@keyframes thinking-wave{from{transform:scale(.95);opacity:1}to{transform:scale(1.15,2);opacity:0}}.thinking-menu-enter-active,.thinking-menu-leave-active{transition:opacity 130ms,transform 130ms}.thinking-menu-enter-from,.thinking-menu-leave-to{opacity:0;transform:translateY(4px)}@media(prefers-reduced-motion:reduce){.thinking-popover.pulse,.thinking-control.pulse .thinking-trigger,.thinking-popover.pulse .energy-wave{animation:none}}
 /* Expressive slider: pill-shaped track, separated vertical handle, tonal stops. */
 .thinking-popover {
  padding:20px; border-radius:28px;
@@ -78,25 +82,25 @@ onUnmounted(()=>{clearTimeout(timer);document.removeEventListener('pointerdown',
 .thinking-track input:focus-visible{outline-offset:3px}
 .thinking-stops{align-items:center;gap:2px;margin-top:2px}
 .thinking-stops button{border-radius:999px;min-height:30px;padding:6px 9px;transition:background-color 160ms,color 160ms}
-.thinking-popover.full {background:color-mix(in srgb,var(--md-surface-container-low) 93%,#a050db);border-color:#a050db55}
-.thinking-popover.full .thinking-fill {background:linear-gradient(90deg,#7255c8,#ad50d6)}
+.thinking-popover.full {background:color-mix(in srgb,var(--md-surface-container-low) 93%,var(--md-tertiary));border-color:color-mix(in srgb,var(--md-tertiary) 34%,transparent)}
+.thinking-popover.full .thinking-fill {background:linear-gradient(90deg,var(--md-primary),var(--md-tertiary))}
 .thinking-popover.full .energy-wave{inset:18px 5px;border-radius:999px;z-index:-1}
 .thinking-popover p{margin-top:12px}
 
 /* Max effort: abstract "thunder" treatment (glow, arc flow, flicker). */
-.thinking-popover.full{box-shadow:0 8px 28px #24345d24,0 0 34px #a050db33;border-color:#a050db77}
+.thinking-popover.full{box-shadow:0 8px 28px #24345d24,0 0 34px color-mix(in srgb,var(--md-tertiary) 20%,transparent);border-color:color-mix(in srgb,var(--md-tertiary) 47%,transparent)}
 .thinking-popover.full .energy-wave{
  position:absolute;inset:-3px 4px;border-radius:999px;z-index:-1;
  background:
-  radial-gradient(70% 120% at 100% 50%, #c56bffbb, transparent 68%),
-  radial-gradient(50% 120% at 0% 50%, #6b8cffaa, transparent 70%);
+  radial-gradient(70% 120% at 100% 50%, color-mix(in srgb,var(--md-tertiary) 73%,transparent), transparent 68%),
+  radial-gradient(50% 120% at 0% 50%, color-mix(in srgb,var(--md-primary) 67%,transparent), transparent 70%);
  filter:blur(7px);animation:thunder-glow 1.7s ease-in-out infinite;
 }
 @keyframes thunder-glow{0%,100%{opacity:.5;transform:scale(1)}45%{opacity:1;transform:scale(1.03)}}
-.thinking-popover.full .thinking-capsule{box-shadow:0 0 0 1px #a050db66,0 0 26px #a050db55}
-.thinking-popover.full .thinking-fill{background:linear-gradient(90deg,#6b8cff,#a050db,#e0a3ff,#a050db);background-size:280% 100%;animation:thunder-flow 2.6s linear infinite}
+.thinking-popover.full .thinking-capsule{box-shadow:0 0 0 1px color-mix(in srgb,var(--md-tertiary) 40%,transparent),0 0 26px color-mix(in srgb,var(--md-tertiary) 34%,transparent)}
+.thinking-popover.full .thinking-fill{background:linear-gradient(90deg,var(--md-primary),var(--md-tertiary),color-mix(in srgb,var(--md-tertiary) 55%,#fff),var(--md-tertiary));background-size:280% 100%;animation:thunder-flow 2.6s linear infinite}
 @keyframes thunder-flow{to{background-position:280% 0}}
-.thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}
+.thinking-control.full .thinking-trigger{color:var(--md-tertiary);border-color:color-mix(in srgb,var(--md-tertiary) 40%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--md-tertiary) 20%,transparent),0 0 18px color-mix(in srgb,var(--md-tertiary) 24%,transparent)}
 .thinking-control.full .thinking-trigger span:first-child{animation:thunder-flicker 2s steps(1,end) infinite}
 @keyframes thunder-flicker{0%,90%,100%{opacity:1}92%{opacity:.35}94%{opacity:1}96%{opacity:.5}}
 
@@ -114,6 +118,6 @@ onUnmounted(()=>{clearTimeout(timer);document.removeEventListener('pointerdown',
 }
 #app .thinking-control .thinking-trigger:hover{background:var(--md-surface-container-highest)}
 #app .thinking-control .thinking-trigger[aria-expanded="true"]{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}
-#app .thinking-control.full .thinking-trigger{color:#7b3fd0;border-color:#a050db66;box-shadow:0 0 0 1px #a050db33,0 0 18px #a050db3d}
+#app .thinking-control.full .thinking-trigger{color:var(--md-tertiary);border-color:color-mix(in srgb,var(--md-tertiary) 40%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--md-tertiary) 20%,transparent),0 0 18px color-mix(in srgb,var(--md-tertiary) 24%,transparent)}
 .thinking-caption{font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--md-on-surface-variant)}
 </style>

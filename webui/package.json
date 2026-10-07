@@ -3,8 +3,13 @@
   "version": "0.1.2",
   "type": "module",
   "scripts": {
+    "i18n:generate": "node scripts/i18n.mjs generate",
+    "i18n:check": "node scripts/i18n.mjs check",
+    "predev": "npm run i18n:generate",
     "dev": "vite",
+    "prebuild": "npm run i18n:generate",
     "build": "vue-tsc && vite build",
+    "prebuild:plugin": "npm run i18n:generate",
     "build:plugin": "vite build --config vite.plugin.config.ts",
     "preview": "vite preview",
     "lint": "eslint .",

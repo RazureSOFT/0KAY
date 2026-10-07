@@ -302,7 +302,8 @@ onUnmounted(stopPolling)
 .section-title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 17px; font-weight: 650; color: var(--md-on-surface); }
 .section-title::before { content: ''; width: 4px; height: 16px; border-radius: 2px; background: var(--md-primary); }
 
-.btn.sm { height: 34px; padding-inline: 16px; font-size: 13px; }
+/* `.btn.sm` / `.btn.xs` shapes live in styles/settings.css so every panel
+   agrees on one height (they used to drift between 34/30, 34/30 and 32/28). */
 
 .credits { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 .person {
@@ -360,8 +361,8 @@ onUnmounted(stopPolling)
   border: 1px solid var(--md-outline-variant);
   background: var(--md-surface-container-low);
 }
-.us-hero.ok { background: var(--md-success-container); color: #0d1f06; border-color: transparent; }
-.us-hero.warn { background: linear-gradient(135deg, #ffe4a3, #ffd680); color: #4a3800; border-color: transparent; }
+.us-hero.ok { background: var(--md-success-container); color: var(--md-on-success-container); border-color: transparent; }
+.us-hero.warn { background: var(--md-warning-container); color: var(--md-on-warning-container); border-color: transparent; }
 .us-hero.none { background: var(--md-surface-container-low); }
 .us-hero-icon {
   flex: none; width: 46px; height: 46px; border-radius: 14px;
@@ -396,7 +397,7 @@ onUnmounted(stopPolling)
   border-radius: 16px;
   background: var(--md-surface-container);
 }
-.us-apply-banner.done { background: var(--md-success-container); color: #0d1f06; border-color: transparent; }
+.us-apply-banner.done { background: var(--md-success-container); color: var(--md-on-success-container); border-color: transparent; }
 .us-apply-banner.failed { background: var(--md-error-container); color: var(--md-on-error-container); border-color: transparent; }
 .us-apply-head { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .us-apply-head b { font-weight: 700; }

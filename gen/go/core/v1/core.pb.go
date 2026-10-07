@@ -1749,6 +1749,689 @@ func (x *CallPluginToolResponse) GetError() string {
 	return ""
 }
 
+// PublishInboundMessageRequest is the request for
+// CoreService.PublishInboundMessage.
+type PublishInboundMessageRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// caller_id is the plugin id reporting the message (Core fills it from the
+	// authenticated plugin identity, so a plugin cannot report as another).
+	CallerId string `protobuf:"bytes,1,opt,name=caller_id,json=callerId,proto3" json:"caller_id,omitempty"`
+	// message is the observed adapter message.
+	Message       *v1.InboundMessage `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PublishInboundMessageRequest) Reset() {
+	*x = PublishInboundMessageRequest{}
+	mi := &file_core_v1_core_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PublishInboundMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PublishInboundMessageRequest) ProtoMessage() {}
+
+func (x *PublishInboundMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PublishInboundMessageRequest.ProtoReflect.Descriptor instead.
+func (*PublishInboundMessageRequest) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *PublishInboundMessageRequest) GetCallerId() string {
+	if x != nil {
+		return x.CallerId
+	}
+	return ""
+}
+
+func (x *PublishInboundMessageRequest) GetMessage() *v1.InboundMessage {
+	if x != nil {
+		return x.Message
+	}
+	return nil
+}
+
+// PublishInboundMessageResponse is the response for
+// CoreService.PublishInboundMessage.
+type PublishInboundMessageResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// accepted indicates Core recorded and fanned out the message.
+	Accepted bool `protobuf:"varint,1,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	// delivered is how many subscribers received it. Zero is normal — it means
+	// nobody declared an interest in this adapter/conversation.
+	Delivered int32 `protobuf:"varint,2,opt,name=delivered,proto3" json:"delivered,omitempty"`
+	// error is a human-readable error when accepted is false.
+	Error string `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	// should_process is the arbitration verdict the publisher must apply: false
+	// means a gate plugin vetoed this message, so the publisher (L.I.F.E) must
+	// not run its reply pipeline. true covers both "no gate objected and the
+	// publisher's own wake rule fired" and "a gate asked for processing the wake
+	// rule would have skipped".
+	//
+	// Core computes it as: any "deny" → false; else any "allow" → true; else the
+	// message's own is_wake flag. A publisher that cannot reach Core at all
+	// should fall back to its own wake rule rather than treat the silence as a
+	// veto.
+	ShouldProcess bool `protobuf:"varint,4,opt,name=should_process,json=shouldProcess,proto3" json:"should_process,omitempty"`
+	// decided_by names the gate plugin that produced the deciding verdict, and
+	// reason is its explanation. Both empty when every gate abstained — which is
+	// also the answer when no gate plugin is installed, and costs no RPC.
+	DecidedBy     string `protobuf:"bytes,5,opt,name=decided_by,json=decidedBy,proto3" json:"decided_by,omitempty"`
+	Reason        string `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PublishInboundMessageResponse) Reset() {
+	*x = PublishInboundMessageResponse{}
+	mi := &file_core_v1_core_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PublishInboundMessageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PublishInboundMessageResponse) ProtoMessage() {}
+
+func (x *PublishInboundMessageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PublishInboundMessageResponse.ProtoReflect.Descriptor instead.
+func (*PublishInboundMessageResponse) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *PublishInboundMessageResponse) GetAccepted() bool {
+	if x != nil {
+		return x.Accepted
+	}
+	return false
+}
+
+func (x *PublishInboundMessageResponse) GetDelivered() int32 {
+	if x != nil {
+		return x.Delivered
+	}
+	return 0
+}
+
+func (x *PublishInboundMessageResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *PublishInboundMessageResponse) GetShouldProcess() bool {
+	if x != nil {
+		return x.ShouldProcess
+	}
+	return false
+}
+
+func (x *PublishInboundMessageResponse) GetDecidedBy() string {
+	if x != nil {
+		return x.DecidedBy
+	}
+	return ""
+}
+
+func (x *PublishInboundMessageResponse) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// SubscribeMessagesRequest is the request for CoreService.SubscribeMessages.
+type SubscribeMessagesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// caller_id is the subscribing plugin id (Core fills it from the
+	// authenticated plugin identity).
+	CallerId string `protobuf:"bytes,1,opt,name=caller_id,json=callerId,proto3" json:"caller_id,omitempty"`
+	// replay_last requests that Core deliver the most recent matching message
+	// immediately on subscribe, so a plugin that reconnects can catch up. Zero
+	// (the default) starts from now.
+	ReplayLast    int32 `protobuf:"varint,2,opt,name=replay_last,json=replayLast,proto3" json:"replay_last,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubscribeMessagesRequest) Reset() {
+	*x = SubscribeMessagesRequest{}
+	mi := &file_core_v1_core_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubscribeMessagesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubscribeMessagesRequest) ProtoMessage() {}
+
+func (x *SubscribeMessagesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubscribeMessagesRequest.ProtoReflect.Descriptor instead.
+func (*SubscribeMessagesRequest) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *SubscribeMessagesRequest) GetCallerId() string {
+	if x != nil {
+		return x.CallerId
+	}
+	return ""
+}
+
+func (x *SubscribeMessagesRequest) GetReplayLast() int32 {
+	if x != nil {
+		return x.ReplayLast
+	}
+	return 0
+}
+
+// SubscribeMessagesResponse is one delivery on the CoreService.SubscribeMessages
+// stream. It wraps the message rather than streaming it bare so the RPC keeps
+// room to add per-delivery metadata without a breaking change.
+type SubscribeMessagesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// message is the inbound adapter message.
+	Message *v1.InboundMessage `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	// subscriber is the plugin id this delivery was addressed to. Echoed so a
+	// plugin that multiplexes several subscriptions can tell them apart.
+	Subscriber    string `protobuf:"bytes,2,opt,name=subscriber,proto3" json:"subscriber,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubscribeMessagesResponse) Reset() {
+	*x = SubscribeMessagesResponse{}
+	mi := &file_core_v1_core_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubscribeMessagesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubscribeMessagesResponse) ProtoMessage() {}
+
+func (x *SubscribeMessagesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubscribeMessagesResponse.ProtoReflect.Descriptor instead.
+func (*SubscribeMessagesResponse) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *SubscribeMessagesResponse) GetMessage() *v1.InboundMessage {
+	if x != nil {
+		return x.Message
+	}
+	return nil
+}
+
+func (x *SubscribeMessagesResponse) GetSubscriber() string {
+	if x != nil {
+		return x.Subscriber
+	}
+	return ""
+}
+
+// SendMessageRequest is the request for CoreService.SendMessage.
+type SendMessageRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// caller_id is the sending plugin id (Core fills it from the authenticated
+	// plugin identity).
+	CallerId string `protobuf:"bytes,1,opt,name=caller_id,json=callerId,proto3" json:"caller_id,omitempty"`
+	// adapter_id is the adapter to send through. Empty selects the only adapter
+	// the caller may use, and is an error when there is more than one.
+	AdapterId string `protobuf:"bytes,2,opt,name=adapter_id,json=adapterId,proto3" json:"adapter_id,omitempty"`
+	// conversation is the target: "group:<id>" or "private:<id>".
+	Conversation string `protobuf:"bytes,3,opt,name=conversation,proto3" json:"conversation,omitempty"`
+	// text is the message body.
+	Text string `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
+	// media lists attachment references to send alongside the text.
+	Media         []string `protobuf:"bytes,5,rep,name=media,proto3" json:"media,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendMessageRequest) Reset() {
+	*x = SendMessageRequest{}
+	mi := &file_core_v1_core_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendMessageRequest) ProtoMessage() {}
+
+func (x *SendMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendMessageRequest.ProtoReflect.Descriptor instead.
+func (*SendMessageRequest) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *SendMessageRequest) GetCallerId() string {
+	if x != nil {
+		return x.CallerId
+	}
+	return ""
+}
+
+func (x *SendMessageRequest) GetAdapterId() string {
+	if x != nil {
+		return x.AdapterId
+	}
+	return ""
+}
+
+func (x *SendMessageRequest) GetConversation() string {
+	if x != nil {
+		return x.Conversation
+	}
+	return ""
+}
+
+func (x *SendMessageRequest) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *SendMessageRequest) GetMedia() []string {
+	if x != nil {
+		return x.Media
+	}
+	return nil
+}
+
+// SendMessageResponse is the response for CoreService.SendMessage.
+type SendMessageResponse struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Success bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	// message_id is the adapter's id for the delivered message, when it has one.
+	MessageId string `protobuf:"bytes,2,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	// error is a human-readable error when success is false.
+	Error         string `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendMessageResponse) Reset() {
+	*x = SendMessageResponse{}
+	mi := &file_core_v1_core_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendMessageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendMessageResponse) ProtoMessage() {}
+
+func (x *SendMessageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendMessageResponse.ProtoReflect.Descriptor instead.
+func (*SendMessageResponse) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *SendMessageResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *SendMessageResponse) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+func (x *SendMessageResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+// ListAdaptersRequest is the request for CoreService.ListAdapters.
+type ListAdaptersRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// caller_id is the requesting plugin id (Core fills it from the
+	// authenticated plugin identity).
+	CallerId      string `protobuf:"bytes,1,opt,name=caller_id,json=callerId,proto3" json:"caller_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAdaptersRequest) Reset() {
+	*x = ListAdaptersRequest{}
+	mi := &file_core_v1_core_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAdaptersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAdaptersRequest) ProtoMessage() {}
+
+func (x *ListAdaptersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAdaptersRequest.ProtoReflect.Descriptor instead.
+func (*ListAdaptersRequest) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *ListAdaptersRequest) GetCallerId() string {
+	if x != nil {
+		return x.CallerId
+	}
+	return ""
+}
+
+// AdapterInfo describes one adapter instance Core knows about.
+type AdapterInfo struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// adapter_id is the stable instance id.
+	AdapterId string `protobuf:"bytes,1,opt,name=adapter_id,json=adapterId,proto3" json:"adapter_id,omitempty"`
+	// platform is the platform family ("onebot", "bilibili", …).
+	Platform string `protobuf:"bytes,2,opt,name=platform,proto3" json:"platform,omitempty"`
+	// name is the instance's display name.
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// owner_plugin is the plugin that reported messages for this adapter and
+	// therefore receives its outbound sends.
+	OwnerPlugin string `protobuf:"bytes,4,opt,name=owner_plugin,json=ownerPlugin,proto3" json:"owner_plugin,omitempty"`
+	// can_read is true when the caller's declared permissions cover reading
+	// this adapter.
+	CanRead bool `protobuf:"varint,5,opt,name=can_read,json=canRead,proto3" json:"can_read,omitempty"`
+	// can_send is true when the caller's declared permissions cover sending
+	// through this adapter.
+	CanSend bool `protobuf:"varint,6,opt,name=can_send,json=canSend,proto3" json:"can_send,omitempty"`
+	// conversations are the conversations the caller may address on this
+	// adapter, when the caller may send. Empty when can_send is false.
+	Conversations []*ConversationInfo `protobuf:"bytes,7,rep,name=conversations,proto3" json:"conversations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdapterInfo) Reset() {
+	*x = AdapterInfo{}
+	mi := &file_core_v1_core_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdapterInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdapterInfo) ProtoMessage() {}
+
+func (x *AdapterInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdapterInfo.ProtoReflect.Descriptor instead.
+func (*AdapterInfo) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *AdapterInfo) GetAdapterId() string {
+	if x != nil {
+		return x.AdapterId
+	}
+	return ""
+}
+
+func (x *AdapterInfo) GetPlatform() string {
+	if x != nil {
+		return x.Platform
+	}
+	return ""
+}
+
+func (x *AdapterInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AdapterInfo) GetOwnerPlugin() string {
+	if x != nil {
+		return x.OwnerPlugin
+	}
+	return ""
+}
+
+func (x *AdapterInfo) GetCanRead() bool {
+	if x != nil {
+		return x.CanRead
+	}
+	return false
+}
+
+func (x *AdapterInfo) GetCanSend() bool {
+	if x != nil {
+		return x.CanSend
+	}
+	return false
+}
+
+func (x *AdapterInfo) GetConversations() []*ConversationInfo {
+	if x != nil {
+		return x.Conversations
+	}
+	return nil
+}
+
+// ConversationInfo is one addressable conversation on an adapter.
+type ConversationInfo struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// conversation is the addressing key: "group:<id>" or "private:<id>".
+	Conversation string `protobuf:"bytes,1,opt,name=conversation,proto3" json:"conversation,omitempty"`
+	// kind is "group" or "private".
+	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
+	// name is the group / peer display name when known.
+	Name          string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConversationInfo) Reset() {
+	*x = ConversationInfo{}
+	mi := &file_core_v1_core_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConversationInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConversationInfo) ProtoMessage() {}
+
+func (x *ConversationInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConversationInfo.ProtoReflect.Descriptor instead.
+func (*ConversationInfo) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *ConversationInfo) GetConversation() string {
+	if x != nil {
+		return x.Conversation
+	}
+	return ""
+}
+
+func (x *ConversationInfo) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *ConversationInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+// ListAdaptersResponse is the response for CoreService.ListAdapters.
+type ListAdaptersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Adapters      []*AdapterInfo         `protobuf:"bytes,1,rep,name=adapters,proto3" json:"adapters,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAdaptersResponse) Reset() {
+	*x = ListAdaptersResponse{}
+	mi := &file_core_v1_core_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAdaptersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAdaptersResponse) ProtoMessage() {}
+
+func (x *ListAdaptersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_core_v1_core_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAdaptersResponse.ProtoReflect.Descriptor instead.
+func (*ListAdaptersResponse) Descriptor() ([]byte, []int) {
+	return file_core_v1_core_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *ListAdaptersResponse) GetAdapters() []*AdapterInfo {
+	if x != nil {
+		return x.Adapters
+	}
+	return nil
+}
+
 // MocrContext provides additional context for model selection.
 type MocrContext struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1768,7 +2451,7 @@ type MocrContext struct {
 
 func (x *MocrContext) Reset() {
 	*x = MocrContext{}
-	mi := &file_core_v1_core_proto_msgTypes[24]
+	mi := &file_core_v1_core_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1780,7 +2463,7 @@ func (x *MocrContext) String() string {
 func (*MocrContext) ProtoMessage() {}
 
 func (x *MocrContext) ProtoReflect() protoreflect.Message {
-	mi := &file_core_v1_core_proto_msgTypes[24]
+	mi := &file_core_v1_core_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1793,7 +2476,7 @@ func (x *MocrContext) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MocrContext.ProtoReflect.Descriptor instead.
 func (*MocrContext) Descriptor() ([]byte, []int) {
-	return file_core_v1_core_proto_rawDescGZIP(), []int{24}
+	return file_core_v1_core_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *MocrContext) GetDifficultyHint() float64 {
@@ -1846,7 +2529,7 @@ type TokenUsage struct {
 
 func (x *TokenUsage) Reset() {
 	*x = TokenUsage{}
-	mi := &file_core_v1_core_proto_msgTypes[25]
+	mi := &file_core_v1_core_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1858,7 +2541,7 @@ func (x *TokenUsage) String() string {
 func (*TokenUsage) ProtoMessage() {}
 
 func (x *TokenUsage) ProtoReflect() protoreflect.Message {
-	mi := &file_core_v1_core_proto_msgTypes[25]
+	mi := &file_core_v1_core_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1871,7 +2554,7 @@ func (x *TokenUsage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenUsage.ProtoReflect.Descriptor instead.
 func (*TokenUsage) Descriptor() ([]byte, []int) {
-	return file_core_v1_core_proto_rawDescGZIP(), []int{25}
+	return file_core_v1_core_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *TokenUsage) GetPromptTokens() int32 {
@@ -2028,7 +2711,56 @@ const file_core_v1_core_proto_rawDesc = "" +
 	"\x16CallPluginToolResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x16\n" +
 	"\x06result\x18\x02 \x01(\tR\x06result\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error\"\xb5\x01\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"p\n" +
+	"\x1cPublishInboundMessageRequest\x12\x1b\n" +
+	"\tcaller_id\x18\x01 \x01(\tR\bcallerId\x123\n" +
+	"\amessage\x18\x02 \x01(\v2\x19.plugin.v1.InboundMessageR\amessage\"\xcd\x01\n" +
+	"\x1dPublishInboundMessageResponse\x12\x1a\n" +
+	"\baccepted\x18\x01 \x01(\bR\baccepted\x12\x1c\n" +
+	"\tdelivered\x18\x02 \x01(\x05R\tdelivered\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\x12%\n" +
+	"\x0eshould_process\x18\x04 \x01(\bR\rshouldProcess\x12\x1d\n" +
+	"\n" +
+	"decided_by\x18\x05 \x01(\tR\tdecidedBy\x12\x16\n" +
+	"\x06reason\x18\x06 \x01(\tR\x06reason\"X\n" +
+	"\x18SubscribeMessagesRequest\x12\x1b\n" +
+	"\tcaller_id\x18\x01 \x01(\tR\bcallerId\x12\x1f\n" +
+	"\vreplay_last\x18\x02 \x01(\x05R\n" +
+	"replayLast\"p\n" +
+	"\x19SubscribeMessagesResponse\x123\n" +
+	"\amessage\x18\x01 \x01(\v2\x19.plugin.v1.InboundMessageR\amessage\x12\x1e\n" +
+	"\n" +
+	"subscriber\x18\x02 \x01(\tR\n" +
+	"subscriber\"\x9e\x01\n" +
+	"\x12SendMessageRequest\x12\x1b\n" +
+	"\tcaller_id\x18\x01 \x01(\tR\bcallerId\x12\x1d\n" +
+	"\n" +
+	"adapter_id\x18\x02 \x01(\tR\tadapterId\x12\"\n" +
+	"\fconversation\x18\x03 \x01(\tR\fconversation\x12\x12\n" +
+	"\x04text\x18\x04 \x01(\tR\x04text\x12\x14\n" +
+	"\x05media\x18\x05 \x03(\tR\x05media\"d\n" +
+	"\x13SendMessageResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\x02 \x01(\tR\tmessageId\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"2\n" +
+	"\x13ListAdaptersRequest\x12\x1b\n" +
+	"\tcaller_id\x18\x01 \x01(\tR\bcallerId\"\xf6\x01\n" +
+	"\vAdapterInfo\x12\x1d\n" +
+	"\n" +
+	"adapter_id\x18\x01 \x01(\tR\tadapterId\x12\x1a\n" +
+	"\bplatform\x18\x02 \x01(\tR\bplatform\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12!\n" +
+	"\fowner_plugin\x18\x04 \x01(\tR\vownerPlugin\x12\x19\n" +
+	"\bcan_read\x18\x05 \x01(\bR\acanRead\x12\x19\n" +
+	"\bcan_send\x18\x06 \x01(\bR\acanSend\x12?\n" +
+	"\rconversations\x18\a \x03(\v2\x19.core.v1.ConversationInfoR\rconversations\"^\n" +
+	"\x10ConversationInfo\x12\"\n" +
+	"\fconversation\x18\x01 \x01(\tR\fconversation\x12\x12\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"H\n" +
+	"\x14ListAdaptersResponse\x120\n" +
+	"\badapters\x18\x01 \x03(\v2\x14.core.v1.AdapterInfoR\badapters\"\xb5\x01\n" +
 	"\vMocrContext\x12'\n" +
 	"\x0fdifficulty_hint\x18\x01 \x01(\x01R\x0edifficultyHint\x12\x1d\n" +
 	"\n" +
@@ -2049,7 +2781,7 @@ const file_core_v1_core_proto_rawDesc = "" +
 	"\x17PLUGIN_STATUS_UNHEALTHY\x10\x032\x94\x01\n" +
 	"\rPluginService\x12?\n" +
 	"\bRegister\x12\x18.core.v1.RegisterRequest\x1a\x19.core.v1.RegisterResponse\x12B\n" +
-	"\tHeartbeat\x12\x19.core.v1.HeartbeatRequest\x1a\x1a.core.v1.HeartbeatResponse2\xca\x04\n" +
+	"\tHeartbeat\x12\x19.core.v1.HeartbeatRequest\x1a\x1a.core.v1.HeartbeatResponse2\xa7\a\n" +
 	"\vCoreService\x12A\n" +
 	"\bCallMocr\x12\x18.core.v1.CallMocrRequest\x1a\x19.core.v1.CallMocrResponse0\x01\x12?\n" +
 	"\bUseAgent\x12\x18.core.v1.UseAgentRequest\x1a\x19.core.v1.UseAgentResponse\x12H\n" +
@@ -2059,7 +2791,11 @@ const file_core_v1_core_proto_rawDesc = "" +
 	"\tRunDirect\x12\x19.core.v1.RunDirectRequest\x1a\x1a.core.v1.RunDirectResponse\x129\n" +
 	"\x06Egress\x12\x16.core.v1.EgressRequest\x1a\x17.core.v1.EgressResponse\x12T\n" +
 	"\x0fListPluginTools\x12\x1f.core.v1.ListPluginToolsRequest\x1a .core.v1.ListPluginToolsResponse\x12Q\n" +
-	"\x0eCallPluginTool\x12\x1e.core.v1.CallPluginToolRequest\x1a\x1f.core.v1.CallPluginToolResponseBL\n" +
+	"\x0eCallPluginTool\x12\x1e.core.v1.CallPluginToolRequest\x1a\x1f.core.v1.CallPluginToolResponse\x12f\n" +
+	"\x15PublishInboundMessage\x12%.core.v1.PublishInboundMessageRequest\x1a&.core.v1.PublishInboundMessageResponse\x12\\\n" +
+	"\x11SubscribeMessages\x12!.core.v1.SubscribeMessagesRequest\x1a\".core.v1.SubscribeMessagesResponse0\x01\x12H\n" +
+	"\vSendMessage\x12\x1b.core.v1.SendMessageRequest\x1a\x1c.core.v1.SendMessageResponse\x12K\n" +
+	"\fListAdapters\x12\x1c.core.v1.ListAdaptersRequest\x1a\x1d.core.v1.ListAdaptersResponseBL\n" +
 	"\x13ai.zero.kay.core.v1P\x01Z\x170kay/gen/core/v1;corev1\xa2\x02\x06ZKCore\xaa\x02\x10Zero.Kay.Core.V1b\x06proto3"
 
 var (
@@ -2075,83 +2811,106 @@ func file_core_v1_core_proto_rawDescGZIP() []byte {
 }
 
 var file_core_v1_core_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_core_v1_core_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_core_v1_core_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
 var file_core_v1_core_proto_goTypes = []any{
-	(PluginStatus)(0),               // 0: core.v1.PluginStatus
-	(*RegisterRequest)(nil),         // 1: core.v1.RegisterRequest
-	(*RegisterResponse)(nil),        // 2: core.v1.RegisterResponse
-	(*HeartbeatRequest)(nil),        // 3: core.v1.HeartbeatRequest
-	(*HostInfo)(nil),                // 4: core.v1.HostInfo
-	(*HeartbeatResponse)(nil),       // 5: core.v1.HeartbeatResponse
-	(*CallMocrRequest)(nil),         // 6: core.v1.CallMocrRequest
-	(*ChatMessage)(nil),             // 7: core.v1.ChatMessage
-	(*CallMocrResponse)(nil),        // 8: core.v1.CallMocrResponse
-	(*UseAgentRequest)(nil),         // 9: core.v1.UseAgentRequest
-	(*UseAgentResponse)(nil),        // 10: core.v1.UseAgentResponse
-	(*CancelAgentRequest)(nil),      // 11: core.v1.CancelAgentRequest
-	(*CancelAgentResponse)(nil),     // 12: core.v1.CancelAgentResponse
-	(*ListAgentsRequest)(nil),       // 13: core.v1.ListAgentsRequest
-	(*ListAgentsResponse)(nil),      // 14: core.v1.ListAgentsResponse
-	(*AgentInfo)(nil),               // 15: core.v1.AgentInfo
-	(*RunDirectRequest)(nil),        // 16: core.v1.RunDirectRequest
-	(*RunDirectResponse)(nil),       // 17: core.v1.RunDirectResponse
-	(*EgressRequest)(nil),           // 18: core.v1.EgressRequest
-	(*EgressResponse)(nil),          // 19: core.v1.EgressResponse
-	(*ListPluginToolsRequest)(nil),  // 20: core.v1.ListPluginToolsRequest
-	(*PluginToolEntry)(nil),         // 21: core.v1.PluginToolEntry
-	(*ListPluginToolsResponse)(nil), // 22: core.v1.ListPluginToolsResponse
-	(*CallPluginToolRequest)(nil),   // 23: core.v1.CallPluginToolRequest
-	(*CallPluginToolResponse)(nil),  // 24: core.v1.CallPluginToolResponse
-	(*MocrContext)(nil),             // 25: core.v1.MocrContext
-	(*TokenUsage)(nil),              // 26: core.v1.TokenUsage
-	nil,                             // 27: core.v1.UseAgentRequest.MetadataEntry
-	nil,                             // 28: core.v1.EgressRequest.HeadersEntry
-	nil,                             // 29: core.v1.EgressResponse.HeadersEntry
-	(*v1.PluginInfo)(nil),           // 30: plugin.v1.PluginInfo
-	(*v1.SettingsSection)(nil),      // 31: plugin.v1.SettingsSection
-	(*v1.PluginTool)(nil),           // 32: plugin.v1.PluginTool
+	(PluginStatus)(0),                     // 0: core.v1.PluginStatus
+	(*RegisterRequest)(nil),               // 1: core.v1.RegisterRequest
+	(*RegisterResponse)(nil),              // 2: core.v1.RegisterResponse
+	(*HeartbeatRequest)(nil),              // 3: core.v1.HeartbeatRequest
+	(*HostInfo)(nil),                      // 4: core.v1.HostInfo
+	(*HeartbeatResponse)(nil),             // 5: core.v1.HeartbeatResponse
+	(*CallMocrRequest)(nil),               // 6: core.v1.CallMocrRequest
+	(*ChatMessage)(nil),                   // 7: core.v1.ChatMessage
+	(*CallMocrResponse)(nil),              // 8: core.v1.CallMocrResponse
+	(*UseAgentRequest)(nil),               // 9: core.v1.UseAgentRequest
+	(*UseAgentResponse)(nil),              // 10: core.v1.UseAgentResponse
+	(*CancelAgentRequest)(nil),            // 11: core.v1.CancelAgentRequest
+	(*CancelAgentResponse)(nil),           // 12: core.v1.CancelAgentResponse
+	(*ListAgentsRequest)(nil),             // 13: core.v1.ListAgentsRequest
+	(*ListAgentsResponse)(nil),            // 14: core.v1.ListAgentsResponse
+	(*AgentInfo)(nil),                     // 15: core.v1.AgentInfo
+	(*RunDirectRequest)(nil),              // 16: core.v1.RunDirectRequest
+	(*RunDirectResponse)(nil),             // 17: core.v1.RunDirectResponse
+	(*EgressRequest)(nil),                 // 18: core.v1.EgressRequest
+	(*EgressResponse)(nil),                // 19: core.v1.EgressResponse
+	(*ListPluginToolsRequest)(nil),        // 20: core.v1.ListPluginToolsRequest
+	(*PluginToolEntry)(nil),               // 21: core.v1.PluginToolEntry
+	(*ListPluginToolsResponse)(nil),       // 22: core.v1.ListPluginToolsResponse
+	(*CallPluginToolRequest)(nil),         // 23: core.v1.CallPluginToolRequest
+	(*CallPluginToolResponse)(nil),        // 24: core.v1.CallPluginToolResponse
+	(*PublishInboundMessageRequest)(nil),  // 25: core.v1.PublishInboundMessageRequest
+	(*PublishInboundMessageResponse)(nil), // 26: core.v1.PublishInboundMessageResponse
+	(*SubscribeMessagesRequest)(nil),      // 27: core.v1.SubscribeMessagesRequest
+	(*SubscribeMessagesResponse)(nil),     // 28: core.v1.SubscribeMessagesResponse
+	(*SendMessageRequest)(nil),            // 29: core.v1.SendMessageRequest
+	(*SendMessageResponse)(nil),           // 30: core.v1.SendMessageResponse
+	(*ListAdaptersRequest)(nil),           // 31: core.v1.ListAdaptersRequest
+	(*AdapterInfo)(nil),                   // 32: core.v1.AdapterInfo
+	(*ConversationInfo)(nil),              // 33: core.v1.ConversationInfo
+	(*ListAdaptersResponse)(nil),          // 34: core.v1.ListAdaptersResponse
+	(*MocrContext)(nil),                   // 35: core.v1.MocrContext
+	(*TokenUsage)(nil),                    // 36: core.v1.TokenUsage
+	nil,                                   // 37: core.v1.UseAgentRequest.MetadataEntry
+	nil,                                   // 38: core.v1.EgressRequest.HeadersEntry
+	nil,                                   // 39: core.v1.EgressResponse.HeadersEntry
+	(*v1.PluginInfo)(nil),                 // 40: plugin.v1.PluginInfo
+	(*v1.SettingsSection)(nil),            // 41: plugin.v1.SettingsSection
+	(*v1.PluginTool)(nil),                 // 42: plugin.v1.PluginTool
+	(*v1.InboundMessage)(nil),             // 43: plugin.v1.InboundMessage
 }
 var file_core_v1_core_proto_depIdxs = []int32{
-	30, // 0: core.v1.RegisterRequest.plugin_info:type_name -> plugin.v1.PluginInfo
-	31, // 1: core.v1.RegisterRequest.settings_sections:type_name -> plugin.v1.SettingsSection
+	40, // 0: core.v1.RegisterRequest.plugin_info:type_name -> plugin.v1.PluginInfo
+	41, // 1: core.v1.RegisterRequest.settings_sections:type_name -> plugin.v1.SettingsSection
 	0,  // 2: core.v1.HeartbeatRequest.status:type_name -> core.v1.PluginStatus
 	4,  // 3: core.v1.HeartbeatRequest.host:type_name -> core.v1.HostInfo
-	25, // 4: core.v1.CallMocrRequest.context:type_name -> core.v1.MocrContext
+	35, // 4: core.v1.CallMocrRequest.context:type_name -> core.v1.MocrContext
 	7,  // 5: core.v1.CallMocrRequest.messages:type_name -> core.v1.ChatMessage
-	26, // 6: core.v1.CallMocrResponse.usage:type_name -> core.v1.TokenUsage
-	27, // 7: core.v1.UseAgentRequest.metadata:type_name -> core.v1.UseAgentRequest.MetadataEntry
+	36, // 6: core.v1.CallMocrResponse.usage:type_name -> core.v1.TokenUsage
+	37, // 7: core.v1.UseAgentRequest.metadata:type_name -> core.v1.UseAgentRequest.MetadataEntry
 	15, // 8: core.v1.ListAgentsResponse.agents:type_name -> core.v1.AgentInfo
 	0,  // 9: core.v1.AgentInfo.status:type_name -> core.v1.PluginStatus
 	4,  // 10: core.v1.AgentInfo.host:type_name -> core.v1.HostInfo
-	28, // 11: core.v1.EgressRequest.headers:type_name -> core.v1.EgressRequest.HeadersEntry
-	29, // 12: core.v1.EgressResponse.headers:type_name -> core.v1.EgressResponse.HeadersEntry
-	32, // 13: core.v1.PluginToolEntry.tool:type_name -> plugin.v1.PluginTool
+	38, // 11: core.v1.EgressRequest.headers:type_name -> core.v1.EgressRequest.HeadersEntry
+	39, // 12: core.v1.EgressResponse.headers:type_name -> core.v1.EgressResponse.HeadersEntry
+	42, // 13: core.v1.PluginToolEntry.tool:type_name -> plugin.v1.PluginTool
 	21, // 14: core.v1.ListPluginToolsResponse.tools:type_name -> core.v1.PluginToolEntry
-	1,  // 15: core.v1.PluginService.Register:input_type -> core.v1.RegisterRequest
-	3,  // 16: core.v1.PluginService.Heartbeat:input_type -> core.v1.HeartbeatRequest
-	6,  // 17: core.v1.CoreService.CallMocr:input_type -> core.v1.CallMocrRequest
-	9,  // 18: core.v1.CoreService.UseAgent:input_type -> core.v1.UseAgentRequest
-	11, // 19: core.v1.CoreService.CancelAgent:input_type -> core.v1.CancelAgentRequest
-	13, // 20: core.v1.CoreService.ListAgents:input_type -> core.v1.ListAgentsRequest
-	16, // 21: core.v1.CoreService.RunDirect:input_type -> core.v1.RunDirectRequest
-	18, // 22: core.v1.CoreService.Egress:input_type -> core.v1.EgressRequest
-	20, // 23: core.v1.CoreService.ListPluginTools:input_type -> core.v1.ListPluginToolsRequest
-	23, // 24: core.v1.CoreService.CallPluginTool:input_type -> core.v1.CallPluginToolRequest
-	2,  // 25: core.v1.PluginService.Register:output_type -> core.v1.RegisterResponse
-	5,  // 26: core.v1.PluginService.Heartbeat:output_type -> core.v1.HeartbeatResponse
-	8,  // 27: core.v1.CoreService.CallMocr:output_type -> core.v1.CallMocrResponse
-	10, // 28: core.v1.CoreService.UseAgent:output_type -> core.v1.UseAgentResponse
-	12, // 29: core.v1.CoreService.CancelAgent:output_type -> core.v1.CancelAgentResponse
-	14, // 30: core.v1.CoreService.ListAgents:output_type -> core.v1.ListAgentsResponse
-	17, // 31: core.v1.CoreService.RunDirect:output_type -> core.v1.RunDirectResponse
-	19, // 32: core.v1.CoreService.Egress:output_type -> core.v1.EgressResponse
-	22, // 33: core.v1.CoreService.ListPluginTools:output_type -> core.v1.ListPluginToolsResponse
-	24, // 34: core.v1.CoreService.CallPluginTool:output_type -> core.v1.CallPluginToolResponse
-	25, // [25:35] is the sub-list for method output_type
-	15, // [15:25] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	43, // 15: core.v1.PublishInboundMessageRequest.message:type_name -> plugin.v1.InboundMessage
+	43, // 16: core.v1.SubscribeMessagesResponse.message:type_name -> plugin.v1.InboundMessage
+	33, // 17: core.v1.AdapterInfo.conversations:type_name -> core.v1.ConversationInfo
+	32, // 18: core.v1.ListAdaptersResponse.adapters:type_name -> core.v1.AdapterInfo
+	1,  // 19: core.v1.PluginService.Register:input_type -> core.v1.RegisterRequest
+	3,  // 20: core.v1.PluginService.Heartbeat:input_type -> core.v1.HeartbeatRequest
+	6,  // 21: core.v1.CoreService.CallMocr:input_type -> core.v1.CallMocrRequest
+	9,  // 22: core.v1.CoreService.UseAgent:input_type -> core.v1.UseAgentRequest
+	11, // 23: core.v1.CoreService.CancelAgent:input_type -> core.v1.CancelAgentRequest
+	13, // 24: core.v1.CoreService.ListAgents:input_type -> core.v1.ListAgentsRequest
+	16, // 25: core.v1.CoreService.RunDirect:input_type -> core.v1.RunDirectRequest
+	18, // 26: core.v1.CoreService.Egress:input_type -> core.v1.EgressRequest
+	20, // 27: core.v1.CoreService.ListPluginTools:input_type -> core.v1.ListPluginToolsRequest
+	23, // 28: core.v1.CoreService.CallPluginTool:input_type -> core.v1.CallPluginToolRequest
+	25, // 29: core.v1.CoreService.PublishInboundMessage:input_type -> core.v1.PublishInboundMessageRequest
+	27, // 30: core.v1.CoreService.SubscribeMessages:input_type -> core.v1.SubscribeMessagesRequest
+	29, // 31: core.v1.CoreService.SendMessage:input_type -> core.v1.SendMessageRequest
+	31, // 32: core.v1.CoreService.ListAdapters:input_type -> core.v1.ListAdaptersRequest
+	2,  // 33: core.v1.PluginService.Register:output_type -> core.v1.RegisterResponse
+	5,  // 34: core.v1.PluginService.Heartbeat:output_type -> core.v1.HeartbeatResponse
+	8,  // 35: core.v1.CoreService.CallMocr:output_type -> core.v1.CallMocrResponse
+	10, // 36: core.v1.CoreService.UseAgent:output_type -> core.v1.UseAgentResponse
+	12, // 37: core.v1.CoreService.CancelAgent:output_type -> core.v1.CancelAgentResponse
+	14, // 38: core.v1.CoreService.ListAgents:output_type -> core.v1.ListAgentsResponse
+	17, // 39: core.v1.CoreService.RunDirect:output_type -> core.v1.RunDirectResponse
+	19, // 40: core.v1.CoreService.Egress:output_type -> core.v1.EgressResponse
+	22, // 41: core.v1.CoreService.ListPluginTools:output_type -> core.v1.ListPluginToolsResponse
+	24, // 42: core.v1.CoreService.CallPluginTool:output_type -> core.v1.CallPluginToolResponse
+	26, // 43: core.v1.CoreService.PublishInboundMessage:output_type -> core.v1.PublishInboundMessageResponse
+	28, // 44: core.v1.CoreService.SubscribeMessages:output_type -> core.v1.SubscribeMessagesResponse
+	30, // 45: core.v1.CoreService.SendMessage:output_type -> core.v1.SendMessageResponse
+	34, // 46: core.v1.CoreService.ListAdapters:output_type -> core.v1.ListAdaptersResponse
+	33, // [33:47] is the sub-list for method output_type
+	19, // [19:33] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_core_v1_core_proto_init() }
@@ -2165,7 +2924,7 @@ func file_core_v1_core_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_core_v1_core_proto_rawDesc), len(file_core_v1_core_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   29,
+			NumMessages:   39,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

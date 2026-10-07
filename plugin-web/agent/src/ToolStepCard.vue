@@ -1,23 +1,26 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { TaskRow } from './store'
-import { locale } from './locale'
+import { i18n, uid } from '@0kay/host'
 
 const props = defineProps<{ step: TaskRow; formatError?: (message?: string) => string }>()
 const emit = defineEmits<{ open: [path: string] }>()
-const tr = (zh: string, en: string) => (locale.value === 'en' ? en : zh)
+const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {})
 
 const open = ref(false)
 const searchOpen = ref(false)
 const copied = ref(false)
 let copyTimer: ReturnType<typeof setTimeout> | null = null
+// ids for aria-controls: the collapsible body and the teleported search dialog
+const bodyId = uid('tool-body')
+const searchDialogId = uid('tool-dialog')
 
 const tool = computed(() => (props.step.prompt || '').trim() || 'tool')
 const isSearch = computed(() => ['websearch', 'web_search', 'search', 'papersearch', 'apidocsearch', 'apidoc_search'].includes(tool.value))
 const searchKind = computed(() => {
-  if (tool.value === 'papersearch') return tr('论文搜索', 'Paper search')
-  if (tool.value === 'apidocsearch' || tool.value === 'apidoc_search') return tr('API 文档搜索', 'API docs search')
-  return tr('搜索', 'Search')
+  if (tool.value === 'papersearch') return t('agent.tool.paperSearch')
+  if (tool.value === 'apidocsearch' || tool.value === 'apidoc_search') return t('agent.tool.apiDocsSearch')
+  return t('agent.tool.search')
 })
 
 const args = computed<any | null>(() => {
@@ -71,36 +74,40 @@ async function copyResult() {
 
 const label = computed(() => {
   switch (tool.value) {
-    case 'websearch': case 'web_search': case 'search': return tr('搜索', 'Search')
-    case 'papersearch': return tr('论文', 'Paper')
-    case 'apidocsearch': case 'apidoc_search': return tr('API 文档', 'API docs')
+    case 'websearch': case 'web_search': case 'search': return t('agent.tool.search')
+    case 'papersearch': return t('agent.tool.paper')
+    case 'apidocsearch': case 'apidoc_search': return t('agent.tool.apiDocs')
     case 'bash': return 'Bash'
-    case 'write': return tr('写入', 'Write')
-    case 'edit': case 'apply_patch': return tr('编辑', 'Edit')
-    case 'read': return tr('读取', 'Read')
-    case 'webfetch': return tr('请求', 'Fetch')
-    case 'todowrite': return tr('待办', 'Todo')
-    case 'task': return tr('子任务', 'Subtask')
-    case 'skills_admin': case 'skill': return tr('技能', 'Skill')
-    case 'computeruse': return tr('电脑操作', 'Computer')
-    case 'research': return tr('研究', 'Research')
-    case 'document': return tr('文档', 'Document')
-    case 'slides': return tr('幻灯片', 'Slides')
-    case 'browser': return tr('浏览器', 'Browser')
-    case 'glob': return tr('文件匹配', 'Glob')
-    case 'grep': return tr('内容搜索', 'Grep')
+    case 'write': return t('agent.tool.write')
+    case 'edit': case 'apply_patch': return t('agent.tool.edit')
+    case 'read': return t('agent.tool.read')
+    case 'webfetch': return t('agent.tool.fetch')
+    case 'todowrite': return t('agent.tool.todo')
+    case 'task': return t('agent.tool.subtask')
+    case 'skills_admin': case 'skill': return t('agent.tool.skill')
+    case 'computeruse': return t('agent.tool.computer')
+    case 'research': return t('agent.tool.research')
+    case 'document': return t('agent.tool.document')
+    case 'slides': return t('agent.tool.slides')
+    case 'browser': return t('agent.tool.browser')
+    case 'glob': return t('agent.tool.glob')
+    case 'grep': return t('agent.tool.grep')
     case 'mcp': return 'MCP'
-    case 'compress_context': return tr('压缩上下文', 'Compress')
-    case 'decompress_context': return tr('展开上下文', 'Expand')
-    case 'search_context': return tr('检索上下文', 'Search context')
-    case 'acp_status': return tr('状态', 'Status')
-    default: return tr('工具', 'Tool')
+    case 'compress_context': return t('agent.tool.compressContext')
+    case 'decompress_context': return t('agent.tool.expandContext')
+    case 'search_context': return t('agent.tool.searchContext')
+    case 'acp_status': return t('agent.tool.status')
+    default: return t('agent.tool.tool')
   }
 })
 
-const stateName = (value: string) => (locale.value === 'en'
-  ? { pending: 'Queued', running: 'Running', done: 'Completed', failed: 'Failed', cancelled: 'Stopped' }
-  : { pending: '等待执行', running: '执行中', done: '完成', failed: '失败', cancelled: '已停止' })[value] || value
+const stateName = (value: string) => ({
+  pending: t('agent.tool.statePending'),
+  running: t('agent.tool.stateRunning'),
+  done: t('agent.tool.stateDone'),
+  failed: t('agent.tool.stateFailed'),
+  cancelled: t('agent.tool.stateCancelled'),
+} as Record<string, string>)[value] || value
 
 function countDiff(text: unknown) {
   let added = 0
@@ -117,7 +124,7 @@ const diffStat = computed(() => {
   const name = tool.value
   const data = inner.value
   if (!data) return ''
-  if (name === 'write') return typeof data.lines === 'number' ? `+${data.lines} ${tr('行', 'lines')}` : ''
+  if (name === 'write') return typeof data.lines === 'number' ? `+${data.lines} ${t('agent.tool.lines')}` : ''
   if (name === 'edit') {
     const { added, removed } = countDiff(data.diff)
     return added || removed ? `+${added} −${removed}` : ''
@@ -210,11 +217,11 @@ const summary = computed(() => {
   if (isSearch.value) {
     const query = clip(String(d?.query ?? a?.query ?? ''))
     const count = Array.isArray(d?.results) ? d.results.length : 0
-    return query + (count ? ` · ${count} ${tr('条结果', 'results')}` : '')
+    return query + (count ? ` · ${count} ${t('agent.tool.results')}` : '')
   }
   if (name === 'bash') {
     const command = clip(String(a?.command ?? ''))
-    const exit = d && d.exitCode !== undefined && props.step.state !== 'running' ? ` · ${tr('退出码', 'exit')} ${d.exitCode}` : ''
+    const exit = d && d.exitCode !== undefined && props.step.state !== 'running' ? ` · ${t('agent.tool.exit')} ${d.exitCode}` : ''
     return command + exit
   }
   if (name === 'webfetch') {
@@ -235,7 +242,7 @@ const summary = computed(() => {
     const total = list.length
     const done = list.filter((item: any) => item?.status === 'completed').length
     const running = list.filter((item: any) => item?.status === 'in_progress').length
-    return `${total} ${tr('项', 'items')} · ${tr('完成', 'done')} ${done}${running ? ` · ${tr('进行中', 'running')} ${running}` : ''}`
+    return `${total} ${t('agent.tool.items')} · ${t('agent.tool.done')} ${done}${running ? ` · ${t('agent.tool.inProgress')} ${running}` : ''}`
   }
   if (name === 'glob' || name === 'grep') return clip(String(a?.pattern ?? a?.query ?? ''))
   if (name === 'search_context') return clip(String(a?.query ?? a?.q ?? ''))
@@ -249,7 +256,7 @@ const summary = computed(() => {
     const action = String(a?.action ?? d?.action ?? '')
     const position = a && a.x !== undefined ? ` (${a.x}, ${a.y})` : ''
     const dims = d?.width && d?.height ? ` · ${d.width}×${d.height}` : ''
-    const count = Array.isArray(d?.windows) ? ` · ${d.windows.length} ${tr('个窗口', 'windows')}` : ''
+    const count = Array.isArray(d?.windows) ? ` · ${d.windows.length} ${t('agent.tool.windows')}` : ''
     return clip(`${action}${position}${dims}${count}`)
   }
   if (a && Object.keys(a).length) { try { return clip(JSON.stringify(a)) } catch { /* fall through */ } }
@@ -275,28 +282,28 @@ const sections = computed<Section[]>(() => {
   if (['document', 'slides', 'research'].includes(name) && producedFiles.value.length) return []
   if (name === 'computeruse' && screenshot.value) return []
   if (name === 'bash' && d) {
-    const out: Section[] = [{ label: tr('工作目录', 'cwd'), text: String(d.cwd || '') }]
+    const out: Section[] = [{ label: t('agent.tool.cwd'), text: String(d.cwd || '') }]
     if (d.stdout) out.push({ label: 'stdout', text: String(d.stdout), mono: true })
     if (d.stderr) out.push({ label: 'stderr', text: String(d.stderr), mono: true })
-    if (!d.stdout && !d.stderr) out.push({ label: '', text: tr('（无输出）', '(no output)') })
+    if (!d.stdout && !d.stderr) out.push({ label: '', text: t('agent.tool.noOutput') })
     return out
   }
   if (name === 'write' && d) {
-    const out: Section[] = [{ label: tr('文件', 'File'), text: String(d.path || '') }]
-    out.push({ label: tr('内容', 'Content'), text: `${typeof d.lines === 'number' ? d.lines : '—'} ${tr('行', 'lines')}${d.created ? ` · ${tr('新建文件', 'created')}` : ''} · ${d.bytes ?? '—'} B` })
+    const out: Section[] = [{ label: t('agent.tool.file'), text: String(d.path || '') }]
+    out.push({ label: t('agent.tool.content'), text: `${typeof d.lines === 'number' ? d.lines : '—'} ${t('agent.tool.lines')}${d.created ? ` · ${t('agent.tool.created')}` : ''} · ${d.bytes ?? '—'} B` })
     return out
   }
   // edit / apply_patch render a colored diff (see diffFiles) instead of raw text.
   if (name === 'edit' || name === 'apply_patch') return []
   if (name === 'read' && d) {
-    const out: Section[] = [{ label: tr('文件', 'File'), text: String(d.path || '') }]
-    out.push({ label: `${tr('第', 'line')} ${d.offset ?? '—'} ${tr('行起', 'onward')}`, text: String(d.content || ''), mono: true })
+    const out: Section[] = [{ label: t('agent.tool.file'), text: String(d.path || '') }]
+    out.push({ label: `${t('agent.tool.line')} ${d.offset ?? '—'} ${t('agent.tool.onward')}`, text: String(d.content || ''), mono: true })
     return out
   }
   if (name === 'webfetch' && d) {
     return [
       { label: 'URL', text: String(d.url || '') },
-      { label: tr('内容', 'Content'), text: String(d.content || ''), mono: true },
+      { label: t('agent.tool.content'), text: String(d.content || ''), mono: true },
     ]
   }
   const raw = props.step.result
@@ -310,6 +317,38 @@ function toggle() {
   open.value = !open.value
 }
 
+// --- search dialog focus management ---
+const headButton = ref<HTMLButtonElement | null>(null)
+const searchDialog = ref<HTMLElement | null>(null)
+const searchClose = ref<HTMLButtonElement | null>(null)
+let searchOpener: HTMLElement | null = null
+watch(searchOpen, async (opened) => {
+  if (opened) {
+    searchOpener = document.activeElement as HTMLElement | null
+    await nextTick()
+    searchClose.value?.focus()
+  } else {
+    // Return focus to the card header so keyboard users are not dropped at
+    // <body>; a no-op when the opener (or card) is already gone.
+    ;(searchOpener || headButton.value)?.focus()
+    searchOpener = null
+  }
+})
+// Keep Tab cycling inside the dialog while it is open.
+function trapDialogTab(event: KeyboardEvent) {
+  if (event.key !== 'Tab' || !searchDialog.value) return
+  const focusables = Array.from(searchDialog.value.querySelectorAll<HTMLElement>(
+    'a[href],button:not([disabled]),input,select,textarea,[tabindex]:not([tabindex="-1"])',
+  )).filter(el => el.offsetParent !== null)
+  if (!focusables.length) return
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+  const current = document.activeElement
+  const inside = current instanceof Node && searchDialog.value.contains(current)
+  if (event.shiftKey && (current === first || !inside)) { event.preventDefault(); last.focus() }
+  else if (!event.shiftKey && (current === last || !inside)) { event.preventDefault(); first.focus() }
+}
+
 function onKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape' && searchOpen.value) searchOpen.value = false
 }
@@ -319,7 +358,7 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown); if (copyTi
 
 <template>
   <div class="tool-card" :class="{ expanded: open }">
-    <button type="button" class="tool-card-head" @click="toggle">
+    <button ref="headButton" type="button" class="tool-card-head" :aria-expanded="isSearch ? searchOpen : open" :aria-controls="isSearch ? undefined : bodyId" @click="toggle">
       <span class="tool-dot" :class="step.state">●</span>
       <strong class="tool-kind">{{ label }}</strong>
       <span class="tool-summary">{{ summary }}</span>
@@ -327,17 +366,21 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown); if (copyTi
       <small class="tool-state">{{ stateName(step.state) }}</small>
       <span class="tool-chevron" aria-hidden="true">▸</span>
     </button>
-    <div v-if="open && !isSearch" class="tool-card-body">
+    <!-- The body always renders (except for search tools) inside a 0fr→1fr
+         collapse grid, so both expand and collapse animate smoothly; the body
+         itself fades via its `.open` class. -->
+    <div class="collapse-grid" :class="{ open: open && !isSearch }">
+      <div v-if="!isSearch" :id="bodyId" class="tool-card-body" :class="{ open }">
       <div v-if="producedFiles.length || step.result" class="tool-body-actions">
         <button v-for="(file, index) in producedFiles" :key="index" type="button" class="tool-open" :title="file" @click="emit('open', file)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 3h7v7M21 3l-9 9M5 5h6M5 5v14h14v-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          {{ tr('打开', 'Open') }} · {{ fileName(file) }}
+          <span class="tool-open-label">{{ t('agent.tool.open') }} · {{ fileName(file) }}</span>
         </button>
-        <button type="button" class="tool-copy" :disabled="!step.result" @click="copyResult">{{ copied ? tr('已复制', 'Copied') : tr('复制', 'Copy') }}</button>
+        <button type="button" class="tool-copy" :disabled="!step.result" @click="copyResult">{{ copied ? t('agent.tool.copied') : t('agent.tool.copy') }}</button>
       </div>
-      <p v-if="step.state === 'running' && !sections.length && !diffFiles.length && !screenshot" class="muted">{{ tr('执行中…', 'Running…') }}</p>
+      <p v-if="step.state === 'running' && !sections.length && !diffFiles.length && !screenshot" class="muted">{{ t('agent.tool.running') }}</p>
       <figure v-if="screenshot" class="tool-shot">
-        <img :src="screenshot.src" :alt="tr('屏幕截图', 'Screenshot')" />
+        <img :src="screenshot.src" :alt="t('agent.tool.screenshot')" />
         <figcaption>{{ screenshot.width && screenshot.height ? `${screenshot.width}×${screenshot.height} · ` : '' }}{{ screenshot.path }}</figcaption>
       </figure>
       <div v-if="diffFiles.length" class="diff-wrap">
@@ -363,22 +406,24 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown); if (copyTi
           <p v-else class="tool-section-text">{{ section.text }}</p>
         </template>
       </template>
-      <p v-if="!sections.length && !diffFiles.length && !screenshot && step.state !== 'running' && !step.error" class="muted">{{ tr('执行完成，无输出', 'Completed with no output') }}</p>
+      <p v-if="!sections.length && !diffFiles.length && !screenshot && step.state !== 'running' && !step.error" class="muted">{{ t('agent.tool.completedNoOutput') }}</p>
       <p v-if="step.error" class="tool-error">{{ formatError?.(step.error) || step.error }}</p>
+      </div>
     </div>
     <!-- Teleport to <body>: a `position:fixed` overlay inside a message card is
          re-anchored by any transformed/overflow ancestor, which made the popup
          appear in the middle of the message instead of the viewport centre. -->
     <Teleport to="body">
-    <div v-if="searchOpen" class="tool-dialog-backdrop" @click.self="searchOpen = false">
-      <section class="tool-dialog" role="dialog" aria-modal="true" :aria-label="tr('搜索结果', 'Search results')">
+    <div v-if="searchOpen" class="tool-dialog-backdrop" @click.self="searchOpen = false" @keydown="trapDialogTab">
+      <section :id="searchDialogId" ref="searchDialog" class="tool-dialog" role="dialog" aria-modal="true" :aria-label="t('agent.tool.searchResults')">
         <header>
           <h4>{{ searchKind }} · {{ searchText }}</h4>
           <button
+            ref="searchClose"
             type="button"
             class="tool-dialog-close"
-            :aria-label="tr('关闭', 'Close')"
-            :title="tr('关闭', 'Close')"
+            :aria-label="t('agent.tool.close')"
+            :title="t('agent.tool.close')"
             @click="searchOpen = false"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -386,7 +431,7 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown); if (copyTi
             </svg>
           </button>
         </header>
-        <p v-if="step.state === 'running'" class="muted">{{ tr('搜索中…', 'Searching…') }}</p>
+        <p v-if="step.state === 'running'" class="muted">{{ t('agent.tool.searching') }}</p>
         <ol v-else-if="searchResults.length" class="tool-search-results">
           <li v-for="(item, index) in searchResults" :key="index">
             <a :href="item.url" target="_blank" rel="noopener noreferrer">{{ item.title || item.url }}</a>
@@ -395,7 +440,7 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown); if (copyTi
             <span v-if="item.source" class="tool-search-source">{{ item.source }}</span>
           </li>
         </ol>
-        <p v-else class="muted">{{ searchFallback || tr('没有找到相关结果。', 'No relevant results found.') }}</p>
+        <p v-else class="muted">{{ searchFallback || t('agent.tool.noResults') }}</p>
         <p v-if="step.error" class="tool-error">{{ formatError?.(step.error) || step.error }}</p>
       </section>
     </div>
@@ -414,12 +459,19 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .tool-chevron{flex-shrink:0;color:var(--md-on-surface-variant);font-size:12px;transition:transform var(--duration-short) var(--ease-out)}
 .tool-card.expanded .tool-chevron{transform:rotate(90deg)}
 .tool-dot{font-size:9px}
-.tool-dot.running,.tool-dot.pending{color:#b88412}
-.tool-dot.failed{color:var(--md-error,#c44)}
-.tool-dot.done{color:#3a6}
+.tool-dot.running,.tool-dot.pending{color:var(--md-warning)}
+.tool-dot.failed{color:var(--md-error)}
+.tool-dot.done{color:var(--md-success)}
 .tool-dot.cancelled{color:var(--md-on-surface-variant)}
-.tool-card-body{padding:4px 12px 12px;border-top:1px solid var(--md-outline-variant);display:flex;flex-direction:column;gap:6px;opacity:1;transform:none;transition:opacity var(--duration-medium) var(--ease-out),transform var(--duration-medium) var(--ease-out)}
-@starting-style{.tool-card-body{opacity:0;transform:translateY(-4px)}}
+/* Running breathes slowly; shut off under prefers-reduced-motion. */
+.tool-dot.running{animation:tool-dot-breathe 2s ease-in-out infinite}
+@keyframes tool-dot-breathe{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
+@media (prefers-reduced-motion: reduce){.tool-dot.running{animation:none}}
+/* Fade is driven by the `.open` class, not by mounting: the body stays in the
+   DOM inside the collapse grid (see template), so both expand and collapse get
+   an opacity + height transition. */
+.tool-card-body{padding:4px 12px 12px;border-top:1px solid var(--md-outline-variant);display:flex;flex-direction:column;gap:6px;opacity:0;transform:translateY(-4px);transition:opacity var(--duration-medium) var(--ease-out),transform var(--duration-medium) var(--ease-out)}
+.tool-card-body.open{opacity:1;transform:none}
 .tool-section-label{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--md-on-surface-variant);margin-top:4px}
 .tool-card-body pre{margin:0;max-height:340px;overflow:auto;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);border-radius:8px;padding:8px 10px;font-family:var(--code-font);font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
 .tool-shot{margin:0;display:flex;flex-direction:column;gap:6px}
@@ -428,7 +480,7 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .tool-section-text{margin:0;font-size:13px;overflow-wrap:anywhere}
 .tool-error{background:var(--md-error-container);color:var(--md-on-error-container);padding:8px 12px;border-radius:8px;margin:0;font-size:12px;overflow-wrap:anywhere}
 .muted{font-size:12px;color:var(--md-on-surface-variant);margin:0}
-.tool-dialog-backdrop{position:fixed;inset:0;background:#0008;z-index:1050;display:grid;place-items:center;padding:20px}
+.tool-dialog-backdrop{position:fixed;inset:0;background:color-mix(in srgb,var(--md-scrim,#000) 53%,transparent);z-index:var(--z-modal, 4000);display:grid;place-items:center;padding:20px}
 .tool-dialog{background:var(--md-surface);color:var(--md-on-surface);border:1px solid var(--md-outline-variant);border-radius:16px;padding:18px 20px;width:min(680px,100%);max-height:82vh;overflow:auto;display:flex;flex-direction:column;gap:12px}
 .tool-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .tool-dialog h4{margin:0;font-size:15px;overflow-wrap:anywhere;flex:1;min-width:0}
@@ -442,7 +494,11 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .tool-search-results small{display:block;margin-top:2px;font-size:12px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}
 .tool-search-source{display:inline-block;margin-top:4px;padding:1px 7px;border-radius:999px;background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);font-size:11px;color:var(--md-on-surface-variant)}
 .tool-body-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-.tool-body-actions button{font:inherit;font-size:12px;display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:5px 10px;border-radius:999px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);background:var(--md-surface-container-low);color:var(--md-on-surface);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:background-color 160ms}
+.tool-body-actions button{font:inherit;font-size:12px;display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:5px 10px;border-radius:999px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);background:var(--md-surface-container-low);color:var(--md-on-surface);cursor:pointer;overflow:hidden;transition:background-color 160ms}
+/* `text-overflow` does not apply to the inline-flex button itself (its text is
+   an anonymous flex item), so a long produced-file path was hard-clipped
+   mid-glyph. The inner span is what actually ellipsises. */
+.tool-open-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tool-body-actions button:hover{background:var(--md-secondary-container)}
 .tool-body-actions .tool-copy{margin-left:auto}
 .tool-body-actions button svg{flex:none;color:var(--md-primary)}
@@ -476,10 +532,14 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .diff-line.del .diff-sign{color:#cf222e;font-weight:700}
 .diff-line.hunk{background:var(--md-surface-container);color:var(--md-on-surface-variant)}
 .diff-line.meta{color:var(--md-on-surface-variant);opacity:.75}
-@media (prefers-color-scheme: dark){
-  .diff-line.add{color:#7ee787}
-  .diff-line.add .diff-sign{color:#7ee787}
-  .diff-line.del{color:#ffa198}
-  .diff-line.del .diff-sign{color:#ffa198}
-}
+</style>
+<style>
+/* Dark text colors ride on the host's html[data-theme] toggle rather than the
+   OS media query, so a manual light/dark choice in Settings is honored too.
+   Scoped styles cannot express an html-level selector; #app keeps the rules
+   from leaking (unscoped block — see AgentsPage for the same pattern). */
+html[data-theme="dark"] #app .diff-line.add{color:#7ee787}
+html[data-theme="dark"] #app .diff-line.add .diff-sign{color:#7ee787}
+html[data-theme="dark"] #app .diff-line.del{color:#ffa198}
+html[data-theme="dark"] #app .diff-line.del .diff-sign{color:#ffa198}
 </style>

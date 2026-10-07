@@ -6,6 +6,20 @@ declare module '*.vue' {
   export default component
 }
 
+/**
+ * Vite's `?raw` imports. Used by tests that assert on the *text* of a config
+ * file (the host bridge, the plugin build config) rather than its behaviour.
+ *
+ * This project deliberately has no @types/node — it is a browser-only app, and
+ * installing Node types would let application code reach for `fs` and only fail
+ * at runtime in the browser. `?raw` gives the same file contents with no Node
+ * types involved.
+ */
+declare module '*?raw' {
+  const content: string
+  export default content
+}
+
 type OkayConfirmOptions = {
   title?: string
   message: string

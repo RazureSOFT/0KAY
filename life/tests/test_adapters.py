@@ -25,6 +25,7 @@ from life.adapters.platforms import (  # noqa: E402
     AdapterInstance,
     AdapterRegistry,
     AdapterRuntime,
+    ForwardWSClient,
     SessionRoute,
     new_instance_id,
 )
@@ -495,6 +496,128 @@ class RuntimeStatusTests(unittest.TestCase):
 
     def test_new_instance_id_is_unique(self):
         self.assertNotEqual(new_instance_id(), new_instance_id())
+
+
+class ForwardWebSocketTests(unittest.TestCase):
+    """LIFE dials out to the platform's own WS server at ``ip:port/ws``.
+
+    The mirror image of ReverseWebSocketTests: here LIFE is the client and the
+    mock OneBot implementation is the server, which is what NapCat's
+    "WebSocket 服务器" mode expects.
+    """
+
+    def setUp(self):
+        self._dir = tempfile.TemporaryDirectory()
+        self.registry = AdapterRegistry(self._dir.name)
+        self.received: list = []
+
+        async def handler(data, server):
+            self.received.append(data)
+
+        self.handler = handler
+
+    def tearDown(self):
+        self._dir.cleanup()
+
+    def _free_port(self) -> int:
+        import socket
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            return probe.getsockname()[1]
+
+    def test_connect_url_builds_scheme_path_and_token(self):
+        instance = AdapterInstance(name="x", ws_host="10.0.0.9", ws_port=8080,
+                                   direction="connect", ws_path="ws")
+        # Path is normalised to a leading slash; the token never leaves the
+        # redacted endpoint the UI shows.
+        self.assertEqual(instance.connect_url(), "ws://10.0.0.9:8080/ws")
+        instance.ws_token = "s3cr3t"
+        self.assertEqual(instance.connect_url(), "ws://10.0.0.9:8080/ws")
+        self.assertEqual(instance.connect_url(include_token=True),
+                         "ws://10.0.0.9:8080/ws?access_token=s3cr3t")
+        instance.ws_host = "wss://example.com"
+        self.assertEqual(instance.connect_url(include_token=True),
+                         "wss://example.com:8080/ws?access_token=s3cr3t")
+
+    def test_connect_mode_allows_a_remote_host_without_a_token(self):
+        # Dialing out exposes no local listener, so the reverse-mode "remote
+        # bind needs a token" rule must not apply.
+        instance = AdapterInstance(name="fwd", ws_host="10.0.0.9", direction="connect")
+        self.assertEqual(instance.validate(), [])
+
+    def test_an_unknown_direction_is_rejected(self):
+        instance = AdapterInstance(name="x", direction="sideways")
+        self.assertTrue(any("连接方向" in problem for problem in instance.validate()))
+
+    def test_sync_uses_a_forward_client_for_connect_direction(self):
+        async def scenario():
+            instance = AdapterInstance(name="fwd", ws_host="127.0.0.1",
+                                       ws_port=self._free_port(), direction="connect",
+                                       enabled=True)
+            runtime = AdapterRuntime(self.registry, self.handler)
+            self.registry.instances = [instance]
+            await runtime.sync()
+            self.assertIsInstance(runtime.servers[instance.id], ForwardWSClient)
+            await runtime.stop_all()
+
+        _run(scenario())
+
+    def test_a_dialed_out_connection_receives_events(self):
+        async def scenario():
+            from websockets.asyncio.server import serve
+
+            async def server_handler(websocket):
+                await websocket.send(json.dumps({"post_type": "message", "self_id": 1,
+                                                 "user_id": 2, "message": "hi"}))
+                await asyncio.sleep(0.3)
+
+            async with serve(server_handler, "127.0.0.1", self._free_port()) as server:
+                port = server.sockets[0].getsockname()[1]
+                instance = AdapterInstance(name="fwd", ws_host="127.0.0.1", ws_port=port,
+                                           direction="connect", ws_path="/ws", enabled=True)
+                runtime = AdapterRuntime(self.registry, self.handler)
+                self.registry.instances = [instance]
+                result = await runtime.sync()
+                self.assertIn(instance.id, result["running"])
+                for _ in range(200):
+                    if self.received:
+                        break
+                    await asyncio.sleep(0.01)
+                self.assertEqual(len(self.received), 1)
+                self.assertEqual(self.received[0]["message"], "hi")
+                await runtime.stop_all()
+
+        _run(scenario())
+
+    def test_outbound_call_correlates_on_echo_over_dial_out(self):
+        async def scenario():
+            from websockets.asyncio.server import serve
+
+            async def server_handler(websocket):
+                frame = json.loads(await websocket.recv())
+                await websocket.send(json.dumps(
+                    {"status": "ok", "retcode": 0, "data": {"message_id": 7},
+                     "echo": frame["echo"]}))
+                await asyncio.sleep(0.3)
+
+            async with serve(server_handler, "127.0.0.1", self._free_port()) as server:
+                port = server.sockets[0].getsockname()[1]
+                instance = AdapterInstance(name="fwd", ws_host="127.0.0.1", ws_port=port,
+                                           direction="connect", enabled=True)
+                runtime = AdapterRuntime(self.registry, self.handler)
+                self.registry.instances = [instance]
+                await runtime.sync()
+                client = runtime.servers[instance.id]
+                for _ in range(200):
+                    if client.connected:
+                        break
+                    await asyncio.sleep(0.01)
+                data = await client.call_api("send_private_msg",
+                                             {"user_id": 1, "message": "x"})
+                self.assertEqual(data.get("message_id"), 7)
+                await runtime.stop_all()
+
+        _run(scenario())
 
 
 if __name__ == "__main__":

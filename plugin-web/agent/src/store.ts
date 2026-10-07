@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { i18n } from '@0kay/host'
 
 export interface AgentInfo {
   plugin_id: string
@@ -66,6 +67,10 @@ function createStore() {
   // cursor for the next older page ("" once the whole history is loaded).
   const turnsLoaded = new Set<string>()
   const turnsMore = reactive<Record<string, string>>({})
+  // Per-session in-flight flag so the page can show a loading skeleton instead
+  // of flashing the welcome screen while a freshly selected session's turns
+  // are still being fetched.
+  const turnsPending = reactive<Record<string, boolean>>({})
 
   function recompute() {
     const rows = [...taskCache.values()].sort((a, b) => (b.started_at || '').localeCompare(a.started_at || '') || a.task_id.localeCompare(b.task_id))
@@ -135,10 +140,10 @@ function createStore() {
     if (!streaming) {
       try {
         const tres = await fetch(`/api/tasks?incremental=1&cursor=${encodeURIComponent(taskCursor)}`, { signal: AbortSignal.timeout(8000) })
-        if (!tres.ok) throw new Error(`任务记录 HTTP ${tres.status}`)
+        if (!tres.ok) throw new Error(i18n.global.t('agent.store.tasksHttp', { status: tres.status }))
         const tdata = await tres.json()
         applyTasks(tdata)
-      } catch (e: any) { s.error = e.message || '无法刷新任务记录' }
+      } catch (e: any) { s.error = e.message || i18n.global.t('agent.store.refreshTasksFailed') }
     }
     s.loading = false
   }
@@ -190,11 +195,14 @@ function createStore() {
   async function ensureSessionTurns(session_id: string): Promise<void> {
     if (!session_id || turnsLoaded.has(session_id)) return
     turnsLoaded.add(session_id)
+    turnsPending[session_id] = true
     try {
       const page = await fetchSessionTurns(session_id)
       turnsMore[session_id] = page.more ? page.next : ''
     } catch {
       turnsLoaded.delete(session_id)
+    } finally {
+      turnsPending[session_id] = false
     }
   }
 
@@ -241,6 +249,7 @@ function createStore() {
     ensureSessionTurns,
     olderSessionTurns,
     hasOlderTurns,
+    turnsPending,
   })
 }
 

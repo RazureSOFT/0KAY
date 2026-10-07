@@ -40,15 +40,15 @@ function displayName(p: ProviderConfig): string {
 function logo(p: ProviderConfig): string {
   return preset(p.provider)?.logo || ''
 }
-const modelTypeOptions = [
-  { value: 'chat', label: 'Chat 对话' },
-  { value: 'embedding', label: 'Embedding 向量' },
-  { value: 'rerank', label: 'Rerank 重排' },
-  { value: 'vision', label: 'Vision 视觉' },
-  { value: 'tts', label: 'TTS 语音' },
-  { value: 'image', label: 'Image 图像' },
-  { value: 'audio', label: 'Audio 音频' },
-]
+const modelTypeOptions = computed(() => [
+  { value: 'chat', label: t('modelType.chat') },
+  { value: 'embedding', label: t('modelType.embedding') },
+  { value: 'rerank', label: t('modelType.rerank') },
+  { value: 'vision', label: t('modelType.vision') },
+  { value: 'tts', label: t('modelType.tts') },
+  { value: 'image', label: t('modelType.image') },
+  { value: 'audio', label: t('modelType.audio') },
+])
 function modelTypeOf(m: string): string {
   return (edit.value?.model_types || {})[m] || 'chat'
 }
@@ -394,7 +394,7 @@ const providerTypeOptions = computed(() =>
               class="pp-type"
               :value="modelTypeOf(m)"
               :class="{ tagged: modelTypeOf(m) !== 'chat' }"
-              title="模型类型"
+              :title="t('settings.providerModelType')"
               @change="setModelType(m, ($event.target as HTMLSelectElement).value)"
             >
               <option v-for="opt in modelTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
@@ -588,8 +588,8 @@ const providerTypeOptions = computed(() =>
 .pp-chip.more, .pp-chip.empty { background: transparent; border: 1px dashed var(--md-outline-variant); }
 
 .pp-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
-.btn.sm { height: 32px; padding-inline: 12px; font-size: 12.5px; }
-.btn.xs { height: 28px; padding-inline: 12px; font-size: 12px; }
+/* `.btn.sm` / `.btn.xs` shapes live in styles/settings.css so every panel
+   agrees on one height (they used to drift between 34/30, 34/30 and 32/28). */
 
 .pp-empty { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 40px 16px; color: var(--md-on-surface-variant); border: 1px dashed var(--md-outline-variant); border-radius: 18px; }
 

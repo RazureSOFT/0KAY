@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { ThemePatchItem } from '../theme'
+import { pluginNameFromModule } from '../pluginStrings'
 
 export interface UIPatchOp {
   patchId?: string
@@ -9,6 +10,9 @@ export interface UIPatchOp {
   anchor?: string
   position?: 'before' | 'after' | string
   id?: string
+  /** Owning plugin. Core includes it on every op; the shell uses it to know
+   *  which plugins have a UI worth fetching string resources for. */
+  plugin?: string
   item?: Record<string, any> | null
 }
 
@@ -135,6 +139,10 @@ export interface BootstrapItem {
 /** Built-in sidebar items. Chat/对话 is registered by life.patch; Agent by agent.patch. */
 export const BUILTIN_NAV: NavItem[] = [
   { id: 'plugins', to: '/plugins', labelKey: 'nav.plugins', icon: 'plugins', order: 30 },
+  // The console sits next to settings: it is the page you open when something is
+  // already wrong, so it belongs with the other diagnostic surfaces rather than
+  // buried under plugins.
+  { id: 'console', to: '/console', labelKey: 'nav.console', icon: 'console', order: 90 },
   { id: 'settings', to: '/settings', labelKey: 'nav.settings', icon: 'settings', order: 100 },
 ]
 
@@ -375,10 +383,31 @@ export const useUIPatchesStore = defineStore('uiPatches', () => {
     return settingsTabs.value.some((t) => t.id === id)
   }
 
+  /**
+   * Plugin names that contribute UI, so the shell knows whose string resources
+   * to fetch.
+   *
+   * Two sources, unioned on purpose. A patch file's `plugin` field is
+   * author-supplied and has been shipped empty (skillsguishow declared
+   * `"plugin": ""`), which silently cost that plugin every one of its strings.
+   * The module URL, by contrast, is the path Core actually serves the bundle
+   * from, so a plugin whose patch omits its own name is still picked up.
+   */
+  const pluginNames = computed<string[]>(() => {
+    const names = new Set<string>()
+    for (const op of patches.value) {
+      if (op.plugin) names.add(op.plugin)
+      const fromModule = pluginNameFromModule((op.item as { module?: unknown } | null)?.module)
+      if (fromModule) names.add(fromModule)
+    }
+    return [...names].sort()
+  })
+
   return {
     patches,
     loaded,
     error,
+    pluginNames,
     navItems,
     routerPatches,
     statusSections,

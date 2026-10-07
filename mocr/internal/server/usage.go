@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,7 +14,12 @@ import (
 	"time"
 
 	"0kay/mocr/internal/register"
+	"0kay/obs"
 )
+
+// usageLog tags the usage-ledger records. The ledger is best-effort telemetry:
+// failures are logged and dropped rather than failing a generation.
+var usageLog = obs.Component("usage")
 
 const usageOutboxMax = 512
 const usageOutboxTTL = 7 * 24 * time.Hour
@@ -50,13 +54,13 @@ func reportUsage(requestID, sessionID, model string, prompt, completion int32) {
 	}
 	directory = filepath.Join(directory, "usage-outbox")
 	if err := os.MkdirAll(directory, 0700); err != nil {
-		log.Printf("usage outbox: %v", err)
+		usageLog.Error("load usage outbox", "err", err)
 		return
 	}
 	// One file per logical request so retries overwrite rather than double-count.
 	filename := filepath.Join(directory, hex.EncodeToString([]byte(rid))+".json")
 	if err := os.WriteFile(filename, raw, 0600); err != nil {
-		log.Printf("usage write: %v", err)
+		usageLog.Error("write usage", "err", err)
 		return
 	}
 	usageWg.Add(1)
@@ -110,7 +114,7 @@ func reportUsage(requestID, sessionID, model string, prompt, completion int32) {
 			cancel()
 			if err != nil {
 				failures++
-				log.Printf("usage outbox post: %v", err)
+				usageLog.Error("post usage outbox", "err", err)
 				if failures >= 3 {
 					return
 				}
@@ -118,7 +122,7 @@ func reportUsage(requestID, sessionID, model string, prompt, completion int32) {
 			}
 			if response.StatusCode >= 300 {
 				failures++
-				log.Printf("usage outbox post: HTTP %d", response.StatusCode)
+				usageLog.Error("post usage outbox", "status", response.StatusCode)
 				if failures >= 3 {
 					return
 				}

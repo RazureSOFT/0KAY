@@ -25,6 +25,7 @@
         "id": "appearance",
         "icon": "brightness",
         "label": "外观",
+        "labelKey": "settings.tabs.appearance",
         "order": 15,
         "module": "/api/plugins/darkmode/ui/index.js?v=5"
       }
