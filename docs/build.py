@@ -281,23 +281,52 @@ def render(text: str, stem: str, title: str, nav: str) -> str:
 </div></body></html>"""
 
 
+def _nav(items: list[tuple[str, str, str, str]]) -> str:
+    """items: (href, label, key, active_key) — one drawer nav, lang links last."""
+    parts = []
+    for href, label, key, active_key in items:
+        active = " active" if key == active_key else ""
+        parts.append(f'<a class="nav-item{active}" href="{href}">'
+                     f'<span class="dot"></span>{html.escape(label)}</a>')
+    return "".join(parts)
+
+
 def main() -> None:
     sources = {p.stem: p for p in ROOT.glob("*.md")}
     labels = {stem: first_heading(path, stem) for stem, path in sources.items()}
     ordered = [s for s in ORDER if s in sources]
     ordered += sorted(s for s in sources if s not in ORDER)
 
+    # Chinese translations live in docs/zh-CN/*.md and render into
+    # _site/zh-CN/*.html with their own drawer. Their nav keeps the same
+    # ORDER and ends with a switch back to the English page; English pages
+    # whose counterpart exists end with a switch to Chinese.
+    zh_dir = ROOT / "zh-CN"
+    zh_sources = {p.stem: p for p in zh_dir.glob("*.md")}
+    zh_labels = {stem: first_heading(path, stem) for stem, path in zh_sources.items()}
+    zh_ordered = [s for s in ORDER if s in zh_sources] + sorted(
+        s for s in zh_sources if s not in ORDER
+    )
+
     if OUT.exists():
         shutil.rmtree(OUT)
     OUT.mkdir()
     for stem in ordered:
-        nav = "".join(
-            f'<a class="nav-item{" active" if other == stem else ""}" href="{other}.html">'
-            f'<span class="dot"></span>{html.escape(labels[other])}</a>'
-            for other in ordered
-        )
-        page = render(sources[stem].read_text(encoding="utf-8"), stem, labels[stem], nav)
+        items = [(f"{other}.html", labels[other], other, stem) for other in ordered]
+        if stem in zh_sources:
+            items.append((f"zh-CN/{stem}.html", "简体中文 · 中文文档", f"zh:{stem}", ""))
+        page = render(sources[stem].read_text(encoding="utf-8"), stem, labels[stem], _nav(items))
         (OUT / f"{stem}.html").write_text(page, encoding="utf-8")
+
+    if zh_sources:
+        zh_out = OUT / "zh-CN"
+        zh_out.mkdir()
+        for stem in zh_ordered:
+            items = [(f"../{other}.html", labels[other], f"en:{other}", "") for other in ordered]
+            items.insert(0, (f"../{stem}.html", "English · 英文文档", f"en:{stem}", ""))
+            items += [(f"{other}.html", zh_labels[other], other, stem) for other in zh_ordered]
+            page = render(zh_sources[stem].read_text(encoding="utf-8"), stem, zh_labels[stem], _nav(items))
+            (zh_out / f"{stem}.html").write_text(page, encoding="utf-8")
 
 
 if __name__ == "__main__":
