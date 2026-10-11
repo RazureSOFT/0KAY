@@ -1,0 +1,147 @@
+<!doctype html><html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>L.I.F.E 服务 · 0KAY</title><style>
+:root{
+  color-scheme: light;
+  --md-primary:#4a5b8c; --md-on-primary:#ffffff;
+  --md-primary-container:#dbe1ff; --md-on-primary-container:#131b2e;
+  --md-secondary-container:#e0e2f0; --md-on-secondary-container:#181a24;
+  --md-surface:#fbf8ff; --md-surface-container-low:#f5f3fb;
+  --md-surface-container:#efedf6; --md-surface-container-high:#e9e7f0;
+  --md-surface-container-highest:#e3e1ea;
+  --md-on-surface:#1a1b21; --md-on-surface-variant:#45464f;
+  --md-outline:#757780; --md-outline-variant:#c5c6d0;
+  --md-success-container:#d7f5cf; --md-error-container:#ffdad6;
+  --md-shadow:rgba(20,18,36,.16);
+  --radius-sm:12px; --radius-md:16px; --radius-lg:24px; --radius-xl:28px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --md-primary:#b3c5ff; --md-on-primary:#1b2b52;
+    --md-primary-container:#33436b; --md-on-primary-container:#dbe1ff;
+    --md-secondary-container:#3a3c47; --md-on-secondary-container:#e0e2f0;
+    --md-surface:#111318; --md-surface-container-low:#1a1b21;
+    --md-surface-container:#1e1f26; --md-surface-container-high:#292a31;
+    --md-surface-container-highest:#34353c;
+    --md-on-surface:#e3e1e9; --md-on-surface-variant:#c6c6d0;
+    --md-outline:#8f9099; --md-outline-variant:#45464f;
+    --md-success-container:#1f4d1a; --md-error-container:#93000a;
+    --md-shadow:rgba(0,0,0,.5);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; min-height:100vh; background:var(--md-surface); color:var(--md-on-surface);
+  font:400 15.5px/1.75 'Roboto','Segoe UI Variable','Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+  /* Deliberately NOT -webkit-font-smoothing:antialiased — the WebUI disables it
+     for the same reason (see webui/src/styles/theme.css): on Windows Chrome/Edge
+     it turns off ClearType subpixel rendering and the whole page reads blurry. */
+  -moz-osx-font-smoothing:grayscale;
+}
+::selection{background:var(--md-primary-container); color:var(--md-on-primary-container)}
+a{color:var(--md-primary); text-decoration:none}
+a:hover{text-decoration:underline}
+.shell{display:grid; grid-template-columns:300px minmax(0,1fr); min-height:100vh}
+/* ---------- Navigation drawer ---------- */
+.drawer{
+  position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  padding:22px 14px; background:var(--md-surface-container-low);
+  border-right:1px solid var(--md-outline-variant);
+}
+.brand{display:flex; align-items:center; gap:12px; padding:6px 10px 18px}
+.brand-mark{
+  width:46px; height:46px; display:grid; place-items:center; flex:none;
+  border-radius:16px 16px 16px 6px; background:var(--md-primary);
+  color:var(--md-on-primary); font-weight:800; letter-spacing:-1px; font-size:17px;
+}
+.brand-text b{display:block; font-size:16px; font-weight:800; letter-spacing:-.2px}
+.brand-text span{font-size:12px; color:var(--md-on-surface-variant)}
+.nav{display:flex; flex-direction:column; gap:4px}
+.nav-item{
+  position:relative; display:flex; align-items:center; gap:10px;
+  padding:11px 16px; border-radius:22px 22px 22px 8px;
+  color:var(--md-on-surface-variant); font-weight:600; font-size:14px;
+  transition:background-color .22s, color .16s;
+}
+.nav-item:hover{background:color-mix(in srgb, var(--md-primary) 12%, transparent); text-decoration:none; color:var(--md-on-surface)}
+.nav-item.active{background:var(--md-primary-container); color:var(--md-on-primary-container); font-weight:800}
+.nav-item .dot{width:7px; height:7px; border-radius:50%; background:currentColor; opacity:.5; flex:none}
+.drawer-foot{margin-top:18px; padding:12px 12px 0; border-top:1px solid var(--md-outline-variant); font-size:12px; color:var(--md-on-surface-variant)}
+.drawer-foot a{font-weight:700}
+/* ---------- Article ---------- */
+.article{padding:clamp(24px,4vw,56px) clamp(20px,4vw,64px) 80px; max-width:920px}
+.article>h1{
+  margin:0 0 6px; font-size:clamp(30px,4vw,42px); line-height:1.12;
+  font-weight:850; letter-spacing:-.02em;
+}
+.article>h1+p{color:var(--md-on-surface-variant); font-size:16px; margin-top:0}
+h2{font-size:24px; font-weight:800; letter-spacing:-.01em; margin:2.1em 0 .5em}
+h3{font-size:19px; font-weight:750; margin:1.7em 0 .4em}
+h4,h5,h6{font-size:16px; font-weight:750; margin:1.4em 0 .3em}
+p{margin:.7em 0}
+ul{margin:.6em 0; padding-left:22px}
+li{margin:.3em 0}
+hr{border:0; border-top:1px solid var(--md-outline-variant); margin:2em 0}
+strong{font-weight:750}
+code{
+  font-family:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,'SFMono-Regular',Menlo,monospace;
+  font-size:.88em; background:var(--md-surface-container-high);
+  padding:2px 6px; border-radius:8px;
+}
+pre{
+  background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-lg); padding:18px 20px; overflow:auto; margin:1.1em 0;
+}
+pre code{background:none; padding:0; font-size:13.5px; line-height:1.7}
+/* ---------- Tables ---------- */
+/* `.table-scroll` (emitted by markdown_body) owns the horizontal scrolling. A
+   table with `width:100%` still cannot shrink below the sum of its columns'
+   min-content widths, so a wide API table overflows the article; without this
+   wrapper the previous `overflow:hidden` simply cut the trailing columns off. */
+.table-scroll{
+  overflow-x:auto; max-width:100%; margin:1.2em 0; border-radius:var(--radius-lg);
+  -webkit-overflow-scrolling:touch;
+}
+table{
+  border-collapse:separate; border-spacing:0; width:100%; margin:0; font-size:14px;
+  background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-lg); overflow:hidden;
+}
+th,td{padding:11px 15px; text-align:left; vertical-align:top; border-bottom:1px solid var(--md-outline-variant)}
+th{background:var(--md-surface-container); font-weight:750; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--md-on-surface-variant)}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:color-mix(in srgb, var(--md-primary) 5%, transparent)}
+/* ---------- Chips / footer ---------- */
+.badge{
+  display:inline-flex; align-items:center; height:26px; padding:0 12px; border-radius:999px;
+  background:var(--md-secondary-container); color:var(--md-on-secondary-container);
+  font-size:12px; font-weight:700; margin-left:10px; vertical-align:middle;
+}
+/* ---------- Responsive ---------- */
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .drawer{position:static; height:auto; border-right:0; border-bottom:1px solid var(--md-outline-variant); padding:16px 14px}
+  .nav{flex-direction:row; flex-wrap:wrap}
+  .nav-item{padding:8px 14px; border-radius:999px}
+  .brand{padding-bottom:12px}
+}
+</style></head>
+<body><div class="shell">
+<aside class="drawer">
+  <a class="brand" href="index.html"><span class="brand-mark">0K</span>
+    <span class="brand-text"><b>0KAY</b><span>Plugin API</span></span></a>
+  <nav class="nav"><a class="nav-item" href="../life-service.html"><span class="dot"></span>English · 英文文档</a><a class="nav-item" href="../index.html"><span class="dot"></span>0KAY Plugin API</a><a class="nav-item" href="../HTTP_API.html"><span class="dot"></span>HTTP API Reference</a><a class="nav-item" href="../PLUGIN_API.html"><span class="dot"></span>0KAY Plugin API (v1)</a><a class="nav-item" href="../plugin-lifecycle.html"><span class="dot"></span>Plugin Lifecycle</a><a class="nav-item" href="../writing-a-plugin.html"><span class="dot"></span>Writing a Plugin</a><a class="nav-item" href="../core-services.html"><span class="dot"></span>Core Services</a><a class="nav-item" href="../agent-service.html"><span class="dot"></span>Agent Service</a><a class="nav-item" href="../life-service.html"><span class="dot"></span>L.I.F.E Service</a><a class="nav-item" href="../mocr-service.html"><span class="dot"></span>mocr Service</a><a class="nav-item" href="../settings-ui.html"><span class="dot"></span>Settings and UI Patches</a><a class="nav-item" href="../custom-pages.html"><span class="dot"></span>WebUI Custom Pages</a><a class="nav-item" href="../design-system.html"><span class="dot"></span>WebUI Design System (Material 3 Expressive)</a><a class="nav-item" href="../THINKING.html"><span class="dot"></span>Thinking Intensity and Execution</a><a class="nav-item" href="../RELEASES.html"><span class="dot"></span>Releases and Updates</a><a class="nav-item" href="../security.html"><span class="dot"></span>Security and Runtime Rules</a><a class="nav-item" href="HTTP_API.html"><span class="dot"></span>HTTP API 参考</a><a class="nav-item" href="core-services.html"><span class="dot"></span>Core 服务</a><a class="nav-item" href="agent-service.html"><span class="dot"></span>Agent 服务</a><a class="nav-item active" href="life-service.html"><span class="dot"></span>L.I.F.E 服务</a><a class="nav-item" href="mocr-service.html"><span class="dot"></span>mocr 服务</a></nav>
+  <div class="drawer-foot">
+    <div><a href="https://github.com/RazureSOFT/0KAY">RazureSOFT/0KAY</a></div>
+    <div>MIT · © 2026 RazureSOFT</div>
+  </div>
+</aside>
+<main class="article" data-page="life-service"><h1>L.I.F.E 服务</h1><p>&gt; <strong>Language / 语言</strong>: <a href="../life-service.html">English</a> · 简体中文</p><p>L.I.F.E 对外暴露 <code>life.v1.LifeService</code>，负责人设、情绪、记忆、陪伴各领域、 OneBot 接入以及 LIFE 注册的 WebUI 页面。它是 <code>PLUGIN_TYPE_PERSONA</code> 插件， 带 <code>requires:mocr</code> 依赖。</p><h2>安装与运行</h2><p>L.I.F.E 在主仓库（<code>life/</code>）内，需要 Python 3.10+。</p><pre><code>make deps-python          # pip install -e &quot;.[dev]&quot;，装入 life/.venv
+make dev-life             # cd life &amp;&amp; .venv/Scripts/python -m life.main
+
+# 回归测试（约 1068 条；NO_PROXY 避免本地 httpx 被沙箱代理干扰）
+NO_PROXY=127.0.0.1,localhost .venv/Scripts/python -m pytest tests -q
+</code></pre><p>注册时出示 <code>CORE_PLUGIN_REGISTRATION_TOKEN</code>（Core 启用按插件令牌时，使用 L.I.F.E 的专属注册密钥）。关键环境变量：<code>LIFE_GRPC_PORT</code>（50053）、 <code>LIFE_BIND_HOST</code>（回环；远程绑定需 <code>LIFE_ALLOW_REMOTE_BIND=1</code>）、 <code>LIFE_DATA_DIR</code>（默认 <code>./data/life</code>）、<code>LIFE_ADDRESS</code>（对外声明地址）、 <code>MOCR_ADDRESS</code>。</p><p>它通过 gRPC 向 Core 注册，设置 <code>CORE_PLUGIN_REGISTRATION_TOKEN</code> 时会把它放进 <code>x-0kay-registration-token</code> 元数据。对 Core HTTP 的调用（包括仅机器可调的 <code>GET /api/providers/credentials</code>）带 <code>X-0KAY-Plugin: life</code> + 服务令牌署名， 回退到 <code>CORE_PAIR_TOKEN</code> / <code>CORE_API_TOKEN</code>。</p><h2><code>OnUserMessage</code></h2><p>WebUI、OneBot 及其他适配器的服务端流式入口。</p><p>请求字段：</p><ul><li><code>session_id</code>、<code>user_id</code>、<code>message</code>、<code>adapter_type</code></li><li><code>persona_json</code> — 客户端的人设对象</li><li>可选 <code>history_json</code></li></ul><p>响应包含输出分片以及 <code>done</code>、情绪状态、心理能量、已启动的任务 id 和安全折叠 后的 THINK 摘要。L.I.F.E 可能创建 Agent 任务、记忆提案、日记/梦境条目或 主动消息候选。它从不暴露模型隐藏的思维链。</p><h2>人设与自定义提示词</h2><p>人设对象包含 <code>name</code>、<code>avatar</code>、<code>birthDate</code>、<code>description</code>、<code>personality</code>、 <code>greeting</code> 和 <strong><code>customPrompt</code></strong>。<code>customPrompt</code> 在「设置 → 人设」中编写， 并<strong>逐字作为模型 system prompt</strong> 发送，位于人设描述之前，THINK 与 OUTPUT 调用均如此。留空即关闭。其余人设字段会被渲染进内嵌在 system prompt 里的 人设上下文。</p><h2><code>OnTaskCompleted</code></h2><p>Agent 任务进入终态时由 Core 调用。L.I.F.E 更新情绪、陪伴审计日志与会话 通知队列。回调携带任务 id、状态、result 与 error；它是幂等的。</p><h2><code>OnScheduledEvent</code></h2><p>Core 可以发送昼夜节律 tick、记忆巩固或空闲检查。L.I.F.E 执行有界的维护 工作并持久化结果。</p><h2>记忆 API</h2><p><code>GetMemories</code> 为 LIFE 自有的管理界面返回记忆投影。SQLite 事实库是权威数据； BM25、向量与 Tantivy 索引都是可重建的投影。</p><h2>陪伴 API</h2><p><code>GetCompanion</code> 返回 LIFE 自有的关系、日程、主动消息、群场景、日记、梦境、 人设演化与审计投影。</p><p><code>ManageCompanion</code> 支持受控操作：</p><ul><li><code>add_agenda</code>、<code>confirm_agenda</code>、<code>reject_agenda</code>、<code>complete_agenda</code></li><li><code>journal</code>、<code>dream</code>、<code>memory_maintenance</code></li><li><code>delete_memory</code>、<code>clear_all_memory</code>、<code>ack_notifications</code></li></ul><p>所有变更可审计，并尽可能保证幂等。</p><h2><code>CompactConversation</code></h2><p>通过 L.I.F.E 配置的模型总结一段会话。摘要是客户端可恢复的上下文投影；在 用户主动清理之前，并不是对底层本地历史的不可逆删除。</p><h2><code>GetNotifications</code></h2><p>返回按会话寻址的任务完成通知，供 WebUI 轮询。读取不删除：确认请使用 <code>ack_notifications</code>（或 <code>POST /api/life/notifications</code>）。</p><h2>权限</h2><p><code>screen_watch</code>、<code>computer_use</code>、<code>report_agent_host</code> 默认关闭。它们分别门控 屏幕观察、shell/计算机操作与心跳里的主机遥测。<code>ReportAgentHost</code> 也会从 <code>POST /api/settings/life</code> 同步过来。</p></main>
+</div></body></html>

@@ -1,0 +1,163 @@
+<!doctype html><html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Core 服务 · 0KAY</title><style>
+:root{
+  color-scheme: light;
+  --md-primary:#4a5b8c; --md-on-primary:#ffffff;
+  --md-primary-container:#dbe1ff; --md-on-primary-container:#131b2e;
+  --md-secondary-container:#e0e2f0; --md-on-secondary-container:#181a24;
+  --md-surface:#fbf8ff; --md-surface-container-low:#f5f3fb;
+  --md-surface-container:#efedf6; --md-surface-container-high:#e9e7f0;
+  --md-surface-container-highest:#e3e1ea;
+  --md-on-surface:#1a1b21; --md-on-surface-variant:#45464f;
+  --md-outline:#757780; --md-outline-variant:#c5c6d0;
+  --md-success-container:#d7f5cf; --md-error-container:#ffdad6;
+  --md-shadow:rgba(20,18,36,.16);
+  --radius-sm:12px; --radius-md:16px; --radius-lg:24px; --radius-xl:28px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --md-primary:#b3c5ff; --md-on-primary:#1b2b52;
+    --md-primary-container:#33436b; --md-on-primary-container:#dbe1ff;
+    --md-secondary-container:#3a3c47; --md-on-secondary-container:#e0e2f0;
+    --md-surface:#111318; --md-surface-container-low:#1a1b21;
+    --md-surface-container:#1e1f26; --md-surface-container-high:#292a31;
+    --md-surface-container-highest:#34353c;
+    --md-on-surface:#e3e1e9; --md-on-surface-variant:#c6c6d0;
+    --md-outline:#8f9099; --md-outline-variant:#45464f;
+    --md-success-container:#1f4d1a; --md-error-container:#93000a;
+    --md-shadow:rgba(0,0,0,.5);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; min-height:100vh; background:var(--md-surface); color:var(--md-on-surface);
+  font:400 15.5px/1.75 'Roboto','Segoe UI Variable','Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+  /* Deliberately NOT -webkit-font-smoothing:antialiased — the WebUI disables it
+     for the same reason (see webui/src/styles/theme.css): on Windows Chrome/Edge
+     it turns off ClearType subpixel rendering and the whole page reads blurry. */
+  -moz-osx-font-smoothing:grayscale;
+}
+::selection{background:var(--md-primary-container); color:var(--md-on-primary-container)}
+a{color:var(--md-primary); text-decoration:none}
+a:hover{text-decoration:underline}
+.shell{display:grid; grid-template-columns:300px minmax(0,1fr); min-height:100vh}
+/* ---------- Navigation drawer ---------- */
+.drawer{
+  position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  padding:22px 14px; background:var(--md-surface-container-low);
+  border-right:1px solid var(--md-outline-variant);
+}
+.brand{display:flex; align-items:center; gap:12px; padding:6px 10px 18px}
+.brand-mark{
+  width:46px; height:46px; display:grid; place-items:center; flex:none;
+  border-radius:16px 16px 16px 6px; background:var(--md-primary);
+  color:var(--md-on-primary); font-weight:800; letter-spacing:-1px; font-size:17px;
+}
+.brand-text b{display:block; font-size:16px; font-weight:800; letter-spacing:-.2px}
+.brand-text span{font-size:12px; color:var(--md-on-surface-variant)}
+.nav{display:flex; flex-direction:column; gap:4px}
+.nav-item{
+  position:relative; display:flex; align-items:center; gap:10px;
+  padding:11px 16px; border-radius:22px 22px 22px 8px;
+  color:var(--md-on-surface-variant); font-weight:600; font-size:14px;
+  transition:background-color .22s, color .16s;
+}
+.nav-item:hover{background:color-mix(in srgb, var(--md-primary) 12%, transparent); text-decoration:none; color:var(--md-on-surface)}
+.nav-item.active{background:var(--md-primary-container); color:var(--md-on-primary-container); font-weight:800}
+.nav-item .dot{width:7px; height:7px; border-radius:50%; background:currentColor; opacity:.5; flex:none}
+.drawer-foot{margin-top:18px; padding:12px 12px 0; border-top:1px solid var(--md-outline-variant); font-size:12px; color:var(--md-on-surface-variant)}
+.drawer-foot a{font-weight:700}
+/* ---------- Article ---------- */
+.article{padding:clamp(24px,4vw,56px) clamp(20px,4vw,64px) 80px; max-width:920px}
+.article>h1{
+  margin:0 0 6px; font-size:clamp(30px,4vw,42px); line-height:1.12;
+  font-weight:850; letter-spacing:-.02em;
+}
+.article>h1+p{color:var(--md-on-surface-variant); font-size:16px; margin-top:0}
+h2{font-size:24px; font-weight:800; letter-spacing:-.01em; margin:2.1em 0 .5em}
+h3{font-size:19px; font-weight:750; margin:1.7em 0 .4em}
+h4,h5,h6{font-size:16px; font-weight:750; margin:1.4em 0 .3em}
+p{margin:.7em 0}
+ul{margin:.6em 0; padding-left:22px}
+li{margin:.3em 0}
+hr{border:0; border-top:1px solid var(--md-outline-variant); margin:2em 0}
+strong{font-weight:750}
+code{
+  font-family:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,'SFMono-Regular',Menlo,monospace;
+  font-size:.88em; background:var(--md-surface-container-high);
+  padding:2px 6px; border-radius:8px;
+}
+pre{
+  background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-lg); padding:18px 20px; overflow:auto; margin:1.1em 0;
+}
+pre code{background:none; padding:0; font-size:13.5px; line-height:1.7}
+/* ---------- Tables ---------- */
+/* `.table-scroll` (emitted by markdown_body) owns the horizontal scrolling. A
+   table with `width:100%` still cannot shrink below the sum of its columns'
+   min-content widths, so a wide API table overflows the article; without this
+   wrapper the previous `overflow:hidden` simply cut the trailing columns off. */
+.table-scroll{
+  overflow-x:auto; max-width:100%; margin:1.2em 0; border-radius:var(--radius-lg);
+  -webkit-overflow-scrolling:touch;
+}
+table{
+  border-collapse:separate; border-spacing:0; width:100%; margin:0; font-size:14px;
+  background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-lg); overflow:hidden;
+}
+th,td{padding:11px 15px; text-align:left; vertical-align:top; border-bottom:1px solid var(--md-outline-variant)}
+th{background:var(--md-surface-container); font-weight:750; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--md-on-surface-variant)}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:color-mix(in srgb, var(--md-primary) 5%, transparent)}
+/* ---------- Chips / footer ---------- */
+.badge{
+  display:inline-flex; align-items:center; height:26px; padding:0 12px; border-radius:999px;
+  background:var(--md-secondary-container); color:var(--md-on-secondary-container);
+  font-size:12px; font-weight:700; margin-left:10px; vertical-align:middle;
+}
+/* ---------- Responsive ---------- */
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .drawer{position:static; height:auto; border-right:0; border-bottom:1px solid var(--md-outline-variant); padding:16px 14px}
+  .nav{flex-direction:row; flex-wrap:wrap}
+  .nav-item{padding:8px 14px; border-radius:999px}
+  .brand{padding-bottom:12px}
+}
+</style></head>
+<body><div class="shell">
+<aside class="drawer">
+  <a class="brand" href="index.html"><span class="brand-mark">0K</span>
+    <span class="brand-text"><b>0KAY</b><span>Plugin API</span></span></a>
+  <nav class="nav"><a class="nav-item" href="../core-services.html"><span class="dot"></span>English · 英文文档</a><a class="nav-item" href="../index.html"><span class="dot"></span>0KAY Plugin API</a><a class="nav-item" href="../HTTP_API.html"><span class="dot"></span>HTTP API Reference</a><a class="nav-item" href="../PLUGIN_API.html"><span class="dot"></span>0KAY Plugin API (v1)</a><a class="nav-item" href="../plugin-lifecycle.html"><span class="dot"></span>Plugin Lifecycle</a><a class="nav-item" href="../writing-a-plugin.html"><span class="dot"></span>Writing a Plugin</a><a class="nav-item" href="../core-services.html"><span class="dot"></span>Core Services</a><a class="nav-item" href="../agent-service.html"><span class="dot"></span>Agent Service</a><a class="nav-item" href="../life-service.html"><span class="dot"></span>L.I.F.E Service</a><a class="nav-item" href="../mocr-service.html"><span class="dot"></span>mocr Service</a><a class="nav-item" href="../settings-ui.html"><span class="dot"></span>Settings and UI Patches</a><a class="nav-item" href="../custom-pages.html"><span class="dot"></span>WebUI Custom Pages</a><a class="nav-item" href="../design-system.html"><span class="dot"></span>WebUI Design System (Material 3 Expressive)</a><a class="nav-item" href="../THINKING.html"><span class="dot"></span>Thinking Intensity and Execution</a><a class="nav-item" href="../RELEASES.html"><span class="dot"></span>Releases and Updates</a><a class="nav-item" href="../security.html"><span class="dot"></span>Security and Runtime Rules</a><a class="nav-item" href="HTTP_API.html"><span class="dot"></span>HTTP API 参考</a><a class="nav-item active" href="core-services.html"><span class="dot"></span>Core 服务</a><a class="nav-item" href="agent-service.html"><span class="dot"></span>Agent 服务</a><a class="nav-item" href="life-service.html"><span class="dot"></span>L.I.F.E 服务</a><a class="nav-item" href="mocr-service.html"><span class="dot"></span>mocr 服务</a></nav>
+  <div class="drawer-foot">
+    <div><a href="https://github.com/RazureSOFT/0KAY">RazureSOFT/0KAY</a></div>
+    <div>MIT · © 2026 RazureSOFT</div>
+  </div>
+</aside>
+<main class="article" data-page="core-services"><h1>Core 服务</h1><p>插件通过 <code>core.v1.CoreService</code> 获得平台编排能力：模型访问、Agent 派发、任务 控制与直接工具执行。Core 是唯一持有供应商凭据与插件注册表的组件。</p><p>&gt; <strong>Language / 语言</strong>: <a href="../core-services.html">English</a> · 简体中文</p><p>Core 自身还提供 HTTP 网关（<a href="HTTP_API.html">HTTP_API</a> 中的全部路由，:8080）与 gRPC（:50051）。源码运行用 <code>make dev-core</code>，Docker Compose 用 <code>core</code> 服务， 或作为 <code>0kay-pm</code> 托管服务运行。所有插件都通过 <code>core.v1.PluginService.Register</code> 注册，携带 <code>x-0kay-registration-token</code> 元数据；配置了按插件令牌时，可信的 第一方插件必须出示各自的 <code>CORE_PLUGIN_TOKEN_&lt;NAME&gt;</code> 注册密钥。</p><h2><code>CallMocr</code></h2><p>把生成请求代理给模型网关，返回服务端流。用 <code>model_id</code> 钉住模型；仅当调用方 明确想要 Core/mocr 选型时才留空。</p><p>重要字段：</p><ul><li><code>request_id</code> — 调用方关联 id。</li><li><code>caller_id</code> — 插件或会话所有者。</li><li><code>prompt</code> — 当前用户/任务 prompt。</li><li><code>session_id</code> — 会话键。</li><li><code>messages</code> — 可选的完整历史。</li><li><code>model_id</code> — 可选的钉住模型（<code>MOCR</code> 表示"由 mocr 选择"）。</li><li><code>system_prompt</code> — 领域指令。L.I.F.E 把人设与用户编写的<strong>自定义提示词</strong></li></ul><p>  放在这里（见 <a href="life-service.html">L.I.F.E 服务</a>）。</p><ul><li><code>context</code> — 难度、令牌、温度与任务元数据。</li></ul><h2><code>UseAgent</code></h2><p>向独立的 Agent 派发异步工作。响应只确认受理；结果请读 <code>/api/tasks</code>、轮询 Agent 任务状态，或等待 LIFE 的完成回调。</p><pre><code>{
+  &quot;task_id&quot;: &quot;task_123&quot;,
+  &quot;caller_id&quot;: &quot;life&quot;,
+  &quot;prompt&quot;: &quot;Create and run a Python connectivity check.&quot;,
+  &quot;agent_type&quot;: &quot;code&quot;,
+  &quot;metadata&quot;: {
+    &quot;thinking_intensity&quot;: &quot;medium&quot;,
+    &quot;difficulty_hint&quot;: &quot;0.5&quot;,
+    &quot;require_thinking&quot;: &quot;false&quot;,
+    &quot;session_id&quot;: &quot;webui:default&quot;,
+    &quot;executor_id&quot;: &quot;&quot;,
+    &quot;workdir&quot;: &quot;&quot;,
+    &quot;model_id&quot;: &quot;MOCR&quot;,
+    &quot;permission_mode&quot;: &quot;normal&quot;
+  }
+}
+</code></pre><p><code>metadata</code> 是 <code>map&lt;string,string&gt;</code>。构造 protobuf 请求前，数字、布尔与对象 都要先字符串化。</p><ul><li><code>permission_mode</code>：<code>normal</code> 下每个特权工具调用都等待用户决定；</li></ul><p>  <code>full_access</code> 不弹窗直接执行。子 Agent 继承该模式。</p><ul><li><code>thinking_intensity</code>：<code>off</code>/<code>low</code>/<code>medium</code>/<code>high</code>/<code>max</code> 或 <code>0</code>–<code>100</code>。</li></ul><h2><code>CancelAgent</code></h2><p>按 <code>task_id</code> 与 <code>caller_id</code> 取消任务。取消是尽力而为，应视为一次状态迁移， 而不是底层进程已停止的证明。</p><h2><code>ListAgents</code></h2><p>返回已注册的 Agent 实例及其健康状态、回调地址、活动任务数、心跳时长与主机 信息。传 <code>include_unhealthy</code> 可以看到已停止心跳的执行器。</p><h2><code>RunDirect</code></h2><p>不经 LLM 循环直接运行一个 Agent 宿主工具：</p><pre><code>{
+  &quot;tool&quot;: &quot;computeruse&quot;,
+  &quot;args&quot;: &quot;{\&quot;action\&quot;:\&quot;screenshot\&quot;}&quot;,
+  &quot;session_id&quot;: &quot;life-computeruse&quot;
+}
+</code></pre><p>敏感工具需要对应的 LIFE/Core 权限。返回的工具数据应视为不可信的外部输出。 <code>workspace_browse</code>、<code>workspace_mkdir</code>、<code>host_status</code>、<code>approval_list</code>、 <code>approval_decide</code> 等管理操作同样走 <code>RunDirect</code>，但绝不作为可调用工具暴露给 模型。</p></main>
+</div></body></html>

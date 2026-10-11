@@ -1,0 +1,156 @@
+<!doctype html><html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent 服务 · 0KAY</title><style>
+:root{
+  color-scheme: light;
+  --md-primary:#4a5b8c; --md-on-primary:#ffffff;
+  --md-primary-container:#dbe1ff; --md-on-primary-container:#131b2e;
+  --md-secondary-container:#e0e2f0; --md-on-secondary-container:#181a24;
+  --md-surface:#fbf8ff; --md-surface-container-low:#f5f3fb;
+  --md-surface-container:#efedf6; --md-surface-container-high:#e9e7f0;
+  --md-surface-container-highest:#e3e1ea;
+  --md-on-surface:#1a1b21; --md-on-surface-variant:#45464f;
+  --md-outline:#757780; --md-outline-variant:#c5c6d0;
+  --md-success-container:#d7f5cf; --md-error-container:#ffdad6;
+  --md-shadow:rgba(20,18,36,.16);
+  --radius-sm:12px; --radius-md:16px; --radius-lg:24px; --radius-xl:28px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --md-primary:#b3c5ff; --md-on-primary:#1b2b52;
+    --md-primary-container:#33436b; --md-on-primary-container:#dbe1ff;
+    --md-secondary-container:#3a3c47; --md-on-secondary-container:#e0e2f0;
+    --md-surface:#111318; --md-surface-container-low:#1a1b21;
+    --md-surface-container:#1e1f26; --md-surface-container-high:#292a31;
+    --md-surface-container-highest:#34353c;
+    --md-on-surface:#e3e1e9; --md-on-surface-variant:#c6c6d0;
+    --md-outline:#8f9099; --md-outline-variant:#45464f;
+    --md-success-container:#1f4d1a; --md-error-container:#93000a;
+    --md-shadow:rgba(0,0,0,.5);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; min-height:100vh; background:var(--md-surface); color:var(--md-on-surface);
+  font:400 15.5px/1.75 'Roboto','Segoe UI Variable','Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+  /* Deliberately NOT -webkit-font-smoothing:antialiased — the WebUI disables it
+     for the same reason (see webui/src/styles/theme.css): on Windows Chrome/Edge
+     it turns off ClearType subpixel rendering and the whole page reads blurry. */
+  -moz-osx-font-smoothing:grayscale;
+}
+::selection{background:var(--md-primary-container); color:var(--md-on-primary-container)}
+a{color:var(--md-primary); text-decoration:none}
+a:hover{text-decoration:underline}
+.shell{display:grid; grid-template-columns:300px minmax(0,1fr); min-height:100vh}
+/* ---------- Navigation drawer ---------- */
+.drawer{
+  position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  padding:22px 14px; background:var(--md-surface-container-low);
+  border-right:1px solid var(--md-outline-variant);
+}
+.brand{display:flex; align-items:center; gap:12px; padding:6px 10px 18px}
+.brand-mark{
+  width:46px; height:46px; display:grid; place-items:center; flex:none;
+  border-radius:16px 16px 16px 6px; background:var(--md-primary);
+  color:var(--md-on-primary); font-weight:800; letter-spacing:-1px; font-size:17px;
+}
+.brand-text b{display:block; font-size:16px; font-weight:800; letter-spacing:-.2px}
+.brand-text span{font-size:12px; color:var(--md-on-surface-variant)}
+.nav{display:flex; flex-direction:column; gap:4px}
+.nav-item{
+  position:relative; display:flex; align-items:center; gap:10px;
+  padding:11px 16px; border-radius:22px 22px 22px 8px;
+  color:var(--md-on-surface-variant); font-weight:600; font-size:14px;
+  transition:background-color .22s, color .16s;
+}
+.nav-item:hover{background:color-mix(in srgb, var(--md-primary) 12%, transparent); text-decoration:none; color:var(--md-on-surface)}
+.nav-item.active{background:var(--md-primary-container); color:var(--md-on-primary-container); font-weight:800}
+.nav-item .dot{width:7px; height:7px; border-radius:50%; background:currentColor; opacity:.5; flex:none}
+.drawer-foot{margin-top:18px; padding:12px 12px 0; border-top:1px solid var(--md-outline-variant); font-size:12px; color:var(--md-on-surface-variant)}
+.drawer-foot a{font-weight:700}
+/* ---------- Article ---------- */
+.article{padding:clamp(24px,4vw,56px) clamp(20px,4vw,64px) 80px; max-width:920px}
+.article>h1{
+  margin:0 0 6px; font-size:clamp(30px,4vw,42px); line-height:1.12;
+  font-weight:850; letter-spacing:-.02em;
+}
+.article>h1+p{color:var(--md-on-surface-variant); font-size:16px; margin-top:0}
+h2{font-size:24px; font-weight:800; letter-spacing:-.01em; margin:2.1em 0 .5em}
+h3{font-size:19px; font-weight:750; margin:1.7em 0 .4em}
+h4,h5,h6{font-size:16px; font-weight:750; margin:1.4em 0 .3em}
+p{margin:.7em 0}
+ul{margin:.6em 0; padding-left:22px}
+li{margin:.3em 0}
+hr{border:0; border-top:1px solid var(--md-outline-variant); margin:2em 0}
+strong{font-weight:750}
+code{
+  font-family:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,'SFMono-Regular',Menlo,monospace;
+  font-size:.88em; background:var(--md-surface-container-high);
+  padding:2px 6px; border-radius:8px;
+}
+pre{
+  background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-lg); padding:18px 20px; overflow:auto; margin:1.1em 0;
+}
+pre code{background:none; padding:0; font-size:13.5px; line-height:1.7}
+/* ---------- Tables ---------- */
+/* `.table-scroll` (emitted by markdown_body) owns the horizontal scrolling. A
+   table with `width:100%` still cannot shrink below the sum of its columns'
+   min-content widths, so a wide API table overflows the article; without this
+   wrapper the previous `overflow:hidden` simply cut the trailing columns off. */
+.table-scroll{
+  overflow-x:auto; max-width:100%; margin:1.2em 0; border-radius:var(--radius-lg);
+  -webkit-overflow-scrolling:touch;
+}
+table{
+  border-collapse:separate; border-spacing:0; width:100%; margin:0; font-size:14px;
+  background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-lg); overflow:hidden;
+}
+th,td{padding:11px 15px; text-align:left; vertical-align:top; border-bottom:1px solid var(--md-outline-variant)}
+th{background:var(--md-surface-container); font-weight:750; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--md-on-surface-variant)}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:color-mix(in srgb, var(--md-primary) 5%, transparent)}
+/* ---------- Chips / footer ---------- */
+.badge{
+  display:inline-flex; align-items:center; height:26px; padding:0 12px; border-radius:999px;
+  background:var(--md-secondary-container); color:var(--md-on-secondary-container);
+  font-size:12px; font-weight:700; margin-left:10px; vertical-align:middle;
+}
+/* ---------- Responsive ---------- */
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .drawer{position:static; height:auto; border-right:0; border-bottom:1px solid var(--md-outline-variant); padding:16px 14px}
+  .nav{flex-direction:row; flex-wrap:wrap}
+  .nav-item{padding:8px 14px; border-radius:999px}
+  .brand{padding-bottom:12px}
+}
+</style></head>
+<body><div class="shell">
+<aside class="drawer">
+  <a class="brand" href="index.html"><span class="brand-mark">0K</span>
+    <span class="brand-text"><b>0KAY</b><span>Plugin API</span></span></a>
+  <nav class="nav"><a class="nav-item" href="../agent-service.html"><span class="dot"></span>English · 英文文档</a><a class="nav-item" href="../index.html"><span class="dot"></span>0KAY Plugin API</a><a class="nav-item" href="../HTTP_API.html"><span class="dot"></span>HTTP API Reference</a><a class="nav-item" href="../PLUGIN_API.html"><span class="dot"></span>0KAY Plugin API (v1)</a><a class="nav-item" href="../plugin-lifecycle.html"><span class="dot"></span>Plugin Lifecycle</a><a class="nav-item" href="../writing-a-plugin.html"><span class="dot"></span>Writing a Plugin</a><a class="nav-item" href="../core-services.html"><span class="dot"></span>Core Services</a><a class="nav-item" href="../agent-service.html"><span class="dot"></span>Agent Service</a><a class="nav-item" href="../life-service.html"><span class="dot"></span>L.I.F.E Service</a><a class="nav-item" href="../mocr-service.html"><span class="dot"></span>mocr Service</a><a class="nav-item" href="../settings-ui.html"><span class="dot"></span>Settings and UI Patches</a><a class="nav-item" href="../custom-pages.html"><span class="dot"></span>WebUI Custom Pages</a><a class="nav-item" href="../design-system.html"><span class="dot"></span>WebUI Design System (Material 3 Expressive)</a><a class="nav-item" href="../THINKING.html"><span class="dot"></span>Thinking Intensity and Execution</a><a class="nav-item" href="../RELEASES.html"><span class="dot"></span>Releases and Updates</a><a class="nav-item" href="../security.html"><span class="dot"></span>Security and Runtime Rules</a><a class="nav-item" href="HTTP_API.html"><span class="dot"></span>HTTP API 参考</a><a class="nav-item" href="core-services.html"><span class="dot"></span>Core 服务</a><a class="nav-item active" href="agent-service.html"><span class="dot"></span>Agent 服务</a><a class="nav-item" href="life-service.html"><span class="dot"></span>L.I.F.E 服务</a><a class="nav-item" href="mocr-service.html"><span class="dot"></span>mocr 服务</a></nav>
+  <div class="drawer-foot">
+    <div><a href="https://github.com/RazureSOFT/0KAY">RazureSOFT/0KAY</a></div>
+    <div>MIT · © 2026 RazureSOFT</div>
+  </div>
+</aside>
+<main class="article" data-page="agent-service"><h1>Agent 服务</h1><p>&gt; <strong>Language / 语言</strong>: <a href="../agent-service.html">English</a> · 简体中文</p><p>独立的 <a href="https://github.com/RazureSOFT/0KAY-agent">0KAY-agent</a> 仓库向 Core 暴露 <code>agent.v1.AgentService</code>，以 <code>agent</code> + <code>executor:&lt;uuid&gt;</code> 能力注册并声明 <code>requires:mocr</code>。所有模型调用都经过 mocr。</p><p>它通过 Core 的 <code>core.v1.PluginService.Register</code> 注册；设置 <code>CORE_PLUGIN_REGISTRATION_TOKEN</code> 时会把它放进 <code>x-0kay-registration-token</code> 元数据。对 Core HTTP/出口的署名调用带 <code>X-0KAY-Plugin: agent</code> + 服务令牌 （回退 <code>CORE_API_TOKEN</code> bearer）。</p><h2>安装与运行</h2><p>Agent 在独立的 0KAY-agent 仓库中（<code>bootstrap.ps1</code> 会克隆到 <code>agent/</code>）， 需要 Node.js 22+。</p><pre><code>cd agent
+npm install            # 或在 0KAY 根目录执行 make deps-node
+npm test               # 回归测试
+npm run build          # tsc -&gt; dist/
+npm run dev            # tsx src/index.ts — Agent gRPC :50054
+</code></pre><p>Docker Compose 的 <code>agent</code> profile 可启动它 （<code>docker-compose --profile agent up -d</code>），<code>0kay-pm install @razuresoft/0kay-agent</code> 把它安装为托管服务。注册是自动的：拨连 Core （<code>CORE_ADDRESS</code>，默认 <code>localhost:50051</code>）并出示 <code>CORE_PLUGIN_REGISTRATION_TOKEN</code>；Core 启用按插件令牌时，把该变量设为 agent 的专属注册密钥（<code>CORE_PLUGIN_TOKEN_AGENT</code>）。<code>AGENT_GRPC_PORT</code> （50054）与 <code>AGENT_BIND_HOST</code>（回环）控制监听；<code>AGENT_DATA_DIR</code> 存放执行器 身份。</p><h2><code>ExecuteTask</code></h2><p>把任务执行到完成：</p><pre><code>{
+  &quot;task_id&quot;: &quot;task_123&quot;,
+  &quot;prompt&quot;: &quot;Inspect the repository and implement the requested change.&quot;,
+  &quot;agent_type&quot;: &quot;code&quot;,
+  &quot;metadata&quot;: {
+    &quot;thinking_intensity&quot;: &quot;medium&quot;,
+    &quot;permission_mode&quot;: &quot;normal&quot;
+  }
+}
+</code></pre><p>任务状态：<code>TASK_STATE_PENDING</code>、<code>TASK_STATE_RUNNING</code>、<code>TASK_STATE_DONE</code>、 <code>TASK_STATE_FAILED</code>、<code>TASK_STATE_CANCELLED</code>。被取消或截断的运行永远不会 上报为 <code>DONE</code>。没有固定的工具轮数上限：循环持续到最终回复、失败或用户 取消。</p><h2><code>CancelTask</code></h2><p>请求取消。Agent 停止开始新的迭代并上报最终取消状态。</p><h2><code>GetTaskStatus</code></h2><p>按任务 id 返回任务状态、result 与 error。</p><h2><code>RunDirect</code></h2><p>执行一个已注册的 Agent 工具。参数是编码为字符串的 JSON 对象。管理操作 （<code>workspace_browse</code>、<code>workspace_mkdir</code>、<code>host_status</code>、<code>approval_list</code>、 <code>approval_decide</code>）也在此提供，但不会加入模型工具列表。</p><h2>任务类型：计划 / 智能体 / 工作</h2><p>WebUI 输入区（以及 <code>ExecuteTask</code> 的 <code>agent_type</code>）提供三个顶层类型：</p><div class="table-scroll"><table><tr><th>类型</th><th><code>agent_type</code></th><th>行为</th></tr><tr><td><strong>计划（Plan）</strong></td><td><code>plan</code></td><td>只做规划：只读调研后产出结构化方案文档，从不修改文件。</td></tr><tr><td><strong>智能体（Agent）</strong></td><td>子类型</td><td>自主多步执行。只有此类型有二级子选项。</td></tr><tr><td><strong>工作（Work）</strong></td><td><code>work</code></td><td>单遍专注执行：直接修改、少提问、廉价验证。</td></tr></table></div><p>智能体子类型映射到技能名（强制启用 <code>skills/&lt;name&gt;.md</code>）：<code>general</code>（通用）、 <code>code</code>（编程）、<code>code_explore</code>（探索扇出，派发独立探索者子代理后择优）、 <code>research</code>（调研）、<code>science</code>（科研）。新增子类型只需新增一个技能文件。</p><h2>Duet 模式：大模型定方案，小模型写实现</h2><p>设置里有 <code>duet_mode</code>（每任务选项 <code>duet_mode=1|0</code> 优先）。开启且未手动钉住 模型时，<code>ChooseModels</code> 返回 think/output 模型对，运行一分为二：</p><p>1. <strong>方案阶段</strong> — 大模型（think）起草实现方案，并在    <code>&lt;implementation_prompt&gt;…&lt;/implementation_prompt&gt;</code> 内写出自包含的实现    提示词。方案作为 assistant 消息出现在会话记录里。 2. <strong>实现阶段</strong> — 主循环钉在小模型（output）上，带着方案历史进行实现与    验证，不再重新规划。</p><p>方案阶段失败会回退到普通的单模型循环。该模式的意义：贵的模型只推理一次， 便宜的模型负责打字。</p><h2>工具契约</h2><p>Agent 工具暴露 <code>name</code>、<code>description</code>、JSON Schema 的 <code>parameters</code> 对象与 异步执行，返回 <code>{ success, data, error? }</code>。危险工具默认禁用，除非用户或 插件权限显式开启。内置工具包括文件读/写/编辑、<code>apply_patch</code>、glob、grep、 shell（<code>bash</code>）、网页抓取/搜索、todo、子代理（<code>task</code>）、MCP 与 computer-use。 <code>computeruse</code> 工具可驱动整个桌面——截图、窗口列表、鼠标移动/点击、打字与 按键——覆盖 Windows（<code>powershell</code>）、macOS （<code>screencapture</code>/<code>osascript</code>/<code>cliclick</code>）与 Linux （<code>grim</code>/<code>scrot</code>/ImageMagick、<code>xdotool</code>），并在用户授予 computer-use 权限前 保持禁用。任务附件（见 <code>/api/agent/messages</code> 的 <code>attachments</code>）被读入内存 ——不落盘：文本文件内联进任务 prompt，图片作为原生多模态图像分片 （经 mocr 的 <code>Message.content_parts</code>）发给模型。</p><h2>审批与提问</h2><p><code>normal</code> 权限模式下，每个特权工具调用都等待用户决定（<code>Approval</code>）， <code>question</code> 工具等待选项或自由文本。Core 通过 <code>/api/agent/approvals</code> 与 <code>/api/agent/questions</code> 暴露待处理项（WebUI 收件箱轮询合并后的 <code>/api/agent/inbox</code>）。<code>full_access</code> 模式下调用直接执行。</p><h2>文件编辑与 diff</h2><p><code>edit</code> 与 <code>apply_patch</code> 对每个被改文件返回统一 diff。diff 以 <code>--- a/&lt;path&gt;</code> / <code>+++ b/&lt;path&gt;</code> 开头，<code>@@ -old +new @@</code> 的 hunk 头让 WebUI 可以同时展示源文件与精确改动行号，新增行绿色、删除行红色。子代理（<code>task</code>） 调用在同一工作区视图中渲染为可折叠的嵌套卡片。</p><h2>思考强度</h2><p>见 <a href="THINKING.html">Thinking Intensity</a>。Agent 以 gRPC 元数据 <code>x-0kay-thinking-level</code> 把强度传给 mocr；mocr 映射为各家供应商的推理参数。</p></main>
+</div></body></html>
