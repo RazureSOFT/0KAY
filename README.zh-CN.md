@@ -1,10 +1,30 @@
 <p align="center"><img src="assets/logo/okay-logo.svg" width="128" alt="0KAY logo"></p>
 
-# 0KAY
+<h1 align="center">0KAY</h1>
 
-**在自己电脑上跑的 AI 伙伴：它记得你，而且真能替你干活。**
+<p align="center">
+  <strong>在自己电脑上跑的 AI 伙伴：它记得你，而且真能替你干活。</strong><br>
+  A self-hosted AI companion that remembers you — with a real agent underneath.
+</p>
+
+<p align="center">
+  <a href="#-快速开始">快速开始</a> ·
+  <a href="#-它是怎么搭起来的">架构</a> ·
+  <a href="#-文档">文档</a> ·
+  <a href="README.md">English</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
+  <img src="https://img.shields.io/badge/Go-1.27%2B-00ADD8?logo=go&logoColor=white" alt="Go 1.27+">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/Node.js-22%2B-339933?logo=nodedotjs&logoColor=white" alt="Node.js 22+">
+  <img src="https://img.shields.io/badge/%E6%9C%AC%E5%9C%B0%E4%BC%98%E5%85%88-%E9%BB%98%E8%AE%A4%E5%9B%9E%E7%8E%AF-blue" alt="本地优先">
+</p>
 
 *English: [README.md](README.md)*
+
+---
 
 大多数「AI 陪伴」应用，本质只是一个套了人设提示词的聊天框。0KAY 想做的是聊天框做不到的两件事：
 
@@ -15,12 +35,14 @@
 
 ## 你能用它做什么
 
-- **和一个记得你的伙伴聊天。** 对话会写进它的记忆与情绪；它有自己的状态，会写日记、做梦，也会主动发消息。
-- **给它一张脸和一副嗓子。** Live2D 形象 + TTS 语音。
-- **把活交给它。** 一个带文件、终端、网页抓取/搜索、整桌面操作工具的编码 / 调研 Agent；敏感操作会先弹审批。
-- **在顺手的地方找它。** WebUI 里聊，或接入 QQ / OneBot。
-- **什么都能插。** 除了一个很小的 Go 核心，其它能力全是插件：模型网关、人格、Agent、TTS、搜索、Minecraft，以及插件自己的 WebUI 页面。每个都能单独装、停、换。
-- **数据留在自己手里。** 默认只绑定本机回环地址；供应商密钥只存在 Core；数据是你自己的普通文件。
+| | |
+|---|---|
+| 💬 **和一个记得你的伙伴聊天** | 对话会写进它的记忆与情绪；它有自己的状态，会写日记、做梦，也会主动发消息。 |
+| 🎭 **给它一张脸和一副嗓子** | Live2D 形象 + TTS 语音。 |
+| 🛠️ **把活交给它** | 一个带文件、终端、网页抓取/搜索、整桌面操作工具的编码 / 调研 Agent；敏感操作先弹审批。三种任务类型——**计划**（只出方案）、**智能体**（自主执行，含科研 / 编程等子类型）与**工作**（单遍专注）——外加可选的*大小模型协作（duet）*：大模型定方案并写出实现提示词，小模型照着实现。 |
+| 📱 **在顺手的地方找它** | WebUI 里聊，或接入 QQ / OneBot。 |
+| 🧩 **什么都能插** | 除了一个很小的 Go 核心，其它能力全是插件：模型网关、人格、Agent、TTS、搜索、Minecraft，以及插件自己的 WebUI 页面。每个都能单独装、停、换。 |
+| 🔒 **数据留在自己手里** | 默认只绑定本机回环地址；供应商密钥只存在 Core；数据是你自己的普通文件。 |
 
 ## 这个项目是给谁用的
 
@@ -35,7 +57,7 @@
 - 你想要一个开箱即用、什么都不用配的云端应用——0KAY 是刻意做成自托管的。
 - 你不想管 API Key 和端口。
 
-## 截图
+## 📸 截图
 
 | 聊天 | 通用设置 | 供应商设置 |
 |---|---|---|
@@ -43,23 +65,31 @@
 
 截图来自运行中的 WebUI（`webui`，Vite 开发服务器）。
 
-## 快速开始
+## 🚀 快速开始
 
 > 用包管理器安装只需要 Node.js 22+；容器方式用 Docker Compose；从源码运行才需要
 > Go 1.27+ 和 Python 3.10+。
 
 **三选一**，不要混用。
 
-### Docker Compose
+<details open>
+<summary><b>方式 A —— Docker Compose</b></summary>
 
 ```bash
+cp docs/security-runtime.env.example .env   # 先编辑 .env：填好每个 token
 docker-compose up -d      # 构建并启动所有服务
 docker-compose ps         # 查看状态
 docker-compose logs -f    # 跟踪日志
 docker-compose down       # 停止
 ```
 
-### 包管理器安装（推荐）
+Compose 在 secrets 没配好之前会拒绝启动：复制示例 env 文件并填入每个 token
+（任意长随机串即可；见 [docs/security.md](docs/security.md)）。
+
+</details>
+
+<details open>
+<summary><b>方式 B —— 包管理器安装（推荐）</b></summary>
 
 ```sh
 # 独立仓库安装（推荐，不需要 git）
@@ -79,7 +109,10 @@ npm install -g ./pm
 unit / macOS LaunchAgent / Windows 登录任务），所以之后**不需要**再手动运行任何东西。
 可加 `@0.1.3` 固定版本；用 `0kay-pm status <包名>` 查看状态、`0kay-pm stop <包名>` 停止。
 
-### 从源码运行（开发）
+</details>
+
+<details open>
+<summary><b>方式 C —— 从源码运行（开发）</b></summary>
 
 ```sh
 # 一次性准备
@@ -102,11 +135,13 @@ npm --prefix webui run dev   # WebUI：:3000
 打开 WebUI，在「设置 → 供应商」里添加供应商和模型 API Key 即可。
 健康检查：`GET http://127.0.0.1:8080/health`。
 
-### 安全
+</details>
+
+### 🔒 安全
 
 默认只绑定回环地址；只有在可信网络里才用 `CORE_BIND_HOST`、`AGENT_BIND_HOST`、`MOCR_BIND_HOST`、`LIFE_BIND_HOST` 放开。要对公网暴露 HTTP，请在前置一层带鉴权的反向代理。`CORE_API_TOKEN` 会让 Core 要求 Bearer Token（可在 `POST /api/auth/session` 换成 HttpOnly 的 `0kay_session` Cookie），浏览器访问还有 PIN 门禁，且 `GET /api/providers` 永远不返回供应商密钥。详见 [docs/security.md](docs/security.md)。
 
-## 它是怎么搭起来的
+## 🧭 它是怎么搭起来的
 
 ```
 WebUI (TS) ──HTTP/WebSocket──┐
@@ -125,23 +160,33 @@ QQ/OneBot ──WebSocket───────┤
         └────────┘    └──────────┘   └──────────┘
 ```
 
-- **Core**（Go）——HTTP/WebSocket 网关、插件注册与健康检查、任务调度、设置、供应商凭证。它是唯一的真相源。
-- **mocr**（Go）——模型网关：接入供应商、流式输出、重试，以及 think/output 双模型选型。
-- **L.I.F.E**（Python）——伙伴本体：人格、情绪、记忆、作息节律、主动消息与陪伴工具。
-- **Agent**（TypeScript，[独立仓库](https://github.com/RazureSOFT/0KAY-agent)）——任务引擎与工具集。
-- **WebUI**（Vue 3）——单页应用，只通过 HTTP 和 Core 通信。
+| 服务 | 语言 | 职责 | README |
+|---|---|---|---|
+| **Core** | Go | HTTP/WebSocket 网关、插件注册与健康检查、任务调度、设置、供应商凭证。唯一的真相源。 | [core/](core/) |
+| **mocr** | Go | 模型网关：接入供应商、流式输出、重试，以及内嵌 jev 路由器的 think/output 双模型选型。 | [mocr/](mocr/) |
+| **L.I.F.E** | Python | 伙伴本体：人格、情绪、记忆、作息节律、主动消息与陪伴工具。 | [life/](life/) |
+| **Agent** | TypeScript（[独立仓库](https://github.com/RazureSOFT/0KAY-agent)） | 任务引擎与工具集。 | [agent/](agent/) |
+| **WebUI** | Vue 3 | 单页应用，只通过 HTTP 和 Core 通信。 | [webui/](webui/) |
+| **obs** | Go | Go 服务共用的日志 / 跨度扇出库。 | [obs/](obs/) |
 
 除 Core 之外，每个组件都是插件，可以单独安装、更新或停用。细节见 [ARCHITECTURE.md](ARCHITECTURE.md) 与 [RUNTIME_CONTRACTS.md](RUNTIME_CONTRACTS.md)。
 
-## 文档
+## 📚 文档
 
-- [架构说明](ARCHITECTURE.md) —— 组件边界、数据流、UI patch。
-- [运行约定](RUNTIME_CONTRACTS.md) —— 任务标识、会话隔离、审批、持久化。
-- [插件 API](docs/PLUGIN_API.md) —— 所有插件共用的 Protobuf 契约。
-- [写一个插件](docs/writing-a-plugin.md) —— 端到端插件指南。
-- [HTTP API](docs/HTTP_API.md) —— Core 网关全部路由。
-- [模型目录](MODEL_CATALOG.md) —— fallback 模型 ID。
-- [发布与更新](docs/RELEASES.md) —— 安装与一键更新。
+| 文档 | 内容 | English |
+|---|---|---|
+| [架构说明](ARCHITECTURE.md) | 组件边界、数据流、UI patch。 | — |
+| [运行约定](RUNTIME_CONTRACTS.md) | 任务标识、会话隔离、审批、持久化。 | — |
+| [HTTP API](docs/zh-CN/HTTP_API.md) | Core 网关全部路由。 | [docs/HTTP_API.md](docs/HTTP_API.md) |
+| [Core 服务](docs/zh-CN/core-services.md) | 插件可调的 `core.v1.CoreService`。 | [docs/core-services.md](docs/core-services.md) |
+| [mocr 服务](docs/zh-CN/mocr-service.md) | 模型网关 RPC、jev 路由选型、重试与定价。 | [docs/mocr-service.md](docs/mocr-service.md) |
+| [L.I.F.E 服务](docs/zh-CN/life-service.md) | 人格 / 记忆 / 陪伴 RPC。 | [docs/life-service.md](docs/life-service.md) |
+| [Agent 服务](docs/zh-CN/agent-service.md) | 任务 RPC、任务类型、duet 模式、工具契约。 | [docs/agent-service.md](docs/agent-service.md) |
+| [插件 API](docs/PLUGIN_API.md) | 所有插件共用的 Protobuf 契约。 | — |
+| [写一个插件](docs/writing-a-plugin.md) | 端到端插件指南。 | — |
+| [模型目录](MODEL_CATALOG.md) | fallback 模型 ID。 | — |
+| [发布与更新](docs/RELEASES.md) | 安装与一键更新。 | — |
+| [安全](docs/security.md) | 令牌、PIN、配对、回环姿态。 | — |
 
 ## 环境要求
 
@@ -156,22 +201,24 @@ QQ/OneBot ──WebSocket───────┤
 0KAY/
 ├── proto/       # 共享 Protobuf 契约
 ├── core/        # Go —— 网关、注册、调度
-├── mocr/        # Go —— 模型网关
+├── mocr/        # Go —— 模型网关（内嵌 jev 路由）
 ├── life/        # Python —— 伙伴（人格、记忆、情绪）
 ├── agent/       # TypeScript —— 任务引擎（独立仓库）
 ├── webui/       # Vue 3 单页应用
 ├── plugin-web/  # 插件自带的前端
+├── obs/         # Go —— 日志 / 跨度扇出库
 ├── gen/         # 生成代码
 └── docker-compose.yml
 ```
 
 ## 开发
 
-```powershell
-python -B -m unittest discover -s life/tests -v   # L.I.F.E 测试
-# agent/: npm test; npx tsc --noEmit
-# core/ 与 mocr/: go test ./...
-```
+| 套件 | 命令 |
+|---|---|
+| L.I.F.E | `python -B -m unittest discover -s life/tests -v`（或 `cd life && .venv/Scripts/python -m pytest tests -q`，带 `NO_PROXY=127.0.0.1,localhost`） |
+| Agent | `cd agent && npm test && npx tsc --noEmit` |
+| Core / mocr | `go -C core test ./... && go -C mocr test ./...` |
+| WebUI | `cd webui && npx vue-tsc --noEmit && npx eslint . && npx vitest run` |
 
 ## 许可证
 

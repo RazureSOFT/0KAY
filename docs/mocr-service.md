@@ -4,6 +4,31 @@ mocr is the model gateway: it owns provider transports, model selection, retries
 and usage accounting. It exposes `mocr.v1.MocrService` on loopback
 (`MOCR_ADDRESS`, default `localhost:50052`) and holds no user data of its own.
 
+> **Language / 语言**: English · [简体中文](zh-CN/mocr-service.md)
+
+## Install and run
+
+mocr is part of the main 0KAY repository (`mocr/`). It needs Go 1.27+.
+
+```sh
+make dev-mocr                    # cd mocr && go run ./cmd/mocr
+
+# or build a binary once and run it
+go -C mocr build -o ../.run/mocr ./cmd/mocr
+```
+
+Docker Compose starts it as the `mocr` service, and
+`0kay-pm install @razuresoft/0kay` installs it as a managed background service.
+Registration is automatic: mocr dials Core on `CORE_ADDRESS` (default
+`localhost:50051`) and presents `CORE_PLUGIN_REGISTRATION_TOKEN`
+(`x-0kay-registration-token` metadata). Attributed Core HTTP calls carry
+`X-0KAY-Plugin: mocr` + the issued service token, falling back to a
+`CORE_API_TOKEN` bearer.
+
+Useful environment variables: `MOCR_GRPC_PORT` (50052), `MOCR_BIND_HOST`
+(loopback), `MOCR_ADDRESS` (advertised address), `MOCR_GENERATION_TIMEOUT`,
+`MOCR_GRPC_TOKEN` (serving-side auth).
+
 ## `ChooseModels`
 
 Returns `think_model` and `output_model` for a prompt, based on difficulty,
@@ -16,8 +41,30 @@ carries keys); the lookup runs per request so newly added providers are usable
 immediately. That endpoint is machine-only, so mocr attributes the call with
 `X-0KAY-Plugin: mocr` + its service token, falling back to `CORE_API_TOKEN`.
 
-Selection strategies (Settings → **模型**) are `auto` (difficulty + cost),
-`quality`, `cost` and `pinned` (use the configured default model only).
+Since the jev-router integration, selection runs a two-stage router embedded
+in the mocr binary (ported from the jev_router project; no sidecar process):
+
+1. **Intent inference** — the prompt is classified into capability tags
+   (`vision`, `long_ctx`, `agentic`, `reasoning`, …) plus a 1–5 difficulty by a
+   char-3-gram kNN over an embedded training set, with a keyword-heuristic
+   fallback when the confidence guard decides the task shape was never seen
+   (`ROUTER_MODE=heuristic` forces the keyword baseline).
+2. **Deterministic pick** — the cheapest model in the caller's pool that meets
+   (tags ∧ power ≥ difficulty) wins, with tag relaxation and a strongest-model
+   fallback. Pool metadata comes from an embedded ~356-model catalog
+   (power/context/cost/tags, matched by bare model id); models the catalog does
+   not know get synthesized metadata so they stay routable.
+
+Selection strategies (Settings → **模型**) map onto the router's strategies:
+`auto`/`cost` → `economy` (cheapest capable, stronger on ties), `quality` →
+`performance` (strongest first); `pinned` uses the configured default model
+only. The gRPC contract is unchanged — `ChooseModelsRequest{prompt, context}`
+→ `{think_model, output_model, reasoning}` — and `reasoning` now carries the
+router's rationale (inferred difficulty, tags, strategy, evidence hits). The
+think model routes with the full inferred spec (a `reasoning` gate is added
+when thinking is required); the output model routes with the hard capability
+gates lifted and the difficulty capped at the light tier, which is what makes
+it the cheap "expression" model.
 
 ## `Generate`
 

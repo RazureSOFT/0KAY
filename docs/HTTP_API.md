@@ -6,6 +6,8 @@ Complete reference for the Core HTTP gateway. Default base URL is
 `https://<host>:8443`. The gRPC plugin protocol is documented in
 [PLUGIN_API](PLUGIN_API.md).
 
+> **Language / 语言**: English · [简体中文](zh-CN/HTTP_API.md)
+
 ## 1. Conventions
 
 ### Authentication
@@ -146,6 +148,8 @@ pointing at the successor, for example `POST /api/usage/clear` →
 // →  {"plugin": "life", "enabled": true, "ok": true}
 ```
 
+| GET | `/api/state` | Platform state snapshot: plugin registry entries, healthy count, computer-use flags (LIFE's `/api/life/state` is a deprecated alias) |
+| GET | `/api/messaging` | Chat-message bus snapshot for the 消息平台 page (adapters, recent routed messages) |
 ### Plugin UI assets
 
 Served from `$CORE_DATA_DIR/plugin-ui/{name}` (default `data/plugin-ui/{name}`).
@@ -237,6 +241,8 @@ Served from `$CORE_DATA_DIR/plugin-ui/{name}` (default `data/plugin-ui/{name}`).
 | GET | `/api/agent/browser/view` | `?executor_id=` one JPEG frame of the live page (`browser_view`) |
 | GET | `/api/agent/browser/stream` | `?executor_id=` live MJPEG (`multipart/x-mixed-replace; boundary=okayframe`) of the page |
 | POST | `/api/agent/browser/action` | drive the browser (`browser` tool: back/forward/reload/goto/…) |
+| GET | `/api/agent/computeruse` | `?executor_id=` desktop-control status (`computeruse_status`) |
+| GET | `/api/agent/computeruse/stream` | `?executor_id=` live desktop frames (MJPEG) while a `computer` tool run is active |
 | GET | `/api/agent/context` | `?session_id=&model_id=` compaction state → `{summary,tokens,window,threshold,breakdown,blocks}` |
 | GET | `/api/agent/context/search` | `?session_id=&q=` keyword search over the session's turns + folded summaries |
 | GET | `/api/agent/host` | `?executor_id=` live CPU/memory sample via `host_status` |
@@ -375,6 +381,7 @@ emotion: {valence, arousal, connection, irritation}, mental_energy}`. Events:
 | GET | `/api/providers/defaults` | `{default_provider_id, default_model}` |
 | POST, PUT | `/api/providers/defaults` | Set defaults → echoed back |
 | POST | `/api/run` | `RunDirect` (60 s) → `{success, result, error}` |
+| POST | `/api/tts` | `{"text", "voice"}` → audio bytes from the configured TTS backend (Live2D lip-sync) |
 
 Provider configs persist to `data/providers.json`. `503 provider store not ready`
 while the store is initializing.
