@@ -97,6 +97,15 @@
   <string name="page.modeGeneral">通用 Agent</string>
   <string name="page.modeResearch">调研 Agent</string>
   <string name="page.modeScience">科学 Agent</string>
+  <string name="page.taskKind">任务类型</string>
+  <string name="page.kindPlan">计划 · 只出方案</string>
+  <string name="page.kindAgent">智能体 · 自主执行</string>
+  <string name="page.kindWork">工作 · 单遍专注</string>
+  <string name="page.agentSubKind">智能体子类型</string>
+  <string name="page.duetMode">大小模型协作（duet）</string>
+  <string name="page.duetModeHint">自动选型分工：大模型（think）定方案并写出实现提示词，小模型（output）按提示词完成实现；手动指定模型时不生效。</string>
+  <string name="page.duetOn">开 · 先方案后实现</string>
+  <string name="page.duetOff">关</string>
   <string name="page.model">模型</string>
   <string name="page.modelCatalogHttp">模型目录 HTTP {status}</string>
   <string name="page.modelFallback">{requested} 不可用，已回退 {actual}</string>

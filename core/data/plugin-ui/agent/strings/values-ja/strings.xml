@@ -97,6 +97,15 @@
   <string name="page.modeGeneral">汎用 Agent</string>
   <string name="page.modeResearch">リサーチ Agent</string>
   <string name="page.modeScience">サイエンス Agent</string>
+  <string name="page.taskKind">タスク種別</string>
+  <string name="page.kindPlan">Plan · 計画のみ</string>
+  <string name="page.kindAgent">Agent · 自律実行</string>
+  <string name="page.kindWork">Work · 集中実行</string>
+  <string name="page.agentSubKind">エージェント種別</string>
+  <string name="page.duetMode">デュエット（大小モデル）</string>
+  <string name="page.duetModeHint">自動選択の分担：大モデル（think）が方案と実装プロンプトを起草し、小モデル（output）がそれに従って実装します。モデルを手動指定した場合は無効。</string>
+  <string name="page.duetOn">オン · 計画してから実装</string>
+  <string name="page.duetOff">オフ</string>
   <string name="page.model">モデル</string>
   <string name="page.modelCatalogHttp">モデルカタログ HTTP {status}</string>
   <string name="page.modelFallback">{requested} は利用不可 · {actual} にフォールバック</string>
