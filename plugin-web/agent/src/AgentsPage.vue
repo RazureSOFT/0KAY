@@ -72,7 +72,14 @@ watch(draft, () => void nextTick(autosizeComposer))
 onMounted(autosizeComposer)
 const search = ref('')
 const source = ref('all')
-const mode = ref('general')
+// Task kind (Plan/Agent/Work) with a second-level sub-kind that only the
+// Agent kind exposes (general/code/explore/research/science). agentMode is
+// what the backend receives as agent_type: 'plan' and 'work' activate their
+//同名 skills, sub-kinds map to the existing skill-named types.
+const taskKind = ref<'plan' | 'agent' | 'work'>('agent')
+const agentSubKind = ref('general')
+const duetMode = ref<'on' | 'off'>('off')
+const agentMode = computed(() => (taskKind.value === 'agent' ? agentSubKind.value : taskKind.value))
 const optionsOpen = ref(false)
 const executorId = ref('')
 const workdir = ref('')
@@ -107,7 +114,7 @@ let browserExecutor = ''
 let hostFetching = false
 const followLatest = ref(true)
 function rememberEditor(id = selectedId.value) {
-  try { localStorage.setItem(`0kay.agent.editor:${id}`, JSON.stringify({draft:draft.value,mode:mode.value,...options()})) } catch { /* storage unavailable */ }
+  try { localStorage.setItem(`0kay.agent.editor:${id}`, JSON.stringify({draft:draft.value,mode:agentMode.value,kind:taskKind.value,duet:duetMode.value,...options()})) } catch { /* storage unavailable */ }
 }
 function closeBrowser() { browseRequest++;browserOpen.value=false;browserBusy.value=false;workspacePick.value=false }
 function onEscape(event: KeyboardEvent) {if(event.key==='Escape' && browserOpen.value) closeBrowser()}
@@ -811,8 +818,13 @@ function loadOptions() {
     intensity.value = savedIntensity(saved.thinking_intensity); modelId.value = saved.model_id || 'MOCR'
     permissionMode.value=saved.permission_mode==='full_access'?'full_access':'normal'
     minimalMode.value=saved.minimal_mode?'on':'off'
-    draft.value=saved.draft || '';mode.value=saved.mode || 'general'
-  } catch { executorId.value='';workdir.value='';intensity.value=50;modelId.value='MOCR';draft.value='';mode.value='general';minimalMode.value='off' }
+    duetMode.value=(saved.duet_mode==='1'||saved.duet===true||saved.duet==='on')?'on':'off'
+    draft.value=saved.draft || ''
+    // Legacy editors stored the flat agent_type in `mode`; derive kind+sub.
+    if (saved.kind === 'plan' || saved.kind === 'work' || saved.kind === 'agent') { taskKind.value = saved.kind; agentSubKind.value = saved.kind === 'agent' ? (saved.mode || 'general') : agentSubKind.value }
+    else if (saved.mode === 'plan' || saved.mode === 'work') { taskKind.value = saved.mode }
+    else { taskKind.value = 'agent'; agentSubKind.value = saved.mode || 'general' }
+  } catch { executorId.value='';workdir.value='';intensity.value=50;modelId.value='MOCR';draft.value='';taskKind.value='agent';agentSubKind.value='general';duetMode.value='off';minimalMode.value='off' }
 }
 const providerNames = ref<Record<string, string>>({})
 function modelLabel(model: { id: string; provider: string; provider_id?: string; provider_name?: string }) {
@@ -840,7 +852,7 @@ async function fetchModels() {
     }
   } catch { /* provider names are optional */ }
 }
-function options() { const level=intensity.value===0?'off':intensity.value<35?'low':intensity.value<62.5?'medium':intensity.value<87.5?'high':'max';return { executor_id: executorId.value, workdir: workdir.value.trim(), thinking_intensity: level, model_id: modelId.value, permission_mode:permissionMode.value, minimal_mode: minimalMode.value==='on', language:locale.value } }
+function options() { const level=intensity.value===0?'off':intensity.value<35?'low':intensity.value<62.5?'medium':intensity.value<87.5?'high':'max';return { executor_id: executorId.value, workdir: workdir.value.trim(), thinking_intensity: level, model_id: modelId.value, permission_mode:permissionMode.value, minimal_mode: minimalMode.value==='on', duet_mode: duetMode.value==='on'?'1':'0', language:locale.value } }
 const busy = ref(false)
 const error = ref('')
 const showArchived = ref(false)
@@ -1179,10 +1191,10 @@ async function send() {
   try {
     const requestOptions: Record<string, any> = options()
     const message = draft.value.trim() || t('agent.page.attachedFilesFallback')
-    const agentMode=mode.value
+    const modeForTask=agentMode.value
     if (!session.value) {
       const id=await store.createSession(message.slice(0,60))
-      localStorage.setItem(`0kay.agent.editor:${id}`,JSON.stringify({...requestOptions,draft:message,mode:agentMode}))
+      localStorage.setItem(`0kay.agent.editor:${id}`,JSON.stringify({...requestOptions,draft:message,mode:modeForTask,kind:taskKind.value,duet:duetMode.value}))
       selectedId.value=id;localStorage.setItem('0kay.agent.selected',id)
     }
     // The session list stays usable while sending, so pin the target: the user
@@ -1190,7 +1202,7 @@ async function send() {
     const target = selectedId.value
     rememberEditor(target)
     if (hasAttachments) requestOptions.attachments = attachments.value.map(item => ({ ...item }))
-    await store.sendTask(target, message, agentMode, requestOptions)
+    await store.sendTask(target, message, modeForTask, requestOptions)
     draft.value = ''
     attachments.value = []
     attachError.value = ''
@@ -1486,6 +1498,7 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
         <div class="execution-options">
           <label>{{ t('agent.page.permissions') }}<AppSelect v-model="permissionMode" :aria-label="t('agent.page.permissions')" :disabled="!!active || busy" :options="[{value:'normal',label:t('agent.page.permNormal')},{value:'full_access',label:t('agent.page.permFullAccess')}]" /></label>
           <label :title="t('agent.page.minimalModeHint')">{{ t('agent.page.minimalMode') }}<AppSelect v-model="minimalMode" :aria-label="t('agent.page.minimalMode')" :disabled="!!active || busy" :options="[{value:'off',label:t('agent.page.minimalOff')},{value:'on',label:t('agent.page.minimalOn')}]" /></label>
+          <label :title="t('agent.page.duetModeHint')">{{ t('agent.page.duetMode') }}<AppSelect v-model="duetMode" :aria-label="t('agent.page.duetMode')" :disabled="!!active || busy" :options="[{value:'off',label:t('agent.page.duetOff')},{value:'on',label:t('agent.page.duetOn')}]" /></label>
           <label>{{ t('agent.page.executor') }}<AppSelect v-model="executorId" :aria-label="t('agent.page.executor')" :disabled="!!active || busy" :options="[{value:'',label:t('agent.page.autoExecutor')},...store.agents.map(agent=>({value:agent.plugin_id,label:`${agent.host?.hostname || agent.name} · ${agent.plugin_id}`,disabled:!store.isHealthy(agent)}))]" /></label>
           <label>{{ t('agent.page.workspace') }}<button type="button" class="workspace-select" :disabled="!!active || busy || !executor" :title="workdir || executor?.host?.workdir" @click="browse(workdir || executor?.host?.workdir || '')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ workdir || t('agent.page.selectFolder') }}</button></label>
           <ThinkingSlider v-model="intensity" :disabled="!!active || busy" />
@@ -1534,7 +1547,8 @@ onUnmounted(() => {rememberEditor();closeBrowser();store.disconnect();if(hostTim
             <span class="connection-hint"><span v-if="active?.kind === 'compact'" class="tree-spin small" aria-hidden="true" /><i v-else :class="{online:store.onlineCount>0}" />{{ active?.kind === 'compact' ? t('agent.page.compacting') : store.onlineCount ? t('agent.page.executorOnline') : t('agent.page.executorOffline') }}</span>
           </div>
           <div class="footer-actions">
-            <label class="mode-field"><AppSelect v-model="mode" :disabled="busy" :aria-label="t('agent.page.agentMode')" :options="[{value:'general',label:t('agent.page.modeGeneral')},{value:'code',label:t('agent.page.modeCode')},{value:'code_explore',label:t('agent.page.modeCodeExplore')},{value:'research',label:t('agent.page.modeResearch')},{value:'science',label:t('agent.page.modeScience')}]" /></label>
+            <label class="mode-field"><AppSelect v-model="taskKind" :disabled="busy" :aria-label="t('agent.page.taskKind')" :options="[{value:'plan',label:t('agent.page.kindPlan')},{value:'agent',label:t('agent.page.kindAgent')},{value:'work',label:t('agent.page.kindWork')}]" /></label>
+            <label v-if="taskKind==='agent'" class="mode-field"><AppSelect v-model="agentSubKind" :disabled="busy" :aria-label="t('agent.page.agentSubKind')" :options="[{value:'general',label:t('agent.page.modeGeneral')},{value:'code',label:t('agent.page.modeCode')},{value:'code_explore',label:t('agent.page.modeCodeExplore')},{value:'research',label:t('agent.page.modeResearch')},{value:'science',label:t('agent.page.modeScience')}]" /></label>
             <button type="button" class="chip-btn" :class="{active:hostOpen}" @click="hostOpen=!hostOpen"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>{{ t('agent.page.host') }}</button>
             <button type="button" class="chip-btn" :disabled="!session || !!active || busy || session.state === 'archived'" @click="compact"><span v-if="compacting" class="tree-spin small" aria-hidden="true"></span><svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 9h16M4 15h16M9 4v16M15 4v16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>/compact</button>
             <button type="button" class="chip-btn" :class="{active:optionsOpen}" :aria-expanded="optionsOpen" @click="optionsOpen=!optionsOpen"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke="currentColor" stroke-width="1.6"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 13.6H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ t('agent.page.settings') }}</button>

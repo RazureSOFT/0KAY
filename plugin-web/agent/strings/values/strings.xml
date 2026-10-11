@@ -97,6 +97,15 @@
   <string name="page.modeGeneral">General Agent</string>
   <string name="page.modeResearch">Research Agent</string>
   <string name="page.modeScience">Science Agent</string>
+  <string name="page.taskKind">Task kind</string>
+  <string name="page.kindPlan">Plan · planning only</string>
+  <string name="page.kindAgent">Agent · autonomous</string>
+  <string name="page.kindWork">Work · focused pass</string>
+  <string name="page.agentSubKind">Agent sub-kind</string>
+  <string name="page.duetMode">Duet (big/small model)</string>
+  <string name="page.duetModeHint">Auto model split: the think model drafts the plan and a self-contained implementation prompt, then the light output model implements it. Ignored when a model is pinned manually.</string>
+  <string name="page.duetOn">On · plan then implement</string>
+  <string name="page.duetOff">Off</string>
   <string name="page.model">Model</string>
   <string name="page.modelCatalogHttp">Model catalog HTTP {status}</string>
   <string name="page.modelFallback">{requested} unavailable · fell back to {actual}</string>
