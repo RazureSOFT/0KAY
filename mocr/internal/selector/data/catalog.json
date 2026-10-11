@@ -1,0 +1,6673 @@
+{
+ "stepfun/step-5-preview": {
+  "provider": "StepFun",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 3.7,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$3.70/1M",
+  "desc": "Step 5 Preview is StepFun's flagship model for agentic work, built on a sparse Mixture-of-Experts architecture (27B active / 600B total para"
+ },
+ "anthropic/claude-haiku-5.5": {
+  "provider": "Anthropic",
+  "power": 4.5,
+  "ctx": 1000000,
+  "cost": 0.6,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.60/1M",
+  "desc": "Claude Haiku 5.5 is Anthropic's small, fast model for high-volume, cost-sensitive work such as summarization, subagents, and browser use. It"
+ },
+ "google/gemini-nano-banana-2.1": {
+  "provider": "Google",
+  "power": 3.0,
+  "ctx": 65536,
+  "cost": 9.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$9.00/1M",
+  "desc": "Nano Banana 2.1 (Gemini Nano Banana 2.1) is Google's image generation and editing model on the Flash tier, succeeding Nano Banana 2 and Nano"
+ },
+ "mistralai/mistral-large-4-0": {
+  "provider": "Mistral",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 2.77,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.77/1M",
+  "desc": "Mistral Large 4 is a frontier multimodal (text and image input) model from Mistral AI built for reasoning, coding, and agentic workloads. It"
+ },
+ "unbiased/pareto-26.10-preview": {
+  "provider": "unbiased",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 4.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$4.00/1M",
+  "desc": "Pareto is a multimodal composite model built for research, coding, and agentic workflows, while delivering frontier-level performance across"
+ },
+ "openai/gpt-6.1-sol-pro": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 1050000,
+  "cost": 12.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$12.00/1M",
+  "desc": "GPT-6.1 Sol Pro is the same underlying model as [GPT-6.1 Sol](https://openrouter.ai/openai/gpt-6.1-sol), served with `reasoning.mode` set to"
+ },
+ "openai/gpt-6.1-sol": {
+  "provider": "OpenAI",
+  "power": 5.0,
+  "ctx": 1050000,
+  "cost": 12.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$12.00/1M",
+  "desc": "GPT-6.1 Sol is an upgrade to GPT-6 Sol from OpenAI, positioned below the flagship GPT-6 Astra in the GPT-6 series. It is suited for agentic "
+ },
+ "anthropic/claude-sonnet-5.5": {
+  "provider": "Anthropic",
+  "power": 5.0,
+  "ctx": 1000000,
+  "cost": 12.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$12.00/1M",
+  "desc": "Claude Sonnet 5.5 is Anthropic's Sonnet-class model for well-scoped everyday work, succeeding Claude Sonnet 5 as a direct upgrade. It is esp"
+ },
+ "perceptron/perceptron-mk1.5": {
+  "provider": "perceptron",
+  "power": 3.0,
+  "ctx": 36864,
+  "cost": 1.65,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.65/1M",
+  "desc": "Perceptron Mk1.5 is Perceptron's embodied reasoning model for physical agents. It accepts text, image, video, and audio input, and answers w"
+ },
+ "fireworks/ember-1": {
+  "provider": "fireworks",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 18.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$18.00/1M",
+  "desc": "Ember-1 is a specialized reasoning model from Fireworks Research, built on [Kimi K3](https://openrouter.ai/moonshotai/kimi-k3). It is design"
+ },
+ "z-ai/glm-5.3-prime": {
+  "provider": "Z.ai(Zhipu)",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 11.6,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$11.60/1M",
+  "desc": "GLM-5.3-Prime is the high-speed variant of Z.ai's GLM-5.3, inheriting its full capabilities while delivering 1.5–2× the output throughput th"
+ },
+ "qwen/qwen3.8-max-prime": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 16.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$16.00/1M",
+  "desc": "Qwen3.8 Max Prime is a higher-throughput variant of Qwen3.8 Max from Alibaba's Qwen team, served as a separate SKU at a higher price point. "
+ },
+ "aion-labs/aion-3.5-mini": {
+  "provider": "aion-labs",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 2.1,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.10/1M",
+  "desc": "Aion 3.5 Mini is a multi-model roleplaying and storytelling system from AionLabs, built on the GLM family of models. It is the smaller, lowe"
+ },
+ "aion-labs/aion-3.5": {
+  "provider": "aion-labs",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 9.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$9.00/1M",
+  "desc": "Aion 3.5 is a multi-model roleplaying and storytelling system from AionLabs, built on the GLM family of models. It uses a collaborative gene"
+ },
+ "upstage/solar-mini4": {
+  "provider": "upstage",
+  "power": 3.3,
+  "ctx": 524288,
+  "cost": 0.25,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.25/1M",
+  "desc": "Solar Mini 4 is Upstage's compact, cost-efficient language model, a 35B-parameter mixture-of-experts with 3B active parameters and a 524K co"
+ },
+ "cohere/command-a-plus": {
+  "provider": "Cohere",
+  "power": 3.0,
+  "ctx": 192000,
+  "cost": 1.8,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.80/1M",
+  "desc": "Command A+ is Cohere's flagship model for enterprise agentic workflows. It accepts text and image inputs with a 192K context window, support"
+ },
+ "openai/gpt-6-luna-pro": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 1050000,
+  "cost": 0.6,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.60/1M",
+  "desc": "GPT-6 Luna Pro is the same underlying model as [GPT-6 Luna](https://openrouter.ai/openai/gpt-6-luna), served with `reasoning.mode` set to `p"
+ },
+ "openai/gpt-6-luna": {
+  "provider": "OpenAI",
+  "power": 4.2,
+  "ctx": 1050000,
+  "cost": 0.6,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.60/1M",
+  "desc": "GPT-6 Luna is the fast, cost-efficient model in OpenAI's GPT-6 series, positioned below GPT-6 Sol. It is suited for high-volume and latency-"
+ },
+ "openai/gpt-6-sol-pro": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 1050000,
+  "cost": 12.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$12.00/1M",
+  "desc": "GPT-6 Sol Pro is the same underlying model as [GPT-6 Sol](https://openrouter.ai/openai/gpt-6-sol), served with `reasoning.mode` set to `pro`"
+ },
+ "openai/gpt-6-sol": {
+  "provider": "OpenAI",
+  "power": 4.8,
+  "ctx": 1050000,
+  "cost": 12.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$12.00/1M",
+  "desc": "GPT-6 Sol is the cost-efficient high-end model in OpenAI's GPT-6 series, positioned below the flagship GPT-6 Astra and above the fast GPT-6 "
+ },
+ "anthropic/claude-opus-5.5": {
+  "provider": "Anthropic",
+  "power": 5.0,
+  "ctx": 1000000,
+  "cost": 24.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$24.00/1M",
+  "desc": "Claude Opus 5.5 is Anthropic's flagship model for demanding reasoning, coding, and long-horizon agentic work, succeeding Claude Opus 5. It i"
+ },
+ "xiaomi/mimo-v2.6-pro-ultraspeed": {
+  "provider": "xiaomi",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 13.05,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$13.05/1M",
+  "desc": "MiMo-V2.6-Pro-UltraSpeed is the fast speed edition of Xiaomi's flagship foundation model, MiMo-V2.6-Pro. Built from the same 1T MiMo-V2.6-Pr"
+ },
+ "xiaomi/mimo-v2.6-flash": {
+  "provider": "xiaomi",
+  "power": 4.2,
+  "ctx": 1050000,
+  "cost": 0.42,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.42/1M",
+  "desc": "MiMo-V2.6-Flash is an open-source foundation model developed by Xiaomi. Built on a Mixture-of-Experts architecture with 309B total parameter"
+ },
+ "xiaomi/mimo-v2.6-pro": {
+  "provider": "xiaomi",
+  "power": 4.8,
+  "ctx": 1050000,
+  "cost": 1.305,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.30/1M",
+  "desc": "MiMo-V2.6-Pro is the flagship foundation model developed by Xiaomi. Built at a scale of over 1T parameters, it is designed to push the ceili"
+ },
+ "x-ai/grok-4.7": {
+  "provider": "xAI",
+  "power": 4.8,
+  "ctx": 500000,
+  "cost": 8.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$8.00/1M",
+  "desc": "Grok 4.7 is SpaceXAI's flagship model for coding, agentic tasks, and knowledge work, succeeding Grok 4.6. It is particularly strong at long-"
+ },
+ "qwen/qwen3.8-omni-flash": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 0.62,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.62/1M",
+  "desc": "Qwen3.8 Omni Flash is an omni-modal reasoning model from Alibaba, the first Qwen model built around agentic capabilities with native audio-v"
+ },
+ "prism-ml/ternary-bonsai-2-27b": {
+  "provider": "prism-ml",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 0.575,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.57/1M",
+  "desc": "Bonsai 2 27B is a 27B-parameter reasoning model from PrismML derived from Qwen3.8-27B. It supports coding, mathematics, tool calling, and im"
+ },
+ "z-ai/glm-5.3-flashx": {
+  "provider": "Z.ai(Zhipu)",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 1.62,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.62/1M",
+  "desc": "GLM-5.3-FlashX is the high-speed variant of Z.ai's GLM-5.3-Flash, a native multimodal model delivering inference speeds of up to 200 tokens/"
+ },
+ "unbiased/pareto": {
+  "provider": "unbiased",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 10.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$10.00/1M",
+  "desc": "Pareto is a multimodal composite model built for research, coding, and agentic workflows, while delivering frontier-level performance across"
+ },
+ "~deepseek/deepseek-pro-latest": {
+  "provider": "~deepseek",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 0.8765,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.88/1M",
+  "desc": "This model always redirects to the latest model in the DeepSeek Pro family."
+ },
+ "~deepseek/deepseek-flash-latest": {
+  "provider": "~deepseek",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 0.6001,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.60/1M",
+  "desc": "This model always redirects to the latest model in the DeepSeek Flash family."
+ },
+ "inference-net/schematron-v2-turbo": {
+  "provider": "inference-net",
+  "power": 3.0,
+  "ctx": 128000,
+  "cost": 0.18,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.18/1M",
+  "desc": "Schematron V2 Turbo is a 3B-parameter HTML-to-JSON extraction model from Inference.net. It prioritizes throughput for high-volume extraction"
+ },
+ "inference-net/schematron-v2-small": {
+  "provider": "inference-net",
+  "power": 3.0,
+  "ctx": 128000,
+  "cost": 0.28,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.28/1M",
+  "desc": "Schematron V2 Small is a 3B-parameter HTML-to-JSON extraction model from Inference.net. It prioritizes extraction quality for complex schema"
+ },
+ "~openai/gpt-astra-latest": {
+  "provider": "~openai",
+  "power": 3.0,
+  "ctx": 1050000,
+  "cost": 60.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$60.00/1M",
+  "desc": "This model always redirects to the latest model in the GPT Astra family."
+ },
+ "~openai/gpt-sol-latest": {
+  "provider": "~openai",
+  "power": 3.0,
+  "ctx": 1050000,
+  "cost": 12.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$12.00/1M",
+  "desc": "This model always redirects to the latest model in the GPT Sol family."
+ },
+ "~openai/gpt-terra-latest": {
+  "provider": "~openai",
+  "power": 3.0,
+  "ctx": 1050000,
+  "cost": 14.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$14.00/1M",
+  "desc": "This model always redirects to the latest model in the GPT Terra family."
+ },
+ "~openai/gpt-luna-latest": {
+  "provider": "~openai",
+  "power": 3.0,
+  "ctx": 1050000,
+  "cost": 0.6,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.60/1M",
+  "desc": "This model always redirects to the latest model in the GPT Luna family."
+ },
+ "sakana/fugu-ultra-v2": {
+  "provider": "sakana",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 35.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$35.00/1M",
+  "desc": "Fugu Ultra v2 is the higher-performance model in Sakana AI's Fugu family. Rather than a single monolithic model, Fugu is a learned multi-age"
+ },
+ "sakana/fugu-max": {
+  "provider": "sakana",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 8.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$8.00/1M",
+  "desc": "Fugu Max is the cost-performance model in Sakana AI's Fugu family. Rather than a single monolithic model, Fugu is a learned multi-agent orch"
+ },
+ "inclusionai/ling-3.0-flash-vl": {
+  "provider": "InclusionAI",
+  "power": 3.3,
+  "ctx": 262144,
+  "cost": 0.0826,
+  "tags": [
+   "agentic",
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.08/1M",
+  "desc": "Ling 3.0 Flash VL builds on Ling 3.0 Flash (124B total / 5.5B active MoE from InclusionAI), further strengthening its language capabilities "
+ },
+ "deepseek/deepseek-v4.1-flash": {
+  "provider": "DeepSeek",
+  "power": 4.2,
+  "ctx": 1048576,
+  "cost": 1.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.50/1M",
+  "desc": "DeepSeek V4.1 Flash is a sparse mixture-of-experts model from DeepSeek, and the first built on the company's Causal Encoder-Decoder (CED) ar"
+ },
+ "inception/mercury-2.5": {
+  "provider": "inception",
+  "power": 2.7,
+  "ctx": 260000,
+  "cost": 0.19,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.19/1M",
+  "desc": "Mercury 2.5 is the fastest reasoning LLM, and the latest diffusion LLM (dLLM) from Inception. Instead of generating tokens sequentially, Mer"
+ },
+ "nex-agi/nex-n2.5-mini": {
+  "provider": "nex-agi",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 0.125,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.12/1M",
+  "desc": "Nex-N2.5 is an agentic model built to turn goals into working, verified outcomes. Its core strength is agentic coding within a visual feedba"
+ },
+ "nex-agi/nex-n2.5-pro": {
+  "provider": "nex-agi",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 0.325,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.33/1M",
+  "desc": "Nex-N2.5 is an agentic model built to turn goals into working, verified outcomes. Its core strength is agentic coding within a visual feedba"
+ },
+ "openai/gpt-6-astra": {
+  "provider": "OpenAI",
+  "power": 5.0,
+  "ctx": 1050000,
+  "cost": 60.0,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$60.00/1M",
+  "desc": "GPT-6 Astra is OpenAI's flagship model for demanding end-to-end work. It is suited for advanced analysis, software engineering, deep researc"
+ },
+ "openai/gpt-6-astra-pro": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 1050000,
+  "cost": 60.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$60.00/1M",
+  "desc": "GPT-6 Astra Pro is the same underlying model as [GPT-6 Astra](https://openrouter.ai/openai/gpt-6-astra), served with `reasoning.mode` set to"
+ },
+ "inclusionai/ling-3.0-flash-sante": {
+  "provider": "InclusionAI",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 0.1652,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.17/1M",
+  "desc": "Ling 3.0 Flash Sante is a health and medicine-focused mixture-of-experts model from InclusionAI, built on Ling 3.0 Flash with 5.1B active pa"
+ },
+ "qwen/qwen3.8-max-0902": {
+  "provider": "Alibaba(Qwen)",
+  "power": 4.8,
+  "ctx": 1000000,
+  "cost": 8.0,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$8.00/1M",
+  "desc": "Qwen3.8 Max 0902 is an updated snapshot of Qwen3.8 Max from Alibaba's Qwen team. It is a 2.4-trillion-parameter mixture-of-experts model tha"
+ },
+ "meta/muse-spark-1.3-contributor": {
+  "provider": "meta",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 0.3,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.30/1M",
+  "desc": "Muse Spark 1.3 Contributor is the cost-efficient contributor tier of Meta’s multimodal reasoning model for experimentation, learning, and ea"
+ },
+ "meta/muse-spark-1.3": {
+  "provider": "meta",
+  "power": 4.8,
+  "ctx": 1048576,
+  "cost": 5.5,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$5.50/1M",
+  "desc": "Muse Spark 1.3 is a multimodal reasoning model from Meta for long-running agentic, multi-agent, and coding workflows. It is designed to keep"
+ },
+ "google/gemini-3.8-flash": {
+  "provider": "Google",
+  "power": 4.5,
+  "ctx": 1048576,
+  "cost": 4.5,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$4.50/1M",
+  "desc": "Gemini 3.8 Flash is Google's most intelligent Flash model with significant gains from 3.7 Flash across software engineering, agentic tasks, "
+ },
+ "anthropic/claude-fable-5.1": {
+  "provider": "Anthropic",
+  "power": 5.0,
+  "ctx": 1000000,
+  "cost": 60.0,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$60.00/1M",
+  "desc": "Claude Fable 5.1 improves on Claude Fable 5 across the board, with the biggest gains in agentic coding, long-running agentic workflows, and "
+ },
+ "ibm-granite/granite-4.2-8b": {
+  "provider": "ibm-granite",
+  "power": 2.7,
+  "ctx": 131072,
+  "cost": 0.31,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.31/1M",
+  "desc": "Granite 4.2 8B is a dense reasoning model from IBM. It is suited for mathematics, code generation, multilingual dialogue, and agentic workfl"
+ },
+ "tencent/hy4-preview": {
+  "provider": "Tencent(混元)",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 3.335,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$3.33/1M",
+  "desc": "Tencent: Hy4 preview is a mixture-of-experts model from Tencent, with 49B active parameters out of 770B total. It is designed for coding age"
+ },
+ "inclusionai/ling-3.0-flash-fin": {
+  "provider": "InclusionAI",
+  "power": 3.3,
+  "ctx": 262144,
+  "cost": 0.1652,
+  "tags": [
+   "agentic",
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.17/1M",
+  "desc": "Ling 3.0 Flash Fin is a finance-focused mixture-of-experts model from InclusionAI, built on Ling 3.0 Flash with 5.1B active parameters out o"
+ },
+ "~z-ai/glm-flash-latest": {
+  "provider": "~z-ai",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 0.54,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.54/1M",
+  "desc": "This model always redirects to the latest model in the GLM Flash family."
+ },
+ "qwen/qwen3.8-flash": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 0.62,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.62/1M",
+  "desc": "Qwen3.8 Flash is a multimodal reasoning model from Alibaba. It is suited for coding assistance, agentic workflows, visual understanding, doc"
+ },
+ "z-ai/glm-5.3-flash": {
+  "provider": "Z.ai(Zhipu)",
+  "power": 4.5,
+  "ctx": 1048576,
+  "cost": 0.65,
+  "tags": [
+   "agentic",
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.65/1M",
+  "desc": "GLM-5.3-Flash is a native multimodal model from Z.ai. It is suited for efficient coding and long-horizon agent tasks. Its hybrid sparse and "
+ },
+ "meta/muse-spark-1.2-contributor": {
+  "provider": "meta",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 0.3,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.30/1M",
+  "desc": "Muse Spark 1.2 contributor tier is a reasoning model from Meta designed for developers who want to start building at an even lower cost. It’"
+ },
+ "deepseek/deepseek-v4-flash-vision-exp": {
+  "provider": "DeepSeek",
+  "power": 3.9,
+  "ctx": 1048576,
+  "cost": 0.8624,
+  "tags": [
+   "agentic",
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.86/1M",
+  "desc": "DeepSeek V4 Flash Vision Exp is an experimental vision-enabled version of [DeepSeek V4 Flash 0731](https://openrouter.ai/deepseek/deepseek-v"
+ },
+ "tencent/hy-mt2-1.8b": {
+  "provider": "Tencent(混元)",
+  "power": 3.0,
+  "ctx": 8192,
+  "cost": 0.221,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.22/1M",
+  "desc": "Hy-MT2-1.8B is a compact 1.8B-parameter translation model from Tencent. It supports 33 language pairs and five Chinese dialect and minority-"
+ },
+ "tencent/hy-mt2-30b-a3b": {
+  "provider": "Tencent(混元)",
+  "power": 3.0,
+  "ctx": 8192,
+  "cost": 0.369,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.37/1M",
+  "desc": "Hy-MT2-30B-A3B is Tencent's flagship translation model in the Hy-MT2 family. It supports 33 language pairs and five Chinese dialect and mino"
+ },
+ "~z-ai/glm-latest": {
+  "provider": "~z-ai",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 4.839,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$4.84/1M",
+  "desc": "This model always redirects to the latest GLM model from Z.ai."
+ },
+ "tencent/hy-mt2-7b": {
+  "provider": "Tencent(混元)",
+  "power": 3.0,
+  "ctx": 8192,
+  "cost": 0.369,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.37/1M",
+  "desc": "Hy-MT2-7B is a 7B-parameter translation model from Tencent. It supports 33 language pairs and five Chinese dialect and minority-language pai"
+ },
+ "z-ai/glm-5.3": {
+  "provider": "Z.ai(Zhipu)",
+  "power": 4.5,
+  "ctx": 1048576,
+  "cost": 4.839,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$4.84/1M",
+  "desc": "GLM-5.3 is a large-scale reasoning model from Z.ai, built for complex software engineering and long-horizon agent tasks. It supports text in"
+ },
+ "qwen/qwen3.8-27b": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.9,
+  "ctx": 1000000,
+  "cost": 2.975,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.98/1M",
+  "desc": "Qwen3.8 27B is an open-weight dense vision-language model from Qwen. It is suited for coding, professional workflows, research, multimodal i"
+ },
+ "google/gemini-3.7-flash": {
+  "provider": "Google",
+  "power": 4.2,
+  "ctx": 1048576,
+  "cost": 4.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$4.50/1M",
+  "desc": "Gemini 3.7 Flash is a multimodal model from Google for fast agentic workflows, coding, and complex multi-step reasoning. It is designed for "
+ },
+ "bytedance-seed/seed-2-1-turbo": {
+  "provider": "bytedance-seed",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 3.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$3.00/1M",
+  "desc": "Seed 2.1 Turbo is a multimodal model from ByteDance Seed for coding and long-horizon agent workflows. It is suited for end-to-end software d"
+ },
+ "qwen/qwen3.8-2.4t-a95b": {
+  "provider": "Alibaba(Qwen)",
+  "power": 4.2,
+  "ctx": 1048576,
+  "cost": 8.0,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$8.00/1M",
+  "desc": "Qwen3.8 2.4T A95B is an open-weight sparse mixture-of-experts model from Qwen and the open-weight variant of [Qwen3.8 Max](/qwen/qwen3.8-max"
+ },
+ "bytedance-seed/seed-2.0-code": {
+  "provider": "bytedance-seed",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 3.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$3.50/1M",
+  "desc": "Seed 2.0 Code is a model from ByteDance Seed optimized for agentic coding. It is suited for frontend development, multilingual programming t"
+ },
+ "deepseek/deepseek-v4-pro-0813": {
+  "provider": "DeepSeek",
+  "power": 4.2,
+  "ctx": 1048576,
+  "cost": 2.64,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.64/1M",
+  "desc": "DeepSeek V4 Pro 0813 is a large-scale mixture-of-experts model from DeepSeek. This is the GA release of DeepSeek V4 Pro."
+ },
+ "x-ai/grok-4.6": {
+  "provider": "xAI",
+  "power": 4.5,
+  "ctx": 500000,
+  "cost": 8.0,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$8.00/1M",
+  "desc": "Grok 4.6 is a model from SpaceXAI with frontier performance on coding, knowledge work, and STEM. It is succeeded by [Grok 4.7](/x-ai/grok-4."
+ },
+ "nvidia/nemotron-3.5-lightning": {
+  "provider": "NVIDIA",
+  "power": 2.7,
+  "ctx": 262144,
+  "cost": 0.27,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.27/1M",
+  "desc": "NVIDIA Nemotron 3.5 Lightning is an open mixture-of-experts model from NVIDIA, with 3B active parameters out of 30B total. It is suited for "
+ },
+ "sakana/sakana-namazu": {
+  "provider": "sakana",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 4.95,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$4.95/1M",
+  "desc": "Sakana Namazu is a Japanese-specialized reasoning model from Sakana AI, based on Kimi K2.6 with additional training for Japanese language an"
+ },
+ "upstage/solar-pro4": {
+  "provider": "upstage",
+  "power": 3.6,
+  "ctx": 524288,
+  "cost": 0.45,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.45/1M",
+  "desc": "Solar Pro 4 is Upstage's cost-efficient large language model, featuring a 524K context window. It is built for long-horizon tasks and agenti"
+ },
+ "meta/muse-glimmer-30b": {
+  "provider": "meta",
+  "power": 3.0,
+  "ctx": 131072,
+  "cost": 1.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.50/1M",
+  "desc": "Muse Glimmer 30B is a dense, open-weight multimodal model from Meta Superintelligence Labs, distilled from Muse Spark and optimized for auto"
+ },
+ "meta/muse-spark-1.2": {
+  "provider": "meta",
+  "power": 4.2,
+  "ctx": 1048576,
+  "cost": 5.5,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$5.50/1M",
+  "desc": "Muse Spark 1.2 is a reasoning model from Meta, designed for complex agentic tasks. It accepts text, images, video, and PDF documents, return"
+ },
+ "~deepseek/deepseek-v4-flash-latest": {
+  "provider": "~deepseek",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 1.2975,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.30/1M",
+  "desc": "This model always redirects to the latest model in the DeepSeek V4 Flash family."
+ },
+ "deepseek/deepseek-v4-flash-0731": {
+  "provider": "DeepSeek",
+  "power": 3.9,
+  "ctx": 1048576,
+  "cost": 1.2975,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.30/1M",
+  "desc": "DeepSeek V4 Flash 0731 is a sparse mixture-of-experts model from DeepSeek, with 13B active parameters out of 284B total. This re-post-traine"
+ },
+ "thinkingmachines/inkling-small": {
+  "provider": "thinkingmachines",
+  "power": 3.6,
+  "ctx": 524288,
+  "cost": 1.65,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.65/1M",
+  "desc": "Inkling Small is an open-weight multimodal mixture-of-experts model from Thinking Machines Lab, with 12B active parameters out of 276B total"
+ },
+ "qwen/qwen3.7-flash": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 0.16,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.16/1M",
+  "desc": "Qwen3.7 Flash is a vision-language reasoning model from Alibaba. It is suited for multimodal agents, visual coding, search, and computer int"
+ },
+ "anthropic/claude-opus-5": {
+  "provider": "Anthropic",
+  "power": 5.0,
+  "ctx": 1000000,
+  "cost": 30.0,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$30.00/1M",
+  "desc": "Claude Opus 5 is Anthropic’s flagship model for demanding reasoning, coding, and long-horizon agentic work. It is particularly strong at end"
+ },
+ "inclusionai/ling-3.0-flash": {
+  "provider": "InclusionAI",
+  "power": 3.3,
+  "ctx": 262144,
+  "cost": 0.084,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.08/1M",
+  "desc": "*Ling-3.0-flash* is a *124B-parameter Mixture-of-Experts (MoE) model*, with approximately *5.1B parameters activated per token*. The model i"
+ },
+ "poolside/laguna-s-2.1": {
+  "provider": "poolside",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 0.27,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.27/1M",
+  "desc": "Laguna S 2.1 is the latest coding agent model from [Poolside](<https://poolside.ai/>). Laguna S 2.1 is a 118B total parameter model with 8B "
+ },
+ "google/gemini-3.6-flash": {
+  "provider": "Google",
+  "power": 3.9,
+  "ctx": 1048576,
+  "cost": 4.5,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$4.50/1M",
+  "desc": "Gemini 3.6 Flash is a high-efficiency model from Google for coding, agentic workflows, and web and app development. It is designed to produc"
+ },
+ "google/gemini-3.5-flash-lite": {
+  "provider": "Google",
+  "power": 3.3,
+  "ctx": 1048576,
+  "cost": 2.8,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.80/1M",
+  "desc": "Gemini 3.5 Flash Lite is a high-efficiency model from Google with upgraded agentic capabilities. It is suited for subagents that execute foc"
+ },
+ "meituan/longcat-2.0": {
+  "provider": "meituan",
+  "power": 3.0,
+  "ctx": 1048756,
+  "cost": 1.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.50/1M",
+  "desc": "LongCat 2.0 is a sparse mixture-of-experts language model from Meituan, with 48B active parameters out of 1.6T total. It is suited for codin"
+ },
+ "thinkingmachines/inkling": {
+  "provider": "thinkingmachines",
+  "power": 3.6,
+  "ctx": 524288,
+  "cost": 5.05,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$5.05/1M",
+  "desc": "Inkling is an open-weight multimodal mixture-of-experts model from Thinking Machines Lab, with 41B active parameters out of 975B total. It i"
+ },
+ "moonshotai/kimi-k3": {
+  "provider": "Moonshot(Kimi)",
+  "power": 4.5,
+  "ctx": 1048576,
+  "cost": 14.0,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$14.00/1M",
+  "desc": "Kimi K3 is a 2.8T parameter open-weight multimodal reasoning model from Moonshot AI. It is suited for complex coding, knowledge work, and lo"
+ },
+ "meta/muse-spark-1.1": {
+  "provider": "meta",
+  "power": 3.9,
+  "ctx": 1048576,
+  "cost": 5.5,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$5.50/1M",
+  "desc": "Muse Spark 1.1 is a multimodal reasoning model from Meta, built for agentic tasks. It accepts text, images, video, and PDF documents and ret"
+ },
+ "openai/gpt-5.6-luna-pro": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 1050000,
+  "cost": 1.4,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.40/1M",
+  "desc": "GPT-5.6 Luna Pro is the same underlying model as [GPT-5.6 Luna](https://openrouter.ai/openai/gpt-5.6-luna), served with `reasoning.mode` set"
+ },
+ "openai/gpt-5.6-luna": {
+  "provider": "OpenAI",
+  "power": 4.2,
+  "ctx": 1050000,
+  "cost": 1.4,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.40/1M",
+  "desc": "GPT-5.6 Luna is a fast, cost-efficient model in OpenAI's GPT-5.6 series. It is suited for high-volume, latency-sensitive tasks such as chat,"
+ },
+ "openai/gpt-5.6-terra-pro": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 1050000,
+  "cost": 14.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$14.00/1M",
+  "desc": "GPT-5.6 Terra Pro is the same underlying model as [GPT-5.6 Terra](https://openrouter.ai/openai/gpt-5.6-terra), served with `reasoning.mode` "
+ },
+ "openai/gpt-5.6-terra": {
+  "provider": "OpenAI",
+  "power": 4.5,
+  "ctx": 1050000,
+  "cost": 14.0,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$14.00/1M",
+  "desc": "GPT-5.6 Terra is a balanced model in OpenAI's GPT-5.6 series, positioned between the flagship Sol tier and the cost-efficient Luna tier. It "
+ },
+ "openai/gpt-5.6-sol-pro": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 1050000,
+  "cost": 12.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$12.00/1M",
+  "desc": "GPT-5.6 Sol Pro is the same underlying model as [GPT-5.6 Sol](https://openrouter.ai/openai/gpt-5.6-sol), served with `reasoning.mode` set to"
+ },
+ "openai/gpt-5.6-sol": {
+  "provider": "OpenAI",
+  "power": 4.8,
+  "ctx": 1050000,
+  "cost": 12.0,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$12.00/1M",
+  "desc": "GPT-5.6 Sol is the flagship model in OpenAI's GPT-5.6 series. It is suited for complex reasoning, coding, and agentic workflows, and is part"
+ },
+ "x-ai/grok-4.5": {
+  "provider": "xAI",
+  "power": 4.2,
+  "ctx": 500000,
+  "cost": 8.0,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$8.00/1M",
+  "desc": "Grok 4.5 is a model from SpaceXAI with frontier performance on coding, knowledge work, and STEM."
+ },
+ "~x-ai/grok-latest": {
+  "provider": "~x-ai",
+  "power": 3.0,
+  "ctx": 500000,
+  "cost": 8.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$8.00/1M",
+  "desc": "This model always redirects to the latest Grok model from xAI."
+ },
+ "aion-labs/aion-3.0-mini": {
+  "provider": "aion-labs",
+  "power": 3.0,
+  "ctx": 131072,
+  "cost": 2.1,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.10/1M",
+  "desc": "Aion-3.0 Mini is a multi-model roleplaying and storytelling system from AionLabs, built on the DeepSeek family of models. It uses a collabor"
+ },
+ "aion-labs/aion-3.0": {
+  "provider": "aion-labs",
+  "power": 3.0,
+  "ctx": 131072,
+  "cost": 9.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$9.00/1M",
+  "desc": "Aion-3.0 is a multi-model roleplaying and storytelling system from AionLabs, built on the GLM family of models. It uses a collaborative gene"
+ },
+ "tencent/hy3": {
+  "provider": "Tencent(混元)",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 0.66,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.66/1M",
+  "desc": "Hy3 is a 295B-parameter Mixture-of-Experts model from Tencent (21B active, 192 experts with top-8 routing) built for reasoning, agentic work"
+ },
+ "poolside/laguna-xs-2.1": {
+  "provider": "poolside",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 0.18,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.18/1M",
+  "desc": "Laguna XS 2.1 is the latest coding agent model in the 33B-A3B category from [Poolside](https://poolside.ai/) and a step forward from their L"
+ },
+ "anthropic/claude-sonnet-5": {
+  "provider": "Anthropic",
+  "power": 4.2,
+  "ctx": 1000000,
+  "cost": 12.0,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$12.00/1M",
+  "desc": "Sonnet 5 is Anthropic's most capable Sonnet-class model, with frontier performance across coding, agents, and professional work. It supports"
+ },
+ "google/gemini-3.1-flash-lite-image": {
+  "provider": "Google",
+  "power": 3.0,
+  "ctx": 65536,
+  "cost": 1.75,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.75/1M",
+  "desc": "Nano Banana 2 Lite (Gemini 3.1 Flash Lite Image) is Google's fastest, most cost-efficient Gemini image model, built for high-velocity develo"
+ },
+ "sakana/fugu-ultra": {
+  "provider": "sakana",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 35.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$35.00/1M",
+  "desc": "Fugu Ultra is the higher-performance model in Sakana AI's Fugu family. Rather than a single monolithic model, Fugu is a learned multi-agent "
+ },
+ "google/gemini-3.1-flash-image": {
+  "provider": "Google",
+  "power": 3.0,
+  "ctx": 131072,
+  "cost": 3.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$3.50/1M",
+  "desc": "Gemini 3.1 Flash Image, a.k.a. \"Nano Banana 2,\" is Google’s latest state of the art image generation and editing model, delivering Pro-level"
+ },
+ "google/gemini-3-pro-image": {
+  "provider": "Google",
+  "power": 3.0,
+  "ctx": 131072,
+  "cost": 14.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$14.00/1M",
+  "desc": "Nano Banana Pro is Google’s most advanced image-generation and editing model, built on Gemini 3 Pro. It extends the original Nano Banana wit"
+ },
+ "z-ai/glm-5.2": {
+  "provider": "Z.ai(Zhipu)",
+  "power": 3.9,
+  "ctx": 1048576,
+  "cost": 7.06,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$7.06/1M",
+  "desc": "GLM 5.2 is a large-scale reasoning model from Z.ai. It supports text input and output with a 1M-token context window, and is suited for long"
+ },
+ "moonshotai/kimi-k2.7-code": {
+  "provider": "Moonshot(Kimi)",
+  "power": 3.6,
+  "ctx": 262144,
+  "cost": 4.0212,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$4.02/1M",
+  "desc": "MoonshotAI: Kimi K2.7 Code is a coding-focused model in Moonshot AI's Kimi K2 family, built to complete end-to-end programming tasks reliabl"
+ },
+ "~anthropic/claude-fable-latest": {
+  "provider": "~anthropic",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 60.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$60.00/1M",
+  "desc": "This model always redirects to the latest model in the Claude Fable family."
+ },
+ "anthropic/claude-fable-5": {
+  "provider": "Anthropic",
+  "power": 4.8,
+  "ctx": 1000000,
+  "cost": 60.0,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$60.00/1M",
+  "desc": "Claude Fable 5 is a Mythos-class model from Anthropic, built for autonomous knowledge work and coding. It supports text, image, and file inp"
+ },
+ "nvidia/nemotron-3.5-content-safety": {
+  "provider": "NVIDIA",
+  "power": 3.0,
+  "ctx": 131072,
+  "cost": 0.4,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.40/1M",
+  "desc": "NVIDIA Nemotron 3.5 Content Safety is a compact 4B-parameter multimodal guardrail model from NVIDIA, fine-tuned from Google Gemma-3-4B. It m"
+ },
+ "nvidia/nemotron-3-ultra-550b-a55b": {
+  "provider": "NVIDIA",
+  "power": 3.3,
+  "ctx": 262144,
+  "cost": 2.7,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.70/1M",
+  "desc": "NVIDIA Nemotron 3 Ultra is an open frontier-reasoning and orchestration model from NVIDIA, with 55B active parameters out of 550B total (MoE"
+ },
+ "qwen/qwen3.7-plus": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.6,
+  "ctx": 1000000,
+  "cost": 1.6,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.60/1M",
+  "desc": "Qwen3.7-Plus is a cost-effective model in Alibaba's Qwen3.7 series. It supports text and image input with text output, building on the serie"
+ },
+ "minimax/minimax-m3": {
+  "provider": "MiniMax",
+  "power": 3.6,
+  "ctx": 1048576,
+  "cost": 1.5,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.50/1M",
+  "desc": "MiniMax-M3 is a multimodal foundation model from MiniMax. It supports text, image, and video inputs with text output, a 1M-token context win"
+ },
+ "stepfun/step-3.7-flash": {
+  "provider": "StepFun",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 1.35,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.35/1M",
+  "desc": "Step 3.7 Flash is StepFun's latest high-efficiency multimodal Mixture-of-Experts model. It pairs a 196B-parameter language backbone with a v"
+ },
+ "anthropic/claude-opus-4.8": {
+  "provider": "Anthropic",
+  "power": 4.5,
+  "ctx": 1000000,
+  "cost": 30.0,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$30.00/1M",
+  "desc": "Claude Opus 4.8 is Anthropic's most capable generally available model in the Opus family. It supports text, image, and file inputs with text"
+ },
+ "qwen/qwen3.7-max": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.6,
+  "ctx": 1000000,
+  "cost": 5.9,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$5.90/1M",
+  "desc": "Qwen3.7-Max is the flagship model in Alibaba's Qwen3.7 series. It supports text input and output and is designed for agent-centric workloads"
+ },
+ "x-ai/grok-build-0.1": {
+  "provider": "xAI",
+  "power": 3.6,
+  "ctx": 256000,
+  "cost": 3.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$3.00/1M",
+  "desc": "Grok Build 0.1 is SpaceXAI’s fast coding model trained specifically for agentic software engineering workflows. It supports text and image i"
+ },
+ "google/gemini-3.5-flash": {
+  "provider": "Google",
+  "power": 3.9,
+  "ctx": 1048576,
+  "cost": 10.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$10.50/1M",
+  "desc": "Gemini 3.5 Flash is Google's high-efficiency multimodal model, bringing near-Pro level coding and reasoning at Flash-tier cost and speed. It"
+ },
+ "perceptron/perceptron-mk1": {
+  "provider": "perceptron",
+  "power": 3.0,
+  "ctx": 32768,
+  "cost": 1.65,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.65/1M",
+  "desc": "Perceptron Mk1 (Mark One) is Perceptron's highest-quality vision-language model for video and embodied reasoning.** It accepts image and vid"
+ },
+ "google/gemini-3.1-flash-lite": {
+  "provider": "Google",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 1.75,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.75/1M",
+  "desc": "Gemini 3.1 Flash Lite is Google’s GA high-efficiency multimodal model optimized for low-latency, high-volume workloads. It supports text, im"
+ },
+ "openai/gpt-chat-latest": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 400000,
+  "cost": 35.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$35.00/1M",
+  "desc": "GPT Chat Latest points to OpenAI's stable API alias `chat-latest` that always resolves to the latest Instant chat model used in ChatGPT. As "
+ },
+ "x-ai/grok-4.3": {
+  "provider": "xAI",
+  "power": 3.3,
+  "ctx": 1000000,
+  "cost": 3.75,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$3.75/1M",
+  "desc": "Grok 4.3 is a reasoning model from SpaceXAI. It accepts text and image inputs with text output, and is suited for agentic workflows, instruc"
+ },
+ "mistralai/mistral-medium-3-5": {
+  "provider": "Mistral",
+  "power": 2.7,
+  "ctx": 262144,
+  "cost": 9.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$9.00/1M",
+  "desc": "Mistral Medium 3.5 is a dense 128B instruction-following model from Mistral AI. It supports text and image inputs with text output, and is d"
+ },
+ "~anthropic/claude-haiku-latest": {
+  "provider": "~anthropic",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 0.6,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.60/1M",
+  "desc": "This model always redirects to the latest model in the Claude Haiku family."
+ },
+ "~openai/gpt-mini-latest": {
+  "provider": "~openai",
+  "power": 3.0,
+  "ctx": 400000,
+  "cost": 5.25,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$5.25/1M",
+  "desc": "This model always redirects to the latest model in the GPT Mini family."
+ },
+ "~google/gemini-pro-latest": {
+  "provider": "~google",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 14.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$14.00/1M",
+  "desc": "This model always redirects to the latest model in the Gemini Pro family."
+ },
+ "~moonshotai/kimi-latest": {
+  "provider": "~moonshotai",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 15.2,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$15.20/1M",
+  "desc": "This model always redirects to the latest model in the Kimi family."
+ },
+ "~google/gemini-flash-latest": {
+  "provider": "~google",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 4.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$4.50/1M",
+  "desc": "This model always redirects to the latest model in the Gemini Flash family."
+ },
+ "~anthropic/claude-sonnet-latest": {
+  "provider": "~anthropic",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 12.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$12.00/1M",
+  "desc": "This model always redirects to the latest model in the Claude Sonnet family."
+ },
+ "qwen/qwen3.5-plus-20260420": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 2.1,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.10/1M",
+  "desc": "Qwen3.5 Plus (April 2026) is a large-scale multimodal language model from Alibaba. It accepts text, image, and video input and produces text"
+ },
+ "qwen/qwen3.6-flash": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 1.3125,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.31/1M",
+  "desc": "Qwen3.6 Flash is a fast, efficient language model from Alibaba's Qwen 3.6 series. It supports text, image, and video input with a 1M token c"
+ },
+ "qwen/qwen3.6-35b-a3b": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 1.15,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.15/1M",
+  "desc": "Qwen3.6-35B-A3B is an open-weight multimodal model from Alibaba Cloud with 35 billion total parameters and 3 billion active parameters per t"
+ },
+ "qwen/qwen3.6-27b": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.3,
+  "ctx": 262144,
+  "cost": 3.52,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$3.52/1M",
+  "desc": "Qwen3.6 27B is a dense 27-billion-parameter language model from the Qwen Team at Alibaba, released in April 2026. It features hybrid multimo"
+ },
+ "openai/gpt-5.5-pro": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 1050000,
+  "cost": 210.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$210.00/1M",
+  "desc": "GPT-5.5 Pro is OpenAI’s high-capability model optimized for deep reasoning and accuracy on complex, high-stakes workloads. It features a 1M+"
+ },
+ "openai/gpt-5.5": {
+  "provider": "OpenAI",
+  "power": 4.2,
+  "ctx": 1050000,
+  "cost": 35.0,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$35.00/1M",
+  "desc": "GPT-5.5 is OpenAI’s frontier model designed for complex professional workloads, building on GPT-5.4 with stronger reasoning, higher reliabil"
+ },
+ "deepseek/deepseek-v4-pro": {
+  "provider": "DeepSeek",
+  "power": 3.9,
+  "ctx": 1048576,
+  "cost": 0.6264,
+  "tags": [
+   "agentic",
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.63/1M",
+  "desc": "DeepSeek V4 Pro is a large-scale Mixture-of-Experts model from DeepSeek with 1.6T total parameters and 49B activated parameters, supporting "
+ },
+ "deepseek/deepseek-v4-flash": {
+  "provider": "DeepSeek",
+  "power": 3.3,
+  "ctx": 1048576,
+  "cost": 1.31,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.31/1M",
+  "desc": "DeepSeek V4 Flash is an efficiency-optimized Mixture-of-Experts model from DeepSeek with 284B total parameters and 13B activated parameters,"
+ },
+ "tencent/hy3-preview": {
+  "provider": "Tencent(混元)",
+  "power": 3.6,
+  "ctx": 262144,
+  "cost": 0.78,
+  "tags": [
+   "agentic",
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.78/1M",
+  "desc": "Hy3 preview is a high-efficiency Mixture-of-Experts model from Tencent designed for agentic workflows and production use. It supports config"
+ },
+ "xiaomi/mimo-v2.5-pro": {
+  "provider": "xiaomi",
+  "power": 3.6,
+  "ctx": 1050000,
+  "cost": 1.305,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.30/1M",
+  "desc": "MiMo-V2.5-Pro is Xiaomi’s flagship model, delivering strong performance in general agentic capabilities, complex software engineering, and l"
+ },
+ "xiaomi/mimo-v2.5": {
+  "provider": "xiaomi",
+  "power": 3.6,
+  "ctx": 1050000,
+  "cost": 0.42,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.42/1M",
+  "desc": "MiMo-V2.5 is a native omnimodal model by Xiaomi. It delivers Pro-level agentic performance at roughly half the inference cost, while surpass"
+ },
+ "openai/gpt-5.4-image-2": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 272000,
+  "cost": 23.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$23.00/1M",
+  "desc": "[GPT-5.4](https://openrouter.ai/openai/gpt-5.4) Image 2 combines OpenAI's GPT-5.4 model with state-of-the-art image generation capabilities "
+ },
+ "~anthropic/claude-opus-latest": {
+  "provider": "~anthropic",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 24.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$24.00/1M",
+  "desc": "This model always redirects to the latest model in the Claude Opus family."
+ },
+ "moonshotai/kimi-k2.6": {
+  "provider": "Moonshot(Kimi)",
+  "power": 3.6,
+  "ctx": 262144,
+  "cost": 2.8875,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.89/1M",
+  "desc": "Kimi K2.6 is Moonshot AI's next-generation multimodal model, designed for long-horizon coding, coding-driven UI/UX generation, and multi-age"
+ },
+ "anthropic/claude-opus-4.7": {
+  "provider": "Anthropic",
+  "power": 4.5,
+  "ctx": 1000000,
+  "cost": 30.0,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$30.00/1M",
+  "desc": "Opus 4.7 is the next generation of Anthropic's Opus family, built for long-running, asynchronous agents. Building on the coding and agentic "
+ },
+ "z-ai/glm-5.1": {
+  "provider": "Z.ai(Zhipu)",
+  "power": 3.6,
+  "ctx": 204800,
+  "cost": 4.002,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$4.00/1M",
+  "desc": "GLM-5.1 delivers a major leap in coding capability, with particularly significant gains in handling long-horizon tasks. Unlike previous mode"
+ },
+ "google/gemma-4-26b-a4b-it": {
+  "provider": "Google",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 0.2925,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.29/1M",
+  "desc": "Gemma 4 26B A4B IT is an instruction-tuned Mixture-of-Experts (MoE) model from Google DeepMind. Despite 25.2B total parameters, only 3.8B ac"
+ },
+ "google/gemma-4-31b-it": {
+  "provider": "Google",
+  "power": 2.7,
+  "ctx": 262144,
+  "cost": 0.43,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.43/1M",
+  "desc": "Gemma 4 31B Instruct is Google DeepMind's 30.7B dense multimodal model supporting text and image input with text output. Features a 256K tok"
+ },
+ "qwen/qwen3.6-plus": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.6,
+  "ctx": 1000000,
+  "cost": 2.275,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.27/1M",
+  "desc": "Qwen 3.6 Plus builds on a hybrid architecture that combines efficient linear attention with sparse mixture-of-experts routing, enabling stro"
+ },
+ "z-ai/glm-5v-turbo": {
+  "provider": "Z.ai(Zhipu)",
+  "power": 3.3,
+  "ctx": 202752,
+  "cost": 5.2,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$5.20/1M",
+  "desc": "GLM-5V-Turbo is Z.ai’s first native multimodal agent foundation model, built for vision-based coding and agent-driven tasks. It natively han"
+ },
+ "arcee-ai/trinity-large-thinking": {
+  "provider": "arcee-ai",
+  "power": 2.7,
+  "ctx": 262144,
+  "cost": 1.05,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.05/1M",
+  "desc": "Trinity Large Thinking is a powerful open source reasoning model from the team at Arcee AI. It shows strong performance in PinchBench, agent"
+ },
+ "x-ai/grok-4.20-multi-agent": {
+  "provider": "xAI",
+  "power": 3.0,
+  "ctx": 2000000,
+  "cost": 3.75,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$3.75/1M",
+  "desc": "Grok 4.20 Multi-Agent is a variant of SpaceXAI’s Grok 4.20 designed for collaborative, agent-based workflows. Multiple agents operate in par"
+ },
+ "x-ai/grok-4.20": {
+  "provider": "xAI",
+  "power": 3.6,
+  "ctx": 2000000,
+  "cost": 3.75,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$3.75/1M",
+  "desc": "Grok 4.20 is a reasoning model from SpaceXAI with industry-leading speed and agentic tool calling capabilities. It combines the lowest hallu"
+ },
+ "rekaai/reka-edge": {
+  "provider": "rekaai",
+  "power": 3.0,
+  "ctx": 16384,
+  "cost": 0.2,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.20/1M",
+  "desc": "Reka Edge is an extremely efficient 7B multimodal vision-language model that accepts image/video+text inputs and generates text outputs. Thi"
+ },
+ "minimax/minimax-m2.7": {
+  "provider": "MiniMax",
+  "power": 3.3,
+  "ctx": 204800,
+  "cost": 1.05,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.05/1M",
+  "desc": "MiniMax-M2.7 is a next-generation large language model designed for autonomous, real-world productivity and continuous improvement. Built to"
+ },
+ "openai/gpt-5.4-nano": {
+  "provider": "OpenAI",
+  "power": 3.3,
+  "ctx": 400000,
+  "cost": 1.45,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.45/1M",
+  "desc": "GPT-5.4 nano is the most lightweight and cost-efficient variant of the GPT-5.4 family, optimized for speed-critical and high-volume tasks. I"
+ },
+ "openai/gpt-5.4-mini": {
+  "provider": "OpenAI",
+  "power": 3.3,
+  "ctx": 400000,
+  "cost": 5.25,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$5.25/1M",
+  "desc": "GPT-5.4 mini brings the core capabilities of GPT-5.4 to a faster, more efficient model optimized for high-throughput workloads. It supports "
+ },
+ "mistralai/mistral-small-2603": {
+  "provider": "Mistral",
+  "power": 2.7,
+  "ctx": 262144,
+  "cost": 0.75,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.75/1M",
+  "desc": "Mistral Small 4 is the next major release in the Mistral Small family, unifying the capabilities of several flagship Mistral models into a s"
+ },
+ "z-ai/glm-5-turbo": {
+  "provider": "Z.ai(Zhipu)",
+  "power": 3.6,
+  "ctx": 202752,
+  "cost": 5.2,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$5.20/1M",
+  "desc": "GLM-5 Turbo is a new model from Z.ai designed for fast inference and strong performance in agent-driven environments such as OpenClaw scenar"
+ },
+ "nvidia/nemotron-3-super-120b-a12b": {
+  "provider": "NVIDIA",
+  "power": 2.7,
+  "ctx": 262144,
+  "cost": 0.53,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.53/1M",
+  "desc": "NVIDIA Nemotron 3 Super is a 120B-parameter open hybrid MoE model, activating just 12B parameters for maximum compute efficiency and accurac"
+ },
+ "bytedance-seed/seed-2.0-lite": {
+  "provider": "bytedance-seed",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 2.25,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.25/1M",
+  "desc": "Seed-2.0-Lite is a versatile, cost‑efficient enterprise workhorse that delivers strong multimodal and agent capabilities while offering noti"
+ },
+ "qwen/qwen3.5-9b": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.7,
+  "ctx": 262144,
+  "cost": 0.25,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.25/1M",
+  "desc": "Qwen3.5-9B is a multimodal foundation model from the Qwen3.5 family, designed to deliver strong reasoning, coding, and visual understanding "
+ },
+ "openai/gpt-5.4-pro": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 1050000,
+  "cost": 210.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$210.00/1M",
+  "desc": "GPT-5.4 Pro is OpenAI's most advanced model, building on GPT-5.4's unified architecture with enhanced reasoning capabilities for complex, hi"
+ },
+ "openai/gpt-5.4": {
+  "provider": "OpenAI",
+  "power": 4.2,
+  "ctx": 1050000,
+  "cost": 17.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$17.50/1M",
+  "desc": "GPT-5.4 is OpenAI’s latest frontier model, unifying the Codex and GPT lines into a single system. It features a 1M+ token context window (92"
+ },
+ "inception/mercury-2": {
+  "provider": "inception",
+  "power": 2.7,
+  "ctx": 128000,
+  "cost": 1.0,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.00/1M",
+  "desc": "Mercury 2 is an extremely fast reasoning LLM, and the first reasoning diffusion LLM (dLLM). Instead of generating tokens sequentially, Mercu"
+ },
+ "google/gemini-3.1-flash-lite-preview": {
+  "provider": "Google",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 1.75,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.75/1M",
+  "desc": "Gemini 3.1 Flash Lite Preview is Google's high-efficiency model optimized for high-volume use cases. It outperforms Gemini 2.5 Flash Lite on"
+ },
+ "bytedance-seed/seed-2.0-mini": {
+  "provider": "bytedance-seed",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 0.5,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.50/1M",
+  "desc": "Seed-2.0-mini targets latency-sensitive, high-concurrency, and cost-sensitive scenarios, emphasizing fast response and flexible inference de"
+ },
+ "google/gemini-3.1-flash-image-preview": {
+  "provider": "Google",
+  "power": 3.0,
+  "ctx": 65536,
+  "cost": 3.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$3.50/1M",
+  "desc": "Gemini 3.1 Flash Image Preview, a.k.a. \"Nano Banana 2,\" is Google’s latest state of the art image generation and editing model, delivering P"
+ },
+ "qwen/qwen3.5-35b-a3b": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 0.83,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.83/1M",
+  "desc": "The Qwen3.5 Series 35B-A3B is a native vision-language model designed with a hybrid architecture that integrates linear attention mechanisms"
+ },
+ "qwen/qwen3.5-27b": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.3,
+  "ctx": 262144,
+  "cost": 2.86,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.86/1M",
+  "desc": "The Qwen3.5 27B native vision-language Dense model incorporates a linear attention mechanism, delivering fast response times while balancing"
+ },
+ "qwen/qwen3.5-122b-a10b": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 2.34,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.34/1M",
+  "desc": "The Qwen3.5 122B-A10B native vision-language model is built on a hybrid architecture that integrates a linear attention mechanism with a spa"
+ },
+ "qwen/qwen3.5-flash-02-23": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 0.325,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.33/1M",
+  "desc": "The Qwen3.5 native vision-language Flash models are built on a hybrid architecture that integrates a linear attention mechanism with a spars"
+ },
+ "google/gemini-3.1-pro-preview-customtools": {
+  "provider": "Google",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 14.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$14.00/1M",
+  "desc": "Gemini 3.1 Pro Preview Custom Tools is a variant of Gemini 3.1 Pro that improves tool selection behavior by preventing overuse of a general "
+ },
+ "openai/gpt-5.3-codex": {
+  "provider": "OpenAI",
+  "power": 3.9,
+  "ctx": 400000,
+  "cost": 15.75,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$15.75/1M",
+  "desc": "GPT-5.3-Codex is OpenAI’s most advanced agentic coding model, combining the frontier software engineering performance of GPT-5.2-Codex with "
+ },
+ "aion-labs/aion-2.0": {
+  "provider": "aion-labs",
+  "power": 3.0,
+  "ctx": 131072,
+  "cost": 2.4,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.40/1M",
+  "desc": "Aion-2.0 is a variant of DeepSeek V3.2 optimized for immersive roleplaying and storytelling. It is particularly strong at introducing tensio"
+ },
+ "google/gemini-3.1-pro-preview": {
+  "provider": "Google",
+  "power": 3.6,
+  "ctx": 1048576,
+  "cost": 14.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$14.00/1M",
+  "desc": "Gemini 3.1 Pro Preview is Google’s frontier reasoning model, delivering enhanced software engineering performance, improved agentic reliabil"
+ },
+ "anthropic/claude-sonnet-4.6": {
+  "provider": "Anthropic",
+  "power": 3.9,
+  "ctx": 1000000,
+  "cost": 18.0,
+  "tags": [
+   "agentic",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$18.00/1M",
+  "desc": "Sonnet 4.6 is Anthropic's most capable Sonnet-class model yet, with frontier performance across coding, agents, and professional work. It ex"
+ },
+ "qwen/qwen3.5-plus-02-15": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 1.82,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.82/1M",
+  "desc": "The Qwen3.5 native vision-language series Plus models are built on a hybrid architecture that integrates linear attention mechanisms with sp"
+ },
+ "qwen/qwen3.5-397b-a17b": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.3,
+  "ctx": 262144,
+  "cost": 4.05,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$4.05/1M",
+  "desc": "The Qwen3.5 series 397B-A17B native vision-language model is built on a hybrid architecture that integrates a linear attention mechanism wit"
+ },
+ "minimax/minimax-m2.5": {
+  "provider": "MiniMax",
+  "power": 3.3,
+  "ctx": 204800,
+  "cost": 1.35,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.35/1M",
+  "desc": "MiniMax-M2.5 is a SOTA large language model designed for real-world productivity. Trained in a diverse range of complex real-world digital w"
+ },
+ "z-ai/glm-5": {
+  "provider": "Z.ai(Zhipu)",
+  "power": 3.6,
+  "ctx": 204800,
+  "cost": 2.52,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.52/1M",
+  "desc": "GLM-5 is Z.ai’s flagship open-source foundation model engineered for complex systems design and long-horizon agent workflows. Built for expe"
+ },
+ "anthropic/claude-opus-4.6": {
+  "provider": "Anthropic",
+  "power": 3.9,
+  "ctx": 1000000,
+  "cost": 30.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$30.00/1M",
+  "desc": "Opus 4.6 is Anthropic’s strongest model for coding and long-running professional tasks. It is built for agents that operate across entire wo"
+ },
+ "qwen/qwen3-coder-next": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.4,
+  "ctx": 262144,
+  "cost": 0.92,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.92/1M",
+  "desc": "Qwen3-Coder-Next is an open-weight causal language model optimized for coding agents and local development workflows. It uses a sparse MoE d"
+ },
+ "stepfun/step-3.5-flash": {
+  "provider": "StepFun",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 0.4,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.40/1M",
+  "desc": "Step 3.5 Flash is StepFun's most capable open-source foundation model. Built on a sparse Mixture of Experts (MoE) architecture, it selective"
+ },
+ "moonshotai/kimi-k2.5": {
+  "provider": "Moonshot(Kimi)",
+  "power": 3.3,
+  "ctx": 262144,
+  "cost": 3.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$3.00/1M",
+  "desc": "Kimi K2.5 is Moonshot AI's native multimodal model, delivering state-of-the-art visual coding capability and a self-directed agent swarm par"
+ },
+ "upstage/solar-pro-3": {
+  "provider": "upstage",
+  "power": 2.4,
+  "ctx": 131072,
+  "cost": 0.75,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.75/1M",
+  "desc": "Solar Pro 3 is Upstage's powerful Mixture-of-Experts (MoE) language model. With 102B total parameters and 12B active parameters per forward "
+ },
+ "minimax/minimax-m2-her": {
+  "provider": "MiniMax",
+  "power": 3.0,
+  "ctx": 65536,
+  "cost": 1.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.50/1M",
+  "desc": "MiniMax M2-her is a dialogue-first large language model built for immersive roleplay, character-driven chat, and expressive multi-turn conve"
+ },
+ "writer/palmyra-x5": {
+  "provider": "writer",
+  "power": 3.0,
+  "ctx": 1040000,
+  "cost": 6.6,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$6.60/1M",
+  "desc": "Palmyra X5 is Writer's most advanced model, purpose-built for building and scaling AI agents across the enterprise. It delivers industry-lea"
+ },
+ "openai/gpt-audio": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 128000,
+  "cost": 12.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$12.50/1M",
+  "desc": "The gpt-audio model is OpenAI's first generally available audio model. The new snapshot features an upgraded decoder for more natural soundi"
+ },
+ "openai/gpt-audio-mini": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 128000,
+  "cost": 3.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$3.00/1M",
+  "desc": "A cost-efficient version of GPT Audio. The new snapshot features an upgraded decoder for more natural sounding voices and maintains better v"
+ },
+ "z-ai/glm-4.7-flash": {
+  "provider": "Z.ai(Zhipu)",
+  "power": 2.7,
+  "ctx": 200000,
+  "cost": 0.4605,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.46/1M",
+  "desc": "As a 30B-class SOTA model, GLM-4.7-Flash offers a new option that balances performance and efficiency. It is further optimized for agentic c"
+ },
+ "openai/gpt-5.2-codex": {
+  "provider": "OpenAI",
+  "power": 3.6,
+  "ctx": 400000,
+  "cost": 15.75,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$15.75/1M",
+  "desc": "GPT-5.2-Codex is an upgraded version of GPT-5.1-Codex optimized for software engineering and coding workflows. It is designed for both inter"
+ },
+ "bytedance-seed/seed-1.6-flash": {
+  "provider": "bytedance-seed",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 0.375,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.38/1M",
+  "desc": "Seed 1.6 Flash is an ultra-fast multimodal deep thinking model by ByteDance Seed, supporting both text and visual understanding. It features"
+ },
+ "bytedance-seed/seed-1.6": {
+  "provider": "bytedance-seed",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 2.25,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.25/1M",
+  "desc": "Seed 1.6 is a general-purpose model released by the ByteDance Seed team. It incorporates multimodal capabilities and adaptive deep thinking "
+ },
+ "minimax/minimax-m2.1": {
+  "provider": "MiniMax",
+  "power": 3.3,
+  "ctx": 204800,
+  "cost": 1.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.50/1M",
+  "desc": "MiniMax-M2.1 is a lightweight, state-of-the-art large language model optimized for coding, agentic workflows, and modern application develop"
+ },
+ "z-ai/glm-4.7": {
+  "provider": "Z.ai(Zhipu)",
+  "power": 3.3,
+  "ctx": 204800,
+  "cost": 2.8,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.80/1M",
+  "desc": "GLM-4.7 is Z.ai’s latest flagship model, featuring upgrades in two key areas: enhanced programming capabilities and more stable multi-step r"
+ },
+ "google/gemini-3-flash-preview": {
+  "provider": "Google",
+  "power": 3.6,
+  "ctx": 1048576,
+  "cost": 3.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$3.50/1M",
+  "desc": "Gemini 3 Flash Preview is a high speed, high value thinking model designed for agentic workflows, multi turn chat, and coding assistance. It"
+ },
+ "nvidia/nemotron-3-nano-30b-a3b": {
+  "provider": "NVIDIA",
+  "power": 2.4,
+  "ctx": 262144,
+  "cost": 0.3,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.30/1M",
+  "desc": "NVIDIA Nemotron 3 Nano 30B A3B is a small language MoE model with highest compute efficiency and accuracy for developers to build specialize"
+ },
+ "openai/gpt-5.2-chat": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 128000,
+  "cost": 15.75,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$15.75/1M",
+  "desc": "GPT-5.2 Chat (AKA Instant) is the fast, lightweight member of the 5.2 family, optimized for low-latency chat while retaining strong general "
+ },
+ "openai/gpt-5.2-pro": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 400000,
+  "cost": 189.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$189.00/1M",
+  "desc": "GPT-5.2 Pro is OpenAI’s most advanced model, offering major improvements in agentic coding and long context performance over GPT-5 Pro. It i"
+ },
+ "openai/gpt-5.2": {
+  "provider": "OpenAI",
+  "power": 3.9,
+  "ctx": 400000,
+  "cost": 15.75,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$15.75/1M",
+  "desc": "GPT-5.2 is the latest frontier-grade model in the GPT-5 series, offering stronger agentic and long context perfomance compared to GPT-5.1. I"
+ },
+ "mistralai/devstral-2512": {
+  "provider": "Mistral",
+  "power": 2.4,
+  "ctx": 262144,
+  "cost": 2.4,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.40/1M",
+  "desc": "Devstral 2 is a state-of-the-art open-source model by Mistral AI specializing in agentic coding. It is a 123B-parameter dense transformer mo"
+ },
+ "relace/relace-search": {
+  "provider": "relace",
+  "power": 3.0,
+  "ctx": 256000,
+  "cost": 4.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$4.00/1M",
+  "desc": "The relace-search model uses 4-12 `view_file` and `grep` tools in parallel to explore a codebase and return relevant files to the user reque"
+ },
+ "z-ai/glm-4.6v": {
+  "provider": "Z.ai(Zhipu)",
+  "power": 2.7,
+  "ctx": 131072,
+  "cost": 1.2,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.20/1M",
+  "desc": "GLM-4.6V is a large multimodal model designed for high-fidelity visual understanding and long-context reasoning across images, documents, an"
+ },
+ "openai/gpt-5.1-codex-max": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 400000,
+  "cost": 11.25,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$11.25/1M",
+  "desc": "GPT-5.1-Codex-Max is OpenAI’s latest agentic coding model, designed for long-running, high-context software development tasks. It is based o"
+ },
+ "amazon/nova-2-lite-v1": {
+  "provider": "Amazon",
+  "power": 2.7,
+  "ctx": 1000000,
+  "cost": 2.8,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.80/1M",
+  "desc": "Nova 2 Lite is a fast, cost-effective reasoning model for everyday workloads that can process text, images, and videos to generate text. Nov"
+ },
+ "mistralai/ministral-14b-2512": {
+  "provider": "Mistral",
+  "power": 2.4,
+  "ctx": 262144,
+  "cost": 0.4,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.40/1M",
+  "desc": "The largest model in the Ministral 3 family, Ministral 3 14B offers frontier capabilities and performance comparable to its larger Mistral S"
+ },
+ "mistralai/ministral-8b-2512": {
+  "provider": "Mistral",
+  "power": 2.4,
+  "ctx": 262144,
+  "cost": 0.3,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.30/1M",
+  "desc": "A balanced model in the Ministral 3 family, Ministral 3 8B is a powerful, efficient tiny language model with vision capabilities."
+ },
+ "mistralai/ministral-3b-2512": {
+  "provider": "Mistral",
+  "power": 2.4,
+  "ctx": 131072,
+  "cost": 0.2,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.20/1M",
+  "desc": "The smallest model in the Ministral 3 family, Ministral 3 3B is a powerful, efficient tiny language model with vision capabilities."
+ },
+ "mistralai/mistral-large-2512": {
+  "provider": "Mistral",
+  "power": 2.4,
+  "ctx": 262144,
+  "cost": 2.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.00/1M",
+  "desc": "Mistral Large 3 2512 is Mistral’s most capable model to date, featuring a sparse mixture-of-experts architecture with 41B active parameters "
+ },
+ "deepseek/deepseek-v3.2": {
+  "provider": "DeepSeek",
+  "power": 3.3,
+  "ctx": 163840,
+  "cost": 1.059,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.06/1M",
+  "desc": "DeepSeek-V3.2 is a large language model designed to harmonize high computational efficiency with strong reasoning and agentic tool-use perfo"
+ },
+ "anthropic/claude-opus-4.5": {
+  "provider": "Anthropic",
+  "power": 3.6,
+  "ctx": 200000,
+  "cost": 30.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$30.00/1M",
+  "desc": "Claude Opus 4.5 is Anthropic’s frontier reasoning model optimized for complex software engineering, agentic workflows, and long-horizon comp"
+ },
+ "google/gemini-3-pro-image-preview": {
+  "provider": "Google",
+  "power": 3.0,
+  "ctx": 65536,
+  "cost": 14.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$14.00/1M",
+  "desc": "Nano Banana Pro is Google’s most advanced image-generation and editing model, built on Gemini 3 Pro. It extends the original Nano Banana wit"
+ },
+ "openai/gpt-5.1": {
+  "provider": "OpenAI",
+  "power": 3.3,
+  "ctx": 400000,
+  "cost": 11.25,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$11.25/1M",
+  "desc": "GPT-5.1 is the latest frontier-grade model in the GPT-5 series, offering stronger general-purpose reasoning, improved instruction adherence,"
+ },
+ "openai/gpt-5.1-codex": {
+  "provider": "OpenAI",
+  "power": 3.3,
+  "ctx": 400000,
+  "cost": 11.25,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$11.25/1M",
+  "desc": "GPT-5.1-Codex is a specialized version of GPT-5.1 optimized for software engineering and coding workflows. It is designed for both interacti"
+ },
+ "openai/gpt-5.1-codex-mini": {
+  "provider": "OpenAI",
+  "power": 3.3,
+  "ctx": 400000,
+  "cost": 2.25,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.25/1M",
+  "desc": "GPT-5.1-Codex-Mini is a smaller and faster version of GPT-5.1-Codex"
+ },
+ "moonshotai/kimi-k2-thinking": {
+  "provider": "Moonshot(Kimi)",
+  "power": 3.3,
+  "ctx": 262144,
+  "cost": 3.1,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$3.10/1M",
+  "desc": "Kimi K2 Thinking is Moonshot AI’s most advanced open reasoning model to date, extending the K2 series into agentic, long-horizon reasoning. "
+ },
+ "amazon/nova-premier-v1": {
+  "provider": "Amazon",
+  "power": 2.4,
+  "ctx": 1000000,
+  "cost": 15.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$15.00/1M",
+  "desc": "Amazon Nova Premier is the most capable of Amazon’s multimodal models for complex reasoning tasks and for use as the best teacher for distil"
+ },
+ "perplexity/sonar-pro-search": {
+  "provider": "Perplexity",
+  "power": 3.0,
+  "ctx": 200000,
+  "cost": 18.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$18.00/1M",
+  "desc": "Exclusively available on the OpenRouter API, Sonar Pro's new Pro Search mode is Perplexity's most advanced agentic search system. It is desi"
+ },
+ "mistralai/voxtral-small-24b-2507": {
+  "provider": "Mistral",
+  "power": 3.0,
+  "ctx": 32768,
+  "cost": 0.4,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.40/1M",
+  "desc": "Voxtral Small is an enhancement of Mistral Small 3, incorporating state-of-the-art audio input capabilities while retaining best-in-class te"
+ },
+ "openai/gpt-oss-safeguard-20b": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 131072,
+  "cost": 0.375,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.38/1M",
+  "desc": "gpt-oss-safeguard-20b is a safety reasoning model from OpenAI built upon gpt-oss-20b. This open-weight, 21B-parameter Mixture-of-Experts (Mo"
+ },
+ "minimax/minimax-m2": {
+  "provider": "MiniMax",
+  "power": 3.0,
+  "ctx": 204800,
+  "cost": 1.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.50/1M",
+  "desc": "MiniMax-M2 is a compact, high-efficiency large language model optimized for end-to-end coding and agentic workflows. With 10 billion activat"
+ },
+ "ibm-granite/granite-4.0-h-micro": {
+  "provider": "ibm-granite",
+  "power": 2.4,
+  "ctx": 131000,
+  "cost": 0.129,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.13/1M",
+  "desc": "Granite-4.0-H-Micro is a 3B parameter from the Granite 4 family of models. These models are the latest in a series of models released by IBM"
+ },
+ "openai/gpt-5-image-mini": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 400000,
+  "cost": 4.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$4.50/1M",
+  "desc": "GPT-5 Image Mini combines OpenAI's advanced language capabilities, powered by [GPT-5 Mini](https://openrouter.ai/openai/gpt-5-mini), with GP"
+ },
+ "anthropic/claude-haiku-4.5": {
+  "provider": "Anthropic",
+  "power": 3.0,
+  "ctx": 200000,
+  "cost": 6.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$6.00/1M",
+  "desc": "Claude Haiku 4.5 is Anthropic’s fastest and most efficient model, delivering near-frontier intelligence at a fraction of the cost and latenc"
+ },
+ "qwen/qwen3-vl-8b-instruct": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.4,
+  "ctx": 262144,
+  "cost": 1.0,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.00/1M",
+  "desc": "Qwen3-VL-8B-Instruct is a multimodal vision-language model from the Qwen3-VL series, built for high-fidelity understanding and reasoning acr"
+ },
+ "openai/gpt-5-image": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 400000,
+  "cost": 20.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$20.00/1M",
+  "desc": "[GPT-5](https://openrouter.ai/openai/gpt-5) Image combines OpenAI's GPT-5 model with state-of-the-art image generation capabilities. It offe"
+ },
+ "google/gemini-2.5-flash-image": {
+  "provider": "Google",
+  "power": 3.0,
+  "ctx": 32768,
+  "cost": 2.8,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.80/1M",
+  "desc": "Gemini 2.5 Flash Image, a.k.a. \"Nano Banana,\" is now generally available. It is a state of the art image generation model with contextual un"
+ },
+ "qwen/qwen3-vl-30b-a3b-thinking": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.4,
+  "ctx": 262144,
+  "cost": 1.29,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.29/1M",
+  "desc": "Qwen3-VL-30B-A3B-Thinking is a multimodal model that unifies strong text generation with visual understanding for images and videos. Its Thi"
+ },
+ "qwen/qwen3-vl-30b-a3b-instruct": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.4,
+  "ctx": 262144,
+  "cost": 0.75,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.75/1M",
+  "desc": "Qwen3-VL-30B-A3B-Instruct is a multimodal model that unifies strong text generation with visual understanding for images and videos. Its Ins"
+ },
+ "openai/gpt-5-pro": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 400000,
+  "cost": 135.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$135.00/1M",
+  "desc": "GPT-5 Pro is OpenAI’s most advanced model, offering major improvements in reasoning, code quality, and user experience. It is optimized for "
+ },
+ "z-ai/glm-4.6": {
+  "provider": "Z.ai(Zhipu)",
+  "power": 3.0,
+  "ctx": 204800,
+  "cost": 2.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.50/1M",
+  "desc": "Compared with GLM-4.5, this generation brings several key improvements: Longer context window: The context window has been expanded from 128"
+ },
+ "anthropic/claude-sonnet-4.5": {
+  "provider": "Anthropic",
+  "power": 3.3,
+  "ctx": 1000000,
+  "cost": 18.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$18.00/1M",
+  "desc": "Claude Sonnet 4.5 is Anthropic’s most advanced Sonnet model to date, optimized for real-world agents and coding workflows. It delivers state"
+ },
+ "deepseek/deepseek-v3.2-exp": {
+  "provider": "DeepSeek",
+  "power": 3.0,
+  "ctx": 163840,
+  "cost": 0.68,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.68/1M",
+  "desc": "DeepSeek-V3.2-Exp is an experimental large language model released by DeepSeek as an intermediate step between V3.1 and future architectures"
+ },
+ "thedrummer/cydonia-24b-v4.1": {
+  "provider": "thedrummer",
+  "power": 3.0,
+  "ctx": 131072,
+  "cost": 0.8,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.80/1M",
+  "desc": "Uncensored and creative writing model based on Mistral Small 3.2 24B with good recall, prompt adherence, and intelligence."
+ },
+ "relace/relace-apply-3": {
+  "provider": "relace",
+  "power": 3.0,
+  "ctx": 256000,
+  "cost": 2.1,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.10/1M",
+  "desc": "Relace Apply 3 is a specialized code-patching LLM that merges AI-suggested edits straight into your source files. It can apply updates from "
+ },
+ "qwen/qwen3-vl-235b-a22b-instruct": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.4,
+  "ctx": 262144,
+  "cost": 2.11,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.11/1M",
+  "desc": "Qwen3-VL-235B-A22B Instruct is an open-weight multimodal model that unifies strong text generation with visual understanding across images a"
+ },
+ "deepseek/deepseek-v3.1-terminus": {
+  "provider": "DeepSeek",
+  "power": 2.7,
+  "ctx": 163840,
+  "cost": 1.27,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.27/1M",
+  "desc": "DeepSeek-V3.1 Terminus is an update to [DeepSeek V3.1](/deepseek/deepseek-chat-v3.1) that maintains the model's original capabilities while "
+ },
+ "qwen/qwen3-coder-flash": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 1.17,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.17/1M",
+  "desc": "Qwen3 Coder Flash is Alibaba's fast and cost efficient version of their proprietary Qwen3 Coder Plus. It is a powerful coding agent model sp"
+ },
+ "qwen/qwen3-next-80b-a3b-thinking": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.7,
+  "ctx": 262144,
+  "cost": 1.35,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.35/1M",
+  "desc": "Qwen3-Next-80B-A3B-Thinking is a reasoning-first chat model in the Qwen3-Next line that outputs structured “thinking” traces by default. It’"
+ },
+ "qwen/qwen3-next-80b-a3b-instruct": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.4,
+  "ctx": 262144,
+  "cost": 1.2,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.20/1M",
+  "desc": "Qwen3-Next-80B-A3B-Instruct is an instruction-tuned chat model in the Qwen3-Next series optimized for fast, stable responses without “thinki"
+ },
+ "moonshotai/kimi-k2-0905": {
+  "provider": "Moonshot(Kimi)",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 3.1,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$3.10/1M",
+  "desc": "Kimi K2 0905 is the September update of [Kimi K2 0711](moonshotai/kimi-k2). It is a large-scale Mixture-of-Experts (MoE) language model deve"
+ },
+ "nousresearch/hermes-4-405b": {
+  "provider": "Nous",
+  "power": 2.4,
+  "ctx": 131072,
+  "cost": 4.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$4.00/1M",
+  "desc": "Hermes 4 is a large-scale reasoning model built on Meta-Llama-3.1-405B and released by Nous Research. It introduces a hybrid reasoning mode,"
+ },
+ "deepseek/deepseek-chat-v3.1": {
+  "provider": "DeepSeek",
+  "power": 2.7,
+  "ctx": 163840,
+  "cost": 1.2,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.20/1M",
+  "desc": "DeepSeek-V3.1 is a large hybrid reasoning model (671B parameters, 37B active) that supports both thinking and non-thinking modes via prompt "
+ },
+ "mistralai/mistral-medium-3.1": {
+  "provider": "Mistral",
+  "power": 2.4,
+  "ctx": 131072,
+  "cost": 2.4,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.40/1M",
+  "desc": "Mistral Medium 3.1 is an updated version of Mistral Medium 3, which is a high-performance enterprise-grade language model designed to delive"
+ },
+ "z-ai/glm-4.5v": {
+  "provider": "Z.ai(Zhipu)",
+  "power": 2.4,
+  "ctx": 65536,
+  "cost": 2.4,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.40/1M",
+  "desc": "GLM-4.5V is a vision-language foundation model for multimodal agent applications. Built on a Mixture-of-Experts (MoE) architecture with 106B"
+ },
+ "openai/gpt-5": {
+  "provider": "OpenAI",
+  "power": 3.3,
+  "ctx": 400000,
+  "cost": 11.25,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$11.25/1M",
+  "desc": "GPT-5 is OpenAI’s most advanced model, offering major improvements in reasoning, code quality, and user experience. It is optimized for comp"
+ },
+ "openai/gpt-5-mini": {
+  "provider": "OpenAI",
+  "power": 3.3,
+  "ctx": 400000,
+  "cost": 2.25,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.25/1M",
+  "desc": "GPT-5 Mini is a compact version of GPT-5, designed to handle lighter-weight reasoning tasks. It provides the same instruction-following and "
+ },
+ "openai/gpt-5-nano": {
+  "provider": "OpenAI",
+  "power": 2.7,
+  "ctx": 400000,
+  "cost": 0.45,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.45/1M",
+  "desc": "GPT-5-Nano is the smallest and fastest variant in the GPT-5 system, optimized for developer tools, rapid interactions, and ultra-low latency"
+ },
+ "openai/gpt-oss-120b": {
+  "provider": "OpenAI",
+  "power": 2.7,
+  "ctx": 131072,
+  "cost": 0.207,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.21/1M",
+  "desc": "gpt-oss-120b is an open-weight, 117B-parameter Mixture-of-Experts (MoE) language model from OpenAI designed for high-reasoning, agentic, and"
+ },
+ "openai/gpt-oss-20b": {
+  "provider": "OpenAI",
+  "power": 2.7,
+  "ctx": 131072,
+  "cost": 0.108,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.11/1M",
+  "desc": "gpt-oss-20b is an open-weight 21B parameter model released by OpenAI under the Apache 2.0 license. It uses a Mixture-of-Experts (MoE) archit"
+ },
+ "anthropic/claude-opus-4.1": {
+  "provider": "Anthropic",
+  "power": 3.3,
+  "ctx": 200000,
+  "cost": 90.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$90.00/1M",
+  "desc": "Claude Opus 4.1 is an updated version of Anthropic’s flagship model, offering improved performance in coding, reasoning, and agentic tasks. "
+ },
+ "mistralai/codestral-2508": {
+  "provider": "Mistral",
+  "power": 3.0,
+  "ctx": 256000,
+  "cost": 1.2,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.20/1M",
+  "desc": "Mistral's cutting-edge language model for coding released end of July 2025. Codestral specializes in low-latency, high-frequency tasks such "
+ },
+ "qwen/qwen3-coder-30b-a3b-instruct": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.4,
+  "ctx": 262144,
+  "cost": 0.35,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.35/1M",
+  "desc": "Qwen3-Coder-30B-A3B-Instruct is a 30.5B parameter Mixture-of-Experts (MoE) model with 128 experts (8 active per forward pass), designed for "
+ },
+ "qwen/qwen3-30b-a3b-instruct-2507": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.4,
+  "ctx": 262144,
+  "cost": 0.4,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.40/1M",
+  "desc": "Qwen3-30B-A3B-Instruct-2507 is a 30.5B-parameter mixture-of-experts language model from Qwen, with 3.3B active parameters per inference. It "
+ },
+ "z-ai/glm-4.5": {
+  "provider": "Z.ai(Zhipu)",
+  "power": 2.7,
+  "ctx": 131072,
+  "cost": 2.8,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.80/1M",
+  "desc": "GLM-4.5 is our latest flagship foundation model, purpose-built for agent-based applications. It leverages a Mixture-of-Experts (MoE) archite"
+ },
+ "z-ai/glm-4.5-air": {
+  "provider": "Z.ai(Zhipu)",
+  "power": 2.7,
+  "ctx": 131072,
+  "cost": 0.98,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.98/1M",
+  "desc": "GLM-4.5-Air is the lightweight variant of our latest flagship model family, also purpose-built for agent-centric applications. Like GLM-4.5,"
+ },
+ "qwen/qwen3-235b-a22b-thinking-2507": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.7,
+  "ctx": 128000,
+  "cost": 3.95,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$3.95/1M",
+  "desc": "Qwen3-235B-A22B-Thinking-2507 is a high-performance, open-weight Mixture-of-Experts (MoE) language model optimized for complex reasoning tas"
+ },
+ "qwen/qwen3-coder": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.7,
+  "ctx": 262144,
+  "cost": 1.3,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.30/1M",
+  "desc": "Qwen3-Coder-480B-A35B-Instruct is a Mixture-of-Experts (MoE) code generation model developed by the Qwen team. It is optimized for agentic c"
+ },
+ "bytedance/ui-tars-1.5-7b": {
+  "provider": "ByteDance",
+  "power": 3.0,
+  "ctx": 128000,
+  "cost": 0.3,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.30/1M",
+  "desc": "UI-TARS-1.5 is a multimodal vision-language agent optimized for GUI-based environments, including desktop interfaces, web browsers, mobile s"
+ },
+ "google/gemini-2.5-flash-lite": {
+  "provider": "Google",
+  "power": 2.7,
+  "ctx": 1048576,
+  "cost": 0.5,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.50/1M",
+  "desc": "Gemini 2.5 Flash-Lite is a lightweight reasoning model in the Gemini 2.5 family, optimized for ultra-low latency and cost efficiency. It off"
+ },
+ "qwen/qwen3-235b-a22b-2507": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.7,
+  "ctx": 262144,
+  "cost": 0.64,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.64/1M",
+  "desc": "Qwen3-235B-A22B-Instruct-2507 is a multilingual, instruction-tuned mixture-of-experts language model based on the Qwen3-235B architecture, w"
+ },
+ "moonshotai/kimi-k2": {
+  "provider": "Moonshot(Kimi)",
+  "power": 2.7,
+  "ctx": 131072,
+  "cost": 2.87,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.87/1M",
+  "desc": "Kimi K2 Instruct is a large-scale Mixture-of-Experts (MoE) language model developed by Moonshot AI, featuring 1 trillion total parameters wi"
+ },
+ "cognitivecomputations/dolphin-mistral-24b-venice-edition": {
+  "provider": "cognitivecomputations",
+  "power": 3.0,
+  "ctx": 128000,
+  "cost": 1.1,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.10/1M",
+  "desc": "Venice Uncensored Dolphin Mistral 24B Venice Edition is a fine-tuned variant of Mistral-Small-24B-Instruct-2501, developed by dphn.ai in col"
+ },
+ "tencent/hunyuan-a13b-instruct": {
+  "provider": "Tencent(混元)",
+  "power": 3.0,
+  "ctx": 131072,
+  "cost": 0.71,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.71/1M",
+  "desc": "Hunyuan-A13B is a 13B active parameter Mixture-of-Experts (MoE) language model developed by Tencent, with a total parameter count of 80B and"
+ },
+ "morph/morph-v3-large": {
+  "provider": "morph",
+  "power": 3.0,
+  "ctx": 262144,
+  "cost": 2.8,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.80/1M",
+  "desc": "Morph's high-accuracy apply model for complex code edits. ~4,500 tokens/sec with 98% accuracy for precise code transformations. The model re"
+ },
+ "morph/morph-v3-fast": {
+  "provider": "morph",
+  "power": 3.0,
+  "ctx": 81920,
+  "cost": 2.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.00/1M",
+  "desc": "Morph's fastest apply model for code edits. ~10,500 tokens/sec with 96% accuracy for rapid code transformations. The model requires the prom"
+ },
+ "mistralai/mistral-small-3.2-24b-instruct": {
+  "provider": "Mistral",
+  "power": 3.0,
+  "ctx": 256000,
+  "cost": 0.3438,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.34/1M",
+  "desc": "Mistral-Small-3.2-24B-Instruct-2506 is an updated 24B parameter model from Mistral optimized for instruction following, repetition reduction"
+ },
+ "minimax/minimax-m1": {
+  "provider": "MiniMax",
+  "power": 2.7,
+  "ctx": 1000000,
+  "cost": 2.75,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.75/1M",
+  "desc": "MiniMax-M1 is a large-scale, open-weight reasoning model designed for extended context and high-efficiency inference. It leverages a hybrid "
+ },
+ "google/gemini-2.5-flash": {
+  "provider": "Google",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 2.8,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.80/1M",
+  "desc": "Gemini 2.5 Flash is Google's state-of-the-art workhorse model, specifically designed for advanced reasoning, coding, mathematics, and scient"
+ },
+ "google/gemini-2.5-pro": {
+  "provider": "Google",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 11.25,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$11.25/1M",
+  "desc": "Gemini 2.5 Pro is Google’s state-of-the-art AI model designed for advanced reasoning, coding, mathematics, and scientific tasks. It employs "
+ },
+ "openai/o3-pro": {
+  "provider": "OpenAI",
+  "power": 3.3,
+  "ctx": 200000,
+  "cost": 100.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$100.00/1M",
+  "desc": "The o-series of models are trained with reinforcement learning to think before they answer and perform complex reasoning. The o3-pro model u"
+ },
+ "google/gemini-2.5-pro-preview": {
+  "provider": "Google",
+  "power": 3.0,
+  "ctx": 1048576,
+  "cost": 11.25,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$11.25/1M",
+  "desc": "Gemini 2.5 Pro is Google’s state-of-the-art AI model designed for advanced reasoning, coding, mathematics, and scientific tasks. It employs "
+ },
+ "deepseek/deepseek-r1-0528": {
+  "provider": "DeepSeek",
+  "power": 2.7,
+  "ctx": 163840,
+  "cost": 2.65,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.65/1M",
+  "desc": "May 28th update to the [original DeepSeek R1](/deepseek/deepseek-r1) Performance on par with [OpenAI o1](/openai/o1), but open-sourced and w"
+ },
+ "anthropic/claude-sonnet-4": {
+  "provider": "Anthropic",
+  "power": 3.0,
+  "ctx": 200000,
+  "cost": 18.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$18.00/1M",
+  "desc": "Claude Sonnet 4 significantly enhances the capabilities of its predecessor, Sonnet 3.7, excelling in both coding and reasoning tasks with im"
+ },
+ "mistralai/mistral-medium-3": {
+  "provider": "Mistral",
+  "power": 2.4,
+  "ctx": 131072,
+  "cost": 2.4,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.40/1M",
+  "desc": "Mistral Medium 3 is a high-performance enterprise-grade language model designed to deliver frontier-level capabilities at significantly redu"
+ },
+ "meta-llama/llama-guard-4-12b": {
+  "provider": "Meta(Llama)",
+  "power": 3.0,
+  "ctx": 163840,
+  "cost": 0.36,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.36/1M",
+  "desc": "Llama Guard 4 is a Llama 4 Scout-derived multimodal pretrained model, fine-tuned for content safety classification. Similar to previous vers"
+ },
+ "qwen/qwen3-30b-a3b": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.4,
+  "ctx": 40960,
+  "cost": 0.62,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.62/1M",
+  "desc": "Qwen3, the latest generation in the Qwen large language model series, features both dense and mixture-of-experts (MoE) architectures to exce"
+ },
+ "qwen/qwen3-14b": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.4,
+  "ctx": 40960,
+  "cost": 0.36,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.36/1M",
+  "desc": "Qwen3-14B is a dense 14.8B parameter causal language model from the Qwen3 series, designed for both complex reasoning and efficient dialogue"
+ },
+ "qwen/qwen3-32b": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.4,
+  "ctx": 131072,
+  "cost": 0.36,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.36/1M",
+  "desc": "Qwen3-32B is a dense 32.8B parameter causal language model from the Qwen3 series, optimized for both complex reasoning and efficient dialogu"
+ },
+ "openai/o4-mini-high": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 200000,
+  "cost": 5.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$5.50/1M",
+  "desc": "OpenAI o4-mini-high is the same model as [o4-mini](/openai/o4-mini) with reasoning_effort set to high. OpenAI o4-mini is a compact reasoning"
+ },
+ "openai/o3": {
+  "provider": "OpenAI",
+  "power": 3.3,
+  "ctx": 200000,
+  "cost": 10.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$10.00/1M",
+  "desc": "o3 is a well-rounded and powerful model across domains. It sets a new standard for math, science, coding, and visual reasoning tasks. It als"
+ },
+ "openai/o4-mini": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 200000,
+  "cost": 5.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$5.50/1M",
+  "desc": "OpenAI o4-mini is a compact reasoning model in the o-series, optimized for fast, cost-efficient performance while retaining strong multimoda"
+ },
+ "openai/gpt-4.1": {
+  "provider": "OpenAI",
+  "power": 2.7,
+  "ctx": 1047576,
+  "cost": 10.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$10.00/1M",
+  "desc": "GPT-4.1 is a flagship large language model optimized for advanced instruction following, real-world software engineering, and long-context r"
+ },
+ "openai/gpt-4.1-mini": {
+  "provider": "OpenAI",
+  "power": 2.7,
+  "ctx": 1047576,
+  "cost": 2.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.00/1M",
+  "desc": "GPT-4.1 Mini is a mid-sized model delivering performance competitive with GPT-4o at substantially lower latency and cost. It retains a 1 mil"
+ },
+ "openai/gpt-4.1-nano": {
+  "provider": "OpenAI",
+  "power": 2.4,
+  "ctx": 1047576,
+  "cost": 0.5,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.50/1M",
+  "desc": "For tasks that demand low latency, GPT‑4.1 nano is the fastest and cheapest model in the GPT-4.1 series. It delivers exceptional performance"
+ },
+ "meta-llama/llama-4-maverick": {
+  "provider": "Meta(Llama)",
+  "power": 2.7,
+  "ctx": 1048576,
+  "cost": 0.84,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.84/1M",
+  "desc": "Llama 4 Maverick 17B Instruct (128E) is a high-capacity multimodal language model from Meta, built on a mixture-of-experts (MoE) architectur"
+ },
+ "meta-llama/llama-4-scout": {
+  "provider": "Meta(Llama)",
+  "power": 2.4,
+  "ctx": 1310720,
+  "cost": 0.4,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.40/1M",
+  "desc": "Llama 4 Scout 17B Instruct (16E) is a mixture-of-experts (MoE) language model developed by Meta, activating 17 billion parameters out of a t"
+ },
+ "deepseek/deepseek-chat-v3-0324": {
+  "provider": "DeepSeek",
+  "power": 2.4,
+  "ctx": 163840,
+  "cost": 1.43,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.43/1M",
+  "desc": "DeepSeek V3, a 685B-parameter, mixture-of-experts model, is the latest iteration of the flagship chat model family from the DeepSeek team. I"
+ },
+ "openai/o1-pro": {
+  "provider": "OpenAI",
+  "power": 2.7,
+  "ctx": 200000,
+  "cost": 750.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$750.00/1M",
+  "desc": "The o1 series of models are trained with reinforcement learning to think before they answer and perform complex reasoning. The o1-pro model "
+ },
+ "mistralai/mistral-small-3.1-24b-instruct": {
+  "provider": "Mistral",
+  "power": 3.0,
+  "ctx": 128000,
+  "cost": 0.906,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.91/1M",
+  "desc": "Mistral Small 3.1 24B Instruct is an upgraded variant of Mistral Small 3 (2501), featuring 24 billion parameters with advanced multimodal ca"
+ },
+ "google/gemma-3-4b-it": {
+  "provider": "Google",
+  "power": 2.4,
+  "ctx": 131072,
+  "cost": 0.15,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.15/1M",
+  "desc": "Gemma 3 introduces multimodality, supporting vision-language input and text outputs. It handles context windows up to 128k tokens, understan"
+ },
+ "google/gemma-3-12b-it": {
+  "provider": "Google",
+  "power": 2.4,
+  "ctx": 131072,
+  "cost": 0.2,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.20/1M",
+  "desc": "Gemma 3 introduces multimodality, supporting vision-language input and text outputs. It handles context windows up to 128k tokens, understan"
+ },
+ "cohere/command-a": {
+  "provider": "Cohere",
+  "power": 2.7,
+  "ctx": 256000,
+  "cost": 12.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$12.50/1M",
+  "desc": "Command A is an open-weights 111B parameter model with a 256k context window focused on delivering great performance across agentic, multili"
+ },
+ "rekaai/reka-flash-3": {
+  "provider": "rekaai",
+  "power": 2.4,
+  "ctx": 65536,
+  "cost": 0.3,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.30/1M",
+  "desc": "Reka Flash 3 is a general-purpose, instruction-tuned large language model with 21 billion parameters, developed by Reka. It excels at genera"
+ },
+ "google/gemma-3-27b-it": {
+  "provider": "Google",
+  "power": 2.4,
+  "ctx": 131072,
+  "cost": 0.53,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.53/1M",
+  "desc": "Gemma 3 introduces multimodality, supporting vision-language input and text outputs. It handles context windows up to 128k tokens, understan"
+ },
+ "thedrummer/skyfall-36b-v2": {
+  "provider": "thedrummer",
+  "power": 3.0,
+  "ctx": 32768,
+  "cost": 1.35,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.35/1M",
+  "desc": "Skyfall 36B v2 is an enhanced iteration of Mistral Small 2501, specifically fine-tuned for improved creativity, nuanced writing, role-playin"
+ },
+ "perplexity/sonar-reasoning-pro": {
+  "provider": "Perplexity",
+  "power": 2.7,
+  "ctx": 128000,
+  "cost": 10.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$10.00/1M",
+  "desc": "Note: Sonar Pro pricing includes Perplexity search pricing. See [details here](https://docs.perplexity.ai/guides/pricing#detailed-pricing-br"
+ },
+ "perplexity/sonar-pro": {
+  "provider": "Perplexity",
+  "power": 2.4,
+  "ctx": 200000,
+  "cost": 18.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$18.00/1M",
+  "desc": "Note: Sonar Pro pricing includes Perplexity search pricing. See [details here](https://docs.perplexity.ai/guides/pricing#detailed-pricing-br"
+ },
+ "perplexity/sonar-deep-research": {
+  "provider": "Perplexity",
+  "power": 3.0,
+  "ctx": 128000,
+  "cost": 10.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$10.00/1M",
+  "desc": "Sonar Deep Research is a research-focused model designed for multi-step retrieval, synthesis, and reasoning across complex topics. It autono"
+ },
+ "mistralai/mistral-saba": {
+  "provider": "Mistral",
+  "power": 2.4,
+  "ctx": 32768,
+  "cost": 0.8,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.80/1M",
+  "desc": "Mistral Saba is a 24B-parameter language model specifically designed for the Middle East and South Asia, delivering accurate and contextuall"
+ },
+ "openai/o3-mini-high": {
+  "provider": "OpenAI",
+  "power": 2.7,
+  "ctx": 200000,
+  "cost": 5.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$5.50/1M",
+  "desc": "OpenAI o3-mini-high is the same model as [o3-mini](/openai/o3-mini) with reasoning_effort set to high. o3-mini is a cost-efficient language "
+ },
+ "aion-labs/aion-rp-llama-3.1-8b": {
+  "provider": "aion-labs",
+  "power": 3.0,
+  "ctx": 32768,
+  "cost": 2.4,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.40/1M",
+  "desc": "Aion-RP-Llama-3.1-8B ranks the highest in the character evaluation portion of the RPBench-Auto benchmark, a roleplaying-specific variant of "
+ },
+ "qwen/qwen2.5-vl-72b-instruct": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.0,
+  "ctx": 128000,
+  "cost": 1.8,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.80/1M",
+  "desc": "Qwen2.5-VL is proficient in recognizing common objects such as flowers, birds, fish, and insects. It is also highly capable of analyzing tex"
+ },
+ "qwen/qwen-plus": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.0,
+  "ctx": 1000000,
+  "cost": 1.04,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.04/1M",
+  "desc": "Qwen-Plus, based on the Qwen2.5 foundation model, is a 131K context model with a balanced performance, speed, and cost combination."
+ },
+ "openai/o3-mini": {
+  "provider": "OpenAI",
+  "power": 2.7,
+  "ctx": 200000,
+  "cost": 5.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$5.50/1M",
+  "desc": "OpenAI o3-mini is a cost-efficient language model optimized for STEM reasoning tasks, particularly excelling in science, mathematics, and co"
+ },
+ "mistralai/mistral-small-24b-instruct-2501": {
+  "provider": "Mistral",
+  "power": 2.4,
+  "ctx": 32768,
+  "cost": 0.13,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.13/1M",
+  "desc": "Mistral Small 3 is a 24B-parameter language model optimized for low-latency performance across common AI tasks. Released under the Apache 2."
+ },
+ "perplexity/sonar": {
+  "provider": "Perplexity",
+  "power": 2.4,
+  "ctx": 127072,
+  "cost": 2.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$2.00/1M",
+  "desc": "Sonar is lightweight, affordable, fast, and simple to use — now featuring citations and the ability to customize sources. It is designed for"
+ },
+ "deepseek/deepseek-r1": {
+  "provider": "DeepSeek",
+  "power": 2.7,
+  "ctx": 64000,
+  "cost": 3.2,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "writing"
+  ],
+  "price": "$3.20/1M",
+  "desc": "DeepSeek R1 is here: Performance on par with [OpenAI o1](/openai/o1), but open-sourced and with fully open reasoning tokens. It's 671B param"
+ },
+ "minimax/minimax-01": {
+  "provider": "MiniMax",
+  "power": 3.0,
+  "ctx": 1000192,
+  "cost": 1.3,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$1.30/1M",
+  "desc": "MiniMax-01 is a combines MiniMax-Text-01 for text generation and MiniMax-VL-01 for image understanding. It has 456 billion parameters, with "
+ },
+ "microsoft/phi-4": {
+  "provider": "Microsoft",
+  "power": 2.4,
+  "ctx": 16384,
+  "cost": 0.21,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.21/1M",
+  "desc": "[Microsoft Research](/microsoft) Phi-4 is designed to perform well in complex reasoning tasks and can operate efficiently in situations with"
+ },
+ "deepseek/deepseek-chat": {
+  "provider": "DeepSeek",
+  "power": 3.0,
+  "ctx": 163840,
+  "cost": 1.21,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.21/1M",
+  "desc": "DeepSeek-V3 is the latest model from the DeepSeek team, building upon the instruction following and coding abilities of the previous version"
+ },
+ "sao10k/l3.3-euryale-70b": {
+  "provider": "Sao10k",
+  "power": 3.0,
+  "ctx": 131072,
+  "cost": 1.4,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.40/1M",
+  "desc": "Euryale L3.3 70B is a model focused on creative roleplay from [Sao10k](https://ko-fi.com/sao10k). It is the successor of [Euryale L3 70B v2."
+ },
+ "openai/o1": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 200000,
+  "cost": 75.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "reasoning",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$75.00/1M",
+  "desc": "The latest and strongest model family from OpenAI, o1 is designed to spend more time thinking before responding. The o1 model series is trai"
+ },
+ "cohere/command-r7b-12-2024": {
+  "provider": "Cohere",
+  "power": 3.0,
+  "ctx": 128000,
+  "cost": 0.1875,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.19/1M",
+  "desc": "Command R7B (12-2024) is a small, fast update of the Command R+ model, delivered in December 2024. It excels at RAG, tool use, agents, and s"
+ },
+ "meta-llama/llama-3.3-70b-instruct": {
+  "provider": "Meta(Llama)",
+  "power": 2.4,
+  "ctx": 131072,
+  "cost": 0.72,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.72/1M",
+  "desc": "The Meta Llama 3.3 multilingual large language model (LLM) is a pretrained and instruction tuned generative model in 70B (text in/text out)."
+ },
+ "amazon/nova-lite-v1": {
+  "provider": "Amazon",
+  "power": 2.4,
+  "ctx": 300000,
+  "cost": 0.3,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.30/1M",
+  "desc": "Amazon Nova Lite 1.0 is a very low-cost multimodal model from Amazon that focused on fast processing of image, video, and text inputs to gen"
+ },
+ "amazon/nova-micro-v1": {
+  "provider": "Amazon",
+  "power": 2.4,
+  "ctx": 128000,
+  "cost": 0.175,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.17/1M",
+  "desc": "Amazon Nova Micro 1.0 is a text-only model that delivers the lowest latency responses in the Amazon Nova family of models at a very low cost"
+ },
+ "amazon/nova-pro-v1": {
+  "provider": "Amazon",
+  "power": 2.4,
+  "ctx": 300000,
+  "cost": 4.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$4.00/1M",
+  "desc": "Amazon Nova Pro 1.0 is a capable multimodal model from Amazon focused on providing a combination of accuracy, speed, and cost for a wide ran"
+ },
+ "openai/gpt-4o-2024-11-20": {
+  "provider": "OpenAI",
+  "power": 2.4,
+  "ctx": 128000,
+  "cost": 12.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$12.50/1M",
+  "desc": "The 2024-11-20 version of GPT-4o offers a leveled-up creative writing ability with more natural, engaging, and tailored writing to improve r"
+ },
+ "mistralai/mistral-large-2407": {
+  "provider": "Mistral",
+  "power": 2.4,
+  "ctx": 131072,
+  "cost": 8.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$8.00/1M",
+  "desc": "This is Mistral AI's flagship model, Mistral Large 2 (version mistral-large-2407). It's a proprietary weights-available model and excels at "
+ },
+ "qwen/qwen-2.5-coder-32b-instruct": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.4,
+  "ctx": 32768,
+  "cost": 1.66,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.66/1M",
+  "desc": "Qwen2.5-Coder is the latest series of Code-Specific Qwen large language models (formerly known as CodeQwen). Qwen2.5-Coder brings the follow"
+ },
+ "thedrummer/unslopnemo-12b": {
+  "provider": "thedrummer",
+  "power": 3.0,
+  "ctx": 1024000,
+  "cost": 0.8,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "long_ctx",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.80/1M",
+  "desc": "UnslopNemo v4.1 is the latest addition from the creator of Rocinante, designed for adventure writing and role-play scenarios."
+ },
+ "anthracite-org/magnum-v4-72b": {
+  "provider": "anthracite-org",
+  "power": 3.0,
+  "ctx": 32768,
+  "cost": 7.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$7.50/1M",
+  "desc": "This is a series of models designed to replicate the prose quality of the Claude 3 models, specifically Sonnet(https://openrouter.ai/anthrop"
+ },
+ "qwen/qwen-2.5-7b-instruct": {
+  "provider": "Alibaba(Qwen)",
+  "power": 3.0,
+  "ctx": 32768,
+  "cost": 0.3,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.30/1M",
+  "desc": "Qwen2.5 7B is the latest series of Qwen large language models. Qwen2.5 brings the following improvements upon Qwen2: - Significantly more kn"
+ },
+ "meta-llama/llama-3.2-1b-instruct": {
+  "provider": "Meta(Llama)",
+  "power": 2.4,
+  "ctx": 60000,
+  "cost": 0.228,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.23/1M",
+  "desc": "Llama 3.2 1B is a 1-billion-parameter language model focused on efficiently performing natural language tasks, such as summarization, dialog"
+ },
+ "meta-llama/llama-3.2-3b-instruct": {
+  "provider": "Meta(Llama)",
+  "power": 2.4,
+  "ctx": 131072,
+  "cost": 0.38,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.38/1M",
+  "desc": "Llama 3.2 3B is a 3-billion-parameter multilingual large language model, optimized for advanced natural language processing tasks like dialo"
+ },
+ "qwen/qwen-2.5-72b-instruct": {
+  "provider": "Alibaba(Qwen)",
+  "power": 2.4,
+  "ctx": 32768,
+  "cost": 0.76,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.76/1M",
+  "desc": "Qwen2.5 72B is the latest series of Qwen large language models. Qwen2.5 brings the following improvements upon Qwen2: - Significantly more k"
+ },
+ "cohere/command-r-08-2024": {
+  "provider": "Cohere",
+  "power": 3.0,
+  "ctx": 128000,
+  "cost": 0.75,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.75/1M",
+  "desc": "command-r-08-2024 is an update of the [Command R](/models/cohere/command-r) with improved performance for multilingual retrieval-augmented g"
+ },
+ "cohere/command-r-plus-08-2024": {
+  "provider": "Cohere",
+  "power": 3.0,
+  "ctx": 128000,
+  "cost": 12.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$12.50/1M",
+  "desc": "command-r-plus-08-2024 is an update of the [Command R+](/models/cohere/command-r-plus) with roughly 50% higher throughput and 25% lower late"
+ },
+ "sao10k/l3.1-euryale-70b": {
+  "provider": "Sao10k",
+  "power": 3.0,
+  "ctx": 131072,
+  "cost": 1.7,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.70/1M",
+  "desc": "Euryale L3.1 70B v2.2 is a model focused on creative roleplay from [Sao10k](https://ko-fi.com/sao10k). It is the successor of [Euryale L3 70"
+ },
+ "nousresearch/hermes-3-llama-3.1-70b": {
+  "provider": "Nous",
+  "power": 2.4,
+  "ctx": 131072,
+  "cost": 1.4,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.40/1M",
+  "desc": "Hermes 3 is a generalist language model with many improvements over [Hermes 2](/models/nousresearch/nous-hermes-2-mistral-7b-dpo), including"
+ },
+ "nousresearch/hermes-3-llama-3.1-405b": {
+  "provider": "Nous",
+  "power": 2.4,
+  "ctx": 131072,
+  "cost": 2.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.00/1M",
+  "desc": "Hermes 3 is a generalist language model with many improvements over Hermes 2, including advanced agentic capabilities, much better roleplayi"
+ },
+ "sao10k/l3-lunaris-8b": {
+  "provider": "Sao10k",
+  "power": 3.0,
+  "ctx": 8192,
+  "cost": 0.09,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.09/1M",
+  "desc": "Lunaris 8B is a versatile generalist and roleplaying model based on Llama 3. It's a strategic merge of multiple models, designed to balance "
+ },
+ "openai/gpt-4o-2024-08-06": {
+  "provider": "OpenAI",
+  "power": 2.4,
+  "ctx": 128000,
+  "cost": 12.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$12.50/1M",
+  "desc": "The 2024-08-06 version of GPT-4o offers improved performance in structured outputs, with the ability to supply a JSON schema in the respone_"
+ },
+ "meta-llama/llama-3.1-70b-instruct": {
+  "provider": "Meta(Llama)",
+  "power": 2.4,
+  "ctx": 131072,
+  "cost": 0.8,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.80/1M",
+  "desc": "Meta's latest class of model (Llama 3.1) launched with a variety of sizes & flavors. This 70B instruct-tuned version is optimized for high q"
+ },
+ "meta-llama/llama-3.1-8b-instruct": {
+  "provider": "Meta(Llama)",
+  "power": 2.4,
+  "ctx": 131072,
+  "cost": 0.13,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.13/1M",
+  "desc": "Meta's latest class of model (Llama 3.1) launched with a variety of sizes & flavors. This 8B instruct-tuned version is fast and efficient. I"
+ },
+ "mistralai/mistral-nemo": {
+  "provider": "Mistral",
+  "power": 3.0,
+  "ctx": 131072,
+  "cost": 0.059,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.06/1M",
+  "desc": "A 12B parameter model with a 128k token context length built by Mistral in collaboration with NVIDIA. The model is multilingual, supporting "
+ },
+ "openai/gpt-4o-mini": {
+  "provider": "OpenAI",
+  "power": 2.4,
+  "ctx": 128000,
+  "cost": 0.75,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.75/1M",
+  "desc": "GPT-4o mini is OpenAI's newest model after [GPT-4 Omni](/models/openai/gpt-4o), supporting both text and image inputs with text outputs. As "
+ },
+ "openai/gpt-4o-mini-2024-07-18": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 128000,
+  "cost": 0.75,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$0.75/1M",
+  "desc": "GPT-4o mini is OpenAI's newest model after [GPT-4 Omni](/models/openai/gpt-4o), supporting both text and image inputs with text outputs. As "
+ },
+ "google/gemma-2-27b-it": {
+  "provider": "Google",
+  "power": 3.0,
+  "ctx": 8192,
+  "cost": 1.3,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.30/1M",
+  "desc": "Gemma 2 27B by Google is an open model built from the same research and technology used to create the [Gemini models](/models?q=gemini). Gem"
+ },
+ "openai/gpt-4o": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 128000,
+  "cost": 12.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$12.50/1M",
+  "desc": "GPT-4o (\"o\" for \"omni\") is OpenAI's latest AI model, supporting both text and image inputs with text outputs. It maintains the intelligence "
+ },
+ "openai/gpt-4o-2024-05-13": {
+  "provider": "OpenAI",
+  "power": 2.4,
+  "ctx": 128000,
+  "cost": 20.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$20.00/1M",
+  "desc": "GPT-4o (\"o\" for \"omni\") is OpenAI's latest AI model, supporting both text and image inputs with text outputs. It maintains the intelligence "
+ },
+ "mistralai/mixtral-8x22b-instruct": {
+  "provider": "Mistral",
+  "power": 2.4,
+  "ctx": 65536,
+  "cost": 8.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$8.00/1M",
+  "desc": "Mistral's official instruct fine-tuned version of [Mixtral 8x22B](/models/mistralai/mixtral-8x22b). It uses 39B active parameters out of 141"
+ },
+ "microsoft/wizardlm-2-8x22b": {
+  "provider": "Microsoft",
+  "power": 3.0,
+  "ctx": 65535,
+  "cost": 1.24,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.24/1M",
+  "desc": "WizardLM-2 8x22B is Microsoft AI's most advanced Wizard model. It demonstrates highly competitive performance compared to leading proprietar"
+ },
+ "openai/gpt-4-turbo": {
+  "provider": "OpenAI",
+  "power": 2.4,
+  "ctx": 128000,
+  "cost": 40.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "vision",
+   "writing"
+  ],
+  "price": "$40.00/1M",
+  "desc": "The latest GPT-4 Turbo model with vision capabilities. Vision requests can now use JSON mode and function calling.\n\nTraining data: up to Dec"
+ },
+ "mistralai/mistral-large": {
+  "provider": "Mistral",
+  "power": 2.4,
+  "ctx": 128000,
+  "cost": 8.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$8.00/1M",
+  "desc": "This is Mistral AI's flagship model, Mistral Large 2 (version `mistral-large-2407`). It's a proprietary weights-available model and excels a"
+ },
+ "openai/gpt-3.5-turbo-0613": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 4095,
+  "cost": 3.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$3.00/1M",
+  "desc": "GPT-3.5 Turbo is OpenAI's fastest model. It can understand and generate natural language or code, and is optimized for chat and traditional "
+ },
+ "openai/gpt-3.5-turbo-instruct": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 4095,
+  "cost": 3.5,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$3.50/1M",
+  "desc": "This model is a variant of GPT-3.5 Turbo tuned for instructional prompts and omitting chat-related optimizations. Training data: up to Sep 2"
+ },
+ "openai/gpt-3.5-turbo-16k": {
+  "provider": "OpenAI",
+  "power": 3.0,
+  "ctx": 16385,
+  "cost": 7.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$7.00/1M",
+  "desc": "This model offers four times the context length of gpt-3.5-turbo, allowing it to support approximately 20 pages of text in a single request "
+ },
+ "mancer/weaver": {
+  "provider": "mancer",
+  "power": 3.0,
+  "ctx": 8000,
+  "cost": 1.15,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.15/1M",
+  "desc": "An attempt to recreate Claude-style verbosity, but don't expect the same level of coherence or memory. Meant for use in roleplay/narrative s"
+ },
+ "undi95/remm-slerp-l2-13b": {
+  "provider": "undi95",
+  "power": 3.0,
+  "ctx": 6144,
+  "cost": 1.0,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$1.00/1M",
+  "desc": "A recreation trial of the original MythoMax-L2-B13 but with updated models. #merge"
+ },
+ "gryphe/mythomax-l2-13b": {
+  "provider": "gryphe",
+  "power": 3.0,
+  "ctx": 8192,
+  "cost": 0.19,
+  "tags": [
+   "cheap",
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "power_est",
+   "tools",
+   "writing"
+  ],
+  "price": "$0.19/1M",
+  "desc": "One of the highest performing and most popular fine-tunes of Llama 2 13B, with rich descriptions and roleplay. #merge"
+ },
+ "openai/gpt-3.5-turbo": {
+  "provider": "OpenAI",
+  "power": 2.4,
+  "ctx": 16385,
+  "cost": 2.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$2.00/1M",
+  "desc": "GPT-3.5 Turbo is OpenAI's fastest model. It can understand and generate natural language or code, and is optimized for chat and traditional "
+ },
+ "openai/gpt-4": {
+  "provider": "OpenAI",
+  "power": 2.4,
+  "ctx": 8191,
+  "cost": 90.0,
+  "tags": [
+   "chinese_strong",
+   "code",
+   "general",
+   "multilingual",
+   "tools",
+   "writing"
+  ],
+  "price": "$90.00/1M",
+  "desc": "OpenAI's flagship model, GPT-4 is a large-scale multimodal language model capable of solving difficult problems with greater accuracy than p"
+ }
+}
