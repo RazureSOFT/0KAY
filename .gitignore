@@ -67,3 +67,16 @@ core/data/*.bak-*
 # refreshed deliberately, but the exploded `assets/` sub-tree is pure build
 # output (b6bf246 removed the ones that had been committed by mistake).
 core/data/plugin-ui/**/assets/
+
+# Review/analysis reports — intentionally excluded from the repo so they are
+# never committed or pushed to the remote again. (Removed from main on
+# 2026-10-11; the remote had already removed several of these.)
+CODE_REVIEW-2026-10-07.md
+FULL_REVIEW-2026-10-05.md
+UI_LAYOUT_REVIEW-2026-10-06.md
+UI_LAYOUT_FIXES-2026-10-06.md
+life/life-review-fixes.md
+life/life-review-report-v2-addendum.md
+life/life-review-report-v2.md
+life/life-review-report.md
+*REVIEW*.md
