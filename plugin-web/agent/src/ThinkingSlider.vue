@@ -2,7 +2,7 @@
 import {computed,ref,watch,nextTick,onMounted,onUnmounted} from 'vue'
 import {i18n,uid} from '@0kay/host'
 const t=(key:string,named?:Record<string,unknown>)=>i18n.global.t(key,named??{})
-const props=defineProps<{modelValue:number;disabled?:boolean}>()
+const props=defineProps<{modelValue:number;disabled?:boolean;inline?:boolean}>()
 const emit=defineEmits<{'update:modelValue':[value:number]}>()
 const stops=computed(()=>[{value:0,label:t('agent.thinking.off')},{value:20,label:t('agent.thinking.low')},{value:50,label:t('agent.thinking.medium')},{value:75,label:t('agent.thinking.high')},{value:100,label:t('agent.thinking.max')}])
 const index=computed(()=>props.modelValue===0?0:props.modelValue<35?1:props.modelValue<62.5?2:props.modelValue<87.5?3:4)
@@ -25,10 +25,24 @@ onMounted(()=>{document.addEventListener('pointerdown',outside,true);window.addE
 onUnmounted(()=>{clearTimeout(timer);document.removeEventListener('pointerdown',outside,true);window.removeEventListener('resize',layout);window.removeEventListener('scroll',scroll,true)})
 </script>
 <template>
- <div class="thinking-control" :class="{full,pulse}">
-  <span class="thinking-caption">{{ t('agent.thinking.effort') }}</span>
-  <button ref="trigger" type="button" class="thinking-trigger" :disabled="disabled" :aria-label="t('agent.thinking.effort')" aria-haspopup="dialog" :aria-expanded="opened" :aria-controls="opened?id:undefined" @click="toggle" @keydown.esc="close"><span>{{ full?'✦ ':'' }}{{ stops[index].label }}</span><span aria-hidden="true">⌄</span></button>
-  <Teleport to="body"><Transition name="thinking-menu"><section v-if="opened" :id="id" ref="panel" class="thinking-popover" :class="{full,pulse}" :style="position" role="dialog" :aria-label="t('agent.thinking.adjustAria')" @keydown.esc.prevent.stop="close">
+ <div class="thinking-control" :class="{full,pulse,inline}">
+  <template v-if="!inline">
+   <span class="thinking-caption">{{ t('agent.thinking.effort') }}</span>
+   <button ref="trigger" type="button" class="thinking-trigger" :disabled="disabled" :aria-label="t('agent.thinking.effort')" aria-haspopup="dialog" :aria-expanded="opened" :aria-controls="opened?id:undefined" @click="toggle" @keydown.esc="close"><span>{{ full?'✦ ':'' }}{{ stops[index].label }}</span><span aria-hidden="true">⌄</span></button>
+  </template>
+  <!-- Inline mode: the same track, embedded in a host popover (the model picker
+       merges "which model" and "how hard it thinks" into one panel). The markup
+       is repeated rather than shared because the popover branch lives inside a
+       Teleport and must keep its own focus handling. -->
+  <div v-if="inline" class="thinking-inline">
+   <header class="thinking-inline-head"><strong>{{ t('agent.thinking.effort') }}</strong><output>{{ full?'✦ ':'' }}{{ stops[index].label }}</output></header>
+   <div class="thinking-track" :style="{'--intensity':`${dragValue}%`}">
+    <div class="thinking-capsule" aria-hidden="true"><div class="thinking-fill"/><span v-for="(_,i) in stops" :key="i" class="thinking-tick" :class="{passed:dragValue>=i*25}" :style="{left:`${i*25}%`}"/></div>
+    <input type="range" min="0" max="100" step="0.1" :value="dragValue" :disabled="disabled" :aria-label="t('agent.thinking.sliderAria')" :aria-valuetext="stops[index].label" @input="update" @change="dragValue=index*25" @keydown.home.prevent="select(0)" @keydown.end.prevent="select(4)" @keydown.arrow-right.prevent="select(Math.min(4,index+1))" @keydown.arrow-left.prevent="select(Math.max(0,index-1))"/><span v-if="full" class="energy-wave" aria-hidden="true" />
+   </div>
+   <div class="thinking-stops"><button v-for="(stop,i) in stops" :key="stop.value" type="button" :class="{selected:index===i}" :aria-pressed="index===i" :disabled="disabled" @click="select(i)">{{ stop.label }}</button></div>
+  </div>
+  <Teleport v-if="!inline" to="body"><Transition name="thinking-menu"><section v-if="opened" :id="id" ref="panel" class="thinking-popover" :class="{full,pulse}" :style="position" role="dialog" :aria-label="t('agent.thinking.adjustAria')" @keydown.esc.prevent.stop="close">
    <header><strong>{{ t('agent.thinking.effort') }}</strong><output>{{ full?'✦ ':'' }}{{ stops[index].label }}</output></header>
    <div class="thinking-track" :style="{'--intensity':`${dragValue}%`}">
     <div class="thinking-capsule" aria-hidden="true"><div class="thinking-fill"/><span v-for="(_,i) in stops" :key="i" class="thinking-tick" :class="{passed:dragValue>=i*25}" :style="{left:`${i*25}%`}"/></div>
@@ -120,4 +134,13 @@ onUnmounted(()=>{clearTimeout(timer);document.removeEventListener('pointerdown',
 #app .thinking-control .thinking-trigger[aria-expanded="true"]{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}
 #app .thinking-control.full .thinking-trigger{color:var(--md-tertiary);border-color:color-mix(in srgb,var(--md-tertiary) 40%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--md-tertiary) 20%,transparent),0 0 18px color-mix(in srgb,var(--md-tertiary) 24%,transparent)}
 .thinking-caption{font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--md-on-surface-variant)}
+
+/* Inline variant: embedded inside the model picker's popover, so it must not
+   claim `flex:1` or the 110px floor the standalone control needs. */
+.thinking-control.inline{min-width:0;flex:none;width:100%;gap:0}
+.thinking-inline{display:flex;flex-direction:column;gap:2px;width:100%}
+.thinking-inline-head{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;color:var(--md-on-surface)}
+.thinking-inline-head output{color:var(--md-primary);font-weight:600;font-size:12px}
+.thinking-control.inline .thinking-track{height:56px;margin:8px 0 0}
+.thinking-control.inline .thinking-stops button{min-height:26px;padding:4px 8px;font-size:11.5px}
 </style>

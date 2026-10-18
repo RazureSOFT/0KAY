@@ -27,11 +27,6 @@ class TaskRecorder:
     def __init__(self, data_dir):
         self.path = Path(data_dir) / "task_outbox.json"
         self.lock = asyncio.Lock()
-        # Serializes flushes separately from record(): the drain POSTs one
-        # event at a time with a per-request timeout, and holding `lock` for
-        # the whole drain made every record() (2+ per message) wait behind
-        # Core's slowest response.
-        self._flush_lock = asyncio.Lock()
         self.base = (os.getenv("CORE_HTTP_ADDR") or os.getenv("CORE_HTTP") or "http://127.0.0.1:8080").rstrip("/")
         self._flush_task: asyncio.Task | None = None
         try:
@@ -89,29 +84,22 @@ class TaskRecorder:
         return auth_headers()
 
     async def flush(self):
-        async with self._flush_lock:
+        async with self.lock:
             async with httpx.AsyncClient(timeout=2) as client:
-                while True:
-                    # Snapshot + release: events recorded while we are POSTing
-                    # join the tail instead of blocking on the whole drain.
-                    async with self.lock:
-                        if not self.pending:
-                            return
-                        event = self.pending[0]
+                while self.pending:
                     try:
-                        response = await client.post(f"{self.base}/api/tasks", json=event, headers=self._headers())
+                        response = await client.post(f"{self.base}/api/tasks", json=self.pending[0], headers=self._headers())
                         if response.status_code in _PERMANENT_FAILURES:
-                            self._reject(event, response.status_code)
-                        elif response.status_code != 409:
+                            self._reject(self.pending[0], response.status_code)
+                            self.pending.pop(0)
+                            self._save()
+                            continue
+                        if response.status_code != 409:
                             response.raise_for_status()
                     except Exception:
                         return
-                    async with self.lock:
-                        # The head may only be popped while it is still the
-                        # head: an outbox trim must never drop a fresh record.
-                        if self.pending and self.pending[0] is event:
-                            self.pending.pop(0)
-                            self._save()
+                    self.pending.pop(0)
+                    self._save()
 
     async def start(self, kind, prompt):
         context = task_context.get()

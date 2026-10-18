@@ -1,0 +1,632 @@
+{
+  "base_url": "http://127.0.0.1:8080",
+  "health": {
+    "healthy": 6,
+    "plugins": 6,
+    "status": "ok"
+  },
+  "plugins": [
+    {
+      "active_tasks": 0,
+      "capabilities": [
+        "agent",
+        "executor:ac9a8186-8c97-4d19-9cda-e3ddae145f11",
+        "requires:mocr"
+      ],
+      "disabled": false,
+      "name": "agent",
+      "plugin_id": "plugin_04dfb2f26c115ff43f05e6d9",
+      "status": "PLUGIN_STATUS_HEALTHY",
+      "version": "0.1.2"
+    },
+    {
+      "active_tasks": 0,
+      "capabilities": [
+        "context"
+      ],
+      "disabled": false,
+      "name": "context",
+      "plugin_id": "plugin_ea7792a26f405e2ae9c6f49c",
+      "status": "PLUGIN_STATUS_HEALTHY",
+      "version": "0.1.3"
+    },
+    {
+      "active_tasks": 0,
+      "capabilities": [
+        "life",
+        "requires:mocr",
+        "messaging"
+      ],
+      "disabled": false,
+      "name": "life",
+      "plugin_id": "plugin_63bd7065ef1e165a04255d40",
+      "status": "PLUGIN_STATUS_HEALTHY",
+      "version": "0.1.3"
+    },
+    {
+      "active_tasks": 0,
+      "capabilities": [
+        "mocr"
+      ],
+      "disabled": false,
+      "name": "mocr",
+      "plugin_id": "plugin_e0ecbeaae412e98a54def63f",
+      "status": "PLUGIN_STATUS_HEALTHY",
+      "version": "0.1.3"
+    },
+    {
+      "active_tasks": 0,
+      "capabilities": [
+        "package-manager"
+      ],
+      "disabled": false,
+      "name": "pm",
+      "plugin_id": "plugin_96f2f0811df88d8fc36bba1e",
+      "status": "PLUGIN_STATUS_HEALTHY",
+      "version": "0.1.3"
+    },
+    {
+      "active_tasks": 0,
+      "capabilities": [
+        "webui"
+      ],
+      "disabled": false,
+      "name": "webui",
+      "plugin_id": "plugin_fd1a3b33a0876bb466e75f49",
+      "status": "PLUGIN_STATUS_HEALTHY",
+      "version": "0.1.3"
+    },
+    {
+      "active_tasks": 0,
+      "capabilities": [],
+      "disabled": true,
+      "name": "fluentui",
+      "plugin_id": "disabled:fluentui",
+      "status": "PLUGIN_STATUS_DISABLED",
+      "version": ""
+    }
+  ],
+  "settings_sections": [
+    {
+      "description": "mocr 的模型选择策略与运行参数（供应商凭证与模型目录在「供应商」标签）",
+      "fields": [
+        {
+          "default_value": "auto",
+          "help": "auto=按难度与成本自动选型；quality=质量优先（倾向 thinking 模型）；cost=成本优先（用最便宜可用模型）；pinned=只用上面的默认模型（需填默认模型）",
+          "key": "model_strategy",
+          "label": "模型选择策略",
+          "options": [
+            "auto",
+            "quality",
+            "cost",
+            "pinned"
+          ],
+          "type": "select"
+        },
+        {
+          "default_value": "",
+          "help": "留空 = 按上面的模型选择策略智能选型；选择后固定使用该模型",
+          "key": "default_model",
+          "label": "默认模型",
+          "type": "model"
+        },
+        {
+          "default_value": "2",
+          "help": "供应商瞬时错误（429 / 5xx / 超时）时的同模型重试次数（0-5），失败后才会切换模型",
+          "key": "max_retries",
+          "label": "最大重试次数",
+          "type": "number"
+        },
+        {
+          "default_value": "60",
+          "help": "超过 N 秒无数据则关闭流",
+          "key": "stream_idle_timeout_sec",
+          "label": "SSE 空闲超时（秒）",
+          "type": "number"
+        },
+        {
+          "default_value": "true",
+          "help": "供应商报错或返回空回复时自动换一个模型重试（已发出内容则不重试）",
+          "key": "auto_switch_model",
+          "label": "失败/不回复时自动切换模型",
+          "type": "bool"
+        },
+        {
+          "default_value": "2",
+          "help": "单次生成最多允许切换几个候选模型（0-5）",
+          "key": "switch_max_attempts",
+          "label": "最大切换次数",
+          "type": "number"
+        },
+        {
+          "default_value": "",
+          "help": "从模型目录中选择；留空 = 按供应商目录顺序依次尝试",
+          "key": "fallback_models",
+          "label": "备选模型",
+          "type": "models"
+        },
+        {
+          "default_value": "",
+          "help": "价格由你自己填写，无内置价表。JSON：{\"模型片段\":{\"in\":输入价,\"out\":输出价,\"per_call\":单次价}}，单位 USD/百万 token（per_call = 每次请求固定价）。例：{\"deepseek-flash\":{\"in\":0.14,\"out\":0.28},\"my-model\":{\"per_call\":0.01}}。也兼容旧的 片段:每token价, ...。未填写的模型按模型名粗略估算",
+          "key": "model_prices",
+          "label": "模型价格覆盖",
+          "type": "text"
+        }
+      ],
+      "icon": "cloud",
+      "id": "mocr",
+      "label": "模型",
+      "order": 20,
+      "plugin_id": "plugin_e0ecbeaae412e98a54def63f",
+      "plugin_name": "mocr"
+    },
+    {
+      "description": "由 LIFE 管理的 Live2D 显示、模型选择、上传与删除",
+      "fields": [
+        {
+          "default_value": "true",
+          "key": "enabled",
+          "label": "启用 Live2D",
+          "type": "bool"
+        },
+        {
+          "default_value": "",
+          "key": "model_url",
+          "label": "当前模型 URL",
+          "type": "text"
+        }
+      ],
+      "icon": "avatar",
+      "id": "live2d",
+      "label": "Live2D 模型",
+      "order": 50,
+      "plugin_id": "plugin_63bd7065ef1e165a04255d40",
+      "plugin_name": "life"
+    },
+    {
+      "description": "L.I.F.E 人设插件权限（默认全部关闭）",
+      "fields": [
+        {
+          "default_value": "",
+          "help": "用于内部思考、工具规划与记忆决策；选项来自 mocr 当前模型目录",
+          "key": "think_model",
+          "label": "THINK 模型",
+          "type": "select"
+        },
+        {
+          "default_value": "",
+          "help": "用于人格化回复与任务完成通知；选项来自 mocr 当前模型目录",
+          "key": "output_model",
+          "label": "OUTPUT 模型",
+          "type": "select"
+        },
+        {
+          "default_value": "false",
+          "help": "允许 L.I.F.E 观察屏幕内容",
+          "key": "screen_watch",
+          "label": "屏幕监听",
+          "type": "bool"
+        },
+        {
+          "default_value": "false",
+          "help": "允许执行 shell / 计算机操作",
+          "key": "computer_use",
+          "label": "计算机操作",
+          "type": "bool"
+        },
+        {
+          "default_value": "",
+          "help": "心跳中附带主机名、CPU、内存等信息",
+          "key": "report_agent_host",
+          "label": "上报 Agent 主机信息",
+          "type": "text"
+        },
+        {
+          "default_value": "true",
+          "help": "开启后，L.I.F.E 读取或发送邮件前会先在 WebUI 弹窗询问是否允许（默认开启）",
+          "key": "mail_require_approval",
+          "label": "邮件操作需弹窗确认",
+          "type": "bool"
+        },
+        {
+          "default_value": "false",
+          "help": "开启后所有需要确认的权限直接通过、不再弹窗，优先于逐项确认设置",
+          "key": "mail_auto_approve_all",
+          "label": "全部自动审批（所有权限直接通过）",
+          "type": "bool"
+        },
+        {
+          "default_value": "true",
+          "help": "允许 THINK 调用 Agent 主机上的 0kay-mcp",
+          "key": "mcp_enabled",
+          "label": "MCP 调用",
+          "type": "bool"
+        },
+        {
+          "default_value": "3",
+          "help": "L.I.F.E 主动私聊/群消息总额度，默认 3",
+          "key": "proactive_daily_limit",
+          "label": "每日主动消息上限",
+          "type": "number"
+        },
+        {
+          "default_value": "1",
+          "help": "同一用户或群组每天最多主动发送次数",
+          "key": "proactive_target_limit",
+          "label": "单目标每日上限",
+          "type": "number"
+        },
+        {
+          "default_value": "false",
+          "help": "允许 L.I.F.E 通过 0kay-minecraft 服务连接你的世界并与玩家一起游玩",
+          "key": "minecraft_enabled",
+          "label": "Minecraft 联机",
+          "type": "bool"
+        },
+        {
+          "default_value": "http://127.0.0.1:8765",
+          "help": "0kay-minecraft 机器人服务地址（默认本机 8765）",
+          "key": "minecraft_url",
+          "label": "Minecraft 服务地址",
+          "type": "text"
+        }
+      ],
+      "icon": "lock",
+      "id": "life",
+      "label": "L.I.F.E",
+      "order": 60,
+      "plugin_id": "plugin_63bd7065ef1e165a04255d40",
+      "plugin_name": "life"
+    },
+    {
+      "description": "Agent 运行时设置（模型固定、循环上限、工具开关）",
+      "fields": [
+        {
+          "default_value": "",
+          "help": "留空 = 每次迭代由 mocr ChooseModels 自动选型",
+          "key": "model_id",
+          "label": "固定模型",
+          "type": "text"
+        },
+        {
+          "default_value": "0.7",
+          "help": "Agent LLM 采样温度（0–2）",
+          "key": "temperature",
+          "label": "温度",
+          "type": "number"
+        },
+        {
+          "default_value": "5",
+          "help": "同时运行的任务上限",
+          "key": "max_concurrent_tasks",
+          "label": "最大并发任务",
+          "type": "number"
+        },
+        {
+          "default_value": "general",
+          "help": "ExecuteTask 未指定类型时使用",
+          "key": "default_agent_type",
+          "label": "默认 Agent 类型",
+          "options": [
+            "general",
+            "code",
+            "research"
+          ],
+          "type": "select"
+        },
+        {
+          "default_value": "true",
+          "help": "允许 Agent 执行 shell 命令",
+          "key": "enable_shell_tool",
+          "label": "Shell 工具",
+          "type": "bool"
+        },
+        {
+          "default_value": "true",
+          "help": "允许 Agent 读写文件",
+          "key": "enable_filesystem_tool",
+          "label": "文件系统工具",
+          "type": "bool"
+        },
+        {
+          "default_value": "true",
+          "help": "允许 webfetch 与 websearch（Core 内置搜索）",
+          "key": "enable_web_tools",
+          "label": "网络工具",
+          "type": "bool"
+        },
+        {
+          "default_value": "true",
+          "help": "允许 task 工具委派受限深度的子任务",
+          "key": "enable_task_tool",
+          "label": "子 Agent 工具",
+          "type": "bool"
+        },
+        {
+          "default_value": "true",
+          "help": "允许 Agent 调用 0kay-mcp 中已配置的外部 MCP 服务",
+          "key": "enable_mcp_tool",
+          "label": "MCP 工具",
+          "type": "bool"
+        },
+        {
+          "default_value": "[]",
+          "help": "优先使用 设置 → MCP 的共享配置；这里仅在 Core 未提供 MCP 分组时作为回退",
+          "key": "mcp_servers_json",
+          "label": "MCP 服务 JSON（回退）",
+          "type": "text"
+        },
+        {
+          "default_value": "true",
+          "help": "允许 Agent 调用插件注册到 Core 的工具（工具目录见 /api/tools）",
+          "key": "enable_plugin_tools",
+          "label": "插件工具",
+          "type": "bool"
+        },
+        {
+          "default_value": "false",
+          "help": "允许 computeruse 在 Agent 所在 Windows 主机上截图、键盘和鼠标操作",
+          "key": "enable_computer_use",
+          "label": "Agent 主机计算机操作",
+          "type": "bool"
+        },
+        {
+          "default_value": "false",
+          "help": "允许 browser 工具通过 Chrome DevTools Protocol 驱动本机 Chrome/Edge（导航、点击、输入、截图等）",
+          "key": "enable_browser_tool",
+          "label": "浏览器自动化",
+          "type": "bool"
+        },
+        {
+          "default_value": "true",
+          "help": "允许 document 工具生成 Word（.docx）或 Markdown 文档",
+          "key": "enable_document_tool",
+          "label": "文档生成工具",
+          "type": "bool"
+        },
+        {
+          "default_value": "true",
+          "help": "允许 slides 工具生成 PowerPoint（.pptx）演示文稿",
+          "key": "enable_slides_tool",
+          "label": "PPT 生成工具",
+          "type": "bool"
+        },
+        {
+          "default_value": "false",
+          "help": "允许 WebUI 终端在本机执行 shell 命令（安全风险：开启后任何人只要能用 WebUI 就能在本机运行命令）",
+          "key": "enable_terminal",
+          "label": "WebUI 终端",
+          "type": "bool"
+        },
+        {
+          "default_value": "",
+          "help": "当前模型不支持图片时，用这个模型重试本轮（留空则不回退）",
+          "key": "vision_model",
+          "label": "视觉回退模型",
+          "type": "text"
+        },
+        {
+          "default_value": "0",
+          "help": "上下文快满时自动压缩的窗口；0 = 自动从 provider 的 /models 读取 context_length，读不到则不主动压缩",
+          "key": "context_window",
+          "label": "上下文窗口（tokens）",
+          "type": "number"
+        },
+        {
+          "default_value": "true",
+          "help": "加载并注入 Agent 技能（与 L.I.F.E 技能分离）",
+          "key": "enable_skills",
+          "label": "技能系统",
+          "type": "bool"
+        },
+        {
+          "default_value": "",
+          "help": "留空 = 内置 + agent/skills/*.md；可指向自定义目录",
+          "key": "skills_dir",
+          "label": "技能目录",
+          "type": "text"
+        },
+        {
+          "default_value": "read,glob,grep,webfetch,websearch,papersearch,apidocsearch,todowrite,skill,document,slides,compress,decompress,search_context,acp_status",
+          "help": "逗号分隔的工具名，直接执行不弹确认；bash 建议保持审批（如需放开：read,write,edit,apply_patch,glob,grep,webfetch,websearch,todowrite,skill,bash）",
+          "key": "always_allow_tools",
+          "label": "免审批工具",
+          "type": "text"
+        },
+        {
+          "default_value": "false",
+          "help": "推理与修改过程只用英文、输出极简、按最小改动编辑；仅提问与最终结论使用用户语言",
+          "key": "minimal_mode",
+          "label": "极简模式",
+          "type": "bool"
+        },
+        {
+          "default_value": "false",
+          "help": "开启后自动选型：大模型（think）定方案并写出实现提示词，小模型（output）按提示词完成实现；手动指定模型时不生效",
+          "key": "duet_mode",
+          "label": "大小模型协作（duet）",
+          "type": "bool"
+        }
+      ],
+      "icon": "chip",
+      "id": "agent",
+      "label": "Agent",
+      "order": 70,
+      "plugin_id": "plugin_04dfb2f26c115ff43f05e6d9",
+      "plugin_name": "agent"
+    },
+    {
+      "description": "外部 MCP 服务（模型上下文协议）共享配置",
+      "fields": [
+        {
+          "default_value": "[]",
+          "help": "JSON 数组；由 WebUI 的 MCP 面板编辑，Agent 与 L.I.F.E 共用。内置邮件服务器示例：{\"id\":\"mail\",\"transport\":\"builtin\",\"options\":{\"imap\":{\"host\":\"\",\"port\":993,\"ssl\":true,\"user\":\"\",\"password\":\"\"},\"smtp\":{\"host\":\"\",\"port\":465,\"secure\":true,\"user\":\"\",\"password\":\"\",\"from\":\"\",\"fromName\":\"0KAY\"}}}",
+          "key": "servers",
+          "label": "MCP 服务",
+          "type": "text"
+        }
+      ],
+      "icon": "plug",
+      "id": "mcp",
+      "label": "MCP",
+      "order": 78,
+      "plugin_name": "mcp"
+    },
+    {
+      "fields": [
+        {
+          "default_value": "cnbing",
+          "help": "默认 cnbing（中国区 Bing）；可切换 bing / 360 搜索 / duckduckgo",
+          "key": "engine",
+          "label": "搜索引擎",
+          "options": [
+            "cnbing",
+            "bing",
+            "so360",
+            "duckduckgo"
+          ],
+          "type": "select"
+        }
+      ],
+      "icon": "search",
+      "id": "search",
+      "label": "搜索",
+      "order": 80
+    },
+    {
+      "description": "DeepSeek 网页版（chat.deepseek.com 登录态）provider 设置",
+      "fields": [
+        {
+          "default_value": "",
+          "key": "token",
+          "label": "Bearer Token",
+          "type": "text"
+        },
+        {
+          "default_value": "",
+          "key": "auth_file",
+          "label": "凭据文件",
+          "type": "text"
+        },
+        {
+          "default_value": "[]",
+          "key": "accounts",
+          "label": "账号库",
+          "type": "text"
+        },
+        {
+          "default_value": "",
+          "key": "active_account",
+          "label": "当前账号",
+          "type": "text"
+        },
+        {
+          "default_value": "deepseek-web-chat",
+          "key": "default_model",
+          "label": "默认模型",
+          "options": [
+            "deepseek-web-chat",
+            "deepseek-web-reasoner"
+          ],
+          "type": "select"
+        },
+        {
+          "default_value": "400000",
+          "key": "max_prompt_chars",
+          "label": "Prompt 字符上限",
+          "type": "number"
+        },
+        {
+          "default_value": "2000",
+          "key": "min_request_interval_ms",
+          "label": "请求间隔下限(ms)",
+          "type": "number"
+        },
+        {
+          "default_value": "4000",
+          "key": "max_request_interval_ms",
+          "label": "请求间隔上限(ms)",
+          "type": "number"
+        },
+        {
+          "default_value": "false",
+          "key": "allow_concurrent",
+          "label": "允许并发",
+          "type": "bool"
+        },
+        {
+          "default_value": "120000",
+          "key": "idle_timeout_ms",
+          "label": "流空闲超时(ms)",
+          "type": "number"
+        },
+        {
+          "default_value": "true",
+          "key": "auto_continue",
+          "label": "自动续写",
+          "type": "bool"
+        },
+        {
+          "default_value": "2",
+          "key": "max_continuations",
+          "label": "最大续写轮数",
+          "type": "number"
+        },
+        {
+          "default_value": "deferred",
+          "key": "session_cleanup",
+          "label": "临时会话清理",
+          "options": [
+            "deferred",
+            "immediate",
+            "keep"
+          ],
+          "type": "select"
+        },
+        {
+          "default_value": "1800000",
+          "key": "probe_interval_ms",
+          "label": "探活间隔(ms)",
+          "type": "number"
+        },
+        {
+          "default_value": "24",
+          "key": "max_ref_images",
+          "label": "最多引用图片数",
+          "type": "number"
+        },
+        {
+          "default_value": "full",
+          "key": "context_mode",
+          "label": "上下文投喂",
+          "options": [
+            "full",
+            "chained"
+          ],
+          "type": "select"
+        }
+      ],
+      "icon": "cloud",
+      "id": "deepseek-web",
+      "label": "DeepSeek 网页版",
+      "order": 82,
+      "plugin_name": "deepseek-web"
+    },
+    {
+      "description": "更新平台与插件，并配置全局插件源",
+      "fields": [
+        {
+          "default_value": "",
+          "help": "留空为直连 GitHub；填写加速前缀（如 https://gh-proxy.com）后，源码同步与 0kay-pm 安装/更新都会走该代理。",
+          "key": "github_proxy",
+          "label": "全局插件源（GitHub 代理）",
+          "type": "text"
+        }
+      ],
+      "icon": "cloud",
+      "id": "updates",
+      "label": "插件更新",
+      "order": 105
+    }
+  ]
+}

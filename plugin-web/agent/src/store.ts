@@ -37,6 +37,12 @@ export interface TaskRow {
   session_id?: string
   kind?: string
   parent_id?: string
+  /**
+   * Files uploaded with this turn. Core stores them with the task and returns
+   * them here, so a transcript can show what a message came with instead of
+   * just its text.
+   */
+  attachments?: Array<{ name: string; url: string; mime?: string; size?: number }>
 }
 
 // Plugin-local store (host pinia stays private to the WebUI). Singleton per

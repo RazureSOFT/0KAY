@@ -1,9 +1,9 @@
 package main
 
 import (
-	"0kay/obs"
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -20,15 +20,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-// bootLog tags mocr's startup and lifecycle records.
-var bootLog = obs.Component("boot")
-
 func main() {
-	// Structured logging from the first line, so a failure during startup is
-	// captured by the file sink as well as stderr.
-	obs.Init()
-	defer func() { _ = obs.Close() }()
-
 	port := os.Getenv("MOCR_GRPC_PORT")
 	if port == "" {
 		port = "50052"
@@ -58,9 +50,7 @@ func main() {
 	}
 	listener, err := net.Listen("tcp", bindHost+":"+port)
 	if err != nil {
-		bootLog.Error("failed to listen", "addr", bindHost+":"+port, "err", err)
-		_ = obs.Close()
-		os.Exit(1)
+		log.Fatalf("Failed to listen: %v", err)
 	}
 
 	// Graceful shutdown
@@ -157,8 +147,6 @@ func main() {
 
 	fmt.Printf("mocr gRPC server starting on :%s\n", port)
 	if err := grpcServer.Serve(listener); err != nil {
-		bootLog.Error("gRPC server stopped", "err", err)
-		_ = obs.Close()
-		os.Exit(1)
+		log.Fatalf("Failed to serve: %v", err)
 	}
 }

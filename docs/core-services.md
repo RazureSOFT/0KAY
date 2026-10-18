@@ -4,18 +4,6 @@ Plugins call `core.v1.CoreService` for platform orchestration: model access,
 agent dispatch, task control and direct tool execution. Core is the only
 component that holds provider credentials and the plugin registry.
 
-
-> **Language / 语言**: English · [简体中文](zh-CN/core-services.md)
-
-Core itself also serves the HTTP gateway (every route in
-[HTTP_API](HTTP_API.md)) on `:8080` and gRPC on `:50051`. Run it from source
-with `make dev-core`, via Docker Compose (`core` service), or as a
-`0kay-pm`-managed service. Registration of every plugin happens against
-`core.v1.PluginService.Register` with the `x-0kay-registration-token`
-metadata; trusted first-party plugins require their dedicated
-`CORE_PLUGIN_TOKEN_<NAME>` enrollment key when per-plugin tokens are
-configured.
-
 ## `CallMocr`
 
 Proxies a generation request to the model gateway and returns a server stream.

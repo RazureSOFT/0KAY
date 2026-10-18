@@ -41,7 +41,6 @@ import math
 import re
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from .common import clamp as _clamp
 
 EPS = 1e-9
 
@@ -50,6 +49,8 @@ _LATIN_WORD = re.compile(r"[A-Za-z]+")
 _SYLLABLE = re.compile(r"[^aeiouy]*[aeiouy]+(?:[^aeiouy]+(?![aeiouy]))?")
 
 
+def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
+    return max(low, min(high, value))
 
 
 def _entropy(probabilities) -> float:

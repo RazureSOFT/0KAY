@@ -3,6 +3,7 @@ package server
 import (
 	"0kay/core/internal/pairing"
 	"context"
+	"log"
 	"strings"
 
 	"0kay/core/internal/registry"
@@ -96,8 +97,8 @@ func (s *PluginServiceServer) Register(ctx context.Context, req *corev1.Register
 		}
 	}
 
-	svcLog.Info("plugin registered", "plugin", req.PluginInfo.Name,
-		"plugin_id", pluginID, "addr", req.Address, "caps", req.Capabilities, "settings", len(req.SettingsSections))
+	log.Printf("[Registry] Plugin registered: %s (id=%s, addr=%s, caps=%v, settings=%d)",
+		req.PluginInfo.Name, pluginID, req.Address, req.Capabilities, len(req.SettingsSections))
 
 	message := "registered successfully"
 	if missing := s.registry.MissingDependencies(pluginID); len(missing) > 0 {

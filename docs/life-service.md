@@ -4,26 +4,6 @@ L.I.F.E exposes `life.v1.LifeService` and owns persona, emotion, memory,
 companion domains, OneBot integration and LIFE-registered WebUI surfaces. It is a
 `PLUGIN_TYPE_PERSONA` plugin with `requires:mocr`.
 
-> **Language / 语言**: English · [简体中文](zh-CN/life-service.md)
-
-## Install and run
-
-L.I.F.E is part of the main 0KAY repository (`life/`). It needs Python 3.10+.
-
-```sh
-make deps-python          # pip install -e ".[dev]" into life/.venv
-make dev-life             # cd life && .venv/Scripts/python -m life.main
-
-# regression suite (~1068 tests; NO_PROXY keeps local httpx off sandbox proxies)
-NO_PROXY=127.0.0.1,localhost .venv/Scripts/python -m pytest tests -q
-```
-
-Registration presents `CORE_PLUGIN_REGISTRATION_TOKEN` (use L.I.F.E's dedicated
-enrollment key when Core enforces per-plugin tokens). Key environment variables:
-`LIFE_GRPC_PORT` (50053), `LIFE_BIND_HOST` (loopback; remote binds need
-`LIFE_ALLOW_REMOTE_BIND=1`), `LIFE_DATA_DIR` (default `./data/life`),
-`LIFE_ADDRESS` (advertised), `MOCR_ADDRESS`.
-
 It registers with Core over gRPC and, when `CORE_PLUGIN_REGISTRATION_TOKEN` is
 set, forwards that value as the `x-0kay-registration-token` metadata. Its Core
 HTTP calls (including the machine-only `GET /api/providers/credentials`) are

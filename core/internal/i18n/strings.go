@@ -131,7 +131,10 @@ func LoadDir(root string) (map[string]map[string]string, error) {
 			}
 			return nil, err
 		}
-		// Guard against a plugin pointing at a path outside its own tree.
+		// Parse only. Path confinement is the caller's job: see handlePluginUI's
+		// containment check and validPluginUIName. (The comment that used to sit
+		// here claimed to guard against "a plugin pointing at a path outside its
+		// own tree", which no code in this function does.)
 		parsed, err := Parse(string(raw))
 		if err != nil {
 			return nil, fmt.Errorf("%s/%s: %w", entry.Name(), "strings.xml", err)

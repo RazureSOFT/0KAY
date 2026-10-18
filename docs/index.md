@@ -29,6 +29,7 @@ installed, updated or disabled on its own.
 ## How to read these docs
 
 - [HTTP API Reference](HTTP_API.md) — every Core gateway route, auth, errors.
+- [Speech-to-Text (ASR)](asr.md) — the one `/api/asr` endpoint and how a plugin plugs a backend into it.
 - [Plugin API (v1)](PLUGIN_API.md) — the protobuf schema (the plugin↔Core message format) and package manifests.
 - [Plugin Lifecycle](plugin-lifecycle.md) — register, heartbeat, types, disable.
 - [Writing a Plugin](writing-a-plugin.md) — end-to-end plugin guide.
@@ -73,5 +74,5 @@ and starts each component after a successful build. See
 
 - The running implementation is the behavioral authority. This documentation
   describes the public plugin boundary and does not promise private helpers.
-- The platform release version is `0.1.3` (`core/internal/version`, every
+- The platform release version is `0.1.2` (`core/internal/version`, every
   `manifest.json` and every Git tag).

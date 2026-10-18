@@ -7,8 +7,3 @@
 # Logs
 *.log
 data/
-
-# Embedded jev-router model-routing data (required by go:embed to build).
-!internal/selector/data/
-!internal/selector/data/*.json
-!internal/selector/data/*.jsonl

@@ -245,6 +245,50 @@ function setDefaultModel(model: string) {
   p.disabled_models = (p.disabled_models || []).filter(m => m !== model)
 }
 
+/**
+ * Manual model entry.
+ *
+ * The list used to be fillable only by "fetch models", i.e. by probing the
+ * provider's /models route. Gateways, proxies and self-hosted servers that do
+ * not implement it therefore could not be configured at all — and `save()`
+ * requires at least one model, so the editor deadlocked.
+ */
+const newModel = ref('')
+const addModelError = ref('')
+function addModel() {
+  const p = edit.value
+  if (!p) return
+  const name = newModel.value.trim()
+  addModelError.value = ''
+  if (!name) return
+  if (p.models.includes(name)) {
+    addModelError.value = t('settings.modelExists', { name })
+    return
+  }
+  p.models = [...p.models, name]
+  // A freshly typed model is meant to be usable, so it starts enabled.
+  p.disabled_models = (p.disabled_models || []).filter(m => m !== name)
+  if (!p.default_model) p.default_model = name
+  newModel.value = ''
+}
+
+function removeModel(model: string) {
+  const p = edit.value
+  if (!p) return
+  p.models = p.models.filter(m => m !== model)
+  p.disabled_models = (p.disabled_models || []).filter(m => m !== model)
+  // Drop the per-model type tag too, otherwise it resurrects when the same name
+  // is added back with a different role.
+  if (p.model_types) {
+    const types = { ...p.model_types }
+    delete types[model]
+    p.model_types = types
+  }
+  // `save()` silently rewrites an unknown default, so resolve it here where the
+  // user can see which model became the default.
+  if (p.default_model === model) p.default_model = enabledModels(p)[0] || p.models[0] || ''
+}
+
 function selectAll(on: boolean) {
   const p = edit.value
   if (!p) return
@@ -387,6 +431,22 @@ const providerTypeOptions = computed(() =>
           <button class="pp-mini" type="button" @click="selectAll(false)">{{ t('settings.clearSelection') }}</button>
         </div>
 
+        <!-- Manual entry: the only way to configure a provider whose /models
+             route is missing or incomplete. -->
+        <div class="pp-add-model">
+          <input
+            v-model="newModel"
+            class="input"
+            :placeholder="t('settings.addModelPlaceholder')"
+            :aria-label="t('settings.addModelPlaceholder')"
+            @keydown.enter.prevent="addModel"
+          />
+          <button class="btn btn-tonal sm" type="button" :disabled="!newModel.trim()" @click="addModel">
+            {{ t('settings.addModel') }}
+          </button>
+        </div>
+        <p v-if="addModelError" class="helper-text pp-add-error">{{ addModelError }}</p>
+
         <div v-if="edit.models.length" class="pp-models">
           <div v-for="m in filteredModels" :key="m" class="pp-model" :class="{ off: (edit.disabled_models || []).includes(m) }">
             <span class="pp-model-name" :title="m">{{ m }}</span>
@@ -409,6 +469,7 @@ const providerTypeOptions = computed(() =>
             >☆</button>
             <span v-else class="pp-star on" :title="t('wizard.defaultModel')">★</span>
             <input type="checkbox" class="pp-switch" :checked="!(edit.disabled_models || []).includes(m)" @change="toggleModel(m)" />
+            <button class="pp-remove" type="button" :title="t('settings.removeModel', { name: m })" :aria-label="t('settings.removeModel', { name: m })" @click="removeModel(m)">×</button>
           </div>
           <p v-if="!filteredModels.length" class="helper-text">{{ t('settings.searchModels') }}</p>
         </div>
@@ -535,6 +596,16 @@ const providerTypeOptions = computed(() =>
 .pp-search { flex: 1; min-width: 160px; }
 .pp-mini { height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--md-outline-variant); background: var(--md-surface-container-low); color: var(--md-on-surface-variant); font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .pp-mini:hover { border-color: var(--md-primary); color: var(--md-primary); }
+/* Manual model entry: a plain row above the list so it reads as "add to this
+   list" rather than as another bulk action. */
+.pp-add-model { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.pp-add-model .input { flex: 1; min-width: 0; }
+.pp-add-model .btn { flex: none; white-space: nowrap; }
+.pp-add-error { color: var(--md-error); }
+/* A per-row delete. It is a <button>, so `#app button { min-height: 36px }`
+   would inflate it into a 30x36 blob — theme.css carries the compact exception. */
+.pp-remove { flex: none; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--md-on-surface-variant); font-size: 17px; line-height: 1; cursor: pointer; }
+.pp-remove:hover { background: color-mix(in srgb, var(--md-error) 14%, transparent); color: var(--md-error); }
 
 .pp-models { display: flex; flex-direction: column; border: 1px solid var(--md-outline-variant); border-radius: 14px; overflow: hidden; max-height: 340px; overflow-y: auto; }
 .pp-model { display: flex; align-items: center; gap: 12px; padding: 9px 14px; border-top: 1px solid var(--md-outline-variant); background: var(--md-surface-container-lowest); }

@@ -17,16 +17,15 @@ import (
 // with SendMessage. This route exists so an operator can answer "why is my bot
 // not hearing messages?" without reading Core's logs.
 func (g *Gateway) handleMessaging(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"error": "method not allowed"})
+	if !allowMethod(w, r, http.MethodGet) {
 		return
 	}
 	if g.localCore == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]interface{}{"error": "core service unavailable"})
+		unavailable(w, "core service unavailable")
 		return
 	}
 
-	adapters := g.localCore.MessagingAdapters()
+	adapters := g.localCore.MessagingAdapters(r.Context())
 	out := make([]map[string]interface{}, 0, len(adapters))
 	for _, a := range adapters {
 		conversations := make([]map[string]interface{}, 0, len(a.Conversations))

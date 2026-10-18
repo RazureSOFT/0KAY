@@ -12,7 +12,6 @@
         "id": "deepseek-web",
         "icon": "cloud",
         "label": "DeepSeek 网页版",
-        "labelKey": "settings.tabs.deepseekWeb",
         "order": 82,
         "module": "/api/plugins/deepseek-web/ui/panel.js"
       }

@@ -95,3 +95,13 @@ life/life-review-report-v2-addendum.md
 life/life-review-report-v2.md
 life/life-review-report.md
 *REVIEW*.md
+
+# Compiled devkit java classes (devkit/build.sh regenerates them).
+/devkit/java/out/
+
+# Provider-specific backend plugins. They stay local on purpose: soniox-asr/
+# carries reverse-engineered endpoint/websocket details and genie-tts/ vendors
+# an ONNX voice stack, neither of which belongs in a public Core repository.
+# Core only depends on the endpoint contract (docs/asr.md, docs/tts.md).
+/soniox-asr/
+/genie-tts/

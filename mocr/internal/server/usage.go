@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,23 +15,13 @@ import (
 	"time"
 
 	"0kay/mocr/internal/register"
-	"0kay/obs"
 )
-
-// usageLog tags the usage-ledger records. The ledger is best-effort telemetry:
-// failures are logged and dropped rather than failing a generation.
-var usageLog = obs.Component("usage")
 
 const usageOutboxMax = 512
 const usageOutboxTTL = 7 * 24 * time.Hour
 
-// usageLock guards the drain bookkeeping only; the outbox flush runs without it
-// so a slow Core cannot block new reports.
-var (
-	usageLock     sync.Mutex
-	usageDraining bool
-	usageDirty    bool
-)
+var usageLock sync.Mutex
+var usageWg sync.WaitGroup
 
 func coreAuth(req *http.Request) {
 	// Attribute the call with the plugin identity issued at registration so Core
@@ -59,113 +50,86 @@ func reportUsage(requestID, sessionID, model string, prompt, completion int32) {
 	}
 	directory = filepath.Join(directory, "usage-outbox")
 	if err := os.MkdirAll(directory, 0700); err != nil {
-		usageLog.Error("load usage outbox", "err", err)
+		log.Printf("usage outbox: %v", err)
 		return
 	}
 	// One file per logical request so retries overwrite rather than double-count.
 	filename := filepath.Join(directory, hex.EncodeToString([]byte(rid))+".json")
 	if err := os.WriteFile(filename, raw, 0600); err != nil {
-		usageLog.Error("write usage", "err", err)
+		log.Printf("usage write: %v", err)
 		return
 	}
-	// At most one drain runs at a time. The previous design started a goroutine
-	// per report, so a burst of generations queued one goroutine (and one full
-	// outbox sweep) per request behind a single mutex. A burst now coalesces
-	// into a single follow-up sweep.
-	usageLock.Lock()
-	if usageDraining {
-		usageDirty = true
-		usageLock.Unlock()
-		return
-	}
-	usageDraining = true
-	usageLock.Unlock()
-	go usageDrainLoop(directory)
-}
-
-// usageDrainLoop flushes the outbox, then sweeps again if another report landed
-// while it was working. It exits once the outbox is quiet, so the process never
-// accumulates idle drainers.
-func usageDrainLoop(directory string) {
-	for {
-		flushUsageOutbox(directory)
+	usageWg.Add(1)
+	go func() {
+		defer usageWg.Done()
 		usageLock.Lock()
-		if !usageDirty {
-			usageDraining = false
-			usageLock.Unlock()
-			return
-		}
-		usageDirty = false
-		usageLock.Unlock()
-	}
-}
-
-func flushUsageOutbox(directory string) {
-	entries, _ := os.ReadDir(directory)
-	var files []string
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			files = append(files, filepath.Join(directory, entry.Name()))
-		}
-	}
-	sortUsageFilesByAge(files)
-	for _, file := range files {
-		info, err := os.Stat(file)
-		if err != nil {
-			continue
-		}
-		if time.Since(info.ModTime()) > usageOutboxTTL {
-			os.Remove(file)
-		}
-	}
-	entries, _ = os.ReadDir(directory)
-	files = files[:0]
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			files = append(files, filepath.Join(directory, entry.Name()))
-		}
-	}
-	sortUsageFilesByAge(files)
-	for len(files) > usageOutboxMax {
-		os.Remove(files[0])
-		files = files[1:]
-	}
-	failures := 0
-	for _, file := range files {
-		data, err := os.ReadFile(file)
-		if err != nil {
-			continue
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		request, _ := http.NewRequestWithContext(ctx, "POST", coreHTTPBase()+"/api/usage/record", bytes.NewReader(data))
-		request.Header.Set("Content-Type", "application/json")
-		coreAuth(request)
-		response, err := http.DefaultClient.Do(request)
-		if err == nil {
-			response.Body.Close()
-		}
-		cancel()
-		if err != nil {
-			failures++
-			usageLog.Error("post usage outbox", "err", err)
-			if failures >= 3 {
-				return
+		defer usageLock.Unlock()
+		entries, _ := os.ReadDir(directory)
+		var files []string
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				files = append(files, filepath.Join(directory, entry.Name()))
 			}
-			continue
 		}
-		if response.StatusCode >= 300 {
-			failures++
-			usageLog.Error("post usage outbox", "status", response.StatusCode)
-			if failures >= 3 {
-				return
+		sortUsageFilesByAge(files)
+		for _, file := range files {
+			info, err := os.Stat(file)
+			if err != nil {
+				continue
 			}
-			if response.StatusCode >= 400 && response.StatusCode < 500 && response.StatusCode != 429 {
+			if time.Since(info.ModTime()) > usageOutboxTTL {
 				os.Remove(file)
 			}
-			continue
 		}
-		os.Remove(file)
-	}
+		entries, _ = os.ReadDir(directory)
+		files = files[:0]
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				files = append(files, filepath.Join(directory, entry.Name()))
+			}
+		}
+		sortUsageFilesByAge(files)
+		for len(files) > usageOutboxMax {
+			os.Remove(files[0])
+			files = files[1:]
+		}
+		failures := 0
+		for _, file := range files {
+			data, err := os.ReadFile(file)
+			if err != nil {
+				continue
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			request, _ := http.NewRequestWithContext(ctx, "POST", coreHTTPBase()+"/api/usage/record", bytes.NewReader(data))
+			request.Header.Set("Content-Type", "application/json")
+			coreAuth(request)
+			response, err := http.DefaultClient.Do(request)
+			if err == nil {
+				response.Body.Close()
+			}
+			cancel()
+			if err != nil {
+				failures++
+				log.Printf("usage outbox post: %v", err)
+				if failures >= 3 {
+					return
+				}
+				continue
+			}
+			if response.StatusCode >= 300 {
+				failures++
+				log.Printf("usage outbox post: HTTP %d", response.StatusCode)
+				if failures >= 3 {
+					return
+				}
+				if response.StatusCode >= 400 && response.StatusCode < 500 && response.StatusCode != 429 {
+					os.Remove(file)
+				}
+				continue
+			}
+			os.Remove(file)
+		}
+	}()
 }
 func sortUsageFilesByAge(files []string) {
 	type fileInfo struct {

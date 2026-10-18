@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { TaskRow } from './store'
 import { i18n, uid } from '@0kay/host'
 
-const props = defineProps<{ step: TaskRow; formatError?: (message?: string) => string }>()
+const props = defineProps<{ step: TaskRow; executorId?: string; formatError?: (message?: string) => string }>()
 const emit = defineEmits<{ open: [path: string] }>()
 const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {})
 
@@ -61,7 +61,52 @@ const producedFiles = computed<string[]>(() => {
   if (Array.isArray(inner.value?.files)) inner.value.files.forEach((file: any) => add(typeof file === 'string' ? file : file?.path))
   return out
 })
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 ** 2).toFixed(1)} MB`
+}
 const fileName = (value: string) => String(value || '').split(/[\\/]/).pop() || value
+
+// Inline diagram preview.
+//
+// `diagram` writes a self-contained HTML viewer next to the SVG. Showing it in
+// the transcript is the whole point of the tool — otherwise the user has to find
+// the file and open it by hand. The markup is fetched as base64 and injected via
+// srcdoc inside a sandboxed frame, so the page cannot reach the host.
+const diagram = computed<{ path: string; title: string; kind: string } | null>(() => {
+  if (tool.value !== 'diagram') return null
+  const files: string[] = Array.isArray(inner.value?.files)
+    ? inner.value.files.map((file: any) => (typeof file === 'string' ? file : file?.path)).filter(Boolean)
+    : []
+  const html = files.find((file: string) => /\.html?$/i.test(file))
+  if (!html) return null
+  return { path: html, title: String(inner.value?.title || ''), kind: String(inner.value?.kind || '') }
+})
+const diagramHtml = ref('')
+const diagramFailed = ref(false)
+let diagramRequest = 0
+watch(diagram, async (value) => {
+  const request = ++diagramRequest
+  diagramHtml.value = ''
+  diagramFailed.value = false
+  if (!value) return
+  try {
+    const params = new URLSearchParams({ path: value.path })
+    if (props.executorId) params.set('executor_id', props.executorId)
+    const response = await fetch(`/api/agent/file/raw?${params.toString()}`, { signal: AbortSignal.timeout(20000) })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const data = await response.json()
+    const binary = atob(String(data.base64 || ''))
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    if (request !== diagramRequest) return
+    diagramHtml.value = new TextDecoder().decode(bytes)
+  } catch {
+    if (request === diagramRequest) diagramFailed.value = true
+  }
+}, { immediate: true })
 
 async function copyResult() {
   const text = props.step.result || ''
@@ -278,11 +323,31 @@ interface Section { label: string; text: string; mono?: boolean }
 const sections = computed<Section[]>(() => {
   const name = tool.value
   const d = inner.value
+  // Core replaces an oversized result with {truncated, bytes}; without this
+  // the card looked empty even though the tool had produced plenty.
+  if (payload.value?.truncated) {
+    const size = Number(payload.value?.bytes) || 0
+    return [{ label: '', text: t('agent.tool.truncated', { size: size ? formatBytes(size) : '—' }) }]
+  }
   // Produced files are shown as open buttons, not as a raw JSON dump.
   if (['document', 'slides', 'research'].includes(name) && producedFiles.value.length) return []
   if (name === 'computeruse' && screenshot.value) return []
   if (name === 'bash' && d) {
-    const out: Section[] = [{ label: t('agent.tool.cwd'), text: String(d.cwd || '') }]
+    // Parallel mode runs N commands and returns one entry per command. Reading
+    // only `d.stdout` here made every parallel card claim "no output" even
+    // though the payload carried each command's own result.
+    if (Array.isArray(d.results)) {
+      const out: Section[] = []
+      d.results.forEach((entry: any, index: number) => {
+        out.push({ label: `[${index + 1}]`, text: String(entry?.command || ''), mono: true })
+        if (entry?.stdout) out.push({ label: 'stdout', text: String(entry.stdout), mono: true })
+        if (entry?.stderr) out.push({ label: 'stderr', text: String(entry.stderr), mono: true })
+        if (!entry?.stdout && !entry?.stderr) out.push({ label: '', text: t('agent.tool.noOutput') })
+      })
+      return out
+    }
+    const out: Section[] = []
+    if (d.cwd) out.push({ label: t('agent.tool.cwd'), text: String(d.cwd) })
     if (d.stdout) out.push({ label: 'stdout', text: String(d.stdout), mono: true })
     if (d.stderr) out.push({ label: 'stderr', text: String(d.stderr), mono: true })
     if (!d.stdout && !d.stderr) out.push({ label: '', text: t('agent.tool.noOutput') })
@@ -306,10 +371,61 @@ const sections = computed<Section[]>(() => {
       { label: t('agent.tool.content'), text: String(d.content || ''), mono: true },
     ]
   }
-  const raw = props.step.result
-  if (!raw) return []
-  try { return [{ label: 'JSON', text: JSON.stringify(payload.value, null, 2), mono: true }] }
-  catch { return [{ label: '', text: String(raw), mono: true }] }
+  // Everything else is rendered field by field (see `fields` below) instead of
+  // dumping the raw JSON blob: every tool's payload then shows up with a label.
+  return []
+})
+
+interface Field {
+  key: string
+  label: string
+  kind: 'text' | 'mono' | 'path' | 'paths' | 'list' | 'json'
+  text: string
+  items?: string[]
+}
+// Payload keys that already have a dedicated view (diff, image, diagram) or that
+// are far too large to print (base64 payloads, the SVG itself).
+const HIDDEN_FIELDS = new Set(['base64', 'svg', 'mermaid', 'diff', 'patch', 'patches'])
+const isPathLike = (value: string) => /^[A-Za-z]:[\/]/.test(value) || /^\/(?:[\w.-]+\/)+[\w.-]+$/.test(value)
+function humanField(key: string): string {
+  const spaced = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim()
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
+}
+/**
+ * Every tool result, rendered field by field.
+ *
+ * Tools used to fall back to a raw JSON dump, which meant a user had to read
+ * `{"discovered":12,"pages":[...]}` to learn anything. This walks the payload,
+ * labels each key, and picks a presentation from the value itself: paths become
+ * open buttons, short strings stay inline, long text and nested objects go into
+ * a scrollable block. Unknown tools are covered without a per-tool schema.
+ */
+const fields = computed<Field[]>(() => {
+  if (sections.value.length) return []
+  const data = inner.value
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return []
+  const out: Field[] = []
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    if (HIDDEN_FIELDS.has(key)) continue
+    if (value === null || value === undefined || value === '') continue
+    if (key === 'path' && producedFiles.value.includes(String(value))) continue
+    if (Array.isArray(value)) {
+      const items = value.map(item => (typeof item === 'string' ? item : JSON.stringify(item)))
+      if (items.length && items.every(item => isPathLike(item))) out.push({ key, label: humanField(key), kind: 'paths', text: '', items })
+      else if (value.every(item => typeof item !== 'object' || item === null)) out.push({ key, label: humanField(key), kind: 'list', text: '', items })
+      else out.push({ key, label: humanField(key), kind: 'json', text: JSON.stringify(value, null, 2) })
+      continue
+    }
+    if (typeof value === 'object') {
+      out.push({ key, label: humanField(key), kind: 'json', text: JSON.stringify(value, null, 2) })
+      continue
+    }
+    const text = String(value)
+    if (text.startsWith('data:') && text.length > 200) continue
+    const kind: Field['kind'] = isPathLike(text) ? 'path' : text.includes('\n') || text.length > 120 ? 'mono' : 'text'
+    out.push({ key, label: humanField(key), kind, text })
+  }
+  return out
 })
 
 function toggle() {
@@ -379,6 +495,19 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown); if (copyTi
         <button type="button" class="tool-copy" :disabled="!step.result" @click="copyResult">{{ copied ? t('agent.tool.copied') : t('agent.tool.copy') }}</button>
       </div>
       <p v-if="step.state === 'running' && !sections.length && !diffFiles.length && !screenshot" class="muted">{{ t('agent.tool.running') }}</p>
+      <figure v-if="diagram" class="tool-diagram">
+        <div class="tool-diagram-head">
+          <span class="tool-diagram-kind">{{ diagram.kind }}</span>
+          <strong class="tool-diagram-title">{{ diagram.title || fileName(diagram.path) }}</strong>
+          <button type="button" class="tool-open" :title="diagram.path" @click="emit('open', diagram.path)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 3h7v7M21 3l-9 9M5 5h6M5 5v14h14v-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="tool-open-label">{{ t('agent.tool.open') }}</span>
+          </button>
+        </div>
+        <iframe v-if="diagramHtml" class="tool-diagram-frame" :srcdoc="diagramHtml" sandbox="allow-scripts" :title="diagram.title || diagram.path" loading="lazy" />
+        <p v-else-if="diagramFailed" class="muted">{{ t('agent.tool.diagramFailed') }}</p>
+        <p v-else class="muted">{{ t('agent.tool.diagramLoading') }}</p>
+      </figure>
       <figure v-if="screenshot" class="tool-shot">
         <img :src="screenshot.src" :alt="t('agent.tool.screenshot')" />
         <figcaption>{{ screenshot.width && screenshot.height ? `${screenshot.width}×${screenshot.height} · ` : '' }}{{ screenshot.path }}</figcaption>
@@ -405,8 +534,26 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown); if (copyTi
           <pre v-if="section.mono">{{ section.text }}</pre>
           <p v-else class="tool-section-text">{{ section.text }}</p>
         </template>
+        <!-- Every remaining payload field, labelled. Replaces the raw JSON dump. -->
+        <dl v-if="fields.length" class="tool-fields">
+          <div v-for="field in fields" :key="field.key" class="tool-field">
+            <dt>{{ field.label }}</dt>
+            <dd>
+              <span v-if="(field.kind === 'paths' || field.kind === 'list') && !field.items?.length" class="tool-field-empty">—</span>
+              <button v-else-if="field.kind === 'path'" type="button" class="tool-open inline" :title="field.text" @click="emit('open', field.text)">{{ field.text }}</button>
+              <div v-else-if="field.kind === 'paths'" class="tool-path-list">
+                <button v-for="(item, index) in field.items" :key="index" type="button" class="tool-open inline" :title="item" @click="emit('open', item)">{{ fileName(item) }}</button>
+              </div>
+              <div v-else-if="field.kind === 'list'" class="tool-chips">
+                <span v-for="(item, index) in field.items" :key="index" class="tool-chip">{{ item }}</span>
+              </div>
+              <pre v-else-if="field.kind === 'mono' || field.kind === 'json'">{{ field.text }}</pre>
+              <span v-else class="tool-field-text">{{ field.text }}</span>
+            </dd>
+          </div>
+        </dl>
       </template>
-      <p v-if="!sections.length && !diffFiles.length && !screenshot && step.state !== 'running' && !step.error" class="muted">{{ t('agent.tool.completedNoOutput') }}</p>
+      <p v-if="!sections.length && !fields.length && !diffFiles.length && !screenshot && !diagram && step.state !== 'running' && !step.error" class="muted">{{ t('agent.tool.completedNoOutput') }}</p>
       <p v-if="step.error" class="tool-error">{{ formatError?.(step.error) || step.error }}</p>
       </div>
     </div>
@@ -532,6 +679,23 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .diff-line.del .diff-sign{color:#cf222e;font-weight:700}
 .diff-line.hunk{background:var(--md-surface-container);color:var(--md-on-surface-variant)}
 .diff-line.meta{color:var(--md-on-surface-variant);opacity:.75}
+.tool-diagram{margin:10px 0 0;border:1px solid var(--md-outline-variant);border-radius:12px;overflow:hidden;background:var(--md-surface-container-lowest)}
+.tool-diagram-head{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--md-outline-variant)}
+.tool-diagram-kind{flex:none;padding:1px 7px;border-radius:999px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.tool-diagram-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px}
+.tool-diagram-frame{display:block;width:100%;height:340px;border:0;background:#fff}
+.tool-diagram .tool-open{margin-left:auto}
+.tool-fields{display:grid;grid-template-columns:minmax(88px,auto) 1fr;gap:4px 12px;margin:8px 0 0;font-size:12.5px}
+.tool-field{display:contents}
+.tool-fields dt{padding-top:3px;color:var(--md-on-surface-variant);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.tool-fields dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.tool-field-text{line-height:1.55}
+.tool-fields pre{margin:0;max-height:260px}
+.tool-path-list,.tool-chips{display:flex;flex-wrap:wrap;gap:5px}
+.tool-chip{padding:1px 8px;border-radius:999px;background:var(--md-surface-container-high);font-size:11.5px;line-height:1.7}
+#app .workspace .tool-open.inline{min-height:0;padding:2px 8px;border-radius:7px;background:var(--md-surface-container-high);font-size:11.5px;font-weight:600;color:var(--md-primary);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:left}
+#app .workspace .tool-open.inline:hover{background:var(--md-secondary-container)}
+.tool-field-empty{color:var(--md-on-surface-variant)}
 </style>
 <style>
 /* Dark text colors ride on the host's html[data-theme] toggle rather than the

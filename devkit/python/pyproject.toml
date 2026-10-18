@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "okay-devkit"
+version = "0.1.0"
+description = "Tiny client for the 0kay Core HTTP API (plugins, health, settings)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "RazureSOFT" }]
+keywords = ["0kay", "devkit", "api", "client"]
+
+[tool.setuptools]
+packages = ["okay_devkit"]
+package-dir = { "" = "." }

@@ -106,6 +106,16 @@
     "voiceOffTitle": "Enable voice playback (Live2D lip sync)",
     "voiceOn": "🔊 Voice on",
     "voiceOnTitle": "Disable voice playback",
+    "wakeCapturing": "Listening… say it now",
+    "wakeFailed": "Couldn't start voice wake: {detail}",
+    "wakeHeardLine": "Heard: {text}",
+    "wakeListening": "Wake word on · say “{name}”",
+    "wakeMicDenied": "Microphone access was denied",
+    "wakeNeedNickname": "Set a wake nickname first (Settings → L.I.F.E → 唤醒昵称)",
+    "wakeNoEngine": "No speech recognition available: install an ASR plugin or set ASR_ENDPOINT",
+    "wakeOffTitle": "Start voice wake: call the nickname and it starts listening",
+    "wakeOnTitle": "Stop voice wake",
+    "wakeWoken": "Here — go ahead",
     "you": "You"
   },
   "common": {
@@ -198,6 +208,8 @@
   "lifeSettings": {
     "agentHost": "Pinned Agent host (optional)",
     "agentHostPlaceholder": "hostname or address",
+    "asrLanguage": "Speech recognition language",
+    "asrLanguageDesc": "Language hint for /api/asr (zh, ja, en; empty = auto)",
     "computerUse": "Allow computer control",
     "computerUseDesc": "Perform mouse and keyboard actions",
     "hostPerms": "Agent host permissions",
@@ -232,7 +244,13 @@
     "subtitle": "Sensitive features are off by default; credentials are stored only in the local Core settings file.",
     "thinkLabel": "THINK · internal reasoning, memory and tool planning",
     "thinkOutput": "THINK / OUTPUT models",
-    "title": "L.I.F.E settings"
+    "title": "L.I.F.E settings",
+    "wake": "Voice wake",
+    "wakeEnable": "Wake when called by name",
+    "wakeEnableDesc": "The chat page keeps the mic open; say the nickname and it records one sentence and sends it",
+    "wakeHint": "Recognition goes through Core’s /api/asr: install the Soniox speech plugin, or point ASR_ENDPOINT at any OpenAI-compatible transcriber.",
+    "wakeNickname": "Wake nickname",
+    "wakeNicknamePlaceholder": "Miharu, miku"
   },
   "live2d": {
     "configure": "Enable & load",
@@ -559,6 +577,10 @@
     "modelsFetched": "Models fetched from provider API",
     "modelsRequired": "Add at least one model",
     "noModelsYet": "No models yet — fetch or add manually",
+    "addModel": "Add",
+    "addModelPlaceholder": "Type a model name, e.g. gpt-4o-mini",
+    "removeModel": "Remove {name}",
+    "modelExists": "“{name}” is already in the list",
     "noProviders": "No providers configured yet. Click add above.",
     "pageDesc": "Manage providers, models, persona, and Live2D avatar",
     "permFailed": "Failed to save permissions",

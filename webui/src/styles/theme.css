@@ -370,7 +370,8 @@ body > :not(#app):not(script):not(style):not(link)
  * above), so the exceptions belong here rather than in each component. */
 #app :is(.remove-img, .remove-file, .link) { min-height: 0; }
 #app .models-actions button,
-#app .pp-star { min-height: 0; border-radius: 8px; }
+#app .pp-star,
+#app .pp-remove { min-height: 0; border-radius: 8px; }
 #app .stage-reset { min-height: 0; border-radius: 50%; }
 
 #app :is(.btn-primary, button[type="submit"]) {

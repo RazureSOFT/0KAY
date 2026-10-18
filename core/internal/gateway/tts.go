@@ -14,20 +14,45 @@ import (
 	"0kay/core/internal/netguard"
 )
 
-// ttsEndpoint resolves the text-to-speech backend: the LIFE `tts_endpoint`
-// setting, or the TTS_ENDPOINT env var.
+// ttsSections lists the settings sections a TTS-capable plugin can own, in
+// priority order. Each plugin publishes its own `endpoint` into its section when
+// it registers, so adding a backend is a plugin-side change plus one line here.
+var ttsSections = []string{"genietts", "deepseek-tts"}
+
+func isTTSSection(id string) bool {
+	for _, candidate := range ttsSections {
+		if id == candidate {
+			return true
+		}
+	}
+	return false
+}
+
+// ttsEndpoint resolves the text-to-speech backend: the TTS_ENDPOINT env var,
+// then the first enabled TTS plugin, then the legacy LIFE `tts_endpoint`.
 func (g *Gateway) ttsEndpoint() string {
 	if value := strings.TrimSpace(os.Getenv("TTS_ENDPOINT")); value != "" {
 		return value
 	}
-	if g.settingsStore != nil {
-		// The DeepSeek TTS plugin records its own URL in its settings section.
-		if value, ok := g.settingsStore.GetValues("deepseek-tts")["endpoint"].(string); ok && strings.TrimSpace(value) != "" {
-			return strings.TrimSpace(value)
+	if g.settingsStore == nil {
+		return ""
+	}
+	for _, id := range ttsSections {
+		values := g.settingsStore.GetValues(id)
+		if len(values) == 0 {
+			continue
 		}
-		if value, ok := g.settingsStore.GetValues("life")["tts_endpoint"].(string); ok && strings.TrimSpace(value) != "" {
-			return strings.TrimSpace(value)
+		// Installed but switched off in its own settings: skip it so the next
+		// backend (or LIFE) can take over.
+		if enabled, ok := values["enabled"].(string); ok && strings.EqualFold(strings.TrimSpace(enabled), "false") {
+			continue
 		}
+		if endpoint, ok := values["endpoint"].(string); ok && strings.TrimSpace(endpoint) != "" {
+			return strings.TrimSpace(endpoint)
+		}
+	}
+	if value, ok := g.settingsStore.GetValues("life")["tts_endpoint"].(string); ok && strings.TrimSpace(value) != "" {
+		return strings.TrimSpace(value)
 	}
 	return ""
 }
@@ -111,9 +136,9 @@ func (g *Gateway) handleSettingsTest(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return
 	}
-	// Only the TTS-backed section has a synthesise test; anything else is 404 so
+	// Only TTS-backed sections have a synthesise test; anything else is 404 so
 	// POST /api/settings/<anything>/test cannot be used as a free TTS endpoint.
-	if id := r.PathValue("id"); id != "deepseek-tts" {
+	if id := r.PathValue("id"); !isTTSSection(id) {
 		writeErr(w, http.StatusNotFound, "not_found", "no test available for this section")
 		return
 	}

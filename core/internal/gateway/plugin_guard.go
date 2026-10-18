@@ -3,8 +3,6 @@ package gateway
 import (
 	"net/http"
 	"strings"
-
-	"0kay/core/internal/pairing"
 )
 
 // Plugin identity headers. A plugin attributes every Core call by naming itself
@@ -27,23 +25,13 @@ func bearerToken(header string) string {
 	return ""
 }
 
-// looksLikePluginBrowser identifies the owner's browser tab so the plugin guard
-// never demands a plugin identity from it (the tab authenticates with a session
-// cookie, not a plugin token).
-//
-// This gate hands out an exemption, so it must fail closed: it only returns true
-// on positive proof of a browser. Accepting "any of Sec-Fetch-Site / Origin /
-// Referer is present" did not, because a plugin process can set any of those by
-// hand — one `Referer` header was enough to skip attribution entirely and reach
-// APIs the plugin never declared, including the egress proxy. Proof is either
-// Fetch metadata (which no HTTP client library emits) or possession of the
-// owner's session cookie (which a machine client does not have).
+// looksLikePluginBrowser mirrors pairing's browser detection so the plugin guard
+// never blocks the owner's browser tab (which uses a session cookie, not a
+// plugin identity).
 func looksLikePluginBrowser(r *http.Request) bool {
-	if pairing.HasBrowserFetchMetadata(r) {
-		return true
-	}
-	_, err := r.Cookie(pairing.SessionCookie)
-	return err == nil
+	return r.Header.Get("Sec-Fetch-Site") != "" ||
+		r.Header.Get("Origin") != "" ||
+		r.Header.Get("Referer") != ""
 }
 
 // splitAPI splits a declared API entry into method + path. Entries with no space

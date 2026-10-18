@@ -1,0 +1,20 @@
+{
+  "name": "@0kay/devkit",
+  "version": "0.1.0",
+  "description": "Tiny client for the 0kay Core HTTP API (plugins, health, settings)",
+  "type": "module",
+  "main": "okay-devkit.mjs",
+  "exports": {
+    ".": "./okay-devkit.mjs",
+    "./discover": "./discover.mjs"
+  },
+  "files": [
+    "okay-devkit.mjs",
+    "discover.mjs"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": ["0kay", "devkit", "api", "client"],
+  "license": "MIT"
+}

@@ -15,7 +15,6 @@
         "id": "skillsguishow",
         "to": "/skills",
         "label": "技能",
-        "labelKey": "nav.skills",
         "icon": "plugins",
         "order": 26
       }
@@ -28,7 +27,7 @@
         "id": "skillsguishow",
         "path": "/skills",
         "name": "skillsguishow",
-        "module": "/api/plugins/skillsguishow/ui/index.js?v=5",
+        "module": "/api/plugins/skillsguishow/ui/index.js?v=4",
         "title": "技能"
       }
     }

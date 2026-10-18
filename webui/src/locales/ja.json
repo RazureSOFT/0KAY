@@ -106,6 +106,16 @@
     "voiceOffTitle": "音声読み上げをオンにする（Live2D リップシンク）",
     "voiceOn": "🔊 音声オン",
     "voiceOnTitle": "音声読み上げをオフにする",
+    "wakeCapturing": "聞いています。どうぞ…",
+    "wakeFailed": "音声ウェイクを開始できません：{detail}",
+    "wakeHeardLine": "聞き取り：{text}",
+    "wakeListening": "ウェイク中 · 「{name}」と呼んでください",
+    "wakeMicDenied": "マイクの使用が許可されていません",
+    "wakeNeedNickname": "先に「設定 → L.I.F.E → 呼び名」を設定してください",
+    "wakeNoEngine": "音声認識が使えません：ASR プラグインを入れるか ASR_ENDPOINT を設定してください",
+    "wakeOffTitle": "「呼びかけで起動」をオン：呼び名を呼ぶと聞き取りを始めます",
+    "wakeOnTitle": "音声ウェイクをオフにする",
+    "wakeWoken": "はい、どうぞ",
     "you": "あなた"
   },
   "common": {
@@ -198,6 +208,8 @@
   "lifeSettings": {
     "agentHost": "Agent ホストの指定（任意）",
     "agentHostPlaceholder": "hostname またはアドレス",
+    "asrLanguage": "音声認識の言語",
+    "asrLanguageDesc": "/api/asr に渡す言語ヒント（zh / ja / en、空なら自動）",
     "computerUse": "コンピューター操作を許可",
     "computerUseDesc": "マウス・キーボード操作を実行",
     "hostPerms": "Agent ホスト権限",
@@ -232,7 +244,13 @@
     "subtitle": "機密機能は既定でオフです。認証情報はローカルの Core 設定ファイルにのみ保存されます。",
     "thinkLabel": "THINK · 内部思考・記憶・ツール計画",
     "thinkOutput": "THINK / OUTPUT モデル",
-    "title": "L.I.F.E 専用設定"
+    "title": "L.I.F.E 専用設定",
+    "wake": "呼びかけで起動",
+    "wakeEnable": "呼び名で起動する",
+    "wakeEnableDesc": "チャット画面がマイクで待ち受け、呼び名を言うと一言録音して自動送信します",
+    "wakeHint": "音声認識は Core の /api/asr 経由です。「Soniox 音声認識」プラグインを入れるか、ASR_ENDPOINT を OpenAI 互換の転写サービスに向けてください。",
+    "wakeNickname": "呼び名",
+    "wakeNicknamePlaceholder": "美玖, miku"
   },
   "live2d": {
     "configure": "有効化して読み込む",
@@ -559,6 +577,10 @@
     "modelsFetched": "プロバイダー API からモデルを取得しました",
     "modelsRequired": "モデルを1つ以上追加してください",
     "noModelsYet": "モデルがありません — 取得するか手動で追加してください",
+    "addModel": "追加",
+    "addModelPlaceholder": "モデル名を入力（例: gpt-4o-mini）",
+    "removeModel": "{name} を削除",
+    "modelExists": "“{name}” は既に一覧にあります",
     "noProviders": "プロバイダーが未設定です。上部の追加をクリックしてください。",
     "pageDesc": "プロバイダー、モデル、ペルソナ、Live2D アバターを管理",
     "permFailed": "権限の保存に失敗しました",

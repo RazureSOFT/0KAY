@@ -16,13 +16,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'ge
 from life.v1 import life_pb2
 from life.v1 import life_pb2_grpc
 from plugin.v1 import plugin_pb2
-from plugin.v1 import plugin_pb2_grpc
 
 from ..engine import LifeEngine
 from ..core_client import get_core_client
 from ..logging_setup import get_logger, setup_logging
 from .auth import build_interceptor, resolve_mode
-from .messaging import MessageServiceServicer
 
 log = get_logger("grpc.server")
 
@@ -231,15 +229,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
     async def _refresh_settings(self):
         """Poll the Core-owned settings document; Core remains the secret store."""
         values = await self._life_settings()
-        if not values:
-            return
-        # Core re-sends the same document every poll; applying it costs sqlite
-        # reads/writes (proactive policy) and a plugin-tool refresh, so only
-        # re-apply when the document actually changed.
-        if values == getattr(self, "_last_applied_settings", None):
-            return
-        self._last_applied_settings = values
-        self.engine.apply_tool_settings(values)
+        if values:
+            self.engine.apply_tool_settings(values)
 
     async def OnTaskCompleted(self, request, context):
         """Handle task completion callback from Core."""
@@ -479,18 +470,15 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await asyncio.to_thread(self.engine.companion.journal, payload.get("content", ""), "dream" if action == "dream" else "journal")
             elif action == "memory_maintenance":
                 result = await asyncio.to_thread(self.engine.memory.maintenance)
-                await asyncio.to_thread(self.engine.companion.audit,
-                                        "memory_maintenance", json.dumps(result, ensure_ascii=False))
+                self.engine.companion.audit("memory_maintenance", json.dumps(result, ensure_ascii=False))
             elif action == "delete_memory":
                 memory_id = payload.get("id", "")
                 deleted = await asyncio.to_thread(self.engine.memory.delete_fact, memory_id, "dashboard_delete")
                 result = {"deleted": deleted, "id": memory_id}
-                await asyncio.to_thread(self.engine.companion.audit,
-                                        "memory_delete", memory_id, memory_id, "ok" if deleted else "not_found")
+                self.engine.companion.audit("memory_delete", memory_id, memory_id, "ok" if deleted else "not_found")
             elif action == "clear_all_memory":
                 result = await self.engine.clear_memory()
-                await asyncio.to_thread(self.engine.companion.audit,
-                                        "memory_clear_all", json.dumps(result, ensure_ascii=False), outcome="ok")
+                self.engine.companion.audit("memory_clear_all", json.dumps(result, ensure_ascii=False), outcome="ok")
             elif action == "reset_person":
                 result = await self.engine.reset_person()
             elif action == "ack_notifications":
@@ -522,8 +510,7 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = {"reflections": await asyncio.to_thread(self.engine.memory.list_reflections, payload.get("status",""), int(payload.get("limit",50)))}
             elif action == "memory_reflection_review":
                 result = await asyncio.to_thread(self.engine.memory.review_reflection, payload.get("id",""), bool(payload.get("accept", True)))
-                await asyncio.to_thread(self.engine.companion.audit,
-                                        "memory_reflection_review", json.dumps(result, ensure_ascii=False), str(payload.get("id","")), "ok")
+                self.engine.companion.audit("memory_reflection_review", json.dumps(result, ensure_ascii=False), str(payload.get("id","")), "ok")
             elif action == "memory_importance":
                 result = await asyncio.to_thread(self.engine.memory.adjust_importance, payload.get("id",""), float(payload.get("delta",0.1)))
             elif action == "memory_export":
@@ -791,31 +778,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             elif action == "adapter_routes_set":
                 result = await self.engine.adapter_routes_apply(
                     payload.get("routes") or [], str(payload.get("default_config_id") or ""))
-            # --- QQ-style transcript viewer ---
-            elif action == "chat_conversations":
-                result = {"conversations": await asyncio.to_thread(
-                    self.engine.chat_conversations, int(payload.get("limit") or 100))}
-            elif action == "chat_messages":
-                result = {"messages": await asyncio.to_thread(
-                    self.engine.chat_messages, str(payload.get("conversation") or ""),
-                    int(payload.get("limit") or 200), str(payload.get("before") or ""))}
-            elif action == "chat_send":
-                result = await self.engine.send_chat(
-                    str(payload.get("conversation") or ""), str(payload.get("text") or ""),
-                    str(payload.get("adapter_id") or ""))
-            elif action == "chat_resolve_groups":
-                result = await self.engine.resolve_group_names()
-            # --- Bilibili accounts (unofficial web API) ---
-            elif action == "bili_list":
-                result = self.engine.bili_list()
-            elif action == "bili_qr_start":
-                result = await self.engine.bili_qr_start()
-            elif action == "bili_qr_poll":
-                result = await self.engine.bili_qr_poll(str(payload.get("qrcode_key") or ""))
-            elif action == "bili_set_cookie":
-                result = await self.engine.bili_set_cookie(str(payload.get("cookie") or ""))
-            elif action == "bili_delete":
-                result = await asyncio.to_thread(self.engine.bili_delete, str(payload.get("id") or ""))
             elif action == "session_config":
                 # Which persona config a given conversation resolves to right now.
                 session_id = str(payload.get("session_id") or "")
@@ -884,12 +846,6 @@ async def serve(mocr_address: str = None):
         log.exception("LIFE failed during initialization")
         raise
     life_pb2_grpc.add_LifeServiceServicer_to_server(servicer, server)
-    # L.I.F.E is also the chat-adapter owner Core routes outbound sends to, so
-    # it serves plugin.v1.MessageService on the same endpoint. Registered from
-    # the same engine instance: the dashboard's chat_send and a plugin's
-    # SendMessage must not be able to diverge.
-    plugin_pb2_grpc.add_MessageServiceServicer_to_server(
-        MessageServiceServicer(servicer.engine), server)
 
     # Set life address on core client so Core can call us back
     core = get_core_client()

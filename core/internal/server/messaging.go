@@ -74,8 +74,16 @@ func (s *CoreServiceServer) MessagingStats() messaging.Stats {
 // MessagingAdapters exposes the adapters the bus knows about, for the console /
 // status API. It refreshes from messaging-capable plugins first so the list is
 // current even before any message has arrived.
-func (s *CoreServiceServer) MessagingAdapters() []*messaging.Adapter {
-	s.enumerateAdapters(context.Background())
+//
+// enumerateAdapters makes one sequential RPC per messaging-capable plugin with a
+// 3s budget each, so on a context.Background() this can take 3s x N_plugins and
+// keeps running after the browser is gone. handleMessaging therefore supplies the
+// request context: a client disconnect must cancel the enumeration.
+func (s *CoreServiceServer) MessagingAdapters(ctx context.Context) []*messaging.Adapter {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	s.enumerateAdapters(ctx)
 	return s.messageBus().Adapters()
 }
 

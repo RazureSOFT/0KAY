@@ -2,17 +2,12 @@ package server
 
 import (
 	"context"
+	"log"
 	"strings"
 	"time"
 
 	mocrv1 "0kay/gen/mocr/v1"
-	"0kay/obs"
 )
-
-// titleLog tags the auto-generated session-title helper's records. Titling is
-// best-effort and never fails a turn, so everything here is debug/error level
-// and carries the session id for correlation.
-var titleLog = obs.Component("session-title")
 
 // newTitleRequest builds a single-turn mocr Generate call for session titling.
 func newTitleRequest(prompt string) *mocrv1.GenerateRequest {
@@ -83,14 +78,14 @@ func (s *CoreServiceServer) maybeAutoTitleSession(sessionID string) {
 	go func() {
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				titleLog.Error("recovered from panic", "session", sessionID, "panic", recovered)
+				log.Printf("[session-title] recovered from panic: %v", recovered)
 			}
 		}()
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		client, closeFn, err := s.dialMocr(ctx)
 		if err != nil {
-			titleLog.ErrorContext(ctx, "dial mocr failed", "session", sessionID, "err", err)
+			log.Printf("[session-title] dial mocr: %v", err)
 			return
 		}
 		defer closeFn()
@@ -98,7 +93,7 @@ func (s *CoreServiceServer) maybeAutoTitleSession(sessionID string) {
 		s.resolveTitleCredentials(genReq)
 		stream, err := client.Generate(ctx, genReq)
 		if err != nil {
-			titleLog.ErrorContext(ctx, "generate failed", "session", sessionID, "err", err)
+			log.Printf("[session-title] generate: %v", err)
 			return
 		}
 		var title strings.Builder
@@ -119,7 +114,7 @@ func (s *CoreServiceServer) maybeAutoTitleSession(sessionID string) {
 			return
 		}
 		if err := s.RenameAgentSession(sessionID, clean); err != nil {
-			titleLog.Error("rename agent session failed", "session", sessionID, "err", err)
+			log.Printf("[session-title] rename: %v", err)
 		}
 	}()
 }

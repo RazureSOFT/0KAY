@@ -83,9 +83,23 @@
         "icon": "lock",
         "order": 65,
         "label": "L.I.F.E 设置",
-        "labelKey": "settings.tabs.life",
         "description": "模型、邮件、MCP 与 Agent 主机权限；消息平台在独立的「消息平台」标签页中配置",
         "component": "life_settings"
+      }
+    },
+    {
+      "target": "settings",
+      "op": "insert",
+      "anchor": "life_settings",
+      "position": "after",
+      "id": "life_adapters",
+      "item": {
+        "id": "life_adapters",
+        "icon": "plug",
+        "order": 66,
+        "label": "消息平台",
+        "description": "配置 L.I.F.E 的多个聊天平台适配器（反向 WebSocket 服务端）",
+        "module": "/api/plugins/life/ui/adapters.js?v=3"
       }
     },
     {
@@ -96,7 +110,7 @@
         "id": "memory",
         "path": "/memory",
         "name": "memory",
-        "module": "/api/plugins/life/ui/memory.js?v=4",
+        "module": "/api/plugins/life/ui/memory.js?v=3",
         "title": "记忆管理台"
       }
     },
@@ -108,7 +122,7 @@
         "id": "companion",
         "path": "/companion",
         "name": "companion",
-        "module": "/api/plugins/life/ui/companion.js?v=4",
+        "module": "/api/plugins/life/ui/companion.js?v=3",
         "title": "陪伴面板"
       }
     },
@@ -122,7 +136,6 @@
         "id": "memory",
         "to": "/memory",
         "label": "记忆",
-        "labelKey": "nav.memory",
         "icon": "memory",
         "order": 20
       }
@@ -137,7 +150,6 @@
         "id": "companion",
         "to": "/companion",
         "label": "陪伴",
-        "labelKey": "nav.companion",
         "icon": "life",
         "order": 25
       }
@@ -229,7 +241,6 @@
         "id": "chat",
         "region": "chat",
         "component": "chat",
-        "titleKey": "nav.chat",
         "order": 30
       }
     },
@@ -245,16 +256,6 @@
         "icon": "chat",
         "badgeFrom": "chat.unread",
         "order": 10
-      }
-    },
-    {
-      "target": "bootstrap",
-      "op": "insert",
-      "id": "life-social",
-      "item": {
-        "id": "life-social",
-        "module": "/api/plugins/life/ui/social.js?v=7",
-        "plugin": "life"
       }
     }
   ]

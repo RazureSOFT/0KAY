@@ -56,10 +56,7 @@ html{scroll-behavior:smooth}
 body{
   margin:0; min-height:100vh; background:var(--md-surface); color:var(--md-on-surface);
   font:400 15.5px/1.75 'Roboto','Segoe UI Variable','Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
-  /* Deliberately NOT -webkit-font-smoothing:antialiased — the WebUI disables it
-     for the same reason (see webui/src/styles/theme.css): on Windows Chrome/Edge
-     it turns off ClearType subpixel rendering and the whole page reads blurry. */
-  -moz-osx-font-smoothing:grayscale;
+  -webkit-font-smoothing:antialiased;
 }
 ::selection{background:var(--md-primary-container); color:var(--md-on-primary-container)}
 a{color:var(--md-primary); text-decoration:none}
@@ -117,16 +114,8 @@ pre{
 }
 pre code{background:none; padding:0; font-size:13.5px; line-height:1.7}
 /* ---------- Tables ---------- */
-/* `.table-scroll` (emitted by markdown_body) owns the horizontal scrolling. A
-   table with `width:100%` still cannot shrink below the sum of its columns'
-   min-content widths, so a wide API table overflows the article; without this
-   wrapper the previous `overflow:hidden` simply cut the trailing columns off. */
-.table-scroll{
-  overflow-x:auto; max-width:100%; margin:1.2em 0; border-radius:var(--radius-lg);
-  -webkit-overflow-scrolling:touch;
-}
 table{
-  border-collapse:separate; border-spacing:0; width:100%; margin:0; font-size:14px;
+  border-collapse:separate; border-spacing:0; width:100%; margin:1.2em 0; font-size:14px;
   background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
   border-radius:var(--radius-lg); overflow:hidden;
 }
@@ -186,7 +175,7 @@ def markdown_body(text: str) -> str:
             body.append("</ul>")
             list_open = False
         if table_open:
-            body.append("</table></div>")
+            body.append("</table>")
             table_open = False
 
     for raw in text.splitlines():
@@ -223,11 +212,7 @@ def markdown_body(text: str) -> str:
             cells = [c.strip() for c in line.strip().strip("|").split("|")]
             if not table_open:
                 table_open = True
-                # Wrapped so a wide API table scrolls instead of being clipped:
-                # `width: 100%` cannot shrink a table below the sum of its
-                # columns' min-content widths, so long paths push it past the
-                # article and the old `overflow: hidden` cut the last columns off.
-                body.append('<div class="table-scroll"><table>')
+                body.append("<table>")
                 body.append("<tr>" + "".join(f"<th>{inline(c)}</th>" for c in cells) + "</tr>")
             elif re.fullmatch(r"[\s|:-]+", line):
                 continue
@@ -238,7 +223,7 @@ def markdown_body(text: str) -> str:
         if item:
             flush_paragraph()
             if table_open:
-                body.append("</table></div>")
+                body.append("</table>")
                 table_open = False
             if not list_open:
                 body.append("<ul>")
@@ -264,7 +249,7 @@ def first_heading(path: Path, fallback: str) -> str:
 
 
 def render(text: str, stem: str, title: str, nav: str) -> str:
-    return f"""<!doctype html><html lang="zh-CN"><head>
+    return f"""<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(title)} · 0KAY</title><style>{STYLE}</style></head>
 <body><div class="shell">
@@ -281,52 +266,23 @@ def render(text: str, stem: str, title: str, nav: str) -> str:
 </div></body></html>"""
 
 
-def _nav(items: list[tuple[str, str, str, str]]) -> str:
-    """items: (href, label, key, active_key) — one drawer nav, lang links last."""
-    parts = []
-    for href, label, key, active_key in items:
-        active = " active" if key == active_key else ""
-        parts.append(f'<a class="nav-item{active}" href="{href}">'
-                     f'<span class="dot"></span>{html.escape(label)}</a>')
-    return "".join(parts)
-
-
 def main() -> None:
     sources = {p.stem: p for p in ROOT.glob("*.md")}
     labels = {stem: first_heading(path, stem) for stem, path in sources.items()}
     ordered = [s for s in ORDER if s in sources]
     ordered += sorted(s for s in sources if s not in ORDER)
 
-    # Chinese translations live in docs/zh-CN/*.md and render into
-    # _site/zh-CN/*.html with their own drawer. Their nav keeps the same
-    # ORDER and ends with a switch back to the English page; English pages
-    # whose counterpart exists end with a switch to Chinese.
-    zh_dir = ROOT / "zh-CN"
-    zh_sources = {p.stem: p for p in zh_dir.glob("*.md")}
-    zh_labels = {stem: first_heading(path, stem) for stem, path in zh_sources.items()}
-    zh_ordered = [s for s in ORDER if s in zh_sources] + sorted(
-        s for s in zh_sources if s not in ORDER
-    )
-
     if OUT.exists():
         shutil.rmtree(OUT)
     OUT.mkdir()
     for stem in ordered:
-        items = [(f"{other}.html", labels[other], other, stem) for other in ordered]
-        if stem in zh_sources:
-            items.append((f"zh-CN/{stem}.html", "简体中文 · 中文文档", f"zh:{stem}", ""))
-        page = render(sources[stem].read_text(encoding="utf-8"), stem, labels[stem], _nav(items))
+        nav = "".join(
+            f'<a class="nav-item{" active" if other == stem else ""}" href="{other}.html">'
+            f'<span class="dot"></span>{html.escape(labels[other])}</a>'
+            for other in ordered
+        )
+        page = render(sources[stem].read_text(encoding="utf-8"), stem, labels[stem], nav)
         (OUT / f"{stem}.html").write_text(page, encoding="utf-8")
-
-    if zh_sources:
-        zh_out = OUT / "zh-CN"
-        zh_out.mkdir()
-        for stem in zh_ordered:
-            items = [(f"../{other}.html", labels[other], f"en:{other}", "") for other in ordered]
-            items.insert(0, (f"../{stem}.html", "English · 英文文档", f"en:{stem}", ""))
-            items += [(f"{other}.html", zh_labels[other], other, stem) for other in zh_ordered]
-            page = render(zh_sources[stem].read_text(encoding="utf-8"), stem, zh_labels[stem], _nav(items))
-            (zh_out / f"{stem}.html").write_text(page, encoding="utf-8")
 
 
 if __name__ == "__main__":

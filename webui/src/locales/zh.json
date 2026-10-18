@@ -106,6 +106,16 @@
     "voiceOffTitle": "开启语音朗读（Live2D 口型同步）",
     "voiceOn": "🔊 语音开",
     "voiceOnTitle": "关闭语音朗读",
+    "wakeCapturing": "在听，说吧…",
+    "wakeFailed": "语音唤醒启动失败：{detail}",
+    "wakeHeardLine": "听到了：{text}",
+    "wakeListening": "唤醒中 · 喊「{name}」",
+    "wakeMicDenied": "麦克风权限被拒绝",
+    "wakeNeedNickname": "先到「设置 → L.I.F.E → 唤醒昵称」填一个昵称",
+    "wakeNoEngine": "没有可用的语音识别：装一个 ASR 插件，或设置 ASR_ENDPOINT",
+    "wakeOffTitle": "开启「喊一声唤醒」：喊出昵称就开始听你说话",
+    "wakeOnTitle": "关闭语音唤醒",
+    "wakeWoken": "在，说吧",
     "you": "我"
   },
   "common": {
@@ -198,6 +208,8 @@
   "lifeSettings": {
     "agentHost": "指定 Agent 主机（可选）",
     "agentHostPlaceholder": "hostname 或地址",
+    "asrLanguage": "语音识别语言",
+    "asrLanguageDesc": "传给 /api/asr 的语言提示（zh / ja / en，留空为自动）",
     "computerUse": "允许计算机操作",
     "computerUseDesc": "执行鼠标/键盘操作",
     "hostPerms": "Agent 主机权限",
@@ -232,7 +244,13 @@
     "subtitle": "敏感功能默认关闭；凭据仅保存在本机 Core settings 文件。",
     "thinkLabel": "THINK · 内部思考、记忆与工具规划",
     "thinkOutput": "THINK / OUTPUT 模型",
-    "title": "L.I.F.E 专属设置"
+    "title": "L.I.F.E 专属设置",
+    "wake": "喊一声唤醒",
+    "wakeEnable": "喊昵称就唤醒",
+    "wakeEnableDesc": "聊天页会用麦克风持续监听；喊出昵称后录一句，自动发送",
+    "wakeHint": "语音识别走 Core 的统一 /api/asr：装「Soniox 语音识别」插件，或把 ASR_ENDPOINT 指向任意 OpenAI 兼容的转写服务。",
+    "wakeNickname": "唤醒昵称",
+    "wakeNicknamePlaceholder": "美玖, miku"
   },
   "live2d": {
     "configure": "启用并加载",
@@ -559,6 +577,10 @@
     "modelsFetched": "已从供应商 API 获取模型",
     "modelsRequired": "请至少添加一个模型",
     "noModelsYet": "暂无模型，请先获取或手动添加",
+    "addModel": "添加",
+    "addModelPlaceholder": "输入模型名，例如 gpt-4o-mini",
+    "removeModel": "移除 {name}",
+    "modelExists": "“{name}” 已在列表中",
     "noProviders": "尚未配置供应商，点击上方添加。",
     "pageDesc": "管理供应商、模型、人设与 Live2D 形象",
     "permFailed": "权限保存失败",

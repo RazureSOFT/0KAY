@@ -143,16 +143,16 @@ class ResidentThinkerTests(unittest.TestCase):
 
     def test_cadence_shortens_when_something_is_live(self):
         self.resident.interval = 100.0
-        settling = asyncio.run(self.resident._effective_interval())
+        settling = self.resident._effective_interval()
         self.resident.state.focus = "我在想一件没做完的事"
-        engaged = asyncio.run(self.resident._effective_interval())
+        engaged = self.resident._effective_interval()
         self.assertLess(engaged, settling)
 
     def test_empty_thoughts_back_the_cadence_off(self):
         self.resident.interval = 100.0
-        baseline = asyncio.run(self.resident._effective_interval())
+        baseline = self.resident._effective_interval()
         self.resident._idle_streak = 3
-        self.assertGreater(asyncio.run(self.resident._effective_interval()), baseline)
+        self.assertGreater(self.resident._effective_interval(), baseline)
 
     def test_daily_budget_stops_thinking(self):
         self.engine.companion.set_settings({"daily_token_limit": "10"})

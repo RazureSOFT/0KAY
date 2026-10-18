@@ -1,15 +1,25 @@
 <script setup lang="ts">
-import { ref, nextTick, onMounted, watch } from 'vue'
+import { computed, ref, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useChatStore } from '../stores/chat'
 import { useWizardStore } from '../stores/wizard'
+import { useSettingsSectionsStore } from '../stores/settingsSections'
 import { useConfirm } from '../composables/confirm'
 import { toast } from '../composables/toast'
+import {
+  startWakeWord,
+  stopWakeWord,
+  setWakeMuted,
+  wakeStatus,
+  wakeHeard,
+  type WakeFailure,
+} from '../composables/wakeWord'
 import MessageBubble from './MessageBubble.vue'
 
 const { t, locale } = useI18n()
 const chatStore = useChatStore()
 const wizard = useWizardStore()
+const settingsSections = useSettingsSectionsStore()
 const { confirm } = useConfirm()
 
 const inputText = ref('')
@@ -20,6 +30,88 @@ const imageInput = ref<HTMLInputElement | null>(null)
 const pendingFiles = ref<Array<{ name: string; url: string; mime?: string; size?: number }>>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
+
+// --- 「喊一声唤醒」---------------------------------------------------------
+// The nickname is the wake word, and it lives in Settings → L.I.F.E so it is
+// shared with the persona rather than typed into the chat every time. The mic
+// button here only starts/stops listening for this session; `wake_enabled`
+// decides whether listening starts by itself when the page opens.
+const wakeNames = ref<string[]>([])
+const wakeBusy = ref(false)
+const wakeActive = computed(() => wakeStatus.value === 'listening' || wakeStatus.value === 'woken' || wakeStatus.value === 'capturing')
+const wakeTitle = computed(() => (wakeActive.value ? t('chat.wakeOnTitle') : t('chat.wakeOffTitle')))
+const wakeLine = computed(() => {
+  if (wakeStatus.value === 'capturing') {
+    return wakeHeard.value ? t('chat.wakeHeardLine', { text: wakeHeard.value }) : t('chat.wakeCapturing')
+  }
+  if (wakeStatus.value === 'woken') return t('chat.wakeWoken')
+  return t('chat.wakeListening', { name: wakeNames.value[0] || '' })
+})
+
+function lifeValue(key: string): string {
+  const values = settingsSections.values['life'] as Record<string, unknown> | undefined
+  const raw = values?.[key]
+  return raw == null ? '' : String(raw)
+}
+
+/** 「美玖, miku」→ ['美玖', 'miku'] */
+function parseNicknames(): string[] {
+  return lifeValue('wake_nickname')
+    .split(/[,，、;；\s]+/)
+    .map((name) => name.trim())
+    .filter(Boolean)
+}
+
+function wakeFailure(reason: WakeFailure, detail?: string): void {
+  const message =
+    reason === 'no-nickname' ? t('chat.wakeNeedNickname')
+    : reason === 'no-engine' ? t('chat.wakeNoEngine')
+    : reason === 'mic-denied' ? t('chat.wakeMicDenied')
+    : t('chat.wakeFailed', { detail: detail || 'unknown' })
+  toast(message, 'error')
+}
+
+/** Put a recognised sentence through the normal send path. */
+function sendVoice(text: string): void {
+  const spoken = text.trim()
+  if (!spoken) return
+  if (chatStore.isTyping) {
+    // Do not drop what was said: leave it in the box to send when the reply ends.
+    inputText.value = spoken
+    void nextTick(autoResize)
+    return
+  }
+  inputText.value = spoken
+  sendMessage()
+}
+
+async function startListening(): Promise<void> {
+  if (wakeBusy.value) return
+  wakeBusy.value = true
+  try {
+    await settingsSections.loadValues('life')
+    const names = parseNicknames()
+    wakeNames.value = names
+    if (!names.length) {
+      wakeFailure('no-nickname')
+      return
+    }
+    await startWakeWord({
+      nicknames: names,
+      language: lifeValue('asr_language') || 'zh',
+      onWake: () => { messageInput.value?.focus() },
+      onUtterance: sendVoice,
+      onError: wakeFailure,
+    })
+  } finally {
+    wakeBusy.value = false
+  }
+}
+
+function toggleWake(): void {
+  if (wakeActive.value) { stopWakeWord(); return }
+  void startListening()
+}
 
 function autoResize() {
   const el = messageInput.value
@@ -185,7 +277,22 @@ function downloadHistory() {
 onMounted(() => {
   chatStore.restoreHistory()
   if (!chatStore.isConnected) chatStore.connect()
+  // Settings decide whether listening is on by default; the mic button is a
+  // per-session override on top of it.
+  void (async () => {
+    await settingsSections.loadValues('life')
+    if (lifeValue('wake_enabled') === 'true' && parseNicknames().length) void startListening()
+  })()
 })
+
+onUnmounted(() => {
+  stopWakeWord()
+  setWakeMuted(false)
+})
+
+// The companion speaks its own replies: transcribing them would make the mic
+// wake itself (and burn an ASR request per sentence).
+watch(() => chatStore.isTyping, (typing) => setWakeMuted(typing), { immediate: true })
 
 watch(
   () => chatStore.messages.length,
@@ -259,6 +366,11 @@ watch(
           </button>
         </span>
       </div>
+      <div v-if="wakeActive" class="wake-strip" :class="wakeStatus">
+        <span class="wake-dot" aria-hidden="true"></span>
+        <span class="wake-text">{{ wakeLine }}</span>
+        <button class="wake-stop" type="button" :title="t('chat.wakeOnTitle')" @click="stopWakeWord">×</button>
+      </div>
       <div class="input-wrapper">
         <input
           ref="imageInput"
@@ -297,6 +409,20 @@ watch(
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M16.5 6.5 8.9 14.1a2.5 2.5 0 0 0 3.5 3.5l7.6-7.6a4.5 4.5 0 0 0-6.4-6.4l-8.3 8.3a6.5 6.5 0 0 0 9.2 9.2l5.6-5.6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button
+          class="attach-btn wake-btn"
+          :class="{ active: wakeActive }"
+          type="button"
+          :title="wakeTitle"
+          :aria-pressed="wakeActive"
+          :disabled="wakeBusy"
+          @click="toggleWake"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" stroke-width="2"/>
+            <path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </button>
         <textarea
@@ -603,6 +729,57 @@ watch(
 .attach-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* 「喊一声唤醒」: the mic turns into a live indicator while listening. */
+.wake-btn.active {
+  color: var(--md-primary);
+  background: color-mix(in srgb, var(--md-primary) 14%, transparent);
+}
+.wake-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 5px 10px;
+  border-radius: var(--radius-md, 10px);
+  background: color-mix(in srgb, var(--md-primary) 10%, transparent);
+  color: var(--md-primary);
+  font-size: 12px;
+}
+.wake-strip.capturing { background: color-mix(in srgb, var(--md-primary) 18%, transparent); }
+.wake-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: wake-pulse 1.1s ease-in-out infinite;
+}
+.wake-strip.capturing .wake-dot { animation-duration: 0.5s; }
+.wake-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wake-stop {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 2px;
+  opacity: 0.75;
+}
+.wake-stop:hover { opacity: 1; }
+@keyframes wake-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wake-dot { animation: none; }
 }
 
 .send-button {

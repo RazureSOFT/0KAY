@@ -96,6 +96,16 @@
   <string name="chat.voiceOffTitle">Enable voice playback (Live2D lip sync)</string>
   <string name="chat.voiceOn">🔊 Voice on</string>
   <string name="chat.voiceOnTitle">Disable voice playback</string>
+  <string name="chat.wakeCapturing">Listening… say it now</string>
+  <string name="chat.wakeFailed">Couldn't start voice wake: {detail}</string>
+  <string name="chat.wakeHeardLine">Heard: {text}</string>
+  <string name="chat.wakeListening">Wake word on · say “{name}”</string>
+  <string name="chat.wakeMicDenied">Microphone access was denied</string>
+  <string name="chat.wakeNeedNickname">Set a wake nickname first (Settings → L.I.F.E → 唤醒昵称)</string>
+  <string name="chat.wakeNoEngine">No speech recognition available: install an ASR plugin or set ASR_ENDPOINT</string>
+  <string name="chat.wakeOffTitle">Start voice wake: call the nickname and it starts listening</string>
+  <string name="chat.wakeOnTitle">Stop voice wake</string>
+  <string name="chat.wakeWoken">Here — go ahead</string>
   <string name="chat.you">You</string>
   <string name="common.cancel">Cancel</string>
   <string name="common.close">Close</string>
@@ -170,6 +180,8 @@
   <string name="lifeApproval.toolSendmail">Send mail</string>
   <string name="lifeSettings.agentHost">Pinned Agent host (optional)</string>
   <string name="lifeSettings.agentHostPlaceholder">hostname or address</string>
+  <string name="lifeSettings.asrLanguage">Speech recognition language</string>
+  <string name="lifeSettings.asrLanguageDesc">Language hint for /api/asr (zh, ja, en; empty = auto)</string>
   <string name="lifeSettings.computerUse">Allow computer control</string>
   <string name="lifeSettings.computerUseDesc">Perform mouse and keyboard actions</string>
   <string name="lifeSettings.hostPerms">Agent host permissions</string>
@@ -205,6 +217,12 @@
   <string name="lifeSettings.thinkLabel">THINK · internal reasoning, memory and tool planning</string>
   <string name="lifeSettings.thinkOutput">THINK / OUTPUT models</string>
   <string name="lifeSettings.title">L.I.F.E settings</string>
+  <string name="lifeSettings.wake">Voice wake</string>
+  <string name="lifeSettings.wakeEnable">Wake when called by name</string>
+  <string name="lifeSettings.wakeEnableDesc">The chat page keeps the mic open; say the nickname and it records one sentence and sends it</string>
+  <string name="lifeSettings.wakeHint">Recognition goes through Core’s /api/asr: install the Soniox speech plugin, or point ASR_ENDPOINT at any OpenAI-compatible transcriber.</string>
+  <string name="lifeSettings.wakeNickname">Wake nickname</string>
+  <string name="lifeSettings.wakeNicknamePlaceholder">Miharu, miku</string>
   <string name="live2d.configure">Enable &amp; load</string>
   <string name="live2d.disabledHint">Live2D avatar is disabled</string>
   <string name="live2d.interactHint">Scroll to zoom · Drag to move · Eyes follow pointer</string>
@@ -465,6 +483,10 @@
   <string name="settings.modelsFetched">Models fetched from provider API</string>
   <string name="settings.modelsRequired">Add at least one model</string>
   <string name="settings.noModelsYet">No models yet — fetch or add manually</string>
+  <string name="settings.addModel">Add</string>
+  <string name="settings.addModelPlaceholder">Type a model name, e.g. gpt-4o-mini</string>
+  <string name="settings.removeModel">Remove {name}</string>
+  <string name="settings.modelExists">“{name}” is already in the list</string>
   <string name="settings.noProviders">No providers configured yet. Click add above.</string>
   <string name="settings.pageDesc">Manage providers, models, persona, and Live2D avatar</string>
   <string name="settings.permFailed">Failed to save permissions</string>

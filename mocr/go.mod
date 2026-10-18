@@ -4,7 +4,6 @@ go 1.27.0
 
 require (
 	0kay/gen v0.0.0-00010101000000-000000000000
-	0kay/obs v0.0.0-00010101000000-000000000000
 	google.golang.org/grpc v1.84.0
 )
 
@@ -17,5 +16,3 @@ require (
 )
 
 replace 0kay/gen => ../gen/go
-
-replace 0kay/obs => ../obs

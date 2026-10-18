@@ -106,6 +106,16 @@
     "voiceOffTitle": "開啟語音朗讀（Live2D 口型同步）",
     "voiceOn": "🔊 語音開",
     "voiceOnTitle": "關閉語音朗讀",
+    "wakeCapturing": "在聽，說吧…",
+    "wakeFailed": "語音喚醒啟動失敗：{detail}",
+    "wakeHeardLine": "聽到了：{text}",
+    "wakeListening": "喚醒中 · 喊「{name}」",
+    "wakeMicDenied": "麥克風權限被拒絕",
+    "wakeNeedNickname": "先到「設定 → L.I.F.E → 喚醒暱稱」填一個暱稱",
+    "wakeNoEngine": "沒有可用的語音辨識：裝一個 ASR 外掛，或設定 ASR_ENDPOINT",
+    "wakeOffTitle": "開啟「喊一聲喚醒」：喊出暱稱就開始聽你說話",
+    "wakeOnTitle": "關閉語音喚醒",
+    "wakeWoken": "在，說吧",
     "you": "我"
   },
   "common": {
@@ -198,6 +208,8 @@
   "lifeSettings": {
     "agentHost": "指定 Agent 主機（選填）",
     "agentHostPlaceholder": "hostname 或位址",
+    "asrLanguage": "語音辨識語言",
+    "asrLanguageDesc": "傳給 /api/asr 的語言提示（zh / ja / en，留空為自動）",
     "computerUse": "允許電腦操作",
     "computerUseDesc": "執行滑鼠／鍵盤操作",
     "hostPerms": "Agent 主機權限",
@@ -232,7 +244,13 @@
     "subtitle": "敏感功能預設關閉；憑證僅保存在本機 Core 設定檔中。",
     "thinkLabel": "THINK · 內部思考、記憶與工具規劃",
     "thinkOutput": "THINK / OUTPUT 模型",
-    "title": "L.I.F.E 專屬設定"
+    "title": "L.I.F.E 專屬設定",
+    "wake": "喊一聲喚醒",
+    "wakeEnable": "喊暱稱就喚醒",
+    "wakeEnableDesc": "聊天頁會用麥克風持續監聽；喊出暱稱後錄一句，自動送出",
+    "wakeHint": "語音辨識走 Core 的統一 /api/asr：安裝「Soniox 語音辨識」外掛，或把 ASR_ENDPOINT 指向任何 OpenAI 相容的轉寫服務。",
+    "wakeNickname": "喚醒暱稱",
+    "wakeNicknamePlaceholder": "美玖, miku"
   },
   "live2d": {
     "configure": "啟用並載入",
@@ -559,6 +577,10 @@
     "modelsFetched": "已從供應商 API 取得模型",
     "modelsRequired": "請至少新增一個模型",
     "noModelsYet": "暫無模型，請先取得或手動新增",
+    "addModel": "新增",
+    "addModelPlaceholder": "輸入模型名稱，例如 gpt-4o-mini",
+    "removeModel": "移除 {name}",
+    "modelExists": "“{name}” 已在清單中",
     "noProviders": "尚未設定供應商，點擊上方新增。",
     "pageDesc": "管理供應商、模型、人設與 Live2D 形象",
     "permFailed": "權限儲存失敗",

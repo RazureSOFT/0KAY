@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"mime"
 	"net/http"
 	"os"
@@ -24,7 +25,6 @@ import (
 	"0kay/core/internal/stdioprovider"
 	corev1 "0kay/gen/core/v1"
 	lifev1 "0kay/gen/life/v1"
-	"0kay/obs"
 
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
@@ -96,11 +96,11 @@ type LocalCore interface {
 	ManageAgentSession(string, string) error
 	RenameAgentSession(string, string) error
 	ForkAgentSession(string) (string, error)
-	// Messaging bus. DropPluginMessaging runs when a plugin is disabled or
-	// uninstalled, so its subscriptions and adapter ownership go away with it.
-	DropPluginMessaging(string)
+	// Chat-message bus: adapters publish inbound messages, subscribers stream
+	// them, and the HTTP layer reports bus/adaptor state.
+	MessagingAdapters(context.Context) []*messaging.Adapter
 	MessagingStats() messaging.Stats
-	MessagingAdapters() []*messaging.Adapter
+	DropPluginMessaging(string)
 }
 
 // Config holds gateway configuration.
@@ -338,12 +338,9 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("POST /api/plugins/install", g.handlePluginInstall)
 	mux.HandleFunc("GET /api/plugins/install/status", g.handlePluginInstallStatus)
 	mux.HandleFunc("POST /api/plugins/uninstall", g.handlePluginUninstall)
+	mux.HandleFunc("GET /api/messaging", g.handleMessaging)
 	mux.HandleFunc("GET /api/plugins/installed", g.handlePluginInstalled)
 	mux.HandleFunc("GET /api/plugins/capabilities", g.handlePluginCapabilities)
-	// Chat-message bus: which adapters Core knows about, who owns them, and
-	// whether the bus is keeping up. Read-only; the bus itself is driven by the
-	// gRPC surface (PublishInboundMessage / SubscribeMessages / SendMessage).
-	mux.HandleFunc("GET /api/messaging", g.handleMessaging)
 	// pm plugin: the single install/update entry point. The marketplace, the
 	// Settings "plugin updates" panel and the About "0kay update" panel all call
 	// these; the legacy /api/plugins/{install,uninstall,installed,install/status}
@@ -359,6 +356,8 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/plugins/{name}/ui/{path...}", g.handlePluginUI)
 	// Plugin string resources, next to the ESM bundle:
 	// CORE_DATA_DIR/plugin-ui/{name}/strings/values*/strings.xml
+	// Without this the panels render raw keys ("agent.page.gitTitle") because the
+	// host merges exactly this payload into its i18n instance.
 	mux.HandleFunc("GET /api/plugins/{name}/strings", g.handlePluginStrings)
 	// HTTP proxy to a plugin's own service endpoint. Core injects the plugin's
 	// service token, so the WebUI panel never handles it (same-origin, owner auth).
@@ -400,6 +399,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/tasks/{task_id}/cancel", g.handleTaskCancelPath)
 	mux.HandleFunc("/api/chat", g.handleChat)
 	mux.HandleFunc("POST /api/tts", g.handleTTS)
+	mux.HandleFunc("/api/asr", g.handleASR)
 	mux.HandleFunc("/api/life/chat", g.handleLifeChat)
 	mux.HandleFunc("/api/life/compact", g.handleLifeCompact)
 	mux.HandleFunc("/api/life/notifications", g.handleLifeNotifications)
@@ -428,7 +428,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/search/papers", g.handlePapersSearch)
 	mux.HandleFunc("/api/search/apidocs", g.handleApiDocsSearch)
 	mux.HandleFunc("/api/stdio-provider/{id}/{path...}", g.handleStdioProvider)
-	mux.Handle("/live2d/models/", live2DStaticHandler())
+	mux.Handle("/live2d/models/", http.StripPrefix("/live2d/models/", http.FileServer(http.Dir(live2DRoot()))))
 	mux.HandleFunc("/api/tasks", g.handleTasks)
 	mux.HandleFunc("/api/tasks/events", g.handleTaskEvents)
 	mux.HandleFunc("/api/providers", g.handleProviders)
@@ -440,8 +440,6 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/settings/", g.handleSettingsSection)
 	mux.HandleFunc("POST /api/settings/{id}/test", g.handleSettingsTest)
 	mux.HandleFunc("/ws", g.handleWebSocket)
-	// Observability console: bounded snapshots plus a live SSE feed.
-	g.obsRoutes(mux)
 
 	return logMiddleware(g.pluginGuard(mux))
 }
@@ -598,12 +596,6 @@ func (g *Gateway) setPluginEnabled(name string, enable bool, w http.ResponseWrit
 	}
 	g.registry.SetEnabled(name, enable)
 	g.persistDisabledPlugins()
-	// Drop the plugin's message-bus footprint: a disabled subscriber must stop
-	// receiving, and a disabled adapter owner must stop being handed sends it
-	// can no longer deliver.
-	if g.localCore != nil {
-		g.localCore.DropPluginMessaging(name)
-	}
 	// Close cached gRPC connections for the disabled plugin.
 	if !enable && g.registry != nil {
 		for _, plugin := range g.registry.GetAllPlugins() {
@@ -650,22 +642,8 @@ func (g *Gateway) persistDisabledPlugins() {
 		return
 	}
 	b, _ := json.Marshal(names)
-	if err := os.MkdirAll(dataDir, 0o755); err != nil {
-		obsLog.Warn("disabled_plugins: cannot create data dir", "err", err)
-		return
-	}
-	// tmp + rename, like every other store: a crash or a partial write must not
-	// leave a truncated file behind, because loadDisabledPlugins treats an
-	// unparseable file as "nothing disabled" and would silently re-enable every
-	// plugin the admin turned off.
-	temporary := path + ".tmp"
-	if err := os.WriteFile(temporary, b, 0o600); err != nil {
-		obsLog.Warn("disabled_plugins: write failed", "err", err)
-		return
-	}
-	if err := os.Rename(temporary, path); err != nil {
-		obsLog.Warn("disabled_plugins: rename failed", "err", err)
-	}
+	_ = os.MkdirAll(dataDir, 0o755)
+	_ = os.WriteFile(path, b, 0o644)
 }
 
 func (g *Gateway) loadDisabledPlugins() {
@@ -678,12 +656,9 @@ func (g *Gateway) loadDisabledPlugins() {
 		return
 	}
 	var names []string
-	if json.Unmarshal(b, &names) != nil {
-		// Fail loudly rather than silently re-enabling every disabled plugin.
-		obsLog.Warn("disabled_plugins: file is corrupt; ignoring it", "path", filepath.Join(dataDir, "disabled_plugins.json"))
-		return
+	if json.Unmarshal(b, &names) == nil {
+		g.registry.LoadDisabled(names)
 	}
-	g.registry.LoadDisabled(names)
 }
 
 func (g *Gateway) handleChat(w http.ResponseWriter, r *http.Request) {
@@ -712,16 +687,6 @@ func (g *Gateway) handleChat(w http.ResponseWriter, r *http.Request) {
 
 	if req.RequestID == "" {
 		req.RequestID = fmt.Sprintf("chat_%d", time.Now().UnixNano())
-	}
-	// Reuse the client-supplied id as the request correlation id so the browser,
-	// Core's access log, the mocr call and the WebUI response all agree on one
-	// value. The middleware generated one already; the body's id is the more
-	// specific one and is what the client will show the user.
-	r.Header.Set(RequestIDHeader, req.RequestID)
-	if span := obs.SpanFrom(r.Context()); span != nil {
-		span.Attr("request_id", req.RequestID)
-		span.Attr("model", req.ModelID)
-		span.Attr("session", sessionIDOf(req.SessionID))
 	}
 	sessionID := req.SessionID
 	if sessionID == "" {
@@ -1085,7 +1050,7 @@ func (g *Gateway) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	conn, err := g.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		obs.Component("ws").Warn("websocket upgrade failed", "err", err)
+		log.Printf("WebSocket upgrade failed: %v", err)
 		return
 	}
 	// Bound what a single frame may carry and how long a read may stall: the
@@ -1554,24 +1519,6 @@ func live2DRoot() string {
 		return filepath.Join("..", "webui", "public", "live2d", "models")
 	}
 	return filepath.Join("data", "live2d", "models")
-}
-
-// live2DStaticHandler serves uploaded model assets from live2DRoot.
-//
-// Uploads are untrusted: a folder with a valid manifest can also contain an
-// evil.html, which the plain FileServer would serve as text/html from Core's
-// own origin — where it inherits the session cookie and could drive the
-// authenticated API (stored XSS). nosniff stops content sniffing and the
-// sandbox CSP neutralises scripts if the file is opened directly; ordinary
-// asset loads (textures, .moc3, motions) are unaffected, since a response CSP
-// only constrains the resource when it is rendered as a document.
-func live2DStaticHandler() http.Handler {
-	fileServer := http.StripPrefix("/live2d/models/", http.FileServer(http.Dir(live2DRoot())))
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Content-Security-Policy", "sandbox; default-src 'none'")
-		fileServer.ServeHTTP(w, r)
-	})
 }
 
 // imagesRoot stores chat image uploads.

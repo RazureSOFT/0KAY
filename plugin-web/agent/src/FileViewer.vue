@@ -29,6 +29,8 @@ const pptxHost = ref<HTMLElement | null>(null)
 const sheetGrid = ref<HTMLElement | null>(null)
 const pdfUrl = ref('')
 const dataUrl = ref('')
+// Blob URL for an HTML page preview (sandboxed iframe; never same-origin).
+const htmlUrl = ref('')
 const renderError = ref('')
 const rendering = ref(false)
 const sheetNames = ref<string[]>([])
@@ -92,32 +94,41 @@ async function render() {
   renderError.value = ''
   const bytes = props.bytes
   if (!bytes || !bytes.length) return
+  // TS types BlobPart/previewer input as ArrayBuffer-backed, while a Uint8Array
+  // may sit on a SharedArrayBuffer. Copying into a plain ArrayBuffer keeps the
+  // bytes identical and the types honest.
+  const view = new Uint8Array(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer)
   rendering.value = true
   try {
     await nextTick()
     if (token !== renderToken) return
     if (props.view === 'pdf') {
-      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
+      const url = URL.createObjectURL(new Blob([view], { type: 'application/pdf' }))
       if (token !== renderToken) { URL.revokeObjectURL(url); return }
       pdfUrl.value = url
     } else if (props.view === 'spreadsheet') {
-      const workbook = await parseSpreadsheet(bytes)
+      const workbook = await parseSpreadsheet(view)
       if (token !== renderToken) return
       sheetNames.value = workbook.names
       sheets = workbook.sheets
       activeSheet.value = 0
       renderSheet()
     } else if (props.view === 'image') {
-      dataUrl.value = `data:${props.mime || 'image/png'};base64,${bytesToBase64(bytes)}`
+      dataUrl.value = `data:${props.mime || 'image/png'};base64,${bytesToBase64(view)}`
     } else if (props.view === 'docx') {
       const host = docxHost.value
-      if (host) await renderAsync(new Blob([bytes]), host, undefined, { inWrapper: true, ignoreWidth: true, breakPages: true, renderHeaders: true, renderFooters: true })
+      if (host) await renderAsync(new Blob([view]), host, undefined, { inWrapper: true, ignoreWidth: true, breakPages: true, renderHeaders: true, renderFooters: true })
+    } else if (props.view === 'html') {
+      // Self-contained page (the `diagram` tool writes one). The iframe is
+      // sandboxed, so the page cannot touch the host document.
+      if (htmlUrl.value) URL.revokeObjectURL(htmlUrl.value)
+      htmlUrl.value = URL.createObjectURL(new Blob([view], { type: 'text/html;charset=utf-8' }))
     } else if (props.view === 'pptx') {
       const host = pptxHost.value
       if (host && token === renderToken) {
         const width = host.clientWidth || 720
         const previewer = initPptx(host, { width, height: Math.round((width * 9) / 16) })
-        previewer.preview(bytes.buffer)
+        previewer.preview(view.buffer)
       }
     }
   } catch (e: any) { if (token === renderToken) renderError.value = e?.message || 'render failed' }
@@ -139,6 +150,7 @@ onBeforeUnmount(() => { renderToken++; clearAssets() })
     />
     <div v-else-if="view === 'markdown'" class="fv-scroll fv-md"><MarkdownContent :content="modelValue" /></div>
     <iframe v-else-if="view === 'pdf' && pdfUrl" class="fv-pdf" :src="pdfUrl" :title="path" />
+    <iframe v-else-if="view === 'html' && htmlUrl" class="fv-html" :src="htmlUrl" sandbox="allow-scripts allow-popups" :title="path" />
     <div v-else-if="view === 'spreadsheet'" class="fv-scroll fv-sheet">
       <div v-if="sheetNames.length > 1" class="sheet-tabs">
         <button v-for="(name, i) in sheetNames" :key="name" type="button" :class="{ active: i === activeSheet }" @click="selectSheet(i)">{{ name }}</button>
@@ -188,4 +200,5 @@ onBeforeUnmount(() => { renderToken++; clearAssets() })
 .fv-fade-enter-active,.fv-fade-leave-active{transition:opacity 150ms var(--ease-out)}
 .fv-fade-enter-from,.fv-fade-leave-to{opacity:0}
 #app .fv-error{position:absolute;left:12px;right:12px;bottom:12px;z-index:3;padding:8px 12px;border-radius:10px;background:var(--md-error-container);color:var(--md-on-error-container);font-size:12px;overflow-wrap:anywhere;box-shadow:var(--shadow-2)}
+.fv-html{width:100%;height:100%;border:0;background:var(--md-surface-container-lowest)}
 </style>

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -35,14 +36,20 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// svcLog tags every record this file emits, so the console can filter the gRPC
-// layer (agent dispatch, model calls, task lifecycle) as one unit.
+// CoreServiceServer implements the CoreService gRPC service.
+// svcLog tags every record this layer emits, so the console can filter the
+// gRPC layer (agent dispatch, model calls, task lifecycle) as one unit.
 var svcLog = obs.Component("grpc")
 
-// CoreServiceServer implements the CoreService gRPC service.
 type CoreServiceServer struct {
 	corev1.UnimplementedCoreServiceServer
 	registry *registry.Registry
+
+	// bus is Core's chat-message bus (internal/messaging). Created lazily so a
+	// server built directly (tests, the echo plugin) still serves the
+	// messaging RPCs.
+	busOnce sync.Once
+	bus     *messaging.Bus
 
 	mu               sync.RWMutex
 	tasks            map[string]*TaskInfo
@@ -104,12 +111,6 @@ type CoreServiceServer struct {
 
 	// providerStore resolves model credentials for real generation (nil = offline).
 	providerStore ProviderStore
-
-	// bus is Core's chat-message bus (internal/messaging). It is created in the
-	// constructor and lazily on first use, so a CoreServiceServer built directly
-	// (tests, the echo plugin) still serves the messaging RPCs.
-	busOnce sync.Once
-	bus     *messaging.Bus
 }
 
 // ProviderStore is the subset of providers.Store CallMocr needs.
@@ -141,6 +142,8 @@ type TaskInfo struct {
 	Args      string
 	// Reasoning carries the model's native chain-of-thought for this step.
 	Reasoning string
+	// Attachments is the JSON array of files uploaded with the turn.
+	Attachments string
 }
 
 type persistedTask struct {
@@ -158,6 +161,9 @@ type persistedTask struct {
 	ParentID  string    `json:"parent_id,omitempty"`
 	Args      string    `json:"args,omitempty"`
 	Reasoning string    `json:"reasoning,omitempty"`
+	// Attachments is a JSON array; kept small (a handful of name/url/mime/size
+	// objects) and clipped like every other persisted text field.
+	Attachments string `json:"attachments,omitempty"`
 }
 
 // UsageRecord is one token-usage sample.
@@ -370,6 +376,7 @@ func NewCoreServiceServer(reg *registry.Registry, dataDir ...string) *CoreServic
 				tasks[item.TaskID].ParentID = copy.ParentID
 				tasks[item.TaskID].Args = copy.Args
 				tasks[item.TaskID].Reasoning = copy.Reasoning
+				tasks[item.TaskID].Attachments = copy.Attachments
 				if copy.State == "running" || copy.State == "pending" {
 					tasks[item.TaskID].State = "failed"
 					tasks[item.TaskID].Error = "Core restarted before execution was acknowledged"
@@ -391,7 +398,6 @@ func NewCoreServiceServer(reg *registry.Registry, dataDir ...string) *CoreServic
 			ScreenWatch: false,
 			ComputerUse: false,
 		},
-		bus: messaging.NewBus(),
 	}
 	instance.replayTaskJournal()
 	instance.seedTaskFingerprints()
@@ -445,32 +451,36 @@ func (s *CoreServiceServer) shouldSyncJournalLocked(changes []persistedTask, rem
 // for the running process; only the snapshot/journal copy is clipped so a long
 // result or chain-of-thought cannot bloat the ledger file.
 const (
-	persistedPromptLimit     = 8000
-	persistedResultLimit     = 16000
-	persistedErrorLimit      = 4000
-	persistedArgsLimit       = 8000
-	persistedReasoningLimit  = 8000
-	persistedSessionLimit    = 2000
-	persistedNonSessionLimit = 5000
+	persistedPromptLimit    = 8000
+	persistedResultLimit    = 16000
+	persistedErrorLimit     = 4000
+	persistedArgsLimit      = 8000
+	persistedReasoningLimit = 8000
+	persistedSessionLimit   = 2000
+	// A turn rarely carries more than a few files; 8 KB is room for ~30 of them
+	// and still bounds the ledger.
+	persistedAttachmentsLimit = 8000
+	persistedNonSessionLimit  = 5000
 )
 
 // persistedFrom builds the durable form of a task, clipping oversized fields.
 func persistedFrom(t *TaskInfo) persistedTask {
 	return persistedTask{
-		TaskID:    t.TaskID,
-		CallerID:  t.CallerID,
-		Prompt:    clipField(t.Prompt, persistedPromptLimit),
-		AgentID:   t.AgentID,
-		State:     t.State,
-		Result:    clipField(t.Result, persistedResultLimit),
-		Error:     clipField(t.Error, persistedErrorLimit),
-		StartedAt: t.StartedAt,
-		EndedAt:   t.EndedAt,
-		SessionID: t.SessionID,
-		Kind:      t.Kind,
-		ParentID:  t.ParentID,
-		Args:      clipField(t.Args, persistedArgsLimit),
-		Reasoning: clipField(t.Reasoning, persistedReasoningLimit),
+		TaskID:      t.TaskID,
+		CallerID:    t.CallerID,
+		Prompt:      clipField(t.Prompt, persistedPromptLimit),
+		AgentID:     t.AgentID,
+		State:       t.State,
+		Result:      clipField(t.Result, persistedResultLimit),
+		Error:       clipField(t.Error, persistedErrorLimit),
+		StartedAt:   t.StartedAt,
+		EndedAt:     t.EndedAt,
+		SessionID:   t.SessionID,
+		Kind:        t.Kind,
+		ParentID:    t.ParentID,
+		Args:        clipField(t.Args, persistedArgsLimit),
+		Reasoning:   clipField(t.Reasoning, persistedReasoningLimit),
+		Attachments: clipField(t.Attachments, persistedAttachmentsLimit),
 	}
 }
 
@@ -683,7 +693,7 @@ func (s *CoreServiceServer) appendTaskJournalLocked(changes []persistedTask, rem
 	_ = os.MkdirAll(filepath.Dir(s.taskHistoryPath), 0700)
 	journal, err := os.OpenFile(s.taskHistoryPath+".journal", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		svcLog.Error("task journal write failed", "err", err)
+		log.Printf("task journal: %v", err)
 		return
 	}
 	raw, _ := json.Marshal(struct {
@@ -702,7 +712,7 @@ func (s *CoreServiceServer) appendTaskJournalLocked(changes []persistedTask, rem
 	}
 	journal.Close()
 	if err != nil {
-		svcLog.Error("task journal rewrite failed", "err", err)
+		log.Printf("task journal write: %v", err)
 		return
 	}
 	info, _ := os.Stat(s.taskHistoryPath + ".journal")
@@ -720,7 +730,7 @@ func (s *CoreServiceServer) appendTaskJournalLocked(changes []persistedTask, rem
 		temporary := s.taskHistoryPath + ".tmp"
 		if err := writeFileSync(temporary, data, 0o600); err == nil {
 			if err = os.Rename(temporary, s.taskHistoryPath); err != nil {
-				svcLog.Error("persist tasks failed", "err", err)
+				log.Printf("persist tasks: %v", err)
 			} else {
 				// Make the rename itself durable before dropping the journal,
 				// otherwise a crash could resurrect the old snapshot with an
@@ -730,7 +740,7 @@ func (s *CoreServiceServer) appendTaskJournalLocked(changes []persistedTask, rem
 				s.lastJournalSync = time.Now()
 			}
 		} else {
-			svcLog.Error("persist tasks failed", "err", err)
+			log.Printf("persist tasks: %v", err)
 		}
 	}
 }
@@ -1014,7 +1024,7 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 
 	client, closeFn, err := s.dialMocr(ctx)
 	if err != nil {
-		svcLog.ErrorContext(ctx, "dial mocr failed", "err", err)
+		log.Printf("[CallMocr] dial mocr failed: %v", err)
 		return s.failStream(req, stream, "mocr unavailable: "+err.Error())
 	}
 	defer closeFn()
@@ -1075,7 +1085,7 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 
 	genStream, err := client.Generate(ctx, genReq)
 	if err != nil {
-		svcLog.ErrorContext(ctx, "generate failed to start", "err", err)
+		log.Printf("[CallMocr] generate failed: %v", err)
 		return s.failStream(req, stream, "generation failed to start: "+err.Error())
 	}
 
@@ -1086,11 +1096,11 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 			// mocr always terminates with either a Done frame or a non-OK
 			// status. Reaching EOF without one means the stream was truncated;
 			// treat it as a failure rather than a silent success.
-			svcLog.ErrorContext(ctx, "mocr stream ended without a terminal frame")
+			log.Printf("[CallMocr] stream ended without a terminal frame")
 			return s.failStream(req, stream, "generation stream ended without a completion frame")
 		}
 		if err != nil {
-			svcLog.ErrorContext(ctx, "mocr stream recv failed", "err", err)
+			log.Printf("[CallMocr] stream recv: %v", err)
 			return s.failStream(req, stream, "generation failed: "+err.Error())
 		}
 		if resp.Chunk != "" {
@@ -1517,7 +1527,7 @@ func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRe
 	}
 	originSession := req.Metadata["session_id"]
 	req.Metadata["origin_session_id"] = originSession
-	sessionID, err := s.startAgentTask(TaskEvent{TaskID: req.TaskId, CallerID: req.CallerId, Prompt: req.Prompt, State: "pending", Kind: "agent", ParentID: req.Metadata["parent_id"]}, originSession, req.CallerId, req.Prompt)
+	sessionID, err := s.startAgentTask(TaskEvent{TaskID: req.TaskId, CallerID: req.CallerId, Prompt: req.Prompt, State: "pending", Kind: "agent", ParentID: req.Metadata["parent_id"], Attachments: req.Metadata["attachments"]}, originSession, req.CallerId, req.Prompt)
 	req.Metadata["session_id"] = sessionID
 	if err != nil {
 		return nil, status.Error(codes.AlreadyExists, err.Error())
@@ -1556,7 +1566,8 @@ func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRe
 	s.persistTasksLocked()
 	s.mu.Unlock()
 
-	svcLog.InfoContext(ctx, "agent task dispatched", "task_id", req.TaskId, "agent", agent.PluginID, "addr", agent.Address)
+	log.Printf("[UseAgent] Task %s dispatched to agent %s (addr=%s)",
+		req.TaskId, agent.PluginID, agent.Address)
 
 	// Dispatch asynchronously
 	go s.dispatchToAgent(req, agent)
@@ -1572,7 +1583,7 @@ func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRe
 func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *registry.PluginInstance) {
 	agentAddr := agent.Address
 	if agentAddr == "" {
-		svcLog.Error("agent has no address", "agent", agent.PluginID, "task_id", req.TaskId)
+		log.Printf("[UseAgent] Agent %s has no address, failing task %s", agent.PluginID, req.TaskId)
 		s.failTask(req.TaskId, "agent has no address")
 		return
 	}
@@ -1594,7 +1605,7 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 	go func() {
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				svcLog.Error("inactivity watcher recovered from panic", "panic", recovered)
+				log.Printf("[UseAgent] inactivity watcher recovered from panic: %v", recovered)
 			}
 		}()
 		ticker := time.NewTicker(time.Minute)
@@ -1612,7 +1623,7 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 				return
 			}
 			if time.Since(last) > idleTimeout {
-				svcLog.Warn("agent task inactivity timeout", "task_id", req.TaskId, "idle_timeout", idleTimeout.String())
+				log.Printf("[UseAgent] Task %s inactivity timeout after %s", req.TaskId, idleTimeout)
 				cancel()
 				return
 			}
@@ -1629,7 +1640,7 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 		}),
 	)
 	if err != nil {
-		svcLog.Error("connect to agent failed", "addr", agentAddr, "err", err)
+		log.Printf("[UseAgent] Failed to connect to agent %s: %v", agentAddr, err)
 		s.failTask(req.TaskId, fmt.Sprintf("failed to connect to agent: %v", err))
 		return
 	}
@@ -1666,13 +1677,13 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 	})
 
 	if err != nil {
-		svcLog.Error("agent task failed", "task_id", req.TaskId, "err", err)
+		log.Printf("[UseAgent] Task %s failed: %v", req.TaskId, err)
 		s.finishTask(req.TaskId, "failed", "", err.Error())
 		s.notifyLifeTaskCompleted(req.TaskId, pluginv1.TaskState_TASK_STATE_FAILED, "", err.Error())
 		return
 	}
 
-	svcLog.InfoContext(ctx, "agent task finished", "task_id", req.TaskId, "state", resp.State.String())
+	log.Printf("[UseAgent] Task %s completed with state %s", req.TaskId, resp.State.String())
 	stateName := "done"
 	switch resp.State {
 	case pluginv1.TaskState_TASK_STATE_FAILED:
@@ -1747,13 +1758,13 @@ func (s *CoreServiceServer) notifyLifeTaskCompleted(taskID string, state pluginv
 func (s *CoreServiceServer) deliverTaskCallback(taskID string, state pluginv1.TaskState, result, errMsg string) {
 	lifes := s.registry.GetPluginsByCapability("life")
 	if len(lifes) == 0 {
-		svcLog.Warn("no LIFE plugin registered, skipping task notification", "task_id", taskID)
+		log.Printf("[TaskCompleted] No L.I.F.E plugin registered, skipping notification for task %s", taskID)
 		return
 	}
 
 	life := lifes[0]
 	if life.Address == "" {
-		svcLog.Warn("LIFE has no address, skipping task notification", "task_id", taskID)
+		log.Printf("[TaskCompleted] L.I.F.E has no address, skipping")
 		return
 	}
 
@@ -1762,7 +1773,7 @@ func (s *CoreServiceServer) deliverTaskCallback(taskID string, state pluginv1.Ta
 
 	conn, err := s.lifeDialCached(life)
 	if err != nil {
-		svcLog.ErrorContext(ctx, "connect to LIFE failed", "addr", life.Address, "err", err)
+		log.Printf("[TaskCompleted] Failed to connect to L.I.F.E at %s: %v", life.Address, err)
 		return
 	}
 
@@ -1775,11 +1786,11 @@ func (s *CoreServiceServer) deliverTaskCallback(taskID string, state pluginv1.Ta
 		Error:  errMsg,
 	})
 	if err != nil {
-		svcLog.ErrorContext(ctx, "notify LIFE of task completion failed", "task_id", taskID, "err", err)
+		log.Printf("[TaskCompleted] Failed to notify L.I.F.E for task %s: %v", taskID, err)
 		return
 	}
 
-	svcLog.InfoContext(ctx, "LIFE acknowledged task completion", "task_id", taskID, "reply", resp.ResponseText)
+	log.Printf("[TaskCompleted] L.I.F.E acknowledged task %s: %s", taskID, resp.ResponseText)
 	if resp.Acknowledged {
 		s.callbackMu.Lock()
 		delete(s.callbacks, taskID)
@@ -1921,7 +1932,42 @@ func (s *CoreServiceServer) taskRowLocked(t *TaskInfo) map[string]interface{} {
 	if t.Error != "" {
 		item["error"] = clipField(t.Error, 1500)
 	}
+	// Attachments ride along as parsed objects: the transcript renders a chip per
+	// file under the user's text, and a client should not have to parse the
+	// stored metadata blob itself.
+	if refs := decodeAttachments(t.Attachments); len(refs) > 0 {
+		item["attachments"] = refs
+	}
 	return item
+}
+
+// decodeAttachments turns the stored JSON array into rows. A malformed or
+// clipped value is not worth failing a whole transcript over, so it degrades to
+// "no attachments" — the message text is still there.
+func decodeAttachments(raw string) []map[string]interface{} {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "[]" {
+		return nil
+	}
+	var rows []map[string]interface{}
+	if json.Unmarshal([]byte(raw), &rows) != nil {
+		return nil
+	}
+	out := make([]map[string]interface{}, 0, len(rows))
+	for _, row := range rows {
+		name, _ := row["name"].(string)
+		url, _ := row["url"].(string)
+		if name == "" && url == "" {
+			continue
+		}
+		out = append(out, map[string]interface{}{
+			"name": name,
+			"url":  url,
+			"mime": row["mime"],
+			"size": row["size"],
+		})
+	}
+	return out
 }
 
 // clipField bounds a string field so a single row cannot bloat the payload.

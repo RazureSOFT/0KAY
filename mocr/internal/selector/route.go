@@ -2,6 +2,8 @@ package selector
 
 import (
 	"fmt"
+	"math"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -203,6 +205,35 @@ func allIndices(pool []routerModel) []int {
 	return out
 }
 
+// maxDifficulty is the top of the router's internal difficulty scale. It matches
+// the scale `power` is measured on, so a difficulty threshold and a model's
+// power are directly comparable.
+const maxDifficulty = 5.0
+
+// normalizeDifficultyHint maps a caller-supplied `difficulty_hint` onto the
+// router's internal 1..5 difficulty scale.
+//
+// This has to happen, because the two scales do not agree. The public hint is
+// documented and sent as 0..1 (0 = no opinion, 1 = hardest); the kNN predicts
+// 1..5 and the gate compares against `power` in 1..5. Comparing a 0..1 hint
+// directly against power∈[1,5] yields thresholds of 0.0..1.0, so the gate is
+// wide open at every intensity — including "max", which would still admit almost
+// everything — and the classifier's difficulty output is overwritten.
+//
+// A hint already above 1 is assumed to be on the internal scale (the thinking
+// floor passes 4.2) and is clamped rather than rescaled. Zero is "no opinion" and
+// returns zero, so inferSpec leaves the classifier's own answer in place; the
+// caller must not use a non-zero default to mean "unspecified".
+func normalizeDifficultyHint(hint float64) float64 {
+	if hint <= 0 {
+		return 0
+	}
+	if hint > 1 {
+		return math.Min(hint, maxDifficulty)
+	}
+	return 1 + hint*(maxDifficulty-1)
+}
+
 // inferSpec infers (tags, difficulty, hits) for a prompt: learned kNN first
 // (ROUTER_MODE=heuristic forces the keyword baseline), keyword fallback, then
 // explicit overrides from the caller win per-field (route.py semantics).
@@ -227,7 +258,7 @@ func inferSpec(text string, explicitTags map[string]struct{}, explicitDifficulty
 		hits = append(hits, "explicit:tags")
 	}
 	if explicitDifficulty > 0 {
-		d = explicitDifficulty
+		d = normalizeDifficultyHint(explicitDifficulty)
 		hits = append(hits, "explicit:difficulty")
 	}
 	if tags == nil {
@@ -278,8 +309,15 @@ func detectModelName(text string) (string, bool) {
 	t := strings.ToLower(text)
 	bestLen := 0
 	best := ""
+	// Longest alias wins; equal lengths break lexicographically on the alias so
+	// the result does not depend on Go's randomized map iteration order.
+	// Without the tiebreak, "use gpt-5.1 or gpt-5.2" pins a different model on
+	// different calls.
 	for alias, target := range aliasRef {
-		if len(alias) <= bestLen {
+		if len(alias) < bestLen {
+			continue
+		}
+		if len(alias) == bestLen && best != "" && alias >= best {
 			continue
 		}
 		if matchAliasBoundaried(t, alias) {
@@ -290,6 +328,13 @@ func detectModelName(text string) (string, bool) {
 		return "", false
 	}
 	return best, true
+}
+
+// promptModelPinningEnabled reports whether a model id appearing in the prompt
+// may select the model. Off by default: the prompt is untrusted input.
+func promptModelPinningEnabled() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("ROUTER_TRUST_PROMPT_MODEL")), "1") ||
+		strings.EqualFold(strings.TrimSpace(os.Getenv("ROUTER_TRUST_PROMPT_MODEL")), "true")
 }
 
 // matchAliasBoundaried finds alias in t with non-alphanumeric neighbours.
@@ -350,7 +395,14 @@ func routeThinkOutput(pool []routerModel, prompt string, explicitDifficulty floa
 	// A model named in the prompt wins outright (user pointed at it) — pool
 	// membership by bare tail, since the catalog uses prefixed ids while the
 	// Core pool uses bare names. Named-but-absent falls through to inference.
-	if explicitDifficulty <= 0 {
+	//
+	// Opt-in only. The prompt is untrusted input: it carries tool output,
+	// retrieved documents and pasted file contents, any of which may mention a
+	// model id. Letting that text pin the selection silently overrides the cost
+	// and quality strategy the user actually chose — a summary of a document
+	// mentioning claude-opus-4 would bill Opus for the output model. Set
+	// ROUTER_TRUST_PROMPT_MODEL=1 to restore the behaviour.
+	if explicitDifficulty <= 0 && promptModelPinningEnabled() {
 		if named, found := detectModelName(prompt); found {
 			namedTail := idTail(named)
 			for i := range pool {

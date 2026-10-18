@@ -24,6 +24,11 @@ type TaskEvent struct {
 	Error     string `json:"error"`
 	// Reasoning carries a model step's native chain-of-thought for display.
 	Reasoning string `json:"reasoning,omitempty"`
+	// Attachments is the JSON array the caller uploaded with this turn
+	// ({name,url,mime,size}). It is stored so the transcript can render the
+	// files a message came with — without it the bubble shows text only and the
+	// reference is lost the moment the request completes.
+	Attachments string `json:"attachments,omitempty"`
 }
 
 // RecordTask validates and applies one ledger transition.
@@ -84,7 +89,7 @@ func (s *CoreServiceServer) recordTaskLocked(event TaskEvent) error {
 		}
 	}
 	if !exists {
-		task = &TaskInfo{TaskID: event.TaskID, CallerID: event.CallerID, SessionID: event.SessionID, ParentID: event.ParentID, Kind: event.Kind, Prompt: event.Prompt, Args: event.Args, StartedAt: time.Now()}
+		task = &TaskInfo{TaskID: event.TaskID, CallerID: event.CallerID, SessionID: event.SessionID, ParentID: event.ParentID, Kind: event.Kind, Prompt: event.Prompt, Args: event.Args, Attachments: event.Attachments, StartedAt: time.Now()}
 		for _, existing := range s.tasks {
 			if !task.StartedAt.After(existing.StartedAt) {
 				task.StartedAt = existing.StartedAt.Add(time.Nanosecond)

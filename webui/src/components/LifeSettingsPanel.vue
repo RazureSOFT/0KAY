@@ -11,6 +11,9 @@ const form = reactive<Record<string, any>>({
   mcp_enabled: true, onebot_enabled: false, onebot_ws_url: 'ws://127.0.0.1:6700', onebot_http_url: 'http://127.0.0.1:6700', onebot_access_token: '', onebot_trigger_keywords: '',
   onebot_observe_group: true, proactive_daily_limit: 3, proactive_target_limit: 1,
   think_model: '', output_model: '',
+  // 「喊一声唤醒」: the nickname is the wake word. It lives here so the persona's
+  // name has one home; the chat page reads it and does the actual listening.
+  wake_enabled: false, wake_nickname: '', asr_language: 'zh',
 })
 const state = ref('')
 const saving = ref(false)
@@ -116,6 +119,18 @@ onMounted(load)
           <label class="ls-field"><span>{{ t('lifeSettings.proactiveDaily') }}</span><input v-model.number="form.proactive_daily_limit" type="number" min="0" placeholder="3" /></label>
           <label class="ls-field"><span>{{ t('lifeSettings.proactiveTarget') }}</span><input v-model.number="form.proactive_target_limit" type="number" min="0" placeholder="1" /></label>
         </div>
+      </article>
+
+      <article class="ls-card ls-card-wide">
+        <div class="ls-card-head"><span class="ls-ic tone-2">🎙</span><h3>{{ t('lifeSettings.wake') }}</h3></div>
+        <div class="ls-row">
+          <label class="ls-switch"><input v-model="form.wake_enabled" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>{{ t('lifeSettings.wakeEnable') }}</b><small>{{ t('lifeSettings.wakeEnableDesc') }}</small></span></label>
+        </div>
+        <div class="ls-row">
+          <label class="ls-field"><span>{{ t('lifeSettings.wakeNickname') }}</span><input v-model="form.wake_nickname" :placeholder="t('lifeSettings.wakeNicknamePlaceholder')" /></label>
+          <label class="ls-field"><span>{{ t('lifeSettings.asrLanguage') }}</span><input v-model="form.asr_language" placeholder="zh" :title="t('lifeSettings.asrLanguageDesc')" /></label>
+        </div>
+        <p class="ls-hint">{{ t('lifeSettings.wakeHint') }}</p>
       </article>
     </div>
 
@@ -313,6 +328,14 @@ onMounted(load)
 #app .ls-model.selected { border-radius: 20px 20px 20px 8px; }
 .ls-model b { font-size: 13px; word-break: break-all; }
 .ls-model span { font-size: 12px; color: var(--md-on-surface-variant); }
+
+/* Explanatory line under a card (currently the wake card's backend note). */
+.ls-hint {
+  margin: 12px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--md-on-surface-variant);
+}
 
 .ls-state {
   margin: 18px 0 0;

@@ -27,47 +27,31 @@ import ipaddress
 import os
 import secrets
 import threading
-import time
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Optional
-from urllib.parse import parse_qs, quote, urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 try:  # pragma: no cover - websockets >= 12 exposes the server class here
     from websockets.asyncio.server import serve as ws_serve
 except ImportError:  # pragma: no cover - older websockets
     from websockets.server import serve as ws_serve  # type: ignore
 
-try:  # pragma: no cover - websockets >= 13 exposes the client class here
-    from websockets.asyncio.client import connect as ws_connect
-except ImportError:  # pragma: no cover - older websockets
-    from websockets.client import connect as ws_connect  # type: ignore
-
 from ..logging_setup import get_logger
-from .chatlog import conversation_key
 
 logger = get_logger("adapters.platforms")
 
 #: Platform categories the UI may offer. Only ``aiocqhttp`` is implemented;
 #: the rest are declared so an instance row survives a round-trip unchanged
 #: instead of silently losing its platform on save.
-KNOWN_PLATFORMS = ("aiocqhttp", "bilibili", "qq_official", "wecom", "lark", "discord", "telegram")
+KNOWN_PLATFORMS = ("aiocqhttp", "qq_official", "wecom", "lark", "discord", "telegram")
 
 IMPLEMENTED_PLATFORMS = ("aiocqhttp",)
 
 DEFAULT_REVERSE_WS_HOST = "127.0.0.1"
 DEFAULT_REVERSE_WS_PORT = 6199
-
-#: Connection direction per instance.
-#:   ``reverse`` — LIFE listens; the client (NapCat reverse-WS) dials in.
-#:   ``connect`` — LIFE dials out to the client's own WS server (NapCat
-#:                 "WebSocket 服务器" mode), e.g. ``ws://host:port/ws``.
-#: ``reverse`` is the default so existing rows keep their previous behaviour.
-KNOWN_DIRECTIONS = ("reverse", "connect")
-DEFAULT_DIRECTION = "reverse"
-DEFAULT_WS_PATH = "/ws"
 
 
 def _now() -> str:
@@ -109,18 +93,11 @@ def load_json(path: Path, default):
 
 
 def save_json(path: Path, payload) -> None:
-    """Atomically write JSON: a crash mid-write must not truncate the file.
-
-    The file is created 0o600 because this payload carries adapter secrets
-    (``ws_token`` / ``access_token``) and, on a shared POSIX host, the umask
-    default of 0o644 would expose them to every local user. On Windows the mode
-    only affects the read-only bit, so it is harmless there.
-    """
+    """Atomically write JSON: a crash mid-write must not truncate the file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
-    handle = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(handle, "w", encoding="utf-8") as stream:
-        json.dump(payload, stream, ensure_ascii=False, indent=2)
+    with open(temporary, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, ensure_ascii=False, indent=2)
     os.replace(temporary, path)
 
 
@@ -132,15 +109,9 @@ class AdapterInstance:
     name: str = ""
     platform: str = "aiocqhttp"
     enabled: bool = False
-    #: Endpoint host. Reverse mode: the address LIFE binds. Connect mode: the
-    #: host of the client's own WebSocket server that LIFE dials out to.
+    #: Reverse WebSocket bind. LIFE listens here; the platform client connects.
     ws_host: str = DEFAULT_REVERSE_WS_HOST
     ws_port: int = DEFAULT_REVERSE_WS_PORT
-    #: ``reverse`` (LIFE listens, client dials in) or ``connect`` (LIFE dials out
-    #: to ``ws://host:port/ws_path``). See KNOWN_DIRECTIONS.
-    direction: str = DEFAULT_DIRECTION
-    #: Path of the client's WS endpoint in connect mode (e.g. ``/ws``).
-    ws_path: str = DEFAULT_WS_PATH
     #: Token the client must present. Empty disables verification, matching the
     #: "未设置则不启用 Token 验证" behaviour users expect from the reference UI.
     ws_token: str = ""
@@ -161,7 +132,7 @@ class AdapterInstance:
         data = data or {}
         instance = cls()
         for key in ("id", "name", "platform", "ws_host", "ws_token", "http_url",
-                    "access_token", "config_id", "direction", "ws_path"):
+                    "access_token", "config_id"):
             if data.get(key) is not None:
                 setattr(instance, key, str(data[key]))
         for key in ("enabled", "observe_group"):
@@ -188,7 +159,6 @@ class AdapterInstance:
         """Redacted view for logs and diagnostics."""
         return {"id": self.id, "name": self.name, "platform": self.platform,
                 "enabled": self.enabled, "ws_host": self.ws_host, "ws_port": self.ws_port,
-                "direction": self.direction, "ws_path": self.ws_path,
                 "config_id": self.config_id,
                 "ws_token": "", "has_ws_token": bool(self.ws_token),
                 "access_token": "", "has_access_token": bool(self.access_token),
@@ -205,13 +175,9 @@ class AdapterInstance:
             problems.append(f"未知的消息平台类别：{self.platform}")
         elif self.platform not in IMPLEMENTED_PLATFORMS:
             problems.append(f"平台 {self.platform} 尚未实现")
-        if self.direction not in KNOWN_DIRECTIONS:
-            problems.append(f"未知的连接方向：{self.direction}")
         if not str(self.ws_host or "").strip():
-            problems.append("WebSocket 主机不能为空")
-        # Only a *listener* needs to be guarded against a non-loopback bind; a
-        # dial-out connection reaches out and exposes nothing locally.
-        if self.direction == "reverse" and not self.bind_authorized():
+            problems.append("反向 WebSocket 主机不能为空")
+        if not self.bind_authorized():
             problems.append("非本机监听必须配置非空 Token")
         try:
             port = int(self.ws_port)
@@ -229,31 +195,6 @@ class AdapterInstance:
             return ipaddress.ip_address(self.ws_host).is_loopback
         except ValueError:
             return self.ws_host == "localhost"
-
-    def endpoint(self) -> str:
-        """Human-facing endpoint: the URL LIFE dials, or the address it binds."""
-        if self.direction == "connect":
-            return self.connect_url()
-        return f"{self.ws_host}:{self.ws_port}"
-
-    def connect_url(self, *, include_token: bool = False) -> str:
-        """The ``ws://…`` URL LIFE dials in connect mode.
-
-        ``ws_host`` may already carry a scheme (``wss://host``); otherwise a plain
-        ``ws://`` is assumed. The access token goes in the query string, which is
-        what NapCat/aiocqhttp forward-WS expects, and only when ``include_token``
-        is set so the redacted endpoint shown in the UI never leaks it.
-        """
-        host = str(self.ws_host or "").strip() or "127.0.0.1"
-        scheme = "ws"
-        if "://" in host:
-            scheme, host = host.split("://", 1)
-        path = str(self.ws_path or DEFAULT_WS_PATH).strip() or DEFAULT_WS_PATH
-        if not path.startswith("/"):
-            path = "/" + path
-        token = str(self.ws_token or "").strip()
-        query = f"?access_token={quote(token)}" if (include_token and token) else ""
-        return f"{scheme}://{host}:{int(self.ws_port)}{path}{query}"
 
 
 @dataclass
@@ -521,8 +462,6 @@ class ReverseWSServer:
         self._echo_seq = 0
         self._event_queue = asyncio.Queue(maxsize=128)
         self._worker = None
-        #: Last bind failure, surfaced on the dashboard row.
-        self.last_error = ""
 
     @property
     def address(self) -> str:
@@ -603,7 +542,6 @@ class ReverseWSServer:
         if self._running:
             return False
         if not self.instance.bind_authorized():
-            self.last_error = "非本机监听必须配置非空 Token"
             logger.error("adapter %s: non-loopback listener requires a token", self.instance.id)
             return False
         try:
@@ -615,10 +553,8 @@ class ReverseWSServer:
                 ping_timeout=60,
             )
         except OSError as error:
-            self.last_error = f"无法绑定 {self.address}：{error}"
             logger.error("adapter %s: cannot listen on %s: %s", self.instance.id, self.address, error)
             return False
-        self.last_error = ""
         self._running = True
         self._worker = asyncio.create_task(self._process_events())
         logger.info("adapter %s (%s) listening on ws://%s", self.instance.id, self.instance.name, self.address)
@@ -690,183 +626,6 @@ class ReverseWSServer:
         return response.get("data") or {}
 
 
-class ForwardWSClient:
-    """Dial-out OneBot v11 client: LIFE connects to ``ws://host:port/path``.
-
-    The other deployment shape. Some OneBot implementations — including NapCat's
-    "WebSocket 服务器" mode — run the WebSocket *server* and expect the bot to
-    connect to ``ip:port/ws``. The wire is identical to the reverse server:
-    events arrive as JSON and outbound calls are action frames correlated on
-    ``echo``. So the same inbound bridge and ``call_api`` contract apply; only
-    who dials whom differs.
-    """
-
-    #: Bound so a stalled close cannot hang shutdown.
-    CLOSE_TIMEOUT = 5.0
-    #: A connection lasting this long is deemed stable and resets the backoff.
-    STABLE_AFTER = 10.0
-
-    def __init__(self, instance: AdapterInstance, event_handler: Callable):
-        self.instance = instance
-        self.event_handler = event_handler
-        self._clients: set = set()
-        self._pending: dict = {}
-        self._echo_seq = 0
-        self._event_queue: asyncio.Queue = asyncio.Queue(maxsize=128)
-        self._worker = None
-        self._task = None
-        self._running = False
-        #: Last dial error, for the dashboard ("connection refused", …).
-        self.last_error = ""
-
-    @property
-    def address(self) -> str:
-        return self.instance.endpoint()
-
-    @property
-    def connected(self) -> bool:
-        return bool(self._clients)
-
-    async def _dispatch(self, data: dict, websocket) -> None:
-        """A response to one of our API calls, or an inbound event."""
-        if not isinstance(data, dict):
-            return
-        echo = data.get("echo")
-        if echo is not None and echo in self._pending:
-            future = self._pending.pop(echo)
-            if not future.done():
-                future.set_result(data)
-            return
-        if data.get("post_type"):
-            try:
-                self._event_queue.put_nowait(data)
-            except asyncio.QueueFull:
-                await websocket.close(code=1013, reason="event queue full")
-
-    async def _process_events(self):
-        # Serialize turns while the reader keeps resolving echo replies.
-        while True:
-            data = await self._event_queue.get()
-            try:
-                await self.event_handler(data, self)
-            except Exception as error:
-                logger.warning("adapter %s: event handling failed: %s", self.instance.id, error)
-            finally:
-                self._event_queue.task_done()
-
-    async def _run(self) -> None:
-        """Keep one live connection to the platform's server, reconnecting."""
-        backoff = 1.0
-        token = str(self.instance.ws_token or "").strip()
-        headers = {"Authorization": f"Bearer {token}"} if token else None
-        while self._running:
-            started = time.monotonic()
-            try:
-                async with ws_connect(
-                    self.instance.connect_url(include_token=True),
-                    additional_headers=headers,
-                    open_timeout=10,
-                    ping_interval=30,
-                    ping_timeout=60,
-                ) as websocket:
-                    self._clients.add(websocket)
-                    self.last_error = ""
-                    logger.info("adapter %s connected to %s", self.instance.id, self.instance.endpoint())
-                    try:
-                        async for raw in websocket:
-                            try:
-                                data = json.loads(raw)
-                            except (TypeError, ValueError):
-                                continue
-                            await self._dispatch(data, websocket)
-                    finally:
-                        self._clients.discard(websocket)
-                        logger.info("adapter %s: connection to %s ended",
-                                    self.instance.id, self.instance.endpoint())
-            except asyncio.CancelledError:
-                raise
-            except Exception as error:
-                self.last_error = str(error)
-                logger.debug("adapter %s: connect to %s failed: %s",
-                             self.instance.id, self.instance.endpoint(), error)
-            if not self._running:
-                break
-            # Always sleep: a clean close (server refusing a duplicate) must not
-            # become a hot reconnect loop; reset the backoff after a stable run.
-            if time.monotonic() - started >= self.STABLE_AFTER:
-                backoff = 1.0
-            await asyncio.sleep(backoff)
-            backoff = min(backoff * 2, 60.0)
-
-    async def start(self) -> bool:
-        if self._running:
-            return False
-        if not str(self.instance.ws_host or "").strip():
-            logger.error("adapter %s: connect mode requires a host", self.instance.id)
-            return False
-        try:
-            int(self.instance.ws_port)
-        except (TypeError, ValueError):
-            logger.error("adapter %s: connect mode requires a numeric port", self.instance.id)
-            return False
-        self._running = True
-        self._worker = asyncio.create_task(self._process_events())
-        self._task = asyncio.create_task(self._run())
-        return True
-
-    async def stop(self) -> None:
-        self._running = False
-        for task in (self._worker, self._task):
-            if task is not None:
-                task.cancel()
-                await asyncio.gather(task, return_exceptions=True)
-        self._worker = None
-        self._task = None
-        for future in self._pending.values():
-            future.cancel()
-        self._pending.clear()
-        for client in list(self._clients):
-            try:
-                await asyncio.wait_for(client.close(), timeout=self.CLOSE_TIMEOUT)
-            except Exception:  # pragma: no cover - best effort
-                pass
-        self._clients.clear()
-
-    # -- outbound API over the dialed connection --------------------------
-    async def call_api(self, action: str, payload: dict, timeout: float = 20.0) -> dict:
-        """Call a OneBot API action over the outbound WebSocket.
-
-        Identical correlation to the reverse server: send an action frame with a
-        unique ``echo`` and await the matching reply.
-        """
-        if not self._clients:
-            raise RuntimeError("没有已连接的消息平台客户端")
-        self._echo_seq += 1
-        echo = f"life-{self._echo_seq}"
-        frame = json.dumps({"action": action, "params": payload or {}, "echo": echo})
-        future: asyncio.Future = asyncio.get_running_loop().create_future()
-        self._pending[echo] = future
-        try:
-            sent = False
-            for client in list(self._clients):
-                try:
-                    await client.send(frame)
-                    sent = True
-                except Exception:
-                    continue
-            if not sent:
-                raise RuntimeError("没有可用的消息平台连接")
-            response = await asyncio.wait_for(future, timeout=timeout)
-        except asyncio.TimeoutError as error:
-            self._pending.pop(echo, None)
-            raise RuntimeError(f"消息平台无响应（{action} 超时）") from error
-        finally:
-            self._pending.pop(echo, None)
-        if response.get("status") == "failed" or response.get("retcode") not in (0, None):
-            raise RuntimeError(f"消息平台拒绝 {action}: {response.get('message') or response}")
-        return response.get("data") or {}
-
-
 class AdapterRuntime:
     """Owns every configured instance's server and routes outbound sends.
 
@@ -880,36 +639,15 @@ class AdapterRuntime:
     def __init__(self, registry: AdapterRegistry, event_handler: Callable):
         self.registry = registry
         self.event_handler = event_handler
-        self.servers: dict = {}
-        #: Last start failure per instance, surfaced on the dashboard row.
-        self._errors: dict = {}
-        #: Optional transcript store (set by the engine) so the QQ viewer sees
-        #: exactly what was sent, not a reconstruction.
-        self.chatlog = None
+        self.servers: dict[str, ReverseWSServer] = {}
         #: ``(platform, self_id) -> instance_id`` learned from inbound events.
         self._self_ids: dict = {}
         #: Master gate. When False, ``sync`` stops every server regardless of the
         #: per-instance toggles, so one switch can silence all bots.
         self.enabled: bool = True
 
-    @staticmethod
-    def _transport_key(instance: AdapterInstance):
-        """Identity of a running transport; a change here forces a reconnect."""
-        try:
-            port = int(instance.ws_port)
-        except (TypeError, ValueError):
-            port = 0
-        return (str(instance.direction or DEFAULT_DIRECTION), instance.ws_host, port,
-                str(instance.ws_path or ""), instance.ws_token)
-
-    def _new_transport(self, instance: AdapterInstance):
-        """Pick the transport for an instance's direction."""
-        if str(instance.direction or DEFAULT_DIRECTION) == "connect":
-            return ForwardWSClient(instance, self.event_handler)
-        return ReverseWSServer(instance, self.event_handler)
-
     async def sync(self) -> dict:
-        """Start/stop/restart transports so they match the registry. Idempotent."""
+        """Start/stop/restart servers so they match the registry. Idempotent."""
         # Snapshot: CRUD runs on to_thread workers and may mutate the list while
         # this event-loop coroutine iterates it.
         wanted = ({item.id: item for item in list(self.registry.instances) if item.enabled}
@@ -924,22 +662,24 @@ class AdapterRuntime:
         for instance_id, instance in wanted.items():
             running = self.servers.get(instance_id)
             if running is not None:
-                if self._transport_key(running.instance) != self._transport_key(instance):
-                    # Endpoint, direction or token changed: release the old socket
-                    # (or connection) before bringing up the replacement.
+                if (running.instance.ws_host, running.instance.ws_port) != (instance.ws_host, int(instance.ws_port)):
+                    # Bind changed: the old socket must be released first.
+                    await running.stop()
+                    self.servers.pop(instance_id, None)
+                    running = None
+                elif running.instance.ws_token != instance.ws_token:
+                    # Existing authenticated sockets must not survive rotation.
                     await running.stop()
                     self.servers.pop(instance_id, None)
                     running = None
                 else:
                     running.instance = instance  # keep settings fresh (keywords…)
                     continue
-            server = self._new_transport(instance)
+            server = ReverseWSServer(instance, self.event_handler)
             if await server.start():
                 self.servers[instance_id] = server
-                self._errors.pop(instance_id, None)
                 started.append(instance_id)
             else:
-                self._errors[instance_id] = getattr(server, "last_error", "") or "启动失败"
                 failed.append(instance_id)
         return {"started": started, "stopped": stopped, "failed": failed,
                 "running": list(self.servers)}
@@ -985,12 +725,8 @@ class AdapterRuntime:
 
     async def send(self, message: str, *, user_id=None, group_id=None,
                    session_id: str = "", platform: str = "aiocqhttp",
-                   self_id: object = "", instance_id: str = "") -> dict:
-        # An explicit instance_id (the QQ viewer knows which bot a conversation
-        # belongs to) wins over the session/self_id heuristic.
-        server = self.servers.get(instance_id) if instance_id else None
-        if server is None:
-            server = self.resolve(session_id=session_id, platform=platform, self_id=self_id)
+                   self_id: object = "") -> dict:
+        server = self.resolve(session_id=session_id, platform=platform, self_id=self_id)
         if server is None:
             raise RuntimeError("没有已连接的消息平台适配器")
         instance = server.instance
@@ -1014,54 +750,25 @@ class AdapterRuntime:
                 body = response.json()
                 if body.get("retcode", 0) != 0:
                     raise RuntimeError(f"消息平台拒绝发送：{body.get('message') or body}")
-                result = {"sent": True, "via": "http", "instance": instance.id}
-        else:
-            await server.call_api(action, params)
-            result = {"sent": True, "via": "reverse-ws", "instance": instance.id}
-        self._record_outbound(instance, str(message), user_id=user_id, group_id=group_id, self_id=self_id)
-        return result
-
-    def _record_outbound(self, instance, message: str, *, user_id, group_id, self_id) -> None:
-        """Log an outbound message so the QQ viewer shows what the bot actually sent."""
-        log = getattr(self, "chatlog", None)
-        if log is None:
-            return
-        log.record(
-            adapter_id=instance.id, platform=instance.platform,
-            conversation=conversation_key(group_id, user_id),
-            kind="group" if group_id else "private",
-            peer_id=str(group_id or user_id or ""), peer_name="",
-            direction="out", self_id=str(self_id or ""), text=message,
-        )
+                return {"sent": True, "via": "http", "instance": instance.id}
+        await server.call_api(action, params)
+        return {"sent": True, "via": "reverse-ws", "instance": instance.id}
 
     def status(self) -> list:
         """Per-instance health for the dashboard."""
         rows = []
         for instance in list(self.registry.instances):
             server = self.servers.get(instance.id)
-            direction = str(instance.direction or DEFAULT_DIRECTION)
-            if not instance.enabled:
-                error = ""
-            elif server is None:
-                # Surface the real reason the transport could not start (a bad
-                # bind address, a missing token) instead of a generic failure.
-                error = self._errors.get(instance.id) or "启动失败"
-            elif not server.connected:
-                # A reverse listener waiting for a client is healthy, not broken.
-                error = (getattr(server, "last_error", "") or "连接中") if direction == "connect" else ""
-            else:
-                error = ""
             rows.append({
                 "id": instance.id,
                 "name": instance.name,
                 "platform": instance.platform,
                 "enabled": instance.enabled,
-                "direction": direction,
                 "running": server is not None,
                 "connected": bool(server and server.connected),
-                "address": server.address if server else instance.endpoint(),
+                "address": server.address if server else f"{instance.ws_host}:{instance.ws_port}",
                 "clients": len(server._clients) if server else 0,
                 "config_id": instance.config_id,
-                "error": error,
+                "error": "" if (server or not instance.enabled) else "端口监听失败",
             })
         return rows

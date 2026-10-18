@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -25,7 +26,6 @@ import (
 	corev1 "0kay/gen/core/v1"
 	mocrv1 "0kay/gen/mocr/v1"
 	pluginv1 "0kay/gen/plugin/v1"
-	"0kay/obs"
 	"crypto/tls"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
@@ -34,28 +34,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-// Startup and lifecycle records. Split by concern so the console can filter
-// boot problems away from steady-state noise.
-var (
-	bootLog  = obs.Component("boot")
-	stdioLog = obs.Component("stdio")
-)
-
-// fatal logs and exits. The sink is closed first: with CORE_LOG_FILE set, a
-// crash on an early path would otherwise lose the one record that explains why,
-// because the file handler is buffered per write and never got a chance to run.
-func fatal(msg string, args ...any) {
-	bootLog.Error(msg, args...)
-	_ = obs.Close()
-	os.Exit(1)
-}
-
 func main() {
-	// Observability first: Init routes the standard log package into slog, so
-	// every log.Printf below this line already produces a structured record.
-	obs.Init()
-	defer func() { _ = obs.Close() }()
-
 	cfg := config.LoadConfig()
 
 	// Initialize registry
@@ -72,7 +51,7 @@ func main() {
 	// Per-plugin service tokens derive from a persisted key so they survive
 	// Core restarts (a plugin keeps working without re-registering).
 	if secret, err := loadPluginTokenSecret(dataDir); err != nil {
-		bootLog.Error("plugin token secret unavailable; plugin identity disabled", "err", err)
+		log.Printf("plugin token secret: %v (plugin identity disabled)", err)
 	} else {
 		reg.SetSecret(secret)
 	}
@@ -93,7 +72,7 @@ func main() {
 	// Create gRPC server
 	pairs, err := pairing.New(dataDir)
 	if err != nil {
-		fatal("pairing state unavailable", "err", err)
+		log.Fatalf("pairing state: %v", err)
 	}
 	pairing.Default = pairs
 	grpcServer := grpc.NewServer(
@@ -117,7 +96,7 @@ func main() {
 	// Start gRPC listener
 	grpcListener, err := net.Listen("tcp", cfg.GRPCAddr())
 	if err != nil {
-		fatal("failed to listen on gRPC", "addr", cfg.GRPCAddr, "err", err)
+		log.Fatalf("Failed to listen gRPC: %v", err)
 	}
 
 	// Create HTTP gateway (built once for loopback + optional LAN servers)
@@ -126,7 +105,7 @@ func main() {
 		HTTPAddr: cfg.HTTPAddr(),
 	}, reg)
 	if err != nil {
-		fatal("failed to create gateway", "err", err)
+		log.Fatalf("Failed to create gateway: %v", err)
 	}
 	gw.SetCoreService(coreSvc)
 	gw.SetProviderStore(provStore)
@@ -169,11 +148,11 @@ func main() {
 		lanHTTP := &http.Server{Addr: ":8443", Handler: handler, TLSConfig: pairs.TLS, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 120 * time.Second}
 		listener, err := tls.Listen("tcp", lanHTTP.Addr, pairs.TLS)
 		if err != nil {
-			fatal("LAN listener failed", "err", err)
+			log.Fatal(err)
 		}
 		go func() {
 			if err := lanHTTP.Serve(listener); err != nil && err != http.ErrServerClosed {
-				bootLog.Error("LAN HTTP server stopped", "err", err)
+				log.Printf("LAN HTTP: %v", err)
 			}
 		}()
 		lanGRPC := grpc.NewServer(
@@ -192,11 +171,11 @@ func main() {
 		mocrv1.RegisterMocrServiceServer(lanGRPC, &pairing.MocrProxy{Address: mocrAddress})
 		lanListener, err := net.Listen("tcp", ":5443")
 		if err != nil {
-			fatal("LAN listener failed", "err", err)
+			log.Fatal(err)
 		}
 		go lanGRPC.Serve(lanListener)
 		if err := pairs.Discover(ctx, 8443, 5443); err != nil {
-			bootLog.Warn("LAN discovery failed", "err", err)
+			log.Printf("LAN discovery: %v", err)
 		}
 		go func() { <-ctx.Done(); lanHTTP.Close(); lanGRPC.Stop() }()
 	}
@@ -211,7 +190,7 @@ func main() {
 		// hang shutdown forever; force-close whatever is left when it expires.
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		if err := httpServer.Shutdown(shutdownCtx); err != nil {
-			bootLog.Warn("HTTP shutdown", "err", err)
+			log.Printf("HTTP shutdown: %v", err)
 			_ = httpServer.Close()
 		}
 		shutdownCancel()
@@ -229,14 +208,14 @@ func main() {
 	go func() {
 		fmt.Printf("Core gRPC server starting on %s\n", cfg.GRPCAddr())
 		if err := grpcServer.Serve(grpcListener); err != nil {
-			fatal("gRPC server stopped", "err", err)
+			log.Fatalf("gRPC serve failed: %v", err)
 		}
 	}()
 
 	// Start HTTP server (blocking)
 	fmt.Printf("Core HTTP gateway starting on %s\n", cfg.HTTPAddr())
 	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		fatal("HTTP server stopped", "err", err)
+		log.Fatalf("HTTP serve failed: %v", err)
 	}
 
 	_ = ctx
@@ -255,7 +234,7 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 		Author:      "0kay",
 		PluginType:  pluginv1.PluginType_PLUGIN_TYPE_ADAPTER,
 	}, []string{"webui"}, webuiAddr); err != nil {
-		bootLog.Error("register webui builtin", "err", err)
+		log.Printf("register webui builtin: %v", err)
 	}
 
 	// 0kay-pm (the package manager) registers as a built-in service plugin so it
@@ -280,7 +259,7 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 			Egress: []string{"github.com", "codeload.github.com", "registry.npmjs.org", "*.githubusercontent.com"},
 		},
 	}, []string{"package-manager"}, ""); err != nil {
-		bootLog.Error("register pm builtin", "err", err)
+		log.Printf("register pm builtin: %v", err)
 	}
 
 	// Core-native session-context tools: folded-history search/decompress served
@@ -307,7 +286,7 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 			},
 		},
 	}, []string{"context"}, ""); err != nil {
-		bootLog.Error("register context builtin", "err", err)
+		log.Printf("register context builtin: %v", err)
 	}
 
 	// MCP server configuration is core-owned: the 0kay-mcp package is a client
@@ -329,13 +308,14 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 			Author:      "0kay",
 			PluginType:  pluginv1.PluginType_PLUGIN_TYPE_ADAPTER,
 		}, []string{"fluentui"}, ""); err != nil {
-			bootLog.Error("register fluentui builtin", "err", err)
+			log.Printf("register fluentui builtin: %v", err)
 		}
 	}
 
 	// Web search is built into Core now (no standalone searxng plugin/process):
 	// the engine preference is a core-owned settings section.
 	registerSearchSettings(setStore)
+	registerWorkspaceSettings(setStore)
 }
 
 // registerStdioProviders spawns each installed package's manifest-declared
@@ -351,7 +331,7 @@ func registerStdioProviders(runner *stdioprovider.Runner, store *providers.Store
 	}
 	for _, spec := range update.ProviderSpecs() {
 		if err := runner.Start(spec.ID, spec.Dir, spec.Command); err != nil {
-			stdioLog.Error("start provider failed", "provider", spec.ID, "err", err)
+			log.Printf("[stdio] start provider %s: %v", spec.ID, err)
 			continue
 		}
 		go registerOneStdioProvider(runner, store, port, spec)
@@ -388,10 +368,10 @@ func registerOneStdioProvider(runner *stdioprovider.Runner, store *providers.Sto
 		Enabled:      true,
 		Format:       "openai",
 	}); err != nil {
-		stdioLog.Error("register provider failed", "provider", spec.ID, "err", err)
+		log.Printf("[stdio] register provider %s: %v", spec.ID, err)
 		return
 	}
-	stdioLog.Info("hosting provider", "provider", spec.ID, "package", spec.Package, "base_url", baseURL, "models", len(models))
+	log.Printf("[stdio] hosting provider %q for %s at %s (%d models)", spec.ID, spec.Package, baseURL, len(models))
 }
 
 // queryStdioModels asks a running stdio provider for its model list.
@@ -517,14 +497,41 @@ func registerMcpSettings(setStore *settings.Store) {
 	})
 }
 
+// registerWorkspaceSettings exposes the directories outside the defaults that
+// the git panel and the agent's file tools may touch.
+//
+// Each service starts in its own subdirectory, so the default root set only
+// covers that subdirectory, the repository it belongs to, home and temp. A
+// project on another drive therefore has to be allowed explicitly — and this
+// section is what the agent polls to stay in agreement with Core.
+func registerWorkspaceSettings(setStore *settings.Store) {
+	setStore.RegisterSection(settings.Section{
+		ID:          "workspace",
+		Label:       "工作区",
+		Icon:        "folder",
+		Order:       12,
+		Description: "额外允许 Agent 与 Git 面板访问的目录",
+		Fields: []settings.Field{
+			{
+				Key:          "allowed_roots",
+				Type:         "text",
+				Label:        "额外允许的目录",
+				DefaultValue: "",
+				Help:         "逗号或换行分隔，例如 D:/mio；留空则只允许默认范围。",
+			},
+		},
+	})
+}
+
 // registerSearchSettings contributes the built-in web-search engine picker.
 // Search runs inside Core (no standalone service or port).
 func registerSearchSettings(setStore *settings.Store) {
 	setStore.RegisterSection(settings.Section{
-		ID:    "search",
-		Label: "搜索",
-		Icon:  "search",
-		Order: 80,
+		ID:          "search",
+		Label:       "搜索",
+		Icon:        "search",
+		Order:       80,
+		Description: "内置网页搜索（Core 原生长能力，无需独立服务/端口）",
 		Fields: []settings.Field{
 			{
 				Key:          "engine",
@@ -576,7 +583,7 @@ func startHeartbeatChecker(reg *registry.Registry, cfg *config.Config) {
 		reg.TouchBuiltins()
 		stale := reg.CheckStalePlugins(timeout)
 		for _, id := range stale {
-			bootLog.Warn("plugin marked unhealthy (no heartbeat)", "plugin", id)
+			log.Printf("Plugin %s marked as unhealthy (no heartbeat)", id)
 		}
 	}
 }
