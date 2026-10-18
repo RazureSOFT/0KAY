@@ -1,4 +1,4 @@
-<!doctype html><html lang="zh-CN"><head>
+<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Core Services · 0KAY</title><style>
 :root{
@@ -35,10 +35,7 @@ html{scroll-behavior:smooth}
 body{
   margin:0; min-height:100vh; background:var(--md-surface); color:var(--md-on-surface);
   font:400 15.5px/1.75 'Roboto','Segoe UI Variable','Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
-  /* Deliberately NOT -webkit-font-smoothing:antialiased — the WebUI disables it
-     for the same reason (see webui/src/styles/theme.css): on Windows Chrome/Edge
-     it turns off ClearType subpixel rendering and the whole page reads blurry. */
-  -moz-osx-font-smoothing:grayscale;
+  -webkit-font-smoothing:antialiased;
 }
 ::selection{background:var(--md-primary-container); color:var(--md-on-primary-container)}
 a{color:var(--md-primary); text-decoration:none}
@@ -96,16 +93,8 @@ pre{
 }
 pre code{background:none; padding:0; font-size:13.5px; line-height:1.7}
 /* ---------- Tables ---------- */
-/* `.table-scroll` (emitted by markdown_body) owns the horizontal scrolling. A
-   table with `width:100%` still cannot shrink below the sum of its columns'
-   min-content widths, so a wide API table overflows the article; without this
-   wrapper the previous `overflow:hidden` simply cut the trailing columns off. */
-.table-scroll{
-  overflow-x:auto; max-width:100%; margin:1.2em 0; border-radius:var(--radius-lg);
-  -webkit-overflow-scrolling:touch;
-}
 table{
-  border-collapse:separate; border-spacing:0; width:100%; margin:0; font-size:14px;
+  border-collapse:separate; border-spacing:0; width:100%; margin:1.2em 0; font-size:14px;
   background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
   border-radius:var(--radius-lg); overflow:hidden;
 }
@@ -132,13 +121,13 @@ tbody tr:hover td{background:color-mix(in srgb, var(--md-primary) 5%, transparen
 <aside class="drawer">
   <a class="brand" href="index.html"><span class="brand-mark">0K</span>
     <span class="brand-text"><b>0KAY</b><span>Plugin API</span></span></a>
-  <nav class="nav"><a class="nav-item" href="index.html"><span class="dot"></span>0KAY Plugin API</a><a class="nav-item" href="HTTP_API.html"><span class="dot"></span>HTTP API Reference</a><a class="nav-item" href="PLUGIN_API.html"><span class="dot"></span>0KAY Plugin API (v1)</a><a class="nav-item" href="plugin-lifecycle.html"><span class="dot"></span>Plugin Lifecycle</a><a class="nav-item" href="writing-a-plugin.html"><span class="dot"></span>Writing a Plugin</a><a class="nav-item active" href="core-services.html"><span class="dot"></span>Core Services</a><a class="nav-item" href="agent-service.html"><span class="dot"></span>Agent Service</a><a class="nav-item" href="life-service.html"><span class="dot"></span>L.I.F.E Service</a><a class="nav-item" href="mocr-service.html"><span class="dot"></span>mocr Service</a><a class="nav-item" href="settings-ui.html"><span class="dot"></span>Settings and UI Patches</a><a class="nav-item" href="custom-pages.html"><span class="dot"></span>WebUI Custom Pages</a><a class="nav-item" href="design-system.html"><span class="dot"></span>WebUI Design System (Material 3 Expressive)</a><a class="nav-item" href="THINKING.html"><span class="dot"></span>Thinking Intensity and Execution</a><a class="nav-item" href="RELEASES.html"><span class="dot"></span>Releases and Updates</a><a class="nav-item" href="security.html"><span class="dot"></span>Security and Runtime Rules</a><a class="nav-item" href="zh-CN/core-services.html"><span class="dot"></span>简体中文 · 中文文档</a></nav>
+  <nav class="nav"><a class="nav-item" href="index.html"><span class="dot"></span>0KAY Plugin API</a><a class="nav-item" href="HTTP_API.html"><span class="dot"></span>HTTP API Reference</a><a class="nav-item" href="PLUGIN_API.html"><span class="dot"></span>0KAY Plugin API (v1)</a><a class="nav-item" href="plugin-lifecycle.html"><span class="dot"></span>Plugin Lifecycle</a><a class="nav-item" href="writing-a-plugin.html"><span class="dot"></span>Writing a Plugin</a><a class="nav-item active" href="core-services.html"><span class="dot"></span>Core Services</a><a class="nav-item" href="agent-service.html"><span class="dot"></span>Agent Service</a><a class="nav-item" href="life-service.html"><span class="dot"></span>L.I.F.E Service</a><a class="nav-item" href="mocr-service.html"><span class="dot"></span>mocr Service</a><a class="nav-item" href="settings-ui.html"><span class="dot"></span>Settings and UI Patches</a><a class="nav-item" href="custom-pages.html"><span class="dot"></span>WebUI Custom Pages</a><a class="nav-item" href="design-system.html"><span class="dot"></span>WebUI Design System (Material 3 Expressive)</a><a class="nav-item" href="THINKING.html"><span class="dot"></span>Thinking Intensity and Execution</a><a class="nav-item" href="RELEASES.html"><span class="dot"></span>Releases and Updates</a><a class="nav-item" href="security.html"><span class="dot"></span>Security and Runtime Rules</a><a class="nav-item" href="asr.html"><span class="dot"></span>Speech-to-text (ASR): one Core endpoint, many plugins</a><a class="nav-item" href="devkit.html"><span class="dot"></span>API devkit</a><a class="nav-item" href="tianshu-adoption.html"><span class="dot"></span>从 天枢 (Tianshu-harness) 借鉴到 0KAY</a></nav>
   <div class="drawer-foot">
     <div><a href="https://github.com/RazureSOFT/0KAY">RazureSOFT/0KAY</a></div>
     <div>MIT · © 2026 RazureSOFT</div>
   </div>
 </aside>
-<main class="article" data-page="core-services"><h1>Core Services</h1><p>Plugins call <code>core.v1.CoreService</code> for platform orchestration: model access, agent dispatch, task control and direct tool execution. Core is the only component that holds provider credentials and the plugin registry.</p><p>&gt; <strong>Language / 语言</strong>: English · <a href="zh-CN/core-services.html">简体中文</a></p><p>Core itself also serves the HTTP gateway (every route in <a href="HTTP_API.html">HTTP_API</a>) on <code>:8080</code> and gRPC on <code>:50051</code>. Run it from source with <code>make dev-core</code>, via Docker Compose (<code>core</code> service), or as a <code>0kay-pm</code>-managed service. Registration of every plugin happens against <code>core.v1.PluginService.Register</code> with the <code>x-0kay-registration-token</code> metadata; trusted first-party plugins require their dedicated <code>CORE_PLUGIN_TOKEN_&lt;NAME&gt;</code> enrollment key when per-plugin tokens are configured.</p><h2><code>CallMocr</code></h2><p>Proxies a generation request to the model gateway and returns a server stream. Use <code>model_id</code> to pin a model; leave it empty only when the caller intentionally wants Core/mocr model selection.</p><p>Important fields:</p><ul><li><code>request_id</code> — caller correlation id.</li><li><code>caller_id</code> — plugin or session owner.</li><li><code>prompt</code> — current user/task prompt.</li><li><code>session_id</code> — conversation/session key.</li><li><code>messages</code> — optional full history.</li><li><code>model_id</code> — optional pinned model (<code>MOCR</code> means “let mocr choose”).</li><li><code>system_prompt</code> — domain instructions. LIFE sends the persona and the</li></ul><p>  user-authored <strong>custom prompt</strong> here (see <a href="life-service.html">L.I.F.E Service</a>).</p><ul><li><code>context</code> — difficulty, token, temperature and task metadata.</li></ul><h2><code>UseAgent</code></h2><p>Dispatches asynchronous work to an independent Agent. The response only confirms acceptance; read <code>/api/tasks</code>, poll Agent task status, or wait for the LIFE completion callback for the result.</p><pre><code>{
+<main class="article" data-page="core-services"><h1>Core Services</h1><p>Plugins call <code>core.v1.CoreService</code> for platform orchestration: model access, agent dispatch, task control and direct tool execution. Core is the only component that holds provider credentials and the plugin registry.</p><h2><code>CallMocr</code></h2><p>Proxies a generation request to the model gateway and returns a server stream. Use <code>model_id</code> to pin a model; leave it empty only when the caller intentionally wants Core/mocr model selection.</p><p>Important fields:</p><ul><li><code>request_id</code> — caller correlation id.</li><li><code>caller_id</code> — plugin or session owner.</li><li><code>prompt</code> — current user/task prompt.</li><li><code>session_id</code> — conversation/session key.</li><li><code>messages</code> — optional full history.</li><li><code>model_id</code> — optional pinned model (<code>MOCR</code> means “let mocr choose”).</li><li><code>system_prompt</code> — domain instructions. LIFE sends the persona and the</li></ul><p>  user-authored <strong>custom prompt</strong> here (see <a href="life-service.html">L.I.F.E Service</a>).</p><ul><li><code>context</code> — difficulty, token, temperature and task metadata.</li></ul><h2><code>UseAgent</code></h2><p>Dispatches asynchronous work to an independent Agent. The response only confirms acceptance; read <code>/api/tasks</code>, poll Agent task status, or wait for the LIFE completion callback for the result.</p><pre><code>{
   &quot;task_id&quot;: &quot;task_123&quot;,
   &quot;caller_id&quot;: &quot;life&quot;,
   &quot;prompt&quot;: &quot;Create and run a Python connectivity check.&quot;,

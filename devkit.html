@@ -1,0 +1,160 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>API devkit · 0KAY</title><style>
+:root{
+  color-scheme: light;
+  --md-primary:#4a5b8c; --md-on-primary:#ffffff;
+  --md-primary-container:#dbe1ff; --md-on-primary-container:#131b2e;
+  --md-secondary-container:#e0e2f0; --md-on-secondary-container:#181a24;
+  --md-surface:#fbf8ff; --md-surface-container-low:#f5f3fb;
+  --md-surface-container:#efedf6; --md-surface-container-high:#e9e7f0;
+  --md-surface-container-highest:#e3e1ea;
+  --md-on-surface:#1a1b21; --md-on-surface-variant:#45464f;
+  --md-outline:#757780; --md-outline-variant:#c5c6d0;
+  --md-success-container:#d7f5cf; --md-error-container:#ffdad6;
+  --md-shadow:rgba(20,18,36,.16);
+  --radius-sm:12px; --radius-md:16px; --radius-lg:24px; --radius-xl:28px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --md-primary:#b3c5ff; --md-on-primary:#1b2b52;
+    --md-primary-container:#33436b; --md-on-primary-container:#dbe1ff;
+    --md-secondary-container:#3a3c47; --md-on-secondary-container:#e0e2f0;
+    --md-surface:#111318; --md-surface-container-low:#1a1b21;
+    --md-surface-container:#1e1f26; --md-surface-container-high:#292a31;
+    --md-surface-container-highest:#34353c;
+    --md-on-surface:#e3e1e9; --md-on-surface-variant:#c6c6d0;
+    --md-outline:#8f9099; --md-outline-variant:#45464f;
+    --md-success-container:#1f4d1a; --md-error-container:#93000a;
+    --md-shadow:rgba(0,0,0,.5);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; min-height:100vh; background:var(--md-surface); color:var(--md-on-surface);
+  font:400 15.5px/1.75 'Roboto','Segoe UI Variable','Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--md-primary-container); color:var(--md-on-primary-container)}
+a{color:var(--md-primary); text-decoration:none}
+a:hover{text-decoration:underline}
+.shell{display:grid; grid-template-columns:300px minmax(0,1fr); min-height:100vh}
+/* ---------- Navigation drawer ---------- */
+.drawer{
+  position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  padding:22px 14px; background:var(--md-surface-container-low);
+  border-right:1px solid var(--md-outline-variant);
+}
+.brand{display:flex; align-items:center; gap:12px; padding:6px 10px 18px}
+.brand-mark{
+  width:46px; height:46px; display:grid; place-items:center; flex:none;
+  border-radius:16px 16px 16px 6px; background:var(--md-primary);
+  color:var(--md-on-primary); font-weight:800; letter-spacing:-1px; font-size:17px;
+}
+.brand-text b{display:block; font-size:16px; font-weight:800; letter-spacing:-.2px}
+.brand-text span{font-size:12px; color:var(--md-on-surface-variant)}
+.nav{display:flex; flex-direction:column; gap:4px}
+.nav-item{
+  position:relative; display:flex; align-items:center; gap:10px;
+  padding:11px 16px; border-radius:22px 22px 22px 8px;
+  color:var(--md-on-surface-variant); font-weight:600; font-size:14px;
+  transition:background-color .22s, color .16s;
+}
+.nav-item:hover{background:color-mix(in srgb, var(--md-primary) 12%, transparent); text-decoration:none; color:var(--md-on-surface)}
+.nav-item.active{background:var(--md-primary-container); color:var(--md-on-primary-container); font-weight:800}
+.nav-item .dot{width:7px; height:7px; border-radius:50%; background:currentColor; opacity:.5; flex:none}
+.drawer-foot{margin-top:18px; padding:12px 12px 0; border-top:1px solid var(--md-outline-variant); font-size:12px; color:var(--md-on-surface-variant)}
+.drawer-foot a{font-weight:700}
+/* ---------- Article ---------- */
+.article{padding:clamp(24px,4vw,56px) clamp(20px,4vw,64px) 80px; max-width:920px}
+.article>h1{
+  margin:0 0 6px; font-size:clamp(30px,4vw,42px); line-height:1.12;
+  font-weight:850; letter-spacing:-.02em;
+}
+.article>h1+p{color:var(--md-on-surface-variant); font-size:16px; margin-top:0}
+h2{font-size:24px; font-weight:800; letter-spacing:-.01em; margin:2.1em 0 .5em}
+h3{font-size:19px; font-weight:750; margin:1.7em 0 .4em}
+h4,h5,h6{font-size:16px; font-weight:750; margin:1.4em 0 .3em}
+p{margin:.7em 0}
+ul{margin:.6em 0; padding-left:22px}
+li{margin:.3em 0}
+hr{border:0; border-top:1px solid var(--md-outline-variant); margin:2em 0}
+strong{font-weight:750}
+code{
+  font-family:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,'SFMono-Regular',Menlo,monospace;
+  font-size:.88em; background:var(--md-surface-container-high);
+  padding:2px 6px; border-radius:8px;
+}
+pre{
+  background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-lg); padding:18px 20px; overflow:auto; margin:1.1em 0;
+}
+pre code{background:none; padding:0; font-size:13.5px; line-height:1.7}
+/* ---------- Tables ---------- */
+table{
+  border-collapse:separate; border-spacing:0; width:100%; margin:1.2em 0; font-size:14px;
+  background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-lg); overflow:hidden;
+}
+th,td{padding:11px 15px; text-align:left; vertical-align:top; border-bottom:1px solid var(--md-outline-variant)}
+th{background:var(--md-surface-container); font-weight:750; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--md-on-surface-variant)}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:color-mix(in srgb, var(--md-primary) 5%, transparent)}
+/* ---------- Chips / footer ---------- */
+.badge{
+  display:inline-flex; align-items:center; height:26px; padding:0 12px; border-radius:999px;
+  background:var(--md-secondary-container); color:var(--md-on-secondary-container);
+  font-size:12px; font-weight:700; margin-left:10px; vertical-align:middle;
+}
+/* ---------- Responsive ---------- */
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .drawer{position:static; height:auto; border-right:0; border-bottom:1px solid var(--md-outline-variant); padding:16px 14px}
+  .nav{flex-direction:row; flex-wrap:wrap}
+  .nav-item{padding:8px 14px; border-radius:999px}
+  .brand{padding-bottom:12px}
+}
+</style></head>
+<body><div class="shell">
+<aside class="drawer">
+  <a class="brand" href="index.html"><span class="brand-mark">0K</span>
+    <span class="brand-text"><b>0KAY</b><span>Plugin API</span></span></a>
+  <nav class="nav"><a class="nav-item" href="index.html"><span class="dot"></span>0KAY Plugin API</a><a class="nav-item" href="HTTP_API.html"><span class="dot"></span>HTTP API Reference</a><a class="nav-item" href="PLUGIN_API.html"><span class="dot"></span>0KAY Plugin API (v1)</a><a class="nav-item" href="plugin-lifecycle.html"><span class="dot"></span>Plugin Lifecycle</a><a class="nav-item" href="writing-a-plugin.html"><span class="dot"></span>Writing a Plugin</a><a class="nav-item" href="core-services.html"><span class="dot"></span>Core Services</a><a class="nav-item" href="agent-service.html"><span class="dot"></span>Agent Service</a><a class="nav-item" href="life-service.html"><span class="dot"></span>L.I.F.E Service</a><a class="nav-item" href="mocr-service.html"><span class="dot"></span>mocr Service</a><a class="nav-item" href="settings-ui.html"><span class="dot"></span>Settings and UI Patches</a><a class="nav-item" href="custom-pages.html"><span class="dot"></span>WebUI Custom Pages</a><a class="nav-item" href="design-system.html"><span class="dot"></span>WebUI Design System (Material 3 Expressive)</a><a class="nav-item" href="THINKING.html"><span class="dot"></span>Thinking Intensity and Execution</a><a class="nav-item" href="RELEASES.html"><span class="dot"></span>Releases and Updates</a><a class="nav-item" href="security.html"><span class="dot"></span>Security and Runtime Rules</a><a class="nav-item" href="asr.html"><span class="dot"></span>Speech-to-text (ASR): one Core endpoint, many plugins</a><a class="nav-item active" href="devkit.html"><span class="dot"></span>API devkit</a><a class="nav-item" href="tianshu-adoption.html"><span class="dot"></span>从 天枢 (Tianshu-harness) 借鉴到 0KAY</a></nav>
+  <div class="drawer-foot">
+    <div><a href="https://github.com/RazureSOFT/0KAY">RazureSOFT/0KAY</a></div>
+    <div>MIT · © 2026 RazureSOFT</div>
+  </div>
+</aside>
+<main class="article" data-page="devkit"><h1>API devkit</h1><p>Tiny clients for the running <strong>0kay Core</strong> — in <strong>Python, Node, Go, Rust and Java</strong>. Each client resolves the Core port at runtime, discovers the live surface (<code>/health</code>, <code>/api/plugins</code>, <code>/api/settings/sections</code>), and exposes it as callable objects:</p><pre><code>okay.get_plugin(&quot;agent&quot;).is_enabled   # -&gt; True / False
+okay.get_core().plugins               # -&gt; 6
+</code></pre><h2>Downloads</h2><table><tr><th>Language</th><th>Artifact</th><th>Install</th></tr><tr><td>Python</td><td><a href="assets/devkit/okay-devkit-python.zip">okay-devkit-python.zip</a></td><td>unzip, then <code>pip install .</code></td></tr><tr><td>Node</td><td><a href="assets/devkit/0kay-devkit-0.1.0.tgz">0kay-devkit-0.1.0.tgz</a></td><td><code>npm install ./0kay-devkit-0.1.0.tgz</code></td></tr><tr><td>Go</td><td><a href="assets/devkit/okay-devkit-go.zip">okay-devkit-go.zip</a></td><td>module <code>okaydevkit</code>; unzip and <code>replace</code> / vendor</td></tr><tr><td>Rust</td><td><a href="assets/devkit/okay-devkit-0.1.0.crate">okay-devkit-0.1.0.crate</a></td><td><code>cargo add --path &lt;unpacked&gt;</code></td></tr><tr><td>Java</td><td><a href="assets/devkit/okay-devkit-java.jar">okay-devkit-java.jar</a></td><td><code>javac -cp okay-devkit-java.jar ...</code></td></tr></table><p>Artifacts are rebuilt with <code>bash devkit/build.sh</code> and live in <code>devkit/dist/</code>. Source and examples: <a href="../devkit/README.html"><code>devkit/</code></a>.</p><h2>Usage</h2><h3>Python (stdlib only)</h3><pre><code>pip install ./okay-devkit-python.zip   # or: pip install .
+</code></pre><pre><code>from okay_devkit import Okay
+
+ok = Okay()                      # prompts &quot;0kay Core port [8080]:&quot; if unknown
+ok.get_core().healthy            # 6
+ok.get_plugin(&quot;agent&quot;).is_enabled
+ok.get(&quot;/api/models&quot;)
+</code></pre><h3>Node (22+)</h3><pre><code>npm install ./0kay-devkit-0.1.0.tgz
+</code></pre><pre><code>import { Okay } from &#x27;@0kay/devkit&#x27;
+
+const ok = new Okay({ port: 8080 })
+const agent = await ok.getPlugin(&#x27;agent&#x27;)
+agent.isEnabled                  // -&gt; boolean
+await ok.get(&#x27;/api/models&#x27;)
+</code></pre><h3>Go</h3><pre><code>import &quot;okaydevkit&quot;
+
+ok := okaydevkit.New(0)
+plugin, _ := ok.GetPlugin(&quot;agent&quot;)
+plugin.IsEnabled()               // -&gt; bool
+</code></pre><h3>Rust</h3><pre><code>[dependencies]
+okay-devkit = { path = &quot;devkit/rust&quot; }
+</code></pre><pre><code>let okay = okay_devkit::Okay::new(None);
+let plugin = okay.get_plugin(&quot;agent&quot;)?.unwrap();
+plugin.is_enabled();
+</code></pre><h3>Java (JDK 11+)</h3><pre><code>Okay okay = new OkayDevkit.Okay(null);
+Plugin plugin = okay.getPlugin(&quot;agent&quot;);
+plugin.isEnabled();              // -&gt; boolean
+</code></pre><h2>Port resolution</h2><p>1. <code>port</code> / <code>baseUrl</code> argument 2. <code>CORE_HTTP</code> or <code>CORE_HTTP_ADDR</code> 3. <code>OKAY_CORE_PORT</code> 4. interactive prompt (Python / Node CLIs), else <code>8080</code></p><h2>What gets discovered</h2><table><tr><th>Call</th><th>Core route</th></tr><tr><td><code>getCore()</code> / <code>health</code></td><td><code>GET /health</code></td></tr><tr><td><code>plugins</code> / <code>getPlugin(key)</code></td><td><code>GET /api/plugins</code></td></tr><tr><td><code>settingsSections</code></td><td><code>GET /api/settings/sections</code></td></tr><tr><td><code>get(path)</code></td><td>any Core route</td></tr></table><p><code>getPlugin(key)</code> matches <code>plugin_id</code> or <code>name</code> (case-insensitive).</p></main>
+</div></body></html>

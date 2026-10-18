@@ -1,0 +1,161 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Speech-to-text (ASR): one Core endpoint, many plugins · 0KAY</title><style>
+:root{
+  color-scheme: light;
+  --md-primary:#4a5b8c; --md-on-primary:#ffffff;
+  --md-primary-container:#dbe1ff; --md-on-primary-container:#131b2e;
+  --md-secondary-container:#e0e2f0; --md-on-secondary-container:#181a24;
+  --md-surface:#fbf8ff; --md-surface-container-low:#f5f3fb;
+  --md-surface-container:#efedf6; --md-surface-container-high:#e9e7f0;
+  --md-surface-container-highest:#e3e1ea;
+  --md-on-surface:#1a1b21; --md-on-surface-variant:#45464f;
+  --md-outline:#757780; --md-outline-variant:#c5c6d0;
+  --md-success-container:#d7f5cf; --md-error-container:#ffdad6;
+  --md-shadow:rgba(20,18,36,.16);
+  --radius-sm:12px; --radius-md:16px; --radius-lg:24px; --radius-xl:28px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --md-primary:#b3c5ff; --md-on-primary:#1b2b52;
+    --md-primary-container:#33436b; --md-on-primary-container:#dbe1ff;
+    --md-secondary-container:#3a3c47; --md-on-secondary-container:#e0e2f0;
+    --md-surface:#111318; --md-surface-container-low:#1a1b21;
+    --md-surface-container:#1e1f26; --md-surface-container-high:#292a31;
+    --md-surface-container-highest:#34353c;
+    --md-on-surface:#e3e1e9; --md-on-surface-variant:#c6c6d0;
+    --md-outline:#8f9099; --md-outline-variant:#45464f;
+    --md-success-container:#1f4d1a; --md-error-container:#93000a;
+    --md-shadow:rgba(0,0,0,.5);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; min-height:100vh; background:var(--md-surface); color:var(--md-on-surface);
+  font:400 15.5px/1.75 'Roboto','Segoe UI Variable','Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--md-primary-container); color:var(--md-on-primary-container)}
+a{color:var(--md-primary); text-decoration:none}
+a:hover{text-decoration:underline}
+.shell{display:grid; grid-template-columns:300px minmax(0,1fr); min-height:100vh}
+/* ---------- Navigation drawer ---------- */
+.drawer{
+  position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  padding:22px 14px; background:var(--md-surface-container-low);
+  border-right:1px solid var(--md-outline-variant);
+}
+.brand{display:flex; align-items:center; gap:12px; padding:6px 10px 18px}
+.brand-mark{
+  width:46px; height:46px; display:grid; place-items:center; flex:none;
+  border-radius:16px 16px 16px 6px; background:var(--md-primary);
+  color:var(--md-on-primary); font-weight:800; letter-spacing:-1px; font-size:17px;
+}
+.brand-text b{display:block; font-size:16px; font-weight:800; letter-spacing:-.2px}
+.brand-text span{font-size:12px; color:var(--md-on-surface-variant)}
+.nav{display:flex; flex-direction:column; gap:4px}
+.nav-item{
+  position:relative; display:flex; align-items:center; gap:10px;
+  padding:11px 16px; border-radius:22px 22px 22px 8px;
+  color:var(--md-on-surface-variant); font-weight:600; font-size:14px;
+  transition:background-color .22s, color .16s;
+}
+.nav-item:hover{background:color-mix(in srgb, var(--md-primary) 12%, transparent); text-decoration:none; color:var(--md-on-surface)}
+.nav-item.active{background:var(--md-primary-container); color:var(--md-on-primary-container); font-weight:800}
+.nav-item .dot{width:7px; height:7px; border-radius:50%; background:currentColor; opacity:.5; flex:none}
+.drawer-foot{margin-top:18px; padding:12px 12px 0; border-top:1px solid var(--md-outline-variant); font-size:12px; color:var(--md-on-surface-variant)}
+.drawer-foot a{font-weight:700}
+/* ---------- Article ---------- */
+.article{padding:clamp(24px,4vw,56px) clamp(20px,4vw,64px) 80px; max-width:920px}
+.article>h1{
+  margin:0 0 6px; font-size:clamp(30px,4vw,42px); line-height:1.12;
+  font-weight:850; letter-spacing:-.02em;
+}
+.article>h1+p{color:var(--md-on-surface-variant); font-size:16px; margin-top:0}
+h2{font-size:24px; font-weight:800; letter-spacing:-.01em; margin:2.1em 0 .5em}
+h3{font-size:19px; font-weight:750; margin:1.7em 0 .4em}
+h4,h5,h6{font-size:16px; font-weight:750; margin:1.4em 0 .3em}
+p{margin:.7em 0}
+ul{margin:.6em 0; padding-left:22px}
+li{margin:.3em 0}
+hr{border:0; border-top:1px solid var(--md-outline-variant); margin:2em 0}
+strong{font-weight:750}
+code{
+  font-family:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,'SFMono-Regular',Menlo,monospace;
+  font-size:.88em; background:var(--md-surface-container-high);
+  padding:2px 6px; border-radius:8px;
+}
+pre{
+  background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-lg); padding:18px 20px; overflow:auto; margin:1.1em 0;
+}
+pre code{background:none; padding:0; font-size:13.5px; line-height:1.7}
+/* ---------- Tables ---------- */
+table{
+  border-collapse:separate; border-spacing:0; width:100%; margin:1.2em 0; font-size:14px;
+  background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-lg); overflow:hidden;
+}
+th,td{padding:11px 15px; text-align:left; vertical-align:top; border-bottom:1px solid var(--md-outline-variant)}
+th{background:var(--md-surface-container); font-weight:750; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--md-on-surface-variant)}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:color-mix(in srgb, var(--md-primary) 5%, transparent)}
+/* ---------- Chips / footer ---------- */
+.badge{
+  display:inline-flex; align-items:center; height:26px; padding:0 12px; border-radius:999px;
+  background:var(--md-secondary-container); color:var(--md-on-secondary-container);
+  font-size:12px; font-weight:700; margin-left:10px; vertical-align:middle;
+}
+/* ---------- Responsive ---------- */
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .drawer{position:static; height:auto; border-right:0; border-bottom:1px solid var(--md-outline-variant); padding:16px 14px}
+  .nav{flex-direction:row; flex-wrap:wrap}
+  .nav-item{padding:8px 14px; border-radius:999px}
+  .brand{padding-bottom:12px}
+}
+</style></head>
+<body><div class="shell">
+<aside class="drawer">
+  <a class="brand" href="index.html"><span class="brand-mark">0K</span>
+    <span class="brand-text"><b>0KAY</b><span>Plugin API</span></span></a>
+  <nav class="nav"><a class="nav-item" href="index.html"><span class="dot"></span>0KAY Plugin API</a><a class="nav-item" href="HTTP_API.html"><span class="dot"></span>HTTP API Reference</a><a class="nav-item" href="PLUGIN_API.html"><span class="dot"></span>0KAY Plugin API (v1)</a><a class="nav-item" href="plugin-lifecycle.html"><span class="dot"></span>Plugin Lifecycle</a><a class="nav-item" href="writing-a-plugin.html"><span class="dot"></span>Writing a Plugin</a><a class="nav-item" href="core-services.html"><span class="dot"></span>Core Services</a><a class="nav-item" href="agent-service.html"><span class="dot"></span>Agent Service</a><a class="nav-item" href="life-service.html"><span class="dot"></span>L.I.F.E Service</a><a class="nav-item" href="mocr-service.html"><span class="dot"></span>mocr Service</a><a class="nav-item" href="settings-ui.html"><span class="dot"></span>Settings and UI Patches</a><a class="nav-item" href="custom-pages.html"><span class="dot"></span>WebUI Custom Pages</a><a class="nav-item" href="design-system.html"><span class="dot"></span>WebUI Design System (Material 3 Expressive)</a><a class="nav-item" href="THINKING.html"><span class="dot"></span>Thinking Intensity and Execution</a><a class="nav-item" href="RELEASES.html"><span class="dot"></span>Releases and Updates</a><a class="nav-item" href="security.html"><span class="dot"></span>Security and Runtime Rules</a><a class="nav-item active" href="asr.html"><span class="dot"></span>Speech-to-text (ASR): one Core endpoint, many plugins</a><a class="nav-item" href="devkit.html"><span class="dot"></span>API devkit</a><a class="nav-item" href="tianshu-adoption.html"><span class="dot"></span>从 天枢 (Tianshu-harness) 借鉴到 0KAY</a></nav>
+  <div class="drawer-foot">
+    <div><a href="https://github.com/RazureSOFT/0KAY">RazureSOFT/0KAY</a></div>
+    <div>MIT · © 2026 RazureSOFT</div>
+  </div>
+</aside>
+<main class="article" data-page="asr"><h1>Speech-to-text (ASR): one Core endpoint, many plugins</h1><p>Core owns exactly one speech-to-text entry point. Every front end (WebUI chat, LIFE wake word, a plugin page) posts audio to <code>/api/asr</code>; which engine actually transcribes it is a <strong>plugin</strong> decision, resolved from settings at request time. Plugins adapt to Core — never the other way round.</p><p>This is deliberately the mirror image of <code>/api/tts</code>.</p><p>---</p><h2>1. The public endpoint</h2><h3><code>GET /api/asr</code></h3><pre><code>{ &quot;configured&quot;: true, &quot;provider&quot;: &quot;asr&quot; }
+</code></pre><p><code>configured</code> is false when no backend is available; <code>provider</code> names the settings section that supplied it (<code>"env"</code> when <code>ASR_ENDPOINT</code> is set).</p><h3><code>POST /api/asr</code></h3><p>Two accepted bodies.</p><p><strong>multipart/form-data</strong> (what the browser sends):</p><table><tr><th>field</th><th>required</th><th>meaning</th></tr><tr><td><code>audio</code></td><td>yes¹</td><td>the audio file. <code>file</code> is accepted as an alias</td></tr><tr><td><code>language</code></td><td>no</td><td>BCP-47-ish hint (<code>zh</code>, <code>ja</code>, <code>en</code>); omit for auto</td></tr><tr><td><code>model</code></td><td>no</td><td>backend-specific model name</td></tr><tr><td><code>prompt</code></td><td>no</td><td>vocabulary hint ("美玖, 0KAY, mihari")</td></tr></table><p>¹ exactly one of <code>audio</code> / <code>file</code>.</p><p><strong>application/json</strong> — for clients that cannot build multipart:</p><pre><code>{ &quot;audio_base64&quot;: &quot;…&quot;, &quot;mime&quot;: &quot;audio/webm&quot;, &quot;language&quot;: &quot;zh&quot; }
+</code></pre><p><code>language</code>, <code>model</code> and <code>prompt</code> are also accepted as query parameters.</p><p>Response (200):</p><pre><code>{ &quot;text&quot;: &quot;美玖，今天几号&quot;, &quot;provider&quot;: &quot;asr&quot;, &quot;language&quot;: &quot;zh&quot; }
+</code></pre><p>Errors:</p><table><tr><th>status</th><th>code</th><th>when</th></tr><tr><td>400</td><td><code>bad_request</code></td><td>no audio, bad base64, malformed multipart</td></tr><tr><td>413</td><td><code>audio_too_large</code></td><td>over 24 MiB</td></tr><tr><td>502</td><td><code>asr_failed</code></td><td>the backend answered with an error / no text</td></tr><tr><td>503</td><td><code>asr_failed</code></td><td>no backend is configured</td></tr></table><p>Audio limits: 24 MiB per request, 120 s upstream timeout. Nothing is persisted — the bytes are forwarded and dropped.</p><p>---</p><h2>2. What a plugin has to do</h2><p>Two things, both declarative.</p><h3>2.1 Register a settings section that publishes <code>asr_endpoint</code></h3><pre><code>SettingsSection(
+    id=&quot;my-asr&quot;, label=&quot;My ASR&quot;, order=84,
+    fields=[
+        SettingsField(key=&quot;asr_endpoint&quot;, type=&quot;text&quot;, label=&quot;服务地址&quot;,
+                      default_value=&quot;http://127.0.0.1:9001/v1/audio/transcriptions&quot;,
+                      help=&quot;OpenAI 兼容的转写端点；Core 的 /api/asr 会把音频转发到这里&quot;),
+        SettingsField(key=&quot;enabled&quot;, type=&quot;bool&quot;, label=&quot;启用&quot;, default_value=&quot;true&quot;),
+        SettingsField(key=&quot;model&quot;, type=&quot;text&quot;, label=&quot;模型&quot;, default_value=&quot;&quot;),
+        SettingsField(key=&quot;language&quot;, type=&quot;text&quot;, label=&quot;默认语言&quot;, default_value=&quot;zh&quot;),
+    ],
+)
+</code></pre><ul><li>The <strong>field name <code>asr_endpoint</code> is the opt-in</strong>. Core scans every registered</li></ul><p>  section for it, so a brand-new plugin needs no Core change at all.</p><ul><li>If you declare <code>enabled</code>, give it <code>default_value: "true"</code> — the settings store</li></ul><p>  materialises an unset bool as <code>false</code>, which would look like "switched off".   Omit <code>enabled</code> entirely and the section always counts as enabled.</p><ul><li>Backends whose id is listed in <code>asrSections</code> (<code>asr</code>, <code>soniox</code>, <code>genieasr</code>,</li></ul><p>  <code>whisper-asr</code>) may publish <code>endpoint</code> instead, matching the TTS convention.</p><p>Resolution order (first hit wins):</p><p>1. <code>ASR_ENDPOINT</code> environment variable. 2. Any section with a non-empty <code>asr_endpoint</code>. 3. A known <code>endpoint</code>-style section, in <code>asrSections</code> order. 4. <code>life.asr_endpoint</code> (legacy escape hatch).</p><h3>2.2 Serve an OpenAI-compatible transcription route</h3><p>Core posts <strong>exactly</strong> the OpenAI <code>/v1/audio/transcriptions</code> shape, so an existing whisper server can be pointed at directly and a plugin only has to forward:</p><pre><code>POST &lt;asr_endpoint&gt;
+Content-Type: multipart/form-data; boundary=…
+Authorization: Bearer &lt;ASR_SERVICE_TOKEN&gt;   # only when Core has the token set
+
+file=&lt;audio bytes&gt;   filename=chunk.webm
+response_format=json
+language=zh          # when the caller supplied one
+model=…              # when the caller supplied one
+prompt=…             # when the caller supplied one
+</code></pre><p>Answer with either</p><pre><code>{ &quot;text&quot;: &quot;…&quot;, &quot;language&quot;: &quot;zh&quot; }
+</code></pre><p>or a plain-text body containing the transcript. Anything else is a 502 at the Core boundary. <code>language</code>, <code>model</code> and <code>duration</code> are optional in the JSON.</p><p>The endpoint should bind <code>127.0.0.1</code>: Core's egress guard refuses metadata and link-local addresses always, and loopback/private ranges when <code>CORE_SSRF_STRICT=1</code>.</p><h3>2.3 Optional: service token</h3><p>Set <code>ASR_SERVICE_TOKEN</code> in Core's environment and the same value in the plugin. Core then attaches <code>Authorization: Bearer &lt;token&gt;</code>; the plugin should compare it in constant time and reject mismatches. Without the variable, loopback binding is the only boundary — the same trade-off <code>/api/tts</code> makes.</p><p>---</p><h2>3. Reference wiring</h2><pre><code>browser  ──multipart──▶  Core  /api/asr  ──multipart──▶  plugin endpoint
+                          │                              (whisper.cpp server,
+                          └─ resolves from settings        faster-whisper,
+                             on every request              vLLM, a wrapper…)
+</code></pre><p>A minimal plugin is ~100 lines: an HTTP server that forwards the multipart body upstream, plus a gRPC <code>Register</code> call that publishes the settings section above (see <code>deepseek-tts/</code> for the TTS twin, or <code>genie-tts/</code> — a Python one — if it is present locally).</p><p>A Soniox backend (<code>soniox-asr/</code>, port 8795) is the reference implementation used during development: it publishes <code>asr_endpoint</code>, speaks the OpenAI shape, and turns the multipart body into a Soniox realtime WebSocket session. It is <strong>not</strong> part of this repository — provider-specific wrappers are kept local and git-ignored — so treat the contract above as the thing to implement.</p><p>Pointing straight at an existing server works too — no plugin code at all:</p><pre><code># whisper.cpp server, already listening on 8080
+ASR_ENDPOINT=http://127.0.0.1:8080/inference ./0kay-core
+</code></pre><h2>4. Front ends that use it</h2><table><tr><th>consumer</th><th>behaviour</th></tr><tr><td>WebUI chat (LIFE)</td><td>「喊一声唤醒」 listens in short chunks, transcribes each one, and matches the configured nickname; on a hit it chimes, records one utterance and sends it (see <code>webui/src/composables/wakeWord.ts</code>)</td></tr><tr><td>LIFE settings</td><td><code>wake_enabled</code> / <code>wake_nickname</code> / <code>asr_language</code> live in the <code>life</code> section</td></tr></table><p>When no backend is configured, <code>GET /api/asr</code> reports <code>configured: false</code> and the UI falls back to the browser's own speech recognition (Chrome/Edge) or tells the user to install an ASR plugin.</p></main>
+</div></body></html>

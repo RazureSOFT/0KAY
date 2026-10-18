@@ -1,0 +1,137 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>从 天枢 (Tianshu-harness) 借鉴到 0KAY · 0KAY</title><style>
+:root{
+  color-scheme: light;
+  --md-primary:#4a5b8c; --md-on-primary:#ffffff;
+  --md-primary-container:#dbe1ff; --md-on-primary-container:#131b2e;
+  --md-secondary-container:#e0e2f0; --md-on-secondary-container:#181a24;
+  --md-surface:#fbf8ff; --md-surface-container-low:#f5f3fb;
+  --md-surface-container:#efedf6; --md-surface-container-high:#e9e7f0;
+  --md-surface-container-highest:#e3e1ea;
+  --md-on-surface:#1a1b21; --md-on-surface-variant:#45464f;
+  --md-outline:#757780; --md-outline-variant:#c5c6d0;
+  --md-success-container:#d7f5cf; --md-error-container:#ffdad6;
+  --md-shadow:rgba(20,18,36,.16);
+  --radius-sm:12px; --radius-md:16px; --radius-lg:24px; --radius-xl:28px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --md-primary:#b3c5ff; --md-on-primary:#1b2b52;
+    --md-primary-container:#33436b; --md-on-primary-container:#dbe1ff;
+    --md-secondary-container:#3a3c47; --md-on-secondary-container:#e0e2f0;
+    --md-surface:#111318; --md-surface-container-low:#1a1b21;
+    --md-surface-container:#1e1f26; --md-surface-container-high:#292a31;
+    --md-surface-container-highest:#34353c;
+    --md-on-surface:#e3e1e9; --md-on-surface-variant:#c6c6d0;
+    --md-outline:#8f9099; --md-outline-variant:#45464f;
+    --md-success-container:#1f4d1a; --md-error-container:#93000a;
+    --md-shadow:rgba(0,0,0,.5);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; min-height:100vh; background:var(--md-surface); color:var(--md-on-surface);
+  font:400 15.5px/1.75 'Roboto','Segoe UI Variable','Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--md-primary-container); color:var(--md-on-primary-container)}
+a{color:var(--md-primary); text-decoration:none}
+a:hover{text-decoration:underline}
+.shell{display:grid; grid-template-columns:300px minmax(0,1fr); min-height:100vh}
+/* ---------- Navigation drawer ---------- */
+.drawer{
+  position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  padding:22px 14px; background:var(--md-surface-container-low);
+  border-right:1px solid var(--md-outline-variant);
+}
+.brand{display:flex; align-items:center; gap:12px; padding:6px 10px 18px}
+.brand-mark{
+  width:46px; height:46px; display:grid; place-items:center; flex:none;
+  border-radius:16px 16px 16px 6px; background:var(--md-primary);
+  color:var(--md-on-primary); font-weight:800; letter-spacing:-1px; font-size:17px;
+}
+.brand-text b{display:block; font-size:16px; font-weight:800; letter-spacing:-.2px}
+.brand-text span{font-size:12px; color:var(--md-on-surface-variant)}
+.nav{display:flex; flex-direction:column; gap:4px}
+.nav-item{
+  position:relative; display:flex; align-items:center; gap:10px;
+  padding:11px 16px; border-radius:22px 22px 22px 8px;
+  color:var(--md-on-surface-variant); font-weight:600; font-size:14px;
+  transition:background-color .22s, color .16s;
+}
+.nav-item:hover{background:color-mix(in srgb, var(--md-primary) 12%, transparent); text-decoration:none; color:var(--md-on-surface)}
+.nav-item.active{background:var(--md-primary-container); color:var(--md-on-primary-container); font-weight:800}
+.nav-item .dot{width:7px; height:7px; border-radius:50%; background:currentColor; opacity:.5; flex:none}
+.drawer-foot{margin-top:18px; padding:12px 12px 0; border-top:1px solid var(--md-outline-variant); font-size:12px; color:var(--md-on-surface-variant)}
+.drawer-foot a{font-weight:700}
+/* ---------- Article ---------- */
+.article{padding:clamp(24px,4vw,56px) clamp(20px,4vw,64px) 80px; max-width:920px}
+.article>h1{
+  margin:0 0 6px; font-size:clamp(30px,4vw,42px); line-height:1.12;
+  font-weight:850; letter-spacing:-.02em;
+}
+.article>h1+p{color:var(--md-on-surface-variant); font-size:16px; margin-top:0}
+h2{font-size:24px; font-weight:800; letter-spacing:-.01em; margin:2.1em 0 .5em}
+h3{font-size:19px; font-weight:750; margin:1.7em 0 .4em}
+h4,h5,h6{font-size:16px; font-weight:750; margin:1.4em 0 .3em}
+p{margin:.7em 0}
+ul{margin:.6em 0; padding-left:22px}
+li{margin:.3em 0}
+hr{border:0; border-top:1px solid var(--md-outline-variant); margin:2em 0}
+strong{font-weight:750}
+code{
+  font-family:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,'SFMono-Regular',Menlo,monospace;
+  font-size:.88em; background:var(--md-surface-container-high);
+  padding:2px 6px; border-radius:8px;
+}
+pre{
+  background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-lg); padding:18px 20px; overflow:auto; margin:1.1em 0;
+}
+pre code{background:none; padding:0; font-size:13.5px; line-height:1.7}
+/* ---------- Tables ---------- */
+table{
+  border-collapse:separate; border-spacing:0; width:100%; margin:1.2em 0; font-size:14px;
+  background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-lg); overflow:hidden;
+}
+th,td{padding:11px 15px; text-align:left; vertical-align:top; border-bottom:1px solid var(--md-outline-variant)}
+th{background:var(--md-surface-container); font-weight:750; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--md-on-surface-variant)}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:color-mix(in srgb, var(--md-primary) 5%, transparent)}
+/* ---------- Chips / footer ---------- */
+.badge{
+  display:inline-flex; align-items:center; height:26px; padding:0 12px; border-radius:999px;
+  background:var(--md-secondary-container); color:var(--md-on-secondary-container);
+  font-size:12px; font-weight:700; margin-left:10px; vertical-align:middle;
+}
+/* ---------- Responsive ---------- */
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .drawer{position:static; height:auto; border-right:0; border-bottom:1px solid var(--md-outline-variant); padding:16px 14px}
+  .nav{flex-direction:row; flex-wrap:wrap}
+  .nav-item{padding:8px 14px; border-radius:999px}
+  .brand{padding-bottom:12px}
+}
+</style></head>
+<body><div class="shell">
+<aside class="drawer">
+  <a class="brand" href="index.html"><span class="brand-mark">0K</span>
+    <span class="brand-text"><b>0KAY</b><span>Plugin API</span></span></a>
+  <nav class="nav"><a class="nav-item" href="index.html"><span class="dot"></span>0KAY Plugin API</a><a class="nav-item" href="HTTP_API.html"><span class="dot"></span>HTTP API Reference</a><a class="nav-item" href="PLUGIN_API.html"><span class="dot"></span>0KAY Plugin API (v1)</a><a class="nav-item" href="plugin-lifecycle.html"><span class="dot"></span>Plugin Lifecycle</a><a class="nav-item" href="writing-a-plugin.html"><span class="dot"></span>Writing a Plugin</a><a class="nav-item" href="core-services.html"><span class="dot"></span>Core Services</a><a class="nav-item" href="agent-service.html"><span class="dot"></span>Agent Service</a><a class="nav-item" href="life-service.html"><span class="dot"></span>L.I.F.E Service</a><a class="nav-item" href="mocr-service.html"><span class="dot"></span>mocr Service</a><a class="nav-item" href="settings-ui.html"><span class="dot"></span>Settings and UI Patches</a><a class="nav-item" href="custom-pages.html"><span class="dot"></span>WebUI Custom Pages</a><a class="nav-item" href="design-system.html"><span class="dot"></span>WebUI Design System (Material 3 Expressive)</a><a class="nav-item" href="THINKING.html"><span class="dot"></span>Thinking Intensity and Execution</a><a class="nav-item" href="RELEASES.html"><span class="dot"></span>Releases and Updates</a><a class="nav-item" href="security.html"><span class="dot"></span>Security and Runtime Rules</a><a class="nav-item" href="asr.html"><span class="dot"></span>Speech-to-text (ASR): one Core endpoint, many plugins</a><a class="nav-item" href="devkit.html"><span class="dot"></span>API devkit</a><a class="nav-item active" href="tianshu-adoption.html"><span class="dot"></span>从 天枢 (Tianshu-harness) 借鉴到 0KAY</a></nav>
+  <div class="drawer-foot">
+    <div><a href="https://github.com/RazureSOFT/0KAY">RazureSOFT/0KAY</a></div>
+    <div>MIT · © 2026 RazureSOFT</div>
+  </div>
+</aside>
+<main class="article" data-page="tianshu-adoption"><h1>从 天枢 (Tianshu-harness) 借鉴到 0KAY</h1><p>&gt; 目标：把天枢在「agent 执行层」做得比我们深的地方，按 0KAY 的架构落地。 &gt; 原则：<strong>只借鉴思想，不搬代码</strong>（天枢代码 Apache-2.0，但其 CVM 理论与实证文档是 CC BY-NC-ND，不可改写/摘编/商用）。 &gt; 状态标记：<code>[已落地]</code> / <code>[进行中]</code> / <code>[待办]</code></p><p>---</p><h2>0. 一句话对照</h2><p>天枢的核心命题是「模型何以稳定交付」——它把目标/状态/证据/权限/终止条件从对话历史里<strong>外置</strong>给运行时（CVM），用<strong>确定性监督包裹概率性认知</strong>。0KAY 的 agent 已经有 todowrite、ContextLedger、explore 子代理、审批门禁，但缺三样：<strong>证据门禁、退化（锚点坍缩）拦截、成本/缓存的一等公民化</strong>。</p><p>---</p><h2>1. 交付可靠性：CVM-lite —— 证据门禁 + 运行时监督 <code>[进行中]</code></h2><p><strong>天枢的做法</strong>：<code>deliver_task</code> 交付门禁（GREEN/YELLOW/RED）+ 75 个 runtime hooks 拦截退化 + 四层防线（信念宪法 → Courage Hook → Sensorium → RuntimeHookPipeline）。</p><p><strong>已落地（本次）</strong>：</p><ul><li><code>agent/src/agent/supervision.ts</code> —— 依赖为零的 <code>DeliverySupervisor</code>：</li></ul><p>  - 记录每个工具调用（指纹归一化），检测<strong>死循环</strong>（同一调用重复 ≥3 次）；   - 追踪<strong>验证证据</strong>（test / build / lint / typecheck 命令）；   - <code>evaluateDelivery()</code> 产出 <code>GREEN / YELLOW / RED</code>（有改动但无证据 → YELLOW；重复退化 → RED）；   - <code>supervisionDirective()</code> —— prompt 层「信念」（天枢第 1 层，零额外推理成本）。</p><ul><li><code>agent/src/agent/supervision.test.ts</code> —— 8 个用例全绿。</li><li>接入 <code>agent/src/agent/agent.ts</code>（<strong>行为保持，默认关闭</strong>，用 <code>OKAY_EVIDENCE_GATE=1</code> 开启）：</li></ul><p>  - 每轮 <code>executeToolCall</code> 后 <code>supervisor.recordToolCall(...)</code>（两处 finish 缝：<code>:842</code>/<code>:877</code>）；   - <code>finish</code> 时经 <code>deliveryGate()</code> 在结果里追加证据报告；   - 每轮 systemPrompt 追加 <code>supervisionDirective()</code>。</p><p><strong>待办</strong>：</p><ul><li><code>[待办]</code> 把门禁从「注释」升级为「软阻塞」：RED 时要求模型补证据或改策略（对标天枢的 <code>deliver_task</code> 拦截）。</li><li><code>[待办]</code> 把每个任务的 <code>DeliveryReport</code> 落到 <code>agent/src/task/records.ts</code>，在 WebUI 的 agent 会话页展示（对标 <code>/cockpit verify</code>）。</li><li><code>[待办]</code> 默认开启策略与灰度（先 warn 后 enforce）。</li></ul><h2>2. 成本 / 缓存：前缀缓存引擎 + token 账本 <code>[待办]</code></h2><p><strong>天枢的做法</strong>：冻结前缀 + 增量附录 + Read 引用去重 + 断点续传，长会话命中率 <strong>95–99%</strong>；<code>/usage</code> token 账本；reasoning 强度自动降级路由；峰谷价提醒。</p><p><strong>0KAY 现状</strong>：<code>mocr/internal/server/usage.go</code> 已有 usage-outbox（上报 Core）；<code>agent/src/context/ledger.ts</code> 是上下文折叠账本（不是缓存账本）；<code>agent.ts</code> 有 <code>trackSessionPromptTokens</code>。</p><p><strong>落地点</strong>：</p><ul><li><code>[待办]</code> 在 <code>mocr</code> 增加<strong>前缀冻结</strong>：对同一 <code>session_id</code> 复用稳定 system prompt 前缀，增量只追加；输出 cache-hit 指标（对标 <code>95–99%</code> 可核验）。</li><li><code>[待办]</code> 把 <code>usage.go</code> 的 outbox 升级为<strong>本地 token 账本</strong>（按 session/model 聚合 + 成本估算），在 Core 加只读接口，WebUI 加「用量」页。</li><li><code>[待办]</code> 在 <code>mocr/internal/selector</code>（jev 路由）加 <strong>reasoning 强度降级</strong>策略。</li><li>参照物：本项目在用 DeepSeek-V4.1-Flash，天枢「极度优化 DeepSeek V4」，其缓存/路由值得直接对标 benchmark。</li></ul><h2>3. 代码智能：LSP 深度集成 <code>[待办]</code></h2><p><strong>天枢的做法</strong>：自研 JSON-RPC LSP 客户端接 20+ 语言，跳转定义/查引用成为 agent 工具，<strong>编辑后诊断自动回灌</strong>到循环。</p><p><strong>0KAY 现状</strong>：<code>agent/src/tools/</code> 有 read/write/edit/glob/grep/shell，<strong>无 LSP</strong>；agent 改完代码只能靠跑测试发现类型错误。</p><p><strong>落地点</strong>：</p><ul><li><code>[待办]</code> 新增 <code>agent/src/tools/lsp.ts</code>：<code>Tool</code> 子类，接 <code>gopls</code>/<code>typescript-language-server</code>/<code>pyright</code> 等；工具：<code>lsp_definition</code> / <code>lsp_references</code> / <code>lsp_diagnostics</code>。</li><li><code>[待办]</code> 在 <code>agent.ts</code> 的 <code>edit</code>/<code>write</code> 之后调用 <code>lsp_diagnostics</code>，把错误注入 <code>context.history</code>（对标「编辑后诊断回灌」）。</li><li>复用 <code>tools/types.ts</code> 的 <code>Tool</code> 抽象（<code>dangerous</code> 设 false，只读）。</li></ul><h2>4. 多代理编排：scout / team / council <code>[待办]</code></h2><p><strong>天枢的做法</strong>：<code>/scout</code>（只读侦察）→ <code>/team</code>（波次施工，读写隔离）→ <code>/council</code>（多席会诊）→ <code>/galaxy</code>，类型化工单 + 自适应模型路由。</p><p><strong>0KAY 现状</strong>：<code>agent.ts</code> 有 <code>EXPLORE_AGENT_TYPE</code> + <code>exploreSolutions()</code>（explore 扇出），<code>tools/types.ts</code> 有 <code>runSubAgent</code>。</p><p><strong>落地点</strong>：</p><ul><li><code>[待办]</code> 把 explore 泛化为三种具名模式：<code>scout</code>（只读，无写工具）、<code>team</code>（写隔离 + 波次验收）、<code>council</code>（多模型同题作答 + 收敛）。</li><li><code>[待办]</code> 工单类型化：给子代理传结构化 work order（目标/验收标准/可写路径集）。</li></ul><h2>5. 会话控制：handoff 文档 / 回滚 / checkpoint <code>[待办]</code></h2><p><strong>天枢的做法</strong>：<code>/handoff</code> 生成五章交接文档并归档；双 ESC 回滚到任意历史点；每轮首次修改前建 git checkpoint + 文件级 undo。</p><p><strong>0KAY 现状</strong>：<code>agent.ts</code> 的 <code>handoffs</code> Map 只是<strong>运行内压缩</strong>交接（给 LIFE 用），非用户可见文档；无回滚/checkpoint。</p><p><strong>落地点</strong>：</p><ul><li><code>[待办]</code> 用户级 <code>/handoff</code>：把 <code>handoffs</code> 的 JSON 扩成结构化文档（目标/进展/产物/未决/下一步），落盘并可在新会话注入。</li><li><code>[待办]</code> git checkpoint：在 <code>agent.ts</code> 首次文件改动前 <code>git stash create</code>/commit 快照；提供「回滚到该点」。</li></ul><h2>6. 工程指标：可核验 metrics <code>[已落地]</code></h2><p><strong>天枢的做法</strong>：<code>engineering-metrics.md</code> —— 规模/测试/迭代里程碑，公开可复算。</p><p><strong>已落地（本次）</strong>：<code>scripts/engineering-metrics.mjs</code> —— 统计各模块代码行/文件数/测试文件数，输出可核验快照。</p><p><strong>待办</strong>：<code>[待办]</code> 把输出纳入 CI（<code>node scripts/engineering-metrics.mjs</code>），生成 <code>docs/engineering-metrics.md</code>。</p><h2>7. 信念 / 工作姿态：Star Domain 类比 <code>[进行中]</code></h2><p><strong>天枢的做法</strong>：16 个「星域」= 可切换的<strong>工作姿态</strong>（改的是 system prompt + 工具白名单 + 决策阈值，不改模型）。</p><p><strong>0KAY 现状</strong>：LIFE 有「人格」（伴侣性格），但不是「工作姿态」。agent 的 system prompt 是静态的。</p><p><strong>已落地（本次）</strong>：<code>supervisionDirective()</code> 是第一个 prompt 层「信念」。 <strong>落地点</strong>：</p><ul><li><code>[待办]</code> 抽象 <code>agent/src/agent/posture.ts</code>：定义若干工作姿态（如「审慎 / 破军 / 天权」），每个 = 一段信念 + 工具白名单 + 阈值；由任务类型/用户选择注入。</li></ul><h2>8. 模型预设广度 <code>[待办]</code></h2><p><strong>天枢</strong>：25+ 内置预设，含 Codex(OAuth)、Gemini 原生、Kimi、Grok 等。 <strong>0KAY 现状</strong>：<code>mocr/internal/selector/data/catalog.json</code> + provider 体系（OpenAI 兼容 + Anthropic + stdio）。 <strong>落地点</strong>：<code>[待办]</code> 扩充 catalog 预设 + 增加 OAuth 类 provider（如需）。</p><p>---</p><h2>落地路线图</h2><table><tr><th>阶段</th><th>内容</th><th>状态</th></tr><tr><td>P0</td><td>CVM-lite 模块 + 测试 + env-gated 接入；工程指标脚本</td><td>✅</td></tr><tr><td>P1</td><td>门禁软阻塞（strict）+ 交付报告落库；token 账本 + 缓存命中度量（Core 账本 + mocr 上报）</td><td>✅（UI 展示待办）</td></tr><tr><td>P2</td><td>LSP 集成（客户端 + 工具 + mock 测试）；多代理具名模式（scout/team/council）；用户级 handoff 文档</td><td>✅（编辑后诊断回灌 / 回滚待办）</td></tr><tr><td>P3</td><td>工作姿态系统（posture）；模型预设扩充</td><td>✅ 姿态 / 待办 预设</td></tr></table><h3>本轮新增落地</h3><ul><li><strong>P1 门禁软阻塞</strong>：<code>agent.ts</code> 的 <code>gateFinish()</code> 支持 <code>OKAY_EVIDENCE_GATE=2|strict</code> —— 非 GREEN 的 finish 被拦下（最多 3 次）并回灌纠正消息；交付报告经 <code>taskRecorder</code> 落库（<code>kind: delivery-gate</code>）。</li><li><strong>P1 token 账本 + 缓存</strong>：<code>core/internal/server</code> 的 <code>UsageRecord</code> 增 <code>CachedTokens</code> / <code>CostUSD</code>，<code>Snapshot()</code> 增 <code>total_cached_tokens</code> / <code>total_cost_usd</code> / <code>cache_hit_ratio</code>（+按 model/day 聚合）；<code>mocr</code> 解析 <code>prompt_tokens_details.cached_tokens</code> 并用 <code>ResolvePrice().EstimateCost()</code> 估算成本后上报。</li><li><strong>P2 LSP</strong>：<code>agent/src/tools/lsp.ts</code> —— 零依赖 LSP 客户端（Content-Length 帧 + JSON-RPC）+ <code>LspTool</code>（diagnostics/definition/references），按扩展名解析语言服务器，缺失时优雅失败；<code>lsp.test.ts</code> 用 mock 语言服务器验证。</li><li><strong>P2 多代理具名模式</strong>：<code>agent/src/agent/modes.ts</code>（explore/scout/team/council），<code>exploreSolutions</code>/<code>explorationDigest</code> 按模式取 fanout / 只读 / digest 引导；<code>options.multi_agent_mode</code> 选择。</li><li><strong>P2 用户级 handoff</strong>：<code>agent/src/agent/handoff.ts</code> 渲染结构化交接文档（目标/结果/产物/证据/未决/下一步），<code>OKAY_HANDOFF_DOC=1</code> 时归档到 <code>AGENT_DATA_DIR/handoffs/&lt;taskId&gt;.md</code>。</li><li><strong>P3 工作姿态</strong>：<code>agent/src/agent/posture.ts</code>（启明/太一/破军/天权/瑶光/文曲），<code>options.posture</code> 或 <code>OKAY_POSTURE</code> 注入 prompt 信念。</li></ul><p><strong>仍待办</strong>：编辑后 LSP 诊断自动回灌；会话回滚 / git checkpoint；门禁报告在 WebUI 展示；前缀缓存<strong>引擎</strong>（冻结前缀，不只是度量）；模型预设扩充。</p><h2>开启方式（P0）</h2><pre><code># 证据门禁（默认关闭，行为保持）
+OKAY_EVIDENCE_GATE=1  # 启动 agent 时带上；finish 会附 [交付门禁 GREEN/YELLOW/RED]
+# 单元测试
+cd agent &amp;&amp; node --import tsx --test src/agent/supervision.test.ts
+# 工程指标
+node scripts/engineering-metrics.mjs
+</code></pre><h2>许可与署名</h2><ul><li>仅借鉴<strong>思想</strong>，代码为 0KAY 自行实现。</li><li>天枢：代码 Apache-2.0；<strong>CVM 理论与实证文档 CC BY-NC-ND 4.0</strong>（不可改写/摘编/商用）——引用其结论时请只附原文链接并署名。</li></ul></main>
+</div></body></html>
