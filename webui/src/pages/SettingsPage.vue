@@ -21,6 +21,8 @@ import DangerPanel from '../components/DangerPanel.vue'
 import PluginModulePane from '../components/PluginModulePane.vue'
 import AppSelect from '../components/AppSelect.vue'
 import ModelsField from '../components/ModelsField.vue'
+import PathPicker from '../components/PathPicker.vue'
+import MarkdownContent from '../components/MarkdownContent.vue'
 import { useConfirm } from '../composables/confirm'
 import { useSettingsMeta } from '../composables/settingsMeta'
 import { toast } from '../composables/toast'
@@ -111,6 +113,31 @@ async function testPluginSection(id: string) {
 
 const { tabMeta, isBuiltinTab, isPluginSection, tabLabel, fieldLabel, fieldHelp, pluginSection } = useSettingsMeta()
 
+/**
+ * Which `dir` field the picker is open for (empty = closed). One shared picker
+ * instance keeps the modal, its Escape handling and its focus trap single-copy.
+ */
+const pickerField = ref('')
+const pickerOpen = computed({
+  get: () => pickerField.value !== '',
+  set: (open: boolean) => { if (!open) pickerField.value = '' },
+})
+const pickerTitle = computed(() => {
+  const field = pluginSection(activeTab.value)?.fields.find((f) => f.key === pickerField.value)
+  return field?.label || ''
+})
+const pickerInitial = computed(() => String(sectionDrafts.value[activeTab.value]?.[pickerField.value] ?? ''))
+
+/** Write the chosen directory back into the draft; saving is still explicit. */
+function applyPickedPath(path: string) {
+  const key = pickerField.value
+  if (!key) return
+  sectionDrafts.value = {
+    ...sectionDrafts.value,
+    [activeTab.value]: { ...sectionDrafts.value[activeTab.value], [key]: path },
+  }
+}
+
 /** A patch-declared tab whose body is a plugin ESM module (native pane). */
 const moduleTab = computed(() => {
   if (isBuiltinTab(activeTab.value)) return null
@@ -135,6 +162,8 @@ function loadSectionDraft(id: string) {
   if (!sec) return
   const base: Record<string, unknown> = {}
   for (const f of sec.fields) {
+    // `note` fields are instructions, not settings: they have no value to send.
+    if (f.type === 'note') continue
     if (f.type === 'bool') base[f.key] = f.default_value === 'true' || f.default_value === '1'
     else if (f.type === 'number') base[f.key] = Number(f.default_value || 0)
     else base[f.key] = f.default_value || ''
@@ -213,7 +242,13 @@ async function saveSection(id: string) {
   sectionSaving.value = true
   sectionMsg.value = ''
   try {
-    await sectionsStore.saveValues(id, sectionDrafts.value[id] || {})
+    // Instruction blocks have no value; posting them back would just litter the
+    // settings file with empty strings.
+    const notes = new Set((pluginSection(id)?.fields || []).filter((f) => f.type === 'note').map((f) => f.key))
+    const payload = Object.fromEntries(
+      Object.entries(sectionDrafts.value[id] || {}).filter(([key]) => !notes.has(key)),
+    )
+    await sectionsStore.saveValues(id, payload)
     sectionMsg.value = t('settings.saved')
     sectionMsgKind.value = 'ok'
     setTimeout(() => { sectionMsg.value = '' }, 3000)
@@ -591,8 +626,14 @@ function save() {
           <p v-if="pluginSection(activeTab)!.description" class="card-desc">
             {{ pluginSection(activeTab)!.description }}
           </p>
-          <p v-if="pluginSection(activeTab)!.plugin_name" class="helper-text">
-            {{ pluginSection(activeTab)!.plugin_name }}
+          <!-- Who provides this pane. Shown only when it adds information: the
+               plugin id is already the tab id for most sections, and a bare
+               "genietts" under the title reads like debug output. -->
+          <p
+            v-if="pluginSection(activeTab)!.plugin_name && pluginSection(activeTab)!.plugin_name !== activeTab"
+            class="helper-text"
+          >
+            {{ t('settings.pluginProvidedBy', { name: pluginSection(activeTab)!.plugin_name }) }}
           </p>
 
           <div
@@ -628,6 +669,30 @@ function save() {
             <template v-else-if="f.type === 'models'">
               <label>{{ f.label }}</label>
               <ModelsField :model-value="String(sectionDrafts[activeTab]?.[f.key] ?? '')" :options="availableModels" @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }" />
+              <p v-if="f.help" class="helper-text">{{ f.help }}</p>
+            </template>
+            <template v-else-if="f.type === 'note'">
+              <!-- Instructions from the plugin (markdown). No input, nothing saved. -->
+              <div class="field-note">
+                <strong v-if="f.label">{{ f.label }}</strong>
+                <MarkdownContent :content="f.help || ''" />
+              </div>
+            </template>
+            <template v-else-if="f.type === 'dir'">
+              <label>{{ f.label }}</label>
+              <div class="path-row">
+                <input
+                  class="input"
+                  type="text"
+                  spellcheck="false"
+                  :value="sectionDrafts[activeTab]?.[f.key]"
+                  :placeholder="f.default_value || ''"
+                  @input="sectionDrafts = { ...sectionDrafts, [activeTab]: { ...sectionDrafts[activeTab], [f.key]: ($event.target as HTMLInputElement).value } }"
+                />
+                <button class="btn btn-tonal" type="button" @click="pickerField = f.key">
+                  {{ t('settings.browse') }}
+                </button>
+              </div>
               <p v-if="f.help" class="helper-text">{{ f.help }}</p>
             </template>
             <template v-else-if="f.type === 'test'">
@@ -756,6 +821,14 @@ function save() {
         </Transition>
       </section>
     </div>
+
+    <!-- One picker for every `dir` field on the page; `pickerField` says which. -->
+    <PathPicker
+      v-model:open="pickerOpen"
+      :initial="pickerInitial"
+      :title="pickerTitle"
+      @pick="applyPickedPath"
+    />
   </div>
 </template>
 

@@ -417,6 +417,7 @@
   <string name="settings.applyFetched">Apply</string>
   <string name="settings.back">Back</string>
   <string name="settings.baseUrlRequired">Base URL is required</string>
+  <string name="settings.browse">Browse…</string>
   <string name="settings.cancel">Cancel</string>
   <string name="settings.clearSelection">Clear</string>
   <string name="settings.close">Close</string>
@@ -489,6 +490,15 @@
   <string name="settings.modelExists">“{name}” is already in the list</string>
   <string name="settings.noProviders">No providers configured yet. Click add above.</string>
   <string name="settings.pageDesc">Manage providers, models, persona, and Live2D avatar</string>
+  <string name="settings.pathPickTitle">Choose a folder</string>
+  <string name="settings.pathUp">Up one level</string>
+  <string name="settings.pathPlaceholder">Type or paste a path, then press Enter</string>
+  <string name="settings.pathLoading">Loading…</string>
+  <string name="settings.pathEmpty">No sub-folders here</string>
+  <string name="settings.pathSelected">Selected: {path}</string>
+  <string name="settings.pathUse">Use this folder</string>
+  <string name="settings.pathNative">System dialog…</string>
+  <string name="settings.pathNativeBusy">Waiting for the dialog…</string>
   <string name="settings.permFailed">Failed to save permissions</string>
   <string name="settings.permSaved">Permissions saved</string>
   <string name="settings.permissions">Permissions</string>
@@ -497,6 +507,7 @@
   <string name="settings.personaBirthDate">Birth date</string>
   <string name="settings.personaDesc">Define the assistant name, description, and personality</string>
   <string name="settings.pluginSource">GitHub mirror</string>
+  <string name="settings.pluginProvidedBy">Provided by {name}</string>
   <string name="settings.pluginSourceDesc">Where updates and 0kay-pm installs fetch from.</string>
   <string name="settings.pluginSourceDirect">Direct</string>
   <string name="settings.pluginSourceHelp">Leave empty for direct GitHub access. With a mirror set (e.g. https://gh-proxy.com), source syncs and 0kay-pm installs/updates go through it.</string>

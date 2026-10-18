@@ -229,6 +229,47 @@
   line-height: 1.55;
   color: var(--md-on-surface-variant);
 }
+
+/* ---------- Directory fields (`dir`) and instruction blocks (`note`) ---------- */
+.path-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+/* The generic settings rule gives every input width:100%; inside a flex row that
+   squeezes the button to zero, so the input takes the leftover space instead. */
+#app .settings-page .path-row .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.path-row .btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* Plugin-provided help, rendered as markdown above the fields it explains. */.field-note {
+  margin: 0 0 18px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--md-outline-variant);
+  background: var(--md-surface-container-low);
+}
+.field-note > strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--md-on-surface-variant);
+}
+.field-note .markdown-content { font-size: 13.5px; line-height: 1.65; }
+.field-note .markdown-content p { margin: 6px 0; }
+.field-note .markdown-content ol,
+.field-note .markdown-content ul { margin: 6px 0; padding-left: 20px; }
+.field-note .markdown-content li { margin: 3px 0; }
+.field-note .markdown-content :is(h1, h2, h3) { font-size: 14px; margin: 10px 0 6px; }
+.field-note .markdown-content code { font-size: 12.5px; }
 .helper-text a { color: var(--md-primary); }
 
 /* ---------- Expressive switches (check-in-thumb) ---------- */
@@ -729,3 +770,13 @@
  * releases the platform floor; `height` then sets the size. */
 #app .settings-page .btn.sm { min-height: 0; height: 34px; padding-inline: 16px; font-size: 13px; }
 #app .settings-page .btn.xs { min-height: 0; height: 30px; padding-inline: 12px; font-size: 12px; }
+
+/* ---------- Folder picker dialog (PathPicker) ----------
+ * Teleported to <body>, so these cannot live in the component's scoped block.
+ * Wider than the default 460px panel: a path plus a listing needs the room. */
+.path-picker-panel { width: min(560px, 100%); }
+
+/* Help text under a toggle is prose, not a label. The uppercase transform that
+ * belongs to the field name turns "D:\Genie" and "/api/tts" into shouting and
+ * makes paths hard to read, so opt the helper line back out of it. */
+.toggle-label small.helper-text { text-transform: none; letter-spacing: normal; font-weight: 400; }

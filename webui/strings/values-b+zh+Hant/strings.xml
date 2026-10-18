@@ -417,6 +417,7 @@
   <string name="settings.applyFetched">套用</string>
   <string name="settings.back">返回</string>
   <string name="settings.baseUrlRequired">請填寫 Base URL</string>
+  <string name="settings.browse">瀏覽…</string>
   <string name="settings.cancel">取消</string>
   <string name="settings.clearSelection">清空</string>
   <string name="settings.close">關閉</string>
@@ -489,6 +490,15 @@
   <string name="settings.modelExists">“{name}” 已在清單中</string>
   <string name="settings.noProviders">尚未設定供應商，點擊上方新增。</string>
   <string name="settings.pageDesc">管理供應商、模型、人設與 Live2D 形象</string>
+  <string name="settings.pathPickTitle">選擇目錄</string>
+  <string name="settings.pathUp">上一層</string>
+  <string name="settings.pathPlaceholder">輸入或貼上路徑，按 Enter 前往</string>
+  <string name="settings.pathLoading">讀取中…</string>
+  <string name="settings.pathEmpty">這個目錄下沒有子資料夾</string>
+  <string name="settings.pathSelected">已選：{path}</string>
+  <string name="settings.pathUse">使用此目錄</string>
+  <string name="settings.pathNative">系統對話框…</string>
+  <string name="settings.pathNativeBusy">等待系統對話框…</string>
   <string name="settings.permFailed">權限儲存失敗</string>
   <string name="settings.permSaved">權限已儲存</string>
   <string name="settings.permissions">權限</string>
@@ -497,6 +507,7 @@
   <string name="settings.personaBirthDate">出生日期</string>
   <string name="settings.personaDesc">定義助理的名稱、描述與性格</string>
   <string name="settings.pluginSource">GitHub 加速來源（代理）</string>
+  <string name="settings.pluginProvidedBy">由 {name} 提供</string>
   <string name="settings.pluginSourceDesc">更新與 0kay-pm 安裝的下載來源。</string>
   <string name="settings.pluginSourceDirect">直連</string>
   <string name="settings.pluginSourceHelp">留空為直連 GitHub；填入加速前綴（如 https://gh-proxy.com）後，原始碼同步與 0kay-pm 安裝/更新都會走該代理。</string>
