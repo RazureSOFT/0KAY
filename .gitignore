@@ -68,6 +68,21 @@ core/data/*.bak-*
 # output (b6bf246 removed the ones that had been committed by mistake).
 core/data/plugin-ui/**/assets/
 
+# Local runtime state from start-0kay.sh: logs, pid files, compiled binaries in
+# .run/, and the agent's own scratch notes. Never source.
+/.logs/
+/.run/
+/.0kay.pids
+/.0kay-agent/
+/.codebuddy/
+
+# Build output of the devkit's Rust crate.
+/devkit/rust/target/
+
+# Python bytecode.
+__pycache__/
+*.pyc
+
 # Review/analysis reports — intentionally excluded from the repo so they are
 # never committed or pushed to the remote again. (Removed from main on
 # 2026-10-11; the remote had already removed several of these.)
