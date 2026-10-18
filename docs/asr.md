@@ -149,12 +149,14 @@ browser  ──multipart──▶  Core  /api/asr  ──multipart──▶  plu
 
 A minimal plugin is ~100 lines: an HTTP server that forwards the multipart body
 upstream, plus a gRPC `Register` call that publishes the settings section above
-(see `deepseek-tts/` for the TTS twin, or `genie-tts/` for a Python one).
+(see `deepseek-tts/` for the TTS twin, or `genie-tts/` — a Python one — if it is
+present locally).
 
-[`soniox-asr/`](../soniox-asr/README.md) is the reference implementation: it
-publishes `asr_endpoint`, speaks the OpenAI shape on port 8795, and turns the
-multipart body into a Soniox realtime WebSocket session. Copy it to add another
-backend.
+A Soniox backend (`soniox-asr/`, port 8795) is the reference implementation used
+during development: it publishes `asr_endpoint`, speaks the OpenAI shape, and
+turns the multipart body into a Soniox realtime WebSocket session. It is **not**
+part of this repository — provider-specific wrappers are kept local and
+git-ignored — so treat the contract above as the thing to implement.
 
 Pointing straight at an existing server works too — no plugin code at all:
 

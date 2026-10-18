@@ -118,8 +118,9 @@ cmd_start() {
   ( cd "$ROOT/mocr"  && CORE_PLUGIN_REGISTRATION_TOKEN="$MOCR_REGISTRATION_TOKEN" nohup go run ./cmd/mocr  >> "$LOGDIR/mocr.log"  2>&1 & echo "mocr $!"  >> "$PIDFILE"; disown )
   ( cd "$ROOT/life"  && CORE_PLUGIN_REGISTRATION_TOKEN="$LIFE_REGISTRATION_TOKEN" nohup .venv/Scripts/python.exe -m life.main >> "$LOGDIR/life.log"  2>&1 & echo "life $!"  >> "$PIDFILE"; disown )
   ( cd "$ROOT/agent" && CORE_PLUGIN_REGISTRATION_TOKEN="$AGENT_REGISTRATION_TOKEN" nohup npm run dev >> "$LOGDIR/agent.log" 2>&1 & echo "agent $!" >> "$PIDFILE"; disown )
-  # Optional TTS backend. Started only when the plugin directory exists;
-  # it registers itself as capability "tts" and owns Settings → Genie TTS.
+  # Optional TTS backend. Started only when the plugin directory exists; it
+  # registers itself as capability "tts" and owns Settings → Genie TTS.
+  # These two backend plugins are git-ignored (local only), hence the guard.
   if [ -f "$ROOT/genie-tts/src/server.mjs" ]; then
     ( cd "$ROOT/genie-tts" && CORE_PLUGIN_REGISTRATION_TOKEN="$GENIETTS_REGISTRATION_TOKEN" nohup node src/server.mjs >> "$LOGDIR/genie-tts.log" 2>&1 & echo "genie-tts $!" >> "$PIDFILE"; disown )
   fi
