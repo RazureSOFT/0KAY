@@ -1,26 +1,606 @@
-var lt = Object.defineProperty;
-var ot = (L, s, _) => s in L ? lt(L, s, { enumerable: !0, configurable: !0, writable: !0, value: _ }) : L[s] = _;
-var K = (L, s, _) => ot(L, typeof s != "symbol" ? s + "" : s, _);
-import { defineComponent as ee, reactive as nt, ref as P, onMounted as ae, openBlock as a, createElementBlock as r, createElementVNode as e, toDisplayString as l, unref as t, createTextVNode as oe, withDirectives as N, vModelCheckbox as Q, vModelText as D, Fragment as F, renderList as J, normalizeClass as j, createCommentVNode as M, computed as Y, onUnmounted as ze, withKeys as Ge, createStaticVNode as at, createVNode as W, vModelDynamic as it, withModifiers as Oe, TransitionGroup as Be, withCtx as Ie, watch as Xe, vModelSelect as rt, shallowRef as Ke, createBlock as le, resolveDynamicComponent as ut, Transition as dt } from "vue";
-import { useRouter as Ze, useRoute as ct } from "vue-router";
-import { useI18n as te } from "vue-i18n";
-import { apiGet as he, apiPost as Me, ApiError as Qe, useConfirm as Ce, useProvidersStore as pt, PROVIDERS as Ve, AppSelect as ue, getLanguage as ht, LOCALES as vt, setLanguage as mt, useWizardStore as Le, useSettingsMeta as De, useUIPatchesStore as et, PinInput as He, useSettingsSectionsStore as _t, DEFAULT_LIVE2D_MODELS as gt } from "@0kay/host";
-import { L as bt } from "./assets/Live2DStage-CQ-AJ4l1.js";
-import { _ as ie } from "./assets/_plugin-vue_export-helper-CHgC5LLL.js";
-import { t as je } from "./assets/toast-CztbypyC.js";
-const ft = { class: "life-settings" }, yt = { class: "ls-hero" }, kt = { class: "ls-hero-main" }, wt = { class: "ls-sub" }, $t = ["disabled"], Ct = { class: "ls-grid" }, St = { class: "ls-card" }, Pt = { class: "ls-card-head" }, xt = { class: "ls-switch" }, Mt = { class: "ls-switch-text" }, Ut = { class: "ls-switch" }, Et = { class: "ls-switch-text" }, Tt = { class: "ls-field" }, At = ["placeholder"], Nt = { class: "ls-card" }, Vt = { class: "ls-card-head" }, Rt = { class: "ls-note" }, Ot = { class: "ls-label" }, It = { class: "ls-models" }, zt = ["onClick"], Lt = {
+var Qt = Object.defineProperty;
+var es = (F, s, v) => s in F ? Qt(F, s, { enumerable: !0, configurable: !0, writable: !0, value: v }) : F[s] = v;
+var W = (F, s, v) => es(F, typeof s != "symbol" ? s + "" : s, v);
+import { defineComponent as de, ref as x, computed as G, onMounted as Ne, onUnmounted as lt, watch as Xe, openBlock as o, createElementBlock as i, normalizeClass as ee, createElementVNode as e, unref as t, normalizeStyle as At, toDisplayString as l, createCommentVNode as V, withModifiers as Oe, nextTick as ts, reactive as ss, createTextVNode as Ie, withDirectives as B, vModelCheckbox as fe, vModelText as Y, Fragment as X, renderList as oe, withKeys as mt, createStaticVNode as ls, createVNode as ae, vModelDynamic as ns, TransitionGroup as Tt, withCtx as et, vModelSelect as os, shallowRef as It, createBlock as ke, resolveDynamicComponent as as, Transition as is } from "vue";
+import { useRouter as Bt, useRoute as rs } from "vue-router";
+import { useI18n as he } from "vue-i18n";
+import { useLifeStore as us, useWizardStore as nt, live2dRuntimeReady as cs, apiGet as Fe, apiPost as tt, ApiError as Ft, useConfirm as Ge, useProvidersStore as ds, PROVIDERS as pt, AppSelect as De, getLanguage as ps, LOCALES as hs, setLanguage as vs, useSettingsMeta as gt, useUIPatchesStore as Kt, PinInput as Nt, ModalShell as ms, useSettingsSectionsStore as gs, DEFAULT_LIVE2D_MODELS as fs, MarkdownContent as _s } from "@0kay/host";
+const ys = ["title"], bs = {
+  key: 0,
+  class: "stage-placeholder"
+}, ks = {
+  key: 1,
+  class: "stage-status"
+}, ws = {
+  key: 2,
+  class: "stage-status warn"
+}, $s = ["title", "aria-label"], Ss = { class: "stage-hint" }, Rt = "0kay.web.live2d.resetbtn", Cs = "0kay.web.live2d.transform.", xs = /* @__PURE__ */ de({
+  __name: "Live2DStage",
+  setup(F) {
+    const { t: s } = he(), v = us(), m = nt(), k = x(null), w = x(null), h = x(""), $ = x("idle"), R = x(""), u = G(() => m.live2d.enabled), c = G(() => m.live2d.modelUrl.trim()), n = G(() => v.emotionMood), r = G(() => {
+      const g = String(n.value || "");
+      if (!g) return "";
+      const _ = `emotion.${g}`, L = s(_);
+      return L === _ ? g : L;
+    }), d = G(() => v.emotionColor), f = x([]);
+    async function b() {
+      try {
+        const g = await fetch("/api/live2d");
+        if (g.ok) {
+          const _ = await g.json();
+          f.value = _.models || [];
+        }
+      } catch {
+        f.value = [];
+      }
+    }
+    const p = x(null), M = x(U()), A = x(!1);
+    let j = !1, O = { x: 0, y: 0 }, D = { x: 0, y: 0 };
+    function U() {
+      try {
+        const g = localStorage.getItem(Rt);
+        if (g) {
+          const _ = JSON.parse(g);
+          if (typeof _?.x == "number" && typeof _?.y == "number") return _;
+        }
+      } catch {
+      }
+      return null;
+    }
+    const I = G(() => M.value ? { left: `${M.value.x}px`, top: `${M.value.y}px`, right: "auto", bottom: "auto" } : {});
+    function J(g) {
+      A.value = !0, j = !1, O = { x: g.clientX, y: g.clientY };
+      const _ = p.value?.getBoundingClientRect();
+      D = { x: _?.left ?? 0, y: _?.top ?? 0 };
+      try {
+        p.value?.setPointerCapture(g.pointerId);
+      } catch {
+      }
+    }
+    function ie(g) {
+      if (!A.value || !k.value) return;
+      const _ = g.clientX - O.x, L = g.clientY - O.y;
+      (Math.abs(_) > 3 || Math.abs(L) > 3) && (j = !0);
+      const K = k.value.getBoundingClientRect(), Q = p.value?.offsetWidth || 34, se = Re(D.x - K.left + _, 4, Math.max(4, K.width - Q - 4)), te = Re(D.y - K.top + L, 4, Math.max(4, K.height - Q - 4));
+      M.value = { x: Math.round(se), y: Math.round(te) };
+    }
+    function re(g) {
+      if (A.value) {
+        A.value = !1;
+        try {
+          p.value?.releasePointerCapture(g.pointerId);
+        } catch {
+        }
+        if (j)
+          try {
+            localStorage.setItem(Rt, JSON.stringify(M.value));
+          } catch {
+          }
+      }
+    }
+    function H() {
+      if (j) {
+        j = !1;
+        return;
+      }
+      Wt();
+    }
+    let E = null, P = null, Pe = null, Se = 0, Ee = 0, le = 0, ne = { x: 0, y: 0, has: !1 }, _e = !1, we = null, Ue = { x: 0, y: 0 }, ve = null, Ce = null, ye = null, be = null, Ae = null, ue = "off", pe = 0, ze = 0, je = 0, Be = 120, y = ["ParamMouthOpenY"];
+    function C(g) {
+      const _ = P?.internalModel?.coreModel;
+      if (!_) return;
+      const L = Re(g, 0, 1);
+      for (const K of y)
+        try {
+          typeof _.setParameterValueById == "function" ? _.setParameterValueById(K, L) : typeof _.setParamFloat == "function" && _.setParamFloat(K, L);
+        } catch {
+        }
+    }
+    function S(g) {
+      const _ = [];
+      try {
+        const L = g?.internalModel?.settings;
+        let K = L?.getLipSyncParameters?.();
+        if (!Array.isArray(K) && Array.isArray(L?.groups) && (K = L.groups.find((se) => (se?.Name || se?.name || "").toLowerCase() === "lipsync")?.Ids), Array.isArray(K))
+          for (const Q of K) typeof Q == "string" && Q && _.push(Q);
+      } catch {
+      }
+      y = _.length ? _ : ["ParamMouthOpenY"];
+    }
+    function Z() {
+      if (ue === "off") {
+        pe !== 0 && (pe = 0, C(0));
+        return;
+      }
+      if (ue === "audio" && be && Ae) {
+        be.getByteTimeDomainData(Ae);
+        let g = 0;
+        for (let K = 0; K < Ae.length; K++) {
+          const Q = (Ae[K] - 128) / 128;
+          g += Q * Q;
+        }
+        const _ = Math.sqrt(g / Ae.length), L = Re(_ * 3.4, 0, 1);
+        pe = pe * 0.35 + L * 0.65, C(pe);
+        return;
+      }
+      if (ue === "text") {
+        const g = performance.now() - ze;
+        if (g > je * Be + 260) {
+          ue = "off", pe = 0, C(0);
+          return;
+        }
+        const _ = g % Be / Be, L = _ < 0.5 ? 0.12 + 0.72 * Math.sin(_ / 0.5 * Math.PI) : 0.06;
+        pe = pe * 0.45 + L * 0.55, C(pe);
+      }
+    }
+    async function Te(g, _ = "") {
+      if (!g) {
+        Ve(_);
+        return;
+      }
+      if (P)
+        try {
+          if (ve || (ve = new Audio(), ve.crossOrigin = "anonymous", ve.addEventListener("ended", () => {
+            ue = "off", pe = 0, C(0);
+          })), Ce && Ce !== g)
+            try {
+              URL.revokeObjectURL(Ce);
+            } catch {
+            }
+          if (Ce = g, ve.src = g, !ye) {
+            const L = window.AudioContext || window.webkitAudioContext;
+            L && (ye = new L(), be = ye.createAnalyser(), be.fftSize = 1024, Ae = new Uint8Array(be.fftSize), ye.createMediaElementSource(ve).connect(be), be.connect(ye.destination));
+          }
+          await ye?.resume().catch(() => {
+          }), ue = "audio", await ve.play().catch(() => {
+            _ ? Ve(_) : (ue = "off", C(0));
+          });
+        } catch {
+          _ ? Ve(_) : ue = "off";
+        }
+    }
+    function Ve(g) {
+      const _ = Array.from(String(g || "")).filter((L) => /\S/.test(L));
+      _.length && (Be = /[\u4e00-\u9fff]/.test(_.join("")) ? 140 : 80, je = _.length, ze = performance.now(), ue = "text");
+    }
+    function z() {
+      ue = "off", pe = 0, C(0);
+      try {
+        ve?.pause();
+      } catch {
+      }
+    }
+    function T(g) {
+      const _ = g.detail || {};
+      _.url ? Te(_.url, _.text || "") : _.text && Ve(_.text);
+    }
+    let a = {}, N = [], ce = 0;
+    function me(g) {
+      a = {}, N = [];
+      try {
+        const _ = g?.internalModel?.motionManager, L = g?.internalModel?.settings, K = _?.definitions || L?.motions || {};
+        for (const [se, te] of Object.entries(K)) a[se] = Array.isArray(te) ? te.length : 0;
+        N = (_?.expressionManager?.definitions || L?.expressions || []).map((se) => se?.Name || se?.name).filter((se) => !!se);
+      } catch {
+      }
+      try {
+        console.info("[live2d] motions", a, "expressions", N);
+      } catch {
+      }
+      try {
+        window.__0KAY_LIVE2D_CAPS__ = { motions: a, expressions: N };
+      } catch {
+      }
+    }
+    function q(g, _) {
+      if (!P) return;
+      const L = Object.keys(a).filter((te) => a[te] > 0);
+      if (!L.length) return;
+      const K = L.find((te) => /idle/i.test(te)), Q = g && a[g] > 0, se = Q ? g : _ == null && K ? K : L.find((te) => te !== K) || L[0];
+      try {
+        const te = P.internalModel?.motionManager;
+        if (typeof P.motion == "function" && Q) {
+          P.motion(se, _);
+          return;
+        }
+        if (_ == null) {
+          te?.startRandomMotion?.(se);
+          return;
+        }
+        te?.startMotion?.(se, _);
+      } catch {
+      }
+    }
+    function ge(g) {
+      if (!P || !g) return;
+      const _ = /^\d+$/.test(g) ? Number(g) : N.indexOf(g), L = _ >= 0 ? _ : g;
+      try {
+        const K = P.internalModel?.motionManager?.expressionManager;
+        if (K?.setExpression) {
+          K.setExpression(L);
+          return;
+        }
+        P.expression?.(L);
+      } catch {
+      }
+    }
+    function at() {
+      it(), !(typeof window > "u") && (ce = window.setInterval(() => {
+        if (ue !== "off" || document.hidden) return;
+        const g = Object.keys(a).filter((_) => a[_] > 0 && !/idle/i.test(_));
+        g.length && Math.random() < 0.6 && q(g[Math.floor(Math.random() * g.length)]), N.length && Math.random() < 0.5 && ge(N[Math.floor(Math.random() * N.length)]);
+      }, 9e3));
+    }
+    function it() {
+      ce && (clearInterval(ce), ce = 0);
+    }
+    function _t(g) {
+      const _ = g.detail || {};
+      _.expression && ge(_.expression), (_.group || _.index != null) && q(_.group, _.index);
+    }
+    function Ht() {
+      return !!(window.PIXI && window.PIXI.live2d && window.PIXI.live2d.Live2DModel && window.Live2DCubismCore);
+    }
+    function Re(g, _, L) {
+      return Math.min(L, Math.max(_, g));
+    }
+    function rt() {
+      return Cs + (c.value || "default");
+    }
+    function yt() {
+      try {
+        const g = localStorage.getItem(rt());
+        if (!g) return null;
+        const _ = JSON.parse(g);
+        if (typeof _?.x == "number" && typeof _?.y == "number" && typeof _?.scale == "number") return _;
+      } catch {
+      }
+      return null;
+    }
+    function ut(g = !1) {
+      if (!P) return;
+      const _ = () => {
+        try {
+          localStorage.setItem(rt(), JSON.stringify({
+            x: Math.round(P.x * 100) / 100,
+            y: Math.round(P.y * 100) / 100,
+            scale: Math.round(P.scale.x * 1e4) / 1e4
+          }));
+        } catch {
+        }
+      };
+      if (g) {
+        le && (clearTimeout(le), le = 0), _();
+        return;
+      }
+      le && clearTimeout(le), le = window.setTimeout(() => {
+        le = 0, _();
+      }, 140);
+    }
+    function bt() {
+      if (it(), ue = "off", pe = 0, He(), le && (clearTimeout(le), le = 0), P) {
+        try {
+          E?.stage && E.stage.removeChild(P), P.destroy?.();
+        } catch {
+        }
+        P = null;
+      }
+    }
+    function kt() {
+      if (Et(), bt(), Pe && (Pe.disconnect(), Pe = null), le && (clearTimeout(le), le = 0), E) {
+        try {
+          E.destroy(!1, { children: !0, texture: !1, baseTexture: !1 });
+        } catch {
+        }
+        E = null;
+      }
+    }
+    function wt(g) {
+      if (typeof g.getLocalBounds == "function") {
+        const K = g.getLocalBounds();
+        if (K && K.width > 0 && K.height > 0) return { width: K.width, height: K.height };
+      }
+      const _ = Math.max(Math.abs(g.scale.x) || 0, 1e-4), L = Math.max(Math.abs(g.scale.y) || 0, 1e-4);
+      return { width: Math.max(g.width / _, 1), height: Math.max(g.height / L, 1) };
+    }
+    function ct(g = P) {
+      if (!g || !E) return !1;
+      const _ = E.screen.width, L = E.screen.height;
+      if (!_ || !L) return !1;
+      const K = wt(g);
+      if (K.width > 0 && K.height > 0) {
+        const Q = Math.min(_ / K.width, L / K.height) * 0.88;
+        g.anchor?.set?.(0.5, 0.5), g.scale.set(Q, Q);
+      }
+      g.position.set(_ * 0.5, L * 0.55);
+      try {
+        const Q = g.getBounds?.();
+        if (Q && Q.width > 0 && Q.height > 0) {
+          g.x += _ * 0.5 - (Q.x + Q.width * 0.5), g.y += L * 0.55 - (Q.y + Q.height * 0.55);
+          const se = g.getBounds?.();
+          if (se && se.width > 0 && se.height > 0) {
+            const te = Math.min(_ / se.width, L / se.height) * 0.88, xe = Math.abs(g.scale.x) || 1;
+            if (Number.isFinite(te) && te > 0 && Math.abs(te - xe) / xe > 0.08) {
+              const Le = xe * te;
+              g.scale.set(Le, Le);
+              const $e = g.getBounds?.();
+              $e && $e.width > 0 && (g.x += _ * 0.5 - ($e.x + $e.width * 0.5), g.y += L * 0.55 - ($e.y + $e.height * 0.55));
+            }
+          }
+        }
+      } catch {
+      }
+      return !0;
+    }
+    function Yt() {
+      if (!P) return { hw: 0, hh: 0 };
+      const g = wt(P), _ = Math.abs(P.scale.x) || 1, L = Math.abs(P.scale.y) || 1;
+      return { hw: g.width * _ / 2, hh: g.height * L / 2 };
+    }
+    function Ze() {
+      if (!P || !E) return;
+      const g = E.screen.width, _ = E.screen.height, { hw: L, hh: K } = Yt(), Q = Math.min(L * 0.7, g * 0.5), se = Math.min(K * 0.7, _ * 0.5), te = Q - L, xe = g - Q + L, Le = se - K, $e = _ - se + K, We = te <= xe ? Re(P.x, te, xe) : g * 0.5, Ut = Le <= $e ? Re(P.y, Le, $e) : _ * 0.55;
+      P.position.set(We, Ut);
+    }
+    function Xt() {
+      if (!P || !E) return;
+      const g = yt();
+      if (g && Number.isFinite(g.scale) && g.scale > 0) {
+        P.anchor?.set?.(0.5, 0.5), P.scale.set(g.scale, g.scale), P.position.set(g.x, g.y), Ze();
+        return;
+      }
+      ct();
+    }
+    function Jt(g, _) {
+      if (!P || !window.PIXI || typeof window.PIXI.Point != "function" || typeof P.toModelPosition != "function") return null;
+      try {
+        const L = new window.PIXI.Point(g, _);
+        return P.toModelPosition(L, new window.PIXI.Point());
+      } catch {
+        return null;
+      }
+    }
+    function $t(g, _, L) {
+      const K = L - _;
+      return !Number.isFinite(K) || Math.abs(K) <= 1e-4 ? 0 : Re((g - _) / K * 2 - 1, -1, 1);
+    }
+    function St(g, _) {
+      const L = P?.internalModel, K = L?.focusController;
+      if (!K || typeof K.focus != "function" || !E) return;
+      const Q = E.screen.width || 1, se = E.screen.height || 1;
+      let te = g / Q * 2 - 1, xe = _ / se * 2 - 1;
+      const Le = Jt(g, _);
+      if (Le && L.originalWidth && L.originalHeight) {
+        const $e = $t(Le.x, 0, L.originalWidth), We = $t(Le.y, 0, L.originalHeight);
+        $e >= -1 && $e <= 1 && We >= -1 && We <= 1 && (te = te * 0.35 + $e * 0.65, xe = xe * 0.35 + We * 0.65);
+      }
+      te = Re(te, -1, 1), xe = Re(xe, -1, 1), K.focus(te, -xe);
+    }
+    function Qe() {
+      ne.has && St(ne.x, ne.y);
+    }
+    function Ct(g) {
+      if (!P || !E || !k.value) return;
+      const _ = k.value.getBoundingClientRect();
+      if (!_.width || !_.height) return;
+      const L = (g.clientX - _.left) / _.width * E.screen.width, K = (g.clientY - _.top) / _.height * E.screen.height;
+      ne = { x: L, y: K, has: !0 }, _e && g.pointerId === we && (P.position.set(L + Ue.x, K + Ue.y), Ze(), ut()), St(L, K);
+    }
+    function xt(g) {
+      if (!P || !E || !k.value || g.button !== 0 && g.pointerType === "mouse" || g.target?.closest?.(".stage-reset")) return;
+      const _ = k.value.getBoundingClientRect();
+      if (!_.width || !_.height) return;
+      const L = (g.clientX - _.left) / _.width * E.screen.width, K = (g.clientY - _.top) / _.height * E.screen.height;
+      _e = !0, we = g.pointerId, Ue = { x: P.x - L, y: P.y - K };
+      try {
+        k.value.setPointerCapture(g.pointerId);
+      } catch {
+      }
+      k.value && (k.value.style.cursor = "grabbing");
+    }
+    function He(g) {
+      if (_e && !(g && we !== null && g.pointerId !== we)) {
+        if (_e = !1, k.value) {
+          try {
+            we !== null && k.value.releasePointerCapture(we);
+          } catch {
+          }
+          k.value.style.cursor = "grab";
+        }
+        we = null, ut(!0);
+      }
+    }
+    function Mt(g) {
+      if (!P || $.value !== "ok" || !g.ctrlKey && !g.metaKey) return;
+      g.preventDefault();
+      const _ = g.deltaY < 0 ? 1.06 : 0.94, L = Re(P.scale.x * _, 0.08, 3.2);
+      P.scale.set(L, L), Ze(), Qe(), ut();
+    }
+    function Wt() {
+      if (!(!P || !E)) {
+        try {
+          localStorage.removeItem(rt());
+        } catch {
+        }
+        le && (clearTimeout(le), le = 0);
+        try {
+          E.resize?.();
+        } catch {
+        }
+        E?.stage && (E.stage.hitArea = E.screen), ct(), Qe();
+      }
+    }
+    function Pt() {
+      Et();
+      const g = k.value;
+      g && (g.style.cursor = "grab", g.addEventListener("pointermove", Ct), g.addEventListener("pointerdown", xt), g.addEventListener("pointerup", He), g.addEventListener("pointercancel", He), g.addEventListener("pointerleave", He), g.addEventListener("wheel", Mt, { passive: !1 }));
+    }
+    function Et() {
+      const g = k.value;
+      g && (g.removeEventListener("pointermove", Ct), g.removeEventListener("pointerdown", xt), g.removeEventListener("pointerup", He), g.removeEventListener("pointercancel", He), g.removeEventListener("pointerleave", He), g.removeEventListener("wheel", Mt), _e = !1, we = null);
+    }
+    function qt() {
+      if (E || !w.value || !k.value) return;
+      const g = window.PIXI;
+      E = new g.Application({
+        view: w.value,
+        resizeTo: k.value,
+        autoStart: !0,
+        antialias: !0,
+        backgroundAlpha: 0,
+        powerPreference: "high-performance"
+      }), E.stage && (E.stage.interactive = !0, E.stage.hitArea = E.screen), Pe = new ResizeObserver(() => {
+        try {
+          E?.resize?.();
+        } catch {
+        }
+        if (E?.stage && (E.stage.hitArea = E.screen), P) {
+          const _ = yt();
+          _ && Number.isFinite(_.scale) && _.scale > 0 ? (P.position.set(_.x, _.y), P.scale.set(_.scale, _.scale), Ze()) : ct();
+        }
+        Qe();
+      }), Pe.observe(k.value), Pt();
+    }
+    async function dt() {
+      try {
+        await cs;
+      } catch (L) {
+        $.value = "error", R.value = `Live2D runtime: ${L.message}`;
+        return;
+      }
+      const g = ++Se;
+      if (bt(), !u.value) {
+        $.value = "disabled", h.value = "";
+        return;
+      }
+      if (!Ht()) {
+        $.value = "no-libs", R.value = s("live2d.libsMissing");
+        return;
+      }
+      const _ = c.value || f.value[0]?.url;
+      if (!_) {
+        $.value = "error", R.value = s("live2d.noModel");
+        return;
+      }
+      if ($.value = "loading", R.value = "", h.value = _.split("/").pop() || _, await ts(), E || qt(), !E) {
+        $.value = "error", R.value = s("live2d.stageMissing");
+        return;
+      }
+      try {
+        const L = await window.PIXI.live2d.Live2DModel.from(_, { autoInteract: !1 });
+        if (g !== Se) {
+          try {
+            L.destroy?.();
+          } catch {
+          }
+          return;
+        }
+        P = L, Pt(), L.anchor?.set?.(0.5, 0.5), E.stage.addChild(L), Xt();
+        try {
+          L.internalModel?.on?.("beforeModelUpdate", Z);
+        } catch {
+        }
+        S(L), me(L), $.value = "ok", Qe(), q("Idle"), at();
+      } catch (L) {
+        if (g !== Se) return;
+        console.error("Live2D load failed:", L), $.value = "error", R.value = L?.message || s("live2d.loadError");
+      }
+    }
+    function Gt() {
+      if (!u.value) {
+        kt(), $.value = "disabled";
+        return;
+      }
+      dt();
+    }
+    Ne(async () => {
+      window.addEventListener("live2d-models-changed", b), window.addEventListener("live2d-speak", T), window.addEventListener("live2d-motion", _t), window.__0KAY_LIVE2D__ = { speak: Te, stop: z, motion: q, expression: ge };
+      try {
+        const g = await fetch("/api/settings/live2d");
+        if (g.ok) {
+          const { values: _ } = await g.json();
+          _ && typeof _.enabled == "boolean" && (m.live2d.enabled = _.enabled), _ && typeof _.model_url == "string" && (m.live2d.modelUrl = _.model_url);
+        }
+      } catch {
+      }
+      await b(), u.value ? dt() : $.value = "disabled";
+    }), lt(() => {
+      if (window.removeEventListener("live2d-models-changed", b), window.removeEventListener("live2d-speak", T), window.removeEventListener("live2d-motion", _t), it(), z(), Ce) {
+        try {
+          URL.revokeObjectURL(Ce);
+        } catch {
+        }
+        Ce = null;
+      }
+      try {
+        ye?.close();
+      } catch {
+      }
+      ye = null, Se++, cancelAnimationFrame(Ee), kt();
+    }), Xe(u, Gt), Xe(c, () => {
+      u.value && dt();
+    });
+    const Zt = { happy: 2, sad: 4, irritated: 6, neutral: 0, drowsy: 0, exhausted: 0, sleeping: 0 };
+    return Xe(n, (g) => {
+      if (!P || ue !== "off" || !N.length) return;
+      const _ = Zt[g] ?? 0;
+      ge(N[_] || N[0]), (g === "happy" || g === "irritated") && Math.random() < 0.5 && q();
+    }), (g, _) => (o(), i("div", {
+      class: ee(["live2d-stage", { on: u.value }])
+    }, [
+      e("div", {
+        ref_key: "stageEl",
+        ref: k,
+        class: "stage-viewport",
+        style: At({ "--mood": d.value }),
+        title: u.value && $.value === "ok" ? t(s)("live2d.interactHint") : ""
+      }, [
+        e("canvas", {
+          ref_key: "canvasEl",
+          ref: w,
+          class: "stage-canvas"
+        }, null, 512),
+        u.value ? $.value === "loading" ? (o(), i("div", ks, l(t(s)("live2d.loading")), 1)) : $.value === "error" || $.value === "no-libs" ? (o(), i("div", ws, l(R.value || t(s)("live2d.loadError")), 1)) : V("", !0) : (o(), i("div", bs, [
+          e("p", null, l(t(s)("live2d.disabledHint")), 1)
+        ])),
+        u.value && $.value === "ok" ? (o(), i("button", {
+          key: 3,
+          ref_key: "resetBtnEl",
+          ref: p,
+          class: ee(["stage-reset", { dragging: A.value }]),
+          type: "button",
+          style: At(I.value),
+          title: t(s)("live2d.resetView"),
+          "aria-label": t(s)("live2d.resetView"),
+          onPointerdown: Oe(J, ["stop"]),
+          onPointermove: Oe(ie, ["stop"]),
+          onPointerup: Oe(re, ["stop"]),
+          onPointercancel: Oe(re, ["stop"]),
+          onClick: Oe(H, ["stop"])
+        }, "⟲", 46, $s)) : V("", !0),
+        _[0] || (_[0] = e("div", { class: "stage-gradient" }, null, -1)),
+        e("div", Ss, l(r.value), 1)
+      ], 12, ys)
+    ], 2));
+  }
+}), Me = (F, s) => {
+  const v = F.__vccOpts || F;
+  for (const [m, k] of s)
+    v[m] = k;
+  return v;
+}, Ms = /* @__PURE__ */ Me(xs, [["__scopeId", "data-v-15b509be"]]), Ps = { class: "life-settings" }, Es = { class: "ls-hero" }, Us = { class: "ls-hero-main" }, As = { class: "ls-sub" }, Ts = ["disabled"], Is = { class: "ls-grid" }, Ns = { class: "ls-card" }, Rs = { class: "ls-card-head" }, Vs = { class: "ls-switch" }, Ls = { class: "ls-switch-text" }, Os = { class: "ls-switch" }, Ds = { class: "ls-switch-text" }, zs = { class: "ls-field" }, Bs = ["placeholder"], Fs = { class: "ls-card" }, Ks = { class: "ls-card-head" }, js = { class: "ls-note" }, Hs = { class: "ls-label" }, Ys = { class: "ls-models" }, Xs = ["onClick"], Js = {
   key: 0,
   class: "ls-empty"
-}, Dt = { class: "ls-label" }, Ft = { class: "ls-models" }, Bt = ["onClick"], Kt = {
+}, Ws = { class: "ls-label" }, qs = { class: "ls-models" }, Gs = ["onClick"], Zs = {
   key: 0,
   class: "ls-empty"
-}, Ht = { class: "ls-card" }, jt = { class: "ls-card-head" }, Yt = { class: "ls-note" }, Jt = { class: "ls-switch" }, Wt = { class: "ls-switch-text" }, qt = { class: "ls-switch" }, Gt = { class: "ls-switch-text" }, Xt = { class: "ls-card" }, Zt = { class: "ls-switch" }, Qt = { class: "ls-switch-text" }, es = { class: "ls-card ls-card-wide" }, ts = { class: "ls-card-head" }, ss = { class: "ls-row" }, ls = { class: "ls-switch" }, os = { class: "ls-switch-text" }, ns = { class: "ls-switch" }, as = { class: "ls-switch-text" }, is = { class: "ls-row" }, rs = { class: "ls-field" }, us = { class: "ls-field" }, ds = { class: "ls-row" }, cs = { class: "ls-field" }, ps = { class: "ls-field" }, hs = ["placeholder"], vs = { class: "ls-row" }, ms = { class: "ls-field" }, _s = { class: "ls-field" }, gs = { class: "ls-card ls-card-wide" }, bs = { class: "ls-card-head" }, fs = { class: "ls-row" }, ys = { class: "ls-switch" }, ks = { class: "ls-switch-text" }, ws = { class: "ls-row" }, $s = { class: "ls-field" }, Cs = ["placeholder"], Ss = { class: "ls-field" }, Ps = ["title"], xs = { class: "ls-hint" }, Ms = {
+}, Qs = { class: "ls-card" }, el = { class: "ls-card-head" }, tl = { class: "ls-note" }, sl = { class: "ls-switch" }, ll = { class: "ls-switch-text" }, nl = { class: "ls-switch" }, ol = { class: "ls-switch-text" }, al = { class: "ls-card" }, il = { class: "ls-switch" }, rl = { class: "ls-switch-text" }, ul = { class: "ls-card ls-card-wide" }, cl = { class: "ls-card-head" }, dl = { class: "ls-row" }, pl = { class: "ls-switch" }, hl = { class: "ls-switch-text" }, vl = { class: "ls-switch" }, ml = { class: "ls-switch-text" }, gl = { class: "ls-row" }, fl = { class: "ls-field" }, _l = { class: "ls-field" }, yl = { class: "ls-row" }, bl = { class: "ls-field" }, kl = { class: "ls-field" }, wl = ["placeholder"], $l = { class: "ls-row" }, Sl = { class: "ls-field" }, Cl = { class: "ls-field" }, xl = { class: "ls-card ls-card-wide" }, Ml = { class: "ls-card-head" }, Pl = { class: "ls-row" }, El = { class: "ls-switch" }, Ul = { class: "ls-switch-text" }, Al = { class: "ls-row" }, Tl = { class: "ls-field" }, Il = ["placeholder"], Nl = { class: "ls-field" }, Rl = ["title"], Vl = { class: "ls-hint" }, Ll = {
   key: 0,
   class: "ls-state"
-}, Us = /* @__PURE__ */ ee({
+}, Ol = /* @__PURE__ */ de({
   __name: "LifeSettingsPanel",
-  setup(L) {
-    const { t: s } = te(), _ = nt({
+  setup(F) {
+    const { t: s } = he(), v = ss({
       screen_watch: !1,
       computer_use: !1,
       report_agent_host: "",
@@ -44,281 +624,281 @@ const ft = { class: "life-settings" }, yt = { class: "ls-hero" }, kt = { class: 
       wake_enabled: !1,
       wake_nickname: "",
       asr_language: "zh"
-    }), b = P(""), $ = P(!1), k = P(!1), v = P([]), C = P(""), E = P([]);
-    async function c() {
+    }), m = x(""), k = x(!1), w = x(!1), h = x([]), $ = x(""), R = x([]);
+    async function u() {
       try {
-        const [o, i] = await Promise.all([fetch("/api/settings/life"), fetch("/api/models")]);
-        if (o.ok && (Object.assign(_, (await o.json()).values || {}), k.value = !0), i.ok) {
-          const d = await i.json();
-          E.value = Array.isArray(d.models) ? d.models.map((g) => ({ id: g.id, provider: g.provider || "custom", supports_thinking: g.supports_thinking })).filter((g) => g.id) : [], v.value = E.value.map((g) => g.id), C.value = s("lifeSettings.sourceFromCore");
+        const [n, r] = await Promise.all([fetch("/api/settings/life"), fetch("/api/models")]);
+        if (n.ok && (Object.assign(v, (await n.json()).values || {}), w.value = !0), r.ok) {
+          const d = await r.json();
+          R.value = Array.isArray(d.models) ? d.models.map((f) => ({ id: f.id, provider: f.provider || "custom", supports_thinking: f.supports_thinking })).filter((f) => f.id) : [], h.value = R.value.map((f) => f.id), $.value = s("lifeSettings.sourceFromCore");
         }
       } catch {
-        b.value = s("lifeSettings.loadFailed");
+        m.value = s("lifeSettings.loadFailed");
       }
     }
-    async function u() {
-      if (!k.value) {
-        b.value = s("lifeSettings.notLoaded");
+    async function c() {
+      if (!w.value) {
+        m.value = s("lifeSettings.notLoaded");
         return;
       }
-      $.value = !0, b.value = "";
+      k.value = !0, m.value = "";
       try {
-        const o = await fetch("/api/settings/life", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ values: _ }) });
-        if (!o.ok) throw new Error(String(o.status));
-        await fetch("/api/life/permissions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ screen_watch: _.screen_watch, computer_use: _.computer_use, report_agent_host: _.report_agent_host }) }), b.value = s("lifeSettings.savedNotice");
+        const n = await fetch("/api/settings/life", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ values: v }) });
+        if (!n.ok) throw new Error(String(n.status));
+        await fetch("/api/life/permissions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ screen_watch: v.screen_watch, computer_use: v.computer_use, report_agent_host: v.report_agent_host }) }), m.value = s("lifeSettings.savedNotice");
       } catch {
-        b.value = s("lifeSettings.saveFailed");
+        m.value = s("lifeSettings.saveFailed");
       } finally {
-        $.value = !1;
+        k.value = !1;
       }
     }
-    return ae(c), (o, i) => (a(), r("section", ft, [
-      e("header", yt, [
-        e("div", kt, [
-          i[17] || (i[17] = e("span", { class: "ls-eyebrow" }, "L.I.F.E · INTEGRATIONS", -1)),
+    return Ne(u), (n, r) => (o(), i("section", Ps, [
+      e("header", Es, [
+        e("div", Us, [
+          r[17] || (r[17] = e("span", { class: "ls-eyebrow" }, "L.I.F.E · INTEGRATIONS", -1)),
           e("h2", null, l(t(s)("lifeSettings.title")), 1),
-          e("p", wt, l(t(s)("lifeSettings.subtitle")), 1)
+          e("p", As, l(t(s)("lifeSettings.subtitle")), 1)
         ]),
         e("button", {
           class: "ls-save",
-          disabled: $.value,
-          onClick: u
+          disabled: k.value,
+          onClick: c
         }, [
-          i[18] || (i[18] = e("span", {
+          r[18] || (r[18] = e("span", {
             class: "ls-save-ic",
             "aria-hidden": "true"
           }, "✓", -1)),
-          oe(l($.value ? t(s)("common.saving") : t(s)("common.save")), 1)
-        ], 8, $t)
+          Ie(l(k.value ? t(s)("common.saving") : t(s)("common.save")), 1)
+        ], 8, Ts)
       ]),
-      e("div", Ct, [
-        e("article", St, [
-          e("div", Pt, [
-            i[19] || (i[19] = e("span", { class: "ls-ic tone-1" }, "◉", -1)),
+      e("div", Is, [
+        e("article", Ns, [
+          e("div", Rs, [
+            r[19] || (r[19] = e("span", { class: "ls-ic tone-1" }, "◉", -1)),
             e("h3", null, l(t(s)("lifeSettings.hostPerms")), 1)
           ]),
-          e("label", xt, [
-            N(e("input", {
-              "onUpdate:modelValue": i[0] || (i[0] = (d) => _.screen_watch = d),
+          e("label", Vs, [
+            B(e("input", {
+              "onUpdate:modelValue": r[0] || (r[0] = (d) => v.screen_watch = d),
               type: "checkbox"
             }, null, 512), [
-              [Q, _.screen_watch]
+              [fe, v.screen_watch]
             ]),
-            i[20] || (i[20] = e("span", { class: "ls-track" }, null, -1)),
-            e("span", Mt, [
+            r[20] || (r[20] = e("span", { class: "ls-track" }, null, -1)),
+            e("span", Ls, [
               e("b", null, l(t(s)("lifeSettings.screenWatch")), 1),
               e("small", null, l(t(s)("lifeSettings.screenWatchDesc")), 1)
             ])
           ]),
-          e("label", Ut, [
-            N(e("input", {
-              "onUpdate:modelValue": i[1] || (i[1] = (d) => _.computer_use = d),
+          e("label", Os, [
+            B(e("input", {
+              "onUpdate:modelValue": r[1] || (r[1] = (d) => v.computer_use = d),
               type: "checkbox"
             }, null, 512), [
-              [Q, _.computer_use]
+              [fe, v.computer_use]
             ]),
-            i[21] || (i[21] = e("span", { class: "ls-track" }, null, -1)),
-            e("span", Et, [
+            r[21] || (r[21] = e("span", { class: "ls-track" }, null, -1)),
+            e("span", Ds, [
               e("b", null, l(t(s)("lifeSettings.computerUse")), 1),
               e("small", null, l(t(s)("lifeSettings.computerUseDesc")), 1)
             ])
           ]),
-          e("label", Tt, [
+          e("label", zs, [
             e("span", null, l(t(s)("lifeSettings.agentHost")), 1),
-            N(e("input", {
-              "onUpdate:modelValue": i[2] || (i[2] = (d) => _.report_agent_host = d),
+            B(e("input", {
+              "onUpdate:modelValue": r[2] || (r[2] = (d) => v.report_agent_host = d),
               placeholder: t(s)("lifeSettings.agentHostPlaceholder")
-            }, null, 8, At), [
-              [D, _.report_agent_host]
+            }, null, 8, Bs), [
+              [Y, v.report_agent_host]
             ])
           ])
         ]),
-        e("article", Nt, [
-          e("div", Vt, [
-            i[22] || (i[22] = e("span", { class: "ls-ic tone-2" }, "✦", -1)),
+        e("article", Fs, [
+          e("div", Ks, [
+            r[22] || (r[22] = e("span", { class: "ls-ic tone-2" }, "✦", -1)),
             e("h3", null, l(t(s)("lifeSettings.thinkOutput")), 1)
           ]),
-          e("p", Rt, l(C.value || t(s)("lifeSettings.loadingModels")), 1),
-          e("p", Ot, l(t(s)("lifeSettings.thinkLabel")), 1),
-          e("div", It, [
-            (a(!0), r(F, null, J(E.value, (d) => (a(), r("button", {
+          e("p", js, l($.value || t(s)("lifeSettings.loadingModels")), 1),
+          e("p", Hs, l(t(s)("lifeSettings.thinkLabel")), 1),
+          e("div", Ys, [
+            (o(!0), i(X, null, oe(R.value, (d) => (o(), i("button", {
               key: "think-" + d.id,
               type: "button",
-              class: j(["ls-model", { selected: _.think_model === d.id }]),
-              onClick: (g) => _.think_model = d.id
+              class: ee(["ls-model", { selected: v.think_model === d.id }]),
+              onClick: (f) => v.think_model = d.id
             }, [
               e("b", null, l(d.id), 1),
               e("span", null, l(d.provider) + " · " + l(d.supports_thinking ? "thinking" : "standard"), 1)
-            ], 10, zt))), 128)),
-            E.value.length ? M("", !0) : (a(), r("span", Lt, l(t(s)("lifeSettings.noModels")), 1))
+            ], 10, Xs))), 128)),
+            R.value.length ? V("", !0) : (o(), i("span", Js, l(t(s)("lifeSettings.noModels")), 1))
           ]),
-          e("p", Dt, l(t(s)("lifeSettings.outputLabel")), 1),
-          e("div", Ft, [
-            (a(!0), r(F, null, J(E.value, (d) => (a(), r("button", {
+          e("p", Ws, l(t(s)("lifeSettings.outputLabel")), 1),
+          e("div", qs, [
+            (o(!0), i(X, null, oe(R.value, (d) => (o(), i("button", {
               key: "output-" + d.id,
               type: "button",
-              class: j(["ls-model", { selected: _.output_model === d.id }]),
-              onClick: (g) => _.output_model = d.id
+              class: ee(["ls-model", { selected: v.output_model === d.id }]),
+              onClick: (f) => v.output_model = d.id
             }, [
               e("b", null, l(d.id), 1),
               e("span", null, l(d.provider) + " · output", 1)
-            ], 10, Bt))), 128)),
-            E.value.length ? M("", !0) : (a(), r("span", Kt, l(t(s)("lifeSettings.noModels")), 1))
+            ], 10, Gs))), 128)),
+            R.value.length ? V("", !0) : (o(), i("span", Zs, l(t(s)("lifeSettings.noModels")), 1))
           ])
         ]),
-        e("article", Ht, [
-          e("div", jt, [
-            i[23] || (i[23] = e("span", { class: "ls-ic tone-3" }, "✉", -1)),
+        e("article", Qs, [
+          e("div", el, [
+            r[23] || (r[23] = e("span", { class: "ls-ic tone-3" }, "✉", -1)),
             e("h3", null, l(t(s)("lifeSettings.mail")), 1)
           ]),
-          e("p", Yt, l(t(s)("lifeSettings.mailNote", { mcp: "0kay-mcp", mail: "mail" })), 1),
-          e("label", Jt, [
-            N(e("input", {
-              "onUpdate:modelValue": i[3] || (i[3] = (d) => _.mail_auto_approve_all = d),
+          e("p", tl, l(t(s)("lifeSettings.mailNote", { mcp: "0kay-mcp", mail: "mail" })), 1),
+          e("label", sl, [
+            B(e("input", {
+              "onUpdate:modelValue": r[3] || (r[3] = (d) => v.mail_auto_approve_all = d),
               type: "checkbox"
             }, null, 512), [
-              [Q, _.mail_auto_approve_all]
+              [fe, v.mail_auto_approve_all]
             ]),
-            i[24] || (i[24] = e("span", { class: "ls-track" }, null, -1)),
-            e("span", Wt, [
+            r[24] || (r[24] = e("span", { class: "ls-track" }, null, -1)),
+            e("span", ll, [
               e("b", null, l(t(s)("lifeSettings.mailAutoApprove")), 1),
               e("small", null, l(t(s)("lifeSettings.mailAutoApproveDesc")), 1)
             ])
           ]),
-          e("label", qt, [
-            N(e("input", {
-              "onUpdate:modelValue": i[4] || (i[4] = (d) => _.mail_require_approval = d),
+          e("label", nl, [
+            B(e("input", {
+              "onUpdate:modelValue": r[4] || (r[4] = (d) => v.mail_require_approval = d),
               type: "checkbox"
             }, null, 512), [
-              [Q, _.mail_require_approval]
+              [fe, v.mail_require_approval]
             ]),
-            i[25] || (i[25] = e("span", { class: "ls-track" }, null, -1)),
-            e("span", Gt, [
+            r[25] || (r[25] = e("span", { class: "ls-track" }, null, -1)),
+            e("span", ol, [
               e("b", null, l(t(s)("lifeSettings.mailRequireApproval")), 1),
               e("small", null, l(t(s)("lifeSettings.mailRequireApprovalDesc")), 1)
             ])
           ])
         ]),
-        e("article", Xt, [
-          i[27] || (i[27] = e("div", { class: "ls-card-head" }, [
+        e("article", al, [
+          r[27] || (r[27] = e("div", { class: "ls-card-head" }, [
             e("span", { class: "ls-ic tone-4" }, "⌘"),
             e("h3", null, "0kay-mcp")
           ], -1)),
-          e("label", Zt, [
-            N(e("input", {
-              "onUpdate:modelValue": i[5] || (i[5] = (d) => _.mcp_enabled = d),
+          e("label", il, [
+            B(e("input", {
+              "onUpdate:modelValue": r[5] || (r[5] = (d) => v.mcp_enabled = d),
               type: "checkbox"
             }, null, 512), [
-              [Q, _.mcp_enabled]
+              [fe, v.mcp_enabled]
             ]),
-            i[26] || (i[26] = e("span", { class: "ls-track" }, null, -1)),
-            e("span", Qt, [
+            r[26] || (r[26] = e("span", { class: "ls-track" }, null, -1)),
+            e("span", rl, [
               e("b", null, l(t(s)("lifeSettings.mcpEnabled")), 1),
               e("small", null, l(t(s)("lifeSettings.mcpEnabledDesc")), 1)
             ])
           ])
         ]),
-        e("article", es, [
-          e("div", ts, [
-            i[28] || (i[28] = e("span", { class: "ls-ic tone-5" }, "☷", -1)),
+        e("article", ul, [
+          e("div", cl, [
+            r[28] || (r[28] = e("span", { class: "ls-ic tone-5" }, "☷", -1)),
             e("h3", null, l(t(s)("lifeSettings.onebot")), 1)
           ]),
-          e("div", ss, [
-            e("label", ls, [
-              N(e("input", {
-                "onUpdate:modelValue": i[6] || (i[6] = (d) => _.onebot_enabled = d),
+          e("div", dl, [
+            e("label", pl, [
+              B(e("input", {
+                "onUpdate:modelValue": r[6] || (r[6] = (d) => v.onebot_enabled = d),
                 type: "checkbox"
               }, null, 512), [
-                [Q, _.onebot_enabled]
+                [fe, v.onebot_enabled]
               ]),
-              i[29] || (i[29] = e("span", { class: "ls-track" }, null, -1)),
-              e("span", os, [
+              r[29] || (r[29] = e("span", { class: "ls-track" }, null, -1)),
+              e("span", hl, [
                 e("b", null, l(t(s)("lifeSettings.onebotEnable")), 1)
               ])
             ]),
-            e("label", ns, [
-              N(e("input", {
-                "onUpdate:modelValue": i[7] || (i[7] = (d) => _.onebot_observe_group = d),
+            e("label", vl, [
+              B(e("input", {
+                "onUpdate:modelValue": r[7] || (r[7] = (d) => v.onebot_observe_group = d),
                 type: "checkbox"
               }, null, 512), [
-                [Q, _.onebot_observe_group]
+                [fe, v.onebot_observe_group]
               ]),
-              i[30] || (i[30] = e("span", { class: "ls-track" }, null, -1)),
-              e("span", as, [
+              r[30] || (r[30] = e("span", { class: "ls-track" }, null, -1)),
+              e("span", ml, [
                 e("b", null, l(t(s)("lifeSettings.onebotObserve")), 1),
                 e("small", null, l(t(s)("lifeSettings.onebotObserveDesc")), 1)
               ])
             ])
           ]),
-          e("div", is, [
-            e("label", rs, [
+          e("div", gl, [
+            e("label", fl, [
               e("span", null, l(t(s)("lifeSettings.onebotWs")), 1),
-              N(e("input", {
-                "onUpdate:modelValue": i[8] || (i[8] = (d) => _.onebot_ws_url = d),
+              B(e("input", {
+                "onUpdate:modelValue": r[8] || (r[8] = (d) => v.onebot_ws_url = d),
                 placeholder: "ws://127.0.0.1:6700"
               }, null, 512), [
-                [D, _.onebot_ws_url]
+                [Y, v.onebot_ws_url]
               ])
             ]),
-            e("label", us, [
+            e("label", _l, [
               e("span", null, l(t(s)("lifeSettings.onebotHttp")), 1),
-              N(e("input", {
-                "onUpdate:modelValue": i[9] || (i[9] = (d) => _.onebot_http_url = d),
+              B(e("input", {
+                "onUpdate:modelValue": r[9] || (r[9] = (d) => v.onebot_http_url = d),
                 placeholder: "http://127.0.0.1:6700"
               }, null, 512), [
-                [D, _.onebot_http_url]
+                [Y, v.onebot_http_url]
               ])
             ])
           ]),
-          e("div", ds, [
-            e("label", cs, [
-              i[31] || (i[31] = e("span", null, "Access Token", -1)),
-              N(e("input", {
-                "onUpdate:modelValue": i[10] || (i[10] = (d) => _.onebot_access_token = d),
+          e("div", yl, [
+            e("label", bl, [
+              r[31] || (r[31] = e("span", null, "Access Token", -1)),
+              B(e("input", {
+                "onUpdate:modelValue": r[10] || (r[10] = (d) => v.onebot_access_token = d),
                 type: "password",
                 placeholder: "••••••••"
               }, null, 512), [
-                [D, _.onebot_access_token]
+                [Y, v.onebot_access_token]
               ])
             ]),
-            e("label", ps, [
+            e("label", kl, [
               e("span", null, l(t(s)("lifeSettings.onebotKeywords")), 1),
-              N(e("input", {
-                "onUpdate:modelValue": i[11] || (i[11] = (d) => _.onebot_trigger_keywords = d),
+              B(e("input", {
+                "onUpdate:modelValue": r[11] || (r[11] = (d) => v.onebot_trigger_keywords = d),
                 placeholder: t(s)("lifeSettings.onebotKeywordsPlaceholder")
-              }, null, 8, hs), [
-                [D, _.onebot_trigger_keywords]
+              }, null, 8, wl), [
+                [Y, v.onebot_trigger_keywords]
               ])
             ])
           ]),
-          e("div", vs, [
-            e("label", ms, [
+          e("div", $l, [
+            e("label", Sl, [
               e("span", null, l(t(s)("lifeSettings.proactiveDaily")), 1),
-              N(e("input", {
-                "onUpdate:modelValue": i[12] || (i[12] = (d) => _.proactive_daily_limit = d),
+              B(e("input", {
+                "onUpdate:modelValue": r[12] || (r[12] = (d) => v.proactive_daily_limit = d),
                 type: "number",
                 min: "0",
                 placeholder: "3"
               }, null, 512), [
                 [
-                  D,
-                  _.proactive_daily_limit,
+                  Y,
+                  v.proactive_daily_limit,
                   void 0,
                   { number: !0 }
                 ]
               ])
             ]),
-            e("label", _s, [
+            e("label", Cl, [
               e("span", null, l(t(s)("lifeSettings.proactiveTarget")), 1),
-              N(e("input", {
-                "onUpdate:modelValue": i[13] || (i[13] = (d) => _.proactive_target_limit = d),
+              B(e("input", {
+                "onUpdate:modelValue": r[13] || (r[13] = (d) => v.proactive_target_limit = d),
                 type: "number",
                 min: "0",
                 placeholder: "1"
               }, null, 512), [
                 [
-                  D,
-                  _.proactive_target_limit,
+                  Y,
+                  v.proactive_target_limit,
                   void 0,
                   { number: !0 }
                 ]
@@ -326,137 +906,137 @@ const ft = { class: "life-settings" }, yt = { class: "ls-hero" }, kt = { class: 
             ])
           ])
         ]),
-        e("article", gs, [
-          e("div", bs, [
-            i[32] || (i[32] = e("span", { class: "ls-ic tone-2" }, "🎙", -1)),
+        e("article", xl, [
+          e("div", Ml, [
+            r[32] || (r[32] = e("span", { class: "ls-ic tone-2" }, "🎙", -1)),
             e("h3", null, l(t(s)("lifeSettings.wake")), 1)
           ]),
-          e("div", fs, [
-            e("label", ys, [
-              N(e("input", {
-                "onUpdate:modelValue": i[14] || (i[14] = (d) => _.wake_enabled = d),
+          e("div", Pl, [
+            e("label", El, [
+              B(e("input", {
+                "onUpdate:modelValue": r[14] || (r[14] = (d) => v.wake_enabled = d),
                 type: "checkbox"
               }, null, 512), [
-                [Q, _.wake_enabled]
+                [fe, v.wake_enabled]
               ]),
-              i[33] || (i[33] = e("span", { class: "ls-track" }, null, -1)),
-              e("span", ks, [
+              r[33] || (r[33] = e("span", { class: "ls-track" }, null, -1)),
+              e("span", Ul, [
                 e("b", null, l(t(s)("lifeSettings.wakeEnable")), 1),
                 e("small", null, l(t(s)("lifeSettings.wakeEnableDesc")), 1)
               ])
             ])
           ]),
-          e("div", ws, [
-            e("label", $s, [
+          e("div", Al, [
+            e("label", Tl, [
               e("span", null, l(t(s)("lifeSettings.wakeNickname")), 1),
-              N(e("input", {
-                "onUpdate:modelValue": i[15] || (i[15] = (d) => _.wake_nickname = d),
+              B(e("input", {
+                "onUpdate:modelValue": r[15] || (r[15] = (d) => v.wake_nickname = d),
                 placeholder: t(s)("lifeSettings.wakeNicknamePlaceholder")
-              }, null, 8, Cs), [
-                [D, _.wake_nickname]
+              }, null, 8, Il), [
+                [Y, v.wake_nickname]
               ])
             ]),
-            e("label", Ss, [
+            e("label", Nl, [
               e("span", null, l(t(s)("lifeSettings.asrLanguage")), 1),
-              N(e("input", {
-                "onUpdate:modelValue": i[16] || (i[16] = (d) => _.asr_language = d),
+              B(e("input", {
+                "onUpdate:modelValue": r[16] || (r[16] = (d) => v.asr_language = d),
                 placeholder: "zh",
                 title: t(s)("lifeSettings.asrLanguageDesc")
-              }, null, 8, Ps), [
-                [D, _.asr_language]
+              }, null, 8, Rl), [
+                [Y, v.asr_language]
               ])
             ])
           ]),
-          e("p", xs, l(t(s)("lifeSettings.wakeHint")), 1)
+          e("p", Vl, l(t(s)("lifeSettings.wakeHint")), 1)
         ])
       ]),
-      b.value ? (a(), r("p", Ms, l(b.value), 1)) : M("", !0)
+      m.value ? (o(), i("p", Ll, l(m.value), 1)) : V("", !0)
     ]));
   }
-}), Es = /* @__PURE__ */ ie(Us, [["__scopeId", "data-v-f79f46a2"]]), Ts = "/okay-logo.svg", As = { class: "content-card about" }, Ns = { class: "identity" }, Vs = { class: "app-id" }, Rs = { class: "ver-badge" }, Os = { class: "app-desc" }, Is = { class: "identity-actions" }, zs = ["href"], Ls = { class: "section" }, Ds = { class: "section-head" }, Fs = ["disabled"], Bs = {
+}), Dl = /* @__PURE__ */ Me(Ol, [["__scopeId", "data-v-f79f46a2"]]), zl = "/okay-logo.svg", Bl = { class: "content-card about" }, Fl = { class: "identity" }, Kl = { class: "app-id" }, jl = { class: "ver-badge" }, Hl = { class: "app-desc" }, Yl = { class: "identity-actions" }, Xl = ["href"], Jl = { class: "section" }, Wl = { class: "section-head" }, ql = ["disabled"], Gl = {
   key: 0,
   class: "alert",
   role: "alert"
-}, Ks = {
+}, Zl = {
   class: "us-hero-icon",
   "aria-hidden": "true"
-}, Hs = {
+}, Ql = {
   key: 0,
   width: "26",
   height: "26",
   viewBox: "0 0 24 24",
   fill: "none"
-}, js = {
+}, en = {
   key: 1,
   width: "26",
   height: "26",
   viewBox: "0 0 24 24",
   fill: "none"
-}, Ys = {
+}, tn = {
   key: 2,
   width: "26",
   height: "26",
   viewBox: "0 0 24 24",
   fill: "none"
-}, Js = { class: "us-hero-text" }, Ws = { key: 0 }, qs = { key: 1 }, Gs = { class: "us-hero-actions" }, Xs = ["disabled"], Zs = ["disabled", "title"], Qs = ["href"], el = {
+}, sn = { class: "us-hero-text" }, ln = { key: 0 }, nn = { key: 1 }, on = { class: "us-hero-actions" }, an = ["disabled"], rn = ["disabled", "title"], un = ["href"], cn = {
   key: 2,
   class: "us-notes"
-}, tl = { class: "us-notes-title" }, sl = { class: "us-notes-body" }, ll = {
+}, dn = { class: "us-notes-title" }, pn = { class: "us-notes-body" }, hn = {
   key: 3,
   class: "alert",
   role: "alert"
-}, ol = { class: "us-apply-head" }, nl = { key: 0 }, al = { key: 1 }, il = {
+}, vn = { class: "us-apply-head" }, mn = { key: 0 }, gn = { key: 1 }, fn = {
   key: 0,
   class: "us-chip-tag"
-}, rl = { class: "us-apply-label" }, ul = {
+}, _n = { class: "us-apply-label" }, yn = {
   key: 0,
   class: "us-apply-error"
-}, dl = {
+}, bn = {
   key: 1,
   class: "us-apply-log"
-}, cl = { class: "section" }, pl = { class: "section-title" }, hl = { class: "credits" }, vl = ["href"], ml = ["src", "alt"], _l = { class: "person-info" }, gl = { class: "name" }, bl = { class: "role" }, fl = ["src"], yl = { class: "person-info" }, kl = { class: "role" }, wl = { class: "section-head contributors-head" }, $l = { class: "section-title" }, Cl = { class: "muted" }, Sl = {
+}, kn = { class: "section" }, wn = { class: "section-title" }, $n = { class: "credits" }, Sn = ["href"], Cn = ["src", "alt"], xn = { class: "person-info" }, Mn = { class: "name" }, Pn = { class: "role" }, En = ["src"], Un = { class: "person-info" }, An = { class: "role" }, Tn = { class: "section-head contributors-head" }, In = { class: "section-title" }, Nn = { class: "muted" }, Rn = {
   key: 0,
   class: "contribs"
-}, Pl = ["href"], xl = ["src", "alt"], Ml = { class: "login" }, Ul = {
+}, Vn = ["href"], Ln = ["src", "alt"], On = { class: "login" }, Dn = {
   key: 0,
   class: "count"
-}, El = {
+}, zn = {
   key: 1,
   class: "muted"
-}, Tl = ["href"], Al = { class: "foot" }, Nl = ["href"], Re = "https://github.com/RazureSOFT/0KAY", Vl = "https://github.com/RazureSOFT", Rl = /* @__PURE__ */ ee({
+}, Bn = ["href"], Fn = { class: "foot" }, Kn = ["href"], ht = "https://github.com/RazureSOFT/0KAY", jn = "https://github.com/RazureSOFT", Hn = /* @__PURE__ */ de({
   __name: "AboutPanel",
-  setup(L) {
-    const { t: s } = te(), _ = P("0.1.3"), b = P([]), $ = P(""), k = { login: "razureink", url: "https://github.com/razureink", avatar: "https://github.com/razureink.png" }, v = (U, x = 96) => `https://github.com/${U}.png?size=${x}`, C = P(!1), E = P(null), c = P(""), u = P(null), o = P("");
-    let i = null;
+  setup(F) {
+    const { t: s } = he(), v = x("0.1.3"), m = x([]), k = x(""), w = { login: "razureink", url: "https://github.com/razureink", avatar: "https://github.com/razureink.png" }, h = (U, I = 96) => `https://github.com/${U}.png?size=${I}`, $ = x(!1), R = x(null), u = x(""), c = x(null), n = x("");
+    let r = null;
     function d(U) {
-      return u.value?.status === "running" && u.value.plugin === U;
+      return c.value?.status === "running" && c.value.plugin === U;
     }
-    async function g(U, x) {
-      if (u.value?.status !== "running") {
-        o.value = "";
+    async function f(U, I) {
+      if (c.value?.status !== "running") {
+        n.value = "";
         try {
-          u.value = await Me("/api/plugins/pm/update", { plugin: U, version: x || "" }), h();
-        } catch (B) {
-          o.value = B instanceof Error ? B.message : String(B);
+          c.value = await tt("/api/plugins/pm/update", { plugin: U, version: I || "" }), p();
+        } catch (J) {
+          n.value = J instanceof Error ? J.message : String(J);
         }
       }
     }
-    async function y() {
+    async function b() {
       try {
-        u.value = await he("/api/plugins/pm/status");
+        c.value = await Fe("/api/plugins/pm/status");
       } catch {
         return;
       }
-      u.value && u.value.status !== "running" && (w(), V());
+      c.value && c.value.status !== "running" && (M(), O());
     }
-    function h() {
-      i || (i = setInterval(y, 2e3));
+    function p() {
+      r || (r = setInterval(b, 2e3));
     }
-    function w() {
-      i && (clearInterval(i), i = null);
+    function M() {
+      r && (clearInterval(r), r = null);
     }
-    const S = Y(() => {
-      switch (u.value?.status) {
+    const A = G(() => {
+      switch (c.value?.status) {
         case "running":
           return s("settings.about.updating");
         case "done":
@@ -466,97 +1046,97 @@ const ft = { class: "life-settings" }, yt = { class: "ls-hero" }, kt = { class: 
         default:
           return "";
       }
-    }), I = Y(() => E.value ? E.value.has_update ? "warn" : E.value.latest ? "ok" : "none" : "none");
-    async function V() {
-      C.value = !0, c.value = "";
+    }), j = G(() => R.value ? R.value.has_update ? "warn" : R.value.latest ? "ok" : "none" : "none");
+    async function O() {
+      $.value = !0, u.value = "";
       try {
-        const U = await he("/api/plugins/pm/check");
-        E.value = U, U?.current && (_.value = String(U.current));
+        const U = await Fe("/api/plugins/pm/check");
+        R.value = U, U?.current && (v.value = String(U.current));
       } catch (U) {
-        c.value = U instanceof Qe && U.status === 404 ? s("settings.about.unsupported") : U instanceof Error ? U.message : String(U);
+        u.value = U instanceof Ft && U.status === 404 ? s("settings.about.unsupported") : U instanceof Error ? U.message : String(U);
       } finally {
-        C.value = !1;
+        $.value = !1;
       }
     }
-    async function z() {
+    async function D() {
       try {
-        const U = { Accept: "application/vnd.github+json" }, [x, B] = await Promise.all([
+        const U = { Accept: "application/vnd.github+json" }, [I, J] = await Promise.all([
           fetch("https://api.github.com/repos/RazureSOFT/0KAY/contributors?per_page=100", { headers: U }),
           fetch("https://api.github.com/repos/RazureSOFT/0KAY/commits?sha=main&per_page=100", { headers: U })
         ]);
-        if (!x.ok) throw new Error(`HTTP ${x.status}`);
-        const q = /* @__PURE__ */ new Map(), G = await x.json();
-        for (const O of Array.isArray(G) ? G : [])
-          O?.login && q.set(O.login, O);
-        if (B.ok) {
-          const O = await B.json();
-          for (const A of Array.isArray(O) ? O : []) {
-            const R = A?.author;
-            !R?.login || R.login.endsWith("[bot]") || q.has(R.login) || q.set(R.login, {
-              login: R.login,
-              avatar_url: R.avatar_url,
-              html_url: R.html_url,
+        if (!I.ok) throw new Error(`HTTP ${I.status}`);
+        const ie = /* @__PURE__ */ new Map(), re = await I.json();
+        for (const H of Array.isArray(re) ? re : [])
+          H?.login && ie.set(H.login, H);
+        if (J.ok) {
+          const H = await J.json();
+          for (const E of Array.isArray(H) ? H : []) {
+            const P = E?.author;
+            !P?.login || P.login.endsWith("[bot]") || ie.has(P.login) || ie.set(P.login, {
+              login: P.login,
+              avatar_url: P.avatar_url,
+              html_url: P.html_url,
               contributions: 0
             });
           }
         }
-        b.value = [...q.values()].sort(
-          (O, A) => (A.contributions || 0) - (O.contributions || 0) || O.login.localeCompare(A.login)
+        m.value = [...ie.values()].sort(
+          (H, E) => (E.contributions || 0) - (H.contributions || 0) || H.login.localeCompare(E.login)
         );
       } catch (U) {
-        $.value = U instanceof Error ? U.message : String(U), b.value = [];
+        k.value = U instanceof Error ? U.message : String(U), m.value = [];
       }
     }
-    return ae(() => {
-      V(), z(), he("/api/plugins/pm/status").then((U) => {
-        u.value = U, U?.status === "running" && h();
+    return Ne(() => {
+      O(), D(), Fe("/api/plugins/pm/status").then((U) => {
+        c.value = U, U?.status === "running" && p();
       }).catch(() => {
       });
-    }), ze(w), (U, x) => (a(), r("div", As, [
-      e("header", Ns, [
-        x[3] || (x[3] = e("img", {
+    }), lt(M), (U, I) => (o(), i("div", Bl, [
+      e("header", Fl, [
+        I[3] || (I[3] = e("img", {
           class: "app-icon",
-          src: Ts,
+          src: zl,
           alt: "",
           "aria-hidden": "true"
         }, null, -1)),
-        e("div", Vs, [
+        e("div", Kl, [
           e("h2", null, [
-            x[2] || (x[2] = oe("0KAY ", -1)),
-            e("span", Rs, "v" + l(_.value), 1)
+            I[2] || (I[2] = Ie("0KAY ", -1)),
+            e("span", jl, "v" + l(v.value), 1)
           ]),
-          e("p", Os, l(t(s)("settings.about.description")), 1)
+          e("p", Hl, l(t(s)("settings.about.description")), 1)
         ]),
-        e("div", Is, [
+        e("div", Yl, [
           e("a", {
             class: "btn btn-tonal sm",
-            href: Re,
+            href: ht,
             target: "_blank",
             rel: "noopener noreferrer"
           }, l(t(s)("settings.about.repository")) + " ↗", 1),
           e("a", {
             class: "btn btn-tonal sm",
-            href: `${Re}/releases`,
+            href: `${ht}/releases`,
             target: "_blank",
             rel: "noopener noreferrer"
-          }, "Releases ↗", 8, zs)
+          }, "Releases ↗", 8, Xl)
         ])
       ]),
-      e("section", Ls, [
-        e("div", Ds, [
-          x[4] || (x[4] = e("h3", { class: "section-title" }, "0KAY", -1)),
+      e("section", Jl, [
+        e("div", Wl, [
+          I[4] || (I[4] = e("h3", { class: "section-title" }, "0KAY", -1)),
           e("button", {
             class: "btn btn-tonal sm",
-            disabled: C.value,
-            onClick: V
-          }, l(t(s)(C.value ? "settings.about.checking" : "settings.about.check")), 9, Fs)
+            disabled: $.value,
+            onClick: O
+          }, l(t(s)($.value ? "settings.about.checking" : "settings.about.check")), 9, ql)
         ]),
-        c.value ? (a(), r("p", Bs, l(c.value), 1)) : (a(), r("div", {
+        u.value ? (o(), i("p", Gl, l(u.value), 1)) : (o(), i("div", {
           key: 1,
-          class: j(["us-hero", I.value])
+          class: ee(["us-hero", j.value])
         }, [
-          e("div", Ks, [
-            I.value === "ok" ? (a(), r("svg", Hs, [...x[5] || (x[5] = [
+          e("div", Zl, [
+            j.value === "ok" ? (o(), i("svg", Ql, [...I[5] || (I[5] = [
               e("path", {
                 d: "M5 13l4 4 10-11",
                 stroke: "currentColor",
@@ -564,14 +1144,14 @@ const ft = { class: "life-settings" }, yt = { class: "ls-hero" }, kt = { class: 
                 "stroke-linecap": "round",
                 "stroke-linejoin": "round"
               }, null, -1)
-            ])])) : I.value === "warn" ? (a(), r("svg", js, [...x[6] || (x[6] = [
+            ])])) : j.value === "warn" ? (o(), i("svg", en, [...I[6] || (I[6] = [
               e("path", {
                 d: "M12 4v11M12 19.5v.5",
                 stroke: "currentColor",
                 "stroke-width": "2.4",
                 "stroke-linecap": "round"
               }, null, -1)
-            ])])) : (a(), r("svg", Ys, [...x[7] || (x[7] = [
+            ])])) : (o(), i("svg", tn, [...I[7] || (I[7] = [
               e("path", {
                 d: "M6 12h12",
                 stroke: "currentColor",
@@ -580,204 +1160,204 @@ const ft = { class: "life-settings" }, yt = { class: "ls-hero" }, kt = { class: 
               }, null, -1)
             ])]))
           ]),
-          e("div", Js, [
-            e("b", null, l(t(s)(I.value === "warn" ? "settings.about.available" : I.value === "ok" ? "settings.about.latest" : "settings.about.noRelease")), 1),
-            E.value?.latest ? (a(), r("span", Ws, [
-              oe("v" + l(E.value.current) + " → ", 1),
-              e("em", null, "v" + l(E.value.latest), 1)
-            ])) : (a(), r("span", qs, "0KAY v" + l(E.value?.current || _.value), 1))
+          e("div", sn, [
+            e("b", null, l(t(s)(j.value === "warn" ? "settings.about.available" : j.value === "ok" ? "settings.about.latest" : "settings.about.noRelease")), 1),
+            R.value?.latest ? (o(), i("span", ln, [
+              Ie("v" + l(R.value.current) + " → ", 1),
+              e("em", null, "v" + l(R.value.latest), 1)
+            ])) : (o(), i("span", nn, "0KAY v" + l(R.value?.current || v.value), 1))
           ]),
-          e("div", Gs, [
-            E.value?.has_update ? (a(), r("button", {
+          e("div", on, [
+            R.value?.has_update ? (o(), i("button", {
               key: 0,
               class: "btn btn-primary sm",
               disabled: d("core"),
-              onClick: x[0] || (x[0] = (B) => g("core", E.value.latest))
-            }, l(d("core") ? t(s)("settings.about.updating") : t(s)("settings.about.updateNow")), 9, Xs)) : M("", !0),
-            E.value?.source_available !== !1 ? (a(), r("button", {
+              onClick: I[0] || (I[0] = (J) => f("core", R.value.latest))
+            }, l(d("core") ? t(s)("settings.about.updating") : t(s)("settings.about.updateNow")), 9, an)) : V("", !0),
+            R.value?.source_available !== !1 ? (o(), i("button", {
               key: 1,
               class: "btn btn-tonal sm",
               disabled: d("core"),
               title: t(s)("settings.about.betaHint"),
-              onClick: x[1] || (x[1] = (B) => g("core"))
-            }, l(d("core") ? t(s)("settings.about.updating") : t(s)("settings.about.beta")), 9, Zs)) : M("", !0),
-            E.value?.url ? (a(), r("a", {
+              onClick: I[1] || (I[1] = (J) => f("core"))
+            }, l(d("core") ? t(s)("settings.about.updating") : t(s)("settings.about.beta")), 9, rn)) : V("", !0),
+            R.value?.url ? (o(), i("a", {
               key: 2,
               class: "btn btn-ghost sm",
-              href: E.value.url,
+              href: R.value.url,
               target: "_blank",
               rel: "noopener noreferrer"
-            }, "Release ↗", 8, Qs)) : M("", !0)
+            }, "Release ↗", 8, un)) : V("", !0)
           ])
         ], 2)),
-        E.value?.notes ? (a(), r("div", el, [
-          e("p", tl, l(t(s)("settings.about.whatsNew")), 1),
-          e("pre", sl, l(E.value.notes), 1)
-        ])) : M("", !0),
-        o.value ? (a(), r("p", ll, l(o.value), 1)) : M("", !0),
-        u.value && u.value.status !== "idle" ? (a(), r("div", {
+        R.value?.notes ? (o(), i("div", cn, [
+          e("p", dn, l(t(s)("settings.about.whatsNew")), 1),
+          e("pre", pn, l(R.value.notes), 1)
+        ])) : V("", !0),
+        n.value ? (o(), i("p", hn, l(n.value), 1)) : V("", !0),
+        c.value && c.value.status !== "idle" ? (o(), i("div", {
           key: 4,
-          class: j(["us-apply-banner", u.value.status])
+          class: ee(["us-apply-banner", c.value.status])
         }, [
-          e("div", ol, [
-            x[8] || (x[8] = e("span", {
+          e("div", vn, [
+            I[8] || (I[8] = e("span", {
               class: "us-spinner",
               "aria-hidden": "true"
             }, null, -1)),
             e("b", null, [
-              oe(l(u.value.package), 1),
-              u.value.version ? (a(), r("span", nl, "@" + l(u.value.version), 1)) : (a(), r("span", al, " · main"))
+              Ie(l(c.value.package), 1),
+              c.value.version ? (o(), i("span", mn, "@" + l(c.value.version), 1)) : (o(), i("span", gn, " · main"))
             ]),
-            u.value.mode === "source" ? (a(), r("span", il, l(t(s)("settings.about.sourceMode")), 1)) : M("", !0),
-            e("span", rl, l(S.value), 1)
+            c.value.mode === "source" ? (o(), i("span", fn, l(t(s)("settings.about.sourceMode")), 1)) : V("", !0),
+            e("span", _n, l(A.value), 1)
           ]),
-          u.value.error ? (a(), r("p", ul, l(u.value.error), 1)) : M("", !0),
-          u.value.log ? (a(), r("pre", dl, l(u.value.log), 1)) : M("", !0)
-        ], 2)) : M("", !0)
+          c.value.error ? (o(), i("p", yn, l(c.value.error), 1)) : V("", !0),
+          c.value.log ? (o(), i("pre", bn, l(c.value.log), 1)) : V("", !0)
+        ], 2)) : V("", !0)
       ]),
-      e("section", cl, [
-        e("h3", pl, l(t(s)("settings.about.developerTitle")) + " & " + l(t(s)("settings.about.teamTitle")), 1),
-        e("div", hl, [
+      e("section", kn, [
+        e("h3", wn, l(t(s)("settings.about.developerTitle")) + " & " + l(t(s)("settings.about.teamTitle")), 1),
+        e("div", $n, [
           e("a", {
             class: "person",
-            href: k.url,
+            href: w.url,
             target: "_blank",
             rel: "noopener noreferrer"
           }, [
             e("img", {
-              src: k.avatar,
-              alt: k.login,
+              src: w.avatar,
+              alt: w.login,
               loading: "lazy"
-            }, null, 8, ml),
-            e("div", _l, [
-              e("span", gl, l(k.login), 1),
-              e("span", bl, l(t(s)("settings.about.developerTitle")), 1)
+            }, null, 8, Cn),
+            e("div", xn, [
+              e("span", Mn, l(w.login), 1),
+              e("span", Pn, l(t(s)("settings.about.developerTitle")), 1)
             ]),
-            x[9] || (x[9] = e("span", { class: "go" }, "↗", -1))
-          ], 8, vl),
+            I[9] || (I[9] = e("span", { class: "go" }, "↗", -1))
+          ], 8, Sn),
           e("a", {
             class: "person",
-            href: Vl,
+            href: jn,
             target: "_blank",
             rel: "noopener noreferrer"
           }, [
             e("img", {
-              src: v("RazureSOFT"),
+              src: h("RazureSOFT"),
               alt: "RazureSOFT",
               loading: "lazy"
-            }, null, 8, fl),
-            e("div", yl, [
-              x[10] || (x[10] = e("span", { class: "name" }, "RazureSOFT", -1)),
-              e("span", kl, l(t(s)("settings.about.teamTitle")), 1)
+            }, null, 8, En),
+            e("div", Un, [
+              I[10] || (I[10] = e("span", { class: "name" }, "RazureSOFT", -1)),
+              e("span", An, l(t(s)("settings.about.teamTitle")), 1)
             ]),
-            x[11] || (x[11] = e("span", { class: "go" }, "↗", -1))
+            I[11] || (I[11] = e("span", { class: "go" }, "↗", -1))
           ])
         ]),
-        e("div", wl, [
-          e("h3", $l, l(t(s)("settings.about.contributorsTitle")), 1),
-          e("span", Cl, l(t(s)("settings.about.contributorsFrom")), 1)
+        e("div", Tn, [
+          e("h3", In, l(t(s)("settings.about.contributorsTitle")), 1),
+          e("span", Nn, l(t(s)("settings.about.contributorsFrom")), 1)
         ]),
-        b.value.length ? (a(), r("div", Sl, [
-          (a(!0), r(F, null, J(b.value, (B) => (a(), r("a", {
-            key: B.login,
+        m.value.length ? (o(), i("div", Rn, [
+          (o(!0), i(X, null, oe(m.value, (J) => (o(), i("a", {
+            key: J.login,
             class: "contrib",
-            href: B.html_url || `https://github.com/${B.login}`,
+            href: J.html_url || `https://github.com/${J.login}`,
             target: "_blank",
             rel: "noopener noreferrer"
           }, [
             e("img", {
-              src: B.avatar_url || v(B.login, 64),
-              alt: B.login,
+              src: J.avatar_url || h(J.login, 64),
+              alt: J.login,
               loading: "lazy"
-            }, null, 8, xl),
-            e("span", Ml, l(B.login), 1),
-            B.contributions ? (a(), r("span", Ul, l(B.contributions), 1)) : M("", !0)
-          ], 8, Pl))), 128))
-        ])) : (a(), r("p", El, [
+            }, null, 8, Ln),
+            e("span", On, l(J.login), 1),
+            J.contributions ? (o(), i("span", Dn, l(J.contributions), 1)) : V("", !0)
+          ], 8, Vn))), 128))
+        ])) : (o(), i("p", zn, [
           e("a", {
             class: "repo-link",
-            href: k.url,
+            href: w.url,
             target: "_blank",
             rel: "noopener noreferrer"
-          }, "razureink ↗", 8, Tl)
+          }, "razureink ↗", 8, Bn)
         ]))
       ]),
-      e("footer", Al, [
-        x[12] || (x[12] = e("span", { class: "status-chip" }, "MIT", -1)),
-        x[13] || (x[13] = e("span", null, "© 2026 RazureSOFT", -1)),
+      e("footer", Fn, [
+        I[12] || (I[12] = e("span", { class: "status-chip" }, "MIT", -1)),
+        I[13] || (I[13] = e("span", null, "© 2026 RazureSOFT", -1)),
         e("a", {
           class: "repo-link",
-          href: `${Re}/blob/main/LICENSE`,
+          href: `${ht}/blob/main/LICENSE`,
           target: "_blank",
           rel: "noopener noreferrer"
-        }, "LICENSE ↗", 8, Nl)
+        }, "LICENSE ↗", 8, Kn)
       ])
     ]));
   }
-}), Ol = /* @__PURE__ */ ie(Rl, [["__scopeId", "data-v-da8c447d"]]), Il = { class: "content-card updates" }, zl = { class: "us-block" }, Ll = { class: "us-head" }, Dl = { class: "us-head-text" }, Fl = { class: "us-title" }, Bl = { class: "us-desc" }, Kl = { class: "us-source" }, Hl = { class: "us-input-group" }, jl = ["disabled", "placeholder"], Yl = ["disabled"], Jl = { class: "us-chips" }, Wl = ["disabled"], ql = ["disabled"], Gl = {
+}), Yn = /* @__PURE__ */ Me(Hn, [["__scopeId", "data-v-da8c447d"]]), Xn = { class: "content-card updates" }, Jn = { class: "us-block" }, Wn = { class: "us-head" }, qn = { class: "us-head-text" }, Gn = { class: "us-title" }, Zn = { class: "us-desc" }, Qn = { class: "us-source" }, eo = { class: "us-input-group" }, to = ["disabled", "placeholder"], so = ["disabled"], lo = { class: "us-chips" }, no = ["disabled"], oo = ["disabled"], ao = {
   key: 0,
   class: "us-saved"
-}, Xl = { class: "helper-text" }, Zl = {
+}, io = { class: "helper-text" }, ro = {
   key: 0,
   class: "alert"
-}, Ql = { class: "us-block" }, eo = { class: "us-head" }, to = { class: "us-head-text" }, so = { class: "us-title" }, lo = { class: "us-desc" }, oo = { class: "us-head-actions" }, no = ["disabled"], ao = {
+}, uo = { class: "us-block" }, co = { class: "us-head" }, po = { class: "us-head-text" }, ho = { class: "us-title" }, vo = { class: "us-desc" }, mo = { class: "us-head-actions" }, go = ["disabled"], fo = {
   key: 0,
   class: "alert",
   role: "alert"
-}, io = { class: "us-apply-head" }, ro = { key: 0 }, uo = { key: 1 }, co = {
+}, _o = { class: "us-apply-head" }, yo = { key: 0 }, bo = { key: 1 }, ko = {
   key: 0,
   class: "us-chip-tag"
-}, po = { class: "us-apply-label" }, ho = {
+}, wo = { class: "us-apply-label" }, $o = {
   key: 0,
   class: "us-apply-error"
-}, vo = {
+}, So = {
   key: 1,
   class: "us-apply-log"
-}, mo = {
+}, Co = {
   key: 2,
   class: "alert",
   role: "alert"
-}, _o = {
+}, xo = {
   key: 3,
   class: "us-table"
-}, go = { class: "us-row us-thead" }, bo = { class: "us-name" }, fo = { class: "us-name-text" }, yo = { class: "us-ver" }, ko = { class: "us-status-text" }, wo = { class: "us-actions" }, $o = ["disabled", "onClick"], Co = ["disabled", "onClick"], So = ["href", "title"], Po = {
+}, Mo = { class: "us-row us-thead" }, Po = { class: "us-name" }, Eo = { class: "us-name-text" }, Uo = { class: "us-ver" }, Ao = { class: "us-status-text" }, To = { class: "us-actions" }, Io = ["disabled", "onClick"], No = ["disabled", "onClick"], Ro = ["href", "title"], Vo = {
   key: 0,
   class: "us-empty"
-}, xo = /* @__PURE__ */ ee({
+}, Lo = /* @__PURE__ */ de({
   __name: "UpdatesPanel",
-  setup(L) {
-    const { t: s } = te(), _ = P(!1), b = P(null), $ = P(""), k = P(null), v = P("");
-    let C = null;
-    const E = P(""), c = P(""), u = P(!1), o = P(!1), i = P(!1), d = P(""), g = Y(() => E.value.trim() !== c.value), y = Y(() => E.value.trim() !== "");
-    function h(O) {
-      return k.value?.status === "running" && k.value.plugin === O;
+  setup(F) {
+    const { t: s } = he(), v = x(!1), m = x(null), k = x(""), w = x(null), h = x("");
+    let $ = null;
+    const R = x(""), u = x(""), c = x(!1), n = x(!1), r = x(!1), d = x(""), f = G(() => R.value.trim() !== u.value), b = G(() => R.value.trim() !== "");
+    function p(H) {
+      return w.value?.status === "running" && w.value.plugin === H;
     }
-    async function w(O, A) {
-      if (k.value?.status !== "running") {
-        v.value = "";
+    async function M(H, E) {
+      if (w.value?.status !== "running") {
+        h.value = "";
         try {
-          k.value = await Me("/api/plugins/pm/update", { plugin: O, version: A || "" }), I();
-        } catch (R) {
-          v.value = R instanceof Error ? R.message : String(R);
+          w.value = await tt("/api/plugins/pm/update", { plugin: H, version: E || "" }), j();
+        } catch (P) {
+          h.value = P instanceof Error ? P.message : String(P);
         }
       }
     }
-    async function S() {
+    async function A() {
       try {
-        k.value = await he("/api/plugins/pm/status");
+        w.value = await Fe("/api/plugins/pm/status");
       } catch {
         return;
       }
-      k.value && k.value.status !== "running" && (V(), x());
+      w.value && w.value.status !== "running" && (O(), I());
     }
-    function I() {
-      C || (C = setInterval(S, 2e3));
+    function j() {
+      $ || ($ = setInterval(A, 2e3));
     }
-    function V() {
-      C && (clearInterval(C), C = null);
+    function O() {
+      $ && (clearInterval($), $ = null);
     }
-    const z = Y(() => {
-      switch (k.value?.status) {
+    const D = G(() => {
+      switch (w.value?.status) {
         case "running":
           return s("settings.about.updating");
         case "done":
@@ -787,53 +1367,53 @@ const ft = { class: "life-settings" }, yt = { class: "ls-hero" }, kt = { class: 
         default:
           return "";
       }
-    }), U = Y(() => (b.value || []).filter((O) => O.has_update).length);
-    async function x() {
-      _.value = !0, $.value = "";
+    }), U = G(() => (m.value || []).filter((H) => H.has_update).length);
+    async function I() {
+      v.value = !0, k.value = "";
       try {
-        const O = await he("/api/plugins/pm/check-plugins");
-        b.value = O?.plugins || [];
-      } catch (O) {
-        $.value = O instanceof Qe && O.status === 404 ? s("settings.about.unsupported") : O instanceof Error ? O.message : String(O);
+        const H = await Fe("/api/plugins/pm/check-plugins");
+        m.value = H?.plugins || [];
+      } catch (H) {
+        k.value = H instanceof Ft && H.status === 404 ? s("settings.about.unsupported") : H instanceof Error ? H.message : String(H);
       } finally {
-        _.value = !1;
+        v.value = !1;
       }
     }
-    async function B() {
-      u.value = !0, d.value = "";
+    async function J() {
+      c.value = !0, d.value = "";
       try {
-        const O = await he("/api/settings/updates"), A = String(O?.values?.github_proxy ?? "");
-        E.value = A, c.value = A;
+        const H = await Fe("/api/settings/updates"), E = String(H?.values?.github_proxy ?? "");
+        R.value = E, u.value = E;
       } catch {
       } finally {
-        u.value = !1;
+        c.value = !1;
       }
     }
-    async function q() {
-      o.value = !0, d.value = "";
+    async function ie() {
+      n.value = !0, d.value = "";
       try {
-        const O = E.value.trim();
-        await Me("/api/settings/updates", { values: { github_proxy: O } }), c.value = O, i.value = !0, setTimeout(() => {
-          i.value = !1;
+        const H = R.value.trim();
+        await tt("/api/settings/updates", { values: { github_proxy: H } }), u.value = H, r.value = !0, setTimeout(() => {
+          r.value = !1;
         }, 1500);
-      } catch (O) {
-        d.value = O instanceof Error ? O.message : String(O);
+      } catch (H) {
+        d.value = H instanceof Error ? H.message : String(H);
       } finally {
-        o.value = !1;
+        n.value = !1;
       }
     }
-    function G(O) {
-      E.value = O, q();
+    function re(H) {
+      R.value = H, ie();
     }
-    return ae(() => {
-      x(), B(), he("/api/plugins/pm/status").then((O) => {
-        k.value = O, O?.status === "running" && I();
+    return Ne(() => {
+      I(), J(), Fe("/api/plugins/pm/status").then((H) => {
+        w.value = H, H?.status === "running" && j();
       }).catch(() => {
       });
-    }), ze(V), (O, A) => (a(), r("div", Il, [
-      e("section", zl, [
-        e("header", Ll, [
-          A[3] || (A[3] = e("span", {
+    }), lt(O), (H, E) => (o(), i("div", Xn, [
+      e("section", Jn, [
+        e("header", Wn, [
+          E[3] || (E[3] = e("span", {
             class: "us-ico",
             "aria-hidden": "true"
           }, [
@@ -858,17 +1438,17 @@ const ft = { class: "life-settings" }, yt = { class: "ls-hero" }, kt = { class: 
               })
             ])
           ], -1)),
-          e("div", Dl, [
-            e("h3", Fl, l(t(s)("settings.pluginSourceTitle")), 1),
-            e("p", Bl, l(t(s)("settings.pluginSourceDesc")), 1)
+          e("div", qn, [
+            e("h3", Gn, l(t(s)("settings.pluginSourceTitle")), 1),
+            e("p", Zn, l(t(s)("settings.pluginSourceDesc")), 1)
           ]),
           e("span", {
-            class: j(["us-tag", { on: y.value }])
-          }, l(y.value ? "ghproxy" : t(s)("settings.pluginSourceDirect")), 3)
+            class: ee(["us-tag", { on: b.value }])
+          }, l(b.value ? "ghproxy" : t(s)("settings.pluginSourceDirect")), 3)
         ]),
-        e("div", Kl, [
-          e("div", Hl, [
-            A[4] || (A[4] = e("span", {
+        e("div", Qn, [
+          e("div", eo, [
+            E[4] || (E[4] = e("span", {
               class: "us-input-ico",
               "aria-hidden": "true"
             }, [
@@ -892,214 +1472,214 @@ const ft = { class: "life-settings" }, yt = { class: "ls-hero" }, kt = { class: 
                 })
               ])
             ], -1)),
-            N(e("input", {
-              "onUpdate:modelValue": A[0] || (A[0] = (R) => E.value = R),
+            B(e("input", {
+              "onUpdate:modelValue": E[0] || (E[0] = (P) => R.value = P),
               class: "us-input",
               type: "text",
-              disabled: u.value,
+              disabled: c.value,
               placeholder: t(s)("settings.pluginSourcePlaceholder"),
-              onKeyup: Ge(q, ["enter"])
-            }, null, 40, jl), [
-              [D, E.value]
+              onKeyup: mt(ie, ["enter"])
+            }, null, 40, to), [
+              [Y, R.value]
             ]),
             e("button", {
               class: "btn btn-primary us-apply",
               type: "button",
-              disabled: o.value || !g.value,
-              onClick: q
-            }, l(t(s)("settings.save")), 9, Yl)
+              disabled: n.value || !f.value,
+              onClick: ie
+            }, l(t(s)("settings.save")), 9, so)
           ]),
-          e("div", Jl, [
+          e("div", lo, [
             e("button", {
               type: "button",
-              class: j(["us-chip", { active: !y.value }]),
-              disabled: o.value,
-              onClick: A[1] || (A[1] = (R) => G(""))
-            }, l(t(s)("settings.pluginSourceDirect")), 11, Wl),
+              class: ee(["us-chip", { active: !b.value }]),
+              disabled: n.value,
+              onClick: E[1] || (E[1] = (P) => re(""))
+            }, l(t(s)("settings.pluginSourceDirect")), 11, no),
             e("button", {
               type: "button",
-              class: j(["us-chip", { active: E.value.trim() === "https://gh-proxy.com" }]),
-              disabled: o.value,
-              onClick: A[2] || (A[2] = (R) => G("https://gh-proxy.com"))
-            }, " gh-proxy.com ", 10, ql),
-            i.value ? (a(), r("span", Gl, l(t(s)("settings.saved")), 1)) : M("", !0)
+              class: ee(["us-chip", { active: R.value.trim() === "https://gh-proxy.com" }]),
+              disabled: n.value,
+              onClick: E[2] || (E[2] = (P) => re("https://gh-proxy.com"))
+            }, " gh-proxy.com ", 10, oo),
+            r.value ? (o(), i("span", ao, l(t(s)("settings.saved")), 1)) : V("", !0)
           ]),
-          e("p", Xl, l(t(s)("settings.pluginSourceHelp")), 1),
-          d.value ? (a(), r("p", Zl, l(d.value), 1)) : M("", !0)
+          e("p", io, l(t(s)("settings.pluginSourceHelp")), 1),
+          d.value ? (o(), i("p", ro, l(d.value), 1)) : V("", !0)
         ])
       ]),
-      A[10] || (A[10] = e("div", { class: "us-divider" }, null, -1)),
-      e("section", Ql, [
-        e("header", eo, [
-          A[5] || (A[5] = at('<span class="us-ico" aria-hidden="true" data-v-95a0aad4><svg width="20" height="20" viewBox="0 0 24 24" fill="none" data-v-95a0aad4><rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.8" data-v-95a0aad4></rect><rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.8" data-v-95a0aad4></rect><rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.8" data-v-95a0aad4></rect><rect x="13" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.8" data-v-95a0aad4></rect></svg></span>', 1)),
-          e("div", to, [
-            e("h3", so, l(t(s)("settings.about.plugins")), 1),
-            e("p", lo, l(t(s)("settings.about.updateHint")), 1)
+      E[10] || (E[10] = e("div", { class: "us-divider" }, null, -1)),
+      e("section", uo, [
+        e("header", co, [
+          E[5] || (E[5] = ls('<span class="us-ico" aria-hidden="true" data-v-95a0aad4><svg width="20" height="20" viewBox="0 0 24 24" fill="none" data-v-95a0aad4><rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.8" data-v-95a0aad4></rect><rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.8" data-v-95a0aad4></rect><rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.8" data-v-95a0aad4></rect><rect x="13" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.8" data-v-95a0aad4></rect></svg></span>', 1)),
+          e("div", po, [
+            e("h3", ho, l(t(s)("settings.about.plugins")), 1),
+            e("p", vo, l(t(s)("settings.about.updateHint")), 1)
           ]),
-          e("div", oo, [
+          e("div", mo, [
             e("span", {
-              class: j(["us-count", { warn: U.value > 0 }])
+              class: ee(["us-count", { warn: U.value > 0 }])
             }, l(U.value), 3),
             e("button", {
               class: "btn btn-tonal sm",
-              disabled: _.value,
-              onClick: x
-            }, l(t(s)(_.value ? "settings.about.checking" : "settings.about.check")), 9, no)
+              disabled: v.value,
+              onClick: I
+            }, l(t(s)(v.value ? "settings.about.checking" : "settings.about.check")), 9, go)
           ])
         ]),
-        v.value ? (a(), r("p", ao, l(v.value), 1)) : M("", !0),
-        k.value && k.value.status !== "idle" ? (a(), r("div", {
+        h.value ? (o(), i("p", fo, l(h.value), 1)) : V("", !0),
+        w.value && w.value.status !== "idle" ? (o(), i("div", {
           key: 1,
-          class: j(["us-apply-banner", k.value.status])
+          class: ee(["us-apply-banner", w.value.status])
         }, [
-          e("div", io, [
-            A[6] || (A[6] = e("span", {
+          e("div", _o, [
+            E[6] || (E[6] = e("span", {
               class: "us-spinner",
               "aria-hidden": "true"
             }, null, -1)),
             e("b", null, [
-              oe(l(k.value.package), 1),
-              k.value.version ? (a(), r("span", ro, "@" + l(k.value.version), 1)) : (a(), r("span", uo, " · main"))
+              Ie(l(w.value.package), 1),
+              w.value.version ? (o(), i("span", yo, "@" + l(w.value.version), 1)) : (o(), i("span", bo, " · main"))
             ]),
-            k.value.mode === "source" ? (a(), r("span", co, l(t(s)("settings.about.sourceMode")), 1)) : M("", !0),
-            e("span", po, l(z.value), 1)
+            w.value.mode === "source" ? (o(), i("span", ko, l(t(s)("settings.about.sourceMode")), 1)) : V("", !0),
+            e("span", wo, l(D.value), 1)
           ]),
-          k.value.error ? (a(), r("p", ho, l(k.value.error), 1)) : M("", !0),
-          k.value.log ? (a(), r("pre", vo, l(k.value.log), 1)) : M("", !0)
-        ], 2)) : M("", !0),
-        $.value ? (a(), r("p", mo, l($.value), 1)) : M("", !0),
-        b.value ? (a(), r("div", _o, [
-          e("div", go, [
+          w.value.error ? (o(), i("p", $o, l(w.value.error), 1)) : V("", !0),
+          w.value.log ? (o(), i("pre", So, l(w.value.log), 1)) : V("", !0)
+        ], 2)) : V("", !0),
+        k.value ? (o(), i("p", Co, l(k.value), 1)) : V("", !0),
+        m.value ? (o(), i("div", xo, [
+          e("div", Mo, [
             e("span", null, l(t(s)("plugins.updatesColPlugin")), 1),
             e("span", null, l(t(s)("plugins.updatesColVersion")), 1),
             e("span", null, l(t(s)("plugins.updatesColStatus")), 1),
-            A[7] || (A[7] = e("span", null, null, -1))
+            E[7] || (E[7] = e("span", null, null, -1))
           ]),
-          (a(!0), r(F, null, J(b.value, (R) => (a(), r("div", {
-            key: R.name,
+          (o(!0), i(X, null, oe(m.value, (P) => (o(), i("div", {
+            key: P.name,
             class: "us-row"
           }, [
-            e("span", bo, [
+            e("span", Po, [
               e("span", {
-                class: j(["us-dot", R.error ? "bad" : R.has_update ? "warn" : R.latest ? "ok" : ""])
+                class: ee(["us-dot", P.error ? "bad" : P.has_update ? "warn" : P.latest ? "ok" : ""])
               }, null, 2),
-              e("span", fo, l(R.name), 1)
+              e("span", Eo, l(P.name), 1)
             ]),
-            e("span", yo, [
-              e("em", null, "v" + l(R.version || "—"), 1),
-              A[8] || (A[8] = e("span", { class: "us-arrow" }, "→", -1)),
+            e("span", Uo, [
+              e("em", null, "v" + l(P.version || "—"), 1),
+              E[8] || (E[8] = e("span", { class: "us-arrow" }, "→", -1)),
               e("b", {
-                class: j({ good: !!R.latest })
-              }, l(R.latest ? `v${R.latest}` : "—"), 3)
+                class: ee({ good: !!P.latest })
+              }, l(P.latest ? `v${P.latest}` : "—"), 3)
             ]),
             e("span", {
-              class: j(["us-status", R.error ? "bad" : R.has_update ? "warn" : R.latest ? "ok" : ""])
+              class: ee(["us-status", P.error ? "bad" : P.has_update ? "warn" : P.latest ? "ok" : ""])
             }, [
-              e("span", ko, l(R.error || t(s)(R.has_update ? "settings.about.available" : R.latest ? "settings.about.latest" : "settings.about.noRelease")), 1)
+              e("span", Ao, l(P.error || t(s)(P.has_update ? "settings.about.available" : P.latest ? "settings.about.latest" : "settings.about.noRelease")), 1)
             ], 2),
-            e("span", wo, [
-              R.can_update && R.has_update ? (a(), r("button", {
+            e("span", To, [
+              P.can_update && P.has_update ? (o(), i("button", {
                 key: 0,
                 class: "btn btn-primary xs",
-                disabled: h(R.name),
-                onClick: (fe) => w(R.name, R.latest)
-              }, l(h(R.name) ? t(s)("settings.about.updating") : t(s)("settings.about.updateNow")), 9, $o)) : R.can_update ? (a(), r("button", {
+                disabled: p(P.name),
+                onClick: (Pe) => M(P.name, P.latest)
+              }, l(p(P.name) ? t(s)("settings.about.updating") : t(s)("settings.about.updateNow")), 9, Io)) : P.can_update ? (o(), i("button", {
                 key: 1,
                 class: "btn btn-tonal xs",
-                disabled: h(R.name),
-                onClick: (fe) => w(R.name)
-              }, l(h(R.name) ? t(s)("settings.about.updating") : t(s)("settings.about.syncNow")), 9, Co)) : M("", !0),
-              R.repository ? (a(), r("a", {
+                disabled: p(P.name),
+                onClick: (Pe) => M(P.name)
+              }, l(p(P.name) ? t(s)("settings.about.updating") : t(s)("settings.about.syncNow")), 9, No)) : V("", !0),
+              P.repository ? (o(), i("a", {
                 key: 2,
                 class: "us-repo",
-                href: R.repository,
+                href: P.repository,
                 target: "_blank",
                 rel: "noopener noreferrer",
-                title: R.repository
-              }, l(t(s)("plugins.updatesColRepo")) + " ↗", 9, So)) : M("", !0)
+                title: P.repository
+              }, l(t(s)("plugins.updatesColRepo")) + " ↗", 9, Ro)) : V("", !0)
             ])
           ]))), 128)),
-          b.value.length ? M("", !0) : (a(), r("p", Po, l(t(s)("settings.about.noPlugins")), 1))
-        ])) : M("", !0),
-        A[9] || (A[9] = e("p", { class: "us-foot-hint" }, [
+          m.value.length ? V("", !0) : (o(), i("p", Vo, l(t(s)("settings.about.noPlugins")), 1))
+        ])) : V("", !0),
+        E[9] || (E[9] = e("p", { class: "us-foot-hint" }, [
           e("code", null, "0kay-pm update <package>@<version>")
         ], -1))
       ])
     ]));
   }
-}), Mo = /* @__PURE__ */ ie(xo, [["__scopeId", "data-v-95a0aad4"]]), Uo = { class: "content-card provider-panel" }, Eo = { class: "pp-editor-head" }, To = ["aria-label"], Ao = { class: "pp-editor-title" }, No = { class: "card-desc" }, Vo = { class: "pp-section" }, Ro = { class: "pp-section-title" }, Oo = { class: "pp-grid" }, Io = { class: "field" }, zo = { class: "field" }, Lo = {
+}), Oo = /* @__PURE__ */ Me(Lo, [["__scopeId", "data-v-95a0aad4"]]), Do = { class: "content-card provider-panel" }, zo = { class: "pp-editor-head" }, Bo = ["aria-label"], Fo = { class: "pp-editor-title" }, Ko = { class: "card-desc" }, jo = { class: "pp-section" }, Ho = { class: "pp-section-title" }, Yo = { class: "pp-grid" }, Xo = { class: "field" }, Jo = { class: "field" }, Wo = {
   key: 0,
   class: "pp-req"
-}, Do = ["placeholder"], Fo = { class: "field pp-span" }, Bo = ["placeholder"], Ko = { class: "field" }, Ho = { class: "helper-text" }, jo = { class: "field" }, Yo = { class: "helper-text" }, Jo = { class: "pp-section" }, Wo = { class: "pp-section-head" }, qo = { class: "pp-section-title" }, Go = ["disabled"], Xo = { class: "field" }, Zo = { class: "pp-key" }, Qo = ["type", "placeholder"], en = {
+}, qo = ["placeholder"], Go = { class: "field pp-span" }, Zo = ["placeholder"], Qo = { class: "field" }, ea = { class: "helper-text" }, ta = { class: "field" }, sa = { class: "helper-text" }, la = { class: "pp-section" }, na = { class: "pp-section-head" }, oa = { class: "pp-section-title" }, aa = ["disabled"], ia = { class: "field" }, ra = { class: "pp-key" }, ua = ["type", "placeholder"], ca = {
   key: 0,
   class: "helper-text"
-}, tn = {
+}, da = {
   key: 1,
   class: "pp-probe err"
-}, sn = {
+}, pa = {
   key: 2,
   class: "pp-probe ok"
-}, ln = { class: "pp-section" }, on = { class: "pp-section-head" }, nn = { class: "pp-section-title" }, an = { class: "pp-count" }, rn = ["disabled"], un = {
+}, ha = { class: "pp-section" }, va = { class: "pp-section-head" }, ma = { class: "pp-section-title" }, ga = { class: "pp-count" }, fa = ["disabled"], _a = {
   key: 0,
   class: "pp-discovered"
-}, dn = { class: "pp-model-tools" }, cn = ["placeholder"], pn = { class: "pp-add-model" }, hn = ["placeholder", "aria-label", "onKeydown"], vn = ["disabled"], mn = {
+}, ya = { class: "pp-model-tools" }, ba = ["placeholder"], ka = { class: "pp-add-model" }, wa = ["placeholder", "aria-label", "onKeydown"], $a = ["disabled"], Sa = {
   key: 1,
   class: "helper-text pp-add-error"
-}, _n = {
+}, Ca = {
   key: 2,
   class: "pp-models"
-}, gn = ["title"], bn = ["value", "title", "onChange"], fn = ["value"], yn = ["title", "disabled", "onClick"], kn = ["title"], wn = ["checked", "onChange"], $n = ["title", "aria-label", "onClick"], Cn = {
+}, xa = ["title"], Ma = ["value", "title", "onChange"], Pa = ["value"], Ea = ["title", "disabled", "onClick"], Ua = ["title"], Aa = ["checked", "onChange"], Ta = ["title", "aria-label", "onClick"], Ia = {
   key: 0,
   class: "helper-text"
-}, Sn = {
+}, Na = {
   key: 3,
   class: "helper-text"
-}, Pn = {
+}, Ra = {
   key: 0,
   class: "pp-error",
   role: "alert"
-}, xn = { class: "pp-editor-actions" }, Mn = ["disabled"], Un = { class: "pp-list-head" }, En = { class: "card-desc" }, Tn = { class: "pp-list-actions" }, An = {
+}, Va = { class: "pp-editor-actions" }, La = ["disabled"], Oa = { class: "pp-list-head" }, Da = { class: "card-desc" }, za = { class: "pp-list-actions" }, Ba = {
   key: 0,
   class: "pp-cards"
-}, Nn = { class: "pp-card-head" }, Vn = { class: "pp-logo" }, Rn = ["src", "alt"], On = {
+}, Fa = { class: "pp-card-head" }, Ka = { class: "pp-logo" }, ja = ["src", "alt"], Ha = {
   key: 1,
   width: "20",
   height: "20",
   viewBox: "0 0 24 24",
   fill: "currentColor"
-}, In = { class: "pp-card-id" }, zn = ["title"], Ln = { class: "pp-card-badges" }, Dn = {
+}, Ya = { class: "pp-card-id" }, Xa = ["title"], Ja = { class: "pp-card-badges" }, Wa = {
   key: 0,
   class: "pp-badge primary"
-}, Fn = { class: "pp-badge" }, Bn = { class: "pp-card-status" }, Kn = {
+}, qa = { class: "pp-badge" }, Ga = { class: "pp-card-status" }, Za = {
   key: 0,
   class: "pp-meta"
-}, Hn = ["title"], jn = { class: "pp-chips" }, Yn = {
+}, Qa = ["title"], ei = { class: "pp-chips" }, ti = {
   key: 0,
   class: "pp-chip more"
-}, Jn = {
+}, si = {
   key: 1,
   class: "pp-chip empty"
-}, Wn = { class: "pp-card-actions" }, qn = ["onClick"], Gn = ["disabled", "onClick"], Xn = ["disabled", "onClick"], Zn = ["onClick"], Qn = ["onClick"], ea = {
+}, li = { class: "pp-card-actions" }, ni = ["onClick"], oi = ["disabled", "onClick"], ai = ["disabled", "onClick"], ii = ["onClick"], ri = ["onClick"], ui = {
   key: 1,
   class: "pp-empty"
-}, ta = /* @__PURE__ */ ee({
+}, ci = /* @__PURE__ */ de({
   __name: "ProviderPanel",
-  setup(L) {
-    const { t: s } = te(), { confirm: _ } = Ce(), b = pt(), $ = P({}), k = P("list"), v = P(null), C = P(""), E = P({ state: "idle" }), c = P([]), u = P(""), o = P(!1), i = P(!1), d = P(!1);
-    ae(async () => {
-      await b.fetchAll();
-      for (const f of b.providers) B(f);
+  setup(F) {
+    const { t: s } = he(), { confirm: v } = Ge(), m = ds(), k = x({}), w = x("list"), h = x(null), $ = x(""), R = x({ state: "idle" }), u = x([]), c = x(""), n = x(!1), r = x(!1), d = x(!1);
+    Ne(async () => {
+      await m.fetchAll();
+      for (const y of m.providers) J(y);
     });
-    function g(f) {
-      return Ve.find((m) => m.id === f) || null;
+    function f(y) {
+      return pt.find((C) => C.id === y) || null;
     }
-    function y(f) {
-      return f.name && f.name.trim() ? f.name.trim() : g(f.provider)?.name || f.provider;
+    function b(y) {
+      return y.name && y.name.trim() ? y.name.trim() : f(y.provider)?.name || y.provider;
     }
-    function h(f) {
-      return g(f.provider)?.logo || "";
+    function p(y) {
+      return f(y.provider)?.logo || "";
     }
-    const w = Y(() => [
+    const M = G(() => [
       { value: "chat", label: s("modelType.chat") },
       { value: "embedding", label: s("modelType.embedding") },
       { value: "rerank", label: s("modelType.rerank") },
@@ -1108,59 +1688,59 @@ const ft = { class: "life-settings" }, yt = { class: "ls-hero" }, kt = { class: 
       { value: "image", label: s("modelType.image") },
       { value: "audio", label: s("modelType.audio") }
     ]);
-    function S(f) {
-      return (v.value?.model_types || {})[f] || "chat";
+    function A(y) {
+      return (h.value?.model_types || {})[y] || "chat";
     }
-    function I(f, m) {
-      if (!v.value) return;
-      const p = { ...v.value.model_types || {} };
-      !m || m === "chat" ? delete p[f] : p[f] = m, v.value.model_types = p;
+    function j(y, C) {
+      if (!h.value) return;
+      const S = { ...h.value.model_types || {} };
+      !C || C === "chat" ? delete S[y] : S[y] = C, h.value.model_types = S;
     }
-    function V(f) {
-      const m = new Set(f.disabled_models || []);
-      return f.models.filter((p) => !m.has(p));
+    function O(y) {
+      const C = new Set(y.disabled_models || []);
+      return y.models.filter((S) => !C.has(S));
     }
-    function z(f) {
-      return b.defaultProviderId === f.id;
+    function D(y) {
+      return m.defaultProviderId === y.id;
     }
-    function U(f) {
-      const m = v.value;
-      if (!m) return;
-      const p = Ve.find((n) => n.id === f);
-      p?.baseUrl && !m.base_url && (m.base_url = p.baseUrl), m.format = p?.format || "";
+    function U(y) {
+      const C = h.value;
+      if (!C) return;
+      const S = pt.find((Z) => Z.id === y);
+      S?.baseUrl && !C.base_url && (C.base_url = S.baseUrl), C.format = S?.format || "";
     }
-    async function x(f, m = "") {
-      if (!f.base_url) return { state: "error", message: s("settings.baseUrlRequired") };
-      const p = performance.now();
+    async function I(y, C = "") {
+      if (!y.base_url) return { state: "error", message: s("settings.baseUrlRequired") };
+      const S = performance.now();
       try {
-        const n = await fetch("/api/models/fetch", {
+        const Z = await fetch("/api/models/fetch", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            id: f.id,
-            provider: f.provider,
-            base_url: f.base_url,
-            format: f.format || "",
-            api_key: m || ""
+            id: y.id,
+            provider: y.provider,
+            base_url: y.base_url,
+            format: y.format || "",
+            api_key: C || ""
           })
         });
-        if (!n.ok) throw new Error(`HTTP ${n.status}`);
-        const T = await n.json(), Z = Math.round(performance.now() - p);
-        return T.source === "api" && Array.isArray(T.models) && T.models.length ? { state: "ok", count: T.models.length, ms: Z, models: T.models } : { state: "error", message: T.error || s("settings.connectionFailed"), ms: Z };
-      } catch (n) {
-        return { state: "error", message: n instanceof Error ? n.message : String(n) };
+        if (!Z.ok) throw new Error(`HTTP ${Z.status}`);
+        const Te = await Z.json(), Ve = Math.round(performance.now() - S);
+        return Te.source === "api" && Array.isArray(Te.models) && Te.models.length ? { state: "ok", count: Te.models.length, ms: Ve, models: Te.models } : { state: "error", message: Te.error || s("settings.connectionFailed"), ms: Ve };
+      } catch (Z) {
+        return { state: "error", message: Z instanceof Error ? Z.message : String(Z) };
       }
     }
-    async function B(f, m = "") {
-      $.value = { ...$.value, [f.id]: { state: "checking" } };
-      const p = await x(f, m);
-      $.value = { ...$.value, [f.id]: p };
+    async function J(y, C = "") {
+      k.value = { ...k.value, [y.id]: { state: "checking" } };
+      const S = await I(y, C);
+      k.value = { ...k.value, [y.id]: S };
     }
-    function q() {
-      for (const f of b.providers) B(f);
+    function ie() {
+      for (const y of m.providers) J(y);
     }
-    function G() {
-      v.value = {
+    function re() {
+      h.value = {
         id: "",
         provider: "custom",
         name: "",
@@ -1172,150 +1752,150 @@ const ft = { class: "life-settings" }, yt = { class: "ls-hero" }, kt = { class: 
         enabled: !0,
         format: "",
         model_types: {}
-      }, C.value = "", E.value = { state: "idle" }, c.value = [], u.value = "", o.value = !1, i.value = !1, k.value = "edit";
+      }, $.value = "", R.value = { state: "idle" }, u.value = [], c.value = "", n.value = !1, r.value = !1, w.value = "edit";
     }
-    function O(f) {
-      v.value = {
-        ...f,
+    function H(y) {
+      h.value = {
+        ...y,
         api_key: "",
-        name: f.name || "",
-        models: [...f.models],
-        disabled_models: [...f.disabled_models || []],
-        format: f.format || "",
-        model_types: { ...f.model_types || {} }
-      }, i.value = !!f.api_key_masked, C.value = "", E.value = { state: "idle" }, c.value = [], u.value = "", o.value = !1, k.value = "edit";
+        name: y.name || "",
+        models: [...y.models],
+        disabled_models: [...y.disabled_models || []],
+        format: y.format || "",
+        model_types: { ...y.model_types || {} }
+      }, r.value = !!y.api_key_masked, $.value = "", R.value = { state: "idle" }, u.value = [], c.value = "", n.value = !1, w.value = "edit";
     }
-    function A() {
-      k.value = "list", v.value = null, C.value = "";
+    function E() {
+      w.value = "list", h.value = null, $.value = "";
     }
-    async function R() {
-      const f = v.value;
-      if (!f) return;
-      C.value = "";
-      const m = (f.name || "").trim();
-      if (!f.base_url.trim()) {
-        C.value = s("settings.baseUrlRequired");
+    async function P() {
+      const y = h.value;
+      if (!y) return;
+      $.value = "";
+      const C = (y.name || "").trim();
+      if (!y.base_url.trim()) {
+        $.value = s("settings.baseUrlRequired");
         return;
       }
-      if (f.provider === "custom" && !m) {
-        C.value = s("settings.providerNameRequired");
+      if (y.provider === "custom" && !C) {
+        $.value = s("settings.providerNameRequired");
         return;
       }
-      if (!f.models.length) {
-        C.value = s("settings.modelsRequired");
+      if (!y.models.length) {
+        $.value = s("settings.modelsRequired");
         return;
       }
-      f.id || (f.id = `${f.provider}_${Date.now().toString(36)}`), f.name = m, f.disabled_models = (f.disabled_models || []).filter((p) => f.models.includes(p)), (!f.default_model || !f.models.includes(f.default_model) || f.disabled_models.includes(f.default_model)) && (f.default_model = V(f)[0] || f.models[0]), d.value = !0;
+      y.id || (y.id = `${y.provider}_${Date.now().toString(36)}`), y.name = C, y.disabled_models = (y.disabled_models || []).filter((S) => y.models.includes(S)), (!y.default_model || !y.models.includes(y.default_model) || y.disabled_models.includes(y.default_model)) && (y.default_model = O(y)[0] || y.models[0]), d.value = !0;
       try {
-        await b.upsert({ ...f }), b.defaultProviderId || await b.setDefaults(f.id, f.default_model), A(), B(b.providers.find((p) => p.id === f.id) || f);
-      } catch (p) {
-        C.value = p instanceof Error ? p.message : String(p);
+        await m.upsert({ ...y }), m.defaultProviderId || await m.setDefaults(y.id, y.default_model), E(), J(m.providers.find((S) => S.id === y.id) || y);
+      } catch (S) {
+        $.value = S instanceof Error ? S.message : String(S);
       } finally {
         d.value = !1;
       }
     }
-    async function fe(f) {
-      if (await _({
+    async function Pe(y) {
+      if (await v({
         title: s("settings.remove"),
-        message: `${s("settings.remove")} ${y(f)}?`,
+        message: `${s("settings.remove")} ${b(y)}?`,
         confirmLabel: s("settings.remove"),
         danger: !0
       }))
         try {
-          await b.remove(f.id);
+          await m.remove(y.id);
         } catch {
         }
     }
-    async function me(f) {
+    async function Se(y) {
       try {
-        await b.upsert({ ...f, enabled: !f.enabled });
+        await m.upsert({ ...y, enabled: !y.enabled });
       } catch {
       }
     }
-    async function re(f) {
-      const m = f.default_model || V(f)[0] || f.models[0] || "";
+    async function Ee(y) {
+      const C = y.default_model || O(y)[0] || y.models[0] || "";
       try {
-        await b.setDefaults(f.id, m);
+        await m.setDefaults(y.id, C);
       } catch {
       }
     }
-    async function de() {
-      const f = v.value;
-      if (!f) return;
-      E.value = { state: "checking" };
-      const m = await x(f, f.api_key);
-      E.value = m, m.state === "ok" && m.models && (c.value = m.models);
+    async function le() {
+      const y = h.value;
+      if (!y) return;
+      R.value = { state: "checking" };
+      const C = await I(y, y.api_key);
+      R.value = C, C.state === "ok" && C.models && (u.value = C.models);
     }
-    function X() {
-      const f = v.value;
-      !f || !c.value.length || (f.models = [...c.value], f.disabled_models = (f.disabled_models || []).filter((m) => f.models.includes(m)), f.models.includes(f.default_model) || (f.default_model = ""));
+    function ne() {
+      const y = h.value;
+      !y || !u.value.length || (y.models = [...u.value], y.disabled_models = (y.disabled_models || []).filter((C) => y.models.includes(C)), y.models.includes(y.default_model) || (y.default_model = ""));
     }
-    function ye(f) {
-      const m = v.value;
-      if (!m) return;
-      const p = new Set(m.disabled_models || []);
-      p.has(f) ? p.delete(f) : p.add(f), m.disabled_models = [...p], p.has(m.default_model) && (m.default_model = V(m)[0] || "");
+    function _e(y) {
+      const C = h.value;
+      if (!C) return;
+      const S = new Set(C.disabled_models || []);
+      S.has(y) ? S.delete(y) : S.add(y), C.disabled_models = [...S], S.has(C.default_model) && (C.default_model = O(C)[0] || "");
     }
-    function ke(f) {
-      const m = v.value;
-      m && (m.default_model = f, m.disabled_models = (m.disabled_models || []).filter((p) => p !== f));
+    function we(y) {
+      const C = h.value;
+      C && (C.default_model = y, C.disabled_models = (C.disabled_models || []).filter((S) => S !== y));
     }
-    const ce = P(""), ge = P("");
-    function Se() {
-      const f = v.value;
-      if (!f) return;
-      const m = ce.value.trim();
-      if (ge.value = "", !!m) {
-        if (f.models.includes(m)) {
-          ge.value = s("settings.modelExists", { name: m });
+    const Ue = x(""), ve = x("");
+    function Ce() {
+      const y = h.value;
+      if (!y) return;
+      const C = Ue.value.trim();
+      if (ve.value = "", !!C) {
+        if (y.models.includes(C)) {
+          ve.value = s("settings.modelExists", { name: C });
           return;
         }
-        f.models = [...f.models, m], f.disabled_models = (f.disabled_models || []).filter((p) => p !== m), f.default_model || (f.default_model = m), ce.value = "";
+        y.models = [...y.models, C], y.disabled_models = (y.disabled_models || []).filter((S) => S !== C), y.default_model || (y.default_model = C), Ue.value = "";
       }
     }
-    function Pe(f) {
-      const m = v.value;
-      if (m) {
-        if (m.models = m.models.filter((p) => p !== f), m.disabled_models = (m.disabled_models || []).filter((p) => p !== f), m.model_types) {
-          const p = { ...m.model_types };
-          delete p[f], m.model_types = p;
+    function ye(y) {
+      const C = h.value;
+      if (C) {
+        if (C.models = C.models.filter((S) => S !== y), C.disabled_models = (C.disabled_models || []).filter((S) => S !== y), C.model_types) {
+          const S = { ...C.model_types };
+          delete S[y], C.model_types = S;
         }
-        m.default_model === f && (m.default_model = V(m)[0] || m.models[0] || "");
+        C.default_model === y && (C.default_model = O(C)[0] || C.models[0] || "");
       }
     }
-    function we(f) {
-      const m = v.value;
-      m && (m.disabled_models = f ? [] : [...m.models]);
+    function be(y) {
+      const C = h.value;
+      C && (C.disabled_models = y ? [] : [...C.models]);
     }
-    function Ee() {
-      const f = v.value;
-      if (!f) return;
-      const m = new Set(f.disabled_models || []);
-      f.disabled_models = f.models.filter((p) => !m.has(p));
+    function Ae() {
+      const y = h.value;
+      if (!y) return;
+      const C = new Set(y.disabled_models || []);
+      y.disabled_models = y.models.filter((S) => !C.has(S));
     }
-    const pe = Y(() => {
-      const f = v.value?.models || [], m = u.value.trim().toLowerCase();
-      return m ? f.filter((p) => p.toLowerCase().includes(m)) : f;
-    }), Te = Y(() => v.value ? V(v.value).length : 0);
-    function xe() {
-      return s("settings.fetchedSummary", { n: c.value.length });
+    const ue = G(() => {
+      const y = h.value?.models || [], C = c.value.trim().toLowerCase();
+      return C ? y.filter((S) => S.toLowerCase().includes(C)) : y;
+    }), pe = G(() => h.value ? O(h.value).length : 0);
+    function ze() {
+      return s("settings.fetchedSummary", { n: u.value.length });
     }
-    const Ae = Y(() => [
+    const je = G(() => [
       { value: "", label: s("settings.formatAuto") },
       { value: "openai", label: s("settings.formatOpenai") },
       { value: "anthropic", label: s("settings.formatAnthropic") }
-    ]), Ne = Y(
-      () => Ve.map((f) => ({ value: f.id, label: s(`providers.${f.id}.name`, f.name) }))
+    ]), Be = G(
+      () => pt.map((y) => ({ value: y.id, label: s(`providers.${y.id}.name`, y.name) }))
     );
-    return (f, m) => (a(), r("div", Uo, [
-      k.value === "edit" && v.value ? (a(), r(F, { key: 0 }, [
-        e("div", Eo, [
+    return (y, C) => (o(), i("div", Do, [
+      w.value === "edit" && h.value ? (o(), i(X, { key: 0 }, [
+        e("div", zo, [
           e("button", {
             class: "pp-back",
             type: "button",
-            onClick: A,
+            onClick: E,
             "aria-label": t(s)("settings.back")
-          }, [...m[12] || (m[12] = [
+          }, [...C[12] || (C[12] = [
             e("svg", {
               width: "18",
               height: "18",
@@ -1330,535 +1910,535 @@ const ft = { class: "life-settings" }, yt = { class: "ls-hero" }, kt = { class: 
                 "stroke-linejoin": "round"
               })
             ], -1)
-          ])], 8, To),
-          e("div", Ao, [
-            e("h2", null, l(v.value.id ? t(s)("settings.edit") : t(s)("settings.addProvider")), 1),
-            e("p", No, l(t(s)("settings.providerDesc")), 1)
+          ])], 8, Bo),
+          e("div", Fo, [
+            e("h2", null, l(h.value.id ? t(s)("settings.edit") : t(s)("settings.addProvider")), 1),
+            e("p", Ko, l(t(s)("settings.providerDesc")), 1)
           ]),
           e("span", {
-            class: j(["pp-status", E.value.state])
+            class: ee(["pp-status", R.value.state])
           }, [
-            m[13] || (m[13] = e("span", { class: "pp-dot" }, null, -1)),
-            oe(" " + l(E.value.state === "checking" ? t(s)("settings.testing") : E.value.state === "ok" ? t(s)("settings.connectionOk") : E.value.state === "error" ? t(s)("settings.connectionFailed") : t(s)("settings.statusIdle")), 1)
+            C[13] || (C[13] = e("span", { class: "pp-dot" }, null, -1)),
+            Ie(" " + l(R.value.state === "checking" ? t(s)("settings.testing") : R.value.state === "ok" ? t(s)("settings.connectionOk") : R.value.state === "error" ? t(s)("settings.connectionFailed") : t(s)("settings.statusIdle")), 1)
           ], 2)
         ]),
-        e("section", Vo, [
-          e("h3", Ro, l(t(s)("settings.providerSectionBasic")), 1),
-          e("div", Oo, [
-            e("div", Io, [
+        e("section", jo, [
+          e("h3", Ho, l(t(s)("settings.providerSectionBasic")), 1),
+          e("div", Yo, [
+            e("div", Xo, [
               e("label", null, l(t(s)("wizard.provider")), 1),
-              W(t(ue), {
-                modelValue: v.value.provider,
-                "onUpdate:modelValue": m[0] || (m[0] = (p) => v.value.provider = p),
+              ae(t(De), {
+                modelValue: h.value.provider,
+                "onUpdate:modelValue": C[0] || (C[0] = (S) => h.value.provider = S),
                 class: "input",
                 "aria-label": t(s)("wizard.provider"),
-                options: Ne.value,
+                options: Be.value,
                 onChange: U
               }, null, 8, ["modelValue", "aria-label", "options"])
             ]),
-            e("div", zo, [
+            e("div", Jo, [
               e("label", null, [
-                oe(l(t(s)("settings.providerName")) + " ", 1),
-                v.value.provider === "custom" ? (a(), r("span", Lo, "*")) : M("", !0)
+                Ie(l(t(s)("settings.providerName")) + " ", 1),
+                h.value.provider === "custom" ? (o(), i("span", Wo, "*")) : V("", !0)
               ]),
-              N(e("input", {
-                "onUpdate:modelValue": m[1] || (m[1] = (p) => v.value.name = p),
+              B(e("input", {
+                "onUpdate:modelValue": C[1] || (C[1] = (S) => h.value.name = S),
                 placeholder: t(s)("settings.providerNamePlaceholder"),
                 class: "input"
-              }, null, 8, Do), [
-                [D, v.value.name]
+              }, null, 8, qo), [
+                [Y, h.value.name]
               ])
             ]),
-            e("div", Fo, [
+            e("div", Go, [
               e("label", null, l(t(s)("wizard.baseUrl")), 1),
-              N(e("input", {
-                "onUpdate:modelValue": m[2] || (m[2] = (p) => v.value.base_url = p),
+              B(e("input", {
+                "onUpdate:modelValue": C[2] || (C[2] = (S) => h.value.base_url = S),
                 placeholder: t(s)("wizard.baseUrlPlaceholder"),
                 class: "input"
-              }, null, 8, Bo), [
-                [D, v.value.base_url]
+              }, null, 8, Zo), [
+                [Y, h.value.base_url]
               ])
             ]),
-            e("div", Ko, [
+            e("div", Qo, [
               e("label", null, l(t(s)("settings.apiFormat")), 1),
-              W(t(ue), {
-                modelValue: v.value.format,
-                "onUpdate:modelValue": m[3] || (m[3] = (p) => v.value.format = p),
+              ae(t(De), {
+                modelValue: h.value.format,
+                "onUpdate:modelValue": C[3] || (C[3] = (S) => h.value.format = S),
                 class: "input",
                 "aria-label": t(s)("settings.apiFormat"),
-                options: Ae.value
+                options: je.value
               }, null, 8, ["modelValue", "aria-label", "options"]),
-              e("p", Ho, l(t(s)("settings.apiFormatHint")), 1)
+              e("p", ea, l(t(s)("settings.apiFormatHint")), 1)
             ]),
-            e("div", jo, [
+            e("div", ta, [
               e("label", null, l(t(s)("wizard.defaultModel")), 1),
-              W(t(ue), {
-                modelValue: v.value.default_model,
-                "onUpdate:modelValue": m[4] || (m[4] = (p) => v.value.default_model = p),
+              ae(t(De), {
+                modelValue: h.value.default_model,
+                "onUpdate:modelValue": C[4] || (C[4] = (S) => h.value.default_model = S),
                 class: "input",
                 "aria-label": t(s)("wizard.defaultModel"),
-                options: V(v.value)
+                options: O(h.value)
               }, null, 8, ["modelValue", "aria-label", "options"]),
-              e("p", Yo, l(t(s)("settings.defaultModelHint")), 1)
+              e("p", sa, l(t(s)("settings.defaultModelHint")), 1)
             ])
           ])
         ]),
-        e("section", Jo, [
-          e("div", Wo, [
-            e("h3", qo, l(t(s)("settings.providerSectionAuth")), 1),
+        e("section", la, [
+          e("div", na, [
+            e("h3", oa, l(t(s)("settings.providerSectionAuth")), 1),
             e("button", {
               class: "btn btn-tonal sm",
               type: "button",
-              disabled: E.value.state === "checking",
-              onClick: de
-            }, l(E.value.state === "checking" ? t(s)("settings.testing") : t(s)("settings.testConnection")), 9, Go)
+              disabled: R.value.state === "checking",
+              onClick: le
+            }, l(R.value.state === "checking" ? t(s)("settings.testing") : t(s)("settings.testConnection")), 9, aa)
           ]),
-          e("div", Xo, [
+          e("div", ia, [
             e("label", null, l(t(s)("wizard.apiKey")), 1),
-            e("div", Zo, [
-              N(e("input", {
-                "onUpdate:modelValue": m[5] || (m[5] = (p) => v.value.api_key = p),
-                type: o.value ? "text" : "password",
-                placeholder: i.value ? t(s)("settings.apiKeyKept") : t(s)("wizard.apiKeyPlaceholder"),
+            e("div", ra, [
+              B(e("input", {
+                "onUpdate:modelValue": C[5] || (C[5] = (S) => h.value.api_key = S),
+                type: n.value ? "text" : "password",
+                placeholder: r.value ? t(s)("settings.apiKeyKept") : t(s)("wizard.apiKeyPlaceholder"),
                 class: "input"
-              }, null, 8, Qo), [
-                [it, v.value.api_key]
+              }, null, 8, ua), [
+                [ns, h.value.api_key]
               ]),
               e("button", {
                 class: "pp-key-toggle",
                 type: "button",
-                onClick: m[6] || (m[6] = (p) => o.value = !o.value)
-              }, l(o.value ? t(s)("settings.hideKey") : t(s)("settings.showKey")), 1)
+                onClick: C[6] || (C[6] = (S) => n.value = !n.value)
+              }, l(n.value ? t(s)("settings.hideKey") : t(s)("settings.showKey")), 1)
             ]),
-            i.value ? (a(), r("p", en, l(t(s)("settings.apiKeyKeptHint")), 1)) : M("", !0),
-            E.value.state === "error" ? (a(), r("p", tn, l(E.value.message), 1)) : E.value.state === "ok" ? (a(), r("p", sn, l(t(s)("settings.connectionOk")) + " · " + l(xe()) + " · " + l(E.value.ms) + "ms ", 1)) : M("", !0)
+            r.value ? (o(), i("p", ca, l(t(s)("settings.apiKeyKeptHint")), 1)) : V("", !0),
+            R.value.state === "error" ? (o(), i("p", da, l(R.value.message), 1)) : R.value.state === "ok" ? (o(), i("p", pa, l(t(s)("settings.connectionOk")) + " · " + l(ze()) + " · " + l(R.value.ms) + "ms ", 1)) : V("", !0)
           ])
         ]),
-        e("section", ln, [
-          e("div", on, [
-            e("h3", nn, [
-              oe(l(t(s)("settings.providerSectionModels")) + " ", 1),
-              e("span", an, l(Te.value) + "/" + l(v.value.models.length), 1)
+        e("section", ha, [
+          e("div", va, [
+            e("h3", ma, [
+              Ie(l(t(s)("settings.providerSectionModels")) + " ", 1),
+              e("span", ga, l(pe.value) + "/" + l(h.value.models.length), 1)
             ]),
             e("button", {
               class: "btn btn-tonal sm",
               type: "button",
-              disabled: E.value.state === "checking",
-              onClick: de
-            }, l(t(s)("settings.fetchModels")), 9, rn)
+              disabled: R.value.state === "checking",
+              onClick: le
+            }, l(t(s)("settings.fetchModels")), 9, fa)
           ]),
-          c.value.length && c.value.join("\0") !== v.value.models.join("\0") ? (a(), r("div", un, [
-            e("span", null, l(xe()), 1),
+          u.value.length && u.value.join("\0") !== h.value.models.join("\0") ? (o(), i("div", _a, [
+            e("span", null, l(ze()), 1),
             e("button", {
               class: "btn btn-primary xs",
               type: "button",
-              onClick: X
+              onClick: ne
             }, l(t(s)("settings.applyFetched")), 1)
-          ])) : M("", !0),
-          e("div", dn, [
-            N(e("input", {
-              "onUpdate:modelValue": m[7] || (m[7] = (p) => u.value = p),
+          ])) : V("", !0),
+          e("div", ya, [
+            B(e("input", {
+              "onUpdate:modelValue": C[7] || (C[7] = (S) => c.value = S),
               class: "input pp-search",
               placeholder: t(s)("settings.searchModels")
-            }, null, 8, cn), [
-              [D, u.value]
+            }, null, 8, ba), [
+              [Y, c.value]
             ]),
             e("button", {
               class: "pp-mini",
               type: "button",
-              onClick: m[8] || (m[8] = (p) => we(!0))
+              onClick: C[8] || (C[8] = (S) => be(!0))
             }, l(t(s)("settings.selectAll")), 1),
             e("button", {
               class: "pp-mini",
               type: "button",
-              onClick: m[9] || (m[9] = (p) => Ee())
+              onClick: C[9] || (C[9] = (S) => Ae())
             }, l(t(s)("settings.invertSelection")), 1),
             e("button", {
               class: "pp-mini",
               type: "button",
-              onClick: m[10] || (m[10] = (p) => we(!1))
+              onClick: C[10] || (C[10] = (S) => be(!1))
             }, l(t(s)("settings.clearSelection")), 1)
           ]),
-          e("div", pn, [
-            N(e("input", {
-              "onUpdate:modelValue": m[11] || (m[11] = (p) => ce.value = p),
+          e("div", ka, [
+            B(e("input", {
+              "onUpdate:modelValue": C[11] || (C[11] = (S) => Ue.value = S),
               class: "input",
               placeholder: t(s)("settings.addModelPlaceholder"),
               "aria-label": t(s)("settings.addModelPlaceholder"),
-              onKeydown: Ge(Oe(Se, ["prevent"]), ["enter"])
-            }, null, 40, hn), [
-              [D, ce.value]
+              onKeydown: mt(Oe(Ce, ["prevent"]), ["enter"])
+            }, null, 40, wa), [
+              [Y, Ue.value]
             ]),
             e("button", {
               class: "btn btn-tonal sm",
               type: "button",
-              disabled: !ce.value.trim(),
-              onClick: Se
-            }, l(t(s)("settings.addModel")), 9, vn)
+              disabled: !Ue.value.trim(),
+              onClick: Ce
+            }, l(t(s)("settings.addModel")), 9, $a)
           ]),
-          ge.value ? (a(), r("p", mn, l(ge.value), 1)) : M("", !0),
-          v.value.models.length ? (a(), r("div", _n, [
-            (a(!0), r(F, null, J(pe.value, (p) => (a(), r("div", {
-              key: p,
-              class: j(["pp-model", { off: (v.value.disabled_models || []).includes(p) }])
+          ve.value ? (o(), i("p", Sa, l(ve.value), 1)) : V("", !0),
+          h.value.models.length ? (o(), i("div", Ca, [
+            (o(!0), i(X, null, oe(ue.value, (S) => (o(), i("div", {
+              key: S,
+              class: ee(["pp-model", { off: (h.value.disabled_models || []).includes(S) }])
             }, [
               e("span", {
                 class: "pp-model-name",
-                title: p
-              }, l(p), 9, gn),
+                title: S
+              }, l(S), 9, xa),
               e("select", {
-                class: j(["pp-type", { tagged: S(p) !== "chat" }]),
-                value: S(p),
+                class: ee(["pp-type", { tagged: A(S) !== "chat" }]),
+                value: A(S),
                 title: t(s)("settings.providerModelType"),
-                onChange: (n) => I(p, n.target.value)
+                onChange: (Z) => j(S, Z.target.value)
               }, [
-                (a(!0), r(F, null, J(w.value, (n) => (a(), r("option", {
-                  key: n.value,
-                  value: n.value
-                }, l(n.label), 9, fn))), 128))
-              ], 42, bn),
-              v.value.default_model !== p ? (a(), r("button", {
+                (o(!0), i(X, null, oe(M.value, (Z) => (o(), i("option", {
+                  key: Z.value,
+                  value: Z.value
+                }, l(Z.label), 9, Pa))), 128))
+              ], 42, Ma),
+              h.value.default_model !== S ? (o(), i("button", {
                 key: 0,
                 class: "pp-star",
                 type: "button",
                 title: t(s)("settings.makeDefault"),
-                disabled: (v.value.disabled_models || []).includes(p),
-                onClick: (n) => ke(p)
-              }, "☆", 8, yn)) : (a(), r("span", {
+                disabled: (h.value.disabled_models || []).includes(S),
+                onClick: (Z) => we(S)
+              }, "☆", 8, Ea)) : (o(), i("span", {
                 key: 1,
                 class: "pp-star on",
                 title: t(s)("wizard.defaultModel")
-              }, "★", 8, kn)),
+              }, "★", 8, Ua)),
               e("input", {
                 type: "checkbox",
                 class: "pp-switch",
-                checked: !(v.value.disabled_models || []).includes(p),
-                onChange: (n) => ye(p)
-              }, null, 40, wn),
+                checked: !(h.value.disabled_models || []).includes(S),
+                onChange: (Z) => _e(S)
+              }, null, 40, Aa),
               e("button", {
                 class: "pp-remove",
                 type: "button",
-                title: t(s)("settings.removeModel", { name: p }),
-                "aria-label": t(s)("settings.removeModel", { name: p }),
-                onClick: (n) => Pe(p)
-              }, "×", 8, $n)
+                title: t(s)("settings.removeModel", { name: S }),
+                "aria-label": t(s)("settings.removeModel", { name: S }),
+                onClick: (Z) => ye(S)
+              }, "×", 8, Ta)
             ], 2))), 128)),
-            pe.value.length ? M("", !0) : (a(), r("p", Cn, l(t(s)("settings.searchModels")), 1))
-          ])) : (a(), r("p", Sn, l(t(s)("settings.noModelsYet")), 1))
+            ue.value.length ? V("", !0) : (o(), i("p", Ia, l(t(s)("settings.searchModels")), 1))
+          ])) : (o(), i("p", Na, l(t(s)("settings.noModelsYet")), 1))
         ]),
-        C.value ? (a(), r("p", Pn, l(C.value), 1)) : M("", !0),
-        e("div", xn, [
+        $.value ? (o(), i("p", Ra, l($.value), 1)) : V("", !0),
+        e("div", Va, [
           e("button", {
             class: "btn btn-primary",
             type: "button",
             disabled: d.value,
-            onClick: R
-          }, l(d.value ? t(s)("settings.saving") : t(s)("settings.save")), 9, Mn),
+            onClick: P
+          }, l(d.value ? t(s)("settings.saving") : t(s)("settings.save")), 9, La),
           e("button", {
             class: "btn btn-ghost",
             type: "button",
-            onClick: A
+            onClick: E
           }, l(t(s)("settings.cancel")), 1)
         ])
-      ], 64)) : (a(), r(F, { key: 1 }, [
-        e("div", Un, [
+      ], 64)) : (o(), i(X, { key: 1 }, [
+        e("div", Oa, [
           e("div", null, [
             e("h2", null, l(t(s)("settings.tabs.provider")), 1),
-            e("p", En, l(t(s)("settings.providerDesc")), 1)
+            e("p", Da, l(t(s)("settings.providerDesc")), 1)
           ]),
-          e("div", Tn, [
+          e("div", za, [
             e("button", {
               class: "btn btn-ghost sm",
               type: "button",
-              onClick: q
+              onClick: ie
             }, l(t(s)("settings.refreshStatus")), 1),
             e("button", {
               class: "btn btn-primary",
               type: "button",
-              onClick: G
+              onClick: re
             }, "+ " + l(t(s)("settings.addProvider")), 1)
           ])
         ]),
-        t(b).providers.length ? (a(), r("div", An, [
-          (a(!0), r(F, null, J(t(b).providers, (p) => (a(), r("article", {
-            key: p.id,
-            class: j(["pp-card", { off: !p.enabled, default: z(p) }])
+        t(m).providers.length ? (o(), i("div", Ba, [
+          (o(!0), i(X, null, oe(t(m).providers, (S) => (o(), i("article", {
+            key: S.id,
+            class: ee(["pp-card", { off: !S.enabled, default: D(S) }])
           }, [
-            e("header", Nn, [
-              e("span", Vn, [
-                h(p) ? (a(), r("img", {
+            e("header", Fa, [
+              e("span", Ka, [
+                p(S) ? (o(), i("img", {
                   key: 0,
-                  src: h(p),
-                  alt: y(p)
-                }, null, 8, Rn)) : (a(), r("svg", On, [...m[14] || (m[14] = [
+                  src: p(S),
+                  alt: b(S)
+                }, null, 8, ja)) : (o(), i("svg", Ha, [...C[14] || (C[14] = [
                   e("path", { d: "M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" }, null, -1)
                 ])]))
               ]),
-              e("div", In, [
-                e("strong", null, l(y(p)), 1),
+              e("div", Ya, [
+                e("strong", null, l(b(S)), 1),
                 e("code", {
-                  title: p.base_url
-                }, l(p.base_url || "—"), 9, zn)
+                  title: S.base_url
+                }, l(S.base_url || "—"), 9, Xa)
               ]),
-              e("div", Ln, [
-                z(p) ? (a(), r("span", Dn, l(t(s)("settings.default")), 1)) : M("", !0),
-                e("span", Fn, l(V(p).length) + "/" + l(p.models.length), 1)
+              e("div", Ja, [
+                D(S) ? (o(), i("span", Wa, l(t(s)("settings.default")), 1)) : V("", !0),
+                e("span", qa, l(O(S).length) + "/" + l(S.models.length), 1)
               ])
             ]),
-            e("div", Bn, [
+            e("div", Ga, [
               e("span", {
-                class: j(["pp-status", $.value[p.id]?.state || "idle"])
+                class: ee(["pp-status", k.value[S.id]?.state || "idle"])
               }, [
-                m[15] || (m[15] = e("span", { class: "pp-dot" }, null, -1)),
-                oe(" " + l($.value[p.id]?.state === "checking" ? t(s)("settings.testing") : $.value[p.id]?.state === "ok" ? t(s)("settings.connectionOk") : $.value[p.id]?.state === "error" ? t(s)("settings.connectionFailed") : t(s)("settings.statusIdle")), 1)
+                C[15] || (C[15] = e("span", { class: "pp-dot" }, null, -1)),
+                Ie(" " + l(k.value[S.id]?.state === "checking" ? t(s)("settings.testing") : k.value[S.id]?.state === "ok" ? t(s)("settings.connectionOk") : k.value[S.id]?.state === "error" ? t(s)("settings.connectionFailed") : t(s)("settings.statusIdle")), 1)
               ], 2),
-              $.value[p.id]?.state === "ok" ? (a(), r("span", Kn, l(t(s)("settings.fetchedSummary", { n: $.value[p.id]?.count || 0 })) + " · " + l($.value[p.id]?.ms) + "ms", 1)) : $.value[p.id]?.state === "error" ? (a(), r("span", {
+              k.value[S.id]?.state === "ok" ? (o(), i("span", Za, l(t(s)("settings.fetchedSummary", { n: k.value[S.id]?.count || 0 })) + " · " + l(k.value[S.id]?.ms) + "ms", 1)) : k.value[S.id]?.state === "error" ? (o(), i("span", {
                 key: 1,
                 class: "pp-meta err",
-                title: $.value[p.id]?.message
-              }, l($.value[p.id]?.message), 9, Hn)) : M("", !0)
+                title: k.value[S.id]?.message
+              }, l(k.value[S.id]?.message), 9, Qa)) : V("", !0)
             ]),
-            e("div", jn, [
-              (a(!0), r(F, null, J(V(p).slice(0, 6), (n) => (a(), r("span", {
-                key: n,
+            e("div", ei, [
+              (o(!0), i(X, null, oe(O(S).slice(0, 6), (Z) => (o(), i("span", {
+                key: Z,
                 class: "pp-chip"
-              }, l(n), 1))), 128)),
-              V(p).length > 6 ? (a(), r("span", Yn, "+" + l(V(p).length - 6), 1)) : M("", !0),
-              p.models.length ? M("", !0) : (a(), r("span", Jn, l(t(s)("settings.noModelsYet")), 1))
+              }, l(Z), 1))), 128)),
+              O(S).length > 6 ? (o(), i("span", ti, "+" + l(O(S).length - 6), 1)) : V("", !0),
+              S.models.length ? V("", !0) : (o(), i("span", si, l(t(s)("settings.noModelsYet")), 1))
             ]),
-            e("footer", Wn, [
+            e("footer", li, [
               e("button", {
                 class: "btn btn-tonal sm",
                 type: "button",
-                onClick: (n) => O(p)
-              }, l(t(s)("settings.edit")), 9, qn),
+                onClick: (Z) => H(S)
+              }, l(t(s)("settings.edit")), 9, ni),
               e("button", {
                 class: "btn btn-ghost sm",
                 type: "button",
-                disabled: $.value[p.id]?.state === "checking",
-                onClick: (n) => B(p)
-              }, l(t(s)("settings.testConnection")), 9, Gn),
+                disabled: k.value[S.id]?.state === "checking",
+                onClick: (Z) => J(S)
+              }, l(t(s)("settings.testConnection")), 9, oi),
               e("button", {
                 class: "btn btn-ghost sm",
                 type: "button",
-                disabled: z(p),
-                onClick: (n) => re(p)
-              }, l(t(s)("settings.makeDefault")), 9, Xn),
+                disabled: D(S),
+                onClick: (Z) => Ee(S)
+              }, l(t(s)("settings.makeDefault")), 9, ai),
               e("button", {
                 class: "btn btn-ghost sm",
                 type: "button",
-                onClick: (n) => me(p)
-              }, l(p.enabled ? t(s)("settings.disableProvider") : t(s)("settings.enableProvider")), 9, Zn),
+                onClick: (Z) => Se(S)
+              }, l(S.enabled ? t(s)("settings.disableProvider") : t(s)("settings.enableProvider")), 9, ii),
               e("button", {
                 class: "btn btn-ghost sm danger-text",
                 type: "button",
-                onClick: (n) => fe(p)
-              }, l(t(s)("settings.remove")), 9, Qn)
+                onClick: (Z) => Pe(S)
+              }, l(t(s)("settings.remove")), 9, ri)
             ])
           ], 2))), 128))
-        ])) : (a(), r("div", ea, [
+        ])) : (o(), i("div", ui, [
           e("p", null, l(t(s)("settings.noProviders")), 1),
           e("button", {
             class: "btn btn-primary",
             type: "button",
-            onClick: G
+            onClick: re
           }, "+ " + l(t(s)("settings.addFirstProvider")), 1)
         ]))
       ], 64))
     ]));
   }
-}), sa = /* @__PURE__ */ ie(ta, [["__scopeId", "data-v-d93aed7e"]]), la = { class: "pairing-panel" }, oa = {
+}), di = /* @__PURE__ */ Me(ci, [["__scopeId", "data-v-d93aed7e"]]), pi = { class: "pairing-panel" }, hi = {
   key: 0,
   class: "pairing-error",
   role: "alert"
-}, na = { key: 1 }, aa = { key: 0 }, ia = ["onClick"], ra = ["onClick"], ua = ["disabled", "onClick"], da = /* @__PURE__ */ ee({
+}, vi = { key: 1 }, mi = { key: 0 }, gi = ["onClick"], fi = ["onClick"], _i = ["disabled", "onClick"], yi = /* @__PURE__ */ de({
   __name: "PairingPanel",
-  setup(L) {
-    const { t: s } = te(), { confirm: _ } = Ce(), b = P([]), $ = P([]), k = P(""), v = P("");
-    let C;
-    async function E() {
+  setup(F) {
+    const { t: s } = he(), { confirm: v } = Ge(), m = x([]), k = x([]), w = x(""), h = x("");
+    let $;
+    async function R() {
       try {
-        const o = await fetch("/api/pairing/pending");
-        if (!o.ok) throw new Error(await o.text());
-        b.value = (await o.json()).requests || [];
-      } catch (o) {
-        k.value = o.message;
+        const n = await fetch("/api/pairing/pending");
+        if (!n.ok) throw new Error(await n.text());
+        m.value = (await n.json()).requests || [];
+      } catch (n) {
+        w.value = n.message;
       }
       try {
-        const o = await fetch("/api/pairing/devices");
-        o.ok && ($.value = (await o.json()).devices || []);
+        const n = await fetch("/api/pairing/devices");
+        n.ok && (k.value = (await n.json()).devices || []);
       } catch {
       }
     }
-    async function c(o, i) {
+    async function u(n, r) {
       try {
         const d = await fetch("/api/pairing/approve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...o, allow: i })
+          body: JSON.stringify({ ...n, allow: r })
         });
         if (!d.ok) throw new Error(await d.text());
-        await E();
+        await R();
       } catch (d) {
-        k.value = d.message;
+        w.value = d.message;
       }
     }
-    async function u(o) {
-      if (!(v.value || !await _({
+    async function c(n) {
+      if (!(h.value || !await v({
         title: s("pairing.disconnect"),
-        message: s("pairing.disconnectConfirm", { name: o.name || o.id }),
+        message: s("pairing.disconnectConfirm", { name: n.name || n.id }),
         confirmLabel: s("pairing.disconnect"),
         danger: !0
       }))) {
-        v.value = o.id;
+        h.value = n.id;
         try {
           const d = await fetch("/api/pairing/revoke", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: o.id })
+            body: JSON.stringify({ id: n.id })
           });
           if (!d.ok) throw new Error(await d.text());
-          await E();
+          await R();
         } catch (d) {
-          k.value = d.message;
+          w.value = d.message;
         } finally {
-          v.value = "";
+          h.value = "";
         }
       }
     }
-    return ae(() => {
-      E(), C = setInterval(E, 3e3);
-    }), ze(() => clearInterval(C)), (o, i) => (a(), r("section", la, [
+    return Ne(() => {
+      R(), $ = setInterval(R, 3e3);
+    }), lt(() => clearInterval($)), (n, r) => (o(), i("section", pi, [
       e("h3", null, l(t(s)("pairing.title")), 1),
       e("p", null, l(t(s)("pairing.hint")), 1),
-      k.value ? (a(), r("p", oa, l(k.value), 1)) : M("", !0),
-      b.value.length ? M("", !0) : (a(), r("p", na, l(t(s)("pairing.empty")), 1)),
-      W(Be, {
+      w.value ? (o(), i("p", hi, l(w.value), 1)) : V("", !0),
+      m.value.length ? V("", !0) : (o(), i("p", vi, l(t(s)("pairing.empty")), 1)),
+      ae(Tt, {
         tag: "div",
         name: "pair",
         class: "pairing-list"
       }, {
-        default: Ie(() => [
-          (a(!0), r(F, null, J(b.value, (d) => (a(), r("article", {
+        default: et(() => [
+          (o(!0), i(X, null, oe(m.value, (d) => (o(), i("article", {
             key: d.id
           }, [
             e("strong", null, l(d.name), 1),
             e("code", null, l(d.code), 1),
-            d.approved ? (a(), r("span", aa, l(t(s)("pairing.approved")), 1)) : (a(), r(F, { key: 1 }, [
+            d.approved ? (o(), i("span", mi, l(t(s)("pairing.approved")), 1)) : (o(), i(X, { key: 1 }, [
               e("button", {
                 type: "button",
                 class: "btn btn-ghost",
-                onClick: (g) => c(d, !1)
-              }, l(t(s)("pairing.deny")), 9, ia),
+                onClick: (f) => u(d, !1)
+              }, l(t(s)("pairing.deny")), 9, gi),
               e("button", {
                 type: "button",
                 class: "btn btn-primary",
-                onClick: (g) => c(d, !0)
-              }, l(t(s)("pairing.allow")), 9, ra)
+                onClick: (f) => u(d, !0)
+              }, l(t(s)("pairing.allow")), 9, fi)
             ], 64))
           ]))), 128))
         ]),
         _: 1
       }),
-      $.value.length ? (a(), r(F, { key: 2 }, [
-        e("h4", null, l(t(s)("pairing.pairedCount", { n: $.value.length })), 1),
-        W(Be, {
+      k.value.length ? (o(), i(X, { key: 2 }, [
+        e("h4", null, l(t(s)("pairing.pairedCount", { n: k.value.length })), 1),
+        ae(Tt, {
           tag: "div",
           name: "pair",
           class: "pairing-list"
         }, {
-          default: Ie(() => [
-            (a(!0), r(F, null, J($.value, (d) => (a(), r("article", {
+          default: et(() => [
+            (o(!0), i(X, null, oe(k.value, (d) => (o(), i("article", {
               key: d.id
             }, [
               e("strong", null, l(d.name || d.id), 1),
               e("button", {
                 type: "button",
                 class: "btn btn-danger-tonal",
-                disabled: v.value === d.id,
-                onClick: (g) => u(d)
-              }, l(v.value === d.id ? t(s)("pairing.disconnecting") : t(s)("pairing.disconnect")), 9, ua)
+                disabled: h.value === d.id,
+                onClick: (f) => c(d)
+              }, l(h.value === d.id ? t(s)("pairing.disconnecting") : t(s)("pairing.disconnect")), 9, _i)
             ]))), 128))
           ]),
           _: 1
         })
-      ], 64)) : M("", !0)
+      ], 64)) : V("", !0)
     ]));
   }
-}), ca = /* @__PURE__ */ ie(da, [["__scopeId", "data-v-c18959f6"]]), pa = { class: "content-card" }, ha = { class: "card-desc" }, va = { class: "field" }, ma = ["aria-label"], _a = ["aria-pressed", "onClick"], ga = /* @__PURE__ */ ee({
+}), bi = /* @__PURE__ */ Me(yi, [["__scopeId", "data-v-c18959f6"]]), ki = { class: "content-card" }, wi = { class: "card-desc" }, $i = { class: "field" }, Si = ["aria-label"], Ci = ["aria-pressed", "onClick"], xi = /* @__PURE__ */ de({
   __name: "GeneralPanel",
-  setup(L) {
-    const { t: s } = te(), _ = P(ht());
-    function b($) {
-      _.value = $, mt($);
+  setup(F) {
+    const { t: s } = he(), v = x(ps());
+    function m(k) {
+      v.value = k, vs(k);
     }
-    return ($, k) => (a(), r("div", pa, [
+    return (k, w) => (o(), i("div", ki, [
       e("h2", null, l(t(s)("settings.tabs.general")), 1),
-      e("p", ha, l(t(s)("settings.generalDesc")), 1),
-      e("div", va, [
+      e("p", wi, l(t(s)("settings.generalDesc")), 1),
+      e("div", $i, [
         e("label", null, l(t(s)("settings.language")), 1),
         e("div", {
           class: "segmented",
           role: "group",
           "aria-label": t(s)("settings.language")
         }, [
-          (a(!0), r(F, null, J(t(vt), (v) => (a(), r("button", {
-            key: v.code,
-            class: j(["seg", { active: _.value === v.code }]),
-            "aria-pressed": _.value === v.code,
-            onClick: (C) => b(v.code)
-          }, l(v.label), 11, _a))), 128))
-        ], 8, ma)
+          (o(!0), i(X, null, oe(t(hs), (h) => (o(), i("button", {
+            key: h.code,
+            class: ee(["seg", { active: v.value === h.code }]),
+            "aria-pressed": v.value === h.code,
+            onClick: ($) => m(h.code)
+          }, l(h.label), 11, Ci))), 128))
+        ], 8, Si)
       ]),
-      W(ca)
+      ae(bi)
     ]));
   }
 });
-var _e;
-((L) => {
-  const v = class v {
+var Ye;
+((F) => {
+  const h = class h {
     /*-- Constructor (low level) and fields --*/
     // Creates a new QR Code with the given version number,
     // error correction level, data codeword bytes, and mask number.
     // This is a low-level API that most users should not use directly.
     // A mid-level API is the encodeSegments() function.
-    constructor(c, u, o, i) {
-      K(this, "version");
-      K(this, "errorCorrectionLevel");
+    constructor(u, c, n, r) {
+      W(this, "version");
+      W(this, "errorCorrectionLevel");
       /*-- Fields --*/
       // The width and height of this QR Code, measured in modules, between
       // 21 and 177 (inclusive). This is equal to version * 4 + 17.
-      K(this, "size");
+      W(this, "size");
       // The index of the mask pattern used in this QR Code, which is between 0 and 7 (inclusive).
       // Even if a QR Code is created with automatic masking requested (mask = -1),
       // the resulting object still has a mask value between 0 and 7.
-      K(this, "mask");
+      W(this, "mask");
       // The modules of this QR Code (false = light, true = dark).
       // Immutable after constructor finishes. Accessed through getModule().
-      K(this, "modules", []);
+      W(this, "modules", []);
       // Indicates function modules that are not subjected to masking. Discarded when constructor finishes.
-      K(this, "isFunction", []);
-      if (this.version = c, this.errorCorrectionLevel = u, c < v.MIN_VERSION || c > v.MAX_VERSION)
+      W(this, "isFunction", []);
+      if (this.version = u, this.errorCorrectionLevel = c, u < h.MIN_VERSION || u > h.MAX_VERSION)
         throw new RangeError("Version value out of range");
-      if (i < -1 || i > 7)
+      if (r < -1 || r > 7)
         throw new RangeError("Mask value out of range");
-      this.size = c * 4 + 17;
+      this.size = u * 4 + 17;
       let d = [];
-      for (let y = 0; y < this.size; y++)
+      for (let b = 0; b < this.size; b++)
         d.push(!1);
-      for (let y = 0; y < this.size; y++)
+      for (let b = 0; b < this.size; b++)
         this.modules.push(d.slice()), this.isFunction.push(d.slice());
       this.drawFunctionPatterns();
-      const g = this.addEccAndInterleave(o);
-      if (this.drawCodewords(g), i == -1) {
-        let y = 1e9;
-        for (let h = 0; h < 8; h++) {
-          this.applyMask(h), this.drawFormatBits(h);
-          const w = this.getPenaltyScore();
-          w < y && (i = h, y = w), this.applyMask(h);
+      const f = this.addEccAndInterleave(n);
+      if (this.drawCodewords(f), r == -1) {
+        let b = 1e9;
+        for (let p = 0; p < 8; p++) {
+          this.applyMask(p), this.drawFormatBits(p);
+          const M = this.getPenaltyScore();
+          M < b && (r = p, b = M), this.applyMask(p);
         }
       }
-      $(0 <= i && i <= 7), this.mask = i, this.applyMask(i), this.drawFormatBits(i), this.isFunction = [];
+      k(0 <= r && r <= 7), this.mask = r, this.applyMask(r), this.drawFormatBits(r), this.isFunction = [];
     }
     /*-- Static factory functions (high level) --*/
     // Returns a QR Code representing the given Unicode text string at the given error correction level.
@@ -1866,17 +2446,17 @@ var _e;
     // Unicode code points (not UTF-16 code units) if the low error correction level is used. The smallest possible
     // QR Code version is automatically chosen for the output. The ECC level of the result may be higher than the
     // ecl argument if it can be done without increasing the version.
-    static encodeText(c, u) {
-      const o = L.QrSegment.makeSegments(c);
-      return v.encodeSegments(o, u);
+    static encodeText(u, c) {
+      const n = F.QrSegment.makeSegments(u);
+      return h.encodeSegments(n, c);
     }
     // Returns a QR Code representing the given binary data at the given error correction level.
     // This function always encodes using the binary segment mode, not any text mode. The maximum number of
     // bytes allowed is 2953. The smallest possible QR Code version is automatically chosen for the output.
     // The ECC level of the result may be higher than the ecl argument if it can be done without increasing the version.
-    static encodeBinary(c, u) {
-      const o = L.QrSegment.makeBytes(c);
-      return v.encodeSegments([o], u);
+    static encodeBinary(u, c) {
+      const n = F.QrSegment.makeBytes(u);
+      return h.encodeSegments([n], c);
     }
     /*-- Static factory functions (mid level) --*/
     // Returns a QR Code representing the given segments with the given encoding parameters.
@@ -1888,74 +2468,74 @@ var _e;
     // This function allows the user to create a custom sequence of segments that switches
     // between modes (such as alphanumeric and byte) to encode text in less space.
     // This is a mid-level API; the high-level API is encodeText() and encodeBinary().
-    static encodeSegments(c, u, o = 1, i = 40, d = -1, g = !0) {
-      if (!(v.MIN_VERSION <= o && o <= i && i <= v.MAX_VERSION) || d < -1 || d > 7)
+    static encodeSegments(u, c, n = 1, r = 40, d = -1, f = !0) {
+      if (!(h.MIN_VERSION <= n && n <= r && r <= h.MAX_VERSION) || d < -1 || d > 7)
         throw new RangeError("Invalid value");
-      let y, h;
-      for (y = o; ; y++) {
-        const V = v.getNumDataCodewords(y, u) * 8, z = k.getTotalBits(c, y);
-        if (z <= V) {
-          h = z;
+      let b, p;
+      for (b = n; ; b++) {
+        const O = h.getNumDataCodewords(b, c) * 8, D = w.getTotalBits(u, b);
+        if (D <= O) {
+          p = D;
           break;
         }
-        if (y >= i)
+        if (b >= r)
           throw new RangeError("Data too long");
       }
-      for (const V of [v.Ecc.MEDIUM, v.Ecc.QUARTILE, v.Ecc.HIGH])
-        g && h <= v.getNumDataCodewords(y, V) * 8 && (u = V);
-      let w = [];
-      for (const V of c) {
-        _(V.mode.modeBits, 4, w), _(V.numChars, V.mode.numCharCountBits(y), w);
-        for (const z of V.getData())
-          w.push(z);
+      for (const O of [h.Ecc.MEDIUM, h.Ecc.QUARTILE, h.Ecc.HIGH])
+        f && p <= h.getNumDataCodewords(b, O) * 8 && (c = O);
+      let M = [];
+      for (const O of u) {
+        v(O.mode.modeBits, 4, M), v(O.numChars, O.mode.numCharCountBits(b), M);
+        for (const D of O.getData())
+          M.push(D);
       }
-      $(w.length == h);
-      const S = v.getNumDataCodewords(y, u) * 8;
-      $(w.length <= S), _(0, Math.min(4, S - w.length), w), _(0, (8 - w.length % 8) % 8, w), $(w.length % 8 == 0);
-      for (let V = 236; w.length < S; V ^= 253)
-        _(V, 8, w);
-      let I = [];
-      for (; I.length * 8 < w.length; )
-        I.push(0);
-      return w.forEach((V, z) => I[z >>> 3] |= V << 7 - (z & 7)), new v(y, u, I, d);
+      k(M.length == p);
+      const A = h.getNumDataCodewords(b, c) * 8;
+      k(M.length <= A), v(0, Math.min(4, A - M.length), M), v(0, (8 - M.length % 8) % 8, M), k(M.length % 8 == 0);
+      for (let O = 236; M.length < A; O ^= 253)
+        v(O, 8, M);
+      let j = [];
+      for (; j.length * 8 < M.length; )
+        j.push(0);
+      return M.forEach((O, D) => j[D >>> 3] |= O << 7 - (D & 7)), new h(b, c, j, d);
     }
     /*-- Accessor methods --*/
     // Returns the color of the module (pixel) at the given coordinates, which is false
     // for light or true for dark. The top left corner has the coordinates (x=0, y=0).
     // If the given coordinates are out of bounds, then false (light) is returned.
-    getModule(c, u) {
-      return 0 <= c && c < this.size && 0 <= u && u < this.size && this.modules[u][c];
+    getModule(u, c) {
+      return 0 <= u && u < this.size && 0 <= c && c < this.size && this.modules[c][u];
     }
     /*-- Private helper methods for constructor: Drawing function modules --*/
     // Reads this object's version field, and draws and marks all function modules.
     drawFunctionPatterns() {
-      for (let o = 0; o < this.size; o++)
-        this.setFunctionModule(6, o, o % 2 == 0), this.setFunctionModule(o, 6, o % 2 == 0);
+      for (let n = 0; n < this.size; n++)
+        this.setFunctionModule(6, n, n % 2 == 0), this.setFunctionModule(n, 6, n % 2 == 0);
       this.drawFinderPattern(3, 3), this.drawFinderPattern(this.size - 4, 3), this.drawFinderPattern(3, this.size - 4);
-      const c = this.getAlignmentPatternPositions(), u = c.length;
-      for (let o = 0; o < u; o++)
-        for (let i = 0; i < u; i++)
-          o == 0 && i == 0 || o == 0 && i == u - 1 || o == u - 1 && i == 0 || this.drawAlignmentPattern(c[o], c[i]);
+      const u = this.getAlignmentPatternPositions(), c = u.length;
+      for (let n = 0; n < c; n++)
+        for (let r = 0; r < c; r++)
+          n == 0 && r == 0 || n == 0 && r == c - 1 || n == c - 1 && r == 0 || this.drawAlignmentPattern(u[n], u[r]);
       this.drawFormatBits(0), this.drawVersion();
     }
     // Draws two copies of the format bits (with its own error correction code)
     // based on the given mask and this object's error correction level field.
-    drawFormatBits(c) {
-      const u = this.errorCorrectionLevel.formatBits << 3 | c;
-      let o = u;
+    drawFormatBits(u) {
+      const c = this.errorCorrectionLevel.formatBits << 3 | u;
+      let n = c;
       for (let d = 0; d < 10; d++)
-        o = o << 1 ^ (o >>> 9) * 1335;
-      const i = (u << 10 | o) ^ 21522;
-      $(i >>> 15 == 0);
+        n = n << 1 ^ (n >>> 9) * 1335;
+      const r = (c << 10 | n) ^ 21522;
+      k(r >>> 15 == 0);
       for (let d = 0; d <= 5; d++)
-        this.setFunctionModule(8, d, b(i, d));
-      this.setFunctionModule(8, 7, b(i, 6)), this.setFunctionModule(8, 8, b(i, 7)), this.setFunctionModule(7, 8, b(i, 8));
+        this.setFunctionModule(8, d, m(r, d));
+      this.setFunctionModule(8, 7, m(r, 6)), this.setFunctionModule(8, 8, m(r, 7)), this.setFunctionModule(7, 8, m(r, 8));
       for (let d = 9; d < 15; d++)
-        this.setFunctionModule(14 - d, 8, b(i, d));
+        this.setFunctionModule(14 - d, 8, m(r, d));
       for (let d = 0; d < 8; d++)
-        this.setFunctionModule(this.size - 1 - d, 8, b(i, d));
+        this.setFunctionModule(this.size - 1 - d, 8, m(r, d));
       for (let d = 8; d < 15; d++)
-        this.setFunctionModule(8, this.size - 15 + d, b(i, d));
+        this.setFunctionModule(8, this.size - 15 + d, m(r, d));
       this.setFunctionModule(8, this.size - 8, !0);
     }
     // Draws two copies of the version bits (with its own error correction code),
@@ -1963,144 +2543,144 @@ var _e;
     drawVersion() {
       if (this.version < 7)
         return;
-      let c = this.version;
-      for (let o = 0; o < 12; o++)
-        c = c << 1 ^ (c >>> 11) * 7973;
-      const u = this.version << 12 | c;
-      $(u >>> 18 == 0);
-      for (let o = 0; o < 18; o++) {
-        const i = b(u, o), d = this.size - 11 + o % 3, g = Math.floor(o / 3);
-        this.setFunctionModule(d, g, i), this.setFunctionModule(g, d, i);
+      let u = this.version;
+      for (let n = 0; n < 12; n++)
+        u = u << 1 ^ (u >>> 11) * 7973;
+      const c = this.version << 12 | u;
+      k(c >>> 18 == 0);
+      for (let n = 0; n < 18; n++) {
+        const r = m(c, n), d = this.size - 11 + n % 3, f = Math.floor(n / 3);
+        this.setFunctionModule(d, f, r), this.setFunctionModule(f, d, r);
       }
     }
     // Draws a 9*9 finder pattern including the border separator,
     // with the center module at (x, y). Modules can be out of bounds.
-    drawFinderPattern(c, u) {
-      for (let o = -4; o <= 4; o++)
-        for (let i = -4; i <= 4; i++) {
-          const d = Math.max(Math.abs(i), Math.abs(o)), g = c + i, y = u + o;
-          0 <= g && g < this.size && 0 <= y && y < this.size && this.setFunctionModule(g, y, d != 2 && d != 4);
+    drawFinderPattern(u, c) {
+      for (let n = -4; n <= 4; n++)
+        for (let r = -4; r <= 4; r++) {
+          const d = Math.max(Math.abs(r), Math.abs(n)), f = u + r, b = c + n;
+          0 <= f && f < this.size && 0 <= b && b < this.size && this.setFunctionModule(f, b, d != 2 && d != 4);
         }
     }
     // Draws a 5*5 alignment pattern, with the center module
     // at (x, y). All modules must be in bounds.
-    drawAlignmentPattern(c, u) {
-      for (let o = -2; o <= 2; o++)
-        for (let i = -2; i <= 2; i++)
-          this.setFunctionModule(c + i, u + o, Math.max(Math.abs(i), Math.abs(o)) != 1);
+    drawAlignmentPattern(u, c) {
+      for (let n = -2; n <= 2; n++)
+        for (let r = -2; r <= 2; r++)
+          this.setFunctionModule(u + r, c + n, Math.max(Math.abs(r), Math.abs(n)) != 1);
     }
     // Sets the color of a module and marks it as a function module.
     // Only used by the constructor. Coordinates must be in bounds.
-    setFunctionModule(c, u, o) {
-      this.modules[u][c] = o, this.isFunction[u][c] = !0;
+    setFunctionModule(u, c, n) {
+      this.modules[c][u] = n, this.isFunction[c][u] = !0;
     }
     /*-- Private helper methods for constructor: Codewords and masking --*/
     // Returns a new byte string representing the given data with the appropriate error correction
     // codewords appended to it, based on this object's version and error correction level.
-    addEccAndInterleave(c) {
-      const u = this.version, o = this.errorCorrectionLevel;
-      if (c.length != v.getNumDataCodewords(u, o))
+    addEccAndInterleave(u) {
+      const c = this.version, n = this.errorCorrectionLevel;
+      if (u.length != h.getNumDataCodewords(c, n))
         throw new RangeError("Invalid argument");
-      const i = v.NUM_ERROR_CORRECTION_BLOCKS[o.ordinal][u], d = v.ECC_CODEWORDS_PER_BLOCK[o.ordinal][u], g = Math.floor(v.getNumRawDataModules(u) / 8), y = i - g % i, h = Math.floor(g / i);
-      let w = [];
-      const S = v.reedSolomonComputeDivisor(d);
-      for (let V = 0, z = 0; V < i; V++) {
-        let U = c.slice(z, z + h - d + (V < y ? 0 : 1));
-        z += U.length;
-        const x = v.reedSolomonComputeRemainder(U, S);
-        V < y && U.push(0), w.push(U.concat(x));
+      const r = h.NUM_ERROR_CORRECTION_BLOCKS[n.ordinal][c], d = h.ECC_CODEWORDS_PER_BLOCK[n.ordinal][c], f = Math.floor(h.getNumRawDataModules(c) / 8), b = r - f % r, p = Math.floor(f / r);
+      let M = [];
+      const A = h.reedSolomonComputeDivisor(d);
+      for (let O = 0, D = 0; O < r; O++) {
+        let U = u.slice(D, D + p - d + (O < b ? 0 : 1));
+        D += U.length;
+        const I = h.reedSolomonComputeRemainder(U, A);
+        O < b && U.push(0), M.push(U.concat(I));
       }
-      let I = [];
-      for (let V = 0; V < w[0].length; V++)
-        w.forEach((z, U) => {
-          (V != h - d || U >= y) && I.push(z[V]);
+      let j = [];
+      for (let O = 0; O < M[0].length; O++)
+        M.forEach((D, U) => {
+          (O != p - d || U >= b) && j.push(D[O]);
         });
-      return $(I.length == g), I;
+      return k(j.length == f), j;
     }
     // Draws the given sequence of 8-bit codewords (data and error correction) onto the entire
     // data area of this QR Code. Function modules need to be marked off before this is called.
-    drawCodewords(c) {
-      if (c.length != Math.floor(v.getNumRawDataModules(this.version) / 8))
+    drawCodewords(u) {
+      if (u.length != Math.floor(h.getNumRawDataModules(this.version) / 8))
         throw new RangeError("Invalid argument");
-      let u = 0;
-      for (let o = this.size - 1; o >= 1; o -= 2) {
-        o == 6 && (o = 5);
-        for (let i = 0; i < this.size; i++)
+      let c = 0;
+      for (let n = this.size - 1; n >= 1; n -= 2) {
+        n == 6 && (n = 5);
+        for (let r = 0; r < this.size; r++)
           for (let d = 0; d < 2; d++) {
-            const g = o - d, h = (o + 1 & 2) == 0 ? this.size - 1 - i : i;
-            !this.isFunction[h][g] && u < c.length * 8 && (this.modules[h][g] = b(c[u >>> 3], 7 - (u & 7)), u++);
+            const f = n - d, p = (n + 1 & 2) == 0 ? this.size - 1 - r : r;
+            !this.isFunction[p][f] && c < u.length * 8 && (this.modules[p][f] = m(u[c >>> 3], 7 - (c & 7)), c++);
           }
       }
-      $(u == c.length * 8);
+      k(c == u.length * 8);
     }
     // XORs the codeword modules in this QR Code with the given mask pattern.
     // The function modules must be marked and the codeword bits must be drawn
     // before masking. Due to the arithmetic of XOR, calling applyMask() with
     // the same mask value a second time will undo the mask. A final well-formed
     // QR Code needs exactly one (not zero, two, etc.) mask applied.
-    applyMask(c) {
-      if (c < 0 || c > 7)
+    applyMask(u) {
+      if (u < 0 || u > 7)
         throw new RangeError("Mask value out of range");
-      for (let u = 0; u < this.size; u++)
-        for (let o = 0; o < this.size; o++) {
-          let i;
-          switch (c) {
+      for (let c = 0; c < this.size; c++)
+        for (let n = 0; n < this.size; n++) {
+          let r;
+          switch (u) {
             case 0:
-              i = (o + u) % 2 == 0;
+              r = (n + c) % 2 == 0;
               break;
             case 1:
-              i = u % 2 == 0;
+              r = c % 2 == 0;
               break;
             case 2:
-              i = o % 3 == 0;
+              r = n % 3 == 0;
               break;
             case 3:
-              i = (o + u) % 3 == 0;
+              r = (n + c) % 3 == 0;
               break;
             case 4:
-              i = (Math.floor(o / 3) + Math.floor(u / 2)) % 2 == 0;
+              r = (Math.floor(n / 3) + Math.floor(c / 2)) % 2 == 0;
               break;
             case 5:
-              i = o * u % 2 + o * u % 3 == 0;
+              r = n * c % 2 + n * c % 3 == 0;
               break;
             case 6:
-              i = (o * u % 2 + o * u % 3) % 2 == 0;
+              r = (n * c % 2 + n * c % 3) % 2 == 0;
               break;
             case 7:
-              i = ((o + u) % 2 + o * u % 3) % 2 == 0;
+              r = ((n + c) % 2 + n * c % 3) % 2 == 0;
               break;
             default:
               throw new Error("Unreachable");
           }
-          !this.isFunction[u][o] && i && (this.modules[u][o] = !this.modules[u][o]);
+          !this.isFunction[c][n] && r && (this.modules[c][n] = !this.modules[c][n]);
         }
     }
     // Calculates and returns the penalty score based on state of this QR Code's current modules.
     // This is used by the automatic mask choice algorithm to find the mask pattern that yields the lowest score.
     getPenaltyScore() {
-      let c = 0;
+      let u = 0;
       for (let d = 0; d < this.size; d++) {
-        let g = !1, y = 0, h = [0, 0, 0, 0, 0, 0, 0];
-        for (let w = 0; w < this.size; w++)
-          this.modules[d][w] == g ? (y++, y == 5 ? c += v.PENALTY_N1 : y > 5 && c++) : (this.finderPenaltyAddHistory(y, h), g || (c += this.finderPenaltyCountPatterns(h) * v.PENALTY_N3), g = this.modules[d][w], y = 1);
-        c += this.finderPenaltyTerminateAndCount(g, y, h) * v.PENALTY_N3;
+        let f = !1, b = 0, p = [0, 0, 0, 0, 0, 0, 0];
+        for (let M = 0; M < this.size; M++)
+          this.modules[d][M] == f ? (b++, b == 5 ? u += h.PENALTY_N1 : b > 5 && u++) : (this.finderPenaltyAddHistory(b, p), f || (u += this.finderPenaltyCountPatterns(p) * h.PENALTY_N3), f = this.modules[d][M], b = 1);
+        u += this.finderPenaltyTerminateAndCount(f, b, p) * h.PENALTY_N3;
       }
       for (let d = 0; d < this.size; d++) {
-        let g = !1, y = 0, h = [0, 0, 0, 0, 0, 0, 0];
-        for (let w = 0; w < this.size; w++)
-          this.modules[w][d] == g ? (y++, y == 5 ? c += v.PENALTY_N1 : y > 5 && c++) : (this.finderPenaltyAddHistory(y, h), g || (c += this.finderPenaltyCountPatterns(h) * v.PENALTY_N3), g = this.modules[w][d], y = 1);
-        c += this.finderPenaltyTerminateAndCount(g, y, h) * v.PENALTY_N3;
+        let f = !1, b = 0, p = [0, 0, 0, 0, 0, 0, 0];
+        for (let M = 0; M < this.size; M++)
+          this.modules[M][d] == f ? (b++, b == 5 ? u += h.PENALTY_N1 : b > 5 && u++) : (this.finderPenaltyAddHistory(b, p), f || (u += this.finderPenaltyCountPatterns(p) * h.PENALTY_N3), f = this.modules[M][d], b = 1);
+        u += this.finderPenaltyTerminateAndCount(f, b, p) * h.PENALTY_N3;
       }
       for (let d = 0; d < this.size - 1; d++)
-        for (let g = 0; g < this.size - 1; g++) {
-          const y = this.modules[d][g];
-          y == this.modules[d][g + 1] && y == this.modules[d + 1][g] && y == this.modules[d + 1][g + 1] && (c += v.PENALTY_N2);
+        for (let f = 0; f < this.size - 1; f++) {
+          const b = this.modules[d][f];
+          b == this.modules[d][f + 1] && b == this.modules[d + 1][f] && b == this.modules[d + 1][f + 1] && (u += h.PENALTY_N2);
         }
-      let u = 0;
+      let c = 0;
       for (const d of this.modules)
-        u = d.reduce((g, y) => g + (y ? 1 : 0), u);
-      const o = this.size * this.size, i = Math.ceil(Math.abs(u * 20 - o * 10) / o) - 1;
-      return $(0 <= i && i <= 9), c += i * v.PENALTY_N4, $(0 <= c && c <= 2568888), c;
+        c = d.reduce((f, b) => f + (b ? 1 : 0), c);
+      const n = this.size * this.size, r = Math.ceil(Math.abs(c * 20 - n * 10) / n) - 1;
+      return k(0 <= r && r <= 9), u += r * h.PENALTY_N4, k(0 <= u && u <= 2568888), u;
     }
     /*-- Private helper functions --*/
     // Returns an ascending list of positions of alignment patterns for this version number.
@@ -2110,90 +2690,90 @@ var _e;
       if (this.version == 1)
         return [];
       {
-        const c = Math.floor(this.version / 7) + 2, u = Math.floor((this.version * 8 + c * 3 + 5) / (c * 4 - 4)) * 2;
-        let o = [6];
-        for (let i = this.size - 7; o.length < c; i -= u)
-          o.splice(1, 0, i);
-        return o;
+        const u = Math.floor(this.version / 7) + 2, c = Math.floor((this.version * 8 + u * 3 + 5) / (u * 4 - 4)) * 2;
+        let n = [6];
+        for (let r = this.size - 7; n.length < u; r -= c)
+          n.splice(1, 0, r);
+        return n;
       }
     }
     // Returns the number of data bits that can be stored in a QR Code of the given version number, after
     // all function modules are excluded. This includes remainder bits, so it might not be a multiple of 8.
     // The result is in the range [208, 29648]. This could be implemented as a 40-entry lookup table.
-    static getNumRawDataModules(c) {
-      if (c < v.MIN_VERSION || c > v.MAX_VERSION)
+    static getNumRawDataModules(u) {
+      if (u < h.MIN_VERSION || u > h.MAX_VERSION)
         throw new RangeError("Version number out of range");
-      let u = (16 * c + 128) * c + 64;
-      if (c >= 2) {
-        const o = Math.floor(c / 7) + 2;
-        u -= (25 * o - 10) * o - 55, c >= 7 && (u -= 36);
+      let c = (16 * u + 128) * u + 64;
+      if (u >= 2) {
+        const n = Math.floor(u / 7) + 2;
+        c -= (25 * n - 10) * n - 55, u >= 7 && (c -= 36);
       }
-      return $(208 <= u && u <= 29648), u;
+      return k(208 <= c && c <= 29648), c;
     }
     // Returns the number of 8-bit data (i.e. not error correction) codewords contained in any
     // QR Code of the given version number and error correction level, with remainder bits discarded.
     // This stateless pure function could be implemented as a (40*4)-cell lookup table.
-    static getNumDataCodewords(c, u) {
-      return Math.floor(v.getNumRawDataModules(c) / 8) - v.ECC_CODEWORDS_PER_BLOCK[u.ordinal][c] * v.NUM_ERROR_CORRECTION_BLOCKS[u.ordinal][c];
+    static getNumDataCodewords(u, c) {
+      return Math.floor(h.getNumRawDataModules(u) / 8) - h.ECC_CODEWORDS_PER_BLOCK[c.ordinal][u] * h.NUM_ERROR_CORRECTION_BLOCKS[c.ordinal][u];
     }
     // Returns a Reed-Solomon ECC generator polynomial for the given degree. This could be
     // implemented as a lookup table over all possible parameter values, instead of as an algorithm.
-    static reedSolomonComputeDivisor(c) {
-      if (c < 1 || c > 255)
+    static reedSolomonComputeDivisor(u) {
+      if (u < 1 || u > 255)
         throw new RangeError("Degree out of range");
-      let u = [];
-      for (let i = 0; i < c - 1; i++)
-        u.push(0);
-      u.push(1);
-      let o = 1;
-      for (let i = 0; i < c; i++) {
-        for (let d = 0; d < u.length; d++)
-          u[d] = v.reedSolomonMultiply(u[d], o), d + 1 < u.length && (u[d] ^= u[d + 1]);
-        o = v.reedSolomonMultiply(o, 2);
+      let c = [];
+      for (let r = 0; r < u - 1; r++)
+        c.push(0);
+      c.push(1);
+      let n = 1;
+      for (let r = 0; r < u; r++) {
+        for (let d = 0; d < c.length; d++)
+          c[d] = h.reedSolomonMultiply(c[d], n), d + 1 < c.length && (c[d] ^= c[d + 1]);
+        n = h.reedSolomonMultiply(n, 2);
       }
-      return u;
+      return c;
     }
     // Returns the Reed-Solomon error correction codeword for the given data and divisor polynomials.
-    static reedSolomonComputeRemainder(c, u) {
-      let o = u.map((i) => 0);
-      for (const i of c) {
-        const d = i ^ o.shift();
-        o.push(0), u.forEach((g, y) => o[y] ^= v.reedSolomonMultiply(g, d));
+    static reedSolomonComputeRemainder(u, c) {
+      let n = c.map((r) => 0);
+      for (const r of u) {
+        const d = r ^ n.shift();
+        n.push(0), c.forEach((f, b) => n[b] ^= h.reedSolomonMultiply(f, d));
       }
-      return o;
+      return n;
     }
     // Returns the product of the two given field elements modulo GF(2^8/0x11D). The arguments and result
     // are unsigned 8-bit integers. This could be implemented as a lookup table of 256*256 entries of uint8.
-    static reedSolomonMultiply(c, u) {
-      if (c >>> 8 || u >>> 8)
+    static reedSolomonMultiply(u, c) {
+      if (u >>> 8 || c >>> 8)
         throw new RangeError("Byte out of range");
-      let o = 0;
-      for (let i = 7; i >= 0; i--)
-        o = o << 1 ^ (o >>> 7) * 285, o ^= (u >>> i & 1) * c;
-      return $(o >>> 8 == 0), o;
+      let n = 0;
+      for (let r = 7; r >= 0; r--)
+        n = n << 1 ^ (n >>> 7) * 285, n ^= (c >>> r & 1) * u;
+      return k(n >>> 8 == 0), n;
     }
     // Can only be called immediately after a light run is added, and
     // returns either 0, 1, or 2. A helper function for getPenaltyScore().
-    finderPenaltyCountPatterns(c) {
-      const u = c[1];
-      $(u <= this.size * 3);
-      const o = u > 0 && c[2] == u && c[3] == u * 3 && c[4] == u && c[5] == u;
-      return (o && c[0] >= u * 4 && c[6] >= u ? 1 : 0) + (o && c[6] >= u * 4 && c[0] >= u ? 1 : 0);
+    finderPenaltyCountPatterns(u) {
+      const c = u[1];
+      k(c <= this.size * 3);
+      const n = c > 0 && u[2] == c && u[3] == c * 3 && u[4] == c && u[5] == c;
+      return (n && u[0] >= c * 4 && u[6] >= c ? 1 : 0) + (n && u[6] >= c * 4 && u[0] >= c ? 1 : 0);
     }
     // Must be called at the end of a line (row or column) of modules. A helper function for getPenaltyScore().
-    finderPenaltyTerminateAndCount(c, u, o) {
-      return c && (this.finderPenaltyAddHistory(u, o), u = 0), u += this.size, this.finderPenaltyAddHistory(u, o), this.finderPenaltyCountPatterns(o);
+    finderPenaltyTerminateAndCount(u, c, n) {
+      return u && (this.finderPenaltyAddHistory(c, n), c = 0), c += this.size, this.finderPenaltyAddHistory(c, n), this.finderPenaltyCountPatterns(n);
     }
     // Pushes the given value to the front and drops the last value. A helper function for getPenaltyScore().
-    finderPenaltyAddHistory(c, u) {
-      u[0] == 0 && (c += this.size), u.pop(), u.unshift(c);
+    finderPenaltyAddHistory(u, c) {
+      c[0] == 0 && (u += this.size), c.pop(), c.unshift(u);
     }
   };
   /*-- Constants and tables --*/
   // The minimum version number supported in the QR Code Model 2 standard.
-  K(v, "MIN_VERSION", 1), // The maximum version number supported in the QR Code Model 2 standard.
-  K(v, "MAX_VERSION", 40), // For use in getPenaltyScore(), when evaluating which mask is best.
-  K(v, "PENALTY_N1", 3), K(v, "PENALTY_N2", 3), K(v, "PENALTY_N3", 40), K(v, "PENALTY_N4", 10), K(v, "ECC_CODEWORDS_PER_BLOCK", [
+  W(h, "MIN_VERSION", 1), // The maximum version number supported in the QR Code Model 2 standard.
+  W(h, "MAX_VERSION", 40), // For use in getPenaltyScore(), when evaluating which mask is best.
+  W(h, "PENALTY_N1", 3), W(h, "PENALTY_N2", 3), W(h, "PENALTY_N3", 40), W(h, "PENALTY_N4", 10), W(h, "ECC_CODEWORDS_PER_BLOCK", [
     // Version: (note that index 0 is for padding, and is set to an illegal value)
     //0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40    Error correction level
     [-1, 7, 10, 15, 20, 26, 18, 20, 24, 30, 18, 20, 24, 26, 30, 22, 24, 28, 30, 28, 28, 28, 28, 30, 30, 26, 28, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30],
@@ -2204,7 +2784,7 @@ var _e;
     // Quartile
     [-1, 17, 28, 22, 16, 22, 28, 26, 26, 24, 28, 24, 28, 22, 24, 24, 30, 28, 28, 26, 28, 30, 24, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30]
     // High
-  ]), K(v, "NUM_ERROR_CORRECTION_BLOCKS", [
+  ]), W(h, "NUM_ERROR_CORRECTION_BLOCKS", [
     // Version: (note that index 0 is for padding, and is set to an illegal value)
     //0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40    Error correction level
     [-1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 4, 4, 4, 4, 4, 6, 6, 6, 6, 7, 8, 8, 9, 9, 10, 12, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 24, 25],
@@ -2216,99 +2796,99 @@ var _e;
     [-1, 1, 1, 2, 4, 4, 4, 5, 6, 8, 8, 11, 11, 16, 16, 18, 16, 19, 21, 25, 25, 25, 34, 30, 32, 35, 37, 40, 42, 45, 48, 51, 54, 57, 60, 63, 66, 70, 74, 77, 81]
     // High
   ]);
-  let s = v;
-  L.QrCode = s;
-  function _(E, c, u) {
-    if (c < 0 || c > 31 || E >>> c)
+  let s = h;
+  F.QrCode = s;
+  function v(R, u, c) {
+    if (u < 0 || u > 31 || R >>> u)
       throw new RangeError("Value out of range");
-    for (let o = c - 1; o >= 0; o--)
-      u.push(E >>> o & 1);
+    for (let n = u - 1; n >= 0; n--)
+      c.push(R >>> n & 1);
   }
-  function b(E, c) {
-    return (E >>> c & 1) != 0;
+  function m(R, u) {
+    return (R >>> u & 1) != 0;
   }
-  function $(E) {
-    if (!E)
+  function k(R) {
+    if (!R)
       throw new Error("Assertion error");
   }
-  const C = class C {
+  const $ = class $ {
     /*-- Constructor (low level) and fields --*/
     // Creates a new QR Code segment with the given attributes and data.
     // The character count (numChars) must agree with the mode and the bit buffer length,
     // but the constraint isn't checked. The given bit buffer is cloned and stored.
-    constructor(c, u, o) {
-      K(this, "mode");
-      K(this, "numChars");
-      K(this, "bitData");
-      if (this.mode = c, this.numChars = u, this.bitData = o, u < 0)
+    constructor(u, c, n) {
+      W(this, "mode");
+      W(this, "numChars");
+      W(this, "bitData");
+      if (this.mode = u, this.numChars = c, this.bitData = n, c < 0)
         throw new RangeError("Invalid argument");
-      this.bitData = o.slice();
+      this.bitData = n.slice();
     }
     /*-- Static factory functions (mid level) --*/
     // Returns a segment representing the given binary data encoded in
     // byte mode. All input byte arrays are acceptable. Any text string
     // can be converted to UTF-8 bytes and encoded as a byte mode segment.
-    static makeBytes(c) {
-      let u = [];
-      for (const o of c)
-        _(o, 8, u);
-      return new C(C.Mode.BYTE, c.length, u);
+    static makeBytes(u) {
+      let c = [];
+      for (const n of u)
+        v(n, 8, c);
+      return new $($.Mode.BYTE, u.length, c);
     }
     // Returns a segment representing the given string of decimal digits encoded in numeric mode.
-    static makeNumeric(c) {
-      if (!C.isNumeric(c))
+    static makeNumeric(u) {
+      if (!$.isNumeric(u))
         throw new RangeError("String contains non-numeric characters");
-      let u = [];
-      for (let o = 0; o < c.length; ) {
-        const i = Math.min(c.length - o, 3);
-        _(parseInt(c.substring(o, o + i), 10), i * 3 + 1, u), o += i;
+      let c = [];
+      for (let n = 0; n < u.length; ) {
+        const r = Math.min(u.length - n, 3);
+        v(parseInt(u.substring(n, n + r), 10), r * 3 + 1, c), n += r;
       }
-      return new C(C.Mode.NUMERIC, c.length, u);
+      return new $($.Mode.NUMERIC, u.length, c);
     }
     // Returns a segment representing the given text string encoded in alphanumeric mode.
     // The characters allowed are: 0 to 9, A to Z (uppercase only), space,
     // dollar, percent, asterisk, plus, hyphen, period, slash, colon.
-    static makeAlphanumeric(c) {
-      if (!C.isAlphanumeric(c))
+    static makeAlphanumeric(u) {
+      if (!$.isAlphanumeric(u))
         throw new RangeError("String contains unencodable characters in alphanumeric mode");
-      let u = [], o;
-      for (o = 0; o + 2 <= c.length; o += 2) {
-        let i = C.ALPHANUMERIC_CHARSET.indexOf(c.charAt(o)) * 45;
-        i += C.ALPHANUMERIC_CHARSET.indexOf(c.charAt(o + 1)), _(i, 11, u);
+      let c = [], n;
+      for (n = 0; n + 2 <= u.length; n += 2) {
+        let r = $.ALPHANUMERIC_CHARSET.indexOf(u.charAt(n)) * 45;
+        r += $.ALPHANUMERIC_CHARSET.indexOf(u.charAt(n + 1)), v(r, 11, c);
       }
-      return o < c.length && _(C.ALPHANUMERIC_CHARSET.indexOf(c.charAt(o)), 6, u), new C(C.Mode.ALPHANUMERIC, c.length, u);
+      return n < u.length && v($.ALPHANUMERIC_CHARSET.indexOf(u.charAt(n)), 6, c), new $($.Mode.ALPHANUMERIC, u.length, c);
     }
     // Returns a new mutable list of zero or more segments to represent the given Unicode text string.
     // The result may use various segment modes and switch modes to optimize the length of the bit stream.
-    static makeSegments(c) {
-      return c == "" ? [] : C.isNumeric(c) ? [C.makeNumeric(c)] : C.isAlphanumeric(c) ? [C.makeAlphanumeric(c)] : [C.makeBytes(C.toUtf8ByteArray(c))];
+    static makeSegments(u) {
+      return u == "" ? [] : $.isNumeric(u) ? [$.makeNumeric(u)] : $.isAlphanumeric(u) ? [$.makeAlphanumeric(u)] : [$.makeBytes($.toUtf8ByteArray(u))];
     }
     // Returns a segment representing an Extended Channel Interpretation
     // (ECI) designator with the given assignment value.
-    static makeEci(c) {
-      let u = [];
-      if (c < 0)
+    static makeEci(u) {
+      let c = [];
+      if (u < 0)
         throw new RangeError("ECI assignment value out of range");
-      if (c < 128)
-        _(c, 8, u);
-      else if (c < 16384)
-        _(2, 2, u), _(c, 14, u);
-      else if (c < 1e6)
-        _(6, 3, u), _(c, 21, u);
+      if (u < 128)
+        v(u, 8, c);
+      else if (u < 16384)
+        v(2, 2, c), v(u, 14, c);
+      else if (u < 1e6)
+        v(6, 3, c), v(u, 21, c);
       else
         throw new RangeError("ECI assignment value out of range");
-      return new C(C.Mode.ECI, 0, u);
+      return new $($.Mode.ECI, 0, c);
     }
     // Tests whether the given string can be encoded as a segment in numeric mode.
     // A string is encodable iff each character is in the range 0 to 9.
-    static isNumeric(c) {
-      return C.NUMERIC_REGEX.test(c);
+    static isNumeric(u) {
+      return $.NUMERIC_REGEX.test(u);
     }
     // Tests whether the given string can be encoded as a segment in alphanumeric mode.
     // A string is encodable iff each character is in the following set: 0 to 9, A to Z
     // (uppercase only), space, dollar, percent, asterisk, plus, hyphen, period, slash, colon.
-    static isAlphanumeric(c) {
-      return C.ALPHANUMERIC_REGEX.test(c);
+    static isAlphanumeric(u) {
+      return $.ALPHANUMERIC_REGEX.test(u);
     }
     /*-- Methods --*/
     // Returns a new copy of the data bits of this segment.
@@ -2317,222 +2897,222 @@ var _e;
     }
     // (Package-private) Calculates and returns the number of bits needed to encode the given segments at
     // the given version. The result is infinity if a segment has too many characters to fit its length field.
-    static getTotalBits(c, u) {
-      let o = 0;
-      for (const i of c) {
-        const d = i.mode.numCharCountBits(u);
-        if (i.numChars >= 1 << d)
+    static getTotalBits(u, c) {
+      let n = 0;
+      for (const r of u) {
+        const d = r.mode.numCharCountBits(c);
+        if (r.numChars >= 1 << d)
           return 1 / 0;
-        o += 4 + d + i.bitData.length;
+        n += 4 + d + r.bitData.length;
       }
-      return o;
+      return n;
     }
     // Returns a new array of bytes representing the given string encoded in UTF-8.
-    static toUtf8ByteArray(c) {
-      c = encodeURI(c);
-      let u = [];
-      for (let o = 0; o < c.length; o++)
-        c.charAt(o) != "%" ? u.push(c.charCodeAt(o)) : (u.push(parseInt(c.substring(o + 1, o + 3), 16)), o += 2);
-      return u;
+    static toUtf8ByteArray(u) {
+      u = encodeURI(u);
+      let c = [];
+      for (let n = 0; n < u.length; n++)
+        u.charAt(n) != "%" ? c.push(u.charCodeAt(n)) : (c.push(parseInt(u.substring(n + 1, n + 3), 16)), n += 2);
+      return c;
     }
   };
   /*-- Constants --*/
   // Describes precisely all strings that are encodable in numeric mode.
-  K(C, "NUMERIC_REGEX", /^[0-9]*$/), // Describes precisely all strings that are encodable in alphanumeric mode.
-  K(C, "ALPHANUMERIC_REGEX", /^[A-Z0-9 $%*+.\/:-]*$/), // The set of all legal characters in alphanumeric mode,
+  W($, "NUMERIC_REGEX", /^[0-9]*$/), // Describes precisely all strings that are encodable in alphanumeric mode.
+  W($, "ALPHANUMERIC_REGEX", /^[A-Z0-9 $%*+.\/:-]*$/), // The set of all legal characters in alphanumeric mode,
   // where each character value maps to the index in the string.
-  K(C, "ALPHANUMERIC_CHARSET", "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:");
-  let k = C;
-  L.QrSegment = k;
-})(_e || (_e = {}));
-((L) => {
+  W($, "ALPHANUMERIC_CHARSET", "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:");
+  let w = $;
+  F.QrSegment = w;
+})(Ye || (Ye = {}));
+((F) => {
   ((s) => {
-    const b = class b {
+    const m = class m {
       // The QR Code can tolerate about 30% erroneous codewords
       /*-- Constructor and fields --*/
-      constructor(k, v) {
-        K(this, "ordinal");
-        K(this, "formatBits");
-        this.ordinal = k, this.formatBits = v;
+      constructor(w, h) {
+        W(this, "ordinal");
+        W(this, "formatBits");
+        this.ordinal = w, this.formatBits = h;
       }
     };
     /*-- Constants --*/
-    K(b, "LOW", new b(0, 1)), // The QR Code can tolerate about  7% erroneous codewords
-    K(b, "MEDIUM", new b(1, 0)), // The QR Code can tolerate about 15% erroneous codewords
-    K(b, "QUARTILE", new b(2, 3)), // The QR Code can tolerate about 25% erroneous codewords
-    K(b, "HIGH", new b(3, 2));
-    let _ = b;
-    s.Ecc = _;
-  })(L.QrCode || (L.QrCode = {}));
-})(_e || (_e = {}));
-((L) => {
+    W(m, "LOW", new m(0, 1)), // The QR Code can tolerate about  7% erroneous codewords
+    W(m, "MEDIUM", new m(1, 0)), // The QR Code can tolerate about 15% erroneous codewords
+    W(m, "QUARTILE", new m(2, 3)), // The QR Code can tolerate about 25% erroneous codewords
+    W(m, "HIGH", new m(3, 2));
+    let v = m;
+    s.Ecc = v;
+  })(F.QrCode || (F.QrCode = {}));
+})(Ye || (Ye = {}));
+((F) => {
   ((s) => {
-    const b = class b {
+    const m = class m {
       /*-- Constructor and fields --*/
-      constructor(k, v) {
-        K(this, "modeBits");
-        K(this, "numBitsCharCount");
-        this.modeBits = k, this.numBitsCharCount = v;
+      constructor(w, h) {
+        W(this, "modeBits");
+        W(this, "numBitsCharCount");
+        this.modeBits = w, this.numBitsCharCount = h;
       }
       /*-- Method --*/
       // (Package-private) Returns the bit width of the character count field for a segment in
       // this mode in a QR Code at the given version number. The result is in the range [0, 16].
-      numCharCountBits(k) {
-        return this.numBitsCharCount[Math.floor((k + 7) / 17)];
+      numCharCountBits(w) {
+        return this.numBitsCharCount[Math.floor((w + 7) / 17)];
       }
     };
     /*-- Constants --*/
-    K(b, "NUMERIC", new b(1, [10, 12, 14])), K(b, "ALPHANUMERIC", new b(2, [9, 11, 13])), K(b, "BYTE", new b(4, [8, 16, 16])), K(b, "KANJI", new b(8, [8, 10, 12])), K(b, "ECI", new b(7, [0, 0, 0]));
-    let _ = b;
-    s.Mode = _;
-  })(L.QrSegment || (L.QrSegment = {}));
-})(_e || (_e = {}));
-const Ye = _e, ba = { class: "content-card" }, fa = { class: "card-desc" }, ya = { class: "connection-grid" }, ka = { class: "connection-form" }, wa = { class: "field" }, $a = ["placeholder"], Ca = { class: "field" }, Sa = { class: "toggle-label" }, Pa = { class: "field" }, xa = ["placeholder"], Ma = { class: "field" }, Ua = ["placeholder"], Ea = { class: "field" }, Ta = { class: "helper-text" }, Aa = { key: 0 }, Na = { key: 1 }, Va = { class: "actions-row" }, Ra = { class: "connection-qr" }, Oa = ["viewBox"], Ia = ["width", "height"], za = ["x", "y"], La = { class: "connection-link" }, Je = "0kay.connection.qr.v2", Da = /* @__PURE__ */ ee({
+    W(m, "NUMERIC", new m(1, [10, 12, 14])), W(m, "ALPHANUMERIC", new m(2, [9, 11, 13])), W(m, "BYTE", new m(4, [8, 16, 16])), W(m, "KANJI", new m(8, [8, 10, 12])), W(m, "ECI", new m(7, [0, 0, 0]));
+    let v = m;
+    s.Mode = v;
+  })(F.QrSegment || (F.QrSegment = {}));
+})(Ye || (Ye = {}));
+const Vt = Ye, Mi = { class: "content-card" }, Pi = { class: "card-desc" }, Ei = { class: "connection-grid" }, Ui = { class: "connection-form" }, Ai = { class: "field" }, Ti = ["placeholder"], Ii = { class: "field" }, Ni = { class: "toggle-label" }, Ri = { class: "field" }, Vi = ["placeholder"], Li = { class: "field" }, Oi = ["placeholder"], Di = { class: "field" }, zi = { class: "helper-text" }, Bi = { key: 0 }, Fi = { key: 1 }, Ki = { class: "actions-row" }, ji = { class: "connection-qr" }, Hi = ["viewBox"], Yi = ["width", "height"], Xi = ["x", "y"], Ji = { class: "connection-link" }, Lt = "0kay.connection.qr.v2", Wi = /* @__PURE__ */ de({
   __name: "ConnectionPanel",
-  setup(L) {
-    const { t: s } = te();
-    function _() {
+  setup(F) {
+    const { t: s } = he();
+    function v() {
       try {
-        return JSON.parse(localStorage.getItem(Je) || "{}");
+        return JSON.parse(localStorage.getItem(Lt) || "{}");
       } catch {
         return {};
       }
     }
-    function b(z) {
-      const U = (x) => /^192\.168\./.test(x) ? 0 : /^10\./.test(x) ? 1 : /^172\.(1[6-9]|2\d|3[01])\./.test(x) ? 2 : /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(x) ? 4 : 3;
-      return [...z].sort((x, B) => U(x) - U(B))[0] || "";
+    function m(D) {
+      const U = (I) => /^192\.168\./.test(I) ? 0 : /^10\./.test(I) ? 1 : /^172\.(1[6-9]|2\d|3[01])\./.test(I) ? 2 : /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(I) ? 4 : 3;
+      return [...D].sort((I, J) => U(I) - U(J))[0] || "";
     }
-    const $ = _(), k = !!$.hostOverride, v = P($.hostOverride && $.host ? $.host : location.hostname), C = P(k), E = location.protocol === "https:" ? location.port || "443" : "8080", c = P($.port ?? E), u = P($.tls ?? location.protocol === "https:"), o = P(""), i = P(""), d = P($.name ?? "0KAY"), g = P(""), y = P(!1), h = P(!1);
-    ae(async () => {
+    const k = v(), w = !!k.hostOverride, h = x(k.hostOverride && k.host ? k.host : location.hostname), $ = x(w), R = location.protocol === "https:" ? location.port || "443" : "8080", u = x(k.port ?? R), c = x(k.tls ?? location.protocol === "https:"), n = x(""), r = x(""), d = x(k.name ?? "0KAY"), f = x(""), b = x(!1), p = x(!1);
+    Ne(async () => {
       try {
-        const z = await fetch("/api/auth/session");
-        if (z.ok) {
-          const U = await z.json();
-          g.value = String(U.core_id || ""), y.value = !!U.lan_enabled;
-          const x = Array.isArray(U.addresses) ? U.addresses : [], B = b(x);
-          !C.value && B && (v.value = B);
+        const D = await fetch("/api/auth/session");
+        if (D.ok) {
+          const U = await D.json();
+          f.value = String(U.core_id || ""), b.value = !!U.lan_enabled;
+          const I = Array.isArray(U.addresses) ? U.addresses : [], J = m(I);
+          !$.value && J && (h.value = J);
         }
       } catch {
       }
-    }), Xe([v, c, u, d, C], () => {
+    }), Xe([h, u, c, d, $], () => {
       localStorage.setItem(
-        Je,
+        Lt,
         JSON.stringify({
-          host: v.value,
-          hostOverride: C.value,
-          port: c.value,
-          tls: u.value,
+          host: h.value,
+          hostOverride: $.value,
+          port: u.value,
+          tls: c.value,
           name: d.value
         })
       );
     });
-    const w = Y(() => {
-      const z = u.value ? "https" : "http", U = String(c.value || "").trim();
-      return `${z}://${v.value.trim()}${U ? ":" + U : ""}`;
-    }), S = Y(() => {
-      const z = [["v", "1"], ["url", w.value]];
-      return d.value.trim() && z.push(["name", d.value.trim()]), o.value.trim() && z.push(["token", o.value.trim()]), i.value.trim() && z.push(["pin", i.value.trim()]), g.value && z.push(["core_id", g.value]), `0kay://pair?${z.map(([x, B]) => `${x}=${encodeURIComponent(B)}`).join("&")}`;
-    }), I = Y(() => {
-      const z = Ye.QrCode.encodeText(S.value, Ye.QrCode.Ecc.MEDIUM), U = z.size, x = 2, B = U + x * 2, q = [];
-      for (let G = 0; G < U; G++)
-        for (let O = 0; O < U; O++)
-          z.getModule(O, G) && q.push({ x: O + x, y: G + x });
-      return { dim: B, dark: q };
+    const M = G(() => {
+      const D = c.value ? "https" : "http", U = String(u.value || "").trim();
+      return `${D}://${h.value.trim()}${U ? ":" + U : ""}`;
+    }), A = G(() => {
+      const D = [["v", "1"], ["url", M.value]];
+      return d.value.trim() && D.push(["name", d.value.trim()]), n.value.trim() && D.push(["token", n.value.trim()]), r.value.trim() && D.push(["pin", r.value.trim()]), f.value && D.push(["core_id", f.value]), `0kay://pair?${D.map(([I, J]) => `${I}=${encodeURIComponent(J)}`).join("&")}`;
+    }), j = G(() => {
+      const D = Vt.QrCode.encodeText(A.value, Vt.QrCode.Ecc.MEDIUM), U = D.size, I = 2, J = U + I * 2, ie = [];
+      for (let re = 0; re < U; re++)
+        for (let H = 0; H < U; H++)
+          D.getModule(H, re) && ie.push({ x: H + I, y: re + I });
+      return { dim: J, dark: ie };
     });
-    async function V() {
+    async function O() {
       try {
-        await navigator.clipboard.writeText(S.value), h.value = !0, setTimeout(() => h.value = !1, 1500);
+        await navigator.clipboard.writeText(A.value), p.value = !0, setTimeout(() => p.value = !1, 1500);
       } catch {
       }
     }
-    return (z, U) => (a(), r("div", ba, [
+    return (D, U) => (o(), i("div", Mi, [
       e("h2", null, l(t(s)("connection.title")), 1),
-      e("p", fa, l(t(s)("connection.lead")), 1),
-      e("div", ya, [
-        e("div", ka, [
-          e("div", wa, [
+      e("p", Pi, l(t(s)("connection.lead")), 1),
+      e("div", Ei, [
+        e("div", Ui, [
+          e("div", Ai, [
             e("label", null, l(t(s)("connection.remoteHost")), 1),
-            N(e("input", {
-              "onUpdate:modelValue": U[0] || (U[0] = (x) => v.value = x),
+            B(e("input", {
+              "onUpdate:modelValue": U[0] || (U[0] = (I) => h.value = I),
               class: "input",
               placeholder: t(s)("connection.hostPlaceholder"),
-              onInput: U[1] || (U[1] = (x) => C.value = !0)
-            }, null, 40, $a), [
-              [D, v.value]
+              onInput: U[1] || (U[1] = (I) => $.value = !0)
+            }, null, 40, Ti), [
+              [Y, h.value]
             ])
           ]),
-          e("div", Ca, [
+          e("div", Ii, [
             e("label", null, l(t(s)("connection.port")), 1),
-            N(e("input", {
-              "onUpdate:modelValue": U[2] || (U[2] = (x) => c.value = x),
+            B(e("input", {
+              "onUpdate:modelValue": U[2] || (U[2] = (I) => u.value = I),
               class: "input",
               inputmode: "numeric",
               placeholder: "8080"
             }, null, 512), [
-              [D, c.value]
+              [Y, u.value]
             ])
           ]),
-          e("label", Sa, [
-            N(e("input", {
+          e("label", Ni, [
+            B(e("input", {
               type: "checkbox",
-              "onUpdate:modelValue": U[3] || (U[3] = (x) => u.value = x)
+              "onUpdate:modelValue": U[3] || (U[3] = (I) => c.value = I)
             }, null, 512), [
-              [Q, u.value]
+              [fe, c.value]
             ]),
             U[7] || (U[7] = e("span", { class: "toggle-slider" }, null, -1)),
             e("span", null, l(t(s)("connection.useTls")), 1)
           ]),
-          e("div", Pa, [
+          e("div", Ri, [
             e("label", null, l(t(s)("connection.token")), 1),
-            N(e("input", {
-              "onUpdate:modelValue": U[4] || (U[4] = (x) => o.value = x),
+            B(e("input", {
+              "onUpdate:modelValue": U[4] || (U[4] = (I) => n.value = I),
               class: "input",
               type: "password",
               placeholder: t(s)("connection.tokenPlaceholder"),
               autocomplete: "off"
-            }, null, 8, xa), [
-              [D, o.value]
+            }, null, 8, Vi), [
+              [Y, n.value]
             ])
           ]),
-          e("div", Ma, [
+          e("div", Li, [
             e("label", null, l(t(s)("connection.pin")), 1),
-            N(e("input", {
-              "onUpdate:modelValue": U[5] || (U[5] = (x) => i.value = x),
+            B(e("input", {
+              "onUpdate:modelValue": U[5] || (U[5] = (I) => r.value = I),
               class: "input",
               type: "password",
               placeholder: t(s)("connection.pinPlaceholder"),
               autocomplete: "off"
-            }, null, 8, Ua), [
-              [D, i.value]
+            }, null, 8, Oi), [
+              [Y, r.value]
             ])
           ]),
-          e("div", Ea, [
+          e("div", Di, [
             e("label", null, l(t(s)("connection.deviceName")), 1),
-            N(e("input", {
-              "onUpdate:modelValue": U[6] || (U[6] = (x) => d.value = x),
+            B(e("input", {
+              "onUpdate:modelValue": U[6] || (U[6] = (I) => d.value = I),
               class: "input",
               placeholder: "0KAY"
             }, null, 512), [
-              [D, d.value]
+              [Y, d.value]
             ])
           ]),
-          e("div", Ta, [
-            oe(l(t(s)("connection.address")), 1),
-            e("code", null, l(w.value), 1),
-            g.value ? (a(), r("span", Aa, " · Core: " + l(g.value), 1)) : M("", !0),
-            y.value ? (a(), r("span", Na, l(t(s)("connection.lanMode")), 1)) : M("", !0)
+          e("div", zi, [
+            Ie(l(t(s)("connection.address")), 1),
+            e("code", null, l(M.value), 1),
+            f.value ? (o(), i("span", Bi, " · Core: " + l(f.value), 1)) : V("", !0),
+            b.value ? (o(), i("span", Fi, l(t(s)("connection.lanMode")), 1)) : V("", !0)
           ]),
-          e("div", Va, [
+          e("div", Ki, [
             e("button", {
               class: "btn btn-tonal",
               type: "button",
-              onClick: V
-            }, l(h.value ? t(s)("common.copied") : t(s)("connection.copyLink")), 1)
+              onClick: O
+            }, l(p.value ? t(s)("common.copied") : t(s)("connection.copyLink")), 1)
           ])
         ]),
-        e("div", Ra, [
-          (a(), r("svg", {
-            viewBox: `0 0 ${I.value.dim} ${I.value.dim}`,
+        e("div", ji, [
+          (o(), i("svg", {
+            viewBox: `0 0 ${j.value.dim} ${j.value.dim}`,
             width: "264",
             height: "264",
             "shape-rendering": "crispEdges",
@@ -2542,454 +3122,454 @@ const Ye = _e, ba = { class: "content-card" }, fa = { class: "card-desc" }, ya =
             e("rect", {
               x: "0",
               y: "0",
-              width: I.value.dim,
-              height: I.value.dim,
+              width: j.value.dim,
+              height: j.value.dim,
               fill: "#ffffff"
-            }, null, 8, Ia),
-            (a(!0), r(F, null, J(I.value.dark, (x) => (a(), r("rect", {
-              key: x.x + ":" + x.y,
-              x: x.x,
-              y: x.y,
+            }, null, 8, Yi),
+            (o(!0), i(X, null, oe(j.value.dark, (I) => (o(), i("rect", {
+              key: I.x + ":" + I.y,
+              x: I.x,
+              y: I.y,
               width: "1",
               height: "1",
               fill: "#0b1020"
-            }, null, 8, za))), 128))
-          ], 8, Oa)),
-          e("code", La, l(S.value), 1)
+            }, null, 8, Xi))), 128))
+          ], 8, Hi)),
+          e("code", Ji, l(A.value), 1)
         ])
       ])
     ]));
   }
-}), Fa = /* @__PURE__ */ ie(Da, [["__scopeId", "data-v-b6056614"]]), Ba = { class: "content-card" }, Ka = { class: "card-desc" }, Ha = { class: "field-row" }, ja = { class: "field" }, Ya = ["placeholder"], Ja = { class: "field" }, Wa = ["placeholder"], qa = { class: "field" }, Ga = { class: "field" }, Xa = ["placeholder"], Za = { class: "field" }, Qa = ["placeholder"], ei = { class: "field" }, ti = ["placeholder"], si = { class: "field" }, li = ["placeholder"], oi = { class: "helper-text" }, ni = /* @__PURE__ */ ee({
+}), qi = /* @__PURE__ */ Me(Wi, [["__scopeId", "data-v-b6056614"]]), Gi = { class: "content-card" }, Zi = { class: "card-desc" }, Qi = { class: "field-row" }, er = { class: "field" }, tr = ["placeholder"], sr = { class: "field" }, lr = ["placeholder"], nr = { class: "field" }, or = { class: "field" }, ar = ["placeholder"], ir = { class: "field" }, rr = ["placeholder"], ur = { class: "field" }, cr = ["placeholder"], dr = { class: "field" }, pr = ["placeholder"], hr = { class: "helper-text" }, vr = /* @__PURE__ */ de({
   __name: "PersonaPanel",
-  setup(L) {
-    const { t: s } = te(), _ = Le(), { tabLabel: b, tabMeta: $ } = De();
-    return (k, v) => (a(), r("div", Ba, [
-      e("h2", null, l(t(b)("persona")), 1),
-      e("p", Ka, l(t($)("persona")?.descriptionKey ? t(s)(t($)("persona").descriptionKey) : t(s)("settings.personaDesc")), 1),
-      e("div", Ha, [
-        e("div", ja, [
+  setup(F) {
+    const { t: s } = he(), v = nt(), { tabLabel: m, tabMeta: k } = gt();
+    return (w, h) => (o(), i("div", Gi, [
+      e("h2", null, l(t(m)("persona")), 1),
+      e("p", Zi, l(t(k)("persona")?.descriptionKey ? t(s)(t(k)("persona").descriptionKey) : t(s)("settings.personaDesc")), 1),
+      e("div", Qi, [
+        e("div", er, [
           e("label", null, l(t(s)("wizard.name")), 1),
-          N(e("input", {
-            "onUpdate:modelValue": v[0] || (v[0] = (C) => t(_).persona.name = C),
+          B(e("input", {
+            "onUpdate:modelValue": h[0] || (h[0] = ($) => t(v).persona.name = $),
             placeholder: t(s)("wizard.namePlaceholder"),
             class: "input"
-          }, null, 8, Ya), [
-            [D, t(_).persona.name]
+          }, null, 8, tr), [
+            [Y, t(v).persona.name]
           ])
         ]),
-        e("div", Ja, [
+        e("div", sr, [
           e("label", null, l(t(s)("wizard.avatarUrl")), 1),
-          N(e("input", {
-            "onUpdate:modelValue": v[1] || (v[1] = (C) => t(_).persona.avatar = C),
+          B(e("input", {
+            "onUpdate:modelValue": h[1] || (h[1] = ($) => t(v).persona.avatar = $),
             placeholder: t(s)("wizard.avatarPlaceholder"),
             class: "input"
-          }, null, 8, Wa), [
-            [D, t(_).persona.avatar]
+          }, null, 8, lr), [
+            [Y, t(v).persona.avatar]
           ])
         ]),
-        e("div", qa, [
+        e("div", nr, [
           e("label", null, l(t(s)("settings.personaBirthDate")), 1),
-          N(e("input", {
-            "onUpdate:modelValue": v[2] || (v[2] = (C) => t(_).persona.birthDate = C),
+          B(e("input", {
+            "onUpdate:modelValue": h[2] || (h[2] = ($) => t(v).persona.birthDate = $),
             type: "date",
             class: "input"
           }, null, 512), [
-            [D, t(_).persona.birthDate]
+            [Y, t(v).persona.birthDate]
           ])
         ])
       ]),
-      e("div", Ga, [
+      e("div", or, [
         e("label", null, l(t(s)("wizard.description")), 1),
-        N(e("textarea", {
-          "onUpdate:modelValue": v[3] || (v[3] = (C) => t(_).persona.description = C),
+        B(e("textarea", {
+          "onUpdate:modelValue": h[3] || (h[3] = ($) => t(v).persona.description = $),
           placeholder: t(s)("wizard.descriptionPlaceholder"),
           class: "input",
           rows: "3"
-        }, null, 8, Xa), [
-          [D, t(_).persona.description]
+        }, null, 8, ar), [
+          [Y, t(v).persona.description]
         ])
       ]),
-      e("div", Za, [
+      e("div", ir, [
         e("label", null, l(t(s)("wizard.personality")), 1),
-        N(e("textarea", {
-          "onUpdate:modelValue": v[4] || (v[4] = (C) => t(_).persona.personality = C),
+        B(e("textarea", {
+          "onUpdate:modelValue": h[4] || (h[4] = ($) => t(v).persona.personality = $),
           placeholder: t(s)("wizard.personalityPlaceholder"),
           class: "input",
           rows: "3"
-        }, null, 8, Qa), [
-          [D, t(_).persona.personality]
+        }, null, 8, rr), [
+          [Y, t(v).persona.personality]
         ])
       ]),
-      e("div", ei, [
+      e("div", ur, [
         e("label", null, l(t(s)("wizard.greeting")), 1),
-        N(e("textarea", {
-          "onUpdate:modelValue": v[5] || (v[5] = (C) => t(_).persona.greeting = C),
+        B(e("textarea", {
+          "onUpdate:modelValue": h[5] || (h[5] = ($) => t(v).persona.greeting = $),
           placeholder: t(s)("wizard.greetingPlaceholder"),
           class: "input",
           rows: "2"
-        }, null, 8, ti), [
-          [D, t(_).persona.greeting]
+        }, null, 8, cr), [
+          [Y, t(v).persona.greeting]
         ])
       ]),
-      e("div", si, [
+      e("div", dr, [
         e("label", null, l(t(s)("wizard.customPrompt")), 1),
-        N(e("textarea", {
-          "onUpdate:modelValue": v[6] || (v[6] = (C) => t(_).persona.customPrompt = C),
+        B(e("textarea", {
+          "onUpdate:modelValue": h[6] || (h[6] = ($) => t(v).persona.customPrompt = $),
           placeholder: t(s)("wizard.customPromptPlaceholder"),
           class: "input",
           rows: "6"
-        }, null, 8, li), [
-          [D, t(_).persona.customPrompt]
+        }, null, 8, pr), [
+          [Y, t(v).persona.customPrompt]
         ]),
-        e("p", oi, l(t(s)("wizard.customPromptHelp")), 1)
+        e("p", hr, l(t(s)("wizard.customPromptHelp")), 1)
       ])
     ]));
   }
-}), ai = { class: "content-card" }, ii = { class: "card-desc" }, ri = { class: "toggle-label" }, ui = { class: "helper-text" }, di = { class: "toggle-label" }, ci = { class: "helper-text" }, pi = { class: "field" }, hi = ["placeholder"], vi = { class: "helper-text" }, mi = {
+}), mr = { class: "content-card" }, gr = { class: "card-desc" }, fr = { class: "toggle-label" }, _r = { class: "helper-text" }, yr = { class: "toggle-label" }, br = { class: "helper-text" }, kr = { class: "field" }, wr = ["placeholder"], $r = { class: "helper-text" }, Sr = {
   key: 0,
   class: "helper-text"
-}, _i = { class: "actions-row" }, gi = /* @__PURE__ */ ee({
+}, Cr = { class: "actions-row" }, xr = /* @__PURE__ */ de({
   __name: "PermissionsPanel",
-  setup(L) {
-    const { t: s } = te(), { tabLabel: _, tabMeta: b, fieldLabel: $, fieldHelp: k } = De(), v = P({ screen_watch: !1, computer_use: !1, report_agent_host: "" }), C = P("");
-    async function E() {
+  setup(F) {
+    const { t: s } = he(), { tabLabel: v, tabMeta: m, fieldLabel: k, fieldHelp: w } = gt(), h = x({ screen_watch: !1, computer_use: !1, report_agent_host: "" }), $ = x("");
+    async function R() {
       try {
-        const u = await fetch("/api/life/permissions");
-        if (u.ok) {
-          const o = await u.json();
-          v.value = {
-            screen_watch: !!o.screen_watch,
-            computer_use: !!o.computer_use,
-            report_agent_host: o.report_agent_host || ""
+        const c = await fetch("/api/life/permissions");
+        if (c.ok) {
+          const n = await c.json();
+          h.value = {
+            screen_watch: !!n.screen_watch,
+            computer_use: !!n.computer_use,
+            report_agent_host: n.report_agent_host || ""
           };
         }
       } catch {
       }
     }
-    async function c() {
-      C.value = "";
+    async function u() {
+      $.value = "";
       try {
-        const u = await fetch("/api/life/permissions", {
+        const c = await fetch("/api/life/permissions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(v.value)
+          body: JSON.stringify(h.value)
         });
-        if (!u.ok) throw new Error(String(u.status));
-        const o = await u.json();
-        v.value = {
-          screen_watch: !!o.screen_watch,
-          computer_use: !!o.computer_use,
-          report_agent_host: o.report_agent_host || ""
-        }, C.value = s("settings.permSaved");
+        if (!c.ok) throw new Error(String(c.status));
+        const n = await c.json();
+        h.value = {
+          screen_watch: !!n.screen_watch,
+          computer_use: !!n.computer_use,
+          report_agent_host: n.report_agent_host || ""
+        }, $.value = s("settings.permSaved");
       } catch {
-        C.value = s("settings.permFailed");
+        $.value = s("settings.permFailed");
       }
     }
-    return ae(E), (u, o) => (a(), r("div", ai, [
-      e("h2", null, l(t(_)("permissions")), 1),
-      e("p", ii, l(t(b)("permissions")?.descriptionKey ? t(s)(t(b)("permissions").descriptionKey) : t(s)("settings.permissionsDesc")), 1),
-      e("label", ri, [
-        N(e("input", {
+    return Ne(R), (c, n) => (o(), i("div", mr, [
+      e("h2", null, l(t(v)("permissions")), 1),
+      e("p", gr, l(t(m)("permissions")?.descriptionKey ? t(s)(t(m)("permissions").descriptionKey) : t(s)("settings.permissionsDesc")), 1),
+      e("label", fr, [
+        B(e("input", {
           type: "checkbox",
-          "onUpdate:modelValue": o[0] || (o[0] = (i) => v.value.screen_watch = i),
-          onChange: c
+          "onUpdate:modelValue": n[0] || (n[0] = (r) => h.value.screen_watch = r),
+          onChange: u
         }, null, 544), [
-          [Q, v.value.screen_watch]
+          [fe, h.value.screen_watch]
         ]),
-        o[4] || (o[4] = e("span", { class: "toggle-slider" }, null, -1)),
+        n[4] || (n[4] = e("span", { class: "toggle-slider" }, null, -1)),
         e("span", null, [
-          e("strong", null, l(t($)(t(b)("permissions"), "screen_watch", "settings.screenWatch")), 1),
-          o[3] || (o[3] = e("br", null, null, -1)),
-          e("small", ui, l(t(k)(t(b)("permissions"), "screen_watch", "settings.screenWatchDesc")), 1)
+          e("strong", null, l(t(k)(t(m)("permissions"), "screen_watch", "settings.screenWatch")), 1),
+          n[3] || (n[3] = e("br", null, null, -1)),
+          e("small", _r, l(t(w)(t(m)("permissions"), "screen_watch", "settings.screenWatchDesc")), 1)
         ])
       ]),
-      e("label", di, [
-        N(e("input", {
+      e("label", yr, [
+        B(e("input", {
           type: "checkbox",
-          "onUpdate:modelValue": o[1] || (o[1] = (i) => v.value.computer_use = i),
-          onChange: c
+          "onUpdate:modelValue": n[1] || (n[1] = (r) => h.value.computer_use = r),
+          onChange: u
         }, null, 544), [
-          [Q, v.value.computer_use]
+          [fe, h.value.computer_use]
         ]),
-        o[6] || (o[6] = e("span", { class: "toggle-slider" }, null, -1)),
+        n[6] || (n[6] = e("span", { class: "toggle-slider" }, null, -1)),
         e("span", null, [
-          e("strong", null, l(t($)(t(b)("permissions"), "computer_use", "settings.computerUse")), 1),
-          o[5] || (o[5] = e("br", null, null, -1)),
-          e("small", ci, l(t(k)(t(b)("permissions"), "computer_use", "settings.computerUseDesc")), 1)
+          e("strong", null, l(t(k)(t(m)("permissions"), "computer_use", "settings.computerUse")), 1),
+          n[5] || (n[5] = e("br", null, null, -1)),
+          e("small", br, l(t(w)(t(m)("permissions"), "computer_use", "settings.computerUseDesc")), 1)
         ])
       ]),
-      e("div", pi, [
-        e("label", null, l(t($)(t(b)("permissions"), "report_agent_host", "settings.reportAgentHost")), 1),
-        N(e("input", {
-          "onUpdate:modelValue": o[2] || (o[2] = (i) => v.value.report_agent_host = i),
+      e("div", kr, [
+        e("label", null, l(t(k)(t(m)("permissions"), "report_agent_host", "settings.reportAgentHost")), 1),
+        B(e("input", {
+          "onUpdate:modelValue": n[2] || (n[2] = (r) => h.value.report_agent_host = r),
           class: "input",
-          placeholder: t(k)(t(b)("permissions"), "report_agent_host", "settings.reportAgentHostDesc"),
-          onChange: c
-        }, null, 40, hi), [
-          [D, v.value.report_agent_host]
+          placeholder: t(w)(t(m)("permissions"), "report_agent_host", "settings.reportAgentHostDesc"),
+          onChange: u
+        }, null, 40, wr), [
+          [Y, h.value.report_agent_host]
         ]),
-        e("p", vi, l(t(k)(t(b)("permissions"), "report_agent_host", "settings.reportAgentHostDesc")), 1)
+        e("p", $r, l(t(w)(t(m)("permissions"), "report_agent_host", "settings.reportAgentHostDesc")), 1)
       ]),
-      C.value ? (a(), r("div", mi, l(C.value), 1)) : M("", !0),
-      e("div", _i, [
+      $.value ? (o(), i("div", Sr, l($.value), 1)) : V("", !0),
+      e("div", Cr, [
         e("button", {
           class: "btn btn-primary",
           type: "button",
-          onClick: c
+          onClick: u
         }, l(t(s)("settings.save")), 1)
       ])
     ]));
   }
-}), bi = P(!1), fi = P(!1);
-P(!1);
-const ve = P(!1), be = P(!0), Fe = P(!0), $e = P([]), tt = P(!1);
-P(!1);
-const Ue = P(!1), We = [];
-function yi(L) {
-  const s = We.splice(0, We.length);
-  for (const _ of s)
-    _.resolve();
+}), Mr = x(!1), Pr = x(!1);
+x(!1);
+const Ke = x(!1), Je = x(!0), ft = x(!0), qe = x([]), jt = x(!1);
+x(!1);
+const ot = x(!1), Ot = [];
+function Er(F) {
+  const s = Ot.splice(0, Ot.length);
+  for (const v of s)
+    v.resolve();
 }
-async function ki() {
-  const L = window.fetch;
+async function Ur() {
+  const F = window.fetch;
   try {
-    const s = await L("/api/security/pin", { headers: { Accept: "application/json" } });
+    const s = await F("/api/security/pin", { headers: { Accept: "application/json" } });
     if (!s.ok) return;
-    const _ = await s.json();
-    ve.value = !!_.configured, be.value = _.enabled !== !1, Fe.value = _.login_enabled !== !1, $e.value = Array.isArray(_.pages) ? _.pages : [], Ue.value = !_.configured && be.value;
+    const v = await s.json();
+    Ke.value = !!v.configured, Je.value = v.enabled !== !1, ft.value = v.login_enabled !== !1, qe.value = Array.isArray(v.pages) ? v.pages : [], ot.value = !v.configured && Je.value;
   } catch {
   }
 }
-async function wi(L) {
-  const s = window.fetch, _ = await s("/api/security/pin", {
+async function Ar(F) {
+  const s = window.fetch, v = await s("/api/security/pin", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(L)
-  }), b = await _.json().catch(() => null);
-  if (!_.ok) throw new Error(b?.error || `HTTP ${_.status}`);
-  typeof b?.enabled == "boolean" && (be.value = b.enabled), typeof b?.login_enabled == "boolean" && (Fe.value = b.login_enabled), Array.isArray(b?.pages) && ($e.value = b.pages), ve.value = !!b?.configured, Ue.value = !b?.configured && be.value;
+    body: JSON.stringify(F)
+  }), m = await v.json().catch(() => null);
+  if (!v.ok) throw new Error(m?.error || `HTTP ${v.status}`);
+  typeof m?.enabled == "boolean" && (Je.value = m.enabled), typeof m?.login_enabled == "boolean" && (ft.value = m.login_enabled), Array.isArray(m?.pages) && (qe.value = m.pages), Ke.value = !!m?.configured, ot.value = !m?.configured && Je.value;
 }
-async function $i() {
-  const L = window.fetch, s = await L("/api/security/pin", { method: "DELETE" }), _ = await s.json().catch(() => null);
-  if (!s.ok) throw new Error(_?.error || `HTTP ${s.status}`);
-  tt.value = !1, ve.value = !1, Ue.value = be.value;
+async function Tr() {
+  const F = window.fetch, s = await F("/api/security/pin", { method: "DELETE" }), v = await s.json().catch(() => null);
+  if (!s.ok) throw new Error(v?.error || `HTTP ${s.status}`);
+  jt.value = !1, Ke.value = !1, ot.value = Je.value;
 }
-async function Ci(L) {
-  const s = window.fetch, _ = await s("/api/security/pin", {
+async function Ir(F) {
+  const s = window.fetch, v = await s("/api/security/pin", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pin: L })
-  }), b = await _.json().catch(() => null);
-  if (!_.ok || !b?.configured) throw new Error(b?.error || `HTTP ${_.status}`);
-  L.trim(), tt.value = !0, ve.value = !0, Ue.value = !1, fi.value = !0, bi.value = !1, yi();
+    body: JSON.stringify({ pin: F })
+  }), m = await v.json().catch(() => null);
+  if (!v.ok || !m?.configured) throw new Error(m?.error || `HTTP ${v.status}`);
+  F.trim(), jt.value = !0, Ke.value = !0, ot.value = !1, Pr.value = !0, Mr.value = !1, Er();
 }
-const Si = { class: "content-card security-panel" }, Pi = { class: "card-desc" }, xi = { class: "sec-stack" }, Mi = { class: "toggle-label" }, Ui = ["checked", "disabled"], Ei = { class: "helper-text" }, Ti = { class: "toggle-label" }, Ai = ["checked", "disabled"], Ni = { class: "helper-text" }, Vi = { class: "sec-card" }, Ri = { class: "sec-card-head" }, Oi = { class: "sec-pin-grid" }, Ii = { class: "sec-pin-col" }, zi = { class: "sec-pin-label" }, Li = { class: "sec-pin-col" }, Di = { class: "sec-pin-label" }, Fi = { class: "sec-actions" }, Bi = ["disabled"], Ki = ["disabled"], Hi = { class: "sec-card" }, ji = { class: "sec-card-head" }, Yi = { class: "sec-chip" }, Ji = { class: "helper-text" }, Wi = { class: "page-list" }, qi = ["checked", "disabled", "onChange"], Gi = { class: "page-text" }, Xi = { class: "page-name" }, Zi = {
+const Nr = { class: "content-card security-panel" }, Rr = { class: "card-desc" }, Vr = { class: "sec-stack" }, Lr = { class: "toggle-label" }, Or = ["checked", "disabled"], Dr = { class: "helper-text" }, zr = { class: "toggle-label" }, Br = ["checked", "disabled"], Fr = { class: "helper-text" }, Kr = { class: "sec-card" }, jr = { class: "sec-card-head" }, Hr = { class: "sec-pin-grid" }, Yr = { class: "sec-pin-col" }, Xr = { class: "sec-pin-label" }, Jr = { class: "sec-pin-col" }, Wr = { class: "sec-pin-label" }, qr = { class: "sec-actions" }, Gr = ["disabled"], Zr = ["disabled"], Qr = { class: "sec-card" }, eu = { class: "sec-card-head" }, tu = { class: "sec-chip" }, su = { class: "helper-text" }, lu = { class: "page-list" }, nu = ["checked", "disabled", "onChange"], ou = { class: "page-text" }, au = { class: "page-name" }, iu = {
   key: 0,
   class: "helper-text sec-msg"
-}, Qi = {
+}, ru = {
   key: 1,
   class: "sec-error"
-}, er = /* @__PURE__ */ ee({
+}, uu = /* @__PURE__ */ de({
   __name: "SecurityPanel",
-  setup(L) {
-    const { t: s } = te(), { confirm: _ } = Ce(), b = et(), $ = P(!1), k = P(""), v = P(""), C = P(""), E = P(""), c = Y(() => {
-      const y = [], h = /* @__PURE__ */ new Set(), w = (S, I) => {
-        !S || h.has(S) || (h.add(S), y.push({ path: S, label: I || S }));
+  setup(F) {
+    const { t: s } = he(), { confirm: v } = Ge(), m = Kt(), k = x(!1), w = x(""), h = x(""), $ = x(""), R = x(""), u = G(() => {
+      const b = [], p = /* @__PURE__ */ new Set(), M = (A, j) => {
+        !A || p.has(A) || (p.add(A), b.push({ path: A, label: j || A }));
       };
-      for (const S of b.navItems) {
-        const I = S.to || (S.id === "chat" ? "/" : "");
-        if (!I) continue;
-        let V = S.labelKey ? s(S.labelKey) : "";
-        (!V || V === S.labelKey) && (V = S.label || S.id), w(I, V);
+      for (const A of m.navItems) {
+        const j = A.to || (A.id === "chat" ? "/" : "");
+        if (!j) continue;
+        let O = A.labelKey ? s(A.labelKey) : "";
+        (!O || O === A.labelKey) && (O = A.label || A.id), M(j, O);
       }
-      for (const S of b.routerPatches) {
-        let I = S.titleKey ? s(S.titleKey) : "";
-        (!I || I === S.titleKey) && (I = S.title || String(S.name || S.path)), w(S.path, I);
+      for (const A of m.routerPatches) {
+        let j = A.titleKey ? s(A.titleKey) : "";
+        (!j || j === A.titleKey) && (j = A.title || String(A.name || A.path)), M(A.path, j);
       }
-      return y;
+      return b;
     });
-    ae(() => {
-      ki();
+    Ne(() => {
+      Ur();
     });
-    async function u(y) {
-      $.value = !0, k.value = "", v.value = "";
+    async function c(b) {
+      k.value = !0, w.value = "", h.value = "";
       try {
-        await wi(y), k.value = s("settings.saved"), setTimeout(() => {
-          k.value = "";
+        await Ar(b), w.value = s("settings.saved"), setTimeout(() => {
+          w.value = "";
         }, 1500);
-      } catch (h) {
-        v.value = h?.message || s("settings.permFailed");
+      } catch (p) {
+        h.value = p?.message || s("settings.permFailed");
       } finally {
-        $.value = !1;
+        k.value = !1;
       }
     }
-    function o(y, h) {
-      u({ [y]: h });
+    function n(b, p) {
+      c({ [b]: p });
     }
-    function i(y, h) {
-      const w = new Set($e.value);
-      h ? w.add(y) : w.delete(y), u({ pages: [...w] });
+    function r(b, p) {
+      const M = new Set(qe.value);
+      p ? M.add(b) : M.delete(b), c({ pages: [...M] });
     }
     async function d() {
-      if (v.value = "", C.value.length !== 6) {
-        v.value = s("wizard.pinTooShort");
+      if (h.value = "", $.value.length !== 6) {
+        h.value = s("wizard.pinTooShort");
         return;
       }
-      if (C.value !== E.value) {
-        v.value = s("wizard.pinMismatch");
+      if ($.value !== R.value) {
+        h.value = s("wizard.pinMismatch");
         return;
       }
-      $.value = !0;
+      k.value = !0;
       try {
-        await Ci(C.value), C.value = "", E.value = "", k.value = s("settings.saved"), setTimeout(() => {
-          k.value = "";
+        await Ir($.value), $.value = "", R.value = "", w.value = s("settings.saved"), setTimeout(() => {
+          w.value = "";
         }, 1500);
-      } catch (y) {
-        v.value = y?.message || s("settings.permFailed");
+      } catch (b) {
+        h.value = b?.message || s("settings.permFailed");
       } finally {
-        $.value = !1;
+        k.value = !1;
       }
     }
-    async function g() {
-      if (await _({
+    async function f() {
+      if (await v({
         title: s("security.removePin"),
         message: s("security.removePinConfirm"),
         confirmLabel: s("common.delete"),
         danger: !0
       })) {
-        $.value = !0, v.value = "";
+        k.value = !0, h.value = "";
         try {
-          await $i(), k.value = s("settings.saved"), setTimeout(() => {
-            k.value = "";
+          await Tr(), w.value = s("settings.saved"), setTimeout(() => {
+            w.value = "";
           }, 1500);
-        } catch (h) {
-          v.value = h?.message || s("settings.permFailed");
+        } catch (p) {
+          h.value = p?.message || s("settings.permFailed");
         } finally {
-          $.value = !1;
+          k.value = !1;
         }
       }
     }
-    return (y, h) => (a(), r("div", Si, [
+    return (b, p) => (o(), i("div", Nr, [
       e("h2", null, l(t(s)("settings.tabs.security")), 1),
-      e("p", Pi, l(t(s)("security.desc")), 1),
-      e("div", xi, [
-        e("label", Mi, [
+      e("p", Rr, l(t(s)("security.desc")), 1),
+      e("div", Vr, [
+        e("label", Lr, [
           e("input", {
             type: "checkbox",
-            checked: t(be),
-            disabled: $.value,
-            onChange: h[0] || (h[0] = (w) => o("enabled", w.target.checked))
-          }, null, 40, Ui),
-          h[4] || (h[4] = e("span", { class: "toggle-slider" }, null, -1)),
+            checked: t(Je),
+            disabled: k.value,
+            onChange: p[0] || (p[0] = (M) => n("enabled", M.target.checked))
+          }, null, 40, Or),
+          p[4] || (p[4] = e("span", { class: "toggle-slider" }, null, -1)),
           e("span", null, [
             e("strong", null, l(t(s)("security.pinSwitch")), 1),
-            e("small", Ei, l(t(s)("security.pinSwitchHelp")), 1)
+            e("small", Dr, l(t(s)("security.pinSwitchHelp")), 1)
           ])
         ]),
-        e("label", Ti, [
+        e("label", zr, [
           e("input", {
             type: "checkbox",
-            checked: t(Fe),
-            disabled: $.value,
-            onChange: h[1] || (h[1] = (w) => o("login_enabled", w.target.checked))
-          }, null, 40, Ai),
-          h[5] || (h[5] = e("span", { class: "toggle-slider" }, null, -1)),
+            checked: t(ft),
+            disabled: k.value,
+            onChange: p[1] || (p[1] = (M) => n("login_enabled", M.target.checked))
+          }, null, 40, Br),
+          p[5] || (p[5] = e("span", { class: "toggle-slider" }, null, -1)),
           e("span", null, [
             e("strong", null, l(t(s)("security.loginSwitch")), 1),
-            e("small", Ni, l(t(s)("security.loginSwitchHelp")), 1)
+            e("small", Fr, l(t(s)("security.loginSwitchHelp")), 1)
           ])
         ]),
-        e("section", Vi, [
-          e("div", Ri, [
-            e("strong", null, l(t(ve) ? t(s)("security.changePin") : t(s)("auth.setupTitle")), 1),
+        e("section", Kr, [
+          e("div", jr, [
+            e("strong", null, l(t(Ke) ? t(s)("security.changePin") : t(s)("auth.setupTitle")), 1),
             e("span", {
-              class: j(["sec-chip", { on: t(ve) }])
-            }, l(t(ve) ? t(s)("security.pinSet") : t(s)("security.pinUnset")), 3)
+              class: ee(["sec-chip", { on: t(Ke) }])
+            }, l(t(Ke) ? t(s)("security.pinSet") : t(s)("security.pinUnset")), 3)
           ]),
-          e("div", Oi, [
-            e("div", Ii, [
-              e("span", zi, l(t(s)("auth.pinNew")), 1),
-              W(t(He), {
-                modelValue: C.value,
-                "onUpdate:modelValue": h[2] || (h[2] = (w) => C.value = w)
+          e("div", Hr, [
+            e("div", Yr, [
+              e("span", Xr, l(t(s)("auth.pinNew")), 1),
+              ae(t(Nt), {
+                modelValue: $.value,
+                "onUpdate:modelValue": p[2] || (p[2] = (M) => $.value = M)
               }, null, 8, ["modelValue"])
             ]),
-            e("div", Li, [
-              e("span", Di, l(t(s)("auth.pinConfirm")), 1),
-              W(t(He), {
-                modelValue: E.value,
-                "onUpdate:modelValue": h[3] || (h[3] = (w) => E.value = w),
+            e("div", Jr, [
+              e("span", Wr, l(t(s)("auth.pinConfirm")), 1),
+              ae(t(Nt), {
+                modelValue: R.value,
+                "onUpdate:modelValue": p[3] || (p[3] = (M) => R.value = M),
                 onComplete: d
               }, null, 8, ["modelValue"])
             ])
           ]),
-          e("div", Fi, [
+          e("div", qr, [
             e("button", {
               class: "btn btn-primary",
               type: "button",
-              disabled: $.value,
+              disabled: k.value,
               onClick: d
-            }, l(t(s)("auth.savePin")), 9, Bi),
-            t(ve) ? (a(), r("button", {
+            }, l(t(s)("auth.savePin")), 9, Gr),
+            t(Ke) ? (o(), i("button", {
               key: 0,
               class: "btn btn-tonal",
               type: "button",
-              disabled: $.value,
-              onClick: g
-            }, l(t(s)("security.removePin")), 9, Ki)) : M("", !0)
+              disabled: k.value,
+              onClick: f
+            }, l(t(s)("security.removePin")), 9, Zr)) : V("", !0)
           ])
         ]),
-        e("section", Hi, [
-          e("div", ji, [
+        e("section", Qr, [
+          e("div", eu, [
             e("strong", null, l(t(s)("security.pages")), 1),
-            e("span", Yi, l(t(s)("security.pageCount", { n: t($e).length })), 1)
+            e("span", tu, l(t(s)("security.pageCount", { n: t(qe).length })), 1)
           ]),
-          e("p", Ji, l(t(s)("security.pagesHelp")), 1),
-          e("div", Wi, [
-            (a(!0), r(F, null, J(c.value, (w) => (a(), r("label", {
-              key: w.path,
+          e("p", su, l(t(s)("security.pagesHelp")), 1),
+          e("div", lu, [
+            (o(!0), i(X, null, oe(u.value, (M) => (o(), i("label", {
+              key: M.path,
               class: "page-item"
             }, [
               e("input", {
                 type: "checkbox",
-                checked: t($e).includes(w.path),
-                disabled: $.value,
-                onChange: (S) => i(w.path, S.target.checked)
-              }, null, 40, qi),
-              h[6] || (h[6] = e("span", { class: "toggle-slider" }, null, -1)),
-              e("span", Gi, [
-                e("span", Xi, l(w.label), 1),
-                e("code", null, l(w.path), 1)
+                checked: t(qe).includes(M.path),
+                disabled: k.value,
+                onChange: (A) => r(M.path, A.target.checked)
+              }, null, 40, nu),
+              p[6] || (p[6] = e("span", { class: "toggle-slider" }, null, -1)),
+              e("span", ou, [
+                e("span", au, l(M.label), 1),
+                e("code", null, l(M.path), 1)
               ])
             ]))), 128))
           ])
         ])
       ]),
-      k.value ? (a(), r("p", Zi, l(k.value), 1)) : M("", !0),
-      v.value ? (a(), r("p", Qi, l(v.value), 1)) : M("", !0)
+      w.value ? (o(), i("p", iu, l(w.value), 1)) : V("", !0),
+      h.value ? (o(), i("p", ru, l(h.value), 1)) : V("", !0)
     ]));
   }
-}), tr = /* @__PURE__ */ ie(er, [["__scopeId", "data-v-fb8c17b3"]]), sr = { class: "mcp-panel" }, lr = { class: "mcp-head" }, or = { class: "subtitle" }, nr = { class: "mcp-actions" }, ar = ["disabled"], ir = {
+}), cu = /* @__PURE__ */ Me(uu, [["__scopeId", "data-v-fb8c17b3"]]), du = { class: "mcp-panel" }, pu = { class: "mcp-head" }, hu = { class: "subtitle" }, vu = { class: "mcp-actions" }, mu = ["disabled"], gu = {
   key: 0,
   class: "error-banner"
-}, rr = {
+}, fu = {
   key: 1,
   class: "notice-banner"
-}, ur = {
+}, _u = {
   key: 2,
   class: "hint"
-}, dr = {
+}, yu = {
   key: 3,
   class: "mcp-list"
-}, cr = { class: "mcp-row" }, pr = { class: "mcp-field grow" }, hr = ["onUpdate:modelValue", "readonly"], vr = { class: "mcp-field" }, mr = ["onUpdate:modelValue", "onChange"], _r = { value: "builtin" }, gr = { class: "mcp-toggle" }, br = ["onUpdate:modelValue"], fr = ["onClick"], yr = { class: "mcp-field" }, kr = ["onUpdate:modelValue"], wr = { class: "mcp-field" }, $r = ["onUpdate:modelValue"], Cr = { class: "mcp-field" }, Sr = ["onUpdate:modelValue"], Pr = { class: "mcp-field" }, xr = ["onUpdate:modelValue"], Mr = { class: "builtin-note" }, Ur = { class: "mail-grid" }, Er = { class: "mail-col" }, Tr = { class: "mail-label" }, Ar = { class: "mcp-field" }, Nr = ["onUpdate:modelValue"], Vr = { class: "mail-row" }, Rr = { class: "mcp-field" }, Or = ["onUpdate:modelValue"], Ir = { class: "mcp-toggle" }, zr = ["onUpdate:modelValue"], Lr = { class: "mcp-field" }, Dr = ["onUpdate:modelValue"], Fr = { class: "mcp-field" }, Br = ["onUpdate:modelValue"], Kr = { class: "mail-col" }, Hr = { class: "mail-label" }, jr = { class: "mcp-field" }, Yr = ["onUpdate:modelValue"], Jr = { class: "mail-row" }, Wr = { class: "mcp-field" }, qr = ["onUpdate:modelValue"], Gr = { class: "mcp-toggle" }, Xr = ["onUpdate:modelValue"], Zr = { class: "mcp-field" }, Qr = ["onUpdate:modelValue"], eu = { class: "mcp-field" }, tu = ["onUpdate:modelValue"], su = { class: "mail-row" }, lu = { class: "mcp-field grow" }, ou = ["onUpdate:modelValue", "placeholder"], nu = { class: "mcp-field" }, au = ["onUpdate:modelValue"], iu = {
+}, bu = { class: "mcp-row" }, ku = { class: "mcp-field grow" }, wu = ["onUpdate:modelValue", "readonly"], $u = { class: "mcp-field" }, Su = ["onUpdate:modelValue", "onChange"], Cu = { value: "builtin" }, xu = { class: "mcp-toggle" }, Mu = ["onUpdate:modelValue"], Pu = ["onClick"], Eu = { class: "mcp-field" }, Uu = ["onUpdate:modelValue"], Au = { class: "mcp-field" }, Tu = ["onUpdate:modelValue"], Iu = { class: "mcp-field" }, Nu = ["onUpdate:modelValue"], Ru = { class: "mcp-field" }, Vu = ["onUpdate:modelValue"], Lu = { class: "builtin-note" }, Ou = { class: "mail-grid" }, Du = { class: "mail-col" }, zu = { class: "mail-label" }, Bu = { class: "mcp-field" }, Fu = ["onUpdate:modelValue"], Ku = { class: "mail-row" }, ju = { class: "mcp-field" }, Hu = ["onUpdate:modelValue"], Yu = { class: "mcp-toggle" }, Xu = ["onUpdate:modelValue"], Ju = { class: "mcp-field" }, Wu = ["onUpdate:modelValue"], qu = { class: "mcp-field" }, Gu = ["onUpdate:modelValue"], Zu = { class: "mail-col" }, Qu = { class: "mail-label" }, ec = { class: "mcp-field" }, tc = ["onUpdate:modelValue"], sc = { class: "mail-row" }, lc = { class: "mcp-field" }, nc = ["onUpdate:modelValue"], oc = { class: "mcp-toggle" }, ac = ["onUpdate:modelValue"], ic = { class: "mcp-field" }, rc = ["onUpdate:modelValue"], uc = { class: "mcp-field" }, cc = ["onUpdate:modelValue"], dc = { class: "mail-row" }, pc = { class: "mcp-field grow" }, hc = ["onUpdate:modelValue", "placeholder"], vc = { class: "mcp-field" }, mc = ["onUpdate:modelValue"], gc = {
   key: 0,
   class: "hint"
-}, ru = /* @__PURE__ */ ee({
+}, fc = /* @__PURE__ */ de({
   __name: "McpPanel",
-  setup(L) {
-    const { t: s } = te(), _ = P([]), b = P(!1), $ = P(!1), k = P(""), v = P(!1);
-    function C() {
+  setup(F) {
+    const { t: s } = he(), v = x([]), m = x(!1), k = x(!1), w = x(""), h = x(!1);
+    function $() {
       return {
         id: "",
         transport: "stdio",
@@ -3012,359 +3592,359 @@ const Si = { class: "content-card security-panel" }, Pi = { class: "card-desc" }
         fromName: "0KAY"
       };
     }
-    function E(g) {
-      const y = g?.transport === "http" ? "http" : g?.transport === "builtin" || g?.builtin ? "builtin" : "stdio", h = g?.options?.imap || {}, w = g?.options?.smtp || {};
+    function R(f) {
+      const b = f?.transport === "http" ? "http" : f?.transport === "builtin" || f?.builtin ? "builtin" : "stdio", p = f?.options?.imap || {}, M = f?.options?.smtp || {};
       return {
-        id: String(g?.id || ""),
-        transport: y,
-        command: String(g?.command || ""),
-        argsText: Array.isArray(g?.args) ? g.args.join(`
+        id: String(f?.id || ""),
+        transport: b,
+        command: String(f?.command || ""),
+        argsText: Array.isArray(f?.args) ? f.args.join(`
 `) : "",
-        url: String(g?.url || ""),
-        headersText: g?.headers && typeof g.headers == "object" ? JSON.stringify(g.headers, null, 2) : "",
-        enabled: g?.enabled !== !1,
-        imapHost: String(h.host || ""),
-        imapPort: Number(h.port) || 993,
-        imapSsl: h.ssl !== !1,
-        imapUser: String(h.user || ""),
-        imapPassword: String(h.password || ""),
-        smtpHost: String(w.host || ""),
-        smtpPort: Number(w.port) || 465,
-        smtpSecure: w.secure !== !1,
-        smtpUser: String(w.user || ""),
-        smtpPassword: String(w.password || ""),
-        from: String(w.from || ""),
-        fromName: String(w.fromName || "0KAY")
+        url: String(f?.url || ""),
+        headersText: f?.headers && typeof f.headers == "object" ? JSON.stringify(f.headers, null, 2) : "",
+        enabled: f?.enabled !== !1,
+        imapHost: String(p.host || ""),
+        imapPort: Number(p.port) || 993,
+        imapSsl: p.ssl !== !1,
+        imapUser: String(p.user || ""),
+        imapPassword: String(p.password || ""),
+        smtpHost: String(M.host || ""),
+        smtpPort: Number(M.port) || 465,
+        smtpSecure: M.secure !== !1,
+        smtpUser: String(M.user || ""),
+        smtpPassword: String(M.password || ""),
+        from: String(M.from || ""),
+        fromName: String(M.fromName || "0KAY")
       };
     }
-    function c(g) {
-      if (g.transport === "builtin") {
-        const h = {};
-        return (g.imapHost.trim() || g.imapUser.trim()) && (h.imap = {
-          host: g.imapHost.trim(),
-          port: Number(g.imapPort) || 993,
-          ssl: g.imapSsl,
-          user: g.imapUser.trim(),
-          password: g.imapPassword
-        }), (g.smtpHost.trim() || g.smtpUser.trim() || g.from.trim()) && (h.smtp = {
-          host: g.smtpHost.trim(),
-          port: Number(g.smtpPort) || 465,
-          secure: g.smtpSecure,
-          user: g.smtpUser.trim(),
-          password: g.smtpPassword,
-          from: g.from.trim(),
-          fromName: g.fromName.trim() || "0KAY"
-        }), { id: g.id.trim() || "mail", transport: "builtin", builtin: "mail", enabled: g.enabled, options: h };
+    function u(f) {
+      if (f.transport === "builtin") {
+        const p = {};
+        return (f.imapHost.trim() || f.imapUser.trim()) && (p.imap = {
+          host: f.imapHost.trim(),
+          port: Number(f.imapPort) || 993,
+          ssl: f.imapSsl,
+          user: f.imapUser.trim(),
+          password: f.imapPassword
+        }), (f.smtpHost.trim() || f.smtpUser.trim() || f.from.trim()) && (p.smtp = {
+          host: f.smtpHost.trim(),
+          port: Number(f.smtpPort) || 465,
+          secure: f.smtpSecure,
+          user: f.smtpUser.trim(),
+          password: f.smtpPassword,
+          from: f.from.trim(),
+          fromName: f.fromName.trim() || "0KAY"
+        }), { id: f.id.trim() || "mail", transport: "builtin", builtin: "mail", enabled: f.enabled, options: p };
       }
-      const y = { id: g.id.trim(), transport: g.transport, enabled: g.enabled };
-      if (g.transport === "http") {
-        if (g.url.trim() && (y.url = g.url.trim()), g.headersText.trim())
+      const b = { id: f.id.trim(), transport: f.transport, enabled: f.enabled };
+      if (f.transport === "http") {
+        if (f.url.trim() && (b.url = f.url.trim()), f.headersText.trim())
           try {
-            y.headers = JSON.parse(g.headersText);
+            b.headers = JSON.parse(f.headersText);
           } catch {
-            throw new Error(s("mcp.headersInvalid", { id: g.id || "(unnamed)" }));
+            throw new Error(s("mcp.headersInvalid", { id: f.id || "(unnamed)" }));
           }
       } else {
-        g.command.trim() && (y.command = g.command.trim());
-        const h = g.argsText.split(`
-`).map((w) => w.trim()).filter(Boolean);
-        h.length && (y.args = h);
+        f.command.trim() && (b.command = f.command.trim());
+        const p = f.argsText.split(`
+`).map((M) => M.trim()).filter(Boolean);
+        p.length && (b.args = p);
       }
-      return y;
+      return b;
     }
-    function u(g) {
-      g.transport === "builtin" && (g.id = "mail");
+    function c(f) {
+      f.transport === "builtin" && (f.id = "mail");
     }
-    function o() {
-      const g = C();
-      _.value.some((y) => y.transport === "builtin") && (g.transport = "stdio"), _.value.push(g);
+    function n() {
+      const f = $();
+      v.value.some((b) => b.transport === "builtin") && (f.transport = "stdio"), v.value.push(f);
     }
-    async function i() {
-      b.value = !0, k.value = "";
+    async function r() {
+      m.value = !0, w.value = "";
       try {
-        const y = (await he("/api/settings/mcp"))?.values?.servers;
-        let h = [];
-        if (typeof y == "string" && y.trim())
+        const b = (await Fe("/api/settings/mcp"))?.values?.servers;
+        let p = [];
+        if (typeof b == "string" && b.trim())
           try {
-            const w = JSON.parse(y);
-            Array.isArray(w) && (h = w);
+            const M = JSON.parse(b);
+            Array.isArray(M) && (p = M);
           } catch {
-            k.value = s("mcp.configInvalid");
+            w.value = s("mcp.configInvalid");
           }
-        _.value = h.map(E);
-      } catch (g) {
-        k.value = g?.message || String(g);
+        v.value = p.map(R);
+      } catch (f) {
+        w.value = f?.message || String(f);
       } finally {
-        b.value = !1;
+        m.value = !1;
       }
     }
     async function d() {
-      if (!$.value) {
-        $.value = !0, k.value = "", v.value = !1;
+      if (!k.value) {
+        k.value = !0, w.value = "", h.value = !1;
         try {
-          const g = /* @__PURE__ */ new Set(), y = _.value.map(c).filter((h) => {
-            const w = String(h.id || "").trim();
-            return !w || g.has(w) ? !1 : (g.add(w), !0);
+          const f = /* @__PURE__ */ new Set(), b = v.value.map(u).filter((p) => {
+            const M = String(p.id || "").trim();
+            return !M || f.has(M) ? !1 : (f.add(M), !0);
           });
-          await Me("/api/settings/mcp", { values: { servers: JSON.stringify(y) } }), v.value = !0, setTimeout(() => {
-            v.value = !1;
+          await tt("/api/settings/mcp", { values: { servers: JSON.stringify(b) } }), h.value = !0, setTimeout(() => {
+            h.value = !1;
           }, 2e3);
-        } catch (g) {
-          k.value = g?.message || String(g);
+        } catch (f) {
+          w.value = f?.message || String(f);
         } finally {
-          $.value = !1;
+          k.value = !1;
         }
       }
     }
-    return ae(i), (g, y) => (a(), r("div", sr, [
-      e("header", lr, [
+    return Ne(r), (f, b) => (o(), i("div", du, [
+      e("header", pu, [
         e("div", null, [
           e("h2", null, l(t(s)("mcp.title")), 1),
-          e("p", or, l(t(s)("mcp.subtitle")), 1)
+          e("p", hu, l(t(s)("mcp.subtitle")), 1)
         ]),
-        e("div", nr, [
+        e("div", vu, [
           e("button", {
             class: "btn btn-tonal",
             type: "button",
-            onClick: o
+            onClick: n
           }, l(t(s)("mcp.addServer")), 1),
           e("button", {
             class: "btn primary",
             type: "button",
-            disabled: $.value,
+            disabled: k.value,
             onClick: d
-          }, l($.value ? t(s)("common.saving") : t(s)("common.save")), 9, ar)
+          }, l(k.value ? t(s)("common.saving") : t(s)("common.save")), 9, mu)
         ])
       ]),
-      k.value ? (a(), r("div", ir, l(k.value), 1)) : M("", !0),
-      v.value ? (a(), r("div", rr, l(t(s)("settings.saved")), 1)) : M("", !0),
-      b.value ? (a(), r("p", ur, l(t(s)("common.loading")), 1)) : (a(), r("div", dr, [
-        (a(!0), r(F, null, J(_.value, (h, w) => (a(), r("article", {
-          key: w,
-          class: j(["mcp-card", { "is-builtin": h.transport === "builtin" }])
+      w.value ? (o(), i("div", gu, l(w.value), 1)) : V("", !0),
+      h.value ? (o(), i("div", fu, l(t(s)("settings.saved")), 1)) : V("", !0),
+      m.value ? (o(), i("p", _u, l(t(s)("common.loading")), 1)) : (o(), i("div", yu, [
+        (o(!0), i(X, null, oe(v.value, (p, M) => (o(), i("article", {
+          key: M,
+          class: ee(["mcp-card", { "is-builtin": p.transport === "builtin" }])
         }, [
-          e("div", cr, [
-            e("label", pr, [
-              y[0] || (y[0] = e("span", null, "ID", -1)),
-              N(e("input", {
-                "onUpdate:modelValue": (S) => h.id = S,
-                readonly: h.transport === "builtin",
+          e("div", bu, [
+            e("label", ku, [
+              b[0] || (b[0] = e("span", null, "ID", -1)),
+              B(e("input", {
+                "onUpdate:modelValue": (A) => p.id = A,
+                readonly: p.transport === "builtin",
                 placeholder: "filesystem"
-              }, null, 8, hr), [
-                [D, h.id]
+              }, null, 8, wu), [
+                [Y, p.id]
               ])
             ]),
-            e("label", vr, [
+            e("label", $u, [
               e("span", null, l(t(s)("mcp.transport")), 1),
-              N(e("select", {
-                "onUpdate:modelValue": (S) => h.transport = S,
-                onChange: (S) => u(h)
+              B(e("select", {
+                "onUpdate:modelValue": (A) => p.transport = A,
+                onChange: (A) => c(p)
               }, [
-                y[1] || (y[1] = e("option", { value: "stdio" }, "stdio", -1)),
-                y[2] || (y[2] = e("option", { value: "http" }, "http", -1)),
-                e("option", _r, l(t(s)("mcp.builtinMail")), 1)
-              ], 40, mr), [
-                [rt, h.transport]
+                b[1] || (b[1] = e("option", { value: "stdio" }, "stdio", -1)),
+                b[2] || (b[2] = e("option", { value: "http" }, "http", -1)),
+                e("option", Cu, l(t(s)("mcp.builtinMail")), 1)
+              ], 40, Su), [
+                [os, p.transport]
               ])
             ]),
-            e("label", gr, [
-              N(e("input", {
+            e("label", xu, [
+              B(e("input", {
                 type: "checkbox",
-                "onUpdate:modelValue": (S) => h.enabled = S
-              }, null, 8, br), [
-                [Q, h.enabled]
+                "onUpdate:modelValue": (A) => p.enabled = A
+              }, null, 8, Mu), [
+                [fe, p.enabled]
               ]),
               e("span", null, l(t(s)("mcp.enabled")), 1)
             ]),
             e("button", {
               class: "mcp-remove",
               type: "button",
-              onClick: (S) => _.value.splice(w, 1)
-            }, l(t(s)("common.delete")), 9, fr)
+              onClick: (A) => v.value.splice(M, 1)
+            }, l(t(s)("common.delete")), 9, Pu)
           ]),
-          h.transport === "stdio" ? (a(), r(F, { key: 0 }, [
-            e("label", yr, [
+          p.transport === "stdio" ? (o(), i(X, { key: 0 }, [
+            e("label", Eu, [
               e("span", null, l(t(s)("mcp.command")), 1),
-              N(e("input", {
-                "onUpdate:modelValue": (S) => h.command = S,
+              B(e("input", {
+                "onUpdate:modelValue": (A) => p.command = A,
                 placeholder: "npx"
-              }, null, 8, kr), [
-                [D, h.command]
+              }, null, 8, Uu), [
+                [Y, p.command]
               ])
             ]),
-            e("label", wr, [
+            e("label", Au, [
               e("span", null, l(t(s)("mcp.args")), 1),
-              N(e("textarea", {
-                "onUpdate:modelValue": (S) => h.argsText = S,
+              B(e("textarea", {
+                "onUpdate:modelValue": (A) => p.argsText = A,
                 rows: "2",
                 placeholder: `-y
 @modelcontextprotocol/server-filesystem
 C:\\work`
-              }, null, 8, $r), [
-                [D, h.argsText]
+              }, null, 8, Tu), [
+                [Y, p.argsText]
               ])
             ])
-          ], 64)) : h.transport === "http" ? (a(), r(F, { key: 1 }, [
-            e("label", Cr, [
-              y[3] || (y[3] = e("span", null, "URL", -1)),
-              N(e("input", {
-                "onUpdate:modelValue": (S) => h.url = S,
+          ], 64)) : p.transport === "http" ? (o(), i(X, { key: 1 }, [
+            e("label", Iu, [
+              b[3] || (b[3] = e("span", null, "URL", -1)),
+              B(e("input", {
+                "onUpdate:modelValue": (A) => p.url = A,
                 placeholder: "https://example.com/mcp"
-              }, null, 8, Sr), [
-                [D, h.url]
+              }, null, 8, Nu), [
+                [Y, p.url]
               ])
             ]),
-            e("label", Pr, [
-              y[4] || (y[4] = e("span", null, "Headers（JSON）", -1)),
-              N(e("textarea", {
-                "onUpdate:modelValue": (S) => h.headersText = S,
+            e("label", Ru, [
+              b[4] || (b[4] = e("span", null, "Headers（JSON）", -1)),
+              B(e("textarea", {
+                "onUpdate:modelValue": (A) => p.headersText = A,
                 rows: "2",
                 placeholder: '{ "Authorization": "Bearer ..." }'
-              }, null, 8, xr), [
-                [D, h.headersText]
+              }, null, 8, Vu), [
+                [Y, p.headersText]
               ])
             ])
-          ], 64)) : (a(), r(F, { key: 2 }, [
-            e("p", Mr, l(t(s)("mcp.builtinNote")), 1),
-            e("div", Ur, [
-              e("div", Er, [
-                e("p", Tr, l(t(s)("mcp.imap")), 1),
-                e("label", Ar, [
+          ], 64)) : (o(), i(X, { key: 2 }, [
+            e("p", Lu, l(t(s)("mcp.builtinNote")), 1),
+            e("div", Ou, [
+              e("div", Du, [
+                e("p", zu, l(t(s)("mcp.imap")), 1),
+                e("label", Bu, [
                   e("span", null, l(t(s)("mcp.host")), 1),
-                  N(e("input", {
-                    "onUpdate:modelValue": (S) => h.imapHost = S,
+                  B(e("input", {
+                    "onUpdate:modelValue": (A) => p.imapHost = A,
                     placeholder: "imap.example.com",
                     autocomplete: "off"
-                  }, null, 8, Nr), [
-                    [D, h.imapHost]
+                  }, null, 8, Fu), [
+                    [Y, p.imapHost]
                   ])
                 ]),
-                e("div", Vr, [
-                  e("label", Rr, [
+                e("div", Ku, [
+                  e("label", ju, [
                     e("span", null, l(t(s)("mcp.port")), 1),
-                    N(e("input", {
-                      "onUpdate:modelValue": (S) => h.imapPort = S,
+                    B(e("input", {
+                      "onUpdate:modelValue": (A) => p.imapPort = A,
                       type: "number",
                       placeholder: "993"
-                    }, null, 8, Or), [
+                    }, null, 8, Hu), [
                       [
-                        D,
-                        h.imapPort,
+                        Y,
+                        p.imapPort,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  e("label", Ir, [
-                    N(e("input", {
+                  e("label", Yu, [
+                    B(e("input", {
                       type: "checkbox",
-                      "onUpdate:modelValue": (S) => h.imapSsl = S
-                    }, null, 8, zr), [
-                      [Q, h.imapSsl]
+                      "onUpdate:modelValue": (A) => p.imapSsl = A
+                    }, null, 8, Xu), [
+                      [fe, p.imapSsl]
                     ]),
-                    y[5] || (y[5] = e("span", null, "SSL", -1))
+                    b[5] || (b[5] = e("span", null, "SSL", -1))
                   ])
                 ]),
-                e("label", Lr, [
+                e("label", Ju, [
                   e("span", null, l(t(s)("mcp.username")), 1),
-                  N(e("input", {
-                    "onUpdate:modelValue": (S) => h.imapUser = S,
+                  B(e("input", {
+                    "onUpdate:modelValue": (A) => p.imapUser = A,
                     placeholder: "user@example.com",
                     autocomplete: "off"
-                  }, null, 8, Dr), [
-                    [D, h.imapUser]
+                  }, null, 8, Wu), [
+                    [Y, p.imapUser]
                   ])
                 ]),
-                e("label", Fr, [
+                e("label", qu, [
                   e("span", null, l(t(s)("mcp.password")), 1),
-                  N(e("input", {
-                    "onUpdate:modelValue": (S) => h.imapPassword = S,
+                  B(e("input", {
+                    "onUpdate:modelValue": (A) => p.imapPassword = A,
                     type: "password",
                     placeholder: "••••••••",
                     autocomplete: "new-password"
-                  }, null, 8, Br), [
-                    [D, h.imapPassword]
+                  }, null, 8, Gu), [
+                    [Y, p.imapPassword]
                   ])
                 ])
               ]),
-              e("div", Kr, [
-                e("p", Hr, l(t(s)("mcp.smtp")), 1),
-                e("label", jr, [
+              e("div", Zu, [
+                e("p", Qu, l(t(s)("mcp.smtp")), 1),
+                e("label", ec, [
                   e("span", null, l(t(s)("mcp.host")), 1),
-                  N(e("input", {
-                    "onUpdate:modelValue": (S) => h.smtpHost = S,
+                  B(e("input", {
+                    "onUpdate:modelValue": (A) => p.smtpHost = A,
                     placeholder: "smtp.example.com",
                     autocomplete: "off"
-                  }, null, 8, Yr), [
-                    [D, h.smtpHost]
+                  }, null, 8, tc), [
+                    [Y, p.smtpHost]
                   ])
                 ]),
-                e("div", Jr, [
-                  e("label", Wr, [
+                e("div", sc, [
+                  e("label", lc, [
                     e("span", null, l(t(s)("mcp.port")), 1),
-                    N(e("input", {
-                      "onUpdate:modelValue": (S) => h.smtpPort = S,
+                    B(e("input", {
+                      "onUpdate:modelValue": (A) => p.smtpPort = A,
                       type: "number",
                       placeholder: "465"
-                    }, null, 8, qr), [
+                    }, null, 8, nc), [
                       [
-                        D,
-                        h.smtpPort,
+                        Y,
+                        p.smtpPort,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  e("label", Gr, [
-                    N(e("input", {
+                  e("label", oc, [
+                    B(e("input", {
                       type: "checkbox",
-                      "onUpdate:modelValue": (S) => h.smtpSecure = S
-                    }, null, 8, Xr), [
-                      [Q, h.smtpSecure]
+                      "onUpdate:modelValue": (A) => p.smtpSecure = A
+                    }, null, 8, ac), [
+                      [fe, p.smtpSecure]
                     ]),
-                    y[6] || (y[6] = e("span", null, "SSL（465）", -1))
+                    b[6] || (b[6] = e("span", null, "SSL（465）", -1))
                   ])
                 ]),
-                e("label", Zr, [
+                e("label", ic, [
                   e("span", null, l(t(s)("mcp.username")), 1),
-                  N(e("input", {
-                    "onUpdate:modelValue": (S) => h.smtpUser = S,
+                  B(e("input", {
+                    "onUpdate:modelValue": (A) => p.smtpUser = A,
                     placeholder: "user@example.com",
                     autocomplete: "off"
-                  }, null, 8, Qr), [
-                    [D, h.smtpUser]
+                  }, null, 8, rc), [
+                    [Y, p.smtpUser]
                   ])
                 ]),
-                e("label", eu, [
+                e("label", uc, [
                   e("span", null, l(t(s)("mcp.password")), 1),
-                  N(e("input", {
-                    "onUpdate:modelValue": (S) => h.smtpPassword = S,
+                  B(e("input", {
+                    "onUpdate:modelValue": (A) => p.smtpPassword = A,
                     type: "password",
                     placeholder: "••••••••",
                     autocomplete: "new-password"
-                  }, null, 8, tu), [
-                    [D, h.smtpPassword]
+                  }, null, 8, cc), [
+                    [Y, p.smtpPassword]
                   ])
                 ]),
-                e("div", su, [
-                  e("label", lu, [
+                e("div", dc, [
+                  e("label", pc, [
                     e("span", null, l(t(s)("mcp.from")), 1),
-                    N(e("input", {
-                      "onUpdate:modelValue": (S) => h.from = S,
+                    B(e("input", {
+                      "onUpdate:modelValue": (A) => p.from = A,
                       placeholder: t(s)("mcp.fromPlaceholder"),
                       autocomplete: "off"
-                    }, null, 8, ou), [
-                      [D, h.from]
+                    }, null, 8, hc), [
+                      [Y, p.from]
                     ])
                   ]),
-                  e("label", nu, [
+                  e("label", vc, [
                     e("span", null, l(t(s)("mcp.fromName")), 1),
-                    N(e("input", {
-                      "onUpdate:modelValue": (S) => h.fromName = S,
+                    B(e("input", {
+                      "onUpdate:modelValue": (A) => p.fromName = A,
                       placeholder: "0KAY",
                       autocomplete: "off"
-                    }, null, 8, au), [
-                      [D, h.fromName]
+                    }, null, 8, mc), [
+                      [Y, p.fromName]
                     ])
                   ])
                 ])
@@ -3372,565 +3952,762 @@ C:\\work`
             ])
           ], 64))
         ], 2))), 128)),
-        _.value.length ? M("", !0) : (a(), r("p", iu, l(t(s)("mcp.emptyServers")), 1))
+        v.value.length ? V("", !0) : (o(), i("p", gc, l(t(s)("mcp.emptyServers")), 1))
       ]))
     ]));
   }
-}), uu = /* @__PURE__ */ ie(ru, [["__scopeId", "data-v-01485e38"]]), du = { class: "content-card danger" }, cu = { class: "card-desc" }, pu = { class: "danger-box" }, hu = ["disabled"], vu = /* @__PURE__ */ ee({
+}), _c = /* @__PURE__ */ Me(fc, [["__scopeId", "data-v-01485e38"]]), yc = { class: "content-card danger" }, bc = { class: "card-desc" }, kc = { class: "danger-box" }, wc = ["disabled"], $c = /* @__PURE__ */ de({
   __name: "DangerPanel",
-  setup(L) {
-    const { t: s } = te(), _ = Le(), b = Ze(), { confirm: $ } = Ce(), k = P(!1);
-    async function v() {
-      if (!(k.value || !await $({
+  setup(F) {
+    const { t: s } = he(), v = nt(), m = Bt(), { confirm: k } = Ge(), w = x(!1);
+    async function h() {
+      if (!(w.value || !await k({
         title: s("settings.reset"),
         message: s("settings.resetConfirmMsg"),
         confirmLabel: s("settings.reset"),
         danger: !0
       }))) {
-        k.value = !0;
+        w.value = !0;
         try {
-          _.resetWizard(), b.push("/");
+          v.resetWizard(), m.push("/");
         } finally {
-          k.value = !1;
+          w.value = !1;
         }
       }
     }
-    return (C, E) => (a(), r("div", du, [
+    return ($, R) => (o(), i("div", yc, [
       e("h2", null, l(t(s)("settings.tabs.danger")), 1),
-      e("p", cu, l(t(s)("settings.resetDesc")), 1),
-      e("div", pu, [
+      e("p", bc, l(t(s)("settings.resetDesc")), 1),
+      e("div", kc, [
         e("div", null, [
           e("strong", null, l(t(s)("settings.reset")), 1),
           e("p", null, l(t(s)("settings.resetWarning")), 1)
         ]),
         e("button", {
           class: "btn btn-danger",
-          disabled: k.value,
-          onClick: v
-        }, l(t(s)("settings.reset")), 9, hu)
+          disabled: w.value,
+          onClick: h
+        }, l(t(s)("settings.reset")), 9, wc)
       ])
     ]));
   }
-}), mu = {
+}), Sc = {
   key: 1,
   class: "plugin-pane-message"
-}, _u = {
+}, Cc = {
   key: 2,
   class: "plugin-pane-message"
-}, gu = /* @__PURE__ */ ee({
+}, xc = /* @__PURE__ */ de({
   __name: "PluginModulePane",
   props: {
     module: {}
   },
-  setup(L) {
-    const s = L, _ = Ke(null), b = Ke("");
+  setup(F) {
+    const s = F, v = It(null), m = It("");
     return Xe(
       () => s.module,
-      async ($) => {
-        if (!$) {
-          _.value = null, b.value = "";
+      async (k) => {
+        if (!k) {
+          v.value = null, m.value = "";
           return;
         }
         try {
-          const k = await import(
+          const w = await import(
             /* @vite-ignore */
-            $
+            k
           );
-          _.value = k?.default || k, b.value = "";
-        } catch (k) {
-          _.value = null, b.value = k?.message || String(k);
+          v.value = w?.default || w, m.value = "";
+        } catch (w) {
+          v.value = null, m.value = w?.message || String(w);
         }
       },
       { immediate: !0 }
-    ), ($, k) => _.value ? (a(), le(ut(_.value), { key: 0 })) : b.value ? (a(), r("div", mu, l(b.value), 1)) : (a(), r("div", _u, "Loading plugin module…"));
+    ), (k, w) => v.value ? (o(), ke(as(v.value), { key: 0 })) : m.value ? (o(), i("div", Sc, l(m.value), 1)) : (o(), i("div", Cc, "Loading plugin module…"));
   }
-}), bu = /* @__PURE__ */ ie(gu, [["__scopeId", "data-v-2d1f36bc"]]), fu = { class: "models-field" }, yu = {
+}), Mc = /* @__PURE__ */ Me(xc, [["__scopeId", "data-v-2d1f36bc"]]), Pc = { class: "models-field" }, Ec = {
   key: 0,
   class: "models-list"
-}, ku = { class: "models-rank" }, wu = ["title"], $u = { class: "models-actions" }, Cu = ["disabled", "aria-label", "onClick"], Su = ["disabled", "aria-label", "onClick"], Pu = ["aria-label", "onClick"], xu = {
+}, Uc = { class: "models-rank" }, Ac = ["title"], Tc = { class: "models-actions" }, Ic = ["disabled", "aria-label", "onClick"], Nc = ["disabled", "aria-label", "onClick"], Rc = ["aria-label", "onClick"], Vc = {
   key: 1,
   class: "models-empty"
-}, Mu = /* @__PURE__ */ ee({
+}, Lc = /* @__PURE__ */ de({
   __name: "ModelsField",
   props: {
     modelValue: {},
     options: {}
   },
   emits: ["update:modelValue"],
-  setup(L, { emit: s }) {
-    const { t: _ } = te(), b = L, $ = s, k = Y(() => String(b.modelValue || "").split(",").map((o) => o.trim()).filter(Boolean)), v = Y(() => b.options.filter((o) => !k.value.includes(o)));
-    function C(o) {
-      $("update:modelValue", o.join(","));
+  setup(F, { emit: s }) {
+    const { t: v } = he(), m = F, k = s, w = G(() => String(m.modelValue || "").split(",").map((n) => n.trim()).filter(Boolean)), h = G(() => m.options.filter((n) => !w.value.includes(n)));
+    function $(n) {
+      k("update:modelValue", n.join(","));
     }
-    function E(o) {
-      o && !k.value.includes(o) && C([...k.value, o]);
+    function R(n) {
+      n && !w.value.includes(n) && $([...w.value, n]);
     }
-    function c(o) {
-      C(k.value.filter((i) => i !== o));
+    function u(n) {
+      $(w.value.filter((r) => r !== n));
     }
-    function u(o, i) {
-      const d = [...k.value], g = o + i;
-      g < 0 || g >= d.length || ([d[o], d[g]] = [d[g], d[o]], C(d));
+    function c(n, r) {
+      const d = [...w.value], f = n + r;
+      f < 0 || f >= d.length || ([d[n], d[f]] = [d[f], d[n]], $(d));
     }
-    return (o, i) => (a(), r("div", fu, [
-      k.value.length ? (a(), r("ol", yu, [
-        (a(!0), r(F, null, J(k.value, (d, g) => (a(), r("li", { key: d }, [
-          e("span", ku, l(g + 1), 1),
+    return (n, r) => (o(), i("div", Pc, [
+      w.value.length ? (o(), i("ol", Ec, [
+        (o(!0), i(X, null, oe(w.value, (d, f) => (o(), i("li", { key: d }, [
+          e("span", Uc, l(f + 1), 1),
           e("span", {
             class: "models-name",
             title: d
-          }, l(d), 9, wu),
-          e("span", $u, [
+          }, l(d), 9, Ac),
+          e("span", Tc, [
             e("button", {
               type: "button",
-              disabled: g === 0,
-              "aria-label": t(_)("models.higher"),
-              onClick: (y) => u(g, -1)
-            }, "↑", 8, Cu),
+              disabled: f === 0,
+              "aria-label": t(v)("models.higher"),
+              onClick: (b) => c(f, -1)
+            }, "↑", 8, Ic),
             e("button", {
               type: "button",
-              disabled: g === k.value.length - 1,
-              "aria-label": t(_)("models.lower"),
-              onClick: (y) => u(g, 1)
-            }, "↓", 8, Su),
+              disabled: f === w.value.length - 1,
+              "aria-label": t(v)("models.lower"),
+              onClick: (b) => c(f, 1)
+            }, "↓", 8, Nc),
             e("button", {
               type: "button",
-              "aria-label": t(_)("common.remove"),
-              onClick: (y) => c(d)
-            }, "✕", 8, Pu)
+              "aria-label": t(v)("common.remove"),
+              onClick: (b) => u(d)
+            }, "✕", 8, Rc)
           ])
         ]))), 128))
-      ])) : (a(), r("p", xu, l(t(_)("models.empty")), 1)),
-      v.value.length ? (a(), le(t(ue), {
+      ])) : (o(), i("p", Vc, l(t(v)("models.empty")), 1)),
+      h.value.length ? (o(), ke(t(De), {
         key: 2,
-        options: v.value,
+        options: h.value,
         "model-value": "",
-        placeholder: t(_)("models.addPlaceholder"),
-        "onUpdate:modelValue": E
-      }, null, 8, ["options", "placeholder"])) : M("", !0)
+        placeholder: t(v)("models.addPlaceholder"),
+        "onUpdate:modelValue": R
+      }, null, 8, ["options", "placeholder"])) : V("", !0)
     ]));
   }
-}), qe = /* @__PURE__ */ ie(Mu, [["__scopeId", "data-v-7089f4a3"]]), Uu = { class: "settings-page" }, Eu = { class: "page-header" }, Tu = { class: "subtitle" }, Au = { key: 0 }, Nu = { key: 1 }, Vu = { class: "settings-layout" }, Ru = {
+}), Dt = /* @__PURE__ */ Me(Lc, [["__scopeId", "data-v-7089f4a3"]]), Oc = { class: "pp-head" }, Dc = ["aria-label", "disabled"], zc = { class: "pp-roots" }, Bc = ["onClick"], Fc = ["placeholder"], Kc = ["aria-busy"], jc = {
+  key: 0,
+  class: "pp-empty"
+}, Hc = {
+  key: 1,
+  class: "pp-empty pp-error"
+}, Yc = {
+  key: 2,
+  class: "pp-empty"
+}, Xc = ["title", "onClick"], Jc = { class: "pp-name" }, Wc = ["title"], qc = { class: "pp-foot" }, Gc = ["disabled"], Zc = ["disabled"], Qc = /* @__PURE__ */ de({
+  __name: "PathPicker",
+  props: {
+    open: { type: Boolean },
+    initial: {},
+    title: {}
+  },
+  emits: ["update:open", "pick"],
+  setup(F, { emit: s }) {
+    const v = F, m = s, { t: k } = he(), w = x(""), h = x(""), $ = x([]), R = x([]), u = x(!1), c = x(""), n = x(""), r = x(!1);
+    let d = "";
+    async function f(O) {
+      u.value = !0, c.value = "";
+      try {
+        const D = await fetch(`/api/agent/workspace?path=${encodeURIComponent(O || "")}`);
+        if (!D.ok) {
+          const I = await D.json().catch(() => ({}));
+          c.value = I?.error || `HTTP ${D.status}`;
+          return;
+        }
+        const U = await D.json();
+        w.value = String(U?.path || ""), h.value = String(U?.parent || ""), $.value = Array.isArray(U?.roots) ? U.roots.map(String) : [], R.value = Array.isArray(U?.directories) ? U.directories.map((I) => ({ name: String(I?.name || ""), path: String(I?.path || "") })) : [], n.value = w.value, d = w.value;
+      } catch (D) {
+        c.value = D instanceof Error ? D.message : String(D);
+      } finally {
+        u.value = !1;
+      }
+    }
+    Xe(
+      () => v.open,
+      (O) => {
+        if (!O) return;
+        c.value = "";
+        const D = (v.initial || "").trim() || d;
+        n.value = D, f(D);
+      },
+      { immediate: !0 }
+    );
+    function b() {
+      m("update:open", !1);
+    }
+    function p() {
+      const O = (w.value || n.value).trim();
+      O && (m("pick", O), b());
+    }
+    function M(O) {
+      f(O.path);
+    }
+    function A() {
+      h.value && h.value !== w.value && f(h.value);
+    }
+    async function j() {
+      if (!r.value) {
+        r.value = !0, c.value = "";
+        try {
+          const O = await fetch(`/api/agent/pick-folder?title=${encodeURIComponent(v.title || k("settings.pathPickTitle"))}`);
+          if (O.ok) {
+            const D = await O.json().catch(() => ({}));
+            D?.path && (m("pick", String(D.path)), b());
+          }
+        } catch (O) {
+          c.value = O instanceof Error ? O.message : String(O);
+        } finally {
+          r.value = !1;
+        }
+      }
+    }
+    return (O, D) => (o(), ke(t(ms), {
+      open: F.open,
+      title: F.title || t(k)("settings.pathPickTitle"),
+      "on-dismiss": b,
+      "initial-focus": "first",
+      "panel-class": "path-picker-panel"
+    }, {
+      default: et(() => [
+        e("header", Oc, [
+          e("h2", null, l(F.title || t(k)("settings.pathPickTitle")), 1),
+          e("button", {
+            class: "pp-icon",
+            type: "button",
+            "aria-label": t(k)("settings.pathUp"),
+            disabled: u.value,
+            onClick: A
+          }, "↑", 8, Dc)
+        ]),
+        e("div", zc, [
+          (o(!0), i(X, null, oe($.value, (U) => (o(), i("button", {
+            key: U,
+            class: ee(["pp-root", { "is-active": w.value === U }]),
+            type: "button",
+            onClick: (I) => f(U)
+          }, l(U), 11, Bc))), 128))
+        ]),
+        B(e("input", {
+          "onUpdate:modelValue": D[0] || (D[0] = (U) => n.value = U),
+          class: "input pp-path",
+          placeholder: t(k)("settings.pathPlaceholder"),
+          spellcheck: "false",
+          onKeydown: D[1] || (D[1] = mt(Oe((U) => f(n.value), ["prevent"]), ["enter"]))
+        }, null, 40, Fc), [
+          [Y, n.value]
+        ]),
+        e("div", {
+          class: "pp-list",
+          role: "listbox",
+          "aria-busy": u.value
+        }, [
+          u.value ? (o(), i("p", jc, l(t(k)("settings.pathLoading")), 1)) : c.value ? (o(), i("p", Hc, l(c.value), 1)) : R.value.length ? (o(!0), i(X, { key: 3 }, oe(R.value, (U) => (o(), i("button", {
+            key: U.path,
+            class: "pp-item",
+            type: "button",
+            role: "option",
+            title: U.path,
+            onClick: (I) => M(U)
+          }, [
+            D[2] || (D[2] = e("span", {
+              class: "pp-folder",
+              "aria-hidden": "true"
+            }, "▸", -1)),
+            e("span", Jc, l(U.name), 1)
+          ], 8, Xc))), 128)) : (o(), i("p", Yc, l(t(k)("settings.pathEmpty")), 1))
+        ], 8, Kc),
+        e("p", {
+          class: "pp-current",
+          title: w.value
+        }, l(t(k)("settings.pathSelected", { path: w.value || n.value || "—" })), 9, Wc),
+        e("footer", qc, [
+          e("button", {
+            class: "btn btn-text",
+            type: "button",
+            disabled: r.value,
+            onClick: j
+          }, l(r.value ? t(k)("settings.pathNativeBusy") : t(k)("settings.pathNative")), 9, Gc),
+          D[3] || (D[3] = e("span", { class: "pp-spacer" }, null, -1)),
+          e("button", {
+            class: "btn btn-text",
+            type: "button",
+            onClick: b
+          }, l(t(k)("settings.cancel")), 1),
+          e("button", {
+            class: "btn btn-primary",
+            type: "button",
+            disabled: u.value || !(w.value || n.value),
+            onClick: p
+          }, l(t(k)("settings.pathUse")), 9, Zc)
+        ])
+      ]),
+      _: 1
+    }, 8, ["open", "title"]));
+  }
+}), ed = /* @__PURE__ */ Me(Qc, [["__scopeId", "data-v-9d796590"]]), st = x([]);
+let td = 0;
+const vt = /* @__PURE__ */ new Map();
+function sd(F) {
+  const s = vt.get(F);
+  s && clearTimeout(s), vt.delete(F), st.value = st.value.filter((v) => v.id !== F);
+}
+function zt(F, s = "info", v) {
+  const m = {
+    id: ++td,
+    kind: s,
+    message: F,
+    duration: s === "error" ? 6500 : 3500
+  };
+  return st.value = [...st.value.slice(-4), m], vt.set(m.id, setTimeout(() => sd(m.id), m.duration)), m.id;
+}
+const ld = { class: "settings-page" }, nd = { class: "page-header" }, od = { class: "subtitle" }, ad = { key: 0 }, id = { key: 1 }, rd = { class: "settings-layout" }, ud = {
   class: "settings-nav",
   "aria-label": "settings categories"
-}, Ou = ["aria-current", "data-tab-id", "title", "aria-label", "onClick"], Iu = {
+}, cd = ["aria-current", "data-tab-id", "title", "aria-label", "onClick"], dd = {
   class: "nav-icon",
   "aria-hidden": "true"
-}, zu = {
+}, pd = {
   key: 0,
   width: "20",
   height: "20",
   viewBox: "0 0 24 24",
   fill: "none"
-}, Lu = {
+}, hd = {
   key: 1,
   width: "20",
   height: "20",
   viewBox: "0 0 24 24",
   fill: "none"
-}, Du = {
+}, vd = {
   key: 2,
   width: "20",
   height: "20",
   viewBox: "0 0 24 24",
   fill: "none"
-}, Fu = {
+}, md = {
   key: 3,
   width: "20",
   height: "20",
   viewBox: "0 0 24 24",
   fill: "none"
-}, Bu = {
+}, gd = {
   key: 4,
   width: "20",
   height: "20",
   viewBox: "0 0 24 24",
   fill: "none"
-}, Ku = {
+}, fd = {
   key: 5,
   width: "20",
   height: "20",
   viewBox: "0 0 24 24",
   fill: "none"
-}, Hu = {
+}, _d = {
   key: 6,
   width: "20",
   height: "20",
   viewBox: "0 0 24 24",
   fill: "none"
-}, ju = {
+}, yd = {
   key: 7,
   width: "20",
   height: "20",
   viewBox: "0 0 24 24",
   fill: "none"
-}, Yu = {
+}, bd = {
   key: 8,
   width: "20",
   height: "20",
   viewBox: "0 0 24 24",
   fill: "none"
-}, Ju = {
+}, kd = {
   key: 9,
   width: "20",
   height: "20",
   viewBox: "0 0 24 24",
   fill: "none"
-}, Wu = {
+}, wd = {
   key: 10,
   width: "20",
   height: "20",
   viewBox: "0 0 24 24",
   fill: "none"
-}, qu = {
+}, $d = {
   key: 11,
   width: "20",
   height: "20",
   viewBox: "0 0 24 24",
   fill: "none"
-}, Gu = { class: "nav-label" }, Xu = { class: "settings-content" }, Zu = {
+}, Sd = { class: "nav-label" }, Cd = { class: "settings-content" }, xd = {
   key: 0,
   class: "content-card provider-runtime"
-}, Qu = {
+}, Md = {
   key: 0,
   class: "helper-text"
-}, ed = {
-  key: 0,
-  class: "toggle-label"
-}, td = ["checked", "onChange"], sd = { key: 0 }, ld = {
-  key: 1,
-  class: "helper-text"
-}, od = {
-  key: 0,
-  class: "helper-text"
-}, nd = ["type", "value", "onInput"], ad = {
-  key: 0,
-  class: "helper-text"
-}, id = { class: "actions-row" }, rd = ["disabled"], ud = {
-  key: "live2d",
-  class: "content-card"
-}, dd = { class: "card-desc" }, cd = { class: "toggle-label" }, pd = { class: "field" }, hd = { class: "model-choices" }, vd = ["value", "checked", "onChange"], md = ["placeholder"], _d = { class: "helper-text" }, gd = {
-  href: "https://www.live2d.com/en/learn/sample/",
-  target: "_blank",
-  rel: "noopener"
-}, bd = { class: "helper-text" }, fd = ["disabled"], yd = { class: "field" }, kd = {
-  key: 0,
-  class: "helper-text"
-}, wd = {
-  key: 1,
-  class: "model-choices",
-  style: { "margin-top": "12px" }
-}, $d = ["value", "checked", "onChange"], Cd = ["onClick"], Sd = {
-  key: 0,
-  class: "card-desc"
 }, Pd = {
-  key: 1,
-  class: "helper-text"
-}, xd = {
   key: 0,
   class: "toggle-label"
-}, Md = ["checked", "onChange"], Ud = { key: 0 }, Ed = {
+}, Ed = ["checked", "onChange"], Ud = { key: 0 }, Ad = {
   key: 1,
   class: "helper-text"
 }, Td = {
   key: 0,
   class: "helper-text"
-}, Ad = {
+}, Id = ["type", "value", "onInput"], Nd = {
   key: 0,
   class: "helper-text"
-}, Nd = {
-  key: 0,
-  class: "helper-text"
-}, Vd = { class: "actions-row" }, Rd = ["disabled"], Od = {
-  key: 0,
-  class: "helper-text"
-}, Id = {
-  key: 0,
-  class: "helper-text"
-}, zd = ["type", "value", "onInput"], Ld = {
-  key: 0,
-  class: "helper-text"
-}, Dd = { class: "actions-row" }, Fd = ["disabled"], Bd = {
-  key: 0,
-  class: "card-desc"
-}, Kd = {
-  key: 1,
-  class: "card-desc"
-}, Hd = {
-  key: 0,
-  class: "toggle-label"
-}, jd = ["checked", "onChange"], Yd = { key: 0 }, Jd = {
-  key: 1,
-  class: "helper-text"
-}, Wd = {
+}, Rd = { class: "actions-row" }, Vd = ["disabled"], Ld = {
+  key: "live2d",
+  class: "content-card"
+}, Od = { class: "card-desc" }, Dd = { class: "toggle-label" }, zd = { class: "field" }, Bd = { class: "model-choices" }, Fd = ["value", "checked", "onChange"], Kd = ["placeholder"], jd = { class: "helper-text" }, Hd = {
+  href: "https://www.live2d.com/en/learn/sample/",
+  target: "_blank",
+  rel: "noopener"
+}, Yd = { class: "helper-text" }, Xd = ["disabled"], Jd = { class: "field" }, Wd = {
   key: 0,
   class: "helper-text"
 }, qd = {
+  key: 1,
+  class: "model-choices",
+  style: { "margin-top": "12px" }
+}, Gd = ["value", "checked", "onChange"], Zd = ["onClick"], Qd = {
+  key: 0,
+  class: "card-desc"
+}, ep = {
+  key: 1,
+  class: "helper-text"
+}, tp = {
+  key: 0,
+  class: "toggle-label"
+}, sp = ["checked", "onChange"], lp = { key: 0 }, np = {
+  key: 1,
+  class: "helper-text"
+}, op = {
   key: 0,
   class: "helper-text"
-}, Gd = {
+}, ap = {
   key: 0,
   class: "helper-text"
-}, Xd = ["type", "value", "onInput"], Zd = {
+}, ip = {
   key: 0,
   class: "helper-text"
-}, Qd = { class: "actions-row" }, ec = ["disabled"], tc = {
+}, rp = {
+  key: 4,
+  class: "field-note"
+}, up = { key: 0 }, cp = { class: "path-row" }, dp = ["value", "placeholder", "onInput"], pp = ["onClick"], hp = {
+  key: 0,
+  class: "helper-text"
+}, vp = { class: "actions-row" }, mp = ["disabled"], gp = {
+  key: 0,
+  class: "helper-text"
+}, fp = {
+  key: 0,
+  class: "helper-text"
+}, _p = ["type", "value", "onInput"], yp = {
+  key: 0,
+  class: "helper-text"
+}, bp = { class: "actions-row" }, kp = ["disabled"], wp = {
+  key: 0,
+  class: "card-desc"
+}, $p = {
+  key: 1,
+  class: "card-desc"
+}, Sp = {
+  key: 0,
+  class: "toggle-label"
+}, Cp = ["checked", "onChange"], xp = { key: 0 }, Mp = {
+  key: 1,
+  class: "helper-text"
+}, Pp = {
+  key: 0,
+  class: "helper-text"
+}, Ep = {
+  key: 0,
+  class: "helper-text"
+}, Up = {
+  key: 0,
+  class: "helper-text"
+}, Ap = ["type", "value", "onInput"], Tp = {
+  key: 0,
+  class: "helper-text"
+}, Ip = { class: "actions-row" }, Np = ["disabled"], Rp = {
   key: "unknown",
   class: "content-card tab-unknown"
-}, dc = /* @__PURE__ */ ee({
+}, Bp = /* @__PURE__ */ de({
   __name: "SettingsPage",
-  setup(L) {
-    const { t: s } = te(), { confirm: _ } = Ce(), b = Le(), $ = _t(), k = et(), v = ct(), C = Ze(), E = Y(() => k.settingsTabs.map((m) => ({
-      id: m.id,
-      icon: m.icon || "chip"
-    }))), c = Y(() => {
-      const m = new Set(k.settingsTabs.map((n) => n.id)), p = new Set(k.removedSettingsIds);
-      return $.sections.filter((n) => n.id !== "permissions" && !m.has(n.id) && !p.has(n.id)).map((n) => ({ id: n.id, icon: n.icon || "lock" }));
-    }), u = Y(() => [...E.value, ...c.value]), o = P("general"), i = P(!1), d = P([]), g = P(null), y = P(""), h = P({}), w = P(""), S = P("ok"), I = P(!1), V = P(!1), z = P(""), U = P(!1), x = P([]), B = Y(() => s("settings.modelAuto")), q = Y(() => [
-      { value: "", label: B.value },
-      ...x.value.map((m) => ({ value: m, label: m }))
+  setup(F) {
+    const { t: s } = he(), { confirm: v } = Ge(), m = nt(), k = gs(), w = Kt(), h = rs(), $ = Bt(), R = G(() => w.settingsTabs.map((z) => ({
+      id: z.id,
+      icon: z.icon || "chip"
+    }))), u = G(() => {
+      const z = new Set(w.settingsTabs.map((a) => a.id)), T = new Set(w.removedSettingsIds);
+      return k.sections.filter((a) => a.id !== "permissions" && !z.has(a.id) && !T.has(a.id)).map((a) => ({ id: a.id, icon: a.icon || "lock" }));
+    }), c = G(() => [...R.value, ...u.value]), n = x("general"), r = x(!1), d = x([]), f = x(null), b = x(""), p = x({}), M = x(""), A = x("ok"), j = x(!1), O = x(!1), D = x(""), U = x(!1), I = x([]), J = G(() => s("settings.modelAuto")), ie = G(() => [
+      { value: "", label: J.value },
+      ...I.value.map((z) => ({ value: z, label: z }))
     ]);
-    async function G() {
+    async function re() {
       try {
-        const m = await fetch("/api/models");
-        if (!m.ok) return;
-        const p = await m.json();
-        x.value = Array.from(new Set((p.models || []).map((n) => String(n.id || "")).filter(Boolean)));
+        const z = await fetch("/api/models");
+        if (!z.ok) return;
+        const T = await z.json();
+        I.value = Array.from(new Set((T.models || []).map((a) => String(a.id || "")).filter(Boolean)));
       } catch {
       }
     }
-    async function O(m) {
-      V.value = !0, z.value = "";
+    async function H(z) {
+      O.value = !0, D.value = "";
       try {
-        const p = await fetch(`/api/settings/${m}/test`, { method: "POST" }), n = p.headers.get("content-type") || "";
-        if (p.ok && n.startsWith("audio")) {
-          const T = URL.createObjectURL(await p.blob());
+        const T = await fetch(`/api/settings/${z}/test`, { method: "POST" }), a = T.headers.get("content-type") || "";
+        if (T.ok && a.startsWith("audio")) {
+          const N = URL.createObjectURL(await T.blob());
           try {
-            await new Audio(T).play();
+            await new Audio(N).play();
           } catch {
           }
-          window.dispatchEvent(new CustomEvent("live2d-speak", { detail: { url: T } })), z.value = s("settings.testSuccess");
+          window.dispatchEvent(new CustomEvent("live2d-speak", { detail: { url: N } })), D.value = s("settings.testSuccess");
         } else {
-          const T = await p.json().catch(() => ({}));
-          z.value = T.error || `HTTP ${p.status}`;
+          const N = await T.json().catch(() => ({}));
+          D.value = N.error || `HTTP ${T.status}`;
         }
-      } catch (p) {
-        z.value = p instanceof Error ? p.message : String(p);
+      } catch (T) {
+        D.value = T instanceof Error ? T.message : String(T);
       } finally {
-        V.value = !1;
+        O.value = !1;
       }
     }
-    const { tabMeta: A, isBuiltinTab: R, isPluginSection: fe, tabLabel: me, fieldLabel: re, fieldHelp: de, pluginSection: X } = De(), ye = Y(() => R(o.value) ? null : A(o.value)?.module || null);
-    function ke(m, p) {
-      const n = h.value[m]?.[p];
-      return typeof n == "boolean" ? n : n === "true" || n === 1 || n === "1";
+    const { tabMeta: E, isBuiltinTab: P, isPluginSection: Pe, tabLabel: Se, fieldLabel: Ee, fieldHelp: le, pluginSection: ne } = gt(), _e = x(""), we = G({
+      get: () => _e.value !== "",
+      set: (z) => {
+        z || (_e.value = "");
+      }
+    }), Ue = G(() => ne(n.value)?.fields.find((T) => T.key === _e.value)?.label || ""), ve = G(() => String(p.value[n.value]?.[_e.value] ?? ""));
+    function Ce(z) {
+      const T = _e.value;
+      T && (p.value = {
+        ...p.value,
+        [n.value]: { ...p.value[n.value], [T]: z }
+      });
     }
-    function ce(m) {
-      if (A(m)?.fields?.length && !R(m)) {
-        ge(m);
+    const ye = G(() => P(n.value) ? null : E(n.value)?.module || null);
+    function be(z, T) {
+      const a = p.value[z]?.[T];
+      return typeof a == "boolean" ? a : a === "true" || a === 1 || a === "1";
+    }
+    function Ae(z) {
+      if (E(z)?.fields?.length && !P(z)) {
+        ue(z);
         return;
       }
-      const n = X(m);
-      if (!n) return;
-      const T = {};
-      for (const H of n.fields)
-        H.type === "bool" ? T[H.key] = H.default_value === "true" || H.default_value === "1" : H.type === "number" ? T[H.key] = Number(H.default_value || 0) : T[H.key] = H.default_value || "";
-      const Z = $.values[m] || {}, se = { ...T };
-      for (const H of n.fields) {
-        if (!(H.key in Z)) continue;
-        const ne = Z[H.key];
-        H.type === "bool" ? se[H.key] = ne === !0 || ne === "true" || ne === 1 || ne === "1" : se[H.key] = ne;
+      const a = ne(z);
+      if (!a) return;
+      const N = {};
+      for (const q of a.fields)
+        q.type !== "note" && (q.type === "bool" ? N[q.key] = q.default_value === "true" || q.default_value === "1" : q.type === "number" ? N[q.key] = Number(q.default_value || 0) : N[q.key] = q.default_value || "");
+      const ce = k.values[z] || {}, me = { ...N };
+      for (const q of a.fields) {
+        if (!(q.key in ce)) continue;
+        const ge = ce[q.key];
+        q.type === "bool" ? me[q.key] = ge === !0 || ge === "true" || ge === 1 || ge === "1" : me[q.key] = ge;
       }
-      h.value = {
-        ...h.value,
-        [m]: se
+      p.value = {
+        ...p.value,
+        [z]: me
       };
     }
-    async function ge(m) {
-      const p = A(m);
-      if (!p?.fields?.length) return;
-      const n = {};
-      for (const T of p.fields)
-        T.type === "bool" ? n[T.key] = T.default_value === "true" || T.default_value === "1" : T.type === "number" ? n[T.key] = Number(T.default_value || 0) : n[T.key] = T.default_value || "";
-      if (p.loadApi)
+    async function ue(z) {
+      const T = E(z);
+      if (!T?.fields?.length) return;
+      const a = {};
+      for (const N of T.fields)
+        N.type === "bool" ? a[N.key] = N.default_value === "true" || N.default_value === "1" : N.type === "number" ? a[N.key] = Number(N.default_value || 0) : a[N.key] = N.default_value || "";
+      if (T.loadApi)
         try {
-          const T = await fetch(p.loadApi);
-          if (T.ok) {
-            const Z = await T.json();
-            for (const se of p.fields) {
-              if (!(se.key in Z)) continue;
-              const H = Z[se.key];
-              se.type === "bool" ? n[se.key] = H === !0 || H === "true" || H === 1 || H === "1" : n[se.key] = H;
+          const N = await fetch(T.loadApi);
+          if (N.ok) {
+            const ce = await N.json();
+            for (const me of T.fields) {
+              if (!(me.key in ce)) continue;
+              const q = ce[me.key];
+              me.type === "bool" ? a[me.key] = q === !0 || q === "true" || q === 1 || q === "1" : a[me.key] = q;
             }
           }
         } catch {
         }
-      h.value = { ...h.value, [m]: n };
+      p.value = { ...p.value, [z]: a };
     }
-    async function Se(m) {
-      const p = A(m);
-      if (!I.value) {
-        I.value = !0, w.value = "";
+    async function pe(z) {
+      const T = E(z);
+      if (!j.value) {
+        j.value = !0, M.value = "";
         try {
-          const n = h.value[m] || {};
-          if (p?.saveApi) {
-            const T = await fetch(p.saveApi, {
+          const a = p.value[z] || {};
+          if (T?.saveApi) {
+            const N = await fetch(T.saveApi, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(n)
+              body: JSON.stringify(a)
             });
-            if (!T.ok) throw new Error(String(T.status));
+            if (!N.ok) throw new Error(String(N.status));
           }
-          w.value = s("settings.saved"), S.value = "ok", setTimeout(() => {
-            w.value = "";
+          M.value = s("settings.saved"), A.value = "ok", setTimeout(() => {
+            M.value = "";
           }, 3e3);
         } catch {
-          w.value = s("settings.permFailed"), S.value = "error";
+          M.value = s("settings.permFailed"), A.value = "error";
         } finally {
-          I.value = !1;
+          j.value = !1;
         }
       }
     }
-    async function Pe(m) {
-      if (!I.value) {
-        I.value = !0, w.value = "";
+    async function ze(z) {
+      if (!j.value) {
+        j.value = !0, M.value = "";
         try {
-          await $.saveValues(m, h.value[m] || {}), w.value = s("settings.saved"), S.value = "ok", setTimeout(() => {
-            w.value = "";
+          const T = new Set((ne(z)?.fields || []).filter((N) => N.type === "note").map((N) => N.key)), a = Object.fromEntries(
+            Object.entries(p.value[z] || {}).filter(([N]) => !T.has(N))
+          );
+          await k.saveValues(z, a), M.value = s("settings.saved"), A.value = "ok", setTimeout(() => {
+            M.value = "";
           }, 3e3);
         } catch {
-          w.value = s("settings.permFailed"), S.value = "error";
+          M.value = s("settings.permFailed"), A.value = "error";
         } finally {
-          I.value = !1;
+          j.value = !1;
         }
       }
     }
-    async function we() {
+    async function je() {
       try {
-        const m = await fetch("/api/live2d");
-        if (m.ok) {
-          const p = await m.json();
-          d.value = p.models || [];
+        const z = await fetch("/api/live2d");
+        if (z.ok) {
+          const T = await z.json();
+          d.value = T.models || [];
         }
       } catch {
         d.value = [];
       }
     }
-    async function Ee(m) {
-      if (await _({
+    async function Be(z) {
+      if (await v({
         title: s("settings.live2d"),
-        message: s("settings.deleteModelConfirm", { label: m.label }),
+        message: s("settings.deleteModelConfirm", { label: z.label }),
         confirmLabel: s("common.delete"),
         danger: !0
       }))
         try {
-          const n = await fetch(`/api/live2d/${encodeURIComponent(m.id)}`, { method: "DELETE" });
-          if (!n.ok) throw new Error(await n.text());
-          const T = await n.json();
-          d.value = T.models || [];
-          const Z = m.url.slice(0, m.url.indexOf("/", 15) + 1);
-          b.live2d.modelUrl.startsWith(Z) && (b.live2d.modelUrl = "", b.live2d.enabled = !1, b.saveToStorage()), await pe(), y.value = s("settings.modelDeleted"), window.dispatchEvent(new Event("live2d-models-changed"));
-        } catch (n) {
-          y.value = n.message;
+          const a = await fetch(`/api/live2d/${encodeURIComponent(z.id)}`, { method: "DELETE" });
+          if (!a.ok) throw new Error(await a.text());
+          const N = await a.json();
+          d.value = N.models || [];
+          const ce = z.url.slice(0, z.url.indexOf("/", 15) + 1);
+          m.live2d.modelUrl.startsWith(ce) && (m.live2d.modelUrl = "", m.live2d.enabled = !1, m.saveToStorage()), await y(), b.value = s("settings.modelDeleted"), window.dispatchEvent(new Event("live2d-models-changed"));
+        } catch (a) {
+          b.value = a.message;
         }
     }
-    async function pe() {
-      b.saveToStorage();
-      const m = await fetch("/api/settings/live2d", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ values: { enabled: b.live2d.enabled, model_url: b.live2d.modelUrl } }) });
-      if (!m.ok) throw new Error(await m.text());
+    async function y() {
+      m.saveToStorage();
+      const z = await fetch("/api/settings/live2d", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ values: { enabled: m.live2d.enabled, model_url: m.live2d.modelUrl } }) });
+      if (!z.ok) throw new Error(await z.text());
     }
-    async function Te() {
+    async function C() {
       if (!U.value) {
-        U.value = !0, y.value = "";
+        U.value = !0, b.value = "";
         try {
-          await pe(), y.value = s("settings.saved"), setTimeout(() => {
-            y.value === s("settings.saved") && (y.value = "");
+          await y(), b.value = s("settings.saved"), setTimeout(() => {
+            b.value === s("settings.saved") && (b.value = "");
           }, 3e3);
-        } catch (m) {
-          y.value = m.message, je(s("settings.permFailed"), "error");
+        } catch (z) {
+          b.value = z.message, zt(s("settings.permFailed"), "error");
         } finally {
           U.value = !1;
         }
       }
     }
-    function xe() {
-      g.value?.click();
+    function S() {
+      f.value?.click();
     }
-    async function Ae(m) {
-      const p = m.target, n = p.files;
-      if (!(!n || n.length === 0)) {
-        y.value = "";
+    async function Z(z) {
+      const T = z.target, a = T.files;
+      if (!(!a || a.length === 0)) {
+        b.value = "";
         try {
-          const T = new FormData(), Z = [];
-          for (const ne of Array.from(n)) {
-            const st = ne.webkitRelativePath || ne.name;
-            Z.push(st), T.append("files", ne, ne.name);
+          const N = new FormData(), ce = [];
+          for (const ge of Array.from(a)) {
+            const at = ge.webkitRelativePath || ge.name;
+            ce.push(at), N.append("files", ge, ge.name);
           }
-          T.append("paths", JSON.stringify(Z));
-          const se = await fetch("/api/live2d", { method: "POST", body: T });
-          if (!se.ok) throw new Error(await se.text());
-          const H = await se.json();
-          y.value = s("settings.uploadOk"), H?.models ? d.value = H.models : await we(), H?.model_url && (b.live2d.modelUrl = H.model_url, b.live2d.enabled = !0, b.saveToStorage(), await pe(), window.dispatchEvent(new Event("live2d-models-changed")));
-        } catch (T) {
-          y.value = `${s("settings.uploadFail")}：${T.message}`;
+          N.append("paths", JSON.stringify(ce));
+          const me = await fetch("/api/live2d", { method: "POST", body: N });
+          if (!me.ok) throw new Error(await me.text());
+          const q = await me.json();
+          b.value = s("settings.uploadOk"), q?.models ? d.value = q.models : await je(), q?.model_url && (m.live2d.modelUrl = q.model_url, m.live2d.enabled = !0, m.saveToStorage(), await y(), window.dispatchEvent(new Event("live2d-models-changed")));
+        } catch (N) {
+          b.value = `${s("settings.uploadFail")}：${N.message}`;
         } finally {
-          p.value = "";
+          T.value = "";
         }
       }
     }
-    ae(async () => {
-      b.loadFromStorage();
-      const m = v.query.tab;
-      m && (o.value = m), we(), G(), await $.fetchSections();
-      for (const p of $.sections) ce(p.id);
-      !u.value.some((p) => p.id === o.value) && !R(o.value) && (o.value = "general");
+    Ne(async () => {
+      m.loadFromStorage();
+      const z = h.query.tab;
+      z && (n.value = z), je(), re(), await k.fetchSections();
+      for (const T of k.sections) Ae(T.id);
+      !c.value.some((T) => T.id === n.value) && !P(n.value) && (n.value = "general");
     });
-    function Ne(m) {
-      o.value = m, R(m) || ce(m), C.replace({ query: { tab: m } });
+    function Te(z) {
+      n.value = z, P(z) || Ae(z), $.replace({ query: { tab: z } });
     }
-    function f() {
-      if (b.saveToStorage(), o.value === "live2d") {
-        pe().then(() => {
-          i.value = !0, setTimeout(() => {
-            i.value = !1;
+    function Ve() {
+      if (m.saveToStorage(), n.value === "live2d") {
+        y().then(() => {
+          r.value = !0, setTimeout(() => {
+            r.value = !1;
           }, 1500);
-        }).catch((m) => {
-          y.value = m.message, je(s("settings.permFailed"), "error");
+        }).catch((z) => {
+          b.value = z.message, zt(s("settings.permFailed"), "error");
         });
         return;
       }
-      i.value = !0, setTimeout(() => {
-        i.value = !1;
+      r.value = !0, setTimeout(() => {
+        r.value = !1;
       }, 1500);
     }
-    return (m, p) => (a(), r("div", Uu, [
-      e("header", Eu, [
+    return (z, T) => (o(), i("div", ld, [
+      e("header", nd, [
         e("div", null, [
           e("h1", null, l(t(s)("settings.title")), 1),
-          e("p", Tu, l(t(s)("settings.pageDesc")), 1)
+          e("p", od, l(t(s)("settings.pageDesc")), 1)
         ]),
-        t(R)(o.value) && o.value !== "about" && o.value !== "updates" && o.value !== "danger" ? (a(), r("button", {
+        t(P)(n.value) && n.value !== "about" && n.value !== "updates" && n.value !== "danger" ? (o(), i("button", {
           key: 0,
           class: "btn btn-primary",
-          onClick: f
+          onClick: Ve
         }, [
-          i.value ? (a(), r("span", Au, l(t(s)("settings.saved")), 1)) : (a(), r("span", Nu, l(t(s)("settings.save")), 1))
-        ])) : M("", !0)
+          r.value ? (o(), i("span", ad, l(t(s)("settings.saved")), 1)) : (o(), i("span", id, l(t(s)("settings.save")), 1))
+        ])) : V("", !0)
       ]),
-      e("div", Vu, [
-        e("nav", Ru, [
-          (a(!0), r(F, null, J(u.value, (n) => (a(), r("button", {
-            key: n.id,
-            class: j(["nav-item", { active: o.value === n.id }]),
-            "aria-current": o.value === n.id ? "true" : void 0,
-            "data-tab-id": n.id,
-            title: t(me)(n.id),
-            "aria-label": t(me)(n.id),
-            onClick: (T) => Ne(n.id)
+      e("div", rd, [
+        e("nav", ud, [
+          (o(!0), i(X, null, oe(c.value, (a) => (o(), i("button", {
+            key: a.id,
+            class: ee(["nav-item", { active: n.value === a.id }]),
+            "aria-current": n.value === a.id ? "true" : void 0,
+            "data-tab-id": a.id,
+            title: t(Se)(a.id),
+            "aria-label": t(Se)(a.id),
+            onClick: (N) => Te(a.id)
           }, [
-            p[18] || (p[18] = e("span", { class: "nav-indicator" }, null, -1)),
-            e("span", Iu, [
-              n.icon === "globe" ? (a(), r("svg", zu, [...p[6] || (p[6] = [
+            T[19] || (T[19] = e("span", { class: "nav-indicator" }, null, -1)),
+            e("span", dd, [
+              a.icon === "globe" ? (o(), i("svg", pd, [...T[7] || (T[7] = [
                 e("circle", {
                   cx: "12",
                   cy: "12",
@@ -3943,14 +4720,14 @@ C:\\work`
                   stroke: "currentColor",
                   "stroke-width": "2"
                 }, null, -1)
-              ])])) : n.icon === "cloud" ? (a(), r("svg", Lu, [...p[7] || (p[7] = [
+              ])])) : a.icon === "cloud" ? (o(), i("svg", hd, [...T[8] || (T[8] = [
                 e("path", {
                   d: "M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 9.2 4.5 4.5 0 0 0 7 18z",
                   stroke: "currentColor",
                   "stroke-width": "2",
                   "stroke-linejoin": "round"
                 }, null, -1)
-              ])])) : n.icon === "chip" ? (a(), r("svg", Du, [...p[8] || (p[8] = [
+              ])])) : a.icon === "chip" ? (o(), i("svg", vd, [...T[9] || (T[9] = [
                 e("rect", {
                   x: "6",
                   y: "6",
@@ -3966,7 +4743,7 @@ C:\\work`
                   "stroke-width": "2",
                   "stroke-linecap": "round"
                 }, null, -1)
-              ])])) : n.icon === "person" ? (a(), r("svg", Fu, [...p[9] || (p[9] = [
+              ])])) : a.icon === "person" ? (o(), i("svg", md, [...T[10] || (T[10] = [
                 e("circle", {
                   cx: "12",
                   cy: "8",
@@ -3980,7 +4757,7 @@ C:\\work`
                   "stroke-width": "2",
                   "stroke-linecap": "round"
                 }, null, -1)
-              ])])) : n.icon === "avatar" ? (a(), r("svg", Bu, [...p[10] || (p[10] = [
+              ])])) : a.icon === "avatar" ? (o(), i("svg", gd, [...T[11] || (T[11] = [
                 e("circle", {
                   cx: "12",
                   cy: "10",
@@ -4006,7 +4783,7 @@ C:\\work`
                   r: "1",
                   fill: "currentColor"
                 }, null, -1)
-              ])])) : n.icon === "brightness" ? (a(), r("svg", Ku, [...p[11] || (p[11] = [
+              ])])) : a.icon === "brightness" ? (o(), i("svg", fd, [...T[12] || (T[12] = [
                 e("circle", {
                   cx: "12",
                   cy: "12",
@@ -4020,7 +4797,7 @@ C:\\work`
                   "stroke-width": "2",
                   "stroke-linecap": "round"
                 }, null, -1)
-              ])])) : n.icon === "warn" ? (a(), r("svg", Hu, [...p[12] || (p[12] = [
+              ])])) : a.icon === "warn" ? (o(), i("svg", _d, [...T[13] || (T[13] = [
                 e("path", {
                   d: "M12 4l9 16H3L12 4z",
                   stroke: "currentColor",
@@ -4033,7 +4810,7 @@ C:\\work`
                   "stroke-width": "2",
                   "stroke-linecap": "round"
                 }, null, -1)
-              ])])) : n.icon === "info" ? (a(), r("svg", ju, [...p[13] || (p[13] = [
+              ])])) : a.icon === "info" ? (o(), i("svg", yd, [...T[14] || (T[14] = [
                 e("circle", {
                   cx: "12",
                   cy: "12",
@@ -4047,7 +4824,7 @@ C:\\work`
                   "stroke-width": "2",
                   "stroke-linecap": "round"
                 }, null, -1)
-              ])])) : n.icon === "download" ? (a(), r("svg", Yu, [...p[14] || (p[14] = [
+              ])])) : a.icon === "download" ? (o(), i("svg", bd, [...T[15] || (T[15] = [
                 e("path", {
                   d: "M12 3v12m0 0l-4-4m4 4l4-4",
                   stroke: "currentColor",
@@ -4061,7 +4838,7 @@ C:\\work`
                   "stroke-width": "2",
                   "stroke-linecap": "round"
                 }, null, -1)
-              ])])) : n.icon === "shield" ? (a(), r("svg", Ju, [...p[15] || (p[15] = [
+              ])])) : a.icon === "shield" ? (o(), i("svg", kd, [...T[16] || (T[16] = [
                 e("path", {
                   d: "M12 3l7 3v6c0 4.2-2.8 7.6-7 9-4.2-1.4-7-4.8-7-9V6l7-3z",
                   stroke: "currentColor",
@@ -4075,7 +4852,7 @@ C:\\work`
                   "stroke-linecap": "round",
                   "stroke-linejoin": "round"
                 }, null, -1)
-              ])])) : n.icon === "link" ? (a(), r("svg", Wu, [...p[16] || (p[16] = [
+              ])])) : a.icon === "link" ? (o(), i("svg", wd, [...T[17] || (T[17] = [
                 e("rect", {
                   x: "3",
                   y: "3",
@@ -4109,7 +4886,7 @@ C:\\work`
                   "stroke-width": "2",
                   "stroke-linecap": "round"
                 }, null, -1)
-              ])])) : (a(), r("svg", qu, [...p[17] || (p[17] = [
+              ])])) : (o(), i("svg", $d, [...T[18] || (T[18] = [
                 e("rect", {
                   x: "5",
                   y: "11",
@@ -4127,343 +4904,373 @@ C:\\work`
                 }, null, -1)
               ])]))
             ]),
-            e("span", Gu, l(t(me)(n.id)), 1)
-          ], 10, Ou))), 128))
+            e("span", Sd, l(t(Se)(a.id)), 1)
+          ], 10, cd))), 128))
         ]),
-        e("section", Xu, [
-          W(dt, {
+        e("section", Cd, [
+          ae(is, {
             name: "tab",
             mode: "out-in"
           }, {
-            default: Ie(() => [
-              o.value === "general" ? (a(), le(ga, { key: "general" })) : o.value === "connection" ? (a(), le(Fa, { key: "connection" })) : o.value === "provider" ? (a(), r(F, { key: 2 }, [
-                W(sa),
-                t(X)("provider")?.fields?.length ? (a(), r("div", Zu, [
-                  e("h3", null, l(t(X)("provider").label), 1),
-                  t(X)("provider").description ? (a(), r("p", Qu, l(t(X)("provider").description), 1)) : M("", !0),
-                  (a(!0), r(F, null, J(t(X)("provider").fields, (n) => (a(), r("div", {
-                    key: n.key,
+            default: et(() => [
+              n.value === "general" ? (o(), ke(xi, { key: "general" })) : n.value === "connection" ? (o(), ke(qi, { key: "connection" })) : n.value === "provider" ? (o(), i(X, { key: 2 }, [
+                ae(di),
+                t(ne)("provider")?.fields?.length ? (o(), i("div", xd, [
+                  e("h3", null, l(t(ne)("provider").label), 1),
+                  t(ne)("provider").description ? (o(), i("p", Md, l(t(ne)("provider").description), 1)) : V("", !0),
+                  (o(!0), i(X, null, oe(t(ne)("provider").fields, (a) => (o(), i("div", {
+                    key: a.key,
                     class: "field"
                   }, [
-                    n.type === "bool" ? (a(), r("label", ed, [
+                    a.type === "bool" ? (o(), i("label", Pd, [
                       e("input", {
                         type: "checkbox",
-                        checked: ke("provider", n.key),
-                        onChange: (T) => h.value = { ...h.value, provider: { ...h.value.provider, [n.key]: T.target.checked } }
-                      }, null, 40, td),
-                      p[19] || (p[19] = e("span", { class: "toggle-slider" }, null, -1)),
+                        checked: be("provider", a.key),
+                        onChange: (N) => p.value = { ...p.value, provider: { ...p.value.provider, [a.key]: N.target.checked } }
+                      }, null, 40, Ed),
+                      T[20] || (T[20] = e("span", { class: "toggle-slider" }, null, -1)),
                       e("span", null, [
-                        e("strong", null, l(n.label), 1),
-                        n.help ? (a(), r("br", sd)) : M("", !0),
-                        n.help ? (a(), r("small", ld, l(n.help), 1)) : M("", !0)
+                        e("strong", null, l(a.label), 1),
+                        a.help ? (o(), i("br", Ud)) : V("", !0),
+                        a.help ? (o(), i("small", Ad, l(a.help), 1)) : V("", !0)
                       ])
-                    ])) : n.type === "select" ? (a(), r(F, { key: 1 }, [
-                      e("label", null, l(n.label), 1),
-                      W(t(ue), {
+                    ])) : a.type === "select" ? (o(), i(X, { key: 1 }, [
+                      e("label", null, l(a.label), 1),
+                      ae(t(De), {
                         class: "input",
-                        "aria-label": n.label,
-                        "model-value": String(h.value.provider?.[n.key] ?? ""),
-                        options: n.options || [],
-                        "onUpdate:modelValue": (T) => h.value = { ...h.value, provider: { ...h.value.provider, [n.key]: T } }
+                        "aria-label": a.label,
+                        "model-value": String(p.value.provider?.[a.key] ?? ""),
+                        options: a.options || [],
+                        "onUpdate:modelValue": (N) => p.value = { ...p.value, provider: { ...p.value.provider, [a.key]: N } }
                       }, null, 8, ["aria-label", "model-value", "options", "onUpdate:modelValue"]),
-                      n.help ? (a(), r("p", od, l(n.help), 1)) : M("", !0)
-                    ], 64)) : (a(), r(F, { key: 2 }, [
-                      e("label", null, l(n.label), 1),
+                      a.help ? (o(), i("p", Td, l(a.help), 1)) : V("", !0)
+                    ], 64)) : (o(), i(X, { key: 2 }, [
+                      e("label", null, l(a.label), 1),
                       e("input", {
                         class: "input",
-                        type: n.type === "number" ? "number" : "text",
-                        value: h.value.provider?.[n.key],
-                        onInput: (T) => h.value = { ...h.value, provider: { ...h.value.provider, [n.key]: n.type === "number" ? Number(T.target.value) : T.target.value } }
-                      }, null, 40, nd),
-                      n.help ? (a(), r("p", ad, l(n.help), 1)) : M("", !0)
+                        type: a.type === "number" ? "number" : "text",
+                        value: p.value.provider?.[a.key],
+                        onInput: (N) => p.value = { ...p.value, provider: { ...p.value.provider, [a.key]: a.type === "number" ? Number(N.target.value) : N.target.value } }
+                      }, null, 40, Id),
+                      a.help ? (o(), i("p", Nd, l(a.help), 1)) : V("", !0)
                     ], 64))
                   ]))), 128)),
-                  w.value ? (a(), r("div", {
+                  M.value ? (o(), i("div", {
                     key: 1,
-                    class: j(["helper-text", S.value === "error" ? "msg-error" : "msg-success"]),
+                    class: ee(["helper-text", A.value === "error" ? "msg-error" : "msg-success"]),
                     role: "status"
-                  }, l(w.value), 3)) : M("", !0),
-                  e("div", id, [
+                  }, l(M.value), 3)) : V("", !0),
+                  e("div", Rd, [
                     e("button", {
                       class: "btn btn-primary",
                       type: "button",
-                      disabled: I.value,
-                      onClick: p[0] || (p[0] = (n) => Pe("provider"))
-                    }, l(t(s)("settings.save")), 9, rd)
+                      disabled: j.value,
+                      onClick: T[0] || (T[0] = (a) => ze("provider"))
+                    }, l(t(s)("settings.save")), 9, Vd)
                   ])
-                ])) : M("", !0)
-              ], 64)) : o.value === "persona" ? (a(), le(ni, { key: 3 })) : o.value === "live2d" ? (a(), r("div", ud, [
-                e("h2", null, l(t(me)("live2d")), 1),
-                e("p", dd, l(t(A)("live2d")?.descriptionKey ? t(s)(t(A)("live2d").descriptionKey) : t(s)("settings.live2dDesc")), 1),
-                W(bt, { class: "live2d-preview" }),
-                e("label", cd, [
-                  N(e("input", {
+                ])) : V("", !0)
+              ], 64)) : n.value === "persona" ? (o(), ke(vr, { key: 3 })) : n.value === "live2d" ? (o(), i("div", Ld, [
+                e("h2", null, l(t(Se)("live2d")), 1),
+                e("p", Od, l(t(E)("live2d")?.descriptionKey ? t(s)(t(E)("live2d").descriptionKey) : t(s)("settings.live2dDesc")), 1),
+                ae(Ms, { class: "live2d-preview" }),
+                e("label", Dd, [
+                  B(e("input", {
                     type: "checkbox",
-                    "onUpdate:modelValue": p[1] || (p[1] = (n) => t(b).live2d.enabled = n)
+                    "onUpdate:modelValue": T[1] || (T[1] = (a) => t(m).live2d.enabled = a)
                   }, null, 512), [
-                    [Q, t(b).live2d.enabled]
+                    [fe, t(m).live2d.enabled]
                   ]),
-                  p[20] || (p[20] = e("span", { class: "toggle-slider" }, null, -1)),
+                  T[21] || (T[21] = e("span", { class: "toggle-slider" }, null, -1)),
                   e("span", null, l(t(s)("wizard.enableLive2d")), 1)
                 ]),
-                e("div", pd, [
+                e("div", zd, [
                   e("label", null, l(t(s)("wizard.modelUrl")), 1),
-                  e("div", hd, [
-                    (a(!0), r(F, null, J(t(gt), (n) => (a(), r("label", {
-                      key: n.id,
-                      class: j(["model-choice", { selected: t(b).live2d.modelUrl === n.url }])
+                  e("div", Bd, [
+                    (o(!0), i(X, null, oe(t(fs), (a) => (o(), i("label", {
+                      key: a.id,
+                      class: ee(["model-choice", { selected: t(m).live2d.modelUrl === a.url }])
                     }, [
                       e("input", {
                         type: "radio",
                         name: "live2d-model",
-                        value: n.url,
-                        checked: t(b).live2d.modelUrl === n.url,
-                        onChange: (T) => {
-                          t(b).live2d.modelUrl = n.url, t(b).live2d.enabled = !0;
+                        value: a.url,
+                        checked: t(m).live2d.modelUrl === a.url,
+                        onChange: (N) => {
+                          t(m).live2d.modelUrl = a.url, t(m).live2d.enabled = !0;
                         }
-                      }, null, 40, vd),
-                      e("span", null, l(n.label), 1),
-                      e("code", null, l(n.url), 1)
+                      }, null, 40, Fd),
+                      e("span", null, l(a.label), 1),
+                      e("code", null, l(a.url), 1)
                     ], 2))), 128))
                   ]),
-                  N(e("input", {
-                    "onUpdate:modelValue": p[2] || (p[2] = (n) => t(b).live2d.modelUrl = n),
+                  B(e("input", {
+                    "onUpdate:modelValue": T[2] || (T[2] = (a) => t(m).live2d.modelUrl = a),
                     placeholder: t(s)("wizard.modelUrlPlaceholder"),
                     class: "input"
-                  }, null, 8, md), [
-                    [D, t(b).live2d.modelUrl]
+                  }, null, 8, Kd), [
+                    [Y, t(m).live2d.modelUrl]
                   ]),
-                  e("p", _d, [
-                    oe(l(t(s)("wizard.live2dHelp")) + " ", 1),
-                    e("a", gd, l(t(s)("wizard.live2dSamples")), 1)
+                  e("p", jd, [
+                    Ie(l(t(s)("wizard.live2dHelp")) + " ", 1),
+                    e("a", Hd, l(t(s)("wizard.live2dSamples")), 1)
                   ])
                 ]),
-                e("p", bd, l(t(s)("settings.live2dHelper")), 1),
+                e("p", Yd, l(t(s)("settings.live2dHelper")), 1),
                 e("button", {
                   class: "btn btn-tonal",
                   disabled: U.value,
-                  onClick: Te
-                }, l(U.value ? t(s)("settings.saving") : t(s)("settings.saveLife2d")), 9, fd),
-                e("div", yd, [
+                  onClick: C
+                }, l(U.value ? t(s)("settings.saving") : t(s)("settings.saveLife2d")), 9, Xd),
+                e("div", Jd, [
                   e("label", null, l(t(s)("settings.uploadFolder")), 1),
                   e("label", {
                     class: "upload-area",
-                    onClick: Oe(xe, ["prevent"])
+                    onClick: Oe(S, ["prevent"])
                   }, [
                     e("span", null, l(t(s)("settings.uploadFolderHint")), 1)
                   ]),
                   e("input", {
                     ref_key: "folderInput",
-                    ref: g,
+                    ref: f,
                     type: "file",
                     webkitdirectory: "",
                     directory: "",
                     multiple: "",
                     class: "file-input",
-                    onChange: Ae
+                    onChange: Z
                   }, null, 544),
-                  y.value ? (a(), r("p", kd, l(y.value), 1)) : M("", !0),
-                  d.value.length ? (a(), r("div", wd, [
-                    (a(!0), r(F, null, J(d.value, (n) => (a(), r("label", {
-                      key: n.id,
-                      class: j(["model-choice", { selected: t(b).live2d.modelUrl === n.url }])
+                  b.value ? (o(), i("p", Wd, l(b.value), 1)) : V("", !0),
+                  d.value.length ? (o(), i("div", qd, [
+                    (o(!0), i(X, null, oe(d.value, (a) => (o(), i("label", {
+                      key: a.id,
+                      class: ee(["model-choice", { selected: t(m).live2d.modelUrl === a.url }])
                     }, [
                       e("input", {
                         type: "radio",
                         name: "live2d-uploaded",
-                        value: n.url,
-                        checked: t(b).live2d.modelUrl === n.url,
-                        onChange: (T) => {
-                          t(b).live2d.modelUrl = n.url, t(b).live2d.enabled = !0, pe().catch((Z) => y.value = Z.message);
+                        value: a.url,
+                        checked: t(m).live2d.modelUrl === a.url,
+                        onChange: (N) => {
+                          t(m).live2d.modelUrl = a.url, t(m).live2d.enabled = !0, y().catch((ce) => b.value = ce.message);
                         }
-                      }, null, 40, $d),
-                      e("span", null, l(n.label), 1),
-                      e("code", null, l(n.url), 1),
+                      }, null, 40, Gd),
+                      e("span", null, l(a.label), 1),
+                      e("code", null, l(a.url), 1),
                       e("button", {
                         type: "button",
                         class: "btn btn-danger",
-                        onClick: Oe((T) => Ee(n), ["prevent"])
-                      }, l(t(s)("settings.deleteModel")), 9, Cd)
+                        onClick: Oe((N) => Be(a), ["prevent"])
+                      }, l(t(s)("settings.deleteModel")), 9, Zd)
                     ], 2))), 128))
-                  ])) : M("", !0)
+                  ])) : V("", !0)
                 ])
-              ])) : o.value === "security" ? (a(), le(tr, { key: 5 })) : o.value === "permissions" ? (a(), le(gi, { key: 6 })) : o.value === "mcp" ? (a(), le(uu, { key: 7 })) : o.value === "life_settings" ? (a(), le(Es, { key: 8 })) : t(fe)(o.value) && t(X)(o.value) ? (a(), r("div", {
-                key: `section-${o.value}`,
+              ])) : n.value === "security" ? (o(), ke(cu, { key: 5 })) : n.value === "permissions" ? (o(), ke(xr, { key: 6 })) : n.value === "mcp" ? (o(), ke(_c, { key: 7 })) : n.value === "life_settings" ? (o(), ke(Dl, { key: 8 })) : t(Pe)(n.value) && t(ne)(n.value) ? (o(), i("div", {
+                key: `section-${n.value}`,
                 class: "content-card"
               }, [
-                e("h2", null, l(t(X)(o.value).label), 1),
-                t(X)(o.value).description ? (a(), r("p", Sd, l(t(X)(o.value).description), 1)) : M("", !0),
-                t(X)(o.value).plugin_name ? (a(), r("p", Pd, l(t(X)(o.value).plugin_name), 1)) : M("", !0),
-                (a(!0), r(F, null, J(t(X)(o.value).fields, (n) => (a(), r("div", {
-                  key: n.key,
+                e("h2", null, l(t(ne)(n.value).label), 1),
+                t(ne)(n.value).description ? (o(), i("p", Qd, l(t(ne)(n.value).description), 1)) : V("", !0),
+                t(ne)(n.value).plugin_name && t(ne)(n.value).plugin_name !== n.value ? (o(), i("p", ep, l(t(s)("settings.pluginProvidedBy", { name: t(ne)(n.value).plugin_name })), 1)) : V("", !0),
+                (o(!0), i(X, null, oe(t(ne)(n.value).fields, (a) => (o(), i("div", {
+                  key: a.key,
                   class: "field"
                 }, [
-                  n.type === "bool" ? (a(), r("label", xd, [
+                  a.type === "bool" ? (o(), i("label", tp, [
                     e("input", {
                       type: "checkbox",
-                      checked: ke(o.value, n.key),
-                      onChange: (T) => h.value = { ...h.value, [o.value]: { ...h.value[o.value], [n.key]: T.target.checked } }
-                    }, null, 40, Md),
-                    p[21] || (p[21] = e("span", { class: "toggle-slider" }, null, -1)),
+                      checked: be(n.value, a.key),
+                      onChange: (N) => p.value = { ...p.value, [n.value]: { ...p.value[n.value], [a.key]: N.target.checked } }
+                    }, null, 40, sp),
+                    T[22] || (T[22] = e("span", { class: "toggle-slider" }, null, -1)),
                     e("span", null, [
-                      e("strong", null, l(n.label), 1),
-                      n.help ? (a(), r("br", Ud)) : M("", !0),
-                      n.help ? (a(), r("small", Ed, l(n.help), 1)) : M("", !0)
+                      e("strong", null, l(a.label), 1),
+                      a.help ? (o(), i("br", lp)) : V("", !0),
+                      a.help ? (o(), i("small", np, l(a.help), 1)) : V("", !0)
                     ])
-                  ])) : n.type === "select" ? (a(), r(F, { key: 1 }, [
-                    e("label", null, l(n.label), 1),
-                    W(t(ue), {
+                  ])) : a.type === "select" ? (o(), i(X, { key: 1 }, [
+                    e("label", null, l(a.label), 1),
+                    ae(t(De), {
                       class: "input",
-                      "aria-label": n.label,
-                      "model-value": String(h.value[o.value]?.[n.key] ?? ""),
-                      options: n.options || [],
-                      "onUpdate:modelValue": (T) => h.value[o.value] = { ...h.value[o.value], [n.key]: T }
+                      "aria-label": a.label,
+                      "model-value": String(p.value[n.value]?.[a.key] ?? ""),
+                      options: a.options || [],
+                      "onUpdate:modelValue": (N) => p.value[n.value] = { ...p.value[n.value], [a.key]: N }
                     }, null, 8, ["aria-label", "model-value", "options", "onUpdate:modelValue"]),
-                    n.help ? (a(), r("p", Td, l(n.help), 1)) : M("", !0)
-                  ], 64)) : n.type === "model" ? (a(), r(F, { key: 2 }, [
-                    e("label", null, l(n.label), 1),
-                    W(t(ue), {
+                    a.help ? (o(), i("p", op, l(a.help), 1)) : V("", !0)
+                  ], 64)) : a.type === "model" ? (o(), i(X, { key: 2 }, [
+                    e("label", null, l(a.label), 1),
+                    ae(t(De), {
                       class: "input",
-                      "aria-label": n.label,
-                      "model-value": String(h.value[o.value]?.[n.key] ?? ""),
-                      options: q.value,
-                      "onUpdate:modelValue": (T) => h.value[o.value] = { ...h.value[o.value], [n.key]: T }
+                      "aria-label": a.label,
+                      "model-value": String(p.value[n.value]?.[a.key] ?? ""),
+                      options: ie.value,
+                      "onUpdate:modelValue": (N) => p.value[n.value] = { ...p.value[n.value], [a.key]: N }
                     }, null, 8, ["aria-label", "model-value", "options", "onUpdate:modelValue"]),
-                    n.help ? (a(), r("p", Ad, l(n.help), 1)) : M("", !0)
-                  ], 64)) : n.type === "models" ? (a(), r(F, { key: 3 }, [
-                    e("label", null, l(n.label), 1),
-                    W(qe, {
-                      "model-value": String(h.value[o.value]?.[n.key] ?? ""),
-                      options: x.value,
-                      "onUpdate:modelValue": (T) => h.value[o.value] = { ...h.value[o.value], [n.key]: T }
+                    a.help ? (o(), i("p", ap, l(a.help), 1)) : V("", !0)
+                  ], 64)) : a.type === "models" ? (o(), i(X, { key: 3 }, [
+                    e("label", null, l(a.label), 1),
+                    ae(Dt, {
+                      "model-value": String(p.value[n.value]?.[a.key] ?? ""),
+                      options: I.value,
+                      "onUpdate:modelValue": (N) => p.value[n.value] = { ...p.value[n.value], [a.key]: N }
                     }, null, 8, ["model-value", "options", "onUpdate:modelValue"]),
-                    n.help ? (a(), r("p", Nd, l(n.help), 1)) : M("", !0)
-                  ], 64)) : n.type === "test" ? (a(), r(F, { key: 4 }, [
-                    e("label", null, l(n.label), 1),
-                    e("div", Vd, [
+                    a.help ? (o(), i("p", ip, l(a.help), 1)) : V("", !0)
+                  ], 64)) : a.type === "note" ? (o(), i("div", rp, [
+                    a.label ? (o(), i("strong", up, l(a.label), 1)) : V("", !0),
+                    ae(t(_s), {
+                      content: a.help || ""
+                    }, null, 8, ["content"])
+                  ])) : a.type === "dir" ? (o(), i(X, { key: 5 }, [
+                    e("label", null, l(a.label), 1),
+                    e("div", cp, [
+                      e("input", {
+                        class: "input",
+                        type: "text",
+                        spellcheck: "false",
+                        value: p.value[n.value]?.[a.key],
+                        placeholder: a.default_value || "",
+                        onInput: (N) => p.value = { ...p.value, [n.value]: { ...p.value[n.value], [a.key]: N.target.value } }
+                      }, null, 40, dp),
                       e("button", {
                         class: "btn btn-tonal",
                         type: "button",
-                        disabled: V.value,
-                        onClick: p[3] || (p[3] = (T) => O(o.value))
-                      }, l(V.value ? t(s)("settings.testing") : n.label || t(s)("settings.test")), 9, Rd),
-                      z.value ? (a(), r("span", Od, l(z.value), 1)) : M("", !0)
+                        onClick: (N) => _e.value = a.key
+                      }, l(t(s)("settings.browse")), 9, pp)
                     ]),
-                    n.help ? (a(), r("p", Id, l(n.help), 1)) : M("", !0)
-                  ], 64)) : (a(), r(F, { key: 5 }, [
-                    e("label", null, l(n.label), 1),
+                    a.help ? (o(), i("p", hp, l(a.help), 1)) : V("", !0)
+                  ], 64)) : a.type === "test" ? (o(), i(X, { key: 6 }, [
+                    e("label", null, l(a.label), 1),
+                    e("div", vp, [
+                      e("button", {
+                        class: "btn btn-tonal",
+                        type: "button",
+                        disabled: O.value,
+                        onClick: T[3] || (T[3] = (N) => H(n.value))
+                      }, l(O.value ? t(s)("settings.testing") : a.label || t(s)("settings.test")), 9, mp),
+                      D.value ? (o(), i("span", gp, l(D.value), 1)) : V("", !0)
+                    ]),
+                    a.help ? (o(), i("p", fp, l(a.help), 1)) : V("", !0)
+                  ], 64)) : (o(), i(X, { key: 7 }, [
+                    e("label", null, l(a.label), 1),
                     e("input", {
                       class: "input",
-                      type: n.type === "number" ? "number" : "text",
-                      value: h.value[o.value]?.[n.key],
-                      onInput: (T) => h.value[o.value] = { ...h.value[o.value], [n.key]: n.type === "number" ? Number(T.target.value) : T.target.value }
-                    }, null, 40, zd),
-                    n.help ? (a(), r("p", Ld, l(n.help), 1)) : M("", !0)
+                      type: a.type === "number" ? "number" : "text",
+                      value: p.value[n.value]?.[a.key],
+                      onInput: (N) => p.value[n.value] = { ...p.value[n.value], [a.key]: a.type === "number" ? Number(N.target.value) : N.target.value }
+                    }, null, 40, _p),
+                    a.help ? (o(), i("p", yp, l(a.help), 1)) : V("", !0)
                   ], 64))
                 ]))), 128)),
-                w.value ? (a(), r("div", {
+                M.value ? (o(), i("div", {
                   key: 2,
-                  class: j(["helper-text", S.value === "error" ? "msg-error" : "msg-success"]),
+                  class: ee(["helper-text", A.value === "error" ? "msg-error" : "msg-success"]),
                   role: "status"
-                }, l(w.value), 3)) : M("", !0),
-                e("div", Dd, [
+                }, l(M.value), 3)) : V("", !0),
+                e("div", bp, [
                   e("button", {
                     class: "btn btn-primary",
                     type: "button",
-                    disabled: I.value,
-                    onClick: p[4] || (p[4] = (n) => Pe(o.value))
-                  }, l(t(s)("settings.save")), 9, Fd)
+                    disabled: j.value,
+                    onClick: T[4] || (T[4] = (a) => ze(n.value))
+                  }, l(t(s)("settings.save")), 9, kp)
                 ])
-              ])) : ye.value ? (a(), le(bu, {
+              ])) : ye.value ? (o(), ke(Mc, {
                 key: ye.value,
                 module: ye.value || ""
-              }, null, 8, ["module"])) : !t(R)(o.value) && t(A)(o.value)?.fields?.length ? (a(), r("div", {
-                key: `patch-${o.value}`,
+              }, null, 8, ["module"])) : !t(P)(n.value) && t(E)(n.value)?.fields?.length ? (o(), i("div", {
+                key: `patch-${n.value}`,
                 class: "content-card"
               }, [
-                e("h2", null, l(t(me)(o.value)), 1),
-                t(A)(o.value)?.descriptionKey ? (a(), r("p", Bd, l(t(s)(t(A)(o.value).descriptionKey)), 1)) : t(A)(o.value)?.description ? (a(), r("p", Kd, l(t(A)(o.value).description), 1)) : M("", !0),
-                (a(!0), r(F, null, J(t(A)(o.value).fields, (n) => (a(), r("div", {
-                  key: n.key,
+                e("h2", null, l(t(Se)(n.value)), 1),
+                t(E)(n.value)?.descriptionKey ? (o(), i("p", wp, l(t(s)(t(E)(n.value).descriptionKey)), 1)) : t(E)(n.value)?.description ? (o(), i("p", $p, l(t(E)(n.value).description), 1)) : V("", !0),
+                (o(!0), i(X, null, oe(t(E)(n.value).fields, (a) => (o(), i("div", {
+                  key: a.key,
                   class: "field"
                 }, [
-                  n.type === "bool" ? (a(), r("label", Hd, [
+                  a.type === "bool" ? (o(), i("label", Sp, [
                     e("input", {
                       type: "checkbox",
-                      checked: ke(o.value, n.key),
-                      onChange: (T) => h.value = { ...h.value, [o.value]: { ...h.value[o.value], [n.key]: T.target.checked } }
-                    }, null, 40, jd),
-                    p[22] || (p[22] = e("span", { class: "toggle-slider" }, null, -1)),
+                      checked: be(n.value, a.key),
+                      onChange: (N) => p.value = { ...p.value, [n.value]: { ...p.value[n.value], [a.key]: N.target.checked } }
+                    }, null, 40, Cp),
+                    T[23] || (T[23] = e("span", { class: "toggle-slider" }, null, -1)),
                     e("span", null, [
-                      e("strong", null, l(t(re)(t(A)(o.value), n.key, `settings.${n.key}`)), 1),
-                      n.help || n.helpKey ? (a(), r("br", Yd)) : M("", !0),
-                      n.help || n.helpKey ? (a(), r("small", Jd, l(t(de)(t(A)(o.value), n.key, `settings.${n.key}Desc`)), 1)) : M("", !0)
+                      e("strong", null, l(t(Ee)(t(E)(n.value), a.key, `settings.${a.key}`)), 1),
+                      a.help || a.helpKey ? (o(), i("br", xp)) : V("", !0),
+                      a.help || a.helpKey ? (o(), i("small", Mp, l(t(le)(t(E)(n.value), a.key, `settings.${a.key}Desc`)), 1)) : V("", !0)
                     ])
-                  ])) : n.type === "select" ? (a(), r(F, { key: 1 }, [
-                    e("label", null, l(t(re)(t(A)(o.value), n.key, `settings.${n.key}`)), 1),
-                    W(t(ue), {
+                  ])) : a.type === "select" ? (o(), i(X, { key: 1 }, [
+                    e("label", null, l(t(Ee)(t(E)(n.value), a.key, `settings.${a.key}`)), 1),
+                    ae(t(De), {
                       class: "input",
-                      "aria-label": t(re)(t(A)(o.value), n.key, `settings.${n.key}`),
-                      "model-value": String(h.value[o.value]?.[n.key] ?? ""),
-                      options: n.options || [],
-                      "onUpdate:modelValue": (T) => h.value[o.value] = { ...h.value[o.value], [n.key]: T }
+                      "aria-label": t(Ee)(t(E)(n.value), a.key, `settings.${a.key}`),
+                      "model-value": String(p.value[n.value]?.[a.key] ?? ""),
+                      options: a.options || [],
+                      "onUpdate:modelValue": (N) => p.value[n.value] = { ...p.value[n.value], [a.key]: N }
                     }, null, 8, ["aria-label", "model-value", "options", "onUpdate:modelValue"]),
-                    n.help || n.helpKey ? (a(), r("p", Wd, l(t(de)(t(A)(o.value), n.key, `settings.${n.key}Desc`)), 1)) : M("", !0)
-                  ], 64)) : n.type === "model" ? (a(), r(F, { key: 2 }, [
-                    e("label", null, l(t(re)(t(A)(o.value), n.key, `settings.${n.key}`)), 1),
-                    W(t(ue), {
+                    a.help || a.helpKey ? (o(), i("p", Pp, l(t(le)(t(E)(n.value), a.key, `settings.${a.key}Desc`)), 1)) : V("", !0)
+                  ], 64)) : a.type === "model" ? (o(), i(X, { key: 2 }, [
+                    e("label", null, l(t(Ee)(t(E)(n.value), a.key, `settings.${a.key}`)), 1),
+                    ae(t(De), {
                       class: "input",
-                      "aria-label": t(re)(t(A)(o.value), n.key, `settings.${n.key}`),
-                      "model-value": String(h.value[o.value]?.[n.key] ?? ""),
-                      options: q.value,
-                      "onUpdate:modelValue": (T) => h.value[o.value] = { ...h.value[o.value], [n.key]: T }
+                      "aria-label": t(Ee)(t(E)(n.value), a.key, `settings.${a.key}`),
+                      "model-value": String(p.value[n.value]?.[a.key] ?? ""),
+                      options: ie.value,
+                      "onUpdate:modelValue": (N) => p.value[n.value] = { ...p.value[n.value], [a.key]: N }
                     }, null, 8, ["aria-label", "model-value", "options", "onUpdate:modelValue"]),
-                    n.help || n.helpKey ? (a(), r("p", qd, l(t(de)(t(A)(o.value), n.key, `settings.${n.key}Desc`)), 1)) : M("", !0)
-                  ], 64)) : n.type === "models" ? (a(), r(F, { key: 3 }, [
-                    e("label", null, l(t(re)(t(A)(o.value), n.key, `settings.${n.key}`)), 1),
-                    W(qe, {
-                      "model-value": String(h.value[o.value]?.[n.key] ?? ""),
-                      options: x.value,
-                      "onUpdate:modelValue": (T) => h.value[o.value] = { ...h.value[o.value], [n.key]: T }
+                    a.help || a.helpKey ? (o(), i("p", Ep, l(t(le)(t(E)(n.value), a.key, `settings.${a.key}Desc`)), 1)) : V("", !0)
+                  ], 64)) : a.type === "models" ? (o(), i(X, { key: 3 }, [
+                    e("label", null, l(t(Ee)(t(E)(n.value), a.key, `settings.${a.key}`)), 1),
+                    ae(Dt, {
+                      "model-value": String(p.value[n.value]?.[a.key] ?? ""),
+                      options: I.value,
+                      "onUpdate:modelValue": (N) => p.value[n.value] = { ...p.value[n.value], [a.key]: N }
                     }, null, 8, ["model-value", "options", "onUpdate:modelValue"]),
-                    n.help || n.helpKey ? (a(), r("p", Gd, l(t(de)(t(A)(o.value), n.key, `settings.${n.key}Desc`)), 1)) : M("", !0)
-                  ], 64)) : (a(), r(F, { key: 4 }, [
-                    e("label", null, l(t(re)(t(A)(o.value), n.key, `settings.${n.key}`)), 1),
+                    a.help || a.helpKey ? (o(), i("p", Up, l(t(le)(t(E)(n.value), a.key, `settings.${a.key}Desc`)), 1)) : V("", !0)
+                  ], 64)) : (o(), i(X, { key: 4 }, [
+                    e("label", null, l(t(Ee)(t(E)(n.value), a.key, `settings.${a.key}`)), 1),
                     e("input", {
                       class: "input",
-                      type: n.type === "number" ? "number" : "text",
-                      value: h.value[o.value]?.[n.key],
-                      onInput: (T) => h.value[o.value] = { ...h.value[o.value], [n.key]: n.type === "number" ? Number(T.target.value) : T.target.value }
-                    }, null, 40, Xd),
-                    n.help || n.helpKey ? (a(), r("p", Zd, l(t(de)(t(A)(o.value), n.key, `settings.${n.key}Desc`)), 1)) : M("", !0)
+                      type: a.type === "number" ? "number" : "text",
+                      value: p.value[n.value]?.[a.key],
+                      onInput: (N) => p.value[n.value] = { ...p.value[n.value], [a.key]: a.type === "number" ? Number(N.target.value) : N.target.value }
+                    }, null, 40, Ap),
+                    a.help || a.helpKey ? (o(), i("p", Tp, l(t(le)(t(E)(n.value), a.key, `settings.${a.key}Desc`)), 1)) : V("", !0)
                   ], 64))
                 ]))), 128)),
-                w.value ? (a(), r("div", {
+                M.value ? (o(), i("div", {
                   key: 2,
-                  class: j(["helper-text", S.value === "error" ? "msg-error" : "msg-success"]),
+                  class: ee(["helper-text", A.value === "error" ? "msg-error" : "msg-success"]),
                   role: "status"
-                }, l(w.value), 3)) : M("", !0),
-                e("div", Qd, [
+                }, l(M.value), 3)) : V("", !0),
+                e("div", Ip, [
                   e("button", {
                     class: "btn btn-primary",
                     type: "button",
-                    disabled: I.value,
-                    onClick: p[5] || (p[5] = (n) => Se(o.value))
-                  }, l(t(s)("settings.save")), 9, ec)
+                    disabled: j.value,
+                    onClick: T[5] || (T[5] = (a) => pe(n.value))
+                  }, l(t(s)("settings.save")), 9, Np)
                 ])
-              ])) : o.value === "about" ? (a(), le(Ol, { key: "about" })) : o.value === "updates" ? (a(), le(Mo, { key: "updates" })) : o.value === "danger" ? (a(), le(vu, { key: "danger" })) : (a(), r("div", tc, [
+              ])) : n.value === "about" ? (o(), ke(Yn, { key: "about" })) : n.value === "updates" ? (o(), ke(Oo, { key: "updates" })) : n.value === "danger" ? (o(), ke($c, { key: "danger" })) : (o(), i("div", Rp, [
                 e("p", null, l(t(s)("settings.tabNotFound")), 1)
               ]))
             ]),
             _: 1
           })
         ])
-      ])
+      ]),
+      ae(ed, {
+        open: we.value,
+        "onUpdate:open": T[6] || (T[6] = (a) => we.value = a),
+        initial: ve.value,
+        title: Ue.value,
+        onPick: Ce
+      }, null, 8, ["open", "initial", "title"])
     ]));
   }
 });
 export {
-  dc as default
+  Bp as default
 };
 
-;(()=>{if(typeof document!=='undefined'&&!document.getElementById('webui-plugin-style')){const s=document.createElement('style');s.id='webui-plugin-style';s.textContent="@property --mood{syntax: \"<color>\"; inherits: true; initial-value: #6750A4;}.live2d-stage[data-v-15b509be]{display:flex;flex-direction:column;background:var(--md-surface-container);border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--md-outline-variant);min-height:320px}.stage-viewport[data-v-15b509be]{position:relative;flex:1;min-height:260px;overflow:hidden;touch-action:pan-y;cursor:grab;user-select:none;transition:--mood var(--duration-long, .36s) var(--ease-out, ease-out);background:radial-gradient(circle at 30% 20%,color-mix(in srgb,var(--mood, #6750A4) 22%,transparent),transparent 55%),radial-gradient(circle at 70% 80%,color-mix(in srgb,var(--mood, #6750A4) 12%,transparent),transparent 50%),linear-gradient(180deg,var(--md-surface-container-low) 0%,var(--md-surface-container) 55%,color-mix(in srgb,var(--md-primary) 20%,transparent) 100%)}.stage-viewport[data-v-15b509be]:active{cursor:grabbing}.stage-canvas[data-v-15b509be]{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;pointer-events:none}.stage-gradient[data-v-15b509be]{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,transparent 55%,rgba(33,0,93,.18) 100%)}.stage-hint[data-v-15b509be]{position:absolute;left:10px;top:10px;z-index:3;padding:4px 10px;border-radius:var(--radius-full);background:color-mix(in srgb,var(--md-inverse-surface) 75%,transparent);color:var(--md-inverse-on-surface);font-size:12px;text-transform:capitalize;pointer-events:none}.stage-reset[data-v-15b509be]{position:absolute;top:10px;right:10px;z-index:20;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:1px solid color-mix(in srgb,var(--md-on-surface) 10%,transparent);border-radius:50%;background:color-mix(in srgb,var(--md-surface) 55%,transparent);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:var(--md-on-surface);font:inherit;font-size:16px;line-height:1;cursor:grab;touch-action:none;opacity:.7;transition:opacity var(--duration-short) var(--ease-out),background-color var(--duration-short) var(--ease-out)}.stage-reset[data-v-15b509be]:hover{opacity:1;background:color-mix(in srgb,var(--md-surface) 82%,transparent)}.stage-reset[data-v-15b509be]:active{transform:scale(.96)}.stage-reset.dragging[data-v-15b509be]{cursor:grabbing;opacity:1}.stage-placeholder[data-v-15b509be]{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-md);background:color-mix(in srgb,var(--md-surface) 72%,transparent);color:var(--md-on-surface-variant);font-size:14px;text-align:center;padding:var(--space-lg)}.stage-status[data-v-15b509be]{position:absolute;left:var(--space-md);bottom:var(--space-md);z-index:5;padding:6px 12px;border-radius:var(--radius-full);background:var(--md-inverse-surface);color:var(--md-inverse-on-surface);font-size:12px}.stage-status.warn[data-v-15b509be]{background:var(--md-error-container);color:var(--md-on-error-container);max-width:90%;word-break:break-word}.message[data-v-e199848c]{display:flex;gap:var(--space-md);animation:slideUp .2s ease}.message.user[data-v-e199848c]{flex-direction:row-reverse}.avatar[data-v-e199848c]{flex-shrink:0;width:32px;height:32px;border-radius:var(--radius-round);display:flex;align-items:center;justify-content:center}.user-avatar[data-v-e199848c]{background:var(--neutral-gray-60);color:var(--neutral-white)}.assistant-avatar[data-v-e199848c]{background:var(--brand-primary);color:var(--neutral-white)}.images[data-v-e199848c]{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}.msg-img[data-v-e199848c]{max-width:240px;max-height:240px;border-radius:var(--radius-md);object-fit:cover;display:block}.files[data-v-e199848c]{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}.msg-file[data-v-e199848c]{display:inline-flex;align-items:center;max-width:240px;padding:5px 12px;border-radius:var(--radius-round);background:var(--neutral-gray-4);border:1px solid var(--neutral-gray-6);color:var(--neutral-gray-60);font-size:var(--font-size-xs);text-decoration:none;overflow:hidden}.msg-file-name[data-v-e199848c]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.msg-file[data-v-e199848c]:hover{border-color:var(--brand-primary);color:var(--brand-primary)}.content-wrapper[data-v-e199848c]{max-width:70%}.content[data-v-e199848c]{padding:var(--space-md) var(--space-lg);border-radius:var(--radius-lg);line-height:1.5;white-space:pre-wrap;word-break:break-word}.content-markdown[data-v-e199848c]{white-space:normal}.user .content[data-v-e199848c]{background:var(--brand-primary);color:var(--neutral-white);border-bottom-right-radius:var(--radius-sm)}.assistant .content[data-v-e199848c]{background:var(--neutral-white);color:var(--neutral-gray-70);border-bottom-left-radius:var(--radius-sm);box-shadow:var(--shadow-2)}.think-panel[data-v-e199848c]{margin-top:6px;border:1px solid var(--md-outline-variant);border-radius:10px;background:var(--md-surface-container-low)}.think-toggle[data-v-e199848c]{width:100%;display:flex;justify-content:space-between;align-items:center;border:0;background:transparent;padding:7px 10px;color:var(--md-on-surface-variant);font:600 12px/1.2 monospace;letter-spacing:.06em;cursor:pointer}.think-body[data-v-e199848c]{padding:0 10px 9px;color:var(--md-on-surface-variant);font-size:12px;line-height:1.45}.think-body p[data-v-e199848c]{margin:4px 0}.think-body b[data-v-e199848c]{color:var(--md-on-surface)}.think-summary[data-v-e199848c]{margin:6px 0;color:var(--md-on-surface);line-height:1.55}.think-raw[data-v-e199848c]{margin:6px 0;white-space:pre-wrap;max-height:420px;overflow:auto;color:var(--md-on-surface);font:12px/1.5 monospace}.meta[data-v-e199848c]{display:flex;align-items:center;gap:var(--space-xs);margin-top:var(--space-xs);font-size:var(--font-size-xs);color:var(--neutral-gray-20)}.user .meta[data-v-e199848c]{justify-content:flex-end}.separator[data-v-e199848c]{color:var(--neutral-gray-10)}.emotion[data-v-e199848c]{font-weight:500}.chat-panel[data-v-8a0e76e2]{display:flex;flex-direction:column;height:100%;background:var(--neutral-gray-2)}.context-btn[data-v-8a0e76e2]{border:1px solid var(--md-outline-variant);border-radius:999px;background:transparent;color:var(--md-on-surface-variant);min-height:32px;padding:7px 12px;font-size:12px;cursor:pointer;transition:background-color var(--transition-fast),border-color var(--transition-fast),color var(--transition-fast)}.context-btn[data-v-8a0e76e2]:disabled{opacity:.6;cursor:wait}.context-btn.danger[data-v-8a0e76e2]{color:var(--md-error)}.chat-container[data-v-8a0e76e2]{flex:1;overflow-y:auto;padding:var(--space-xl)}.messages[data-v-8a0e76e2]{max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:var(--space-md)}.empty-state[data-v-8a0e76e2]{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;color:var(--neutral-gray-30)}.empty-icon[data-v-8a0e76e2]{margin-bottom:var(--space-xl);opacity:.5}.empty-state h3[data-v-8a0e76e2]{font-size:var(--font-size-lg);font-weight:600;color:var(--neutral-gray-50);margin-bottom:var(--space-sm)}.empty-state p[data-v-8a0e76e2]{font-size:var(--font-size-base);color:var(--neutral-gray-30)}.typing-indicator[data-v-8a0e76e2]{display:flex;align-items:center;gap:var(--space-sm);padding:var(--space-md);color:var(--neutral-gray-30);font-size:var(--font-size-sm)}.typing-dots[data-v-8a0e76e2]{display:flex;gap:4px}.typing-dots span[data-v-8a0e76e2]{width:6px;height:6px;background:var(--neutral-gray-20);border-radius:50%;animation:bounce-8a0e76e2 1.4s infinite ease-in-out}.typing-dots span[data-v-8a0e76e2]:nth-child(1){animation-delay:-.32s}.typing-dots span[data-v-8a0e76e2]:nth-child(2){animation-delay:-.16s}@keyframes bounce-8a0e76e2{0%,80%,to{transform:scale(.5);opacity:.45}40%{transform:scale(1);opacity:1}}.input-area[data-v-8a0e76e2]{padding:var(--space-lg) var(--space-xl);background:var(--neutral-white);border-top:1px solid var(--neutral-gray-6)}.input-wrapper[data-v-8a0e76e2]{display:flex;align-items:flex-end;gap:var(--space-sm);max-width:800px;margin:0 auto;padding:var(--space-sm);background:var(--neutral-gray-4);border-radius:var(--radius-lg);border:1px solid transparent;transition:background-color var(--transition-fast),border-color var(--transition-fast),box-shadow var(--transition-fast)}.input-wrapper[data-v-8a0e76e2]:focus-within{background:var(--neutral-white);border-color:var(--brand-primary);box-shadow:0 0 0 2px var(--brand-light)}.message-input[data-v-8a0e76e2]{flex:1;padding:var(--space-sm) var(--space-md);font-size:var(--font-size-base);font-family:inherit;border:none;background:transparent;resize:none;outline:none;min-height:24px;max-height:120px}.message-input[data-v-8a0e76e2]::placeholder{color:var(--neutral-gray-20)}.pending-images[data-v-8a0e76e2],.pending-files[data-v-8a0e76e2]{display:flex;flex-wrap:wrap;gap:8px;max-width:800px;margin:0 auto var(--space-sm)}.pending-file[data-v-8a0e76e2]{display:inline-flex;align-items:center;gap:6px;max-width:240px;padding:6px 6px 6px 12px;border-radius:var(--radius-round);background:var(--neutral-gray-4);border:1px solid var(--neutral-gray-6);font-size:var(--font-size-xs);color:var(--neutral-gray-50);overflow:hidden}.pending-file-name[data-v-8a0e76e2]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.remove-file[data-v-8a0e76e2]{border:none;background:transparent;color:var(--neutral-gray-30);font-size:14px;line-height:1;cursor:pointer;padding:0 4px}.remove-file[data-v-8a0e76e2]:hover{color:var(--error)}.pending-thumb[data-v-8a0e76e2]{position:relative;width:56px;height:56px;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--neutral-gray-6)}.pending-thumb img[data-v-8a0e76e2]{width:100%;height:100%;object-fit:cover}.remove-img[data-v-8a0e76e2]{position:absolute;top:2px;right:2px;width:22px;height:22px;border:none;border-radius:50%;background:#000000a6;color:#fff;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}.pending-thumb.uploading[data-v-8a0e76e2]{display:flex;align-items:center;justify-content:center;background:var(--md-surface-container-high);animation:thumb-shimmer-8a0e76e2 1.2s infinite}.upload-spinner[data-v-8a0e76e2]{width:18px;height:18px;border-radius:50%;border:2px solid var(--md-outline-variant);border-top-color:var(--md-primary);animation:upload-spin-8a0e76e2 .8s linear infinite}@keyframes upload-spin-8a0e76e2{to{transform:rotate(360deg)}}@keyframes thumb-shimmer-8a0e76e2{0%,to{opacity:1}50%{opacity:.55}}@media(prefers-reduced-motion:reduce){.pending-thumb.uploading[data-v-8a0e76e2]{animation:none}}.attach-btn[data-v-8a0e76e2]{flex-shrink:0;width:36px;height:36px;border:none;border-radius:var(--radius-round);background:transparent;color:var(--neutral-gray-30);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background-color var(--transition-fast),color var(--transition-fast)}.attach-btn[data-v-8a0e76e2]:hover:not(:disabled){background:var(--neutral-gray-6);color:var(--neutral-gray-50)}.attach-btn[data-v-8a0e76e2]:disabled{opacity:.5;cursor:not-allowed}.wake-btn.active[data-v-8a0e76e2]{color:var(--md-primary);background:color-mix(in srgb,var(--md-primary) 14%,transparent)}.wake-strip[data-v-8a0e76e2]{display:flex;align-items:center;gap:8px;margin:0 0 6px;padding:5px 10px;border-radius:var(--radius-md, 10px);background:color-mix(in srgb,var(--md-primary) 10%,transparent);color:var(--md-primary);font-size:12px}.wake-strip.capturing[data-v-8a0e76e2]{background:color-mix(in srgb,var(--md-primary) 18%,transparent)}.wake-dot[data-v-8a0e76e2]{width:8px;height:8px;border-radius:50%;background:currentColor;animation:wake-pulse-8a0e76e2 1.1s ease-in-out infinite}.wake-strip.capturing .wake-dot[data-v-8a0e76e2]{animation-duration:.5s}.wake-text[data-v-8a0e76e2]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wake-stop[data-v-8a0e76e2]{border:none;background:transparent;color:inherit;cursor:pointer;font-size:15px;line-height:1;padding:0 2px;opacity:.75}.wake-stop[data-v-8a0e76e2]:hover{opacity:1}@keyframes wake-pulse-8a0e76e2{0%,to{opacity:1}50%{opacity:.2}}@media(prefers-reduced-motion:reduce){.wake-dot[data-v-8a0e76e2]{animation:none}}.send-button[data-v-8a0e76e2]{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:none;border-radius:var(--radius-round);background:var(--brand-primary);color:var(--neutral-white);cursor:pointer;transition:background-color var(--transition-fast),transform var(--duration-short) var(--ease-out)}.send-button[data-v-8a0e76e2]:hover:not(:disabled){background:var(--brand-hover)}.send-button[data-v-8a0e76e2]:disabled{background:var(--neutral-gray-8);cursor:not-allowed}.input-footer[data-v-8a0e76e2]{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:var(--space-sm);max-width:800px;margin-left:auto;margin-right:auto;padding:0 var(--space-sm)}.connection-status[data-v-8a0e76e2]{display:flex;align-items:center;gap:var(--space-xs);font-size:var(--font-size-xs)}.status-dot[data-v-8a0e76e2]{width:6px;height:6px;border-radius:50%}.connected .status-dot[data-v-8a0e76e2]{background:var(--success)}.disconnected .status-dot[data-v-8a0e76e2]{background:var(--error)}.hint[data-v-8a0e76e2]{font-size:var(--font-size-xs);color:var(--neutral-gray-20)}.character-profile dl>div[data-v-45331204]{display:flex;justify-content:space-between;gap:12px;margin:10px 0;font-size:12px}.character-profile dt[data-v-45331204]{color:var(--md-on-surface-variant);flex-shrink:0}.character-profile dd[data-v-45331204]{margin:0;text-align:right;overflow-wrap:anywhere}.status-panel[data-v-45331204]{display:flex;flex-direction:column;height:100%;background:var(--neutral-white)}.panel-header[data-v-45331204]{display:flex;align-items:center;justify-content:space-between;padding:var(--space-lg) var(--space-xl);border-bottom:1px solid var(--neutral-gray-6)}.panel-header h2[data-v-45331204]{font-size:var(--font-size-md);font-weight:600;color:var(--neutral-gray-70)}.patch-badge[data-v-45331204]{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--brand-primary);background:color-mix(in srgb,var(--brand-primary) 12%,transparent);padding:2px 8px;border-radius:var(--radius-full)}.panel-content[data-v-45331204]{flex:1;overflow-y:auto;padding:var(--space-lg)}.section[data-v-45331204]{margin-bottom:var(--space-xl)}.section-header[data-v-45331204]{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)}.section-title[data-v-45331204]{font-size:var(--font-size-sm);font-weight:600;color:var(--neutral-gray-50);text-transform:uppercase;letter-spacing:.5px}.mood-display[data-v-45331204]{display:flex;flex-direction:column;align-items:center;padding:var(--space-xl);background:var(--neutral-gray-4);border-radius:var(--radius-md)}.mood-icon[data-v-45331204]{margin-bottom:var(--space-md)}.mood-label[data-v-45331204]{font-size:var(--font-size-md);font-weight:600}.emotion-bars[data-v-45331204]{display:flex;flex-direction:column;gap:var(--space-sm)}.emotion-row[data-v-45331204]{display:flex;align-items:center;gap:var(--space-md)}.emotion-label[data-v-45331204]{width:80px;font-size:var(--font-size-xs);color:var(--neutral-gray-40)}.emotion-bar[data-v-45331204]{flex:1;height:6px;background:var(--neutral-gray-6);border-radius:var(--radius-sm);overflow:hidden}.emotion-fill[data-v-45331204]{height:100%;width:100%;transform-origin:left;border-radius:var(--radius-sm);transition:transform var(--duration-medium) var(--ease-out)}.empty-tasks[data-v-45331204]{padding:var(--space-md);text-align:center;color:var(--neutral-gray-20);font-size:var(--font-size-sm);background:var(--neutral-gray-4);border-radius:var(--radius-sm)}.chat-page[data-v-599f785f]{position:relative;display:grid;grid-template-columns:minmax(360px,1fr) 6px minmax(320px,var(--chat-w, 34%));flex:1;height:100%;min-height:0;background:var(--md-surface)}.chat-page.no-chat[data-v-599f785f]{grid-template-columns:1fr}.stage-column[data-v-599f785f]{min-width:0;min-height:0;display:flex;flex-direction:column;gap:var(--space-md);padding:var(--space-md);overflow:hidden}.stage-host[data-v-599f785f]{flex:1;min-height:240px}.status-panel[data-v-599f785f]{flex:0 0 auto;max-height:40%;background:transparent;border-radius:var(--radius-lg);border:1px solid var(--md-outline-variant);overflow:hidden}.slot-frame[data-v-599f785f]{flex:1;min-height:200px;border:1px solid var(--md-outline-variant);border-radius:var(--radius-lg);background:var(--neutral-white)}.slot-frame.fill[data-v-599f785f]{flex:1;width:100%;height:100%;border:none;border-radius:0}.slot-note[data-v-599f785f]{padding:var(--space-md);font-size:var(--font-size-sm);color:var(--neutral-gray-40);background:var(--neutral-gray-4);border-radius:var(--radius-md)}.page-resizer[data-v-599f785f]{cursor:col-resize;background:var(--md-outline-variant);transition:background var(--transition-fast)}.page-resizer[data-v-599f785f]:hover,.page-resizer[data-v-599f785f]:active{background:var(--md-primary)}.chat-column[data-v-599f785f]{min-width:0;min-height:0;display:flex;flex-direction:column;border-left:1px solid var(--md-outline-variant);background:var(--md-surface-container-low)}.status-fab[data-v-599f785f]{position:absolute;right:var(--space-lg);bottom:var(--space-lg);width:56px;height:56px;border:none;border-radius:var(--radius-lg);background:var(--md-primary-container);color:var(--md-on-primary-container);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow-3);z-index:6}@media(max-width:960px){.chat-page[data-v-599f785f]{display:flex;flex-direction:column}.stage-column[data-v-599f785f]{flex:1;min-height:0}.page-resizer[data-v-599f785f]{display:none}.chat-column[data-v-599f785f]{position:absolute;right:0;top:0;bottom:0;width:min(360px,92vw);z-index:5;box-shadow:var(--shadow-8);transform:translate(100%);visibility:hidden;transition:transform var(--transition-normal),visibility 0s linear var(--duration-medium)}.chat-column.open[data-v-599f785f]{transform:translate(0);visibility:visible;transition:transform var(--transition-normal),visibility 0s linear 0s}}.console[data-v-940c88b5]{display:flex;flex-direction:column;min-height:0;height:100%;background:var(--md-surface);color:var(--md-on-surface)}.pane-enter-active[data-v-940c88b5]{transition:opacity var(--duration-medium) var(--ease-emphasized-decel)}.pane-leave-active[data-v-940c88b5]{transition:opacity var(--duration-instant) var(--ease-emphasized-accel)}.pane-enter-from[data-v-940c88b5],.pane-leave-to[data-v-940c88b5]{opacity:0}@media(prefers-reduced-motion:reduce){.pane-enter-active[data-v-940c88b5],.pane-leave-active[data-v-940c88b5]{transition-duration:1ms}}.console-bar[data-v-940c88b5]{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-md);padding:var(--space-md) var(--space-lg);border-bottom:1px solid var(--md-outline-variant);background:var(--md-surface-container-low)}.tabs[data-v-940c88b5]{display:flex;gap:var(--space-xs)}.tab[data-v-940c88b5]{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 14px;border:0;border-radius:var(--radius-full);background:transparent;color:var(--md-on-surface-variant);font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--transition-fast),color var(--transition-fast)}.tab[data-v-940c88b5]:hover{background:color-mix(in srgb,var(--md-on-surface) 7%,transparent)}.tab.active[data-v-940c88b5]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.tab[data-v-940c88b5]:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}.tab-badge[data-v-940c88b5]{min-width:18px;padding:0 5px;border-radius:var(--radius-full);background:var(--md-error-container);color:var(--md-on-error-container);font-size:11px;font-weight:700;text-align:center}.controls[data-v-940c88b5]{display:flex;flex:1;flex-wrap:wrap;align-items:flex-end;gap:var(--space-sm)}.field[data-v-940c88b5]{display:flex;flex-direction:column;gap:2px}.field.grow[data-v-940c88b5]{flex:1;min-width:180px}.field-label[data-v-940c88b5]{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--md-on-surface-variant)}.input[data-v-940c88b5]{min-height:34px;padding:0 10px;border:1px solid var(--md-outline-variant);border-radius:var(--radius-sm);background:var(--md-surface-container-lowest);color:inherit;font:inherit;font-size:13px}.input[data-v-940c88b5]:focus-visible{outline:2px solid var(--md-primary);outline-offset:1px}.check[data-v-940c88b5]{display:inline-flex;align-items:center;gap:6px;min-height:34px;font-size:12px;color:var(--md-on-surface-variant);white-space:nowrap}.btn[data-v-940c88b5]{min-height:34px;padding:0 14px;border:1px solid var(--md-outline-variant);border-radius:var(--radius-full);background:var(--md-surface-container-lowest);color:var(--md-on-surface);font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--transition-fast)}.btn[data-v-940c88b5]:hover:not(:disabled){background:var(--md-surface-container-high)}.btn[data-v-940c88b5]:disabled{opacity:.5;cursor:default}.btn[data-v-940c88b5]:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}.status[data-v-940c88b5]{display:inline-flex;align-items:center;gap:6px;min-height:34px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant);white-space:nowrap}.status .dot[data-v-940c88b5]{width:8px;height:8px;border-radius:50%;background:var(--md-outline)}.status.live .dot[data-v-940c88b5]{background:var(--md-success);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-success) 22%,transparent)}.status.dead .dot[data-v-940c88b5]{background:var(--md-error)}.banner[data-v-940c88b5]{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-sm);margin:0;padding:var(--space-sm) var(--space-lg);background:var(--md-error-container);color:var(--md-on-error-container);font-size:13px}.banner code[data-v-940c88b5]{flex:1;min-width:0;overflow:hidden;font-size:12px;text-overflow:ellipsis;white-space:nowrap}.pane[data-v-940c88b5]{flex:1;min-height:0;overflow:auto}.empty[data-v-940c88b5]{padding:var(--space-xl);color:var(--md-on-surface-variant);font-size:13px}.rows[data-v-940c88b5]{margin:0;padding:0;list-style:none;font-family:ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,monospace;font-size:12px;line-height:1.55}.row[data-v-940c88b5]{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;padding:3px var(--space-lg);border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}.row[data-v-940c88b5]:hover{background:color-mix(in srgb,var(--md-on-surface) 4%,transparent)}.row[data-v-940c88b5]:before{content:\"\";width:3px;align-self:stretch;margin:1px 0;border-radius:2px;background:var(--md-outline)}.row.debug[data-v-940c88b5]:before{background:var(--md-outline)}.row.info[data-v-940c88b5]:before{background:var(--md-primary)}.row.warn[data-v-940c88b5]:before{background:var(--md-warning)}.row.error[data-v-940c88b5]:before{background:var(--md-error)}.row.ok[data-v-940c88b5]:before{background:var(--md-success)}.ts[data-v-940c88b5]{color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums;white-space:nowrap}.lvl[data-v-940c88b5]{min-width:46px;font-weight:700;color:var(--md-on-surface-variant);white-space:nowrap}.row.warn .lvl[data-v-940c88b5]{color:var(--md-warning)}.row.error .lvl[data-v-940c88b5]{color:var(--md-error)}.component[data-v-940c88b5]{min-width:96px;padding:0 6px;border-radius:var(--radius-sm);background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:11px;white-space:nowrap}.msg[data-v-940c88b5]{flex:1;min-width:200px;word-break:break-word}.kv[data-v-940c88b5]{color:var(--md-on-surface-variant);white-space:nowrap}.kv .k[data-v-940c88b5]{opacity:.7}.kv .v[data-v-940c88b5]{color:var(--md-on-surface)}.err[data-v-940c88b5]{color:var(--md-error)}.event[data-v-940c88b5]{padding:0 6px;border:1px solid var(--md-outline-variant);border-radius:var(--radius-full);color:var(--md-on-surface-variant);font-size:11px;white-space:nowrap}.dur[data-v-940c88b5]{margin-left:auto;color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums;white-space:nowrap}.indent[data-v-940c88b5]{flex:none}.link[data-v-940c88b5]{padding:0;border:0;background:none;color:var(--md-primary);font:inherit;font-size:11px;cursor:pointer;text-decoration:underline dotted}.link[data-v-940c88b5]:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}@media(max-width:720px){.console-bar[data-v-940c88b5]{align-items:stretch}.controls[data-v-940c88b5]{flex-direction:column;align-items:stretch}.component[data-v-940c88b5],.lvl[data-v-940c88b5]{min-width:0}}#app .console[data-v-940c88b5] :is(.tab,.btn){min-height:34px;border-radius:var(--radius-full)}#app .console .input[data-v-940c88b5]{min-height:34px;border-radius:var(--radius-sm)}.plugins-page[data-v-147ee65e]{height:100%;overflow-y:auto;padding:clamp(22px,3vw,44px);background:radial-gradient(1100px 560px at 105% -12%,color-mix(in srgb,var(--md-primary) 10%,transparent),transparent 62%),var(--md-surface);color:var(--md-on-surface)}.pp-hero[data-v-147ee65e]{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);margin-bottom:clamp(18px,2.4vw,28px);flex-wrap:wrap}.pp-eyebrow[data-v-147ee65e]{margin:0 0 8px;color:var(--md-primary);font:800 12px/1 ui-monospace,monospace;letter-spacing:.18em}.page-header h1[data-v-147ee65e],.pp-hero h1[data-v-147ee65e]{font-size:clamp(26px,3vw,38px);font-weight:800;letter-spacing:-.02em;margin:0}.subtitle[data-v-147ee65e]{color:var(--md-on-surface-variant);font-size:15px;margin-top:8px;line-height:1.6;max-width:70ch}.error-banner[data-v-147ee65e]{padding:14px 18px;border-radius:18px;background:var(--md-error-container);color:var(--md-on-error-container);margin-bottom:var(--space-lg)}.notice-banner[data-v-147ee65e]{padding:14px 18px;border-radius:18px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);margin-bottom:var(--space-lg)}.banner-enter-active[data-v-147ee65e]{transition:opacity var(--duration-medium) var(--ease-emphasized-decel),transform var(--duration-medium) var(--ease-emphasized-decel)}.banner-leave-active[data-v-147ee65e]{transition:opacity var(--duration-short) var(--ease-emphasized-accel)}.banner-enter-from[data-v-147ee65e],.banner-leave-to[data-v-147ee65e]{opacity:0;transform:translateY(-6px)}.pp-stats[data-v-147ee65e]{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--space-lg);margin-bottom:var(--space-lg)}.pp-stat[data-v-147ee65e]{border-radius:24px;padding:18px 20px;display:flex;flex-direction:column;gap:4px;box-shadow:var(--shadow-1)}.pp-stat b[data-v-147ee65e]{font-size:32px;font-weight:800;letter-spacing:-.02em;line-height:1.1}.pp-stat span[data-v-147ee65e]{font-size:12px;font-weight:700;letter-spacing:.04em;opacity:.8}.tone-primary[data-v-147ee65e]{background:var(--md-primary-container);color:var(--md-on-primary-container)}.tone-success[data-v-147ee65e]{background:var(--md-success-container);color:var(--md-on-success-container)}.tone-muted[data-v-147ee65e]{background:var(--md-surface-container-high);color:var(--md-on-surface-variant)}.plugin-grid[data-v-147ee65e]{display:grid;grid-template-columns:repeat(auto-fill,minmax(312px,1fr));gap:var(--space-lg)}#app .plugins-page .plugin-card[data-v-147ee65e]{position:relative;border-radius:28px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);background:var(--md-surface-container-low);padding:22px;box-shadow:var(--shadow-1);display:flex;flex-direction:column;gap:16px;animation:pp-card-in-147ee65e var(--duration-long) var(--ease-spring) both;cursor:pointer;transition:transform var(--duration-medium) var(--ease-out),box-shadow var(--duration-medium) var(--ease-out),border-color var(--duration-medium) var(--ease-out)}@keyframes pp-card-in-147ee65e{0%{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}@media(hover:hover)and (pointer:fine){#app .plugins-page .plugin-card[data-v-147ee65e]:hover{transform:translateY(-3px);box-shadow:var(--shadow-2);border-color:color-mix(in srgb,var(--md-primary) 30%,var(--md-outline-variant))}}#app .plugins-page .plugin-card.healthy[data-v-147ee65e]:before{content:\"\";position:absolute;left:0;top:22px;bottom:22px;width:4px;border-radius:999px;background:var(--md-success)}#app .plugins-page .plugin-card.disabled[data-v-147ee65e]{opacity:.62}.plugin-top[data-v-147ee65e]{display:flex;align-items:center;gap:14px}.plugin-icon[data-v-147ee65e]{width:52px;height:52px;flex-shrink:0;border-radius:18px 18px 18px 7px;background:var(--md-primary-container);color:var(--md-on-primary-container);display:flex;align-items:center;justify-content:center}.plugin-titles[data-v-147ee65e]{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}.plugin-titles h2[data-v-147ee65e]{font-size:17px;font-weight:750;letter-spacing:-.01em;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.plugin-id[data-v-147ee65e]{font-size:12px;color:var(--md-on-surface-variant);font-family:ui-monospace,monospace;overflow-wrap:anywhere}.source-badge[data-v-147ee65e]{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant)}.source-badge.rt[data-v-147ee65e]{background:var(--md-primary-container);color:var(--md-on-primary-container)}.source-badge.pm[data-v-147ee65e]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.status-chip[data-v-147ee65e]{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:700;flex-shrink:0;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant)}.status-chip .status-dot[data-v-147ee65e]{width:7px;height:7px;border-radius:50%;background:currentColor}.status-chip.ok[data-v-147ee65e]{background:var(--md-success-container);color:var(--md-on-success-container)}.status-chip.off[data-v-147ee65e]{background:var(--md-surface-container-highest);color:var(--md-on-surface-variant)}.plugin-meta[data-v-147ee65e]{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0}.plugin-meta div[data-v-147ee65e]{display:flex;flex-direction:column;gap:3px;min-width:0}.plugin-meta dt[data-v-147ee65e]{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--md-on-surface-variant)}.plugin-meta dd[data-v-147ee65e]{font-size:14px;font-weight:650;color:var(--md-on-surface);font-family:ui-monospace,monospace;overflow-wrap:anywhere;margin:0}.caps[data-v-147ee65e]{display:flex;flex-wrap:wrap;gap:6px}.cap-chip[data-v-147ee65e]{height:26px;padding:0 12px;border-radius:999px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);font-size:12px;font-weight:600;display:inline-flex;align-items:center}.cap-chip.muted[data-v-147ee65e]{background:var(--md-surface-container-high);color:var(--md-on-surface-variant)}.card-actions[data-v-147ee65e]{display:flex;gap:var(--space-sm);margin-top:auto;align-items:center;flex-wrap:wrap}.plugin-switch[data-v-147ee65e]{display:inline-flex;align-items:center;gap:10px;min-height:44px;cursor:pointer;user-select:none;font-size:13px;font-weight:650;color:var(--md-on-surface-variant)}.plugin-switch input[data-v-147ee65e]{position:absolute;opacity:0;width:0;height:0;pointer-events:none}.plugin-switch-slider[data-v-147ee65e]{width:50px;height:30px;flex-shrink:0;background:var(--md-surface-container-highest);border:2px solid var(--md-outline);border-radius:999px;position:relative;transition:background-color var(--duration-medium) var(--ease-out),border-color var(--duration-medium) var(--ease-out)}.plugin-switch-slider[data-v-147ee65e]:after{content:\"\";position:absolute;top:50%;left:4px;width:18px;height:18px;background:var(--md-outline);border-radius:50%;transform:translateY(-50%) translate(0) scale(1);transition:transform var(--duration-medium) var(--ease-spring-soft),background-color var(--duration-medium) var(--ease-out)}.plugin-switch input:focus-visible+.plugin-switch-slider[data-v-147ee65e]{outline:3px solid var(--md-primary);outline-offset:2px}.plugin-switch.on .plugin-switch-slider[data-v-147ee65e]{background:var(--md-primary);border-color:var(--md-primary)}.plugin-switch.on .plugin-switch-slider[data-v-147ee65e]:after{transform:translateY(-50%) translate(20px) scale(1.12);background:var(--md-on-primary)}.plugin-switch.busy[data-v-147ee65e]{opacity:.6;cursor:wait}.plugin-switch-label[data-v-147ee65e]{white-space:nowrap}#app .plugins-page .btn[data-v-147ee65e]{height:46px;padding:0 22px;border:1px solid transparent;border-radius:999px;font-weight:700;font-size:14px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;cursor:pointer;transition:transform var(--duration-medium) var(--ease-spring),background-color var(--duration-short) var(--ease-out),box-shadow var(--duration-medium) var(--ease-out)}@media(hover:hover)and (pointer:fine){#app .plugins-page .btn[data-v-147ee65e]:hover:not(:disabled){transform:translateY(-1px);box-shadow:var(--shadow-1)}}#app .plugins-page .btn[data-v-147ee65e]:disabled{opacity:.6;cursor:not-allowed}.empty-state[data-v-147ee65e]{grid-column:1 / -1;padding:var(--space-xxl);text-align:center;background:var(--md-surface-container);border-radius:32px;color:var(--md-on-surface-variant)}.empty-state p[data-v-147ee65e]{margin:0;font-size:15px;font-weight:600;color:var(--md-on-surface)}.empty-state .hint[data-v-147ee65e]{font-size:13px;margin-top:8px;font-weight:400;opacity:.8}.pd-scrim[data-v-147ee65e]{position:fixed;inset:0;z-index:var(--z-modal);background:var(--md-scrim);backdrop-filter:blur(6px);display:grid;place-items:center;padding:20px}.pd-dialog[data-v-147ee65e]{width:min(760px,100%);max-height:min(86vh,900px);display:flex;flex-direction:column;background:var(--md-surface-container-high);color:var(--md-on-surface);border:1px solid var(--md-outline-variant);border-radius:28px;padding:26px;box-shadow:0 24px 70px #18132d33}.pd-enter-active[data-v-147ee65e]{transition:opacity var(--duration-medium) var(--ease-out)}.pd-leave-active[data-v-147ee65e]{transition:opacity var(--duration-short) var(--ease-emphasized-accel)}.pd-enter-from[data-v-147ee65e],.pd-leave-to[data-v-147ee65e]{opacity:0}.pd-enter-active .pd-dialog[data-v-147ee65e]{transition:opacity var(--duration-long) var(--ease-emphasized-decel),transform var(--duration-long) var(--ease-emphasized-decel)}.pd-leave-active .pd-dialog[data-v-147ee65e]{transition:opacity var(--duration-short) var(--ease-emphasized-accel),transform var(--duration-short) var(--ease-emphasized-accel)}.pd-enter-from .pd-dialog[data-v-147ee65e],.pd-leave-to .pd-dialog[data-v-147ee65e]{opacity:0;transform:translateY(12px) scale(.97)}.pd-head[data-v-147ee65e]{display:flex;align-items:flex-start;gap:16px}.pd-titles[data-v-147ee65e]{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}.pd-titles h2[data-v-147ee65e]{margin:0;font-size:24px;font-weight:700;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.pd-pkg[data-v-147ee65e]{font-size:13px;color:var(--md-on-surface-variant);font-family:ui-monospace,monospace;overflow-wrap:anywhere}.pd-close[data-v-147ee65e]{border:0;background:transparent;color:var(--md-on-surface-variant);font-size:26px;line-height:1;width:44px;height:44px;border-radius:999px;cursor:pointer;flex-shrink:0}.pd-close[data-v-147ee65e]:hover{background:var(--md-surface-container-highest)}.pd-meta[data-v-147ee65e]{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:16px 0}.pd-chip[data-v-147ee65e]{height:28px;padding:0 12px;border-radius:999px;display:inline-flex;align-items:center;font-size:12px;font-weight:650;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant)}.pd-chip.ok[data-v-147ee65e]{background:var(--md-success-container);color:var(--md-on-success-container)}.pd-repo[data-v-147ee65e]{font-size:13px;font-weight:650;color:var(--md-primary);text-decoration:underline;overflow-wrap:anywhere}.pd-body[data-v-147ee65e]{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:16px;margin:0 -4px;border-radius:16px;background:var(--md-surface-container-low)}.pd-perms[data-v-147ee65e]{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;padding:14px 16px;border-radius:16px;background:var(--md-surface-container-low)}.pd-perms.builtin[data-v-147ee65e]{color:var(--md-on-surface-variant);font-size:13px;font-weight:650}.pd-perms h4[data-v-147ee65e]{margin:0 0 4px;font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--md-primary)}.pd-perms ul[data-v-147ee65e]{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:2px}.pd-perms li[data-v-147ee65e]{font-size:12.5px;font-family:ui-monospace,monospace;color:var(--md-on-surface);overflow-wrap:anywhere}.pd-hint[data-v-147ee65e]{margin:0;padding:24px;text-align:center;color:var(--md-on-surface-variant);font-size:14px}.pd-hint.err[data-v-147ee65e]{color:var(--md-error)}.pd-foot[data-v-147ee65e]{display:flex;justify-content:flex-end;gap:12px;margin-top:20px;flex-wrap:wrap}.pd-foot .btn[data-v-147ee65e]{height:46px;padding:0 22px;border:1px solid transparent;border-radius:999px;font-weight:700;font-size:14px;display:inline-flex;align-items:center;text-decoration:none;cursor:pointer}.pd-foot .btn[data-v-147ee65e]:disabled{opacity:.6;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.pd-enter-active[data-v-147ee65e],.pd-leave-active[data-v-147ee65e],.pd-enter-active .pd-dialog[data-v-147ee65e],.pd-leave-active .pd-dialog[data-v-147ee65e]{transition:none}.pd-enter-from .pd-dialog[data-v-147ee65e],.pd-leave-to .pd-dialog[data-v-147ee65e]{transform:none}}.life-settings[data-v-f79f46a2]{--ls-spring: var(--ease-spring);padding:4px}.ls-hero[data-v-f79f46a2]{position:relative;overflow:hidden;display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap;margin-bottom:22px;padding:clamp(22px,2.4vw,32px);border-radius:32px;background:radial-gradient(520px 260px at 100% 0%,color-mix(in srgb,var(--md-tertiary) 16%,transparent),transparent 70%),linear-gradient(135deg,var(--md-primary-container),color-mix(in srgb,var(--md-primary-container) 45%,var(--md-surface-container-low)));color:var(--md-on-primary-container);box-shadow:var(--shadow-1);animation:ls-rise-f79f46a2 .52s var(--ls-spring) both}.ls-hero-main[data-v-f79f46a2]{min-width:0}.ls-eyebrow[data-v-f79f46a2]{display:inline-block;margin:0 0 10px;padding:4px 12px;border-radius:999px;background:color-mix(in srgb,var(--md-on-primary-container) 10%,transparent);font:800 12px/1 ui-monospace,monospace;letter-spacing:.16em}.ls-hero h2[data-v-f79f46a2]{margin:0;font-size:clamp(22px,2.4vw,30px);font-weight:800;letter-spacing:-.02em}.ls-sub[data-v-f79f46a2]{margin:10px 0 0;font-size:14px;line-height:1.6;opacity:.82;max-width:60ch}#app .ls-save[data-v-f79f46a2]{min-height:52px;padding:0 26px;border:0;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary);font:700 15px/1 inherit;display:inline-flex;align-items:center;gap:10px;cursor:pointer;box-shadow:0 8px 22px color-mix(in srgb,var(--md-primary) 30%,transparent);transition:transform .3s var(--ls-spring),box-shadow .3s var(--ls-spring)}@media(hover:hover)and (pointer:fine){#app .ls-save[data-v-f79f46a2]:hover:not(:disabled){transform:translateY(-2px) scale(1.02)}}#app .ls-save[data-v-f79f46a2]:disabled{opacity:.55;cursor:not-allowed}.ls-save-ic[data-v-f79f46a2]{font-size:16px}.ls-grid[data-v-f79f46a2]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.ls-card[data-v-f79f46a2]{position:relative;background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 52%,transparent);border-radius:28px;padding:22px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow-1);transition:transform .3s var(--ls-spring),box-shadow .3s var(--ls-spring),border-color .3s;animation:ls-card-in-f79f46a2 .52s var(--ls-spring) both}@media(hover:hover)and (pointer:fine){.ls-card[data-v-f79f46a2]:hover{transform:translateY(-3px);box-shadow:var(--shadow-2);border-color:color-mix(in srgb,var(--md-primary) 26%,var(--md-outline-variant))}}.ls-grid>.ls-card[data-v-f79f46a2]:nth-child(1){animation-delay:40ms}.ls-grid>.ls-card[data-v-f79f46a2]:nth-child(2){animation-delay:90ms}.ls-grid>.ls-card[data-v-f79f46a2]:nth-child(3){animation-delay:.14s}.ls-grid>.ls-card[data-v-f79f46a2]:nth-child(4){animation-delay:.19s}.ls-grid>.ls-card[data-v-f79f46a2]:nth-child(5){animation-delay:.24s}.ls-card-wide[data-v-f79f46a2]{grid-column:1 / -1}.ls-card-head[data-v-f79f46a2]{display:flex;align-items:center;gap:12px}.ls-card-head h3[data-v-f79f46a2]{margin:0;font-size:16px;font-weight:800;letter-spacing:-.01em}.ls-ic[data-v-f79f46a2]{width:38px;height:38px;border-radius:16px 16px 16px 6px;display:grid;place-items:center;font-size:16px;flex-shrink:0}.tone-1[data-v-f79f46a2]{background:var(--md-primary-container);color:var(--md-on-primary-container)}.tone-2[data-v-f79f46a2]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.tone-3[data-v-f79f46a2]{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}.tone-4[data-v-f79f46a2]{background:var(--md-success-container);color:var(--md-on-success-container)}.tone-5[data-v-f79f46a2]{background:var(--md-surface-container-highest);color:var(--md-on-surface-variant)}.ls-row[data-v-f79f46a2]{display:grid;grid-template-columns:1fr 1fr;gap:12px}.ls-note[data-v-f79f46a2]{margin:-4px 0 0;font-size:12px;color:var(--md-on-surface-variant)}.ls-label[data-v-f79f46a2]{margin:4px 0 -4px;font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--md-on-surface-variant)}.ls-empty[data-v-f79f46a2]{font-size:13px;color:var(--md-on-surface-variant);padding:8px 2px}.ls-field[data-v-f79f46a2]{display:flex;flex-direction:column;gap:6px}.ls-field>span[data-v-f79f46a2]{font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--md-on-surface-variant)}#app .ls-field input[data-v-f79f46a2]{width:100%;min-height:52px;padding:0 17px;border:1px solid transparent;border-radius:16px;background-color:var(--md-surface-container-high);color:var(--md-on-surface);font:400 15px/1.4 inherit;outline:none;transition:background-color .18s,border-color .18s,box-shadow .2s,border-radius .34s var(--ls-spring)}#app .ls-field input[data-v-f79f46a2]:hover{background-color:var(--md-surface-container-highest)}#app .ls-field input[data-v-f79f46a2]:focus{border-color:var(--md-primary);background-color:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}#app .ls-field input[data-v-f79f46a2]:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}#app .ls-switch[data-v-f79f46a2]{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 60%,transparent);border-radius:20px;background:var(--md-surface-container-lowest);cursor:pointer;transition:background-color .2s,border-color .2s,box-shadow .22s,transform .26s var(--ls-spring)}#app .ls-switch[data-v-f79f46a2]:hover{background:var(--md-surface-container);border-color:color-mix(in srgb,var(--md-primary) 30%,var(--md-outline-variant));box-shadow:var(--shadow-1)}.ls-switch input[data-v-f79f46a2]{position:absolute;opacity:0;width:0;height:0}.ls-switch-text[data-v-f79f46a2]{display:flex;flex-direction:column;gap:2px}.ls-switch-text b[data-v-f79f46a2]{font-size:14px;font-weight:700}.ls-switch-text small[data-v-f79f46a2]{font-size:12px;color:var(--md-on-surface-variant)}.ls-track[data-v-f79f46a2]{position:relative;width:54px;height:32px;flex-shrink:0;border-radius:999px;background:var(--md-surface-container-highest);border:2px solid var(--md-outline);transition:background-color var(--duration-medium) var(--ease-out),border-color var(--duration-medium) var(--ease-out)}.ls-track[data-v-f79f46a2]:after{content:\"✓\";display:grid;place-items:center;position:absolute;top:50%;left:5px;width:18px;height:18px;border-radius:50%;background:var(--md-outline);color:transparent;font-size:12px;font-weight:900;line-height:1;transform:translateY(-50%) translate(0) scale(1);transition:transform var(--duration-medium) var(--ease-spring-soft),background-color var(--duration-medium) var(--ease-out),color var(--duration-medium) var(--ease-out)}.ls-switch input:focus-visible+.ls-track[data-v-f79f46a2]{outline:3px solid var(--md-primary);outline-offset:2px}.ls-switch input:checked+.ls-track[data-v-f79f46a2]{background:var(--md-primary);border-color:var(--md-primary)}.ls-switch input:checked+.ls-track[data-v-f79f46a2]:after{transform:translateY(-50%) translate(22px) scale(1.2);background:var(--md-on-primary);color:var(--md-primary)}.ls-models[data-v-f79f46a2]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.ls-model[data-v-f79f46a2]{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:13px 15px;border:2px solid var(--md-outline-variant);border-radius:20px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);cursor:pointer;transition:border-color .24s var(--ls-spring),background-color .24s var(--ls-spring),transform .26s var(--ls-spring),border-radius .36s var(--ls-spring)}@media(hover:hover)and (pointer:fine){.ls-model[data-v-f79f46a2]:hover{transform:translateY(-2px);background:var(--md-surface-container)}}.ls-model.selected[data-v-f79f46a2]{border-color:var(--md-primary);background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:20px 20px 20px 8px}.ls-model.selected[data-v-f79f46a2]:after{content:\"✓\";position:absolute;top:10px;right:12px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--md-primary);color:var(--md-on-primary);font-size:12px;font-weight:900}#app .ls-model[data-v-f79f46a2]{border-radius:20px}#app .ls-model.selected[data-v-f79f46a2]{border-radius:20px 20px 20px 8px}.ls-model b[data-v-f79f46a2]{font-size:13px;word-break:break-all}.ls-model span[data-v-f79f46a2]{font-size:12px;color:var(--md-on-surface-variant)}.ls-hint[data-v-f79f46a2]{margin:12px 0 0;font-size:12.5px;line-height:1.6;color:var(--md-on-surface-variant)}.ls-state[data-v-f79f46a2]{margin:18px 0 0;padding:14px 18px;border-radius:18px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);font-size:13px;font-weight:650;animation:ls-rise-f79f46a2 .32s var(--ls-spring) both}@keyframes ls-rise-f79f46a2{0%{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}@keyframes ls-card-in-f79f46a2{0%{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}@media(max-width:760px){.ls-grid[data-v-f79f46a2],.ls-row[data-v-f79f46a2],.ls-models[data-v-f79f46a2]{grid-template-columns:1fr}}@media(prefers-reduced-motion:reduce){.ls-hero[data-v-f79f46a2],.ls-card[data-v-f79f46a2],.ls-state[data-v-f79f46a2]{animation:none}}.about[data-v-da8c447d]{display:flex;flex-direction:column;gap:26px}.identity[data-v-da8c447d]{display:flex;align-items:center;gap:16px}.app-icon[data-v-da8c447d]{flex:none;width:56px;height:56px;filter:drop-shadow(0 6px 16px color-mix(in srgb,var(--md-primary) 25%,transparent))}.app-id[data-v-da8c447d]{flex:1;min-width:0}.app-id h2[data-v-da8c447d]{margin:0;display:flex;align-items:center;gap:10px;font-size:22px;font-weight:700;letter-spacing:-.3px}.ver-badge[data-v-da8c447d]{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.app-desc[data-v-da8c447d]{margin:4px 0 0;font-size:14px;color:var(--md-on-surface-variant)}.identity-actions[data-v-da8c447d]{display:flex;gap:8px;flex-wrap:wrap}.section[data-v-da8c447d]{display:flex;flex-direction:column;gap:14px}.section-head[data-v-da8c447d]{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.section-title[data-v-da8c447d]{display:flex;align-items:center;gap:8px;margin:0;font-size:17px;font-weight:650;color:var(--md-on-surface)}.section-title[data-v-da8c447d]:before{content:\"\";width:4px;height:16px;border-radius:2px;background:var(--md-primary)}.credits[data-v-da8c447d]{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.person[data-v-da8c447d]{display:flex;align-items:center;gap:14px;padding:16px;border-radius:18px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);text-decoration:none;color:inherit;transition:border-color .18s,background-color .18s,transform .2s}.person[data-v-da8c447d]:hover{border-color:var(--md-primary);background:var(--md-surface-container);transform:translateY(-1px)}.person img[data-v-da8c447d]{width:54px;height:54px;border-radius:50%;flex:none;box-shadow:0 0 0 3px var(--md-surface-container-low),0 0 0 4px var(--md-outline-variant)}.person-info[data-v-da8c447d]{display:flex;flex-direction:column;min-width:0}.person-info .name[data-v-da8c447d]{font-size:16px;font-weight:650}.person-info .role[data-v-da8c447d]{font-size:13px;color:var(--md-on-surface-variant)}.person .go[data-v-da8c447d]{margin-left:auto;color:var(--md-primary);font-weight:700}.contributors-head[data-v-da8c447d]{margin-top:6px}.contribs[data-v-da8c447d]{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}.contrib[data-v-da8c447d]{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;border-radius:16px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);text-decoration:none;color:inherit;transition:border-color .18s,background-color .18s,transform .2s}.contrib[data-v-da8c447d]:hover{border-color:var(--md-primary);background:var(--md-surface-container);transform:translateY(-1px)}.contrib img[data-v-da8c447d]{width:46px;height:46px;border-radius:50%}.contrib .login[data-v-da8c447d]{font-size:12px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.contrib .count[data-v-da8c447d]{font-size:12px;color:var(--md-on-surface-variant)}.foot[data-v-da8c447d]{display:flex;align-items:center;gap:12px;padding-top:18px;border-top:1px solid var(--md-outline-variant);font-size:13px;color:var(--md-on-surface-variant)}.foot .repo-link[data-v-da8c447d]{margin-left:auto}.status-chip[data-v-da8c447d]{height:26px;padding:0 10px;border-radius:999px;display:inline-flex;align-items:center;font-size:12px;font-weight:600;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant)}.repo-link[data-v-da8c447d]{color:var(--md-primary);text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap}.repo-link[data-v-da8c447d]:hover{text-decoration:underline}.muted[data-v-da8c447d]{color:var(--md-on-surface-variant);font-size:12px}.us-hero[data-v-da8c447d]{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:16px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-low)}.us-hero.ok[data-v-da8c447d]{background:var(--md-success-container);color:var(--md-on-success-container);border-color:transparent}.us-hero.warn[data-v-da8c447d]{background:var(--md-warning-container);color:var(--md-on-warning-container);border-color:transparent}.us-hero.none[data-v-da8c447d]{background:var(--md-surface-container-low)}.us-hero-icon[data-v-da8c447d]{flex:none;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:color-mix(in srgb,currentColor 12%,transparent)}.us-hero-text[data-v-da8c447d]{flex:1;min-width:0}.us-hero-text b[data-v-da8c447d]{display:block;font-size:15px;font-weight:750}.us-hero-text span[data-v-da8c447d]{font-size:13px;opacity:.85}.us-hero-text em[data-v-da8c447d]{font-style:normal;font-weight:700}.us-hero-actions[data-v-da8c447d]{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.us-hero .btn.btn-primary[data-v-da8c447d]{background:var(--md-primary);color:var(--md-on-primary)}.us-notes[data-v-da8c447d]{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border:1px solid var(--md-outline-variant);border-radius:16px;background:var(--md-surface-container-lowest)}.us-notes-title[data-v-da8c447d]{margin:0;font-size:13px;font-weight:700;color:var(--md-on-surface)}.us-notes-body[data-v-da8c447d]{margin:0;max-height:320px;overflow:auto;font:12.5px/1.6 ui-monospace,monospace;white-space:pre-wrap;color:var(--md-on-surface-variant)}.us-apply-banner[data-v-da8c447d]{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px solid var(--md-outline-variant);border-radius:16px;background:var(--md-surface-container)}.us-apply-banner.done[data-v-da8c447d]{background:var(--md-success-container);color:var(--md-on-success-container);border-color:transparent}.us-apply-banner.failed[data-v-da8c447d]{background:var(--md-error-container);color:var(--md-on-error-container);border-color:transparent}.us-apply-head[data-v-da8c447d]{display:flex;align-items:center;gap:10px;font-size:14px}.us-apply-head b[data-v-da8c447d]{font-weight:700}.us-apply-label[data-v-da8c447d]{margin-left:auto;font-size:13px;opacity:.85}.us-chip-tag[data-v-da8c447d]{height:22px;padding:0 9px;border-radius:999px;display:inline-flex;align-items:center;font-size:12px;font-weight:700;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.us-spinner[data-v-da8c447d]{flex:none;width:14px;height:14px;border-radius:50%;border:2px solid currentColor;border-top-color:transparent;opacity:.75}.us-apply-banner.running .us-spinner[data-v-da8c447d]{animation:us-spin-da8c447d .8s linear infinite}.us-apply-banner.done .us-spinner[data-v-da8c447d],.us-apply-banner.failed .us-spinner[data-v-da8c447d]{display:none}.us-apply-log[data-v-da8c447d],.us-apply-error[data-v-da8c447d]{margin:0;max-height:220px;overflow:auto;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;color:inherit}@keyframes us-spin-da8c447d{to{transform:rotate(360deg)}}.alert[data-v-da8c447d]{color:var(--md-error)}.updates[data-v-95a0aad4]{display:flex;flex-direction:column;gap:4px}.us-block[data-v-95a0aad4]{display:flex;flex-direction:column;gap:14px;padding:6px 0 10px}.us-divider[data-v-95a0aad4]{height:1px;background:var(--md-outline-variant);margin:4px 0}.us-head[data-v-95a0aad4]{display:flex;align-items:center;gap:12px}.us-ico[data-v-95a0aad4]{flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--md-primary) 14%,transparent);color:var(--md-primary)}.us-head-text[data-v-95a0aad4]{flex:1;min-width:0}.us-title[data-v-95a0aad4]{margin:0;font-size:16px;font-weight:700;color:var(--md-on-surface)}.us-desc[data-v-95a0aad4]{margin:2px 0 0;font-size:12.5px;color:var(--md-on-surface-variant)}.us-head-actions[data-v-95a0aad4]{display:flex;align-items:center;gap:8px}.us-tag[data-v-95a0aad4]{flex:none;height:24px;padding:0 10px;border-radius:999px;display:inline-flex;align-items:center;font-size:12px;font-weight:700;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant)}.us-tag.on[data-v-95a0aad4]{background:var(--md-primary-container);color:var(--md-on-primary-container)}.us-count[data-v-95a0aad4]{min-width:26px;height:26px;padding:0 8px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums}.us-count.warn[data-v-95a0aad4]{background:#ffdf9e;color:#4a3800}.us-source[data-v-95a0aad4]{display:flex;flex-direction:column;gap:10px}.us-input-group[data-v-95a0aad4]{display:flex;align-items:center;gap:8px;padding:4px 4px 4px 12px;border:1.5px solid var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-lowest);transition:border-color .16s,box-shadow .16s}.us-input-group[data-v-95a0aad4]:focus-within{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}.us-input-ico[data-v-95a0aad4]{flex:none;display:grid;place-items:center;color:var(--md-on-surface-variant)}.us-input[data-v-95a0aad4]{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--md-on-surface);font-size:14px;padding:9px 0}.us-input[data-v-95a0aad4]::placeholder{color:var(--md-on-surface-variant);opacity:.7}.us-apply[data-v-95a0aad4]{flex:none;height:34px;padding-inline:18px;border-radius:10px}.us-chips[data-v-95a0aad4]{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.us-chip[data-v-95a0aad4]{height:30px;padding:0 14px;border-radius:999px;border:1.5px solid var(--md-outline-variant);background:var(--md-surface-container-low);color:var(--md-on-surface-variant);font-size:12.5px;font-weight:650;cursor:pointer;transition:border-color var(--duration-short) var(--ease-out),background-color var(--duration-short) var(--ease-out),color var(--duration-short) var(--ease-out)}.us-chip[data-v-95a0aad4]:hover{border-color:var(--md-primary);color:var(--md-primary)}.us-chip.active[data-v-95a0aad4]{background:var(--md-primary);border-color:var(--md-primary);color:var(--md-on-primary)}.us-saved[data-v-95a0aad4]{color:var(--md-success);font-size:13px;font-weight:600}.us-hero[data-v-95a0aad4]{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:16px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-low)}.us-hero.ok[data-v-95a0aad4]{background:var(--md-success-container);color:#0d1f06;border-color:transparent}.us-hero.warn[data-v-95a0aad4]{background:linear-gradient(135deg,#ffe4a3,#ffd680);color:#4a3800;border-color:transparent}.us-hero.none[data-v-95a0aad4]{background:var(--md-surface-container-low)}.us-hero-icon[data-v-95a0aad4]{flex:none;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:color-mix(in srgb,currentColor 12%,transparent)}.us-hero-text[data-v-95a0aad4]{flex:1;min-width:0}.us-hero-text b[data-v-95a0aad4]{display:block;font-size:15px;font-weight:750}.us-hero-text span[data-v-95a0aad4]{font-size:13px;opacity:.85}.us-hero-text em[data-v-95a0aad4]{font-style:normal;font-weight:700}.us-hero-actions[data-v-95a0aad4]{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.us-hero .btn.btn-primary[data-v-95a0aad4]{background:var(--md-primary);color:var(--md-on-primary)}.us-apply-banner[data-v-95a0aad4]{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px solid var(--md-outline-variant);border-radius:16px;background:var(--md-surface-container)}.us-apply-banner.done[data-v-95a0aad4]{background:var(--md-success-container);color:#0d1f06;border-color:transparent}.us-apply-banner.failed[data-v-95a0aad4]{background:var(--md-error-container);color:var(--md-on-error-container);border-color:transparent}.us-apply-head[data-v-95a0aad4]{display:flex;align-items:center;gap:10px;font-size:14px}.us-apply-head b[data-v-95a0aad4]{font-weight:700}.us-apply-label[data-v-95a0aad4]{margin-left:auto;font-size:13px;opacity:.85}.us-chip-tag[data-v-95a0aad4]{height:22px;padding:0 9px;border-radius:999px;display:inline-flex;align-items:center;font-size:12px;font-weight:700;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.us-spinner[data-v-95a0aad4]{flex:none;width:14px;height:14px;border-radius:50%;border:2px solid currentColor;border-top-color:transparent;opacity:.75}.us-apply-banner.running .us-spinner[data-v-95a0aad4]{animation:us-spin-95a0aad4 .8s linear infinite}.us-apply-banner.done .us-spinner[data-v-95a0aad4],.us-apply-banner.failed .us-spinner[data-v-95a0aad4]{display:none}.us-apply-log[data-v-95a0aad4],.us-apply-error[data-v-95a0aad4]{margin:0;max-height:220px;overflow:auto;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;color:inherit}@keyframes us-spin-95a0aad4{to{transform:rotate(360deg)}}.us-table[data-v-95a0aad4]{border:1px solid var(--md-outline-variant);border-radius:16px;overflow:hidden}.us-row[data-v-95a0aad4]{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.1fr) minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 16px}.us-thead[data-v-95a0aad4]{background:var(--md-surface-container);font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--md-on-surface-variant);font-weight:700}.us-row[data-v-95a0aad4]:not(.us-thead){background:var(--md-surface-container-lowest);border-top:1px solid var(--md-outline-variant);transition:background-color .14s}.us-row[data-v-95a0aad4]:not(.us-thead):hover{background:var(--md-surface-container-low)}.us-name[data-v-95a0aad4]{display:inline-flex;align-items:center;gap:8px;font-weight:650;min-width:0;overflow:hidden}.us-name-text[data-v-95a0aad4]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.us-dot[data-v-95a0aad4]{flex:none;width:8px;height:8px;border-radius:50%;background:var(--md-outline)}.us-dot.ok[data-v-95a0aad4]{background:var(--md-success)}.us-dot.warn[data-v-95a0aad4]{background:#e0a800}.us-dot.bad[data-v-95a0aad4]{background:var(--md-error)}.us-ver[data-v-95a0aad4]{display:inline-flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}.us-ver em[data-v-95a0aad4]{font-style:normal;color:var(--md-on-surface-variant)}.us-ver b[data-v-95a0aad4]{font-weight:650}.us-ver b.good[data-v-95a0aad4]{color:var(--md-success)}.us-arrow[data-v-95a0aad4]{color:var(--md-on-surface-variant);opacity:.6}.us-status[data-v-95a0aad4]{justify-self:start;max-width:100%;height:26px;padding:0 10px;border-radius:999px;display:inline-flex;align-items:center;font-size:12px;font-weight:600;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);overflow:hidden}.us-status-text[data-v-95a0aad4]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.us-status.ok[data-v-95a0aad4]{background:var(--md-success-container);color:#0d1f06}.us-status.warn[data-v-95a0aad4]{background:#ffdf9e;color:#4a3800}.us-status.bad[data-v-95a0aad4]{background:var(--md-error-container);color:var(--md-on-error-container)}.us-actions[data-v-95a0aad4]{display:inline-flex;align-items:center;gap:10px;justify-self:end}.us-repo[data-v-95a0aad4]{color:var(--md-primary);text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap}.us-repo[data-v-95a0aad4]:hover{text-decoration:underline}.us-empty[data-v-95a0aad4]{padding:18px;margin:0;color:var(--md-on-surface-variant)}.us-foot-hint[data-v-95a0aad4]{margin:0;font-size:12.5px;color:var(--md-on-surface-variant)}.us-foot-hint code[data-v-95a0aad4]{background:var(--md-surface-container);padding:3px 8px;border-radius:6px;font-size:12px}.alert[data-v-95a0aad4]{color:var(--md-error)}@media(max-width:720px){.us-row[data-v-95a0aad4]{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto}.us-status[data-v-95a0aad4]{display:none}.us-hero[data-v-95a0aad4]{flex-wrap:wrap}.us-hero-actions[data-v-95a0aad4]{width:100%}}.provider-panel[data-v-d93aed7e]{display:flex;flex-direction:column;gap:18px}.pp-editor-head[data-v-d93aed7e]{display:flex;align-items:center;gap:14px}.pp-back[data-v-d93aed7e]{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;cursor:pointer;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-low);color:var(--md-on-surface);transition:background-color var(--duration-short) var(--ease-out),border-color var(--duration-short) var(--ease-out)}.pp-back[data-v-d93aed7e]:hover{background:var(--md-surface-container);border-color:var(--md-primary)}.pp-editor-title[data-v-d93aed7e]{flex:1;min-width:0}.pp-editor-title h2[data-v-d93aed7e]{margin:0;font-size:19px;font-weight:700}.pp-editor-title .card-desc[data-v-d93aed7e]{margin:3px 0 0}.pp-section[data-v-d93aed7e]{display:flex;flex-direction:column;gap:12px;padding:16px 18px;border:1px solid var(--md-outline-variant);border-radius:16px;background:var(--md-surface-container-lowest)}.pp-section-head[data-v-d93aed7e]{display:flex;align-items:center;justify-content:space-between;gap:12px}.pp-section-title[data-v-d93aed7e]{margin:0;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--md-on-surface-variant)}.pp-count[data-v-d93aed7e]{color:var(--md-primary);font-weight:700;margin-left:4px}.pp-grid[data-v-d93aed7e]{display:grid;grid-template-columns:1fr 1fr;gap:14px}.pp-grid .field[data-v-d93aed7e]{margin-bottom:0}.pp-span[data-v-d93aed7e]{grid-column:1 / -1}.pp-req[data-v-d93aed7e]{color:var(--md-error);margin-left:2px}.pp-key[data-v-d93aed7e]{display:flex;align-items:center;gap:8px}.pp-key .input[data-v-d93aed7e]{flex:1}.pp-key-toggle[data-v-d93aed7e]{flex:none;height:40px;padding-inline:14px;border-radius:10px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container);color:var(--md-on-surface);cursor:pointer;font-size:13px;font-weight:600}.pp-key-toggle[data-v-d93aed7e]:hover{border-color:var(--md-primary);color:var(--md-primary)}.pp-status[data-v-d93aed7e]{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:999px;font-size:12.5px;font-weight:650;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);white-space:nowrap}.pp-dot[data-v-d93aed7e]{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.55}.pp-status.ok[data-v-d93aed7e]{background:var(--md-success-container);color:var(--md-on-success-container)}.pp-status.error[data-v-d93aed7e]{background:var(--md-error-container);color:var(--md-on-error-container)}.pp-status.checking[data-v-d93aed7e]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.pp-status.checking .pp-dot[data-v-d93aed7e]{animation:pp-pulse-d93aed7e 1s ease-in-out infinite}@keyframes pp-pulse-d93aed7e{50%{opacity:.15}}.pp-probe[data-v-d93aed7e]{margin:6px 0 0;font-size:12.5px}.pp-probe.ok[data-v-d93aed7e]{color:var(--md-success)}.pp-probe.err[data-v-d93aed7e]{color:var(--md-error)}.pp-discovered[data-v-d93aed7e]{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-radius:12px;background:var(--md-primary-container);color:var(--md-on-primary-container);font-size:13px;font-weight:600}.pp-model-tools[data-v-d93aed7e]{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.pp-search[data-v-d93aed7e]{flex:1;min-width:160px}.pp-mini[data-v-d93aed7e]{height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-low);color:var(--md-on-surface-variant);font-size:12.5px;font-weight:600;cursor:pointer}.pp-mini[data-v-d93aed7e]:hover{border-color:var(--md-primary);color:var(--md-primary)}.pp-add-model[data-v-d93aed7e]{display:flex;align-items:center;gap:8px;margin-top:8px}.pp-add-model .input[data-v-d93aed7e]{flex:1;min-width:0}.pp-add-model .btn[data-v-d93aed7e]{flex:none;white-space:nowrap}.pp-add-error[data-v-d93aed7e]{color:var(--md-error)}.pp-remove[data-v-d93aed7e]{flex:none;width:26px;height:26px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--md-on-surface-variant);font-size:17px;line-height:1;cursor:pointer}.pp-remove[data-v-d93aed7e]:hover{background:color-mix(in srgb,var(--md-error) 14%,transparent);color:var(--md-error)}.pp-models[data-v-d93aed7e]{display:flex;flex-direction:column;border:1px solid var(--md-outline-variant);border-radius:14px;overflow:hidden;max-height:340px;overflow-y:auto}.pp-model[data-v-d93aed7e]{display:flex;align-items:center;gap:12px;padding:9px 14px;border-top:1px solid var(--md-outline-variant);background:var(--md-surface-container-lowest)}.pp-model[data-v-d93aed7e]:first-child{border-top:0}.pp-model.off[data-v-d93aed7e]{opacity:.5}.pp-model-name[data-v-d93aed7e]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px}.pp-star[data-v-d93aed7e]{flex:none;width:30px;height:30px;border:0;background:transparent;color:var(--md-on-surface-variant);font-size:17px;cursor:pointer;border-radius:8px}.pp-star[data-v-d93aed7e]:hover{background:var(--md-surface-container);color:var(--md-primary)}.pp-star.on[data-v-d93aed7e]{color:#e0a800;cursor:default}.pp-switch[data-v-d93aed7e]{flex:none;width:40px;height:22px;accent-color:var(--md-primary);cursor:pointer}.pp-type[data-v-d93aed7e]{flex:none;height:28px;max-width:132px;padding:0 6px;border-radius:8px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-low);color:var(--md-on-surface-variant);font-size:12px;cursor:pointer}.pp-type.tagged[data-v-d93aed7e]{border-color:color-mix(in srgb,var(--md-primary) 55%,var(--md-outline-variant));color:var(--md-primary);font-weight:650}.pp-error[data-v-d93aed7e]{color:var(--md-error);margin:0}.pp-editor-actions[data-v-d93aed7e]{display:flex;gap:10px}.pp-list-head[data-v-d93aed7e]{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}.pp-list-head h2[data-v-d93aed7e]{margin:0;font-size:19px;font-weight:700}.pp-list-head .card-desc[data-v-d93aed7e]{margin:3px 0 0}.pp-list-actions[data-v-d93aed7e]{display:flex;gap:8px}.pp-cards[data-v-d93aed7e]{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}.pp-card[data-v-d93aed7e]{display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-low);transition:border-color var(--duration-medium) var(--ease-out),transform var(--duration-medium) var(--ease-out),box-shadow var(--duration-medium) var(--ease-out)}@media(hover:hover)and (pointer:fine){.pp-card[data-v-d93aed7e]:hover{transform:translateY(-1px);box-shadow:var(--shadow-1)}}.pp-card.default[data-v-d93aed7e]{border-color:color-mix(in srgb,var(--md-primary) 60%,var(--md-outline-variant))}.pp-card.off[data-v-d93aed7e]{opacity:.62}.pp-card-head[data-v-d93aed7e]{display:flex;align-items:center;gap:12px}.pp-logo[data-v-d93aed7e]{flex:none;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);overflow:hidden}.pp-logo img[data-v-d93aed7e]{width:26px;height:26px}.pp-card-id[data-v-d93aed7e]{flex:1;min-width:0}.pp-card-id strong[data-v-d93aed7e]{display:block;font-size:15.5px;font-weight:700}.pp-card-id code[data-v-d93aed7e]{display:block;font-size:12px;color:var(--md-on-surface-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pp-card-badges[data-v-d93aed7e]{display:flex;flex-direction:column;align-items:flex-end;gap:6px}.pp-badge[data-v-d93aed7e]{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums}.pp-badge.primary[data-v-d93aed7e]{background:var(--md-primary-container);color:var(--md-on-primary-container)}.pp-card-status[data-v-d93aed7e]{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.pp-meta[data-v-d93aed7e]{font-size:12px;color:var(--md-on-surface-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}.pp-meta.err[data-v-d93aed7e]{color:var(--md-error)}.pp-chips[data-v-d93aed7e]{display:flex;flex-wrap:wrap;gap:6px}.pp-chip[data-v-d93aed7e]{font-size:11.5px;padding:3px 9px;border-radius:999px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pp-chip.more[data-v-d93aed7e],.pp-chip.empty[data-v-d93aed7e]{background:transparent;border:1px dashed var(--md-outline-variant)}.pp-card-actions[data-v-d93aed7e]{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto}.pp-empty[data-v-d93aed7e]{display:flex;flex-direction:column;align-items:center;gap:14px;padding:40px 16px;color:var(--md-on-surface-variant);border:1px dashed var(--md-outline-variant);border-radius:18px}@media(max-width:640px){.pp-grid[data-v-d93aed7e],.pp-cards[data-v-d93aed7e]{grid-template-columns:1fr}}.pairing-panel[data-v-c18959f6]{margin:24px 0;padding:20px;background:var(--md-surface-container-low);border-radius:12px}.pairing-panel p[data-v-c18959f6]{margin:12px 0;color:var(--md-on-surface-variant)}.pairing-panel .pairing-error[data-v-c18959f6]{color:var(--md-error)}article[data-v-c18959f6]{display:flex;align-items:center;gap:14px;padding:14px 0;flex-wrap:wrap}code[data-v-c18959f6]{font-size:24px;letter-spacing:4px}h4[data-v-c18959f6]{margin:18px 0 0}.pairing-list[data-v-c18959f6]{position:relative}.pair-enter-active[data-v-c18959f6],.pair-leave-active[data-v-c18959f6]{transition:opacity var(--duration-medium) var(--ease-out),transform var(--duration-medium) var(--ease-out)}.pair-enter-from[data-v-c18959f6],.pair-leave-to[data-v-c18959f6]{opacity:0;transform:translateY(4px)}.pair-leave-active[data-v-c18959f6]{position:absolute;width:100%}.pair-move[data-v-c18959f6]{transition:transform var(--duration-medium) var(--ease-out)}@media(prefers-reduced-motion:reduce){.pair-enter-active[data-v-c18959f6],.pair-leave-active[data-v-c18959f6],.pair-move[data-v-c18959f6]{transition-duration:1ms}}.connection-grid[data-v-b6056614]{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,264px);gap:24px;align-items:start}@media(max-width:1000px){.connection-grid[data-v-b6056614]{grid-template-columns:minmax(0,1fr)}}.connection-form .field[data-v-b6056614]{margin-bottom:12px}.connection-qr[data-v-b6056614]{display:flex;flex-direction:column;align-items:center;gap:8px}.connection-qr svg[data-v-b6056614]{background:#fff;border-radius:8px;padding:6px;width:100%;max-width:264px;height:auto}.connection-link[data-v-b6056614]{max-width:100%;word-break:break-all;font-size:11px;opacity:.7;text-align:center}.helper-text[data-v-b6056614]{overflow-wrap:anywhere}.toggle-label[data-v-b6056614]{display:flex;align-items:center;gap:10px;margin-bottom:12px}.security-panel[data-v-fb8c17b3]{max-width:920px}.sec-stack[data-v-fb8c17b3]{display:flex;flex-direction:column;gap:12px;margin-top:18px}.sec-card[data-v-fb8c17b3]{padding:16px 18px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 60%,transparent);border-radius:22px;background:var(--md-surface-container-lowest)}.sec-card-head[data-v-fb8c17b3]{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px}.sec-card-head strong[data-v-fb8c17b3]{font-size:15px;font-weight:700}.sec-chip[data-v-fb8c17b3]{flex-shrink:0;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;color:var(--md-on-surface-variant);background:var(--md-surface-container)}.sec-chip.on[data-v-fb8c17b3]{color:color-mix(in srgb,var(--md-primary) 80%,var(--md-on-surface));background:color-mix(in srgb,var(--md-primary) 12%,transparent)}.sec-card>.helper-text[data-v-fb8c17b3]{margin:2px 0 12px}.sec-pin-grid[data-v-fb8c17b3]{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px;max-width:720px;margin-top:12px}.sec-pin-col[data-v-fb8c17b3]{display:flex;flex-direction:column;gap:8px;min-width:0;padding:12px 14px 14px;border-radius:16px;background:var(--md-surface-container-low)}.sec-pin-label[data-v-fb8c17b3]{font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}.sec-actions[data-v-fb8c17b3]{display:flex;align-items:center;gap:12px;margin-top:18px}.page-list[data-v-fb8c17b3]{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:6px}.page-item[data-v-fb8c17b3]{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;cursor:pointer;transition:background-color .16s}.page-item[data-v-fb8c17b3]:hover{background:var(--md-surface-container)}.page-item[data-v-fb8c17b3]:has(input:checked){background:color-mix(in srgb,var(--md-primary) 8%,transparent)}.page-item input[data-v-fb8c17b3]{position:absolute;opacity:0;width:0;height:0}.page-item .toggle-slider[data-v-fb8c17b3]{width:44px;height:26px}.page-item .toggle-slider[data-v-fb8c17b3]:after{left:3px;width:16px;height:16px;font-size:10px}.page-item input:checked+.toggle-slider[data-v-fb8c17b3]{background:var(--md-primary);border-color:var(--md-primary)}.page-item input:checked+.toggle-slider[data-v-fb8c17b3]:after{left:25px;background:var(--md-on-primary);color:var(--md-primary)}.page-item input:focus-visible+.toggle-slider[data-v-fb8c17b3]{box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 22%,transparent)}.page-text[data-v-fb8c17b3]{display:flex;align-items:baseline;gap:8px;min-width:0}.page-name[data-v-fb8c17b3]{font-size:13px;font-weight:650;color:var(--md-on-surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.page-text code[data-v-fb8c17b3]{font-size:11px;color:var(--md-on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sec-msg[data-v-fb8c17b3]{margin-top:12px}.sec-error[data-v-fb8c17b3]{color:var(--md-error);font-size:12.5px;margin-top:8px}@media(max-width:640px){.sec-pin-grid[data-v-fb8c17b3]{grid-template-columns:1fr}}.mcp-panel[data-v-01485e38]{max-width:900px}.mcp-head[data-v-01485e38]{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);flex-wrap:wrap;margin-bottom:var(--space-lg)}.mcp-head h2[data-v-01485e38]{margin:0;font-size:clamp(22px,2.4vw,30px);font-weight:800;letter-spacing:-.02em}.subtitle[data-v-01485e38]{margin:8px 0 0;color:var(--md-on-surface-variant);font-size:14px;line-height:1.6;max-width:60ch}.mcp-actions[data-v-01485e38]{display:flex;gap:10px}.error-banner[data-v-01485e38]{padding:14px 18px;border-radius:16px;background:var(--md-error-container);color:var(--md-on-error-container);margin-bottom:var(--space-lg)}.notice-banner[data-v-01485e38]{padding:14px 18px;border-radius:16px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);margin-bottom:var(--space-lg)}.hint[data-v-01485e38]{color:var(--md-on-surface-variant);font-size:14px}.mcp-list[data-v-01485e38]{display:flex;flex-direction:column;gap:var(--space-md, 16px)}.mcp-card[data-v-01485e38]{display:flex;flex-direction:column;gap:12px;padding:18px;border-radius:22px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);background:var(--md-surface-container-low)}.mcp-card.is-builtin[data-v-01485e38]{border-color:color-mix(in srgb,var(--md-primary) 34%,var(--md-outline-variant));background:var(--md-surface-container)}.mcp-row[data-v-01485e38]{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}.mcp-field[data-v-01485e38]{display:flex;flex-direction:column;gap:6px;min-width:160px}.mcp-field.grow[data-v-01485e38]{flex:1}.mcp-field>span[data-v-01485e38]{font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant)}.mcp-field input[data-v-01485e38],.mcp-field select[data-v-01485e38],.mcp-field textarea[data-v-01485e38]{font:inherit;padding:10px 12px;border-radius:12px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-high);color:var(--md-on-surface);outline:none}.mcp-field input[readonly][data-v-01485e38]{opacity:.7}.mcp-field textarea[data-v-01485e38]{resize:vertical;font-family:ui-monospace,monospace;font-size:13px}.mcp-field input[data-v-01485e38]:focus,.mcp-field select[data-v-01485e38]:focus,.mcp-field textarea[data-v-01485e38]:focus{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 14%,transparent)}.mcp-toggle[data-v-01485e38]{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:650;color:var(--md-on-surface-variant);user-select:none}.mcp-remove[data-v-01485e38]{margin-left:auto;border:0;border-radius:999px;padding:10px 16px;font-weight:650;cursor:pointer;background:var(--md-error-container);color:var(--md-on-error-container)}.builtin-note[data-v-01485e38]{margin:0;font-size:12.5px;line-height:1.6;color:var(--md-on-surface-variant)}.builtin-note code[data-v-01485e38]{font-family:ui-monospace,monospace}.mail-grid[data-v-01485e38]{display:grid;grid-template-columns:1fr 1fr;gap:18px}.mail-col[data-v-01485e38]{display:flex;flex-direction:column;gap:10px}.mail-row[data-v-01485e38]{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}.mail-label[data-v-01485e38]{margin:0;font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--md-on-surface-variant)}.btn[data-v-01485e38]{height:44px;padding:0 20px;border:1px solid transparent;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;background:var(--md-surface-container-high);color:var(--md-on-surface)}.btn-tonal[data-v-01485e38]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.btn.primary[data-v-01485e38]{background:var(--md-primary);color:var(--md-on-primary)}.btn[data-v-01485e38]:disabled{opacity:.6;cursor:not-allowed}#app .mcp-panel[data-v-01485e38] :is(.btn,.mcp-remove){border-radius:999px}#app .mcp-panel .mcp-field[data-v-01485e38] :is(input,select,textarea){border-radius:12px}@media(max-width:720px){.mail-grid[data-v-01485e38]{grid-template-columns:1fr}}.plugin-pane-message[data-v-2d1f36bc]{padding:var(--space-xl);color:var(--md-on-surface-variant)}.models-field[data-v-7089f4a3]{display:flex;flex-direction:column;gap:8px}.models-list[data-v-7089f4a3]{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}.models-list li[data-v-7089f4a3]{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:12px;background:var(--md-surface-container-high)}.models-rank[data-v-7089f4a3]{flex:none;width:20px;height:20px;display:grid;place-items:center;border-radius:50%;background:var(--md-primary);color:var(--md-on-primary);font-size:11px;font-weight:700}.models-name[data-v-7089f4a3]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.models-actions[data-v-7089f4a3]{display:inline-flex;gap:4px}.models-actions button[data-v-7089f4a3]{width:28px;height:28px;border:0;border-radius:8px;background:var(--md-surface-container-lowest);color:var(--md-on-surface-variant);cursor:pointer}.models-actions button[data-v-7089f4a3]:disabled{opacity:.35;cursor:not-allowed}.models-actions button[data-v-7089f4a3]:hover:not(:disabled){background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.models-empty[data-v-7089f4a3]{margin:0;color:var(--md-on-surface-variant);font-size:12.5px}.usage-page[data-v-e1479886]{height:100%;overflow-y:auto;padding:clamp(22px,3vw,44px);background:radial-gradient(1100px 560px at 105% -12%,color-mix(in srgb,var(--md-primary) 10%,transparent),transparent 62%),var(--md-surface);color:var(--md-on-surface)}.hero[data-v-e1479886]{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);margin-bottom:clamp(18px,2.4vw,28px);flex-wrap:wrap}.eyebrow[data-v-e1479886]{margin:0 0 8px;color:var(--md-primary);font:800 12px/1 ui-monospace,monospace;letter-spacing:.18em}.hero h1[data-v-e1479886]{font-size:clamp(26px,3vw,38px);font-weight:800;letter-spacing:-.02em;margin:0}.subtitle[data-v-e1479886]{color:var(--md-on-surface-variant);font-size:15px;margin-top:8px;line-height:1.6;max-width:70ch}.hero-actions[data-v-e1479886]{display:flex;gap:10px;flex-wrap:wrap}.banner[data-v-e1479886]{padding:13px 18px;border-radius:18px;margin-bottom:14px;font-size:13px;font-weight:600}.banner.err[data-v-e1479886]{background:var(--md-error-container);color:var(--md-on-error-container)}.banner.ok[data-v-e1479886]{background:var(--md-success-container);color:var(--md-on-success-container)}#app .usage-page .btn[data-v-e1479886]{height:46px;padding:0 22px;border:1px solid transparent;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;transition:transform var(--duration-medium) var(--ease-spring),background-color var(--duration-short) var(--ease-out),box-shadow var(--duration-medium) var(--ease-out)}@media(hover:hover)and (pointer:fine){#app .usage-page .btn[data-v-e1479886]:hover:not(:disabled){transform:translateY(-1px);box-shadow:var(--shadow-1)}}#app .usage-page .btn[data-v-e1479886]:disabled{opacity:.55;cursor:not-allowed}.overview[data-v-e1479886]{display:grid;grid-template-columns:minmax(220px,.9fr) minmax(280px,1.5fr) minmax(200px,1fr);gap:var(--space-lg);margin-bottom:var(--space-xl)}.card[data-v-e1479886]{background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:32px;padding:24px;box-shadow:var(--shadow-1);animation:up-e1479886 var(--duration-long) var(--ease-spring) both}.donut-card[data-v-e1479886]{display:grid;place-items:center}.donut[data-v-e1479886]{position:relative;width:min(190px,100%);aspect-ratio:1}.donut svg[data-v-e1479886]{width:100%;height:100%;transform:rotate(-90deg)}.donut circle[data-v-e1479886]{fill:none;stroke-width:5}.donut-track[data-v-e1479886]{stroke:var(--md-surface-container-high)}.donut-prompt[data-v-e1479886]{stroke:var(--md-primary);stroke-linecap:round;transition:stroke-dasharray var(--duration-long) var(--ease-spring)}.donut-completion[data-v-e1479886]{stroke:var(--md-tertiary);stroke-linecap:round;transition:stroke-dasharray var(--duration-long) var(--ease-spring),stroke-dashoffset var(--duration-long) var(--ease-spring)}.donut-center[data-v-e1479886]{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center}.donut-center b[data-v-e1479886]{font-size:30px;font-weight:800;letter-spacing:-.02em}.donut-center span[data-v-e1479886]{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--md-on-surface-variant)}.total-card[data-v-e1479886]{display:flex;flex-direction:column;gap:18px}.total-head[data-v-e1479886]{display:flex;align-items:center;gap:16px}.stat-ic[data-v-e1479886]{width:46px;height:46px;flex-shrink:0;border-radius:18px 18px 18px 7px;display:grid;place-items:center;background:var(--md-primary-container);color:var(--md-on-primary-container)}.stat-label[data-v-e1479886]{font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--md-on-surface-variant)}.big[data-v-e1479886]{display:block;font-size:clamp(30px,3.4vw,42px);font-weight:800;letter-spacing:-.03em;line-height:1.05}.compose[data-v-e1479886]{display:flex;height:18px;border-radius:999px;overflow:hidden;background:var(--md-surface-container-high)}.seg[data-v-e1479886]{height:100%;transition:width var(--duration-long) var(--ease-spring)}.seg.prompt[data-v-e1479886]{background:linear-gradient(90deg,var(--md-primary),color-mix(in srgb,var(--md-primary) 70%,var(--md-tertiary)))}.seg.completion[data-v-e1479886]{background:linear-gradient(90deg,color-mix(in srgb,var(--md-tertiary) 80%,var(--md-primary)),var(--md-tertiary))}.legend[data-v-e1479886]{display:flex;gap:20px;flex-wrap:wrap}.lg[data-v-e1479886]{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--md-on-surface-variant)}.lg b[data-v-e1479886]{color:var(--md-on-surface);font-weight:700}.lg small[data-v-e1479886]{color:var(--md-on-surface-variant);font-weight:700}.dot[data-v-e1479886]{width:10px;height:10px;border-radius:50%}.dot.prompt[data-v-e1479886]{background:var(--md-primary)}.dot.completion[data-v-e1479886]{background:var(--md-tertiary)}.mini-stack[data-v-e1479886]{display:grid;grid-template-rows:repeat(3,1fr);gap:var(--space-lg)}.mini[data-v-e1479886]{display:flex;align-items:center;gap:14px;padding:18px 20px;border-radius:26px;background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);box-shadow:var(--shadow-1);animation:up-e1479886 var(--duration-long) var(--ease-spring) both;transition:transform var(--duration-medium) var(--ease-out),box-shadow var(--duration-medium) var(--ease-out)}@media(hover:hover)and (pointer:fine){.mini[data-v-e1479886]:hover{transform:translateY(-3px);box-shadow:var(--shadow-2)}}.mini-ic[data-v-e1479886]{width:40px;height:40px;flex-shrink:0;border-radius:16px 16px 16px 6px;display:grid;place-items:center;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.mini b[data-v-e1479886]{display:block;font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1.1}.mini span[data-v-e1479886]{font-size:12px;color:var(--md-on-surface-variant);font-weight:600}.panel[data-v-e1479886]{background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:32px;padding:clamp(20px,2.2vw,28px);margin-bottom:var(--space-lg);box-shadow:var(--shadow-1);animation:up-e1479886 var(--duration-long) var(--ease-spring) both}.panel-head[data-v-e1479886]{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:20px;flex-wrap:wrap}.panel-head h2[data-v-e1479886]{font-size:17px;font-weight:800;letter-spacing:-.01em;margin:0}.panel-note[data-v-e1479886]{font-size:13px;color:var(--md-on-surface-variant);font-weight:600}.chart[data-v-e1479886]{display:flex;flex-direction:column;height:264px;padding-left:42px}.bars[data-v-e1479886]{position:relative;flex:1;display:flex;align-items:flex-end;gap:6px}.grid[data-v-e1479886]{position:absolute;inset:0}.grid span[data-v-e1479886]{position:absolute;left:0;right:0;border-top:1px dashed color-mix(in srgb,var(--md-outline-variant) 70%,transparent)}.grid span i[data-v-e1479886]{position:absolute;left:-42px;top:-8px;width:36px;text-align:right;font-size:11px;font-style:normal;color:var(--md-on-surface-variant)}.col[data-v-e1479886]{flex:1;min-width:0;height:100%;display:flex;justify-content:center;align-items:flex-end}.col-bar[data-v-e1479886]{width:100%;max-width:44px;height:100%;transform-origin:bottom;border-radius:12px 12px 4px 4px;background:linear-gradient(180deg,var(--md-primary),color-mix(in srgb,var(--md-primary) 40%,var(--md-surface)));transition:transform var(--duration-long) var(--ease-spring),filter var(--duration-short) var(--ease-out)}.col:hover .col-bar[data-v-e1479886]{filter:brightness(1.1) saturate(1.1)}.axis[data-v-e1479886]{display:flex;gap:6px;height:22px;padding-top:6px}.axis span[data-v-e1479886]{flex:1;min-width:0;text-align:center;font-size:11px;color:var(--md-on-surface-variant);white-space:nowrap}.model-grid[data-v-e1479886]{display:grid;grid-template-columns:repeat(auto-fill,minmax(264px,1fr));gap:16px}.model-card[data-v-e1479886]{position:relative;overflow:hidden;padding:22px;border-radius:26px;background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);display:flex;flex-direction:column;gap:12px;animation:up-e1479886 var(--duration-long) var(--ease-spring) both;transition:transform var(--duration-medium) var(--ease-out),box-shadow var(--duration-medium) var(--ease-out),border-color var(--duration-medium) var(--ease-out)}.model-card[data-v-e1479886]:before{content:\"\";position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,var(--c),color-mix(in srgb,var(--c) 25%,transparent))}@media(hover:hover)and (pointer:fine){.model-card[data-v-e1479886]:hover{transform:translateY(-4px);box-shadow:var(--shadow-2);border-color:color-mix(in srgb,var(--c) 40%,var(--md-outline-variant))}}.mc-top[data-v-e1479886]{display:flex;align-items:center;gap:10px;min-width:0}.mc-avatar[data-v-e1479886]{width:38px;height:38px;flex-shrink:0;border-radius:15px 15px 15px 5px;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 18%,transparent);color:var(--c);font-weight:800;font-size:16px}.mc-name[data-v-e1479886]{flex:1;min-width:0;font:700 13px/1.35 ui-monospace,monospace;overflow-wrap:anywhere}.mc-share[data-v-e1479886]{flex-shrink:0;height:26px;padding:0 10px;border-radius:999px;display:inline-flex;align-items:center;background:color-mix(in srgb,var(--c) 16%,transparent);color:var(--c);font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}.mc-total[data-v-e1479886]{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.05}.mc-total small[data-v-e1479886]{font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}.mc-track[data-v-e1479886]{height:10px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}.mc-fill[data-v-e1479886]{height:100%;width:100%;transform-origin:left;border-radius:999px;background:linear-gradient(90deg,var(--c),color-mix(in srgb,var(--c) 50%,var(--md-surface)));transition:transform var(--duration-long) var(--ease-spring)}.mc-meta[data-v-e1479886]{display:flex;gap:18px;flex-wrap:wrap}.mc-meta span[data-v-e1479886]{display:flex;flex-direction:column;gap:1px;font-size:12px;color:var(--md-on-surface-variant);font-weight:600}.mc-meta b[data-v-e1479886]{color:var(--md-on-surface);font-weight:750;font-size:14px;font-variant-numeric:tabular-nums}.empty[data-v-e1479886]{padding:var(--space-xl);text-align:center;color:var(--md-on-surface-variant);background:var(--md-surface-container);border-radius:20px}.usage-loading[data-v-e1479886]{display:grid;grid-template-columns:minmax(220px,.9fr) 1.5fr 1fr;gap:var(--space-lg);margin-bottom:var(--space-xl)}.skeleton[data-v-e1479886]{border-radius:32px;background:var(--md-surface-container-low);min-height:180px;animation:sk-shimmer-e1479886 1.4s ease-in-out infinite}.sk-donut[data-v-e1479886]{min-height:220px}@keyframes sk-shimmer-e1479886{0%,to{opacity:1}50%{opacity:.55}}@media(max-width:980px){.usage-loading[data-v-e1479886]{grid-template-columns:1fr 1fr}}@media(max-width:640px){.usage-loading[data-v-e1479886]{grid-template-columns:1fr}}@media(prefers-reduced-motion:reduce){.skeleton[data-v-e1479886]{animation:none;opacity:.7}}@keyframes up-e1479886{0%{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}@media(max-width:980px){.overview[data-v-e1479886]{grid-template-columns:1fr 1fr}.mini-stack[data-v-e1479886]{grid-column:1 / -1;grid-template-rows:none;grid-template-columns:repeat(3,1fr)}}@media(max-width:640px){.overview[data-v-e1479886],.mini-stack[data-v-e1479886]{grid-template-columns:1fr}.chart[data-v-e1479886]{height:200px;padding-left:34px}.grid span i[data-v-e1479886]{left:-34px;width:28px}.axis span[data-v-e1479886]{font-size:11px}}@media(max-width:560px){.axis span[data-v-e1479886]{font-size:10px}.axis span[data-v-e1479886]:nth-child(2n){visibility:hidden}}\n";document.head.appendChild(s)}})();
+;(()=>{if(typeof document!=='undefined'&&!document.getElementById('webui-plugin-style')){const s=document.createElement('style');s.id='webui-plugin-style';s.textContent="@property --mood{syntax: \"<color>\"; inherits: true; initial-value: #6750A4;}.live2d-stage[data-v-15b509be]{display:flex;flex-direction:column;background:var(--md-surface-container);border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--md-outline-variant);min-height:320px}.stage-viewport[data-v-15b509be]{position:relative;flex:1;min-height:260px;overflow:hidden;touch-action:pan-y;cursor:grab;user-select:none;transition:--mood var(--duration-long, .36s) var(--ease-out, ease-out);background:radial-gradient(circle at 30% 20%,color-mix(in srgb,var(--mood, #6750A4) 22%,transparent),transparent 55%),radial-gradient(circle at 70% 80%,color-mix(in srgb,var(--mood, #6750A4) 12%,transparent),transparent 50%),linear-gradient(180deg,var(--md-surface-container-low) 0%,var(--md-surface-container) 55%,color-mix(in srgb,var(--md-primary) 20%,transparent) 100%)}.stage-viewport[data-v-15b509be]:active{cursor:grabbing}.stage-canvas[data-v-15b509be]{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;pointer-events:none}.stage-gradient[data-v-15b509be]{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,transparent 55%,rgba(33,0,93,.18) 100%)}.stage-hint[data-v-15b509be]{position:absolute;left:10px;top:10px;z-index:3;padding:4px 10px;border-radius:var(--radius-full);background:color-mix(in srgb,var(--md-inverse-surface) 75%,transparent);color:var(--md-inverse-on-surface);font-size:12px;text-transform:capitalize;pointer-events:none}.stage-reset[data-v-15b509be]{position:absolute;top:10px;right:10px;z-index:20;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:1px solid color-mix(in srgb,var(--md-on-surface) 10%,transparent);border-radius:50%;background:color-mix(in srgb,var(--md-surface) 55%,transparent);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:var(--md-on-surface);font:inherit;font-size:16px;line-height:1;cursor:grab;touch-action:none;opacity:.7;transition:opacity var(--duration-short) var(--ease-out),background-color var(--duration-short) var(--ease-out)}.stage-reset[data-v-15b509be]:hover{opacity:1;background:color-mix(in srgb,var(--md-surface) 82%,transparent)}.stage-reset[data-v-15b509be]:active{transform:scale(.96)}.stage-reset.dragging[data-v-15b509be]{cursor:grabbing;opacity:1}.stage-placeholder[data-v-15b509be]{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-md);background:color-mix(in srgb,var(--md-surface) 72%,transparent);color:var(--md-on-surface-variant);font-size:14px;text-align:center;padding:var(--space-lg)}.stage-status[data-v-15b509be]{position:absolute;left:var(--space-md);bottom:var(--space-md);z-index:5;padding:6px 12px;border-radius:var(--radius-full);background:var(--md-inverse-surface);color:var(--md-inverse-on-surface);font-size:12px}.stage-status.warn[data-v-15b509be]{background:var(--md-error-container);color:var(--md-on-error-container);max-width:90%;word-break:break-word}.life-settings[data-v-f79f46a2]{--ls-spring: var(--ease-spring);padding:4px}.ls-hero[data-v-f79f46a2]{position:relative;overflow:hidden;display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap;margin-bottom:22px;padding:clamp(22px,2.4vw,32px);border-radius:32px;background:radial-gradient(520px 260px at 100% 0%,color-mix(in srgb,var(--md-tertiary) 16%,transparent),transparent 70%),linear-gradient(135deg,var(--md-primary-container),color-mix(in srgb,var(--md-primary-container) 45%,var(--md-surface-container-low)));color:var(--md-on-primary-container);box-shadow:var(--shadow-1);animation:ls-rise-f79f46a2 .52s var(--ls-spring) both}.ls-hero-main[data-v-f79f46a2]{min-width:0}.ls-eyebrow[data-v-f79f46a2]{display:inline-block;margin:0 0 10px;padding:4px 12px;border-radius:999px;background:color-mix(in srgb,var(--md-on-primary-container) 10%,transparent);font:800 12px/1 ui-monospace,monospace;letter-spacing:.16em}.ls-hero h2[data-v-f79f46a2]{margin:0;font-size:clamp(22px,2.4vw,30px);font-weight:800;letter-spacing:-.02em}.ls-sub[data-v-f79f46a2]{margin:10px 0 0;font-size:14px;line-height:1.6;opacity:.82;max-width:60ch}#app .ls-save[data-v-f79f46a2]{min-height:52px;padding:0 26px;border:0;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary);font:700 15px/1 inherit;display:inline-flex;align-items:center;gap:10px;cursor:pointer;box-shadow:0 8px 22px color-mix(in srgb,var(--md-primary) 30%,transparent);transition:transform .3s var(--ls-spring),box-shadow .3s var(--ls-spring)}@media(hover:hover)and (pointer:fine){#app .ls-save[data-v-f79f46a2]:hover:not(:disabled){transform:translateY(-2px) scale(1.02)}}#app .ls-save[data-v-f79f46a2]:disabled{opacity:.55;cursor:not-allowed}.ls-save-ic[data-v-f79f46a2]{font-size:16px}.ls-grid[data-v-f79f46a2]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.ls-card[data-v-f79f46a2]{position:relative;background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 52%,transparent);border-radius:28px;padding:22px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow-1);transition:transform .3s var(--ls-spring),box-shadow .3s var(--ls-spring),border-color .3s;animation:ls-card-in-f79f46a2 .52s var(--ls-spring) both}@media(hover:hover)and (pointer:fine){.ls-card[data-v-f79f46a2]:hover{transform:translateY(-3px);box-shadow:var(--shadow-2);border-color:color-mix(in srgb,var(--md-primary) 26%,var(--md-outline-variant))}}.ls-grid>.ls-card[data-v-f79f46a2]:nth-child(1){animation-delay:40ms}.ls-grid>.ls-card[data-v-f79f46a2]:nth-child(2){animation-delay:90ms}.ls-grid>.ls-card[data-v-f79f46a2]:nth-child(3){animation-delay:.14s}.ls-grid>.ls-card[data-v-f79f46a2]:nth-child(4){animation-delay:.19s}.ls-grid>.ls-card[data-v-f79f46a2]:nth-child(5){animation-delay:.24s}.ls-card-wide[data-v-f79f46a2]{grid-column:1 / -1}.ls-card-head[data-v-f79f46a2]{display:flex;align-items:center;gap:12px}.ls-card-head h3[data-v-f79f46a2]{margin:0;font-size:16px;font-weight:800;letter-spacing:-.01em}.ls-ic[data-v-f79f46a2]{width:38px;height:38px;border-radius:16px 16px 16px 6px;display:grid;place-items:center;font-size:16px;flex-shrink:0}.tone-1[data-v-f79f46a2]{background:var(--md-primary-container);color:var(--md-on-primary-container)}.tone-2[data-v-f79f46a2]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.tone-3[data-v-f79f46a2]{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container)}.tone-4[data-v-f79f46a2]{background:var(--md-success-container);color:var(--md-on-success-container)}.tone-5[data-v-f79f46a2]{background:var(--md-surface-container-highest);color:var(--md-on-surface-variant)}.ls-row[data-v-f79f46a2]{display:grid;grid-template-columns:1fr 1fr;gap:12px}.ls-note[data-v-f79f46a2]{margin:-4px 0 0;font-size:12px;color:var(--md-on-surface-variant)}.ls-label[data-v-f79f46a2]{margin:4px 0 -4px;font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--md-on-surface-variant)}.ls-empty[data-v-f79f46a2]{font-size:13px;color:var(--md-on-surface-variant);padding:8px 2px}.ls-field[data-v-f79f46a2]{display:flex;flex-direction:column;gap:6px}.ls-field>span[data-v-f79f46a2]{font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--md-on-surface-variant)}#app .ls-field input[data-v-f79f46a2]{width:100%;min-height:52px;padding:0 17px;border:1px solid transparent;border-radius:16px;background-color:var(--md-surface-container-high);color:var(--md-on-surface);font:400 15px/1.4 inherit;outline:none;transition:background-color .18s,border-color .18s,box-shadow .2s,border-radius .34s var(--ls-spring)}#app .ls-field input[data-v-f79f46a2]:hover{background-color:var(--md-surface-container-highest)}#app .ls-field input[data-v-f79f46a2]:focus{border-color:var(--md-primary);background-color:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}#app .ls-field input[data-v-f79f46a2]:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}#app .ls-switch[data-v-f79f46a2]{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 60%,transparent);border-radius:20px;background:var(--md-surface-container-lowest);cursor:pointer;transition:background-color .2s,border-color .2s,box-shadow .22s,transform .26s var(--ls-spring)}#app .ls-switch[data-v-f79f46a2]:hover{background:var(--md-surface-container);border-color:color-mix(in srgb,var(--md-primary) 30%,var(--md-outline-variant));box-shadow:var(--shadow-1)}.ls-switch input[data-v-f79f46a2]{position:absolute;opacity:0;width:0;height:0}.ls-switch-text[data-v-f79f46a2]{display:flex;flex-direction:column;gap:2px}.ls-switch-text b[data-v-f79f46a2]{font-size:14px;font-weight:700}.ls-switch-text small[data-v-f79f46a2]{font-size:12px;color:var(--md-on-surface-variant)}.ls-track[data-v-f79f46a2]{position:relative;width:54px;height:32px;flex-shrink:0;border-radius:999px;background:var(--md-surface-container-highest);border:2px solid var(--md-outline);transition:background-color var(--duration-medium) var(--ease-out),border-color var(--duration-medium) var(--ease-out)}.ls-track[data-v-f79f46a2]:after{content:\"✓\";display:grid;place-items:center;position:absolute;top:50%;left:5px;width:18px;height:18px;border-radius:50%;background:var(--md-outline);color:transparent;font-size:12px;font-weight:900;line-height:1;transform:translateY(-50%) translate(0) scale(1);transition:transform var(--duration-medium) var(--ease-spring-soft),background-color var(--duration-medium) var(--ease-out),color var(--duration-medium) var(--ease-out)}.ls-switch input:focus-visible+.ls-track[data-v-f79f46a2]{outline:3px solid var(--md-primary);outline-offset:2px}.ls-switch input:checked+.ls-track[data-v-f79f46a2]{background:var(--md-primary);border-color:var(--md-primary)}.ls-switch input:checked+.ls-track[data-v-f79f46a2]:after{transform:translateY(-50%) translate(22px) scale(1.2);background:var(--md-on-primary);color:var(--md-primary)}.ls-models[data-v-f79f46a2]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.ls-model[data-v-f79f46a2]{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:13px 15px;border:2px solid var(--md-outline-variant);border-radius:20px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);cursor:pointer;transition:border-color .24s var(--ls-spring),background-color .24s var(--ls-spring),transform .26s var(--ls-spring),border-radius .36s var(--ls-spring)}@media(hover:hover)and (pointer:fine){.ls-model[data-v-f79f46a2]:hover{transform:translateY(-2px);background:var(--md-surface-container)}}.ls-model.selected[data-v-f79f46a2]{border-color:var(--md-primary);background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:20px 20px 20px 8px}.ls-model.selected[data-v-f79f46a2]:after{content:\"✓\";position:absolute;top:10px;right:12px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--md-primary);color:var(--md-on-primary);font-size:12px;font-weight:900}#app .ls-model[data-v-f79f46a2]{border-radius:20px}#app .ls-model.selected[data-v-f79f46a2]{border-radius:20px 20px 20px 8px}.ls-model b[data-v-f79f46a2]{font-size:13px;word-break:break-all}.ls-model span[data-v-f79f46a2]{font-size:12px;color:var(--md-on-surface-variant)}.ls-hint[data-v-f79f46a2]{margin:12px 0 0;font-size:12.5px;line-height:1.6;color:var(--md-on-surface-variant)}.ls-state[data-v-f79f46a2]{margin:18px 0 0;padding:14px 18px;border-radius:18px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);font-size:13px;font-weight:650;animation:ls-rise-f79f46a2 .32s var(--ls-spring) both}@keyframes ls-rise-f79f46a2{0%{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}@keyframes ls-card-in-f79f46a2{0%{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}@media(max-width:760px){.ls-grid[data-v-f79f46a2],.ls-row[data-v-f79f46a2],.ls-models[data-v-f79f46a2]{grid-template-columns:1fr}}@media(prefers-reduced-motion:reduce){.ls-hero[data-v-f79f46a2],.ls-card[data-v-f79f46a2],.ls-state[data-v-f79f46a2]{animation:none}}.about[data-v-da8c447d]{display:flex;flex-direction:column;gap:26px}.identity[data-v-da8c447d]{display:flex;align-items:center;gap:16px}.app-icon[data-v-da8c447d]{flex:none;width:56px;height:56px;filter:drop-shadow(0 6px 16px color-mix(in srgb,var(--md-primary) 25%,transparent))}.app-id[data-v-da8c447d]{flex:1;min-width:0}.app-id h2[data-v-da8c447d]{margin:0;display:flex;align-items:center;gap:10px;font-size:22px;font-weight:700;letter-spacing:-.3px}.ver-badge[data-v-da8c447d]{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.app-desc[data-v-da8c447d]{margin:4px 0 0;font-size:14px;color:var(--md-on-surface-variant)}.identity-actions[data-v-da8c447d]{display:flex;gap:8px;flex-wrap:wrap}.section[data-v-da8c447d]{display:flex;flex-direction:column;gap:14px}.section-head[data-v-da8c447d]{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.section-title[data-v-da8c447d]{display:flex;align-items:center;gap:8px;margin:0;font-size:17px;font-weight:650;color:var(--md-on-surface)}.section-title[data-v-da8c447d]:before{content:\"\";width:4px;height:16px;border-radius:2px;background:var(--md-primary)}.credits[data-v-da8c447d]{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.person[data-v-da8c447d]{display:flex;align-items:center;gap:14px;padding:16px;border-radius:18px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);text-decoration:none;color:inherit;transition:border-color .18s,background-color .18s,transform .2s}.person[data-v-da8c447d]:hover{border-color:var(--md-primary);background:var(--md-surface-container);transform:translateY(-1px)}.person img[data-v-da8c447d]{width:54px;height:54px;border-radius:50%;flex:none;box-shadow:0 0 0 3px var(--md-surface-container-low),0 0 0 4px var(--md-outline-variant)}.person-info[data-v-da8c447d]{display:flex;flex-direction:column;min-width:0}.person-info .name[data-v-da8c447d]{font-size:16px;font-weight:650}.person-info .role[data-v-da8c447d]{font-size:13px;color:var(--md-on-surface-variant)}.person .go[data-v-da8c447d]{margin-left:auto;color:var(--md-primary);font-weight:700}.contributors-head[data-v-da8c447d]{margin-top:6px}.contribs[data-v-da8c447d]{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}.contrib[data-v-da8c447d]{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;border-radius:16px;background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant);text-decoration:none;color:inherit;transition:border-color .18s,background-color .18s,transform .2s}.contrib[data-v-da8c447d]:hover{border-color:var(--md-primary);background:var(--md-surface-container);transform:translateY(-1px)}.contrib img[data-v-da8c447d]{width:46px;height:46px;border-radius:50%}.contrib .login[data-v-da8c447d]{font-size:12px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.contrib .count[data-v-da8c447d]{font-size:12px;color:var(--md-on-surface-variant)}.foot[data-v-da8c447d]{display:flex;align-items:center;gap:12px;padding-top:18px;border-top:1px solid var(--md-outline-variant);font-size:13px;color:var(--md-on-surface-variant)}.foot .repo-link[data-v-da8c447d]{margin-left:auto}.status-chip[data-v-da8c447d]{height:26px;padding:0 10px;border-radius:999px;display:inline-flex;align-items:center;font-size:12px;font-weight:600;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant)}.repo-link[data-v-da8c447d]{color:var(--md-primary);text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap}.repo-link[data-v-da8c447d]:hover{text-decoration:underline}.muted[data-v-da8c447d]{color:var(--md-on-surface-variant);font-size:12px}.us-hero[data-v-da8c447d]{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:16px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-low)}.us-hero.ok[data-v-da8c447d]{background:var(--md-success-container);color:var(--md-on-success-container);border-color:transparent}.us-hero.warn[data-v-da8c447d]{background:var(--md-warning-container);color:var(--md-on-warning-container);border-color:transparent}.us-hero.none[data-v-da8c447d]{background:var(--md-surface-container-low)}.us-hero-icon[data-v-da8c447d]{flex:none;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:color-mix(in srgb,currentColor 12%,transparent)}.us-hero-text[data-v-da8c447d]{flex:1;min-width:0}.us-hero-text b[data-v-da8c447d]{display:block;font-size:15px;font-weight:750}.us-hero-text span[data-v-da8c447d]{font-size:13px;opacity:.85}.us-hero-text em[data-v-da8c447d]{font-style:normal;font-weight:700}.us-hero-actions[data-v-da8c447d]{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.us-hero .btn.btn-primary[data-v-da8c447d]{background:var(--md-primary);color:var(--md-on-primary)}.us-notes[data-v-da8c447d]{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border:1px solid var(--md-outline-variant);border-radius:16px;background:var(--md-surface-container-lowest)}.us-notes-title[data-v-da8c447d]{margin:0;font-size:13px;font-weight:700;color:var(--md-on-surface)}.us-notes-body[data-v-da8c447d]{margin:0;max-height:320px;overflow:auto;font:12.5px/1.6 ui-monospace,monospace;white-space:pre-wrap;color:var(--md-on-surface-variant)}.us-apply-banner[data-v-da8c447d]{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px solid var(--md-outline-variant);border-radius:16px;background:var(--md-surface-container)}.us-apply-banner.done[data-v-da8c447d]{background:var(--md-success-container);color:var(--md-on-success-container);border-color:transparent}.us-apply-banner.failed[data-v-da8c447d]{background:var(--md-error-container);color:var(--md-on-error-container);border-color:transparent}.us-apply-head[data-v-da8c447d]{display:flex;align-items:center;gap:10px;font-size:14px}.us-apply-head b[data-v-da8c447d]{font-weight:700}.us-apply-label[data-v-da8c447d]{margin-left:auto;font-size:13px;opacity:.85}.us-chip-tag[data-v-da8c447d]{height:22px;padding:0 9px;border-radius:999px;display:inline-flex;align-items:center;font-size:12px;font-weight:700;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.us-spinner[data-v-da8c447d]{flex:none;width:14px;height:14px;border-radius:50%;border:2px solid currentColor;border-top-color:transparent;opacity:.75}.us-apply-banner.running .us-spinner[data-v-da8c447d]{animation:us-spin-da8c447d .8s linear infinite}.us-apply-banner.done .us-spinner[data-v-da8c447d],.us-apply-banner.failed .us-spinner[data-v-da8c447d]{display:none}.us-apply-log[data-v-da8c447d],.us-apply-error[data-v-da8c447d]{margin:0;max-height:220px;overflow:auto;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;color:inherit}@keyframes us-spin-da8c447d{to{transform:rotate(360deg)}}.alert[data-v-da8c447d]{color:var(--md-error)}.updates[data-v-95a0aad4]{display:flex;flex-direction:column;gap:4px}.us-block[data-v-95a0aad4]{display:flex;flex-direction:column;gap:14px;padding:6px 0 10px}.us-divider[data-v-95a0aad4]{height:1px;background:var(--md-outline-variant);margin:4px 0}.us-head[data-v-95a0aad4]{display:flex;align-items:center;gap:12px}.us-ico[data-v-95a0aad4]{flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--md-primary) 14%,transparent);color:var(--md-primary)}.us-head-text[data-v-95a0aad4]{flex:1;min-width:0}.us-title[data-v-95a0aad4]{margin:0;font-size:16px;font-weight:700;color:var(--md-on-surface)}.us-desc[data-v-95a0aad4]{margin:2px 0 0;font-size:12.5px;color:var(--md-on-surface-variant)}.us-head-actions[data-v-95a0aad4]{display:flex;align-items:center;gap:8px}.us-tag[data-v-95a0aad4]{flex:none;height:24px;padding:0 10px;border-radius:999px;display:inline-flex;align-items:center;font-size:12px;font-weight:700;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant)}.us-tag.on[data-v-95a0aad4]{background:var(--md-primary-container);color:var(--md-on-primary-container)}.us-count[data-v-95a0aad4]{min-width:26px;height:26px;padding:0 8px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums}.us-count.warn[data-v-95a0aad4]{background:#ffdf9e;color:#4a3800}.us-source[data-v-95a0aad4]{display:flex;flex-direction:column;gap:10px}.us-input-group[data-v-95a0aad4]{display:flex;align-items:center;gap:8px;padding:4px 4px 4px 12px;border:1.5px solid var(--md-outline-variant);border-radius:14px;background:var(--md-surface-container-lowest);transition:border-color .16s,box-shadow .16s}.us-input-group[data-v-95a0aad4]:focus-within{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}.us-input-ico[data-v-95a0aad4]{flex:none;display:grid;place-items:center;color:var(--md-on-surface-variant)}.us-input[data-v-95a0aad4]{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--md-on-surface);font-size:14px;padding:9px 0}.us-input[data-v-95a0aad4]::placeholder{color:var(--md-on-surface-variant);opacity:.7}.us-apply[data-v-95a0aad4]{flex:none;height:34px;padding-inline:18px;border-radius:10px}.us-chips[data-v-95a0aad4]{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.us-chip[data-v-95a0aad4]{height:30px;padding:0 14px;border-radius:999px;border:1.5px solid var(--md-outline-variant);background:var(--md-surface-container-low);color:var(--md-on-surface-variant);font-size:12.5px;font-weight:650;cursor:pointer;transition:border-color var(--duration-short) var(--ease-out),background-color var(--duration-short) var(--ease-out),color var(--duration-short) var(--ease-out)}.us-chip[data-v-95a0aad4]:hover{border-color:var(--md-primary);color:var(--md-primary)}.us-chip.active[data-v-95a0aad4]{background:var(--md-primary);border-color:var(--md-primary);color:var(--md-on-primary)}.us-saved[data-v-95a0aad4]{color:var(--md-success);font-size:13px;font-weight:600}.us-hero[data-v-95a0aad4]{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:16px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-low)}.us-hero.ok[data-v-95a0aad4]{background:var(--md-success-container);color:#0d1f06;border-color:transparent}.us-hero.warn[data-v-95a0aad4]{background:linear-gradient(135deg,#ffe4a3,#ffd680);color:#4a3800;border-color:transparent}.us-hero.none[data-v-95a0aad4]{background:var(--md-surface-container-low)}.us-hero-icon[data-v-95a0aad4]{flex:none;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:color-mix(in srgb,currentColor 12%,transparent)}.us-hero-text[data-v-95a0aad4]{flex:1;min-width:0}.us-hero-text b[data-v-95a0aad4]{display:block;font-size:15px;font-weight:750}.us-hero-text span[data-v-95a0aad4]{font-size:13px;opacity:.85}.us-hero-text em[data-v-95a0aad4]{font-style:normal;font-weight:700}.us-hero-actions[data-v-95a0aad4]{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.us-hero .btn.btn-primary[data-v-95a0aad4]{background:var(--md-primary);color:var(--md-on-primary)}.us-apply-banner[data-v-95a0aad4]{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border:1px solid var(--md-outline-variant);border-radius:16px;background:var(--md-surface-container)}.us-apply-banner.done[data-v-95a0aad4]{background:var(--md-success-container);color:#0d1f06;border-color:transparent}.us-apply-banner.failed[data-v-95a0aad4]{background:var(--md-error-container);color:var(--md-on-error-container);border-color:transparent}.us-apply-head[data-v-95a0aad4]{display:flex;align-items:center;gap:10px;font-size:14px}.us-apply-head b[data-v-95a0aad4]{font-weight:700}.us-apply-label[data-v-95a0aad4]{margin-left:auto;font-size:13px;opacity:.85}.us-chip-tag[data-v-95a0aad4]{height:22px;padding:0 9px;border-radius:999px;display:inline-flex;align-items:center;font-size:12px;font-weight:700;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.us-spinner[data-v-95a0aad4]{flex:none;width:14px;height:14px;border-radius:50%;border:2px solid currentColor;border-top-color:transparent;opacity:.75}.us-apply-banner.running .us-spinner[data-v-95a0aad4]{animation:us-spin-95a0aad4 .8s linear infinite}.us-apply-banner.done .us-spinner[data-v-95a0aad4],.us-apply-banner.failed .us-spinner[data-v-95a0aad4]{display:none}.us-apply-log[data-v-95a0aad4],.us-apply-error[data-v-95a0aad4]{margin:0;max-height:220px;overflow:auto;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;color:inherit}@keyframes us-spin-95a0aad4{to{transform:rotate(360deg)}}.us-table[data-v-95a0aad4]{border:1px solid var(--md-outline-variant);border-radius:16px;overflow:hidden}.us-row[data-v-95a0aad4]{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.1fr) minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 16px}.us-thead[data-v-95a0aad4]{background:var(--md-surface-container);font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--md-on-surface-variant);font-weight:700}.us-row[data-v-95a0aad4]:not(.us-thead){background:var(--md-surface-container-lowest);border-top:1px solid var(--md-outline-variant);transition:background-color .14s}.us-row[data-v-95a0aad4]:not(.us-thead):hover{background:var(--md-surface-container-low)}.us-name[data-v-95a0aad4]{display:inline-flex;align-items:center;gap:8px;font-weight:650;min-width:0;overflow:hidden}.us-name-text[data-v-95a0aad4]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.us-dot[data-v-95a0aad4]{flex:none;width:8px;height:8px;border-radius:50%;background:var(--md-outline)}.us-dot.ok[data-v-95a0aad4]{background:var(--md-success)}.us-dot.warn[data-v-95a0aad4]{background:#e0a800}.us-dot.bad[data-v-95a0aad4]{background:var(--md-error)}.us-ver[data-v-95a0aad4]{display:inline-flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}.us-ver em[data-v-95a0aad4]{font-style:normal;color:var(--md-on-surface-variant)}.us-ver b[data-v-95a0aad4]{font-weight:650}.us-ver b.good[data-v-95a0aad4]{color:var(--md-success)}.us-arrow[data-v-95a0aad4]{color:var(--md-on-surface-variant);opacity:.6}.us-status[data-v-95a0aad4]{justify-self:start;max-width:100%;height:26px;padding:0 10px;border-radius:999px;display:inline-flex;align-items:center;font-size:12px;font-weight:600;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);overflow:hidden}.us-status-text[data-v-95a0aad4]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.us-status.ok[data-v-95a0aad4]{background:var(--md-success-container);color:#0d1f06}.us-status.warn[data-v-95a0aad4]{background:#ffdf9e;color:#4a3800}.us-status.bad[data-v-95a0aad4]{background:var(--md-error-container);color:var(--md-on-error-container)}.us-actions[data-v-95a0aad4]{display:inline-flex;align-items:center;gap:10px;justify-self:end}.us-repo[data-v-95a0aad4]{color:var(--md-primary);text-decoration:none;font-size:13px;font-weight:600;white-space:nowrap}.us-repo[data-v-95a0aad4]:hover{text-decoration:underline}.us-empty[data-v-95a0aad4]{padding:18px;margin:0;color:var(--md-on-surface-variant)}.us-foot-hint[data-v-95a0aad4]{margin:0;font-size:12.5px;color:var(--md-on-surface-variant)}.us-foot-hint code[data-v-95a0aad4]{background:var(--md-surface-container);padding:3px 8px;border-radius:6px;font-size:12px}.alert[data-v-95a0aad4]{color:var(--md-error)}@media(max-width:720px){.us-row[data-v-95a0aad4]{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto}.us-status[data-v-95a0aad4]{display:none}.us-hero[data-v-95a0aad4]{flex-wrap:wrap}.us-hero-actions[data-v-95a0aad4]{width:100%}}.provider-panel[data-v-d93aed7e]{display:flex;flex-direction:column;gap:18px}.pp-editor-head[data-v-d93aed7e]{display:flex;align-items:center;gap:14px}.pp-back[data-v-d93aed7e]{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;cursor:pointer;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-low);color:var(--md-on-surface);transition:background-color var(--duration-short) var(--ease-out),border-color var(--duration-short) var(--ease-out)}.pp-back[data-v-d93aed7e]:hover{background:var(--md-surface-container);border-color:var(--md-primary)}.pp-editor-title[data-v-d93aed7e]{flex:1;min-width:0}.pp-editor-title h2[data-v-d93aed7e]{margin:0;font-size:19px;font-weight:700}.pp-editor-title .card-desc[data-v-d93aed7e]{margin:3px 0 0}.pp-section[data-v-d93aed7e]{display:flex;flex-direction:column;gap:12px;padding:16px 18px;border:1px solid var(--md-outline-variant);border-radius:16px;background:var(--md-surface-container-lowest)}.pp-section-head[data-v-d93aed7e]{display:flex;align-items:center;justify-content:space-between;gap:12px}.pp-section-title[data-v-d93aed7e]{margin:0;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--md-on-surface-variant)}.pp-count[data-v-d93aed7e]{color:var(--md-primary);font-weight:700;margin-left:4px}.pp-grid[data-v-d93aed7e]{display:grid;grid-template-columns:1fr 1fr;gap:14px}.pp-grid .field[data-v-d93aed7e]{margin-bottom:0}.pp-span[data-v-d93aed7e]{grid-column:1 / -1}.pp-req[data-v-d93aed7e]{color:var(--md-error);margin-left:2px}.pp-key[data-v-d93aed7e]{display:flex;align-items:center;gap:8px}.pp-key .input[data-v-d93aed7e]{flex:1}.pp-key-toggle[data-v-d93aed7e]{flex:none;height:40px;padding-inline:14px;border-radius:10px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container);color:var(--md-on-surface);cursor:pointer;font-size:13px;font-weight:600}.pp-key-toggle[data-v-d93aed7e]:hover{border-color:var(--md-primary);color:var(--md-primary)}.pp-status[data-v-d93aed7e]{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 12px;border-radius:999px;font-size:12.5px;font-weight:650;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);white-space:nowrap}.pp-dot[data-v-d93aed7e]{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.55}.pp-status.ok[data-v-d93aed7e]{background:var(--md-success-container);color:var(--md-on-success-container)}.pp-status.error[data-v-d93aed7e]{background:var(--md-error-container);color:var(--md-on-error-container)}.pp-status.checking[data-v-d93aed7e]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.pp-status.checking .pp-dot[data-v-d93aed7e]{animation:pp-pulse-d93aed7e 1s ease-in-out infinite}@keyframes pp-pulse-d93aed7e{50%{opacity:.15}}.pp-probe[data-v-d93aed7e]{margin:6px 0 0;font-size:12.5px}.pp-probe.ok[data-v-d93aed7e]{color:var(--md-success)}.pp-probe.err[data-v-d93aed7e]{color:var(--md-error)}.pp-discovered[data-v-d93aed7e]{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-radius:12px;background:var(--md-primary-container);color:var(--md-on-primary-container);font-size:13px;font-weight:600}.pp-model-tools[data-v-d93aed7e]{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.pp-search[data-v-d93aed7e]{flex:1;min-width:160px}.pp-mini[data-v-d93aed7e]{height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-low);color:var(--md-on-surface-variant);font-size:12.5px;font-weight:600;cursor:pointer}.pp-mini[data-v-d93aed7e]:hover{border-color:var(--md-primary);color:var(--md-primary)}.pp-add-model[data-v-d93aed7e]{display:flex;align-items:center;gap:8px;margin-top:8px}.pp-add-model .input[data-v-d93aed7e]{flex:1;min-width:0}.pp-add-model .btn[data-v-d93aed7e]{flex:none;white-space:nowrap}.pp-add-error[data-v-d93aed7e]{color:var(--md-error)}.pp-remove[data-v-d93aed7e]{flex:none;width:26px;height:26px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--md-on-surface-variant);font-size:17px;line-height:1;cursor:pointer}.pp-remove[data-v-d93aed7e]:hover{background:color-mix(in srgb,var(--md-error) 14%,transparent);color:var(--md-error)}.pp-models[data-v-d93aed7e]{display:flex;flex-direction:column;border:1px solid var(--md-outline-variant);border-radius:14px;overflow:hidden;max-height:340px;overflow-y:auto}.pp-model[data-v-d93aed7e]{display:flex;align-items:center;gap:12px;padding:9px 14px;border-top:1px solid var(--md-outline-variant);background:var(--md-surface-container-lowest)}.pp-model[data-v-d93aed7e]:first-child{border-top:0}.pp-model.off[data-v-d93aed7e]{opacity:.5}.pp-model-name[data-v-d93aed7e]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px}.pp-star[data-v-d93aed7e]{flex:none;width:30px;height:30px;border:0;background:transparent;color:var(--md-on-surface-variant);font-size:17px;cursor:pointer;border-radius:8px}.pp-star[data-v-d93aed7e]:hover{background:var(--md-surface-container);color:var(--md-primary)}.pp-star.on[data-v-d93aed7e]{color:#e0a800;cursor:default}.pp-switch[data-v-d93aed7e]{flex:none;width:40px;height:22px;accent-color:var(--md-primary);cursor:pointer}.pp-type[data-v-d93aed7e]{flex:none;height:28px;max-width:132px;padding:0 6px;border-radius:8px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-low);color:var(--md-on-surface-variant);font-size:12px;cursor:pointer}.pp-type.tagged[data-v-d93aed7e]{border-color:color-mix(in srgb,var(--md-primary) 55%,var(--md-outline-variant));color:var(--md-primary);font-weight:650}.pp-error[data-v-d93aed7e]{color:var(--md-error);margin:0}.pp-editor-actions[data-v-d93aed7e]{display:flex;gap:10px}.pp-list-head[data-v-d93aed7e]{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}.pp-list-head h2[data-v-d93aed7e]{margin:0;font-size:19px;font-weight:700}.pp-list-head .card-desc[data-v-d93aed7e]{margin:3px 0 0}.pp-list-actions[data-v-d93aed7e]{display:flex;gap:8px}.pp-cards[data-v-d93aed7e]{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}.pp-card[data-v-d93aed7e]{display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-low);transition:border-color var(--duration-medium) var(--ease-out),transform var(--duration-medium) var(--ease-out),box-shadow var(--duration-medium) var(--ease-out)}@media(hover:hover)and (pointer:fine){.pp-card[data-v-d93aed7e]:hover{transform:translateY(-1px);box-shadow:var(--shadow-1)}}.pp-card.default[data-v-d93aed7e]{border-color:color-mix(in srgb,var(--md-primary) 60%,var(--md-outline-variant))}.pp-card.off[data-v-d93aed7e]{opacity:.62}.pp-card-head[data-v-d93aed7e]{display:flex;align-items:center;gap:12px}.pp-logo[data-v-d93aed7e]{flex:none;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);overflow:hidden}.pp-logo img[data-v-d93aed7e]{width:26px;height:26px}.pp-card-id[data-v-d93aed7e]{flex:1;min-width:0}.pp-card-id strong[data-v-d93aed7e]{display:block;font-size:15.5px;font-weight:700}.pp-card-id code[data-v-d93aed7e]{display:block;font-size:12px;color:var(--md-on-surface-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pp-card-badges[data-v-d93aed7e]{display:flex;flex-direction:column;align-items:flex-end;gap:6px}.pp-badge[data-v-d93aed7e]{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums}.pp-badge.primary[data-v-d93aed7e]{background:var(--md-primary-container);color:var(--md-on-primary-container)}.pp-card-status[data-v-d93aed7e]{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.pp-meta[data-v-d93aed7e]{font-size:12px;color:var(--md-on-surface-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}.pp-meta.err[data-v-d93aed7e]{color:var(--md-error)}.pp-chips[data-v-d93aed7e]{display:flex;flex-wrap:wrap;gap:6px}.pp-chip[data-v-d93aed7e]{font-size:11.5px;padding:3px 9px;border-radius:999px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pp-chip.more[data-v-d93aed7e],.pp-chip.empty[data-v-d93aed7e]{background:transparent;border:1px dashed var(--md-outline-variant)}.pp-card-actions[data-v-d93aed7e]{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto}.pp-empty[data-v-d93aed7e]{display:flex;flex-direction:column;align-items:center;gap:14px;padding:40px 16px;color:var(--md-on-surface-variant);border:1px dashed var(--md-outline-variant);border-radius:18px}@media(max-width:640px){.pp-grid[data-v-d93aed7e],.pp-cards[data-v-d93aed7e]{grid-template-columns:1fr}}.pairing-panel[data-v-c18959f6]{margin:24px 0;padding:20px;background:var(--md-surface-container-low);border-radius:12px}.pairing-panel p[data-v-c18959f6]{margin:12px 0;color:var(--md-on-surface-variant)}.pairing-panel .pairing-error[data-v-c18959f6]{color:var(--md-error)}article[data-v-c18959f6]{display:flex;align-items:center;gap:14px;padding:14px 0;flex-wrap:wrap}code[data-v-c18959f6]{font-size:24px;letter-spacing:4px}h4[data-v-c18959f6]{margin:18px 0 0}.pairing-list[data-v-c18959f6]{position:relative}.pair-enter-active[data-v-c18959f6],.pair-leave-active[data-v-c18959f6]{transition:opacity var(--duration-medium) var(--ease-out),transform var(--duration-medium) var(--ease-out)}.pair-enter-from[data-v-c18959f6],.pair-leave-to[data-v-c18959f6]{opacity:0;transform:translateY(4px)}.pair-leave-active[data-v-c18959f6]{position:absolute;width:100%}.pair-move[data-v-c18959f6]{transition:transform var(--duration-medium) var(--ease-out)}@media(prefers-reduced-motion:reduce){.pair-enter-active[data-v-c18959f6],.pair-leave-active[data-v-c18959f6],.pair-move[data-v-c18959f6]{transition-duration:1ms}}.connection-grid[data-v-b6056614]{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,264px);gap:24px;align-items:start}@media(max-width:1000px){.connection-grid[data-v-b6056614]{grid-template-columns:minmax(0,1fr)}}.connection-form .field[data-v-b6056614]{margin-bottom:12px}.connection-qr[data-v-b6056614]{display:flex;flex-direction:column;align-items:center;gap:8px}.connection-qr svg[data-v-b6056614]{background:#fff;border-radius:8px;padding:6px;width:100%;max-width:264px;height:auto}.connection-link[data-v-b6056614]{max-width:100%;word-break:break-all;font-size:11px;opacity:.7;text-align:center}.helper-text[data-v-b6056614]{overflow-wrap:anywhere}.toggle-label[data-v-b6056614]{display:flex;align-items:center;gap:10px;margin-bottom:12px}.security-panel[data-v-fb8c17b3]{max-width:920px}.sec-stack[data-v-fb8c17b3]{display:flex;flex-direction:column;gap:12px;margin-top:18px}.sec-card[data-v-fb8c17b3]{padding:16px 18px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 60%,transparent);border-radius:22px;background:var(--md-surface-container-lowest)}.sec-card-head[data-v-fb8c17b3]{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px}.sec-card-head strong[data-v-fb8c17b3]{font-size:15px;font-weight:700}.sec-chip[data-v-fb8c17b3]{flex-shrink:0;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;color:var(--md-on-surface-variant);background:var(--md-surface-container)}.sec-chip.on[data-v-fb8c17b3]{color:color-mix(in srgb,var(--md-primary) 80%,var(--md-on-surface));background:color-mix(in srgb,var(--md-primary) 12%,transparent)}.sec-card>.helper-text[data-v-fb8c17b3]{margin:2px 0 12px}.sec-pin-grid[data-v-fb8c17b3]{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px;max-width:720px;margin-top:12px}.sec-pin-col[data-v-fb8c17b3]{display:flex;flex-direction:column;gap:8px;min-width:0;padding:12px 14px 14px;border-radius:16px;background:var(--md-surface-container-low)}.sec-pin-label[data-v-fb8c17b3]{font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}.sec-actions[data-v-fb8c17b3]{display:flex;align-items:center;gap:12px;margin-top:18px}.page-list[data-v-fb8c17b3]{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:6px}.page-item[data-v-fb8c17b3]{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;cursor:pointer;transition:background-color .16s}.page-item[data-v-fb8c17b3]:hover{background:var(--md-surface-container)}.page-item[data-v-fb8c17b3]:has(input:checked){background:color-mix(in srgb,var(--md-primary) 8%,transparent)}.page-item input[data-v-fb8c17b3]{position:absolute;opacity:0;width:0;height:0}.page-item .toggle-slider[data-v-fb8c17b3]{width:44px;height:26px}.page-item .toggle-slider[data-v-fb8c17b3]:after{left:3px;width:16px;height:16px;font-size:10px}.page-item input:checked+.toggle-slider[data-v-fb8c17b3]{background:var(--md-primary);border-color:var(--md-primary)}.page-item input:checked+.toggle-slider[data-v-fb8c17b3]:after{left:25px;background:var(--md-on-primary);color:var(--md-primary)}.page-item input:focus-visible+.toggle-slider[data-v-fb8c17b3]{box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 22%,transparent)}.page-text[data-v-fb8c17b3]{display:flex;align-items:baseline;gap:8px;min-width:0}.page-name[data-v-fb8c17b3]{font-size:13px;font-weight:650;color:var(--md-on-surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.page-text code[data-v-fb8c17b3]{font-size:11px;color:var(--md-on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sec-msg[data-v-fb8c17b3]{margin-top:12px}.sec-error[data-v-fb8c17b3]{color:var(--md-error);font-size:12.5px;margin-top:8px}@media(max-width:640px){.sec-pin-grid[data-v-fb8c17b3]{grid-template-columns:1fr}}.mcp-panel[data-v-01485e38]{max-width:900px}.mcp-head[data-v-01485e38]{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);flex-wrap:wrap;margin-bottom:var(--space-lg)}.mcp-head h2[data-v-01485e38]{margin:0;font-size:clamp(22px,2.4vw,30px);font-weight:800;letter-spacing:-.02em}.subtitle[data-v-01485e38]{margin:8px 0 0;color:var(--md-on-surface-variant);font-size:14px;line-height:1.6;max-width:60ch}.mcp-actions[data-v-01485e38]{display:flex;gap:10px}.error-banner[data-v-01485e38]{padding:14px 18px;border-radius:16px;background:var(--md-error-container);color:var(--md-on-error-container);margin-bottom:var(--space-lg)}.notice-banner[data-v-01485e38]{padding:14px 18px;border-radius:16px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);margin-bottom:var(--space-lg)}.hint[data-v-01485e38]{color:var(--md-on-surface-variant);font-size:14px}.mcp-list[data-v-01485e38]{display:flex;flex-direction:column;gap:var(--space-md, 16px)}.mcp-card[data-v-01485e38]{display:flex;flex-direction:column;gap:12px;padding:18px;border-radius:22px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);background:var(--md-surface-container-low)}.mcp-card.is-builtin[data-v-01485e38]{border-color:color-mix(in srgb,var(--md-primary) 34%,var(--md-outline-variant));background:var(--md-surface-container)}.mcp-row[data-v-01485e38]{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}.mcp-field[data-v-01485e38]{display:flex;flex-direction:column;gap:6px;min-width:160px}.mcp-field.grow[data-v-01485e38]{flex:1}.mcp-field>span[data-v-01485e38]{font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant)}.mcp-field input[data-v-01485e38],.mcp-field select[data-v-01485e38],.mcp-field textarea[data-v-01485e38]{font:inherit;padding:10px 12px;border-radius:12px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-high);color:var(--md-on-surface);outline:none}.mcp-field input[readonly][data-v-01485e38]{opacity:.7}.mcp-field textarea[data-v-01485e38]{resize:vertical;font-family:ui-monospace,monospace;font-size:13px}.mcp-field input[data-v-01485e38]:focus,.mcp-field select[data-v-01485e38]:focus,.mcp-field textarea[data-v-01485e38]:focus{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 14%,transparent)}.mcp-toggle[data-v-01485e38]{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:650;color:var(--md-on-surface-variant);user-select:none}.mcp-remove[data-v-01485e38]{margin-left:auto;border:0;border-radius:999px;padding:10px 16px;font-weight:650;cursor:pointer;background:var(--md-error-container);color:var(--md-on-error-container)}.builtin-note[data-v-01485e38]{margin:0;font-size:12.5px;line-height:1.6;color:var(--md-on-surface-variant)}.builtin-note code[data-v-01485e38]{font-family:ui-monospace,monospace}.mail-grid[data-v-01485e38]{display:grid;grid-template-columns:1fr 1fr;gap:18px}.mail-col[data-v-01485e38]{display:flex;flex-direction:column;gap:10px}.mail-row[data-v-01485e38]{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}.mail-label[data-v-01485e38]{margin:0;font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--md-on-surface-variant)}.btn[data-v-01485e38]{height:44px;padding:0 20px;border:1px solid transparent;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;background:var(--md-surface-container-high);color:var(--md-on-surface)}.btn-tonal[data-v-01485e38]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.btn.primary[data-v-01485e38]{background:var(--md-primary);color:var(--md-on-primary)}.btn[data-v-01485e38]:disabled{opacity:.6;cursor:not-allowed}#app .mcp-panel[data-v-01485e38] :is(.btn,.mcp-remove){border-radius:999px}#app .mcp-panel .mcp-field[data-v-01485e38] :is(input,select,textarea){border-radius:12px}@media(max-width:720px){.mail-grid[data-v-01485e38]{grid-template-columns:1fr}}.plugin-pane-message[data-v-2d1f36bc]{padding:var(--space-xl);color:var(--md-on-surface-variant)}.models-field[data-v-7089f4a3]{display:flex;flex-direction:column;gap:8px}.models-list[data-v-7089f4a3]{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}.models-list li[data-v-7089f4a3]{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:12px;background:var(--md-surface-container-high)}.models-rank[data-v-7089f4a3]{flex:none;width:20px;height:20px;display:grid;place-items:center;border-radius:50%;background:var(--md-primary);color:var(--md-on-primary);font-size:11px;font-weight:700}.models-name[data-v-7089f4a3]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.models-actions[data-v-7089f4a3]{display:inline-flex;gap:4px}.models-actions button[data-v-7089f4a3]{width:28px;height:28px;border:0;border-radius:8px;background:var(--md-surface-container-lowest);color:var(--md-on-surface-variant);cursor:pointer}.models-actions button[data-v-7089f4a3]:disabled{opacity:.35;cursor:not-allowed}.models-actions button[data-v-7089f4a3]:hover:not(:disabled){background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.models-empty[data-v-7089f4a3]{margin:0;color:var(--md-on-surface-variant);font-size:12.5px}.pp-head[data-v-9d796590]{display:flex;align-items:center;justify-content:space-between;gap:8px}.pp-head h2[data-v-9d796590]{margin:0;font-size:18px}.pp-icon[data-v-9d796590]{width:32px;height:32px;border-radius:50%;border:1px solid var(--md-outline-variant);background:var(--md-surface-container);color:var(--md-on-surface);font-size:15px;cursor:pointer}.pp-icon[data-v-9d796590]:disabled{opacity:.45;cursor:not-allowed}.pp-roots[data-v-9d796590]{display:flex;flex-wrap:wrap;gap:6px}.pp-root[data-v-9d796590]{padding:4px 10px;border-radius:999px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container);color:var(--md-on-surface-variant);font-size:12px;font-family:monospace;cursor:pointer}.pp-root.is-active[data-v-9d796590]{border-color:var(--md-primary);color:var(--md-primary)}.pp-path[data-v-9d796590]{font-family:monospace;font-size:13px}.pp-list[data-v-9d796590]{display:flex;flex-direction:column;gap:2px;min-height:180px;max-height:42vh;overflow:auto;padding:6px;border-radius:14px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-lowest, var(--md-surface))}.pp-item[data-v-9d796590]{display:flex;align-items:center;gap:8px;padding:7px 10px;border:0;border-radius:10px;background:none;color:var(--md-on-surface);font-size:13px;text-align:left;cursor:pointer}.pp-item[data-v-9d796590]:hover,.pp-item[data-v-9d796590]:focus-visible{background:var(--md-surface-container-high);outline:none}.pp-folder[data-v-9d796590]{color:var(--md-primary);font-size:13px;line-height:1;opacity:.85}.pp-name[data-v-9d796590]{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pp-empty[data-v-9d796590]{margin:0;padding:24px 8px;text-align:center;font-size:13px;color:var(--md-on-surface-variant)}.pp-error[data-v-9d796590]{color:var(--md-error, #b3261e)}.pp-current[data-v-9d796590]{margin:0;font-family:monospace;font-size:12px;color:var(--md-on-surface-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pp-foot[data-v-9d796590]{display:flex;align-items:center;gap:8px}.pp-spacer[data-v-9d796590]{flex:1}\n";document.head.appendChild(s)}})();

@@ -105,3 +105,15 @@ life/life-review-report.md
 # Core only depends on the endpoint contract (docs/asr.md, docs/tts.md).
 /soniox-asr/
 /genie-tts/
+
+# Local research/usage notes about the Genie backend, kept out of the repo the
+# same way genie-tts/ itself is.
+/Genie-TTS-分析报告.md
+/Genie合成器-使用说明.txt
+
+# Soniox reverse-engineering notes (endpoint analysis, transcribe results), kept
+# local like soniox-asr/ itself.
+/soniox-china-endpoints-analysis.md
+/soniox-live-transcribe-guide.md
+/soniox-transcribe-result.md
+/soniox-transcribe-victory.md

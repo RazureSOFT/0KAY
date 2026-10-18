@@ -52,6 +52,18 @@
         "module": "/api/plugins/webui/ui/usage.js?v=1",
         "title": "用量"
       }
+    },
+    {
+      "target": "router",
+      "op": "insert",
+      "id": "console",
+      "item": {
+        "id": "console",
+        "path": "/console",
+        "name": "console",
+        "module": "/api/plugins/webui/ui/console.js?v=1",
+        "titleKey": "nav.console"
+      }
     }
   ]
 }

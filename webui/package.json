@@ -10,7 +10,7 @@
     "prebuild": "npm run i18n:generate",
     "build": "vue-tsc && vite build",
     "prebuild:plugin": "npm run i18n:generate",
-    "build:plugin": "vite build --config vite.plugin.config.ts",
+    "build:plugin": "node plugin-build.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run"

@@ -3,9 +3,9 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-// Builds the *platform plugin* ESM pages (chat/plugins/settings/usage) that the
-// WebUI shell now only hosts.  The page sources still live in webui/src so the
-// SFC compiler/type-check stay in one place, but this build:
+// Builds the *platform plugin* ESM pages (chat/plugins/settings/usage/console)
+// that the WebUI shell now only hosts.  The page sources still live in webui/src
+// so the SFC compiler/type-check stay in one place, but this build:
 //   * aliases @webui -> src so entries can re-export the pages,
 //   * rewrites every import of a *shared* module (api/stores/i18n/theme/… and
 //     the shared dialogs) to the bare specifier @0kay/host, and
@@ -13,9 +13,21 @@ import vue from '@vitejs/plugin-vue'
 //     browser resolves through the index.html importmap to the host's single
 //     runtime + state.
 // Result: only page/panel component code is bundled here.
+//
+// One entry per invocation (PLUGIN_ENTRY), driven by plugin-build.mjs. A single
+// entry lets rollup inline everything (`inlineDynamicImports`), so each page is
+// one self-contained file. That matters because `core/data/plugin-ui/webui/*.js`
+// are tracked while `assets/` chunks are git-ignored: a multi-entry build makes
+// every page import hashed chunks that a clone would not have, and the whole
+// app dies with "Failed to fetch dynamically imported module".
 const root = path.dirname(fileURLToPath(import.meta.url))
 const src = path.join(root, 'src')
 const outDir = path.resolve(root, '../core/data/plugin-ui/webui')
+
+const ENTRY = process.env.PLUGIN_ENTRY || ''
+if (!ENTRY) {
+  throw new Error('PLUGIN_ENTRY is required — run `npm run build:plugin` (plugin-build.mjs loops the entries)')
+}
 
 // Vite module ids use posix separators on Windows too, and the drive/dir casing
 // is not stable (`D:/0KAY` vs `D:/0kay`), so every path comparison is done in a
@@ -128,27 +140,22 @@ export default defineConfig({
   },
   build: {
     outDir,
-    emptyOutDir: true,
+    // Only the first entry of a run may wipe the directory.
+    emptyOutDir: process.env.PLUGIN_EMPTY === '1',
     // Plugin ESM has no HTML: never shovel public/ (live2d models, bridges) into it.
     copyPublicDir: false,
     target: 'es2020',
     lib: {
-      entry: {
-        chat: path.join(root, 'plugin/entries/chat.js'),
-        plugins: path.join(root, 'plugin/entries/plugins.js'),
-        settings: path.join(root, 'plugin/entries/settings.js'),
-        usage: path.join(root, 'plugin/entries/usage.js'),
-        console: path.join(root, 'plugin/entries/console.js'),
-      },
+      entry: path.join(root, 'plugin/entries', `${ENTRY}.js`),
       formats: ['es'],
-      fileName: (_format, entryName) => `${entryName}.js`,
+      fileName: () => `${ENTRY}.js`,
     },
     rollupOptions: {
       external: ['vue', 'vue-i18n', 'vue-router', 'pinia', '@0kay/host'],
       output: {
-        entryFileNames: '[name].js',
-        chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash][extname]',
+        entryFileNames: `${ENTRY}.js`,
+        // Everything belongs to this page: no sidecar chunks to go stale.
+        inlineDynamicImports: true,
       },
     },
   },
