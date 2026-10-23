@@ -3040,7 +3040,7 @@ button.subagent-card-head>strong{font-weight:700}
   .session-row.selected .row-actions{display:inline-flex}
   .session-row.selected .session-card .origin{padding-right:106px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 }
-.row-actions button{position:relative;width:24px;height:24px;border:0;border-radius:7px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:13px;line-height:1}
+.row-actions button{position:relative;width:24px;height:24px;padding:0;border:0;border-radius:7px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:13px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
 .row-actions button::before{content:'';position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
 .row-actions button:hover:not(:disabled){background:var(--md-primary);color:var(--md-on-primary,#fff)}
 .row-actions select{max-width:78px;height:24px;border:0;border-radius:7px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:12px}
