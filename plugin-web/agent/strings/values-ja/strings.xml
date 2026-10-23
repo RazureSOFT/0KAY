@@ -53,6 +53,7 @@
   <string name="page.editHint">このメッセージを編集して再送信</string>
   <string name="page.editSend">再送信</string>
   <string name="page.copy">コピー</string>
+  <string name="page.artifacts">成果物</string>
   <string name="page.copied">コピーしました</string>
   <string name="page.gitTitle">Git</string>
   <string name="page.gitRefresh">更新</string>

@@ -53,6 +53,7 @@
   <string name="page.editHint">修改這則訊息並重新傳送</string>
   <string name="page.editSend">重新傳送</string>
   <string name="page.copy">複製</string>
+  <string name="page.artifacts">本輪產物</string>
   <string name="page.copied">已複製</string>
   <string name="page.gitTitle">Git</string>
   <string name="page.gitRefresh">重新整理</string>

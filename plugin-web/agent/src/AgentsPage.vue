@@ -1488,6 +1488,29 @@ function workSteps(turn: TaskRow): TaskRow[] {
   const answerId = finalAnswerStepId(turn)
   return steps(turn).filter(step => step.task_id !== answerId)
 }
+/**
+ * The turn's deliverables, as declared by the `report_artifacts` tool.
+ *
+ * The model is told to call that tool once, right before its final answer, with
+ * every file the turn produced. Reading it back out of the step log is what
+ * turns "here is a wall of tool calls" into a list the user can click. Later
+ * declarations win over earlier ones, so a re-run that overwrites a file shows
+ * the final description rather than the first one.
+ */
+function turnArtifacts(turn: TaskRow): Array<{ path: string; description: string }> {
+  const found = new Map<string, { path: string; description: string }>()
+  for (const step of steps(turn)) {
+    if ((step.prompt || '').trim() !== 'report_artifacts') continue
+    const parsed = parseStepJson(step.args) || parseStepJson(step.result)
+    const list = Array.isArray(parsed?.artifacts) ? parsed.artifacts : []
+    for (const item of list) {
+      const raw = String(item?.path || '').trim()
+      if (!raw) continue
+      found.set(raw, { path: absolutePath(raw), description: String(item?.description || '').trim() })
+    }
+  }
+  return [...found.values()]
+}
 async function manage(action: 'archive' | 'restore' | 'delete') {
   if (!session.value || busy.value) return
   if (action === 'delete') {
@@ -1884,6 +1907,21 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
             </template></div>
             </details>
             <MarkdownContent v-if="turn.result" :content="turn.result" @open="openPath" />
+            <div v-if="turnArtifacts(turn).length" class="turn-artifacts">
+              <strong class="turn-artifacts-title">{{ t('agent.page.artifacts') }}</strong>
+              <button
+                v-for="item in turnArtifacts(turn)"
+                :key="item.path"
+                type="button"
+                class="artifact-chip"
+                :title="item.path"
+                @click="openPath(item.path)"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 3v5h5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+                <span class="artifact-name">{{ baseName(item.path) }}</span>
+                <small v-if="item.description" class="artifact-desc">{{ item.description }}</small>
+              </button>
+            </div>
             <div v-if="turn.error" class="error">{{ friendlyError(turn.error) }}</div>
             <p v-if="['running','pending'].includes(turn.state)" class="muted">{{ t('agent.page.agentProcessing') }}</p>
           </div>
@@ -2573,6 +2611,16 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .turn:hover .turn-actions,.turn:focus-within .turn-actions{opacity:1}
 .turn-actions.end{justify-content:flex-end}
 @media (hover:none){.turn-actions{opacity:1}}
+/* Deliverable list under a finished turn. Chips, not a table: they wrap, they
+   stay clickable at any width, and the description truncates instead of
+   pushing the layout around. */
+.turn-artifacts{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 2px 2px}
+.turn-artifacts-title{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--md-on-surface-variant)}
+#app .workspace .artifact-chip{display:inline-flex;align-items:center;gap:6px;max-width:min(320px,100%);min-height:0;height:28px;padding:0 10px;border:1px solid var(--md-outline-variant);border-radius:999px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);cursor:pointer;transition:background-color 140ms,border-color 140ms}
+#app .workspace .artifact-chip:hover{background:var(--md-secondary-container);border-color:transparent}
+.artifact-chip svg{flex:none;opacity:.7}
+.artifact-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:600}
+.artifact-desc{flex:none;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--md-on-surface-variant)}
 #app .workspace .bubble-action{display:inline-flex;align-items:center;gap:5px;min-height:0;height:26px;padding:0 9px;border:0;border-radius:8px;background:transparent;color:var(--md-on-surface-variant);font-size:11.5px;font-weight:600;cursor:pointer;transition:background-color 140ms,color 140ms}
 #app .workspace .bubble-action:hover:not(:disabled){background:var(--md-surface-container-high);color:var(--md-on-surface)}
 #app .workspace .bubble-action:disabled{opacity:.45;cursor:not-allowed}

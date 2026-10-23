@@ -53,6 +53,7 @@
   <string name="page.editHint">Edit this message and resend it</string>
   <string name="page.editSend">Resend</string>
   <string name="page.copy">Copy</string>
+  <string name="page.artifacts">Deliverables</string>
   <string name="page.copied">Copied</string>
   <string name="page.gitTitle">Git</string>
   <string name="page.gitRefresh">Refresh</string>
