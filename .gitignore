@@ -124,3 +124,7 @@ life/life-review-report.md
 /life/life-toward-a-person.md
 /life/life-wiring-and-capability-audit.md
 /life/life-wiring-fixes-implemented.md
+
+# Local Genie helpers (genie_gui.py is launched by the desktop shortcut). They
+# talk to this machine's D:\Genie checkout, so they stay out of the repo.
+/genie_*.py
