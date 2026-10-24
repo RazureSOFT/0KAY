@@ -96,6 +96,11 @@
   <string name="chat.voiceOffTitle">音声読み上げをオンにする（Live2D リップシンク）</string>
   <string name="chat.voiceOn">🔊 音声オン</string>
   <string name="chat.voiceOnTitle">音声読み上げをオフにする</string>
+  <string name="chat.mediaVoice">ボイスメッセージ</string>
+  <string name="chat.mediaCall">音声通話</string>
+  <string name="chat.mediaSelfieDrawing">写真を撮っています…</string>
+  <string name="chat.callBanner">通話中 —— どうぞ、聞いています</string>
+  <string name="chat.callEnd">切る</string>
   <string name="chat.wakeCapturing">聞いています。どうぞ…</string>
   <string name="chat.wakeFailed">音声ウェイクを開始できません：{detail}</string>
   <string name="chat.wakeHeardLine">聞き取り：{text}</string>
@@ -221,6 +226,14 @@
   <string name="lifeSettings.wakeEnable">呼び名で起動する</string>
   <string name="lifeSettings.wakeEnableDesc">チャット画面がマイクで待ち受け、呼び名を言うと一言録音して自動送信します</string>
   <string name="lifeSettings.wakeHint">音声認識は Core の /api/asr 経由です。「Soniox 音声認識」プラグインを入れるか、ASR_ENDPOINT を OpenAI 互換の転写サービスに向けてください。</string>
+  <string name="lifeSettings.media">音声・自撮り・通話</string>
+  <string name="lifeSettings.mediaVoice">ボイスメッセージを送れる</string>
+  <string name="lifeSettings.mediaVoiceDesc">キャラクターが打字の代わりに音声でこのセリフを送れます</string>
+  <string name="lifeSettings.mediaSelfie">自撮りを送れる</string>
+  <string name="lifeSettings.mediaSelfieDesc">キャラクターが今の自分の写真を撮って送れます</string>
+  <string name="lifeSettings.mediaCall">通話を始められる</string>
+  <string name="lifeSettings.mediaCallDesc">キャラクターが音声通話を始めます：あなたが話し、それが声で答えます</string>
+  <string name="lifeSettings.mediaHint">音声は Core の /api/tts、自撮りは /api/image を使います。未設定でも壊れません —— 文字は届き、メディアが無いだけです。</string>
   <string name="lifeSettings.wakeNickname">呼び名</string>
   <string name="lifeSettings.wakeNicknamePlaceholder">美玖, miku</string>
   <string name="live2d.configure">有効化して読み込む</string>

@@ -95,14 +95,24 @@ class OutputStage:
         think_guidance: str,
         emotion_context: str,
         persona_context: str = "No custom persona is configured.",
+        media_block: str = "",
     ) -> str:
-        """Build the OUTPUT prompt."""
-        return self.prompt_template.format(
+        """Build the OUTPUT prompt.
+
+        ``media_block`` is the optional "you may also send voice / a selfie / a
+        call" hint built from the LIFE media settings. It is appended rather than
+        interpolated into the template so an empty value leaves the prompt
+        byte-for-byte unchanged for users who never enabled any of it.
+        """
+        prompt = self.prompt_template.format(
             think_guidance=think_guidance,
             emotion_context=emotion_context,
             persona_context=persona_context,
             user_message=user_message,
         )
+        if media_block:
+            prompt += "\n\n" + media_block
+        return prompt
 
     def process_response(self, response: str) -> OutputResult:
         """Process the OUTPUT stage response."""

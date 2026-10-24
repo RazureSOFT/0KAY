@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, onScopeDispose } from 'vue'
 import { useWizardStore } from './wizard'
+import { parseMedia } from './media-markers'
 import { useLifeStore } from './life'
 import { i18n } from '../i18n'
 import { uid } from '../uid'
@@ -22,6 +23,10 @@ export interface Message {
   }
   mentalEnergy?: number
   thinkSummary?: string
+  /** Media the character chose for this turn (LIFE's [[voice]]/[[selfie:…]]/[[call]]). */
+  media?: { voice?: boolean; selfie?: string; call?: boolean }
+  /** Data URL of the generated selfie, filled in after /api/image answers. */
+  selfieUrl?: string
 }
 
 export const useChatStore = defineStore('chat', () => {
@@ -265,7 +270,12 @@ export const useChatStore = defineStore('chat', () => {
         if (payload?.mental_energy !== undefined) target.mentalEnergy = payload.mental_energy
         if (payload?.think_summary) target.thinkSummary = payload.think_summary
         flushL2DMarkers(target)
-        if (target.content.includes('[[')) target.content = target.content.replace(L2D_MARKER_STRIP_RE, '')
+        if (target.content.includes('[[')) {
+          target.content = target.content.replace(L2D_MARKER_STRIP_RE, '')
+          const parsed = parseMedia(target.content)
+          target.content = parsed.cleaned
+          if (Object.keys(parsed.media).length) target.media = parsed.media
+        }
       }
       return
     }
@@ -281,7 +291,12 @@ export const useChatStore = defineStore('chat', () => {
     }
     messages.value.push(pushed)
     flushL2DMarkers(pushed)
-    if (pushed.content.includes('[[')) pushed.content = pushed.content.replace(L2D_MARKER_STRIP_RE, '')
+    if (pushed.content.includes('[[')) {
+      pushed.content = pushed.content.replace(L2D_MARKER_STRIP_RE, '')
+      const parsed = parseMedia(pushed.content)
+      pushed.content = parsed.cleaned
+      if (Object.keys(parsed.media).length) pushed.media = parsed.media
+    }
   }
 
   function handleChunk(data: any) {
@@ -518,6 +533,9 @@ export const useChatStore = defineStore('chat', () => {
       persistHistory()
       isTyping.value = false
     }
+    const settled = messages.value.find((m) => m.role === 'assistant' && m.requestId === requestId)
+    if (settled?.media?.call) callMode.value = true
+    if (settled?.media?.selfie) void generateSelfie(settled)
     void speakMessage(requestId)
   }
 
@@ -525,6 +543,33 @@ export const useChatStore = defineStore('chat', () => {
     voiceEnabled.value = value
     try { localStorage.setItem('0kay.voice', value ? '1' : '0') } catch { /* ignore */ }
   }
+
+  /**
+   * Draw the selfie the character asked for.
+   *
+   * Fire-and-forget: the bubble shows a placeholder until the image lands, and a
+   * missing backend just leaves it out rather than failing the turn — a persona
+   * that offered a photo and got an error should still have said its line.
+   */
+  async function generateSelfie(message: Message) {
+    const prompt = message.media?.selfie
+    if (!prompt || message.selfieUrl) return
+    try {
+      const res = await fetch('/api/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      })
+      if (!res.ok) return
+      const blob = await res.blob()
+      message.selfieUrl = URL.createObjectURL(blob)
+      persistHistory()
+    } catch { /* no image backend: the text reply stands on its own */ }
+  }
+
+  /** True while a [[call]] the character started is open. */
+  const callMode = ref(false)
+  function endCall() { callMode.value = false }
 
   // Speak the finished assistant reply through Core's /api/tts and hand the audio
   // to the Live2D stage (live2d-speak) for lip-sync. Best effort.
@@ -607,6 +652,8 @@ export const useChatStore = defineStore('chat', () => {
     contextSummary,
     compacting,
     voiceEnabled,
+    callMode,
+    endCall,
     lastMessage,
     setVoiceEnabled,
     connect,

@@ -164,3 +164,48 @@ def recall_note(notice_type: str, user_id: Any, operator_id: Any = None, message
     """A short, honest note for a recalled message (no invented content)."""
     kind = "群" if notice_type == "group_recall" else "私聊"
     return f"[{kind}撤回] 用户 {user_id} 撤回了一条消息（id={message_id}）"
+
+
+# ── 多模态输出：告诉角色它能选什么 ────────────────────────────────────────────
+#
+# The three media actions live behind settings because a prompt that advertises
+# an action the front end cannot perform is worse than one that never mentions
+# it: the model emits the tag, the WebUI ignores it, and the character looks like
+# it is talking to itself. So the block is built from the enabled switches only.
+
+VOICE_TAG = "[[voice]]"
+SELFIE_TAG = "[[selfie:{}]]"
+CALL_TAG = "[[call]]"
+
+MEDIA_HINT = (
+    "多模态（可选，按需使用，不要每条都用）：\n"
+    "{lines}\n"
+    "把标签单独放在一句话的末尾，用户看不到标签本身，客户端会据此发送语音/照片/发起通话。\n"
+    "没有合适契机就不要用；文字本身永远是最重要的表达。"
+)
+
+
+def media_capability_block(values: dict | None = None) -> str:
+    """Build the prompt block that tells the character which media it may use.
+
+    Returns an empty string when everything is off, so the OUTPUT prompt stays
+    byte-for-byte what it was for users who never asked for media.
+    """
+    values = values or {}
+    lines: list[str] = []
+    if str(values.get("voice_reply_enabled", "true")).lower() not in ("false", "0", "no"):
+        lines.append(
+            f"- 想用声音说这句话时，句末加 {VOICE_TAG}（适合撒娇、语气很重要、或用户要求语音时）"
+        )
+    if str(values.get("selfie_enabled", "true")).lower() not in ("false", "0", "no"):
+        lines.append(
+            f"- 想给对方看自己现在的样子时，句末加 {SELFIE_TAG.format('<一句话描述此刻的场景、穿着、表情>')}"
+            "（适合用户要求看照片/自拍、或想分享当下氛围时）"
+        )
+    if str(values.get("call_enabled", "false")).lower() in ("true", "1", "yes"):
+        lines.append(
+            f"- 想正经聊一会儿、打字太慢时，句末加 {CALL_TAG}（会发起语音通话，双方用说的）"
+        )
+    if not lines:
+        return ""
+    return MEDIA_HINT.format(lines="\n".join(lines))

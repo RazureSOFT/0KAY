@@ -366,6 +366,14 @@ watch(
           </button>
         </span>
       </div>
+      <!-- The character opened a call ([[call]]): it speaks its replies and keeps
+           listening, so say so instead of leaving the user wondering why the
+           microphone is live. -->
+      <div v-if="chatStore.callMode" class="call-strip">
+        <span class="call-dot" aria-hidden="true"></span>
+        <span class="call-text">{{ t('chat.callBanner') }}</span>
+        <button class="call-end" type="button" @click="chatStore.endCall()">{{ t('chat.callEnd') }}</button>
+      </div>
       <div v-if="wakeActive" class="wake-strip" :class="wakeStatus">
         <span class="wake-dot" aria-hidden="true"></span>
         <span class="wake-text">{{ wakeLine }}</span>
@@ -736,6 +744,31 @@ watch(
   color: var(--md-primary);
   background: color-mix(in srgb, var(--md-primary) 14%, transparent);
 }
+.call-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--md-success, #1a9e63) 14%, transparent);
+  color: var(--md-on-surface);
+  font-size: 12px;
+}
+.call-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--md-success, #1a9e63);
+  animation: call-pulse 1.4s ease-in-out infinite;
+}
+.call-text { flex: 1; min-width: 0; font-weight: 600; }
+.call-end {
+  border: 0; background: transparent; color: var(--md-on-surface-variant);
+  font-size: 12px; font-weight: 650; cursor: pointer; padding: 2px 6px; border-radius: 8px;
+}
+.call-end:hover { background: var(--md-surface-container-high); color: var(--md-on-surface); }
+@keyframes call-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .call-dot { animation: none; } }
+
 .wake-strip {
   display: flex;
   align-items: center;

@@ -96,6 +96,11 @@
   <string name="chat.voiceOffTitle">开启语音朗读（Live2D 口型同步）</string>
   <string name="chat.voiceOn">🔊 语音开</string>
   <string name="chat.voiceOnTitle">关闭语音朗读</string>
+  <string name="chat.mediaVoice">语音消息</string>
+  <string name="chat.mediaCall">语音通话</string>
+  <string name="chat.mediaSelfieDrawing">正在拍照…</string>
+  <string name="chat.callBanner">通话中 —— 说吧，我在听</string>
+  <string name="chat.callEnd">挂断</string>
   <string name="chat.wakeCapturing">在听，说吧…</string>
   <string name="chat.wakeFailed">语音唤醒启动失败：{detail}</string>
   <string name="chat.wakeHeardLine">听到了：{text}</string>
@@ -221,6 +226,14 @@
   <string name="lifeSettings.wakeEnable">喊昵称就唤醒</string>
   <string name="lifeSettings.wakeEnableDesc">聊天页会用麦克风持续监听；喊出昵称后录一句，自动发送</string>
   <string name="lifeSettings.wakeHint">语音识别走 Core 的统一 /api/asr：装「Soniox 语音识别」插件，或把 ASR_ENDPOINT 指向任意 OpenAI 兼容的转写服务。</string>
+  <string name="lifeSettings.media">语音、自拍与通话</string>
+  <string name="lifeSettings.mediaVoice">可以发语音</string>
+  <string name="lifeSettings.mediaVoiceDesc">角色可以用语音消息代替打字说完这句话</string>
+  <string name="lifeSettings.mediaSelfie">可以发自拍</string>
+  <string name="lifeSettings.mediaSelfieDesc">角色可以现拍一张自己此刻的照片发给你</string>
+  <string name="lifeSettings.mediaCall">可以打电话</string>
+  <string name="lifeSettings.mediaCallDesc">角色可以发起语音通话：你说，它用说的回你</string>
+  <string name="lifeSettings.mediaHint">语音走 Core 的 /api/tts，自拍走 /api/image。没配后端也不会坏 —— 文字照样到，只是没有语音/照片。</string>
   <string name="lifeSettings.wakeNickname">唤醒昵称</string>
   <string name="lifeSettings.wakeNicknamePlaceholder">美玖, miku</string>
   <string name="live2d.configure">启用并加载</string>

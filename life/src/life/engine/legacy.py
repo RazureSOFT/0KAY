@@ -22,7 +22,7 @@ from ..circadian.circadian import CircadianSystem
 from ..memory.memory import MemorySystem
 from ..environment import EnvironmentSystem
 from ..content import ContentSystem
-from ..media import MediaPipeline
+from ..media import MediaPipeline, media_capability_block
 from ..usage import UsageLedger
 from .. import prompt as prompt_sections
 from ..extensions import ExtensionRegistry
@@ -2839,7 +2839,8 @@ class LifeEngine:
             )
         else:
             system = self.output.build_prompt(user_message=message, think_guidance=guidance,
-                emotion_context=json.dumps(self.emotion.state.to_dict()), persona_context=turn.persona_context)
+                emotion_context=json.dumps(self.emotion.state.to_dict()), persona_context=turn.persona_context,
+                media_block=self._media_block())
         expression_context = await self._expression_context(getattr(turn, "user_id", ""))
         if expression_context:
             system += "\n" + expression_context
@@ -2962,6 +2963,23 @@ class LifeEngine:
             state.irritation = 0.85
         if state.valence < -0.7:
             state.valence = -0.7
+
+    def _media_block(self) -> str:
+        """The "you may send voice / a selfie / start a call" prompt block.
+
+        Empty unless the user switched at least one of the three on, so the
+        OUTPUT prompt is unchanged for everyone else. Cached per settings push:
+        this runs on every reply and the string build is not free.
+        """
+        settings = getattr(self, "_media_settings", None)
+        if not settings:
+            return ""
+        cached = getattr(self, "_media_block_cache", None)
+        if cached is not None and cached[0] == settings:
+            return cached[1]
+        block = media_capability_block(settings)
+        self._media_block_cache = (settings, block)
+        return block
 
     async def _expression_context(self, user_id: str, limit: int = 3) -> str:
         """Approved turns of phrase the reflection stage learned from real chats.
@@ -5270,6 +5288,11 @@ class LifeEngine:
         self.tool_config.minecraft_url = str(values.get("minecraft_url") or "http://127.0.0.1:8765")
         self._screen_watch = bool(values.get("screen_watch", False))
         self._report_agent_host = str(values.get("report_agent_host") or "")
+        self._media_settings = {
+            "voice_reply_enabled": values.get("voice_reply_enabled", "true"),
+            "selfie_enabled": values.get("selfie_enabled", "true"),
+            "call_enabled": values.get("call_enabled", "false"),
+        }
         self.think_model = str(values.get("think_model") or os.getenv("LIFE_THINK_MODEL", ""))
         self.output_model = str(values.get("output_model") or os.getenv("LIFE_OUTPUT_MODEL", ""))
         if values.get("model_routes") is not None:

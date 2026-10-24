@@ -14,6 +14,10 @@ const form = reactive<Record<string, any>>({
   // 「喊一声唤醒」: the nickname is the wake word. It lives here so the persona's
   // name has one home; the chat page reads it and does the actual listening.
   wake_enabled: false, wake_nickname: '', asr_language: 'zh',
+  // Which media the character is allowed to choose on its own. Voice and selfie
+  // are on by default because both degrade gracefully (no TTS backend → the text
+  // still arrives); a call is a mode change, so it stays opt-in.
+  voice_reply_enabled: true, selfie_enabled: true, call_enabled: false,
 })
 const state = ref('')
 const saving = ref(false)
@@ -131,6 +135,16 @@ onMounted(load)
           <label class="ls-field"><span>{{ t('lifeSettings.asrLanguage') }}</span><input v-model="form.asr_language" placeholder="zh" :title="t('lifeSettings.asrLanguageDesc')" /></label>
         </div>
         <p class="ls-hint">{{ t('lifeSettings.wakeHint') }}</p>
+      </article>
+
+      <article class="ls-card ls-card-wide">
+        <div class="ls-card-head"><span class="ls-ic tone-4">📸</span><h3>{{ t('lifeSettings.media') }}</h3></div>
+        <div class="ls-row">
+          <label class="ls-switch"><input v-model="form.voice_reply_enabled" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>{{ t('lifeSettings.mediaVoice') }}</b><small>{{ t('lifeSettings.mediaVoiceDesc') }}</small></span></label>
+          <label class="ls-switch"><input v-model="form.selfie_enabled" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>{{ t('lifeSettings.mediaSelfie') }}</b><small>{{ t('lifeSettings.mediaSelfieDesc') }}</small></span></label>
+          <label class="ls-switch"><input v-model="form.call_enabled" type="checkbox" /><span class="ls-track"></span><span class="ls-switch-text"><b>{{ t('lifeSettings.mediaCall') }}</b><small>{{ t('lifeSettings.mediaCallDesc') }}</small></span></label>
+        </div>
+        <p class="ls-hint">{{ t('lifeSettings.mediaHint') }}</p>
       </article>
     </div>
 

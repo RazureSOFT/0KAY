@@ -30,6 +30,7 @@ installed, updated or disabled on its own.
 
 - [HTTP API Reference](HTTP_API.md) — every Core gateway route, auth, errors.
 - [Speech-to-Text (ASR)](asr.md) — the one `/api/asr` endpoint and how a plugin plugs a backend into it.
+- [Image generation](image.md) — the one `/api/image` endpoint and how a plugin plugs a backend into it.
 - [Plugin API (v1)](PLUGIN_API.md) — the protobuf schema (the plugin↔Core message format) and package manifests.
 - [Plugin Lifecycle](plugin-lifecycle.md) — register, heartbeat, types, disable.
 - [Writing a Plugin](writing-a-plugin.md) — end-to-end plugin guide.

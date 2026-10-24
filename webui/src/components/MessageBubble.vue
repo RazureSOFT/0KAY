@@ -84,6 +84,22 @@ const dateTimeStr = computed(() => {
         <MarkdownContent v-if="!isUser && !streaming" :content="message.content" />
         <template v-else>{{ message.content }}</template>
       </div>
+      <!-- Media the character chose for this turn: a voice message, a selfie, a call.
+           Each is a real message, not a decoration — the voice chip plays the same
+           audio the Live2D stage lip-syncs to. -->
+      <div v-if="!isUser && (message.media?.voice || message.media?.call)" class="media-row">
+        <span class="media-chip">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v18M8 7v10M16 7v10M4 10v4M20 10v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          {{ message.media?.call ? t('chat.mediaCall') : t('chat.mediaVoice') }}
+        </span>
+      </div>
+      <div v-if="!isUser && message.media?.selfie" class="selfie">
+        <img v-if="message.selfieUrl" :src="message.selfieUrl" :alt="message.media.selfie" class="selfie-img" />
+        <div v-else class="selfie-pending">
+          <span class="selfie-spinner" aria-hidden="true"></span>
+          {{ t('chat.mediaSelfieDrawing') }}
+        </div>
+      </div>
       <div v-if="!isUser && think" class="think-panel">
         <button
           class="think-toggle"
@@ -116,6 +132,33 @@ const dateTimeStr = computed(() => {
 </template>
 
 <style scoped>
+.media-row { display: flex; gap: 6px; margin: 0 0 6px; }
+.media-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 24px; padding: 0 10px; border-radius: 999px;
+  background: var(--md-primary-container, #e8e0ff); color: var(--md-on-primary-container, #21005d);
+  font-size: 11.5px; font-weight: 650;
+}
+.media-chip svg { flex: none; }
+.selfie { margin: 0 0 6px; }
+.selfie-img {
+  display: block; max-width: 260px; max-height: 320px;
+  border-radius: 14px; border: 1px solid var(--md-outline-variant);
+}
+.selfie-pending {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-width: 200px; padding: 14px 16px; border-radius: 14px;
+  border: 1px dashed var(--md-outline-variant);
+  color: var(--md-on-surface-variant); font-size: 12px;
+}
+.selfie-spinner {
+  width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid var(--md-outline-variant); border-top-color: var(--md-primary);
+  animation: selfie-spin 700ms linear infinite;
+}
+@keyframes selfie-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .selfie-spinner { animation: none; } }
+
 .message {
   display: flex;
   gap: var(--space-md);

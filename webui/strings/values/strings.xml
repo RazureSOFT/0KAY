@@ -96,6 +96,11 @@
   <string name="chat.voiceOffTitle">Enable voice playback (Live2D lip sync)</string>
   <string name="chat.voiceOn">🔊 Voice on</string>
   <string name="chat.voiceOnTitle">Disable voice playback</string>
+  <string name="chat.mediaVoice">Voice message</string>
+  <string name="chat.mediaCall">Voice call</string>
+  <string name="chat.mediaSelfieDrawing">Shooting a photo…</string>
+  <string name="chat.callBanner">On a call — speak, I am listening</string>
+  <string name="chat.callEnd">Hang up</string>
   <string name="chat.wakeCapturing">Listening… say it now</string>
   <string name="chat.wakeFailed">Couldn't start voice wake: {detail}</string>
   <string name="chat.wakeHeardLine">Heard: {text}</string>
@@ -221,6 +226,14 @@
   <string name="lifeSettings.wakeEnable">Wake when called by name</string>
   <string name="lifeSettings.wakeEnableDesc">The chat page keeps the mic open; say the nickname and it records one sentence and sends it</string>
   <string name="lifeSettings.wakeHint">Recognition goes through Core’s /api/asr: install the Soniox speech plugin, or point ASR_ENDPOINT at any OpenAI-compatible transcriber.</string>
+  <string name="lifeSettings.media">Voice, selfies and calls</string>
+  <string name="lifeSettings.mediaVoice">May send voice messages</string>
+  <string name="lifeSettings.mediaVoiceDesc">The character can end a line with a voice note instead of typing it</string>
+  <string name="lifeSettings.mediaSelfie">May send selfies</string>
+  <string name="lifeSettings.mediaSelfieDesc">The character can take and send a photo of what it is doing right now</string>
+  <string name="lifeSettings.mediaCall">May start a voice call</string>
+  <string name="lifeSettings.mediaCallDesc">The character can open a call: you speak, it answers out loud</string>
+  <string name="lifeSettings.mediaHint">Voice uses Core /api/tts, selfies use /api/image. Neither is wired up? The text reply still arrives — the media just stays missing.</string>
   <string name="lifeSettings.wakeNickname">Wake nickname</string>
   <string name="lifeSettings.wakeNicknamePlaceholder">Miharu, miku</string>
   <string name="live2d.configure">Enable &amp; load</string>

@@ -412,6 +412,32 @@ class CoreClient:
                             default_value="zh",
                             help="传给 /api/asr 的语言提示（zh / ja / en，留空为自动检测）",
                         ),
+                        # ── 多模态输出 ──────────────────────────────────────
+                        # Which of the three media actions the character is even
+                        # told it can take. The prompt only mentions what is on,
+                        # so switching one off cannot make the model emit a tag
+                        # the WebUI would then have to ignore.
+                        _pb.SettingsField(
+                            key="voice_reply_enabled",
+                            type="bool",
+                            label="可以发语音",
+                            default_value="true",
+                            help="允许角色用 [[voice]] 把这句话作为语音消息发给你（WebUI 会合成音频并播放）",
+                        ),
+                        _pb.SettingsField(
+                            key="selfie_enabled",
+                            type="bool",
+                            label="可以发自拍",
+                            default_value="true",
+                            help="允许角色用 [[selfie:场景]] 现拍一张照片发给你（走 Core 的 /api/image，需要配好图像后端）",
+                        ),
+                        _pb.SettingsField(
+                            key="call_enabled",
+                            type="bool",
+                            label="可以打电话",
+                            default_value="false",
+                            help="允许角色用 [[call]] 发起语音通话：WebUI 进入通话模式，持续听你说、用语音回你",
+                        ),
                     ],
                 )
                 request.settings_sections.append(sec)

@@ -400,6 +400,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/chat", g.handleChat)
 	mux.HandleFunc("POST /api/tts", g.handleTTS)
 	mux.HandleFunc("/api/asr", g.handleASR)
+	mux.HandleFunc("/api/image", g.handleImage)
 	mux.HandleFunc("/api/life/chat", g.handleLifeChat)
 	mux.HandleFunc("/api/life/compact", g.handleLifeCompact)
 	mux.HandleFunc("/api/life/notifications", g.handleLifeNotifications)
