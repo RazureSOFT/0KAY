@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -80,6 +81,8 @@ func fetchArXiv(ctx context.Context, query string, limit int) ([]Result, error) 
 			URL:     href,
 			Snippet: paperSnippet(authors, year, "", e.Summary),
 			Engine:  "arxiv",
+			Authors: authors,
+			Year:    atoiYear(year),
 		})
 		if len(out) >= limit {
 			break
@@ -150,6 +153,9 @@ func fetchCrossref(ctx context.Context, query string, limit int) ([]Result, erro
 			URL:     href,
 			Snippet: paperSnippet(authors, year, first(item.ContainerTitle), stripTags(item.Abstract)),
 			Engine:  "crossref",
+			Authors: authors,
+			Year:    atoiYear(year),
+			Venue:   first(item.ContainerTitle),
 		})
 		if len(out) >= limit {
 			break
@@ -216,6 +222,8 @@ func fetchOpenAlex(ctx context.Context, query string, limit int) ([]Result, erro
 			URL:     href,
 			Snippet: paperSnippet(authors, year, "", invertedAbstract(item.AbstractIndex)),
 			Engine:  "openalex",
+			Authors: authors,
+			Year:    atoiYear(year),
 		})
 		if len(out) >= limit {
 			break
@@ -245,6 +253,15 @@ func invertedAbstract(index map[string][]int) string {
 		}
 	}
 	return strings.Join(parts, " ")
+}
+
+// atoiYear keeps the JSON numeric without panicking on "2026a" or "".
+func atoiYear(value string) int {
+	n, err := strconv.Atoi(strings.TrimSpace(value))
+	if err != nil || n < 1000 || n > 3000 {
+		return 0
+	}
+	return n
 }
 
 func paperSnippet(authors []string, year, venue, abstract string) string {

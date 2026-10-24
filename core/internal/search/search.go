@@ -19,6 +19,11 @@ type Result struct {
 	URL     string `json:"url"`
 	Snippet string `json:"snippet"`
 	Engine  string `json:"engine"`
+	// Papers carry the parts separately so a citation can be built without
+	// re-parsing the snippet. Other engines leave them empty.
+	Authors []string `json:"authors,omitempty"`
+	Year    int      `json:"year,omitempty"`
+	Venue   string   `json:"venue,omitempty"`
 }
 
 var Engines = []string{"cnbing", "bing", "so360", "duckduckgo"}
