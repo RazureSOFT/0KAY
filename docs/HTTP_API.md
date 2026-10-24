@@ -595,5 +595,8 @@ Related single-purpose routes:
 | POST | `/api/asr` | Audio → `{text, provider, language?}`; multipart (`audio`/`file` + `language`/`model`/`prompt`) or JSON `{audio_base64, mime, language?}`; `503 asr_failed` when no ASR backend is configured, `502 asr_failed` when it errors (see [asr.md](asr.md)) |
 | GET | `/api/image` | Image generation availability → `{configured, provider?}` |
 | POST | `/api/image` | `{prompt, size?}` → image bytes (`image/*`); `502 image_failed` when no image backend is configured or it errors (see [image.md](image.md)) |
+| GET | `/api/mcp/servers` | Configured MCP servers → `{servers:[{id,transport}]}` |
+| GET | `/api/mcp/tools?server=` | Tools from every server (or one) → `{tools:[{server,name,description,inputSchema}], errors:{}}` |
+| POST | `/api/mcp/call` | `{server,tool,args}` → the raw MCP result; `502 mcp_failed` when the server errors |
 | POST | `/api/settings/{id}/test` | Fixed TTS sample (see §11) |
 | POST | `/api/net/egress` | Plugin-attributed outbound HTTP proxy; body `{url, method?, headers?, body?, timeout_ms?}` → `{status, headers, body}`. Requires plugin identity (`X-0KAY-Plugin` + service token) and enforces the plugin's `permissions.egress` allow-list; the only sanctioned plugin network path |

@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"0kay/core/internal/mcp"
 	"0kay/core/internal/messaging"
 	"0kay/core/internal/providers"
 	"0kay/core/internal/registry"
@@ -61,6 +62,9 @@ type Gateway struct {
 	uiPatches *uiPatchStore
 	// stdio hosts provider-adapter plugins as child processes (no port).
 	stdio *stdioprovider.Runner
+	// mcp owns the Model Context Protocol servers: one registry for every
+	// consumer (agent, L.I.F.E, WebUI) instead of one client per plugin.
+	mcp *mcp.Registry
 }
 
 // CloseConnections closes and removes cached gRPC connections for the given address.
@@ -284,6 +288,7 @@ func NewGateway(cfg *Config, reg *registry.Registry) (*Gateway, error) {
 			},
 		},
 		sessions: make(map[string]*Session),
+		mcp:      mcp.NewRegistry(),
 	}, nil
 }
 
@@ -401,6 +406,9 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("POST /api/tts", g.handleTTS)
 	mux.HandleFunc("/api/asr", g.handleASR)
 	mux.HandleFunc("/api/image", g.handleImage)
+	mux.HandleFunc("/api/mcp/servers", g.handleMCPServers)
+	mux.HandleFunc("/api/mcp/tools", g.handleMCPTools)
+	mux.HandleFunc("/api/mcp/call", g.handleMCPCall)
 	mux.HandleFunc("/api/life/chat", g.handleLifeChat)
 	mux.HandleFunc("/api/life/compact", g.handleLifeCompact)
 	mux.HandleFunc("/api/life/notifications", g.handleLifeNotifications)
