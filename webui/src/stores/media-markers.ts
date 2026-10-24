@@ -21,6 +21,8 @@ export function parseMedia(text: string): { media: MediaChoice; cleaned: string 
     else if (match[1] === 'call') media.call = true
     else if (match[2] !== undefined && match[2].trim()) media.selfie = match[2].trim()
   }
+  // trailing whitespace only: the tag is usually glued to the last word,
+  // and trimming the whole string eats a deliberate pause.
   const cleaned = source.replace(MEDIA_MARKER_STRIP_RE, '').replace(/\s+$/, '')
   return { media, cleaned }
 }

@@ -272,6 +272,8 @@ func (g *Gateway) handleASR(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	result, err := g.asrTranscribe(ctx, audio, filename, language, model, prompt)
 	if err != nil {
+		// 503 means "no backend", 502 means "the backend shit itself". The caller
+		// needs the difference: one is a setup problem, the other is a retry.
 		status := http.StatusBadGateway
 		if strings.Contains(err.Error(), "not configured") {
 			status = http.StatusServiceUnavailable

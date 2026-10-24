@@ -19,6 +19,8 @@ export const wakeHeard = ref('')
 
 const CHUNK_MS = 2_600
 const FOLLOW_MAX_MS = 9_000
+// tuned on a laptop mic with AGC on. if you change this, test with real
+// speech in a real room, not with a sine wave.
 const SILENCE_MS = 850
 const SILENCE_RMS = 0.012
 const SPEECH_RMS = 0.02

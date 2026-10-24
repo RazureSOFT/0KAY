@@ -544,6 +544,8 @@ export const useChatStore = defineStore('chat', () => {
 
   function clearMessages() {
     abortActiveSse()
+    // bump the epoch before clearing. the aborted stream still resolves,
+    // and without this it cheerfully recreates the bubble you just deleted.
     streamEpoch++
     messages.value = []
     seenL2DMarkers.clear()

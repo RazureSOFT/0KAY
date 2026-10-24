@@ -170,6 +170,8 @@ func NewUsageStore(path string) *UsageStore {
 
 func (u *UsageStore) AddIfNew(rec UsageRecord) bool {
 	if rec.RequestID != "" {
+		// a retried ingest carries the same request id. count it twice and every
+		// usage number on the page is a lie.
 		if u.indexed == nil {
 			u.indexed = map[string]struct{}{}
 		}

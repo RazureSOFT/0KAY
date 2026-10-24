@@ -89,6 +89,8 @@ const dateTimeStr = computed(() => {
       </div>
       <div v-if="!isUser && message.media?.selfie" class="selfie">
         <img v-if="message.selfieUrl" :src="message.selfieUrl" :alt="message.media.selfie" class="selfie-img" />
+        <!-- the image is a round trip away. show that something is happening,
+             not an empty box the user reads as a broken message. -->
         <div v-else class="selfie-pending">
           <span class="selfie-spinner" aria-hidden="true"></span>
           {{ t('chat.mediaSelfieDrawing') }}

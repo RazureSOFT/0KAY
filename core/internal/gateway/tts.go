@@ -26,6 +26,8 @@ func isTTSSection(id string) bool {
 }
 
 func (g *Gateway) ttsEndpoint() string {
+	// env wins. always. someone setting TTS_ENDPOINT in a container means it,
+	// and a stale settings value should not quietly overrule it.
 	if value := strings.TrimSpace(os.Getenv("TTS_ENDPOINT")); value != "" {
 		return value
 	}

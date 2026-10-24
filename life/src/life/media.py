@@ -174,6 +174,8 @@ def media_capability_block(values: dict | None = None) -> str:
         lines.append(
             f"- 想正经聊一会儿、打字太慢时，句末加 {CALL_TAG}（会发起语音通话，双方用说的）"
         )
+    # 三条全关就返回空串。提示词里一旦出现一个客户端做不到的动作，
+    # 角色就会对着空气说话。
     if not lines:
         return ""
     return MEDIA_HINT.format(lines="\n".join(lines))
