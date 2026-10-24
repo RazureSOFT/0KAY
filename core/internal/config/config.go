@@ -7,22 +7,16 @@ import (
 	"time"
 )
 
-// Config holds the Core server configuration.
 type Config struct {
-	// GRPCPort is the port for the gRPC server.
 	GRPCPort int
 
-	// HTTPPort is the port for the HTTP API gateway.
 	HTTPPort int
 
-	// HeartbeatTimeout is the duration after which a plugin is considered unhealthy.
 	HeartbeatTimeout time.Duration
 
-	// MaxPlugins is the maximum number of plugins allowed.
 	MaxPlugins int
 }
 
-// DefaultConfig returns a Config with default values.
 func DefaultConfig() *Config {
 	return &Config{
 		GRPCPort:         50051,
@@ -32,7 +26,6 @@ func DefaultConfig() *Config {
 	}
 }
 
-// LoadConfig loads configuration from environment variables.
 func LoadConfig() *Config {
 	cfg := DefaultConfig()
 
@@ -49,8 +42,6 @@ func LoadConfig() *Config {
 	}
 
 	if v := os.Getenv("CORE_HEARTBEAT_TIMEOUT"); v != "" {
-		// A non-positive value would panic the heartbeat ticker and mark every
-		// plugin instantly stale, so it is rejected and the default is kept.
 		if d, err := time.ParseDuration(v); err == nil && d > 0 {
 			cfg.HeartbeatTimeout = d
 		}
@@ -59,12 +50,10 @@ func LoadConfig() *Config {
 	return cfg
 }
 
-// GRPCAddr returns the gRPC listen address.
 func (c *Config) GRPCAddr() string {
 	return fmt.Sprintf("%s:%d", bindHost(), c.GRPCPort)
 }
 
-// HTTPAddr returns the HTTP listen address.
 func (c *Config) HTTPAddr() string {
 	return fmt.Sprintf("%s:%d", bindHost(), c.HTTPPort)
 }

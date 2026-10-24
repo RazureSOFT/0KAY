@@ -5,22 +5,13 @@ import (
 	"strings"
 )
 
-// githubProxy is the global GitHub mirror/reverse-proxy prefix (for example
-// "https://gh-proxy.com"). Empty means direct access.
 var githubProxy string
 
-// SetGitHubProxy sets the mirror used for every git operation Core performs
-// (source updates and 0kay-pm installs/updates). It accepts a bare prefix such
-// as "https://gh-proxy.com" or a value that already carries the github.com
-// suffix, and normalises the trailing slash. An empty value disables it.
 func SetGitHubProxy(proxy string) {
 	proxy = strings.TrimSpace(proxy)
 	proxy = strings.TrimSuffix(proxy, "https://github.com")
 	proxy = strings.TrimSuffix(proxy, "http://github.com")
 	proxy = strings.TrimRight(proxy, "/")
-	// The value is embedded in generated shell/batch scripts; reject anything
-	// that could break out of a quoted argument (quotes, whitespace, control
-	// characters). A valid proxy prefix is a bare URL with neither.
 	if strings.ContainsAny(proxy, "\"'` \t\r\n") {
 		log.Printf("ignoring invalid GitHub proxy value")
 		githubProxy = ""
@@ -29,13 +20,8 @@ func SetGitHubProxy(proxy string) {
 	githubProxy = proxy
 }
 
-// GitHubProxy returns the configured mirror prefix ("" when disabled).
 func GitHubProxy() string { return githubProxy }
 
-// gitProxyEnv rewrites github.com requests through the configured mirror using
-// git's environment config (GIT_CONFIG_COUNT/KEY/VALUE). Child processes — such
-// as the git invocations inside 0kay-pm — inherit it, so no global git config is
-// touched. Returns nil when no mirror is configured.
 func gitProxyEnv() [][2]string {
 	if githubProxy == "" {
 		return nil
@@ -47,10 +33,6 @@ func gitProxyEnv() [][2]string {
 	}
 }
 
-// pmProxyEnv exposes the mirror to 0kay-pm itself. Its source downloads are
-// plain HTTPS (github.com/archive, codeload) rather than git, so the
-// GIT_CONFIG_* rewrite above never reaches them; 0kay-pm reads this variable and
-// prefixes its download URLs with the mirror.
 func pmProxyEnv() [][2]string {
 	if githubProxy == "" {
 		return nil
@@ -58,8 +40,6 @@ func pmProxyEnv() [][2]string {
 	return [][2]string{{"OKAY_GITHUB_PROXY", githubProxy}}
 }
 
-// processProxyEnv is the full mirror environment handed to update/install
-// scripts (git rewrite + the 0kay-pm download prefix).
 func processProxyEnv() [][2]string {
 	return append(gitProxyEnv(), pmProxyEnv()...)
 }

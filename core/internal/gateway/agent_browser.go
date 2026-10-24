@@ -13,12 +13,6 @@ import (
 	agentv1 "0kay/gen/agent/v1"
 )
 
-// handleAgentBrowser GET /api/agent/browser?executor_id=鈥?鈥?proxies the agent's
-// browser-automation status (browser_status direct tool) so the WebUI can show
-// whether the browser is available/running and what page it is on.
-//
-// GET /api/agent/browser/view?executor_id=鈥?鈥?proxies browser_view, returning a
-// JPEG frame of the live page for the WebUI's browser viewport.
 func (g *Gateway) handleAgentBrowser(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
@@ -58,9 +52,6 @@ func (g *Gateway) handleAgentBrowser(w http.ResponseWriter, r *http.Request) {
 	unavailable(w, "selected executor unavailable")
 }
 
-// handleAgentBrowserAction POST /api/agent/browser/action 鈥?drives the agent's
-// browser from the WebUI toolbar (back/forward/reload/goto/鈥?. The JSON body is
-// forwarded as the `browser` tool arguments; executor_id selects the agent.
 func (g *Gateway) handleAgentBrowserAction(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return
@@ -102,9 +93,6 @@ func (g *Gateway) handleAgentBrowserAction(w http.ResponseWriter, r *http.Reques
 	unavailable(w, "selected executor unavailable")
 }
 
-// handleAgentBrowserStream GET /api/agent/browser/stream 鈥?a live MJPEG stream
-// of the controlled page. Core polls the agent's latest CDP screencast frame
-// and re-emits it as multipart/x-mixed-replace so an <img> shows smooth video.
 func (g *Gateway) handleAgentBrowserStream(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
@@ -156,10 +144,8 @@ func (g *Gateway) handleAgentBrowserStream(w http.ResponseWriter, r *http.Reques
 		}
 		if result.Success && result.Result != "" && json.Unmarshal([]byte(result.Result), &payload) == nil {
 			if !payload.Running {
-				break // browser closed; end so the client can show a fallback
+				break
 			}
-			// Push a frame only when the page changed (the CDP screencast
-			// timestamps each frame), so a static page costs nothing to re-send.
 			if payload.Image != "" && payload.At != 0 && payload.At != lastAt {
 				lastAt = payload.At
 				if raw, derr := base64.StdEncoding.DecodeString(payload.Image); derr == nil && len(raw) > 0 {

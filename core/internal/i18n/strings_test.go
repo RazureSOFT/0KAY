@@ -23,8 +23,6 @@ func TestParseBasic(t *testing.T) {
 }
 
 func TestParsePreservesWhitespace(t *testing.T) {
-	// Several strings are padded on purpose. Trimming would change the rendered
-	// text, so this is the property the parser most needs to hold.
 	got, err := Parse(`<resources>
   <string name="connection.lanMode"> · LAN mode</string>
   <string name="usage.requestsSuffix">requests</string>
@@ -54,8 +52,7 @@ func TestParseDecodesEntities(t *testing.T) {
 		"a.amp":   "Email (IMAP & SMTP)",
 		"a.lt":    "a < b > c",
 		"a.quote": `say "hi"`,
-		// A bare apostrophe is not an entity and must come through literally.
-		"a.apos": "L.I.F.E's settings",
+		"a.apos":  "L.I.F.E's settings",
 	} {
 		if got[key] != want {
 			t.Errorf("%s = %q, want %q", key, got[key], want)
@@ -74,8 +71,6 @@ func TestParseEmptyValue(t *testing.T) {
 }
 
 func TestParseRejectsMalformedInput(t *testing.T) {
-	// Catching these at load time beats serving a half-parsed bundle that renders
-	// key paths in the UI.
 	if _, err := Parse(`<resources><string>no name</string></resources>`); err == nil {
 		t.Fatal("expected an error for a <string> without a name")
 	}
@@ -124,7 +119,6 @@ func TestLoadDir(t *testing.T) {
 	write("values", `<resources><string name="a.b">English</string></resources>`)
 	write("values-zh", `<resources><string name="a.b">中文</string></resources>`)
 	write("values-b+zh+Hant", `<resources><string name="a.b">繁體</string></resources>`)
-	// A non-values directory must be ignored, not parsed.
 	write("drawable", `<not-strings/>`)
 
 	bundle, err := LoadDir(root)
@@ -143,7 +137,6 @@ func TestLoadDir(t *testing.T) {
 }
 
 func TestLoadDirMissingRootIsEmpty(t *testing.T) {
-	// A plugin that ships no translations must not look like an error.
 	bundle, err := LoadDir(filepath.Join(t.TempDir(), "nope"))
 	if err != nil {
 		t.Fatal(err)

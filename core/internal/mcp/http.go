@@ -12,10 +12,6 @@ import (
 	"time"
 )
 
-// Streamable-HTTP transport: one POST per JSON-RPC message, one JSON answer
-// (optionally preceded by SSE frames, which are skipped). The session id the
-// server hands back on initialize must be echoed on every later request, or a
-// stateful server treats each call as a new client.
 type httpClient struct {
 	url     string
 	headers map[string]string
@@ -26,7 +22,6 @@ type httpClient struct {
 	sessionID string
 }
 
-// StartHTTP connects to an HTTP MCP endpoint and completes the handshake.
 func StartHTTP(ctx context.Context, url string, headers map[string]string) (Client, error) {
 	if strings.TrimSpace(url) == "" {
 		return nil, fmt.Errorf("empty url")
@@ -34,9 +29,7 @@ func StartHTTP(ctx context.Context, url string, headers map[string]string) (Clie
 	c := &httpClient{
 		url:     url,
 		headers: headers,
-		// No redirects: a server that redirects is either misconfigured or
-		// pointing somewhere the caller did not authorise.
-		client: &http.Client{Timeout: 120 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
+		client:  &http.Client{Timeout: 120 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
 	}
 	initCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
@@ -113,7 +106,6 @@ func (c *httpClient) call(ctx context.Context, method string, params any) (json.
 	return message.Result, nil
 }
 
-// decodeBody accepts a bare JSON-RPC message or an SSE stream carrying one.
 func decodeBody(body []byte) (*rpcMessage, error) {
 	trimmed := bytes.TrimSpace(body)
 	if len(trimmed) == 0 {

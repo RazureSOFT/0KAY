@@ -13,8 +13,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-// fakeGate is a MessageService that only implements DecideInbound, so the
-// arbitration rules can be exercised without a real plugin.
 type fakeGate struct {
 	pluginv1.UnimplementedMessageServiceServer
 	action string
@@ -27,7 +25,6 @@ func (f *fakeGate) DecideInbound(context.Context, *pluginv1.DecideInboundRequest
 	return &pluginv1.DecideInboundResponse{Action: f.action, Reason: f.reason}, nil
 }
 
-// startGate serves a fake gate on a loopback port and returns its address.
 func startGate(t *testing.T, gate *fakeGate) string {
 	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -41,8 +38,6 @@ func startGate(t *testing.T, gate *fakeGate) string {
 	return listener.Addr().String()
 }
 
-// registerGate adds a messaging-capable gate plugin with the given messaging
-// permissions and returns the server under test.
 func registerGate(t *testing.T, gate *fakeGate, perms *pluginv1.PluginMessages) *CoreServiceServer {
 	t.Helper()
 	reg := registry.NewRegistry()
@@ -67,8 +62,6 @@ func wakeMsg() *pluginv1.InboundMessage {
 	}
 }
 
-// With no gate installed, arbitration must return the publisher's own wake
-// verdict and spend no RPC — this is the zero-configuration path.
 func TestArbitrate_NoGatesFallsBackToWakeFlag(t *testing.T) {
 	server := NewCoreServiceServer(registry.NewRegistry(), t.TempDir())
 	ctx := context.Background()
@@ -83,8 +76,6 @@ func TestArbitrate_NoGatesFallsBackToWakeFlag(t *testing.T) {
 	}
 }
 
-// A deny is a hard veto: it must win even though the message is a wake message
-// L.I.F.E would otherwise have answered.
 func TestArbitrate_DenyVetoesAWakeMessage(t *testing.T) {
 	gate := &fakeGate{action: "deny", reason: "muted by policy"}
 	server := registerGate(t, gate, &pluginv1.PluginMessages{
@@ -103,8 +94,6 @@ func TestArbitrate_DenyVetoesAWakeMessage(t *testing.T) {
 	}
 }
 
-// An allow can force processing of a message the wake rule skipped, which is
-// what lets a gate pull something into the assistant's attention.
 func TestArbitrate_AllowForcesANonWakeMessage(t *testing.T) {
 	gate := &fakeGate{action: "allow", reason: "mentions an open incident"}
 	server := registerGate(t, gate, &pluginv1.PluginMessages{
@@ -118,7 +107,6 @@ func TestArbitrate_AllowForcesANonWakeMessage(t *testing.T) {
 	}
 }
 
-// Abstain leaves the wake verdict untouched in both directions.
 func TestArbitrate_AbstainDefersToWakeFlag(t *testing.T) {
 	gate := &fakeGate{action: "abstain"}
 	server := registerGate(t, gate, &pluginv1.PluginMessages{
@@ -136,8 +124,6 @@ func TestArbitrate_AbstainDefersToWakeFlag(t *testing.T) {
 	}
 }
 
-// A gate is only consulted for traffic its own read scope covers, so it cannot
-// influence conversations it is not allowed to see.
 func TestArbitrate_GateScopedToItsReadableAdapters(t *testing.T) {
 	gate := &fakeGate{action: "deny"}
 	server := registerGate(t, gate, &pluginv1.PluginMessages{
@@ -152,16 +138,12 @@ func TestArbitrate_GateScopedToItsReadableAdapters(t *testing.T) {
 	}
 }
 
-// A gate that cannot answer falls back to its declared gate_on_error. The
-// default is fail-open so a crashed gate cannot mute the assistant forever.
 func TestArbitrate_UnreachableGateAbstainsByDefault(t *testing.T) {
 	gate := &fakeGate{action: "deny"}
 	server := registerGate(t, gate, &pluginv1.PluginMessages{
 		ReadMode: "all", ReadAdapters: []string{"*"}, Gate: true,
 	})
 
-	// A cancelled context makes the gate call fail immediately instead of
-	// waiting out gateDecisionTimeout.
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
@@ -170,8 +152,6 @@ func TestArbitrate_UnreachableGateAbstainsByDefault(t *testing.T) {
 	}
 }
 
-// A gate that declared gate_on_error "deny" keeps its veto even while down —
-// the right default for moderation, and the reason the knob exists.
 func TestArbitrate_UnreachableGateKeepsDeclaredDeny(t *testing.T) {
 	gate := &fakeGate{action: "allow"}
 	server := registerGate(t, gate, &pluginv1.PluginMessages{
@@ -186,15 +166,12 @@ func TestArbitrate_UnreachableGateKeepsDeclaredDeny(t *testing.T) {
 	}
 }
 
-// The combination rule: a veto is not overridable by another plugin's allow, so
-// the outcome cannot depend on which gate happened to be consulted last.
 func TestArbitrate_DenyBeatsAllow(t *testing.T) {
 	deny := &fakeGate{action: "deny", reason: "blocked"}
 	server := registerGate(t, deny, &pluginv1.PluginMessages{
 		ReadMode: "all", ReadAdapters: []string{"*"}, Gate: true,
 	})
 
-	// A second, permissive gate on the same registry.
 	allow := &fakeGate{action: "allow"}
 	address := startGate(t, allow)
 	if _, err := server.registry.Register(&pluginv1.PluginInfo{
@@ -217,8 +194,6 @@ func TestArbitrate_DenyBeatsAllow(t *testing.T) {
 	}
 }
 
-// A plugin that declared no gate is never consulted, even if it is otherwise
-// messaging-capable.
 func TestGatePlugins_IgnoresPluginsWithoutTheGatePermission(t *testing.T) {
 	gate := &fakeGate{action: "deny"}
 	server := registerGate(t, gate, &pluginv1.PluginMessages{

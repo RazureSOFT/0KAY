@@ -7,8 +7,6 @@ import (
 	"0kay/core/internal/server"
 )
 
-// handleUsageRecord POST /api/usage/record — internal ingest used by the chat
-// pipeline to append one completed generation to the usage ledger.
 func (g *Gateway) handleUsageRecord(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return

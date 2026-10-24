@@ -4,9 +4,6 @@ import (
 	"encoding/json"
 )
 
-// Attachment is an uploaded-file reference handed from a client to an agent
-// task or a LIFE turn. The bytes are uploaded separately through POST
-// /api/files; only this lightweight reference travels with the message.
 type Attachment struct {
 	Name string `json:"name"`
 	URL  string `json:"url"`
@@ -19,10 +16,6 @@ const (
 	attachmentMarkerEnd   = "</attachments>"
 )
 
-// attachmentPrompt wraps the attachment references in a machine-parseable
-// marker. LIFE reads it, fetches each file from Core and folds the real content
-// (text inline, images via the vision model) into the model context, then
-// strips the marker from the visible message.
 func attachmentPrompt(attachments []Attachment) string {
 	if len(attachments) == 0 {
 		return ""
@@ -34,8 +27,6 @@ func attachmentPrompt(attachments []Attachment) string {
 	return "\n\n" + attachmentMarkerStart + string(encoded) + attachmentMarkerEnd
 }
 
-// encodeAttachments serializes references for the agent metadata passthrough.
-// It returns "" when there is nothing to send or the payload is malformed.
 func encodeAttachments(attachments []Attachment) string {
 	if len(attachments) == 0 {
 		return ""

@@ -9,9 +9,6 @@ import (
 	"time"
 )
 
-// StartInstall runs `0kay-pm install <package> --no-pair` as a detached script
-// so a plugin UI (for example the marketplace) can install third-party plugins
-// without the user touching a terminal. --no-pair installs into the local Core.
 func StartInstall(pkg string) (ApplyState, error) {
 	pkg = strings.TrimSpace(pkg)
 	if !validInstallTarget(pkg) {
@@ -55,7 +52,6 @@ func StartInstall(pkg string) (ApplyState, error) {
 	return state, nil
 }
 
-// StartUninstall removes a plugin installed via 0kay-pm as a detached script.
 func StartUninstall(pkg string) (ApplyState, error) {
 	pkg = strings.TrimSpace(pkg)
 	if !validInstallTarget(pkg) {
@@ -99,16 +95,11 @@ func StartUninstall(pkg string) (ApplyState, error) {
 	return state, nil
 }
 
-// PlatformPackage reports whether a package is part of the 0KAY platform and so
-// must not be uninstalled through the marketplace.
 func PlatformPackage(pkg string) bool {
 	_, ok := platformComponents[pkg]
 	return ok
 }
 
-// PMStatus merges the install/uninstall and update status files into the single
-// state the pm-plugin API reports: a running operation wins, otherwise the most
-// recent request (by Started) is returned.
 func PMStatus() ApplyState {
 	install := InstallStatus()
 	apply := State()
@@ -124,7 +115,6 @@ func PMStatus() ApplyState {
 	}
 }
 
-// InstallStatus reports the latest install request from the status files.
 func InstallStatus() ApplyState {
 	dir := updatesDir()
 	raw, err := os.ReadFile(filepath.Join(dir, "install.json"))
@@ -161,8 +151,6 @@ func writeInstallStateFile(dir string, state ApplyState) {
 	_ = os.WriteFile(filepath.Join(dir, "install.json"), raw, 0o644)
 }
 
-// validInstallTarget accepts scoped names, owner/repo and repo URLs, rejecting
-// whitespace and shell metacharacters since the value reaches a shell script.
 func validInstallTarget(pkg string) bool {
 	if pkg == "" || len(pkg) > 200 {
 		return false

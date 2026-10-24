@@ -86,7 +86,7 @@ func TestPluginGuardTrustedPluginBypasses(t *testing.T) {
 
 func TestPluginGuardRequiresIdentityForDeclaredAPI(t *testing.T) {
 	g := guardTestGateway(t)
-	req := httptest.NewRequest(http.MethodGet, "/api/models", nil) // machine caller, no browser markers
+	req := httptest.NewRequest(http.MethodGet, "/api/models", nil)
 	if rec := doGuarded(g, req); rec.Code != http.StatusForbidden {
 		t.Fatalf("unattributed machine call: got %d, want 403", rec.Code)
 	}

@@ -4,9 +4,6 @@ import (
 	"testing"
 )
 
-// The usage ledger is extended with prompt-cache and cost accounting, so a
-// long-session prefix-cache hit rate and spend are observable (borrowed from
-// Tianshu-harness's token ledger / cache-hit practice).
 func TestUsageSnapshotTracksCacheAndCost(t *testing.T) {
 	u := NewUsageStore("")
 	u.AddIfNew(UsageRecord{RequestID: "a", SessionID: "s1", Model: "m1", PromptTokens: 1000, CompletionTokens: 100, TotalTokens: 1100, CachedTokens: 800, CostUSD: 0.012})
@@ -26,7 +23,6 @@ func TestUsageSnapshotTracksCacheAndCost(t *testing.T) {
 	}
 }
 
-// A retried ingest must not double-count cache/cost either.
 func TestUsageDedupeCoversCacheAndCost(t *testing.T) {
 	u := NewUsageStore("")
 	rec := UsageRecord{RequestID: "dup", Model: "m", PromptTokens: 100, CompletionTokens: 10, TotalTokens: 110, CachedTokens: 90, CostUSD: 0.5}
@@ -41,7 +37,6 @@ func TestUsageDedupeCoversCacheAndCost(t *testing.T) {
 	}
 }
 
-// Zero prompt tokens must not divide by zero.
 func TestUsageCacheRatioWithNoPrompt(t *testing.T) {
 	u := NewUsageStore("")
 	u.AddIfNew(UsageRecord{RequestID: "z", Model: "m", CompletionTokens: 5, TotalTokens: 5})

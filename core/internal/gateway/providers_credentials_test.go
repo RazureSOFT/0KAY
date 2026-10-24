@@ -12,8 +12,6 @@ import (
 	pluginv1 "0kay/gen/plugin/v1"
 )
 
-// A browser session (even same-origin, e.g. a plugin's WebUI bundle) must not
-// be able to read plaintext provider credentials; only machine credentials may.
 func TestProviderCredentialsRequiresMachineCredential(t *testing.T) {
 	reg := registry.NewRegistry()
 	reg.SetSecret([]byte("credentials-test-secret-0123456789"))

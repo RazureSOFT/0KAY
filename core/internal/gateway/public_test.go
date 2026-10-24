@@ -6,8 +6,6 @@ import (
 	"testing"
 )
 
-// A deployment on a real domain must be reachable once the operator lists it,
-// in any of the three documented spellings.
 func TestHostAllowedAcceptsConfiguredForms(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -49,8 +47,6 @@ func TestHostAllowedRejectsUnlistedDottedHost(t *testing.T) {
 	}
 }
 
-// Loopback, IP literals and single-label service names cannot be used for DNS
-// rebinding, so they stay reachable with no configuration at all.
 func TestHostAllowedAcceptsLiteralsAndSingleLabel(t *testing.T) {
 	t.Setenv("CORE_ALLOWED_HOSTS", "")
 	t.Setenv("CORE_ALLOWED_ORIGINS", "")

@@ -29,8 +29,6 @@ func writePatch(t *testing.T, dir, name string, doc map[string]any) {
 	}
 }
 
-// A patch that names an owning plugin must disappear the moment that plugin is
-// admin-disabled — that is what makes the Plugins page switch authoritative.
 func TestUIPatchStoreDropsDisabledOwner(t *testing.T) {
 	dir := t.TempDir()
 	writePatch(t, dir, "fluentui.patch", map[string]any{
@@ -74,8 +72,6 @@ func TestUIPatchStoreDropsDisabledOwner(t *testing.T) {
 			t.Fatal("disabled owner's op still served")
 		}
 	}
-	// includeDisabled only lifts the file-level `enabled` flag: an owner that
-	// an admin switched off is gone from every view.
 	if len(store.List(true)) != 1 {
 		t.Fatalf("List(true) must not resurrect a disabled owner, got %v", store.List(true))
 	}
@@ -98,11 +94,6 @@ func TestHasUIPatchLooksInCoreDataDir(t *testing.T) {
 	}
 }
 
-// The package patch must name the builtin row Core registers for it
-// (cmd/core/registerBuiltins), otherwise the Plugins page switch cannot reach
-// it: ops are filtered through GetPluginsByCapability(plugin). It must NOT
-// ship inside core/data/ui — 0kay-pm copies it there on install, and only then
-// does the row (and the theme) appear.
 func TestPackageFluentPatchIsOwnedByItsPanelRow(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "plugin-web", "fluentui", "patches", "fluentui.patch"))
 	if err != nil {
@@ -131,8 +122,6 @@ func TestPackageFluentPatchIsOwnedByItsPanelRow(t *testing.T) {
 		t.Fatal("package patch carries no theme op")
 	}
 
-	// The pm manifest is what carries the patch into CORE_DATA_DIR/ui on
-	// install; without that entry the package would install inert.
 	manifest, err := os.ReadFile(filepath.Join("..", "..", "..", "plugin-web", "fluentui", "manifest.json"))
 	if err != nil {
 		t.Fatalf("read package manifest: %v", err)
@@ -147,9 +136,6 @@ func TestPackageFluentPatchIsOwnedByItsPanelRow(t *testing.T) {
 		t.Fatalf("manifest patches=%v, want [patches/fluentui.patch]", pm.Patches)
 	}
 
-	// The platform must not commit a runtime copy: a plain `git pull` would
-	// activate the theme before anyone installs it. Checked through git so an
-	// 0kay-pm install landing in the same directory stays legal.
 	cmd := exec.Command("git", "ls-files", "--error-unmatch", filepath.Join("core", "data", "ui", "fluentui.patch"))
 	cmd.Dir = filepath.Join("..", "..")
 	if out, err := cmd.CombinedOutput(); err == nil {
@@ -159,8 +145,6 @@ func TestPackageFluentPatchIsOwnedByItsPanelRow(t *testing.T) {
 	}
 }
 
-// Disabling L.I.F.E. must reach the permissions API too: it reads Core's own
-// store, so without this gate the panel switch would not turn everything off.
 func TestLifePermissionsRefusesWhenDisabled(t *testing.T) {
 	reg := registry.NewRegistry()
 	reg.LoadDisabled([]string{"life"})
@@ -173,8 +157,6 @@ func TestLifePermissionsRefusesWhenDisabled(t *testing.T) {
 	}
 }
 
-// The user story end to end: register the row, flip the switch the way
-// PluginsPage does, and watch the theme ops leave /api/ui/patches.
 func TestThemeOpsFollowThePluginSwitch(t *testing.T) {
 	data := t.TempDir()
 	t.Setenv("CORE_DATA_DIR", data)

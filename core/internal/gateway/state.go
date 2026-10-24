@@ -11,9 +11,6 @@ import (
 	corev1 "0kay/gen/core/v1"
 )
 
-// handleState returns the platform state that WebUI StatusPanel uses.
-// Core is the single source of truth for agents/plugins/tasks;
-// emotion/energy are optionally merged from Life via handleLifeState.
 func (g *Gateway) handleState(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
@@ -59,14 +56,11 @@ func (g *Gateway) handleState(w http.ResponseWriter, r *http.Request) {
 		"updatedAt":      time.Now().UTC().Format(time.RFC3339),
 	}
 
-	// Overlay Life emotion when the persona plugin is healthy.
 	g.overlayLifeState(r, state)
 
 	writeJSON(w, http.StatusOK, state)
 }
 
-// handleUIPatches serves flattened UI extension ops for WebUI.
-// Sources: CORE_DATA_DIR/ui/*.patch and webui/patches/*.patch
 func (g *Gateway) handleUIPatches(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		g.uiPatches.Reload()
@@ -75,12 +69,9 @@ func (g *Gateway) handleUIPatches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Hot-reload cheaply when files change (mtime scan every request is fine at UI scale).
 	g.maybeReloadUIPatches()
 
 	ops := g.uiPatches.FlattenOps()
-	// Surface ops only when their owning plugin capability is registered
-	// (capability defaults to plugin name; overrides live in patch data).
 	filtered := make([]map[string]any, 0, len(ops))
 	for _, op := range ops {
 		capability, _ := op["capability"].(string)
@@ -111,8 +102,6 @@ func (g *Gateway) handleUIPatches(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// UIPatchDirs returns every directory Core loads *.patch files from, in
-// precedence order (the first directory that carries a given id wins).
 func UIPatchDirs() []string {
 	var dirs []string
 	dataDir := os.Getenv("CORE_DATA_DIR")
@@ -120,7 +109,6 @@ func UIPatchDirs() []string {
 		dataDir = "data"
 	}
 	dirs = append(dirs, filepath.Join(dataDir, "ui"))
-	// Repo-relative webui patches (dev layout).
 	if wd, err := os.Getwd(); err == nil {
 		dirs = append(dirs,
 			filepath.Join(wd, "ui"),
@@ -131,10 +119,6 @@ func UIPatchDirs() []string {
 	return dirs
 }
 
-// HasUIPatch reports whether a *.patch file with this basename exists in any
-// UI patch directory. Core uses it to register a panel row for a patch-only
-// plugin — one that has no process of its own, so nothing else would ever put
-// it in the registry.
 func HasUIPatch(basename string) bool {
 	for _, dir := range UIPatchDirs() {
 		if fi, err := os.Stat(filepath.Join(dir, basename)); err == nil && !fi.IsDir() {
@@ -159,7 +143,6 @@ func (g *Gateway) maybeReloadUIPatches() {
 	g.uiPatches.Reload()
 }
 
-// ensureUIPatchStore lazily constructs the patch store.
 func (g *Gateway) ensureUIPatchStore() {
 	if g.uiPatches != nil {
 		return
@@ -174,7 +157,6 @@ func (g *Gateway) ensureUIPatchStore() {
 	}
 }
 
-// initUIPatches is called once from Handler setup paths.
 func (g *Gateway) initUIPatches() {
 	g.ensureUIPatchStore()
 }

@@ -7,10 +7,6 @@ import (
 	"strings"
 )
 
-// These types mirror the manifest `capabilities` block (DeepSeek-Harness-style
-// "everything is a plugin"): a package can contribute commands, skills, hooks,
-// MCP servers and agents, which Core aggregates and hands to consumers.
-
 type PluginCommand struct {
 	Package     string `json:"package"`
 	Name        string `json:"name"`
@@ -42,7 +38,6 @@ type PluginAgent struct {
 	Prompt      string `json:"prompt"`
 }
 
-// Contributions is the aggregated capability set across installed packages.
 type Contributions struct {
 	Commands   []PluginCommand   `json:"commands"`
 	Skills     []PluginSkill     `json:"skills"`
@@ -51,9 +46,6 @@ type Contributions struct {
 	Agents     []PluginAgent     `json:"agents"`
 }
 
-// PluginContributions reads every 0kay-pm-installed package's manifest and
-// aggregates its declared capabilities. Skill paths are resolved to absolute
-// paths on this host so an in-process consumer (the Agent) can load them.
 func PluginContributions() Contributions {
 	out := Contributions{
 		Commands:   []PluginCommand{},
@@ -107,7 +99,6 @@ func PluginContributions() Contributions {
 	return out
 }
 
-// PluginCommandManifest is a command/agent entry as it appears in a manifest.
 type PluginCommandManifest struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`

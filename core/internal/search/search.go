@@ -1,7 +1,3 @@
-// Package search is the built-in web search capability. It replaces the former
-// standalone SearXNG-compatible plugin: search now runs inside Core (no plugin,
-// no extra port) and all engines are reached through Core's own outbound
-// client. Agent and L.I.F.E. call GET /api/search.
 package search
 
 import (
@@ -18,7 +14,6 @@ import (
 	"time"
 )
 
-// Result is one search hit.
 type Result struct {
 	Title   string `json:"title"`
 	URL     string `json:"url"`
@@ -26,7 +21,6 @@ type Result struct {
 	Engine  string `json:"engine"`
 }
 
-// Engines lists the supported engine names in default preference order.
 var Engines = []string{"cnbing", "bing", "so360", "duckduckgo"}
 
 const (
@@ -36,11 +30,8 @@ const (
 
 var client = &http.Client{Timeout: 6 * time.Second}
 
-// overallBudget caps how long a single Search may wait across all engines.
 const overallBudget = 5 * time.Second
 
-// --- engine circuit breaker: a blocked/slow engine is skipped briefly so it
-// does not drag every search down to the deadline. ---
 var (
 	breakerMu    sync.Mutex
 	breakerUntil = map[string]time.Time{}
@@ -65,7 +56,6 @@ func markEngineResult(name string, failed bool) {
 	}
 }
 
-// --- short-lived result cache for repeated identical queries. ---
 type cacheEntry struct {
 	at   time.Time
 	rows []Result
@@ -118,11 +108,6 @@ var (
 	re360Snip  = regexp.MustCompile(`(?is)class="res-desc[^"]*"[^>]*>(.*?)</(?:p|span|div)>`)
 )
 
-// Search runs the preferred engine first and returns as soon as it has enough
-// results, instead of waiting for every engine. The remaining engines run
-// concurrently as fallback, bounded by overallBudget; results are merged,
-// de-duplicated by URL and interleaved by engine preference. Engines that fail
-// are skipped for a cooldown, and successful queries are cached briefly.
 func Search(ctx context.Context, query string, limit int, preferred string) ([]Result, []string) {
 	query = strings.TrimSpace(query)
 	if query == "" {
@@ -137,7 +122,6 @@ func Search(ctx context.Context, query string, limit int, preferred string) ([]R
 	}
 	order := append([]string{preferred}, excluding(Engines, preferred)...)
 
-	// Drop engines that failed recently, unless that leaves us with none.
 	active := make([]string, 0, len(order))
 	for _, name := range order {
 		if !engineSkipped(name) {
@@ -217,8 +201,6 @@ loop:
 				collected[out.idx] = append(collected[out.idx], r)
 				total++
 			}
-			// Enough results from the preferred engine (or after it settled) —
-			// stop waiting on the rest.
 			if preferredDone && total >= limit {
 				break loop
 			}
@@ -226,7 +208,6 @@ loop:
 	}
 	cancel()
 
-	// Interleave engines so one fast source cannot fill every slot.
 	out := make([]Result, 0, limit)
 	for len(out) < limit {
 		progressed := false
@@ -325,8 +306,6 @@ func fetchBing(ctx context.Context, query string, limit int, cn bool) ([]Result,
 		return nil, err
 	}
 	out := make([]Result, 0, limit)
-	// Each organic result is a <li class="b_algo"> block. Split on the class so
-	// nested markup cannot truncate the block before its snippet <p>.
 	for _, block := range strings.Split(text, `class="b_algo"`)[1:] {
 		m := reBing.FindStringSubmatch(block)
 		if m == nil {
@@ -448,8 +427,6 @@ func queryTerms(query string) []string {
 	return terms
 }
 
-// anchorMatch keeps a result only if the first meaningful query term appears;
-// stopword-only queries pass everything through.
 func anchorMatch(haystack string, terms []string) bool {
 	if len(terms) == 0 {
 		return true
@@ -457,7 +434,6 @@ func anchorMatch(haystack string, terms []string) bool {
 	return strings.Contains(haystack, terms[0])
 }
 
-// Score is the number of query terms present (for callers that want ranking).
 func Score(text string, query string) int {
 	hay := strings.ToLower(text)
 	score := 0

@@ -11,8 +11,6 @@ import (
 	"0kay/core/internal/registry"
 )
 
-// writePluginStrings lays down CORE_DATA_DIR/plugin-ui/{name}/strings/values*/
-// for a plugin, the way the plugin's build would.
 func writePluginStrings(t *testing.T, name string, locales map[string]string) {
 	t.Helper()
 	dataDir := t.TempDir()
@@ -54,7 +52,6 @@ func TestPluginStringsServesEveryLocale(t *testing.T) {
 	if payload.Default != "en" {
 		t.Fatalf("default = %q, want en", payload.Default)
 	}
-	// The BCP-47 directory name must arrive as the app's own locale code.
 	if payload.Locales["zh-Hant"]["panel.title"] != "示範面板" {
 		t.Fatalf("zh-Hant not mapped from values-b+zh+Hant: %#v", payload.Locales)
 	}
@@ -64,7 +61,6 @@ func TestPluginStringsServesEveryLocale(t *testing.T) {
 }
 
 func TestPluginStringsMissingIsNotFound(t *testing.T) {
-	// A plugin with a UI bundle but no strings is a legitimate 404, not a 500.
 	writePluginStrings(t, "other", map[string]string{"values": `<resources/>`})
 	g := &Gateway{registry: registry.NewRegistry()}
 	rec := httptest.NewRecorder()
@@ -77,7 +73,6 @@ func TestPluginStringsMissingIsNotFound(t *testing.T) {
 }
 
 func TestPluginStringsRejectsMalformedXML(t *testing.T) {
-	// Loud, not silent: a broken bundle must not render key paths in the UI.
 	writePluginStrings(t, "broken", map[string]string{
 		"values": `<resources><string name="x">unclosed`,
 	})

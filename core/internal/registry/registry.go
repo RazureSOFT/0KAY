@@ -20,40 +20,28 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// PluginInstance represents a registered plugin.
 type PluginInstance struct {
-	Info         *pluginv1.PluginInfo
-	PluginID     string
-	Capabilities []string
-	// Address is the gRPC callback address where Core can reach this plugin.
+	Info          *pluginv1.PluginInfo
+	PluginID      string
+	Capabilities  []string
 	Address       string
 	Status        corev1.PluginStatus
 	ActiveTasks   int32
 	RegisteredAt  time.Time
 	LastHeartbeat time.Time
-	// Host is the host machine info reported via heartbeat.
-	Host *corev1.HostInfo
-	// Builtin plugins are registered by Core itself and are exempt from stale checks.
-	Builtin bool
+	Host          *corev1.HostInfo
+	Builtin       bool
 }
 
-// Registry manages plugin registration and service discovery.
 type Registry struct {
-	mu       sync.RWMutex
-	plugins  map[string]*PluginInstance // plugin_id -> PluginInstance
-	disabled map[string]bool            // plugin name -> disabled by admin
-	// secret derives each plugin's service token (HMAC). Empty disables tokens.
-	secret []byte
-	// registrationToken, when set, must be presented by non-builtin plugins at
-	// registration (CORE_PLUGIN_REGISTRATION_TOKEN). Empty keeps the historic
-	// network-trust model for backward compatibility.
+	mu                sync.RWMutex
+	plugins           map[string]*PluginInstance
+	disabled          map[string]bool
+	secret            []byte
 	registrationToken string
-	// trusted holds first-party plugin names exempt from the manifest permission
-	// checks (they ship with the platform).
-	trusted map[string]bool
+	trusted           map[string]bool
 }
 
-// NewRegistry creates a new plugin registry.
 func NewRegistry() *Registry {
 	return &Registry{
 		plugins:  make(map[string]*PluginInstance),
@@ -62,7 +50,6 @@ func NewRegistry() *Registry {
 	}
 }
 
-// SetTrusted marks first-party plugin names as exempt from permission checks.
 func (r *Registry) SetTrusted(names []string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -74,8 +61,6 @@ func (r *Registry) SetTrusted(names []string) {
 	}
 }
 
-// IsTrusted reports whether a plugin is Core-builtin or part of the first-party
-// platform set, both of which bypass the manifest permission allow-lists.
 func (r *Registry) IsTrusted(name string) bool {
 	if name == "" {
 		return false
@@ -93,10 +78,6 @@ func (r *Registry) IsTrusted(name string) bool {
 	return false
 }
 
-// IsTrustedName reports whether name is in the first-party trusted set, without
-// scanning registered plugins. Hot paths that already hold the PluginInstance
-// can check its Builtin flag directly and use this for the name allow-list,
-// avoiding the nested scan IsTrusted performs.
 func (r *Registry) IsTrustedName(name string) bool {
 	if name == "" {
 		return false
@@ -106,25 +87,18 @@ func (r *Registry) IsTrustedName(name string) bool {
 	return r.trusted[name]
 }
 
-// SetSecret installs the HMAC key used to derive per-plugin service tokens.
-// Call before any plugin registers so tokens are stable across process restarts.
 func (r *Registry) SetSecret(secret []byte) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.secret = append([]byte(nil), secret...)
 }
 
-// SetRegistrationToken installs the shared secret non-builtin plugins must
-// present at registration. Empty disables the check.
 func (r *Registry) SetRegistrationToken(token string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.registrationToken = strings.TrimSpace(token)
 }
 
-// RegisterAuthenticated registers a plugin after checking the shared
-// registration secret (when one is configured). Built-in registrations bypass
-// it via RegisterBuiltin.
 func (r *Registry) RegisterAuthenticated(info *pluginv1.PluginInfo, capabilities []string, address, token string) (string, error) {
 	if info == nil || info.Name == "" {
 		return "", status.Error(codes.InvalidArgument, "plugin name is required")
@@ -132,7 +106,6 @@ func (r *Registry) RegisterAuthenticated(info *pluginv1.PluginInfo, capabilities
 	r.mu.RLock()
 	required := r.registrationToken
 	r.mu.RUnlock()
-	// An explicit per-plugin key takes precedence over shared enrollment.
 	if raw := os.Getenv("CORE_PLUGIN_TOKEN_" + strings.ToUpper(strings.NewReplacer("-", "_", ".", "_").Replace(info.Name))); raw != "" {
 		required = strings.TrimSpace(raw)
 	} else if r.IsTrusted(info.Name) {
@@ -152,8 +125,6 @@ func (r *Registry) RegisterAuthenticated(info *pluginv1.PluginInfo, capabilities
 	return r.Register(info, capabilities, address)
 }
 
-// Token returns the stable service token for a plugin id. It is issued to the
-// plugin at registration and verified on every attributed HTTP/egress call.
 func (r *Registry) Token(pluginID string) string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -169,7 +140,6 @@ func (r *Registry) tokenLocked(pluginID string) string {
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
-// FindByName returns the plugin instance registered under a plugin name.
 func (r *Registry) FindByName(name string) (*PluginInstance, bool) {
 	if name == "" {
 		return nil, false
@@ -184,7 +154,6 @@ func (r *Registry) FindByName(name string) (*PluginInstance, bool) {
 	return nil, false
 }
 
-// FindByID returns the plugin instance registered under a plugin id.
 func (r *Registry) FindByID(id string) (*PluginInstance, bool) {
 	if id == "" {
 		return nil, false
@@ -197,9 +166,6 @@ func (r *Registry) FindByID(id string) (*PluginInstance, bool) {
 	return nil, false
 }
 
-// Authenticate resolves a plugin name + service token to its instance. It
-// fails closed: when no token secret is configured, attributed calls are not
-// accepted (Core always provisions a secret, so this only happens on fault).
 func (r *Registry) Authenticate(name, token string) (*PluginInstance, bool) {
 	if name == "" {
 		return nil, false
@@ -221,7 +187,6 @@ func (r *Registry) Authenticate(name, token string) (*PluginInstance, bool) {
 	return nil, false
 }
 
-// IsBuiltin reports whether the named plugin was registered by Core.
 func (r *Registry) IsBuiltin(name string) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -233,8 +198,6 @@ func (r *Registry) IsBuiltin(name string) bool {
 	return false
 }
 
-// SetEnabled enables or disables a plugin by name. Disabled plugins are
-// hidden from listing/discovery until re-enabled.
 func (r *Registry) SetEnabled(name string, enabled bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -249,7 +212,6 @@ func (r *Registry) SetEnabled(name string, enabled bool) {
 					p.Status = corev1.PluginStatus_PLUGIN_STATUS_HEALTHY
 					p.LastHeartbeat = time.Now()
 				} else {
-					// Non-builtin will re-assert health on next heartbeat.
 					p.Status = corev1.PluginStatus_PLUGIN_STATUS_UNHEALTHY
 				}
 			}
@@ -264,14 +226,12 @@ func (r *Registry) SetEnabled(name string, enabled bool) {
 	}
 }
 
-// IsDisabled reports whether a plugin name is admin-disabled.
 func (r *Registry) IsDisabled(name string) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.disabled[name]
 }
 
-// DisabledNames returns a copy of currently disabled plugin names.
 func (r *Registry) DisabledNames() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -282,7 +242,6 @@ func (r *Registry) DisabledNames() []string {
 	return out
 }
 
-// LoadDisabled replaces the disabled set (startup restore).
 func (r *Registry) LoadDisabled(names []string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -298,8 +257,6 @@ func (r *Registry) isLockedDisabledLocked(name string) bool {
 	return r.disabled[name]
 }
 
-// Register registers a plugin. Re-registering the same name replaces the
-// previous entry (same plugin_id) so restarts do not leave duplicate rows.
 func (r *Registry) Register(info *pluginv1.PluginInfo, capabilities []string, address string) (string, error) {
 	if info == nil {
 		return "", status.Error(codes.InvalidArgument, "plugin_info is required")
@@ -311,10 +268,6 @@ func (r *Registry) Register(info *pluginv1.PluginInfo, capabilities []string, ad
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// Replace any existing instance with the same name (keep its plugin_id) so a
-	// restart does not leave a duplicate row. Executors ARE distinct per
-	// executor capability; a plain agent is distinct per address so multiple
-	// agent hosts can co-exist.
 	identity := info.Name
 	for _, capability := range capabilities {
 		if strings.HasPrefix(capability, "executor:") {
@@ -367,8 +320,6 @@ func (r *Registry) Register(info *pluginv1.PluginInfo, capabilities []string, ad
 	return pluginID, nil
 }
 
-// RegisterBuiltin registers a Core-managed built-in plugin (e.g. webui).
-// Builtin entries are never marked stale by heartbeat timeout.
 func (r *Registry) RegisterBuiltin(info *pluginv1.PluginInfo, capabilities []string, address string) (string, error) {
 	id, err := r.Register(info, capabilities, address)
 	if err != nil {
@@ -382,7 +333,6 @@ func (r *Registry) RegisterBuiltin(info *pluginv1.PluginInfo, capabilities []str
 	return id, nil
 }
 
-// TouchBuiltins refreshes LastHeartbeat for builtin plugins so they stay healthy.
 func (r *Registry) TouchBuiltins() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -395,7 +345,6 @@ func (r *Registry) TouchBuiltins() {
 	}
 }
 
-// Heartbeat updates the heartbeat timestamp and status of a plugin.
 func (r *Registry) Heartbeat(pluginID string, status_ corev1.PluginStatus, activeTasks int32, host *corev1.HostInfo) (bool, bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -415,7 +364,6 @@ func (r *Registry) Heartbeat(pluginID string, status_ corev1.PluginStatus, activ
 	return true, false, nil
 }
 
-// GetPlugin returns a plugin by ID.
 func (r *Registry) GetPlugin(pluginID string) (*PluginInstance, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -424,7 +372,6 @@ func (r *Registry) GetPlugin(pluginID string) (*PluginInstance, bool) {
 	return snapshot(plugin), ok
 }
 
-// GetPluginsByCapability returns all healthy plugins with a given capability.
 func (r *Registry) GetPluginsByCapability(capability string) []*PluginInstance {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -447,8 +394,6 @@ func (r *Registry) GetPluginsByCapability(capability string) []*PluginInstance {
 	return result
 }
 
-// GetAgents returns all registered Agent plugins.
-// When onlineOnly is true, only healthy agents are returned.
 func (r *Registry) GetAgents(onlineOnly bool) []*PluginInstance {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -480,19 +425,15 @@ func (r *Registry) GetAgents(onlineOnly bool) []*PluginInstance {
 	return result
 }
 
-// CountOnlineAgents returns the number of healthy Agent plugins.
 func (r *Registry) CountOnlineAgents() int {
 	return len(r.GetAgents(true))
 }
 
-// PluginTool is a contributed tool plus its owning plugin.
 type PluginTool struct {
 	Plugin string
 	Tool   *pluginv1.PluginTool
 }
 
-// ListTools returns every tool contributed by a non-disabled plugin, filtered
-// by consumer scope when scope is non-empty ("agent" / "life").
 func (r *Registry) ListTools(scope string) []PluginTool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -515,7 +456,6 @@ func (r *Registry) ListTools(scope string) []PluginTool {
 	return out
 }
 
-// ToolOwner finds the plugin that declared a tool name.
 func (r *Registry) ToolOwner(name string) (*PluginInstance, *pluginv1.PluginTool, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -540,7 +480,6 @@ func toolHasScope(tool *pluginv1.PluginTool, scope string) bool {
 		return false
 	}
 	if len(tool.Scopes) == 0 {
-		// No scope declared: usable by both Agent and L.I.F.E.
 		return true
 	}
 	for _, s := range tool.Scopes {
@@ -551,7 +490,6 @@ func toolHasScope(tool *pluginv1.PluginTool, scope string) bool {
 	return false
 }
 
-// GetAllPlugins returns all registered plugins (excluding admin-disabled).
 func (r *Registry) GetAllPlugins() []*PluginInstance {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -591,7 +529,6 @@ func snapshot(p *PluginInstance) *PluginInstance {
 	return &copy
 }
 
-// RemovePlugin removes a plugin from the registry.
 func (r *Registry) RemovePlugin(pluginID string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -603,8 +540,6 @@ func (r *Registry) RemovePlugin(pluginID string) bool {
 	return ok
 }
 
-// CheckStalePlugins marks plugins as unhealthy if they haven't sent a heartbeat
-// within the given timeout. Returns IDs of plugins marked unhealthy.
 func (r *Registry) CheckStalePlugins(timeout time.Duration) []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()

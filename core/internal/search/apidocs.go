@@ -8,9 +8,6 @@ import (
 	"strings"
 )
 
-// ApiDocs searches API documentation across MDN, Microsoft Learn and Stack
-// Overflow, then falls back to a documentation-domain-filtered web search when
-// those are thin. Separate from general web search on purpose.
 func ApiDocs(ctx context.Context, query string, limit int) ([]Result, []string) {
 	query = strings.TrimSpace(query)
 	if query == "" {

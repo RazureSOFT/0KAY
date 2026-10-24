@@ -19,9 +19,6 @@ import (
 	mocrv1 "0kay/gen/mocr/v1"
 )
 
-// compactionSystemPrompt is the opencode-style structured handoff schema. The
-// summary replaces raw history, so it must be self-contained and lossless on
-// facts (but never secrets).
 const compactionSystemPrompt = `You maintain a structured handoff summary of an ongoing agent session so work can continue after the raw transcript is dropped. Rewrite it using EXACTLY these Markdown sections, in order, keeping every section:
 ## Objective
 ## Important Details
@@ -39,8 +36,6 @@ Rules:
 - Start directly with "## Objective"; no preamble; never restate these instructions.
 - Be terse and factual; if a section has nothing, write 无. Write in the conversation's language.`
 
-// autoCompactTokens is the session context size (approx tokens) that triggers an
-// automatic compaction before the next turn.
 func autoCompactTokens() int {
 	if value, err := strconv.Atoi(strings.TrimSpace(os.Getenv("AGENT_AUTOCOMPACT_TOKENS"))); err == nil && value > 0 {
 		return value
@@ -48,9 +43,6 @@ func autoCompactTokens() int {
 	return 48000
 }
 
-// sessionContextTokens estimates the live context size for a session (4 chars ≈ 1 token).
-// estimateTextTokens approximates a token count: ~4 ASCII chars per token and
-// ~1 token per non-ASCII (CJK) character, which chars/4 badly under-counts.
 func estimateTextTokens(text string) int {
 	ascii, wide := 0, 0
 	for _, r := range text {
@@ -83,11 +75,6 @@ func (g *Gateway) sessionContextTokens(sessionID string) int {
 	return total
 }
 
-// autoCompactAsync folds a session's history in the background once it is idle,
-// so a long summarisation never blocks POST /api/agent/messages. compactSession
-// refuses a session with active work, so the goroutine waits for the turn that
-// just started (and any successor) to settle before folding; the next turn then
-// carries the summary via latestCompactSummary.
 func (g *Gateway) autoCompactAsync(sessionID, modelID string) {
 	if g.localCore == nil || sessionID == "" {
 		return
@@ -105,7 +92,6 @@ func (g *Gateway) autoCompactAsync(sessionID, modelID string) {
 	}()
 }
 
-// sessionBusy reports whether a session has an in-flight turn or compaction.
 func (g *Gateway) sessionBusy(sessionID string) bool {
 	for _, task := range g.localCore.SessionTasks(sessionID) {
 		if task["state"] == "running" || task["state"] == "pending" {
@@ -115,7 +101,6 @@ func (g *Gateway) sessionBusy(sessionID string) bool {
 	return false
 }
 
-// transcriptFromHistory renders the history array as a plain transcript.
 func transcriptFromHistory(history []map[string]string) string {
 	var b strings.Builder
 	for _, m := range history {
@@ -127,10 +112,6 @@ func transcriptFromHistory(history []map[string]string) string {
 	return strings.TrimSpace(b.String())
 }
 
-// compactSession folds a session's history into a structured summary and records
-// a `compact` block (with the folded range in Args). Returns the summary. When
-// modelID resolves to provider credentials the summary is produced by that
-// model via mocr; otherwise it falls back to LIFE's compaction model.
 func (g *Gateway) compactSession(ctx context.Context, sessionID, modelID string) (string, error) {
 	if g.localCore == nil || !g.localCore.HasAgentSession(sessionID) {
 		return "", fmt.Errorf("invalid session")
@@ -196,8 +177,6 @@ func (g *Gateway) compactSession(ctx context.Context, sessionID, modelID string)
 	return summary, nil
 }
 
-// summarizeSession prefers the session's own model (via mocr) and falls back to
-// LIFE's compaction model when the model has no usable credentials.
 func (g *Gateway) summarizeSession(ctx context.Context, modelID string, history []map[string]string, transcript string) (string, error) {
 	if g.providerStore != nil {
 		if provider, baseURL, apiKey, resolved, ok := g.providerStore.ResolveModel(modelID); ok && apiKey != "" && baseURL != "" {
@@ -210,7 +189,6 @@ func (g *Gateway) summarizeSession(ctx context.Context, modelID string, history 
 	return g.summarizeViaLIFE(ctx, history)
 }
 
-// generateViaMocr runs one generation on the model gateway and returns the text.
 func (g *Gateway) generateViaMocr(ctx context.Context, modelID, provider, baseURL, apiKey, systemPrompt, userPrompt string) (string, error) {
 	addr := strings.TrimSpace(os.Getenv("MOCR_ADDRESS"))
 	if addr == "" {
@@ -275,7 +253,6 @@ func (g *Gateway) summarizeViaLIFE(ctx context.Context, history []map[string]str
 	return resp.GetSummary(), nil
 }
 
-// compactBlocks lists successful compaction blocks for a session (newest first).
 func (g *Gateway) compactBlocks(sessionID string) []map[string]any {
 	if g.localCore == nil {
 		return nil
@@ -304,7 +281,6 @@ func (g *Gateway) compactBlocks(sessionID string) []map[string]any {
 	return out
 }
 
-// handleAgentContext GET /api/agent/context?session_id=… — the compaction state.
 func (g *Gateway) handleAgentContext(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
@@ -317,7 +293,6 @@ func (g *Gateway) handleAgentContext(w http.ResponseWriter, r *http.Request) {
 	tokens := g.sessionContextTokens(sessionID)
 	window := modelContextWindow(strings.TrimSpace(r.URL.Query().Get("model_id")))
 	breakdown := map[string]any{"window": window, "system": 0, "tools": 0, "skills": 0, "mcp": 0, "conversation": tokens, "used": tokens}
-	// Ask the live agent to split the stable parts (system/tools/skills/mcp).
 	if agents := g.registry.GetAgents(true); len(agents) > 0 {
 		agent := agents[0]
 		if conn, err := g.dial(agent.Address); err == nil {
@@ -332,8 +307,6 @@ func (g *Gateway) handleAgentContext(w http.ResponseWriter, r *http.Request) {
 					if value, ok := parsed["window"].(float64); ok && value > 0 {
 						window = int(value)
 					}
-					// Prefer the model's real prompt-token count when it is known;
-					// the text estimate is only a fallback.
 					if value, ok := parsed["last_prompt_tokens"].(float64); ok && value > 0 {
 						tokens = int(value)
 					} else if value, ok := parsed["used"].(float64); ok {
@@ -353,15 +326,11 @@ func (g *Gateway) handleAgentContext(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// modelWindow is one entry of the built-in context-window table.
 type modelWindow struct {
 	match  string
 	window int
 }
 
-// modelWindowTable maps a model-id substring to its context window (tokens).
-// Order matters: the first matching entry wins, so put more specific patterns
-// first. Override the whole thing with AGENT_CONTEXT_WINDOW.
 var modelWindowTable = []modelWindow{
 	{"gpt-4.1", 1000000},
 	{"gpt-5", 400000},
@@ -379,9 +348,6 @@ var modelWindowTable = []modelWindow{
 	{"muse-spark", 128000},
 }
 
-// modelContextWindow resolves the context window for a model id. It is a
-// best-effort table (providers do not report the window uniformly) and can be
-// overridden globally with AGENT_CONTEXT_WINDOW.
 func modelContextWindow(modelID string) int {
 	if value, err := strconv.Atoi(strings.TrimSpace(os.Getenv("AGENT_CONTEXT_WINDOW"))); err == nil && value > 0 {
 		return value
@@ -398,8 +364,6 @@ func modelContextWindow(modelID string) int {
 	return 128000
 }
 
-// handleAgentContextSearch GET /api/agent/context/search?session_id=&q=… —
-// keyword search over the session's turns and folded summaries.
 func (g *Gateway) handleAgentContextSearch(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
@@ -448,9 +412,6 @@ func (g *Gateway) handleAgentContextSearch(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, map[string]any{"matches": matches})
 }
 
-// foldIndexRunes returns the rune index of the first case-insensitive occurrence
-// of query (which must already be lowercased) in content, or -1. It scans runes
-// so case folding cannot change byte length and misalign the offsets.
 func foldIndexRunes(content, query string) int {
 	if query == "" {
 		return -1

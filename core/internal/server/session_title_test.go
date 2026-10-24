@@ -9,7 +9,6 @@ import (
 
 func TestUsageSnapshotAggregatesByLocalDay(t *testing.T) {
 	u := NewUsageStore(filepath.Join(t.TempDir(), "usage.json"))
-	// Local midnight-adjacent timestamp (+08) must stay on its local calendar day.
 	local := time.Date(2026, 9, 24, 1, 30, 0, 0, time.FixedZone("CST", 8*3600))
 	u.Add(UsageRecord{Timestamp: local, RequestID: "a", SessionID: "s1", Model: "m", PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15})
 	snap := u.Snapshot()

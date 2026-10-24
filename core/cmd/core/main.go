@@ -37,10 +37,8 @@ import (
 func main() {
 	cfg := config.LoadConfig()
 
-	// Initialize registry
 	reg := registry.NewRegistry()
 
-	// Multi-provider config + plugin settings stores
 	dataDir := os.Getenv("CORE_DATA_DIR")
 	if dataDir == "" {
 		dataDir = "data"
@@ -48,28 +46,20 @@ func main() {
 	provStore := providers.NewStore(dataDir + "/providers.json")
 	setStore := settings.NewStore(dataDir + "/settings.json")
 
-	// Per-plugin service tokens derive from a persisted key so they survive
-	// Core restarts (a plugin keeps working without re-registering).
 	if secret, err := loadPluginTokenSecret(dataDir); err != nil {
 		log.Printf("plugin token secret: %v (plugin identity disabled)", err)
 	} else {
 		reg.SetSecret(secret)
 	}
-	// Optional shared secret non-builtin plugins must present at registration.
-	// Unset keeps the historic network-trust model; set it on exposed cores.
 	reg.SetRegistrationToken(os.Getenv("CORE_PLUGIN_REGISTRATION_TOKEN"))
-	// First-party platform plugins bypass the manifest permission allow-lists
-	// (their egress is fully permitted). Third-party plugins are enforced.
 	reg.SetTrusted([]string{
 		"webui", "agent", "life", "mocr", "mcp", "minecraft",
 		"pm", "0kay-pm", "fluentui", "liquidglass", "free-model", "marketplace",
 	})
 
-	// GitHub mirror for plugin/update fetches (Settings → Plugin updates).
 	registerUpdateSettings(setStore)
 	applyGitHubProxy(setStore)
 
-	// Create gRPC server
 	pairs, err := pairing.New(dataDir)
 	if err != nil {
 		log.Fatalf("pairing state: %v", err)
@@ -82,7 +72,6 @@ func main() {
 		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{MinTime: 10 * time.Second, PermitWithoutStream: true}),
 	)
 
-	// Register services
 	pluginSvc := server.NewPluginServiceServer(reg, setStore)
 	coreSvc := server.NewCoreServiceServer(reg, dataDir)
 	coreSvc.SetProviderStore(provStore)
@@ -90,16 +79,13 @@ func main() {
 	corev1.RegisterPluginServiceServer(grpcServer, pluginSvc)
 	corev1.RegisterCoreServiceServer(grpcServer, coreSvc)
 
-	// Enable reflection for debugging
 	reflection.Register(grpcServer)
 
-	// Start gRPC listener
 	grpcListener, err := net.Listen("tcp", cfg.GRPCAddr())
 	if err != nil {
 		log.Fatalf("Failed to listen gRPC: %v", err)
 	}
 
-	// Create HTTP gateway (built once for loopback + optional LAN servers)
 	gw, err := gateway.NewGateway(&gateway.Config{
 		GRPCAddr: cfg.GRPCAddr(),
 		HTTPAddr: cfg.HTTPAddr(),
@@ -110,13 +96,8 @@ func main() {
 	gw.SetCoreService(coreSvc)
 	gw.SetProviderStore(provStore)
 	gw.SetSettingsStore(setStore)
-	// Public = Host allow-list (DNS-rebinding defence) + CORS, then pairing
-	// authentication, then the routes themselves. Both loopback and the optional
-	// LAN listener share this stack so the two surfaces cannot drift apart.
 	handler := gateway.Public(pairs.HTTP(gw.Handler()))
 
-	// Create HTTP server. WriteTimeout stays unset so SSE streams are not cut off;
-	// ReadHeaderTimeout/IdleTimeout limit slowloris-style connections.
 	httpServer := &http.Server{
 		Addr:              cfg.HTTPAddr(),
 		Handler:           handler,
@@ -124,23 +105,16 @@ func main() {
 		IdleTimeout:       120 * time.Second,
 	}
 
-	// Built-in plugins managed by Core (WebUI + local SearXNG when present)
 	registerBuiltins(reg, setStore)
 
-	// Provider-adapter plugins: host manifest-declared stdio providers as child
-	// processes and expose them on Core's own HTTP port (no extra port).
 	stdioRunner := stdioprovider.NewRunner()
 	gw.SetStdioRunner(stdioRunner)
 	registerStdioProviders(stdioRunner, provStore, cfg.HTTPAddr())
 
-	// Settings sections declared by installed packages (used by stdio plugins,
-	// which have no gRPC registration channel).
 	registerPluginSettings(setStore)
 
-	// Start heartbeat checker
 	go startHeartbeatChecker(reg, cfg)
 
-	// Graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go startLifeScheduler(ctx, reg)
@@ -186,8 +160,6 @@ func main() {
 		<-sigCh
 		fmt.Println("\nShutting down...")
 
-		// Stop HTTP server. Bound the drain so a stuck SSE/WS connection cannot
-		// hang shutdown forever; force-close whatever is left when it expires.
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		if err := httpServer.Shutdown(shutdownCtx); err != nil {
 			log.Printf("HTTP shutdown: %v", err)
@@ -195,16 +167,13 @@ func main() {
 		}
 		shutdownCancel()
 
-		// Stop gRPC server
 		grpcServer.GracefulStop()
 
-		// Kill provider child processes so they are not orphaned.
 		stdioRunner.Stop()
 
 		cancel()
 	}()
 
-	// Start gRPC server in background
 	go func() {
 		fmt.Printf("Core gRPC server starting on %s\n", cfg.GRPCAddr())
 		if err := grpcServer.Serve(grpcListener); err != nil {
@@ -212,7 +181,6 @@ func main() {
 		}
 	}()
 
-	// Start HTTP server (blocking)
 	fmt.Printf("Core HTTP gateway starting on %s\n", cfg.HTTPAddr())
 	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("HTTP serve failed: %v", err)
@@ -221,7 +189,6 @@ func main() {
 	_ = ctx
 }
 
-// registerBuiltins registers Core-managed plugins (webui adapter, etc.).
 func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 	webuiAddr := os.Getenv("WEBUI_ADDR")
 	if webuiAddr == "" {
@@ -237,9 +204,6 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 		log.Printf("register webui builtin: %v", err)
 	}
 
-	// 0kay-pm (the package manager) registers as a built-in service plugin so it
-	// appears in the Plugins page and its permission surface is auditable. It has
-	// no process of its own; Core exposes the install/lifecycle APIs it drives.
 	if _, err := reg.RegisterBuiltin(&pluginv1.PluginInfo{
 		Name:        "pm",
 		Version:     version.Version,
@@ -262,9 +226,6 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 		log.Printf("register pm builtin: %v", err)
 	}
 
-	// Core-native session-context tools: folded-history search/decompress served
-	// in-process (CoreServiceServer.callContextTool). Exposed to the Agent so the
-	// model can recall what /compact folded away.
 	if _, err := reg.RegisterBuiltin(&pluginv1.PluginInfo{
 		Name:        "context",
 		Version:     version.Version,
@@ -289,17 +250,8 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 		log.Printf("register context builtin: %v", err)
 	}
 
-	// MCP server configuration is core-owned: the 0kay-mcp package is a client
-	// library with no process, so Core stores the shared server list and Agent /
-	// L.I.F.E. read it back (`GET /api/settings/mcp`).
 	registerMcpSettings(setStore)
 
-	// Fluent Design theme: a patch-only plugin, i.e. it has no process to
-	// register itself from. Core materializes the registry row so the Plugins
-	// page can switch it. The patch is not shipped in core/data/ui — 0kay-pm
-	// copies plugin-web/fluentui/patches/fluentui.patch there on install, so
-	// this row only exists on machines that installed the theme. The file names
-	// `plugin: "fluentui"` and is therefore served only while this row is on.
 	if gateway.HasUIPatch("fluentui.patch") {
 		if _, err := reg.RegisterBuiltin(&pluginv1.PluginInfo{
 			Name:        "fluentui",
@@ -312,15 +264,10 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 		}
 	}
 
-	// Web search is built into Core now (no standalone searxng plugin/process):
-	// the engine preference is a core-owned settings section.
 	registerSearchSettings(setStore)
 	registerWorkspaceSettings(setStore)
 }
 
-// registerStdioProviders spawns each installed package's manifest-declared
-// stdio provider and registers it with the provider store, pointed at Core's
-// own HTTP route (so the plugin opens no port).
 func registerStdioProviders(runner *stdioprovider.Runner, store *providers.Store, httpAddr string) {
 	if store == nil {
 		return
@@ -338,9 +285,6 @@ func registerStdioProviders(runner *stdioprovider.Runner, store *providers.Store
 	}
 }
 
-// registerOneStdioProvider discovers a provider's models (retrying while the
-// child warms up) and registers it with the provider store. Runs in the
-// background so Core startup is never blocked by a slow plugin.
 func registerOneStdioProvider(runner *stdioprovider.Runner, store *providers.Store, port string, spec update.ProviderSpec) {
 	models := spec.Models
 	for attempt := 0; attempt < 36 && len(models) == 0; attempt++ {
@@ -374,7 +318,6 @@ func registerOneStdioProvider(runner *stdioprovider.Runner, store *providers.Sto
 	log.Printf("[stdio] hosting provider %q for %s at %s (%d models)", spec.ID, spec.Package, baseURL, len(models))
 }
 
-// queryStdioModels asks a running stdio provider for its model list.
 func queryStdioModels(runner *stdioprovider.Runner, id, route string) []string {
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
@@ -416,8 +359,6 @@ func queryStdioModels(runner *stdioprovider.Runner, id, route string) []string {
 	return models
 }
 
-// registerPluginSettings registers settings sections declared by installed
-// packages in their manifest `settings` block.
 func registerPluginSettings(setStore *settings.Store) {
 	if setStore == nil {
 		return
@@ -442,8 +383,6 @@ func registerPluginSettings(setStore *settings.Store) {
 	}
 }
 
-// registerUpdateSettings contributes the updates panel preferences. The section
-// is core-owned (no plugin name) so it is always visible under Settings.
 func registerUpdateSettings(setStore *settings.Store) {
 	setStore.RegisterSection(settings.Section{
 		ID:          "updates",
@@ -463,7 +402,6 @@ func registerUpdateSettings(setStore *settings.Store) {
 	})
 }
 
-// applyGitHubProxy pushes the saved mirror into the update package.
 func applyGitHubProxy(setStore *settings.Store) {
 	if setStore == nil {
 		return
@@ -472,8 +410,6 @@ func applyGitHubProxy(setStore *settings.Store) {
 	update.SetGitHubProxy(proxy)
 }
 
-// registerMcpSettings contributes the shared MCP server list. The value is a
-// JSON array edited by the WebUI MCP panel and read by Agent / L.I.F.E.
 func registerMcpSettings(setStore *settings.Store) {
 	setStore.RegisterSection(settings.Section{
 		ID:          "mcp",
@@ -497,13 +433,6 @@ func registerMcpSettings(setStore *settings.Store) {
 	})
 }
 
-// registerWorkspaceSettings exposes the directories outside the defaults that
-// the git panel and the agent's file tools may touch.
-//
-// Each service starts in its own subdirectory, so the default root set only
-// covers that subdirectory, the repository it belongs to, home and temp. A
-// project on another drive therefore has to be allowed explicitly — and this
-// section is what the agent polls to stay in agreement with Core.
 func registerWorkspaceSettings(setStore *settings.Store) {
 	setStore.RegisterSection(settings.Section{
 		ID:          "workspace",
@@ -523,8 +452,6 @@ func registerWorkspaceSettings(setStore *settings.Store) {
 	})
 }
 
-// registerSearchSettings contributes the built-in web-search engine picker.
-// Search runs inside Core (no standalone service or port).
 func registerSearchSettings(setStore *settings.Store) {
 	setStore.RegisterSection(settings.Section{
 		ID:          "search",
@@ -545,8 +472,6 @@ func registerSearchSettings(setStore *settings.Store) {
 	})
 }
 
-// loadPluginTokenSecret reads (or creates) the 32-byte HMAC key used to derive
-// plugin service tokens.
 func loadPluginTokenSecret(dataDir string) ([]byte, error) {
 	path := dataDir + "/plugin-token.key"
 	if raw, err := os.ReadFile(path); err == nil && len(raw) >= 32 {
@@ -566,8 +491,6 @@ func loadPluginTokenSecret(dataDir string) ([]byte, error) {
 }
 
 func startHeartbeatChecker(reg *registry.Registry, cfg *config.Config) {
-	// Clamp defensively: a zero/negative HeartbeatTimeout would panic NewTicker
-	// and every plugin would be considered instantly stale.
 	timeout := cfg.HeartbeatTimeout
 	if timeout <= 0 {
 		timeout = 30 * time.Second

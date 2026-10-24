@@ -5,11 +5,6 @@ import (
 	"time"
 )
 
-// SessionTasks returns every task row belonging to a session, newest first.
-//
-// It is the full view used by server-side compaction, context accounting and
-// search. The browser does not receive this list: it gets the recent rows from
-// /api/tasks and fetches an older session's turns on demand.
 func (s *CoreServiceServer) SessionTasks(sessionID string) []map[string]interface{} {
 	if sessionID == "" {
 		return nil
@@ -30,10 +25,6 @@ func (s *CoreServiceServer) SessionTasks(sessionID string) []map[string]interfac
 	return out
 }
 
-// SessionTasksPage returns one page of a session's rows, newest first. The
-// opaque `before` cursor is the started_at of the oldest row the client already
-// holds; pass "" for the newest page. `more` reports whether older rows remain
-// and `next` is the cursor to request them.
 func (s *CoreServiceServer) SessionTasksPage(sessionID, before string, limit int) (rows []map[string]interface{}, more bool, next string) {
 	if limit <= 0 {
 		limit = 50
@@ -73,7 +64,6 @@ func (s *CoreServiceServer) SessionTasksPage(sessionID, before string, limit int
 	return rows, more, next
 }
 
-// sortTasksNewest orders tasks newest-first, tie-broken by id.
 func sortTasksNewest(list []*TaskInfo) {
 	sort.Slice(list, func(i, j int) bool {
 		if list[i].StartedAt.Equal(list[j].StartedAt) {

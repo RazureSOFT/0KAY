@@ -1,4 +1,3 @@
-// Package update checks GitHub Releases for newer 0KAY versions.
 package update
 
 import (
@@ -11,7 +10,6 @@ import (
 	"time"
 )
 
-// GitHub repositories that ship 0KAY components.
 const (
 	ownerUmbrella  = "RazureSOFT"
 	repoUmbrella   = "0KAY"
@@ -22,7 +20,6 @@ const (
 
 var client = &http.Client{Timeout: 10 * time.Second}
 
-// Release is the subset of a GitHub release the update checks need.
 type Release struct {
 	TagName     string `json:"tag_name"`
 	Name        string `json:"name"`
@@ -31,9 +28,6 @@ type Release struct {
 	HTMLURL     string `json:"html_url"`
 }
 
-// apiBase is the base URL for GitHub API requests. When a mirror is configured
-// it is prefixed gh-proxy style ("https://gh-proxy.com/https://api.github.com")
-// so release checks do not hit github.com directly.
 func apiBase() string {
 	if githubProxy == "" {
 		return "https://api.github.com"
@@ -41,16 +35,10 @@ func apiBase() string {
 	return githubProxy + "/https://api.github.com"
 }
 
-// Latest fetches the newest published release of owner/repo. When the
-// repository publishes no releases it falls back to the highest semver tag, so
-// a component that only tags (for example v0.0.8 without a matching release) is
-// still discoverable. It returns (nil, nil) when neither exists.
 func Latest(owner, repo string) (*Release, error) {
 	return LatestContext(context.Background(), owner, repo)
 }
 
-// LatestContext is Latest with a caller deadline, so a batch of update checks
-// can be bounded by one overall timeout.
 func LatestContext(ctx context.Context, owner, repo string) (*Release, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/releases/latest", apiBase(), owner, repo)
 	release, status, err := getJSONContext[Release](ctx, url)
@@ -67,8 +55,6 @@ func LatestContext(ctx context.Context, owner, repo string) (*Release, error) {
 	}
 }
 
-// latestTagContext returns the highest semver tag of owner/repo as a synthetic
-// release (no notes), or (nil, nil) when the repository has no tags.
 func latestTagContext(ctx context.Context, owner, repo string) (*Release, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/tags?per_page=100", apiBase(), owner, repo)
 	tags, status, err := getJSONContext[[]struct {
@@ -102,8 +88,6 @@ func latestTagContext(ctx context.Context, owner, repo string) (*Release, error)
 	}, nil
 }
 
-// getJSONContext performs a GET and decodes a JSON body. The status code is
-// returned for every response so callers can branch on 404 without an error.
 func getJSONContext[T any](ctx context.Context, url string) (*T, int, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -126,12 +110,10 @@ func getJSONContext[T any](ctx context.Context, url string) (*T, int, error) {
 	return &value, resp.StatusCode, nil
 }
 
-// Normalize strips a leading "v" and surrounding whitespace.
 func Normalize(version string) string {
 	return strings.TrimPrefix(strings.TrimSpace(version), "v")
 }
 
-// Newer reports whether candidate (e.g. a release tag) is greater than current.
 func Newer(candidate, current string) bool {
 	a, b := Normalize(candidate), Normalize(current)
 	a = strings.SplitN(a, "+", 2)[0]
@@ -186,7 +168,7 @@ func compareVersions(a, b string) int {
 
 func numeric(part string) int {
 	if dash := strings.IndexByte(part, '-'); dash >= 0 {
-		part = part[:dash] // ignore pre-release/build suffixes
+		part = part[:dash]
 	}
 	value, err := strconv.Atoi(part)
 	if err != nil {
@@ -195,8 +177,6 @@ func numeric(part string) int {
 	return value
 }
 
-// RepositoryFor maps a registered plugin name to its GitHub repository.
-// The second result reports whether the plugin ships in a known repository.
 func RepositoryFor(plugin string) (owner, repo string, known bool) {
 	switch plugin {
 	case "mocr", "life", "webui", "mcp", "core":
@@ -211,5 +191,4 @@ func RepositoryFor(plugin string) (owner, repo string, known bool) {
 	return "", "", false
 }
 
-// PlatformRepository is the umbrella repository (owner, repo) for 0KAY itself.
 func PlatformRepository() (string, string) { return ownerUmbrella, repoUmbrella }

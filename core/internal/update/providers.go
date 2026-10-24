@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 )
 
-// ProviderSpec is a provider an installed package contributes and that Core
-// hosts itself (currently over a stdio child process, so no listening port).
 type ProviderSpec struct {
 	Package      string
 	ID           string
@@ -19,7 +17,6 @@ type ProviderSpec struct {
 	Command      []string
 }
 
-// ProviderSpecs reads the `provider` block of every installed package manifest.
 func ProviderSpecs() []ProviderSpec {
 	var out []ProviderSpec
 	for _, record := range pmInstalledRoots() {

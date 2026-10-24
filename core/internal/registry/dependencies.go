@@ -2,7 +2,6 @@ package registry
 
 import "strings"
 
-// Registration capability convention: requires:<plugin-name>.
 func (r *Registry) MissingDependencies(pluginID string) []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

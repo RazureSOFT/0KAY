@@ -9,34 +9,21 @@ import (
 	"sync"
 )
 
-// ProviderConfig is one configured AI provider (multi-provider support).
-//
-// APIKey is the stored secret. It is never sent over HTTP: Store.Snapshot
-// clears it and fills APIKeyMasked instead, and callers that need the secret
-// use ResolveModel / SnapshotRaw / Secret (all in-process only).
 type ProviderConfig struct {
-	ID             string   `json:"id"`
-	Provider       string   `json:"provider"`
-	Name           string   `json:"name,omitempty"`
-	BaseURL        string   `json:"base_url"`
-	APIKey         string   `json:"api_key"`
-	APIKeyMasked   string   `json:"api_key_masked,omitempty"`
-	Models         []string `json:"models"`
-	DisabledModels []string `json:"disabled_models,omitempty"`
-	DefaultModel   string   `json:"default_model"`
-	Enabled        bool     `json:"enabled"`
-	// ModelTypes tags individual models with a capability: "chat" (default),
-	// "embedding", "rerank", "vision", "tts", "image", "audio", ... Consumers
-	// (Agent/LIFE model pickers, tools) filter by type; empty means "chat".
-	ModelTypes map[string]string `json:"model_types,omitempty"`
-	// Format selects the wire protocol independently of the provider preset:
-	// "openai" (chat/completions) or "anthropic" (messages). Empty means infer
-	// from Provider/BaseURL, preserving the original behaviour.
-	Format string `json:"format,omitempty"`
+	ID             string            `json:"id"`
+	Provider       string            `json:"provider"`
+	Name           string            `json:"name,omitempty"`
+	BaseURL        string            `json:"base_url"`
+	APIKey         string            `json:"api_key"`
+	APIKeyMasked   string            `json:"api_key_masked,omitempty"`
+	Models         []string          `json:"models"`
+	DisabledModels []string          `json:"disabled_models,omitempty"`
+	DefaultModel   string            `json:"default_model"`
+	Enabled        bool              `json:"enabled"`
+	ModelTypes     map[string]string `json:"model_types,omitempty"`
+	Format         string            `json:"format,omitempty"`
 }
 
-// EffectiveProvider is the provider identity forwarded to mocr so it can pick
-// the right wire protocol. An explicit Format wins over the preset name.
 func (p ProviderConfig) EffectiveProvider() string {
 	if f := strings.ToLower(strings.TrimSpace(p.Format)); f != "" {
 		return f
@@ -44,14 +31,8 @@ func (p ProviderConfig) EffectiveProvider() string {
 	return p.Provider
 }
 
-// maskFiller is the opaque middle section MaskKey writes. Its length is what
-// IsMasked matches on, so a real credential that merely contains an asterisk is
-// not mistaken for a placeholder.
-const maskFiller = "************" // 12
+const maskFiller = "************"
 
-// MaskKey renders an API key safe for transport and logging: a short prefix so
-// humans can recognise the credential, the tail so revocation is identifiable,
-// and nothing usable in between. Empty keys stay empty.
 func MaskKey(key string) string {
 	if key == "" {
 		return ""
@@ -62,12 +43,6 @@ func MaskKey(key string) string {
 	return key[:4] + maskFiller + key[len(key)-4:]
 }
 
-// IsMasked reports whether v should be treated as a masked placeholder rather
-// than a new secret: it is empty, or it is the masked form of key. When no
-// secret is known the shape of the mask is matched instead — either the full
-// filler MaskKey emits for a long key, or the all-asterisk form it emits for a
-// short one. A key that merely happens to contain an asterisk is NOT masked, so
-// a first-time save of such a credential is stored rather than silently dropped.
 func IsMasked(v, key string) bool {
 	if v == "" {
 		return true
@@ -81,7 +56,6 @@ func IsMasked(v, key string) bool {
 	return strings.Trim(v, "*") == ""
 }
 
-// ModelType reports a model's capability (default "chat").
 func (p ProviderConfig) ModelType(modelID string) string {
 	if value := strings.TrimSpace(p.ModelTypes[modelID]); value != "" {
 		return strings.ToLower(value)
@@ -89,7 +63,6 @@ func (p ProviderConfig) ModelType(modelID string) string {
 	return "chat"
 }
 
-// IsModelEnabled reports whether a model is active on this provider.
 func (p ProviderConfig) IsModelEnabled(modelID string) bool {
 	for _, d := range p.DisabledModels {
 		if d == modelID {
@@ -99,7 +72,6 @@ func (p ProviderConfig) IsModelEnabled(modelID string) bool {
 	return true
 }
 
-// EnabledModels returns models with per-model toggles applied.
 func (p ProviderConfig) EnabledModels() []string {
 	out := make([]string, 0, len(p.Models))
 	for _, m := range p.Models {
@@ -110,15 +82,12 @@ func (p ProviderConfig) EnabledModels() []string {
 	return out
 }
 
-// File is the on-disk providers.json shape.
 type File struct {
 	DefaultProviderID string           `json:"default_provider_id"`
 	DefaultModel      string           `json:"default_model"`
 	Providers         []ProviderConfig `json:"providers"`
 }
 
-// normalizeBaseURL trims whitespace and trailing slashes so the same endpoint
-// written as "http://host/v1" and "http://host/v1/" compares equal.
 func normalizeBaseURL(u string) string {
 	return strings.TrimRight(strings.TrimSpace(u), "/")
 }
@@ -147,9 +116,6 @@ func contains(list []string, s string) bool {
 	return false
 }
 
-// dedupeFile collapses providers that share provider+base_url. The default
-// provider wins as survivor (otherwise the first entry); model lists are unioned.
-// Returns whether anything changed.
 func dedupeFile(f *File) bool {
 	if len(f.Providers) < 2 {
 		return false
@@ -212,14 +178,12 @@ func dedupeFile(f *File) bool {
 	return changed
 }
 
-// Store persists multi-provider config under data/providers.json.
 type Store struct {
 	mu   sync.RWMutex
 	path string
 	data File
 }
 
-// NewStore loads (or initializes) the providers store.
 func NewStore(path string) *Store {
 	s := &Store{path: path, data: File{Providers: []ProviderConfig{}}}
 	s.load()
@@ -243,7 +207,6 @@ func (s *Store) load() {
 	}
 	s.data = f
 	if dedupeFile(&s.data) {
-		// Persist the merged file so stale duplicates do not resurface.
 		_ = s.saveLocked()
 	}
 }
@@ -259,7 +222,6 @@ func (s *Store) saveLocked() error {
 	if err != nil {
 		return err
 	}
-	// Write to a temporary file and rename so a crash never leaves half a JSON file.
 	temporary := s.path + ".tmp"
 	if err := os.WriteFile(temporary, b, 0o600); err != nil {
 		return err
@@ -267,18 +229,12 @@ func (s *Store) saveLocked() error {
 	return os.Rename(temporary, s.path)
 }
 
-// Snapshot returns a copy of the current config with every API key replaced by
-// its mask. This is the shape served over HTTP, so no secret can leak by
-// accident. Use SnapshotRaw / Secret / ResolveModel in-process when the real
-// credential is needed.
 func (s *Store) Snapshot() File {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return redactFile(s.data)
 }
 
-// SnapshotRaw returns a copy of the current config including plaintext API
-// keys. Never serialize this to an HTTP response.
 func (s *Store) SnapshotRaw() File {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -302,7 +258,6 @@ func (s *Store) SnapshotRaw() File {
 	}
 }
 
-// Secret returns the plaintext API key for one provider ("" when unknown).
 func (s *Store) Secret(id string) string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -327,8 +282,6 @@ func redactFile(f File) File {
 }
 
 func redactProvider(p ProviderConfig) ProviderConfig {
-	// Deep-copy the slices so a caller mutating the redacted snapshot cannot
-	// touch the store's backing arrays (and vice versa under -race).
 	p.Models = append([]string(nil), p.Models...)
 	p.DisabledModels = append([]string(nil), p.DisabledModels...)
 	if p.ModelTypes != nil {
@@ -345,8 +298,6 @@ func redactProvider(p ProviderConfig) ProviderConfig {
 	return p
 }
 
-// preserveSecret keeps the stored credential when an incoming update carries
-// nothing, or carries back the mask the API just handed out.
 func preserveSecret(incoming *ProviderConfig, existing string) {
 	if IsMasked(incoming.APIKey, existing) {
 		incoming.APIKey = existing
@@ -354,7 +305,6 @@ func preserveSecret(incoming *ProviderConfig, existing string) {
 	incoming.APIKeyMasked = ""
 }
 
-// Replace overwrites the entire store.
 func (s *Store) Replace(f File) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -374,9 +324,6 @@ func (s *Store) Replace(f File) error {
 	return s.saveLocked()
 }
 
-// Upsert adds or updates a provider by id. When the id is unknown but another
-// entry points at the same endpoint (provider + base_url), that entry is
-// updated instead of appending a duplicate row.
 func (s *Store) Upsert(p ProviderConfig) error {
 	if p.ID == "" {
 		return fmt.Errorf("provider id is required")
@@ -428,7 +375,6 @@ func (s *Store) Upsert(p ProviderConfig) error {
 	return s.saveLocked()
 }
 
-// Delete removes a provider by id.
 func (s *Store) Delete(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -448,7 +394,6 @@ func (s *Store) Delete(id string) error {
 	return s.saveLocked()
 }
 
-// SetDefaults sets default provider/model.
 func (s *Store) SetDefaults(providerID, model string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -457,17 +402,13 @@ func (s *Store) SetDefaults(providerID, model string) error {
 	return s.saveLocked()
 }
 
-// ResolveModel finds credentials for a model_id (or the default when empty).
-// Returns provider, baseURL, apiKey, modelID.
 func (s *Store) ResolveModel(modelID string) (provider, baseURL, apiKey, resolved string, ok bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	// Prefer default when modelID empty
 	if modelID == "" {
 		modelID = s.data.DefaultModel
 		if modelID == "" {
-			// pick first model of default provider
 			for _, p := range s.data.Providers {
 				if p.ID == s.data.DefaultProviderID || s.data.DefaultProviderID == "" {
 					if len(p.Models) > 0 {
@@ -493,7 +434,6 @@ func (s *Store) ResolveModel(modelID string) (provider, baseURL, apiKey, resolve
 		}
 	}
 
-	// Find model in any provider (skip per-model disabled entries)
 	for _, p := range s.data.Providers {
 		for _, m := range p.Models {
 			if m == modelID && p.IsModelEnabled(m) {
@@ -505,7 +445,6 @@ func (s *Store) ResolveModel(modelID string) (provider, baseURL, apiKey, resolve
 		}
 	}
 
-	// Fallback: default provider first model
 	for _, p := range s.data.Providers {
 		if p.ID == s.data.DefaultProviderID && len(p.Models) > 0 {
 			m := p.DefaultModel
@@ -518,7 +457,6 @@ func (s *Store) ResolveModel(modelID string) (provider, baseURL, apiKey, resolve
 	return "", "", "", "", false
 }
 
-// AllModels returns every enabled model id (for ChooseModels catalog).
 func (s *Store) AllModels() []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -535,19 +473,15 @@ func (s *Store) AllModels() []string {
 	return out
 }
 
-// CatalogEntry is one enabled model with its owning provider's metadata.
 type CatalogEntry struct {
 	ID               string `json:"id"`
 	Provider         string `json:"provider"`
 	ProviderID       string `json:"provider_id,omitempty"`
 	ProviderName     string `json:"provider_name,omitempty"`
 	SupportsThinking bool   `json:"supports_thinking"`
-	// Type is the model capability: "chat" (default), "embedding", "rerank",
-	// "vision", "tts", "image", "audio", ...
-	Type string `json:"type"`
+	Type             string `json:"type"`
 }
 
-// Catalog returns the enabled model catalog (deduped by model id).
 func (s *Store) Catalog() []CatalogEntry {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

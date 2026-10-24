@@ -32,7 +32,6 @@ func TestSettingsUpdatesSectionDrivesGitHubProxy(t *testing.T) {
 		t.Errorf("GitHubProxy() = %q, want https://gh-proxy.com", got)
 	}
 
-	// Clearing the field disables the mirror again.
 	req = httptest.NewRequest("POST", "/api/settings/updates", strings.NewReader(`{"values":{"github_proxy":""}}`))
 	req.Header.Set("Content-Type", "application/json")
 	w = httptest.NewRecorder()

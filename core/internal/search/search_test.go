@@ -7,7 +7,6 @@ func TestStripTagsAndTerms(t *testing.T) {
 		t.Fatalf("stripTags = %q", got)
 	}
 	terms := queryTerms("How to deploy a Go service, with Docker")
-	// stopwords removed, deduped, lowercased, order preserved.
 	want := []string{"deploy", "go", "service", "docker"}
 	if len(terms) != len(want) {
 		t.Fatalf("terms = %v, want %v", terms, want)

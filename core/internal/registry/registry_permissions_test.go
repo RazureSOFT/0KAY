@@ -70,8 +70,6 @@ func TestReregisterReplacesByName(t *testing.T) {
 
 func TestAuthenticateFailsClosedWithoutSecret(t *testing.T) {
 	r := NewRegistry()
-	// No SetSecret: plugin identity is disabled, so attributed calls must not
-	// authenticate rather than accepting any token.
 	if _, err := r.Register(&pluginv1.PluginInfo{Name: "life"}, []string{"life"}, "127.0.0.1:50053"); err != nil {
 		t.Fatal(err)
 	}

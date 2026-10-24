@@ -8,11 +8,6 @@ import (
 	corev1 "0kay/gen/core/v1"
 )
 
-// handleTools exposes the plugin tool catalog and a call endpoint so Agent and
-// L.I.F.E. can discover and invoke tools contributed by plugins.
-//
-//	GET  /api/tools?scope=agent|life
-//	POST /api/tools/call  {"tool":"...","args":{...},"args_json":"...","session_id":"...","caller":"..."}
 func (g *Gateway) handleTools(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:

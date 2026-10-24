@@ -6,12 +6,6 @@ import (
 	"net/http"
 )
 
-// handleStdioProvider forwards an OpenAI-compatible request to a provider
-// plugin hosted as a stdio child process, so the plugin needs no listening
-// port. Core registers the provider's base_url as this route plus the
-// plugin-declared sub-path.
-//
-//	/api/stdio-provider/{id}/{path...}
 func (g *Gateway) handleStdioProvider(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	rest := r.PathValue("path")
@@ -54,7 +48,6 @@ func (g *Gateway) handleStdioProvider(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if chunk.Err != nil {
-				// Headers may already be sent: abort rather than report a clean EOF.
 				panic(http.ErrAbortHandler)
 			}
 			chunkData = chunk.Data

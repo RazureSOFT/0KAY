@@ -46,8 +46,6 @@ func TestTransportName(t *testing.T) {
 	}
 }
 
-// A minimal HTTP MCP server: enough of the protocol to prove the client
-// handshake, session echo, tools/list and tools/call work together.
 func fakeHTTPMCP(t *testing.T, session string) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -122,8 +120,6 @@ func TestHTTPClientRoundTrip(t *testing.T) {
 	}
 }
 
-// The stdio transport is exercised against a real child process, because the
-// interesting failure mode (a server that never answers) only exists there.
 func TestStdioClientRoundTrip(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {

@@ -1,4 +1,3 @@
-// Package pairing provides opt-in TLS LAN discovery and locally approved devices.
 package pairing
 
 import (
@@ -45,45 +44,26 @@ type Request struct {
 	Token    string    `json:"-"`
 }
 type Store struct {
-	mu          sync.Mutex
-	ID          string
-	Name        string
-	Certificate []byte
-	Fingerprint string
-	path        string
-	Devices     map[string]Device
-	requests    map[string]*Request
-	addresses   map[string]string
-	TLS         *tls.Config
-	// enforce requires a paired token for non-trusted callers. It is only enabled
-	// with LAN mode; a loopback-only deployment keeps using CORE_API_TOKEN.
-	enforce bool
-	// trusted holds networks whose callers are treated like loopback: reverse
-	// proxies and container networks that terminate the local UI.
-	trusted []*net.IPNet
-	// pinSalt/pinHash hold the optional access PIN. When set, sensitive routes
-	// require the X-0kay-Pin header from callers that are not using a machine
-	// credential (paired-device token or CORE_API_TOKEN). pinAlgo names the
-	// hash scheme ("" = legacy single SHA-256, upgraded on first successful
-	// verification; "bcrypt" embeds its salt in pinHash).
-	pinSalt []byte
-	pinHash []byte
-	pinAlgo string
-	// pinSessionHash is the SHA-256 of the random cookie token minted by a PIN
-	// login. The raw token is only ever held by the browser; security.json
-	// keeps the hash so it cannot be replayed as a bearer credential.
+	mu             sync.Mutex
+	ID             string
+	Name           string
+	Certificate    []byte
+	Fingerprint    string
+	path           string
+	Devices        map[string]Device
+	requests       map[string]*Request
+	addresses      map[string]string
+	TLS            *tls.Config
+	enforce        bool
+	trusted        []*net.IPNet
+	pinSalt        []byte
+	pinHash        []byte
+	pinAlgo        string
 	pinSessionHash []byte
-	// pinEnabled/loginEnabled are the owner-facing master switches stored in
-	// security.json (both default to on). Disabling the PIN keeps it stored;
-	// disabling login opens the HTTP API to any caller that can reach Core.
-	pinEnabled   bool
-	loginEnabled bool
-	// pinPages scopes verification to these WebUI routes. Empty keeps the
-	// historical behaviour (sensitive actions only).
-	pinPages []string
-	// logins throttles failed credential attempts (PIN/token) per remote host so
-	// the 6-digit PIN cannot be brute-forced.
-	logins map[string]*loginAttempt
+	pinEnabled     bool
+	loginEnabled   bool
+	pinPages       []string
+	logins         map[string]*loginAttempt
 }
 
 var Default *Store
@@ -195,7 +175,6 @@ func local(address string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
-// Approval and device listing stay loopback-only; proxies only gain API access.
 func (s *Store) trustedPeer(address string) bool {
 	if local(address) {
 		return true
@@ -230,9 +209,6 @@ func apiToken(token string) bool {
 	return expected != "" && token != "" && subtle.ConstantTimeCompare([]byte(token), []byte(expected)) == 1
 }
 
-// SessionCookie carries a paired-device or API token so a browser frontend can
-// authenticate once instead of attaching an Authorization header to every call
-// (EventSource and WebSocket cannot send headers at all).
 const SessionCookie = "0kay_session"
 
 func bearerToken(header string) string {
@@ -242,19 +218,11 @@ func bearerToken(header string) string {
 	return ""
 }
 
-// authorized reports whether the caller may reach the API and names the method
-// that satisfied the check. Trusted (loopback / CORE_TRUSTED_NETWORKS) callers
-// always pass; everyone else needs a paired-device token, the API token, or the
-// session cookie minted by POST /api/auth/session. Turning login off in the
-// security settings short-circuits the whole gate.
 func (s *Store) authorized(r *http.Request) (bool, string) {
 	if !s.LoginEnabled() {
 		return true, "open"
 	}
 	if s.trustedPeer(r.RemoteAddr) {
-		// A browser tab holding no session has to prove the PIN even over
-		// loopback: the sign-in overlay is dismissible, so the gate has to hold
-		// server-side or "not now" would hand over the whole API.
 		if s.HasPIN() && s.PinEnabled() && looksLikeBrowser(r) {
 			return s.browserSession(r)
 		}
@@ -271,11 +239,6 @@ func (s *Store) authorized(r *http.Request) (bool, string) {
 	return false, ""
 }
 
-// ValidMachineToken reports whether token is a paired-device token or the
-// shared CORE_API_TOKEN. It is used to gate endpoints that must not be reached
-// by a browser session (e.g. the plaintext credential export).
-// browserSession reports whether a browser caller carries a usable session
-// cookie (a paired-device token, the API token, or a PIN session).
 func (s *Store) browserSession(r *http.Request) (bool, string) {
 	cookie, err := r.Cookie(SessionCookie)
 	if err != nil || cookie.Value == "" {
@@ -294,15 +257,6 @@ func (s *Store) ValidMachineToken(token string) bool {
 	return s.valid(token) || apiToken(token)
 }
 
-// secureCookie reports whether the session cookie may carry the Secure flag.
-//
-// The cookie value is the bearer token itself, so it must not travel in clear
-// text. r.TLS alone is not enough: with a TLS-terminating reverse proxy the
-// hop into Core is plain HTTP even though the browser used HTTPS. The forwarded
-// scheme is only believed from a trusted peer (a hostile client could otherwise
-// set the header itself, which would just make its own cookie stricter, but the
-// check keeps the signal honest). CORE_COOKIE_SECURE forces either answer for
-// deployments the heuristic cannot see.
 func (s *Store) secureCookie(r *http.Request) bool {
 	switch strings.ToLower(strings.TrimSpace(os.Getenv("CORE_COOKIE_SECURE"))) {
 	case "1", "true", "yes":
@@ -320,7 +274,6 @@ func (s *Store) secureCookie(r *http.Request) bool {
 	if proto == "" {
 		return false
 	}
-	// A proxy chain sends a comma separated list; the first entry is the client.
 	if index := strings.Index(proto, ","); index >= 0 {
 		proto = proto[:index]
 	}
@@ -337,17 +290,6 @@ func writeErr(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, map[string]string{"error": message, "code": code})
 }
 
-// handleSession implements the browser session endpoints. They run ahead of the
-// authentication gate so an unauthenticated caller can still discover that a
-// credential is required and supply one.
-//
-//	GET    /api/auth/session  -> {authenticated, method, requires_auth, core_id}
-//	POST   /api/auth/session  {"token": "..."} -> sets the HttpOnly session cookie
-//	DELETE /api/auth/session  -> clears the session cookie
-//
-// localAddresses returns the host's non-loopback IPv4 addresses so the WebUI
-// can offer the LAN address by default when pairing a phone. It is a read-only
-// hint; it does not change how Core binds or authenticates.
 func localAddresses() []string {
 	out := []string{}
 	ifaces, err := net.Interfaces()
@@ -397,8 +339,6 @@ func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 		if !s.LoginEnabled() {
 			requires = false
 		}
-		// A browser is prompted for the PIN even over loopback; machine clients
-		// (LIFE / agent / scripts) stay exempt.
 		if s.HasPIN() && s.PinEnabled() && looksLikeBrowser(r) {
 			requires = true
 			if _, err := r.Cookie(SessionCookie); err != nil {
@@ -437,7 +377,6 @@ func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 			cookie = token
 			s.loginSucceeded(host)
 		case token == "" && pin == "" && s.trustedPeer(r.RemoteAddr):
-			// Trusted caller opening a session without a credential.
 			s.loginSucceeded(host)
 		default:
 			s.loginFailed(host)
@@ -457,8 +396,6 @@ func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 		}
 		ok, method := s.authorized(r)
 		if cookie != "" {
-			// The freshly minted cookie is not on this request, so report the
-			// credential that was just accepted.
 			ok, method = true, "cookie"
 		}
 		requires := !s.trustedPeer(r.RemoteAddr)
@@ -502,18 +439,11 @@ func (s *Store) HTTP(next http.Handler) http.Handler {
 			s.handlePIN(w, r)
 			return
 		}
-		// Any non-loopback caller (LAN or container network) must present a paired-device
-		// token, the API token, or the session cookie. Loopback and
-		// CORE_TRUSTED_NETWORKS callers stay exempt.
 		if ok, _ := s.authorized(r); !ok {
 			w.Header().Set("WWW-Authenticate", `Bearer realm="0kay"`)
 			writeErr(w, http.StatusUnauthorized, "unauthenticated", "paired device or API token required")
 			return
 		}
-		// Sensitive actions re-confirm the PIN unless the caller is a machine
-		// credential or no PIN is configured. A host that burned its failure
-		// budget (bad header PINs count too) gets the same 429 as the login
-		// endpoints instead of the generic challenge.
 		if sensitiveRequest(r) && !s.pinSatisfied(r) {
 			if s.enforceLoginLimit(w, r) {
 				return
@@ -665,8 +595,6 @@ func (s *Store) handle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (s *Store) authorize(ctx context.Context) error {
-	// Loopback and explicitly trusted networks pass; every other caller must present
-	// a paired-device or API token, regardless of LAN mode.
 	p, _ := peer.FromContext(ctx)
 	if p != nil && s.trustedPeer(p.Addr.String()) {
 		return nil

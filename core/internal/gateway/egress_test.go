@@ -59,15 +59,12 @@ func TestHandleEgress(t *testing.T) {
 		t.Fatalf("unexpected payload: %+v", payload)
 	}
 
-	// A host outside the allow-list is blocked and never reaches upstream.
 	blocked, _ := json.Marshal(map[string]any{"method": "GET", "url": "http://blocked.example/x"})
 	req2 := httptest.NewRequest(http.MethodPost, "/api/net/egress", bytes.NewReader(blocked))
 	req2.Header.Set(PluginHeader, "tool")
 	req2.Header.Set("Authorization", "Bearer "+token)
 	rec2 := httptest.NewRecorder()
 	g.handleEgress(rec2, req2)
-	// Consistent with CoreService.Egress: the failure travels in the payload's
-	// error field (status 0) instead of a transport error.
 	if rec2.Code != http.StatusOK {
 		t.Fatalf("blocked egress: got %d, want 200", rec2.Code)
 	}

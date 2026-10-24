@@ -15,8 +15,6 @@ func shQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'"
 }
 
-// shEnvLines renders the git mirror environment for a shell script (empty when
-// no mirror is configured).
 func shEnvLines() string {
 	var b strings.Builder
 	for _, kv := range processProxyEnv() {
@@ -25,8 +23,6 @@ func shEnvLines() string {
 	return b.String()
 }
 
-// writeUpdater writes the shell script that stops, updates and starts a
-// component, then prints a status marker for State() to read.
 func writeUpdater(dir, pm, pkg, target string) (string, string, error) {
 	script := filepath.Join(dir, "update.sh")
 	logPath := filepath.Join(dir, "apply.log")
@@ -53,7 +49,6 @@ exit $code
 	return script, logPath, nil
 }
 
-// writeInstaller writes the shell script that installs a plugin via 0kay-pm.
 func writeInstaller(dir, pm, pkg string) (string, string, error) {
 	script := filepath.Join(dir, "install.sh")
 	logPath := filepath.Join(dir, "install.log")
@@ -73,7 +68,6 @@ exit $code
 	return script, logPath, nil
 }
 
-// writeUninstaller writes the shell script that removes a plugin via 0kay-pm.
 func writeUninstaller(dir, pm, pkg string) (string, string, error) {
 	script := filepath.Join(dir, "uninstall.sh")
 	logPath := filepath.Join(dir, "install.log")
@@ -103,7 +97,6 @@ func joinArgs(cmd []string) string {
 	return strings.Join(out, " ")
 }
 
-// writeSourceUpdater writes the git-sync + rebuild + restart script.
 func writeSourceUpdater(dir string, plan sourcePlan) (string, string, error) {
 	script := filepath.Join(dir, "source-update.sh")
 	logPath := filepath.Join(dir, "apply.log")
@@ -140,7 +133,6 @@ func writeSourceUpdater(dir string, plan sourcePlan) (string, string, error) {
 	return script, logPath, nil
 }
 
-// launchDetached runs the script in its own session with output to the log.
 func launchDetached(script, logPath string) error {
 	handle, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {

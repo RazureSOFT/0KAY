@@ -14,17 +14,14 @@ import (
 )
 
 func main() {
-	// Connect to Core gRPC server
 	conn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to connect: %v", err)
 	}
 	defer conn.Close()
 
-	// Create plugin client
 	client := corev1.NewPluginServiceClient(conn)
 
-	// Register plugin
 	registerResp, err := client.Register(context.Background(), &corev1.RegisterRequest{
 		PluginInfo: &pluginv1.PluginInfo{
 			Name:        "echo-plugin",
@@ -43,7 +40,6 @@ func main() {
 	fmt.Printf("Success: %v\n", registerResp.Success)
 	fmt.Printf("Message: %s\n", registerResp.Message)
 
-	// Send heartbeats
 	for i := 0; i < 3; i++ {
 		heartbeatResp, err := client.Heartbeat(context.Background(), &corev1.HeartbeatRequest{
 			PluginId:    registerResp.PluginId,

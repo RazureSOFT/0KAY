@@ -10,28 +10,21 @@ import (
 	"time"
 )
 
-// TaskEvent is the shared activity ledger contract for LIFE and Agent workers.
 type TaskEvent struct {
-	TaskID    string `json:"task_id"`
-	CallerID  string `json:"caller_id"`
-	SessionID string `json:"session_id"`
-	ParentID  string `json:"parent_id"`
-	Kind      string `json:"kind"`
-	Prompt    string `json:"prompt"`
-	Args      string `json:"args"`
-	State     string `json:"state"`
-	Result    string `json:"result"`
-	Error     string `json:"error"`
-	// Reasoning carries a model step's native chain-of-thought for display.
-	Reasoning string `json:"reasoning,omitempty"`
-	// Attachments is the JSON array the caller uploaded with this turn
-	// ({name,url,mime,size}). It is stored so the transcript can render the
-	// files a message came with — without it the bubble shows text only and the
-	// reference is lost the moment the request completes.
+	TaskID      string `json:"task_id"`
+	CallerID    string `json:"caller_id"`
+	SessionID   string `json:"session_id"`
+	ParentID    string `json:"parent_id"`
+	Kind        string `json:"kind"`
+	Prompt      string `json:"prompt"`
+	Args        string `json:"args"`
+	State       string `json:"state"`
+	Result      string `json:"result"`
+	Error       string `json:"error"`
+	Reasoning   string `json:"reasoning,omitempty"`
 	Attachments string `json:"attachments,omitempty"`
 }
 
-// RecordTask validates and applies one ledger transition.
 func (s *CoreServiceServer) RecordTask(event TaskEvent) error {
 	if err := validateTaskEvent(event); err != nil {
 		return err
@@ -41,7 +34,6 @@ func (s *CoreServiceServer) RecordTask(event TaskEvent) error {
 	return s.recordTaskLocked(event)
 }
 
-// validateTaskEvent rejects malformed events before any lock is taken.
 func validateTaskEvent(event TaskEvent) error {
 	if event.TaskID == "" {
 		return fmt.Errorf("task_id required")
@@ -54,15 +46,6 @@ func validateTaskEvent(event TaskEvent) error {
 	return nil
 }
 
-// recordTaskLocked applies one ledger transition. Callers must hold s.mu.
-//
-// Ordering matters:
-//  1. a deleted session rejects anything that would touch it (accurate reason);
-//  2. terminal tasks are immutable, and re-sending the same terminal state is a
-//     no-op so retried callbacks stay idempotent;
-//  3. only then is a duplicate "pending" for an existing task an error.
-//
-// Doing (2) before (3) means a late retry can never rewrite a finished task.
 func (s *CoreServiceServer) recordTaskLocked(event TaskEvent) error {
 	task, exists := s.tasks[event.TaskID]
 	if event.SessionID == "" && exists {
@@ -109,7 +92,6 @@ func (s *CoreServiceServer) recordTaskLocked(event TaskEvent) error {
 	}
 	s.markTaskDirtyLocked(event.TaskID)
 	s.persistTasksLocked()
-	// Activity for inactivity watchdog: match root and nested (task:sub:…) ids.
 	if event.ParentID != "" {
 		s.touchDispatch(event.ParentID)
 	}
@@ -117,7 +99,6 @@ func (s *CoreServiceServer) recordTaskLocked(event TaskEvent) error {
 	return nil
 }
 
-// Sessions are durable ledger entries, including sessions with no messages yet.
 func (s *CoreServiceServer) CreateAgentSession(title string) (string, error) {
 	id := fmt.Sprintf("agent-session:%d", time.Now().UnixNano())
 	if strings.TrimSpace(title) == "" {
@@ -126,7 +107,6 @@ func (s *CoreServiceServer) CreateAgentSession(title string) (string, error) {
 	return id, s.RecordTask(TaskEvent{TaskID: id, SessionID: id, Kind: "agent_session", Prompt: title, CallerID: "webui", State: "done"})
 }
 
-// RenameAgentSession updates a session's display title (used for auto-generated summaries).
 func (s *CoreServiceServer) RenameAgentSession(id, title string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -187,11 +167,6 @@ func (s *CoreServiceServer) ManageAgentSession(id, action string) error {
 	return nil
 }
 
-// ForkAgentSession copies a session's completed turns into a new session whose
-// display title increments the origin's trailing "(n)" ordinal (half-width or
-// full-width). The fork point is the latest completed agent turn, so a running
-// turn is never duplicated. The origin session, its directory and its logs are
-// left untouched.
 func (s *CoreServiceServer) ForkAgentSession(origin string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -215,8 +190,6 @@ func (s *CoreServiceServer) ForkAgentSession(origin string) (string, error) {
 		Prompt: forkTitle(source.Prompt), State: "done", StartedAt: now, EndedAt: now,
 	}
 	s.markTaskDirtyLocked(id)
-	// Copy the turns and their steps up to the fork point into the new session,
-	// remapping task ids and parent links so the lineage stays intact.
 	turns := []*TaskInfo{}
 	for _, task := range s.tasks {
 		if task.SessionID != origin || task.TaskID == origin {
@@ -254,7 +227,6 @@ func (s *CoreServiceServer) ForkAgentSession(origin string) (string, error) {
 	return id, nil
 }
 
-// forkTitle increments a trailing "(n)"/"（n）" ordinal, else appends " (1)".
 func forkTitle(title string) string {
 	title = strings.TrimSpace(title)
 	if title == "" {
@@ -270,15 +242,12 @@ func forkTitle(title string) string {
 
 var forkOrdinal = regexp.MustCompile(`^([\s\S]*?)[\(（]\s*(\d+)\s*[\)）]\s*$`)
 
-// LIFE conversations have a stable Agent session; retain the originating chat
-// separately so completion notifications still return to the right channel.
 func (s *CoreServiceServer) EnsureAgentSession(origin, caller, title string) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.ensureAgentSessionLocked(origin, caller, title)
 }
 
-// ensureAgentSessionLocked is EnsureAgentSession. Callers must hold s.mu.
 func (s *CoreServiceServer) ensureAgentSessionLocked(origin, caller, title string) string {
 	if strings.HasPrefix(origin, "agent-session:") {
 		if existing := s.tasks[origin]; existing != nil && existing.Kind == "agent_session" && existing.State == "done" {
@@ -312,14 +281,6 @@ func (s *CoreServiceServer) ensureAgentSessionLocked(origin, caller, title strin
 	return id
 }
 
-// startAgentTask resolves the target agent session and records the pending task
-// in a single critical section.
-//
-// The two steps used to run as separate lock/unlock pairs, which let two
-// concurrent UseAgent calls for the same origin race: both could resolve the
-// session, then both could observe "no active task" before either registered
-// one. Holding the lock across both makes the one-active-task-per-session rule
-// and session creation atomic.
 func (s *CoreServiceServer) startAgentTask(event TaskEvent, origin, caller, title string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -328,10 +289,6 @@ func (s *CoreServiceServer) startAgentTask(event TaskEvent, origin, caller, titl
 	return sessionID, s.recordTaskLocked(event)
 }
 
-// agentHistoryTokens is the text budget for the replayed conversation prepended
-// to a new turn. Older turns fall outside it and are dropped: the compact
-// summary is the durable memory for everything before it, so a long session
-// never sends its whole transcript in a single request.
 func agentHistoryTokens() int {
 	if value, err := strconv.Atoi(strings.TrimSpace(os.Getenv("AGENT_HISTORY_TOKENS"))); err == nil && value > 0 {
 		return value
@@ -339,8 +296,6 @@ func agentHistoryTokens() int {
 	return 8000
 }
 
-// historyTokenEstimate approximates tokens for the replayed transcript:
-// ~4 ASCII chars per token and ~1 token per non-ASCII (CJK) character.
 func historyTokenEstimate(text string) int {
 	ascii, wide := 0, 0
 	for _, r := range text {
@@ -356,8 +311,6 @@ func historyTokenEstimate(text string) int {
 func (s *CoreServiceServer) AgentSessionPrompt(sessionID, currentID, prompt string) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	// The newest successful compaction is the folded memory for everything
-	// before it; only turns after it are replayed verbatim.
 	var compact *TaskInfo
 	for _, task := range s.tasks {
 		if task.SessionID == sessionID && task.Kind == "compact" && task.State == "done" && (compact == nil || task.StartedAt.After(compact.StartedAt)) {
@@ -384,8 +337,6 @@ func (s *CoreServiceServer) AgentSessionPrompt(sessionID, currentID, prompt stri
 	if compact != nil {
 		history.WriteString("Conversation summary:\n" + compact.Result + "\n")
 	}
-	// Walk newest-first so the most relevant turns are always kept, then stop
-	// once the budget is spent. Blocks are emitted in chronological order.
 	budget := agentHistoryTokens()
 	used := 0
 	dropped := 0

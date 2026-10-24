@@ -9,19 +9,6 @@ import (
 	"0kay/core/internal/mcp"
 )
 
-// MCP lives in Core now.
-//
-// Before, every consumer brought its own client: the agent spawned servers, the
-// mail server shipped as a plugin, and nothing agreed on which servers existed.
-// These three endpoints are the single surface — the agent, L.I.F.E and any
-// WebUI page read the same registry and talk to the same live connections.
-//
-//	GET  /api/mcp/servers -> [{id, transport, tools?}]
-//	GET  /api/mcp/tools?server=<id> -> [{server, name, description, inputSchema}]
-//	POST /api/mcp/call {"server":"mail","tool":"send","args":{...}} -> raw MCP result
-
-// mcpServers reads the shared settings list. Read on every request on purpose:
-// adding a server in the settings pane takes effect immediately.
 func (g *Gateway) mcpServers() []mcp.Server {
 	if g.settingsStore == nil {
 		return nil
@@ -54,8 +41,6 @@ func (g *Gateway) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"servers": out})
 }
 
-// handleMCPTools lists tools. Starting a server is the expensive part, so an
-// unreachable one is reported per-server instead of failing the whole call.
 func (g *Gateway) handleMCPTools(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
@@ -122,8 +107,6 @@ func (g *Gateway) handleMCPCall(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadGateway, "mcp_failed", err.Error())
 		return
 	}
-	// The MCP result is opaque to Core (it may be content blocks or a plain
-	// object); pass it through untouched rather than inventing a shape.
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(result)
 }

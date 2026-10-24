@@ -11,9 +11,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// startLifeScheduler drives L.I.F.E's periodic events so it reinforces memory,
-// ticks circadian state and can autonomously plan what to do next. Without this
-// the OnScheduledEvent RPC was never called and LIFE stayed purely reactive.
 func startLifeScheduler(ctx context.Context, reg *registry.Registry) {
 	idle := time.NewTicker(20 * time.Minute)
 	hourly := time.NewTicker(time.Hour)

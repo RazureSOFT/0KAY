@@ -8,10 +8,6 @@ import (
 	"0kay/core/internal/providers"
 )
 
-// machineCredential reports whether the request carries a non-browser machine
-// credential: a validated plugin identity/service token, or a paired-device /
-// shared API token in the Authorization header. Browser session cookies do not
-// count, so an in-origin plugin bundle cannot read plaintext credentials.
 func (g *Gateway) machineCredential(r *http.Request) bool {
 	token := bearerToken(r.Header.Get("Authorization"))
 	if token == "" {
@@ -35,17 +31,14 @@ func (g *Gateway) handleProviders(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		// Masked view: never returns plaintext API keys.
 		writeJSON(w, http.StatusOK, g.providerStore.Snapshot())
 
 	case http.MethodPost, http.MethodPut:
 		var body struct {
-			// Full replace when providers array present without single provider
 			Providers         []providers.ProviderConfig `json:"providers"`
 			DefaultProviderID string                     `json:"default_provider_id"`
 			DefaultModel      string                     `json:"default_model"`
-			// Single upsert
-			Provider *providers.ProviderConfig `json:"provider"`
+			Provider          *providers.ProviderConfig  `json:"provider"`
 		}
 		if !decodeBody(w, r, &body, maxSmallBody) {
 			return
@@ -56,7 +49,6 @@ func (g *Gateway) handleProviders(w http.ResponseWriter, r *http.Request) {
 				badRequest(w, err.Error())
 				return
 			}
-			// optional default update in same call
 			if body.DefaultProviderID != "" || body.DefaultModel != "" {
 				cur := g.providerStore.Snapshot()
 				dp := cur.DefaultProviderID
@@ -88,15 +80,6 @@ func (g *Gateway) handleProviders(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleProviderCredentials GET /api/providers/credentials[?id=…]
-//
-// Deliberate, authenticated escape hatch for in-repo services (life / agent /
-// mocr) that must forward a provider key upstream. It is not reachable from a
-// cross-site browser context (Sec-Fetch-Site is rejected) and is not part of
-// the anonymous/trusted-network surface beyond the normal auth gate.
-//
-// Without ?id= it returns exactly the legacy plaintext shape of
-// GET /api/providers, so migrating a caller is a one-line URL change.
 func (g *Gateway) handleProviderCredentials(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
@@ -109,18 +92,12 @@ func (g *Gateway) handleProviderCredentials(w http.ResponseWriter, r *http.Reque
 		writeErr(w, http.StatusForbidden, "cross_site_denied", "cross-site credential reads are not allowed")
 		return
 	}
-	// Only in-process machine clients may read plaintext keys. A browser session
-	// cookie is not enough: otherwise a plugin's WebUI bundle, which runs in the
-	// owner's origin, could exfiltrate every provider credential.
 	if !g.machineCredential(r) {
 		writeErr(w, http.StatusForbidden, "machine_credential_required",
 			"a plugin identity or machine token is required to read credentials")
 		return
 	}
 	snap := g.providerStore.SnapshotRaw()
-	// Normalize the provider identity to its effective wire protocol so
-	// in-repo consumers (life / agent / mocr) dispatch the right transport even
-	// when a preset name (e.g. "custom") is paired with an explicit format.
 	for i := range snap.Providers {
 		if eff := snap.Providers[i].EffectiveProvider(); eff != snap.Providers[i].Provider {
 			snap.Providers[i].Provider = eff
@@ -140,7 +117,6 @@ func (g *Gateway) handleProviderCredentials(w http.ResponseWriter, r *http.Reque
 	writeErr(w, http.StatusNotFound, "not_found", "provider not found")
 }
 
-// handleProviderDelete DELETE /api/providers/delete?id=… (legacy query form).
 func (g *Gateway) handleProviderDelete(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodDelete) {
 		return
@@ -149,7 +125,6 @@ func (g *Gateway) handleProviderDelete(w http.ResponseWriter, r *http.Request) {
 	g.deleteProvider(w, r.URL.Query().Get("id"))
 }
 
-// handleProviderDeletePath DELETE /api/providers/{id} (REST form).
 func (g *Gateway) handleProviderDeletePath(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodDelete) {
 		return
@@ -173,7 +148,6 @@ func (g *Gateway) deleteProvider(w http.ResponseWriter, id string) {
 	writeJSON(w, http.StatusOK, g.providerStore.Snapshot())
 }
 
-// handleProviderDefaults sets default provider/model for chat.
 func (g *Gateway) handleProviderDefaults(w http.ResponseWriter, r *http.Request) {
 	if g.providerStore == nil {
 		unavailable(w, "provider store not ready")

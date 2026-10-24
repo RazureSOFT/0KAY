@@ -15,9 +15,6 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-// startCore serves a real CoreService over gRPC so the tests exercise the
-// authenticated path (caller identity, service token) rather than calling the
-// handlers directly.
 func startCore(t *testing.T, reg *registry.Registry) (*CoreServiceServer, string) {
 	t.Helper()
 	instance := NewCoreServiceServer(reg, t.TempDir())
@@ -42,14 +39,10 @@ func dialCore(t *testing.T, address string) *grpc.ClientConn {
 	return conn
 }
 
-// tokenCtx presents the service token Core derives for a plugin id. Without it
-// Core answers Unauthenticated, which is the point of the check.
 func tokenCtx(token string) context.Context {
 	return metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
 }
 
-// messagingPlugin registers a plugin with the given messaging permissions and
-// returns its id.
 func messagingPlugin(t *testing.T, reg *registry.Registry, name, address string, perms *pluginv1.PluginMessages) string {
 	t.Helper()
 	id, err := reg.Register(&pluginv1.PluginInfo{
@@ -71,8 +64,6 @@ func inbound(adapter, conversation, text string, wake bool) *pluginv1.InboundMes
 	}
 }
 
-// The whole path in one test: an adapter reports a message, a subscriber
-// receives it, and a gate vetoes the assistant's processing of it.
 func TestMessaging_PublishSubscribeAndGateOverGRPC(t *testing.T) {
 	reg := registry.NewRegistry()
 	reg.SetSecret([]byte("integration-secret"))
@@ -92,14 +83,6 @@ func TestMessaging_PublishSubscribeAndGateOverGRPC(t *testing.T) {
 	_, address := startCore(t, reg)
 	core := corev1.NewCoreServiceClient(dialCore(t, address))
 
-	// A subscriber that declared read access receives the message.
-	//
-	// gRPC's SubscribeMessages returns as soon as the stream object exists, not
-	// when the server handler has registered the subscription, so the first
-	// publish can legitimately land before the subscription is live. replay_last
-	// covers exactly that gap — and once the first delivery has arrived the
-	// subscription is provably live, so the second publish tests live fan-out
-	// without a race.
 	streamCtx, cancel := context.WithCancel(tokenCtx(reg.Token(observerID)))
 	defer cancel()
 	stream, err := core.SubscribeMessages(streamCtx, &corev1.SubscribeMessagesRequest{
@@ -146,8 +129,6 @@ func TestMessaging_PublishSubscribeAndGateOverGRPC(t *testing.T) {
 	if !first.GetAccepted() {
 		t.Fatalf("publish refused: %s", first.GetError())
 	}
-	// The gate denied, so the assistant must not process a message the wake
-	// rule would otherwise have handed it.
 	if first.GetShouldProcess() {
 		t.Fatal("a denying gate must veto the assistant")
 	}
@@ -158,8 +139,6 @@ func TestMessaging_PublishSubscribeAndGateOverGRPC(t *testing.T) {
 		t.Fatalf("unexpected delivery: %+v", message)
 	}
 
-	// Now that the subscription is provably live, the second publish must fan
-	// out synchronously.
 	second, err := core.PublishInboundMessage(tokenCtx(reg.Token(publisherID)),
 		&corev1.PublishInboundMessageRequest{CallerId: "life", Message: inbound("qq-1", "group:1", "world", true)})
 	if err != nil {
@@ -170,7 +149,6 @@ func TestMessaging_PublishSubscribeAndGateOverGRPC(t *testing.T) {
 	}
 	awaitMessage("world")
 
-	// An abstaining gate leaves the publisher's own wake verdict standing.
 	abstaining := &fakeGate{action: "abstain"}
 	messagingPlugin(t, reg, "abstaining-gate", startGate(t, abstaining), &pluginv1.PluginMessages{
 		ReadMode: "all", ReadAdapters: []string{"*"}, Gate: true,
@@ -187,7 +165,6 @@ func TestMessaging_PublishSubscribeAndGateOverGRPC(t *testing.T) {
 	_ = gateID
 }
 
-// An unauthenticated caller must be refused: naming yourself is not identity.
 func TestMessaging_UnauthenticatedCallerIsRefused(t *testing.T) {
 	reg := registry.NewRegistry()
 	reg.SetSecret([]byte("integration-secret"))
@@ -205,8 +182,6 @@ func TestMessaging_UnauthenticatedCallerIsRefused(t *testing.T) {
 	}
 }
 
-// Reporting on an adapter the plugin never claimed is refused, and counted, so
-// a misconfigured manifest is visible rather than silent.
 func TestMessaging_PublishOutsideDeclaredAdaptersIsRefused(t *testing.T) {
 	reg := registry.NewRegistry()
 	reg.SetSecret([]byte("integration-secret"))
@@ -233,8 +208,6 @@ func TestMessaging_PublishOutsideDeclaredAdaptersIsRefused(t *testing.T) {
 	}
 }
 
-// A plugin that declared no read_mode cannot subscribe — declaring nothing must
-// not quietly mean "everything".
 func TestMessaging_SubscribeWithoutReadModeIsDenied(t *testing.T) {
 	reg := registry.NewRegistry()
 	reg.SetSecret([]byte("integration-secret"))
@@ -252,7 +225,6 @@ func TestMessaging_SubscribeWithoutReadModeIsDenied(t *testing.T) {
 	}
 }
 
-// Sending through an adapter outside send_adapters is refused.
 func TestMessaging_SendOutsideDeclaredAdaptersIsRefused(t *testing.T) {
 	reg := registry.NewRegistry()
 	reg.SetSecret([]byte("integration-secret"))
@@ -269,8 +241,6 @@ func TestMessaging_SendOutsideDeclaredAdaptersIsRefused(t *testing.T) {
 	if err != nil {
 		t.Fatalf("send: %v", err)
 	}
-	// The adapter was declared but no plugin has claimed it, so the send cannot
-	// be routed — the refusal must say so rather than silently succeed.
 	if resp.GetSuccess() {
 		t.Fatal("sending through an unclaimed adapter must not report success")
 	}

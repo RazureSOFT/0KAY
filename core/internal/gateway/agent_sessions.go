@@ -18,7 +18,6 @@ func (g *Gateway) handleAgentSessions(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodPatch, http.MethodDelete:
-		// Legacy body-parameter form of DELETE/PATCH /api/agent/sessions/{session_id}.
 		deprecated(w, "/api/agent/sessions/{session_id}")
 		var body struct {
 			SessionID string `json:"session_id"`
@@ -59,10 +58,6 @@ func (g *Gateway) handleAgentSessions(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleAgentSessionItem is the REST form of the session mutations:
-//
-//	PATCH  /api/agent/sessions/{session_id}  {"action":"rename","title":"…"}
-//	DELETE /api/agent/sessions/{session_id}
 func (g *Gateway) handleAgentSessionItem(w http.ResponseWriter, r *http.Request) {
 	if g.localCore == nil {
 		unavailable(w, "core not ready")
@@ -90,9 +85,6 @@ func (g *Gateway) handleAgentSessionItem(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-// handleAgentSessionTurns GET /api/agent/sessions/{session_id}/turns?before=&limit=
-// returns one page of a session's rows (newest first) so the browser can load an
-// old conversation on demand instead of receiving the whole history up front.
 func (g *Gateway) handleAgentSessionTurns(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
@@ -192,12 +184,7 @@ func (g *Gateway) handleAgentMessage(w http.ResponseWriter, r *http.Request) {
 		badRequest(w, "invalid permission mode")
 		return
 	}
-	// Auto-compact (opencode-style): when the live context approaches the
-	// threshold, fold it in the background so up to 120s of summarisation never
-	// blocks the request. Best effort — a failure must not affect the turn.
 	compactNeeded := g.sessionContextTokens(body.SessionID) >= autoCompactTokens()
-	// Carry an earlier /compact summary into this turn: the agent has no
-	// cross-turn memory, so without prepending it the summary would be cosmetic.
 	if summary := g.latestCompactSummary(body.SessionID); summary != "" {
 		body.Prompt = "Summary of earlier context in this session (carry it forward). If you need exact details that were folded away, call session_context_search with keywords and then session_context_decompress with a returned id.\n" + summary + "\n\n---\n\n" + body.Prompt
 	}
@@ -223,8 +210,6 @@ func (g *Gateway) handleAgentMessage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, status, map[string]interface{}{"task_id": response.TaskId, "accepted": response.Accepted, "message": response.Message})
 }
 
-// latestCompactSummary returns the most recent successful /compact summary for
-// a session ("" when none). ListTasks is ordered newest-first.
 func (g *Gateway) latestCompactSummary(sessionID string) string {
 	if g.localCore == nil || sessionID == "" {
 		return ""
@@ -240,8 +225,6 @@ func (g *Gateway) latestCompactSummary(sessionID string) string {
 	return ""
 }
 
-// handleTaskCancel POST /api/tasks/cancel {"task_id": …} — legacy alias for
-// POST /api/tasks/{task_id}/cancel.
 func (g *Gateway) handleTaskCancel(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return
@@ -260,7 +243,6 @@ func (g *Gateway) handleTaskCancel(w http.ResponseWriter, r *http.Request) {
 	g.cancelTask(w, r, body.TaskID)
 }
 
-// handleTaskCancelPath POST /api/tasks/{task_id}/cancel
 func (g *Gateway) handleTaskCancelPath(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return
@@ -282,8 +264,6 @@ func (g *Gateway) cancelTask(w http.ResponseWriter, r *http.Request, taskID stri
 	writeJSON(w, http.StatusOK, map[string]interface{}{"success": response.Success, "message": response.Message})
 }
 
-// handleAgentSessionsFork POST /api/agent/sessions/fork {"session_id":…} — copy
-// a session's completed turns into a new session with an incremented title.
 func (g *Gateway) handleAgentSessionsFork(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return
@@ -310,9 +290,6 @@ func (g *Gateway) handleAgentSessionsFork(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusCreated, map[string]string{"session_id": id})
 }
 
-// handleAgentSessionsSearch GET /api/agent/sessions/search?q=&limit= — literal,
-// case-insensitive search over session titles and turn text. Metadata (title)
-// matches come first, then content matches carry a snippet.
 func (g *Gateway) handleAgentSessionsSearch(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
@@ -373,8 +350,6 @@ func (g *Gateway) handleAgentSessionsSearch(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusOK, map[string]any{"matches": matches})
 }
 
-// snippetAround returns a rune-safe window of text around the first match of
-// query (already lowercased), bracketed with ellipses when trimmed.
 func snippetAround(text, query string) string {
 	lower := strings.ToLower(text)
 	index := strings.Index(lower, query)

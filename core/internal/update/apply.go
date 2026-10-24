@@ -12,8 +12,6 @@ import (
 	"time"
 )
 
-// Package names and versions are interpolated into shell/batch update scripts,
-// so they are restricted to a conservative character set before use.
 var (
 	pmPackagePattern = regexp.MustCompile(`^[@a-zA-Z0-9._/+:-]+$`)
 	pmVersionPattern = regexp.MustCompile(`^[a-zA-Z0-9._+-]+$`)
@@ -22,14 +20,11 @@ var (
 func validPMPackage(pkg string) bool { return pmPackagePattern.MatchString(pkg) }
 func validPMVersion(ver string) bool { return pmVersionPattern.MatchString(ver) }
 
-// Update scripts print these markers so status survives a Core restart
-// (the file, not process memory, is the source of truth).
 const (
 	markerDone   = "__OKAY_DONE__"
 	markerFailed = "__OKAY_FAILED__"
 )
 
-// PackageFor maps a component name to its published 0kay-pm package.
 func PackageFor(plugin string) (string, bool) {
 	switch plugin {
 	case "core":
@@ -52,14 +47,13 @@ func PackageFor(plugin string) (string, bool) {
 	return "", false
 }
 
-// ApplyState is the progress of the most recent update request.
 type ApplyState struct {
 	Plugin  string `json:"plugin"`
 	Package string `json:"package"`
 	Version string `json:"version,omitempty"`
-	Action  string `json:"action,omitempty"` // install|uninstall
-	Mode    string `json:"mode,omitempty"`   // pm|source
-	Status  string `json:"status"`           // idle|running|done|failed
+	Action  string `json:"action,omitempty"`
+	Mode    string `json:"mode,omitempty"`
+	Status  string `json:"status"`
 	Started string `json:"started,omitempty"`
 	Error   string `json:"error,omitempty"`
 	Log     string `json:"log,omitempty"`
@@ -76,7 +70,6 @@ func dataDir() string {
 
 func updatesDir() string { return filepath.Join(dataDir(), "updates") }
 
-// PMCommand resolves the 0kay-pm executable (OKAY_PM_BIN override, else PATH).
 func PMCommand() (string, error) {
 	if value := strings.TrimSpace(os.Getenv("OKAY_PM_BIN")); value != "" {
 		return value, nil
@@ -88,7 +81,6 @@ func PMCommand() (string, error) {
 	return path, nil
 }
 
-// State reports the latest update request by reading the status files.
 func State() ApplyState {
 	dir := updatesDir()
 	raw, err := os.ReadFile(filepath.Join(dir, "apply.json"))
@@ -120,16 +112,10 @@ func State() ApplyState {
 	return state
 }
 
-// Start launches an update for a component as a detached script, so Core can
-// replace and restart itself without killing the updater. Components installed
-// with 0kay-pm use the package manager; a plain source checkout is synced from
-// its git repository and rebuilt instead.
 func Start(plugin, version string) (ApplyState, error) {
 	plugin = strings.TrimSpace(plugin)
 	pkg, known := PackageFor(plugin)
 	if !known {
-		// Unknown ids are accepted only when they are a source-checkout
-		// component or a plugin that 0kay-pm already installed.
 		if _, ok := componentSubdir(plugin); !ok && !pmInstalled(plugin) {
 			return ApplyState{Status: "idle"}, fmt.Errorf("unsupported component %q", plugin)
 		}
@@ -150,21 +136,14 @@ func Start(plugin, version string) (ApplyState, error) {
 	case known && pmInstalled(pkg):
 		return startPM(dir, plugin, pkg, version)
 	case !known && pmInstalled(plugin):
-		// Third-party plugin: the id is its own 0kay-pm package name.
 		return startPM(dir, plugin, plugin, version)
 	case known && pmInstalled(umbrella) && !SourceAvailable():
-		// A 0kay-pm deployment of the platform: there is no git checkout to
-		// sync, so update the umbrella package instead. Reinstalling the
-		// umbrella rebuilds and restarts every platform component, which is
-		// what the beta (sync-repo) channel means for a package install. This
-		// makes beta work for everyone, not only source checkouts.
 		return startPM(dir, plugin, umbrella, version)
 	default:
 		return startSource(dir, plugin, version)
 	}
 }
 
-// startPM runs 0kay-pm stop/update/start (optionally pinned to a release tag).
 func startPM(dir, plugin, pkg, version string) (ApplyState, error) {
 	if !validPMPackage(pkg) {
 		return ApplyState{Status: "idle"}, fmt.Errorf("invalid package name %q", pkg)
@@ -204,7 +183,6 @@ func startPM(dir, plugin, pkg, version string) (ApplyState, error) {
 	return state, nil
 }
 
-// startSource syncs the component's git repository, rebuilds it and restarts it.
 func startSource(dir, plugin, version string) (ApplyState, error) {
 	plan, err := sourcePlanFor(plugin)
 	if err != nil {
@@ -238,7 +216,6 @@ func writeStateFile(dir string, state ApplyState) {
 	_ = os.WriteFile(filepath.Join(dir, "apply.json"), raw, 0o644)
 }
 
-// lastLogLine returns the most recent non-empty line of captured output.
 func lastLogLine(text string) string {
 	lines := strings.Split(text, "\n")
 	for i := len(lines) - 1; i >= 0; i-- {
@@ -249,7 +226,6 @@ func lastLogLine(text string) string {
 	return ""
 }
 
-// sanitizeLog strips the status markers and keeps the tail readable.
 func sanitizeLog(text string) string {
 	lines := strings.Split(text, "\n")
 	kept := make([]string, 0, len(lines))

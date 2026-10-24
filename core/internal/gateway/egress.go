@@ -9,7 +9,6 @@ import (
 	"0kay/core/internal/egress"
 )
 
-// egressRequest is the JSON body of POST /api/net/egress.
 type egressRequest struct {
 	Method    string            `json:"method"`
 	URL       string            `json:"url"`
@@ -18,11 +17,6 @@ type egressRequest struct {
 	TimeoutMS int               `json:"timeout_ms"`
 }
 
-// handleEgress proxies an outbound HTTP request for a plugin, enforcing the
-// plugin's declared `permissions.egress` allow-list. Built-in plugins are
-// exempt. This is the only sanctioned plugin network path.
-//
-//	POST /api/net/egress
 func (g *Gateway) handleEgress(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return
@@ -60,8 +54,6 @@ func (g *Gateway) handleEgress(w http.ResponseWriter, r *http.Request) {
 		Timeout: time.Duration(req.TimeoutMS) * time.Millisecond,
 	}, allowlist)
 	if err != nil {
-		// Mirror CoreService.Egress: a blocked or failed egress is reported in
-		// the payload's error field (status 0) rather than as a transport error.
 		writeJSON(w, http.StatusOK, map[string]any{"status": 0, "error": err.Error()})
 		return
 	}

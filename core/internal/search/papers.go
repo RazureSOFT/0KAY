@@ -10,9 +10,6 @@ import (
 	"strings"
 )
 
-// Papers searches academic literature. arXiv is preferred (fast, open), with
-// Crossref and OpenAlex as fallback/coverage. Results carry authors, year and
-// venue in the snippet so the model can cite them.
 func Papers(ctx context.Context, query string, limit int) ([]Result, []string) {
 	query = strings.TrimSpace(query)
 	if query == "" {
@@ -227,7 +224,6 @@ func fetchOpenAlex(ctx context.Context, query string, limit int) ([]Result, erro
 	return out, nil
 }
 
-// invertedAbstract rebuilds OpenAlex's abstract_inverted_index into text.
 func invertedAbstract(index map[string][]int) string {
 	if len(index) == 0 {
 		return ""

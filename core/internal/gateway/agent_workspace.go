@@ -12,8 +12,6 @@ import (
 )
 
 func (g *Gateway) handleAgentWorkspace(w http.ResponseWriter, r *http.Request) {
-	// GET browses; POST creates a folder — but only on /api/agent/workspace
-	// (/api/agent/host is read-only).
 	if r.Method == http.MethodPost && r.URL.Path != "/api/agent/workspace" {
 		allowMethod(w, r, http.MethodGet)
 		return
@@ -65,8 +63,6 @@ func (g *Gateway) handleAgentWorkspace(w http.ResponseWriter, r *http.Request) {
 	unavailable(w, "selected executor unavailable")
 }
 
-// handleAgentCompact POST /api/agent/compact {session_id, model_id?} — folds the
-// session history into a structured summary (see compactSession).
 func (g *Gateway) handleAgentCompact(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return
@@ -96,13 +92,10 @@ func (g *Gateway) handleAgentCompact(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"summary": summary})
 }
 
-// agentRunDirect proxies one read-only RunDirect tool to a reachable agent.
 func (g *Gateway) agentRunDirect(w http.ResponseWriter, r *http.Request, tool string, args map[string]string) {
 	g.agentRunDirectWithTimeout(w, r, tool, args, 15*time.Second)
 }
 
-// agentRunDirectWithTimeout is agentRunDirect with a caller-chosen deadline
-// (used by document conversion, which can take a while).
 func (g *Gateway) agentRunDirectWithTimeout(w http.ResponseWriter, r *http.Request, tool string, args map[string]string, timeout time.Duration) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
@@ -138,8 +131,6 @@ func (g *Gateway) agentRunDirectWithTimeout(w http.ResponseWriter, r *http.Reque
 	unavailable(w, "selected executor unavailable")
 }
 
-// handleAgentFileConvert GET /api/agent/file/convert?executor_id=&path=&target= —
-// convert a legacy Office file (LibreOffice) for preview, e.g. .doc/.ppt → pdf.
 func (g *Gateway) handleAgentFileConvert(w http.ResponseWriter, r *http.Request) {
 	g.agentRunDirectWithTimeout(w, r, "workspace_convert", map[string]string{
 		"path":   r.URL.Query().Get("path"),
@@ -147,21 +138,14 @@ func (g *Gateway) handleAgentFileConvert(w http.ResponseWriter, r *http.Request)
 	}, 160*time.Second)
 }
 
-// handleAgentFileText GET /api/agent/file/text?executor_id=&path= — best-effort
-// plain-text extraction from a legacy Office file (fallback when conversion is
-// unavailable).
 func (g *Gateway) handleAgentFileText(w http.ResponseWriter, r *http.Request) {
 	g.agentRunDirectWithTimeout(w, r, "workspace_extract_text", map[string]string{"path": r.URL.Query().Get("path")}, 40*time.Second)
 }
 
-// handleAgentTree GET /api/agent/tree?executor_id=&path= — one directory level
-// of the workspace, for the WebUI project-tree window.
 func (g *Gateway) handleAgentTree(w http.ResponseWriter, r *http.Request) {
 	g.agentRunDirect(w, r, "workspace_tree", map[string]string{"path": r.URL.Query().Get("path")})
 }
 
-// handleAgentFile GET /api/agent/file?executor_id=&path=&offset=&limit= — read a
-// workspace text file for preview.
 func (g *Gateway) handleAgentFile(w http.ResponseWriter, r *http.Request) {
 	g.agentRunDirect(w, r, "workspace_read", map[string]string{
 		"path":   r.URL.Query().Get("path"),
@@ -170,14 +154,10 @@ func (g *Gateway) handleAgentFile(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleAgentFileRaw GET /api/agent/file/raw?executor_id=&path= — read a file as
-// base64 (binary-safe) so the WebUI can render PDF/Office/images.
 func (g *Gateway) handleAgentFileRaw(w http.ResponseWriter, r *http.Request) {
 	g.agentRunDirect(w, r, "workspace_read_binary", map[string]string{"path": r.URL.Query().Get("path")})
 }
 
-// runDirectPost forwards a JSON body (minus executor_id) to an agent RunDirect
-// tool. Shared by the terminal console and the editable file preview.
 func (g *Gateway) runDirectPost(w http.ResponseWriter, r *http.Request, tool string, timeout time.Duration) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return
@@ -222,16 +202,10 @@ func (g *Gateway) runDirectPost(w http.ResponseWriter, r *http.Request, tool str
 	unavailable(w, "selected executor unavailable")
 }
 
-// handleAgentFileWrite POST /api/agent/file {executor_id,path,content} — save the
-// WebUI's editable file preview back to the executor.
 func (g *Gateway) handleAgentFileWrite(w http.ResponseWriter, r *http.Request) {
 	g.runDirectPost(w, r, "workspace_write", 30*time.Second)
 }
 
-// handleAgentExec POST /api/agent/exec {executor_id,command,cwd,timeout} — run a
-// shell command on the chosen executor for the WebUI terminal console. It
-// proxies straight to the agent, so the ComputerUse permission is enforced here
-// (RunDirect's gate only covers /api/run).
 func (g *Gateway) handleAgentExec(w http.ResponseWriter, r *http.Request) {
 	if g.localCore != nil && !g.localCore.GetPermissions().ComputerUse {
 		writeErr(w, http.StatusForbidden, "computer_use_disabled", "computer_use permission is disabled")
@@ -240,10 +214,6 @@ func (g *Gateway) handleAgentExec(w http.ResponseWriter, r *http.Request) {
 	g.runDirectPost(w, r, "terminal_exec", 320*time.Second)
 }
 
-// handleAgentPickFolder GET /api/agent/pick-folder?executor_id=&title= — open
-// the executor host's native OS folder dialog and return the chosen path. The
-// request blocks until the user picks or cancels (cancelling returns 400 with
-// {"cancelled":true} in the agent payload).
 func (g *Gateway) handleAgentPickFolder(w http.ResponseWriter, r *http.Request) {
 	g.agentRunDirectWithTimeout(w, r, "workspace_pick", map[string]string{
 		"title": r.URL.Query().Get("title"),

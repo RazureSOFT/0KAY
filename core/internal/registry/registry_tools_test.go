@@ -30,13 +30,12 @@ func TestListToolsAndOwner(t *testing.T) {
 	if len(all) != 3 {
 		t.Fatalf("ListTools(\"\") = %d, want 3", len(all))
 	}
-	// Sorted by name: notes.add, wiki.search, wiki.write
 	if all[0].Tool.Name != "notes.add" {
 		t.Fatalf("expected sorted tools, got %s first", all[0].Tool.Name)
 	}
 
 	agent := r.ListTools("agent")
-	if len(agent) != 2 { // notes.add (no scopes => all) + wiki.search
+	if len(agent) != 2 {
 		t.Fatalf("ListTools(agent) = %d, want 2", len(agent))
 	}
 	for _, tool := range agent {

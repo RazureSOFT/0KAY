@@ -45,7 +45,6 @@ func TestLoadDedupesSameEndpointAndKeepsDefault(t *testing.T) {
 	if len(custom.Models) != 2 {
 		t.Fatalf("models should be unioned, got %v", custom.Models)
 	}
-	// The merged result must be persisted so it does not resurface.
 	persisted := NewStore(path).Snapshot()
 	if len(persisted.Providers) != 2 {
 		t.Fatalf("merged file not persisted, got %d providers", len(persisted.Providers))
@@ -77,7 +76,6 @@ func TestUpsertReusesExistingEndpointRow(t *testing.T) {
 	if got.APIKeyMasked != "" {
 		t.Fatalf("mask must not be persisted, got %q", got.APIKeyMasked)
 	}
-	// The HTTP view must never carry the secret.
 	if snap.Providers[0].APIKey != "" {
 		t.Fatalf("Snapshot leaked api key %q", snap.Providers[0].APIKey)
 	}

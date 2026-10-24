@@ -15,39 +15,19 @@ import (
 	"0kay/core/internal/netguard"
 )
 
-// Image generation is the third leg of the same table as TTS and ASR: Core owns
-// one public endpoint, `/api/image`, and every backend is a plugin that
-// publishes a loopback endpoint into its own settings section. LIFE's "send me a
-// selfie" behaviour talks to this and never learns which engine answered.
-//
-// A section qualifies as an image backend in either of two ways:
-//
-//   - it declares a field named `image_endpoint` — no Core change needed, the
-//     documented way for a new plugin to plug in; or
-//   - its id is listed in imageSections and it publishes `endpoint`.
-//
-// The wire contract to the plugin is OpenAI-compatible
-// (`POST <endpoint> {"prompt": "...", "size": "..."}` → the usual
-// `{"data":[{"b64_json"|"url"}]}` envelope), so DALL·E, a local Stable
-// Diffusion server with an OpenAI shim, or a self-hosted drawer can be pointed at
-// it directly. See docs/image.md.
+// same table as tts and asr: one endpoint, whatever backend you point at it.
 var imageSections = []string{"image", "draw", "sd-webui", "comfyui-openai"}
 
 const (
-	// A selfie, not a print run. 16 MiB of PNG is already a 4K image.
 	imageMaxPromptBytes = 8 << 10
 	imageMaxReplyBytes  = 24 << 20
 )
 
 type imageBackend struct {
 	Endpoint string
-	// Provider is the settings section that supplied the endpoint, or "env".
 	Provider string
 }
 
-// imageConfiguredEndpoint resolves the image backend: the IMAGE_ENDPOINT env
-// var, then any section that declares `image_endpoint`, then a known
-// `endpoint`-style section, then the legacy LIFE value.
 func (g *Gateway) imageConfiguredEndpoint() (imageBackend, bool) {
 	if value := strings.TrimSpace(os.Getenv("IMAGE_ENDPOINT")); value != "" {
 		return imageBackend{Endpoint: value, Provider: "env"}, true
@@ -79,8 +59,6 @@ func (g *Gateway) imageConfiguredEndpoint() (imageBackend, bool) {
 	return imageBackend{}, false
 }
 
-// imageDraw posts a prompt to the configured backend and returns the image bytes
-// plus the content type the browser should render.
 func (g *Gateway) imageDraw(ctx context.Context, prompt, size string) (string, []byte, error) {
 	backend, ok := g.imageConfiguredEndpoint()
 	if !ok {
@@ -119,8 +97,6 @@ func (g *Gateway) imageDraw(ctx context.Context, prompt, size string) (string, [
 	if len(body) > imageMaxReplyBytes {
 		return "", nil, fmt.Errorf("image backend response too large")
 	}
-	// An OpenAI-shaped backend answers with JSON; anything else is treated as
-	// raw image bytes so a dumb local server works too.
 	contentType := resp.Header.Get("Content-Type")
 	if strings.Contains(contentType, "application/json") || strings.HasPrefix(strings.TrimSpace(string(body)), "{") {
 		var envelope struct {
@@ -161,11 +137,6 @@ func decodeBase64Image(encoded string) ([]byte, error) {
 	return raw, nil
 }
 
-// handleImage generates an image and returns the bytes so the browser can show
-// it inline (LIFE's selfie).
-//
-//	POST /api/image {"prompt":"...","size":"1024x1024"} -> image/*
-//	GET  /api/image -> {"configured":true,"provider":"..."}
 func (g *Gateway) handleImage(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		backend, ok := g.imageConfiguredEndpoint()

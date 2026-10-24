@@ -10,11 +10,6 @@ import (
 	"0kay/core/internal/search"
 )
 
-// handleSearch exposes the built-in web search that replaced the standalone
-// SearXNG plugin. Agent and L.I.F.E. call it; the browser can too.
-//
-//	GET  /api/search?q=...&n=10&engine=cnbing
-//	POST /api/search  {"query":"...","n":10,"engine":"bing"}
 func (g *Gateway) handleSearch(w http.ResponseWriter, r *http.Request) {
 	var query, engine string
 	limit := 10
@@ -80,11 +75,8 @@ func (g *Gateway) handleSearch(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// searchFunc is the signature shared by the specialized search backends.
 type searchFunc func(context.Context, string, int) ([]search.Result, []string)
 
-// handleSpecializedSearch parses q/n for one of the specialized backends and
-// writes the same envelope as handleSearch (minus the engine field).
 func (g *Gateway) handleSpecializedSearch(w http.ResponseWriter, r *http.Request, run searchFunc) {
 	var query string
 	limit := 8
@@ -140,12 +132,10 @@ func (g *Gateway) handleSpecializedSearch(w http.ResponseWriter, r *http.Request
 	})
 }
 
-// handlePapersSearch GET/POST /api/search/papers — academic literature.
 func (g *Gateway) handlePapersSearch(w http.ResponseWriter, r *http.Request) {
 	g.handleSpecializedSearch(w, r, search.Papers)
 }
 
-// handleApiDocsSearch GET/POST /api/search/apidocs — API/documentation search.
 func (g *Gateway) handleApiDocsSearch(w http.ResponseWriter, r *http.Request) {
 	g.handleSpecializedSearch(w, r, search.ApiDocs)
 }

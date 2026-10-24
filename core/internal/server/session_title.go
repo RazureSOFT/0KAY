@@ -9,7 +9,6 @@ import (
 	mocrv1 "0kay/gen/mocr/v1"
 )
 
-// newTitleRequest builds a single-turn mocr Generate call for session titling.
 func newTitleRequest(prompt string) *mocrv1.GenerateRequest {
 	return &mocrv1.GenerateRequest{
 		ModelId:   "MOCR",
@@ -21,7 +20,6 @@ func newTitleRequest(prompt string) *mocrv1.GenerateRequest {
 	}
 }
 
-// resolveTitleCredentials fills provider/base/api for Generate (same path as CallMocr).
 func (s *CoreServiceServer) resolveTitleCredentials(req *mocrv1.GenerateRequest) {
 	if s.providerStore == nil {
 		return
@@ -31,9 +29,6 @@ func (s *CoreServiceServer) resolveTitleCredentials(req *mocrv1.GenerateRequest)
 	}
 }
 
-// maybeAutoTitleSession regenerates the session title from the first completed
-// agent turn when the title is still a placeholder or a raw prompt slice.
-// It runs asynchronously so task completion is never blocked on mocr.
 func (s *CoreServiceServer) maybeAutoTitleSession(sessionID string) {
 	if sessionID == "" || !strings.HasPrefix(sessionID, "agent-session:") {
 		return
@@ -60,8 +55,6 @@ func (s *CoreServiceServer) maybeAutoTitleSession(sessionID string) {
 	currentTitle := session.Prompt
 	s.mu.Unlock()
 
-	// Only title after the first successful turn, and only if the title was
-	// never customized away from the creation default / first-message slice.
 	if turns != 1 || firstPrompt == "" {
 		return
 	}
@@ -119,14 +112,11 @@ func (s *CoreServiceServer) maybeAutoTitleSession(sessionID string) {
 	}()
 }
 
-// isPlaceholderSessionTitle reports whether title still looks auto-generated.
 func isPlaceholderSessionTitle(title, firstPrompt string) bool {
 	t := strings.TrimSpace(title)
 	if t == "" || t == "Agent session" || t == "新对话" || t == "New chat" {
 		return true
 	}
-	// Creation path stores message.slice(0,60) — treat short prefixes of the
-	// first user message as placeholders so a real summary can replace them.
 	fp := strings.TrimSpace(firstPrompt)
 	if fp != "" && (t == truncateRunes(fp, 60) || strings.HasPrefix(fp, t)) && len([]rune(t)) <= 60 {
 		return true

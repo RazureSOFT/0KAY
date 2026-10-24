@@ -11,12 +11,6 @@ import (
 	agentv1 "0kay/gen/agent/v1"
 )
 
-// handleAgentApprovals backs both
-//
-//	GET|POST /api/agent/approvals  (decide via {"allow":bool})
-//	GET|POST /api/agent/questions  (answer via {"answer":string})
-//
-// GET /api/agent/inbox is served by handleAgentInbox, which merges the two.
 func (g *Gateway) handleAgentApprovals(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet, http.MethodPost) {
 		return
@@ -63,10 +57,6 @@ func (g *Gateway) handleAgentApprovals(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"approvals": items})
 }
 
-// handleAgentInbox GET /api/agent/inbox — one round trip for everything the
-// global inbox renders, so the UI no longer fans out into N requests.
-//
-//	{ "approvals": [...], "questions": [...] }
 func (g *Gateway) handleAgentInbox(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
@@ -87,9 +77,6 @@ func (g *Gateway) handleAgentInbox(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// agentError carries the HTTP status a collectAgentItems failure must map to,
-// so a decision that was rejected by the executor (409) stays distinguishable
-// from a transport failure (502) and from "no executor answered" (503).
 type agentError struct {
 	status int
 	code   string
@@ -99,11 +86,8 @@ type agentError struct {
 func (e *agentError) Error() string { return e.err.Error() }
 func (e *agentError) Unwrap() error { return e.err }
 
-// errNoExecutor means no reachable agent handled the decision.
 var errNoExecutor = errors.New("executor unavailable")
 
-// writeAgentErr renders a collectAgentItems failure with its original status.
-// Anything untyped is treated as an upstream transport failure.
 func writeAgentErr(w http.ResponseWriter, err error) {
 	var agentErr *agentError
 	if errors.As(err, &agentErr) {
@@ -113,10 +97,6 @@ func writeAgentErr(w http.ResponseWriter, err error) {
 	upstreamError(w, err.Error())
 }
 
-// collectAgentItems fans a RunDirect tool call out to every reachable agent.
-// decide is nil for reads; when set it returns the (tool, args, proceed) to use
-// instead of the read tool. A non-nil error means at least one executor failed;
-// it is an *agentError carrying the status the response must use.
 func (g *Gateway) collectAgentItems(
 	r *http.Request,
 	executorID string,
@@ -152,8 +132,6 @@ func (g *Gateway) collectAgentItems(
 		}
 		if decide != nil {
 			if !result.Success {
-				// The executor rejected the decision (already decided, expired,
-				// unknown id): permanent, not a transport failure.
 				return nil, &agentError{
 					status: http.StatusConflict,
 					code:   "conflict",

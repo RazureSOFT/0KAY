@@ -48,9 +48,6 @@ func TestLive2DResourcesMustExist(t *testing.T) {
 	}
 }
 
-// live2dUploadRequest builds a multipart POST like the browser folder picker:
-// file parts with basename filenames plus a paths field of webkitRelativePath
-// values aligned by index.
 func live2dUploadRequest(t *testing.T, paths []string, contents map[string][]byte) *http.Request {
 	t.Helper()
 	var buf bytes.Buffer
@@ -84,9 +81,6 @@ func mustJSON(t *testing.T, v interface{}) []byte {
 	return data
 }
 
-// Model folders often keep stale manifests whose referenced resources were
-// renamed away; the upload must still succeed when any uploaded manifest is
-// fully self-consistent.
 func TestHandleLive2DUploadPicksValidManifest(t *testing.T) {
 	t.Setenv("LIVE2D_DIR", t.TempDir())
 	g := &Gateway{}

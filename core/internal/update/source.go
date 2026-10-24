@@ -9,19 +9,17 @@ import (
 	"strings"
 )
 
-// sourcePlan describes a git-based (non-pm) update for one component.
 type sourcePlan struct {
 	Name    string
 	Package string
-	RepoDir string // git repository to pull
-	Dir     string // component directory (build/start cwd)
-	Port    int    // restart: kill whoever listens here (0 = skip)
+	RepoDir string
+	Dir     string
+	Port    int
 	Build   [][]string
 	Start   []string
 	Env     map[string]string
 }
 
-// componentSubdir maps a plugin name to its directory inside the source tree.
 func componentSubdir(plugin string) (string, bool) {
 	switch plugin {
 	case "core", "mocr", "life", "agent", "webui", "mcp", "minecraft", "pm":
@@ -30,7 +28,6 @@ func componentSubdir(plugin string) (string, bool) {
 	return "", false
 }
 
-// componentPort is the listen port used to find + restart a running component.
 func componentPort(plugin string) int {
 	switch plugin {
 	case "core":
@@ -49,7 +46,6 @@ func componentPort(plugin string) int {
 	return 0
 }
 
-// pmStatePath locates 0kay-pm's state file (OKAY_PM_HOME override, else ~/.0kay).
 func pmStatePath() string {
 	home := strings.TrimSpace(os.Getenv("OKAY_PM_HOME"))
 	if home == "" {
@@ -62,7 +58,6 @@ func pmStatePath() string {
 	return filepath.Join(home, "state.json")
 }
 
-// pmInstalledPackages returns the set of package names recorded by 0kay-pm.
 func pmInstalledPackages() map[string]bool {
 	path := pmStatePath()
 	if path == "" {
@@ -85,23 +80,17 @@ func pmInstalledPackages() map[string]bool {
 	return set
 }
 
-// pmInstalled reports whether 0kay-pm has a record for the package.
 func pmInstalled(pkg string) bool {
 	return pmInstalledPackages()[pkg]
 }
 
-// InstalledPlugin is a package recorded by 0kay-pm, with its source repository
-// so callers can match by name even when a manifest is unavailable.
 type InstalledPlugin struct {
 	Name       string `json:"name"`
 	Version    string `json:"version,omitempty"`
 	Repository string `json:"repository,omitempty"`
-	// Source is "pm" (removable) or "platform" (part of the 0KAY platform).
-	Source string `json:"source,omitempty"`
+	Source     string `json:"source,omitempty"`
 }
 
-// platformComponents maps published platform packages to their directory inside
-// a source checkout ("." is the umbrella root) and their source repository.
 var platformComponents = map[string]struct {
 	Dir        string
 	Repository string
@@ -117,7 +106,6 @@ var platformComponents = map[string]struct {
 	"@razuresoft/0kay-minecraft": {"minecraft", "https://github.com/razureink/0KAY-minecraft.git"},
 }
 
-// pmInstalledPluginList lists packages recorded by 0kay-pm.
 func pmInstalledPluginList() []InstalledPlugin {
 	path := pmStatePath()
 	if path == "" {
@@ -146,10 +134,6 @@ func pmInstalledPluginList() []InstalledPlugin {
 		if repository == "" {
 			repository = packageRepository(record.RepositoryRoot)
 		}
-		// The on-disk manifest is authoritative: a package can be rebuilt or
-		// republished without 0kay-pm rewriting its installed record, which
-		// would otherwise leave the About page showing a stale version (or
-		// reporting a downgrade as an update).
 		version := packageVersion(record.RepositoryRoot)
 		if version == "" {
 			version = record.Version
@@ -159,8 +143,6 @@ func pmInstalledPluginList() []InstalledPlugin {
 	return out
 }
 
-// packageRepository resolves a repository URL from an installed package's
-// manifest.json or package.json when 0kay-pm recorded none (source installs).
 func packageRepository(root string) string {
 	if strings.TrimSpace(root) == "" {
 		return ""
@@ -190,8 +172,6 @@ func packageRepository(root string) string {
 	return ""
 }
 
-// packageVersion reads the version from a component directory's manifest.json
-// or package.json (whichever is present).
 func packageVersion(dir string) string {
 	if strings.TrimSpace(dir) == "" {
 		return ""
@@ -214,10 +194,6 @@ func packageVersion(dir string) string {
 	return ""
 }
 
-// ComponentForPackage maps an installed 0kay-pm package to the component id used
-// for updates: platform packages map to their directory name, third-party
-// plugins keep their package name. The umbrella package (directory ".") has no
-// standalone update row and reports false.
 func ComponentForPackage(pkg string) (string, bool) {
 	if component, ok := platformComponents[pkg]; ok {
 		if component.Dir == "." {
@@ -231,9 +207,6 @@ func ComponentForPackage(pkg string) (string, bool) {
 	return pkg, true
 }
 
-// CanUpdate reports whether the About page can update a component: it is a
-// published platform package, a component in the source checkout, or a plugin
-// installed through 0kay-pm.
 func CanUpdate(name string) bool {
 	if _, ok := PackageFor(name); ok {
 		return true
@@ -244,8 +217,6 @@ func CanUpdate(name string) bool {
 	return pmInstalled(name)
 }
 
-// RepositoryURL resolves the git repository backing a component id, preferring
-// the platform manifest and falling back to the installed-plugin records.
 func RepositoryURL(name string) (string, bool) {
 	if pkg, ok := PackageFor(name); ok {
 		if component, found := platformComponents[pkg]; found && strings.TrimSpace(component.Repository) != "" {
@@ -263,8 +234,6 @@ func RepositoryURL(name string) (string, bool) {
 	return "", false
 }
 
-// gitRemoteURL reads the origin remote URL from a checkout's .git/config so
-// packages installed from a source checkout still expose a repository link.
 func gitRemoteURL(dir string) string {
 	if strings.TrimSpace(dir) == "" {
 		return ""
@@ -293,9 +262,6 @@ func gitRemoteURL(dir string) string {
 	return ""
 }
 
-// sourceInstalledPluginList reports platform packages present in the local
-// source checkout, so components run from a git checkout read as installed
-// even though 0kay-pm has no record for them.
 func sourceInstalledPluginList() []InstalledPlugin {
 	root, err := sourceRoot()
 	if err != nil {
@@ -314,8 +280,6 @@ func sourceInstalledPluginList() []InstalledPlugin {
 	return out
 }
 
-// InstalledPlugins lists installed packages (0kay-pm records plus platform
-// components found in the source tree), sorted by name.
 func InstalledPlugins() []InstalledPlugin {
 	merged := map[string]InstalledPlugin{}
 	for _, plugin := range pmInstalledPluginList() {
@@ -326,7 +290,6 @@ func InstalledPlugins() []InstalledPlugin {
 			merged[plugin.Name] = plugin
 		}
 	}
-	// Platform packages are never removable, even if 0kay-pm has a record.
 	for name, component := range platformComponents {
 		if plugin, ok := merged[name]; ok {
 			plugin.Source = "platform"
@@ -344,9 +307,6 @@ func InstalledPlugins() []InstalledPlugin {
 	return out
 }
 
-// sourceRoot locates the umbrella checkout (OKAY_SOURCE_ROOT or by walking up
-// from the running executable until a git repository with an umbrella marker is
-// found).
 func sourceRoot() (string, error) {
 	if value := strings.TrimSpace(os.Getenv("OKAY_SOURCE_ROOT")); value != "" && dirExists(value) {
 		return value, nil
@@ -369,17 +329,11 @@ func sourceRoot() (string, error) {
 	return "", fmt.Errorf("source root not found: run 0KAY from a git checkout or set OKAY_SOURCE_ROOT")
 }
 
-// SourceAvailable reports whether Core runs from a source checkout whose
-// components can be synced with git. The About page uses it to decide whether
-// the beta (sync-from-repo) update is offered.
 func SourceAvailable() bool {
 	_, err := sourceRoot()
 	return err == nil
 }
 
-// isUmbrellaRoot reports whether dir is the umbrella checkout root: a git
-// repository that also carries an umbrella marker. It stays compatible with
-// linked worktrees and submodules, where ".git" is a file, not a directory.
 func isUmbrellaRoot(dir string) bool {
 	if !gitMarkerExists(dir) {
 		return false
@@ -392,8 +346,6 @@ func isUmbrellaRoot(dir string) bool {
 	return false
 }
 
-// gitMarkerExists accepts both a ".git" directory (normal clone) and a ".git"
-// file (linked worktree or submodule).
 func gitMarkerExists(dir string) bool {
 	_, err := os.Stat(filepath.Join(dir, ".git"))
 	return err == nil
@@ -409,7 +361,6 @@ func dirExists(path string) bool {
 	return err == nil && info.IsDir()
 }
 
-// gitRepoFor returns the closest ancestor directory containing .git.
 func gitRepoFor(dir string) string {
 	current := dir
 	for i := 0; i < 8; i++ {
@@ -443,8 +394,6 @@ func loadSourceManifest(dir string) (*sourceManifest, error) {
 	return &manifest, nil
 }
 
-// isDependencyStep reports install steps that only fetch dependencies; a source
-// checkout already has them, and re-running them can disrupt live processes.
 func isDependencyStep(cmd []string) bool {
 	if len(cmd) < 2 {
 		return false
@@ -462,7 +411,6 @@ func isDependencyStep(cmd []string) bool {
 	return false
 }
 
-// sourcePlanFor builds the git update plan for a component.
 func sourcePlanFor(plugin string) (*sourcePlan, error) {
 	subdir, ok := componentSubdir(plugin)
 	if !ok {
@@ -484,8 +432,6 @@ func sourcePlanFor(plugin string) (*sourcePlan, error) {
 		Env:     map[string]string{},
 	}
 	if plugin == "pm" {
-		// 0kay-pm ships as a plain ESM script with no manifest and no build
-		// step, so syncing its checkout is the whole update.
 		plan.Package, _ = PackageFor(plugin)
 		return plan, nil
 	}

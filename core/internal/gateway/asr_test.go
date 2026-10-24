@@ -13,8 +13,6 @@ import (
 	"0kay/core/internal/settings"
 )
 
-// asrTestGateway builds a Gateway whose settings store holds one ASR plugin
-// section, which is all the resolver looks at.
 func asrTestGateway(t *testing.T, id, endpoint string) *Gateway {
 	t.Helper()
 	store := settings.NewStore("")
@@ -75,8 +73,6 @@ func TestASRStatusReportsUnconfigured(t *testing.T) {
 }
 
 func TestASRResolvesExplicitSectionWithoutCoreChanges(t *testing.T) {
-	// The documented plugin contract: declare `asr_endpoint`, publish a value,
-	// and Core finds it even though the section id is unknown to asrSections.
 	g := asrTestGateway(t, "my-speech-plugin", "http://127.0.0.1:9001/v1/audio/transcriptions")
 	backend, ok := g.asrConfiguredEndpoint()
 	if !ok {
@@ -202,12 +198,9 @@ func TestASRRejectsEmptyAndOversizedAudio(t *testing.T) {
 		t.Fatalf("empty audio status = %d", w.Code)
 	}
 
-	// The field name `file` is accepted too, so a client can reuse one form.
 	req := asrMultipart(t, "file", "chunk.webm", "abc", nil)
 	w = httptest.NewRecorder()
 	g.handleASR(w, req)
-	// Unreachable backend (nothing listens on 9001 in the test): a bad gateway,
-	// not a parse error, proves the upload itself was accepted.
 	if w.Code != http.StatusBadGateway {
 		t.Fatalf("file-field status = %d, body = %s", w.Code, w.Body.String())
 	}

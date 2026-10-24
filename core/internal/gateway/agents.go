@@ -7,7 +7,6 @@ import (
 	corev1 "0kay/gen/core/v1"
 )
 
-// AgentInfo is the JSON shape for an agent in API responses.
 type AgentInfo struct {
 	PluginID            string         `json:"plugin_id"`
 	Name                string         `json:"name"`
@@ -20,13 +19,11 @@ type AgentInfo struct {
 	MissingDependencies []string       `json:"missing_dependencies"`
 }
 
-// AgentsResponse is the response for /api/agents.
 type AgentsResponse struct {
 	Agents      []AgentInfo `json:"agents"`
 	OnlineCount int         `json:"online_count"`
 }
 
-// handleAgents returns the list of registered Agent plugins.
 func (g *Gateway) handleAgents(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
@@ -69,5 +66,4 @@ func (g *Gateway) handleAgents(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ensure registry import is used
 var _ = corev1.PluginStatus_PLUGIN_STATUS_HEALTHY

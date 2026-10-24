@@ -13,8 +13,6 @@ import (
 	"0kay/core/internal/version"
 )
 
-// Update checks hit GitHub, so results are cached briefly and a batch of plugin
-// checks is bounded in both concurrency and total time.
 const (
 	updateCacheTTL      = 5 * time.Minute
 	updateErrorTTL      = 30 * time.Second
@@ -38,8 +36,6 @@ var (
 	releaseCache   = map[string]cachedRelease{}
 )
 
-// latestCached returns the newest release for owner/repo, reusing a recent
-// result so repeated checks (and repeated plugin rows) do not each hit GitHub.
 func latestCached(ctx context.Context, owner, repo string) (*update.Release, error) {
 	key := owner + "/" + repo
 	releaseCacheMu.Lock()
@@ -55,7 +51,6 @@ func latestCached(ctx context.Context, owner, repo string) (*update.Release, err
 	}
 	releaseCacheMu.Unlock()
 	release, err := update.LatestContext(ctx, owner, repo)
-	// Do not cache our own deadline/cancellation: the next request should retry.
 	if ctx.Err() == nil {
 		releaseCacheMu.Lock()
 		releaseCache[key] = cachedRelease{release: release, err: err, at: time.Now()}
@@ -110,7 +105,6 @@ func (g *Gateway) handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
-// handleUpdateApply starts a stop -> update -> start run for one component.
 func (g *Gateway) handleUpdateApply(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return
@@ -138,7 +132,6 @@ func (g *Gateway) handleUpdateApply(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusAccepted, state)
 }
 
-// handleUpdateStatus reports the latest update request.
 func (g *Gateway) handleUpdateStatus(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
@@ -156,10 +149,6 @@ func (g *Gateway) handleUpdateCheckPlugins(w http.ResponseWriter, r *http.Reques
 	seen := map[string]bool{}
 	components := []component{}
 
-	// add records one updatable component exactly once. Every installed
-	// component is listed (registered plugins AND packages found in the source
-	// checkout or installed through 0kay-pm), so the About page can update the
-	// whole platform, not just services that happen to be running.
 	add := func(name, version, pkg, repository string) {
 		if name == "" || seen[name] {
 			return
@@ -188,8 +177,6 @@ func (g *Gateway) handleUpdateCheckPlugins(w http.ResponseWriter, r *http.Reques
 		add(name, plugin.Version, pkg, plugin.Repository)
 	}
 
-	// Resolve each distinct repository once, with bounded concurrency and a
-	// single overall deadline so the fan-out cannot take minutes.
 	type slug struct{ owner, repo string }
 	unique := map[string]slug{}
 	for _, c := range components {
@@ -238,7 +225,6 @@ func (g *Gateway) handleUpdateCheckPlugins(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, map[string]any{"plugins": result})
 }
 
-// githubSlug extracts owner/repo from a github.com repository URL.
 func githubSlug(url string) (owner, repo string, ok bool) {
 	url = strings.TrimSuffix(strings.TrimSpace(url), ".git")
 	const prefix = "https://github.com/"

@@ -9,12 +9,6 @@ import (
 	corev1 "0kay/gen/core/v1"
 )
 
-// handleSkills proxies Agent skill administration via RunDirect (no LLM):
-//
-//	GET    /api/skills              → { dir, skills: [{name,description,tags,source}] }
-//	POST   /api/skills              → { name, content } save/overwrite
-//	DELETE /api/skills?name=…       → delete a file-backed skill (legacy alias)
-//	DELETE /api/skills/{name...}    → delete a file-backed skill
 func (g *Gateway) handleSkills(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet, http.MethodPost, http.MethodDelete) {
 		return
@@ -68,8 +62,6 @@ func (g *Gateway) handleSkills(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadGateway, "upstream_error", err.Error())
 		return
 	}
-	// A failed delete is a real error, so it uses the canonical envelope
-	// (docs/HTTP_API.md) instead of a 404 carrying a success-shaped body.
 	if !resp.Success && action == "delete" {
 		message := resp.Error
 		if message == "" {

@@ -7,15 +7,11 @@ import (
 	"time"
 )
 
-// source is one queryable backend (engine or API).
 type source struct {
 	name  string
 	fetch func(context.Context, string, int) ([]Result, error)
 }
 
-// runSources queries several sources concurrently and merges the results,
-// biased to the first source. It stops as soon as the first source has settled
-// and enough results are collected, otherwise at overallBudget.
 func runSources(ctx context.Context, query string, limit int, sources []source) ([]Result, []string) {
 	if len(sources) == 0 {
 		return []Result{}, nil

@@ -58,7 +58,6 @@ func TestPINSeedsFromEnv(t *testing.T) {
 
 func TestUpgradeLeavesPINUnset(t *testing.T) {
 	dir := t.TempDir()
-	// An existing install (paired devices present) with no security.json.
 	if err := os.WriteFile(filepath.Join(dir, "paired_devices.json"), []byte(`{"ID":"x","Devices":{}}`), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -133,9 +132,6 @@ func TestSensitiveGate(t *testing.T) {
 	}
 }
 
-// Node's undici fetch (the agent and plugin proxies) always sends
-// "Sec-Fetch-Mode: cors" without any real browser signals, so it must stay
-// exempt; genuine browser metadata still has to face the PIN.
 func TestNodeFetchIsNotABrowser(t *testing.T) {
 	s, err := New(t.TempDir())
 	if err != nil {
@@ -160,8 +156,6 @@ func TestNodeFetchIsNotABrowser(t *testing.T) {
 	if code := call("Sec-Fetch-Mode", "cors"); code != http.StatusOK {
 		t.Fatalf("undici-style loopback request = %d, want 200", code)
 	}
-	// A browser tab with no session is stopped at the door (401) — it cannot
-	// even reach the sensitive-action check, let alone dismiss past it.
 	for _, header := range []string{"Sec-Fetch-Site", "Origin", "Referer"} {
 		if code := call(header, "http://localhost:3000/"); code != http.StatusUnauthorized {
 			t.Fatalf("browser %s = %d, want 401", header, code)
@@ -171,8 +165,6 @@ func TestNodeFetchIsNotABrowser(t *testing.T) {
 
 func boolPtr(value bool) *bool { return &value }
 
-// Turning the PIN off keeps it stored but stops every challenge; the page scope
-// is a WebUI guard only and must not relax the sensitive-action check.
 func TestPINSwitchAndPageScope(t *testing.T) {
 	s, err := New(t.TempDir())
 	if err != nil {
@@ -183,8 +175,6 @@ func TestPINSwitchAndPageScope(t *testing.T) {
 	}
 	handler := s.HTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
 
-	// A browser tab first signs in with the PIN, then keeps the session cookie
-	// the way the WebUI does.
 	login := httptest.NewRequest(http.MethodPost, "/api/auth/session", strings.NewReader(`{"pin":"424242"}`))
 	login.RemoteAddr = "127.0.0.1:50000"
 	login.Header.Set("Referer", "http://localhost:3000/")
@@ -228,9 +218,6 @@ func TestPINSwitchAndPageScope(t *testing.T) {
 	if err := s.SetSecurityPrefs(boolPtr(true), nil, &[]string{"/settings"}); err != nil {
 		t.Fatal(err)
 	}
-	// X-0kay-Page is client-asserted: neither dropping it nor claiming an
-	// unscoped route may relax the sensitive-action gate. Only a real PIN (or a
-	// machine credential) does.
 	if code := call(""); code != http.StatusForbidden {
 		t.Fatalf("missing page header = %d, want 403", code)
 	}
@@ -256,10 +243,6 @@ func TestPINSwitchAndPageScope(t *testing.T) {
 	}
 }
 
-// Regression: a browser holding a session cookie but no PIN must not reach a
-// sensitive action by forging X-0kay-Page. The header is client-asserted, so an
-// attacker on a shared, unlocked browser can set it to any route they like —
-// including one the owner left unscoped. Only a real PIN may satisfy the gate.
 func TestForgedPageHeaderCannotBypassPin(t *testing.T) {
 	s, err := New(t.TempDir())
 	if err != nil {
@@ -273,7 +256,6 @@ func TestForgedPageHeaderCannotBypassPin(t *testing.T) {
 	}
 	handler := s.HTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
 
-	// Session cookie only: the owner signed in once, this tab never saw the PIN.
 	login := httptest.NewRequest(http.MethodPost, "/api/auth/session", strings.NewReader(`{"pin":"424242"}`))
 	login.RemoteAddr = "127.0.0.1:50000"
 	login.Header.Set("Referer", "http://localhost:3000/")
@@ -313,8 +295,6 @@ func TestForgedPageHeaderCannotBypassPin(t *testing.T) {
 	}
 }
 
-// "Not now" on the sign-in overlay must not hand over the API: a browser tab on
-// loopback still has to prove the PIN. Machine clients stay exempt.
 func TestBrowserNeedsSessionWhenPINSet(t *testing.T) {
 	s, err := New(t.TempDir())
 	if err != nil {
@@ -358,11 +338,9 @@ func TestBrowserNeedsSessionWhenPINSet(t *testing.T) {
 		t.Fatalf("browser with a session = %d, want 200", code)
 	}
 
-	// LIFE / agent / scripts send no browser metadata and stay trusted.
 	if code := browser(nil, false); code != http.StatusOK {
 		t.Fatalf("machine client = %d, want 200", code)
 	}
-	// Switching the PIN off reopens loopback for browsers, as the owner asked.
 	if err := s.SetSecurityPrefs(boolPtr(false), nil, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -371,7 +349,6 @@ func TestBrowserNeedsSessionWhenPINSet(t *testing.T) {
 	}
 }
 
-// Turning the login gate off opens the API to callers that have no credential.
 func TestLoginSwitchOff(t *testing.T) {
 	s, err := New(t.TempDir())
 	if err != nil {
@@ -404,7 +381,6 @@ func TestLoginSwitchOff(t *testing.T) {
 	}
 }
 
-// A remote host must not be able to brute-force the 6-digit PIN.
 func TestPINBruteForceLockout(t *testing.T) {
 	s, err := New(t.TempDir())
 	if err != nil {
@@ -430,9 +406,6 @@ func TestPINBruteForceLockout(t *testing.T) {
 	}
 }
 
-// Reading settings must not ask for the PIN: the WebUI loads all sections on
-// most pages, so gating reads made the browser prompt on every navigation.
-// Fetching the values needs a session; changing them still needs the PIN.
 func TestSettingsReadsAreNotPINGated(t *testing.T) {
 	s, err := New(t.TempDir())
 	if err != nil {
@@ -474,9 +447,6 @@ func TestSettingsReadsAreNotPINGated(t *testing.T) {
 	}
 }
 
-// A request that carries both an invalid new PIN and a switch change must be
-// rejected atomically: reporting 400 while still persisting the switch is a
-// silent partial write (the probe that found it used {"pin":"bad","enabled":false}).
 func TestInvalidPinLeavesSwitchesUntouched(t *testing.T) {
 	s, err := New(t.TempDir())
 	if err != nil {
@@ -501,9 +471,6 @@ func TestInvalidPinLeavesSwitchesUntouched(t *testing.T) {
 	}
 }
 
-// Clearing the PIN removes the global second factor, so a paired-device/API
-// session must re-prove the current PIN; a trusted peer (loopback) may still
-// clear it without one, which is what the WebUI's body-less clearPin relies on.
 func TestClearPinRequiresCurrentPin(t *testing.T) {
 	s, err := New(t.TempDir())
 	if err != nil {
@@ -561,8 +528,6 @@ func TestClearPinRequiresCurrentPin(t *testing.T) {
 	}
 }
 
-// The sign-in gate may not be opened to the whole LAN without an explicit
-// opt-in, since that exposes the API to every host on the network.
 func TestLoginGateCannotBeOpenedInLANMode(t *testing.T) {
 	s, err := New(t.TempDir())
 	if err != nil {
@@ -594,9 +559,6 @@ func TestLoginGateCannotBeOpenedInLANMode(t *testing.T) {
 	}
 }
 
-// A security.json written by the old single-SHA-256 format must keep working,
-// and the weak record must be re-hashed with the current scheme as soon as its
-// PIN verifies once.
 func TestLegacyPINHashMigratesOnVerify(t *testing.T) {
 	dir := t.TempDir()
 	salt := []byte("0123456789abcdef")
@@ -623,7 +585,6 @@ func TestLegacyPINHashMigratesOnVerify(t *testing.T) {
 		t.Fatal("wrong PIN accepted against legacy record")
 	}
 
-	// The successful verification must have replaced the stored format.
 	raw, err := os.ReadFile(filepath.Join(dir, "security.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -639,7 +600,6 @@ func TestLegacyPINHashMigratesOnVerify(t *testing.T) {
 		t.Fatal("weak legacy hash was left on disk")
 	}
 
-	// The migrated record keeps authenticating, including after a reload.
 	if !s.PinValid("424242") {
 		t.Fatal("PIN rejected after in-place migration")
 	}
@@ -655,8 +615,6 @@ func TestLegacyPINHashMigratesOnVerify(t *testing.T) {
 	}
 }
 
-// A failed legacy verification must leave the legacy record untouched so the
-// owner can still sign in later.
 func TestLegacyPINHashNotMigratedOnFailure(t *testing.T) {
 	dir := t.TempDir()
 	salt := []byte("0123456789abcdef")
@@ -683,9 +641,6 @@ func TestLegacyPINHashNotMigratedOnFailure(t *testing.T) {
 	}
 }
 
-// Bad X-0kay-Pin attempts must count against the same per-host lockout as the
-// login endpoints, or the header becomes a brute-force channel that bypasses
-// POST /api/auth/session rate limiting.
 func TestPINHeaderBruteForceLockout(t *testing.T) {
 	s, err := New(t.TempDir())
 	if err != nil {
@@ -696,8 +651,6 @@ func TestPINHeaderBruteForceLockout(t *testing.T) {
 	}
 	handler := s.HTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
 
-	// Sign in once so the request reaches the sensitive-action check the way a
-	// browser tab does (session cookie + browser metadata).
 	login := httptest.NewRequest(http.MethodPost, "/api/auth/session", strings.NewReader(`{"pin":"424242"}`))
 	login.RemoteAddr = "203.0.113.9:5000"
 	lw := httptest.NewRecorder()
@@ -727,11 +680,9 @@ func TestPINHeaderBruteForceLockout(t *testing.T) {
 			t.Fatalf("bad attempt %d = %d, want 403", i, code)
 		}
 	}
-	// The fifth attempt spends the failure budget and is told to back off.
 	if code := call("000000"); code != http.StatusTooManyRequests {
 		t.Fatalf("final bad attempt = %d, want 429", code)
 	}
-	// Locked out: even the correct PIN is refused until the window expires.
 	if code := call("424242"); code != http.StatusTooManyRequests {
 		t.Fatalf("correct header PIN after lockout = %d, want 429", code)
 	}

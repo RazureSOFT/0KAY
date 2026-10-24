@@ -12,8 +12,6 @@ import (
 	agentv1 "0kay/gen/agent/v1"
 )
 
-// agentFrameResult is the JSON shape the agent returns for both
-// computeruse_status and computeruse_frame. Core only needs a few fields.
 type computerUseFrame struct {
 	Running bool   `json:"running"`
 	Enabled bool   `json:"enabled"`
@@ -22,9 +20,6 @@ type computerUseFrame struct {
 	At      int64  `json:"at"`
 }
 
-// handleAgentComputerUse GET /api/agent/computeruse?executor_id=… — reports
-// whether the selected agent has computer-use enabled (computeruse_status
-// direct tool) so the WebUI can decide between a live view and a placeholder.
 func (g *Gateway) handleAgentComputerUse(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
@@ -56,10 +51,6 @@ func (g *Gateway) handleAgentComputerUse(w http.ResponseWriter, r *http.Request)
 	unavailable(w, "selected executor unavailable")
 }
 
-// handleAgentComputerUseStream GET /api/agent/computeruse/stream — a live MJPEG
-// view of the agent host's desktop for the WebUI's "AI is using the computer"
-// window. Core polls the agent's computeruse_frame direct tool and re-emits each
-// capture as multipart/x-mixed-replace so an <img> shows a near-live view.
 func (g *Gateway) handleAgentComputerUseStream(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
@@ -107,10 +98,8 @@ func (g *Gateway) handleAgentComputerUseStream(w http.ResponseWriter, r *http.Re
 		var payload computerUseFrame
 		if result.Success && result.Result != "" && json.Unmarshal([]byte(result.Result), &payload) == nil {
 			if !payload.Running {
-				break // computer use disabled/unsupported; end so the client shows a fallback
+				break
 			}
-			// A screen changes on its own; throttle to one frame per capture. The
-			// timestamp dedupes duplicate polls while a capture is in flight.
 			if payload.Image != "" && payload.At != 0 && payload.At != lastAt {
 				lastAt = payload.At
 				if raw, derr := base64.StdEncoding.DecodeString(payload.Image); derr == nil && len(raw) > 0 {

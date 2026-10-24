@@ -9,9 +9,6 @@ import (
 	pluginv1 "0kay/gen/plugin/v1"
 )
 
-// TestPluginProxyInjectsServiceToken checks that Core forwards to the plugin's
-// registered HTTP address and authenticates the hop with the token it issued the
-// plugin, so the browser never handles the secret.
 func TestPluginProxyInjectsServiceToken(t *testing.T) {
 	var gotAuth, gotPath string
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -47,9 +44,6 @@ func TestPluginProxyInjectsServiceToken(t *testing.T) {
 	}
 }
 
-// TestPluginProxyRejectsUnknownAndNonHTTP guards the two ways the route must not
-// become an SSRF: an unregistered name, and a plugin whose address is not HTTP
-// (life/agent/mocr register gRPC addresses like "127.0.0.1:50053").
 func TestPluginProxyRejectsUnknownAndNonHTTP(t *testing.T) {
 	reg := registry.NewRegistry()
 	reg.SetSecret([]byte("s"))

@@ -17,40 +17,18 @@ import (
 	"0kay/core/internal/netguard"
 )
 
-// Speech-to-text is the mirror image of TTS: Core owns one public endpoint,
-// `/api/asr`, and every backend is a plugin that publishes a loopback endpoint
-// into its own settings section. Plugins adapt to Core, never the other way
-// round — adding a backend is a plugin-side change plus (at most) one line here.
-//
-// A section qualifies as an ASR backend in either of two ways:
-//
-//   - it declares a field named `asr_endpoint` — no Core change needed, which is
-//     the documented, preferred way for a new plugin to plug in; or
-//   - its id is listed in asrSections and it publishes `endpoint`, the shape the
-//     TTS plugins already use.
-//
-// The wire contract to the plugin is OpenAI-compatible
-// (`POST <endpoint>` multipart → `{"text": "..."}`), so an existing
-// whisper.cpp / faster-whisper / vLLM server can be pointed at directly and a
-// thin plugin only has to register itself. See docs/asr.md.
 var asrSections = []string{"asr", "soniox", "genieasr", "whisper-asr"}
 
 const (
-	// One utterance, not a meeting recording. The browser sends short chunks
-	// (wake-word listening) or a single spoken command.
 	asrMaxAudioBytes = 24 << 20
 	asrMaxReplyBytes = 1 << 20
 )
 
 type asrBackend struct {
 	Endpoint string
-	// Provider is the settings section that supplied the endpoint, or "env".
 	Provider string
 }
 
-// asrConfiguredEndpoint resolves the speech-to-text backend: the ASR_ENDPOINT
-// env var, then any section that declares `asr_endpoint`, then a known
-// `endpoint`-style section, then the legacy LIFE value.
 func (g *Gateway) asrConfiguredEndpoint() (asrBackend, bool) {
 	if value := strings.TrimSpace(os.Getenv("ASR_ENDPOINT")); value != "" {
 		return asrBackend{Endpoint: value, Provider: "env"}, true
@@ -58,7 +36,6 @@ func (g *Gateway) asrConfiguredEndpoint() (asrBackend, bool) {
 	if g.settingsStore == nil {
 		return asrBackend{}, false
 	}
-	// 1. Explicit opt-in: any section that publishes `asr_endpoint`.
 	for _, section := range g.settingsStore.List() {
 		values := g.settingsStore.GetValues(section.ID)
 		if sectionDisabled(values) {
@@ -68,7 +45,6 @@ func (g *Gateway) asrConfiguredEndpoint() (asrBackend, bool) {
 			return asrBackend{Endpoint: strings.TrimSpace(endpoint), Provider: section.ID}, true
 		}
 	}
-	// 2. Known backends that use the shared `endpoint` key (TTS parity).
 	for _, id := range asrSections {
 		values := g.settingsStore.GetValues(id)
 		if len(values) == 0 || sectionDisabled(values) {
@@ -78,18 +54,12 @@ func (g *Gateway) asrConfiguredEndpoint() (asrBackend, bool) {
 			return asrBackend{Endpoint: strings.TrimSpace(endpoint), Provider: id}, true
 		}
 	}
-	// 3. Legacy: a value on the LIFE section.
 	if value, ok := g.settingsStore.GetValues("life")["asr_endpoint"].(string); ok && strings.TrimSpace(value) != "" {
 		return asrBackend{Endpoint: strings.TrimSpace(value), Provider: "life"}, true
 	}
 	return asrBackend{}, false
 }
 
-// sectionDisabled reports whether a section switched itself off.
-//
-// `enabled` is optional: a plugin that declares it must also give it
-// `default_value: "true"`, because the settings store materialises an unset
-// bool as false. Omitting the field entirely always counts as enabled.
 func sectionDisabled(values map[string]interface{}) bool {
 	raw, ok := values["enabled"]
 	if !ok {
@@ -105,7 +75,6 @@ func sectionDisabled(values map[string]interface{}) bool {
 	return false
 }
 
-// asrResult is what `/api/asr` returns to the browser.
 type asrResult struct {
 	Text     string  `json:"text"`
 	Language string  `json:"language,omitempty"`
@@ -114,11 +83,6 @@ type asrResult struct {
 	Seconds  float64 `json:"seconds,omitempty"`
 }
 
-// asrTranscribe posts one audio chunk to the configured backend.
-//
-// The request is multipart/form-data with the OpenAI transcription field names,
-// so whisper.cpp's server, faster-whisper-server, vLLM and friends work
-// unmodified; a plugin only has to forward it.
 func (g *Gateway) asrTranscribe(ctx context.Context, audio []byte, filename, language, model, prompt string) (asrResult, error) {
 	backend, ok := g.asrConfiguredEndpoint()
 	if !ok {
@@ -130,8 +94,6 @@ func (g *Gateway) asrTranscribe(ctx context.Context, audio []byte, filename, lan
 	if filename == "" {
 		filename = "audio.webm"
 	}
-	// The filename reaches the backend; keep a client-supplied name from
-	// carrying a path with it.
 	filename = baseNameOr(filename, "audio.webm")
 
 	var body bytes.Buffer
@@ -196,8 +158,6 @@ func (g *Gateway) asrTranscribe(ctx context.Context, audio []byte, filename, lan
 		result.Model = payload.Model
 		result.Seconds = payload.Seconds
 	} else {
-		// Plain-text backends (and whisper.cpp without response_format) return
-		// the transcript as the body itself.
 		result.Text = strings.TrimSpace(string(raw))
 	}
 	result.Text = strings.TrimSpace(result.Text)
@@ -207,15 +167,6 @@ func (g *Gateway) asrTranscribe(ctx context.Context, audio []byte, filename, lan
 	return result, nil
 }
 
-// handleASR is the single speech-to-text entry point for every front end.
-//
-//	GET  /api/asr  -> {"configured":true,"provider":"asr"}
-//	POST /api/asr  -> {"text":"...","provider":"asr","language":"zh"}
-//
-// The POST accepts either a multipart form (`audio` or `file`, plus optional
-// `language`, `model`, `prompt`) or JSON
-// `{"audio_base64":"...","mime":"audio/webm","language":"zh"}`. Base64 exists
-// for clients that cannot build multipart; the browser uses multipart.
 func (g *Gateway) handleASR(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet || r.Method == http.MethodHead {
 		backend, ok := g.asrConfiguredEndpoint()
@@ -245,8 +196,6 @@ func (g *Gateway) handleASR(w http.ResponseWriter, r *http.Request) {
 		}
 		file, header, err := r.FormFile("audio")
 		if err != nil {
-			// `file` is the OpenAI field name; accept both so a caller can
-			// reuse the same form for Core and for a backend.
 			file, header, err = r.FormFile("file")
 		}
 		if err != nil {
@@ -334,8 +283,6 @@ func (g *Gateway) handleASR(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
-// extensionForMime keeps a sensible filename for backends that sniff the
-// container from the extension (whisper.cpp does).
 func extensionForMime(mime string) string {
 	switch strings.ToLower(strings.TrimSpace(strings.Split(mime, ";")[0])) {
 	case "audio/wav", "audio/x-wav", "audio/wave":
@@ -354,7 +301,6 @@ func extensionForMime(mime string) string {
 	return ".webm"
 }
 
-// clipText trims a backend error body to something a log line can hold.
 func clipText(value string, limit int) string {
 	value = strings.TrimSpace(value)
 	if len(value) <= limit {
@@ -363,7 +309,6 @@ func clipText(value string, limit int) string {
 	return value[:limit] + "…"
 }
 
-// baseNameOr keeps a client-supplied filename from escaping into a path.
 func baseNameOr(name, fallback string) string {
 	name = filepath.Base(strings.TrimSpace(name))
 	if name == "" || name == "." || name == string(filepath.Separator) {

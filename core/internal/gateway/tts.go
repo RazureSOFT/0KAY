@@ -14,9 +14,6 @@ import (
 	"0kay/core/internal/netguard"
 )
 
-// ttsSections lists the settings sections a TTS-capable plugin can own, in
-// priority order. Each plugin publishes its own `endpoint` into its section when
-// it registers, so adding a backend is a plugin-side change plus one line here.
 var ttsSections = []string{"genietts", "deepseek-tts"}
 
 func isTTSSection(id string) bool {
@@ -28,8 +25,6 @@ func isTTSSection(id string) bool {
 	return false
 }
 
-// ttsEndpoint resolves the text-to-speech backend: the TTS_ENDPOINT env var,
-// then the first enabled TTS plugin, then the legacy LIFE `tts_endpoint`.
 func (g *Gateway) ttsEndpoint() string {
 	if value := strings.TrimSpace(os.Getenv("TTS_ENDPOINT")); value != "" {
 		return value
@@ -42,8 +37,6 @@ func (g *Gateway) ttsEndpoint() string {
 		if len(values) == 0 {
 			continue
 		}
-		// Installed but switched off in its own settings: skip it so the next
-		// backend (or LIFE) can take over.
 		if enabled, ok := values["enabled"].(string); ok && strings.EqualFold(strings.TrimSpace(enabled), "false") {
 			continue
 		}
@@ -57,8 +50,6 @@ func (g *Gateway) ttsEndpoint() string {
 	return ""
 }
 
-// ttsSynthesize posts text to the configured backend and returns the audio
-// content type + bytes.
 func (g *Gateway) ttsSynthesize(ctx context.Context, text, voice string) (string, []byte, error) {
 	endpoint := g.ttsEndpoint()
 	if endpoint == "" {
@@ -97,10 +88,6 @@ func (g *Gateway) ttsSynthesize(ctx context.Context, text, voice string) (string
 	return contentType, audio, nil
 }
 
-// handleTTS proxies a synthesis request to the configured TTS backend and
-// returns the audio bytes so the browser can play it (Live2D lip-sync).
-//
-//	POST /api/tts {"text":"...","voice":"mira"} -> audio/*
 func (g *Gateway) handleTTS(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return
@@ -128,16 +115,10 @@ func (g *Gateway) handleTTS(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(audio)
 }
 
-// handleSettingsTest runs a backend test for a settings section and returns the
-// synthesized sample as audio (so the user hears it), or a JSON error.
-//
-//	POST /api/settings/{id}/test
 func (g *Gateway) handleSettingsTest(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return
 	}
-	// Only TTS-backed sections have a synthesise test; anything else is 404 so
-	// POST /api/settings/<anything>/test cannot be used as a free TTS endpoint.
 	if id := r.PathValue("id"); !isTTSSection(id) {
 		writeErr(w, http.StatusNotFound, "not_found", "no test available for this section")
 		return

@@ -15,14 +15,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// PluginServiceServer implements the PluginService gRPC service.
 type PluginServiceServer struct {
 	corev1.UnimplementedPluginServiceServer
 	registry *registry.Registry
 	settings *settings.Store
 }
 
-// NewPluginServiceServer creates a new PluginServiceServer.
 func NewPluginServiceServer(reg *registry.Registry, setStore *settings.Store) *PluginServiceServer {
 	return &PluginServiceServer{
 		registry: reg,
@@ -30,7 +28,6 @@ func NewPluginServiceServer(reg *registry.Registry, setStore *settings.Store) *P
 	}
 }
 
-// Register handles plugin registration (including optional settings sections).
 func (s *PluginServiceServer) Register(ctx context.Context, req *corev1.RegisterRequest) (*corev1.RegisterResponse, error) {
 	if req.PluginInfo == nil {
 		return &corev1.RegisterResponse{
@@ -39,10 +36,6 @@ func (s *PluginServiceServer) Register(ctx context.Context, req *corev1.Register
 		}, nil
 	}
 
-	// Non-builtin plugins may be required to present a shared registration
-	// secret (CORE_PLUGIN_REGISTRATION_TOKEN); built-ins bypass it. The secret
-	// travels in the x-0kay-registration-token metadata, falling back to the
-	// Authorization bearer for compatibility.
 	registrationToken := ""
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
 		if values := md.Get("x-0kay-registration-token"); len(values) > 0 {
@@ -62,8 +55,6 @@ func (s *PluginServiceServer) Register(ctx context.Context, req *corev1.Register
 		pairing.Default.Bind(ctx, req.Address)
 	}
 
-	// Register contributed settings sections. Drop this plugin's previous
-	// sections first so a re-register (e.g. renamed section id) is not stale.
 	if s.settings != nil {
 		s.settings.UnregisterPluginSections(pluginID)
 		for _, sec := range req.SettingsSections {
@@ -112,7 +103,6 @@ func (s *PluginServiceServer) Register(ctx context.Context, req *corev1.Register
 	}, nil
 }
 
-// Heartbeat handles plugin heartbeats.
 func (s *PluginServiceServer) Heartbeat(ctx context.Context, req *corev1.HeartbeatRequest) (*corev1.HeartbeatResponse, error) {
 	if req.PluginId == "" {
 		return nil, status.Error(codes.InvalidArgument, "plugin_id is required")

@@ -1,43 +1,43 @@
-import { ref as L, defineComponent as Ue, computed as F, openBlock as c, createElementBlock as d, normalizeClass as ee, createElementVNode as o, Fragment as j, renderList as he, createCommentVNode as O, toDisplayString as b, createBlock as Ne, unref as s, createTextVNode as ze, normalizeStyle as _e, watch as Ie, nextTick as Ge, onMounted as et, onUnmounted as tt, createStaticVNode as Rt, withDirectives as Qt, vModelText as en, withModifiers as De } from "vue";
-import { useI18n as Ve } from "vue-i18n";
-import { MarkdownContent as tn, useChatStore as Bt, useWizardStore as ut, useSettingsSectionsStore as nn, useConfirm as on, useLifeStore as Dt, useUIPatchesStore as Ot, live2dRuntimeReady as an } from "@0kay/host";
-const Qe = L([]);
-let sn = 0;
-const ct = /* @__PURE__ */ new Map();
-function rn(i) {
-  const n = ct.get(i);
-  n && clearTimeout(n), ct.delete(i), Qe.value = Qe.value.filter((u) => u.id !== i);
+import { ref as E, defineComponent as Ye, computed as N, openBlock as u, createElementBlock as f, normalizeClass as te, createElementVNode as o, Fragment as W, renderList as me, createCommentVNode as O, toDisplayString as b, createBlock as Xe, unref as s, createTextVNode as Ke, normalizeStyle as Ee, watch as xe, nextTick as nt, onMounted as st, onUnmounted as rt, createStaticVNode as Ut, withDirectives as sn, vModelText as rn, withModifiers as Ue } from "vue";
+import { useI18n as We } from "vue-i18n";
+import { MarkdownContent as ln, useChatStore as Vt, useWizardStore as gt, useSettingsSectionsStore as cn, useConfirm as un, useLifeStore as Xt, useUIPatchesStore as Kt, live2dRuntimeReady as dn } from "@0kay/host";
+const it = E([]);
+let fn = 0;
+const mt = /* @__PURE__ */ new Map();
+function hn(i) {
+  const t = mt.get(i);
+  t && clearTimeout(t), mt.delete(i), it.value = it.value.filter((l) => l.id !== i);
 }
-function qe(i, n = "info", u) {
+function et(i, t = "info", l) {
   const a = {
-    id: ++sn,
-    kind: n,
+    id: ++fn,
+    kind: t,
     message: i,
-    duration: n === "error" ? 6500 : 3500
+    duration: t === "error" ? 6500 : 3500
   };
-  return Qe.value = [...Qe.value.slice(-4), a], ct.set(a.id, setTimeout(() => rn(a.id), a.duration)), a.id;
+  return it.value = [...it.value.slice(-4), a], mt.set(a.id, setTimeout(() => hn(a.id), a.duration)), a.id;
 }
-const V = L("off"), fe = L(""), Ee = L(""), Je = 2600, ln = 9e3, cn = 850, un = 0.012, dn = 0.02;
-let K = null, Pe = null, Oe = null, te = !0, dt = !1, Ze = null, Se = "wake", pe = "";
-const fn = (i) => new Promise((n) => setTimeout(n, i));
-function $t(i) {
+const V = E("off"), he = E(""), Be = E(""), tt = 2600, vn = 9e3, mn = 850, gn = 0.012, pn = 0.02;
+let K = null, Le = null, Ve = null, ne = !0, pt = !1, ot = null, Ae = "wake", be = "";
+const Ht = (i) => new Promise((t) => setTimeout(t, i));
+function Dt(i) {
   return i.toLowerCase().replace(/[\s\u3000]+/g, "").replace(/[，。！？、,.!?~～…:：;；"'“”‘’()（）[\]【】<>《》\-—_/\\]+/g, "");
 }
-function Ft(i, n) {
-  const u = $t(i);
-  return u ? n.some((a) => {
-    const l = $t(a);
-    return l.length > 0 && u.includes(l);
+function Yt(i, t) {
+  const l = Dt(i);
+  return l ? t.some((a) => {
+    const d = Dt(a);
+    return d.length > 0 && l.includes(d);
   }) : !1;
 }
-function hn() {
+function yn() {
   const i = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
   if (typeof MediaRecorder > "u") return "";
-  for (const n of i)
-    if (MediaRecorder.isTypeSupported?.(n)) return n;
+  for (const t of i)
+    if (MediaRecorder.isTypeSupported?.(t)) return t;
   return "";
 }
-async function vn() {
+async function wn() {
   try {
     const i = await fetch("/api/asr", { signal: AbortSignal.timeout(5e3) });
     return i.ok ? !!(await i.json()).configured : !1;
@@ -45,319 +45,375 @@ async function vn() {
     return !1;
   }
 }
-async function Nt(i) {
-  const n = new FormData(), u = i.type || "audio/webm", a = u.includes("mp4") ? "m4a" : u.includes("ogg") ? "ogg" : u.includes("wav") ? "wav" : "webm";
-  n.append("audio", i, `chunk.${a}`), K?.language && n.append("language", K.language);
-  const l = await fetch("/api/asr", { method: "POST", body: n });
-  if (l.status === 503) return { text: "", configured: !1 };
-  if (!l.ok) throw new Error(await l.text());
-  const y = await l.json();
-  return { text: String(y.text || ""), configured: !0 };
+async function yt(i) {
+  const t = new FormData(), l = i.type || "audio/webm", a = l.includes("mp4") ? "m4a" : l.includes("ogg") ? "ogg" : l.includes("wav") ? "wav" : "webm";
+  t.append("audio", i, `chunk.${a}`);
+  const d = K?.language || ve?.language;
+  d && t.append("language", d);
+  const y = await fetch("/api/asr", { method: "POST", body: t });
+  if (y.status === 503) return { text: "", configured: !1 };
+  if (!y.ok) throw new Error(await y.text());
+  const _ = await y.json();
+  return { text: String(_.text || ""), configured: !0 };
 }
-function mn(i) {
-  const n = window.AudioContext || window.webkitAudioContext;
-  Oe = new n();
-  const u = Oe.createMediaStreamSource(i), a = Oe.createAnalyser();
-  a.fftSize = 1024, u.connect(a);
-  const l = new Float32Array(a.fftSize);
+function kn(i) {
+  const t = window.AudioContext || window.webkitAudioContext;
+  Ve = new t();
+  const l = Ve.createMediaStreamSource(i), a = Ve.createAnalyser();
+  a.fftSize = 1024, l.connect(a);
+  const d = new Float32Array(a.fftSize);
   return {
     read() {
-      a.getFloatTimeDomainData(l);
+      a.getFloatTimeDomainData(d);
       let y = 0;
-      for (let S = 0; S < l.length; S++) y += l[S] * l[S];
-      return Math.sqrt(y / l.length);
+      for (let _ = 0; _ < d.length; _++) y += d[_] * d[_];
+      return Math.sqrt(y / d.length);
     },
     close() {
       try {
-        u.disconnect();
+        l.disconnect();
       } catch {
       }
       try {
-        Oe?.close();
+        Ve?.close();
       } catch {
       }
-      Oe = null;
+      Ve = null;
     }
   };
 }
-function Fe(i, n = !1) {
-  let u = () => {
+function De(i, t = !1) {
+  let l = () => {
   };
-  return { blob: new Promise((l) => {
-    if (!Pe || typeof MediaRecorder > "u") {
-      l(null);
+  return { blob: new Promise((d) => {
+    if (!Le || typeof MediaRecorder > "u") {
+      d(null);
       return;
     }
-    const y = hn();
-    let S;
+    const y = yn();
+    let _;
     try {
-      S = new MediaRecorder(Pe, y ? { mimeType: y } : void 0);
+      _ = new MediaRecorder(Le, y ? { mimeType: y } : void 0);
     } catch {
-      l(null);
+      d(null);
       return;
     }
-    const _ = [], I = n ? mn(Pe) : null;
-    let x = 0, $ = 0, N = !1;
-    const D = () => {
-      if (!N) {
-        N = !0, I && I.close(), clearTimeout(G), clearInterval(B);
+    const C = [], $ = t ? kn(Le) : null;
+    let x = 0, S = 0, F = !1;
+    const B = () => {
+      if (!F) {
+        F = !0, $ && $.close(), clearTimeout(Q), clearInterval(R);
         try {
-          S.state !== "inactive" && S.stop();
+          _.state !== "inactive" && _.stop();
         } catch {
         }
       }
     };
-    u = D;
-    const G = setTimeout(D, i), B = setInterval(() => {
-      if (!I) return;
-      const k = I.read(), p = Date.now();
-      if (k >= dn) {
-        x = p, $ = 0;
+    l = B;
+    const Q = setTimeout(B, i), R = setInterval(() => {
+      if (!$) return;
+      const k = $.read(), p = Date.now();
+      if (k >= pn) {
+        x = p, S = 0;
         return;
       }
       if (!(!x || p - x < 500)) {
-        if (k > un) {
-          $ = 0;
+        if (k > gn) {
+          S = 0;
           return;
         }
-        $ ? p - $ >= cn && D() : $ = p;
+        S ? p - S >= mn && B() : S = p;
       }
     }, 80);
-    S.ondataavailable = (k) => {
-      k.data && k.data.size && _.push(k.data);
-    }, S.onstop = () => {
-      I && I.close(), l(_.length ? new Blob(_, { type: S.mimeType || y || "audio/webm" }) : null);
+    _.ondataavailable = (k) => {
+      k.data && k.data.size && C.push(k.data);
+    }, _.onstop = () => {
+      $ && $.close(), d(C.length ? new Blob(C, { type: _.mimeType || y || "audio/webm" }) : null);
     };
     try {
-      S.start();
+      _.start();
     } catch {
-      D(), l(null);
+      B(), d(null);
     }
-  }), cancel: () => u() };
+  }), cancel: () => l() };
 }
-function gn() {
+function bn() {
   try {
-    const i = window.AudioContext || window.webkitAudioContext, n = new i(), u = n.currentTime;
-    for (const [a, l] of [660, 880].entries()) {
-      const y = n.createOscillator(), S = n.createGain();
-      y.type = "sine", y.frequency.value = l, S.gain.setValueAtTime(1e-4, u + a * 0.09), S.gain.exponentialRampToValueAtTime(0.06, u + a * 0.09 + 0.02), S.gain.exponentialRampToValueAtTime(1e-4, u + a * 0.09 + 0.13), y.connect(S).connect(n.destination), y.start(u + a * 0.09), y.stop(u + a * 0.09 + 0.15);
+    const i = window.AudioContext || window.webkitAudioContext, t = new i(), l = t.currentTime;
+    for (const [a, d] of [660, 880].entries()) {
+      const y = t.createOscillator(), _ = t.createGain();
+      y.type = "sine", y.frequency.value = d, _.gain.setValueAtTime(1e-4, l + a * 0.09), _.gain.exponentialRampToValueAtTime(0.06, l + a * 0.09 + 0.02), _.gain.exponentialRampToValueAtTime(1e-4, l + a * 0.09 + 0.13), y.connect(_).connect(t.destination), y.start(l + a * 0.09), y.stop(l + a * 0.09 + 0.15);
     }
     setTimeout(() => {
       try {
-        n.close();
+        t.close();
       } catch {
       }
     }, 600);
   } catch {
   }
 }
-async function pn(i) {
-  if (!K || te) return;
-  V.value = "woken", gn(), K.onWake(i), V.value = "capturing";
-  const n = await Fe(ln, !0).blob;
-  if (!te) {
-    if (n && n.size > 2e3)
+async function xn(i) {
+  if (!K || ne) return;
+  V.value = "woken", bn(), K.onWake(i), V.value = "capturing";
+  const t = await De(vn, !0).blob;
+  if (!ne) {
+    if (t && t.size > 2e3)
       try {
-        const a = (await Nt(n)).text.trim();
-        a && (Ee.value = a, K?.onUtterance(a));
+        const a = (await yt(t)).text.trim();
+        a && (Be.value = a, K?.onUtterance(a));
       } catch {
       }
-    !te && fe.value === "core" && (V.value = "listening");
+    !ne && he.value === "core" && (V.value = "listening");
   }
 }
-async function yn() {
-  let i = Fe(Je);
+async function _n() {
+  let i = De(tt);
   try {
-    for (; !te && fe.value === "core"; ) {
-      if (dt) {
-        i?.cancel(), i = null, await fn(250);
+    for (; !ne && he.value === "core"; ) {
+      if (pt) {
+        i?.cancel(), i = null, await Ht(250);
         continue;
       }
-      i || (i = Fe(Je));
-      const n = await i.blob;
-      if (te || fe.value !== "core") return;
-      if (i = Fe(Je), !n || n.size < 1200) continue;
-      let u;
+      i || (i = De(tt));
+      const t = await i.blob;
+      if (ne || he.value !== "core") return;
+      if (i = De(tt), !t || t.size < 1200) continue;
+      let l;
       try {
-        u = await Nt(n);
+        l = await yt(t);
       } catch {
         continue;
       }
-      if (!u.configured) {
-        fe.value = "", Ut();
+      if (!l.configured) {
+        he.value = "", jt();
         return;
       }
-      const a = u.text.trim();
-      a && (Ee.value = a, K?.onHeard?.(a), K && Ft(a, K.nicknames) && (i?.cancel(), i = null, await pn(a), !te && fe.value === "core" && (i = Fe(Je))));
+      const a = l.text.trim();
+      a && (Be.value = a, K?.onHeard?.(a), K && Yt(a, K.nicknames) && (i?.cancel(), i = null, await xn(a), !ne && he.value === "core" && (i = De(tt))));
     }
   } finally {
     i?.cancel();
   }
 }
-function zt() {
+function Wt() {
   const i = window;
   return i.SpeechRecognition || i.webkitSpeechRecognition || null;
 }
-function Ut() {
-  const i = zt();
+function jt() {
+  const i = Wt();
   if (!i) {
-    xe("no-engine");
+    $e("no-engine");
     return;
   }
-  fe.value !== "browser" && (fe.value = "browser"), Se = "wake", pe = "";
-  const n = new i();
-  Ze = n, n.lang = K?.language || "zh-CN", n.continuous = !0, n.interimResults = !0, n.onresult = (u) => {
+  he.value !== "browser" && (he.value = "browser"), Ae = "wake", be = "";
+  const t = new i();
+  ot = t, t.lang = K?.language || "zh-CN", t.continuous = !0, t.interimResults = !0, t.onresult = (l) => {
     let a = "";
-    for (let l = u.resultIndex; l < u.results.length; l++)
-      u.results[l].isFinal && (a += u.results[l][0].transcript);
+    for (let d = l.resultIndex; d < l.results.length; d++)
+      l.results[d].isFinal && (a += l.results[d][0].transcript);
     if (a = a.trim(), !!a) {
-      if (Ee.value = a, K?.onHeard?.(a), Se === "wake") {
-        K && Ft(a, K.nicknames) && (V.value = "woken", K.onWake(a), Se = "capture", pe = "", V.value = "capturing");
+      if (Be.value = a, K?.onHeard?.(a), Ae === "wake") {
+        K && Yt(a, K.nicknames) && (V.value = "woken", K.onWake(a), Ae = "capture", be = "", V.value = "capturing");
         return;
       }
-      pe = `${pe}${a}`.trim();
+      be = `${be}${a}`.trim();
     }
-  }, n.onend = () => {
-    if (!te) {
-      Se === "capture" && pe && (K?.onUtterance(pe), pe = "", Se = "wake", V.value = "listening");
+  }, t.onend = () => {
+    if (!ne) {
+      Ae === "capture" && be && (K?.onUtterance(be), be = "", Ae = "wake", V.value = "listening");
       try {
-        n.start();
+        t.start();
       } catch {
       }
     }
-  }, n.onerror = (u) => {
-    if (u?.error === "not-allowed" || u?.error === "service-not-allowed") {
-      xe("mic-denied");
+  }, t.onerror = (l) => {
+    if (l?.error === "not-allowed" || l?.error === "service-not-allowed") {
+      $e("mic-denied");
       return;
     }
-    u?.error === "no-speech" || u?.error === "aborted" || xe("error", String(u?.error || "speech recognition failed"));
+    l?.error === "no-speech" || l?.error === "aborted" || $e("error", String(l?.error || "speech recognition failed"));
   };
   try {
-    n.start(), V.value = "listening";
-  } catch (u) {
-    xe("error", u?.message || "speech recognition failed");
+    t.start(), V.value = "listening";
+  } catch (l) {
+    $e("error", l?.message || "speech recognition failed");
   }
 }
-function xe(i, n) {
-  $e(), V.value = "error", K?.onError?.(i, n);
+function $e(i, t) {
+  Ie(), V.value = "error", K?.onError?.(i, t);
 }
-async function wn(i) {
-  if ($e(), K = i, te = !1, dt = !1, Ee.value = "", !i.nicknames.length) {
-    xe("no-nickname");
+async function Cn(i) {
+  if (Ie(), K = i, ne = !1, pt = !1, Be.value = "", !i.nicknames.length) {
+    $e("no-nickname");
     return;
   }
-  if (await vn()) {
-    if (te) return;
-    fe.value = "core";
+  if (await wn()) {
+    if (ne) return;
+    he.value = "core";
     try {
-      Pe = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: !0, noiseSuppression: !0 } });
-    } catch (n) {
-      const u = n?.name === "NotAllowedError" || n?.name === "SecurityError";
-      xe(u ? "mic-denied" : "error", n?.message);
+      Le = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: !0, noiseSuppression: !0 } });
+    } catch (t) {
+      const l = t?.name === "NotAllowedError" || t?.name === "SecurityError";
+      $e(l ? "mic-denied" : "error", t?.message);
       return;
     }
-    if (te) {
-      Vt();
+    if (ne) {
+      lt();
       return;
     }
-    V.value = "listening", yn();
+    V.value = "listening", _n();
     return;
   }
-  if (zt()) {
-    Ut();
+  if (Wt()) {
+    jt();
     return;
   }
-  xe("no-engine");
+  $e("no-engine");
 }
-function Vt() {
+function lt() {
   try {
-    Pe?.getTracks().forEach((i) => i.stop());
+    Le?.getTracks().forEach((i) => i.stop());
   } catch {
   }
-  Pe = null;
+  Le = null;
 }
-function $e() {
-  if (te = !0, Vt(), Ze) {
-    const i = Ze;
-    Ze = null, i.onend = null, i.onresult = null, i.onerror = null;
+function Ie() {
+  if (ne = !0, lt(), ot) {
+    const i = ot;
+    ot = null, i.onend = null, i.onresult = null, i.onerror = null;
     try {
       i.stop();
     } catch {
     }
   }
-  Se = "wake", pe = "", fe.value = "", V.value !== "error" && (V.value = "off");
+  Ae = "wake", be = "", he.value = "", V.value !== "error" && (V.value = "off");
 }
-function It(i) {
-  dt = i;
+function Rt(i) {
+  pt = i;
 }
-function Pt(i) {
+const ge = E("off"), Mn = 2e4, Sn = 9e4;
+let ve = null, He = !1, at = 0;
+function $n(i) {
+  He = i;
+}
+async function In(i) {
+  Ie(), Re("hangup"), ve = i, He = !1, ge.value = "dialing";
+  try {
+    Le = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: !0, noiseSuppression: !0 } });
+  } catch (t) {
+    ge.value = "off", i.onEnd?.((t?.name === "NotAllowedError" || t?.name === "SecurityError", "error"));
+    return;
+  }
+  if (!ve) {
+    lt();
+    return;
+  }
+  at = Date.now(), ge.value = "live", En();
+}
+function Re(i = "hangup") {
+  const t = ge.value !== "off", l = ve;
+  ve = null, He = !1, ge.value = "off", t && (lt(), l?.onEnd?.(i));
+}
+async function En() {
+  for (; ve && ge.value === "live"; ) {
+    if (He) {
+      await Ht(200);
+      continue;
+    }
+    if (Date.now() - at > Sn) {
+      Re("silence");
+      return;
+    }
+    const i = De(Mn, !0), t = await i.blob;
+    if (!ve || ge.value !== "live") {
+      i.cancel();
+      return;
+    }
+    if (He || !t || t.size < 1200) continue;
+    at = Date.now();
+    let l = "";
+    try {
+      const a = await yt(t);
+      if (!a.configured) {
+        Re("error");
+        return;
+      }
+      l = a.text.trim();
+    } catch {
+      continue;
+    }
+    !l || !ve || ge.value !== "live" || (at = Date.now(), ve.onUtterance(l));
+  }
+}
+function Bt(i) {
   return i.irritation > 0.7 ? "irritated" : i.valence > 0.5 ? "happy" : i.valence < -0.3 ? "sad" : "neutral";
 }
-const kn = {
+const Ln = {
   happy: "#107c10",
   sad: "#0078d4",
   irritated: "#d13438",
   neutral: "#8a8886"
 };
-function bn(i) {
-  return kn[i];
+function Pn(i) {
+  return Ln[i];
 }
-const xn = {
+const Tn = {
   key: 0,
   width: "16",
   height: "16",
   viewBox: "0 0 16 16",
   fill: "none"
-}, _n = {
+}, An = {
   key: 1,
   width: "16",
   height: "16",
   viewBox: "0 0 16 16",
   fill: "none"
-}, Cn = { class: "content-wrapper" }, Mn = {
+}, Dn = { class: "content-wrapper" }, Rn = {
   key: 0,
   class: "images"
-}, Sn = ["src"], $n = {
+}, Bn = ["src"], On = {
   key: 1,
   class: "files"
-}, In = ["href", "title"], Pn = { class: "msg-file-name" }, En = {
+}, Nn = ["href", "title"], Fn = { class: "msg-file-name" }, zn = {
   key: 3,
   class: "media-row"
-}, Ln = { class: "media-chip" }, Tn = {
+}, Un = { class: "media-chip" }, Vn = {
   key: 4,
   class: "selfie"
-}, An = ["src", "alt"], Rn = {
+}, Xn = ["src", "alt"], Kn = {
   key: 1,
   class: "selfie-pending"
-}, Bn = {
+}, Hn = {
   key: 5,
   class: "think-panel"
-}, Dn = ["aria-expanded"], On = { class: "think-body" }, Fn = {
+}, Yn = ["aria-expanded"], Wn = { class: "think-body" }, jn = {
   key: 0,
   class: "think-raw"
-}, Nn = {
+}, qn = {
   key: 1,
   class: "think-summary"
-}, zn = { class: "meta" }, Un = { class: "time" }, Vn = /* @__PURE__ */ Ue({
+}, Jn = { class: "meta" }, Gn = { class: "time" }, Zn = /* @__PURE__ */ Ye({
   __name: "MessageBubble",
   props: {
     message: {},
     streaming: { type: Boolean }
   },
   setup(i) {
-    const n = i, { t: u, locale: a } = Ve(), l = F(() => n.message.role === "user"), y = L(!1), S = F(() => {
-      if (!n.message.thinkSummary) return null;
+    const t = i, { t: l, locale: a } = We(), d = N(() => t.message.role === "user"), y = E(!1), _ = N(() => {
+      if (!t.message.thinkSummary) return null;
       try {
-        const I = JSON.parse(n.message.thinkSummary);
-        if (typeof I.raw == "string" && I.raw.trim()) return { raw: I.raw };
-        if (typeof I.summary == "string" && I.summary.trim()) return I;
-        const x = I.intent || u("messageBubble.intentDefault"), $ = I.strategy || u("messageBubble.strategyDefault");
-        return { summary: u("messageBubble.summary", { intent: x, strategy: $ }) };
+        const $ = JSON.parse(t.message.thinkSummary);
+        if (typeof $.raw == "string" && $.raw.trim()) return { raw: $.raw };
+        if (typeof $.summary == "string" && $.summary.trim()) return $;
+        const x = $.intent || l("messageBubble.intentDefault"), S = $.strategy || l("messageBubble.strategyDefault");
+        return { summary: l("messageBubble.summary", { intent: x, strategy: S }) };
       } catch {
-        return { summary: n.message.thinkSummary };
+        return { summary: t.message.thinkSummary };
       }
-    }), _ = F(() => {
-      const I = n.message.timestamp, x = I.getFullYear() === (/* @__PURE__ */ new Date()).getFullYear();
+    }), C = N(() => {
+      const $ = t.message.timestamp, x = $.getFullYear() === (/* @__PURE__ */ new Date()).getFullYear();
       return new Intl.DateTimeFormat(a.value, {
         ...x ? {} : { year: "numeric" },
         month: "short",
@@ -365,15 +421,15 @@ const xn = {
         weekday: "short",
         hour: "2-digit",
         minute: "2-digit"
-      }).format(I);
+      }).format($);
     });
-    return (I, x) => (c(), d("div", {
-      class: ee(["message", { user: l.value, assistant: !l.value }])
+    return ($, x) => (u(), f("div", {
+      class: te(["message", { user: d.value, assistant: !d.value }])
     }, [
       o("div", {
-        class: ee(["avatar", { "user-avatar": l.value, "assistant-avatar": !l.value }])
+        class: te(["avatar", { "user-avatar": d.value, "assistant-avatar": !d.value }])
       }, [
-        l.value ? (c(), d("svg", xn, [...x[1] || (x[1] = [
+        d.value ? (u(), f("svg", Tn, [...x[1] || (x[1] = [
           o("circle", {
             cx: "8",
             cy: "6",
@@ -387,7 +443,7 @@ const xn = {
             "stroke-width": "1.5",
             "stroke-linecap": "round"
           }, null, -1)
-        ])])) : (c(), d("svg", _n, [...x[2] || (x[2] = [
+        ])])) : (u(), f("svg", An, [...x[2] || (x[2] = [
           o("circle", {
             cx: "8",
             cy: "8",
@@ -415,40 +471,40 @@ const xn = {
           }, null, -1)
         ])]))
       ], 2),
-      o("div", Cn, [
-        i.message.images?.length ? (c(), d("div", Mn, [
-          (c(!0), d(j, null, he(i.message.images, ($, N) => (c(), d("img", {
-            key: N,
-            src: $,
+      o("div", Dn, [
+        i.message.images?.length ? (u(), f("div", Rn, [
+          (u(!0), f(W, null, me(i.message.images, (S, F) => (u(), f("img", {
+            key: F,
+            src: S,
             alt: "",
             class: "msg-img"
-          }, null, 8, Sn))), 128))
+          }, null, 8, Bn))), 128))
         ])) : O("", !0),
-        i.message.files?.length ? (c(), d("div", $n, [
-          (c(!0), d(j, null, he(i.message.files, ($, N) => (c(), d("a", {
-            key: N,
-            href: $.url,
+        i.message.files?.length ? (u(), f("div", On, [
+          (u(!0), f(W, null, me(i.message.files, (S, F) => (u(), f("a", {
+            key: F,
+            href: S.url,
             target: "_blank",
             rel: "noopener noreferrer",
             class: "msg-file",
-            title: $.mime || ""
+            title: S.mime || ""
           }, [
-            o("span", Pn, b($.name), 1)
-          ], 8, In))), 128))
+            o("span", Fn, b(S.name), 1)
+          ], 8, Nn))), 128))
         ])) : O("", !0),
-        i.message.content ? (c(), d("div", {
+        i.message.content ? (u(), f("div", {
           key: 2,
-          class: ee(["content", { "content-markdown": !l.value && !i.streaming }])
+          class: te(["content", { "content-markdown": !d.value && !i.streaming }])
         }, [
-          !l.value && !i.streaming ? (c(), Ne(s(tn), {
+          !d.value && !i.streaming ? (u(), Xe(s(ln), {
             key: 0,
             content: i.message.content
-          }, null, 8, ["content"])) : (c(), d(j, { key: 1 }, [
-            ze(b(i.message.content), 1)
+          }, null, 8, ["content"])) : (u(), f(W, { key: 1 }, [
+            Ke(b(i.message.content), 1)
           ], 64))
         ], 2)) : O("", !0),
-        !l.value && (i.message.media?.voice || i.message.media?.call) ? (c(), d("div", En, [
-          o("span", Ln, [
+        !d.value && (i.message.media?.voice || i.message.media?.call) ? (u(), f("div", zn, [
+          o("span", Un, [
             x[3] || (x[3] = o("svg", {
               width: "14",
               height: "14",
@@ -463,377 +519,393 @@ const xn = {
                 "stroke-linecap": "round"
               })
             ], -1)),
-            ze(" " + b(i.message.media?.call ? s(u)("chat.mediaCall") : s(u)("chat.mediaVoice")), 1)
+            Ke(" " + b(i.message.media?.call ? s(l)("chat.mediaCall") : s(l)("chat.mediaVoice")), 1)
           ])
         ])) : O("", !0),
-        !l.value && i.message.media?.selfie ? (c(), d("div", Tn, [
-          i.message.selfieUrl ? (c(), d("img", {
+        !d.value && i.message.media?.selfie ? (u(), f("div", Vn, [
+          i.message.selfieUrl ? (u(), f("img", {
             key: 0,
             src: i.message.selfieUrl,
             alt: i.message.media.selfie,
             class: "selfie-img"
-          }, null, 8, An)) : (c(), d("div", Rn, [
+          }, null, 8, Xn)) : (u(), f("div", Kn, [
             x[4] || (x[4] = o("span", {
               class: "selfie-spinner",
               "aria-hidden": "true"
             }, null, -1)),
-            ze(" " + b(s(u)("chat.mediaSelfieDrawing")), 1)
+            Ke(" " + b(s(l)("chat.mediaSelfieDrawing")), 1)
           ]))
         ])) : O("", !0),
-        !l.value && S.value ? (c(), d("div", Bn, [
+        !d.value && _.value ? (u(), f("div", Hn, [
           o("button", {
             class: "think-toggle",
             type: "button",
             "aria-expanded": y.value,
-            onClick: x[0] || (x[0] = ($) => y.value = !y.value)
+            onClick: x[0] || (x[0] = (S) => y.value = !y.value)
           }, [
-            o("span", null, b(s(u)("chat.thinkLabel")), 1),
-            o("span", null, b(y.value ? s(u)("chat.thinkCollapse") : s(u)("chat.thinkExpand")), 1)
-          ], 8, Dn),
+            o("span", null, b(s(l)("chat.thinkLabel")), 1),
+            o("span", null, b(y.value ? s(l)("chat.thinkCollapse") : s(l)("chat.thinkExpand")), 1)
+          ], 8, Yn),
           o("div", {
-            class: ee(["collapse-grid", { open: y.value }])
+            class: te(["collapse-grid", { open: y.value }])
           }, [
             o("div", null, [
-              o("div", On, [
-                S.value.raw ? (c(), d("pre", Fn, b(S.value.raw), 1)) : S.value.summary ? (c(), d("p", Nn, b(S.value.summary), 1)) : O("", !0)
+              o("div", Wn, [
+                _.value.raw ? (u(), f("pre", jn, b(_.value.raw), 1)) : _.value.summary ? (u(), f("p", qn, b(_.value.summary), 1)) : O("", !0)
               ])
             ])
           ], 2)
         ])) : O("", !0),
-        o("div", zn, [
-          o("span", Un, b(_.value), 1),
-          !l.value && i.message.emotion ? (c(), d(j, { key: 0 }, [
+        o("div", Jn, [
+          o("span", Gn, b(C.value), 1),
+          !d.value && i.message.emotion ? (u(), f(W, { key: 0 }, [
             x[5] || (x[5] = o("span", { class: "separator" }, "·", -1)),
             o("span", {
               class: "emotion",
-              style: _e({ color: s(bn)(s(Pt)(i.message.emotion)) })
-            }, b(s(u)(`emotion.${s(Pt)(i.message.emotion)}`)), 5)
+              style: Ee({ color: s(Pn)(s(Bt)(i.message.emotion)) })
+            }, b(s(l)(`emotion.${s(Bt)(i.message.emotion)}`)), 5)
           ], 64)) : O("", !0)
         ])
       ])
     ], 2));
   }
-}), Ke = (i, n) => {
-  const u = i.__vccOpts || i;
-  for (const [a, l] of n)
-    u[a] = l;
-  return u;
-}, Kn = /* @__PURE__ */ Ke(Vn, [["__scopeId", "data-v-5eead54f"]]), Xn = { class: "chat-panel" }, Hn = {
+}), je = (i, t) => {
+  const l = i.__vccOpts || i;
+  for (const [a, d] of t)
+    l[a] = d;
+  return l;
+}, Qn = /* @__PURE__ */ je(Zn, [["__scopeId", "data-v-5eead54f"]]), eo = { class: "chat-panel" }, to = {
   class: "messages",
   role: "log",
   "aria-live": "polite",
   "aria-relevant": "additions text"
-}, Yn = {
+}, no = {
   key: 0,
   class: "empty-state"
-}, Wn = {
+}, oo = {
   key: 1,
   class: "typing-indicator"
-}, jn = { class: "typing-text" }, qn = { class: "input-area" }, Jn = {
+}, ao = { class: "typing-text" }, io = { class: "input-area" }, so = {
   key: 0,
   class: "pending-images"
-}, Gn = ["src"], Zn = ["aria-label", "title", "onClick"], Qn = {
+}, ro = ["src"], lo = ["aria-label", "title", "onClick"], co = {
   key: 0,
   class: "pending-thumb uploading",
   "aria-hidden": "true"
-}, eo = {
+}, uo = {
   key: 1,
   class: "pending-files"
-}, to = ["title"], no = { class: "pending-file-name" }, oo = ["title", "onClick"], ao = {
+}, fo = ["title"], ho = { class: "pending-file-name" }, vo = ["title", "onClick"], mo = {
   key: 2,
   class: "call-strip"
-}, io = { class: "call-text" }, so = { class: "wake-text" }, ro = ["title"], lo = { class: "input-wrapper" }, co = ["title", "disabled"], uo = ["title", "disabled"], fo = ["title", "aria-pressed", "disabled"], ho = ["placeholder", "disabled"], vo = ["aria-label", "title", "disabled"], mo = { class: "input-footer" }, go = {
+}, go = { class: "call-text" }, po = { class: "wake-text" }, yo = ["title"], wo = { class: "input-wrapper" }, ko = ["title", "disabled"], bo = ["title", "disabled"], xo = ["title", "aria-pressed", "disabled"], _o = ["placeholder", "disabled"], Co = ["aria-label", "title", "disabled"], Mo = { class: "input-footer" }, So = {
   key: 0,
   class: "connection-status disconnected"
-}, po = {
+}, $o = {
   key: 1,
   class: "connection-status connected"
-}, yo = { class: "hint" }, wo = ["title"], ko = ["disabled"], bo = ["disabled"], xo = 80, _o = /* @__PURE__ */ Ue({
+}, Io = { class: "hint" }, Eo = ["title"], Lo = ["disabled"], Po = ["disabled"], To = 80, Ao = /* @__PURE__ */ Ye({
   __name: "ChatPanel",
   setup(i) {
-    const { t: n, locale: u } = Ve(), a = Bt(), l = ut(), y = nn(), { confirm: S } = on(), _ = L(""), I = L(null), x = L(null), $ = L([]), N = L(null), D = L([]), G = L(null), B = L(!1), k = L([]), p = L(!1), T = F(() => V.value === "listening" || V.value === "woken" || V.value === "capturing"), U = F(() => T.value ? n("chat.wakeOnTitle") : n("chat.wakeOffTitle")), re = F(() => V.value === "capturing" ? Ee.value ? n("chat.wakeHeardLine", { text: Ee.value }) : n("chat.wakeCapturing") : V.value === "woken" ? n("chat.wakeWoken") : n("chat.wakeListening", { name: k.value[0] || "" }));
-    function Z(h) {
+    const { t, locale: l } = We(), a = Vt(), d = gt(), y = cn(), { confirm: _ } = un(), C = E(""), $ = E(null), x = E(null), S = E([]), F = E(null), B = E([]), Q = E(null), R = E(!1), k = E([]), p = E(!1), P = N(() => V.value === "listening" || V.value === "woken" || V.value === "capturing"), U = N(() => P.value ? t("chat.wakeOnTitle") : t("chat.wakeOffTitle")), re = N(() => V.value === "capturing" ? Be.value ? t("chat.wakeHeardLine", { text: Be.value }) : t("chat.wakeCapturing") : V.value === "woken" ? t("chat.wakeWoken") : t("chat.wakeListening", { name: k.value[0] || "" }));
+    function j(h) {
       const v = y.values.life?.[h];
       return v == null ? "" : String(v);
     }
-    function ve() {
-      return Z("wake_nickname").split(/[,，、;；\s]+/).map((h) => h.trim()).filter(Boolean);
+    function pe() {
+      return j("wake_nickname").split(/[,，、;；\s]+/).map((h) => h.trim()).filter(Boolean);
     }
-    function P(h, f) {
-      const v = h === "no-nickname" ? n("chat.wakeNeedNickname") : h === "no-engine" ? n("chat.wakeNoEngine") : h === "mic-denied" ? n("chat.wakeMicDenied") : n("chat.wakeFailed", { detail: f || "unknown" });
-      qe(v, "error");
+    function I(h, c) {
+      const v = h === "no-nickname" ? t("chat.wakeNeedNickname") : h === "no-engine" ? t("chat.wakeNoEngine") : h === "mic-denied" ? t("chat.wakeMicDenied") : t("chat.wakeFailed", { detail: c || "unknown" });
+      et(v, "error");
     }
     function H(h) {
-      const f = h.trim();
-      if (f) {
+      const c = h.trim();
+      if (c) {
         if (a.isTyping) {
-          _.value = f, Ge(ge);
+          C.value = c, nt(we);
           return;
         }
-        _.value = f, le();
+        C.value = c, le();
       }
     }
-    async function C() {
+    async function M() {
       if (!p.value) {
         p.value = !0;
         try {
           await y.loadValues("life");
-          const h = ve();
+          const h = pe();
           if (k.value = h, !h.length) {
-            P("no-nickname");
+            I("no-nickname");
             return;
           }
-          await wn({
+          await Cn({
             nicknames: h,
-            language: Z("asr_language") || "zh",
+            language: j("asr_language") || "zh",
             onWake: () => {
               x.value?.focus();
             },
             onUtterance: H,
-            onError: P
+            onError: I
           });
         } finally {
           p.value = !1;
         }
       }
     }
-    function me() {
-      if (T.value) {
-        $e();
+    function ye() {
+      if (P.value) {
+        Ie();
         return;
       }
-      C();
+      M();
     }
-    function ge() {
+    function we() {
       const h = x.value;
       h && (h.style.height = "auto", h.style.height = `${Math.min(h.scrollHeight, 120)}px`);
     }
-    Ie(_, () => Ge(ge));
-    const Le = L(!0);
+    xe(C, () => nt(we));
+    const Oe = E(!0);
     let w = !1;
     function g() {
-      const h = I.value;
-      h && (Le.value = h.scrollHeight - h.scrollTop - h.clientHeight <= xo);
+      const h = $.value;
+      h && (Oe.value = h.scrollHeight - h.scrollTop - h.clientHeight <= To);
     }
     function le() {
       if (a.isTyping) return;
-      const h = _.value.trim();
-      if (!h && $.value.length === 0 && D.value.length === 0) return;
-      const f = [...$.value], v = D.value.map((M) => ({ ...M }));
-      $.value = [], D.value = [], w = !0, a.sendMessage(h, f, v), _.value = "";
+      const h = C.value.trim();
+      if (!h && S.value.length === 0 && B.value.length === 0) return;
+      const c = [...S.value], v = B.value.map((T) => ({ ...T }));
+      S.value = [], B.value = [], w = !0, a.sendMessage(h, c, v), C.value = "";
     }
-    function Ce(h) {
+    function Pe(h) {
       if (h.key === "Enter" && !h.shiftKey) {
         if (h.isComposing || h.keyCode === 229) return;
         h.preventDefault(), le();
       }
     }
-    function nt() {
-      N.value?.click();
+    function ct() {
+      F.value?.click();
     }
     async function z(h) {
-      const f = h.target, v = Array.from(f.files || []);
-      if (f.value = "", !!v.length) {
-        B.value = !0;
+      const c = h.target, v = Array.from(c.files || []);
+      if (c.value = "", !!v.length) {
+        R.value = !0;
         try {
-          for (const M of v) {
-            const q = await a.uploadImage(M);
-            $.value.push(q);
+          for (const T of v) {
+            const J = await a.uploadImage(T);
+            S.value.push(J);
           }
-        } catch (M) {
-          console.error("image upload failed:", M);
-          const q = v.length === 1 ? v[0].name : "";
-          qe(q ? n("chat.uploadFailedNamed", { name: q }) : n("chat.uploadFailed"), "error");
+        } catch (T) {
+          console.error("image upload failed:", T);
+          const J = v.length === 1 ? v[0].name : "";
+          et(J ? t("chat.uploadFailedNamed", { name: J }) : t("chat.uploadFailed"), "error");
         } finally {
-          B.value = !1;
-        }
-      }
-    }
-    function Me(h) {
-      $.value = $.value.filter((f) => f !== h);
-    }
-    function ye() {
-      G.value?.click();
-    }
-    async function ne(h) {
-      const f = h.target, v = Array.from(f.files || []);
-      if (f.value = "", !!v.length) {
-        B.value = !0;
-        try {
-          for (const M of v)
-            D.value.push(await a.uploadFile(M));
-        } catch (M) {
-          console.error("file upload failed:", M);
-          const q = v.length === 1 ? v[0].name : "";
-          qe(q ? n("chat.uploadFailedNamed", { name: q }) : n("chat.uploadFailed"), "error");
-        } finally {
-          B.value = !1;
+          R.value = !1;
         }
       }
     }
     function Te(h) {
-      D.value = D.value.filter((f) => f.url !== h);
+      S.value = S.value.filter((c) => c !== h);
+    }
+    function _e() {
+      Q.value?.click();
     }
     async function oe(h) {
-      const f = Array.from(h.clipboardData?.files || []);
-      if (f.length) {
-        h.preventDefault(), B.value = !0;
+      const c = h.target, v = Array.from(c.files || []);
+      if (c.value = "", !!v.length) {
+        R.value = !0;
         try {
-          for (const v of f)
-            v.type.startsWith("image/") ? $.value.push(await a.uploadImage(v)) : D.value.push(await a.uploadFile(v));
-        } catch (v) {
-          console.error("paste upload failed:", v), qe(n("chat.uploadFailed"), "error");
+          for (const T of v)
+            B.value.push(await a.uploadFile(T));
+        } catch (T) {
+          console.error("file upload failed:", T);
+          const J = v.length === 1 ? v[0].name : "";
+          et(J ? t("chat.uploadFailedNamed", { name: J }) : t("chat.uploadFailed"), "error");
         } finally {
-          B.value = !1;
+          R.value = !1;
+        }
+      }
+    }
+    function Ne(h) {
+      B.value = B.value.filter((c) => c.url !== h);
+    }
+    async function ae(h) {
+      const c = Array.from(h.clipboardData?.files || []);
+      if (c.length) {
+        h.preventDefault(), R.value = !0;
+        try {
+          for (const v of c)
+            v.type.startsWith("image/") ? S.value.push(await a.uploadImage(v)) : B.value.push(await a.uploadFile(v));
+        } catch (v) {
+          console.error("paste upload failed:", v), et(t("chat.uploadFailed"), "error");
+        } finally {
+          R.value = !1;
         }
       }
     }
     async function ce() {
-      await S({
-        title: n("chat.clear"),
-        message: n("chat.clearConfirm"),
-        confirmLabel: n("chat.clear"),
+      await _({
+        title: t("chat.clear"),
+        message: t("chat.clearConfirm"),
+        confirmLabel: t("chat.clear"),
         danger: !0
       }) && a.clearMessages();
     }
-    function ae() {
+    function ie() {
       const h = a.messages;
       if (!h.length) return;
-      const f = l.persona.name || n("chat.defaultCharacter"), v = new Intl.DateTimeFormat(u.value, {
+      const c = d.persona.name || t("chat.defaultCharacter"), v = new Intl.DateTimeFormat(l.value, {
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
         weekday: "short",
         hour: "2-digit",
         minute: "2-digit"
-      }), M = [];
-      M.push(`# ${n("chat.exportTitle")}`, ""), M.push(`- ${n("chat.defaultCharacter")}: ${f}`), M.push(`- ${v.format(/* @__PURE__ */ new Date())}`, "");
+      }), T = [];
+      T.push(`# ${t("chat.exportTitle")}`, ""), T.push(`- ${t("chat.defaultCharacter")}: ${c}`), T.push(`- ${v.format(/* @__PURE__ */ new Date())}`, "");
       for (const X of h) {
         if (!X.content && !X.images?.length && !X.files?.length) continue;
-        const ot = X.role === "user" ? n("chat.you") : f;
-        if (M.push(`## ${ot} · ${v.format(X.timestamp)}`), X.content && M.push("", X.content), X.images?.length) {
-          M.push("");
-          for (const ke of X.images) M.push(`![image](${ke})`);
+        const qe = X.role === "user" ? t("chat.you") : c;
+        if (T.push(`## ${qe} · ${v.format(X.timestamp)}`), X.content && T.push("", X.content), X.images?.length) {
+          T.push("");
+          for (const ue of X.images) T.push(`![image](${ue})`);
         }
         if (X.files?.length) {
-          M.push("");
-          for (const ke of X.files) M.push(`- [${ke.name}](${ke.url})`);
+          T.push("");
+          for (const ue of X.files) T.push(`- [${ue.name}](${ue.url})`);
         }
-        M.push("");
+        T.push("");
       }
-      const q = new Blob([M.join(`
-`)], { type: "text/markdown;charset=utf-8" }), Ae = URL.createObjectURL(q), ie = /* @__PURE__ */ new Date(), we = (X) => String(X).padStart(2, "0"), Y = document.createElement("a");
-      Y.href = Ae, Y.download = `0kay-chat-${ie.getFullYear()}${we(ie.getMonth() + 1)}${we(ie.getDate())}-${we(ie.getHours())}${we(ie.getMinutes())}.md`, document.body.appendChild(Y), Y.click(), Y.remove(), URL.revokeObjectURL(Ae);
+      const J = new Blob([T.join(`
+`)], { type: "text/markdown;charset=utf-8" }), Ce = URL.createObjectURL(J), ke = /* @__PURE__ */ new Date(), G = (X) => String(X).padStart(2, "0"), Me = document.createElement("a");
+      Me.href = Ce, Me.download = `0kay-chat-${ke.getFullYear()}${G(ke.getMonth() + 1)}${G(ke.getDate())}-${G(ke.getHours())}${G(ke.getMinutes())}.md`, document.body.appendChild(Me), Me.click(), Me.remove(), URL.revokeObjectURL(Ce);
     }
-    return et(() => {
-      a.restoreHistory(), a.isConnected || a.connect(), (async () => (await y.loadValues("life"), Z("wake_enabled") === "true" && ve().length && C()))();
-    }), tt(() => {
-      $e(), It(!1);
-    }), Ie(() => a.isTyping, (h) => It(h), { immediate: !0 }), Ie(
+    st(() => {
+      a.restoreHistory(), a.isConnected || a.connect(), (async () => (await y.loadValues("life"), j("wake_enabled") === "true" && pe().length && M()))();
+    });
+    let q = null;
+    return xe(() => a.callMode, (h) => {
+      if (!h) {
+        Re("hangup");
+        return;
+      }
+      q = a.voiceEnabled, a.setVoiceEnabled(!0), In({
+        language: j("asr_language") || "zh",
+        onUtterance: (c) => {
+          a.sendMessage(c);
+        },
+        onEnd: () => {
+          q !== null && a.setVoiceEnabled(q), q = null, a.endCall();
+        }
+      });
+    }), xe(() => a.isTyping, (h) => $n(h || !a.voiceEnabled), { immediate: !0 }), rt(() => {
+      Ie(), Rt(!1), Re("hangup");
+    }), xe(() => a.isTyping, (h) => Rt(h), { immediate: !0 }), xe(
       () => a.messages.length,
       async () => {
-        await Ge();
-        const h = I.value;
-        h && ((Le.value || w) && (h.scrollTop = h.scrollHeight, Le.value = !0), w = !1);
+        await nt();
+        const h = $.value;
+        h && ((Oe.value || w) && (h.scrollTop = h.scrollHeight, Oe.value = !0), w = !1);
       }
-    ), (h, f) => (c(), d("div", Xn, [
+    ), (h, c) => (u(), f("div", eo, [
       o("div", {
         class: "chat-container",
         ref_key: "chatContainer",
-        ref: I,
+        ref: $,
         onScroll: g
       }, [
-        o("div", Hn, [
-          s(a).messages.length === 0 ? (c(), d("div", Yn, [
-            f[5] || (f[5] = Rt('<div class="empty-icon" data-v-044d5238><svg width="64" height="64" viewBox="0 0 64 64" fill="none" data-v-044d5238><circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="2" stroke-dasharray="4 4" data-v-044d5238></circle><circle cx="32" cy="28" r="8" stroke="currentColor" stroke-width="2" data-v-044d5238></circle><path d="M20 44C20 38 26 34 32 34C38 34 44 38 44 44" stroke="currentColor" stroke-width="2" stroke-linecap="round" data-v-044d5238></path></svg></div>', 1)),
-            o("h3", null, b(s(n)("chat.empty")), 1),
-            o("p", null, b(s(n)("chat.emptyHint", { name: s(l).persona.name || s(n)("chat.defaultCharacter") })), 1)
+        o("div", to, [
+          s(a).messages.length === 0 ? (u(), f("div", no, [
+            c[5] || (c[5] = Ut('<div class="empty-icon" data-v-562b70d1><svg width="64" height="64" viewBox="0 0 64 64" fill="none" data-v-562b70d1><circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="2" stroke-dasharray="4 4" data-v-562b70d1></circle><circle cx="32" cy="28" r="8" stroke="currentColor" stroke-width="2" data-v-562b70d1></circle><path d="M20 44C20 38 26 34 32 34C38 34 44 38 44 44" stroke="currentColor" stroke-width="2" stroke-linecap="round" data-v-562b70d1></path></svg></div>', 1)),
+            o("h3", null, b(s(t)("chat.empty")), 1),
+            o("p", null, b(s(t)("chat.emptyHint", { name: s(d).persona.name || s(t)("chat.defaultCharacter") })), 1)
           ])) : O("", !0),
-          (c(!0), d(j, null, he(s(a).messages, (v, M) => (c(), Ne(Kn, {
+          (u(!0), f(W, null, me(s(a).messages, (v, T) => (u(), Xe(Qn, {
             key: v.id,
             message: v,
-            streaming: s(a).isTyping && M === s(a).messages.length - 1
+            streaming: s(a).isTyping && T === s(a).messages.length - 1
           }, null, 8, ["message", "streaming"]))), 128)),
-          s(a).isTyping ? (c(), d("div", Wn, [
-            f[6] || (f[6] = o("div", { class: "typing-dots" }, [
+          s(a).isTyping ? (u(), f("div", oo, [
+            c[6] || (c[6] = o("div", { class: "typing-dots" }, [
               o("span"),
               o("span"),
               o("span")
             ], -1)),
-            o("span", jn, b(s(l).persona.name || "AI") + " " + b(s(n)("chat.thinking")), 1)
+            o("span", ao, b(s(d).persona.name || "AI") + " " + b(s(t)("chat.thinking")), 1)
           ])) : O("", !0)
         ])
       ], 544),
-      o("div", qn, [
-        $.value.length || B.value ? (c(), d("div", Jn, [
-          (c(!0), d(j, null, he($.value, (v) => (c(), d("div", {
+      o("div", io, [
+        S.value.length || R.value ? (u(), f("div", so, [
+          (u(!0), f(W, null, me(S.value, (v) => (u(), f("div", {
             key: v,
             class: "pending-thumb"
           }, [
             o("img", {
               src: v,
               alt: ""
-            }, null, 8, Gn),
+            }, null, 8, ro),
             o("button", {
               class: "remove-img",
               type: "button",
-              "aria-label": s(n)("chat.removeImage"),
-              title: s(n)("chat.removeImage"),
-              onClick: (M) => Me(v)
-            }, " × ", 8, Zn)
+              "aria-label": s(t)("chat.removeImage"),
+              title: s(t)("chat.removeImage"),
+              onClick: (T) => Te(v)
+            }, " × ", 8, lo)
           ]))), 128)),
-          B.value ? (c(), d("div", Qn, [...f[7] || (f[7] = [
+          R.value ? (u(), f("div", co, [...c[7] || (c[7] = [
             o("span", { class: "upload-spinner" }, null, -1)
           ])])) : O("", !0)
         ])) : O("", !0),
-        D.value.length ? (c(), d("div", eo, [
-          (c(!0), d(j, null, he(D.value, (v) => (c(), d("span", {
+        B.value.length ? (u(), f("div", uo, [
+          (u(!0), f(W, null, me(B.value, (v) => (u(), f("span", {
             key: v.url,
             class: "pending-file",
             title: `${v.mime || ""} · ${v.size || 0} B`
           }, [
-            o("span", no, b(v.name), 1),
+            o("span", ho, b(v.name), 1),
             o("button", {
               class: "remove-file",
               type: "button",
-              title: s(n)("chat.removeFile"),
-              onClick: (M) => Te(v.url)
-            }, " × ", 8, oo)
-          ], 8, to))), 128))
+              title: s(t)("chat.removeFile"),
+              onClick: (T) => Ne(v.url)
+            }, " × ", 8, vo)
+          ], 8, fo))), 128))
         ])) : O("", !0),
-        s(a).callMode ? (c(), d("div", ao, [
-          f[8] || (f[8] = o("span", {
+        s(a).callMode ? (u(), f("div", mo, [
+          c[8] || (c[8] = o("span", {
             class: "call-dot",
             "aria-hidden": "true"
           }, null, -1)),
-          o("span", io, b(s(n)("chat.callBanner")), 1),
+          o("span", go, b(s(ge) === "dialing" ? s(t)("chat.callDialing") : s(t)("chat.callBanner")), 1),
           o("button", {
             class: "call-end",
             type: "button",
-            onClick: f[0] || (f[0] = (v) => s(a).endCall())
-          }, b(s(n)("chat.callEnd")), 1)
+            onClick: c[0] || (c[0] = (v) => s(Re)("hangup"))
+          }, b(s(t)("chat.callEnd")), 1)
         ])) : O("", !0),
-        T.value ? (c(), d("div", {
+        P.value ? (u(), f("div", {
           key: 3,
-          class: ee(["wake-strip", s(V)])
+          class: te(["wake-strip", s(V)])
         }, [
-          f[9] || (f[9] = o("span", {
+          c[9] || (c[9] = o("span", {
             class: "wake-dot",
             "aria-hidden": "true"
           }, null, -1)),
-          o("span", so, b(re.value), 1),
+          o("span", po, b(re.value), 1),
           o("button", {
             class: "wake-stop",
             type: "button",
-            title: s(n)("chat.wakeOnTitle"),
-            onClick: f[1] || (f[1] = //@ts-ignore
-            (...v) => s($e) && s($e)(...v))
-          }, "×", 8, ro)
+            title: s(t)("chat.wakeOnTitle"),
+            onClick: c[1] || (c[1] = //@ts-ignore
+            (...v) => s(Ie) && s(Ie)(...v))
+          }, "×", 8, yo)
         ], 2)) : O("", !0),
-        o("div", lo, [
+        o("div", wo, [
           o("input", {
             ref_key: "imageInput",
-            ref: N,
+            ref: F,
             type: "file",
             accept: "image/png,image/jpeg,image/gif,image/webp",
             multiple: "",
@@ -842,19 +914,19 @@ const xn = {
           }, null, 544),
           o("input", {
             ref_key: "fileInput",
-            ref: G,
+            ref: Q,
             type: "file",
             multiple: "",
             hidden: "",
-            onChange: ne
+            onChange: oe
           }, null, 544),
           o("button", {
             class: "attach-btn",
             type: "button",
-            title: s(n)("chat.attachImage"),
-            disabled: B.value || !s(a).isConnected,
-            onClick: nt
-          }, [...f[10] || (f[10] = [
+            title: s(t)("chat.attachImage"),
+            disabled: R.value || !s(a).isConnected,
+            onClick: ct
+          }, [...c[10] || (c[10] = [
             o("svg", {
               width: "18",
               height: "18",
@@ -884,14 +956,14 @@ const xn = {
                 "stroke-linejoin": "round"
               })
             ], -1)
-          ])], 8, co),
+          ])], 8, ko),
           o("button", {
             class: "attach-btn",
             type: "button",
-            title: s(n)("chat.attachFile"),
-            disabled: B.value || !s(a).isConnected,
-            onClick: ye
-          }, [...f[11] || (f[11] = [
+            title: s(t)("chat.attachFile"),
+            disabled: R.value || !s(a).isConnected,
+            onClick: _e
+          }, [...c[11] || (c[11] = [
             o("svg", {
               width: "18",
               height: "18",
@@ -906,15 +978,15 @@ const xn = {
                 "stroke-linejoin": "round"
               })
             ], -1)
-          ])], 8, uo),
+          ])], 8, bo),
           o("button", {
-            class: ee(["attach-btn wake-btn", { active: T.value }]),
+            class: te(["attach-btn wake-btn", { active: P.value }]),
             type: "button",
             title: U.value,
-            "aria-pressed": T.value,
+            "aria-pressed": P.value,
             disabled: p.value,
-            onClick: me
-          }, [...f[12] || (f[12] = [
+            onClick: ye
+          }, [...c[12] || (c[12] = [
             o("svg", {
               width: "18",
               height: "18",
@@ -938,27 +1010,27 @@ const xn = {
                 "stroke-linecap": "round"
               })
             ], -1)
-          ])], 10, fo),
-          Qt(o("textarea", {
+          ])], 10, xo),
+          sn(o("textarea", {
             ref_key: "messageInput",
             ref: x,
-            "onUpdate:modelValue": f[2] || (f[2] = (v) => _.value = v),
+            "onUpdate:modelValue": c[2] || (c[2] = (v) => C.value = v),
             class: "message-input",
-            placeholder: s(n)("chat.inputPlaceholder"),
+            placeholder: s(t)("chat.inputPlaceholder"),
             rows: "1",
-            onKeydown: Ce,
-            onPaste: oe,
+            onKeydown: Pe,
+            onPaste: ae,
             disabled: !s(a).isConnected
-          }, null, 40, ho), [
-            [en, _.value]
+          }, null, 40, _o), [
+            [rn, C.value]
           ]),
           o("button", {
             class: "send-button",
-            "aria-label": s(n)("chat.send"),
-            title: s(n)("chat.send"),
+            "aria-label": s(t)("chat.send"),
+            title: s(t)("chat.send"),
             onClick: le,
-            disabled: !_.value.trim() && !$.value.length && !D.value.length || !s(a).isConnected || s(a).isTyping
-          }, [...f[13] || (f[13] = [
+            disabled: !C.value.trim() && !S.value.length && !B.value.length || !s(a).isConnected || s(a).isTyping
+          }, [...c[13] || (c[13] = [
             o("svg", {
               width: "20",
               height: "20",
@@ -973,176 +1045,176 @@ const xn = {
                 "stroke-linejoin": "round"
               })
             ], -1)
-          ])], 8, vo)
+          ])], 8, Co)
         ]),
-        o("div", mo, [
-          s(a).isConnected ? (c(), d("span", po, [
-            f[15] || (f[15] = o("span", { class: "status-dot" }, null, -1)),
-            ze(" " + b(s(n)("chat.connected")), 1)
-          ])) : (c(), d("span", go, [
-            f[14] || (f[14] = o("span", { class: "status-dot" }, null, -1)),
-            ze(" " + b(s(n)("chat.disconnected")), 1)
+        o("div", Mo, [
+          s(a).isConnected ? (u(), f("span", $o, [
+            c[15] || (c[15] = o("span", { class: "status-dot" }, null, -1)),
+            Ke(" " + b(s(t)("chat.connected")), 1)
+          ])) : (u(), f("span", So, [
+            c[14] || (c[14] = o("span", { class: "status-dot" }, null, -1)),
+            Ke(" " + b(s(t)("chat.disconnected")), 1)
           ])),
-          o("span", yo, b(s(n)("chat.contextHint", { n: s(a).contextTokens.toLocaleString() })), 1),
+          o("span", Io, b(s(t)("chat.contextHint", { n: s(a).contextTokens.toLocaleString() })), 1),
           o("button", {
-            class: ee(["context-btn", { active: s(a).voiceEnabled }]),
+            class: te(["context-btn", { active: s(a).voiceEnabled }]),
             type: "button",
-            title: s(a).voiceEnabled ? s(n)("chat.voiceOnTitle") : s(n)("chat.voiceOffTitle"),
-            onClick: f[3] || (f[3] = (v) => s(a).setVoiceEnabled(!s(a).voiceEnabled))
-          }, b(s(a).voiceEnabled ? s(n)("chat.voiceOn") : s(n)("chat.voiceOff")), 11, wo),
+            title: s(a).voiceEnabled ? s(t)("chat.voiceOnTitle") : s(t)("chat.voiceOffTitle"),
+            onClick: c[3] || (c[3] = (v) => s(a).setVoiceEnabled(!s(a).voiceEnabled))
+          }, b(s(a).voiceEnabled ? s(t)("chat.voiceOn") : s(t)("chat.voiceOff")), 11, Eo),
           o("button", {
             class: "context-btn",
             type: "button",
             disabled: s(a).messages.length === 0,
-            onClick: ae
-          }, b(s(n)("chat.download")), 9, ko),
+            onClick: ie
+          }, b(s(t)("chat.download")), 9, Lo),
           o("button", {
             class: "context-btn",
             type: "button",
             disabled: s(a).compacting,
-            onClick: f[4] || (f[4] = //@ts-ignore
+            onClick: c[4] || (c[4] = //@ts-ignore
             (...v) => s(a).compactContext && s(a).compactContext(...v))
-          }, b(s(a).compacting ? s(n)("chat.compacting") : s(n)("chat.compact")), 9, bo),
+          }, b(s(a).compacting ? s(t)("chat.compacting") : s(t)("chat.compact")), 9, Po),
           o("button", {
             class: "context-btn danger",
             type: "button",
             onClick: ce
-          }, b(s(n)("chat.clear")), 1)
+          }, b(s(t)("chat.clear")), 1)
         ])
       ])
     ]));
   }
-}), Co = /* @__PURE__ */ Ke(_o, [["__scopeId", "data-v-044d5238"]]), Mo = { class: "status-panel" }, So = { class: "panel-header" }, $o = {
+}), Do = /* @__PURE__ */ je(Ao, [["__scopeId", "data-v-562b70d1"]]), Ro = { class: "status-panel" }, Bo = { class: "panel-header" }, Oo = {
   key: 0,
   class: "patch-badge"
-}, Io = { class: "panel-content" }, Po = { class: "section character-profile" }, Eo = { class: "section-header" }, Lo = { class: "section-title" }, To = ["datetime"], Ao = ["data-section", "data-kind"], Ro = { class: "section-header" }, Bo = { class: "section-title" }, Do = {
+}, No = { class: "panel-content" }, Fo = { class: "section character-profile" }, zo = { class: "section-header" }, Uo = { class: "section-title" }, Vo = ["datetime"], Xo = ["data-section", "data-kind"], Ko = { class: "section-header" }, Ho = { class: "section-title" }, Yo = {
   key: 0,
   class: "mood-display"
-}, Oo = {
+}, Wo = {
   key: 0,
   width: "48",
   height: "48",
   viewBox: "0 0 48 48",
   fill: "none"
-}, Fo = {
+}, jo = {
   key: 1,
   width: "48",
   height: "48",
   viewBox: "0 0 48 48",
   fill: "none"
-}, No = {
+}, qo = {
   key: 2,
   width: "48",
   height: "48",
   viewBox: "0 0 48 48",
   fill: "none"
-}, zo = {
+}, Jo = {
   key: 3,
   width: "48",
   height: "48",
   viewBox: "0 0 48 48",
   fill: "none"
-}, Uo = {
+}, Go = {
   key: 4,
   width: "48",
   height: "48",
   viewBox: "0 0 48 48",
   fill: "none"
-}, Vo = {
+}, Zo = {
   key: 1,
   class: "emotion-bars"
-}, Ko = { class: "emotion-label" }, Xo = { class: "emotion-bar" }, Ho = {
+}, Qo = { class: "emotion-label" }, ea = { class: "emotion-bar" }, ta = {
   key: 0,
   class: "empty-tasks"
-}, Yo = /* @__PURE__ */ Ue({
+}, na = /* @__PURE__ */ Ye({
   __name: "StatusPanel",
   setup(i) {
-    const { t: n } = Ve(), u = Dt(), a = Ot(), l = ut(), y = L(/* @__PURE__ */ new Date()), S = F(() => {
-      const k = l.persona.birthDate;
+    const { t } = We(), l = Xt(), a = Kt(), d = gt(), y = E(/* @__PURE__ */ new Date()), _ = N(() => {
+      const k = d.persona.birthDate;
       if (!k) return null;
       const p = /* @__PURE__ */ new Date(`${k}T00:00:00`);
       if (Number.isNaN(p.getTime()) || p > y.value) return null;
-      const T = y.value;
-      return T.getFullYear() - p.getFullYear() - +(T.getMonth() < p.getMonth() || T.getMonth() === p.getMonth() && T.getDate() < p.getDate());
+      const P = y.value;
+      return P.getFullYear() - p.getFullYear() - +(P.getMonth() < p.getMonth() || P.getMonth() === p.getMonth() && P.getDate() < p.getDate());
     });
-    let _ = null;
-    function I(k) {
+    let C = null;
+    function $(k) {
       if (!k || !k.startsWith("life.")) return;
-      const p = k.slice(5).split(".").reduce((T, U) => T?.[U], u);
+      const p = k.slice(5).split(".").reduce((P, U) => P?.[U], l);
       return typeof p == "function" ? void 0 : p;
     }
     function x(k) {
       if (k.titleKey) {
-        const p = n(k.titleKey);
+        const p = t(k.titleKey);
         if (p && p !== k.titleKey) return p;
       }
       return k.title || k.id;
     }
-    function $(k) {
+    function S(k) {
       if (k.labelKey) {
-        const p = n(k.labelKey);
+        const p = t(k.labelKey);
         if (p && p !== k.labelKey) return p;
       }
       return k.label || k.key;
     }
-    function N(k) {
-      const p = Number(I(`life.emotion.${k.key}`) ?? 0);
+    function F(k) {
+      const p = Number($(`life.emotion.${k.key}`) ?? 0);
       return k.scale === "remap01" ? (p + 1) / 2 : p;
     }
-    et(() => {
-      _ = setInterval(() => {
+    st(() => {
+      C = setInterval(() => {
         y.value = /* @__PURE__ */ new Date();
       }, 1e3);
-    }), tt(() => {
-      _ && clearInterval(_);
+    }), rt(() => {
+      C && clearInterval(C);
     });
-    const D = F(
+    const B = N(
       () => a.statusSections.filter((k) => k.kind === "mood" || k.kind === "bars")
-    ), G = F(() => u.emotionColor), B = F(() => u.emotionMood);
-    return (k, p) => (c(), d("div", Mo, [
-      o("div", So, [
-        o("h2", null, b(s(n)("status.title")), 1),
-        s(a).loaded ? (c(), d("span", $o, "patch")) : O("", !0)
+    ), Q = N(() => l.emotionColor), R = N(() => l.emotionMood);
+    return (k, p) => (u(), f("div", Ro, [
+      o("div", Bo, [
+        o("h2", null, b(s(t)("status.title")), 1),
+        s(a).loaded ? (u(), f("span", Oo, "patch")) : O("", !0)
       ]),
-      o("div", Io, [
-        o("section", Po, [
-          o("div", Eo, [
-            o("span", Lo, b(s(l).persona.name || s(n)("chat.defaultCharacter")), 1)
+      o("div", No, [
+        o("section", Fo, [
+          o("div", zo, [
+            o("span", Uo, b(s(d).persona.name || s(t)("chat.defaultCharacter")), 1)
           ]),
           o("dl", null, [
             o("div", null, [
-              o("dt", null, b(s(n)("status.age")), 1),
-              o("dd", null, b(S.value === null ? s(n)("status.birthdayUnset") : s(n)("status.ageValue", { age: S.value })), 1)
+              o("dt", null, b(s(t)("status.age")), 1),
+              o("dd", null, b(_.value === null ? s(t)("status.birthdayUnset") : s(t)("status.ageValue", { age: _.value })), 1)
             ]),
             o("div", null, [
-              o("dt", null, b(s(n)("status.time")), 1),
+              o("dt", null, b(s(t)("status.time")), 1),
               o("dd", null, [
                 o("time", {
                   datetime: y.value.toISOString()
-                }, b(y.value.toLocaleString()), 9, To)
+                }, b(y.value.toLocaleString()), 9, Vo)
               ])
             ]),
             o("div", null, [
-              o("dt", null, b(s(n)("status.timezone")), 1),
+              o("dt", null, b(s(t)("status.timezone")), 1),
               o("dd", null, b(Intl.DateTimeFormat().resolvedOptions().timeZone), 1)
             ])
           ])
         ]),
-        (c(!0), d(j, null, he(D.value, (T) => (c(), d("div", {
-          key: T.id,
+        (u(!0), f(W, null, me(B.value, (P) => (u(), f("div", {
+          key: P.id,
           class: "section",
-          "data-section": T.id,
-          "data-kind": T.kind
+          "data-section": P.id,
+          "data-kind": P.kind
         }, [
-          o("div", Ro, [
-            o("span", Bo, b(x(T)), 1)
+          o("div", Ko, [
+            o("span", Ho, b(x(P)), 1)
           ]),
-          T.kind === "mood" ? (c(), d("div", Do, [
+          P.kind === "mood" ? (u(), f("div", Yo, [
             o("div", {
               class: "mood-icon",
-              style: _e({ color: G.value })
+              style: Ee({ color: Q.value })
             }, [
-              B.value === "happy" ? (c(), d("svg", Oo, [...p[0] || (p[0] = [
+              R.value === "happy" ? (u(), f("svg", Wo, [...p[0] || (p[0] = [
                 o("circle", {
                   cx: "24",
                   cy: "24",
@@ -1168,7 +1240,7 @@ const xn = {
                   "stroke-width": "2",
                   "stroke-linecap": "round"
                 }, null, -1)
-              ])])) : B.value === "sad" ? (c(), d("svg", Fo, [...p[1] || (p[1] = [
+              ])])) : R.value === "sad" ? (u(), f("svg", jo, [...p[1] || (p[1] = [
                 o("circle", {
                   cx: "24",
                   cy: "24",
@@ -1194,7 +1266,7 @@ const xn = {
                   "stroke-width": "2",
                   "stroke-linecap": "round"
                 }, null, -1)
-              ])])) : B.value === "irritated" ? (c(), d("svg", No, [...p[2] || (p[2] = [
+              ])])) : R.value === "irritated" ? (u(), f("svg", qo, [...p[2] || (p[2] = [
                 o("circle", {
                   cx: "24",
                   cy: "24",
@@ -1224,9 +1296,9 @@ const xn = {
                   "stroke-width": "2",
                   "stroke-linecap": "round"
                 }, null, -1)
-              ])])) : B.value === "sleeping" ? (c(), d("svg", zo, [...p[3] || (p[3] = [
-                Rt('<circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2" data-v-45331204></circle><path d="M16 22C17 22 18 22 18 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" data-v-45331204></path><path d="M30 22C31 22 32 22 32 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" data-v-45331204></path><path d="M18 32C20 34 28 34 30 32" stroke="currentColor" stroke-width="2" stroke-linecap="round" data-v-45331204></path><text x="36" y="12" fill="currentColor" font-size="12" font-weight="bold" data-v-45331204>Z</text>', 5)
-              ])])) : (c(), d("svg", Uo, [...p[4] || (p[4] = [
+              ])])) : R.value === "sleeping" ? (u(), f("svg", Jo, [...p[3] || (p[3] = [
+                Ut('<circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2" data-v-45331204></circle><path d="M16 22C17 22 18 22 18 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" data-v-45331204></path><path d="M30 22C31 22 32 22 32 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" data-v-45331204></path><path d="M18 32C20 34 28 34 30 32" stroke="currentColor" stroke-width="2" stroke-linecap="round" data-v-45331204></path><text x="36" y="12" fill="currentColor" font-size="12" font-weight="bold" data-v-45331204>Z</text>', 5)
+              ])])) : (u(), f("svg", Go, [...p[4] || (p[4] = [
                 o("circle", {
                   cx: "24",
                   cy: "24",
@@ -1256,90 +1328,90 @@ const xn = {
             ], 4),
             o("div", {
               class: "mood-label",
-              style: _e({ color: G.value })
-            }, b(s(n)(`emotion.${B.value}`)), 5)
-          ])) : T.kind === "bars" ? (c(), d("div", Vo, [
-            (c(!0), d(j, null, he(T.axes || [], (U) => (c(), d("div", {
+              style: Ee({ color: Q.value })
+            }, b(s(t)(`emotion.${R.value}`)), 5)
+          ])) : P.kind === "bars" ? (u(), f("div", Zo, [
+            (u(!0), f(W, null, me(P.axes || [], (U) => (u(), f("div", {
               key: U.key,
               class: "emotion-row"
             }, [
-              o("span", Ko, b($(U)), 1),
-              o("div", Xo, [
+              o("span", Qo, b(S(U)), 1),
+              o("div", ea, [
                 o("div", {
                   class: "emotion-fill",
-                  style: _e({
-                    transform: `scaleX(${Math.max(0, Math.min(1, N(U)))})`,
+                  style: Ee({
+                    transform: `scaleX(${Math.max(0, Math.min(1, F(U)))})`,
                     backgroundColor: U.color || "#0078d4"
                   })
                 }, null, 4)
               ])
             ]))), 128))
           ])) : O("", !0)
-        ], 8, Ao))), 128)),
-        s(a).statusSections.length === 0 ? (c(), d("div", Ho, " No status sections (load life.patch) ")) : O("", !0)
+        ], 8, Xo))), 128)),
+        s(a).statusSections.length === 0 ? (u(), f("div", ta, " No status sections (load life.patch) ")) : O("", !0)
       ])
     ]));
   }
-}), Wo = /* @__PURE__ */ Ke(Yo, [["__scopeId", "data-v-45331204"]]), jo = ["title"], qo = {
+}), oa = /* @__PURE__ */ je(na, [["__scopeId", "data-v-45331204"]]), aa = ["title"], ia = {
   key: 0,
   class: "stage-placeholder"
-}, Jo = {
+}, sa = {
   key: 1,
   class: "stage-status"
-}, Go = {
+}, ra = {
   key: 2,
   class: "stage-status warn"
-}, Zo = ["title", "aria-label"], Qo = { class: "stage-hint" }, Et = "0kay.web.live2d.resetbtn", ea = "0kay.web.live2d.transform.", ta = /* @__PURE__ */ Ue({
+}, la = ["title", "aria-label"], ca = { class: "stage-hint" }, Ot = "0kay.web.live2d.resetbtn", ua = "0kay.web.live2d.transform.", da = /* @__PURE__ */ Ye({
   __name: "Live2DStage",
   setup(i) {
-    const { t: n } = Ve(), u = Dt(), a = ut(), l = L(null), y = L(null), S = L(""), _ = L("idle"), I = L(""), x = F(() => a.live2d.enabled), $ = F(() => a.live2d.modelUrl.trim()), N = F(() => u.emotionMood), D = F(() => {
-      const e = String(N.value || "");
+    const { t } = We(), l = Xt(), a = gt(), d = E(null), y = E(null), _ = E(""), C = E("idle"), $ = E(""), x = N(() => a.live2d.enabled), S = N(() => a.live2d.modelUrl.trim()), F = N(() => l.emotionMood), B = N(() => {
+      const e = String(F.value || "");
       if (!e) return "";
-      const t = `emotion.${e}`, r = n(t);
-      return r === t ? e : r;
-    }), G = F(() => u.emotionColor), B = L([]);
+      const n = `emotion.${e}`, r = t(n);
+      return r === n ? e : r;
+    }), Q = N(() => l.emotionColor), R = E([]);
     async function k() {
       try {
         const e = await fetch("/api/live2d");
         if (e.ok) {
-          const t = await e.json();
-          B.value = t.models || [];
+          const n = await e.json();
+          R.value = n.models || [];
         }
       } catch {
-        B.value = [];
+        R.value = [];
       }
     }
-    const p = L(null), T = L(P()), U = L(!1);
-    let re = !1, Z = { x: 0, y: 0 }, ve = { x: 0, y: 0 };
-    function P() {
+    const p = E(null), P = E(I()), U = E(!1);
+    let re = !1, j = { x: 0, y: 0 }, pe = { x: 0, y: 0 };
+    function I() {
       try {
-        const e = localStorage.getItem(Et);
+        const e = localStorage.getItem(Ot);
         if (e) {
-          const t = JSON.parse(e);
-          if (typeof t?.x == "number" && typeof t?.y == "number") return t;
+          const n = JSON.parse(e);
+          if (typeof n?.x == "number" && typeof n?.y == "number") return n;
         }
       } catch {
       }
       return null;
     }
-    const H = F(() => T.value ? { left: `${T.value.x}px`, top: `${T.value.y}px`, right: "auto", bottom: "auto" } : {});
-    function C(e) {
-      U.value = !0, re = !1, Z = { x: e.clientX, y: e.clientY };
-      const t = p.value?.getBoundingClientRect();
-      ve = { x: t?.left ?? 0, y: t?.top ?? 0 };
+    const H = N(() => P.value ? { left: `${P.value.x}px`, top: `${P.value.y}px`, right: "auto", bottom: "auto" } : {});
+    function M(e) {
+      U.value = !0, re = !1, j = { x: e.clientX, y: e.clientY };
+      const n = p.value?.getBoundingClientRect();
+      pe = { x: n?.left ?? 0, y: n?.top ?? 0 };
       try {
         p.value?.setPointerCapture(e.pointerId);
       } catch {
       }
     }
-    function me(e) {
-      if (!U.value || !l.value) return;
-      const t = e.clientX - Z.x, r = e.clientY - Z.y;
-      (Math.abs(t) > 3 || Math.abs(r) > 3) && (re = !0);
-      const m = l.value.getBoundingClientRect(), E = p.value?.offsetWidth || 34, R = se(ve.x - m.left + t, 4, Math.max(4, m.width - E - 4)), A = se(ve.y - m.top + r, 4, Math.max(4, m.height - E - 4));
-      T.value = { x: Math.round(R), y: Math.round(A) };
+    function ye(e) {
+      if (!U.value || !d.value) return;
+      const n = e.clientX - j.x, r = e.clientY - j.y;
+      (Math.abs(n) > 3 || Math.abs(r) > 3) && (re = !0);
+      const m = d.value.getBoundingClientRect(), L = p.value?.offsetWidth || 34, D = se(pe.x - m.left + n, 4, Math.max(4, m.width - L - 4)), A = se(pe.y - m.top + r, 4, Math.max(4, m.height - L - 4));
+      P.value = { x: Math.round(D), y: Math.round(A) };
     }
-    function ge(e) {
+    function we(e) {
       if (U.value) {
         U.value = !1;
         try {
@@ -1348,147 +1420,147 @@ const xn = {
         }
         if (re)
           try {
-            localStorage.setItem(Et, JSON.stringify(T.value));
+            localStorage.setItem(Ot, JSON.stringify(P.value));
           } catch {
           }
       }
     }
-    function Le() {
+    function Oe() {
       if (re) {
         re = !1;
         return;
       }
-      qt();
+      tn();
     }
-    let w = null, g = null, le = null, Ce = 0, nt = 0, z = 0, Me = { x: 0, y: 0, has: !1 }, ye = !1, ne = null, Te = { x: 0, y: 0 }, oe = null, ce = null, ae = null, h = null, f = null, v = "off", M = 0, q = 0, Ae = 0, ie = 120, we = ["ParamMouthOpenY"];
-    function Y(e) {
-      const t = g?.internalModel?.coreModel;
-      if (!t) return;
+    let w = null, g = null, le = null, Pe = 0, ct = 0, z = 0, Te = { x: 0, y: 0, has: !1 }, _e = !1, oe = null, Ne = { x: 0, y: 0 }, ae = null, ce = null, ie = null, q = null, h = null, c = "off", v = 0, T = 0, J = 0, Ce = 120, ke = ["ParamMouthOpenY"];
+    function G(e) {
+      const n = g?.internalModel?.coreModel;
+      if (!n) return;
       const r = se(e, 0, 1);
-      for (const m of we)
+      for (const m of ke)
         try {
-          typeof t.setParameterValueById == "function" ? t.setParameterValueById(m, r) : typeof t.setParamFloat == "function" && t.setParamFloat(m, r);
+          typeof n.setParameterValueById == "function" ? n.setParameterValueById(m, r) : typeof n.setParamFloat == "function" && n.setParamFloat(m, r);
         } catch {
         }
     }
-    function X(e) {
-      const t = [];
+    function Me(e) {
+      const n = [];
       try {
         const r = e?.internalModel?.settings;
         let m = r?.getLipSyncParameters?.();
-        if (!Array.isArray(m) && Array.isArray(r?.groups) && (m = r.groups.find((R) => (R?.Name || R?.name || "").toLowerCase() === "lipsync")?.Ids), Array.isArray(m))
-          for (const E of m) typeof E == "string" && E && t.push(E);
+        if (!Array.isArray(m) && Array.isArray(r?.groups) && (m = r.groups.find((D) => (D?.Name || D?.name || "").toLowerCase() === "lipsync")?.Ids), Array.isArray(m))
+          for (const L of m) typeof L == "string" && L && n.push(L);
       } catch {
       }
-      we = t.length ? t : ["ParamMouthOpenY"];
+      ke = n.length ? n : ["ParamMouthOpenY"];
     }
-    function ot() {
-      if (v === "off") {
-        M !== 0 && (M = 0, Y(0));
+    function X() {
+      if (c === "off") {
+        v !== 0 && (v = 0, G(0));
         return;
       }
-      if (v === "audio" && h && f) {
-        h.getByteTimeDomainData(f);
+      if (c === "audio" && q && h) {
+        q.getByteTimeDomainData(h);
         let e = 0;
-        for (let m = 0; m < f.length; m++) {
-          const E = (f[m] - 128) / 128;
-          e += E * E;
+        for (let m = 0; m < h.length; m++) {
+          const L = (h[m] - 128) / 128;
+          e += L * L;
         }
-        const t = Math.sqrt(e / f.length), r = se(t * 3.4, 0, 1);
-        M = M * 0.35 + r * 0.65, Y(M);
+        const n = Math.sqrt(e / h.length), r = se(n * 3.4, 0, 1);
+        v = v * 0.35 + r * 0.65, G(v);
         return;
       }
-      if (v === "text") {
-        const e = performance.now() - q;
-        if (e > Ae * ie + 260) {
-          v = "off", M = 0, Y(0);
+      if (c === "text") {
+        const e = performance.now() - T;
+        if (e > J * Ce + 260) {
+          c = "off", v = 0, G(0);
           return;
         }
-        const t = e % ie / ie, r = t < 0.5 ? 0.12 + 0.72 * Math.sin(t / 0.5 * Math.PI) : 0.06;
-        M = M * 0.45 + r * 0.55, Y(M);
+        const n = e % Ce / Ce, r = n < 0.5 ? 0.12 + 0.72 * Math.sin(n / 0.5 * Math.PI) : 0.06;
+        v = v * 0.45 + r * 0.55, G(v);
       }
     }
-    async function ke(e, t = "") {
+    async function qe(e, n = "") {
       if (!e) {
-        Xe(t);
+        ue(n);
         return;
       }
       if (g)
         try {
-          if (oe || (oe = new Audio(), oe.crossOrigin = "anonymous", oe.addEventListener("ended", () => {
-            v = "off", M = 0, Y(0);
+          if (ae || (ae = new Audio(), ae.crossOrigin = "anonymous", ae.addEventListener("ended", () => {
+            c = "off", v = 0, G(0);
           })), ce && ce !== e)
             try {
               URL.revokeObjectURL(ce);
             } catch {
             }
-          if (ce = e, oe.src = e, !ae) {
+          if (ce = e, ae.src = e, !ie) {
             const r = window.AudioContext || window.webkitAudioContext;
-            r && (ae = new r(), h = ae.createAnalyser(), h.fftSize = 1024, f = new Uint8Array(h.fftSize), ae.createMediaElementSource(oe).connect(h), h.connect(ae.destination));
+            r && (ie = new r(), q = ie.createAnalyser(), q.fftSize = 1024, h = new Uint8Array(q.fftSize), ie.createMediaElementSource(ae).connect(q), q.connect(ie.destination));
           }
-          await ae?.resume().catch(() => {
-          }), v = "audio", await oe.play().catch(() => {
-            t ? Xe(t) : (v = "off", Y(0));
+          await ie?.resume().catch(() => {
+          }), c = "audio", await ae.play().catch(() => {
+            n ? ue(n) : (c = "off", G(0));
           });
         } catch {
-          t ? Xe(t) : v = "off";
+          n ? ue(n) : c = "off";
         }
     }
-    function Xe(e) {
-      const t = Array.from(String(e || "")).filter((r) => /\S/.test(r));
-      t.length && (ie = /[\u4e00-\u9fff]/.test(t.join("")) ? 140 : 80, Ae = t.length, q = performance.now(), v = "text");
+    function ue(e) {
+      const n = Array.from(String(e || "")).filter((r) => /\S/.test(r));
+      n.length && (Ce = /[\u4e00-\u9fff]/.test(n.join("")) ? 140 : 80, J = n.length, T = performance.now(), c = "text");
     }
-    function ft() {
-      v = "off", M = 0, Y(0);
+    function wt() {
+      c = "off", v = 0, G(0);
       try {
-        oe?.pause();
+        ae?.pause();
       } catch {
       }
     }
-    function ht(e) {
-      const t = e.detail || {};
-      t.url ? ke(t.url, t.text || "") : t.text && Xe(t.text);
+    function kt(e) {
+      const n = e.detail || {};
+      n.url ? qe(n.url, n.text || "") : n.text && ue(n.text);
     }
-    let ue = {}, Q = [], He = 0;
-    function Kt(e) {
-      ue = {}, Q = [];
+    let de = {}, ee = [], Je = 0;
+    function qt(e) {
+      de = {}, ee = [];
       try {
-        const t = e?.internalModel?.motionManager, r = e?.internalModel?.settings, m = t?.definitions || r?.motions || {};
-        for (const [R, A] of Object.entries(m)) ue[R] = Array.isArray(A) ? A.length : 0;
-        Q = (t?.expressionManager?.definitions || r?.expressions || []).map((R) => R?.Name || R?.name).filter((R) => !!R);
+        const n = e?.internalModel?.motionManager, r = e?.internalModel?.settings, m = n?.definitions || r?.motions || {};
+        for (const [D, A] of Object.entries(m)) de[D] = Array.isArray(A) ? A.length : 0;
+        ee = (n?.expressionManager?.definitions || r?.expressions || []).map((D) => D?.Name || D?.name).filter((D) => !!D);
       } catch {
       }
       try {
-        console.info("[live2d] motions", ue, "expressions", Q);
+        console.info("[live2d] motions", de, "expressions", ee);
       } catch {
       }
       try {
-        window.__0KAY_LIVE2D_CAPS__ = { motions: ue, expressions: Q };
+        window.__0KAY_LIVE2D_CAPS__ = { motions: de, expressions: ee };
       } catch {
       }
     }
-    function Re(e, t) {
+    function Fe(e, n) {
       if (!g) return;
-      const r = Object.keys(ue).filter((A) => ue[A] > 0);
+      const r = Object.keys(de).filter((A) => de[A] > 0);
       if (!r.length) return;
-      const m = r.find((A) => /idle/i.test(A)), E = e && ue[e] > 0, R = E ? e : t == null && m ? m : r.find((A) => A !== m) || r[0];
+      const m = r.find((A) => /idle/i.test(A)), L = e && de[e] > 0, D = L ? e : n == null && m ? m : r.find((A) => A !== m) || r[0];
       try {
         const A = g.internalModel?.motionManager;
-        if (typeof g.motion == "function" && E) {
-          g.motion(R, t);
+        if (typeof g.motion == "function" && L) {
+          g.motion(D, n);
           return;
         }
-        if (t == null) {
-          A?.startRandomMotion?.(R);
+        if (n == null) {
+          A?.startRandomMotion?.(D);
           return;
         }
-        A?.startMotion?.(R, t);
+        A?.startMotion?.(D, n);
       } catch {
       }
     }
-    function Ye(e) {
+    function Ge(e) {
       if (!g || !e) return;
-      const t = /^\d+$/.test(e) ? Number(e) : Q.indexOf(e), r = t >= 0 ? t : e;
+      const n = /^\d+$/.test(e) ? Number(e) : ee.indexOf(e), r = n >= 0 ? n : e;
       try {
         const m = g.internalModel?.motionManager?.expressionManager;
         if (m?.setExpression) {
@@ -1499,44 +1571,44 @@ const xn = {
       } catch {
       }
     }
-    function Xt() {
-      at(), !(typeof window > "u") && (He = window.setInterval(() => {
-        if (v !== "off" || document.hidden) return;
-        const e = Object.keys(ue).filter((t) => ue[t] > 0 && !/idle/i.test(t));
-        e.length && Math.random() < 0.6 && Re(e[Math.floor(Math.random() * e.length)]), Q.length && Math.random() < 0.5 && Ye(Q[Math.floor(Math.random() * Q.length)]);
+    function Jt() {
+      ut(), !(typeof window > "u") && (Je = window.setInterval(() => {
+        if (c !== "off" || document.hidden) return;
+        const e = Object.keys(de).filter((n) => de[n] > 0 && !/idle/i.test(n));
+        e.length && Math.random() < 0.6 && Fe(e[Math.floor(Math.random() * e.length)]), ee.length && Math.random() < 0.5 && Ge(ee[Math.floor(Math.random() * ee.length)]);
       }, 9e3));
     }
-    function at() {
-      He && (clearInterval(He), He = 0);
+    function ut() {
+      Je && (clearInterval(Je), Je = 0);
     }
-    function vt(e) {
-      const t = e.detail || {};
-      t.expression && Ye(t.expression), (t.group || t.index != null) && Re(t.group, t.index);
+    function bt(e) {
+      const n = e.detail || {};
+      n.expression && Ge(n.expression), (n.group || n.index != null) && Fe(n.group, n.index);
     }
-    function Ht() {
+    function Gt() {
       return !!(window.PIXI && window.PIXI.live2d && window.PIXI.live2d.Live2DModel && window.Live2DCubismCore);
     }
-    function se(e, t, r) {
-      return Math.min(r, Math.max(t, e));
+    function se(e, n, r) {
+      return Math.min(r, Math.max(n, e));
     }
-    function it() {
-      return ea + ($.value || "default");
+    function dt() {
+      return ua + (S.value || "default");
     }
-    function mt() {
+    function xt() {
       try {
-        const e = localStorage.getItem(it());
+        const e = localStorage.getItem(dt());
         if (!e) return null;
-        const t = JSON.parse(e);
-        if (typeof t?.x == "number" && typeof t?.y == "number" && typeof t?.scale == "number") return t;
+        const n = JSON.parse(e);
+        if (typeof n?.x == "number" && typeof n?.y == "number" && typeof n?.scale == "number") return n;
       } catch {
       }
       return null;
     }
-    function st(e = !1) {
+    function ft(e = !1) {
       if (!g) return;
-      const t = () => {
+      const n = () => {
         try {
-          localStorage.setItem(it(), JSON.stringify({
+          localStorage.setItem(dt(), JSON.stringify({
             x: Math.round(g.x * 100) / 100,
             y: Math.round(g.y * 100) / 100,
             scale: Math.round(g.scale.x * 1e4) / 1e4
@@ -1545,15 +1617,15 @@ const xn = {
         }
       };
       if (e) {
-        z && (clearTimeout(z), z = 0), t();
+        z && (clearTimeout(z), z = 0), n();
         return;
       }
       z && clearTimeout(z), z = window.setTimeout(() => {
-        z = 0, t();
+        z = 0, n();
       }, 140);
     }
-    function gt() {
-      if (at(), v = "off", M = 0, be(), z && (clearTimeout(z), z = 0), g) {
+    function _t() {
+      if (ut(), c = "off", v = 0, Se(), z && (clearTimeout(z), z = 0), g) {
         try {
           w?.stage && w.stage.removeChild(g), g.destroy?.();
         } catch {
@@ -1561,8 +1633,8 @@ const xn = {
         g = null;
       }
     }
-    function pt() {
-      if (Mt(), gt(), le && (le.disconnect(), le = null), z && (clearTimeout(z), z = 0), w) {
+    function Ct() {
+      if (Tt(), _t(), le && (le.disconnect(), le = null), z && (clearTimeout(z), z = 0), w) {
         try {
           w.destroy(!1, { children: !0, texture: !1, baseTexture: !1 });
         } catch {
@@ -1570,36 +1642,36 @@ const xn = {
         w = null;
       }
     }
-    function yt(e) {
+    function Mt(e) {
       if (typeof e.getLocalBounds == "function") {
         const m = e.getLocalBounds();
         if (m && m.width > 0 && m.height > 0) return { width: m.width, height: m.height };
       }
-      const t = Math.max(Math.abs(e.scale.x) || 0, 1e-4), r = Math.max(Math.abs(e.scale.y) || 0, 1e-4);
-      return { width: Math.max(e.width / t, 1), height: Math.max(e.height / r, 1) };
+      const n = Math.max(Math.abs(e.scale.x) || 0, 1e-4), r = Math.max(Math.abs(e.scale.y) || 0, 1e-4);
+      return { width: Math.max(e.width / n, 1), height: Math.max(e.height / r, 1) };
     }
-    function rt(e = g) {
+    function ht(e = g) {
       if (!e || !w) return !1;
-      const t = w.screen.width, r = w.screen.height;
-      if (!t || !r) return !1;
-      const m = yt(e);
+      const n = w.screen.width, r = w.screen.height;
+      if (!n || !r) return !1;
+      const m = Mt(e);
       if (m.width > 0 && m.height > 0) {
-        const E = Math.min(t / m.width, r / m.height) * 0.88;
-        e.anchor?.set?.(0.5, 0.5), e.scale.set(E, E);
+        const L = Math.min(n / m.width, r / m.height) * 0.88;
+        e.anchor?.set?.(0.5, 0.5), e.scale.set(L, L);
       }
-      e.position.set(t * 0.5, r * 0.55);
+      e.position.set(n * 0.5, r * 0.55);
       try {
-        const E = e.getBounds?.();
-        if (E && E.width > 0 && E.height > 0) {
-          e.x += t * 0.5 - (E.x + E.width * 0.5), e.y += r * 0.55 - (E.y + E.height * 0.55);
-          const R = e.getBounds?.();
-          if (R && R.width > 0 && R.height > 0) {
-            const A = Math.min(t / R.width, r / R.height) * 0.88, J = Math.abs(e.scale.x) || 1;
-            if (Number.isFinite(A) && A > 0 && Math.abs(A - J) / J > 0.08) {
-              const de = J * A;
-              e.scale.set(de, de);
-              const W = e.getBounds?.();
-              W && W.width > 0 && (e.x += t * 0.5 - (W.x + W.width * 0.5), e.y += r * 0.55 - (W.y + W.height * 0.55));
+        const L = e.getBounds?.();
+        if (L && L.width > 0 && L.height > 0) {
+          e.x += n * 0.5 - (L.x + L.width * 0.5), e.y += r * 0.55 - (L.y + L.height * 0.55);
+          const D = e.getBounds?.();
+          if (D && D.width > 0 && D.height > 0) {
+            const A = Math.min(n / D.width, r / D.height) * 0.88, Z = Math.abs(e.scale.x) || 1;
+            if (Number.isFinite(A) && A > 0 && Math.abs(A - Z) / Z > 0.08) {
+              const fe = Z * A;
+              e.scale.set(fe, fe);
+              const Y = e.getBounds?.();
+              Y && Y.width > 0 && (e.x += n * 0.5 - (Y.x + Y.width * 0.5), e.y += r * 0.55 - (Y.y + Y.height * 0.55));
             }
           }
         }
@@ -1607,94 +1679,94 @@ const xn = {
       }
       return !0;
     }
-    function Yt() {
+    function Zt() {
       if (!g) return { hw: 0, hh: 0 };
-      const e = yt(g), t = Math.abs(g.scale.x) || 1, r = Math.abs(g.scale.y) || 1;
-      return { hw: e.width * t / 2, hh: e.height * r / 2 };
+      const e = Mt(g), n = Math.abs(g.scale.x) || 1, r = Math.abs(g.scale.y) || 1;
+      return { hw: e.width * n / 2, hh: e.height * r / 2 };
     }
-    function We() {
+    function Ze() {
       if (!g || !w) return;
-      const e = w.screen.width, t = w.screen.height, { hw: r, hh: m } = Yt(), E = Math.min(r * 0.7, e * 0.5), R = Math.min(m * 0.7, t * 0.5), A = E - r, J = e - E + r, de = R - m, W = t - R + m, Be = A <= J ? se(g.x, A, J) : e * 0.5, St = de <= W ? se(g.y, de, W) : t * 0.55;
-      g.position.set(Be, St);
+      const e = w.screen.width, n = w.screen.height, { hw: r, hh: m } = Zt(), L = Math.min(r * 0.7, e * 0.5), D = Math.min(m * 0.7, n * 0.5), A = L - r, Z = e - L + r, fe = D - m, Y = n - D + m, ze = A <= Z ? se(g.x, A, Z) : e * 0.5, At = fe <= Y ? se(g.y, fe, Y) : n * 0.55;
+      g.position.set(ze, At);
     }
-    function Wt() {
+    function Qt() {
       if (!g || !w) return;
-      const e = mt();
+      const e = xt();
       if (e && Number.isFinite(e.scale) && e.scale > 0) {
-        g.anchor?.set?.(0.5, 0.5), g.scale.set(e.scale, e.scale), g.position.set(e.x, e.y), We();
+        g.anchor?.set?.(0.5, 0.5), g.scale.set(e.scale, e.scale), g.position.set(e.x, e.y), Ze();
         return;
       }
-      rt();
+      ht();
     }
-    function jt(e, t) {
+    function en(e, n) {
       if (!g || !window.PIXI || typeof window.PIXI.Point != "function" || typeof g.toModelPosition != "function") return null;
       try {
-        const r = new window.PIXI.Point(e, t);
+        const r = new window.PIXI.Point(e, n);
         return g.toModelPosition(r, new window.PIXI.Point());
       } catch {
         return null;
       }
     }
-    function wt(e, t, r) {
-      const m = r - t;
-      return !Number.isFinite(m) || Math.abs(m) <= 1e-4 ? 0 : se((e - t) / m * 2 - 1, -1, 1);
+    function St(e, n, r) {
+      const m = r - n;
+      return !Number.isFinite(m) || Math.abs(m) <= 1e-4 ? 0 : se((e - n) / m * 2 - 1, -1, 1);
     }
-    function kt(e, t) {
+    function $t(e, n) {
       const r = g?.internalModel, m = r?.focusController;
       if (!m || typeof m.focus != "function" || !w) return;
-      const E = w.screen.width || 1, R = w.screen.height || 1;
-      let A = e / E * 2 - 1, J = t / R * 2 - 1;
-      const de = jt(e, t);
-      if (de && r.originalWidth && r.originalHeight) {
-        const W = wt(de.x, 0, r.originalWidth), Be = wt(de.y, 0, r.originalHeight);
-        W >= -1 && W <= 1 && Be >= -1 && Be <= 1 && (A = A * 0.35 + W * 0.65, J = J * 0.35 + Be * 0.65);
+      const L = w.screen.width || 1, D = w.screen.height || 1;
+      let A = e / L * 2 - 1, Z = n / D * 2 - 1;
+      const fe = en(e, n);
+      if (fe && r.originalWidth && r.originalHeight) {
+        const Y = St(fe.x, 0, r.originalWidth), ze = St(fe.y, 0, r.originalHeight);
+        Y >= -1 && Y <= 1 && ze >= -1 && ze <= 1 && (A = A * 0.35 + Y * 0.65, Z = Z * 0.35 + ze * 0.65);
       }
-      A = se(A, -1, 1), J = se(J, -1, 1), m.focus(A, -J);
+      A = se(A, -1, 1), Z = se(Z, -1, 1), m.focus(A, -Z);
     }
-    function je() {
-      Me.has && kt(Me.x, Me.y);
+    function Qe() {
+      Te.has && $t(Te.x, Te.y);
     }
-    function bt(e) {
-      if (!g || !w || !l.value) return;
-      const t = l.value.getBoundingClientRect();
-      if (!t.width || !t.height) return;
-      const r = (e.clientX - t.left) / t.width * w.screen.width, m = (e.clientY - t.top) / t.height * w.screen.height;
-      Me = { x: r, y: m, has: !0 }, ye && e.pointerId === ne && (g.position.set(r + Te.x, m + Te.y), We(), st()), kt(r, m);
+    function It(e) {
+      if (!g || !w || !d.value) return;
+      const n = d.value.getBoundingClientRect();
+      if (!n.width || !n.height) return;
+      const r = (e.clientX - n.left) / n.width * w.screen.width, m = (e.clientY - n.top) / n.height * w.screen.height;
+      Te = { x: r, y: m, has: !0 }, _e && e.pointerId === oe && (g.position.set(r + Ne.x, m + Ne.y), Ze(), ft()), $t(r, m);
     }
-    function xt(e) {
-      if (!g || !w || !l.value || e.button !== 0 && e.pointerType === "mouse" || e.target?.closest?.(".stage-reset")) return;
-      const t = l.value.getBoundingClientRect();
-      if (!t.width || !t.height) return;
-      const r = (e.clientX - t.left) / t.width * w.screen.width, m = (e.clientY - t.top) / t.height * w.screen.height;
-      ye = !0, ne = e.pointerId, Te = { x: g.x - r, y: g.y - m };
+    function Et(e) {
+      if (!g || !w || !d.value || e.button !== 0 && e.pointerType === "mouse" || e.target?.closest?.(".stage-reset")) return;
+      const n = d.value.getBoundingClientRect();
+      if (!n.width || !n.height) return;
+      const r = (e.clientX - n.left) / n.width * w.screen.width, m = (e.clientY - n.top) / n.height * w.screen.height;
+      _e = !0, oe = e.pointerId, Ne = { x: g.x - r, y: g.y - m };
       try {
-        l.value.setPointerCapture(e.pointerId);
+        d.value.setPointerCapture(e.pointerId);
       } catch {
       }
-      l.value && (l.value.style.cursor = "grabbing");
+      d.value && (d.value.style.cursor = "grabbing");
     }
-    function be(e) {
-      if (ye && !(e && ne !== null && e.pointerId !== ne)) {
-        if (ye = !1, l.value) {
+    function Se(e) {
+      if (_e && !(e && oe !== null && e.pointerId !== oe)) {
+        if (_e = !1, d.value) {
           try {
-            ne !== null && l.value.releasePointerCapture(ne);
+            oe !== null && d.value.releasePointerCapture(oe);
           } catch {
           }
-          l.value.style.cursor = "grab";
+          d.value.style.cursor = "grab";
         }
-        ne = null, st(!0);
+        oe = null, ft(!0);
       }
     }
-    function _t(e) {
-      if (!g || _.value !== "ok" || !e.ctrlKey && !e.metaKey) return;
+    function Lt(e) {
+      if (!g || C.value !== "ok" || !e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
-      const t = e.deltaY < 0 ? 1.06 : 0.94, r = se(g.scale.x * t, 0.08, 3.2);
-      g.scale.set(r, r), We(), je(), st();
+      const n = e.deltaY < 0 ? 1.06 : 0.94, r = se(g.scale.x * n, 0.08, 3.2);
+      g.scale.set(r, r), Ze(), Qe(), ft();
     }
-    function qt() {
+    function tn() {
       if (!(!g || !w)) {
         try {
-          localStorage.removeItem(it());
+          localStorage.removeItem(dt());
         } catch {
         }
         z && (clearTimeout(z), z = 0);
@@ -1702,24 +1774,24 @@ const xn = {
           w.resize?.();
         } catch {
         }
-        w?.stage && (w.stage.hitArea = w.screen), rt(), je();
+        w?.stage && (w.stage.hitArea = w.screen), ht(), Qe();
       }
     }
-    function Ct() {
-      Mt();
-      const e = l.value;
-      e && (e.style.cursor = "grab", e.addEventListener("pointermove", bt), e.addEventListener("pointerdown", xt), e.addEventListener("pointerup", be), e.addEventListener("pointercancel", be), e.addEventListener("pointerleave", be), e.addEventListener("wheel", _t, { passive: !1 }));
+    function Pt() {
+      Tt();
+      const e = d.value;
+      e && (e.style.cursor = "grab", e.addEventListener("pointermove", It), e.addEventListener("pointerdown", Et), e.addEventListener("pointerup", Se), e.addEventListener("pointercancel", Se), e.addEventListener("pointerleave", Se), e.addEventListener("wheel", Lt, { passive: !1 }));
     }
-    function Mt() {
-      const e = l.value;
-      e && (e.removeEventListener("pointermove", bt), e.removeEventListener("pointerdown", xt), e.removeEventListener("pointerup", be), e.removeEventListener("pointercancel", be), e.removeEventListener("pointerleave", be), e.removeEventListener("wheel", _t), ye = !1, ne = null);
+    function Tt() {
+      const e = d.value;
+      e && (e.removeEventListener("pointermove", It), e.removeEventListener("pointerdown", Et), e.removeEventListener("pointerup", Se), e.removeEventListener("pointercancel", Se), e.removeEventListener("pointerleave", Se), e.removeEventListener("wheel", Lt), _e = !1, oe = null);
     }
-    function Jt() {
-      if (w || !y.value || !l.value) return;
+    function nn() {
+      if (w || !y.value || !d.value) return;
       const e = window.PIXI;
       w = new e.Application({
         view: y.value,
-        resizeTo: l.value,
+        resizeTo: d.value,
         autoStart: !0,
         antialias: !0,
         backgroundAlpha: 0,
@@ -1730,77 +1802,77 @@ const xn = {
         } catch {
         }
         if (w?.stage && (w.stage.hitArea = w.screen), g) {
-          const t = mt();
-          t && Number.isFinite(t.scale) && t.scale > 0 ? (g.position.set(t.x, t.y), g.scale.set(t.scale, t.scale), We()) : rt();
+          const n = xt();
+          n && Number.isFinite(n.scale) && n.scale > 0 ? (g.position.set(n.x, n.y), g.scale.set(n.scale, n.scale), Ze()) : ht();
         }
-        je();
-      }), le.observe(l.value), Ct();
+        Qe();
+      }), le.observe(d.value), Pt();
     }
-    async function lt() {
+    async function vt() {
       try {
-        await an;
+        await dn;
       } catch (r) {
-        _.value = "error", I.value = `Live2D runtime: ${r.message}`;
+        C.value = "error", $.value = `Live2D runtime: ${r.message}`;
         return;
       }
-      const e = ++Ce;
-      if (gt(), !x.value) {
-        _.value = "disabled", S.value = "";
+      const e = ++Pe;
+      if (_t(), !x.value) {
+        C.value = "disabled", _.value = "";
         return;
       }
-      if (!Ht()) {
-        _.value = "no-libs", I.value = n("live2d.libsMissing");
+      if (!Gt()) {
+        C.value = "no-libs", $.value = t("live2d.libsMissing");
         return;
       }
-      const t = $.value || B.value[0]?.url;
-      if (!t) {
-        _.value = "error", I.value = n("live2d.noModel");
+      const n = S.value || R.value[0]?.url;
+      if (!n) {
+        C.value = "error", $.value = t("live2d.noModel");
         return;
       }
-      if (_.value = "loading", I.value = "", S.value = t.split("/").pop() || t, await Ge(), w || Jt(), !w) {
-        _.value = "error", I.value = n("live2d.stageMissing");
+      if (C.value = "loading", $.value = "", _.value = n.split("/").pop() || n, await nt(), w || nn(), !w) {
+        C.value = "error", $.value = t("live2d.stageMissing");
         return;
       }
       try {
-        const r = await window.PIXI.live2d.Live2DModel.from(t, { autoInteract: !1 });
-        if (e !== Ce) {
+        const r = await window.PIXI.live2d.Live2DModel.from(n, { autoInteract: !1 });
+        if (e !== Pe) {
           try {
             r.destroy?.();
           } catch {
           }
           return;
         }
-        g = r, Ct(), r.anchor?.set?.(0.5, 0.5), w.stage.addChild(r), Wt();
+        g = r, Pt(), r.anchor?.set?.(0.5, 0.5), w.stage.addChild(r), Qt();
         try {
-          r.internalModel?.on?.("beforeModelUpdate", ot);
+          r.internalModel?.on?.("beforeModelUpdate", X);
         } catch {
         }
-        X(r), Kt(r), _.value = "ok", je(), Re("Idle"), Xt();
+        Me(r), qt(r), C.value = "ok", Qe(), Fe("Idle"), Jt();
       } catch (r) {
-        if (e !== Ce) return;
-        console.error("Live2D load failed:", r), _.value = "error", I.value = r?.message || n("live2d.loadError");
+        if (e !== Pe) return;
+        console.error("Live2D load failed:", r), C.value = "error", $.value = r?.message || t("live2d.loadError");
       }
     }
-    function Gt() {
+    function on() {
       if (!x.value) {
-        pt(), _.value = "disabled";
+        Ct(), C.value = "disabled";
         return;
       }
-      lt();
+      vt();
     }
-    et(async () => {
-      window.addEventListener("live2d-models-changed", k), window.addEventListener("live2d-speak", ht), window.addEventListener("live2d-motion", vt), window.__0KAY_LIVE2D__ = { speak: ke, stop: ft, motion: Re, expression: Ye };
+    st(async () => {
+      window.addEventListener("live2d-models-changed", k), window.addEventListener("live2d-speak", kt), window.addEventListener("live2d-motion", bt), window.__0KAY_LIVE2D__ = { speak: qe, stop: wt, motion: Fe, expression: Ge };
       try {
         const e = await fetch("/api/settings/live2d");
         if (e.ok) {
-          const { values: t } = await e.json();
-          t && typeof t.enabled == "boolean" && (a.live2d.enabled = t.enabled), t && typeof t.model_url == "string" && (a.live2d.modelUrl = t.model_url);
+          const { values: n } = await e.json();
+          n && typeof n.enabled == "boolean" && (a.live2d.enabled = n.enabled), n && typeof n.model_url == "string" && (a.live2d.modelUrl = n.model_url);
         }
       } catch {
       }
-      await k(), x.value ? lt() : _.value = "disabled";
-    }), tt(() => {
-      if (window.removeEventListener("live2d-models-changed", k), window.removeEventListener("live2d-speak", ht), window.removeEventListener("live2d-motion", vt), at(), ft(), ce) {
+      await k(), x.value ? vt() : C.value = "disabled";
+    }), rt(() => {
+      if (window.removeEventListener("live2d-models-changed", k), window.removeEventListener("live2d-speak", kt), window.removeEventListener("live2d-motion", bt), ut(), wt(), ce) {
         try {
           URL.revokeObjectURL(ce);
         } catch {
@@ -1808,177 +1880,177 @@ const xn = {
         ce = null;
       }
       try {
-        ae?.close();
+        ie?.close();
       } catch {
       }
-      ae = null, Ce++, cancelAnimationFrame(nt), pt();
-    }), Ie(x, Gt), Ie($, () => {
-      x.value && lt();
+      ie = null, Pe++, cancelAnimationFrame(ct), Ct();
+    }), xe(x, on), xe(S, () => {
+      x.value && vt();
     });
-    const Zt = { happy: 2, sad: 4, irritated: 6, neutral: 0, drowsy: 0, exhausted: 0, sleeping: 0 };
-    return Ie(N, (e) => {
-      if (!g || v !== "off" || !Q.length) return;
-      const t = Zt[e] ?? 0;
-      Ye(Q[t] || Q[0]), (e === "happy" || e === "irritated") && Math.random() < 0.5 && Re();
-    }), (e, t) => (c(), d("div", {
-      class: ee(["live2d-stage", { on: x.value }])
+    const an = { happy: 2, sad: 4, irritated: 6, neutral: 0, drowsy: 0, exhausted: 0, sleeping: 0 };
+    return xe(F, (e) => {
+      if (!g || c !== "off" || !ee.length) return;
+      const n = an[e] ?? 0;
+      Ge(ee[n] || ee[0]), (e === "happy" || e === "irritated") && Math.random() < 0.5 && Fe();
+    }), (e, n) => (u(), f("div", {
+      class: te(["live2d-stage", { on: x.value }])
     }, [
       o("div", {
         ref_key: "stageEl",
-        ref: l,
+        ref: d,
         class: "stage-viewport",
-        style: _e({ "--mood": G.value }),
-        title: x.value && _.value === "ok" ? s(n)("live2d.interactHint") : ""
+        style: Ee({ "--mood": Q.value }),
+        title: x.value && C.value === "ok" ? s(t)("live2d.interactHint") : ""
       }, [
         o("canvas", {
           ref_key: "canvasEl",
           ref: y,
           class: "stage-canvas"
         }, null, 512),
-        x.value ? _.value === "loading" ? (c(), d("div", Jo, b(s(n)("live2d.loading")), 1)) : _.value === "error" || _.value === "no-libs" ? (c(), d("div", Go, b(I.value || s(n)("live2d.loadError")), 1)) : O("", !0) : (c(), d("div", qo, [
-          o("p", null, b(s(n)("live2d.disabledHint")), 1)
+        x.value ? C.value === "loading" ? (u(), f("div", sa, b(s(t)("live2d.loading")), 1)) : C.value === "error" || C.value === "no-libs" ? (u(), f("div", ra, b($.value || s(t)("live2d.loadError")), 1)) : O("", !0) : (u(), f("div", ia, [
+          o("p", null, b(s(t)("live2d.disabledHint")), 1)
         ])),
-        x.value && _.value === "ok" ? (c(), d("button", {
+        x.value && C.value === "ok" ? (u(), f("button", {
           key: 3,
           ref_key: "resetBtnEl",
           ref: p,
-          class: ee(["stage-reset", { dragging: U.value }]),
+          class: te(["stage-reset", { dragging: U.value }]),
           type: "button",
-          style: _e(H.value),
-          title: s(n)("live2d.resetView"),
-          "aria-label": s(n)("live2d.resetView"),
-          onPointerdown: De(C, ["stop"]),
-          onPointermove: De(me, ["stop"]),
-          onPointerup: De(ge, ["stop"]),
-          onPointercancel: De(ge, ["stop"]),
-          onClick: De(Le, ["stop"])
-        }, "⟲", 46, Zo)) : O("", !0),
-        t[0] || (t[0] = o("div", { class: "stage-gradient" }, null, -1)),
-        o("div", Qo, b(D.value), 1)
-      ], 12, jo)
+          style: Ee(H.value),
+          title: s(t)("live2d.resetView"),
+          "aria-label": s(t)("live2d.resetView"),
+          onPointerdown: Ue(M, ["stop"]),
+          onPointermove: Ue(ye, ["stop"]),
+          onPointerup: Ue(we, ["stop"]),
+          onPointercancel: Ue(we, ["stop"]),
+          onClick: Ue(Oe, ["stop"])
+        }, "⟲", 46, la)) : O("", !0),
+        n[0] || (n[0] = o("div", { class: "stage-gradient" }, null, -1)),
+        o("div", ca, b(B.value), 1)
+      ], 12, aa)
     ], 2));
   }
-}), na = /* @__PURE__ */ Ke(ta, [["__scopeId", "data-v-15b509be"]]), oa = {
+}), fa = /* @__PURE__ */ je(da, [["__scopeId", "data-v-15b509be"]]), ha = {
   key: 0,
   class: "stage-column"
-}, aa = ["src", "title"], ia = ["data-chat-slot"], sa = ["aria-label", "title"], ra = ["src", "title"], la = ["data-chat-slot"], ca = ["title"], Lt = "0kay.web.chat_panel_width_ratio", Tt = 320, ua = 360, At = 960, da = /* @__PURE__ */ Ue({
+}, va = ["src", "title"], ma = ["data-chat-slot"], ga = ["aria-label", "title"], pa = ["src", "title"], ya = ["data-chat-slot"], wa = ["title"], Nt = "0kay.web.chat_panel_width_ratio", Ft = 320, ka = 360, zt = 960, ba = /* @__PURE__ */ Ye({
   __name: "ChatPage",
   setup(i) {
-    const { t: n } = Ve(), u = Ot(), a = Bt(), l = L(!1), y = L(!1), S = F(() => u.chatRegion("stage")), _ = F(() => u.chatRegion("chat")), I = F(() => S.value.some((P) => P.component === "status")), x = F(() => _.value.some((P) => P.component === "chat")), $ = L(0.34), N = L(null);
-    let D = !1;
-    function G() {
+    const { t } = We(), l = Kt(), a = Vt(), d = E(!1), y = E(!1), _ = N(() => l.chatRegion("stage")), C = N(() => l.chatRegion("chat")), $ = N(() => _.value.some((I) => I.component === "status")), x = N(() => C.value.some((I) => I.component === "chat")), S = E(0.34), F = E(null);
+    let B = !1;
+    function Q() {
       try {
-        const P = Number(localStorage.getItem(Lt));
-        P > 0 && P < 1 && ($.value = P);
+        const I = Number(localStorage.getItem(Nt));
+        I > 0 && I < 1 && (S.value = I);
       } catch {
       }
     }
-    function B(P) {
-      $.value = P;
+    function R(I) {
+      S.value = I;
       try {
-        localStorage.setItem(Lt, String(P));
+        localStorage.setItem(Nt, String(I));
       } catch {
       }
     }
-    function k(P, H) {
-      const C = Math.min(Tt, P * 0.3), me = Math.min(At, P - ua);
-      return Math.min(Math.max(H, C), me) / P;
+    function k(I, H) {
+      const M = Math.min(Ft, I * 0.3), ye = Math.min(zt, I - ka);
+      return Math.min(Math.max(H, M), ye) / I;
     }
-    function p(P) {
-      y.value || (D = !0, P.target.setPointerCapture?.(P.pointerId), document.body.style.cursor = "col-resize", document.body.style.userSelect = "none");
+    function p(I) {
+      y.value || (B = !0, I.target.setPointerCapture?.(I.pointerId), document.body.style.cursor = "col-resize", document.body.style.userSelect = "none");
     }
-    function T(P) {
-      if (!D || !N.value) return;
-      const H = N.value.getBoundingClientRect(), C = H.right - P.clientX;
-      B(k(H.width, C));
+    function P(I) {
+      if (!B || !F.value) return;
+      const H = F.value.getBoundingClientRect(), M = H.right - I.clientX;
+      R(k(H.width, M));
     }
     function U() {
-      D && (D = !1, document.body.style.cursor = "", document.body.style.userSelect = "");
+      B && (B = !1, document.body.style.cursor = "", document.body.style.userSelect = "");
     }
-    function re(P) {
-      if (y.value || P.key !== "ArrowLeft" && P.key !== "ArrowRight") return;
-      const H = N.value;
+    function re(I) {
+      if (y.value || I.key !== "ArrowLeft" && I.key !== "ArrowRight") return;
+      const H = F.value;
       if (!H) return;
-      P.preventDefault();
-      const C = H.getBoundingClientRect(), me = $.value * C.width, ge = P.key === "ArrowLeft" ? me + 24 : me - 24;
-      B(k(C.width, ge));
+      I.preventDefault();
+      const M = H.getBoundingClientRect(), ye = S.value * M.width, we = I.key === "ArrowLeft" ? ye + 24 : ye - 24;
+      R(k(M.width, we));
     }
-    function Z() {
-      const P = y.value;
-      y.value = window.innerWidth <= 960, y.value ? P || (l.value = !1) : l.value = !0;
+    function j() {
+      const I = y.value;
+      y.value = window.innerWidth <= 960, y.value ? I || (d.value = !1) : d.value = !0;
     }
-    et(() => {
-      G(), Z(), a.setChatVisible(!0), window.addEventListener("resize", Z), window.addEventListener("pointermove", T), window.addEventListener("pointerup", U);
-    }), tt(() => {
-      a.setChatVisible(!1), window.removeEventListener("resize", Z), window.removeEventListener("pointermove", T), window.removeEventListener("pointerup", U), document.body.style.cursor = "", document.body.style.userSelect = "";
+    st(() => {
+      Q(), j(), a.setChatVisible(!0), window.addEventListener("resize", j), window.addEventListener("pointermove", P), window.addEventListener("pointerup", U);
+    }), rt(() => {
+      a.setChatVisible(!1), window.removeEventListener("resize", j), window.removeEventListener("pointermove", P), window.removeEventListener("pointerup", U), document.body.style.cursor = "", document.body.style.userSelect = "";
     });
-    function ve() {
-      l.value = !l.value;
+    function pe() {
+      d.value = !d.value;
     }
-    return (P, H) => (c(), d("div", {
+    return (I, H) => (u(), f("div", {
       ref_key: "pageEl",
-      ref: N,
-      class: ee(["chat-page", { "no-chat": !x.value }]),
-      style: _e(y.value ? void 0 : { "--chat-w": `min(${At}px, max(${Tt}px, ${$.value * 100}%))` })
+      ref: F,
+      class: te(["chat-page", { "no-chat": !x.value }]),
+      style: Ee(y.value ? void 0 : { "--chat-w": `min(${zt}px, max(${Ft}px, ${S.value * 100}%))` })
     }, [
-      S.value.length ? (c(), d("div", oa, [
-        (c(!0), d(j, null, he(S.value, (C) => (c(), d(j, {
-          key: C.id
+      _.value.length ? (u(), f("div", ha, [
+        (u(!0), f(W, null, me(_.value, (M) => (u(), f(W, {
+          key: M.id
         }, [
-          C.component === "live2d" ? (c(), Ne(na, {
+          M.component === "live2d" ? (u(), Xe(fa, {
             key: 0,
             class: "stage-host"
-          })) : C.component === "status" ? (c(), Ne(Wo, {
+          })) : M.component === "status" ? (u(), Xe(oa, {
             key: 1,
             class: "status-panel"
-          })) : C.component === "iframe" && C.src ? (c(), d("iframe", {
+          })) : M.component === "iframe" && M.src ? (u(), f("iframe", {
             key: 2,
             class: "slot-frame",
-            src: C.src,
-            title: C.title || C.id
-          }, null, 8, aa)) : (c(), d("div", {
+            src: M.src,
+            title: M.title || M.id
+          }, null, 8, va)) : (u(), f("div", {
             key: 3,
             class: "slot-note",
-            "data-chat-slot": C.id
-          }, b(C.titleKey ? s(n)(C.titleKey) : C.title || C.id), 9, ia))
+            "data-chat-slot": M.id
+          }, b(M.titleKey ? s(t)(M.titleKey) : M.title || M.id), 9, ma))
         ], 64))), 128))
       ])) : O("", !0),
-      !y.value && x.value && S.value.length ? (c(), d("div", {
+      !y.value && x.value && _.value.length ? (u(), f("div", {
         key: 1,
         ref: "resizer",
         class: "page-resizer",
         role: "separator",
         "aria-orientation": "vertical",
         tabindex: "0",
-        "aria-label": s(n)("chat.resizePanel"),
-        title: s(n)("chat.resizePanel"),
+        "aria-label": s(t)("chat.resizePanel"),
+        title: s(t)("chat.resizePanel"),
         onPointerdown: p,
         onKeydown: re
-      }, null, 40, sa)) : O("", !0),
-      x.value ? (c(), d("div", {
+      }, null, 40, ga)) : O("", !0),
+      x.value ? (u(), f("div", {
         key: 2,
-        class: ee(["chat-column", { open: l.value || !y.value }])
+        class: te(["chat-column", { open: d.value || !y.value }])
       }, [
-        (c(!0), d(j, null, he(_.value, (C) => (c(), d(j, {
-          key: C.id
+        (u(!0), f(W, null, me(C.value, (M) => (u(), f(W, {
+          key: M.id
         }, [
-          C.component === "chat" ? (c(), Ne(Co, { key: 0 })) : C.component === "iframe" && C.src ? (c(), d("iframe", {
+          M.component === "chat" ? (u(), Xe(Do, { key: 0 })) : M.component === "iframe" && M.src ? (u(), f("iframe", {
             key: 1,
             class: "slot-frame fill",
-            src: C.src,
-            title: C.title || C.id
-          }, null, 8, ra)) : (c(), d("div", {
+            src: M.src,
+            title: M.title || M.id
+          }, null, 8, pa)) : (u(), f("div", {
             key: 2,
             class: "slot-note",
-            "data-chat-slot": C.id
-          }, b(C.titleKey ? s(n)(C.titleKey) : C.title || C.id), 9, la))
+            "data-chat-slot": M.id
+          }, b(M.titleKey ? s(t)(M.titleKey) : M.title || M.id), 9, ya))
         ], 64))), 128))
       ], 2)) : O("", !0),
-      y.value && I.value ? (c(), d("button", {
+      y.value && $.value ? (u(), f("button", {
         key: 3,
         class: "status-fab",
-        title: s(n)("app.status"),
-        onClick: ve
+        title: s(t)("app.status"),
+        onClick: pe
       }, [...H[0] || (H[0] = [
         o("svg", {
           width: "22",
@@ -2000,12 +2072,12 @@ const xn = {
             fill: "currentColor"
           })
         ], -1)
-      ])], 8, ca)) : O("", !0)
+      ])], 8, wa)) : O("", !0)
     ], 6));
   }
-}), ma = /* @__PURE__ */ Ke(da, [["__scopeId", "data-v-599f785f"]]);
+}), Ma = /* @__PURE__ */ je(ba, [["__scopeId", "data-v-599f785f"]]);
 export {
-  ma as default
+  Ma as default
 };
 
-;(()=>{if(typeof document!=='undefined'&&!document.getElementById('webui-plugin-style')){const s=document.createElement('style');s.id='webui-plugin-style';s.textContent=".media-row[data-v-5eead54f]{display:flex;gap:6px;margin:0 0 6px}.media-chip[data-v-5eead54f]{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 10px;border-radius:999px;background:var(--md-primary-container, #e8e0ff);color:var(--md-on-primary-container, #21005d);font-size:11.5px;font-weight:650}.media-chip svg[data-v-5eead54f]{flex:none}.selfie[data-v-5eead54f]{margin:0 0 6px}.selfie-img[data-v-5eead54f]{display:block;max-width:260px;max-height:320px;border-radius:14px;border:1px solid var(--md-outline-variant)}.selfie-pending[data-v-5eead54f]{display:inline-flex;align-items:center;gap:8px;min-width:200px;padding:14px 16px;border-radius:14px;border:1px dashed var(--md-outline-variant);color:var(--md-on-surface-variant);font-size:12px}.selfie-spinner[data-v-5eead54f]{width:13px;height:13px;border-radius:50%;border:2px solid var(--md-outline-variant);border-top-color:var(--md-primary);animation:selfie-spin-5eead54f .7s linear infinite}@keyframes selfie-spin-5eead54f{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.selfie-spinner[data-v-5eead54f]{animation:none}}.message[data-v-5eead54f]{display:flex;gap:var(--space-md);animation:slideUp .2s ease}.message.user[data-v-5eead54f]{flex-direction:row-reverse}.avatar[data-v-5eead54f]{flex-shrink:0;width:32px;height:32px;border-radius:var(--radius-round);display:flex;align-items:center;justify-content:center}.user-avatar[data-v-5eead54f]{background:var(--neutral-gray-60);color:var(--neutral-white)}.assistant-avatar[data-v-5eead54f]{background:var(--brand-primary);color:var(--neutral-white)}.images[data-v-5eead54f]{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}.msg-img[data-v-5eead54f]{max-width:240px;max-height:240px;border-radius:var(--radius-md);object-fit:cover;display:block}.files[data-v-5eead54f]{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}.msg-file[data-v-5eead54f]{display:inline-flex;align-items:center;max-width:240px;padding:5px 12px;border-radius:var(--radius-round);background:var(--neutral-gray-4);border:1px solid var(--neutral-gray-6);color:var(--neutral-gray-60);font-size:var(--font-size-xs);text-decoration:none;overflow:hidden}.msg-file-name[data-v-5eead54f]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.msg-file[data-v-5eead54f]:hover{border-color:var(--brand-primary);color:var(--brand-primary)}.content-wrapper[data-v-5eead54f]{max-width:70%}.content[data-v-5eead54f]{padding:var(--space-md) var(--space-lg);border-radius:var(--radius-lg);line-height:1.5;white-space:pre-wrap;word-break:break-word}.content-markdown[data-v-5eead54f]{white-space:normal}.user .content[data-v-5eead54f]{background:var(--brand-primary);color:var(--neutral-white);border-bottom-right-radius:var(--radius-sm)}.assistant .content[data-v-5eead54f]{background:var(--neutral-white);color:var(--neutral-gray-70);border-bottom-left-radius:var(--radius-sm);box-shadow:var(--shadow-2)}.think-panel[data-v-5eead54f]{margin-top:6px;border:1px solid var(--md-outline-variant);border-radius:10px;background:var(--md-surface-container-low)}.think-toggle[data-v-5eead54f]{width:100%;display:flex;justify-content:space-between;align-items:center;border:0;background:transparent;padding:7px 10px;color:var(--md-on-surface-variant);font:600 12px/1.2 monospace;letter-spacing:.06em;cursor:pointer}.think-body[data-v-5eead54f]{padding:0 10px 9px;color:var(--md-on-surface-variant);font-size:12px;line-height:1.45}.think-body p[data-v-5eead54f]{margin:4px 0}.think-body b[data-v-5eead54f]{color:var(--md-on-surface)}.think-summary[data-v-5eead54f]{margin:6px 0;color:var(--md-on-surface);line-height:1.55}.think-raw[data-v-5eead54f]{margin:6px 0;white-space:pre-wrap;max-height:420px;overflow:auto;color:var(--md-on-surface);font:12px/1.5 monospace}.meta[data-v-5eead54f]{display:flex;align-items:center;gap:var(--space-xs);margin-top:var(--space-xs);font-size:var(--font-size-xs);color:var(--neutral-gray-20)}.user .meta[data-v-5eead54f]{justify-content:flex-end}.separator[data-v-5eead54f]{color:var(--neutral-gray-10)}.emotion[data-v-5eead54f]{font-weight:500}.chat-panel[data-v-044d5238]{display:flex;flex-direction:column;height:100%;background:var(--neutral-gray-2)}.context-btn[data-v-044d5238]{border:1px solid var(--md-outline-variant);border-radius:999px;background:transparent;color:var(--md-on-surface-variant);min-height:32px;padding:7px 12px;font-size:12px;cursor:pointer;transition:background-color var(--transition-fast),border-color var(--transition-fast),color var(--transition-fast)}.context-btn[data-v-044d5238]:disabled{opacity:.6;cursor:wait}.context-btn.danger[data-v-044d5238]{color:var(--md-error)}.chat-container[data-v-044d5238]{flex:1;overflow-y:auto;padding:var(--space-xl)}.messages[data-v-044d5238]{max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:var(--space-md)}.empty-state[data-v-044d5238]{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;color:var(--neutral-gray-30)}.empty-icon[data-v-044d5238]{margin-bottom:var(--space-xl);opacity:.5}.empty-state h3[data-v-044d5238]{font-size:var(--font-size-lg);font-weight:600;color:var(--neutral-gray-50);margin-bottom:var(--space-sm)}.empty-state p[data-v-044d5238]{font-size:var(--font-size-base);color:var(--neutral-gray-30)}.typing-indicator[data-v-044d5238]{display:flex;align-items:center;gap:var(--space-sm);padding:var(--space-md);color:var(--neutral-gray-30);font-size:var(--font-size-sm)}.typing-dots[data-v-044d5238]{display:flex;gap:4px}.typing-dots span[data-v-044d5238]{width:6px;height:6px;background:var(--neutral-gray-20);border-radius:50%;animation:bounce-044d5238 1.4s infinite ease-in-out}.typing-dots span[data-v-044d5238]:nth-child(1){animation-delay:-.32s}.typing-dots span[data-v-044d5238]:nth-child(2){animation-delay:-.16s}@keyframes bounce-044d5238{0%,80%,to{transform:scale(.5);opacity:.45}40%{transform:scale(1);opacity:1}}.input-area[data-v-044d5238]{padding:var(--space-lg) var(--space-xl);background:var(--neutral-white);border-top:1px solid var(--neutral-gray-6)}.input-wrapper[data-v-044d5238]{display:flex;align-items:flex-end;gap:var(--space-sm);max-width:800px;margin:0 auto;padding:var(--space-sm);background:var(--neutral-gray-4);border-radius:var(--radius-lg);border:1px solid transparent;transition:background-color var(--transition-fast),border-color var(--transition-fast),box-shadow var(--transition-fast)}.input-wrapper[data-v-044d5238]:focus-within{background:var(--neutral-white);border-color:var(--brand-primary);box-shadow:0 0 0 2px var(--brand-light)}.message-input[data-v-044d5238]{flex:1;padding:var(--space-sm) var(--space-md);font-size:var(--font-size-base);font-family:inherit;border:none;background:transparent;resize:none;outline:none;min-height:24px;max-height:120px}.message-input[data-v-044d5238]::placeholder{color:var(--neutral-gray-20)}.pending-images[data-v-044d5238],.pending-files[data-v-044d5238]{display:flex;flex-wrap:wrap;gap:8px;max-width:800px;margin:0 auto var(--space-sm)}.pending-file[data-v-044d5238]{display:inline-flex;align-items:center;gap:6px;max-width:240px;padding:6px 6px 6px 12px;border-radius:var(--radius-round);background:var(--neutral-gray-4);border:1px solid var(--neutral-gray-6);font-size:var(--font-size-xs);color:var(--neutral-gray-50);overflow:hidden}.pending-file-name[data-v-044d5238]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.remove-file[data-v-044d5238]{border:none;background:transparent;color:var(--neutral-gray-30);font-size:14px;line-height:1;cursor:pointer;padding:0 4px}.remove-file[data-v-044d5238]:hover{color:var(--error)}.pending-thumb[data-v-044d5238]{position:relative;width:56px;height:56px;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--neutral-gray-6)}.pending-thumb img[data-v-044d5238]{width:100%;height:100%;object-fit:cover}.remove-img[data-v-044d5238]{position:absolute;top:2px;right:2px;width:22px;height:22px;border:none;border-radius:50%;background:#000000a6;color:#fff;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}.pending-thumb.uploading[data-v-044d5238]{display:flex;align-items:center;justify-content:center;background:var(--md-surface-container-high);animation:thumb-shimmer-044d5238 1.2s infinite}.upload-spinner[data-v-044d5238]{width:18px;height:18px;border-radius:50%;border:2px solid var(--md-outline-variant);border-top-color:var(--md-primary);animation:upload-spin-044d5238 .8s linear infinite}@keyframes upload-spin-044d5238{to{transform:rotate(360deg)}}@keyframes thumb-shimmer-044d5238{0%,to{opacity:1}50%{opacity:.55}}@media(prefers-reduced-motion:reduce){.pending-thumb.uploading[data-v-044d5238]{animation:none}}.attach-btn[data-v-044d5238]{flex-shrink:0;width:36px;height:36px;border:none;border-radius:var(--radius-round);background:transparent;color:var(--neutral-gray-30);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background-color var(--transition-fast),color var(--transition-fast)}.attach-btn[data-v-044d5238]:hover:not(:disabled){background:var(--neutral-gray-6);color:var(--neutral-gray-50)}.attach-btn[data-v-044d5238]:disabled{opacity:.5;cursor:not-allowed}.wake-btn.active[data-v-044d5238]{color:var(--md-primary);background:color-mix(in srgb,var(--md-primary) 14%,transparent)}.call-strip[data-v-044d5238]{display:flex;align-items:center;gap:8px;margin:0 0 6px;padding:6px 10px;border-radius:999px;background:color-mix(in srgb,var(--md-success, #1a9e63) 14%,transparent);color:var(--md-on-surface);font-size:12px}.call-dot[data-v-044d5238]{width:8px;height:8px;border-radius:50%;background:var(--md-success, #1a9e63);animation:call-pulse-044d5238 1.4s ease-in-out infinite}.call-text[data-v-044d5238]{flex:1;min-width:0;font-weight:600}.call-end[data-v-044d5238]{border:0;background:transparent;color:var(--md-on-surface-variant);font-size:12px;font-weight:650;cursor:pointer;padding:2px 6px;border-radius:8px}.call-end[data-v-044d5238]:hover{background:var(--md-surface-container-high);color:var(--md-on-surface)}@keyframes call-pulse-044d5238{0%,to{opacity:1}50%{opacity:.35}}@media(prefers-reduced-motion:reduce){.call-dot[data-v-044d5238]{animation:none}}.wake-strip[data-v-044d5238]{display:flex;align-items:center;gap:8px;margin:0 0 6px;padding:5px 10px;border-radius:var(--radius-md, 10px);background:color-mix(in srgb,var(--md-primary) 10%,transparent);color:var(--md-primary);font-size:12px}.wake-strip.capturing[data-v-044d5238]{background:color-mix(in srgb,var(--md-primary) 18%,transparent)}.wake-dot[data-v-044d5238]{width:8px;height:8px;border-radius:50%;background:currentColor;animation:wake-pulse-044d5238 1.1s ease-in-out infinite}.wake-strip.capturing .wake-dot[data-v-044d5238]{animation-duration:.5s}.wake-text[data-v-044d5238]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wake-stop[data-v-044d5238]{border:none;background:transparent;color:inherit;cursor:pointer;font-size:15px;line-height:1;padding:0 2px;opacity:.75}.wake-stop[data-v-044d5238]:hover{opacity:1}@keyframes wake-pulse-044d5238{0%,to{opacity:1}50%{opacity:.2}}@media(prefers-reduced-motion:reduce){.wake-dot[data-v-044d5238]{animation:none}}.send-button[data-v-044d5238]{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:none;border-radius:var(--radius-round);background:var(--brand-primary);color:var(--neutral-white);cursor:pointer;transition:background-color var(--transition-fast),transform var(--duration-short) var(--ease-out)}.send-button[data-v-044d5238]:hover:not(:disabled){background:var(--brand-hover)}.send-button[data-v-044d5238]:disabled{background:var(--neutral-gray-8);cursor:not-allowed}.input-footer[data-v-044d5238]{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:var(--space-sm);max-width:800px;margin-left:auto;margin-right:auto;padding:0 var(--space-sm)}.connection-status[data-v-044d5238]{display:flex;align-items:center;gap:var(--space-xs);font-size:var(--font-size-xs)}.status-dot[data-v-044d5238]{width:6px;height:6px;border-radius:50%}.connected .status-dot[data-v-044d5238]{background:var(--success)}.disconnected .status-dot[data-v-044d5238]{background:var(--error)}.hint[data-v-044d5238]{font-size:var(--font-size-xs);color:var(--neutral-gray-20)}.character-profile dl>div[data-v-45331204]{display:flex;justify-content:space-between;gap:12px;margin:10px 0;font-size:12px}.character-profile dt[data-v-45331204]{color:var(--md-on-surface-variant);flex-shrink:0}.character-profile dd[data-v-45331204]{margin:0;text-align:right;overflow-wrap:anywhere}.status-panel[data-v-45331204]{display:flex;flex-direction:column;height:100%;background:var(--neutral-white)}.panel-header[data-v-45331204]{display:flex;align-items:center;justify-content:space-between;padding:var(--space-lg) var(--space-xl);border-bottom:1px solid var(--neutral-gray-6)}.panel-header h2[data-v-45331204]{font-size:var(--font-size-md);font-weight:600;color:var(--neutral-gray-70)}.patch-badge[data-v-45331204]{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--brand-primary);background:color-mix(in srgb,var(--brand-primary) 12%,transparent);padding:2px 8px;border-radius:var(--radius-full)}.panel-content[data-v-45331204]{flex:1;overflow-y:auto;padding:var(--space-lg)}.section[data-v-45331204]{margin-bottom:var(--space-xl)}.section-header[data-v-45331204]{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)}.section-title[data-v-45331204]{font-size:var(--font-size-sm);font-weight:600;color:var(--neutral-gray-50);text-transform:uppercase;letter-spacing:.5px}.mood-display[data-v-45331204]{display:flex;flex-direction:column;align-items:center;padding:var(--space-xl);background:var(--neutral-gray-4);border-radius:var(--radius-md)}.mood-icon[data-v-45331204]{margin-bottom:var(--space-md)}.mood-label[data-v-45331204]{font-size:var(--font-size-md);font-weight:600}.emotion-bars[data-v-45331204]{display:flex;flex-direction:column;gap:var(--space-sm)}.emotion-row[data-v-45331204]{display:flex;align-items:center;gap:var(--space-md)}.emotion-label[data-v-45331204]{width:80px;font-size:var(--font-size-xs);color:var(--neutral-gray-40)}.emotion-bar[data-v-45331204]{flex:1;height:6px;background:var(--neutral-gray-6);border-radius:var(--radius-sm);overflow:hidden}.emotion-fill[data-v-45331204]{height:100%;width:100%;transform-origin:left;border-radius:var(--radius-sm);transition:transform var(--duration-medium) var(--ease-out)}.empty-tasks[data-v-45331204]{padding:var(--space-md);text-align:center;color:var(--neutral-gray-20);font-size:var(--font-size-sm);background:var(--neutral-gray-4);border-radius:var(--radius-sm)}@property --mood{syntax: \"<color>\"; inherits: true; initial-value: #6750A4;}.live2d-stage[data-v-15b509be]{display:flex;flex-direction:column;background:var(--md-surface-container);border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--md-outline-variant);min-height:320px}.stage-viewport[data-v-15b509be]{position:relative;flex:1;min-height:260px;overflow:hidden;touch-action:pan-y;cursor:grab;user-select:none;transition:--mood var(--duration-long, .36s) var(--ease-out, ease-out);background:radial-gradient(circle at 30% 20%,color-mix(in srgb,var(--mood, #6750A4) 22%,transparent),transparent 55%),radial-gradient(circle at 70% 80%,color-mix(in srgb,var(--mood, #6750A4) 12%,transparent),transparent 50%),linear-gradient(180deg,var(--md-surface-container-low) 0%,var(--md-surface-container) 55%,color-mix(in srgb,var(--md-primary) 20%,transparent) 100%)}.stage-viewport[data-v-15b509be]:active{cursor:grabbing}.stage-canvas[data-v-15b509be]{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;pointer-events:none}.stage-gradient[data-v-15b509be]{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,transparent 55%,rgba(33,0,93,.18) 100%)}.stage-hint[data-v-15b509be]{position:absolute;left:10px;top:10px;z-index:3;padding:4px 10px;border-radius:var(--radius-full);background:color-mix(in srgb,var(--md-inverse-surface) 75%,transparent);color:var(--md-inverse-on-surface);font-size:12px;text-transform:capitalize;pointer-events:none}.stage-reset[data-v-15b509be]{position:absolute;top:10px;right:10px;z-index:20;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:1px solid color-mix(in srgb,var(--md-on-surface) 10%,transparent);border-radius:50%;background:color-mix(in srgb,var(--md-surface) 55%,transparent);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:var(--md-on-surface);font:inherit;font-size:16px;line-height:1;cursor:grab;touch-action:none;opacity:.7;transition:opacity var(--duration-short) var(--ease-out),background-color var(--duration-short) var(--ease-out)}.stage-reset[data-v-15b509be]:hover{opacity:1;background:color-mix(in srgb,var(--md-surface) 82%,transparent)}.stage-reset[data-v-15b509be]:active{transform:scale(.96)}.stage-reset.dragging[data-v-15b509be]{cursor:grabbing;opacity:1}.stage-placeholder[data-v-15b509be]{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-md);background:color-mix(in srgb,var(--md-surface) 72%,transparent);color:var(--md-on-surface-variant);font-size:14px;text-align:center;padding:var(--space-lg)}.stage-status[data-v-15b509be]{position:absolute;left:var(--space-md);bottom:var(--space-md);z-index:5;padding:6px 12px;border-radius:var(--radius-full);background:var(--md-inverse-surface);color:var(--md-inverse-on-surface);font-size:12px}.stage-status.warn[data-v-15b509be]{background:var(--md-error-container);color:var(--md-on-error-container);max-width:90%;word-break:break-word}.chat-page[data-v-599f785f]{position:relative;display:grid;grid-template-columns:minmax(360px,1fr) 6px minmax(320px,var(--chat-w, 34%));flex:1;height:100%;min-height:0;background:var(--md-surface)}.chat-page.no-chat[data-v-599f785f]{grid-template-columns:1fr}.stage-column[data-v-599f785f]{min-width:0;min-height:0;display:flex;flex-direction:column;gap:var(--space-md);padding:var(--space-md);overflow:hidden}.stage-host[data-v-599f785f]{flex:1;min-height:240px}.status-panel[data-v-599f785f]{flex:0 0 auto;max-height:40%;background:transparent;border-radius:var(--radius-lg);border:1px solid var(--md-outline-variant);overflow:hidden}.slot-frame[data-v-599f785f]{flex:1;min-height:200px;border:1px solid var(--md-outline-variant);border-radius:var(--radius-lg);background:var(--neutral-white)}.slot-frame.fill[data-v-599f785f]{flex:1;width:100%;height:100%;border:none;border-radius:0}.slot-note[data-v-599f785f]{padding:var(--space-md);font-size:var(--font-size-sm);color:var(--neutral-gray-40);background:var(--neutral-gray-4);border-radius:var(--radius-md)}.page-resizer[data-v-599f785f]{cursor:col-resize;background:var(--md-outline-variant);transition:background var(--transition-fast)}.page-resizer[data-v-599f785f]:hover,.page-resizer[data-v-599f785f]:active{background:var(--md-primary)}.chat-column[data-v-599f785f]{min-width:0;min-height:0;display:flex;flex-direction:column;border-left:1px solid var(--md-outline-variant);background:var(--md-surface-container-low)}.status-fab[data-v-599f785f]{position:absolute;right:var(--space-lg);bottom:var(--space-lg);width:56px;height:56px;border:none;border-radius:var(--radius-lg);background:var(--md-primary-container);color:var(--md-on-primary-container);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow-3);z-index:6}@media(max-width:960px){.chat-page[data-v-599f785f]{display:flex;flex-direction:column}.stage-column[data-v-599f785f]{flex:1;min-height:0}.page-resizer[data-v-599f785f]{display:none}.chat-column[data-v-599f785f]{position:absolute;right:0;top:0;bottom:0;width:min(360px,92vw);z-index:5;box-shadow:var(--shadow-8);transform:translate(100%);visibility:hidden;transition:transform var(--transition-normal),visibility 0s linear var(--duration-medium)}.chat-column.open[data-v-599f785f]{transform:translate(0);visibility:visible;transition:transform var(--transition-normal),visibility 0s linear 0s}}\n";document.head.appendChild(s)}})();
+;(()=>{if(typeof document!=='undefined'&&!document.getElementById('webui-plugin-style')){const s=document.createElement('style');s.id='webui-plugin-style';s.textContent=".media-row[data-v-5eead54f]{display:flex;gap:6px;margin:0 0 6px}.media-chip[data-v-5eead54f]{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 10px;border-radius:999px;background:var(--md-primary-container, #e8e0ff);color:var(--md-on-primary-container, #21005d);font-size:11.5px;font-weight:650}.media-chip svg[data-v-5eead54f]{flex:none}.selfie[data-v-5eead54f]{margin:0 0 6px}.selfie-img[data-v-5eead54f]{display:block;max-width:260px;max-height:320px;border-radius:14px;border:1px solid var(--md-outline-variant)}.selfie-pending[data-v-5eead54f]{display:inline-flex;align-items:center;gap:8px;min-width:200px;padding:14px 16px;border-radius:14px;border:1px dashed var(--md-outline-variant);color:var(--md-on-surface-variant);font-size:12px}.selfie-spinner[data-v-5eead54f]{width:13px;height:13px;border-radius:50%;border:2px solid var(--md-outline-variant);border-top-color:var(--md-primary);animation:selfie-spin-5eead54f .7s linear infinite}@keyframes selfie-spin-5eead54f{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.selfie-spinner[data-v-5eead54f]{animation:none}}.message[data-v-5eead54f]{display:flex;gap:var(--space-md);animation:slideUp .2s ease}.message.user[data-v-5eead54f]{flex-direction:row-reverse}.avatar[data-v-5eead54f]{flex-shrink:0;width:32px;height:32px;border-radius:var(--radius-round);display:flex;align-items:center;justify-content:center}.user-avatar[data-v-5eead54f]{background:var(--neutral-gray-60);color:var(--neutral-white)}.assistant-avatar[data-v-5eead54f]{background:var(--brand-primary);color:var(--neutral-white)}.images[data-v-5eead54f]{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}.msg-img[data-v-5eead54f]{max-width:240px;max-height:240px;border-radius:var(--radius-md);object-fit:cover;display:block}.files[data-v-5eead54f]{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}.msg-file[data-v-5eead54f]{display:inline-flex;align-items:center;max-width:240px;padding:5px 12px;border-radius:var(--radius-round);background:var(--neutral-gray-4);border:1px solid var(--neutral-gray-6);color:var(--neutral-gray-60);font-size:var(--font-size-xs);text-decoration:none;overflow:hidden}.msg-file-name[data-v-5eead54f]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.msg-file[data-v-5eead54f]:hover{border-color:var(--brand-primary);color:var(--brand-primary)}.content-wrapper[data-v-5eead54f]{max-width:70%}.content[data-v-5eead54f]{padding:var(--space-md) var(--space-lg);border-radius:var(--radius-lg);line-height:1.5;white-space:pre-wrap;word-break:break-word}.content-markdown[data-v-5eead54f]{white-space:normal}.user .content[data-v-5eead54f]{background:var(--brand-primary);color:var(--neutral-white);border-bottom-right-radius:var(--radius-sm)}.assistant .content[data-v-5eead54f]{background:var(--neutral-white);color:var(--neutral-gray-70);border-bottom-left-radius:var(--radius-sm);box-shadow:var(--shadow-2)}.think-panel[data-v-5eead54f]{margin-top:6px;border:1px solid var(--md-outline-variant);border-radius:10px;background:var(--md-surface-container-low)}.think-toggle[data-v-5eead54f]{width:100%;display:flex;justify-content:space-between;align-items:center;border:0;background:transparent;padding:7px 10px;color:var(--md-on-surface-variant);font:600 12px/1.2 monospace;letter-spacing:.06em;cursor:pointer}.think-body[data-v-5eead54f]{padding:0 10px 9px;color:var(--md-on-surface-variant);font-size:12px;line-height:1.45}.think-body p[data-v-5eead54f]{margin:4px 0}.think-body b[data-v-5eead54f]{color:var(--md-on-surface)}.think-summary[data-v-5eead54f]{margin:6px 0;color:var(--md-on-surface);line-height:1.55}.think-raw[data-v-5eead54f]{margin:6px 0;white-space:pre-wrap;max-height:420px;overflow:auto;color:var(--md-on-surface);font:12px/1.5 monospace}.meta[data-v-5eead54f]{display:flex;align-items:center;gap:var(--space-xs);margin-top:var(--space-xs);font-size:var(--font-size-xs);color:var(--neutral-gray-20)}.user .meta[data-v-5eead54f]{justify-content:flex-end}.separator[data-v-5eead54f]{color:var(--neutral-gray-10)}.emotion[data-v-5eead54f]{font-weight:500}.chat-panel[data-v-562b70d1]{display:flex;flex-direction:column;height:100%;background:var(--neutral-gray-2)}.context-btn[data-v-562b70d1]{border:1px solid var(--md-outline-variant);border-radius:999px;background:transparent;color:var(--md-on-surface-variant);min-height:32px;padding:7px 12px;font-size:12px;cursor:pointer;transition:background-color var(--transition-fast),border-color var(--transition-fast),color var(--transition-fast)}.context-btn[data-v-562b70d1]:disabled{opacity:.6;cursor:wait}.context-btn.danger[data-v-562b70d1]{color:var(--md-error)}.chat-container[data-v-562b70d1]{flex:1;overflow-y:auto;padding:var(--space-xl)}.messages[data-v-562b70d1]{max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:var(--space-md)}.empty-state[data-v-562b70d1]{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;color:var(--neutral-gray-30)}.empty-icon[data-v-562b70d1]{margin-bottom:var(--space-xl);opacity:.5}.empty-state h3[data-v-562b70d1]{font-size:var(--font-size-lg);font-weight:600;color:var(--neutral-gray-50);margin-bottom:var(--space-sm)}.empty-state p[data-v-562b70d1]{font-size:var(--font-size-base);color:var(--neutral-gray-30)}.typing-indicator[data-v-562b70d1]{display:flex;align-items:center;gap:var(--space-sm);padding:var(--space-md);color:var(--neutral-gray-30);font-size:var(--font-size-sm)}.typing-dots[data-v-562b70d1]{display:flex;gap:4px}.typing-dots span[data-v-562b70d1]{width:6px;height:6px;background:var(--neutral-gray-20);border-radius:50%;animation:bounce-562b70d1 1.4s infinite ease-in-out}.typing-dots span[data-v-562b70d1]:nth-child(1){animation-delay:-.32s}.typing-dots span[data-v-562b70d1]:nth-child(2){animation-delay:-.16s}@keyframes bounce-562b70d1{0%,80%,to{transform:scale(.5);opacity:.45}40%{transform:scale(1);opacity:1}}.input-area[data-v-562b70d1]{padding:var(--space-lg) var(--space-xl);background:var(--neutral-white);border-top:1px solid var(--neutral-gray-6)}.input-wrapper[data-v-562b70d1]{display:flex;align-items:flex-end;gap:var(--space-sm);max-width:800px;margin:0 auto;padding:var(--space-sm);background:var(--neutral-gray-4);border-radius:var(--radius-lg);border:1px solid transparent;transition:background-color var(--transition-fast),border-color var(--transition-fast),box-shadow var(--transition-fast)}.input-wrapper[data-v-562b70d1]:focus-within{background:var(--neutral-white);border-color:var(--brand-primary);box-shadow:0 0 0 2px var(--brand-light)}.message-input[data-v-562b70d1]{flex:1;padding:var(--space-sm) var(--space-md);font-size:var(--font-size-base);font-family:inherit;border:none;background:transparent;resize:none;outline:none;min-height:24px;max-height:120px}.message-input[data-v-562b70d1]::placeholder{color:var(--neutral-gray-20)}.pending-images[data-v-562b70d1],.pending-files[data-v-562b70d1]{display:flex;flex-wrap:wrap;gap:8px;max-width:800px;margin:0 auto var(--space-sm)}.pending-file[data-v-562b70d1]{display:inline-flex;align-items:center;gap:6px;max-width:240px;padding:6px 6px 6px 12px;border-radius:var(--radius-round);background:var(--neutral-gray-4);border:1px solid var(--neutral-gray-6);font-size:var(--font-size-xs);color:var(--neutral-gray-50);overflow:hidden}.pending-file-name[data-v-562b70d1]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.remove-file[data-v-562b70d1]{border:none;background:transparent;color:var(--neutral-gray-30);font-size:14px;line-height:1;cursor:pointer;padding:0 4px}.remove-file[data-v-562b70d1]:hover{color:var(--error)}.pending-thumb[data-v-562b70d1]{position:relative;width:56px;height:56px;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--neutral-gray-6)}.pending-thumb img[data-v-562b70d1]{width:100%;height:100%;object-fit:cover}.remove-img[data-v-562b70d1]{position:absolute;top:2px;right:2px;width:22px;height:22px;border:none;border-radius:50%;background:#000000a6;color:#fff;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}.pending-thumb.uploading[data-v-562b70d1]{display:flex;align-items:center;justify-content:center;background:var(--md-surface-container-high);animation:thumb-shimmer-562b70d1 1.2s infinite}.upload-spinner[data-v-562b70d1]{width:18px;height:18px;border-radius:50%;border:2px solid var(--md-outline-variant);border-top-color:var(--md-primary);animation:upload-spin-562b70d1 .8s linear infinite}@keyframes upload-spin-562b70d1{to{transform:rotate(360deg)}}@keyframes thumb-shimmer-562b70d1{0%,to{opacity:1}50%{opacity:.55}}@media(prefers-reduced-motion:reduce){.pending-thumb.uploading[data-v-562b70d1]{animation:none}}.attach-btn[data-v-562b70d1]{flex-shrink:0;width:36px;height:36px;border:none;border-radius:var(--radius-round);background:transparent;color:var(--neutral-gray-30);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background-color var(--transition-fast),color var(--transition-fast)}.attach-btn[data-v-562b70d1]:hover:not(:disabled){background:var(--neutral-gray-6);color:var(--neutral-gray-50)}.attach-btn[data-v-562b70d1]:disabled{opacity:.5;cursor:not-allowed}.wake-btn.active[data-v-562b70d1]{color:var(--md-primary);background:color-mix(in srgb,var(--md-primary) 14%,transparent)}.call-strip[data-v-562b70d1]{display:flex;align-items:center;gap:8px;margin:0 0 6px;padding:6px 10px;border-radius:999px;background:color-mix(in srgb,var(--md-success, #1a9e63) 14%,transparent);color:var(--md-on-surface);font-size:12px}.call-dot[data-v-562b70d1]{width:8px;height:8px;border-radius:50%;background:var(--md-success, #1a9e63);animation:call-pulse-562b70d1 1.4s ease-in-out infinite}.call-text[data-v-562b70d1]{flex:1;min-width:0;font-weight:600}.call-end[data-v-562b70d1]{border:0;background:transparent;color:var(--md-on-surface-variant);font-size:12px;font-weight:650;cursor:pointer;padding:2px 6px;border-radius:8px}.call-end[data-v-562b70d1]:hover{background:var(--md-surface-container-high);color:var(--md-on-surface)}@keyframes call-pulse-562b70d1{0%,to{opacity:1}50%{opacity:.35}}@media(prefers-reduced-motion:reduce){.call-dot[data-v-562b70d1]{animation:none}}.wake-strip[data-v-562b70d1]{display:flex;align-items:center;gap:8px;margin:0 0 6px;padding:5px 10px;border-radius:var(--radius-md, 10px);background:color-mix(in srgb,var(--md-primary) 10%,transparent);color:var(--md-primary);font-size:12px}.wake-strip.capturing[data-v-562b70d1]{background:color-mix(in srgb,var(--md-primary) 18%,transparent)}.wake-dot[data-v-562b70d1]{width:8px;height:8px;border-radius:50%;background:currentColor;animation:wake-pulse-562b70d1 1.1s ease-in-out infinite}.wake-strip.capturing .wake-dot[data-v-562b70d1]{animation-duration:.5s}.wake-text[data-v-562b70d1]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wake-stop[data-v-562b70d1]{border:none;background:transparent;color:inherit;cursor:pointer;font-size:15px;line-height:1;padding:0 2px;opacity:.75}.wake-stop[data-v-562b70d1]:hover{opacity:1}@keyframes wake-pulse-562b70d1{0%,to{opacity:1}50%{opacity:.2}}@media(prefers-reduced-motion:reduce){.wake-dot[data-v-562b70d1]{animation:none}}.send-button[data-v-562b70d1]{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:none;border-radius:var(--radius-round);background:var(--brand-primary);color:var(--neutral-white);cursor:pointer;transition:background-color var(--transition-fast),transform var(--duration-short) var(--ease-out)}.send-button[data-v-562b70d1]:hover:not(:disabled){background:var(--brand-hover)}.send-button[data-v-562b70d1]:disabled{background:var(--neutral-gray-8);cursor:not-allowed}.input-footer[data-v-562b70d1]{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:var(--space-sm);max-width:800px;margin-left:auto;margin-right:auto;padding:0 var(--space-sm)}.connection-status[data-v-562b70d1]{display:flex;align-items:center;gap:var(--space-xs);font-size:var(--font-size-xs)}.status-dot[data-v-562b70d1]{width:6px;height:6px;border-radius:50%}.connected .status-dot[data-v-562b70d1]{background:var(--success)}.disconnected .status-dot[data-v-562b70d1]{background:var(--error)}.hint[data-v-562b70d1]{font-size:var(--font-size-xs);color:var(--neutral-gray-20)}.character-profile dl>div[data-v-45331204]{display:flex;justify-content:space-between;gap:12px;margin:10px 0;font-size:12px}.character-profile dt[data-v-45331204]{color:var(--md-on-surface-variant);flex-shrink:0}.character-profile dd[data-v-45331204]{margin:0;text-align:right;overflow-wrap:anywhere}.status-panel[data-v-45331204]{display:flex;flex-direction:column;height:100%;background:var(--neutral-white)}.panel-header[data-v-45331204]{display:flex;align-items:center;justify-content:space-between;padding:var(--space-lg) var(--space-xl);border-bottom:1px solid var(--neutral-gray-6)}.panel-header h2[data-v-45331204]{font-size:var(--font-size-md);font-weight:600;color:var(--neutral-gray-70)}.patch-badge[data-v-45331204]{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--brand-primary);background:color-mix(in srgb,var(--brand-primary) 12%,transparent);padding:2px 8px;border-radius:var(--radius-full)}.panel-content[data-v-45331204]{flex:1;overflow-y:auto;padding:var(--space-lg)}.section[data-v-45331204]{margin-bottom:var(--space-xl)}.section-header[data-v-45331204]{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)}.section-title[data-v-45331204]{font-size:var(--font-size-sm);font-weight:600;color:var(--neutral-gray-50);text-transform:uppercase;letter-spacing:.5px}.mood-display[data-v-45331204]{display:flex;flex-direction:column;align-items:center;padding:var(--space-xl);background:var(--neutral-gray-4);border-radius:var(--radius-md)}.mood-icon[data-v-45331204]{margin-bottom:var(--space-md)}.mood-label[data-v-45331204]{font-size:var(--font-size-md);font-weight:600}.emotion-bars[data-v-45331204]{display:flex;flex-direction:column;gap:var(--space-sm)}.emotion-row[data-v-45331204]{display:flex;align-items:center;gap:var(--space-md)}.emotion-label[data-v-45331204]{width:80px;font-size:var(--font-size-xs);color:var(--neutral-gray-40)}.emotion-bar[data-v-45331204]{flex:1;height:6px;background:var(--neutral-gray-6);border-radius:var(--radius-sm);overflow:hidden}.emotion-fill[data-v-45331204]{height:100%;width:100%;transform-origin:left;border-radius:var(--radius-sm);transition:transform var(--duration-medium) var(--ease-out)}.empty-tasks[data-v-45331204]{padding:var(--space-md);text-align:center;color:var(--neutral-gray-20);font-size:var(--font-size-sm);background:var(--neutral-gray-4);border-radius:var(--radius-sm)}@property --mood{syntax: \"<color>\"; inherits: true; initial-value: #6750A4;}.live2d-stage[data-v-15b509be]{display:flex;flex-direction:column;background:var(--md-surface-container);border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--md-outline-variant);min-height:320px}.stage-viewport[data-v-15b509be]{position:relative;flex:1;min-height:260px;overflow:hidden;touch-action:pan-y;cursor:grab;user-select:none;transition:--mood var(--duration-long, .36s) var(--ease-out, ease-out);background:radial-gradient(circle at 30% 20%,color-mix(in srgb,var(--mood, #6750A4) 22%,transparent),transparent 55%),radial-gradient(circle at 70% 80%,color-mix(in srgb,var(--mood, #6750A4) 12%,transparent),transparent 50%),linear-gradient(180deg,var(--md-surface-container-low) 0%,var(--md-surface-container) 55%,color-mix(in srgb,var(--md-primary) 20%,transparent) 100%)}.stage-viewport[data-v-15b509be]:active{cursor:grabbing}.stage-canvas[data-v-15b509be]{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;pointer-events:none}.stage-gradient[data-v-15b509be]{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,transparent 55%,rgba(33,0,93,.18) 100%)}.stage-hint[data-v-15b509be]{position:absolute;left:10px;top:10px;z-index:3;padding:4px 10px;border-radius:var(--radius-full);background:color-mix(in srgb,var(--md-inverse-surface) 75%,transparent);color:var(--md-inverse-on-surface);font-size:12px;text-transform:capitalize;pointer-events:none}.stage-reset[data-v-15b509be]{position:absolute;top:10px;right:10px;z-index:20;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:1px solid color-mix(in srgb,var(--md-on-surface) 10%,transparent);border-radius:50%;background:color-mix(in srgb,var(--md-surface) 55%,transparent);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:var(--md-on-surface);font:inherit;font-size:16px;line-height:1;cursor:grab;touch-action:none;opacity:.7;transition:opacity var(--duration-short) var(--ease-out),background-color var(--duration-short) var(--ease-out)}.stage-reset[data-v-15b509be]:hover{opacity:1;background:color-mix(in srgb,var(--md-surface) 82%,transparent)}.stage-reset[data-v-15b509be]:active{transform:scale(.96)}.stage-reset.dragging[data-v-15b509be]{cursor:grabbing;opacity:1}.stage-placeholder[data-v-15b509be]{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-md);background:color-mix(in srgb,var(--md-surface) 72%,transparent);color:var(--md-on-surface-variant);font-size:14px;text-align:center;padding:var(--space-lg)}.stage-status[data-v-15b509be]{position:absolute;left:var(--space-md);bottom:var(--space-md);z-index:5;padding:6px 12px;border-radius:var(--radius-full);background:var(--md-inverse-surface);color:var(--md-inverse-on-surface);font-size:12px}.stage-status.warn[data-v-15b509be]{background:var(--md-error-container);color:var(--md-on-error-container);max-width:90%;word-break:break-word}.chat-page[data-v-599f785f]{position:relative;display:grid;grid-template-columns:minmax(360px,1fr) 6px minmax(320px,var(--chat-w, 34%));flex:1;height:100%;min-height:0;background:var(--md-surface)}.chat-page.no-chat[data-v-599f785f]{grid-template-columns:1fr}.stage-column[data-v-599f785f]{min-width:0;min-height:0;display:flex;flex-direction:column;gap:var(--space-md);padding:var(--space-md);overflow:hidden}.stage-host[data-v-599f785f]{flex:1;min-height:240px}.status-panel[data-v-599f785f]{flex:0 0 auto;max-height:40%;background:transparent;border-radius:var(--radius-lg);border:1px solid var(--md-outline-variant);overflow:hidden}.slot-frame[data-v-599f785f]{flex:1;min-height:200px;border:1px solid var(--md-outline-variant);border-radius:var(--radius-lg);background:var(--neutral-white)}.slot-frame.fill[data-v-599f785f]{flex:1;width:100%;height:100%;border:none;border-radius:0}.slot-note[data-v-599f785f]{padding:var(--space-md);font-size:var(--font-size-sm);color:var(--neutral-gray-40);background:var(--neutral-gray-4);border-radius:var(--radius-md)}.page-resizer[data-v-599f785f]{cursor:col-resize;background:var(--md-outline-variant);transition:background var(--transition-fast)}.page-resizer[data-v-599f785f]:hover,.page-resizer[data-v-599f785f]:active{background:var(--md-primary)}.chat-column[data-v-599f785f]{min-width:0;min-height:0;display:flex;flex-direction:column;border-left:1px solid var(--md-outline-variant);background:var(--md-surface-container-low)}.status-fab[data-v-599f785f]{position:absolute;right:var(--space-lg);bottom:var(--space-lg);width:56px;height:56px;border:none;border-radius:var(--radius-lg);background:var(--md-primary-container);color:var(--md-on-primary-container);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow-3);z-index:6}@media(max-width:960px){.chat-page[data-v-599f785f]{display:flex;flex-direction:column}.stage-column[data-v-599f785f]{flex:1;min-height:0}.page-resizer[data-v-599f785f]{display:none}.chat-column[data-v-599f785f]{position:absolute;right:0;top:0;bottom:0;width:min(360px,92vw);z-index:5;box-shadow:var(--shadow-8);transform:translate(100%);visibility:hidden;transition:transform var(--transition-normal),visibility 0s linear var(--duration-medium)}.chat-column.open[data-v-599f785f]{transform:translate(0);visibility:visible;transition:transform var(--transition-normal),visibility 0s linear 0s}}\n";document.head.appendChild(s)}})();

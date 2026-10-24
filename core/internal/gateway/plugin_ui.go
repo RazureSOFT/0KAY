@@ -7,7 +7,6 @@ import (
 	"strings"
 )
 
-// pluginUIRoot resolves CORE_DATA_DIR/plugin-ui/{name} for browser-served ESM bundles.
 func pluginUIRoot(name string) string {
 	dataDir := os.Getenv("CORE_DATA_DIR")
 	if dataDir == "" {
@@ -29,13 +28,6 @@ func validPluginUIName(name string) bool {
 	return true
 }
 
-// handlePluginUI serves static plugin front-end assets:
-//
-//	GET /api/plugins/{name}/ui/{path...}
-//
-// Assets live under CORE_DATA_DIR/plugin-ui/{name}/. Disabled plugins 404.
-// Path traversal is rejected. Entry files use no-cache so patch module URLs
-// can be updated; content-hashed chunks may be cached by the client.
 func (g *Gateway) handlePluginUI(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -43,7 +35,6 @@ func (g *Gateway) handlePluginUI(w http.ResponseWriter, r *http.Request) {
 	}
 	name := r.PathValue("name")
 	rel := r.PathValue("path")
-	// Fallback when invoked outside ServeMux (unit tests).
 	if name == "" || rel == "" {
 		const prefix = "/api/plugins/"
 		rest := strings.TrimPrefix(r.URL.Path, prefix)
@@ -62,7 +53,6 @@ func (g *Gateway) handlePluginUI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	root := pluginUIRoot(name)
-	// Clean then ensure the resolved file stays under root.
 	cleanRel := filepath.Clean("/" + filepath.FromSlash(rel))
 	full := filepath.Join(root, cleanRel)
 	rootAbs, err := filepath.Abs(root)
@@ -82,8 +72,6 @@ func (g *Gateway) handlePluginUI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Hashed assets can cache; bare entry names must revalidate so module
-	// URL changes (or rebuilds) are picked up without hard refresh.
 	base := filepath.Base(fullAbs)
 	if strings.Contains(base, "-") && (strings.HasSuffix(base, ".js") || strings.HasSuffix(base, ".css")) {
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")

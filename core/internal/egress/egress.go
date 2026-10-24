@@ -1,7 +1,3 @@
-// Package egress performs plugin outbound HTTP requests on Core's behalf and
-// enforces each plugin's declared host allow-list. It is the single sanctioned
-// path for plugin network access; direct plugin sockets are discouraged by
-// contract (a plugin must declare `permissions.egress` in its manifest).
 package egress
 
 import (
@@ -18,14 +14,10 @@ import (
 	"0kay/core/internal/netguard"
 )
 
-// maxResponseBytes caps a proxied response body.
 const maxResponseBytes = 32 << 20
 
-// guardedTransport is reused across egress calls so connections are pooled; its
-// dialer refuses metadata/link-local (and, in strict mode, private) addresses.
 var guardedTransport = netguard.Transport(netguard.Strict())
 
-// Request is a plugin's outbound HTTP request.
 type Request struct {
 	Method  string
 	URL     string
@@ -34,17 +26,12 @@ type Request struct {
 	Timeout time.Duration
 }
 
-// Response is the upstream result.
 type Response struct {
 	Status  int
 	Headers map[string]string
 	Body    []byte
 }
 
-// Allowed reports whether rawURL's host matches one of the allow-list patterns.
-// A pattern is a hostname, "host:port" or IP; a leading "*." matches any
-// subdomain. An empty allow-list denies everything (built-ins bypass this in
-// the callers).
 func Allowed(patterns []string, rawURL string) bool {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
@@ -53,7 +40,6 @@ func Allowed(patterns []string, rawURL string) bool {
 	return HostAllowed(patterns, parsed)
 }
 
-// HostAllowed is Allowed for an already-parsed URL.
 func HostAllowed(patterns []string, parsed *url.URL) bool {
 	if parsed == nil {
 		return false
@@ -73,7 +59,6 @@ func matchHost(pattern, host, port string) bool {
 		return false
 	}
 	pattern = strings.ToLower(pattern)
-	// Strip a scheme if the author wrote a URL.
 	if i := strings.Index(pattern, "://"); i >= 0 {
 		pattern = pattern[i+3:]
 	}
@@ -94,14 +79,12 @@ func matchHost(pattern, host, port string) bool {
 		return true
 	}
 	if strings.HasPrefix(pattern, "*.") {
-		suffix := pattern[1:] // ".example.com"
+		suffix := pattern[1:]
 		return host == pattern[2:] || strings.HasSuffix(host, suffix)
 	}
 	return host == pattern
 }
 
-// Do validates the request against the allow-list, then executes it. Every
-// redirect is re-checked so a permitted host cannot bounce to a forbidden one.
 func Do(ctx context.Context, req Request, allowlist []string) (Response, error) {
 	method := strings.ToUpper(strings.TrimSpace(req.Method))
 	if method == "" {
@@ -147,7 +130,6 @@ func Do(ctx context.Context, req Request, allowlist []string) (Response, error) 
 		return Response{}, err
 	}
 	for key, value := range req.Headers {
-		// Host is derived from the URL; forbidding it blocks an allow-list bypass.
 		if strings.EqualFold(key, "Host") || strings.EqualFold(key, "Content-Length") {
 			continue
 		}

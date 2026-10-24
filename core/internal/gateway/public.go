@@ -16,28 +16,12 @@ import (
 	"0kay/obs"
 )
 
-// Public wraps the authenticated handler chain with the browser-facing guards.
-//
-// Order matters:
-//
-//	hostGuard      - rejects Host headers a DNS-rebinding attacker needs
-//	corsMiddleware - emits CORS headers and short-circuits preflights before
-//	                 authentication (a preflight never carries credentials)
-//	pairs.HTTP     - credential checks + /api/auth/session
-//	logMiddleware  - request logging (installed by Gateway.Handler)
-//	mux            - routes
 func Public(next http.Handler) http.Handler {
 	return hostGuard(corsMiddleware(next))
 }
 
-// The host allow-list comes from the environment, which does not change while
-// the process runs, so it is parsed once and reused on every request. Tests
-// that mutate the environment rebuild the snapshot via resetEnvCaches.
 var allowedHosts = sync.OnceValue(hostAllowedHosts)
 
-// hostAllowedHosts is the set of dotted hostnames a request may present.
-// Single-label names (localhost, docker service names like "core") and IP
-// literals cannot be used for DNS rebinding, so they are always accepted.
 func hostAllowedHosts() map[string]bool {
 	allowed := map[string]bool{}
 	add := func(value string) {
@@ -46,9 +30,6 @@ func hostAllowedHosts() map[string]bool {
 			allowed[value] = true
 		}
 	}
-	// Entries may be written as a bare hostname, host:port, or a full origin
-	// URL. hostAllowed compares bare hostnames, so every form is reduced to
-	// one: parse as a URL when a scheme is present, otherwise strip the port.
 	addHost := func(value string) {
 		value = strings.TrimSuffix(strings.TrimSpace(value), "/")
 		if value == "" {
@@ -74,8 +55,6 @@ func hostAllowedHosts() map[string]bool {
 	return allowed
 }
 
-// pairingHostIdentity returns Core's TLS identity (used as the certificate
-// common name in LAN mode) so a browser may address Core by that name.
 func pairingHostIdentity() string {
 	if pairing.Default == nil {
 		return ""
@@ -88,15 +67,12 @@ func pairingHostIdentity() string {
 	return ""
 }
 
-// resetEnvCaches forces the cached environment snapshots to be recomputed on
-// the next use. Only tests change the environment after startup.
 func resetEnvCaches() {
 	allowedHosts = sync.OnceValue(hostAllowedHosts)
 	allowedOrigins = sync.OnceValue(allowedOriginList)
 	webuiPorts = sync.OnceValue(allowedWebuiPorts)
 }
 
-// hostGuard rejects requests whose Host header cannot belong to this deployment.
 func hostGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !hostAllowed(r.Host) {
@@ -117,8 +93,6 @@ func hostAllowed(host string) bool {
 	if hostname == "" {
 		return false
 	}
-	// IP literals (including IPv6) and single-label service names are not
-	// usable for DNS rebinding: an attacker needs a resolvable dotted name.
 	if net.ParseIP(hostname) != nil || !strings.Contains(hostname, ".") {
 		return true
 	}
@@ -132,9 +106,6 @@ func corsMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		if origin := r.Header.Get("Origin"); origin != "" {
-			// The origin has already been validated by allowedOrigin, and it is
-			// echoed (not reflected blindly) so credentialed cookie auth works
-			// for explicitly allowed frontends only.
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Add("Vary", "Origin")
@@ -151,9 +122,6 @@ func corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// statusRecorder remembers the status code for access logging while keeping
-// the streaming (Flusher), upgrade (Hijacker) and HTTP/2 (Pusher) contracts
-// the SSE and WebSocket handlers rely on.
 type statusRecorder struct {
 	http.ResponseWriter
 	status      int
@@ -193,10 +161,8 @@ func (r *statusRecorder) Push(target string, opts *http.PushOptions) error {
 	return http.ErrNotSupported
 }
 
-// streamPaths are long-lived responses. Their duration is the length of the
-// stream, not the cost of serving a request, so they get a span marked `stream`
-// and no access-log line — otherwise the console fills with hour-long "slow
-// requests" that are simply someone leaving a tab open.
+// these never finish on their own. an hour-long "slow request" tells
+// nobody shit, so they get a span and no log line.
 var streamPaths = []string{"/api/life/chat", "/api/tasks/events", "/api/chat"}
 
 func isStreamPath(path string) bool {
@@ -208,13 +174,6 @@ func isStreamPath(path string) bool {
 	return false
 }
 
-// logMiddleware is the HTTP observability seam: one span per request, its trace
-// id echoed as the request id, and an access-log line for everything that is not
-// a stream.
-//
-// The trace id is the request id on purpose. Two identifiers for one request
-// meant the console could not answer "what happened to this call?" — the span
-// was filed under one and the response header carried the other.
 func logMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		started := time.Now()

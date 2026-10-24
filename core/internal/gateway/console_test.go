@@ -32,7 +32,6 @@ func TestConsoleLogsSnapshot(t *testing.T) {
 	if len(payload.Logs) != 2 {
 		t.Fatalf("got %d logs, want 2", len(payload.Logs))
 	}
-	// Oldest first, so the console can append without re-sorting.
 	if payload.Logs[0].Message != "first message" {
 		t.Fatalf("first = %q", payload.Logs[0].Message)
 	}
@@ -48,8 +47,6 @@ func TestConsoleLogsFiltersAndLimit(t *testing.T) {
 	obs.ResetLogs()
 	t.Cleanup(obs.ResetLogs)
 	original := obs.GetLevel()
-	// Debug records are filtered out below the active level, so the level has to
-	// be lowered before this test can assert anything about them.
 	obs.SetLevel(obs.ParseLevel("debug"))
 	t.Cleanup(func() { obs.SetLevel(original) })
 	obs.Component("mocr").Debug("cache miss abc")
@@ -70,8 +67,6 @@ func TestConsoleLogsFiltersAndLimit(t *testing.T) {
 	if got := get("?level=error"); len(got) != 1 || got[0].Level != "ERROR" {
 		t.Fatalf("level filter: %#v", got)
 	}
-	// level=debug is required here: the default minimum is info, which correctly
-	// hides the very DEBUG record this search is looking for.
 	if got := get("?q=abc&level=debug"); len(got) != 1 || got[0].Level != "DEBUG" {
 		t.Fatalf("search filter: %#v", got)
 	}
@@ -81,13 +76,9 @@ func TestConsoleLogsFiltersAndLimit(t *testing.T) {
 	if got := get("?limit=1"); len(got) != 1 {
 		t.Fatalf("limit: got %d", len(got))
 	}
-	// An absurd limit must be clamped rather than dumping the whole buffer.
 	if got := get("?limit=100000"); len(got) > 1000 {
 		t.Fatalf("limit not clamped: %d", len(got))
 	}
-	// Nonsense parameters fall back to defaults instead of erroring: limit goes
-	// back to 200 and an unknown level becomes info (which still hides the DEBUG
-	// record, leaving the error).
 	if got := get("?limit=abc&level=nope"); len(got) != 1 || got[0].Level != "ERROR" {
 		t.Fatalf("bad params: %#v", got)
 	}
@@ -162,7 +153,6 @@ func TestConsoleStreamPrimesAndStreams(t *testing.T) {
 	if !strings.Contains(primed, "before the stream opened") {
 		t.Fatalf("history not replayed: %q", primed)
 	}
-	// The primed history and the ready marker may arrive in separate reads.
 	deadlineReady := time.Now().Add(3 * time.Second)
 	for !strings.Contains(primed, "event: ready") && time.Now().Before(deadlineReady) {
 		n, err = resp.Body.Read(buf)
@@ -175,7 +165,6 @@ func TestConsoleStreamPrimesAndStreams(t *testing.T) {
 		t.Fatalf("no ready marker: %q", primed)
 	}
 
-	// A record emitted after the stream opened must arrive on it.
 	go func() {
 		time.Sleep(50 * time.Millisecond)
 		obs.Component("test").Error("after the stream opened")
@@ -206,8 +195,6 @@ func TestConsoleStreamStopsWithClient(t *testing.T) {
 	}
 	resp.Body.Close()
 	server.CloseClientConnections()
-	// The handler must return on context cancellation; the test binary failing
-	// to exit is the symptom if it does not.
 }
 
 func TestConsoleLevelRoundTrip(t *testing.T) {
@@ -287,8 +274,6 @@ func TestMiddlewareAssignsAndEchoesRequestID(t *testing.T) {
 	if spans[0].TraceID != echoed {
 		t.Fatalf("span trace %q != echoed %q", spans[0].TraceID, echoed)
 	}
-	// The span's trace id *is* the request id, so it is not duplicated into an
-	// attribute as well.
 	if spans[0].Attrs["method"] != "GET" || spans[0].Attrs["path"] != "/api/thing" {
 		t.Fatalf("span attrs = %#v", spans[0].Attrs)
 	}
@@ -300,8 +285,6 @@ func TestMiddlewareAssignsAndEchoesRequestID(t *testing.T) {
 func TestMiddlewareHonoursInboundRequestID(t *testing.T) {
 	obs.ResetSpans()
 	t.Cleanup(obs.ResetSpans)
-	// An agent retrying a call must keep its own id so the two attempts are
-	// distinguishable in the console.
 	handler := logMiddleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -367,8 +350,6 @@ func TestMiddlewareTreatsStreamsSeparately(t *testing.T) {
 	if len(spans) != 1 {
 		t.Fatalf("got %d spans", len(spans))
 	}
-	// A stream's duration is its length, so it is flagged rather than reported
-	// as a slow request.
 	if spans[0].Attrs["stream"] != "true" {
 		t.Fatalf("stream not marked: %#v", spans[0].Attrs)
 	}

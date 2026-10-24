@@ -11,27 +11,19 @@ import (
 	"syscall"
 )
 
-// CREATE_NO_WINDOW runs the updater with a hidden console (children such as
-// git/go/npm/powershell inherit it, so no window flashes).
 const createNoWindow = 0x08000000
 
 func winQuote(value string) string {
-	// cmd.exe does not use backslash escapes: an embedded quote is doubled and
-	// `%` is neutralised (doubled) so it cannot trigger variable expansion. New
-	// lines are stripped so a value cannot break out of the command line.
 	value = winEnvValue(value)
 	return `"` + value + `"`
 }
 
-// winEnvValue makes a value safe to embed inside a quoted `set`/`call` line.
 func winEnvValue(value string) string {
 	value = strings.ReplaceAll(value, "%", "%%")
 	value = strings.ReplaceAll(value, `"`, `""`)
 	return strings.NewReplacer("\r", "", "\n", "").Replace(value)
 }
 
-// winEnvLines renders the git mirror environment for a batch script (empty when
-// no mirror is configured).
 func winEnvLines() string {
 	var b strings.Builder
 	for _, kv := range processProxyEnv() {
@@ -40,8 +32,6 @@ func winEnvLines() string {
 	return b.String()
 }
 
-// writeUpdater writes the batch script that stops, updates and starts a
-// component, then prints a status marker for State() to read.
 func writeUpdater(dir, pm, pkg, target string) (string, string, error) {
 	script := filepath.Join(dir, "update.cmd")
 	logPath := filepath.Join(dir, "apply.log")
@@ -63,7 +53,6 @@ func writeUpdater(dir, pm, pkg, target string) (string, string, error) {
 	return script, logPath, nil
 }
 
-// writeInstaller writes the batch script that installs a plugin via 0kay-pm.
 func writeInstaller(dir, pm, pkg string) (string, string, error) {
 	script := filepath.Join(dir, "install.cmd")
 	logPath := filepath.Join(dir, "install.log")
@@ -81,7 +70,6 @@ func writeInstaller(dir, pm, pkg string) (string, string, error) {
 	return script, logPath, nil
 }
 
-// writeUninstaller writes the batch script that removes a plugin via 0kay-pm.
 func writeUninstaller(dir, pm, pkg string) (string, string, error) {
 	script := filepath.Join(dir, "uninstall.cmd")
 	logPath := filepath.Join(dir, "install.log")
@@ -115,8 +103,6 @@ func psQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "''") + "'"
 }
 
-// winStartCommand builds a PowerShell Start-Process line that restarts the
-// component detached (cmd's `start` needs a console the updater lacks).
 func winStartCommand(plan sourcePlan) string {
 	command := strings.TrimPrefix(plan.Start[0], "./")
 	ps := fmt.Sprintf("Start-Process -FilePath %s", psQuote(command))
@@ -134,7 +120,6 @@ func winStartCommand(plan sourcePlan) string {
 	return ps
 }
 
-// writeSourceUpdater writes the git-sync + rebuild + restart batch script.
 func writeSourceUpdater(dir string, plan sourcePlan) (string, string, error) {
 	script := filepath.Join(dir, "source-update.cmd")
 	logPath := filepath.Join(dir, "apply.log")
@@ -160,7 +145,6 @@ func writeSourceUpdater(dir string, plan sourcePlan) (string, string, error) {
 		b.WriteString("ping -n 2 127.0.0.1 >nul\r\n")
 	}
 	if len(plan.Start) > 0 {
-		// The command is embedded in a cmd line, so `%` must be neutralised too.
 		ps := strings.ReplaceAll(winStartCommand(plan), "%", "%%")
 		fmt.Fprintf(&b, "powershell -NoProfile -NonInteractive -WindowStyle Hidden -Command \"%s\"\r\n", ps)
 	}
@@ -171,7 +155,6 @@ func writeSourceUpdater(dir string, plan sourcePlan) (string, string, error) {
 	return script, logPath, nil
 }
 
-// launchDetached runs the script with no console and its own process group.
 func launchDetached(script, logPath string) error {
 	handle, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {

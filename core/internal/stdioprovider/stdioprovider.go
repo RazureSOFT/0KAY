@@ -1,7 +1,3 @@
-// Package stdioprovider hosts provider-adapter plugins as child processes over
-// stdio, so a plugin can contribute an OpenAI-compatible provider without
-// listening on a port. Core owns the provider's base_url (its own HTTP route)
-// and forwards each request to the child.
 package stdioprovider
 
 import (
@@ -18,13 +14,11 @@ import (
 	"time"
 )
 
-// Runner manages the stdio provider children, keyed by provider id.
 type Runner struct {
 	mu       sync.Mutex
 	children map[string]*child
 }
 
-// NewRunner creates an empty runner.
 func NewRunner() *Runner {
 	return &Runner{children: map[string]*child{}}
 }
@@ -48,8 +42,6 @@ type pendingReq struct {
 	once    sync.Once
 }
 
-// Chunk carries terminal transport failures as well as data. A broken stream
-// must never look like a successfully completed model response.
 type Chunk struct {
 	Data []byte
 	Err  error
@@ -70,8 +62,6 @@ func randomID() string {
 	return hex.EncodeToString(b)
 }
 
-// Start launches a stdio provider child (cwd = dir) and begins reading its
-// newline-delimited JSON responses.
 func (r *Runner) Start(id, dir string, command []string) error {
 	if id == "" || len(command) == 0 {
 		return fmt.Errorf("invalid stdio provider spec")
@@ -125,7 +115,6 @@ func (c *child) readLoop(r io.Reader) {
 			})
 		case "chunk":
 			c.mu.Unlock()
-			// Apply cancellable backpressure outside the registry lock.
 			select {
 			case req.chunks <- Chunk{Data: []byte(ev.Data)}:
 			case <-req.ctx.Done():
@@ -149,7 +138,6 @@ func (c *child) readLoop(r io.Reader) {
 		}
 		c.mu.Unlock()
 	}
-	// EOF, an oversized frame, or a child crash must terminate every waiter.
 	err := scanner.Err()
 	if err == nil {
 		err = io.ErrUnexpectedEOF
@@ -171,8 +159,6 @@ func (c *child) readLoop(r io.Reader) {
 	}
 }
 
-// Do forwards one HTTP-shaped request to the child and returns the status,
-// headers and a chunk stream. The caller must drain chunks.
 func (r *Runner) Do(ctx context.Context, id, method, url string, headers map[string]string, body []byte) (int, map[string]string, <-chan Chunk, error) {
 	r.mu.Lock()
 	c := r.children[id]
@@ -225,14 +211,12 @@ func (r *Runner) Do(ctx context.Context, id, method, url string, headers map[str
 	return req.status, req.headers, req.chunks, nil
 }
 
-// Running reports whether a provider child is registered.
 func (r *Runner) Running(id string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.children[id] != nil
 }
 
-// Stop kills every child process.
 func (r *Runner) Stop() {
 	r.mu.Lock()
 	defer r.mu.Unlock()

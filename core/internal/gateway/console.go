@@ -11,20 +11,10 @@ import (
 	"0kay/obs"
 )
 
-// RequestIDHeader carries the correlation id for one logical operation across
-// every hop: browser -> Core -> gRPC -> mocr/agent/LIFE. Core echoes it on the
-// response so a user can paste one value into the console and find the whole
-// trace.
 const RequestIDHeader = "X-0kay-Request-Id"
 
 var consoleLog = obs.Component("console")
 
-// obsRoutes serves the WebUI console: a bounded snapshot of recent logs and
-// spans, a live SSE feed of both, and a level control.
-//
-// The snapshot and stream routes are read-only. The level and clear endpoints
-// mutate process state, and sensitiveRequest gates the whole /api/console
-// family by method, so they require the PIN like any other write.
 func (g *Gateway) obsRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/console/logs", g.handleConsoleLogs)
 	mux.HandleFunc("GET /api/console/spans", g.handleConsoleSpans)
@@ -41,7 +31,6 @@ func consoleParams(r *http.Request) (limit int, minLevel slog.Level, contains st
 			limit = n
 		}
 	}
-	// Cap the page so one request cannot ask for the whole buffer.
 	if limit > 1000 {
 		limit = 1000
 	}
@@ -71,9 +60,6 @@ func (g *Gateway) handleConsoleSpans(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleConsoleStream multiplexes logs and spans onto one SSE connection. Two
-// separate endpoints would mean two EventSource connections in the browser for
-// no benefit, and a single stream keeps their ordering relative to each other.
 func (g *Gateway) handleConsoleStream(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -85,7 +71,6 @@ func (g *Gateway) handleConsoleStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	// Tells nginx not to buffer, without which the console appears frozen.
 	w.Header().Set("X-Accel-Buffering", "no")
 
 	logs, cancelLogs := obs.SubscribeLogs()
@@ -105,8 +90,6 @@ func (g *Gateway) handleConsoleStream(w http.ResponseWriter, r *http.Request) {
 		return true
 	}
 
-	// Prime the client so opening the console shows recent history rather than
-	// an empty pane waiting for the next error.
 	for _, rec := range obs.RecentLogs(200, minLevel, contains) {
 		if !send("log", rec) {
 			return
@@ -148,8 +131,6 @@ func (g *Gateway) handleConsoleStream(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		case <-heartbeat.C:
-			// A comment frame keeps proxies from reaping an idle connection and
-			// gives the client something to reset its idle timer on.
 			if _, err := w.Write([]byte(": heartbeat\n\n")); err != nil {
 				return
 			}
@@ -187,13 +168,10 @@ func (g *Gateway) handleConsoleClear(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"cleared": true})
 }
 
-// GetConsoleLevel reports the current level name for the console header.
 func GetConsoleLevel() string { return obs.GetLevel().String() }
 
 func consoleLevelValue(name string) slog.Level { return obs.ParseLevel(name) }
 
-// sessionIDOf normalises an absent session for logging: an empty string in a
-// log line reads like a missing field rather than the "default" bucket it is.
 func sessionIDOf(id string) string {
 	if id == "" {
 		return "default"

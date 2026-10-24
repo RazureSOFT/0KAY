@@ -15,8 +15,6 @@ import (
 	"0kay/core/internal/settings"
 )
 
-// setGitIdentity gives the test process a git identity so both the test's own
-// git calls and the handler's `git commit` work without the user's global config.
 func setGitIdentity(t *testing.T) {
 	t.Helper()
 	t.Setenv("GIT_AUTHOR_NAME", "test")
@@ -31,13 +29,10 @@ func gitInitRepo(t *testing.T) string {
 		t.Skip("git not available")
 	}
 	dir := gitInitRepoIn(t, t.TempDir())
-	// validDir confines the handler to AGENT_WORKSPACE_ROOTS; t.TempDir() lives
-	// outside the test binary's working directory, so opt this dir in.
 	t.Setenv("AGENT_WORKSPACE_ROOTS", dir)
 	return dir
 }
 
-// gitInitRepoIn initialises a repository in an existing directory.
 func gitInitRepoIn(t *testing.T, dir string) string {
 	t.Helper()
 	setGitIdentity(t)
@@ -54,7 +49,6 @@ func gitInitRepoIn(t *testing.T, dir string) string {
 	}
 	run("add", ".")
 	run("commit", "-m", "init")
-	// One modified tracked file + one untracked file.
 	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("hello world"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -64,14 +58,6 @@ func gitInitRepoIn(t *testing.T, dir string) string {
 	return dir
 }
 
-// TestAgentGitWorkspaceRootsAreCommaSeparated pins the wire format.
-//
-// AGENT_WORKSPACE_ROOTS is defined by the agent's own workspace policy
-// (agent/src/workspace/paths.ts) as a COMMA-separated list. Reading it with
-// filepath.SplitList (';' on Windows, ':' on POSIX) made a documented value arrive
-// as a single bogus root, every candidate fail to resolve, and the panel return
-// 403 for every path on every action — while the suite stayed green, because
-// every test set one directory with no separator.
 func TestAgentGitWorkspaceRootsAreCommaSeparated(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -154,15 +140,11 @@ func TestAgentGitRejectsNonRepo(t *testing.T) {
 	}
 }
 
-// TestAgentGitRejectsPathOutsideWorkspaceRoots is the authorization test for
-// this route: without an opt-in, a caller must not be able to name a
-// repository anywhere on the host.
 func TestAgentGitRejectsPathOutsideWorkspaceRoots(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
 	}
 	repo := gitInitRepo(t)
-	// gitInitRepo opted `repo` in; now opt only somewhere else in.
 	elsewhere := t.TempDir()
 	t.Setenv("AGENT_WORKSPACE_ROOTS", elsewhere)
 
@@ -174,7 +156,6 @@ func TestAgentGitRejectsPathOutsideWorkspaceRoots(t *testing.T) {
 		t.Fatalf("expected 403 git_forbidden, got %d: %s", rec.Code, rec.Body.String())
 	}
 
-	// Commit is the destructive one; it must be refused too.
 	body := `{"path":` + strconv.Quote(repo) + `,"action":"commit","message":"pwn"}`
 	postRec := httptest.NewRecorder()
 	g.handleAgentGit(postRec, httptest.NewRequest("POST", "/api/agent/git", strings.NewReader(body)))
@@ -183,15 +164,6 @@ func TestAgentGitRejectsPathOutsideWorkspaceRoots(t *testing.T) {
 	}
 }
 
-// TestAgentGitDefaultRootsIncludeProjectRoot pins the bug that made "stage all"
-// fail with "path is outside the configured agent workspace roots" on the
-// project the stack itself lives in.
-//
-// Every service is launched from its own subdirectory, so cwd is <repo>/core and
-// the repository root — the directory the WebUI shows as the workspace — was
-// outside the default root set (cwd, home, temp). validRepoDir additionally
-// re-checks the repository top level, so even a path inside a root was refused
-// whenever the top level was its parent.
 func TestAgentGitDefaultRootsIncludeProjectRoot(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -219,9 +191,6 @@ func TestAgentGitDefaultRootsIncludeProjectRoot(t *testing.T) {
 	if !strings.EqualFold(resolvedTop, resolvedRepo) {
 		t.Fatalf("projectRoot() = %q, want %q", resolvedTop, resolvedRepo)
 	}
-	// It must be an ENTRY of the root set, not merely contained by one: the
-	// repository sits under the temp dir, which is a default root anyway, so a
-	// containment check would pass even with the bug present.
 	roots := (&Gateway{}).agentWorkspaceRoots()
 	found := false
 	for _, root := range roots {
@@ -235,9 +204,6 @@ func TestAgentGitDefaultRootsIncludeProjectRoot(t *testing.T) {
 	}
 }
 
-// TestAgentGitForbiddenMessageNamesRoots pins that the 403 explains itself: the
-// default root set is not what an operator would guess, so the message has to
-// list what was actually checked.
 func TestAgentGitForbiddenMessageNamesRoots(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
@@ -257,16 +223,11 @@ func TestAgentGitForbiddenMessageNamesRoots(t *testing.T) {
 	}
 }
 
-// TestAgentGitHonoursConfiguredWorkspaceRoots pins the UI-side escape hatch:
-// the workspace picker browses the whole filesystem, so a project on another
-// drive must be allow-able from Settings → 工作区 instead of only through the
-// AGENT_WORKSPACE_ROOTS environment variable.
 func TestAgentGitHonoursConfiguredWorkspaceRoots(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
 	}
 	repo := gitInitRepo(t)
-	// Only an unrelated directory is in the environment list.
 	t.Setenv("AGENT_WORKSPACE_ROOTS", t.TempDir())
 
 	setStore := settings.NewStore(filepath.Join(t.TempDir(), "settings.json"))
@@ -287,7 +248,6 @@ func TestAgentGitHonoursConfiguredWorkspaceRoots(t *testing.T) {
 		t.Fatalf("configured root not honoured: %d %s", rec.Code, rec.Body.String())
 	}
 
-	// A comma/newline list works too — operators paste either.
 	if err := setStore.SetValues("workspace", map[string]interface{}{"allowed_roots": "/nope,\n  " + repo + "  \n"}); err != nil {
 		t.Fatal(err)
 	}
@@ -305,14 +265,10 @@ func mustResolve(t *testing.T, p string) string {
 	return resolved
 }
 
-// TestAgentGitDiscardRemovesUntrackedFile pins the tracked/untracked split:
-// `git restore` fails its whole batch on a pathspec the index does not know, so
-// a request mixing both used to discard nothing at all.
 func TestAgentGitDiscardRemovesUntrackedFile(t *testing.T) {
 	dir := gitInitRepo(t)
 	g := &Gateway{}
 
-	// Mixed batch: one tracked modification + one untracked file.
 	rec := httptest.NewRecorder()
 	body := `{"path":` + strconv.Quote(dir) + `,"action":"discard","files":["a.txt","b.txt"]}`
 	g.handleAgentGit(rec, httptest.NewRequest("POST", "/api/agent/git", strings.NewReader(body)))
@@ -330,15 +286,8 @@ func TestAgentGitDiscardRemovesUntrackedFile(t *testing.T) {
 	}
 }
 
-// TestAgentGitDoesNotRunHooks pins the config-execution hardening: a repository
-// whose pre-commit hook writes a marker file must not have that hook run by the
-// handler, because the handler executes git inside a repository the user may
-// merely have cloned.
 func TestAgentGitDoesNotRunHooks(t *testing.T) {
 	dir := gitInitRepo(t)
-	// The hook is a POSIX shell script; writing one on Windows would produce a
-	// file git cannot execute, so the assertion below could never fail. Skipping
-	// is honest; silently passing a vacuous test is not.
 	if runtime.GOOS == "windows" {
 		t.Skip("hooks test needs a POSIX shell script; covered by CI on ubuntu")
 	}
@@ -347,7 +296,6 @@ func TestAgentGitDoesNotRunHooks(t *testing.T) {
 	if err := os.WriteFile(hook, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	// A second file to commit, so there is something for the hook to gate.
 	if err := os.WriteFile(filepath.Join(dir, "c.txt"), []byte("hook test"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -370,12 +318,8 @@ func TestAgentGitDoesNotRunHooks(t *testing.T) {
 	}
 }
 
-// TestParsePorcelainKeepsNonASCIIPaths pins the -z decode: a C-quoted path from
-// the newline form could not be fed back to git by the panel.
 func TestParsePorcelainKeepsNonASCIIPaths(t *testing.T) {
 	const path = "src/文档/main.go"
-	// "??" is untracked; " M" is a worktree-only change (index column blank);
-	// "M " is a staged change.
 	out := "?? " + path + "\x00 M " + path + "\x00M  " + path + "\x00"
 	files := parsePorcelain(out)
 	if len(files) != 3 {
@@ -392,7 +336,6 @@ func TestParsePorcelainKeepsNonASCIIPaths(t *testing.T) {
 	}
 }
 
-// TestParsePorcelainSkipsRenameSource pins the two-field rename/copy form.
 func TestParsePorcelainSkipsRenameSource(t *testing.T) {
 	out := "R  new.txt\x00old.txt\x00?? other.txt\x00"
 	files := parsePorcelain(out)
@@ -407,8 +350,6 @@ func TestParsePorcelainSkipsRenameSource(t *testing.T) {
 	}
 }
 
-// TestParsePorcelainConflictIsNotStaged pins that a merge conflict is not
-// reported as staged — otherwise the panel invites committing conflict markers.
 func TestParsePorcelainConflictIsNotStaged(t *testing.T) {
 	files := parsePorcelain("UU conflicted.txt\x00AA both-added.txt\x00")
 	if len(files) != 2 {
@@ -421,8 +362,6 @@ func TestParsePorcelainConflictIsNotStaged(t *testing.T) {
 	}
 }
 
-// TestParseLogSurvivesSeparatorInSubject pins that a subject containing the
-// record delimiter no longer shifts every field.
 func TestParseLogSurvivesSeparatorInSubject(t *testing.T) {
 	out := "abc123\x00Ada\x002026-10-17\x00fix \x1f the thing\x00"
 	commits := parseLog(out)
@@ -446,14 +385,12 @@ func TestAgentGitInitCreatesRepo(t *testing.T) {
 	t.Setenv("AGENT_WORKSPACE_ROOTS", dir)
 	g := &Gateway{}
 
-	// A plain folder reports the not_a_repo code so the UI can offer init.
 	rec := httptest.NewRecorder()
 	g.handleAgentGit(rec, httptest.NewRequest("GET", "/api/agent/git?action=status&path="+url.QueryEscape(dir), nil))
 	if rec.Code != 400 || !strings.Contains(rec.Body.String(), "not_a_repo") {
 		t.Fatalf("expected not_a_repo before init, got %d: %s", rec.Code, rec.Body.String())
 	}
 
-	// One-click init turns it into a repository.
 	rec = httptest.NewRecorder()
 	g.handleAgentGit(rec, httptest.NewRequest("POST", "/api/agent/git", strings.NewReader(`{"path":`+strconv.Quote(dir)+`,"action":"init"}`)))
 	if rec.Code != 200 {
@@ -475,7 +412,6 @@ func TestAgentGitDiscard(t *testing.T) {
 	if strings.Contains(rec.Body.String(), `"path":"a.txt"`) {
 		t.Fatalf("a.txt still modified after discard: %s", rec.Body.String())
 	}
-	// The untracked file must survive a discard of a different path.
 	if !strings.Contains(rec.Body.String(), `"path":"b.txt"`) {
 		t.Fatalf("b.txt should remain untracked: %s", rec.Body.String())
 	}

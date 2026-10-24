@@ -14,8 +14,6 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-// recordingLifeServer stands in for the LIFE plugin and remembers the
-// `authorization` metadata each call arrived with.
 type recordingLifeServer struct {
 	lifev1.UnimplementedLifeServiceServer
 
@@ -55,7 +53,6 @@ func startFakeLife(t *testing.T) (*recordingLifeServer, string) {
 	return recorder, listener.Addr().String()
 }
 
-// lifeTestGateway registers a LIFE plugin at addr with a token secret in place.
 func lifeTestGateway(t *testing.T, addr string) (*Gateway, *registry.Registry) {
 	t.Helper()
 	reg := registry.NewRegistry()
@@ -99,8 +96,6 @@ func TestLifeDialAttachesServiceToken(t *testing.T) {
 	}
 }
 
-// The shared `dial` pool is used for Agent/Mocr too, so a connection created
-// through it must never carry LIFE's service token.
 func TestLifeDialDoesNotLeakTokenIntoSharedPool(t *testing.T) {
 	recorder, addr := startFakeLife(t)
 	g, _ := lifeTestGateway(t, addr)
@@ -120,8 +115,6 @@ func TestLifeDialDoesNotLeakTokenIntoSharedPool(t *testing.T) {
 	}
 }
 
-// ...and the reverse: a token-bearing connection must not be served to a caller
-// that went through the shared pool for a different address.
 func TestLifeDialKeepsItsOwnCache(t *testing.T) {
 	_, addr := startFakeLife(t)
 	g, reg := lifeTestGateway(t, addr)

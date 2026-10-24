@@ -10,8 +10,6 @@ import (
 	"0kay/core/internal/server"
 )
 
-// /api/agent/exec proxies straight to the agent, so it must enforce the
-// ComputerUse permission itself rather than rely on RunDirect's gate.
 func TestAgentExecRequiresComputerUse(t *testing.T) {
 	t.Setenv("TASKS_PATH", filepath.Join(t.TempDir(), "tasks.json"))
 	t.Setenv("USAGE_PATH", filepath.Join(t.TempDir(), "usage.json"))

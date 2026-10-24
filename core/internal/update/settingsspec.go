@@ -6,9 +6,6 @@ import (
 	"path/filepath"
 )
 
-// SettingsSpec is a settings section an installed package declares in its
-// manifest; Core registers it so the WebUI can render it (used by stdio
-// provider plugins, which have no gRPC registration channel).
 type SettingsSpec struct {
 	Package     string
 	ID          string
@@ -19,7 +16,6 @@ type SettingsSpec struct {
 	Fields      []SettingsFieldSpec
 }
 
-// SettingsFieldSpec mirrors settings.Field for a manifest declaration.
 type SettingsFieldSpec struct {
 	Key          string
 	Type         string
@@ -29,7 +25,6 @@ type SettingsFieldSpec struct {
 	Options      []string
 }
 
-// PluginSettingsSpecs reads the `settings` block of every installed manifest.
 func PluginSettingsSpecs() []SettingsSpec {
 	var out []SettingsSpec
 	for _, record := range pmInstalledRoots() {

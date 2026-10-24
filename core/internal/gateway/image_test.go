@@ -11,8 +11,6 @@ import (
 	"0kay/core/internal/settings"
 )
 
-// imageTestGateway builds a Gateway whose settings store holds one image plugin
-// section — the only thing the resolver looks at.
 func imageTestGateway(t *testing.T, id, endpoint string) *Gateway {
 	t.Helper()
 	store := settings.NewStore("")
@@ -86,7 +84,6 @@ func TestImageDisabledSectionFallsThrough(t *testing.T) {
 	}
 }
 
-// A real backend, reached through the public handler: OpenAI envelope in, PNG out.
 func TestImageEndToEnd(t *testing.T) {
 	raw := []byte("\x89PNG\r\n\x1a\n-fake-image-bytes")
 	var gotPrompt, gotSize string
@@ -124,8 +121,6 @@ func TestImageEndToEnd(t *testing.T) {
 }
 
 func TestImageRawBytesBackend(t *testing.T) {
-	// A server that ignores the OpenAI contract and just returns bytes must work
-	// too, otherwise every local drawer needs a shim.
 	raw := []byte("\x89PNG\r\n\x1a\n-raw")
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/png")

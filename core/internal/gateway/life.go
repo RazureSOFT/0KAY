@@ -9,8 +9,6 @@ import (
 	lifev1 "0kay/gen/life/v1"
 )
 
-// overlayLifeState fills emotion/energy/permissions from Life when available.
-// Agent/plugin/task fields must already be set by the caller (Core registry).
 func (g *Gateway) overlayLifeState(r *http.Request, state map[string]interface{}) {
 	lifes := g.registry.GetPluginsByCapability("life")
 	if len(lifes) == 0 || lifes[0].Address == "" {
@@ -30,7 +28,6 @@ func (g *Gateway) overlayLifeState(r *http.Request, state map[string]interface{}
 
 	tasks := make([]string, 0, len(resp.ActiveTasks))
 	tasks = append(tasks, resp.ActiveTasks...)
-	// Prefer Core task list if non-empty; else Life's view.
 	if existing, ok := state["activeTasks"].([]string); !ok || len(existing) == 0 {
 		state["activeTasks"] = tasks
 	}
@@ -57,13 +54,11 @@ func (g *Gateway) overlayLifeState(r *http.Request, state map[string]interface{}
 	}
 }
 
-// handleLifeState is the legacy path; now delegates to platform state.
 func (g *Gateway) handleLifeState(w http.ResponseWriter, r *http.Request) {
 	deprecated(w, "/api/state")
 	g.handleState(w, r)
 }
 
-// forwardLifePermissions pushes Core permission changes to the Life plugin.
 func (g *Gateway) forwardLifePermissions(p server.Permissions) {
 	lifes := g.registry.GetPluginsByCapability("life")
 	if len(lifes) == 0 || lifes[0].Address == "" {

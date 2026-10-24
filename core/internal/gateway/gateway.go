@@ -34,40 +34,26 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Gateway is the HTTP API gateway.
 type Gateway struct {
-	cfg      *Config
-	registry *registry.Registry
-	coreSvc  corev1.CoreServiceClient
-	// localCore is the in-process CoreServiceServer for usage/permissions/session access.
+	cfg       *Config
+	registry  *registry.Registry
+	coreSvc   corev1.CoreServiceClient
 	localCore LocalCore
 	upgrader  websocket.Upgrader
 	sessions  map[string]*Session
 	mu        sync.RWMutex
 
-	// Cached outbound gRPC connections, keyed by plugin address.
-	connMu sync.Mutex
-	conns  map[string]*grpc.ClientConn
-	// lifeConns caches connections that carry the LIFE service token. They are
-	// kept out of `conns` on purpose: `dial` is shared with Agent/Mocr, so a
-	// token-bearing connection must never be handed to another plugin's client,
-	// and a connection created without credentials must never be reused for LIFE.
+	connMu    sync.Mutex
+	conns     map[string]*grpc.ClientConn
 	lifeConns map[string]*grpc.ClientConn
 
-	// providerStore holds multi-provider API configs (data/providers.json).
 	providerStore *providers.Store
-	// settingsStore holds plugin-contributed settings sections/values.
 	settingsStore *settings.Store
-	// uiPatches holds WebUI extension *.patch files (nav/router/status).
-	uiPatches *uiPatchStore
-	// stdio hosts provider-adapter plugins as child processes (no port).
-	stdio *stdioprovider.Runner
-	// mcp owns the Model Context Protocol servers: one registry for every
-	// consumer (agent, L.I.F.E, WebUI) instead of one client per plugin.
-	mcp *mcp.Registry
+	uiPatches     *uiPatchStore
+	stdio         *stdioprovider.Runner
+	mcp           *mcp.Registry
 }
 
-// CloseConnections closes and removes cached gRPC connections for the given address.
 func (g *Gateway) CloseConnections(address string) {
 	g.connMu.Lock()
 	defer g.connMu.Unlock()
@@ -83,7 +69,6 @@ func (g *Gateway) CloseConnections(address string) {
 	}
 }
 
-// LocalCore is the subset of CoreServiceServer the gateway needs.
 type LocalCore interface {
 	GetUsage() map[string]interface{}
 	ClearUsage()
@@ -100,20 +85,16 @@ type LocalCore interface {
 	ManageAgentSession(string, string) error
 	RenameAgentSession(string, string) error
 	ForkAgentSession(string) (string, error)
-	// Chat-message bus: adapters publish inbound messages, subscribers stream
-	// them, and the HTTP layer reports bus/adaptor state.
 	MessagingAdapters(context.Context) []*messaging.Adapter
 	MessagingStats() messaging.Stats
 	DropPluginMessaging(string)
 }
 
-// Config holds gateway configuration.
 type Config struct {
 	GRPCAddr string
 	HTTPAddr string
 }
 
-// Session represents a WebSocket session.
 type Session struct {
 	ID       string
 	Conn     *websocket.Conn
@@ -121,15 +102,11 @@ type Session struct {
 	Done     chan struct{}
 	Registry *registry.Registry
 
-	// ctx bounds every chat stream started by this socket; it is cancelled as
-	// soon as the reader stops so no orphaned generation keeps running.
 	ctx    context.Context
 	cancel context.CancelFunc
 	once   sync.Once
 }
 
-// shutdown ends the session exactly once (read pump exit, write pump exit or
-// an error), closing Done so both pumps and any in-flight chat stop.
 func (s *Session) shutdown() {
 	s.once.Do(func() {
 		close(s.Done)
@@ -139,7 +116,6 @@ func (s *Session) shutdown() {
 	})
 }
 
-// push queues a payload unless the session is already closing.
 func (s *Session) push(payload []byte) bool {
 	select {
 	case <-s.Done:
@@ -154,7 +130,6 @@ func (s *Session) push(payload []byte) bool {
 	}
 }
 
-// dial returns a cached gRPC client connection for a plugin address.
 func (g *Gateway) dial(address string) (*grpc.ClientConn, error) {
 	if g.registry != nil {
 		for _, plugin := range g.registry.GetPluginsByCapability("agent") {
@@ -188,8 +163,6 @@ func (g *Gateway) dial(address string) (*grpc.ClientConn, error) {
 	return connection, nil
 }
 
-// lifeDial returns a cached gRPC connection to a LIFE plugin that attributes
-// every call with that plugin's service token, so LIFE can authenticate Core.
 func (g *Gateway) lifeDial(life *registry.PluginInstance) (*grpc.ClientConn, error) {
 	if life == nil || life.Address == "" {
 		return nil, status.Error(codes.Unavailable, "LIFE has no address")
@@ -215,7 +188,6 @@ func (g *Gateway) lifeDial(life *registry.PluginInstance) (*grpc.ClientConn, err
 	return connection, nil
 }
 
-// lifeClient returns the first registered LIFE plugin's client.
 func (g *Gateway) lifeClient() (lifev1.LifeServiceClient, bool) {
 	lifes := g.registry.GetPluginsByCapability("life")
 	if len(lifes) == 0 || lifes[0].Address == "" {
@@ -228,7 +200,6 @@ func (g *Gateway) lifeClient() (lifev1.LifeServiceClient, bool) {
 	return lifev1.NewLifeServiceClient(conn), true
 }
 
-// isTransientLifeError reports dial/availability failures worth retrying.
 func isTransientLifeError(err error) bool {
 	if err == nil {
 		return false
@@ -243,8 +214,6 @@ func isTransientLifeError(err error) bool {
 		strings.Contains(msg, "Unavailable")
 }
 
-// lifeCall retries transient dial failures so a short LIFE restart is not
-// surfaced to the WebUI as a hard error. Non-transient errors return at once.
 func (g *Gateway) lifeCall(ctx context.Context, fn func(lifev1.LifeServiceClient) error) error {
 	var last error
 	for attempt := 0; attempt < 3; attempt++ {
@@ -269,7 +238,6 @@ func (g *Gateway) lifeCall(ctx context.Context, fn func(lifev1.LifeServiceClient
 	return last
 }
 
-// NewGateway creates a new HTTP gateway.
 func NewGateway(cfg *Config, reg *registry.Registry) (*Gateway, error) {
 	conn, err := grpc.NewClient(cfg.GRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -292,51 +260,41 @@ func NewGateway(cfg *Config, reg *registry.Registry) (*Gateway, error) {
 	}, nil
 }
 
-// SetCoreService wires the in-process CoreServiceServer for usage/permissions.
 func (g *Gateway) SetCoreService(s LocalCore) {
 	g.localCore = s
 }
 
-// SetProviderStore wires the multi-provider config store.
 func (g *Gateway) SetProviderStore(s *providers.Store) {
 	g.providerStore = s
 }
 
-// SetSettingsStore wires the plugin settings store.
 func (g *Gateway) SetSettingsStore(s *settings.Store) {
 	g.settingsStore = s
 }
 
-// SetStdioRunner wires the stdio provider runner.
 func (g *Gateway) SetStdioRunner(r *stdioprovider.Runner) {
 	g.stdio = r
 }
 
-// ProviderStore exposes the store for CallMocr credential resolution.
 func (g *Gateway) ProviderStore() *providers.Store {
 	return g.providerStore
 }
 
-// SettingsStore exposes the settings store.
 func (g *Gateway) SettingsStore() *settings.Store {
 	return g.settingsStore
 }
 
-// Handler returns the HTTP handler. Browser-facing guards (Host allow-list,
-// CORS, authentication) are layered on by Public/Handler composition in main.
 func (g *Gateway) Handler() http.Handler {
 	g.initUIPatches()
 	g.loadDisabledPlugins()
 	mux := http.NewServeMux()
 
-	// Health / registry reads (GET only; a wrong method now returns 405).
 	mux.HandleFunc("/health", g.handleHealth)
 	mux.HandleFunc("/api/plugins", g.handlePlugins)
 	mux.HandleFunc("/api/update/check", g.handleUpdateCheck)
 	mux.HandleFunc("/api/update/check-plugins", g.handleUpdateCheckPlugins)
 	mux.HandleFunc("/api/update/apply", g.handleUpdateApply)
 	mux.HandleFunc("/api/update/status", g.handleUpdateStatus)
-	// REST plugin lifecycle: PATCH /api/plugins/{name} {"enabled":bool}
 	mux.HandleFunc("/api/plugins/{name}", g.handlePluginPatch)
 	mux.HandleFunc("POST /api/plugins/enable", g.handlePluginEnable)
 	mux.HandleFunc("POST /api/plugins/disable", g.handlePluginDisable)
@@ -346,10 +304,6 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("GET /api/messaging", g.handleMessaging)
 	mux.HandleFunc("GET /api/plugins/installed", g.handlePluginInstalled)
 	mux.HandleFunc("GET /api/plugins/capabilities", g.handlePluginCapabilities)
-	// pm plugin: the single install/update entry point. The marketplace, the
-	// Settings "plugin updates" panel and the About "0kay update" panel all call
-	// these; the legacy /api/plugins/{install,uninstall,installed,install/status}
-	// and /api/update/* routes above/below stay as deprecated aliases.
 	mux.HandleFunc("POST /api/plugins/pm/install", g.handlePluginInstall)
 	mux.HandleFunc("POST /api/plugins/pm/uninstall", g.handlePluginUninstall)
 	mux.HandleFunc("GET /api/plugins/pm/installed", g.handlePluginInstalled)
@@ -357,15 +311,8 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("POST /api/plugins/pm/update", g.handleUpdateApply)
 	mux.HandleFunc("GET /api/plugins/pm/check", g.handleUpdateCheck)
 	mux.HandleFunc("GET /api/plugins/pm/check-plugins", g.handleUpdateCheckPlugins)
-	// Plugin front-end ESM bundles (scheme C): CORE_DATA_DIR/plugin-ui/{name}/
 	mux.HandleFunc("/api/plugins/{name}/ui/{path...}", g.handlePluginUI)
-	// Plugin string resources, next to the ESM bundle:
-	// CORE_DATA_DIR/plugin-ui/{name}/strings/values*/strings.xml
-	// Without this the panels render raw keys ("agent.page.gitTitle") because the
-	// host merges exactly this payload into its i18n instance.
 	mux.HandleFunc("GET /api/plugins/{name}/strings", g.handlePluginStrings)
-	// HTTP proxy to a plugin's own service endpoint. Core injects the plugin's
-	// service token, so the WebUI panel never handles it (same-origin, owner auth).
 	mux.HandleFunc("/api/plugins/{name}/proxy/{path...}", g.handlePluginProxy)
 	mux.HandleFunc("/api/agents", g.handleAgents)
 	mux.HandleFunc("/api/agent/sessions", g.handleAgentSessions)
@@ -491,13 +438,11 @@ func (g *Gateway) handlePlugins(w http.ResponseWriter, r *http.Request) {
 		Permissions  any      `json:"permissions,omitempty"`
 	}
 
-	// Include currently disabled plugins as hidden rows for admin UI.
 	disabledNames := g.registry.DisabledNames()
 	seen := map[string]bool{}
 	var result []PluginInfo
 	for _, p := range plugins {
 		if p.Info == nil {
-			// A plugin without a manifest has nothing to list.
 			continue
 		}
 		var perms any
@@ -557,7 +502,6 @@ func (g *Gateway) handlePluginToggle(w http.ResponseWriter, r *http.Request, ena
 	}
 	deprecated(w, "/api/plugins/{name}")
 	var req pluginToggleReq
-	// decodeBody already wrote the 400 envelope.
 	if !decodeBody(w, r, &req, maxSmallBody) {
 		return
 	}
@@ -572,9 +516,6 @@ func (g *Gateway) handlePluginToggle(w http.ResponseWriter, r *http.Request, ena
 	g.setPluginEnabled(name, enable, w)
 }
 
-// handlePluginPatch is the REST form of enable/disable:
-//
-//	PATCH /api/plugins/{name}  {"enabled": true|false}
 func (g *Gateway) handlePluginPatch(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPatch) {
 		return
@@ -597,7 +538,6 @@ func (g *Gateway) handlePluginPatch(w http.ResponseWriter, r *http.Request) {
 	g.setPluginEnabled(name, *req.Enabled, w)
 }
 
-// setPluginEnabled flips a plugin and reports 404 for names Core never knew.
 func (g *Gateway) setPluginEnabled(name string, enable bool, w http.ResponseWriter) {
 	if !g.knownPlugin(name) {
 		notFound(w, "plugin not found")
@@ -605,7 +545,6 @@ func (g *Gateway) setPluginEnabled(name string, enable bool, w http.ResponseWrit
 	}
 	g.registry.SetEnabled(name, enable)
 	g.persistDisabledPlugins()
-	// Close cached gRPC connections for the disabled plugin.
 	if !enable && g.registry != nil {
 		for _, plugin := range g.registry.GetAllPlugins() {
 			if plugin.PluginID == name && plugin.Address != "" {
@@ -613,7 +552,6 @@ func (g *Gateway) setPluginEnabled(name string, enable bool, w http.ResponseWrit
 			}
 		}
 	}
-	// Re-evaluate patch/settings visibility for the toggled plugin.
 	if g.uiPatches != nil {
 		g.uiPatches.Reload()
 	}
@@ -624,7 +562,6 @@ func (g *Gateway) setPluginEnabled(name string, enable bool, w http.ResponseWrit
 	})
 }
 
-// knownPlugin reports whether name refers to a registered or disabled plugin.
 func (g *Gateway) knownPlugin(name string) bool {
 	for _, plugin := range g.registry.GetAllPlugins() {
 		if plugin.Info != nil && plugin.Info.Name == name {
@@ -725,7 +662,6 @@ func (g *Gateway) handleChat(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// chatOpts carries optional generation parameters from the HTTP body into CallMocr.
 type chatOpts struct {
 	RequestID    string
 	Prompt       string
@@ -756,9 +692,6 @@ func (o chatOpts) toCallMocrRequest(stream bool) *corev1.CallMocrRequest {
 	return req
 }
 
-// handleChatSync collects a non-streaming completion. Provider failures are
-// surfaced as 502 with the standard error envelope rather than a 200 with an
-// empty response (docs/PLUGIN_API.md: a network failure is not success).
 func (g *Gateway) handleChatSync(w http.ResponseWriter, r *http.Request, opts chatOpts) {
 	stream, err := g.coreSvc.CallMocr(r.Context(), opts.toCallMocrRequest(false))
 	if err != nil {
@@ -872,16 +805,12 @@ func jsonEscape(s string) string {
 	return string(b)
 }
 
-// handleMocrGenerate is the legacy name for POST /api/chat. Kept as an alias so
-// prebuilt plugin bundles keep working; see docs/HTTP_API.md for the mapping.
 func (g *Gateway) handleMocrGenerate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Deprecation", "true")
 	w.Header().Set("Link", `</api/chat>; rel="successor-version"`)
 	g.handleChat(w, r)
 }
 
-// handleLifeChat is the WebUI chat path. LIFE owns persona expression, memory,
-// emotions, tools, and companion behavior; Core only proxies its gRPC stream.
 func (g *Gateway) handleLifeChat(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return
@@ -958,7 +887,6 @@ func (g *Gateway) handleLifeChat(w http.ResponseWriter, r *http.Request) {
 			"request_id": req.RequestID, "chunk": resp.Chunk, "done": resp.Done, "task_id": resp.TaskStarted,
 			"think_summary": resp.ThinkSummary, "mental_energy": resp.MentalEnergy,
 		}
-		// EmotionState is only sent on the first frame; later frames leave it nil.
 		if emotion := resp.GetEmotionState(); emotion != nil {
 			payload["emotion"] = map[string]float64{"valence": emotion.Valence, "arousal": emotion.Arousal, "connection": emotion.Connection, "irritation": emotion.Irritation}
 		}
@@ -1062,15 +990,8 @@ func (g *Gateway) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		log.Printf("WebSocket upgrade failed: %v", err)
 		return
 	}
-	// Bound what a single frame may carry and how long a read may stall: the
-	// chat frames are small JSON documents, so anything larger (or a client
-	// that goes silent) is abuse or a dead connection.
 	conn.SetReadLimit(wsReadLimit)
 
-	// The context must outlive this handler: net/http cancels r.Context() as
-	// soon as ServeHTTP returns, even for a hijacked connection, so deriving
-	// from it would kill every chat stream before the first message arrives.
-	// Session.shutdown is the only thing allowed to cancel it.
 	ctx, cancel := context.WithCancel(context.WithoutCancel(r.Context()))
 	session := &Session{
 		ID:       fmt.Sprintf("ws_%d", time.Now().UnixNano()),
@@ -1090,8 +1011,6 @@ func (g *Gateway) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	go session.readPump(g)
 }
 
-// forgetSession removes a closed session from the registry so the map does not
-// grow for the lifetime of the process.
 func (g *Gateway) forgetSession(session *Session) {
 	g.mu.Lock()
 	if g.sessions[session.ID] == session {
@@ -1100,10 +1019,6 @@ func (g *Gateway) forgetSession(session *Session) {
 	g.mu.Unlock()
 }
 
-// WebSocket limits: a read may stall at most wsReadWait before the connection
-// is treated as dead, every protocol-level pong extends that window, the write
-// pump pings every wsPingPeriod so idle-but-alive clients are kept, and one
-// frame may carry at most wsReadLimit bytes.
 const (
 	wsReadLimit  = 1 << 20
 	wsReadWait   = 60 * time.Second
@@ -1119,9 +1034,6 @@ func (s *Session) readPump(g *Gateway) {
 		s.Registry = nil
 	}()
 
-	// Compliant clients answer the pump's pings automatically; the pong handler
-	// keeps such an idle-but-alive connection open while a silent or hostile
-	// peer hits the deadline and is dropped.
 	_ = s.Conn.SetReadDeadline(time.Now().Add(wsReadWait))
 	s.Conn.SetPongHandler(func(string) error {
 		return s.Conn.SetReadDeadline(time.Now().Add(wsReadWait))
@@ -1259,9 +1171,6 @@ func (s *Session) writePump() {
 				return
 			}
 		case <-ticker.C:
-			// Protocol-level ping: browsers and ws clients answer automatically
-			// and the readPump pong handler extends the read deadline, so an
-			// idle-but-alive chat tab is not dropped.
 			_ = s.Conn.SetWriteDeadline(time.Now().Add(wsWriteWait))
 			if err := s.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
@@ -1275,8 +1184,6 @@ func (s *Session) writePump() {
 	}
 }
 
-// handleUsage GET /api/usage — the recorded usage ledger. DELETE on the same
-// path is routed to handleUsageClear by the mux, so only GET reaches here.
 func (g *Gateway) handleUsage(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
@@ -1292,10 +1199,6 @@ func (g *Gateway) handleUsage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, g.localCore.GetUsage())
 }
 
-// handleUsageClear wipes recorded usage.
-//
-//	DELETE /api/usage          (current)
-//	POST   /api/usage/clear    (legacy alias)
 func (g *Gateway) handleUsageClear(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		deprecated(w, "/api/usage")
@@ -1314,7 +1217,6 @@ func (g *Gateway) handleUsageClear(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleModelsList GET /api/models —enabled model catalog for mocr/WebUI.
 func (g *Gateway) handleModelsList(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -1328,7 +1230,6 @@ func (g *Gateway) handleModelsList(w http.ResponseWriter, r *http.Request) {
 	if catalog == nil {
 		catalog = []providers.CatalogEntry{}
 	}
-	// Attach per-model enable flag + full provider snapshot for UI toggles.
 	snap := g.providerStore.Snapshot()
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -1341,9 +1242,6 @@ func (g *Gateway) handleModelsList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (g *Gateway) handleLifePermissions(w http.ResponseWriter, r *http.Request) {
-	// Permissions live in Core's own store, so this handler would keep
-	// answering after an admin disables L.I.F.E. Gate it on the switch too:
-	// "disabled" has to mean off everywhere, not just for the gRPC proxies.
 	if g.registry != nil && g.registry.IsDisabled("life") {
 		unavailable(w, "LIFE is unavailable")
 		return
@@ -1381,7 +1279,6 @@ func (g *Gateway) handleLifeMemories(w http.ResponseWriter, r *http.Request) {
 			"working": 0, "shortTerm": map[string]int{"total": 0}, "longTerm": 0, "avgStrength": 0,
 		},
 	}
-	// Proxy to registered L.I.F.E plugin if present; otherwise empty.
 	lifes := g.registry.GetPluginsByCapability("life")
 	if len(lifes) == 0 || lifes[0].Address == "" {
 		writeJSON(w, http.StatusOK, emptyMemories)
@@ -1406,7 +1303,6 @@ func (g *Gateway) handleLifeMemories(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := client.GetMemories(ctx, &lifev1.GetMemoriesRequest{Limit: limit, Query: r.URL.Query().Get("query")})
 	if err != nil {
-		// Soft-fail so the sidebar never breaks
 		payload := map[string]interface{}{}
 		for k, v := range emptyMemories {
 			payload[k] = v
@@ -1440,7 +1336,6 @@ func (g *Gateway) handleLifeMemories(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleLifeCompanion proxies LIFE-owned companion dashboards and actions.
 func (g *Gateway) handleLifeCompanion(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
 	defer cancel()
@@ -1519,7 +1414,6 @@ func (g *Gateway) handleRunDirect(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// live2DRoot is where uploaded Live2D models are stored (served by Vite as /live2d/models/...).
 func live2DRoot() string {
 	if p := os.Getenv("LIVE2D_DIR"); p != "" {
 		return p
@@ -1530,7 +1424,6 @@ func live2DRoot() string {
 	return filepath.Join("data", "live2d", "models")
 }
 
-// imagesRoot stores chat image uploads.
 func imagesRoot() string {
 	if p := os.Getenv("CHAT_IMAGE_DIR"); p != "" {
 		return p
@@ -1546,7 +1439,6 @@ var allowedImageExt = map[string]bool{
 	".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".webp": true,
 }
 
-// handleImages POST saves a chat image; GET streams one by ?file=name.
 func (g *Gateway) handleImages(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
@@ -1618,7 +1510,6 @@ func (g *Gateway) handleImages(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// filesRoot stores generic user uploads (agent attachments, LIFE files).
 func filesRoot() string {
 	if p := os.Getenv("UPLOAD_FILE_DIR"); p != "" {
 		return p
@@ -1630,8 +1521,6 @@ func filesRoot() string {
 	return filepath.Join(dataDir, "uploads", "files")
 }
 
-// uploadNamePattern accepts only generated names (`file_<unixnano><ext>`), so a
-// request can never walk outside filesRoot.
 var uploadNamePattern = regexp.MustCompile(`^file_[0-9]+(\.[A-Za-z0-9]{1,12})?$`)
 
 func safeUploadExt(name string) string {
@@ -1647,9 +1536,6 @@ func safeUploadExt(name string) string {
 	return ext
 }
 
-// handleFiles POST saves a generic attachment; GET streams one by ?file=name.
-// Unlike /api/images there is no extension whitelist: the agent and LIFE accept
-// arbitrary documents. Names are generated, never taken from the client.
 func (g *Gateway) handleFiles(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
@@ -1713,7 +1599,6 @@ func (g *Gateway) handleFiles(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", ct)
 		}
 		w.Header().Set("Cache-Control", "public, max-age=86400")
-		// Uploads are untrusted documents, never executable same-origin pages.
 		w.Header().Set("Content-Disposition", "attachment")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Content-Security-Policy", "sandbox; default-src 'none'")
@@ -1724,7 +1609,6 @@ func (g *Gateway) handleFiles(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleTasks lists Core task-state machine entries (active + recent).
 func (g *Gateway) handleTasks(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
@@ -1758,12 +1642,6 @@ func (g *Gateway) handleTasks(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// listLive2DModels scans for *.model3.json under live2DRoot.
-//
-// A single model folder often ships both a Cubism 2 manifest (.model.json) and
-// a Cubism 3/4 manifest (.model3.json); both normalise to the same id, which
-// used to surface the same model twice in the UI.  Deduplicate by id and prefer
-// the newer Cubism 3/4 (.model3.json) manifest.
 func listLive2DModels() []map[string]string {
 	root := live2DRoot()
 	type entry struct {
@@ -1787,7 +1665,6 @@ func listLive2DModels() []map[string]string {
 		isC3 := strings.HasSuffix(lower, ".model3.json")
 		id := strings.TrimSuffix(strings.TrimSuffix(rel, ".model3.json"), ".model.json")
 		if existing, ok := seen[id]; ok && (existing.c3 || !isC3) {
-			// Keep the Cubism 3/4 manifest when both exist.
 			return nil
 		}
 		seen[id] = entry{
@@ -1808,7 +1685,6 @@ func listLive2DModels() []map[string]string {
 	return out
 }
 
-// handleLive2D GET lists uploaded models; POST accepts multipart folder upload.
 func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -1830,7 +1706,6 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 
 		files := r.MultipartForm.File["files"]
 		if len(files) == 0 {
-			// also accept any file field
 			for _, v := range r.MultipartForm.File {
 				files = append(files, v...)
 				break
@@ -1841,15 +1716,11 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Optional paths field: JSON array of relative paths aligned with files.
-		// Browsers strip directory info from multipart filenames, so the client
-		// sends webkitRelativePath separately.
 		var relPaths []string
 		if vals, ok := r.MultipartForm.Value["paths"]; ok && len(vals) > 0 {
 			_ = json.Unmarshal([]byte(vals[0]), &relPaths)
 		}
 
-		// Normalize relative paths to posix form.
 		normPaths := make([]string, len(files))
 		for i := range files {
 			raw := ""
@@ -1862,11 +1733,9 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 			for strings.HasPrefix(raw, "/") {
 				raw = raw[1:]
 			}
-			// Drop leading "./" segments
 			for strings.HasPrefix(raw, "./") {
 				raw = raw[2:]
 			}
-			// Reject path escapes
 			parts := strings.Split(raw, "/")
 			cleanParts := make([]string, 0, len(parts))
 			bad := false
@@ -1884,8 +1753,6 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 			normPaths[i] = strings.Join(cleanParts, "/")
 		}
 
-		// Determine a single root folder name (first path segment shared by all).
-		// Files without a directory segment are placed under that root as-is.
 		rootNames := map[string]struct{}{}
 		for _, p := range normPaths {
 			if p == "" {
@@ -1901,14 +1768,12 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "no valid files", http.StatusBadRequest)
 			return
 		}
-		// Prefer a name that is a pure directory prefix (has subpaths).
 		rootName := ""
 		for n := range rootNames {
 			if rootName == "" {
 				rootName = n
 			}
 		}
-		// If multiple roots, pick the one most common / first seen in order.
 		counts := map[string]int{}
 		order := []string{}
 		for _, p := range normPaths {
@@ -1935,7 +1800,6 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Unique target dir under root: rootName, rootName-2, ...
 		targetDir := filepath.Join(root, rootName)
 		for i := 2; ; i++ {
 			if _, err := os.Stat(targetDir); os.IsNotExist(err) {
@@ -1956,8 +1820,6 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 			if rel == "" {
 				continue
 			}
-			// Strip the shared root folder; write under finalRootName/remainder.
-			// If path has no directory (single file), keep basename under root.
 			remainder := rel
 			if idx := strings.Index(rel, "/"); idx > 0 && rel[:idx] == rootName {
 				remainder = rel[idx+1:]
@@ -1965,11 +1827,9 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 			} else if idx := strings.Index(rel, "/"); idx <= 0 {
-				// bare filename: place it under the root folder
 				remainder = rel
 			}
 			dstPath := filepath.Join(targetDir, filepath.FromSlash(remainder))
-			// Ensure still under targetDir
 			if !strings.HasPrefix(dstPath, targetDir) {
 				continue
 			}
@@ -1998,9 +1858,6 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "No Live2D manifest found. Upload the complete folder containing .model.json or .model3.json and its textures/model files.", http.StatusBadRequest)
 			return
 		}
-		// Model folders often keep stale manifests left over from renamed or
-		// backed-up files; prefer the first manifest whose referenced resources
-		// all exist instead of rejecting the whole upload over a broken one.
 		firstModelURL := ""
 		var failures []string
 		for _, rem := range manifestRemainders {
@@ -2032,9 +1889,6 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleLive2DDeletePath DELETE /api/live2d/{path...} — REST form of
-// DELETE /api/live2d?id=<path>. Ids contain "/" (folder/manifest), hence the
-// trailing wildcard.
 func (g *Gateway) handleLive2DDeletePath(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodDelete) {
 		return

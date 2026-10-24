@@ -8,8 +8,6 @@ import (
 	corev1 "0kay/gen/core/v1"
 )
 
-// terminal_exec runs the same shell capability as shell/computeruse, so the
-// ComputerUse switch must reject it too.
 func TestRunDirectGatesTerminalExec(t *testing.T) {
 	s := &CoreServiceServer{tasks: map[string]*TaskInfo{}}
 	s.SetPermissions(Permissions{ComputerUse: false})

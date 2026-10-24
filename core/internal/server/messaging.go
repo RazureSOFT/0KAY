@@ -16,36 +16,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// This file implements Core's side of the chat-message bus:
-//
-//	PublishInboundMessage  adapter plugin → Core   (report a message)
-//	SubscribeMessages      Core → subscriber       (stream matching messages)
-//	SendMessage            subscriber → Core → adapter plugin
-//	ListAdapters           subscriber → Core       (discover targets)
-//
-// It is deliberately separate from the tool-calling path: a message bus and a
-// tool registry have different blast radii, and the messaging permission checks
-// below are the only thing standing between a third-party plugin and the user's
-// private conversations.
-
-// messageSendTimeout caps how long an adapter may take to accept a send. Long
-// enough for a real platform round-trip, short enough that a wedged adapter
-// does not pin the caller's goroutine.
 const messageSendTimeout = 15 * time.Second
 
-// adapterListTimeout caps how long Core waits for one plugin to enumerate its
-// adapters. Enumeration is a convenience for discovery, never on the critical
-// path of delivering a message.
 const adapterListTimeout = 3 * time.Second
 
-// gateDecisionTimeout bounds one gate's thinking time. A gate sits between the
-// user's message and the assistant's answer, so its budget is latency the user
-// feels; a gate that needs longer than this is doing work that belongs
-// elsewhere.
 const gateDecisionTimeout = 2 * time.Second
 
-// messageBus returns the process-wide bus, creating it on first use so a
-// CoreServiceServer built directly (tests, the echo plugin) still works.
 func (s *CoreServiceServer) messageBus() *messaging.Bus {
 	s.busOnce.Do(func() {
 		if s.bus == nil {
@@ -55,10 +31,6 @@ func (s *CoreServiceServer) messageBus() *messaging.Bus {
 	return s.bus
 }
 
-// DropPluginMessaging forgets everything a plugin contributed to the bus:
-// its subscriptions and the adapters it owned. Called when a plugin is
-// disabled or removed, so a stale owner cannot keep being handed sends it will
-// never deliver.
 func (s *CoreServiceServer) DropPluginMessaging(name string) {
 	if name == "" || s.bus == nil {
 		return
@@ -66,19 +38,10 @@ func (s *CoreServiceServer) DropPluginMessaging(name string) {
 	s.bus.DropPlugin(name)
 }
 
-// MessagingStats exposes a bus snapshot for the console / status API.
 func (s *CoreServiceServer) MessagingStats() messaging.Stats {
 	return s.messageBus().Stats()
 }
 
-// MessagingAdapters exposes the adapters the bus knows about, for the console /
-// status API. It refreshes from messaging-capable plugins first so the list is
-// current even before any message has arrived.
-//
-// enumerateAdapters makes one sequential RPC per messaging-capable plugin with a
-// 3s budget each, so on a context.Background() this can take 3s x N_plugins and
-// keeps running after the browser is gone. handleMessaging therefore supplies the
-// request context: a client disconnect must cancel the enumeration.
 func (s *CoreServiceServer) MessagingAdapters(ctx context.Context) []*messaging.Adapter {
 	if ctx == nil {
 		ctx = context.Background()
@@ -87,13 +50,6 @@ func (s *CoreServiceServer) MessagingAdapters(ctx context.Context) []*messaging.
 	return s.messageBus().Adapters()
 }
 
-// callerScope authenticates a gRPC caller and returns its plugin instance plus
-// the messaging scope derived from its registered permissions.
-//
-// Authentication mirrors Egress: the caller names itself and presents the
-// service token Core issued at registration, and the resolved id must match the
-// authenticated one — otherwise a plugin could act as another simply by sending
-// its name.
 func (s *CoreServiceServer) callerScope(ctx context.Context, callerID string) (*registry.PluginInstance, messaging.Scope, error) {
 	callerID = strings.TrimSpace(callerID)
 	if callerID == "" {
@@ -124,8 +80,6 @@ func (s *CoreServiceServer) callerScope(ctx context.Context, callerID string) (*
 	return inst, scope, nil
 }
 
-// PublishInboundMessage records one observed adapter message and fans it out to
-// subscribers whose declared permissions cover it.
 func (s *CoreServiceServer) PublishInboundMessage(ctx context.Context, req *corev1.PublishInboundMessageRequest) (*corev1.PublishInboundMessageResponse, error) {
 	inst, scope, err := s.callerScope(ctx, req.GetCallerId())
 	if err != nil {
@@ -139,9 +93,6 @@ func (s *CoreServiceServer) PublishInboundMessage(ctx context.Context, req *core
 		return &corev1.PublishInboundMessageResponse{Error: "message.conversation is required"}, nil
 	}
 	if !scope.CanPublish(msg.GetAdapterId()) {
-		// The plugin is reporting on an adapter it never claimed. Counted so a
-		// misconfigured manifest shows up in the console instead of looking
-		// like "the bot just stopped hearing messages".
 		s.messageBus().CountRejected()
 		svcLog.WarnContext(ctx, "inbound publish refused",
 			"plugin", inst.Info.Name, "adapter", msg.GetAdapterId())
@@ -165,32 +116,18 @@ func (s *CoreServiceServer) PublishInboundMessage(ctx context.Context, req *core
 	}, nil
 }
 
-// GateDecision is the outcome of arbitrating one message.
 type GateDecision struct {
-	// ShouldProcess is the verdict the publisher must apply.
 	ShouldProcess bool
-	// Action is GateAbstain, GateAllow or GateDeny.
-	Action string
-	// DecidedBy / Reason describe a decisive verdict; both empty on abstain.
-	DecidedBy string
-	Reason    string
+	Action        string
+	DecidedBy     string
+	Reason        string
 }
 
-// gateCandidate pairs a gate plugin with the scope it declared.
 type gateCandidate struct {
 	inst  *registry.PluginInstance
 	scope messaging.Scope
 }
 
-// arbitrate consults every gate plugin and combines their verdicts.
-//
-// Rules, in order: any deny vetoes outright; otherwise any allow forces
-// processing; otherwise the message's own is_wake flag stands. Deny beating
-// allow is deliberate — if a later allow could cancel an earlier veto, which
-// gate "won" would depend on map iteration order.
-//
-// With no gate installed this costs nothing: it returns the publisher's own
-// wake verdict without an RPC.
 func (s *CoreServiceServer) arbitrate(ctx context.Context, msg *pluginv1.InboundMessage) GateDecision {
 	decision := GateDecision{ShouldProcess: msg.GetIsWake(), Action: messaging.GateAbstain}
 
@@ -210,8 +147,6 @@ func (s *CoreServiceServer) arbitrate(ctx context.Context, msg *pluginv1.Inbound
 	return decision
 }
 
-// gatePlugins lists the gates that should be consulted for msg: plugins that
-// declared permissions.messages.gate and whose read scope covers the message.
 func (s *CoreServiceServer) gatePlugins(msg *pluginv1.InboundMessage) []gateCandidate {
 	var out []gateCandidate
 	for _, plugin := range s.registry.GetAllPlugins() {
@@ -232,10 +167,6 @@ func (s *CoreServiceServer) gatePlugins(msg *pluginv1.InboundMessage) []gateCand
 	return out
 }
 
-// askGate calls one gate and returns its action. A gate that errors, times out
-// or does not implement DecideInbound falls back to its declared gate_on_error:
-// abstain (fail-open) by default, deny for a gate that would rather keep its
-// veto than let something through.
 func (s *CoreServiceServer) askGate(ctx context.Context, gate gateCandidate, msg *pluginv1.InboundMessage) (string, string) {
 	name := gate.inst.Info.GetName()
 	unreachable := func(err error) (string, string) {
@@ -261,11 +192,6 @@ func (s *CoreServiceServer) askGate(ctx context.Context, gate gateCandidate, msg
 	return messaging.NormaliseGateAction(resp.GetAction()), resp.GetReason()
 }
 
-// SubscribeMessages streams inbound messages the caller is allowed to read.
-//
-// The stream stays open until the plugin disconnects. Filtering happens on the
-// publish path from the subscriber's own declared scope, so nothing a plugin
-// sends here can widen what it receives.
 func (s *CoreServiceServer) SubscribeMessages(req *corev1.SubscribeMessagesRequest, stream corev1.CoreService_SubscribeMessagesServer) error {
 	ctx := stream.Context()
 	inst, scope, err := s.callerScope(ctx, req.GetCallerId())
@@ -273,7 +199,6 @@ func (s *CoreServiceServer) SubscribeMessages(req *corev1.SubscribeMessagesReque
 		return err
 	}
 	if !scope.CanReadAny() {
-		// Declaring nothing must not silently subscribe to everything.
 		return status.Error(codes.PermissionDenied,
 			"plugin declares no messages.read_mode (expected \"wake\" or \"all\")")
 	}
@@ -302,8 +227,6 @@ func (s *CoreServiceServer) SubscribeMessages(req *corev1.SubscribeMessagesReque
 	}
 }
 
-// SendMessage delivers an outbound message through an adapter, after checking
-// the caller's send permission and resolving the adapter's owning plugin.
 func (s *CoreServiceServer) SendMessage(ctx context.Context, req *corev1.SendMessageRequest) (*corev1.SendMessageResponse, error) {
 	inst, scope, err := s.callerScope(ctx, req.GetCallerId())
 	if err != nil {
@@ -319,8 +242,6 @@ func (s *CoreServiceServer) SendMessage(ctx context.Context, req *corev1.SendMes
 
 	adapterID := strings.TrimSpace(req.GetAdapterId())
 	if adapterID == "" {
-		// Convenience for the common single-adapter setup: pick it, but refuse
-		// to guess when there is a real choice to make.
 		var candidates []string
 		for _, a := range s.messageBus().Adapters() {
 			if scope.CanSend(a.ID) {
@@ -358,8 +279,6 @@ func (s *CoreServiceServer) SendMessage(ctx context.Context, req *corev1.SendMes
 	if !ok || ownerInst.Address == "" {
 		return &corev1.SendMessageResponse{Error: "adapter owner " + owner + " is not connected"}, nil
 	}
-	// lifeDialCached is the generic "dial a plugin with its service token" path
-	// despite the name: the owner of an adapter need not be L.I.F.E.
 	conn, err := s.lifeDialCached(ownerInst)
 	if err != nil {
 		return nil, status.Errorf(codes.Unavailable, "connect adapter owner %s: %v", owner, err)
@@ -383,11 +302,6 @@ func (s *CoreServiceServer) SendMessage(ctx context.Context, req *corev1.SendMes
 	}, nil
 }
 
-// ListAdapters reports the adapters the caller may read or send through.
-//
-// It first refreshes the bus from every messaging-capable plugin, so an adapter
-// that has not carried traffic yet still shows up. A plugin that fails to
-// answer is skipped: discovery is best-effort and must not fail the call.
 func (s *CoreServiceServer) ListAdapters(ctx context.Context, req *corev1.ListAdaptersRequest) (*corev1.ListAdaptersResponse, error) {
 	_, scope, err := s.callerScope(ctx, req.GetCallerId())
 	if err != nil {
@@ -430,9 +344,6 @@ func (s *CoreServiceServer) ListAdapters(ctx context.Context, req *corev1.ListAd
 	return out, nil
 }
 
-// enumerateAdapters asks every messaging-capable plugin to advertise its
-// adapters. Bounded by adapterListTimeout per plugin and run sequentially, so a
-// hung plugin delays discovery rather than hanging it.
 func (s *CoreServiceServer) enumerateAdapters(ctx context.Context) {
 	for _, plugin := range s.registry.GetAllPlugins() {
 		if !messagingCapable(plugin) {
@@ -447,8 +358,6 @@ func (s *CoreServiceServer) enumerateAdapters(ctx context.Context) {
 			&pluginv1.ListAdaptersRequest{CallerId: "core"})
 		cancel()
 		if err != nil {
-			// Unimplemented is the expected answer from a plugin that only
-			// reports inbound traffic; anything else is worth a line.
 			if status.Code(err) != codes.Unimplemented {
 				svcLog.DebugContext(ctx, "adapter enumeration skipped",
 					"plugin", plugin.Info.GetName(), "err", err)
@@ -461,9 +370,6 @@ func (s *CoreServiceServer) enumerateAdapters(ctx context.Context) {
 	}
 }
 
-// messagingCapable reports whether a plugin can drive chat adapters: it says so
-// with the "messaging" capability, or it registers as an adapter/messaging
-// plugin type.
 func messagingCapable(plugin *registry.PluginInstance) bool {
 	if plugin == nil || plugin.Info == nil || plugin.Address == "" {
 		return false

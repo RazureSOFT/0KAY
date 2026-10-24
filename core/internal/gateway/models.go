@@ -14,7 +14,6 @@ import (
 	"0kay/core/internal/providers"
 )
 
-// ModelsRequest is the request for fetching models.
 type ModelsRequest struct {
 	ID       string `json:"id"`
 	Provider string `json:"provider"`
@@ -23,8 +22,6 @@ type ModelsRequest struct {
 	Format   string `json:"format"`
 }
 
-// effectiveFormat maps a provider preset + explicit format to the wire protocol
-// used for the model-catalog request.
 func effectiveFormat(provider, format string) string {
 	if f := strings.ToLower(strings.TrimSpace(format)); f != "" {
 		return f
@@ -32,15 +29,12 @@ func effectiveFormat(provider, format string) string {
 	return strings.ToLower(strings.TrimSpace(provider))
 }
 
-// ModelsResponse is the response containing model list.
 type ModelsResponse struct {
 	Models []string `json:"models"`
-	// Source is "api" when fetched live from the provider, "fallback" when defaults used.
-	Source string `json:"source"`
-	Error  string `json:"error,omitempty"`
+	Source string   `json:"source"`
+	Error  string   `json:"error,omitempty"`
 }
 
-// handleFetchModels fetches available models from provider API.
 func (g *Gateway) handleFetchModels(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return
@@ -70,11 +64,6 @@ func (g *Gateway) handleFetchModels(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// resolveModelAPIKey returns the credential to send upstream for a model-catalog
-// fetch. GET /api/providers is masked now, so the browser only ever holds a
-// masked (or empty) key; resolve it server-side by id, then by (provider,
-// base_url). A masked key is never forwarded: leaking the mask upstream would
-// turn a working endpoint into a confusing 401 from the provider.
 func (g *Gateway) resolveModelAPIKey(req ModelsRequest) string {
 	if req.APIKey != "" && !providers.IsMasked(req.APIKey, "") {
 		return req.APIKey
@@ -106,10 +95,6 @@ func (g *Gateway) resolveModelAPIKey(req ModelsRequest) string {
 	return ""
 }
 
-// modelClient bounds provider model-list requests so a slow provider cannot hang
-// the gateway. The base URL is user supplied, so it is validated, dials are
-// guarded against SSRF (metadata/link-local, strict mode adds loopback/private),
-// and responses are size limited.
 var modelClient = &http.Client{
 	Timeout:   15 * time.Second,
 	Transport: netguard.Transport(netguard.Strict()),
@@ -117,8 +102,6 @@ var modelClient = &http.Client{
 
 const maxModelsResponseBytes = 1 << 20
 
-// blockedModelHosts are link-local cloud metadata endpoints that must never be
-// reachable through a user-supplied base URL.
 var blockedModelHosts = map[string]bool{
 	"169.254.169.254":          true,
 	"metadata.google.internal": true,
@@ -126,8 +109,6 @@ var blockedModelHosts = map[string]bool{
 	"fd00:ec2::254":            true,
 }
 
-// validateModelsURL rejects non-HTTP(S) schemes, hosts without a name, and
-// cloud metadata endpoints.
 func validateModelsURL(raw string) error {
 	parsed, err := url.Parse(raw)
 	if err != nil {
@@ -145,15 +126,8 @@ func validateModelsURL(raw string) error {
 	return nil
 }
 
-// versionedPath matches a base URL that already ends in an API version segment
-// such as /v1, /v2 or /v1beta.
 var versionedPath = regexp.MustCompile(`(?i)/v\d+[a-z0-9.]*$`)
 
-// catalogURL builds the model-catalog endpoint. A base URL without a version
-// segment gets "/v1" appended, so gateways that serve the catalog under
-// /v1/models are reached instead of the site root (which returns HTML). A base
-// that already ends in a version (the app's usual convention) is left as is, so
-// /v1 never doubles up.
 func catalogURL(baseURL string) string {
 	base := strings.TrimSuffix(strings.TrimSpace(baseURL), "/")
 	if !versionedPath.MatchString(base) {
@@ -162,8 +136,6 @@ func catalogURL(baseURL string) string {
 	return base + "/models"
 }
 
-// fetchModelsFromProvider fetches models from the provider's API. format is the
-// effective wire protocol ("anthropic" or anything else for OpenAI-compatible).
 func fetchModelsFromProvider(format, baseURL, apiKey string) ([]string, error) {
 	isAnthropic := format == "anthropic" || strings.Contains(strings.ToLower(baseURL), "anthropic.com")
 
@@ -181,7 +153,6 @@ func fetchModelsFromProvider(format, baseURL, apiKey string) ([]string, error) {
 		return nil, err
 	}
 
-	// Set headers
 	if apiKey != "" {
 		req.Header.Set("Authorization", "Bearer "+apiKey)
 	}
@@ -202,7 +173,6 @@ func fetchModelsFromProvider(format, baseURL, apiKey string) ([]string, error) {
 		return nil, fmt.Errorf("API error %d: %s", resp.StatusCode, string(body))
 	}
 
-	// Parse response
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxModelsResponseBytes))
 	if err != nil {
 		return nil, err
@@ -211,7 +181,6 @@ func fetchModelsFromProvider(format, baseURL, apiKey string) ([]string, error) {
 	return parseModelsResponse(format, body)
 }
 
-// parseModelsResponse parses the models list from API response.
 func parseModelsResponse(provider string, body []byte) ([]string, error) {
 	var result struct {
 		Data []struct {
@@ -240,7 +209,6 @@ func parseModelsResponse(provider string, body []byte) ([]string, error) {
 	return models, nil
 }
 
-// getDefaultModels returns default models for a provider.
 func getDefaultModels(provider string) []string {
 	switch provider {
 	case "openai":

@@ -21,8 +21,6 @@ func msg(adapter, conversation string, wake bool) *pluginv1.InboundMessage {
 	}
 }
 
-// A plugin that never mentions messaging must be able to do nothing. This is
-// the default that keeps a manifest omission from becoming a privacy leak.
 func TestScopeFrom_NilPermissionsDeniesEverything(t *testing.T) {
 	scope := ScopeFrom("third-party", false, nil)
 	if scope.CanReadAny() {
@@ -39,8 +37,6 @@ func TestScopeFrom_NilPermissionsDeniesEverything(t *testing.T) {
 	}
 }
 
-// Trusted plugins get the wildcard for the adapter lists, but NOT a read mode:
-// being first-party must not silently subscribe a component to every message.
 func TestScopeFrom_TrustedWidensListsButNotReadMode(t *testing.T) {
 	scope := ScopeFrom("life", true, &pluginv1.PluginMessages{})
 	if scope.ReadMode != ReadNone {
@@ -56,8 +52,6 @@ func TestScopeFrom_TrustedWidensListsButNotReadMode(t *testing.T) {
 	}
 }
 
-// A third-party plugin that declares nothing beyond a read mode must not fall
-// through to "all adapters": the lists have to be enumerated explicitly.
 func TestScopeFrom_ThirdPartyMustEnumerateAdapters(t *testing.T) {
 	scope := ScopeFrom("plugin", false, &pluginv1.PluginMessages{ReadMode: ReadAll})
 	if scope.CanRead(msg("some-adapter", "group:1", false)) {
@@ -111,7 +105,6 @@ func TestCanGate_RequiresGateAndReadAccess(t *testing.T) {
 	if !ScopeFrom("p", false, base).CanGate(msg("a", "group:1", true)) {
 		t.Fatal("declared gate with read access should arbitrate")
 	}
-	// A gate that cannot read the adapter must not be consulted for it.
 	narrow := &pluginv1.PluginMessages{Gate: true, ReadMode: ReadAll, ReadAdapters: []string{"other"}}
 	if ScopeFrom("p", false, narrow).CanGate(msg("a", "group:1", true)) {
 		t.Fatal("gate must not arbitrate an adapter it cannot read")
@@ -127,9 +120,6 @@ func TestGateOnError_DefaultsToAbstain(t *testing.T) {
 	}
 }
 
-// An unknown verdict must land on the neutral value, not on allow (which would
-// hand a typo the power to force processing) and not on deny (which would let a
-// typo mute the assistant).
 func TestNormaliseGateAction_UnknownIsAbstain(t *testing.T) {
 	for _, in := range []string{"", "maybe", "ALLOWED", "true"} {
 		if got := NormaliseGateAction(in); got != GateAbstain {
@@ -167,8 +157,6 @@ func TestPublish_FansOutOnlyToMatchingSubscribers(t *testing.T) {
 	}
 }
 
-// The publisher owns the adapter it reported on, which is what makes a later
-// SendMessage routable back to it.
 func TestPublish_ClaimsAdapterOwnershipAndLearnsConversations(t *testing.T) {
 	bus := NewBus()
 	bus.Publish(msg("qq-1", "group:100", true), "life")
@@ -186,7 +174,6 @@ func TestPublish_ClaimsAdapterOwnershipAndLearnsConversations(t *testing.T) {
 	}
 }
 
-// A different plugin must not be able to steal an adapter by reporting on it.
 func TestPublish_DoesNotStealOwnership(t *testing.T) {
 	bus := NewBus()
 	bus.Publish(msg("qq-1", "group:1", true), "life")
@@ -218,8 +205,6 @@ func TestRegisterAdapter_AddsConversationsForDiscovery(t *testing.T) {
 	}
 }
 
-// A wedged subscriber must lose messages, not stall the bus. The drop is
-// counted so the loss is visible rather than silent.
 func TestPublish_DropsForSlowSubscriberInsteadOfBlocking(t *testing.T) {
 	bus := NewBus()
 	sub := bus.Subscribe(ScopeFrom("slow", false, &pluginv1.PluginMessages{
@@ -255,7 +240,7 @@ func TestUnsubscribe_ClosesChannelAndIsIdempotent(t *testing.T) {
 		ReadMode: ReadAll, ReadAdapters: []string{Wildcard},
 	}), 0)
 	bus.Unsubscribe(sub)
-	bus.Unsubscribe(sub) // must not panic on a double close
+	bus.Unsubscribe(sub)
 
 	if _, ok := <-sub.C(); ok {
 		t.Fatal("channel should be closed")
@@ -281,8 +266,6 @@ func TestSubscribe_ReplaysRecentMatchingMessages(t *testing.T) {
 	}
 }
 
-// Disabling a plugin must take its subscriptions and its adapter ownership with
-// it, or Core keeps handing sends to a process that will never deliver them.
 func TestDropPlugin_RemovesSubscriptionsAndOwnedAdapters(t *testing.T) {
 	bus := NewBus()
 	sub := bus.Subscribe(ScopeFrom("life", false, &pluginv1.PluginMessages{
@@ -298,8 +281,6 @@ func TestDropPlugin_RemovesSubscriptionsAndOwnedAdapters(t *testing.T) {
 	if _, ok := bus.Owner("qq-1"); ok {
 		t.Fatal("adapter ownership should be released")
 	}
-	// The channel is closed, but the message published before the drop is still
-	// buffered, so drain until the close is actually observed.
 	drained := 0
 	for range sub.C() {
 		drained++

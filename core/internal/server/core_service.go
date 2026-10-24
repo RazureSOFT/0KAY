@@ -36,18 +36,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// CoreServiceServer implements the CoreService gRPC service.
-// svcLog tags every record this layer emits, so the console can filter the
-// gRPC layer (agent dispatch, model calls, task lifecycle) as one unit.
 var svcLog = obs.Component("grpc")
 
 type CoreServiceServer struct {
 	corev1.UnimplementedCoreServiceServer
 	registry *registry.Registry
 
-	// bus is Core's chat-message bus (internal/messaging). Created lazily so a
-	// server built directly (tests, the echo plugin) still serves the
-	// messaging RPCs.
 	busOnce sync.Once
 	bus     *messaging.Bus
 
@@ -61,112 +55,82 @@ type CoreServiceServer struct {
 	taskRevision     uint64
 	taskChanges      map[string]uint64
 	taskRemoved      map[string]uint64
-	// taskDirty records ledger ids mutated (or evicted) since the last persist
-	// so persistTasksLocked only re-marshals rows a mutation actually touched.
-	taskDirty map[string]struct{}
-	// lastJournalSync throttles fsync on the task journal: intermediate
-	// running/pending updates are batched, terminal states are always synced.
-	lastJournalSync time.Time
+	taskDirty        map[string]struct{}
+	lastJournalSync  time.Time
 
-	// sessions: session_id -> conversation history
-	sessionMu sync.RWMutex
-	sessions  map[string][]*corev1.ChatMessage
-	// sessionActivity tracks the last append per session so a client-controlled
-	// session_id cannot grow the map without bound (maxChatSessions LRU cap).
+	sessionMu       sync.RWMutex
+	sessions        map[string][]*corev1.ChatMessage
 	sessionActivity map[string]time.Time
 
-	// usage tracker
 	usageMu sync.Mutex
 	usage   *UsageStore
 
-	// mocr address for direct generation
 	mocrAddr string
 
-	// Cached gRPC connection to mocr (dialed once, reused across calls).
 	mocrOnce sync.Once
 	mocrConn *grpc.ClientConn
 	mocrErr  error
 
-	// connPool caches outbound gRPC connections to plugins by address so
-	// frequent calls (RunDirect fan-out, cancel, LIFE notifications) do not pay
-	// a new handshake each time. gRPC reconnects transparently, so dropping the
-	// connection after every call bought nothing.
-	connMu   sync.Mutex
-	connPool map[string]*grpc.ClientConn
-	// lifeConns holds connections carrying LIFE's service token. It stays out of
-	// connPool because that pool is shared with Agent/Mocr: reusing one of those
-	// for LIFE would send no token, and reusing a LIFE connection for another
-	// plugin would attribute the call with the wrong identity.
+	connMu    sync.Mutex
+	connPool  map[string]*grpc.ClientConn
 	lifeConns map[string]*grpc.ClientConn
 
-	// dispatchActivity tracks last ledger progress per dispatched task for the
-	// inactivity watchdog (dead/hung executor detection).
 	dispatchMu       sync.Mutex
 	dispatchActivity map[string]time.Time
 	dispatchLastSeen map[string]time.Time
 
-	// life permissions (screen_watch / computer_use / host report)
 	permMu      sync.RWMutex
 	permissions Permissions
 
-	// providerStore resolves model credentials for real generation (nil = offline).
 	providerStore ProviderStore
 }
 
-// ProviderStore is the subset of providers.Store CallMocr needs.
 type ProviderStore interface {
 	ResolveModel(modelID string) (provider, baseURL, apiKey, resolved string, ok bool)
 }
 
-// Permissions holds Life capability switches.
 type Permissions struct {
 	ScreenWatch     bool   `json:"screen_watch"`
 	ComputerUse     bool   `json:"computer_use"`
 	ReportAgentHost string `json:"report_agent_host"`
 }
 
-// TaskInfo holds information about an active task.
 type TaskInfo struct {
-	TaskID    string
-	CallerID  string
-	Prompt    string
-	AgentID   string
-	State     string // pending | running | done | failed | cancelled
-	Result    string
-	Error     string
-	StartedAt time.Time
-	EndedAt   time.Time
-	SessionID string
-	Kind      string
-	ParentID  string
-	Args      string
-	// Reasoning carries the model's native chain-of-thought for this step.
-	Reasoning string
-	// Attachments is the JSON array of files uploaded with the turn.
+	TaskID      string
+	CallerID    string
+	Prompt      string
+	AgentID     string
+	State       string
+	Result      string
+	Error       string
+	StartedAt   time.Time
+	EndedAt     time.Time
+	SessionID   string
+	Kind        string
+	ParentID    string
+	Args        string
+	Reasoning   string
 	Attachments string
 }
 
 type persistedTask struct {
-	TaskID    string    `json:"task_id"`
-	CallerID  string    `json:"caller_id"`
-	Prompt    string    `json:"prompt"`
-	AgentID   string    `json:"agent_id"`
-	State     string    `json:"state"`
-	Result    string    `json:"result,omitempty"`
-	Error     string    `json:"error,omitempty"`
-	StartedAt time.Time `json:"started_at"`
-	EndedAt   time.Time `json:"ended_at,omitempty"`
-	SessionID string    `json:"session_id,omitempty"`
-	Kind      string    `json:"kind,omitempty"`
-	ParentID  string    `json:"parent_id,omitempty"`
-	Args      string    `json:"args,omitempty"`
-	Reasoning string    `json:"reasoning,omitempty"`
-	// Attachments is a JSON array; kept small (a handful of name/url/mime/size
-	// objects) and clipped like every other persisted text field.
-	Attachments string `json:"attachments,omitempty"`
+	TaskID      string    `json:"task_id"`
+	CallerID    string    `json:"caller_id"`
+	Prompt      string    `json:"prompt"`
+	AgentID     string    `json:"agent_id"`
+	State       string    `json:"state"`
+	Result      string    `json:"result,omitempty"`
+	Error       string    `json:"error,omitempty"`
+	StartedAt   time.Time `json:"started_at"`
+	EndedAt     time.Time `json:"ended_at,omitempty"`
+	SessionID   string    `json:"session_id,omitempty"`
+	Kind        string    `json:"kind,omitempty"`
+	ParentID    string    `json:"parent_id,omitempty"`
+	Args        string    `json:"args,omitempty"`
+	Reasoning   string    `json:"reasoning,omitempty"`
+	Attachments string    `json:"attachments,omitempty"`
 }
 
-// UsageRecord is one token-usage sample.
 type UsageRecord struct {
 	Timestamp        time.Time `json:"timestamp"`
 	RequestID        string    `json:"request_id"`
@@ -175,28 +139,20 @@ type UsageRecord struct {
 	PromptTokens     int32     `json:"prompt_tokens"`
 	CompletionTokens int32     `json:"completion_tokens"`
 	TotalTokens      int32     `json:"total_tokens"`
-	// CachedTokens is the part of PromptTokens the provider served from its
-	// prompt cache. Without it a long session cannot tell a cheap turn from an
-	// expensive one: the same 30k-token prefix costs a fraction on a cache hit.
-	CachedTokens int32 `json:"cached_tokens,omitempty"`
-	// CostUSD is what the turn actually cost, when the provider reports it.
-	CostUSD float64 `json:"cost_usd,omitempty"`
+	CachedTokens     int32     `json:"cached_tokens,omitempty"`
+	CostUSD          float64   `json:"cost_usd,omitempty"`
 }
 
-// UsageStore accumulates usage totals (in-memory + optional JSONL).
 type UsageStore struct {
 	records  []UsageRecord
 	file     string
 	lastSave time.Time
 	unsaved  int
-	// indexed is the dedupe set for Record.RequestID. Without it every ingest
-	// scans the whole ledger (up to maxUsageRecords) to spot a retry.
-	indexed map[string]struct{}
+	indexed  map[string]struct{}
 }
 
 const maxUsageRecords = 10000
 
-// NewUsageStore creates a usage store, optionally restoring from disk.
 func NewUsageStore(path string) *UsageStore {
 	u := &UsageStore{file: path, records: nil, indexed: map[string]struct{}{}}
 	if path != "" {
@@ -212,9 +168,6 @@ func NewUsageStore(path string) *UsageStore {
 	return u
 }
 
-// AddIfNew records a usage sample unless its request id has already been
-// ingested, so a client retry can never double-count tokens. Callers must hold
-// the ledger lock.
 func (u *UsageStore) AddIfNew(rec UsageRecord) bool {
 	if rec.RequestID != "" {
 		if u.indexed == nil {
@@ -229,8 +182,6 @@ func (u *UsageStore) AddIfNew(rec UsageRecord) bool {
 	return true
 }
 
-// Add records a usage sample. Disk writes are throttled to at most one per
-// three seconds, or sooner once a burst accumulates.
 func (u *UsageStore) Add(rec UsageRecord) {
 	if len(u.records) >= maxUsageRecords {
 		trim := len(u.records) - (maxUsageRecords - 1)
@@ -252,7 +203,6 @@ func (u *UsageStore) Add(rec UsageRecord) {
 	u.saveLocked()
 }
 
-// saveLocked writes the ledger atomically so a crash never truncates it.
 func (u *UsageStore) saveLocked() {
 	data, err := json.Marshal(u.records)
 	if err != nil {
@@ -270,7 +220,6 @@ func (u *UsageStore) saveLocked() {
 	u.unsaved = 0
 }
 
-// Snapshot returns aggregate totals for /api/usage.
 func (u *UsageStore) Snapshot() map[string]interface{} {
 	type byKey struct {
 		Prompt     int32 `json:"prompt"`
@@ -316,8 +265,6 @@ func (u *UsageStore) Snapshot() map[string]interface{} {
 		byDay[day].Count++
 	}
 
-	// A hit ratio over prompt tokens is the number worth watching: it says how
-	// much of what we send is being re-read from cache rather than billed fresh.
 	var hitRatio float64
 	if totalPrompt > 0 {
 		hitRatio = float64(totalCached) / float64(totalPrompt)
@@ -338,7 +285,6 @@ func (u *UsageStore) Snapshot() map[string]interface{} {
 	}
 }
 
-// Clear removes all usage records and deletes the on-disk file.
 func (u *UsageStore) Clear() {
 	u.records = nil
 	u.unsaved = 0
@@ -356,18 +302,11 @@ func lastN(in []UsageRecord, n int) []UsageRecord {
 	return in[len(in)-n:]
 }
 
-// NewCoreServiceServer creates a new CoreServiceServer. The optional dataDir
-// roots the task-ledger and usage snapshots (CORE_DATA_DIR); it defaults to
-// the legacy CWD-relative "data" so existing callers (tests) are unchanged.
-// TASKS_PATH / USAGE_PATH env overrides still win.
 func NewCoreServiceServer(reg *registry.Registry, dataDir ...string) *CoreServiceServer {
 	mocrAddr := os.Getenv("MOCR_ADDRESS")
 	if mocrAddr == "" {
 		mocrAddr = "localhost:50052"
 	}
-	// Resolve the root here rather than keeping a CWD-relative default: with
-	// CORE_DATA_DIR set elsewhere, the split silently read another instance's
-	// task history and scattered callbacks into the wrong directory.
 	root := "data"
 	if len(dataDir) > 0 && dataDir[0] != "" {
 		root = dataDir[0]
@@ -380,10 +319,6 @@ func NewCoreServiceServer(reg *registry.Registry, dataDir ...string) *CoreServic
 	if taskPath == "" {
 		taskPath = filepath.Join(root, "tasks.json")
 	}
-	// Task history is restored from the on-disk snapshot so conversations and
-	// their tool steps survive a Core restart. Fields are bounded on write (see
-	// persistedFrom) so the snapshot stays small; the WebUI still loads an old
-	// session's turns on demand instead of receiving the whole ledger at once.
 	tasks := make(map[string]*TaskInfo)
 	if data, err := os.ReadFile(taskPath); err == nil {
 		var saved []persistedTask
@@ -429,7 +364,6 @@ func NewCoreServiceServer(reg *registry.Registry, dataDir ...string) *CoreServic
 	}
 	instance.saveCallbacksLocked()
 	go instance.retryCallbacks()
-	// Upgrade existing LIFE-dispatched task history into browsable sessions.
 	for _, task := range tasks {
 		if (task.Kind == "agent" || task.Kind == "") && !strings.HasPrefix(task.SessionID, "agent-session:") {
 			task.SessionID = instance.EnsureAgentSession(task.SessionID, task.CallerID, task.Prompt)
@@ -442,16 +376,12 @@ func NewCoreServiceServer(reg *registry.Registry, dataDir ...string) *CoreServic
 	return instance
 }
 
-// journalSyncInterval bounds how often a burst of non-terminal task updates
-// forces an fsync of the task journal.
 const journalSyncInterval = 500 * time.Millisecond
 
-// isTerminalTaskState reports whether a task state must survive a power loss.
 func isTerminalTaskState(state string) bool {
 	return state == "done" || state == "failed" || state == "cancelled"
 }
 
-// shouldSyncJournalLocked reports whether this batch needs an immediate fsync.
 func (s *CoreServiceServer) shouldSyncJournalLocked(changes []persistedTask, removed []string) bool {
 	if len(removed) > 0 {
 		return true
@@ -467,23 +397,17 @@ func (s *CoreServiceServer) shouldSyncJournalLocked(changes []persistedTask, rem
 	return time.Since(s.lastJournalSync) >= journalSyncInterval
 }
 
-// Bounds on the durable copy of a task. The in-memory row keeps the full value
-// for the running process; only the snapshot/journal copy is clipped so a long
-// result or chain-of-thought cannot bloat the ledger file.
 const (
-	persistedPromptLimit    = 8000
-	persistedResultLimit    = 16000
-	persistedErrorLimit     = 4000
-	persistedArgsLimit      = 8000
-	persistedReasoningLimit = 8000
-	persistedSessionLimit   = 2000
-	// A turn rarely carries more than a few files; 8 KB is room for ~30 of them
-	// and still bounds the ledger.
+	persistedPromptLimit      = 8000
+	persistedResultLimit      = 16000
+	persistedErrorLimit       = 4000
+	persistedArgsLimit        = 8000
+	persistedReasoningLimit   = 8000
+	persistedSessionLimit     = 2000
 	persistedAttachmentsLimit = 8000
 	persistedNonSessionLimit  = 5000
 )
 
-// persistedFrom builds the durable form of a task, clipping oversized fields.
 func persistedFrom(t *TaskInfo) persistedTask {
 	return persistedTask{
 		TaskID:      t.TaskID,
@@ -504,8 +428,6 @@ func persistedFrom(t *TaskInfo) persistedTask {
 	}
 }
 
-// snapshotTasks trims the persisted set to the retention caps, keeping the
-// newest rows of each class so the snapshot cannot grow without bound.
 func snapshotTasks(items []persistedTask) []persistedTask {
 	sessions := make([]persistedTask, 0, len(items))
 	others := make([]persistedTask, 0, len(items))
@@ -535,10 +457,6 @@ func snapshotTasks(items []persistedTask) []persistedTask {
 	return append(sessions, others...)
 }
 
-// pruneFinishedLocked drops the oldest finished non-session rows once the
-// in-memory ledger exceeds persistedNonSessionLimit, mirroring the snapshot cap
-// so terminal tasks (output/tool/agent turns) cannot grow s.tasks without bound.
-// Session rows and in-flight work are always kept. Callers must hold s.mu.
 func (s *CoreServiceServer) pruneFinishedLocked() {
 	finished := make([]*TaskInfo, 0, len(s.tasks))
 	for _, t := range s.tasks {
@@ -557,10 +475,6 @@ func (s *CoreServiceServer) pruneFinishedLocked() {
 	s.pruneSessionsLocked()
 }
 
-// pruneSessionsLocked caps the in-memory session ledger at
-// persistedSessionLimit agent_session rows (the snapshot cap), evicting the
-// oldest deleted sessions first, then the oldest archived ones. Live sessions
-// and in-flight work are never evicted. Callers must hold s.mu.
 func (s *CoreServiceServer) pruneSessionsLocked() {
 	total := 0
 	candidates := []*TaskInfo{}
@@ -593,9 +507,6 @@ func (s *CoreServiceServer) pruneSessionsLocked() {
 	}
 }
 
-// markTaskDirtyLocked queues a ledger id for the next persistTasksLocked call.
-// An id no longer present in s.tasks is treated as a removal. Callers must hold
-// s.mu (or run before the server is exposed).
 func (s *CoreServiceServer) markTaskDirtyLocked(id string) {
 	if s.taskDirty == nil {
 		s.taskDirty = map[string]struct{}{}
@@ -603,18 +514,12 @@ func (s *CoreServiceServer) markTaskDirtyLocked(id string) {
 	s.taskDirty[id] = struct{}{}
 }
 
-// taskFingerprint summarizes one persisted task row so change detection does
-// not retain the full marshalled row for every task in memory.
 func taskFingerprint(raw []byte) uint64 {
 	hasher := fnv.New64a()
 	hasher.Write(raw)
 	return hasher.Sum64()
 }
 
-// seedTaskFingerprints records the fingerprint of every restored ledger row so
-// the first mutation in this process journals only what actually changed, while
-// evictions of restored rows are still recognised (and journalled) as removals.
-// Runs during startup, before the server is exposed.
 func (s *CoreServiceServer) seedTaskFingerprints() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -625,12 +530,6 @@ func (s *CoreServiceServer) seedTaskFingerprints() {
 	}
 }
 
-// persistTasksLocked advances the in-memory change tracking TaskDelta relies on
-// and appends the delta to the durable journal. Only rows a mutation marked
-// dirty (markTaskDirtyLocked) are re-examined, so a task update no longer
-// re-marshals the whole ledger under the write lock. Fields are clipped
-// (persistedFrom) so the ledger stays small even while a tool streams large
-// results.
 func (s *CoreServiceServer) persistTasksLocked() {
 	s.pruneFinishedLocked()
 	if len(s.taskDirty) == 0 {
@@ -677,9 +576,6 @@ func (s *CoreServiceServer) persistTasksLocked() {
 			s.taskRemoved[id] = s.taskRevision
 			delete(s.taskChanges, id)
 		}
-		// Bound the removal set: a cursor older than the retained window cannot be
-		// served a correct delta anyway (it will reset), so keep only the newest
-		// resetTaskLimit revisions of removals instead of growing forever.
 		if len(s.taskRemoved) > resetTaskLimit {
 			cutoff := uint64(0)
 			if s.taskRevision > resetTaskLimit {
@@ -700,15 +596,12 @@ func (s *CoreServiceServer) persistTasksLocked() {
 	}
 	for id := range s.taskDirty {
 		if s.tasks[id] == nil {
-			// Evicted from the ledger: stop tracking its fingerprint.
 			delete(s.taskFingerprints, id)
 		}
 	}
 	s.taskDirty = nil
 }
 
-// appendTaskJournalLocked appends the delta to the journal and periodically
-// compacts it into the snapshot. Callers must hold s.mu.
 func (s *CoreServiceServer) appendTaskJournalLocked(changes []persistedTask, removed []string) {
 	_ = os.MkdirAll(filepath.Dir(s.taskHistoryPath), 0700)
 	journal, err := os.OpenFile(s.taskHistoryPath+".journal", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
@@ -721,11 +614,6 @@ func (s *CoreServiceServer) appendTaskJournalLocked(changes []persistedTask, rem
 		Removed []string        `json:"removed"`
 	}{changes, removed})
 	_, err = journal.Write(append(raw, '\n'))
-	// Durability policy: reaching disk immediately matters when a task settles
-	// (done/failed/cancelled, session archive/delete, or a removal). Intermediate
-	// "running" updates are only fsynced at most every journalSyncInterval, so a
-	// busy ledger cannot turn every heartbeat into a disk flush. The data is
-	// still written on every call; only the fsync is batched.
 	if err == nil && s.shouldSyncJournalLocked(changes, removed) {
 		err = journal.Sync()
 		s.lastJournalSync = time.Now()
@@ -752,9 +640,6 @@ func (s *CoreServiceServer) appendTaskJournalLocked(changes []persistedTask, rem
 			if err = os.Rename(temporary, s.taskHistoryPath); err != nil {
 				log.Printf("persist tasks: %v", err)
 			} else {
-				// Make the rename itself durable before dropping the journal,
-				// otherwise a crash could resurrect the old snapshot with an
-				// already-truncated journal behind it.
 				syncDir(filepath.Dir(s.taskHistoryPath))
 				_ = os.WriteFile(s.taskHistoryPath+".journal", nil, 0600)
 				s.lastJournalSync = time.Now()
@@ -765,8 +650,6 @@ func (s *CoreServiceServer) appendTaskJournalLocked(changes []persistedTask, rem
 	}
 }
 
-// writeFileSync writes data to path and flushes it to the disk before
-// returning, so a subsequent rename cannot publish a half-written snapshot.
 func writeFileSync(path string, data []byte, perm os.FileMode) error {
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, perm)
 	if err != nil {
@@ -781,7 +664,6 @@ func writeFileSync(path string, data []byte, perm os.FileMode) error {
 	return err
 }
 
-// syncDir flushes a directory entry (file creation / rename) to disk.
 func syncDir(path string) {
 	dir, err := os.Open(path)
 	if err != nil {
@@ -791,19 +673,16 @@ func syncDir(path string) {
 	_ = dir.Close()
 }
 
-// SetProviderStore wires multi-provider credential resolution.
 func (s *CoreServiceServer) SetProviderStore(st ProviderStore) {
 	s.providerStore = st
 }
 
-// GetUsage returns the usage snapshot for the HTTP gateway.
 func (s *CoreServiceServer) GetUsage() map[string]interface{} {
 	s.usageMu.Lock()
 	defer s.usageMu.Unlock()
 	return s.usage.Snapshot()
 }
 
-// ClearUsage wipes all recorded usage (in-memory + disk).
 func (s *CoreServiceServer) ClearUsage() {
 	s.usageMu.Lock()
 	defer s.usageMu.Unlock()
@@ -816,7 +695,6 @@ func (s *CoreServiceServer) RecordUsage(record UsageRecord) {
 	s.usage.AddIfNew(record)
 }
 
-// touchDispatch records ledger activity for a dispatched root task tree.
 func (s *CoreServiceServer) touchDispatch(root string) {
 	if root == "" {
 		return
@@ -828,7 +706,6 @@ func (s *CoreServiceServer) touchDispatch(root string) {
 	s.dispatchMu.Unlock()
 }
 
-// beginDispatch registers an in-flight dispatch; returns a stop function.
 func (s *CoreServiceServer) beginDispatch(taskID string) func() {
 	s.dispatchMu.Lock()
 	if s.dispatchActivity == nil {
@@ -844,21 +721,18 @@ func (s *CoreServiceServer) beginDispatch(taskID string) func() {
 	}
 }
 
-// GetPermissions returns current Life permissions.
 func (s *CoreServiceServer) GetPermissions() Permissions {
 	s.permMu.RLock()
 	defer s.permMu.RUnlock()
 	return s.permissions
 }
 
-// SetPermissions updates Life permissions.
 func (s *CoreServiceServer) SetPermissions(p Permissions) {
 	s.permMu.Lock()
 	s.permissions = p
 	s.permMu.Unlock()
 }
 
-// SessionMessages returns history for a session.
 func (s *CoreServiceServer) SessionMessages(sessionID string) []*corev1.ChatMessage {
 	if sessionID == "" {
 		return nil
@@ -868,10 +742,6 @@ func (s *CoreServiceServer) SessionMessages(sessionID string) []*corev1.ChatMess
 	return append([]*corev1.ChatMessage{}, s.sessions[sessionID]...)
 }
 
-// maxChatSessions bounds how many distinct chat session ids the in-memory
-// history map retains. session_id is client-controlled (CallMocr bodies), so
-// without a cap a stream of random ids grows the map without bound; the least
-// recently active session is evicted once the cap is reached.
 const maxChatSessions = 500
 
 func (s *CoreServiceServer) appendSession(sessionID string, msgs ...*corev1.ChatMessage) {
@@ -891,8 +761,6 @@ func (s *CoreServiceServer) appendSession(sessionID string, msgs ...*corev1.Chat
 	s.evictIdleSessionsLocked()
 }
 
-// evictIdleSessionsLocked trims the session map to maxChatSessions by dropping
-// the least recently active sessions. Callers must hold s.sessionMu.
 func (s *CoreServiceServer) evictIdleSessionsLocked() {
 	for len(s.sessions) > maxChatSessions {
 		oldest, oldestAt := "", time.Time{}
@@ -909,7 +777,6 @@ func (s *CoreServiceServer) evictIdleSessionsLocked() {
 	}
 }
 
-// estimateTokens approximates tokens as ~4 chars/token.
 func estimateTokens(text string) int32 {
 	n := len(text)
 	if n == 0 {
@@ -918,7 +785,6 @@ func estimateTokens(text string) int32 {
 	return int32((n + 3) / 4)
 }
 
-// mocrClient dials mocr once and reuses the connection (gRPC reconnects lazily).
 func (s *CoreServiceServer) mocrClient() (mocrv1.MocrServiceClient, error) {
 	s.mocrOnce.Do(func() {
 		s.mocrConn, s.mocrErr = grpc.NewClient(s.mocrAddr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithPerRPCCredentials(registry.NewServiceTokenCredentials(modelServiceToken())))
@@ -929,8 +795,6 @@ func (s *CoreServiceServer) mocrClient() (mocrv1.MocrServiceClient, error) {
 	return mocrv1.NewMocrServiceClient(s.mocrConn), nil
 }
 
-// dialMocr returns the cached client; the closer is a no-op because the
-// connection lives for the lifetime of the server.
 func (s *CoreServiceServer) dialMocr(ctx context.Context) (mocrv1.MocrServiceClient, func(), error) {
 	client, err := s.mocrClient()
 	if err != nil {
@@ -939,8 +803,6 @@ func (s *CoreServiceServer) dialMocr(ctx context.Context) (mocrv1.MocrServiceCli
 	return client, func() {}, nil
 }
 
-// dialCached returns a process-wide cached gRPC connection for addr. The caller
-// must not Close it; the connection belongs to the server and is reused.
 func (s *CoreServiceServer) dialCached(addr string) (*grpc.ClientConn, error) {
 	if s.registry != nil {
 		for _, plugin := range s.registry.GetPluginsByCapability("agent") {
@@ -965,9 +827,6 @@ func (s *CoreServiceServer) dialCached(addr string) (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
-// lifeDialCached returns a cached connection to a LIFE plugin that attributes
-// every call with that plugin's service token, so LIFE can authenticate Core.
-// It shares connMu with dialCached but not the pool.
 func (s *CoreServiceServer) lifeDialCached(life *registry.PluginInstance) (*grpc.ClientConn, error) {
 	if life == nil || life.Address == "" {
 		return nil, status.Error(codes.Unavailable, "LIFE has no address")
@@ -993,7 +852,6 @@ func (s *CoreServiceServer) lifeDialCached(life *registry.PluginInstance) (*grpc
 	return conn, nil
 }
 
-// CallMocr proxies a request to the mocr service (real gRPC when available).
 func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.CoreService_CallMocrServer) (callErr error) {
 	id := fmt.Sprintf("core-model:%d", time.Now().UnixNano())
 	_ = s.RecordTask(TaskEvent{TaskID: id, CallerID: req.CallerId, SessionID: req.SessionId, Kind: "output", Prompt: req.Prompt, State: "running"})
@@ -1013,7 +871,6 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 		sessionID = "default"
 	}
 
-	// Build history: prefer client-provided messages, else session store
 	var history []*corev1.ChatMessage
 	if len(req.Messages) > 0 {
 		history = req.Messages
@@ -1021,7 +878,6 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 		history = s.SessionMessages(sessionID)
 	}
 
-	// Append current user prompt if not already last
 	if req.Prompt != "" {
 		lastIsUser := len(history) > 0 && history[len(history)-1].Role == "user" && history[len(history)-1].Content == req.Prompt
 		if !lastIsUser {
@@ -1032,7 +888,6 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 		}
 	}
 
-	// Context compression based on soft limit
 	history = s.maybeCompressFrom(sessionID, history, 8000)
 
 	if req.SystemPrompt != "" {
@@ -1049,8 +904,6 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 	}
 	defer closeFn()
 
-	// Resolve model: pin to configured default (ChooseModels is agent-only).
-	// Chat never auto-selects via mocr selector.
 	modelID := req.ModelId
 	var prov, baseURL, apiKey string
 	if s.providerStore != nil {
@@ -1064,13 +917,11 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 		modelID = "default-model"
 	}
 
-	// Map history to mocr messages
 	mocrMsgs := make([]*mocrv1.Message, 0, len(history))
 	for _, m := range history {
 		mocrMsgs = append(mocrMsgs, &mocrv1.Message{Role: m.Role, Content: m.Content})
 	}
 
-	// Forward optional generation params (temperature/max_tokens/system_prompt already in history).
 	genReq := &mocrv1.GenerateRequest{
 		ModelId:  modelID,
 		Messages: mocrMsgs,
@@ -1079,7 +930,6 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 		BaseUrl:  baseURL,
 		ApiKey:   apiKey,
 	}
-	// Propagate correlation ids so mocr can attribute usage to session/request.
 	pairs := []string{}
 	if req.RequestId != "" {
 		pairs = append(pairs, "x-0kay-request-id", req.RequestId)
@@ -1091,7 +941,6 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(pairs...))
 	}
 	if req.SystemPrompt != "" {
-		// System prompt is already prepended to history; also pass for providers that prefer the field.
 		genReq.SystemPrompt = req.SystemPrompt
 	}
 	if req.Context != nil {
@@ -1113,9 +962,6 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 	for {
 		resp, err := genStream.Recv()
 		if err == io.EOF {
-			// mocr always terminates with either a Done frame or a non-OK
-			// status. Reaching EOF without one means the stream was truncated;
-			// treat it as a failure rather than a silent success.
 			log.Printf("[CallMocr] stream ended without a terminal frame")
 			return s.failStream(req, stream, "generation stream ended without a completion frame")
 		}
@@ -1144,9 +990,7 @@ func (s *CoreServiceServer) CallMocr(req *corev1.CallMocrRequest, stream corev1.
 					TotalTokens:      pt + ct,
 				}
 			}
-			// mocr reports all provider calls centrally; do not double-count here.
 
-			// Persist session turns
 			if req.Prompt != "" {
 				s.appendSession(sessionID, &corev1.ChatMessage{Role: "user", Content: req.Prompt})
 			}
@@ -1201,13 +1045,6 @@ func (s *CoreServiceServer) maybeCompressFrom(sessionID string, history []*corev
 	return compressed
 }
 
-// failStream reports a generation failure to the client and (via CallMocr's
-// deferred ledger update) to the task record.
-//
-// It deliberately sends no assistant text and no usage: an unreachable model is
-// an error, not an answer. Fabricated text must never reach the session history
-// or look like a real completion, and offline text must never enter token
-// totals.
 func (s *CoreServiceServer) failStream(req *corev1.CallMocrRequest, stream corev1.CoreService_CallMocrServer, reason string) error {
 	_ = stream.Send(&corev1.CallMocrResponse{
 		RequestId: req.RequestId,
@@ -1225,9 +1062,6 @@ func truncateRunes(s string, n int) string {
 	return string(r[:n]) + "…"
 }
 
-// foldIndexRunes returns the rune index of the first case-insensitive occurrence
-// of query (which must already be lowercased) in content, or -1. It scans runes
-// so case folding cannot change byte length and misalign the offsets.
 func foldIndexRunes(content, query string) int {
 	if query == "" {
 		return -1
@@ -1249,7 +1083,6 @@ func foldIndexRunes(content, query string) int {
 	return -1
 }
 
-// ListAgents returns all registered Agent plugins.
 func (s *CoreServiceServer) ListAgents(ctx context.Context, req *corev1.ListAgentsRequest) (*corev1.ListAgentsResponse, error) {
 	onlineOnly := !req.IncludeUnhealthy
 	agents := s.registry.GetAgents(onlineOnly)
@@ -1277,7 +1110,6 @@ func (s *CoreServiceServer) ListAgents(ctx context.Context, req *corev1.ListAgen
 	}, nil
 }
 
-// RunDirect dispatches a direct tool call to the first healthy agent (no LLM).
 func (s *CoreServiceServer) RunDirect(ctx context.Context, req *corev1.RunDirectRequest) (response *corev1.RunDirectResponse, callErr error) {
 	id := fmt.Sprintf("direct-tool:%d", time.Now().UnixNano())
 	_ = s.RecordTask(TaskEvent{TaskID: id, CallerID: "core", SessionID: req.SessionId, Kind: "tool", Prompt: req.Tool, State: "running"})
@@ -1294,8 +1126,6 @@ func (s *CoreServiceServer) RunDirect(ctx context.Context, req *corev1.RunDirect
 		return nil, status.Error(codes.InvalidArgument, "tool is required")
 	}
 
-	// Permission gates for dangerous tools. terminal_exec runs the same shell
-	// capability as shell/computeruse, so it must be gated identically.
 	perm := s.GetPermissions()
 	if req.Tool == "computeruse" || req.Tool == "shell" || req.Tool == "terminal_exec" {
 		if !perm.ComputerUse {
@@ -1335,8 +1165,6 @@ func (s *CoreServiceServer) RunDirect(ctx context.Context, req *corev1.RunDirect
 	}, nil
 }
 
-// Egress proxies an outbound HTTP request for a plugin through Core, checking
-// the plugin's declared egress allow-list. Built-in plugins are exempt.
 func (s *CoreServiceServer) Egress(ctx context.Context, req *corev1.EgressRequest) (*corev1.EgressResponse, error) {
 	info, ok := s.registry.FindByName(req.PluginId)
 	if !ok {
@@ -1384,7 +1212,6 @@ func (s *CoreServiceServer) Egress(ctx context.Context, req *corev1.EgressReques
 	}, nil
 }
 
-// ListPluginTools returns tools contributed by plugins for a consumer scope.
 func (s *CoreServiceServer) ListPluginTools(ctx context.Context, req *corev1.ListPluginToolsRequest) (*corev1.ListPluginToolsResponse, error) {
 	tools := s.registry.ListTools(strings.TrimSpace(req.Scope))
 	out := make([]*corev1.PluginToolEntry, 0, len(tools))
@@ -1394,7 +1221,6 @@ func (s *CoreServiceServer) ListPluginTools(ctx context.Context, req *corev1.Lis
 	return &corev1.ListPluginToolsResponse{Tools: out}, nil
 }
 
-// callContextTool serves Core-native session-context tools in-process.
 func (s *CoreServiceServer) callContextTool(req *corev1.CallPluginToolRequest) *corev1.CallPluginToolResponse {
 	var args map[string]any
 	_ = json.Unmarshal([]byte(req.ArgsJson), &args)
@@ -1419,7 +1245,6 @@ func (s *CoreServiceServer) callContextTool(req *corev1.CallPluginToolRequest) *
 	return &corev1.CallPluginToolResponse{Error: "unknown context tool " + req.Tool}
 }
 
-// searchSessionContext greps a session's turns and compressed summaries.
 func (s *CoreServiceServer) searchSessionContext(sessionID, query string) []map[string]any {
 	const snippet = 240
 	out := []map[string]any{}
@@ -1458,7 +1283,6 @@ func (s *CoreServiceServer) searchSessionContext(sessionID, query string) []map[
 	return out
 }
 
-// decompressSessionContext returns the full text of a folded block or one turn.
 func (s *CoreServiceServer) decompressSessionContext(sessionID, id string) (string, error) {
 	if id == "" {
 		return "", fmt.Errorf("id is required")
@@ -1499,7 +1323,6 @@ func (s *CoreServiceServer) decompressSessionContext(sessionID, id string) (stri
 	return fmt.Sprintf("user: %v\nassistant: %v\n", target["prompt"], target["result"]), nil
 }
 
-// CallPluginTool routes a tool call to the owning plugin's ToolService.
 func (s *CoreServiceServer) CallPluginTool(ctx context.Context, req *corev1.CallPluginToolRequest) (*corev1.CallPluginToolResponse, error) {
 	if strings.TrimSpace(req.Tool) == "" {
 		return &corev1.CallPluginToolResponse{Error: "tool is required"}, nil
@@ -1508,7 +1331,6 @@ func (s *CoreServiceServer) CallPluginTool(ctx context.Context, req *corev1.Call
 	if !ok {
 		return &corev1.CallPluginToolResponse{Error: "unknown tool " + req.Tool}, nil
 	}
-	// Core-native session-context tools are served in-process (no plugin process).
 	if info.Info != nil && info.Info.GetName() == "context" {
 		return s.callContextTool(req), nil
 	}
@@ -1532,7 +1354,6 @@ func (s *CoreServiceServer) CallPluginTool(ctx context.Context, req *corev1.Call
 	return &corev1.CallPluginToolResponse{Success: resp.Success, Result: resp.Result, Error: resp.Error}, nil
 }
 
-// UseAgent dispatches a task to a healthy Agent asynchronously.
 func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRequest) (*corev1.UseAgentResponse, error) {
 	if req.TaskId == "" {
 		return nil, status.Error(codes.InvalidArgument, "task_id is required")
@@ -1541,7 +1362,6 @@ func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRe
 		return nil, status.Error(codes.InvalidArgument, "prompt is required")
 	}
 
-	// Find a healthy agent
 	if req.Metadata == nil {
 		req.Metadata = map[string]string{}
 	}
@@ -1562,7 +1382,6 @@ func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRe
 		}, nil
 	}
 
-	// Simple round-robin: pick first agent (could be improved)
 	agent := agents[0]
 	if requested := req.Metadata["executor_id"]; requested != "" {
 		found := false
@@ -1589,7 +1408,6 @@ func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRe
 	log.Printf("[UseAgent] Task %s dispatched to agent %s (addr=%s)",
 		req.TaskId, agent.PluginID, agent.Address)
 
-	// Dispatch asynchronously
 	go s.dispatchToAgent(req, agent)
 
 	return &corev1.UseAgentResponse{
@@ -1599,7 +1417,6 @@ func (s *CoreServiceServer) UseAgent(ctx context.Context, req *corev1.UseAgentRe
 	}, nil
 }
 
-// dispatchToAgent calls AgentService.ExecuteTask and notifies L.I.F.E on completion.
 func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *registry.PluginInstance) {
 	agentAddr := agent.Address
 	if agentAddr == "" {
@@ -1614,8 +1431,6 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Keepalive detects half-open TCP to a dead executor; the inactivity
-	// watchdog catches a hung-but-connected agent (no ledger progress).
 	idleTimeout := 60 * time.Minute
 	if v := os.Getenv("CORE_AGENT_INACTIVITY_TIMEOUT"); v != "" {
 		if d, err := time.ParseDuration(v); err == nil && d > 0 {
@@ -1717,8 +1532,6 @@ func (s *CoreServiceServer) dispatchToAgent(req *corev1.UseAgentRequest, agent *
 	if stateName == "done" {
 		s.maybeAutoTitleSession(req.Metadata["session_id"])
 	}
-	// Handoff summary JSON is only meaningful to LIFE; keep Core's fallback
-	// localized for LIFE-dispatched tasks when the agent returned none.
 	handoff := resp.Metadata["handoff"]
 	if isLifeCaller(req.CallerId) {
 		if handoff == "" {
@@ -1739,7 +1552,6 @@ func isLifeCaller(caller string) bool {
 	return c == "life" || strings.HasPrefix(c, "life:") || strings.HasPrefix(c, "plugin:life")
 }
 
-// finishTask records terminal state on TaskInfo (kept for ListTasks history).
 func (s *CoreServiceServer) finishTask(taskID, state, result, errMsg string) {
 	s.mu.Lock()
 	if t, ok := s.tasks[taskID]; ok {
@@ -1757,13 +1569,11 @@ func (s *CoreServiceServer) finishTask(taskID, state, result, errMsg string) {
 	s.mu.Unlock()
 }
 
-// failTask marks a task as failed and notifies L.I.F.E.
 func (s *CoreServiceServer) failTask(taskID, errMsg string) {
 	s.finishTask(taskID, "failed", "", errMsg)
 	s.notifyLifeTaskCompleted(taskID, pluginv1.TaskState_TASK_STATE_FAILED, "", errMsg)
 }
 
-// notifyLifeTaskCompleted calls LifeService.OnTaskCompleted on the registered L.I.F.E plugin.
 func (s *CoreServiceServer) notifyLifeTaskCompleted(taskID string, state pluginv1.TaskState, result, errMsg string) {
 	s.callbackMu.Lock()
 	if s.callbacks == nil {
@@ -1819,7 +1629,6 @@ func (s *CoreServiceServer) deliverTaskCallback(taskID string, state pluginv1.Ta
 	}
 }
 
-// CancelAgent cancels a running Agent task.
 func (s *CoreServiceServer) CancelAgent(ctx context.Context, req *corev1.CancelAgentRequest) (*corev1.CancelAgentResponse, error) {
 	if req.TaskId == "" {
 		return nil, status.Error(codes.InvalidArgument, "task_id is required")
@@ -1841,7 +1650,6 @@ func (s *CoreServiceServer) CancelAgent(ctx context.Context, req *corev1.CancelA
 	}
 	s.mu.Unlock()
 
-	// Find agent and call CancelTask
 	agents := s.registry.GetAgents(false)
 	cancelled := false
 	for _, a := range agents {
@@ -1878,13 +1686,8 @@ func (s *CoreServiceServer) CancelAgent(ctx context.Context, req *corev1.CancelA
 	}, nil
 }
 
-// taskBlobPattern matches a base64 blob value inside a JSON task result.
 var taskBlobPattern = regexp.MustCompile(`("base64"\s*:\s*")[^"]{500,}(")`)
 
-// redactTaskResult removes oversized base64 blobs from a tool result so the
-// task list stays small. Results without a big blob are returned unchanged;
-// anything still oversized (e.g. other giant fields) collapses to a marker so
-// the API payload is always bounded.
 func redactTaskResult(raw string) string {
 	const limit = 6_000
 	if len(raw) <= limit {
@@ -1894,15 +1697,10 @@ func redactTaskResult(raw string) string {
 	if len(redacted) <= limit {
 		return redacted
 	}
-	// Still too big after the blobs are gone: keep a readable prefix instead of
-	// throwing the content away. The task list needs enough to recognise the row
-	// — a bare byte count told the user nothing about what the task produced.
 	preview := redacted
 	const previewCap = 2_500
 	if len(preview) > previewCap {
 		preview = preview[:previewCap]
-		// Never cut a rune in half; the JSON encoder would emit a replacement
-		// character and the preview would end in garbage.
 		for len(preview) > 0 && !utf8.ValidString(preview) {
 			preview = preview[:len(preview)-1]
 		}
@@ -1914,12 +1712,8 @@ func redactTaskResult(raw string) string {
 	return string(encoded)
 }
 
-// taskListLimit caps how many (non-session) task rows the gateway API returns,
-// so the payload stays small even with a long history. Newest rows win.
 const taskListLimit = 500
 
-// limitTaskRows keeps every session row (so the session list is intact) plus
-// the newest taskListLimit non-session rows. Input must be sorted newest-first.
 func limitTaskRows(rows []map[string]interface{}) []map[string]interface{} {
 	kept := make([]map[string]interface{}, 0, len(rows))
 	others := 0
@@ -1937,7 +1731,6 @@ func limitTaskRows(rows []map[string]interface{}) []map[string]interface{} {
 	return kept
 }
 
-// taskRowLocked builds a JSON-friendly task row. Caller must hold s.mu.
 func (s *CoreServiceServer) taskRowLocked(t *TaskInfo) map[string]interface{} {
 	state := t.State
 	if state == "" {
@@ -1969,18 +1762,12 @@ func (s *CoreServiceServer) taskRowLocked(t *TaskInfo) map[string]interface{} {
 	if t.Error != "" {
 		item["error"] = clipField(t.Error, 1500)
 	}
-	// Attachments ride along as parsed objects: the transcript renders a chip per
-	// file under the user's text, and a client should not have to parse the
-	// stored metadata blob itself.
 	if refs := decodeAttachments(t.Attachments); len(refs) > 0 {
 		item["attachments"] = refs
 	}
 	return item
 }
 
-// decodeAttachments turns the stored JSON array into rows. A malformed or
-// clipped value is not worth failing a whole transcript over, so it degrades to
-// "no attachments" — the message text is still there.
 func decodeAttachments(raw string) []map[string]interface{} {
 	raw = strings.TrimSpace(raw)
 	if raw == "" || raw == "[]" {
@@ -2007,7 +1794,6 @@ func decodeAttachments(raw string) []map[string]interface{} {
 	return out
 }
 
-// clipField bounds a string field so a single row cannot bloat the payload.
 func clipField(value string, max int) string {
 	if len(value) <= max {
 		return value
@@ -2019,14 +1805,11 @@ func clipField(value string, max int) string {
 	return value[:cut] + "…[truncated]"
 }
 
-// sessionDeletedLocked reports whether a task's session was deleted.
-// Caller must hold s.mu.
 func (s *CoreServiceServer) sessionDeletedLocked(t *TaskInfo) bool {
 	session := s.tasks[t.SessionID]
 	return session != nil && session.Kind == "agent_session" && session.State == "deleted"
 }
 
-// sortTaskRows orders rows newest-first, tie-broken by task id.
 func sortTaskRows(out []map[string]interface{}) {
 	sort.Slice(out, func(i, j int) bool {
 		a, _ := out[i]["started_at"].(string)
@@ -2040,11 +1823,6 @@ func sortTaskRows(out []map[string]interface{}) {
 	})
 }
 
-// ListTasks returns JSON-friendly task state-machine entries for the gateway.
-//
-// Tool results can embed large base64 blobs (computeruse screenshots). Returning
-// them verbatim made /api/tasks multi-megabyte and slow, so the browser's short
-// polling deadlines timed out; blobs are stripped here and bounded in size.
 func (s *CoreServiceServer) ListTasks() []map[string]interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

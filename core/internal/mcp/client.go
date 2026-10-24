@@ -13,26 +13,12 @@ import (
 	"time"
 )
 
-// Model Context Protocol, client side, owned by Core.
-//
-// The servers were previously a plugin concern: the agent had its own client and
-// the mail server shipped as a plugin process. That meant every consumer had to
-// re-implement discovery, spawning and the JSON-RPC handshake, and they could
-// disagree about which servers exist. Core now owns both the registry and the
-// transport, so the agent, L.I.F.E and any WebUI page all talk to one place.
-//
-// Two transports are supported because that is all MCP defines in practice:
-// `stdio` (spawn a process, newline-delimited JSON-RPC on its stdin/stdout) and
-// `http` (POST a single JSON-RPC message, read one back).
-
-// Tool is one callable capability advertised by a server.
 type Tool struct {
 	Name        string          `json:"name"`
 	Description string          `json:"description,omitempty"`
 	InputSchema json.RawMessage `json:"inputSchema,omitempty"`
 }
 
-// Client is one live connection to a server.
 type Client interface {
 	ListTools(ctx context.Context) ([]Tool, error)
 	CallTool(ctx context.Context, name string, args map[string]any) (json.RawMessage, error)
@@ -41,18 +27,15 @@ type Client interface {
 
 const protocolVersion = "2024-11-05"
 
-// ── stdio ────────────────────────────────────────────────────────────────────
-
 type stdioClient struct {
 	cmd    *exec.Cmd
 	stdin  io.WriteCloser
 	stdout *bufio.Reader
 
-	mu     sync.Mutex
-	nextID int
-	// pending maps a request id to the channel waiting for its reply. MCP
-	// servers may answer out of order and may interleave notifications, so a
-	// naive "write then read" would deadlock the moment two calls overlap.
+	// answers come back out of order and notifications interleave, so a
+	// naive write-then-read deadlocks the moment two calls overlap.
+	mu      sync.Mutex
+	nextID  int
 	pending map[int]chan rpcReply
 	readErr error
 	closed  bool
@@ -75,13 +58,10 @@ type rpcMessage struct {
 	} `json:"error,omitempty"`
 }
 
-// StartStdio spawns a server and completes the initialize handshake.
 func StartStdio(ctx context.Context, command []string) (Client, error) {
 	return StartStdioEnv(ctx, command, nil)
 }
 
-// StartStdioEnv is StartStdio with extra environment variables, which is how a
-// bundled server receives the credentials Core already holds.
 func StartStdioEnv(ctx context.Context, command []string, env map[string]string) (Client, error) {
 	if len(command) == 0 {
 		return nil, fmt.Errorf("empty command")
@@ -101,8 +81,6 @@ func StartStdioEnv(ctx context.Context, command []string, env map[string]string)
 	if err != nil {
 		return nil, err
 	}
-	// stderr is drained rather than inherited: a chatty server would otherwise
-	// fill the pipe buffer and block itself.
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return nil, err
@@ -135,12 +113,10 @@ func (c *stdioClient) readLoop() {
 		}
 		var message rpcMessage
 		if err := json.Unmarshal([]byte(trimmed), &message); err != nil {
-			// A server that writes a banner to stdout is broken, but a stray
-			// line should not kill the connection.
 			continue
 		}
 		if message.ID == nil {
-			continue // notification (log, progress): nothing to settle
+			continue
 		}
 		c.mu.Lock()
 		ch, ok := c.pending[*message.ID]

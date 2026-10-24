@@ -22,16 +22,16 @@ func TestBlockedIP(t *testing.T) {
 		strict bool
 		want   bool
 	}{
-		{"169.254.169.254", false, true}, // link-local metadata
-		{"fd00:ec2::254", false, true},   // IPv6 metadata
-		{"100.100.100.200", false, true}, // Alibaba Cloud metadata (CGNAT)
-		{"100.64.0.1", false, true},      // CGNAT
-		{"240.0.0.1", false, true},       // reserved class E
-		{"127.0.0.1", false, false},      // loopback allowed by default
-		{"192.168.1.10", false, false},   // private allowed by default
-		{"127.0.0.1", true, true},        // strict blocks loopback
-		{"10.0.0.5", true, true},         // strict blocks private
-		{"8.8.8.8", true, false},         // public stays allowed
+		{"169.254.169.254", false, true},
+		{"fd00:ec2::254", false, true},
+		{"100.100.100.200", false, true},
+		{"100.64.0.1", false, true},
+		{"240.0.0.1", false, true},
+		{"127.0.0.1", false, false},
+		{"192.168.1.10", false, false},
+		{"127.0.0.1", true, true},
+		{"10.0.0.5", true, true},
+		{"8.8.8.8", true, false},
 	}
 	for _, tc := range cases {
 		if got := blockedIP(net.ParseIP(tc.ip), tc.strict); got != tc.want {
