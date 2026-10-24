@@ -10,6 +10,10 @@ import {
   startWakeWord,
   stopWakeWord,
   setWakeMuted,
+  startCall,
+  endCall,
+  setCallMuted,
+  callStatus,
   wakeStatus,
   wakeHeard,
   type WakeFailure,
@@ -31,11 +35,6 @@ const pendingFiles = ref<Array<{ name: string; url: string; mime?: string; size?
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
 
-// --- 「喊一声唤醒」---------------------------------------------------------
-// The nickname is the wake word, and it lives in Settings → L.I.F.E so it is
-// shared with the persona rather than typed into the chat every time. The mic
-// button here only starts/stops listening for this session; `wake_enabled`
-// decides whether listening starts by itself when the page opens.
 const wakeNames = ref<string[]>([])
 const wakeBusy = ref(false)
 const wakeActive = computed(() => wakeStatus.value === 'listening' || wakeStatus.value === 'woken' || wakeStatus.value === 'capturing')
@@ -54,7 +53,6 @@ function lifeValue(key: string): string {
   return raw == null ? '' : String(raw)
 }
 
-/** 「美玖, miku」→ ['美玖', 'miku'] */
 function parseNicknames(): string[] {
   return lifeValue('wake_nickname')
     .split(/[,，、;；\s]+/)
@@ -71,12 +69,10 @@ function wakeFailure(reason: WakeFailure, detail?: string): void {
   toast(message, 'error')
 }
 
-/** Put a recognised sentence through the normal send path. */
 function sendVoice(text: string): void {
   const spoken = text.trim()
   if (!spoken) return
   if (chatStore.isTyping) {
-    // Do not drop what was said: leave it in the box to send when the reply ends.
     inputText.value = spoken
     void nextTick(autoResize)
     return
@@ -122,8 +118,6 @@ function autoResize() {
 
 watch(inputText, () => nextTick(autoResize))
 
-// Follow new content only while the reader is already near the bottom, so a
-// streaming reply never yanks them away from history they are reading.
 const NEAR_BOTTOM_PX = 80
 const atBottom = ref(true)
 let forceScroll = false
@@ -135,7 +129,6 @@ function onScroll() {
 }
 
 function sendMessage() {
-  // A reply is streaming; the store refuses new sends, so keep the draft.
   if (chatStore.isTyping) return
   const text = inputText.value.trim()
   if (!text && pendingImages.value.length === 0 && pendingFiles.value.length === 0) return
@@ -151,7 +144,6 @@ function sendMessage() {
 
 function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter' && !e.shiftKey) {
-    // IME: Enter confirms the candidate list, it must not send the half-typed draft.
     if (e.isComposing || e.keyCode === 229) return
     e.preventDefault()
     sendMessage()
@@ -277,21 +269,37 @@ function downloadHistory() {
 onMounted(() => {
   chatStore.restoreHistory()
   if (!chatStore.isConnected) chatStore.connect()
-  // Settings decide whether listening is on by default; the mic button is a
-  // per-session override on top of it.
   void (async () => {
     await settingsSections.loadValues('life')
     if (lifeValue('wake_enabled') === 'true' && parseNicknames().length) void startListening()
   })()
 })
 
+let voiceBeforeCall: boolean | null = null
+
+watch(() => chatStore.callMode, (live) => {
+  if (!live) { endCall('hangup'); return }
+  voiceBeforeCall = chatStore.voiceEnabled
+  chatStore.setVoiceEnabled(true)
+  void startCall({
+    language: lifeValue('asr_language') || 'zh',
+    onUtterance: (text) => { void chatStore.sendMessage(text) },
+    onEnd: () => {
+      if (voiceBeforeCall !== null) chatStore.setVoiceEnabled(voiceBeforeCall)
+      voiceBeforeCall = null
+      chatStore.endCall()
+    },
+  })
+})
+
+watch(() => chatStore.isTyping, (typing) => setCallMuted(typing || !chatStore.voiceEnabled), { immediate: true })
+
 onUnmounted(() => {
   stopWakeWord()
   setWakeMuted(false)
+  endCall('hangup')
 })
 
-// The companion speaks its own replies: transcribing them would make the mic
-// wake itself (and burn an ASR request per sentence).
 watch(() => chatStore.isTyping, (typing) => setWakeMuted(typing), { immediate: true })
 
 watch(
@@ -353,8 +361,7 @@ watch(
             ×
           </button>
         </div>
-        <!-- Upload in flight: a shimmer slot so the user sees why nothing appeared yet. -->
-        <div v-if="uploading" class="pending-thumb uploading" aria-hidden="true">
+                <div v-if="uploading" class="pending-thumb uploading" aria-hidden="true">
           <span class="upload-spinner"></span>
         </div>
       </div>
@@ -366,13 +373,10 @@ watch(
           </button>
         </span>
       </div>
-      <!-- The character opened a call ([[call]]): it speaks its replies and keeps
-           listening, so say so instead of leaving the user wondering why the
-           microphone is live. -->
       <div v-if="chatStore.callMode" class="call-strip">
         <span class="call-dot" aria-hidden="true"></span>
-        <span class="call-text">{{ t('chat.callBanner') }}</span>
-        <button class="call-end" type="button" @click="chatStore.endCall()">{{ t('chat.callEnd') }}</button>
+        <span class="call-text">{{ callStatus === 'dialing' ? t('chat.callDialing') : t('chat.callBanner') }}</span>
+        <button class="call-end" type="button" @click="endCall('hangup')">{{ t('chat.callEnd') }}</button>
       </div>
       <div v-if="wakeActive" class="wake-strip" :class="wakeStatus">
         <span class="wake-dot" aria-hidden="true"></span>
@@ -631,8 +635,7 @@ watch(
   color: var(--neutral-gray-50);
   overflow: hidden;
 }
-/* `text-overflow` is ignored on a flex container, so the name was hard-clipped.
-   The inner span is the block box that actually ellipsises. */
+
 .pending-file-name {
   min-width: 0;
   overflow: hidden;
@@ -687,7 +690,6 @@ watch(
   justify-content: center;
 }
 
-/* Upload-in-flight slot: shimmering placeholder until the thumbnail arrives. */
 .pending-thumb.uploading {
   display: flex;
   align-items: center;
@@ -739,7 +741,6 @@ watch(
   cursor: not-allowed;
 }
 
-/* 「喊一声唤醒」: the mic turns into a live indicator while listening. */
 .wake-btn.active {
   color: var(--md-primary);
   background: color-mix(in srgb, var(--md-primary) 14%, transparent);

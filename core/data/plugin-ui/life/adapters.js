@@ -1,19 +1,19 @@
-import { defineComponent as ue, ref as m, computed as B, onMounted as fe, openBlock as d, createElementBlock as p, createElementVNode as t, createTextVNode as g, toDisplayString as i, createCommentVNode as c, Fragment as U, renderList as Y, normalizeClass as G, createVNode as F, Transition as me, withCtx as K, unref as W, withDirectives as v, vModelText as h, vModelCheckbox as q, TransitionGroup as ge, nextTick as J } from "vue";
+import { defineComponent as ue, ref as f, computed as B, onMounted as fe, openBlock as d, createElementBlock as p, createElementVNode as t, createTextVNode as m, toDisplayString as i, createCommentVNode as x, Fragment as U, renderList as Y, normalizeClass as G, createVNode as F, Transition as me, withCtx as K, unref as W, withDirectives as g, vModelText as v, vModelCheckbox as q, TransitionGroup as ge, nextTick as J } from "vue";
 import { i18n as ee, useConfirm as ve, AppSelect as Q } from "@0kay/host";
-const X = (b, a) => ee.global.t(b, {});
-function T(b) {
-  const a = String(b?.message || b || "");
+const X = (h, a) => ee.global.t(h, {});
+function T(h) {
+  const a = String(h?.message || h || "");
   return /connection refused|Unavailable|actively refused|dial tcp|ECONNREFUSED|LIFE is unavailable|life unavailable|502|503/i.test(a) ? X("life.kit.notReady") : a || X("life.kit.actionFailed");
 }
-const he = (b) => new Promise((a) => setTimeout(a, b)), be = 3200;
-async function y(b, a = {}) {
+const he = (h) => new Promise((a) => setTimeout(a, h)), be = 3200;
+async function y(h, a = {}) {
   let e = null;
   for (let w = 0; w < 3; w++)
     try {
       const s = await fetch("/api/life/companion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: b, payload: a })
+        body: JSON.stringify({ action: h, payload: a })
       });
       if (!s.ok) throw Error(await s.text() || String(s.status));
       return await s.json().catch(() => ({}));
@@ -28,8 +28,8 @@ async function y(b, a = {}) {
     }
   throw e;
 }
-function xe(b) {
-  const a = `.${b}`;
+function xe(h) {
+  const a = `.${h}`;
   return `
 ${a}{
   --r-xs:10px; --r-sm:14px; --r-md:20px; --r-lg:28px; --r-xl:36px;
@@ -176,10 +176,10 @@ html[data-theme="dark"] ${a} .pill.bad{background:#5a2d00;color:#ffd7b0}
 const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }, ke = { class: "hero-copy" }, $e = { class: "sub" }, Ce = { class: "hero-actions" }, ze = ["disabled"], Se = { class: "state-row" }, Te = { class: "pill soft" }, Ee = { class: "pill soft" }, Ue = { class: "pill soft" }, Ve = {
   key: 0,
   class: "banner err"
-}, Pe = {
+}, Ae = {
   key: 1,
   class: "banner ok"
-}, Ae = {
+}, Pe = {
   key: 2,
   class: "card empty"
 }, Re = { class: "card" }, Fe = { class: "count-pill" }, Ne = {
@@ -191,7 +191,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
 }, Ie = { class: "adapter-row" }, je = { class: "pill muted" }, De = {
   class: "meta",
   style: { "margin-top": "6px" }
-}, Le = { class: "pill soft" }, Me = { class: "meta" }, Oe = {
+}, Me = { class: "pill soft" }, Le = { class: "meta" }, Oe = {
   key: 0,
   class: "hint",
   style: { color: "var(--md-error,#b3261e)" }
@@ -215,22 +215,20 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
   style: { "margin-left": "auto" }
 }, wa = ["disabled"], Z = "life-plugin-adapters-style", ka = /* @__PURE__ */ ue({
   __name: "AdapterSettingsPage",
-  setup(b) {
-    const { confirm: a } = ve(), e = (n, l) => ee.global.t(n, l ?? {}), w = m(!0), s = m(""), _ = m("");
+  setup(h) {
+    const { confirm: a } = ve(), e = (n, l) => ee.global.t(n, l ?? {}), w = f(!0), s = f(""), _ = f("");
     function z(n) {
       _.value = n, setTimeout(() => {
         _.value === n && (_.value = "");
       }, be);
     }
-    const k = m([]), N = m([]), V = m([]), u = m(!1), $ = m(null), o = m(P()), H = m(null);
-    function P() {
+    const k = f([]), N = f([]), V = f([]), c = f(!1), $ = f(null), o = f(A()), H = f(null);
+    function A() {
       return {
         id: "",
         name: "",
         platform: "aiocqhttp",
         enabled: !0,
-        // reverse = LIFE listens (client dials in); connect = LIFE dials out to
-        // the platform's own WS server at ws://host:port/ws_path.
         direction: "reverse",
         ws_path: "/ws",
         ws_host: "127.0.0.1",
@@ -263,14 +261,14 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
           y("adapter_platforms"),
           y("adapter_routes_get")
         ]);
-        k.value = n?.instances || [], N.value = n?.runtime || [], V.value = l?.platforms || [], x.value = (r?.routes || []).map(M), A.value = r?.default_config_id || "default", o.value = { ...P(), ws_port: L() };
+        k.value = n?.instances || [], N.value = n?.runtime || [], V.value = l?.platforms || [], b.value = (r?.routes || []).map(L), P.value = r?.default_config_id || "default", o.value = { ...A(), ws_port: M() };
       } catch (n) {
         s.value = T(n);
       } finally {
         w.value = !1;
       }
     }
-    function L() {
+    function M() {
       const n = new Set(k.value.map((r) => Number(r.ws_port) || 0));
       let l = 6199;
       for (; n.has(l) && l < 65535; ) l += 1;
@@ -278,19 +276,19 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
     }
     async function ae() {
       $.value = "", o.value = {
-        ...P(),
-        ws_port: L()
+        ...A(),
+        ws_port: M()
       }, await J(), H.value?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
     async function te(n) {
       $.value = n.id, o.value = {
-        ...P(),
+        ...A(),
         ...n,
         trigger_keywords: Array.isArray(n.trigger_keywords) ? n.trigger_keywords.join(",") : n.trigger_keywords || ""
       }, await J(), H.value?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
     async function re() {
-      u.value = !0;
+      c.value = !0;
       try {
         const n = { ...o.value };
         n.id && !n.ws_token && delete n.ws_token, n.id && !n.access_token && delete n.access_token, n.trigger_keywords = String(n.trigger_keywords || "").split(",").map((S) => S.trim()).filter(Boolean);
@@ -302,17 +300,17 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
       } catch (n) {
         s.value = T(n);
       } finally {
-        u.value = !1;
+        c.value = !1;
       }
     }
     async function ne(n) {
-      u.value = !0;
+      c.value = !0;
       try {
         await y("adapter_toggle", { id: n.id, enabled: !n.enabled }), z(n.enabled ? e("life.adapters.toggledDisabled", { name: n.name }) : e("life.adapters.toggledEnabled", { name: n.name })), await E();
       } catch (l) {
         s.value = T(l);
       } finally {
-        u.value = !1;
+        c.value = !1;
       }
     }
     async function le(n) {
@@ -322,30 +320,30 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
         confirmLabel: e("life.adapters.delete"),
         danger: !0
       })) {
-        u.value = !0;
+        c.value = !0;
         try {
           await y("adapter_delete", { id: n.id }), z(e("life.adapters.deleted")), $.value === n.id && ($.value = null), await E();
         } catch (r) {
           s.value = T(r);
         } finally {
-          u.value = !1;
+          c.value = !1;
         }
       }
     }
     async function ie() {
-      u.value = !0;
+      c.value = !0;
       try {
         const l = (await y("adapter_sync"))?.failed || [];
         z(l.length ? e("life.adapters.resyncFailed", { count: l.length, names: l.join(e("life.adapters.listSeparator")) }) : e("life.adapters.resynced")), await E();
       } catch (n) {
         s.value = T(n);
       } finally {
-        u.value = !1;
+        c.value = !1;
       }
     }
-    const x = m([]), A = m("default"), C = m({ pattern: "*", config_id: "default" }), R = m(!1);
+    const b = f([]), P = f("default"), C = f({ pattern: "*", config_id: "default" }), R = f(!1);
     let oe = 0;
-    function M(n) {
+    function L(n) {
       return { ...n, _key: `rule-${++oe}` };
     }
     const se = (n) => ({ pattern: n.pattern, config_id: n.config_id });
@@ -355,23 +353,23 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
         s.value = e("life.adapters.routePatternRequired");
         return;
       }
-      x.value = [...x.value, M({ pattern: n, config_id: String(C.value.config_id || "default").trim() || "default" })], C.value = { pattern: "*", config_id: "default" }, s.value = "";
+      b.value = [...b.value, L({ pattern: n, config_id: String(C.value.config_id || "default").trim() || "default" })], C.value = { pattern: "*", config_id: "default" }, s.value = "";
     }
     function pe(n) {
-      x.value = x.value.filter((l, r) => r !== n);
+      b.value = b.value.filter((l, r) => r !== n);
     }
     function O(n, l) {
-      const r = [...x.value], f = n + l;
-      if (f < 0 || f >= r.length) return;
+      const r = [...b.value], u = n + l;
+      if (u < 0 || u >= r.length) return;
       const [S] = r.splice(n, 1);
-      r.splice(f, 0, S), x.value = r;
+      r.splice(u, 0, S), b.value = r;
     }
     async function ce() {
       R.value = !0;
       try {
         await y("adapter_routes_set", {
-          routes: x.value.map(se),
-          default_config_id: String(A.value || "default").trim() || "default"
+          routes: b.value.map(se),
+          default_config_id: String(P.value || "default").trim() || "default"
         }), z(e("life.adapters.routesSaved"));
       } catch (n) {
         s.value = T(n);
@@ -428,7 +426,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
               { class: "eyebrow" },
               [
                 t("b", null, "●"),
-                g(" L.I.F.E · MESSAGING PLATFORMS")
+                m(" L.I.F.E · MESSAGING PLATFORMS")
               ],
               -1
               /* CACHED */
@@ -441,7 +439,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
               /* TEXT */
             ),
             t("p", $e, [
-              g(
+              m(
                 i(e("life.adapters.subtitleBefore")),
                 1
                 /* TEXT */
@@ -453,7 +451,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                 1
                 /* TEXT */
               ),
-              g(
+              m(
                 i(e("life.adapters.subtitleAfter")),
                 1
                 /* TEXT */
@@ -463,7 +461,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
           t("div", Ce, [
             t("button", {
               class: "fab",
-              disabled: u.value || w.value,
+              disabled: c.value || w.value,
               onClick: ie
             }, [
               l[18] || (l[18] = t(
@@ -476,8 +474,8 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                 -1
                 /* CACHED */
               )),
-              g(
-                i(u.value ? e("life.adapters.processing") : e("life.adapters.relisten")),
+              m(
+                i(c.value ? e("life.adapters.processing") : e("life.adapters.relisten")),
                 1
                 /* TEXT */
               )
@@ -514,29 +512,28 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
         i(s.value),
         1
         /* TEXT */
-      )) : c("v-if", !0),
+      )) : x("v-if", !0),
       _.value ? (d(), p(
         "p",
-        Pe,
+        Ae,
         i(_.value),
         1
         /* TEXT */
-      )) : c("v-if", !0),
+      )) : x("v-if", !0),
       w.value ? (d(), p(
         "p",
-        Ae,
+        Pe,
         i(e("life.adapters.loadingConfig")),
         1
         /* TEXT */
-      )) : c("v-if", !0),
-      w.value ? c("v-if", !0) : (d(), p(
+      )) : x("v-if", !0),
+      w.value ? x("v-if", !0) : (d(), p(
         U,
         { key: 3 },
         [
-          c(" 适配器列表 "),
           t("article", Re, [
             t("h3", null, [
-              g(
+              m(
                 i(e("life.adapters.adaptersHeading")) + " ",
                 1
                 /* TEXT */
@@ -595,12 +592,12 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                   t("div", De, [
                     t(
                       "span",
-                      Le,
+                      Me,
                       i(r.direction === "connect" ? e("life.adapters.directionConnect") : e("life.adapters.directionReverse")),
                       1
                       /* TEXT */
                     ),
-                    g(
+                    m(
                       " " + i(r.direction === "connect" ? e("life.adapters.connectingTo", { target: `${r.ws_host}:${r.ws_port}${r.ws_path || ""}` }) : e("life.adapters.listening", { host: r.ws_host, port: r.ws_port })) + " · " + i(e("life.adapters.personaInline")) + " ",
                       1
                       /* TEXT */
@@ -616,7 +613,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                       U,
                       { key: 0 },
                       [
-                        g(
+                        m(
                           " · HTTP " + i(r.http_url),
                           1
                           /* TEXT */
@@ -624,9 +621,9 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                       ],
                       64
                       /* STABLE_FRAGMENT */
-                    )) : c("v-if", !0)
+                    )) : x("v-if", !0)
                   ]),
-                  t("div", Me, [
+                  t("div", Le, [
                     t(
                       "span",
                       {
@@ -640,7 +637,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                       U,
                       { key: 0 },
                       [
-                        g(
+                        m(
                           " · " + i(e("life.adapters.triggerWords")) + " " + i(r.trigger_keywords.join(e("life.adapters.listSeparator"))),
                           1
                           /* TEXT */
@@ -648,7 +645,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                       ],
                       64
                       /* STABLE_FRAGMENT */
-                    )) : c("v-if", !0)
+                    )) : x("v-if", !0)
                   ]),
                   I(r.id).error ? (d(), p(
                     "p",
@@ -656,21 +653,21 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                     i(e("life.adapters.listenError", { error: I(r.id).error })),
                     1
                     /* TEXT */
-                  )) : c("v-if", !0),
+                  )) : x("v-if", !0),
                   t("div", Be, [
                     t("button", {
                       class: "btn sm",
-                      disabled: u.value,
-                      onClick: (f) => ne(r)
+                      disabled: c.value,
+                      onClick: (u) => ne(r)
                     }, i(r.enabled ? e("life.adapters.disable") : e("life.adapters.enable")), 9, Ye),
                     t("button", {
                       class: "btn sm",
-                      onClick: (f) => te(r)
+                      onClick: (u) => te(r)
                     }, i(e("life.adapters.edit")), 9, Ge),
                     t("button", {
                       class: "btn sm danger",
-                      disabled: u.value,
-                      onClick: (f) => le(r)
+                      disabled: c.value,
+                      onClick: (u) => le(r)
                     }, i(e("life.adapters.delete")), 9, Ke)
                   ])
                 ]))),
@@ -685,7 +682,6 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
               /* TEXT */
             ))
           ]),
-          c(" 编辑表单 "),
           F(me, { name: "lsp-fade" }, {
             default: K(() => [
               $.value !== null ? (d(), p(
@@ -744,7 +740,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                         1
                         /* TEXT */
                       ),
-                      v(t(
+                      g(t(
                         "input",
                         {
                           "onUpdate:modelValue": l[2] || (l[2] = (r) => o.value.name = r),
@@ -755,7 +751,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                         512
                         /* NEED_PATCH */
                       ), [
-                        [h, o.value.name]
+                        [v, o.value.name]
                       ])
                     ]),
                     t("label", null, [
@@ -766,7 +762,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                         1
                         /* TEXT */
                       ),
-                      v(t(
+                      g(t(
                         "input",
                         {
                           "onUpdate:modelValue": l[3] || (l[3] = (r) => o.value.ws_host = r),
@@ -777,7 +773,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                         512
                         /* NEED_PATCH */
                       ), [
-                        [h, o.value.ws_host]
+                        [v, o.value.ws_host]
                       ])
                     ]),
                     t("label", null, [
@@ -788,7 +784,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                         1
                         /* TEXT */
                       ),
-                      v(t(
+                      g(t(
                         "input",
                         {
                           "onUpdate:modelValue": l[4] || (l[4] = (r) => o.value.ws_port = r),
@@ -803,7 +799,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          h,
+                          v,
                           o.value.ws_port,
                           void 0,
                           { number: !0 }
@@ -818,14 +814,14 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                         1
                         /* TEXT */
                       ),
-                      v(t("input", {
+                      g(t("input", {
                         "onUpdate:modelValue": l[5] || (l[5] = (r) => o.value.ws_path = r),
                         class: "field",
                         placeholder: e("life.adapters.wsPathPlaceholder")
                       }, null, 8, Je), [
-                        [h, o.value.ws_path]
+                        [v, o.value.ws_path]
                       ])
-                    ])) : c("v-if", !0),
+                    ])) : x("v-if", !0),
                     t("label", null, [
                       t(
                         "span",
@@ -834,13 +830,13 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                         1
                         /* TEXT */
                       ),
-                      v(t("input", {
+                      g(t("input", {
                         "onUpdate:modelValue": l[6] || (l[6] = (r) => o.value.ws_token = r),
                         class: "field",
                         type: "password",
                         placeholder: e("life.adapters.wsTokenPlaceholder")
                       }, null, 8, Qe), [
-                        [h, o.value.ws_token]
+                        [v, o.value.ws_token]
                       ])
                     ]),
                     t("label", null, [
@@ -851,12 +847,12 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                         1
                         /* TEXT */
                       ),
-                      v(t("input", {
+                      g(t("input", {
                         "onUpdate:modelValue": l[7] || (l[7] = (r) => o.value.http_url = r),
                         class: "field",
                         placeholder: e("life.adapters.httpUrlPlaceholder")
                       }, null, 8, Xe), [
-                        [h, o.value.http_url]
+                        [v, o.value.http_url]
                       ])
                     ]),
                     t("label", null, [
@@ -867,12 +863,12 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                         1
                         /* TEXT */
                       ),
-                      v(t("input", {
+                      g(t("input", {
                         "onUpdate:modelValue": l[8] || (l[8] = (r) => o.value.access_token = r),
                         class: "field",
                         placeholder: e("life.adapters.accessTokenPlaceholder")
                       }, null, 8, Ze), [
-                        [h, o.value.access_token]
+                        [v, o.value.access_token]
                       ])
                     ]),
                     t("label", null, [
@@ -883,7 +879,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                         1
                         /* TEXT */
                       ),
-                      v(t(
+                      g(t(
                         "input",
                         {
                           "onUpdate:modelValue": l[9] || (l[9] = (r) => o.value.config_id = r),
@@ -894,7 +890,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                         512
                         /* NEED_PATCH */
                       ), [
-                        [h, o.value.config_id]
+                        [v, o.value.config_id]
                       ])
                     ]),
                     t("label", null, [
@@ -905,12 +901,12 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                         1
                         /* TEXT */
                       ),
-                      v(t("input", {
+                      g(t("input", {
                         "onUpdate:modelValue": l[10] || (l[10] = (r) => o.value.trigger_keywords = r),
                         class: "field",
                         placeholder: e("life.adapters.triggerKeywordsPlaceholder")
                       }, null, 8, ea), [
-                        [h, o.value.trigger_keywords]
+                        [v, o.value.trigger_keywords]
                       ])
                     ])
                   ]),
@@ -922,7 +918,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                     /* TEXT */
                   ),
                   t("label", ta, [
-                    v(t(
+                    g(t(
                       "input",
                       {
                         "onUpdate:modelValue": l[11] || (l[11] = (r) => o.value.enabled = r),
@@ -943,7 +939,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                     )
                   ]),
                   t("label", ra, [
-                    v(t(
+                    g(t(
                       "input",
                       {
                         "onUpdate:modelValue": l[12] || (l[12] = (r) => o.value.observe_group = r),
@@ -969,13 +965,13 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                     i(e("life.adapters.pendingPlatforms", { names: D.value.join(e("life.adapters.listSeparator")) })),
                     1
                     /* TEXT */
-                  )) : c("v-if", !0),
+                  )) : x("v-if", !0),
                   t("div", la, [
                     t("button", {
                       class: "btn filled sm",
-                      disabled: u.value,
+                      disabled: c.value,
                       onClick: re
-                    }, i(u.value ? e("life.adapters.saving") : e("life.adapters.save")), 9, ia),
+                    }, i(c.value ? e("life.adapters.saving") : e("life.adapters.save")), 9, ia),
                     t(
                       "button",
                       {
@@ -990,12 +986,11 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                 ],
                 512
                 /* NEED_PATCH */
-              )) : c("v-if", !0)
+              )) : x("v-if", !0)
             ]),
             _: 1
             /* STABLE */
           }),
-          c(" 配置文件路由 "),
           t("article", oa, [
             t(
               "h3",
@@ -1005,7 +1000,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
               /* TEXT */
             ),
             t("p", sa, [
-              g(
+              m(
                 i(e("life.adapters.routesHintBefore")),
                 1
                 /* TEXT */
@@ -1017,7 +1012,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                 1
                 /* TEXT */
               ),
-              g(
+              m(
                 i(e("life.adapters.routesHintAfterOrder")),
                 1
                 /* TEXT */
@@ -1029,7 +1024,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                 -1
                 /* CACHED */
               )),
-              g(
+              m(
                 i(e("life.adapters.routesHintMatchAll")),
                 1
                 /* TEXT */
@@ -1041,7 +1036,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                 1
                 /* TEXT */
               ),
-              g(
+              m(
                 i(e("life.adapters.routesHintAnd")),
                 1
                 /* TEXT */
@@ -1053,7 +1048,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                 1
                 /* TEXT */
               ),
-              g(
+              m(
                 i(e("life.adapters.routesHintTail")),
                 1
                 /* TEXT */
@@ -1065,13 +1060,12 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                 -1
                 /* CACHED */
               )),
-              g(
+              m(
                 i(e("life.adapters.routesHintSid")),
                 1
                 /* TEXT */
               )
             ]),
-            c(" TransitionGroup FLIP: stable per-rule keys, so ↑↓ glides rows. "),
             F(ge, {
               tag: "ol",
               name: "rule-flip",
@@ -1081,14 +1075,14 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                 (d(!0), p(
                   U,
                   null,
-                  Y(x.value, (r, f) => (d(), p("li", {
+                  Y(b.value, (r, u) => (d(), p("li", {
                     key: r._key,
                     class: "rule-row"
                   }, [
                     t(
                       "span",
                       da,
-                      i(f + 1),
+                      i(u + 1),
                       1
                       /* TEXT */
                     ),
@@ -1109,22 +1103,22 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                     t("span", ca, [
                       t("button", {
                         class: "btn sm",
-                        disabled: f === 0,
+                        disabled: u === 0,
                         "aria-label": e("life.adapters.moveUp"),
                         title: e("life.adapters.moveUp"),
-                        onClick: (S) => O(f, -1)
+                        onClick: (S) => O(u, -1)
                       }, "↑", 8, ua),
                       t("button", {
                         class: "btn sm",
-                        disabled: f === x.value.length - 1,
+                        disabled: u === b.value.length - 1,
                         "aria-label": e("life.adapters.moveDown"),
                         title: e("life.adapters.moveDown"),
-                        onClick: (S) => O(f, 1)
+                        onClick: (S) => O(u, 1)
                       }, "↓", 8, fa),
                       t("button", {
                         class: "btn sm danger",
                         "aria-label": e("life.adapters.delete"),
-                        onClick: (S) => pe(f)
+                        onClick: (S) => pe(u)
                       }, i(e("life.adapters.delete")), 9, ma)
                     ])
                   ]))),
@@ -1135,7 +1129,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
               _: 1
               /* STABLE */
             }),
-            x.value.length ? c("v-if", !0) : (d(), p(
+            b.value.length ? x("v-if", !0) : (d(), p(
               "p",
               ga,
               i(e("life.adapters.emptyRoutes")),
@@ -1151,12 +1145,12 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                   1
                   /* TEXT */
                 ),
-                v(t("input", {
+                g(t("input", {
                   "onUpdate:modelValue": l[14] || (l[14] = (r) => C.value.pattern = r),
                   class: "field",
                   placeholder: e("life.adapters.sessionPatternPlaceholder")
                 }, null, 8, ha), [
-                  [h, C.value.pattern]
+                  [v, C.value.pattern]
                 ])
               ]),
               t("label", null, [
@@ -1167,7 +1161,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                   1
                   /* TEXT */
                 ),
-                v(t(
+                g(t(
                   "input",
                   {
                     "onUpdate:modelValue": l[15] || (l[15] = (r) => C.value.config_id = r),
@@ -1178,7 +1172,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                   512
                   /* NEED_PATCH */
                 ), [
-                  [h, C.value.config_id]
+                  [v, C.value.config_id]
                 ])
               ])
             ]),
@@ -1201,10 +1195,10 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                   1
                   /* TEXT */
                 ),
-                v(t(
+                g(t(
                   "input",
                   {
-                    "onUpdate:modelValue": l[16] || (l[16] = (r) => A.value = r),
+                    "onUpdate:modelValue": l[16] || (l[16] = (r) => P.value = r),
                     class: "field",
                     placeholder: "default"
                   },
@@ -1212,7 +1206,7 @@ const we = { class: "lsp" }, ye = { class: "hero" }, _e = { class: "hero-main" }
                   512
                   /* NEED_PATCH */
                 ), [
-                  [h, A.value]
+                  [v, P.value]
                 ])
               ]),
               t("button", {

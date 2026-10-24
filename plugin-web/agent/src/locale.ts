@@ -1,5 +1,3 @@
-// Plugin-local i18n locale (host vue-i18n stays private to the WebUI).
-// Mirrors the host's persisted `0kay_lang` key; refreshed on each page mount.
 import { ref } from 'vue'
 
 function read(): 'zh' | 'en' {

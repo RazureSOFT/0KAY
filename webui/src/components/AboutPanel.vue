@@ -15,7 +15,6 @@ const TEAM_URL = 'https://github.com/RazureSOFT'
 const DEVELOPER = { login: 'razureink', url: 'https://github.com/razureink', avatar: 'https://github.com/razureink.png' }
 const avatarOf = (login: string, size = 96) => `https://github.com/${login}.png?size=${size}`
 
-// Platform (0KAY core) update check and apply.
 const aboutLoading = ref(false)
 type PlatformCheck = { current: string; latest?: string; has_update: boolean; url?: string; name?: string; notes?: string; published_at?: string; source_available?: boolean }
 const updateResult = ref<PlatformCheck | null>(null)
@@ -54,7 +53,7 @@ async function refreshApply() {
   try {
     applyState.value = await apiGet<ApplyState>('/api/plugins/pm/status')
   } catch {
-    return // Core is restarting after a self-update; keep polling.
+    return
   }
   if (applyState.value && applyState.value.status !== 'running') {
     stopPolling()
@@ -104,10 +103,6 @@ async function checkUpdates() {
 
 async function fetchContributors() {
   try {
-    // GitHub's /contributors ranking is cached server-side and can lag for
-    // hours. Merge it with the authors of recent commits on the default branch
-    // so a just-pushed contributor shows up immediately (bot accounts skipped);
-    // duplicates are de-duplicated by login.
     const headers = { Accept: 'application/vnd.github+json' }
     const [listRes, commitsRes] = await Promise.all([
       fetch('https://api.github.com/repos/RazureSOFT/0KAY/contributors?per_page=100', { headers }),
@@ -150,7 +145,7 @@ onMounted(() => {
       applyState.value = state
       if (state?.status === 'running') startPolling()
     })
-    .catch(() => { /* older Core without update apply */ })
+    .catch(() => { })
 })
 
 onUnmounted(stopPolling)
@@ -158,8 +153,7 @@ onUnmounted(stopPolling)
 
 <template>
   <div class="content-card about">
-    <!-- Identity -->
-    <header class="identity">
+        <header class="identity">
       <img class="app-icon" src="/okay-logo.svg" alt="" aria-hidden="true" />
       <div class="app-id">
         <h2>0KAY <span class="ver-badge">v{{ currentVersion }}</span></h2>
@@ -171,8 +165,7 @@ onUnmounted(stopPolling)
       </div>
     </header>
 
-    <!-- Platform (0KAY core) update -->
-    <section class="section">
+        <section class="section">
       <div class="section-head">
         <h3 class="section-title">0KAY</h3>
         <button class="btn btn-tonal sm" :disabled="aboutLoading" @click="checkUpdates">
@@ -220,8 +213,7 @@ onUnmounted(stopPolling)
       </div>
     </section>
 
-    <!-- Credits -->
-    <section class="section">
+        <section class="section">
       <h3 class="section-title">{{ t('settings.about.developerTitle') }} &amp; {{ t('settings.about.teamTitle') }}</h3>
       <div class="credits">
         <a class="person" :href="DEVELOPER.url" target="_blank" rel="noopener noreferrer">
@@ -281,8 +273,7 @@ onUnmounted(stopPolling)
   flex: none;
   width: 56px;
   height: 56px;
-  /* the SVG tile carries its own squircle silhouette; drop-shadow keeps the
-     glow on that outline instead of a rectangular halo. */
+  
   filter: drop-shadow(0 6px 16px color-mix(in srgb, var(--md-primary) 25%, transparent));
 }
 .app-id { flex: 1; min-width: 0; }
@@ -295,9 +286,6 @@ onUnmounted(stopPolling)
 .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .section-title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 17px; font-weight: 650; color: var(--md-on-surface); }
 .section-title::before { content: ''; width: 4px; height: 16px; border-radius: 2px; background: var(--md-primary); }
-
-/* `.btn.sm` / `.btn.xs` shapes live in styles/settings.css so every panel
-   agrees on one height (they used to drift between 34/30, 34/30 and 32/28). */
 
 .credits { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 .person {
@@ -347,7 +335,6 @@ onUnmounted(stopPolling)
 .repo-link:hover { text-decoration: underline; }
 .muted { color: var(--md-on-surface-variant); font-size: 12px; }
 
-/* Platform (0KAY core) update */
 .us-hero {
   display: flex; align-items: center; gap: 14px;
   padding: 16px 18px;

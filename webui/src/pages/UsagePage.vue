@@ -33,9 +33,6 @@ let timer: number | undefined
 const PALETTE = ['#5944c6', '#9b405e', '#27633e', '#8a5a00', '#1a6fb4', '#7b4bb7', '#0d8a5f', '#b5473c']
 
 async function fetchUsage(background = false) {
-  // Background polling must not touch loading/error: flipping loading every
-  // 15s disabled the buttons in a visible rhythm, and it wiped an error banner
-  // the user had not read yet.
   if (!background) {
     loading.value = true
     error.value = ''
@@ -149,16 +146,14 @@ onUnmounted(() => {
     <div v-if="error" class="banner err" role="alert">{{ error }}</div>
     <div v-if="clearMsg" class="banner ok" role="status">{{ clearMsg }}</div>
 
-    <!-- First load: skeleton instead of a flash of zero-value cards. -->
-    <div v-if="loading && !usage" class="usage-loading" aria-hidden="true">
+        <div v-if="loading && !usage" class="usage-loading" aria-hidden="true">
       <div class="skeleton sk-donut"></div>
       <div class="skeleton sk-card"></div>
       <div class="skeleton sk-card"></div>
     </div>
 
     <template v-else>
-    <!-- Overview -->
-    <section class="overview">
+        <section class="overview">
       <article class="card donut-card">
         <div class="donut">
           <svg viewBox="0 0 42 42" aria-hidden="true">
@@ -209,8 +204,7 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <!-- Daily trend -->
-    <section class="panel">
+        <section class="panel">
       <div class="panel-head">
         <h2>{{ t('usage.byDay') }}</h2>
         <span v-if="peakDay" class="panel-note">{{ t('usage.peak', { label: dayLabel(peakDay.day), value: compact(peakDay.total) }) }}</span>
@@ -232,8 +226,7 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <!-- Models -->
-    <section class="panel">
+        <section class="panel">
       <div class="panel-head">
         <h2>{{ t('usage.byModel') }}</h2>
         <span class="panel-note">{{ t('usage.modelsCount', { n: modelRows.length }) }}</span>
@@ -261,7 +254,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* Usage page — Material 3 Expressive dashboard. */
+
 .usage-page {
   height: 100%;
   overflow-y: auto;
@@ -282,9 +275,7 @@ onUnmounted(() => {
 .banner.err { background: var(--md-error-container); color: var(--md-on-error-container); }
 .banner.ok { background: var(--md-success-container); color: var(--md-on-success-container); }
 
-  /* Shape only — see the note in PluginsPage: a background/color here would
-     out-specify the design system's .btn-* variants and force this page to keep
-     its own copies of them. */
+  
   #app .usage-page .btn {
     height: 46px; padding: 0 22px; border: 1px solid transparent; border-radius: 999px;
     font-weight: 700; font-size: 14px; cursor: pointer;
@@ -295,7 +286,6 @@ onUnmounted(() => {
   }
   #app .usage-page .btn:disabled { opacity: .55; cursor: not-allowed; }
 
-/* Overview */
 .overview { display: grid; grid-template-columns: minmax(220px, 0.9fr) minmax(280px, 1.5fr) minmax(200px, 1fr); gap: var(--space-lg); margin-bottom: var(--space-xl); }
 .card {
   background: var(--md-surface-container-low); border: 1px solid color-mix(in srgb, var(--md-outline-variant) 55%, transparent);
@@ -344,7 +334,6 @@ onUnmounted(() => {
 .mini b { display: block; font-size: 24px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
 .mini span { font-size: 12px; color: var(--md-on-surface-variant); font-weight: 600; }
 
-/* Panels */
 .panel {
   background: var(--md-surface-container-low); border: 1px solid color-mix(in srgb, var(--md-outline-variant) 55%, transparent);
   border-radius: 32px; padding: clamp(20px, 2.2vw, 28px); margin-bottom: var(--space-lg); box-shadow: var(--shadow-1);
@@ -354,7 +343,6 @@ onUnmounted(() => {
 .panel-head h2 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; margin: 0; }
 .panel-note { font-size: 13px; color: var(--md-on-surface-variant); font-weight: 600; }
 
-/* Chart */
 .chart { display: flex; flex-direction: column; height: 264px; padding-left: 42px; }
 .bars { position: relative; flex: 1; display: flex; align-items: flex-end; gap: 6px; }
 .grid { position: absolute; inset: 0; }
@@ -370,7 +358,6 @@ onUnmounted(() => {
 .axis { display: flex; gap: 6px; height: 22px; padding-top: 6px; }
 .axis span { flex: 1; min-width: 0; text-align: center; font-size: 11px; color: var(--md-on-surface-variant); white-space: nowrap; }
 
-/* Models */
 .model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(264px, 1fr)); gap: 16px; }
 .model-card {
   position: relative; overflow: hidden; padding: 22px; border-radius: 26px;
@@ -397,7 +384,6 @@ onUnmounted(() => {
 
 .empty { padding: var(--space-xl); text-align: center; color: var(--md-on-surface-variant); background: var(--md-surface-container); border-radius: 20px; }
 
-/* First-load skeleton: three quiet blocks that shimmer until /api/usage answers. */
 .usage-loading { display: grid; grid-template-columns: minmax(220px, 0.9fr) 1.5fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-xl); }
 .skeleton {
   border-radius: 32px; background: var(--md-surface-container-low); min-height: 180px;
@@ -428,9 +414,7 @@ onUnmounted(() => {
   .grid span i { left: -34px; width: 28px; }
   .axis span { font-size: 11px; }
 }
-/* 14 date labels do not fit on a phone: on a 360px screen each column is ~17px
-   wide while "10/06" is ~27px even at 10px, and `white-space: nowrap` meant the
-   neighbours overlapped rather than wrapping. Show every other one. */
+
 @media (max-width: 560px) {
   .axis span { font-size: 10px; }
   .axis span:nth-child(even) { visibility: hidden; }

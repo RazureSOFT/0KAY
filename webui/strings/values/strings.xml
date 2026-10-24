@@ -100,6 +100,7 @@
   <string name="chat.mediaCall">Voice call</string>
   <string name="chat.mediaSelfieDrawing">Shooting a photo…</string>
   <string name="chat.callBanner">On a call — speak, I am listening</string>
+  <string name="chat.callDialing">Dialing…</string>
   <string name="chat.callEnd">Hang up</string>
   <string name="chat.wakeCapturing">Listening… say it now</string>
   <string name="chat.wakeFailed">Couldn't start voice wake: {detail}</string>

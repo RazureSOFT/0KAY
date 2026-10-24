@@ -13,16 +13,11 @@ const chat = useChatStore()
 const showStatus = ref(false)
 const isMobile = ref(false)
 
-/**
- * ChatPage regions come from BUILTIN_CHAT + target:"chat" patches.
- * life.patch declares stage (live2d+status) and chat slots here.
- */
 const stageSlots = computed(() => ui.chatRegion('stage'))
 const chatSlots = computed(() => ui.chatRegion('chat'))
 const hasStatus = computed(() => stageSlots.value.some((s) => s.component === 'status'))
 const hasChat = computed(() => chatSlots.value.some((s) => s.component === 'chat'))
 
-// EchoBot-style split: large stage left, chat right, draggable resizer
 const RATIO_KEY = '0kay.web.chat_panel_width_ratio'
 const MIN_CHAT = 320
 const MIN_STAGE = 360
@@ -35,12 +30,12 @@ function loadRatio() {
   try {
     const v = Number(localStorage.getItem(RATIO_KEY))
     if (v > 0 && v < 1) chatRatio.value = v
-  } catch { /* ignore */ }
+  } catch { }
 }
 
 function saveRatio(v: number) {
   chatRatio.value = v
-  try { localStorage.setItem(RATIO_KEY, String(v)) } catch { /* ignore */ }
+  try { localStorage.setItem(RATIO_KEY, String(v)) } catch { }
 }
 
 function clampRatio(total: number, chatPx: number) {
@@ -72,7 +67,6 @@ function onPointerUp() {
   document.body.style.userSelect = ''
 }
 
-/** Arrow keys move the divider; the chat column grows/shrinks with it. */
 function onResizerKeydown(e: KeyboardEvent) {
   if (isMobile.value) return
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
@@ -91,7 +85,6 @@ function checkMobile() {
   if (!isMobile.value) {
     showStatus.value = true
   } else if (!wasMobile) {
-    // Entering mobile: keep chat closed so the stage stays visible.
     showStatus.value = false
   }
 }
@@ -126,8 +119,7 @@ function toggleStatus() {
     :class="{ 'no-chat': !hasChat }"
     :style="isMobile ? undefined : { '--chat-w': `min(${MAX_CHAT}px, max(${MIN_CHAT}px, ${chatRatio * 100}%))` }"
   >
-    <!-- @ui-ext:chat-stage — slots from BUILTIN_CHAT + /api/ui/patches -->
-    <div v-if="stageSlots.length" class="stage-column">
+        <div v-if="stageSlots.length" class="stage-column">
       <template v-for="slot in stageSlots" :key="slot.id">
         <Live2DStage v-if="slot.component === 'live2d'" class="stage-host" />
         <StatusPanel v-else-if="slot.component === 'status'" class="status-panel" />
@@ -156,12 +148,7 @@ function toggleStatus() {
       @keydown="onResizerKeydown"
     ></div>
 
-    <!-- @ui-ext:chat-panel — conversation column from patches.
-         No `v-show` here: `display:none` cannot transition, and toggling it in
-         the same frame as `.open` made the mobile drawer pop instead of slide.
-         The closed state is now `translateX(100%) + visibility:hidden` so it
-         still animates and stays out of the tab order. -->
-    <div
+        <div
       v-if="hasChat"
       class="chat-column"
       :class="{ open: showStatus || !isMobile }"
@@ -313,8 +300,7 @@ function toggleStatus() {
     z-index: 5;
     box-shadow: var(--shadow-8);
     transform: translateX(100%);
-    /* Delayed so the slide-out completes before the panel stops being
-       hit-testable; a rendered-but-off-screen panel would stay tab-reachable. */
+    
     visibility: hidden;
     transition: transform var(--transition-normal), visibility 0s linear var(--duration-medium);
   }

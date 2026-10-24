@@ -100,6 +100,7 @@
   <string name="chat.mediaCall">语音通话</string>
   <string name="chat.mediaSelfieDrawing">正在拍照…</string>
   <string name="chat.callBanner">通话中 —— 说吧，我在听</string>
+  <string name="chat.callDialing">正在接通…</string>
   <string name="chat.callEnd">挂断</string>
   <string name="chat.wakeCapturing">在听，说吧…</string>
   <string name="chat.wakeFailed">语音唤醒启动失败：{detail}</string>

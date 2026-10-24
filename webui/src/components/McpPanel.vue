@@ -15,7 +15,6 @@ interface McpServerDraft {
   url: string
   headersText: string
   enabled: boolean
-  // builtin mail server options
   imapHost: string
   imapPort: number
   imapSsl: boolean
@@ -102,14 +101,12 @@ function toWire(draft: McpServerDraft): Record<string, unknown> {
   return out
 }
 
-/** The built-in mail server must keep id "mail": L.I.F.E calls server "mail". */
 function onTransportChange(draft: McpServerDraft) {
   if (draft.transport === 'builtin') draft.id = 'mail'
 }
 
 function addServer() {
   const draft = blank()
-  // Only one built-in mail server makes sense; prefill id when it is absent.
   if (servers.value.some((s) => s.transport === 'builtin')) draft.transport = 'stdio'
   servers.value.push(draft)
 }
@@ -328,7 +325,6 @@ onMounted(load)
   color: var(--md-on-error-container);
 }
 
-/* Built-in mail fields */
 .builtin-note { margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--md-on-surface-variant); }
 .builtin-note code { font-family: ui-monospace, monospace; }
 .mail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
@@ -354,11 +350,6 @@ onMounted(load)
 .btn.primary { background: var(--md-primary); color: var(--md-on-primary); }
 .btn:disabled { opacity: .6; cursor: not-allowed; }
 
-/* Restated under `#app .mcp-panel` so they survive the platform layer —
- * `#app button { border-radius: 18px }` and
- * `#app :is(input, select, textarea) { border-radius: 14px }` are (1,0,1) and
- * beat this file's scoped rules (0,2,0), which silently squared off every pill
- * button and every 12px field corner in this panel. */
 #app .mcp-panel :is(.btn, .mcp-remove) { border-radius: 999px; }
 #app .mcp-panel .mcp-field :is(input, select, textarea) { border-radius: 12px; }
 

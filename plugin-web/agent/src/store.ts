@@ -37,17 +37,9 @@ export interface TaskRow {
   session_id?: string
   kind?: string
   parent_id?: string
-  /**
-   * Files uploaded with this turn. Core stores them with the task and returns
-   * them here, so a transcript can show what a message came with instead of
-   * just its text.
-   */
   attachments?: Array<{ name: string; url: string; mime?: string; size?: number }>
 }
 
-// Plugin-local store (host pinia stays private to the WebUI). Singleton per
-// bundle; reactive() mirrors pinia's auto-unwrapped store property access
-// (page templates read store.tasks.filter(...) directly).
 function createStore() {
   const s = reactive({
     agents: [] as AgentInfo[],
@@ -68,14 +60,8 @@ function createStore() {
   let streaming = false
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   let reconnectDelay = 1000
-  // Turns are loaded per session on demand: the initial snapshot only carries
-  // sessions, in-flight work and the newest rows. turnsMore[sessionId] holds the
-  // cursor for the next older page ("" once the whole history is loaded).
   const turnsLoaded = new Set<string>()
   const turnsMore = reactive<Record<string, string>>({})
-  // Per-session in-flight flag so the page can show a loading skeleton instead
-  // of flashing the welcome screen while a freshly selected session's turns
-  // are still being fetched.
   const turnsPending = reactive<Record<string, boolean>>({})
 
   function recompute() {
@@ -108,8 +94,6 @@ function createStore() {
     streaming = false
     taskEvents = new EventSource(`/api/tasks/events?cursor=${encodeURIComponent(taskCursor)}`)
     taskEvents.onopen = () => { streaming = true; reconnectDelay = 1000 }
-    // The SSE stream can drop (proxy idle timeout, Core restart). Reconnect
-    // with bounded backoff instead of silently degrading to 2s polling forever.
     const scheduleReconnect = () => {
       streaming = false
       taskEvents?.close()
@@ -119,7 +103,7 @@ function createStore() {
       reconnectDelay = Math.min(reconnectDelay * 2, 30000)
     }
     taskEvents.onerror = scheduleReconnect
-    taskEvents.addEventListener('tasks', (event) => { try { applyTasks(JSON.parse((event as MessageEvent).data)) } catch { /* keep the stream open */ } })
+    taskEvents.addEventListener('tasks', (event) => { try { applyTasks(JSON.parse((event as MessageEvent).data)) } catch { } })
   }
 
   function fetchAgents(): Promise<void> {
@@ -196,8 +180,6 @@ function createStore() {
     return { more: !!data.more, next: data.next || '' }
   }
 
-  // ensureSessionTurns loads a session's newest page once. Older pages are
-  // fetched explicitly with olderSessionTurns so the first render stays small.
   async function ensureSessionTurns(session_id: string): Promise<void> {
     if (!session_id || turnsLoaded.has(session_id)) return
     turnsLoaded.add(session_id)
@@ -218,7 +200,7 @@ function createStore() {
     try {
       const page = await fetchSessionTurns(session_id, before)
       turnsMore[session_id] = page.more ? page.next : ''
-    } catch { /* keep the cursor so the user can retry */ }
+    } catch { }
   }
 
   function hasOlderTurns(session_id?: string): boolean {
@@ -231,7 +213,7 @@ function createStore() {
     await fetchAgents()
     if (!response.ok) {
       let message = body
-      try { message = JSON.parse(body).message || body } catch { /* server returned plain text */ }
+      try { message = JSON.parse(body).message || body } catch { }
       throw new Error(message)
     }
   }

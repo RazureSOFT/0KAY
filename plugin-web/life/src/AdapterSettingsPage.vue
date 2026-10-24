@@ -1,15 +1,4 @@
 <script setup lang="ts">
-/**
- * L.I.F.E 消息平台设置页 — the standalone 「消息平台」 settings tab.
- *
- * This is the *server* side of every chat platform the character is reachable
- * on. L.I.F.E runs the reverse-WebSocket listener; a client such as NapCat
- * dials in. Several bots can be registered at once, each with its own host,
- * port and token, so one flaky bridge never takes the others down with it.
- *
- * Layout: 总开关 → 适配器列表 (CRUD) → 配置文件路由 → 群聊观察与主动行为.
- * The clockwork lives in the LIFE plugin; this page only reads and writes it.
- */
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { AppSelect, useConfirm, i18n } from '@0kay/host'
 import { FLASH_MS, friendlyError, lifeAct, lifeKitCss } from './kit'
@@ -26,11 +15,6 @@ function flash(message: string) {
   setTimeout(() => { if (notice.value === message) notice.value = '' }, FLASH_MS)
 }
 
-/* Every adapter is self-contained: there is no shared master switch or default
-   host/port/limits on this page — each row carries its own settings. The
-   character-level proactive limits live in 「L.I.F.E 设置」. */
-
-/* ── 适配器实例 ─────────────────────────────────────────────────────────────── */
 interface Adapter {
   id: string; name: string; platform: string; enabled: boolean
   direction: string; ws_path: string
@@ -48,17 +32,13 @@ const adapters = ref<Adapter[]>([])
 const runtime = ref<RuntimeState[]>([])
 const platforms = ref<Array<{ id: string; implemented: boolean }>>([])
 const busy = ref(false)
-/** null = editor closed, '' = adding a new bot, otherwise the edited id. */
 const editing = ref<string | null>(null)
 const form = ref<any>(emptyForm())
-/** Editor card element, so "Add adapter" can scroll it into view. */
 const editorEl = ref<HTMLElement | null>(null)
 
 function emptyForm() {
   return {
     id: '', name: '', platform: 'aiocqhttp', enabled: true,
-    // reverse = LIFE listens (client dials in); connect = LIFE dials out to
-    // the platform's own WS server at ws://host:port/ws_path.
     direction: 'reverse', ws_path: '/ws',
     ws_host: '127.0.0.1', ws_port: 6199, ws_token: '',
     http_url: '', access_token: '',
@@ -70,7 +50,6 @@ function runtimeOf(id: string): RuntimeState {
   return runtime.value.find((r) => r.id === id) || { id }
 }
 
-/** Human-readable listener state for one row. */
 function stateOf(a: Adapter): { label: string; tone: string } {
   const r = runtimeOf(a.id)
   if (!a.enabled) return { label: t('life.adapters.stateDisabled'), tone: 'muted' }
@@ -98,15 +77,12 @@ async function load() {
     platforms.value = facts?.platforms || []
     routes.value = (routesResponse?.routes || []).map(keyRoute)
     defaultConfig.value = routesResponse?.default_config_id || 'default'
-    // A new bot starts from built-in defaults; there is no shared default
-    // host/port to seed from any more.
     form.value = { ...emptyForm(), ws_port: nextFreePort() }
   } catch (e: any) {
     error.value = friendlyError(e)
   } finally { loading.value = false }
 }
 
-/** First unused port at or after the built-in default. */
 function nextFreePort(): number {
   const used = new Set(adapters.value.map((a) => Number(a.ws_port) || 0))
   let port = 6199
@@ -120,7 +96,6 @@ async function startAdd() {
     ...emptyForm(),
     ws_port: nextFreePort(),
   }
-  // The editor sits below the list; without this the click looks like a no-op.
   await nextTick()
   editorEl.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
@@ -141,13 +116,10 @@ async function saveAdapter() {
   busy.value = true
   try {
     const payload: any = { ...form.value }
-    // Redacted credential fields are blank on edit; omission preserves them.
     if (payload.id && !payload.ws_token) delete payload.ws_token
     if (payload.id && !payload.access_token) delete payload.access_token
     payload.trigger_keywords = String(payload.trigger_keywords || '')
       .split(',').map((k: string) => k.trim()).filter(Boolean)
-    // A blank port means "assign the next free one" — send the key omission,
-    // not a 0, so the plugin's own allocator decides.
     const port = Number(payload.ws_port)
     if (payload.ws_port === '' || payload.ws_port === null || payload.ws_port === undefined) delete payload.ws_port
     else if (port > 0) payload.ws_port = port
@@ -155,7 +127,6 @@ async function saveAdapter() {
     if (!payload.id) delete payload.id
     const result = await lifeAct('adapter_upsert', { instance: payload })
     if (result && result.ok === false) throw Error(result.error || t('life.adapters.saveFailed'))
-    // A saved bot must actually take effect; say so if the listener did not bind.
     const sync = result?.sync
     if (sync?.failed?.includes(result?.instance?.id) && payload.enabled) {
       flash(t('life.adapters.savedUnlistened'))
@@ -206,17 +177,12 @@ async function resync() {
   } catch (e: any) { error.value = friendlyError(e) } finally { busy.value = false }
 }
 
-/* ── 配置文件路由 ───────────────────────────────────────────────────────────
-   第一条命中的规则生效，全部不命中时用默认配置文件。`*` 通配、`/正则/`、
-   后缀 `*` 都支持；会话 ID 可以在对话里发 /sid 获取。 */
 interface Route { pattern: string; config_id: string; _key?: string }
 const routes = ref<Route[]>([])
 const defaultConfig = ref('default')
 const routeDraft = ref<Route>({ pattern: '*', config_id: 'default' })
 const routeBusy = ref(false)
 
-// Stable per-rule identity: index keys would make the TransitionGroup FLIP
-// animate the wrong rows on ↑↓ reorder. The key never leaves the plugin.
 let routeKeySeq = 0
 function keyRoute(route: Route): Route {
   return { ...route, _key: `rule-${++routeKeySeq}` }
@@ -250,9 +216,6 @@ async function saveRoutes() {
   } catch (e: any) { error.value = friendlyError(e) } finally { routeBusy.value = false }
 }
 
-/* ── 样式 ───────────────────────────────────────────────────────────────────
-   ESM plugin entries have no HTML host, so install the shared design tokens at
-   import time (guarded against a double inject). */
 const STYLE_ID = 'life-plugin-adapters-style'
 if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
   const el = document.createElement('style')
@@ -329,8 +292,7 @@ onMounted(load)
     <p v-if="loading" class="card empty">{{ t('life.adapters.loadingConfig') }}</p>
 
     <template v-if="!loading">
-      <!-- 适配器列表 -->
-      <article class="card">
+            <article class="card">
         <h3>{{ t('life.adapters.adaptersHeading') }} <span class="count-pill">{{ adapters.length }}</span>
           <button class="btn filled sm" style="margin-left:auto" @click="startAdd">{{ t('life.adapters.addAdapter') }}</button>
         </h3>
@@ -370,8 +332,7 @@ onMounted(load)
         </ol>
       </article>
 
-      <!-- 编辑表单 -->
-      <Transition name="lsp-fade">
+            <Transition name="lsp-fade">
         <article v-if="editing !== null" ref="editorEl" class="card">
         <h3>{{ form.id ? t('life.adapters.editAdapterTitle') : t('life.adapters.addAdapterTitle') }}</h3>
         <div class="settings-grid">
@@ -428,14 +389,12 @@ onMounted(load)
         </article>
       </Transition>
 
-      <!-- 配置文件路由 -->
-      <article class="card">
+            <article class="card">
         <h3>{{ t('life.adapters.routesTitle') }}</h3>
         <p class="hint">
           {{ t('life.adapters.routesHintBefore') }}<b>{{ t('life.adapters.routesHintOrder') }}</b>{{ t('life.adapters.routesHintAfterOrder') }}<code>*</code>{{ t('life.adapters.routesHintMatchAll') }}<code>{{ t('life.adapters.routeRegexExample') }}</code>{{ t('life.adapters.routesHintAnd') }}<code>{{ t('life.adapters.routePrefixExample') }}</code>{{ t('life.adapters.routesHintTail') }}<code>/sid</code>{{ t('life.adapters.routesHintSid') }}
         </p>
-        <!-- TransitionGroup FLIP: stable per-rule keys, so ↑↓ glides rows. -->
-        <TransitionGroup tag="ol" name="rule-flip" class="feed">
+                <TransitionGroup tag="ol" name="rule-flip" class="feed">
           <li v-for="(r, i) in routes" :key="r._key" class="rule-row">
             <span class="idx">{{ i + 1 }}</span>
             <code>{{ r.pattern }}</code>

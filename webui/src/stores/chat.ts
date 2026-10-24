@@ -23,23 +23,16 @@ export interface Message {
   }
   mentalEnergy?: number
   thinkSummary?: string
-  /** Media the character chose for this turn (LIFE's [[voice]]/[[selfie:…]]/[[call]]). */
   media?: { voice?: boolean; selfie?: string; call?: boolean }
-  /** Data URL of the generated selfie, filled in after /api/image answers. */
   selfieUrl?: string
 }
 
 export const useChatStore = defineStore('chat', () => {
   const HISTORY_KEY = '0kay.life.chat.webui.default.v1'
   const SESSION_KEY = '0kay.life.session.v1'
-  // Persist the session id so LIFE's proactive messages keep targeting this
-  // conversation across reloads and tab closes (sessionStorage did not).
   const sessionId = ref(localStorage.getItem(SESSION_KEY) || `webui:${uid()}`)
   localStorage.setItem(SESSION_KEY, sessionId.value)
   const messages = ref<Message[]>([])
-  // Live2D stage markers emitted by the model (usually in its THINK layer),
-  // e.g. [[motion:Idle:0]] / [[motion:3]] / [[expression:exp_03]]. We dispatch
-  // them to the stage and strip them from the visible reply.
   const seenL2DMarkers = new Map<string, Set<string>>()
   const L2D_MARKER_RE = /\[\[\s*(motion|expression|emote|action)\s*:\s*([^\]]*?)\s*\]\]/gi
   const L2D_MARKER_STRIP_RE = /\[\[\s*(?:motion|expression|emote|action)\s*:[^\]]*?\]\]/gi
@@ -76,8 +69,6 @@ export const useChatStore = defineStore('chat', () => {
     }
     seenL2DMarkers.set(message.id, seen)
   }
-  // Drop marker bookkeeping for messages that no longer exist, so the map does
-  // not grow for the whole session as compaction/clearing removes bubbles.
   function pruneL2DMarkers() {
     if (!seenL2DMarkers.size) return
     const live = new Set(messages.value.map((message) => message.id))
@@ -102,14 +93,9 @@ export const useChatStore = defineStore('chat', () => {
   let ws: WebSocket | null = null
   let messageIdCounter = 0
   let activeSseController: AbortController | null = null
-  // Bumped whenever the conversation is reset. readSSE swallows AbortError and
-  // returns normally, so an in-flight send has to compare this epoch after the
-  // stream ends to know its bubble was cleared and must not be recreated.
   let streamEpoch = 0
   let notificationTimer: ReturnType<typeof setInterval> | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
-  // Set when we close the socket ourselves (dispose) so onclose does not
-  // reschedule a reconnect loop against a server we no longer want to reach.
   let intentionalClose = false
 
   const lastMessage = computed(() =>
@@ -126,7 +112,7 @@ export const useChatStore = defineStore('chat', () => {
         summary: contextSummary.value,
         messages: messages.value.map((message) => ({ ...message, timestamp: message.timestamp.toISOString() })),
       }))
-    } catch { /* quota/browser privacy mode */ }
+    } catch { }
   }
 
   function restoreHistory() {
@@ -137,7 +123,7 @@ export const useChatStore = defineStore('chat', () => {
         messages.value = stored.messages.map((message: any) => ({ ...message, timestamp: new Date(message.timestamp || Date.now()) }))
         messageIdCounter = messages.value.length
       }
-    } catch { /* ignore corrupt local session */ }
+    } catch { }
   }
 
   function connect() {
@@ -155,8 +141,6 @@ export const useChatStore = defineStore('chat', () => {
           const response = await fetch('/api/life/notifications')
           if (!response.ok) return
           const body = await response.json()
-          // LIFE may have targeted an earlier webui session id; keep webui-directed
-          // messages in this conversation instead of stranding them.
           const incoming = (body.notifications || []).filter((notification: any) => {
             const target = String(notification.session_id || '')
             return !target || target.startsWith('webui:') || target === sessionId.value
@@ -166,8 +150,6 @@ export const useChatStore = defineStore('chat', () => {
           let fresh = 0
           for (const notification of incoming) {
             if (messages.value.some((message) => message.id === `notification_${notification.id}`)) continue
-            // Surface proactive/task messages as the companion speaking face-to-face:
-            // same bubble treatment (emotion + energy) as a live reply.
             messages.value.push({
               id: `notification_${notification.id}`,
               role: 'assistant',
@@ -181,7 +163,7 @@ export const useChatStore = defineStore('chat', () => {
           if (!chatVisible.value && fresh) unread.value += fresh
           persistHistory()
           await fetch('/api/life/notifications', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sessionId.value, ids: incoming.map((item: any) => item.id) }) })
-        } catch { /* LIFE may be restarting */ }
+        } catch { }
       }, 4000)
     }
 
@@ -208,7 +190,6 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  /** Stop background timers and sockets when the store scope is disposed. */
   function dispose() {
     if (notificationTimer) { clearInterval(notificationTimer); notificationTimer = null }
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
@@ -315,8 +296,6 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function handleTaskStarted(data: any) {
-    // Task dispatch is an internal event, not the companion speaking. Keep it
-    // out of the face-to-face conversation so only real speech appears there.
     currentTaskId.value = data.task_id
   }
 
@@ -326,17 +305,12 @@ export const useChatStore = defineStore('chat', () => {
       const target = findOrCreateAssistant(data.request_id)
       if (target) {
         const line = `⚠ ${data.error}`
-        // Keep the failure visible even when the bubble already streams
-        // content: append a warning line instead of dropping it.
         target.content = target.content ? `${target.content}\n${line}` : line
       }
     }
     isTyping.value = false
   }
 
-  /**
-   * Upload an image to Core and return its public URL.
-   */
   async function uploadImage(file: File): Promise<string> {
     const form = new FormData()
     form.append('file', file)
@@ -347,10 +321,6 @@ export const useChatStore = defineStore('chat', () => {
     return data.url as string
   }
 
-  /**
-   * Upload an arbitrary attachment (document, archive, …) to Core.
-   * Files are referenced from the conversation; LIFE fetches them by URL.
-   */
   async function uploadFile(file: File): Promise<{ name: string; url: string; mime?: string; size?: number }> {
     const form = new FormData()
     form.append('file', file)
@@ -361,14 +331,7 @@ export const useChatStore = defineStore('chat', () => {
     return { name: data.name || file.name, url: data.url as string, mime: data.mime, size: data.size }
   }
 
-  /**
-   * Send a chat message.
-   * Primary: HTTP SSE (POST /api/chat?stream=true) for incremental token streaming.
-   * Fallback: WebSocket when HTTP/SSE fails.
-   */
   async function sendMessage(content: string, images: string[] = [], files: Array<{ name: string; url: string; mime?: string; size?: number }> = []) {
-    // A reply is already streaming: refuse the new send rather than silently
-    // aborting the in-flight one (which used to happen in sendViaSSE).
     if (isTyping.value) return
     messages.value.push({
       id: `msg_${++messageIdCounter}`,
@@ -383,7 +346,6 @@ export const useChatStore = defineStore('chat', () => {
     isTyping.value = true
     const requestId = `req_${Date.now()}`
 
-    // Ensure an assistant bubble exists for this request before first chunk
     messages.value.push({
       id: `msg_${++messageIdCounter}`,
       role: 'assistant',
@@ -392,7 +354,6 @@ export const useChatStore = defineStore('chat', () => {
       requestId,
     })
 
-    // History: all messages except the empty assistant bubble we just created
     const history = messages.value
       .filter((m) => !(m.role === 'assistant' && m.requestId === requestId && !m.content))
       .slice(-20)
@@ -415,7 +376,6 @@ export const useChatStore = defineStore('chat', () => {
     } catch (e) {
       console.warn('SSE chat failed, falling back to WebSocket:', e)
       if (ws && ws.readyState === WebSocket.OPEN) {
-        // Remove the empty assistant bubble; WS path will create its own
         const idx = messages.value.findIndex((m) => m.requestId === requestId && !m.content)
         if (idx >= 0) messages.value.splice(idx, 1)
         appendChunk(requestId, i18n.global.t('chat.lifeUnavailable'))
@@ -447,8 +407,6 @@ export const useChatStore = defineStore('chat', () => {
         prompt,
         stream: true,
         session_id: sessionId.value,
-        // Conversation history stays in LIFE memory; persona is an explicit
-        // typed field so the base model cannot overwrite the selected identity.
         user_id: 'webui',
         persona,
         attachments: attachments.map((file) => ({ name: file.name, url: file.url, mime: file.mime, size: file.size })),
@@ -461,7 +419,6 @@ export const useChatStore = defineStore('chat', () => {
     }
     const contentType = res.headers.get('content-type') || ''
 
-    // Server may fall back to JSON if SSE unsupported
     if (contentType.includes('application/json')) {
       const body = await res.json()
       appendChunk(requestId, body.response || '')
@@ -476,13 +433,9 @@ export const useChatStore = defineStore('chat', () => {
 
     let sawDone = false
     try {
-      // Shared frame parser: multi-line `data:` blocks are joined per the SSE
-      // spec instead of being truncated to their first line.
       await readSSE(
         res,
         ({ event: eventName, data }) => {
-          // The chat was cleared while this stream was open; drop late frames
-          // instead of resurrecting a bubble the user already dismissed.
           if (epoch !== streamEpoch) return
           let payload: any = null
           try {
@@ -514,17 +467,10 @@ export const useChatStore = defineStore('chat', () => {
     }
 
     if (epoch !== streamEpoch) {
-      // clearMessages() aborted this stream and emptied the conversation.
-      // readSSE returns normally on abort, so without this guard the
-      // "ended without done" branch below would recreate an assistant bubble
-      // (with the interrupted marker) that survives a reload.
       return
     }
 
     if (!sawDone) {
-      // Stream ended without a done/error frame (network drop, proxy timeout):
-      // the reply was cut off. Mark the bubble visibly so the truncated text
-      // does not silently persist to history as if it were complete.
       const target = findOrCreateAssistant(requestId)
       const marker = i18n.global.t('chat.interrupted')
       if (target && !target.content.endsWith(marker)) {
@@ -541,16 +487,9 @@ export const useChatStore = defineStore('chat', () => {
 
   function setVoiceEnabled(value: boolean) {
     voiceEnabled.value = value
-    try { localStorage.setItem('0kay.voice', value ? '1' : '0') } catch { /* ignore */ }
+    try { localStorage.setItem('0kay.voice', value ? '1' : '0') } catch { }
   }
 
-  /**
-   * Draw the selfie the character asked for.
-   *
-   * Fire-and-forget: the bubble shows a placeholder until the image lands, and a
-   * missing backend just leaves it out rather than failing the turn — a persona
-   * that offered a photo and got an error should still have said its line.
-   */
   async function generateSelfie(message: Message) {
     const prompt = message.media?.selfie
     if (!prompt || message.selfieUrl) return
@@ -564,15 +503,12 @@ export const useChatStore = defineStore('chat', () => {
       const blob = await res.blob()
       message.selfieUrl = URL.createObjectURL(blob)
       persistHistory()
-    } catch { /* no image backend: the text reply stands on its own */ }
+    } catch { }
   }
 
-  /** True while a [[call]] the character started is open. */
   const callMode = ref(false)
   function endCall() { callMode.value = false }
 
-  // Speak the finished assistant reply through Core's /api/tts and hand the audio
-  // to the Live2D stage (live2d-speak) for lip-sync. Best effort.
   async function speakMessage(requestId: string) {
     if (!voiceEnabled.value) return
     const message = messages.value.find((m) => m.role === 'assistant' && m.requestId === requestId)
@@ -599,7 +535,6 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  /** Clear the unread badge (called when the conversation becomes visible). */
   function markRead() { unread.value = 0 }
 
   function setChatVisible(visible: boolean) {
@@ -609,8 +544,6 @@ export const useChatStore = defineStore('chat', () => {
 
   function clearMessages() {
     abortActiveSse()
-    // Bump the epoch so the aborted stream's continuation (which readSSE lets
-    // return normally) cannot recreate a bubble after the clear.
     streamEpoch++
     messages.value = []
     seenL2DMarkers.clear()
@@ -618,7 +551,7 @@ export const useChatStore = defineStore('chat', () => {
     contextSummary.value = ''
     sessionId.value = `webui:${uid()}`
     localStorage.setItem(SESSION_KEY, sessionId.value)
-    try { localStorage.removeItem(HISTORY_KEY) } catch { /* ignore */ }
+    try { localStorage.removeItem(HISTORY_KEY) } catch { }
   }
 
   async function compactContext() {
@@ -633,7 +566,6 @@ export const useChatStore = defineStore('chat', () => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const body = await response.json()
       contextSummary.value = body.summary || ''
-      // Keep a short visible tail after compaction while the summary holds continuity.
       messages.value = messages.value.slice(-6)
       pruneL2DMarkers()
       persistHistory()

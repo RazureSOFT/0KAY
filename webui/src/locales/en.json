@@ -110,6 +110,7 @@
     "mediaCall": "Voice call",
     "mediaSelfieDrawing": "Shooting a photo…",
     "callBanner": "On a call — speak, I am listening",
+    "callDialing": "Dialing…",
     "callEnd": "Hang up",
     "wakeCapturing": "Listening… say it now",
     "wakeFailed": "Couldn't start voice wake: {detail}",

@@ -1,4 +1,4 @@
-import { defineComponent as re, ref as f, computed as S, onMounted as ce, onBeforeUnmount as ie, openBlock as r, createElementBlock as c, createElementVNode as n, unref as i, Fragment as y, renderList as k, normalizeClass as T, createTextVNode as W, toDisplayString as o, createCommentVNode as N, withDirectives as X, vModelText as ue, vModelCheckbox as pe, createVNode as de, Transition as ve, withCtx as fe, normalizeStyle as _e } from "vue";
+import { defineComponent as re, ref as f, computed as S, onMounted as ie, onBeforeUnmount as ce, openBlock as r, createElementBlock as i, createElementVNode as n, unref as c, Fragment as y, renderList as k, normalizeClass as T, createTextVNode as W, toDisplayString as o, createCommentVNode as N, withDirectives as X, vModelText as ue, vModelCheckbox as pe, createVNode as de, Transition as ve, withCtx as fe, normalizeStyle as _e } from "vue";
 import { useI18n as me } from "vue-i18n";
 import { useConfirm as he, apiGet as K, streamSSE as ge, apiPut as be, apiPost as ye } from "@0kay/host";
 const ke = { class: "console" }, we = { class: "console-bar" }, Ce = ["aria-label"], Se = ["aria-selected", "onClick"], xe = {
@@ -170,18 +170,18 @@ const ke = { class: "console" }, we = { class: "console-bar" }, Ce = ["aria-labe
     function J(e) {
       m.value = e, h.value = "traces";
     }
-    return ce(async () => {
+    return ie(async () => {
       await U(), await V(), I();
-    }), ie(() => {
+    }), ce(() => {
       w?.abort(), w = null;
-    }), (e, s) => (r(), c("section", ke, [
+    }), (e, s) => (r(), i("section", ke, [
       n("header", we, [
         n("div", {
           class: "tabs",
           role: "tablist",
-          "aria-label": i(a)("console.tabsLabel")
+          "aria-label": c(a)("console.tabsLabel")
         }, [
-          (r(), c(y, null, k(["logs", "traces"], (t) => n("button", {
+          (r(), i(y, null, k(["logs", "traces"], (t) => n("button", {
             key: t,
             role: "tab",
             type: "button",
@@ -189,33 +189,33 @@ const ke = { class: "console" }, we = { class: "console-bar" }, Ce = ["aria-labe
             "aria-selected": h.value === t,
             onClick: (l) => h.value = t
           }, [
-            W(o(i(a)(`console.tab.${t}`)) + " ", 1),
-            t === "logs" && z.value ? (r(), c("span", xe, o(z.value), 1)) : N("", !0)
+            W(o(c(a)(`console.tab.${t}`)) + " ", 1),
+            t === "logs" && z.value ? (r(), i("span", xe, o(z.value), 1)) : N("", !0)
           ], 10, Se)), 64))
         ], 8, Ce),
         n("div", Le, [
           n("label", $e, [
-            n("span", Pe, o(i(a)("console.level")), 1),
+            n("span", Pe, o(c(a)("console.level")), 1),
             n("select", {
               class: "input",
               value: _.value,
-              "aria-label": i(a)("console.level"),
+              "aria-label": c(a)("console.level"),
               onChange: s[0] || (s[0] = (t) => oe(t.target.value))
             }, [
-              (r(), c(y, null, k(B, (t) => n("option", {
+              (r(), i(y, null, k(B, (t) => n("option", {
                 key: t,
                 value: t
               }, o(t), 9, Te)), 64))
             ], 40, Oe)
           ]),
           n("label", Ne, [
-            n("span", Ee, o(i(a)("console.search")), 1),
+            n("span", Ee, o(c(a)("console.search")), 1),
             X(n("input", {
               "onUpdate:modelValue": s[1] || (s[1] = (t) => m.value = t),
               class: "input",
               type: "search",
-              placeholder: i(a)("console.searchPlaceholder"),
-              "aria-label": i(a)("console.search")
+              placeholder: c(a)("console.searchPlaceholder"),
+              "aria-label": c(a)("console.search")
             }, null, 8, Me), [
               [ue, m.value]
             ])
@@ -227,19 +227,19 @@ const ke = { class: "console" }, we = { class: "console-bar" }, Ce = ["aria-labe
             }, null, 512), [
               [pe, x.value]
             ]),
-            n("span", null, o(i(a)("console.follow")), 1)
+            n("span", null, o(c(a)("console.follow")), 1)
           ]),
           n("button", {
             type: "button",
             class: "btn",
             disabled: M.value,
             onClick: s[3] || (s[3] = (t) => U())
-          }, o(i(a)("console.refresh")), 9, Fe),
+          }, o(c(a)("console.refresh")), 9, Fe),
           n("button", {
             type: "button",
             class: "btn",
             onClick: s[4] || (s[4] = (t) => ae())
-          }, o(i(a)("console.clear")), 1),
+          }, o(c(a)("console.clear")), 1),
           n("span", {
             class: T(["status", { live: $.value, dead: !!v.value }])
           }, [
@@ -247,25 +247,25 @@ const ke = { class: "console" }, we = { class: "console-bar" }, Ce = ["aria-labe
               class: "dot",
               "aria-hidden": "true"
             }, null, -1)),
-            W(" " + o(v.value ? i(a)("console.disconnected") : $.value ? i(a)("console.live") : i(a)("console.connecting")), 1)
+            W(" " + o(v.value ? c(a)("console.disconnected") : $.value ? c(a)("console.live") : c(a)("console.connecting")), 1)
           ], 2)
         ])
       ]),
-      v.value ? (r(), c("p", Ie, [
-        n("span", null, o(i(a)("console.streamError")), 1),
+      v.value ? (r(), i("p", Ie, [
+        n("span", null, o(c(a)("console.streamError")), 1),
         n("code", null, o(v.value), 1),
         n("button", {
           type: "button",
           class: "btn",
           onClick: le
-        }, o(i(a)("console.reconnect")), 1)
+        }, o(c(a)("console.reconnect")), 1)
       ])) : N("", !0),
       de(ve, {
         name: "pane",
         mode: "out-in"
       }, {
         default: fe(() => [
-          h.value === "logs" ? (r(), c("div", {
+          h.value === "logs" ? (r(), i("div", {
             key: "logs",
             ref_key: "pane",
             ref: P,
@@ -273,12 +273,12 @@ const ke = { class: "console" }, we = { class: "console-bar" }, Ce = ["aria-labe
             role: "tabpanel",
             onScrollPassive: G
           }, [
-            q.value.length ? (r(), c("ol", {
+            q.value.length ? (r(), i("ol", {
               key: 1,
               class: "rows",
-              "aria-label": i(a)("console.tab.logs")
+              "aria-label": c(a)("console.tab.logs")
             }, [
-              (r(!0), c(y, null, k(q.value, (t, l) => (r(), c("li", {
+              (r(!0), i(y, null, k(q.value, (t, l) => (r(), i("li", {
                 key: `${t.time}-${l}`,
                 class: T(["row", D(t.level)])
               }, [
@@ -286,23 +286,23 @@ const ke = { class: "console" }, we = { class: "console-bar" }, Ce = ["aria-labe
                 n("span", De, o(t.level), 1),
                 n("span", Ae, o(j(t)), 1),
                 n("span", He, o(t.message), 1),
-                (r(!0), c(y, null, k(H(t), ([p, u]) => (r(), c("span", {
+                (r(!0), i(y, null, k(H(t), ([p, u]) => (r(), i("span", {
                   key: p,
                   class: "kv"
                 }, [
                   n("span", je, o(p) + "=", 1),
                   n("span", qe, o(String(u)), 1)
                 ]))), 128)),
-                t.trace_id ? (r(), c("button", {
+                t.trace_id ? (r(), i("button", {
                   key: 0,
                   type: "button",
                   class: "link trace",
-                  title: i(a)("console.showTrace"),
+                  title: c(a)("console.showTrace"),
                   onClick: (p) => J(t.trace_id)
                 }, o(t.trace_id.slice(0, 8)), 9, ze)) : N("", !0)
               ], 2))), 128))
-            ], 8, Ve)) : (r(), c("p", Ue, o(i(a)("console.noLogs")), 1))
-          ], 544)) : (r(), c("div", {
+            ], 8, Ve)) : (r(), i("p", Ue, o(c(a)("console.noLogs")), 1))
+          ], 544)) : (r(), i("div", {
             key: 1,
             ref_key: "pane",
             ref: P,
@@ -310,12 +310,12 @@ const ke = { class: "console" }, we = { class: "console-bar" }, Ce = ["aria-labe
             role: "tabpanel",
             onScrollPassive: G
           }, [
-            F.value.length ? (r(), c("ol", {
+            F.value.length ? (r(), i("ol", {
               key: 1,
               class: "rows",
-              "aria-label": i(a)("console.tab.traces")
+              "aria-label": c(a)("console.tab.traces")
             }, [
-              (r(!0), c(y, null, k(ee.value, (t) => (r(), c("li", {
+              (r(!0), i(y, null, k(ee.value, (t) => (r(), i("li", {
                 key: t.span.span_id,
                 class: T(["row span", [D(t.span.status), t.span.kind]])
               }, [
@@ -327,16 +327,16 @@ const ke = { class: "console" }, we = { class: "console-bar" }, Ce = ["aria-labe
                 n("span", We, o(t.span.kind), 1),
                 n("span", Xe, o(t.span.name), 1),
                 n("span", Ke, [
-                  (r(!0), c(y, null, k(Object.entries(t.span.attrs || {}), ([l, p]) => (r(), c("span", {
+                  (r(!0), i(y, null, k(Object.entries(t.span.attrs || {}), ([l, p]) => (r(), i("span", {
                     key: l,
                     class: "kv"
                   }, [
                     n("span", Qe, o(l) + "=", 1),
                     n("span", Ye, o(p), 1)
                   ]))), 128)),
-                  t.span.error ? (r(), c("span", Ze, o(t.span.error), 1)) : N("", !0)
+                  t.span.error ? (r(), i("span", Ze, o(t.span.error), 1)) : N("", !0)
                 ]),
-                (r(!0), c(y, null, k(t.span.events || [], (l, p) => (r(), c("span", {
+                (r(!0), i(y, null, k(t.span.events || [], (l, p) => (r(), i("span", {
                   key: p,
                   class: "event",
                   title: JSON.stringify(l.attrs || {})
@@ -345,11 +345,11 @@ const ke = { class: "console" }, we = { class: "console-bar" }, Ce = ["aria-labe
                 n("button", {
                   type: "button",
                   class: "link trace",
-                  title: i(a)("console.totalTrace"),
+                  title: c(a)("console.totalTrace"),
                   onClick: (l) => J(t.span.trace_id)
                 }, o(A(te.value.get(t.span.trace_id) || 0)), 9, st)
               ], 2))), 128))
-            ], 8, Je)) : (r(), c("p", Ge, o(i(a)("console.noSpans")), 1))
+            ], 8, Je)) : (r(), i("p", Ge, o(c(a)("console.noSpans")), 1))
           ], 544))
         ]),
         _: 1
@@ -361,9 +361,9 @@ const ke = { class: "console" }, we = { class: "console-bar" }, Ce = ["aria-labe
   for (const [h, d] of a)
     L[h] = d;
   return L;
-}, ct = /* @__PURE__ */ lt(nt, [["__scopeId", "data-v-940c88b5"]]);
+}, it = /* @__PURE__ */ lt(nt, [["__scopeId", "data-v-191916ef"]]);
 export {
-  ct as default
+  it as default
 };
 
-;(()=>{if(typeof document!=='undefined'&&!document.getElementById('webui-plugin-style')){const s=document.createElement('style');s.id='webui-plugin-style';s.textContent=".console[data-v-940c88b5]{display:flex;flex-direction:column;min-height:0;height:100%;background:var(--md-surface);color:var(--md-on-surface)}.pane-enter-active[data-v-940c88b5]{transition:opacity var(--duration-medium) var(--ease-emphasized-decel)}.pane-leave-active[data-v-940c88b5]{transition:opacity var(--duration-instant) var(--ease-emphasized-accel)}.pane-enter-from[data-v-940c88b5],.pane-leave-to[data-v-940c88b5]{opacity:0}@media(prefers-reduced-motion:reduce){.pane-enter-active[data-v-940c88b5],.pane-leave-active[data-v-940c88b5]{transition-duration:1ms}}.console-bar[data-v-940c88b5]{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-md);padding:var(--space-md) var(--space-lg);border-bottom:1px solid var(--md-outline-variant);background:var(--md-surface-container-low)}.tabs[data-v-940c88b5]{display:flex;gap:var(--space-xs)}.tab[data-v-940c88b5]{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 14px;border:0;border-radius:var(--radius-full);background:transparent;color:var(--md-on-surface-variant);font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--transition-fast),color var(--transition-fast)}.tab[data-v-940c88b5]:hover{background:color-mix(in srgb,var(--md-on-surface) 7%,transparent)}.tab.active[data-v-940c88b5]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.tab[data-v-940c88b5]:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}.tab-badge[data-v-940c88b5]{min-width:18px;padding:0 5px;border-radius:var(--radius-full);background:var(--md-error-container);color:var(--md-on-error-container);font-size:11px;font-weight:700;text-align:center}.controls[data-v-940c88b5]{display:flex;flex:1;flex-wrap:wrap;align-items:flex-end;gap:var(--space-sm)}.field[data-v-940c88b5]{display:flex;flex-direction:column;gap:2px}.field.grow[data-v-940c88b5]{flex:1;min-width:180px}.field-label[data-v-940c88b5]{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--md-on-surface-variant)}.input[data-v-940c88b5]{min-height:34px;padding:0 10px;border:1px solid var(--md-outline-variant);border-radius:var(--radius-sm);background:var(--md-surface-container-lowest);color:inherit;font:inherit;font-size:13px}.input[data-v-940c88b5]:focus-visible{outline:2px solid var(--md-primary);outline-offset:1px}.check[data-v-940c88b5]{display:inline-flex;align-items:center;gap:6px;min-height:34px;font-size:12px;color:var(--md-on-surface-variant);white-space:nowrap}.btn[data-v-940c88b5]{min-height:34px;padding:0 14px;border:1px solid var(--md-outline-variant);border-radius:var(--radius-full);background:var(--md-surface-container-lowest);color:var(--md-on-surface);font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--transition-fast)}.btn[data-v-940c88b5]:hover:not(:disabled){background:var(--md-surface-container-high)}.btn[data-v-940c88b5]:disabled{opacity:.5;cursor:default}.btn[data-v-940c88b5]:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}.status[data-v-940c88b5]{display:inline-flex;align-items:center;gap:6px;min-height:34px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant);white-space:nowrap}.status .dot[data-v-940c88b5]{width:8px;height:8px;border-radius:50%;background:var(--md-outline)}.status.live .dot[data-v-940c88b5]{background:var(--md-success);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-success) 22%,transparent)}.status.dead .dot[data-v-940c88b5]{background:var(--md-error)}.banner[data-v-940c88b5]{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-sm);margin:0;padding:var(--space-sm) var(--space-lg);background:var(--md-error-container);color:var(--md-on-error-container);font-size:13px}.banner code[data-v-940c88b5]{flex:1;min-width:0;overflow:hidden;font-size:12px;text-overflow:ellipsis;white-space:nowrap}.pane[data-v-940c88b5]{flex:1;min-height:0;overflow:auto}.empty[data-v-940c88b5]{padding:var(--space-xl);color:var(--md-on-surface-variant);font-size:13px}.rows[data-v-940c88b5]{margin:0;padding:0;list-style:none;font-family:ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,monospace;font-size:12px;line-height:1.55}.row[data-v-940c88b5]{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;padding:3px var(--space-lg);border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}.row[data-v-940c88b5]:hover{background:color-mix(in srgb,var(--md-on-surface) 4%,transparent)}.row[data-v-940c88b5]:before{content:\"\";width:3px;align-self:stretch;margin:1px 0;border-radius:2px;background:var(--md-outline)}.row.debug[data-v-940c88b5]:before{background:var(--md-outline)}.row.info[data-v-940c88b5]:before{background:var(--md-primary)}.row.warn[data-v-940c88b5]:before{background:var(--md-warning)}.row.error[data-v-940c88b5]:before{background:var(--md-error)}.row.ok[data-v-940c88b5]:before{background:var(--md-success)}.ts[data-v-940c88b5]{color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums;white-space:nowrap}.lvl[data-v-940c88b5]{min-width:46px;font-weight:700;color:var(--md-on-surface-variant);white-space:nowrap}.row.warn .lvl[data-v-940c88b5]{color:var(--md-warning)}.row.error .lvl[data-v-940c88b5]{color:var(--md-error)}.component[data-v-940c88b5]{min-width:96px;padding:0 6px;border-radius:var(--radius-sm);background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:11px;white-space:nowrap}.msg[data-v-940c88b5]{flex:1;min-width:200px;word-break:break-word}.kv[data-v-940c88b5]{color:var(--md-on-surface-variant);white-space:nowrap}.kv .k[data-v-940c88b5]{opacity:.7}.kv .v[data-v-940c88b5]{color:var(--md-on-surface)}.err[data-v-940c88b5]{color:var(--md-error)}.event[data-v-940c88b5]{padding:0 6px;border:1px solid var(--md-outline-variant);border-radius:var(--radius-full);color:var(--md-on-surface-variant);font-size:11px;white-space:nowrap}.dur[data-v-940c88b5]{margin-left:auto;color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums;white-space:nowrap}.indent[data-v-940c88b5]{flex:none}.link[data-v-940c88b5]{padding:0;border:0;background:none;color:var(--md-primary);font:inherit;font-size:11px;cursor:pointer;text-decoration:underline dotted}.link[data-v-940c88b5]:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}@media(max-width:720px){.console-bar[data-v-940c88b5]{align-items:stretch}.controls[data-v-940c88b5]{flex-direction:column;align-items:stretch}.component[data-v-940c88b5],.lvl[data-v-940c88b5]{min-width:0}}#app .console[data-v-940c88b5] :is(.tab,.btn){min-height:34px;border-radius:var(--radius-full)}#app .console .input[data-v-940c88b5]{min-height:34px;border-radius:var(--radius-sm)}\n";document.head.appendChild(s)}})();
+;(()=>{if(typeof document!=='undefined'&&!document.getElementById('webui-plugin-style')){const s=document.createElement('style');s.id='webui-plugin-style';s.textContent=".console[data-v-191916ef]{display:flex;flex-direction:column;min-height:0;height:100%;background:var(--md-surface);color:var(--md-on-surface)}.pane-enter-active[data-v-191916ef]{transition:opacity var(--duration-medium) var(--ease-emphasized-decel)}.pane-leave-active[data-v-191916ef]{transition:opacity var(--duration-instant) var(--ease-emphasized-accel)}.pane-enter-from[data-v-191916ef],.pane-leave-to[data-v-191916ef]{opacity:0}@media(prefers-reduced-motion:reduce){.pane-enter-active[data-v-191916ef],.pane-leave-active[data-v-191916ef]{transition-duration:1ms}}.console-bar[data-v-191916ef]{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-md);padding:var(--space-md) var(--space-lg);border-bottom:1px solid var(--md-outline-variant);background:var(--md-surface-container-low)}.tabs[data-v-191916ef]{display:flex;gap:var(--space-xs)}.tab[data-v-191916ef]{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 14px;border:0;border-radius:var(--radius-full);background:transparent;color:var(--md-on-surface-variant);font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--transition-fast),color var(--transition-fast)}.tab[data-v-191916ef]:hover{background:color-mix(in srgb,var(--md-on-surface) 7%,transparent)}.tab.active[data-v-191916ef]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.tab[data-v-191916ef]:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}.tab-badge[data-v-191916ef]{min-width:18px;padding:0 5px;border-radius:var(--radius-full);background:var(--md-error-container);color:var(--md-on-error-container);font-size:11px;font-weight:700;text-align:center}.controls[data-v-191916ef]{display:flex;flex:1;flex-wrap:wrap;align-items:flex-end;gap:var(--space-sm)}.field[data-v-191916ef]{display:flex;flex-direction:column;gap:2px}.field.grow[data-v-191916ef]{flex:1;min-width:180px}.field-label[data-v-191916ef]{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--md-on-surface-variant)}.input[data-v-191916ef]{min-height:34px;padding:0 10px;border:1px solid var(--md-outline-variant);border-radius:var(--radius-sm);background:var(--md-surface-container-lowest);color:inherit;font:inherit;font-size:13px}.input[data-v-191916ef]:focus-visible{outline:2px solid var(--md-primary);outline-offset:1px}.check[data-v-191916ef]{display:inline-flex;align-items:center;gap:6px;min-height:34px;font-size:12px;color:var(--md-on-surface-variant);white-space:nowrap}.btn[data-v-191916ef]{min-height:34px;padding:0 14px;border:1px solid var(--md-outline-variant);border-radius:var(--radius-full);background:var(--md-surface-container-lowest);color:var(--md-on-surface);font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background var(--transition-fast)}.btn[data-v-191916ef]:hover:not(:disabled){background:var(--md-surface-container-high)}.btn[data-v-191916ef]:disabled{opacity:.5;cursor:default}.btn[data-v-191916ef]:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}.status[data-v-191916ef]{display:inline-flex;align-items:center;gap:6px;min-height:34px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant);white-space:nowrap}.status .dot[data-v-191916ef]{width:8px;height:8px;border-radius:50%;background:var(--md-outline)}.status.live .dot[data-v-191916ef]{background:var(--md-success);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-success) 22%,transparent)}.status.dead .dot[data-v-191916ef]{background:var(--md-error)}.banner[data-v-191916ef]{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-sm);margin:0;padding:var(--space-sm) var(--space-lg);background:var(--md-error-container);color:var(--md-on-error-container);font-size:13px}.banner code[data-v-191916ef]{flex:1;min-width:0;overflow:hidden;font-size:12px;text-overflow:ellipsis;white-space:nowrap}.pane[data-v-191916ef]{flex:1;min-height:0;overflow:auto}.empty[data-v-191916ef]{padding:var(--space-xl);color:var(--md-on-surface-variant);font-size:13px}.rows[data-v-191916ef]{margin:0;padding:0;list-style:none;font-family:ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,monospace;font-size:12px;line-height:1.55}.row[data-v-191916ef]{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;padding:3px var(--space-lg);border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}.row[data-v-191916ef]:hover{background:color-mix(in srgb,var(--md-on-surface) 4%,transparent)}.row[data-v-191916ef]:before{content:\"\";width:3px;align-self:stretch;margin:1px 0;border-radius:2px;background:var(--md-outline)}.row.debug[data-v-191916ef]:before{background:var(--md-outline)}.row.info[data-v-191916ef]:before{background:var(--md-primary)}.row.warn[data-v-191916ef]:before{background:var(--md-warning)}.row.error[data-v-191916ef]:before{background:var(--md-error)}.row.ok[data-v-191916ef]:before{background:var(--md-success)}.ts[data-v-191916ef]{color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums;white-space:nowrap}.lvl[data-v-191916ef]{min-width:46px;font-weight:700;color:var(--md-on-surface-variant);white-space:nowrap}.row.warn .lvl[data-v-191916ef]{color:var(--md-warning)}.row.error .lvl[data-v-191916ef]{color:var(--md-error)}.component[data-v-191916ef]{min-width:96px;padding:0 6px;border-radius:var(--radius-sm);background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:11px;white-space:nowrap}.msg[data-v-191916ef]{flex:1;min-width:200px;word-break:break-word}.kv[data-v-191916ef]{color:var(--md-on-surface-variant);white-space:nowrap}.kv .k[data-v-191916ef]{opacity:.7}.kv .v[data-v-191916ef]{color:var(--md-on-surface)}.err[data-v-191916ef]{color:var(--md-error)}.event[data-v-191916ef]{padding:0 6px;border:1px solid var(--md-outline-variant);border-radius:var(--radius-full);color:var(--md-on-surface-variant);font-size:11px;white-space:nowrap}.dur[data-v-191916ef]{margin-left:auto;color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums;white-space:nowrap}.indent[data-v-191916ef]{flex:none}.link[data-v-191916ef]{padding:0;border:0;background:none;color:var(--md-primary);font:inherit;font-size:11px;cursor:pointer;text-decoration:underline dotted}.link[data-v-191916ef]:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}@media(max-width:720px){.console-bar[data-v-191916ef]{align-items:stretch}.controls[data-v-191916ef]{flex-direction:column;align-items:stretch}.component[data-v-191916ef],.lvl[data-v-191916ef]{min-width:0}}#app .console[data-v-191916ef] :is(.tab,.btn){min-height:34px;border-radius:var(--radius-full)}#app .console .input[data-v-191916ef]{min-height:34px;border-radius:var(--radius-sm)}\n";document.head.appendChild(s)}})();

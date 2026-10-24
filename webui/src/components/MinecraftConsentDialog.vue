@@ -24,17 +24,12 @@ function base() {
 }
 
 function schedule() {
-  // Back off while the service is unreachable so a stopped Minecraft bot does
-  // not spam ERR_CONNECTION_REFUSED every few seconds.
   if (unmounted) return
   const delay = failures === 0 ? POLL_OK : Math.min(POLL_OK * 2 ** failures, POLL_MAX)
   timer = setTimeout(() => { void poll() }, delay)
 }
 
 async function poll() {
-  // Only one poll at a time. reply() starts a fresh poll while the scheduled
-  // one may still be in flight; both finally-blocks would then call schedule()
-  // and orphan a timer that keeps polling after the dialog unmounts.
   if (inFlight) return
   inFlight = true
   try {
@@ -44,7 +39,7 @@ async function poll() {
     pending.value = data?.consent?.pending || null
     failures = 0
   } catch {
-    pending.value = null // service offline / not configured
+    pending.value = null
     failures = Math.min(failures + 1, 6)
   } finally {
     inFlight = false
@@ -61,7 +56,7 @@ async function reply(approve: boolean) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'consent_reply', args: { id: pending.value.id, approve } }),
     })
-  } catch { /* best effort; the service will time out */ }
+  } catch { }
   pending.value = null
   busy.value = false
   failures = 0
@@ -133,8 +128,6 @@ onUnmounted(() => {
 .mc-consent-dialog footer button.primary { background: var(--md-primary); color: var(--md-on-primary); }
 .mc-consent-dialog footer button:disabled { opacity: .6; cursor: default; }
 
-/* Enter via the shared dialog rise; leave accelerates out (the only one of the
-   five hand-written dialogs that had neither). */
 .mc-consent-enter-active { transition: opacity var(--duration-medium, 220ms) var(--ease-out, ease-out); }
 .mc-consent-enter-active .mc-consent-dialog { animation: dialog-arrive var(--duration-long, 360ms) var(--ease-spring, ease-out) both; }
 .mc-consent-leave-active { transition: opacity var(--duration-short, 140ms) var(--ease-emphasized-accel, ease-in); }

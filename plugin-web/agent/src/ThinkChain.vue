@@ -10,8 +10,6 @@ async function toBottom() {
   if (el) el.scrollTop = el.scrollHeight
 }
 
-// The chain streams in token by token; keep the newest line in view while it
-// is still being written, and when it is (re)opened.
 watch(() => props.reasoning, () => { if (props.open) void toBottom() })
 watch(() => props.open, (value) => { if (value) void toBottom() })
 </script>

@@ -1,22 +1,5 @@
 import { ref } from 'vue'
 
-/**
- * Session gate for the Core HTTP API.
- *
- * Core rejects unauthenticated non-loopback callers with 401 on every /api
- * route. Instead of teaching each caller about login, one fetch wrapper:
- *
- *  - `bootstrapSession()` runs once on boot and opens the login overlay when a
- *    credential is actually required (loopback / trusted-network callers never
- *    see it);
- *  - a 401 parks that request until the user signs in, then replays it once;
- *  - a replay that still fails 401 is returned untouched so `readApiResponse`
- *    raises a normal ApiError.
- *
- * The credential lands in an HttpOnly cookie, so EventSource / WebSocket —
- * which cannot send headers — authenticate on their next request too.
- */
-
 export interface SessionState {
   authenticated: boolean
   method: string
@@ -28,28 +11,17 @@ export interface SessionState {
 export const AUTH_REQUIRED_EVENT = '0kay:auth-required'
 export const PIN_REQUIRED_EVENT = '0kay:pin-required'
 
-/** True while the login overlay should be visible. */
 export const authRequired = ref(false)
-/** True once a credential has been accepted for this tab. */
 export const authenticated = ref(false)
-/** True while the PIN prompt should be visible (sensitive action). */
 export const pinRequired = ref(false)
-/** True once Core reports that a PIN is configured. */
 export const pinConfigured = ref(false)
-/** Master switch: false disables every PIN prompt (the PIN itself is kept). */
 export const pinEnabled = ref(true)
-/** Master switch: false lets any caller reach the API without a token. */
 export const loginEnabled = ref(true)
-/** Routes that ask for the PIN when entered. Empty = sensitive actions only. */
 export const pinPages = ref<string[]>([])
-/** True once this tab holds a PIN Core has accepted. */
 export const pinUnlocked = ref(false)
-/** True when the current prompt was opened by a page guard (not cancellable). */
 export const pinGuard = ref(false)
-/** True when Core requires the owner to choose a PIN (old install upgrading). */
 export const pinSetupRequired = ref(false)
 
-/** PIN kept in memory for this tab and sent as X-0kay-Pin on API requests. */
 let pinValue = ''
 
 function normalize(path: string): string {
@@ -57,7 +29,6 @@ function normalize(path: string): string {
   return clean || '/'
 }
 
-/** Whether entering `path` should challenge for the PIN. */
 export function pageRequiresPin(path: string): boolean {
   if (!pinConfigured.value || !pinEnabled.value) return false
   if (!pinPages.value.length) return false
@@ -91,8 +62,6 @@ type Waiter = { resolve: () => void; reject: (reason: Error) => void }
 const waiters: Waiter[] = []
 let nativeFetch: typeof fetch | null = null
 let installed = false
-// In-flight logins keyed by the submitted credential, so two concurrent
-// submits with different tokens do not resolve to the same result.
 const loginInFlight = new Map<string, Promise<SessionState>>()
 
 function settleWaiters(ok: boolean): void {
@@ -109,7 +78,6 @@ function apiUrl(input: RequestInfo | URL): string {
   return input.url
 }
 
-/** Only our own JSON API is gated; asset/module requests are not. */
 function isGatedApi(input: RequestInfo | URL): boolean {
   const url = apiUrl(input)
   if (url.startsWith('/api/')) return !url.startsWith('/api/auth/session')
@@ -122,12 +90,10 @@ function isGatedApi(input: RequestInfo | URL): boolean {
   }
 }
 
-/** A body can only be replayed if it is not a consumed stream. */
 function canReplay(init?: RequestInit): boolean {
   return !(init?.body instanceof ReadableStream)
 }
 
-/** Inject the in-memory PIN on our own API requests. */
 function withApiHeaders(input: RequestInfo | URL, init?: RequestInit): RequestInit | undefined {
   const url = apiUrl(input)
   const isApi = url.startsWith('/api/') || (() => {
@@ -142,7 +108,6 @@ function withApiHeaders(input: RequestInfo | URL, init?: RequestInit): RequestIn
   return { ...(init || {}), headers }
 }
 
-/** `fetch` replacement: park 401s until the user has signed in. */
 async function gatedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const doFetch = nativeFetch ?? window.fetch
   const res = await doFetch(input, withApiHeaders(input, init))
@@ -173,14 +138,12 @@ async function gatedFetch(input: RequestInfo | URL, init?: RequestInit): Promise
   return res
 }
 
-/** Open the PIN prompt for a guarded page. It has no parked request behind it. */
 export function requirePagePin(): void {
   pinGuard.value = true
   pinRequired.value = true
   window.dispatchEvent(new CustomEvent(PIN_REQUIRED_EVENT))
 }
 
-/** Accept a PIN entered for a sensitive action and replay the parked request. */
 export function submitPin(pin: string): void {
   pinValue = pin.trim()
   pinUnlocked.value = true
@@ -189,9 +152,7 @@ export function submitPin(pin: string): void {
   settlePin(true)
 }
 
-/** Dismiss the PIN prompt; parked requests fall back to their original 403. */
 export function cancelPin(): void {
-  // A page guard has no "later": the page stays locked until the PIN is given.
   if (pinGuard.value) return
   pinRequired.value = false
   settlePin(false)
@@ -204,7 +165,6 @@ export function installAuthGate(): void {
   window.fetch = gatedFetch as typeof window.fetch
 }
 
-/** Read the current session. Never throws — a down Core reads as "unknown". */
 export async function getSession(): Promise<SessionState | null> {
   const doFetch = nativeFetch ?? window.fetch
   try {
@@ -216,10 +176,6 @@ export async function getSession(): Promise<SessionState | null> {
   }
 }
 
-/**
- * Ask Core who we are. Opens the overlay only when the server says a
- * credential is required and we do not have one yet.
- */
 export async function bootstrapSession(): Promise<SessionState | null> {
   await refreshPinStatus()
   const state = await getSession()
@@ -232,7 +188,6 @@ export async function bootstrapSession(): Promise<SessionState | null> {
   return state
 }
 
-/** Read the PIN plus its switches, and force the setup screen when needed. */
 export async function refreshPinStatus(): Promise<void> {
   const doFetch = nativeFetch ?? window.fetch
   try {
@@ -243,12 +198,10 @@ export async function refreshPinStatus(): Promise<void> {
     pinEnabled.value = data.enabled !== false
     loginEnabled.value = data.login_enabled !== false
     pinPages.value = Array.isArray(data.pages) ? data.pages : []
-    // A switched-off PIN never nags for one.
     pinSetupRequired.value = !data.configured && pinEnabled.value
-  } catch { /* older Core without PIN support */ }
+  } catch { }
 }
 
-/** Persist the security switches / page scope. Undefined fields are untouched. */
 export async function saveSecurityPrefs(patch: {
   enabled?: boolean
   login_enabled?: boolean
@@ -269,7 +222,6 @@ export async function saveSecurityPrefs(patch: {
   pinSetupRequired.value = !data?.configured && pinEnabled.value
 }
 
-/** Delete the stored PIN entirely (the switches survive). */
 export async function clearPin(): Promise<void> {
   const doFetch = nativeFetch ?? window.fetch
   const res = await doFetch('/api/security/pin', { method: 'DELETE' })
@@ -281,7 +233,6 @@ export async function clearPin(): Promise<void> {
   pinSetupRequired.value = pinEnabled.value
 }
 
-/** Set the access PIN (used by the first-run / upgrade setup screen). */
 export async function setPin(pin: string): Promise<void> {
   const doFetch = nativeFetch ?? window.fetch
   const res = await doFetch('/api/security/pin', {
@@ -300,7 +251,6 @@ export async function setPin(pin: string): Promise<void> {
   settleWaiters(true)
 }
 
-/** Verify a PIN by opening a session with it (used before replaying a request). */
 export async function verifyPin(pin: string): Promise<boolean> {
   const doFetch = nativeFetch ?? window.fetch
   try {
@@ -323,7 +273,6 @@ export async function verifyPin(pin: string): Promise<boolean> {
   }
 }
 
-/** POST a token (paired-device or API token) and mint the session cookie. */
 export async function submitLogin(token: string): Promise<SessionState> {
   const typed = token.trim()
   const existing = loginInFlight.get(typed)
@@ -341,9 +290,6 @@ export async function submitLogin(token: string): Promise<SessionState> {
     }
     authenticated.value = true
     authRequired.value = false
-    // Core accepts the PIN in the token field; when that is what was typed the
-    // tab is already verified, so keep it for the in-memory header and skip the
-    // per-page / sensitive-action prompt.
     if (pinConfigured.value && /^\d{6}$/.test(typed)) {
       pinValue = typed
       pinUnlocked.value = true
@@ -359,18 +305,16 @@ export async function submitLogin(token: string): Promise<SessionState> {
   }
 }
 
-/** Dismiss the overlay; parked requests fall back to their original 401. */
 export function cancelLogin(): void {
   authRequired.value = false
   settleWaiters(false)
 }
 
-/** Clear the HttpOnly cookie. */
 export async function logout(): Promise<void> {
   const doFetch = nativeFetch ?? window.fetch
   try {
     await doFetch('/api/auth/session', { method: 'DELETE' })
-  } catch { /* best effort */ }
+  } catch { }
   pinValue = ''
   pinUnlocked.value = false
   pinGuard.value = false

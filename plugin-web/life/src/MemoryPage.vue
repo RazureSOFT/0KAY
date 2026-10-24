@@ -73,8 +73,6 @@ function fmtTime(value?: string) {
   const d = new Date(value)
   return Number.isNaN(d.getTime()) ? value : d.toLocaleString()
 }
-// Same banner lifetime as the companion and adapters pages (kit FLASH_MS), so
-// all three L.I.F.E roots feel identical.
 function flash(message: string) { notice.value = message; setTimeout(() => { if (notice.value === message) notice.value = '' }, FLASH_MS) }
 
 async function call(action: string, payload: any) {
@@ -93,12 +91,12 @@ async function loadStats() {
       const body = await response.json()
       if (body.stats) stats.value = body.stats
     }
-  } catch { /* optional */ }
+  } catch { }
 }
 
 async function loadDashboard() {
   try { dashboard.value = await call('memory_dashboard', {}) }
-  catch { /* optional */ }
+  catch { }
 }
 
 async function loadMemories() {
@@ -187,8 +185,6 @@ async function removeMemory(memory: Memory) {
 }
 
 async function clearAll() {
-  // Two-step confirm, mirroring the Companion page's "reset the whole person":
-  // the button lives in a danger zone, so one accidental click must not be enough.
   const first = await confirm({
     title: t('life.memory.clearAll'),
     message: t('life.memory.clearAllMessage'),
@@ -253,8 +249,6 @@ watch(reflectionStatus, loadReflections)
 watch(tab, refresh)
 onMounted(async () => { await loadMemories(); await loadStats(); await loadDashboard() })
 
-/* Same design kit as the companion and adapter pages, so the three L.I.F.E
-   pages stay one dialect (the kit CSS is injected once per document). */
 injectStyle('life-plugin-memory-style', lifeKitCss('memory-page'))
 
 const tierOptions = computed(() => [
@@ -276,13 +270,10 @@ const reflectionStatusOptions = computed(() => [
   { value: '', label: t('life.memory.all') },
 ])
 
-/** Notes have no separate title field: the first non-empty preview line is the
-    readable title, and the raw note_id drops to secondary meta. */
 function noteTitle(note: Note): string {
   const first = (note.preview || '').split('\n').map((s) => s.trim()).find(Boolean)
   return first || t('life.memory.emptyNotePreview')
 }
-/** How many skeleton cards to shimmer while the first page loads. */
 const skeletonCount = 4
 </script>
 
@@ -300,9 +291,7 @@ const skeletonCount = 4
       </div>
     </header>
 
-    <!-- Banners live at the top of the page: at the bottom they scrolled out of
-         view exactly when an action (delete/clear) reported its result. -->
-    <p v-if="error" class="banner err">{{ error }}</p>
+        <p v-if="error" class="banner err">{{ error }}</p>
     <p v-if="notice" class="banner ok">{{ notice }}</p>
 
     <section class="stat-grid">
@@ -352,10 +341,7 @@ const skeletonCount = 4
         <div>
           <p class="hint">{{ t('life.memory.decayCurveHint') }}</p>
           <svg viewBox="0 0 200 60" class="dyn-curve" :aria-label="t('life.memory.decayCurveLabel')">
-            <!-- pathLength=1 normalizes the stroke so dashoffset 1→0 is a draw-in
-                 animation regardless of the polyline's point count; re-keying on
-                 the points replays it when the dashboard refreshes. -->
-            <polyline :key="decayPoints" class="decay-line" :points="decayPoints" fill="none" stroke="currentColor" stroke-width="2" pathLength="1" />
+                        <polyline :key="decayPoints" class="decay-line" :points="decayPoints" fill="none" stroke="currentColor" stroke-width="2" pathLength="1" />
           </svg>
         </div>
       </div>
@@ -367,11 +353,8 @@ const skeletonCount = 4
       <button class="tab" :class="{ active: tab === 'reflections' }" @click="tab = 'reflections'">{{ t('life.memory.tabReflections') }}</button>
     </nav>
 
-    <!-- One keyed element per tab so the Transition can cross-fade them
-         (mode="out-in" keeps both lists from fighting over the grid layout). -->
-    <Transition name="tab-fade" mode="out-in">
-      <!-- Memories -->
-      <div v-if="tab === 'memories'" key="memories" class="tab-body">
+        <Transition name="tab-fade" mode="out-in">
+            <div v-if="tab === 'memories'" key="memories" class="tab-body">
       <section class="card toolbar">
         <div class="search-field">
           <svg class="search-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -405,9 +388,7 @@ const skeletonCount = 4
             <div class="meter" :title="t('life.memory.strength')"><span>{{ t('life.memory.strength') }}</span><div class="meter-bar"><i :style="{ '--v': pct(memory.strength) }" class="fill-secondary"></i></div><b>{{ pct(memory.strength) }}</b></div>
             <span class="meter-text">{{ t('life.memory.recallTimes', { count: memory.recall_count || 0 }) }}</span>
           </footer>
-          <!-- Always mounted; grid-template-rows 0fr→1fr animates expand/collapse
-               instead of the v-if hard cut. -->
-          <div class="detail" :class="{ open: expanded === memory.id }">
+                    <div class="detail" :class="{ open: expanded === memory.id }">
             <div class="detail-clip">
               <dl>
                 <div><dt>ID</dt><dd><code>{{ memory.id }}</code></dd></div>
@@ -425,8 +406,7 @@ const skeletonCount = 4
           </div>
         </article>
         </TransitionGroup>
-        <!-- Shimmer skeleton while the first page loads, instead of an empty flash. -->
-        <template v-if="loading && !memories.length">
+                <template v-if="loading && !memories.length">
           <article v-for="i in skeletonCount" :key="'sk' + i" class="memory-card skeleton-card" aria-hidden="true">
             <span class="sk-line w30"></span>
             <span class="sk-line w90"></span>
@@ -444,8 +424,7 @@ const skeletonCount = 4
       </div>
       </div>
 
-      <!-- Notes -->
-      <div v-else-if="tab === 'notes'" key="notes" class="tab-body">
+            <div v-else-if="tab === 'notes'" key="notes" class="tab-body">
       <section class="grid-notes">
         <article class="card">
           <div class="card-head"><h2 class="card-title">{{ t('life.memory.newNote') }}</h2></div>
@@ -486,8 +465,7 @@ const skeletonCount = 4
       </section>
       </div>
 
-      <!-- Reflections -->
-      <div v-else key="reflections" class="tab-body">
+            <div v-else key="reflections" class="tab-body">
       <section class="card toolbar">
         <label class="fld"><span>{{ t('life.memory.statusLabel') }}</span>
           <AppSelect v-model="reflectionStatus" :options="reflectionStatusOptions" :aria-label="t('life.memory.statusLabel')" />
@@ -517,9 +495,7 @@ const skeletonCount = 4
       </div>
     </Transition>
 
-    <!-- Irreversible actions live in their own danger zone at the very bottom,
-         away from the everyday header actions, with a second confirm step. -->
-    <section class="danger-zone">
+        <section class="danger-zone">
       <div class="danger-copy">
         <h2>{{ t('life.memory.dangerTitle') }}</h2>
         <p class="hint">{{ t('life.memory.clearAllHint') }}</p>
@@ -530,16 +506,12 @@ const skeletonCount = 4
 </template>
 
 <style scoped>
-/* Shared design tokens + component vocabulary come from kit.ts (lifeKitCss on
-   the .memory-page root); only memory-specific widgets live here. Rules that
-   must out-rank the kit's #app realign layer repeat that #app prefix. */
+
 .page-header{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);margin-bottom:var(--space-xl);flex-wrap:wrap}
 .page-header h1{margin:0;font-size:clamp(24px,2.8vw,34px);font-weight:800;letter-spacing:-.02em}
 .subtitle{margin:6px 0 0;max-width:640px;color:var(--md-on-surface-variant);font-size:14px;line-height:1.55}
 .header-actions{display:flex;gap:var(--space-sm);padding-top:20px;flex-shrink:0;flex-wrap:wrap}
 
-/* `auto-fit` + a shrinkable floor: a fixed `repeat(4, 1fr)` never steps down to
-   a single column, so long localised labels squeeze instead of reflowing. */
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:var(--space-lg);margin-bottom:var(--space-lg)}
 .stat-card{background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:var(--r-lg);padding:var(--space-lg);box-shadow:var(--shadow-1);display:flex;flex-direction:column;gap:8px;transition:transform 280ms var(--ease-spring),box-shadow 280ms}
 @media (hover: hover) and (pointer: fine){.stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}}
@@ -582,15 +554,11 @@ const skeletonCount = 4
 @media (prefers-reduced-motion: reduce){.memory-card-enter-active,.memory-card-leave-active,.memory-card-move{transition-duration:1ms}.memory-card-enter-from,.memory-card-leave-to{transform:none}.stat-card:hover,.memory-card:hover{transform:none}}
 .card-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .btn-icon{position:relative;width:30px;height:30px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--md-on-surface-variant);display:grid;place-items:center;cursor:pointer;margin-left:auto}
-/* The host's `#app button{min-height:36px}` would stretch this 30x30 control to
-   30x36; the (1,2,0) selector wins the declared box back. The 44px `::after`
-   hit area below keeps the touch target. */
+
 #app .memory-page .btn-icon{min-height:0}
 .btn-icon::after{content:'';position:absolute;top:50%;left:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
 .btn-icon.danger:hover{background:var(--md-error-container);color:var(--md-error)}
-/* `pre-wrap` breaks at normal opportunities only, so a long token (URL, path,
-   hash) in a memory still overflowed the card. `.item-meta` / `.quote` below
-   already carry the `anywhere` variant. */
+
 .memory-content{margin:0;line-height:1.65;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
 .tags{display:flex;gap:6px;flex-wrap:wrap}
 .tags span{font-size:12px;font-weight:500;color:var(--md-on-primary-container);background:var(--md-primary-container);padding:3px 8px;border-radius:999px}
@@ -636,15 +604,12 @@ const skeletonCount = 4
 
 @media (prefers-reduced-motion: reduce){.meter-bar i{transition:none}}
 
-/* Tab cross-fade (~200ms, matches the memory-card enter/leave timings). */
 .tab-body{min-width:0}
 .tab-fade-enter-active{transition:opacity 200ms var(--ease-emphasized-decel)}
 .tab-fade-leave-active{transition:opacity 140ms var(--ease-emphasized-accel)}
 .tab-fade-enter-from,.tab-fade-leave-to{opacity:0}
 @media (prefers-reduced-motion: reduce){.tab-fade-enter-active,.tab-fade-leave-active{transition-duration:1ms}}
 
-/* Memory-dynamics read-outs: bars/curve animate instead of snapping when the
-   dashboard refreshes. */
 .dynamics-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:18px;align-items:end}
 @media(max-width:900px){.dynamics-grid{grid-template-columns:1fr}}
 .dyn-track{flex:1;height:10px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}
@@ -656,16 +621,12 @@ const skeletonCount = 4
 @keyframes decay-draw{to{stroke-dashoffset:0}}
 @media (prefers-reduced-motion: reduce){.dyn-bar,.dyn-hist i{transition:none}.decay-line{animation:none;stroke-dashoffset:0}}
 
-/* First-load skeleton cards (same shimmer language as the shell's loading
-   skeleton), hidden from assistive tech — the empty state announces for real. */
 .skeleton-card{gap:12px;pointer-events:none}
 .sk-line{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,var(--md-surface-container-high) 25%,color-mix(in srgb,var(--md-on-surface) 8%,var(--md-surface-container-high)) 45%,var(--md-surface-container-high) 65%);background-size:200% 100%;animation:sk-shimmer 1.4s linear infinite}
 .sk-line.w30{width:30%}.sk-line.w40{width:40%}.sk-line.w75{width:75%}.sk-line.w90{width:90%}
 @keyframes sk-shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
 @media (prefers-reduced-motion: reduce){.sk-line{animation:none}}
 
-/* Bottom danger zone: a red-outlined card holding only irreversible actions,
-   so "clear all" can no longer be mistaken for a routine header button. */
 .danger-zone{display:flex;justify-content:space-between;align-items:center;gap:var(--space-lg);flex-wrap:wrap;margin-top:var(--space-xl);padding:var(--space-lg);border:1px solid color-mix(in srgb,var(--md-error,#b3261e) 45%,transparent);border-radius:var(--r-lg);background:color-mix(in srgb,var(--md-error,#b3261e) 5%,transparent)}
 .danger-zone h2{margin:0;font-size:15px;font-weight:750;color:var(--md-error,#b3261e)}
 .danger-zone .hint{margin:4px 0 0}

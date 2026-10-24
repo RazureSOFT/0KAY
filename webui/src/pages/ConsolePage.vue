@@ -1,16 +1,4 @@
 <script setup lang="ts">
-/**
- * Observability console: live logs plus a trace timeline.
- *
- * Reads three Core endpoints and holds one SSE connection:
- *   GET  /api/console/logs    bounded snapshot
- *   GET  /api/console/spans   bounded snapshot
- *   GET  /api/console/stream  live `log` / `span` / `ready` frames
- *
- * The stream is opened once and re-opened on demand after an error; there is no
- * polling fallback, because a console that quietly stops updating is worse than
- * one that says it disconnected.
- */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiGet, apiPost, apiPut, streamSSE } from '../api'
@@ -66,8 +54,6 @@ const streamError = ref('')
 const busy = ref(false)
 const pane = ref<HTMLElement | null>(null)
 
-/** Bounded client-side buffers. Core already caps its own ring; these keep the
- *  DOM from growing without limit during a long session. */
 const MAX_ROWS = 1000
 
 let controller: AbortController | null = null
@@ -88,15 +74,6 @@ function fmtTime(iso: string): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`
 }
 
-/**
- * Human-readable duration.
- *
- * The micro sign is written as an escape on purpose. This file has been through
- * a PowerShell encoding round-trip that silently swapped non-ASCII glyphs for
- * lookalike CJK characters (a middle dot became 路, the micro sign became 碌),
- * and both survived review because they render as *something* plausible-looking.
- * An escape cannot be mangled by any tool that mishandles the file's encoding.
- */
 function fmtDuration(ns: number): string {
   if (!ns || ns < 0) return '\u2014'
   if (ns < 1_000) return `${ns}ns`
@@ -114,8 +91,6 @@ function parse<T>(raw: string | undefined): T | null {
   }
 }
 
-/** Everything except the well-known envelope keys, so the row shows the
- *  attributes that actually carry information. */
 function extraFields(rec: LogRecord): Array<[string, unknown]> {
   if (!rec.fields) return []
   return Object.entries(rec.fields).filter(
@@ -125,8 +100,6 @@ function extraFields(rec: LogRecord): Array<[string, unknown]> {
 
 const componentOf = (rec: LogRecord) =>
     rec.fields && typeof rec.fields.component === 'string' ? (rec.fields.component as string) : rec.source || '—'
-
-/* ---------------------------------------------------------------- filtering */
 
 const minLevelIndex = computed(() => levelIndex(level.value))
 
@@ -145,7 +118,6 @@ const filteredLogs = computed(() => {
   })
 })
 
-/** Spans newest first, since that is how you read a failure. */
 const filteredSpans = computed(() => {
   const needle = query.value.trim().toLowerCase()
   const list = [...spans.value].reverse()
@@ -161,8 +133,6 @@ const filteredSpans = computed(() => {
 
 const errorCount = computed(() => logs.value.filter((r) => levelIndex(r.level) >= levelIndex('ERROR')).length)
 
-/** Traces that have a child span, rendered as an indented tree. A flat list is
- *  much harder to read once a request fans out into mocr and the agent. */
 interface TraceNode {
   span: SpanRecord
   depth: number
@@ -187,12 +157,10 @@ const traceTree = computed<TraceNode[]>(() => {
     out.push({ span, depth })
     for (const child of byParent.get(span.span_id) || []) walk(child, depth + 1)
   }
-  // Longest trace first: a deep tree is the interesting one.
   for (const root of roots.sort((a, b) => a.start_unix_nano - b.start_unix_nano)) walk(root, 0)
   return out
 })
 
-/** Share the total wall time of each trace so a slow turn is obvious. */
 const traceTotals = computed(() => {
   const totals = new Map<string, number>()
   for (const span of spans.value) {
@@ -203,8 +171,6 @@ const traceTotals = computed(() => {
   return totals
 })
 
-/* ------------------------------------------------------------------ loading */
-
 function pushLog(rec: LogRecord) {
   logs.value.push(rec)
   if (logs.value.length > MAX_ROWS) logs.value.splice(0, logs.value.length - MAX_ROWS)
@@ -212,16 +178,12 @@ function pushLog(rec: LogRecord) {
 }
 
 function pushSpan(span: SpanRecord) {
-  // The same span can arrive from both the primed snapshot and the live stream.
   const index = spans.value.findIndex((s) => s.span_id === span.span_id)
   if (index !== -1) spans.value.splice(index, 1)
   spans.value.push(span)
   scrollToEnd()
 }
 
-/** Keep the newest row in view while tailing. Deliberately not done while the
- *  user has scrolled up: yanking the viewport back on every frame makes reading
- *  a backtrace impossible. */
 function scrollToEnd() {
   if (!follow.value || tab.value !== 'logs') return
   const el = pane.value
@@ -229,7 +191,6 @@ function scrollToEnd() {
   el.scrollTop = el.scrollHeight
 }
 
-/** Re-enable tailing when the user returns to the bottom by hand. */
 function onPaneScroll() {
   const el = pane.value
   if (!el) return
@@ -259,8 +220,6 @@ async function loadSnapshot() {
   }
 }
 
-/* ------------------------------------------------------------------ streaming */
-
 async function openStream() {
   controller?.abort()
   controller = new AbortController()
@@ -287,7 +246,6 @@ async function openStream() {
       controller.signal,
     )
   } catch (err) {
-    // An abort is the expected path on unmount and on reconnect.
     if (!controller?.signal.aborted) streamError.value = String(err)
   }
 }
@@ -304,13 +262,11 @@ async function setLevel(next: string) {
   } catch (err) {
     streamError.value = String(err)
   }
-  // The filter changed, so the primed page has to be re-read.
   await loadSnapshot()
   await openStream()
 }
 
 async function clearAll() {
-  // One click used to wipe logs AND traces with no way back.
   const ok = await confirm({
     title: t('console.clear'),
     message: t('console.clearConfirm'),
@@ -327,7 +283,6 @@ async function clearAll() {
   }
 }
 
-/** Jump to a trace: filter by it so the log rows and the timeline line up. */
 function focusTrace(traceId: string) {
   query.value = traceId
   tab.value = 'traces'
@@ -411,8 +366,7 @@ onBeforeUnmount(() => {
       <button type="button" class="btn" @click="reconnect">{{ t('console.reconnect') }}</button>
     </p>
 
-    <!-- Logs -->
-    <Transition name="pane" mode="out-in">
+        <Transition name="pane" mode="out-in">
     <div v-if="tab === 'logs'" key="logs" ref="pane" class="pane" role="tabpanel" @scroll.passive="onPaneScroll">
       <p v-if="!filteredLogs.length" class="empty">{{ t('console.noLogs') }}</p>
       <ol v-else class="rows" :aria-label="t('console.tab.logs')">
@@ -437,8 +391,7 @@ onBeforeUnmount(() => {
       </ol>
     </div>
 
-    <!-- Traces -->
-    <div v-else ref="pane" class="pane" role="tabpanel" @scroll.passive="onPaneScroll">
+        <div v-else ref="pane" class="pane" role="tabpanel" @scroll.passive="onPaneScroll">
       <p v-if="!filteredSpans.length" class="empty">{{ t('console.noSpans') }}</p>
       <ol v-else class="rows" :aria-label="t('console.tab.traces')">
         <li
@@ -447,10 +400,7 @@ onBeforeUnmount(() => {
           class="row span"
           :class="[levelClass(node.span.status), node.span.kind]"
         >
-          <!-- Indentation is a spacer with a width, not a repeated character:
-               a literal indent glyph is one encoding mistake away from being
-               rendered as the wrong symbol, and it would be copied as text. -->
-          <span class="indent" :style="{ width: node.depth * 14 + 'px' }" aria-hidden="true"></span>
+                    <span class="indent" :style="{ width: node.depth * 14 + 'px' }" aria-hidden="true"></span>
           <span class="lvl">{{ node.span.kind }}</span>
           <span class="component">{{ node.span.name }}</span>
           <span class="msg">
@@ -479,12 +429,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/*
- * The console is a dense, monospaced, scannable surface — deliberately not the
- * Material card treatment used elsewhere in the app. It borrows the app's colour
- * tokens so it stays in the same system, and adds a dark terminal surface that
- * works in both themes.
- */
+
 .console {
   display: flex;
   flex-direction: column;
@@ -494,7 +439,6 @@ onBeforeUnmount(() => {
   color: var(--md-on-surface);
 }
 
-/* Tab swap: logs/traces fade through instead of hard-cutting. */
 .pane-enter-active { transition: opacity var(--duration-medium) var(--ease-emphasized-decel); }
 .pane-leave-active { transition: opacity var(--duration-instant) var(--ease-emphasized-accel); }
 .pane-enter-from, .pane-leave-to { opacity: 0; }
@@ -722,8 +666,6 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, var(--md-on-surface) 4%, transparent);
 }
 
-/* Level is carried by a left rule rather than a background wash, so long rows
- * stay readable and dense. */
 .row::before {
   content: '';
   width: 3px;
@@ -804,8 +746,6 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-/* Spacer for tree depth. `flex: none` keeps the inline width from being
-   stretched by the flex row. */
 .indent {
   flex: none;
 }
@@ -840,12 +780,6 @@ onBeforeUnmount(() => {
   }
 }
 
-/* The platform layer's `#app button { min-height: 36px; border-radius: 18px }`
- * and `#app :is(input, select, textarea) { border-radius: 14px }` are (1,0,1)
- * and beat this file's scoped rules (0,2,0). The console is a dense log view,
- * so its controls are deliberately tighter than the app-wide defaults; restating
- * them under `#app .console` (1,2,0) is what makes the declared boxes render.
- * (`.link` opts out of the button floor in theme.css, next to that rule.) */
 #app .console :is(.tab, .btn) { min-height: 34px; border-radius: var(--radius-full); }
 #app .console .input { min-height: 34px; border-radius: var(--radius-sm); }
 </style>

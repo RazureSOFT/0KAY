@@ -1,13 +1,4 @@
 <script setup lang="ts">
-/**
- * L.I.F.E 「社交账号」 on the chat page — an agent-style right dock with two
- * floating panels (conversation list + chat), plus the auto "L.I.F.E replied"
- * dialog. Shipped entirely with the plugin (`social.js` bootstrap module).
- *
- * The dock only shows on the 对话 page (`/`); the panels are draggable and
- * resizable like the Agent page's tool panels. Data is the adapter transcript
- * (`chat_conversations` / `chat_messages` / `chat_send`).
- */
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { i18n } from '@0kay/host'
 import { FLASH_MS } from './kit'
@@ -17,7 +8,6 @@ const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, n
 interface Msg { id: string; conversation: string; kind: string; peer_id: string; peer_name: string; direction: string; text: string; media: string[]; at: string }
 interface Conv { conversation: string; kind: string; peer_id: string; name: string; adapter_id: string; last_text: string; last_direction: string; last_at: string }
 
-// --- shared state ----------------------------------------------------------
 const conversations = ref<Conv[]>([])
 const active = ref('')
 const messages = ref<Msg[]>([])
@@ -25,11 +15,7 @@ const draft = ref('')
 const sending = ref(false)
 const scroller = ref<HTMLElement | null>(null)
 
-// --- floating panels (drag + resize, agent style) --------------------------
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
-/** Panel bounds must be re-fit to the viewport on load: a panel sized on a wide
- *  screen otherwise extends off-screen after the window narrows, and the title
- *  bar — the only drag handle — ends up outside the visible area. */
 function fitPanel(p: { x: number; y: number; w: number; h: number }) {
   const vw = window.innerWidth || 1280
   const vh = window.innerHeight || 800
@@ -38,7 +24,7 @@ function fitPanel(p: { x: number; y: number; w: number; h: number }) {
   return { w, h, x: clamp(p.x, 0, Math.max(0, vw - 90)), y: clamp(p.y, 0, Math.max(0, vh - 40)) }
 }
 function loadFloat(key: string, dp: { x: number; y: number }, ds: { w: number; h: number }) {
-  try { const p = JSON.parse(localStorage.getItem(key) || 'null'); if (p && typeof p.x === 'number') return fitPanel({ ...ds, ...p }) } catch { /* ignore */ }
+  try { const p = JSON.parse(localStorage.getItem(key) || 'null'); if (p && typeof p.x === 'number') return fitPanel({ ...ds, ...p }) } catch { }
   const vw = window.innerWidth || 1280
   const vh = window.innerHeight || 800
   return { x: Math.max(16, vw - ds.w - dp.x), y: dp.y, w: Math.min(ds.w, vw - 16), h: Math.min(ds.h, vh - 16) }
@@ -46,7 +32,7 @@ function loadFloat(key: string, dp: { x: number; y: number }, ds: { w: number; h
 function useFloating(key: string, dp: { x: number; y: number }, ds: { w: number; h: number }) {
   const s = ref(loadFloat(key, dp, ds))
   const style = computed(() => ({ translate: `${s.value.x}px ${s.value.y}px`, width: `${s.value.w}px`, height: `${s.value.h}px` }))
-  const save = () => { try { localStorage.setItem(key, JSON.stringify(s.value)) } catch { /* ignore */ } }
+  const save = () => { try { localStorage.setItem(key, JSON.stringify(s.value)) } catch { } }
   function startDrag(e: PointerEvent) {
     ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
     const sx = e.clientX, sy = e.clientY, ox = s.value.x, oy = s.value.y
@@ -61,22 +47,17 @@ function useFloating(key: string, dp: { x: number; y: number }, ds: { w: number;
     const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); save() }
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', up)
   }
-  // Re-fit when the window narrows, so a wide-screen size cannot strand a panel.
   onMounted(() => { const refit = () => { s.value = fitPanel(s.value); save() }; window.addEventListener('resize', refit); onUnmounted(() => window.removeEventListener('resize', refit)) })
   return { s, style, startDrag, startResize }
 }
 
 const listOpen = ref(false)
 const chatOpen = ref(false)
-// Destructure: a nested `list.style` ref would NOT auto-unwrap in the template
-// (only top-level setup bindings do), which left the panels stuck at 0,0 and
-// made dragging update state without ever moving the window.
 const { style: listStyle, startDrag: dragList, startResize: resizeList } =
   useFloating('0kay.life.social.list', { x: 12, y: 64 }, { w: 340, h: 460 })
 const { style: chatStyle, startDrag: dragChat, startResize: resizeChat } =
   useFloating('0kay.life.social.chat', { x: 344, y: 64 }, { w: 380, h: 520 })
 
-// --- only on the 对话 page -------------------------------------------------
 const onChatPage = ref(location.pathname === '/')
 function syncRoute() { onChatPage.value = location.pathname === '/' }
 ;(function hookHistory() {
@@ -85,7 +66,6 @@ function syncRoute() { onChatPage.value = location.pathname === '/' }
   history.replaceState = function (...a: any[]) { const r = replace.apply(history, a as any); window.dispatchEvent(new Event('0kay:location')); return r }
 })()
 
-// --- auto dialog (agent inbox style) ---------------------------------------
 const popup = ref(false)
 const collapsed = ref(false)
 const count = ref(0)
@@ -113,7 +93,7 @@ async function poll() {
     if (primed && newest) { popup.value = true; collapsed.value = false; count.value += 1 }
     for (const c of list) seen[c.conversation] = c.last_at
     primed = true
-  } catch { /* offline */ }
+  } catch { }
 }
 
 async function loadMessages() {
@@ -122,14 +102,11 @@ async function loadMessages() {
     const res = await api('chat_messages', { conversation: active.value, limit: 200 })
     const next: Msg[] = res.messages || []
     const grew = next.length !== messages.value.length
-    // Follow new messages only when the reader is already at the bottom (or the
-    // conversation was just opened); a forced jump would yank someone reading
-    // history back up out of their scroll position.
     const fresh = messages.value.length === 0
     const follow = fresh || nearBottom()
     messages.value = next
     if (grew && follow) scrollEnd()
-  } catch { /* keep */ }
+  } catch { }
 }
 function nearBottom(): boolean {
   const el = scroller.value
@@ -148,8 +125,6 @@ function mediaLabel(kind: string): string { const m: Record<string, string> = { 
 const activeConv = computed(() => conversations.value.find((c) => c.conversation === active.value) || null)
 
 function pick(conv: string) { active.value = conv; messages.value = []; sendError.value = ''; void loadMessages(); chatOpen.value = true }
-// Send failures surface here as a red strip above the composer (auto-cleared);
-// the draft is kept so nothing the user typed is lost.
 const sendError = ref('')
 async function send() {
   const text = draft.value.trim()
@@ -164,16 +139,14 @@ async function send() {
     const message = String(e?.message || '').trim() || t('life.chat.sendFailed')
     sendError.value = message
     setTimeout(() => { if (sendError.value === message) sendError.value = '' }, FLASH_MS)
-    /* keep draft */ } finally { sending.value = false }
+ } finally { sending.value = false }
 }
 function openPopup() { popup.value = false; count.value = 0; pick(popupConv.value) }
 
-// --- auto dialog: focus + Esc ----------------------------------------------
 const dialogEl = ref<HTMLElement | null>(null)
 const dialogOpen = computed(() => popup.value && !collapsed.value)
 watch(dialogOpen, (open) => {
   if (!open) return
-  // Move focus into the dialog so keyboard and screen-reader users land in it.
   nextTick(() => dialogEl.value?.focus())
 })
 
@@ -192,8 +165,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- Right dock, only on the 对话 page -->
-  <aside v-if="onChatPage" class="dock" :aria-label="t('life.chat.dockAria')">
+    <aside v-if="onChatPage" class="dock" :aria-label="t('life.chat.dockAria')">
     <button type="button" class="dock-btn" :class="{ active: listOpen }" :title="t('life.chat.tab')" @click="listOpen = !listOpen">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
     </button>
@@ -202,8 +174,7 @@ onUnmounted(() => {
     </button>
   </aside>
 
-  <!-- Conversation list panel (same lsw-fade transition as the auto dialog) -->
-  <Transition name="lsw-fade">
+    <Transition name="lsw-fade">
     <section v-if="listOpen" class="panel" :style="listStyle" :aria-label="t('life.chat.listAria')">
       <div class="toolbar" @pointerdown="dragList">
         <span class="grab" aria-hidden="true">⠿</span>
@@ -228,8 +199,7 @@ onUnmounted(() => {
     </section>
   </Transition>
 
-  <!-- Chat panel -->
-  <Transition name="lsw-fade">
+    <Transition name="lsw-fade">
     <section v-if="chatOpen" class="panel" :style="chatStyle" :aria-label="t('life.chat.chatAria')">
     <div class="toolbar" @pointerdown="dragChat">
       <span class="grab" aria-hidden="true">⠿</span>
@@ -261,8 +231,7 @@ onUnmounted(() => {
     </section>
   </Transition>
 
-  <!-- Auto dialog, styled like the agent inbox -->
-  <Transition name="lsw-fade">
+    <Transition name="lsw-fade">
     <div v-if="popup && !collapsed" class="lsw-scrim" @click.self="collapsed = true" @keydown.esc="collapsed = true">
       <section ref="dialogEl" class="lsw-dialog" role="dialog" aria-modal="true" tabindex="-1" :aria-label="t('life.chat.replied')">
         <header>
@@ -286,11 +255,6 @@ onUnmounted(() => {
 .muted { color: var(--md-on-surface-variant); font-size: 13px; }
 .pad { padding: 14px; }
 
-/* Dock + floating panels share the Agent page's tool-window chrome (58px dock
-   rail, 42px/14px buttons, container-high toolbar, striped resize grip). The
-   dock anchors to the same top-right corner the Agent rail starts at; it stays
-   compact because a full-height rail would cover the chat page's own composer
-   and footer controls. */
 .dock { position: fixed; right: 16px; top: 76px; z-index: var(--z-panel, 3000); display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 10px 8px; border-radius: 28px; background: var(--md-surface-container-low); box-shadow: var(--shadow-1); }
 .dock-btn { position: relative; width: 42px; height: 42px; display: grid; place-items: center; border: 0; border-radius: 14px; background: transparent; color: var(--md-on-surface-variant); cursor: pointer; transition: background-color 160ms, color 160ms, transform 160ms var(--ease-emphasized-decel); }
 .dock-btn:hover { background: var(--md-secondary-container); color: var(--md-on-surface); transform: translateY(-1px); }
@@ -305,16 +269,10 @@ onUnmounted(() => {
 .toolbar strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 650; }
 .toolbar .count { flex: none; min-width: 20px; height: 20px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--md-surface-container-highest); color: var(--md-on-surface-variant); font-size: 11.5px; font-weight: 700; }
 .toolbar button { width: 28px; height: 28px; padding: 0; display: inline-grid; place-items: center; border: 0; border-radius: 8px; font-size: 13px; line-height: 1; color: var(--md-on-surface-variant); background: transparent; cursor: pointer; flex-shrink: 0; }
-/* The host's `#app button{min-height:36px}` is (1,0,1) and would stretch these
-   28x28 toolbar buttons to 28x36; this (1,1,2) selector wins the box back. */
+
 #app .toolbar button { min-height: 0; }
 .toolbar button:hover { background: var(--md-surface-container-highest); }
 
-/* `min-height: 0` is required, not cosmetic: `.panel` is a fixed-height column
-   flex with `overflow: hidden`, and an `auto` min-height lets this list keep its
-   full content height, so the panel clipped it instead of scrolling and the
-   last conversations were unreachable. The sibling `.thread` below already
-   carries it. */
 .list-body { flex: 1; min-height: 0; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px; }
 .row { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; border: 0; background: transparent; color: inherit; font: inherit; padding: 8px 9px; border-radius: 12px; cursor: pointer; }
 .row:hover { background: var(--md-surface-container-high); }
@@ -334,8 +292,7 @@ onUnmounted(() => {
 .fb { font-size: 14px; }
 
 .thread { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
-/* Bubble language mirrors the agent page's chat (AgentsPage .turn bubbles):
-   asymmetric 24/8 radii, out on primary-container, in on a low surface. */
+
 .msg { display: flex; opacity: 1; transform: none; transition: opacity var(--duration-medium) var(--ease-emphasized-decel), transform var(--duration-medium) var(--ease-emphasized-decel); }
 @starting-style { .msg { opacity: 0; transform: translateY(4px); } }
 .msg.out { justify-content: flex-end; }
@@ -366,7 +323,7 @@ onUnmounted(() => {
 .lsw-dialog footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
 .lsw-fab { position: fixed; right: 24px; bottom: 24px; z-index: var(--z-toast, 6000); display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 999px; padding: 12px 20px; background: var(--md-primary); color: var(--md-on-primary, #fff); font: inherit; font-weight: 700; cursor: pointer; box-shadow: var(--shadow-3); }
 .lsw-badge { background: var(--md-error); color: var(--md-on-error, #fff); border-radius: 999px; padding: 0 8px; font-size: 12px; }
-/* Same panel transition curve as the Agent page's tool windows. */
+
 .lsw-fade-enter-active { transition: opacity 240ms var(--ease-emphasized-decel), transform 240ms var(--ease-emphasized-decel); }
 .lsw-fade-leave-active { transition: opacity 140ms var(--ease-emphasized-accel), transform 140ms var(--ease-emphasized-accel); }
 .lsw-fade-enter-from, .lsw-fade-leave-to { opacity: 0; transform: translateY(-6px) scale(.99); }

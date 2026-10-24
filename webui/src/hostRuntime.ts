@@ -1,16 +1,3 @@
-/**
- * Host runtime surface shared with plugin ESM bundles.
- *
- * The WebUI shell owns the singleton state (pinia stores, api client, i18n,
- * theme, shared dialogs).  Pages now live in a plugin bundle, so they reach
- * that state through this single namespace, exposed as
- * `window.__0KAY_HOST_RUNTIME__` and re-exported by
- * `public/vendor/0kay-host-bridge.js` (mapped to the bare specifier
- * `@0kay/host` via the index.html importmap).
- *
- * Keeping it as one object means the plugin build only ever externalizes
- * `@0kay/host`, and there is exactly one instance of every store.
- */
 import { ApiError, SSEError, readApiResponse, apiGet, apiSend, apiPost, apiPut, apiPatch, apiDelete, streamSSE, readSSE } from './api'
 import { LOCALES, i18n, setLanguage, getLanguage } from './i18n'
 import { uid } from './uid'
@@ -42,24 +29,18 @@ import NavIcon from './components/NavIcon.vue'
 import PluginModuleHost from './components/PluginModuleHost.vue'
 
 const hostRuntime = {
-  // api
   ApiError, SSEError, readApiResponse, apiGet, apiSend, apiPost, apiPut, apiPatch, apiDelete,
   streamSSE, readSSE,
-  // i18n
   LOCALES, i18n, setLanguage, getLanguage,
-  // misc
   uid,
   THEME_STYLE_PREFIX, THEME_LINK_PREFIX, resolveTokenSets, buildThemeCSS,
   sortThemePatches, applyThemePatches, resetThemePatches,
   live2dRuntimeReady,
-  // stores
   useChatStore, useLifeStore, useProvidersStore, useSettingsSectionsStore,
   useWizardStore, useUIPatchesStore,
   BUILTIN_NAV, BUILTIN_STATUS, BUILTIN_SETTINGS, BUILTIN_CHAT,
-  // composables
   useConfirm, useSettingsMeta,
   DEFAULT_LIVE2D_MODELS, DEFAULT_LIVE2D_MODEL_URL, PROVIDERS, WIZARD_STEPS,
-  // shared components
   AppSelect, ConfirmDialog, MarkdownContent, PinInput,
   ModalShell, NavIcon, PluginModuleHost,
 }

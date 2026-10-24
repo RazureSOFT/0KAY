@@ -20,7 +20,6 @@ const age = computed(() => {
 })
 let clockTimer: ReturnType<typeof setInterval> | null = null
 
-/** Resolve dotted path against life store fields. */
 function resolve(path?: string): any {
   if (!path) return undefined
   if (!path.startsWith('life.')) return undefined
@@ -49,14 +48,6 @@ function axisValue(axis: StatusAxis): number {
   if (axis.scale === 'remap01') return (raw + 1) / 2
   return raw
 }
-
-/* Only 年龄 / 时间 / 时区 (the profile block) plus 心情 (mood) and 情绪 (emotion
-   bars) are rendered — see `visibleSections` below. The `bar` / `count` /
-   `tasks` / `list` / `memory` / `connection` / kv branches, their helpers
-   (`sectionValue` / `emptyText` / `listItems`) and the memory polling that used
-   to live here could never be reached: the filter never yields those kinds, so
-   they were a permanently dead network poll. Re-add the branch, its helper and
-   the filter together if one of those widgets is wanted back. */
 
 onMounted(() => {
   clockTimer = setInterval(() => { now.value = new Date() }, 1000)
@@ -99,8 +90,7 @@ const moodMood = computed(() => lifeStore.emotionMood)
           <span class="section-title">{{ labelOf(section) }}</span>
         </div>
 
-        <!-- mood -->
-        <div v-if="section.kind === 'mood'" class="mood-display">
+                <div v-if="section.kind === 'mood'" class="mood-display">
           <div class="mood-icon" :style="{ color: moodColor }">
             <svg v-if="moodMood === 'happy'" width="48" height="48" viewBox="0 0 48 48" fill="none">
               <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2"/>
@@ -139,8 +129,7 @@ const moodMood = computed(() => lifeStore.emotionMood)
           </div>
         </div>
 
-        <!-- bars (emotion axes) -->
-        <div v-else-if="section.kind === 'bars'" class="emotion-bars">
+                <div v-else-if="section.kind === 'bars'" class="emotion-bars">
           <div v-for="axis in section.axes || []" :key="axis.key" class="emotion-row">
             <span class="emotion-label">{{ axisLabel(axis) }}</span>
             <div class="emotion-bar">
@@ -276,9 +265,6 @@ const moodMood = computed(() => lifeStore.emotionMood)
   transition: transform var(--duration-medium) var(--ease-out);
 }
 
-/* `.empty-tasks` is still used by the "no status sections" fallback below;
-   everything that followed it belonged to the removed task / connection /
-   memory / agent branches and has been deleted with them. */
 .empty-tasks {
   padding: var(--space-md);
   text-align: center;

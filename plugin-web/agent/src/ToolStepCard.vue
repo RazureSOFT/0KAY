@@ -11,7 +11,6 @@ const open = ref(false)
 const searchOpen = ref(false)
 const copied = ref(false)
 let copyTimer: ReturnType<typeof setTimeout> | null = null
-// ids for aria-controls: the collapsible body and the teleported search dialog
 const bodyId = uid('tool-body')
 const searchDialogId = uid('tool-dialog')
 
@@ -50,8 +49,6 @@ const screenshot = computed<{ src: string; width?: number; height?: number; path
   return { src: `data:${d.mime};base64,${d.base64}`, width: d.width, height: d.height, path: d.path }
 })
 
-// Files a tool produced and that the WebUI can open (research figures/docx,
-// document, slides). Kept separate from the raw JSON dump.
 const producedFiles = computed<string[]>(() => {
   const out: string[] = []
   const add = (value: unknown) => { if (typeof value === 'string' && value && !out.includes(value)) out.push(value) }
@@ -69,12 +66,6 @@ function formatBytes(bytes: number): string {
 }
 const fileName = (value: string) => String(value || '').split(/[\\/]/).pop() || value
 
-// Inline diagram preview.
-//
-// `diagram` writes a self-contained HTML viewer next to the SVG. Showing it in
-// the transcript is the whole point of the tool — otherwise the user has to find
-// the file and open it by hand. The markup is fetched as base64 and injected via
-// srcdoc inside a sandboxed frame, so the page cannot reach the host.
 const diagram = computed<{ path: string; title: string; kind: string } | null>(() => {
   if (tool.value !== 'diagram') return null
   const files: string[] = Array.isArray(inner.value?.files)
@@ -111,7 +102,7 @@ watch(diagram, async (value) => {
 async function copyResult() {
   const text = props.step.result || ''
   if (!text) return
-  try { await navigator.clipboard.writeText(text) } catch { /* clipboard unavailable */ }
+  try { await navigator.clipboard.writeText(text) } catch { }
   copied.value = true
   if (copyTimer) clearTimeout(copyTimer)
   copyTimer = setTimeout(() => { copied.value = false }, 1500)
@@ -186,7 +177,6 @@ const diffStat = computed(() => {
 interface DiffLine { kind: 'add' | 'del' | 'hunk' | 'meta' | 'ctx'; oldNo: string; newNo: string; text: string }
 interface DiffFile { path: string; lines: DiffLine[] }
 
-/** Parse a unified diff, tracking old/new line numbers for each row. */
 function parseDiff(text: string, fallbackPath: string): DiffFile[] {
   const files: DiffFile[] = []
   let current: DiffFile | null = null
@@ -304,7 +294,7 @@ const summary = computed(() => {
     const count = Array.isArray(d?.windows) ? ` · ${d.windows.length} ${t('agent.tool.windows')}` : ''
     return clip(`${action}${position}${dims}${count}`)
   }
-  if (a && Object.keys(a).length) { try { return clip(JSON.stringify(a)) } catch { /* fall through */ } }
+  if (a && Object.keys(a).length) { try { return clip(JSON.stringify(a)) } catch { } }
   return clip(String(props.step.args || ''))
 })
 
@@ -323,19 +313,13 @@ interface Section { label: string; text: string; mono?: boolean }
 const sections = computed<Section[]>(() => {
   const name = tool.value
   const d = inner.value
-  // Core replaces an oversized result with {truncated, bytes}; without this
-  // the card looked empty even though the tool had produced plenty.
   if (payload.value?.truncated) {
     const size = Number(payload.value?.bytes) || 0
     return [{ label: '', text: t('agent.tool.truncated', { size: size ? formatBytes(size) : '—' }) }]
   }
-  // Produced files are shown as open buttons, not as a raw JSON dump.
   if (['document', 'slides', 'research'].includes(name) && producedFiles.value.length) return []
   if (name === 'computeruse' && screenshot.value) return []
   if (name === 'bash' && d) {
-    // Parallel mode runs N commands and returns one entry per command. Reading
-    // only `d.stdout` here made every parallel card claim "no output" even
-    // though the payload carried each command's own result.
     if (Array.isArray(d.results)) {
       const out: Section[] = []
       d.results.forEach((entry: any, index: number) => {
@@ -358,7 +342,6 @@ const sections = computed<Section[]>(() => {
     out.push({ label: t('agent.tool.content'), text: `${typeof d.lines === 'number' ? d.lines : '—'} ${t('agent.tool.lines')}${d.created ? ` · ${t('agent.tool.created')}` : ''} · ${d.bytes ?? '—'} B` })
     return out
   }
-  // edit / apply_patch render a colored diff (see diffFiles) instead of raw text.
   if (name === 'edit' || name === 'apply_patch') return []
   if (name === 'read' && d) {
     const out: Section[] = [{ label: t('agent.tool.file'), text: String(d.path || '') }]
@@ -371,8 +354,6 @@ const sections = computed<Section[]>(() => {
       { label: t('agent.tool.content'), text: String(d.content || ''), mono: true },
     ]
   }
-  // Everything else is rendered field by field (see `fields` below) instead of
-  // dumping the raw JSON blob: every tool's payload then shows up with a label.
   return []
 })
 
@@ -383,23 +364,12 @@ interface Field {
   text: string
   items?: string[]
 }
-// Payload keys that already have a dedicated view (diff, image, diagram) or that
-// are far too large to print (base64 payloads, the SVG itself).
 const HIDDEN_FIELDS = new Set(['base64', 'svg', 'mermaid', 'diff', 'patch', 'patches'])
 const isPathLike = (value: string) => /^[A-Za-z]:[\/]/.test(value) || /^\/(?:[\w.-]+\/)+[\w.-]+$/.test(value)
 function humanField(key: string): string {
   const spaced = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim()
   return spaced.charAt(0).toUpperCase() + spaced.slice(1)
 }
-/**
- * Every tool result, rendered field by field.
- *
- * Tools used to fall back to a raw JSON dump, which meant a user had to read
- * `{"discovered":12,"pages":[...]}` to learn anything. This walks the payload,
- * labels each key, and picks a presentation from the value itself: paths become
- * open buttons, short strings stay inline, long text and nested objects go into
- * a scrollable block. Unknown tools are covered without a per-tool schema.
- */
 const fields = computed<Field[]>(() => {
   if (sections.value.length) return []
   const data = inner.value
@@ -433,7 +403,6 @@ function toggle() {
   open.value = !open.value
 }
 
-// --- search dialog focus management ---
 const headButton = ref<HTMLButtonElement | null>(null)
 const searchDialog = ref<HTMLElement | null>(null)
 const searchClose = ref<HTMLButtonElement | null>(null)
@@ -444,13 +413,10 @@ watch(searchOpen, async (opened) => {
     await nextTick()
     searchClose.value?.focus()
   } else {
-    // Return focus to the card header so keyboard users are not dropped at
-    // <body>; a no-op when the opener (or card) is already gone.
     ;(searchOpener || headButton.value)?.focus()
     searchOpener = null
   }
 })
-// Keep Tab cycling inside the dialog while it is open.
 function trapDialogTab(event: KeyboardEvent) {
   if (event.key !== 'Tab' || !searchDialog.value) return
   const focusables = Array.from(searchDialog.value.querySelectorAll<HTMLElement>(
@@ -482,10 +448,7 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown); if (copyTi
       <small class="tool-state">{{ stateName(step.state) }}</small>
       <span class="tool-chevron" aria-hidden="true">▸</span>
     </button>
-    <!-- The body always renders (except for search tools) inside a 0fr→1fr
-         collapse grid, so both expand and collapse animate smoothly; the body
-         itself fades via its `.open` class. -->
-    <div class="collapse-grid" :class="{ open: open && !isSearch }">
+        <div class="collapse-grid" :class="{ open: open && !isSearch }">
       <div v-if="!isSearch" :id="bodyId" class="tool-card-body" :class="{ open }">
       <div v-if="producedFiles.length || step.result" class="tool-body-actions">
         <button v-for="(file, index) in producedFiles" :key="index" type="button" class="tool-open" :title="file" @click="emit('open', file)">
@@ -534,8 +497,7 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown); if (copyTi
           <pre v-if="section.mono">{{ section.text }}</pre>
           <p v-else class="tool-section-text">{{ section.text }}</p>
         </template>
-        <!-- Every remaining payload field, labelled. Replaces the raw JSON dump. -->
-        <dl v-if="fields.length" class="tool-fields">
+                <dl v-if="fields.length" class="tool-fields">
           <div v-for="field in fields" :key="field.key" class="tool-field">
             <dt>{{ field.label }}</dt>
             <dd>
@@ -557,10 +519,7 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown); if (copyTi
       <p v-if="step.error" class="tool-error">{{ formatError?.(step.error) || step.error }}</p>
       </div>
     </div>
-    <!-- Teleport to <body>: a `position:fixed` overlay inside a message card is
-         re-anchored by any transformed/overflow ancestor, which made the popup
-         appear in the middle of the message instead of the viewport centre. -->
-    <Teleport to="body">
+        <Teleport to="body">
     <div v-if="searchOpen" class="tool-dialog-backdrop" @click.self="searchOpen = false" @keydown="trapDialogTab">
       <section :id="searchDialogId" ref="searchDialog" class="tool-dialog" role="dialog" aria-modal="true" :aria-label="t('agent.tool.searchResults')">
         <header>
@@ -610,13 +569,11 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .tool-dot.failed{color:var(--md-error)}
 .tool-dot.done{color:var(--md-success)}
 .tool-dot.cancelled{color:var(--md-on-surface-variant)}
-/* Running breathes slowly; shut off under prefers-reduced-motion. */
+
 .tool-dot.running{animation:tool-dot-breathe 2s ease-in-out infinite}
 @keyframes tool-dot-breathe{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
 @media (prefers-reduced-motion: reduce){.tool-dot.running{animation:none}}
-/* Fade is driven by the `.open` class, not by mounting: the body stays in the
-   DOM inside the collapse grid (see template), so both expand and collapse get
-   an opacity + height transition. */
+
 .tool-card-body{padding:4px 12px 12px;border-top:1px solid var(--md-outline-variant);display:flex;flex-direction:column;gap:6px;opacity:0;transform:translateY(-4px);transition:opacity var(--duration-medium) var(--ease-out),transform var(--duration-medium) var(--ease-out)}
 .tool-card-body.open{opacity:1;transform:none}
 .tool-section-label{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--md-on-surface-variant);margin-top:4px}
@@ -642,15 +599,12 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .tool-search-source{display:inline-block;margin-top:4px;padding:1px 7px;border-radius:999px;background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);font-size:11px;color:var(--md-on-surface-variant)}
 .tool-body-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .tool-body-actions button{font:inherit;font-size:12px;display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:5px 10px;border-radius:999px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);background:var(--md-surface-container-low);color:var(--md-on-surface);cursor:pointer;overflow:hidden;transition:background-color 160ms}
-/* `text-overflow` does not apply to the inline-flex button itself (its text is
-   an anonymous flex item), so a long produced-file path was hard-clipped
-   mid-glyph. The inner span is what actually ellipsises. */
+
 .tool-open-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tool-body-actions button:hover{background:var(--md-secondary-container)}
 .tool-body-actions .tool-copy{margin-left:auto}
 .tool-body-actions button svg{flex:none;color:var(--md-primary)}
 
-/* Material 3 Expressive polish */
 .tool-card{border-radius:16px;border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent);background:var(--md-surface-container);transition:box-shadow 220ms,background-color 200ms}
 .tool-card:hover{box-shadow:var(--shadow-1)}
 button.tool-card-head{padding:12px 15px;gap:10px;min-height:46px;border-radius:0}
@@ -662,7 +616,6 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .tool-card-body pre{border-radius:14px;background:var(--md-surface-container-lowest);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}
 .tool-section-label{font-weight:700}
 
-/* Colored diff (edit / apply_patch): green = added, red = deleted */
 .diff-wrap{display:flex;flex-direction:column;gap:10px}
 .diff-file{border:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent);border-radius:14px;overflow:hidden;background:var(--md-surface-container-lowest)}
 .diff-file-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--md-surface-container);font-size:11.5px;font-weight:650}
@@ -698,10 +651,7 @@ button.tool-card-head:hover{background:var(--md-secondary-container)}
 .tool-field-empty{color:var(--md-on-surface-variant)}
 </style>
 <style>
-/* Dark text colors ride on the host's html[data-theme] toggle rather than the
-   OS media query, so a manual light/dark choice in Settings is honored too.
-   Scoped styles cannot express an html-level selector; #app keeps the rules
-   from leaking (unscoped block — see AgentsPage for the same pattern). */
+
 html[data-theme="dark"] #app .diff-line.add{color:#7ee787}
 html[data-theme="dark"] #app .diff-line.add .diff-sign{color:#7ee787}
 html[data-theme="dark"] #app .diff-line.del{color:#ffa198}

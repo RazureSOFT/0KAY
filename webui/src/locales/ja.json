@@ -110,6 +110,7 @@
     "mediaCall": "音声通話",
     "mediaSelfieDrawing": "写真を撮っています…",
     "callBanner": "通話中 —— どうぞ、聞いています",
+    "callDialing": "発信中…",
     "callEnd": "切る",
     "wakeCapturing": "聞いています。どうぞ…",
     "wakeFailed": "音声ウェイクを開始できません：{detail}",

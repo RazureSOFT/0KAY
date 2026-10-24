@@ -23,7 +23,6 @@ const applyState = ref<ApplyState | null>(null)
 const applyError = ref('')
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
-// Global plugin source (GitHub mirror), e.g. https://gh-proxy.com
 const githubProxy = ref('')
 const savedProxy = ref('')
 const proxyLoading = ref(false)
@@ -53,7 +52,7 @@ async function refreshApply() {
   try {
     applyState.value = await apiGet<ApplyState>('/api/plugins/pm/status')
   } catch {
-    return // Core is restarting after a self-update; keep polling.
+    return
   }
   if (applyState.value && applyState.value.status !== 'running') {
     stopPolling()
@@ -105,7 +104,6 @@ async function loadProxy() {
     githubProxy.value = value
     savedProxy.value = value
   } catch {
-    // Older Core without the updates section; leave the field empty.
   } finally {
     proxyLoading.value = false
   }
@@ -140,7 +138,7 @@ onMounted(() => {
       applyState.value = state
       if (state?.status === 'running') startPolling()
     })
-    .catch(() => { /* older Core without update apply */ })
+    .catch(() => { })
 })
 
 onUnmounted(stopPolling)
@@ -148,8 +146,7 @@ onUnmounted(stopPolling)
 
 <template>
   <div class="content-card updates">
-    <!-- Global plugin source -->
-    <section class="us-block">
+        <section class="us-block">
       <header class="us-head">
         <span class="us-ico" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 15a4 4 0 0 1 1.2-7.8A5.5 5.5 0 0 1 16 8.5a3.5 3.5 0 0 1 4 3.4A3.6 3.6 0 0 1 16.4 15H4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 11v7m0 0l-2.5-2.5M12 18l2.5-2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -197,8 +194,7 @@ onUnmounted(stopPolling)
 
     <div class="us-divider"></div>
 
-    <!-- Components -->
-    <section class="us-block">
+        <section class="us-block">
       <header class="us-head">
         <span class="us-ico" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.6" stroke="currentColor" stroke-width="1.8"/></svg>
@@ -312,7 +308,6 @@ onUnmounted(stopPolling)
 }
 .us-count.warn { background: #ffdf9e; color: #4a3800; }
 
-/* Plugin source */
 .us-source { display: flex; flex-direction: column; gap: 10px; }
 .us-input-group {
   display: flex; align-items: center; gap: 8px;
@@ -351,7 +346,6 @@ onUnmounted(stopPolling)
 .us-chip.active { background: var(--md-primary); border-color: var(--md-primary); color: var(--md-on-primary); }
 .us-saved { color: var(--md-success); font-size: 13px; font-weight: 600; }
 
-/* Version hero */
 .us-hero {
   display: flex; align-items: center; gap: 14px;
   padding: 16px 18px;
@@ -374,7 +368,6 @@ onUnmounted(stopPolling)
 .us-hero-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .us-hero .btn.btn-primary { background: var(--md-primary); color: var(--md-on-primary); }
 
-/* Apply banner */
 .us-apply-banner {
   display: flex; flex-direction: column; gap: 10px;
   padding: 14px 16px;
@@ -404,7 +397,6 @@ onUnmounted(stopPolling)
 .us-apply-error { margin: 0; max-height: 220px; overflow: auto; font: 12px/1.5 ui-monospace, monospace; white-space: pre-wrap; color: inherit; }
 @keyframes us-spin { to { transform: rotate(360deg); } }
 
-/* Component table */
 .us-table {
   border: 1px solid var(--md-outline-variant);
   border-radius: 16px;
@@ -429,9 +421,7 @@ onUnmounted(stopPolling)
 }
 .us-row:not(.us-thead):hover { background: var(--md-surface-container-low); }
 .us-name { display: inline-flex; align-items: center; gap: 8px; font-weight: 650; min-width: 0; overflow: hidden; }
-/* `text-overflow` is a block-container feature and is ignored on these flex
-   containers — the plugin name and status text were hard-clipped. The inner
-   spans are the boxes that actually ellipsise. */
+
 .us-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .us-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--md-outline); }
 .us-dot.ok { background: var(--md-success); }
@@ -462,8 +452,6 @@ onUnmounted(stopPolling)
 .us-foot-hint { margin: 0; font-size: 12.5px; color: var(--md-on-surface-variant); }
 .us-foot-hint code { background: var(--md-surface-container); padding: 3px 8px; border-radius: 6px; font-size: 12px; }
 
-/* `.btn.sm` / `.btn.xs` shapes live in styles/settings.css so every panel
-   agrees on one height (they used to drift between 34/30, 34/30 and 32/28). */
 .alert { color: var(--md-error); }
 
 @media (max-width: 720px) {

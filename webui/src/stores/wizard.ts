@@ -8,7 +8,6 @@ export const useWizardStore = defineStore('wizard', () => {
   const currentStep = ref(1)
   const totalSteps = 8
 
-  // Provider config
   const provider = ref('')
   const apiKey = ref('')
   const baseUrl = ref('')
@@ -17,7 +16,6 @@ export const useWizardStore = defineStore('wizard', () => {
   const fetchedModels = ref<string[]>([])
   const isLoadingModels = ref(false)
 
-  // Persona config
   const persona = ref<PersonaConfig>({
     name: '',
     avatar: '',
@@ -28,7 +26,6 @@ export const useWizardStore = defineStore('wizard', () => {
     customPrompt: '',
   })
 
-  // Live2D config — model list comes from upload API (sample models removed)
   const live2d = ref<Live2DConfig>({
     enabled: true,
     modelUrl: DEFAULT_LIVE2D_MODEL_URL,
@@ -37,19 +34,18 @@ export const useWizardStore = defineStore('wizard', () => {
 
   const canProceed = computed(() => {
     switch (currentStep.value) {
-      case 1: return true // Language always has a selection
+      case 1: return true
       case 2: return true
       case 3: return provider.value !== ''
       case 4: return apiKey.value !== '' && baseUrl.value !== ''
       case 5: return defaultModel.value !== ''
       case 6: return persona.value.name !== ''
-      case 7: return true // Live2D is optional
+      case 7: return true
       case 8: return true
       default: return false
     }
   })
 
-  /** i18n key naming what blocks Next on the current step; '' when unblocked. */
   const blockedHint = computed(() => {
     switch (currentStep.value) {
       case 3: return 'wizard.needProvider'
@@ -112,8 +108,6 @@ export const useWizardStore = defineStore('wizard', () => {
   }
 
   function saveToStorage() {
-    // Never persist the provider secret: the key is pushed to Core via
-    // pushProvidersToCore(); a plaintext copy in localStorage would leak it.
     const config = {
       provider: provider.value,
       baseUrl: baseUrl.value,
@@ -124,9 +118,6 @@ export const useWizardStore = defineStore('wizard', () => {
     }
     localStorage.setItem('0kay_config', JSON.stringify(config))
     localStorage.setItem('0kay_wizard_complete', 'true')
-    // NOTE: provider push happens only on wizard completion. Pushing here made
-    // every unrelated settings save re-upsert the wizard config under a fixed id
-    // and spawn duplicate provider rows next to the timestamped settings rows.
   }
 
   async function pushProvidersToCore() {
@@ -138,16 +129,12 @@ export const useWizardStore = defineStore('wizard', () => {
       try {
         const res = await fetch('/api/providers')
         if (res.ok) existing = ((await res.json()).providers || []) as ProviderConfig[]
-      } catch { /* core offline — upsert below creates the row */ }
-      // Reuse an existing row instead of appending a second one for the same endpoint.
-      // GET /api/providers masks api_key, so only compare keys when the stored
-      // row still exposes a plaintext one (fresh, unsaved catalog).
+      } catch { }
       const match = existing.find(p => p.id === provider.value)
         || existing.find(p => p.provider === provider.value && norm(p.base_url) === norm(baseUrl.value))
       const sameKey = !match?.api_key || match.api_key === apiKey.value
       if (match && match.provider === provider.value && norm(match.base_url) === norm(baseUrl.value)
           && sameKey && (match.models || []).join('\n') === models.join('\n')) {
-        // Identical config already stored — only refresh the defaults.
         await fetch('/api/providers/defaults', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -179,7 +166,6 @@ export const useWizardStore = defineStore('wizard', () => {
         body: JSON.stringify(body),
       })
     } catch {
-      /* offline — keep localStorage copy */
     }
   }
 
@@ -191,8 +177,6 @@ export const useWizardStore = defineStore('wizard', () => {
     try {
       const config = JSON.parse(localStorage.getItem('0kay_config') || '{}')
       provider.value = config.provider || provider.value
-      // apiKey is intentionally not restored from storage (never persisted);
-      // the wizard re-collects it and pushes it to Core directly.
       baseUrl.value = config.baseUrl || baseUrl.value
       selectedModels.value = config.models || selectedModels.value
       defaultModel.value = config.defaultModel || defaultModel.value

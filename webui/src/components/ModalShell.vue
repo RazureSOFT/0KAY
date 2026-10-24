@@ -1,45 +1,18 @@
 <script setup lang="ts">
-/**
- * Shared modal shell: scrim, focus trap, Escape handling and focus restore.
- *
- * The app had five hand-written copies of this (ConfirmDialog,
- * GlobalAgentInbox, LifeApprovalDialog, MinecraftConsentDialog and the three
- * auth overlays in App.vue). They had drifted: some trapped Tab, some did not;
- * some restored focus on close, some did not; z-index and blur differed. A
- * dialog that leaks focus to the page behind it is a real accessibility bug, and
- * having five implementations means it is fixed five times or not at all.
- *
- * This owns the behaviour that must not vary. Content and buttons stay with the
- * caller, so each dialog keeps its own wording and layout.
- */
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 const props = withDefaults(
   defineProps<{
     open: boolean
-    /** Announced to assistive tech and used to label the dialog. */
     title?: string
     description?: string
-    /** Escape and scrim click both route here. Omit to make the dialog modal-only. */
     onDismiss?: () => void
-    /** Set false for a dialog the user must answer (hides the scrim-click exit). */
     dismissOnScrim?: boolean
-    /** Initial focus target. Defaults to the first focusable element. */
     initialFocus?: 'first' | 'close' | 'none'
     labelledBy?: string
     describedBy?: string
-    /**
-     * Extra class on the panel. Dialogs with a wider reading measure (the
-     * confirm dialog shows markdown) override the default width through this
-     * rather than the shell growing a prop per caller.
-     */
     panelClass?: string
-    /** Max-height override, same rationale as panelClass. */
     maxHeight?: string
-    /**
-     * ARIA dialog role. `alertdialog` is for interruptive dialogs that demand a
-     * response (confirms, destructive actions); plain `dialog` otherwise.
-     */
     role?: 'dialog' | 'alertdialog'
   }>(),
   { dismissOnScrim: true, initialFocus: 'first' },
@@ -56,7 +29,6 @@ const FOCUSABLE =
 function focusables(): HTMLElement[] {
   if (!panel.value) return []
   return [...panel.value.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
-    // offsetParent is null for display:none subtrees; visibility is not enough.
     (el) => el.offsetParent !== null || el === document.activeElement,
   )
 }
@@ -76,8 +48,6 @@ watch(
       focusInitial()
     } else {
       panel.value = null
-      // Returning focus is what stops the keyboard user from being dumped at the
-      // top of the document after every dialog.
       restoreFocusTo?.focus?.()
       restoreFocusTo = null
     }
@@ -99,7 +69,6 @@ function onKeydown(event: KeyboardEvent) {
   if (event.key !== 'Tab' || !panel.value) return
   const items = focusables()
   if (!items.length) {
-    // Nothing to move between: keep focus on the panel itself.
     event.preventDefault()
     panel.value.focus()
     return
@@ -116,15 +85,12 @@ function onKeydown(event: KeyboardEvent) {
   }
 }
 
-/** Exposed so a parent can move focus after its content changes. */
 defineExpose({ focusInitial })
 </script>
 
 <template>
   <Teleport to="body">
-    <!-- Transition owns the exit as well as the entry: a dialog that vanishes
-         in one frame after animating in reads as a rendering glitch. -->
-    <Transition name="modal">
+        <Transition name="modal">
     <div
       v-if="open"
       class="modal-scrim"
@@ -152,10 +118,7 @@ defineExpose({ focusInitial })
 </template>
 
 <style>
-/*
- * Unscoped on purpose: theme.css reaches into dialog internals with #app rules,
- * and a scoped style would lose that fight (see the cascade note in theme.css).
- */
+
 .modal-scrim {
   position: fixed;
   inset: 0;
@@ -197,7 +160,6 @@ defineExpose({ focusInitial })
   to { opacity: 1; transform: none; }
 }
 
-/* Exit mirrors the entry, accelerated (decel in, accel out). */
 .modal-leave-active {
   transition: opacity var(--duration-short, 140ms) var(--ease-emphasized-accel, ease-in);
 }

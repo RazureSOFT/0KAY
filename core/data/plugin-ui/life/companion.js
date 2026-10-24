@@ -1,6 +1,6 @@
-import { defineComponent as Uo, ref as G, computed as A, onMounted as Fn, openBlock as _, createElementBlock as v, createElementVNode as n, createTextVNode as N, toDisplayString as r, createCommentVNode as S, Fragment as Q, renderList as Te, normalizeClass as Y, createVNode as Oe, Transition as Ca, withCtx as Bo, unref as De, withDirectives as P, vModelText as M, vModelCheckbox as fe, TransitionGroup as Ma, nextTick as Hn, watch as ui, onUnmounted as Zo, vShow as un, normalizeStyle as et } from "vue";
+import { defineComponent as Uo, ref as G, computed as A, onMounted as Fn, openBlock as _, createElementBlock as v, createElementVNode as n, createTextVNode as N, toDisplayString as r, createCommentVNode as E, Fragment as Q, renderList as Te, normalizeClass as Y, createVNode as Oe, Transition as Ca, withCtx as Bo, unref as Ve, withDirectives as P, vModelText as C, vModelCheckbox as fe, TransitionGroup as Ma, nextTick as Hn, watch as ui, onUnmounted as Zo, vShow as un, normalizeStyle as et } from "vue";
 import { useRouter as za } from "vue-router";
-import { i18n as Wn, useConfirm as Fo, AppSelect as Ve } from "@0kay/host";
+import { i18n as Wn, useConfirm as Fo, AppSelect as De } from "@0kay/host";
 function Ea(me) {
   return me && me.__esModule && Object.prototype.hasOwnProperty.call(me, "default") ? me.default : me;
 }
@@ -344,22 +344,22 @@ function Aa() {
       };
       Ue.addEventListener = Ue.on, Ue.removeEventListener = Ue.clearAllEventListeners = Ue.off, Ue.addOneTimeEventListener = Ue.once, Ue.fireEvent = Ue.fire, Ue.hasEventListeners = Ue.listens;
       var xt = je.extend(Ue);
-      function z(e, t, i) {
+      function M(e, t, i) {
         this.x = i ? Math.round(e) : e, this.y = i ? Math.round(t) : t;
       }
       var _t = Math.trunc || function(e) {
         return e > 0 ? Math.floor(e) : Math.ceil(e);
       };
-      z.prototype = {
+      M.prototype = {
         // @method clone(): Point
         // Returns a copy of the current point.
         clone: function() {
-          return new z(this.x, this.y);
+          return new M(this.x, this.y);
         },
         // @method add(otherPoint: Point): Point
         // Returns the result of addition of the current and the given points.
         add: function(e) {
-          return this.clone()._add(D(e));
+          return this.clone()._add(V(e));
         },
         _add: function(e) {
           return this.x += e.x, this.y += e.y, this;
@@ -367,7 +367,7 @@ function Aa() {
         // @method subtract(otherPoint: Point): Point
         // Returns the result of subtraction of the given point from the current.
         subtract: function(e) {
-          return this.clone()._subtract(D(e));
+          return this.clone()._subtract(V(e));
         },
         _subtract: function(e) {
           return this.x -= e.x, this.y -= e.y, this;
@@ -394,13 +394,13 @@ function Aa() {
         // [scaling matrix](https://en.wikipedia.org/wiki/Scaling_%28geometry%29#Matrix_representation)
         // defined by `scale`.
         scaleBy: function(e) {
-          return new z(this.x * e.x, this.y * e.y);
+          return new M(this.x * e.x, this.y * e.y);
         },
         // @method unscaleBy(scale: Point): Point
         // Inverse of `scaleBy`. Divide each coordinate of the current point by
         // each coordinate of `scale`.
         unscaleBy: function(e) {
-          return new z(this.x / e.x, this.y / e.y);
+          return new M(this.x / e.x, this.y / e.y);
         },
         // @method round(): Point
         // Returns a copy of the current point with rounded coordinates.
@@ -437,19 +437,19 @@ function Aa() {
         // @method distanceTo(otherPoint: Point): Number
         // Returns the cartesian distance between the current and the given points.
         distanceTo: function(e) {
-          e = D(e);
+          e = V(e);
           var t = e.x - this.x, i = e.y - this.y;
           return Math.sqrt(t * t + i * i);
         },
         // @method equals(otherPoint: Point): Boolean
         // Returns `true` if the given point has the same coordinates.
         equals: function(e) {
-          return e = D(e), e.x === this.x && e.y === this.y;
+          return e = V(e), e.x === this.x && e.y === this.y;
         },
         // @method contains(otherPoint: Point): Boolean
         // Returns `true` if both coordinates of the given point are less than the corresponding current point coordinates (in absolute values).
         contains: function(e) {
-          return e = D(e), Math.abs(e.x) <= Math.abs(this.x) && Math.abs(e.y) <= Math.abs(this.y);
+          return e = V(e), Math.abs(e.x) <= Math.abs(this.x) && Math.abs(e.y) <= Math.abs(this.y);
         },
         // @method toString(): String
         // Returns a string representation of the point for debugging purposes.
@@ -457,8 +457,8 @@ function Aa() {
           return "Point(" + B(this.x) + ", " + B(this.y) + ")";
         }
       };
-      function D(e, t, i) {
-        return e instanceof z ? e : He(e) ? new z(e[0], e[1]) : e == null ? e : typeof e == "object" && "x" in e && "y" in e ? new z(e.x, e.y) : new z(e, t, i);
+      function V(e, t, i) {
+        return e instanceof M ? e : He(e) ? new M(e[0], e[1]) : e == null ? e : typeof e == "object" && "x" in e && "y" in e ? new M(e.x, e.y) : new M(e, t, i);
       }
       function m(e, t) {
         if (e)
@@ -475,8 +475,8 @@ function Aa() {
           var t, i;
           if (!e)
             return this;
-          if (e instanceof z || typeof e[0] == "number" || "x" in e)
-            t = i = D(e);
+          if (e instanceof M || typeof e[0] == "number" || "x" in e)
+            t = i = V(e);
           else if (e = T(e), t = e.min, i = e.max, !t || !i)
             return this;
           return !this.min && !this.max ? (this.min = t.clone(), this.max = i.clone()) : (this.min.x = Math.min(t.x, this.min.x), this.max.x = Math.max(i.x, this.max.x), this.min.y = Math.min(t.y, this.min.y), this.max.y = Math.max(i.y, this.max.y)), this;
@@ -484,7 +484,7 @@ function Aa() {
         // @method getCenter(round?: Boolean): Point
         // Returns the center point of the bounds.
         getCenter: function(e) {
-          return D(
+          return V(
             (this.min.x + this.max.x) / 2,
             (this.min.y + this.max.y) / 2,
             e
@@ -493,12 +493,12 @@ function Aa() {
         // @method getBottomLeft(): Point
         // Returns the bottom-left point of the bounds.
         getBottomLeft: function() {
-          return D(this.min.x, this.max.y);
+          return V(this.min.x, this.max.y);
         },
         // @method getTopRight(): Point
         // Returns the top-right point of the bounds.
         getTopRight: function() {
-          return D(this.max.x, this.min.y);
+          return V(this.max.x, this.min.y);
         },
         // @method getTopLeft(): Point
         // Returns the top-left point of the bounds (i.e. [`this.min`](#bounds-min)).
@@ -522,7 +522,7 @@ function Aa() {
         // Returns `true` if the rectangle contains the given point.
         contains: function(e) {
           var t, i;
-          return typeof e[0] == "number" || e instanceof z ? e = D(e) : e = T(e), e instanceof m ? (t = e.min, i = e.max) : t = i = e, t.x >= this.min.x && i.x <= this.max.x && t.y >= this.min.y && i.y <= this.max.y;
+          return typeof e[0] == "number" || e instanceof M ? e = V(e) : e = T(e), e instanceof m ? (t = e.min, i = e.max) : t = i = e, t.x >= this.min.x && i.x <= this.max.x && t.y >= this.min.y && i.y <= this.max.y;
         },
         // @method intersects(otherBounds: Bounds): Boolean
         // Returns `true` if the rectangle intersects the given bounds. Two bounds
@@ -552,8 +552,8 @@ function Aa() {
         pad: function(e) {
           var t = this.min, i = this.max, o = Math.abs(t.x - i.x) * e, s = Math.abs(t.y - i.y) * e;
           return T(
-            D(t.x - o, t.y - s),
-            D(i.x + o, i.y + s)
+            V(t.x - o, t.y - s),
+            V(i.x + o, i.y + s)
           );
         },
         // @method equals(otherBounds: Bounds): Boolean
@@ -836,7 +836,7 @@ function Aa() {
         MAX_LATITUDE: 85.0511287798,
         project: function(e) {
           var t = Math.PI / 180, i = this.MAX_LATITUDE, o = Math.max(Math.min(i, e.lat), -i), s = Math.sin(o * t);
-          return new z(
+          return new M(
             this.R * e.lng * t,
             this.R * Math.log((1 + s) / (1 - s)) / 2
           );
@@ -853,14 +853,14 @@ function Aa() {
           return new m([-e, -e], [e, e]);
         })()
       };
-      function Di(e, t, i, o) {
+      function Vi(e, t, i, o) {
         if (He(e)) {
           this._a = e[0], this._b = e[1], this._c = e[2], this._d = e[3];
           return;
         }
         this._a = e, this._b = t, this._c = i, this._d = o;
       }
-      Di.prototype = {
+      Vi.prototype = {
         // @method transform(point: Point, scale?: Number): Point
         // Returns a transformed point, optionally multiplied by the given scale.
         // Only accepts actual `L.Point` instances, not arrays.
@@ -875,14 +875,14 @@ function Aa() {
         // Returns the reverse transformation of the given point, optionally divided
         // by the given scale. Only accepts actual `L.Point` instances, not arrays.
         untransform: function(e, t) {
-          return t = t || 1, new z(
+          return t = t || 1, new M(
             (e.x / t - this._b) / this._a,
             (e.y / t - this._d) / this._c
           );
         }
       };
       function Zt(e, t, i, o) {
-        return new Di(e, t, i, o);
+        return new Vi(e, t, i, o);
       }
       var hi = Z({}, Be, {
         code: "EPSG:3857",
@@ -906,7 +906,7 @@ function Aa() {
         }
         return i || "M0 0";
       }
-      var Vi = document.documentElement.style, ye = "ActiveXObject" in window, vt = ye && !document.addEventListener, pi = "msLaunchUri" in navigator && !("documentMode" in document), Jt = nt("webkit"), pn = nt("android"), $i = nt("android 2") || nt("android 3"), fn = parseInt(/WebKit\/([0-9]+)|$/.exec(navigator.userAgent)[1], 10), mn = pn && nt("Google") && fn < 537 && !("AudioNode" in window), Ui = !!window.opera, _n = !pi && nt("chrome"), Fi = nt("gecko") && !Jt && !Ui && !ye, vn = !_n && nt("safari"), gn = nt("phantom"), yn = "OTransition" in Vi, Le = navigator.platform.indexOf("Win") === 0, Xt = ye && "transition" in Vi, Qt = "WebKitCSSMatrix" in window && "m11" in new window.WebKitCSSMatrix() && !$i, Hi = "MozPerspective" in Vi, bn = !window.L_DISABLE_3D && (Xt || Qt || Hi) && !yn && !gn, kt = typeof orientation < "u" || nt("mobile"), fi = kt && Jt, Nt = kt && Qt, mi = !window.PointerEvent && window.MSPointerEvent, ei = !!(window.PointerEvent || mi), ti = "ontouchstart" in window || !!window.TouchEvent, wn = !window.L_NO_TOUCH && (ti || ei), xn = kt && Ui, le = kt && Fi, dt = (window.devicePixelRatio || window.screen.deviceXDPI / window.screen.logicalXDPI) > 1, ht = (function() {
+      var Di = document.documentElement.style, ye = "ActiveXObject" in window, vt = ye && !document.addEventListener, pi = "msLaunchUri" in navigator && !("documentMode" in document), Jt = nt("webkit"), pn = nt("android"), $i = nt("android 2") || nt("android 3"), fn = parseInt(/WebKit\/([0-9]+)|$/.exec(navigator.userAgent)[1], 10), mn = pn && nt("Google") && fn < 537 && !("AudioNode" in window), Ui = !!window.opera, _n = !pi && nt("chrome"), Fi = nt("gecko") && !Jt && !Ui && !ye, vn = !_n && nt("safari"), gn = nt("phantom"), yn = "OTransition" in Di, Le = navigator.platform.indexOf("Win") === 0, Xt = ye && "transition" in Di, Qt = "WebKitCSSMatrix" in window && "m11" in new window.WebKitCSSMatrix() && !$i, Hi = "MozPerspective" in Di, bn = !window.L_DISABLE_3D && (Xt || Qt || Hi) && !yn && !gn, kt = typeof orientation < "u" || nt("mobile"), fi = kt && Jt, Nt = kt && Qt, mi = !window.PointerEvent && window.MSPointerEvent, ei = !!(window.PointerEvent || mi), ti = "ontouchstart" in window || !!window.TouchEvent, wn = !window.L_NO_TOUCH && (ti || ei), xn = kt && Ui, le = kt && Fi, dt = (window.devicePixelRatio || window.screen.deviceXDPI / window.screen.logicalXDPI) > 1, ht = (function() {
         var e = !1;
         try {
           var t = Object.defineProperty({}, "passive", {
@@ -1051,7 +1051,7 @@ function Aa() {
       function ot(e, t) {
         e.removeEventListener("dblclick", t.dblclick), e.removeEventListener("click", t.simDblclick);
       }
-      var Dt = gt(
+      var Vt = gt(
         ["transform", "webkitTransform", "OTransform", "MozTransform", "msTransform"]
       ), ni = gt(
         ["webkitTransition", "transition", "OTransition", "MozTransition", "msTransition"]
@@ -1079,7 +1079,7 @@ function Aa() {
         for (; e.firstChild; )
           e.removeChild(e.firstChild);
       }
-      function Vt(e) {
+      function Dt(e) {
         var t = e.parentNode;
         t && t.lastChild !== e && t.appendChild(e);
       }
@@ -1099,13 +1099,13 @@ function Aa() {
             e.classList.add(i[o]);
         else if (!$t(e, t)) {
           var c = Ut(e);
-          V(e, (c ? c + " " : "") + t);
+          D(e, (c ? c + " " : "") + t);
         }
       }
       function q(e, t) {
-        e.classList !== void 0 ? e.classList.remove(t) : V(e, Xe((" " + Ut(e) + " ").replace(" " + t + " ", " ")));
+        e.classList !== void 0 ? e.classList.remove(t) : D(e, Xe((" " + Ut(e) + " ").replace(" " + t + " ", " ")));
       }
-      function V(e, t) {
+      function D(e, t) {
         e.className.baseVal === void 0 ? e.className = t : e.className.baseVal = t;
       }
       function Ut(e) {
@@ -1131,14 +1131,14 @@ function Aa() {
         return !1;
       }
       function qe(e, t, i) {
-        var o = t || new z(0, 0);
-        e.style[Dt] = (I.ie3d ? "translate(" + o.x + "px," + o.y + "px)" : "translate3d(" + o.x + "px," + o.y + "px,0)") + (i ? " scale(" + i + ")" : "");
+        var o = t || new M(0, 0);
+        e.style[Vt] = (I.ie3d ? "translate(" + o.x + "px," + o.y + "px)" : "translate3d(" + o.x + "px," + o.y + "px,0)") + (i ? " scale(" + i + ")" : "");
       }
       function _e(e, t) {
         e._leaflet_pos = t, I.any3d ? qe(e, t) : (e.style.left = t.x + "px", e.style.top = t.y + "px");
       }
       function pt(e) {
-        return e._leaflet_pos || new z(0, 0);
+        return e._leaflet_pos || new M(0, 0);
       }
       var Ke, si, ji;
       if ("onselectstart" in document)
@@ -1191,7 +1191,7 @@ function Aa() {
       }
       var Lt = {
         __proto__: null,
-        TRANSFORM: Dt,
+        TRANSFORM: Vt,
         TRANSITION: ni,
         TRANSITION_END: at,
         get: te,
@@ -1199,12 +1199,12 @@ function Aa() {
         create: se,
         remove: be,
         empty: ai,
-        toFront: Vt,
+        toFront: Dt,
         toBack: Ce,
         hasClass: $t,
         addClass: j,
         removeClass: q,
-        setClass: V,
+        setClass: D,
         getClass: Ut,
         setOpacity: We,
         testProp: gt,
@@ -1304,9 +1304,9 @@ function Aa() {
       }
       function Qi(e, t) {
         if (!t)
-          return new z(e.clientX, e.clientY);
+          return new M(e.clientX, e.clientY);
         var i = Ki(t), o = i.boundingClientRect;
-        return new z(
+        return new M(
           // offset.left/top values are in page scale (like clientX/Y),
           // whereas clientLeft/Top (border width) values are the original values (before CSS scale applies).
           (e.clientX - o.left) / i.x - t.clientLeft,
@@ -1514,12 +1514,12 @@ function Aa() {
         // @method setZoomAround(offset: Point, zoom: Number, options: Zoom options): this
         // Zooms the map while keeping a specified pixel on the map (relative to the top-left corner) stationary.
         setZoomAround: function(e, t, i) {
-          var o = this.getZoomScale(t), s = this.getSize().divideBy(2), c = e instanceof z ? e : this.latLngToContainerPoint(e), d = c.subtract(s).multiplyBy(1 - 1 / o), p = this.containerPointToLatLng(s.add(d));
+          var o = this.getZoomScale(t), s = this.getSize().divideBy(2), c = e instanceof M ? e : this.latLngToContainerPoint(e), d = c.subtract(s).multiplyBy(1 - 1 / o), p = this.containerPointToLatLng(s.add(d));
           return this.setView(p, t, { zoom: i });
         },
         _getBoundsCenterZoom: function(e, t) {
           t = t || {}, e = e.getBounds ? e.getBounds() : ee(e);
-          var i = D(t.paddingTopLeft || t.padding || [0, 0]), o = D(t.paddingBottomRight || t.padding || [0, 0]), s = this.getBoundsZoom(e, !1, i.add(o));
+          var i = V(t.paddingTopLeft || t.padding || [0, 0]), o = V(t.paddingBottomRight || t.padding || [0, 0]), s = this.getBoundsZoom(e, !1, i.add(o));
           if (s = typeof t.maxZoom == "number" ? Math.min(t.maxZoom, s) : s, s === 1 / 0)
             return {
               center: e.getCenter(),
@@ -1554,7 +1554,7 @@ function Aa() {
         // @method panBy(offset: Point, options?: Pan options): this
         // Pans the map by a given number of pixels (animated).
         panBy: function(e, t) {
-          if (e = D(e).round(), t = t || {}, !e.x && !e.y)
+          if (e = V(e).round(), t = t || {}, !e.x && !e.y)
             return this.fire("moveend");
           if (t.animate !== !0 && !this.getSize().contains(e))
             return this._resetView(this.unproject(this.project(this.getCenter()).add(e)), this.getZoom()), this;
@@ -1578,7 +1578,7 @@ function Aa() {
           this._stop();
           var o = this.project(this.getCenter()), s = this.project(e), c = this.getSize(), d = this._zoom;
           e = $(e), t = t === void 0 ? d : t;
-          var p = Math.max(c.x, c.y), f = p * this.getZoomScale(d, t), x = s.distanceTo(o) || 1, C = 1.42, U = C * C;
+          var p = Math.max(c.x, c.y), f = p * this.getZoomScale(d, t), x = s.distanceTo(o) || 1, S = 1.42, U = S * S;
           function ne(Ie) {
             var Un = Ie ? -1 : 1, Pa = Ie ? f : p, La = f * f - p * p + Un * U * U * x * x, Ta = 2 * Pa * U * x, so = La / Ta, Io = Math.sqrt(so * so + 1) - so, Sa = Io < 1e-9 ? -18 : Math.log(Io);
             return Sa;
@@ -1594,15 +1594,15 @@ function Aa() {
           }
           var Je = ne(0);
           function Ni(Ie) {
-            return p * (Re(Je) / Re(Je + C * Ie));
+            return p * (Re(Je) / Re(Je + S * Ie));
           }
           function ba(Ie) {
-            return p * (Re(Je) * lt(Je + C * Ie) - Ge(Je)) / U;
+            return p * (Re(Je) * lt(Je + S * Ie) - Ge(Je)) / U;
           }
           function wa(Ie) {
             return 1 - Math.pow(1 - Ie, 1.5);
           }
-          var xa = Date.now(), Oo = (ne(1) - Je) / C, ka = i.duration ? 1e3 * i.duration : 1e3 * Oo * 0.8;
+          var xa = Date.now(), Oo = (ne(1) - Je) / S, ka = i.duration ? 1e3 * i.duration : 1e3 * Oo * 0.8;
           function Ao() {
             var Ie = (Date.now() - xa) / ka, Un = wa(Ie) * Oo;
             Ie <= 1 ? (this._flyToFrame = Se(Ao, this), this._move(
@@ -1651,11 +1651,11 @@ function Aa() {
         // the map will not be panned.
         panInside: function(e, t) {
           t = t || {};
-          var i = D(t.paddingTopLeft || t.padding || [0, 0]), o = D(t.paddingBottomRight || t.padding || [0, 0]), s = this.project(this.getCenter()), c = this.project(e), d = this.getPixelBounds(), p = T([d.min.add(i), d.max.subtract(o)]), f = p.getSize();
+          var i = V(t.paddingTopLeft || t.padding || [0, 0]), o = V(t.paddingBottomRight || t.padding || [0, 0]), s = this.project(this.getCenter()), c = this.project(e), d = this.getPixelBounds(), p = T([d.min.add(i), d.max.subtract(o)]), f = p.getSize();
           if (!p.contains(c)) {
             this._enforcingBounds = !0;
-            var x = c.subtract(p.getCenter()), C = p.extend(c).getSize().subtract(f);
-            s.x += x.x < 0 ? -C.x : C.x, s.y += x.y < 0 ? -C.y : C.y, this.panTo(this.unproject(s), t), this._enforcingBounds = !1;
+            var x = c.subtract(p.getCenter()), S = p.extend(c).getSize().subtract(f);
+            s.x += x.x < 0 ? -S.x : S.x, s.y += x.y < 0 ? -S.y : S.y, this.panTo(this.unproject(s), t), this._enforcingBounds = !1;
           }
           return this;
         },
@@ -1820,14 +1820,14 @@ function Aa() {
         // instead returns the minimum zoom level on which the map view fits into
         // the given bounds in its entirety.
         getBoundsZoom: function(e, t, i) {
-          e = ee(e), i = D(i || [0, 0]);
-          var o = this.getZoom() || 0, s = this.getMinZoom(), c = this.getMaxZoom(), d = e.getNorthWest(), p = e.getSouthEast(), f = this.getSize().subtract(i), x = T(this.project(p, o), this.project(d, o)).getSize(), C = I.any3d ? this.options.zoomSnap : 1, U = f.x / x.x, ne = f.y / x.y, Ge = t ? Math.max(U, ne) : Math.min(U, ne);
-          return o = this.getScaleZoom(Ge, o), C && (o = Math.round(o / (C / 100)) * (C / 100), o = t ? Math.ceil(o / C) * C : Math.floor(o / C) * C), Math.max(s, Math.min(c, o));
+          e = ee(e), i = V(i || [0, 0]);
+          var o = this.getZoom() || 0, s = this.getMinZoom(), c = this.getMaxZoom(), d = e.getNorthWest(), p = e.getSouthEast(), f = this.getSize().subtract(i), x = T(this.project(p, o), this.project(d, o)).getSize(), S = I.any3d ? this.options.zoomSnap : 1, U = f.x / x.x, ne = f.y / x.y, Ge = t ? Math.max(U, ne) : Math.min(U, ne);
+          return o = this.getScaleZoom(Ge, o), S && (o = Math.round(o / (S / 100)) * (S / 100), o = t ? Math.ceil(o / S) * S : Math.floor(o / S) * S), Math.max(s, Math.min(c, o));
         },
         // @method getSize(): Point
         // Returns the current size of the map container (in pixels).
         getSize: function() {
-          return (!this._size || this._sizeChanged) && (this._size = new z(
+          return (!this._size || this._sizeChanged) && (this._size = new M(
             this._container.clientWidth || 0,
             this._container.clientHeight || 0
           ), this._sizeChanged = !1), this._size.clone();
@@ -1900,13 +1900,13 @@ function Aa() {
         // @method unproject(point: Point, zoom: Number): LatLng
         // Inverse of [`project`](#map-project).
         unproject: function(e, t) {
-          return t = t === void 0 ? this._zoom : t, this.options.crs.pointToLatLng(D(e), t);
+          return t = t === void 0 ? this._zoom : t, this.options.crs.pointToLatLng(V(e), t);
         },
         // @method layerPointToLatLng(point: Point): LatLng
         // Given a pixel coordinate relative to the [origin pixel](#map-getpixelorigin),
         // returns the corresponding geographical coordinate (for the current zoom level).
         layerPointToLatLng: function(e) {
-          var t = D(e).add(this.getPixelOrigin());
+          var t = V(e).add(this.getPixelOrigin());
           return this.unproject(t);
         },
         // @method latLngToLayerPoint(latlng: LatLng): Point
@@ -1944,19 +1944,19 @@ function Aa() {
         // Given a pixel coordinate relative to the map container, returns the corresponding
         // pixel coordinate relative to the [origin pixel](#map-getpixelorigin).
         containerPointToLayerPoint: function(e) {
-          return D(e).subtract(this._getMapPanePos());
+          return V(e).subtract(this._getMapPanePos());
         },
         // @method layerPointToContainerPoint(point: Point): Point
         // Given a pixel coordinate relative to the [origin pixel](#map-getpixelorigin),
         // returns the corresponding pixel coordinate relative to the map container.
         layerPointToContainerPoint: function(e) {
-          return D(e).add(this._getMapPanePos());
+          return V(e).add(this._getMapPanePos());
         },
         // @method containerPointToLatLng(point: Point): LatLng
         // Given a pixel coordinate relative to the map container, returns
         // the corresponding geographical coordinate (for the current zoom level).
         containerPointToLatLng: function(e) {
-          var t = this.containerPointToLayerPoint(D(e));
+          var t = this.containerPointToLayerPoint(V(e));
           return this.layerPointToLatLng(t);
         },
         // @method latLngToContainerPoint(latlng: LatLng): Point
@@ -2000,12 +2000,12 @@ function Aa() {
         },
         _initPanes: function() {
           var e = this._panes = {};
-          this._paneRenderers = {}, this._mapPane = this.createPane("mapPane", this._container), _e(this._mapPane, new z(0, 0)), this.createPane("tilePane"), this.createPane("overlayPane"), this.createPane("shadowPane"), this.createPane("markerPane"), this.createPane("tooltipPane"), this.createPane("popupPane"), this.options.markerZoomAnimation || (j(e.markerPane, "leaflet-zoom-hide"), j(e.shadowPane, "leaflet-zoom-hide"));
+          this._paneRenderers = {}, this._mapPane = this.createPane("mapPane", this._container), _e(this._mapPane, new M(0, 0)), this.createPane("tilePane"), this.createPane("overlayPane"), this.createPane("shadowPane"), this.createPane("markerPane"), this.createPane("tooltipPane"), this.createPane("popupPane"), this.options.markerZoomAnimation || (j(e.markerPane, "leaflet-zoom-hide"), j(e.shadowPane, "leaflet-zoom-hide"));
         },
         // private methods that modify map state
         // @section Map state change events
         _resetView: function(e, t, i) {
-          _e(this._mapPane, new z(0, 0));
+          _e(this._mapPane, new M(0, 0));
           var o = !this._loaded;
           this._loaded = !0, t = this._limitZoom(t), this.fire("viewprereset");
           var s = this._zoom !== t;
@@ -2129,7 +2129,7 @@ function Aa() {
         },
         // private methods for getting map state
         _getMapPanePos: function() {
-          return pt(this._mapPane) || new z(0, 0);
+          return pt(this._mapPane) || new M(0, 0);
         },
         _moved: function() {
           var e = this._getMapPanePos();
@@ -2184,7 +2184,7 @@ function Aa() {
             this.project(t.getNorthEast(), i),
             this.project(t.getSouthWest(), i)
           ), s = o.min.subtract(e.min), c = o.max.subtract(e.max), d = this._rebound(s.x, -c.x), p = this._rebound(s.y, -c.y);
-          return new z(d, p);
+          return new M(d, p);
         },
         _rebound: function(e, t) {
           return e + t > 0 ? Math.round(e - t) / 2 : Math.max(0, Math.ceil(e)) - Math.max(0, Math.floor(t));
@@ -2206,7 +2206,7 @@ function Aa() {
         _createAnimProxy: function() {
           var e = this._proxy = se("div", "leaflet-proxy leaflet-zoom-animated");
           this._panes.mapPane.appendChild(e), this.on("zoomanim", function(t) {
-            var i = Dt, o = this._proxy.style[i];
+            var i = Vt, o = this._proxy.style[i];
             qe(this._proxy, this.project(t.center, t.zoom), this.getZoomScale(t.zoom, 1)), o === this._proxy.style[i] && this._animatingZoom && this._onZoomTransitionEnd();
           }, this), this.on("load moveend", this._animMoveEnd, this), this._on("unload", this._destroyAnimProxy, this);
         },
@@ -2667,10 +2667,10 @@ function Aa() {
       }), oe.addInitHook(function() {
         this.options.attributionControl && new O().addTo(this);
       });
-      var E = function(e) {
+      var z = function(e) {
         return new O(e);
       };
-      Qe.Layers = zi, Qe.Zoom = Ei, Qe.Scale = h, Qe.Attribution = O, ri.layers = en, ri.zoom = zn, ri.scale = u, ri.attribution = E;
+      Qe.Layers = zi, Qe.Zoom = Ei, Qe.Scale = h, Qe.Attribution = O, ri.layers = en, ri.zoom = zn, ri.scale = u, ri.attribution = z;
       var W = je.extend({
         initialize: function(e) {
           this._map = e;
@@ -2733,7 +2733,7 @@ function Aa() {
             if (!(ft._dragging || e.shiftKey || e.which !== 1 && e.button !== 1 && !e.touches) && (ft._dragging = this, this._preventOutline && Ti(this._element), Ne(), Ke(), !this._moving)) {
               this.fire("down");
               var t = e.touches ? e.touches[0] : e, i = Ci(this._element);
-              this._startPoint = new z(t.clientX, t.clientY), this._startPos = pt(this._element), this._parentScale = Ki(i);
+              this._startPoint = new M(t.clientX, t.clientY), this._startPos = pt(this._element), this._parentScale = Ki(i);
               var o = e.type === "mousedown";
               H(document, o ? "mousemove" : "touchmove", this._onMove, this), H(document, o ? "mouseup" : "touchend touchcancel", this._onUp, this);
             }
@@ -2745,7 +2745,7 @@ function Aa() {
               this._moved = !0;
               return;
             }
-            var t = e.touches && e.touches.length === 1 ? e.touches[0] : e, i = new z(t.clientX, t.clientY)._subtract(this._startPoint);
+            var t = e.touches && e.touches.length === 1 ? e.touches[0] : e, i = new M(t.clientX, t.clientY)._subtract(this._startPoint);
             !i.x && !i.y || Math.abs(i.x) + Math.abs(i.y) < this.options.clickTolerance || (i.x /= this._parentScale.x, i.y /= this._parentScale.y, Ze(e), this._moved || (this.fire("dragstart"), this._moved = !0, j(document.body, "leaflet-dragging"), this._lastTarget = e.target || e.srcElement, window.SVGElementInstance && this._lastTarget instanceof window.SVGElementInstance && (this._lastTarget = this._lastTarget.correspondingUseElement), j(this._lastTarget, "leaflet-drag-target")), this._newPos = this._startPos.add(i), this._moving = !0, this._lastEvent = e, this._updatePosition());
           }
         },
@@ -2766,18 +2766,18 @@ function Aa() {
         }
       });
       function tn(e, t, i) {
-        var o, s = [1, 4, 2, 8], c, d, p, f, x, C, U, ne;
-        for (c = 0, C = e.length; c < C; c++)
+        var o, s = [1, 4, 2, 8], c, d, p, f, x, S, U, ne;
+        for (c = 0, S = e.length; c < S; c++)
           e[c]._code = li(e[c], t);
         for (p = 0; p < 4; p++) {
-          for (U = s[p], o = [], c = 0, C = e.length, d = C - 1; c < C; d = c++)
+          for (U = s[p], o = [], c = 0, S = e.length, d = S - 1; c < S; d = c++)
             f = e[c], x = e[d], f._code & U ? x._code & U || (ne = En(x, f, U, t, i), ne._code = li(ne, t), o.push(ne)) : (x._code & U && (ne = En(x, f, U, t, i), ne._code = li(ne, t), o.push(ne)), o.push(f));
           e = o;
         }
         return e;
       }
       function nn(e, t) {
-        var i, o, s, c, d, p, f, x, C;
+        var i, o, s, c, d, p, f, x, S;
         if (!e || e.length === 0)
           throw new Error("latlngs not passed");
         rt(e) || (console.warn("latlngs are not flat! Only the first ring will be used"), e = e[0]);
@@ -2790,8 +2790,8 @@ function Aa() {
         }
         for (p = f = x = 0, i = 0, o = Re - 1; i < Re; o = i++)
           s = lt[i], c = lt[o], d = s.y * c.x - c.y * s.x, f += (s.x + c.x) * d, x += (s.y + c.y) * d, p += d * 3;
-        p === 0 ? C = lt[0] : C = [f / p, x / p];
-        var Ni = t.unproject(D(C));
+        p === 0 ? S = lt[0] : S = [f / p, x / p];
+        var Ni = t.unproject(V(S));
         return $([Ni.lat + U.lat, Ni.lng + U.lng]);
       }
       function k(e) {
@@ -2850,8 +2850,8 @@ function Aa() {
         }
       }
       function En(e, t, i, o, s) {
-        var c = t.x - e.x, d = t.y - e.y, p = o.min, f = o.max, x, C;
-        return i & 8 ? (x = e.x + c * (f.y - e.y) / d, C = f.y) : i & 4 ? (x = e.x + c * (p.y - e.y) / d, C = p.y) : i & 2 ? (x = f.x, C = e.y + d * (f.x - e.x) / c) : i & 1 && (x = p.x, C = e.y + d * (p.x - e.x) / c), new z(x, C, s);
+        var c = t.x - e.x, d = t.y - e.y, p = o.min, f = o.max, x, S;
+        return i & 8 ? (x = e.x + c * (f.y - e.y) / d, S = f.y) : i & 4 ? (x = e.x + c * (p.y - e.y) / d, S = p.y) : i & 2 ? (x = f.x, S = e.y + d * (f.x - e.x) / c) : i & 1 && (x = p.x, S = e.y + d * (p.x - e.x) / c), new M(x, S, s);
       }
       function li(e, t) {
         var i = 0;
@@ -2863,7 +2863,7 @@ function Aa() {
       }
       function on(e, t, i, o) {
         var s = t.x, c = t.y, d = i.x - s, p = i.y - c, f = d * d + p * p, x;
-        return f > 0 && (x = ((e.x - s) * d + (e.y - c) * p) / f, x > 1 ? (s = i.x, c = i.y) : x > 0 && (s += d * x, c += p * x)), d = e.x - s, p = e.y - c, o ? d * d + p * p : new z(s, c);
+        return f > 0 && (x = ((e.x - s) * d + (e.y - c) * p) / f, x > 1 ? (s = i.x, c = i.y) : x > 0 && (s += d * x, c += p * x)), d = e.x - s, p = e.y - c, o ? d * d + p * p : new M(s, c);
       }
       function rt(e) {
         return !He(e[0]) || typeof e[0][0] != "object" && typeof e[0][0] < "u";
@@ -2876,12 +2876,12 @@ function Aa() {
         if (!e || e.length === 0)
           throw new Error("latlngs not passed");
         rt(e) || (console.warn("latlngs are not flat! Only the first ring will be used"), e = e[0]);
-        var C = $([0, 0]), U = ee(e), ne = U.getNorthWest().distanceTo(U.getSouthWest()) * U.getNorthEast().distanceTo(U.getNorthWest());
-        ne < 1700 && (C = k(e));
+        var S = $([0, 0]), U = ee(e), ne = U.getNorthWest().distanceTo(U.getSouthWest()) * U.getNorthEast().distanceTo(U.getNorthWest());
+        ne < 1700 && (S = k(e));
         var Ge = e.length, Re = [];
         for (i = 0; i < Ge; i++) {
           var lt = $(e[i]);
-          Re.push(t.project($([lt.lat - C.lat, lt.lng - C.lng])));
+          Re.push(t.project($([lt.lat - S.lat, lt.lng - S.lng])));
         }
         for (i = 0, o = 0; i < Ge - 1; i++)
           o += Re[i].distanceTo(Re[i + 1]) / 2;
@@ -2896,8 +2896,8 @@ function Aa() {
               ];
               break;
             }
-        var Je = t.unproject(D(x));
-        return $([Je.lat + C.lat, Je.lng + C.lng]);
+        var Je = t.unproject(V(x));
+        return $([Je.lat + S.lat, Je.lng + S.lng]);
       }
       var Ko = {
         __proto__: null,
@@ -2913,7 +2913,7 @@ function Aa() {
         polylineCenter: co
       }, eo = {
         project: function(e) {
-          return new z(e.lng, e.lat);
+          return new M(e.lng, e.lat);
         },
         unproject: function(e) {
           return new X(e.y, e.x);
@@ -2925,7 +2925,7 @@ function Aa() {
         bounds: new m([-2003750834279e-5, -1549657073972e-5], [2003750834279e-5, 1876465623138e-5]),
         project: function(e) {
           var t = Math.PI / 180, i = this.R, o = e.lat * t, s = this.R_MINOR / i, c = Math.sqrt(1 - s * s), d = c * Math.sin(o), p = Math.tan(Math.PI / 4 - o / 2) / Math.pow((1 - d) / (1 + d), c / 2);
-          return o = -i * Math.log(Math.max(p, 1e-10)), new z(e.lng * t * i, o);
+          return o = -i * Math.log(Math.max(p, 1e-10)), new M(e.lng * t * i, o);
         },
         unproject: function(e) {
           for (var t = 180 / Math.PI, i = this.R, o = this.R_MINOR / i, s = Math.sqrt(1 - o * o), c = Math.exp(-e.y / i), d = Math.PI / 2 - 2 * Math.atan(c), p = 0, f = 0.1, x; p < 15 && Math.abs(f) > 1e-7; p++)
@@ -3279,7 +3279,7 @@ function Aa() {
         _setIconStyles: function(e, t) {
           var i = this.options, o = i[t + "Size"];
           typeof o == "number" && (o = [o, o]);
-          var s = D(o), c = D(t === "shadow" && i.shadowAnchor || i.iconAnchor || s && s.divideBy(2, !0));
+          var s = V(o), c = V(t === "shadow" && i.shadowAnchor || i.iconAnchor || s && s.divideBy(2, !0));
           e.className = "leaflet-marker-" + t + " " + (i.className || ""), c && (e.style.marginLeft = -c.x + "px", e.style.marginTop = -c.y + "px"), s && (e.style.width = s.x + "px", e.style.height = s.y + "px");
         },
         _createImg: function(e, t) {
@@ -3350,7 +3350,7 @@ function Aa() {
             d.max._subtract(p).subtract(s)
           );
           if (!f.contains(c)) {
-            var x = D(
+            var x = V(
               (Math.max(f.max.x, c.x) - f.max.x) / (d.max.x - f.max.x) - (Math.min(f.min.x, c.x) - f.min.x) / (d.min.x - f.min.x),
               (Math.max(f.max.y, c.y) - f.max.y) / (d.max.y - f.max.y) - (Math.min(f.min.y, c.y) - f.min.y) / (d.min.y - f.min.y)
             ).multiplyBy(o);
@@ -3541,7 +3541,7 @@ function Aa() {
         _panOnFocus: function() {
           var e = this._map;
           if (e) {
-            var t = this.options.icon.options, i = t.iconSize ? D(t.iconSize) : D(0, 0), o = t.iconAnchor ? D(t.iconAnchor) : D(0, 0);
+            var t = this.options.icon.options, i = t.iconSize ? V(t.iconSize) : V(0, 0), o = t.iconAnchor ? V(t.iconAnchor) : V(0, 0);
             e.panInside(this._latlng, {
               paddingTopLeft: o,
               paddingBottomRight: i.subtract(o)
@@ -3734,8 +3734,8 @@ function Aa() {
         _project: function() {
           var e = this._latlng.lng, t = this._latlng.lat, i = this._map, o = i.options.crs;
           if (o.distance === Be.distance) {
-            var s = Math.PI / 180, c = this._mRadius / Be.R / s, d = i.project([t + c, e]), p = i.project([t - c, e]), f = d.add(p).divideBy(2), x = i.unproject(f).lat, C = Math.acos((Math.cos(c * s) - Math.sin(t * s) * Math.sin(x * s)) / (Math.cos(t * s) * Math.cos(x * s))) / s;
-            (isNaN(C) || C === 0) && (C = c / Math.cos(Math.PI / 180 * t)), this._point = f.subtract(i.getPixelOrigin()), this._radius = isNaN(C) ? 0 : f.x - i.project([x, e - C]).x, this._radiusY = f.y - d.y;
+            var s = Math.PI / 180, c = this._mRadius / Be.R / s, d = i.project([t + c, e]), p = i.project([t - c, e]), f = d.add(p).divideBy(2), x = i.unproject(f).lat, S = Math.acos((Math.cos(c * s) - Math.sin(t * s) * Math.sin(x * s)) / (Math.cos(t * s) * Math.cos(x * s))) / s;
+            (isNaN(S) || S === 0) && (S = c / Math.cos(Math.PI / 180 * t)), this._point = f.subtract(i.getPixelOrigin()), this._radius = isNaN(S) ? 0 : f.x - i.project([x, e - S]).x, this._radiusY = f.y - d.y;
           } else {
             var U = o.unproject(o.project(this._latlng).subtract([this._mRadius, 0]));
             this._point = i.latLngToLayerPoint(this._latlng), this._radius = this._point.x - i.latLngToLayerPoint(U).x;
@@ -3780,7 +3780,7 @@ function Aa() {
         // Returns the point closest to `p` on the Polyline.
         closestLayerPoint: function(e) {
           for (var t = 1 / 0, i = null, o = on, s, c, d = 0, p = this._parts.length; d < p; d++)
-            for (var f = this._parts[d], x = 1, C = f.length; x < C; x++) {
+            for (var f = this._parts[d], x = 1, S = f.length; x < S; x++) {
               s = f[x - 1], c = f[x];
               var U = o(e, s, c, !0);
               U < t && (t = U, i = o(e, s, c));
@@ -3823,7 +3823,7 @@ function Aa() {
           this._rings = [], this._projectLatlngs(this._latlngs, this._rings, e), this._bounds.isValid() && e.isValid() && (this._rawPxBounds = e, this._updateBounds());
         },
         _updateBounds: function() {
-          var e = this._clickTolerance(), t = new z(e, e);
+          var e = this._clickTolerance(), t = new M(e, e);
           this._rawPxBounds && (this._pxBounds = new m([
             this._rawPxBounds.min.subtract(t),
             this._rawPxBounds.max.add(t)
@@ -3906,7 +3906,7 @@ function Aa() {
           return rt(this._latlngs[0]) ? this._latlngs[0] : this._latlngs[0][0];
         },
         _clipPoints: function() {
-          var e = this._renderer._bounds, t = this.options.weight, i = new z(t, t);
+          var e = this._renderer._bounds, t = this.options.weight, i = new M(t, t);
           if (e = new m(e.min.subtract(i), e.max.add(i)), this._parts = [], !(!this._pxBounds || !this._pxBounds.intersects(e))) {
             if (this.options.noClip) {
               this._parts = this._rings;
@@ -4019,14 +4019,14 @@ function Aa() {
         }
       });
       function In(e, t) {
-        var i = e.type === "Feature" ? e.geometry : e, o = i ? i.coordinates : null, s = [], c = t && t.pointToLayer, d = t && t.coordsToLatLng || no, p, f, x, C;
+        var i = e.type === "Feature" ? e.geometry : e, o = i ? i.coordinates : null, s = [], c = t && t.pointToLayer, d = t && t.coordsToLatLng || no, p, f, x, S;
         if (!o && !i)
           return null;
         switch (i.type) {
           case "Point":
             return p = d(o), fo(c, e, p, t);
           case "MultiPoint":
-            for (x = 0, C = o.length; x < C; x++)
+            for (x = 0, S = o.length; x < S; x++)
               p = d(o[x]), s.push(fo(c, e, p, t));
             return new St(s);
           case "LineString":
@@ -4036,7 +4036,7 @@ function Aa() {
           case "MultiPolygon":
             return f = Bn(o, i.type === "Polygon" ? 1 : 2, d), new Ii(f, t);
           case "GeometryCollection":
-            for (x = 0, C = i.geometries.length; x < C; x++) {
+            for (x = 0, S = i.geometries.length; x < S; x++) {
               var U = In({
                 geometry: i.geometries[x],
                 type: "Feature",
@@ -4046,7 +4046,7 @@ function Aa() {
             }
             return new St(s);
           case "FeatureCollection":
-            for (x = 0, C = i.features.length; x < C; x++) {
+            for (x = 0, S = i.features.length; x < S; x++) {
               var ne = In(i.features[x], t);
               ne && s.push(ne);
             }
@@ -4196,7 +4196,7 @@ function Aa() {
         // @method bringToFront(): this
         // Brings the layer to the top of all overlays.
         bringToFront: function() {
-          return this._map && Vt(this._image), this;
+          return this._map && Dt(this._image), this;
         },
         // @method bringToBack(): this
         // Brings the layer to the bottom of all overlays.
@@ -4425,7 +4425,7 @@ function Aa() {
         // @method bringToFront: this
         // Brings this overlay in front of other overlays (in the same map pane).
         bringToFront: function() {
-          return this._map && Vt(this._container), this;
+          return this._map && Dt(this._container), this;
         },
         // @method bringToBack: this
         // Brings this overlay to the back of other overlays (in the same map pane).
@@ -4475,7 +4475,7 @@ function Aa() {
         },
         _updatePosition: function() {
           if (this._map) {
-            var e = this._map.latLngToLayerPoint(this._latlng), t = D(this.options.offset), i = this._getAnchor();
+            var e = this._map.latLngToLayerPoint(this._latlng), t = V(this.options.offset), i = this._getAnchor();
             this._zoomAnimated ? _e(this._container, e.add(i)) : t = t.add(e).add(i);
             var o = this._containerBottom = -t.y, s = this._containerLeft = -Math.round(this._containerWidth / 2) + t.x;
             this._container.style.bottom = o + "px", this._container.style.left = s + "px";
@@ -4496,7 +4496,7 @@ function Aa() {
           return s instanceof e ? (he(s, o), s._source = this) : (s = t && !o ? t : new e(o, this), s.setContent(i)), s;
         }
       });
-      var Dn = wt.extend({
+      var Vn = wt.extend({
         // @section
         // @aka Popup options
         options: {
@@ -4602,17 +4602,17 @@ function Aa() {
               this._autopanning = !1;
               return;
             }
-            var e = this._map, t = parseInt(oi(this._container, "marginBottom"), 10) || 0, i = this._container.offsetHeight + t, o = this._containerWidth, s = new z(this._containerLeft, -i - this._containerBottom);
+            var e = this._map, t = parseInt(oi(this._container, "marginBottom"), 10) || 0, i = this._container.offsetHeight + t, o = this._containerWidth, s = new M(this._containerLeft, -i - this._containerBottom);
             s._add(pt(this._container));
-            var c = e.layerPointToContainerPoint(s), d = D(this.options.autoPanPadding), p = D(this.options.autoPanPaddingTopLeft || d), f = D(this.options.autoPanPaddingBottomRight || d), x = e.getSize(), C = 0, U = 0;
-            c.x + o + f.x > x.x && (C = c.x + o - x.x + f.x), c.x - C - p.x < 0 && (C = c.x - p.x), c.y + i + f.y > x.y && (U = c.y + i - x.y + f.y), c.y - U - p.y < 0 && (U = c.y - p.y), (C || U) && (this.options.keepInView && (this._autopanning = !0), e.fire("autopanstart").panBy([C, U]));
+            var c = e.layerPointToContainerPoint(s), d = V(this.options.autoPanPadding), p = V(this.options.autoPanPaddingTopLeft || d), f = V(this.options.autoPanPaddingBottomRight || d), x = e.getSize(), S = 0, U = 0;
+            c.x + o + f.x > x.x && (S = c.x + o - x.x + f.x), c.x - S - p.x < 0 && (S = c.x - p.x), c.y + i + f.y > x.y && (U = c.y + i - x.y + f.y), c.y - U - p.y < 0 && (U = c.y - p.y), (S || U) && (this.options.keepInView && (this._autopanning = !0), e.fire("autopanstart").panBy([S, U]));
           }
         },
         _getAnchor: function() {
-          return D(this._source && this._source._getPopupAnchor ? this._source._getPopupAnchor() : [0, 0]);
+          return V(this._source && this._source._getPopupAnchor ? this._source._getPopupAnchor() : [0, 0]);
         }
       }), da = function(e, t) {
-        return new Dn(e, t);
+        return new Vn(e, t);
       };
       oe.mergeOptions({
         closePopupOnClick: !0
@@ -4623,7 +4623,7 @@ function Aa() {
         // @method openPopup(content: String|HTMLElement, latlng: LatLng, options?: Popup options): this
         // Creates a popup with the specified content and options and opens it in the given point on a map.
         openPopup: function(e, t, i) {
-          return this._initOverlay(Dn, e, t, i).openOn(this), this;
+          return this._initOverlay(Vn, e, t, i).openOn(this), this;
         },
         // @method closePopup(popup?: Popup): this
         // Closes the popup previously opened with [openPopup](#map-openpopup) (or the given one).
@@ -4636,7 +4636,7 @@ function Aa() {
         // necessary event listeners. If a `Function` is passed it will receive
         // the layer as the first argument and should return a `String` or `HTMLElement`.
         bindPopup: function(e, t) {
-          return this._popup = this._initOverlay(Dn, this._popup, e, t), this._popupHandlersAdded || (this.on({
+          return this._popup = this._initOverlay(Vn, this._popup, e, t), this._popupHandlersAdded || (this.on({
             click: this._openPopup,
             keypress: this._onKeyPress,
             remove: this.closePopup,
@@ -4701,7 +4701,7 @@ function Aa() {
           e.originalEvent.keyCode === 13 && this._openPopup(e);
         }
       });
-      var Vn = wt.extend({
+      var Dn = wt.extend({
         // @section
         // @aka Tooltip options
         options: {
@@ -4746,8 +4746,8 @@ function Aa() {
         _adjustPan: function() {
         },
         _setPosition: function(e) {
-          var t, i, o = this._map, s = this._container, c = o.latLngToContainerPoint(o.getCenter()), d = o.layerPointToContainerPoint(e), p = this.options.direction, f = s.offsetWidth, x = s.offsetHeight, C = D(this.options.offset), U = this._getAnchor();
-          p === "top" ? (t = f / 2, i = x) : p === "bottom" ? (t = f / 2, i = 0) : p === "center" ? (t = f / 2, i = x / 2) : p === "right" ? (t = 0, i = x / 2) : p === "left" ? (t = f, i = x / 2) : d.x < c.x ? (p = "right", t = 0, i = x / 2) : (p = "left", t = f + (C.x + U.x) * 2, i = x / 2), e = e.subtract(D(t, i, !0)).add(C).add(U), q(s, "leaflet-tooltip-right"), q(s, "leaflet-tooltip-left"), q(s, "leaflet-tooltip-top"), q(s, "leaflet-tooltip-bottom"), j(s, "leaflet-tooltip-" + p), _e(s, e);
+          var t, i, o = this._map, s = this._container, c = o.latLngToContainerPoint(o.getCenter()), d = o.layerPointToContainerPoint(e), p = this.options.direction, f = s.offsetWidth, x = s.offsetHeight, S = V(this.options.offset), U = this._getAnchor();
+          p === "top" ? (t = f / 2, i = x) : p === "bottom" ? (t = f / 2, i = 0) : p === "center" ? (t = f / 2, i = x / 2) : p === "right" ? (t = 0, i = x / 2) : p === "left" ? (t = f, i = x / 2) : d.x < c.x ? (p = "right", t = 0, i = x / 2) : (p = "left", t = f + (S.x + U.x) * 2, i = x / 2), e = e.subtract(V(t, i, !0)).add(S).add(U), q(s, "leaflet-tooltip-right"), q(s, "leaflet-tooltip-left"), q(s, "leaflet-tooltip-top"), q(s, "leaflet-tooltip-bottom"), j(s, "leaflet-tooltip-" + p), _e(s, e);
         },
         _updatePosition: function() {
           var e = this._map.latLngToLayerPoint(this._latlng);
@@ -4761,10 +4761,10 @@ function Aa() {
           this._setPosition(t);
         },
         _getAnchor: function() {
-          return D(this._source && this._source._getTooltipAnchor && !this.options.sticky ? this._source._getTooltipAnchor() : [0, 0]);
+          return V(this._source && this._source._getTooltipAnchor && !this.options.sticky ? this._source._getTooltipAnchor() : [0, 0]);
         }
       }), ha = function(e, t) {
-        return new Vn(e, t);
+        return new Dn(e, t);
       };
       oe.include({
         // @method openTooltip(tooltip: Tooltip): this
@@ -4773,7 +4773,7 @@ function Aa() {
         // @method openTooltip(content: String|HTMLElement, latlng: LatLng, options?: Tooltip options): this
         // Creates a tooltip with the specified content and options and open it.
         openTooltip: function(e, t, i) {
-          return this._initOverlay(Vn, e, t, i).openOn(this), this;
+          return this._initOverlay(Dn, e, t, i).openOn(this), this;
         },
         // @method closeTooltip(tooltip: Tooltip): this
         // Closes the tooltip given as parameter.
@@ -4786,7 +4786,7 @@ function Aa() {
         // necessary event listeners. If a `Function` is passed it will receive
         // the layer as the first argument and should return a `String` or `HTMLElement`.
         bindTooltip: function(e, t) {
-          return this._tooltip && this.isTooltipOpen() && this.unbindTooltip(), this._tooltip = this._initOverlay(Vn, this._tooltip, e, t), this._initTooltipInteractions(), this._tooltip.options.permanent && this._map && this._map.hasLayer(this) && this.openTooltip(), this;
+          return this._tooltip && this.isTooltipOpen() && this.unbindTooltip(), this._tooltip = this._initOverlay(Dn, this._tooltip, e, t), this._initTooltipInteractions(), this._tooltip.options.permanent && this._map && this._map.hasLayer(this) && this.openTooltip(), this;
         },
         // @method unbindTooltip(): this
         // Removes the tooltip previously bound with `bindTooltip`.
@@ -4884,7 +4884,7 @@ function Aa() {
         createIcon: function(e) {
           var t = e && e.tagName === "DIV" ? e : document.createElement("div"), i = this.options;
           if (i.html instanceof Element ? (ai(t), t.appendChild(i.html)) : t.innerHTML = i.html !== !1 ? i.html : "", i.bgPos) {
-            var o = D(i.bgPos);
+            var o = V(i.bgPos);
             t.style.backgroundPosition = -o.x + "px " + -o.y + "px";
           }
           return this._setIconStyles(t, "icon"), t;
@@ -4973,7 +4973,7 @@ function Aa() {
         // @method bringToFront: this
         // Brings the tile layer to the top of all tile layers.
         bringToFront: function() {
-          return this._map && (Vt(this._container), this._setAutoZIndex(Math.max)), this;
+          return this._map && (Dt(this._container), this._setAutoZIndex(Math.max)), this;
         },
         // @method bringToBack: this
         // Brings the tile layer to the bottom of all tile layers.
@@ -5033,7 +5033,7 @@ function Aa() {
         // Normalizes the [tileSize option](#gridlayer-tilesize) into a point. Used by the `createTile()` method.
         getTileSize: function() {
           var e = this.options.tileSize;
-          return e instanceof z ? e : new z(e, e);
+          return e instanceof M ? e : new M(e, e);
         },
         _updateZIndex: function() {
           this._container && this.options.zIndex !== void 0 && this.options.zIndex !== null && (this._container.style.zIndex = this.options.zIndex);
@@ -5105,7 +5105,7 @@ function Aa() {
           this._removeAllTiles(), this._tileZoom = void 0;
         },
         _retainParent: function(e, t, i, o) {
-          var s = Math.floor(e / 2), c = Math.floor(t / 2), d = i - 1, p = new z(+s, +c);
+          var s = Math.floor(e / 2), c = Math.floor(t / 2), d = i - 1, p = new M(+s, +c);
           p.z = +d;
           var f = this._tileCoordsToKey(p), x = this._tiles[f];
           return x && x.active ? (x.retain = !0, !0) : (x && x.loaded && (x.retain = !0), d > o ? this._retainParent(s, c, d, o) : !1);
@@ -5113,7 +5113,7 @@ function Aa() {
         _retainChildren: function(e, t, i, o) {
           for (var s = 2 * e; s < 2 * e + 2; s++)
             for (var c = 2 * t; c < 2 * t + 2; c++) {
-              var d = new z(s, c);
+              var d = new M(s, c);
               d.z = i + 1;
               var p = this._tileCoordsToKey(d), f = this._tiles[p];
               if (f && f.active) {
@@ -5178,8 +5178,8 @@ function Aa() {
               if (!(isFinite(s.min.x) && isFinite(s.min.y) && isFinite(s.max.x) && isFinite(s.max.y)))
                 throw new Error("Attempted to load an infinite number of tiles");
               for (var x in this._tiles) {
-                var C = this._tiles[x].coords;
-                (C.z !== this._tileZoom || !f.contains(new z(C.x, C.y))) && (this._tiles[x].current = !1);
+                var S = this._tiles[x].coords;
+                (S.z !== this._tileZoom || !f.contains(new M(S.x, S.y))) && (this._tiles[x].current = !1);
               }
               if (Math.abs(i - this._tileZoom) > 1) {
                 this._setView(e, i);
@@ -5187,7 +5187,7 @@ function Aa() {
               }
               for (var U = s.min.y; U <= s.max.y; U++)
                 for (var ne = s.min.x; ne <= s.max.x; ne++) {
-                  var Ge = new z(ne, U);
+                  var Ge = new M(ne, U);
                   if (Ge.z = this._tileZoom, !!this._isValidTile(Ge)) {
                     var Re = this._tiles[this._tileCoordsToKey(Ge)];
                     Re ? Re.current = !0 : d.push(Ge);
@@ -5235,7 +5235,7 @@ function Aa() {
         },
         // converts tile cache key to coordinates
         _keyToTileCoords: function(e) {
-          var t = e.split(":"), i = new z(+t[0], +t[1]);
+          var t = e.split(":"), i = new M(+t[0], +t[1]);
           return i.z = +t[2], i;
         },
         _removeTile: function(e) {
@@ -5277,7 +5277,7 @@ function Aa() {
           return e.scaleBy(this.getTileSize()).subtract(this._level.origin);
         },
         _wrapCoords: function(e) {
-          var t = new z(
+          var t = new M(
             this._wrapX ? we(e.x, this._wrapX) : e.x,
             this._wrapY ? we(e.y, this._wrapY) : e.y
           );
@@ -5767,7 +5767,7 @@ function Aa() {
           e._path.v = t;
         },
         _bringToFront: function(e) {
-          Vt(e._container);
+          Dt(e._container);
         },
         _bringToBack: function(e) {
           Ce(e._container);
@@ -5816,7 +5816,7 @@ function Aa() {
         },
         // SVG does not have the concept of zIndex so we resort to changing the DOM order of elements
         _bringToFront: function(e) {
-          Vt(e._path);
+          Dt(e._path);
         },
         _bringToBack: function(e) {
           Ce(e._path);
@@ -6053,7 +6053,7 @@ function Aa() {
             t.fire("moveend");
           else {
             this._prunePositions(+/* @__PURE__ */ new Date());
-            var s = this._lastPos.subtract(this._positions[0]), c = (this._lastTime - this._times[0]) / 1e3, d = i.easeLinearity, p = s.multiplyBy(d / c), f = p.distanceTo([0, 0]), x = Math.min(i.inertiaMaxSpeed, f), C = p.multiplyBy(x / f), U = x / (i.inertiaDeceleration * d), ne = C.multiplyBy(-U / 2).round();
+            var s = this._lastPos.subtract(this._positions[0]), c = (this._lastTime - this._times[0]) / 1e3, d = i.easeLinearity, p = s.multiplyBy(d / c), f = p.distanceTo([0, 0]), x = Math.min(i.inertiaMaxSpeed, f), S = p.multiplyBy(x / f), U = x / (i.inertiaDeceleration * d), ne = S.multiplyBy(-U / 2).round();
             !ne.x && !ne.y ? t.fire("moveend") : (ne = t._limitOffset(ne, t.options.maxBounds), Se(function() {
               t.panBy(ne, {
                 duration: U,
@@ -6148,7 +6148,7 @@ function Aa() {
             var t = e.keyCode, i = this._map, o;
             if (t in this._panKeys) {
               if (!i._panAnim || !i._panAnim._inProgress)
-                if (o = this._panKeys[t], e.shiftKey && (o = D(o).multiplyBy(3)), i.options.maxBounds && (o = i._limitOffset(D(o), i.options.maxBounds)), i.options.worldCopyJump) {
+                if (o = this._panKeys[t], e.shiftKey && (o = V(o).multiplyBy(3)), i.options.maxBounds && (o = i._limitOffset(V(o), i.options.maxBounds)), i.options.worldCopyJump) {
                   var s = i.wrapLatLng(i.unproject(i.project(i.getCenter()).add(o)));
                   i.panTo(s);
                 } else
@@ -6221,7 +6221,7 @@ function Aa() {
         _onDown: function(e) {
           if (clearTimeout(this._holdTimeout), e.touches.length === 1) {
             var t = e.touches[0];
-            this._startPos = this._newPos = new z(t.clientX, t.clientY), this._holdTimeout = setTimeout(J(function() {
+            this._startPos = this._newPos = new M(t.clientX, t.clientY), this._holdTimeout = setTimeout(J(function() {
               this._cancel(), this._isTapValid() && (H(document, "touchend", Ze), H(document, "touchend touchcancel", this._cancelClickPrevent), this._simulateEvent("contextmenu", t));
             }, this), ga), H(document, "touchend touchcancel contextmenu", this._cancel, this), H(document, "touchmove", this._onMove, this);
           }
@@ -6234,7 +6234,7 @@ function Aa() {
         },
         _onMove: function(e) {
           var t = e.touches[0];
-          this._newPos = new z(t.clientX, t.clientY);
+          this._newPos = new M(t.clientX, t.clientY);
         },
         _isTapValid: function() {
           return this._newPos.distanceTo(this._startPos) <= this._map.options.tapTolerance;
@@ -6307,7 +6307,7 @@ function Aa() {
           this._zooming = !1, Pe(this._animRequest), pe(document, "touchmove", this._onTouchMove, this), pe(document, "touchend touchcancel", this._onTouchEnd, this), this._map.options.zoomAnimation ? this._map._animateZoom(this._center, this._map._limitZoom(this._zoom), !0, this._map.options.zoomSnap) : this._map._resetView(this._center, this._map._limitZoom(this._zoom));
         }
       });
-      oe.addInitHook("addHandler", "touchZoom", Eo), oe.BoxZoom = Lo, oe.DoubleClickZoom = To, oe.Drag = So, oe.Keyboard = Co, oe.ScrollWheelZoom = Mo, oe.TapHold = zo, oe.TouchZoom = Eo, a.Bounds = m, a.Browser = I, a.CRS = ge, a.Canvas = wo, a.Circle = io, a.CircleMarker = An, a.Class = je, a.Control = Qe, a.DivIcon = go, a.DivOverlay = wt, a.DomEvent = Jn, a.DomUtil = Lt, a.Draggable = ft, a.Evented = xt, a.FeatureGroup = St, a.GeoJSON = Mt, a.GridLayer = sn, a.Handler = W, a.Icon = Ai, a.ImageOverlay = Rn, a.LatLng = X, a.LatLngBounds = y, a.Layer = mt, a.LayerGroup = Oi, a.LineUtil = Ko, a.Map = oe, a.Marker = On, a.Mixin = ue, a.Path = Wt, a.Point = z, a.PolyUtil = ce, a.Polygon = Ii, a.Polyline = Ct, a.Popup = Dn, a.PosAnimation = Mn, a.Projection = Yo, a.Rectangle = Po, a.Renderer = zt, a.SVG = ln, a.SVGOverlay = vo, a.TileLayer = Zi, a.Tooltip = Vn, a.Transformation = Di, a.Util = Bt, a.VideoOverlay = _o, a.bind = J, a.bounds = T, a.canvas = xo, a.circle = oa, a.circleMarker = na, a.control = ri, a.divIcon = pa, a.extend = Z, a.featureGroup = ea, a.geoJSON = mo, a.geoJson = ra, a.gridLayer = fa, a.icon = ta, a.imageOverlay = la, a.latLng = $, a.latLngBounds = ee, a.layerGroup = Qo, a.map = Xn, a.marker = ia, a.point = D, a.polygon = sa, a.polyline = aa, a.popup = da, a.rectangle = va, a.setOptions = he, a.stamp = K, a.svg = ko, a.svgOverlay = ca, a.tileLayer = yo, a.tooltip = ha, a.transformation = Zt, a.version = re, a.videoOverlay = ua;
+      oe.addInitHook("addHandler", "touchZoom", Eo), oe.BoxZoom = Lo, oe.DoubleClickZoom = To, oe.Drag = So, oe.Keyboard = Co, oe.ScrollWheelZoom = Mo, oe.TapHold = zo, oe.TouchZoom = Eo, a.Bounds = m, a.Browser = I, a.CRS = ge, a.Canvas = wo, a.Circle = io, a.CircleMarker = An, a.Class = je, a.Control = Qe, a.DivIcon = go, a.DivOverlay = wt, a.DomEvent = Jn, a.DomUtil = Lt, a.Draggable = ft, a.Evented = xt, a.FeatureGroup = St, a.GeoJSON = Mt, a.GridLayer = sn, a.Handler = W, a.Icon = Ai, a.ImageOverlay = Rn, a.LatLng = X, a.LatLngBounds = y, a.Layer = mt, a.LayerGroup = Oi, a.LineUtil = Ko, a.Map = oe, a.Marker = On, a.Mixin = ue, a.Path = Wt, a.Point = M, a.PolyUtil = ce, a.Polygon = Ii, a.Polyline = Ct, a.Popup = Vn, a.PosAnimation = Mn, a.Projection = Yo, a.Rectangle = Po, a.Renderer = zt, a.SVG = ln, a.SVGOverlay = vo, a.TileLayer = Zi, a.Tooltip = Dn, a.Transformation = Vi, a.Util = Bt, a.VideoOverlay = _o, a.bind = J, a.bounds = T, a.canvas = xo, a.circle = oa, a.circleMarker = na, a.control = ri, a.divIcon = pa, a.extend = Z, a.featureGroup = ea, a.geoJSON = mo, a.geoJson = ra, a.gridLayer = fa, a.icon = ta, a.imageOverlay = la, a.latLng = $, a.latLngBounds = ee, a.layerGroup = Qo, a.map = Xn, a.marker = ia, a.point = V, a.polygon = sa, a.polyline = aa, a.popup = da, a.rectangle = va, a.setOptions = he, a.stamp = K, a.svg = ko, a.svgOverlay = ca, a.tileLayer = yo, a.tooltip = ha, a.transformation = Zt, a.version = re, a.videoOverlay = ua;
       var ya = window.L;
       a.noConflict = function() {
         return window.L = ya, this;
@@ -6344,7 +6344,7 @@ async function Et(me, g = {}) {
     }
   throw a;
 }
-async function Do(me = "/api/life/companion") {
+async function Vo(me = "/api/life/companion") {
   const g = await fetch(me);
   if (!g.ok) throw Error(await g.text() || String(g.status));
   return g.json();
@@ -6499,7 +6499,7 @@ function Ba(me, g) {
   const a = document.createElement("style");
   a.id = me, a.textContent = g, document.head.appendChild(a);
 }
-const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }, Da = { class: "hero-copy" }, Va = { class: "sub" }, $a = { class: "hero-actions" }, Ua = ["disabled"], Fa = { class: "state-row" }, Ha = { class: "pill soft" }, Wa = { class: "pill soft" }, Ga = { class: "pill soft" }, ja = {
+const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }, Va = { class: "hero-copy" }, Da = { class: "sub" }, $a = { class: "hero-actions" }, Ua = ["disabled"], Fa = { class: "state-row" }, Ha = { class: "pill soft" }, Wa = { class: "pill soft" }, Ga = { class: "pill soft" }, ja = {
   key: 0,
   class: "banner err"
 }, qa = {
@@ -6539,7 +6539,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
 }, As = ["placeholder"], Is = { class: "actions-row" }, Bs = {
   class: "fld",
   style: { "margin-left": "auto" }
-}, Zs = ["disabled"], Vo = "life-plugin-adapters-style", Ns = /* @__PURE__ */ Uo({
+}, Zs = ["disabled"], Do = "life-plugin-adapters-style", Ns = /* @__PURE__ */ Uo({
   __name: "AdapterSettingsPage",
   setup(me) {
     const { confirm: g } = Fo(), a = (m, T) => Wn.global.t(m, T ?? {}), re = G(!0), Z = G(""), ae = G("");
@@ -6555,8 +6555,6 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
         name: "",
         platform: "aiocqhttp",
         enabled: !0,
-        // reverse = LIFE listens (client dials in); connect = LIFE dials out to
-        // the platform's own WS server at ws://host:port/ws_path.
         direction: "reverse",
         ws_path: "/ws",
         ws_host: "127.0.0.1",
@@ -6683,7 +6681,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
       }
       $e.value = [...$e.value, di({ pattern: m, config_id: String(Pe.value.config_id || "default").trim() || "default" })], Pe.value = { pattern: "*", config_id: "default" }, Z.value = "";
     }
-    function z(m) {
+    function M(m) {
       $e.value = $e.value.filter((T, y) => y !== m);
     }
     function _t(m, T) {
@@ -6692,7 +6690,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
       const [X] = y.splice(m, 1);
       y.splice(ee, 0, X), $e.value = y;
     }
-    async function D() {
+    async function V() {
       Bt.value = !0;
       try {
         await Et("adapter_routes_set", {
@@ -6705,9 +6703,9 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
         Bt.value = !1;
       }
     }
-    if (typeof document < "u" && !document.getElementById(Vo)) {
+    if (typeof document < "u" && !document.getElementById(Do)) {
       const m = document.createElement("style");
-      m.id = Vo, m.textContent = Go("lsp") + `
+      m.id = Do, m.textContent = Go("lsp") + `
 .lsp .adapter-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .lsp .adapter-row strong{font-size:15px;font-weight:750;overflow-wrap:anywhere}
 .lsp .adapter-row .meta{flex:1 1 100%}
@@ -6748,7 +6746,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
     return Fn(ut), (m, T) => (_(), v("main", Za, [
       n("header", Na, [
         n("div", Ra, [
-          n("div", Da, [
+          n("div", Va, [
             T[17] || (T[17] = n(
               "p",
               { class: "eyebrow" },
@@ -6766,7 +6764,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
               1
               /* TEXT */
             ),
-            n("p", Va, [
+            n("p", Da, [
               N(
                 r(a("life.adapters.subtitleBefore")),
                 1
@@ -6840,26 +6838,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
         r(Z.value),
         1
         /* TEXT */
-      )) : S("v-if", !0),
+      )) : E("v-if", !0),
       ae.value ? (_(), v(
         "p",
         qa,
         r(ae.value),
         1
         /* TEXT */
-      )) : S("v-if", !0),
+      )) : E("v-if", !0),
       re.value ? (_(), v(
         "p",
         Ka,
         r(a("life.adapters.loadingConfig")),
         1
         /* TEXT */
-      )) : S("v-if", !0),
-      re.value ? S("v-if", !0) : (_(), v(
+      )) : E("v-if", !0),
+      re.value ? E("v-if", !0) : (_(), v(
         Q,
         { key: 3 },
         [
-          S(" 适配器列表 "),
           n("article", Ya, [
             n("h3", null, [
               N(
@@ -6950,7 +6947,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       ],
                       64
                       /* STABLE_FRAGMENT */
-                    )) : S("v-if", !0)
+                    )) : E("v-if", !0)
                   ]),
                   n("div", os, [
                     n(
@@ -6974,7 +6971,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       ],
                       64
                       /* STABLE_FRAGMENT */
-                    )) : S("v-if", !0)
+                    )) : E("v-if", !0)
                   ]),
                   he(y.id).error ? (_(), v(
                     "p",
@@ -6982,7 +6979,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     r(a("life.adapters.listenError", { error: he(y.id).error })),
                     1
                     /* TEXT */
-                  )) : S("v-if", !0),
+                  )) : E("v-if", !0),
                   n("div", ss, [
                     n("button", {
                       class: "btn sm",
@@ -7011,7 +7008,6 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
               /* TEXT */
             ))
           ]),
-          S(" 编辑表单 "),
           Oe(Ca, { name: "lsp-fade" }, {
             default: Bo(() => [
               de.value !== null ? (_(), v(
@@ -7039,7 +7035,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         1
                         /* TEXT */
                       ),
-                      Oe(De(Ve), {
+                      Oe(Ve(De), {
                         modelValue: B.value.platform,
                         "onUpdate:modelValue": T[0] || (T[0] = (y) => B.value.platform = y),
                         options: Ae.value.map((y) => ({ value: y.id, label: y.id + (y.implemented ? "" : a("life.adapters.notImplemented")) }))
@@ -7053,7 +7049,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         1
                         /* TEXT */
                       ),
-                      Oe(De(Ve), {
+                      Oe(Ve(De), {
                         modelValue: B.value.direction,
                         "onUpdate:modelValue": T[1] || (T[1] = (y) => B.value.direction = y),
                         options: [
@@ -7081,7 +7077,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         512
                         /* NEED_PATCH */
                       ), [
-                        [M, B.value.name]
+                        [C, B.value.name]
                       ])
                     ]),
                     n("label", null, [
@@ -7103,7 +7099,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         512
                         /* NEED_PATCH */
                       ), [
-                        [M, B.value.ws_host]
+                        [C, B.value.ws_host]
                       ])
                     ]),
                     n("label", null, [
@@ -7129,7 +7125,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          M,
+                          C,
                           B.value.ws_port,
                           void 0,
                           { number: !0 }
@@ -7149,9 +7145,9 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         class: "field",
                         placeholder: a("life.adapters.wsPathPlaceholder")
                       }, null, 8, hs), [
-                        [M, B.value.ws_path]
+                        [C, B.value.ws_path]
                       ])
-                    ])) : S("v-if", !0),
+                    ])) : E("v-if", !0),
                     n("label", null, [
                       n(
                         "span",
@@ -7166,7 +7162,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         type: "password",
                         placeholder: a("life.adapters.wsTokenPlaceholder")
                       }, null, 8, ps), [
-                        [M, B.value.ws_token]
+                        [C, B.value.ws_token]
                       ])
                     ]),
                     n("label", null, [
@@ -7182,7 +7178,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         class: "field",
                         placeholder: a("life.adapters.httpUrlPlaceholder")
                       }, null, 8, fs), [
-                        [M, B.value.http_url]
+                        [C, B.value.http_url]
                       ])
                     ]),
                     n("label", null, [
@@ -7198,7 +7194,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         class: "field",
                         placeholder: a("life.adapters.accessTokenPlaceholder")
                       }, null, 8, ms), [
-                        [M, B.value.access_token]
+                        [C, B.value.access_token]
                       ])
                     ]),
                     n("label", null, [
@@ -7220,7 +7216,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         512
                         /* NEED_PATCH */
                       ), [
-                        [M, B.value.config_id]
+                        [C, B.value.config_id]
                       ])
                     ]),
                     n("label", null, [
@@ -7236,7 +7232,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         class: "field",
                         placeholder: a("life.adapters.triggerKeywordsPlaceholder")
                       }, null, 8, _s), [
-                        [M, B.value.trigger_keywords]
+                        [C, B.value.trigger_keywords]
                       ])
                     ])
                   ]),
@@ -7295,7 +7291,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     r(a("life.adapters.pendingPlatforms", { names: Ot.value.join(a("life.adapters.listSeparator")) })),
                     1
                     /* TEXT */
-                  )) : S("v-if", !0),
+                  )) : E("v-if", !0),
                   n("div", ws, [
                     n("button", {
                       class: "btn filled sm",
@@ -7316,12 +7312,11 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 ],
                 512
                 /* NEED_PATCH */
-              )) : S("v-if", !0)
+              )) : E("v-if", !0)
             ]),
             _: 1
             /* STABLE */
           }),
-          S(" 配置文件路由 "),
           n("article", ks, [
             n(
               "h3",
@@ -7397,7 +7392,6 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 /* TEXT */
               )
             ]),
-            S(" TransitionGroup FLIP: stable per-rule keys, so ↑↓ glides rows. "),
             Oe(Ma, {
               tag: "ol",
               name: "rule-flip",
@@ -7450,7 +7444,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       n("button", {
                         class: "btn sm danger",
                         "aria-label": a("life.adapters.delete"),
-                        onClick: (X) => z(ee)
+                        onClick: (X) => M(ee)
                       }, r(a("life.adapters.delete")), 9, zs)
                     ])
                   ]))),
@@ -7461,7 +7455,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
               _: 1
               /* STABLE */
             }),
-            $e.value.length ? S("v-if", !0) : (_(), v(
+            $e.value.length ? E("v-if", !0) : (_(), v(
               "p",
               Es,
               r(a("life.adapters.emptyRoutes")),
@@ -7482,7 +7476,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   class: "field",
                   placeholder: a("life.adapters.sessionPatternPlaceholder")
                 }, null, 8, As), [
-                  [M, Pe.value.pattern]
+                  [C, Pe.value.pattern]
                 ])
               ]),
               n("label", null, [
@@ -7504,7 +7498,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   512
                   /* NEED_PATCH */
                 ), [
-                  [M, Pe.value.config_id]
+                  [C, Pe.value.config_id]
                 ])
               ])
             ]),
@@ -7538,13 +7532,13 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   512
                   /* NEED_PATCH */
                 ), [
-                  [M, Se.value]
+                  [C, Se.value]
                 ])
               ]),
               n("button", {
                 class: "btn filled sm",
                 disabled: Bt.value,
-                onClick: D
+                onClick: V
               }, r(Bt.value ? a("life.adapters.saving") : a("life.adapters.saveRoutes")), 9, Zs)
             ])
           ])
@@ -7554,7 +7548,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
       ))
     ]));
   }
-}), Rs = { class: "hero" }, Ds = { class: "hero-main" }, Vs = { class: "hero-copy" }, $s = { class: "sub" }, Us = { class: "hero-actions" }, Fs = ["disabled"], Hs = ["disabled"], Ws = ["disabled"], Gs = { class: "state-row" }, js = { class: "pill soft" }, qs = { class: "pill soft" }, Ks = { class: "pill soft" }, Ys = {
+}), Rs = { class: "hero" }, Vs = { class: "hero-main" }, Ds = { class: "hero-copy" }, $s = { class: "sub" }, Us = { class: "hero-actions" }, Fs = ["disabled"], Hs = ["disabled"], Ws = ["disabled"], Gs = { class: "state-row" }, js = { class: "pill soft" }, qs = { class: "pill soft" }, Ks = { class: "pill soft" }, Ys = {
   key: 0,
   class: "banner err"
 }, Js = {
@@ -7584,7 +7578,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
 }, Br = {
   "data-panel": "cognition",
   class: "panel"
-}, Zr = { class: "section-head" }, Nr = { class: "desc" }, Rr = { class: "head-actions" }, Dr = ["disabled"], Vr = { class: "card" }, $r = { class: "settings-grid" }, Ur = { class: "cog-metric" }, Fr = { class: "cog-metric" }, Hr = { class: "cog-metric" }, Wr = { class: "cog-metric" }, Gr = { class: "cog-metric" }, jr = { class: "cog-metric" }, qr = {
+}, Zr = { class: "section-head" }, Nr = { class: "desc" }, Rr = { class: "head-actions" }, Vr = ["disabled"], Dr = { class: "card" }, $r = { class: "settings-grid" }, Ur = { class: "cog-metric" }, Fr = { class: "cog-metric" }, Hr = { class: "cog-metric" }, Wr = { class: "cog-metric" }, Gr = { class: "cog-metric" }, jr = { class: "cog-metric" }, qr = {
   key: 0,
   class: "hint"
 }, Kr = {
@@ -7603,13 +7597,13 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
   class: "mood-plot",
   viewBox: "0 0 120 120",
   "aria-hidden": "true"
-}, pl = ["cx", "cy"], fl = ["cx", "cy"], ml = { class: "plot-quadrant" }, _l = { class: "glance-col" }, vl = { class: "glance-title" }, gl = ["title"], yl = { class: "gauge-head" }, bl = { class: "gauge-name" }, wl = { class: "gauge-alias" }, xl = { class: "gauge-val" }, kl = { class: "gauge-effect" }, Pl = { class: "glance-col" }, Ll = { class: "glance-title" }, Tl = ["title"], Sl = { class: "gauge-head" }, Cl = { class: "gauge-name" }, Ml = { class: "gauge-alias" }, zl = { class: "gauge-val" }, El = { class: "gauge-effect" }, Ol = { class: "sub-label" }, Al = { class: "hint" }, Il = { class: "gauge-grid" }, Bl = ["title"], Zl = { class: "gauge-head" }, Nl = { class: "gauge-name" }, Rl = { class: "gauge-alias" }, Dl = { class: "gauge-val" }, Vl = { class: "gauge-effect" }, $l = {
+}, pl = ["cx", "cy"], fl = ["cx", "cy"], ml = { class: "plot-quadrant" }, _l = { class: "glance-col" }, vl = { class: "glance-title" }, gl = ["title"], yl = { class: "gauge-head" }, bl = { class: "gauge-name" }, wl = { class: "gauge-alias" }, xl = { class: "gauge-val" }, kl = { class: "gauge-effect" }, Pl = { class: "glance-col" }, Ll = { class: "glance-title" }, Tl = ["title"], Sl = { class: "gauge-head" }, Cl = { class: "gauge-name" }, Ml = { class: "gauge-alias" }, zl = { class: "gauge-val" }, El = { class: "gauge-effect" }, Ol = { class: "sub-label" }, Al = { class: "hint" }, Il = { class: "gauge-grid" }, Bl = ["title"], Zl = { class: "gauge-head" }, Nl = { class: "gauge-name" }, Rl = { class: "gauge-alias" }, Vl = { class: "gauge-val" }, Dl = { class: "gauge-effect" }, $l = {
   key: 0,
   class: "som-channels"
 }, Ul = { class: "som-chan-name" }, Fl = { class: "som-chan-bar" }, Hl = { class: "som-chan-val" }, Wl = {
   key: 0,
   class: "hint"
-}, Gl = { class: "sub-label" }, jl = { class: "hint" }, ql = { class: "gauge-grid" }, Kl = ["title"], Yl = { class: "gauge-head" }, Jl = { class: "gauge-name" }, Xl = { class: "gauge-alias" }, Ql = { class: "gauge-val" }, eu = { class: "gauge-effect" }, tu = { class: "chip-row" }, iu = { class: "chip muted" }, nu = { class: "chip muted" }, ou = { class: "sub-label" }, au = { class: "hint" }, su = { class: "chip-row" }, ru = { class: "chip" }, lu = { class: "chip muted" }, uu = { class: "chip muted" }, cu = { class: "gauge-grid" }, du = ["title"], hu = { class: "gauge-head" }, pu = { class: "gauge-name" }, fu = { class: "gauge-alias" }, mu = { class: "gauge-val" }, _u = { class: "gauge-effect" }, vu = { class: "sub-label" }, gu = { class: "hint" }, yu = { class: "chip-row" }, bu = { class: "chip" }, wu = { class: "gauge-grid" }, xu = ["title"], ku = { class: "gauge-head" }, Pu = { class: "gauge-name" }, Lu = { class: "gauge-alias" }, Tu = { class: "gauge-val" }, Su = { class: "gauge-effect" }, Cu = { class: "sub-label" }, Mu = { class: "hint" }, zu = { class: "chip-row" }, Eu = { class: "chip" }, Ou = { class: "chip muted" }, Au = { class: "gauge-grid" }, Iu = ["title"], Bu = { class: "gauge-head" }, Zu = { class: "gauge-name" }, Nu = { class: "gauge-alias" }, Ru = { class: "gauge-val" }, Du = { class: "gauge-effect" }, Vu = { class: "sub-label" }, $u = { class: "hint" }, Uu = { class: "chip-row" }, Fu = { class: "chip" }, Hu = { class: "chip muted" }, Wu = {
+}, Gl = { class: "sub-label" }, jl = { class: "hint" }, ql = { class: "gauge-grid" }, Kl = ["title"], Yl = { class: "gauge-head" }, Jl = { class: "gauge-name" }, Xl = { class: "gauge-alias" }, Ql = { class: "gauge-val" }, eu = { class: "gauge-effect" }, tu = { class: "chip-row" }, iu = { class: "chip muted" }, nu = { class: "chip muted" }, ou = { class: "sub-label" }, au = { class: "hint" }, su = { class: "chip-row" }, ru = { class: "chip" }, lu = { class: "chip muted" }, uu = { class: "chip muted" }, cu = { class: "gauge-grid" }, du = ["title"], hu = { class: "gauge-head" }, pu = { class: "gauge-name" }, fu = { class: "gauge-alias" }, mu = { class: "gauge-val" }, _u = { class: "gauge-effect" }, vu = { class: "sub-label" }, gu = { class: "hint" }, yu = { class: "chip-row" }, bu = { class: "chip" }, wu = { class: "gauge-grid" }, xu = ["title"], ku = { class: "gauge-head" }, Pu = { class: "gauge-name" }, Lu = { class: "gauge-alias" }, Tu = { class: "gauge-val" }, Su = { class: "gauge-effect" }, Cu = { class: "sub-label" }, Mu = { class: "hint" }, zu = { class: "chip-row" }, Eu = { class: "chip" }, Ou = { class: "chip muted" }, Au = { class: "gauge-grid" }, Iu = ["title"], Bu = { class: "gauge-head" }, Zu = { class: "gauge-name" }, Nu = { class: "gauge-alias" }, Ru = { class: "gauge-val" }, Vu = { class: "gauge-effect" }, Du = { class: "sub-label" }, $u = { class: "hint" }, Uu = { class: "chip-row" }, Fu = { class: "chip" }, Hu = { class: "chip muted" }, Wu = {
   key: 0,
   class: "chip muted"
 }, Gu = {
@@ -7663,7 +7657,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
 }, Mc = {
   key: 6,
   class: "hint"
-}, zc = { class: "card" }, Ec = { class: "switches" }, Oc = { class: "sw" }, Ac = { class: "sw" }, Ic = { class: "sw" }, Bc = { class: "sw" }, Zc = { class: "sw" }, Nc = { class: "sw" }, Rc = { class: "hint" }, Dc = { class: "card" }, Vc = { class: "hint" }, $c = { class: "preset-row" }, Uc = ["onClick"], Fc = { class: "grid2" }, Hc = { class: "card" }, Wc = { class: "settings-grid" }, Gc = { class: "switches" }, jc = { class: "sw" }, qc = { class: "sw" }, Kc = { class: "sw" }, Yc = { class: "sw" }, Jc = { class: "sw" }, Xc = { class: "card" }, Qc = { class: "settings-grid" }, ed = { class: "sw" }, td = { class: "sw" }, id = { class: "sw" }, nd = { class: "card" }, od = { class: "settings-grid" }, ad = { class: "sw" }, sd = { class: "card" }, rd = { class: "settings-grid" }, ld = { class: "sw" }, ud = { class: "card" }, cd = { class: "settings-grid" }, dd = { class: "sw" }, hd = { class: "card" }, pd = { class: "hint" }, fd = { class: "sw" }, md = { class: "settings-grid" }, _d = { class: "hint" }, vd = { class: "card" }, gd = { class: "hint" }, yd = { class: "sw" }, bd = { class: "settings-grid" }, wd = { class: "hint" }, xd = { class: "card" }, kd = { class: "hint" }, Pd = { class: "sw" }, Ld = { class: "settings-grid" }, Td = { class: "hint" }, Sd = { class: "card" }, Cd = { class: "hint" }, Md = { class: "sw" }, zd = { class: "settings-grid" }, Ed = { class: "hint" }, Od = { class: "hint" }, Ad = { class: "card" }, Id = { class: "hint" }, Bd = { class: "switches" }, Zd = { class: "sw" }, Nd = { class: "sw" }, Rd = { class: "sw" }, Dd = { class: "sw" }, Vd = {
+}, zc = { class: "card" }, Ec = { class: "switches" }, Oc = { class: "sw" }, Ac = { class: "sw" }, Ic = { class: "sw" }, Bc = { class: "sw" }, Zc = { class: "sw" }, Nc = { class: "sw" }, Rc = { class: "hint" }, Vc = { class: "card" }, Dc = { class: "hint" }, $c = { class: "preset-row" }, Uc = ["onClick"], Fc = { class: "grid2" }, Hc = { class: "card" }, Wc = { class: "settings-grid" }, Gc = { class: "switches" }, jc = { class: "sw" }, qc = { class: "sw" }, Kc = { class: "sw" }, Yc = { class: "sw" }, Jc = { class: "sw" }, Xc = { class: "card" }, Qc = { class: "settings-grid" }, ed = { class: "sw" }, td = { class: "sw" }, id = { class: "sw" }, nd = { class: "card" }, od = { class: "settings-grid" }, ad = { class: "sw" }, sd = { class: "card" }, rd = { class: "settings-grid" }, ld = { class: "sw" }, ud = { class: "card" }, cd = { class: "settings-grid" }, dd = { class: "sw" }, hd = { class: "card" }, pd = { class: "hint" }, fd = { class: "sw" }, md = { class: "settings-grid" }, _d = { class: "hint" }, vd = { class: "card" }, gd = { class: "hint" }, yd = { class: "sw" }, bd = { class: "settings-grid" }, wd = { class: "hint" }, xd = { class: "card" }, kd = { class: "hint" }, Pd = { class: "sw" }, Ld = { class: "settings-grid" }, Td = { class: "hint" }, Sd = { class: "card" }, Cd = { class: "hint" }, Md = { class: "sw" }, zd = { class: "settings-grid" }, Ed = { class: "hint" }, Od = { class: "hint" }, Ad = { class: "card" }, Id = { class: "hint" }, Bd = { class: "switches" }, Zd = { class: "sw" }, Nd = { class: "sw" }, Rd = { class: "sw" }, Vd = { class: "sw" }, Dd = {
   "data-panel": "world",
   class: "panel"
 }, $d = { class: "section-head" }, Ud = { class: "desc" }, Fd = { class: "head-actions" }, Hd = { class: "card" }, Wd = { class: "settings-grid" }, Gd = { class: "hint" }, jd = { class: "card" }, qd = { class: "hint" }, Kd = { class: "world-field" }, Yd = { class: "world-label" }, Jd = ["placeholder"], Xd = { class: "card" }, Qd = { class: "hint" }, eh = { class: "settings-grid" }, th = ["placeholder"], ih = ["placeholder"], nh = ["placeholder"], oh = { class: "world-field" }, ah = { class: "world-label" }, sh = ["placeholder"], rh = { class: "world-field" }, lh = { class: "world-label" }, uh = ["placeholder"], ch = { class: "world-field" }, dh = { class: "world-label" }, hh = ["placeholder"], ph = { class: "world-actions" }, fh = ["disabled"], mh = ["disabled"], _h = { class: "hint" }, vh = { class: "card" }, gh = { class: "wm-head" }, yh = { class: "count-pill" }, bh = {
@@ -7703,7 +7697,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
 }, Nh = {
   "data-panel": "state",
   class: "panel"
-}, Rh = { class: "section-head" }, Dh = { class: "desc" }, Vh = { class: "card" }, $h = { class: "count-pill" }, Uh = { class: "hint" }, Fh = { class: "feed" }, Hh = { class: "rel-head" }, Wh = { class: "meta" }, Gh = { class: "rel-track-row" }, jh = { class: "rel-track-label" }, qh = ["aria-label"], Kh = { class: "rel-stage-name" }, Yh = ["title"], Jh = { class: "gauge-head" }, Xh = { class: "gauge-name" }, Qh = { class: "gauge-alias" }, ep = { class: "gauge-val" }, tp = { class: "gauge-bar signed" }, ip = { class: "gauge-effect" }, np = {
+}, Rh = { class: "section-head" }, Vh = { class: "desc" }, Dh = { class: "card" }, $h = { class: "count-pill" }, Uh = { class: "hint" }, Fh = { class: "feed" }, Hh = { class: "rel-head" }, Wh = { class: "meta" }, Gh = { class: "rel-track-row" }, jh = { class: "rel-track-label" }, qh = ["aria-label"], Kh = { class: "rel-stage-name" }, Yh = ["title"], Jh = { class: "gauge-head" }, Xh = { class: "gauge-name" }, Qh = { class: "gauge-alias" }, ep = { class: "gauge-val" }, tp = { class: "gauge-bar signed" }, ip = { class: "gauge-effect" }, np = {
   key: 0,
   class: "rel-mode"
 }, op = { class: "chip" }, ap = { class: "meta" }, sp = {
@@ -7741,7 +7735,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
     async function Xe(h = 0) {
       J.value = !0, Fe.value = "";
       try {
-        ae.value = await Do("/api/life/companion"), Ki(), J.value = !1;
+        ae.value = await Vo("/api/life/companion"), Ki(), J.value = !1;
       } catch (u) {
         if (h < 4)
           return await Ho(1500), Xe(h + 1);
@@ -7826,8 +7820,6 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
       get cog_personadyn_gender() {
         return re("life.companion.pdGender.unspecified");
       },
-      // memory & consolidation. On by default — they are what makes lived
-      // experience leave a trace; turn one off to ablate it.
       cog_memory_encode: "1",
       cog_sleep_replay: "1",
       cog_memory_reconsolidate: "1",
@@ -7903,10 +7895,10 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
       }
       return h;
     }
-    const z = A(() => ae.value.cognition || null), _t = A(() => z.value?.last_control || null), D = A(() => z.value?.wave1 || null), m = A(() => z.value?.wave2 || null), T = A(() => z.value?.wave3 || null), y = A(() => z.value?.wave4a || null), ee = A(() => z.value?.wave4b || null), X = A(() => z.value?.persona || null), $ = A(() => z.value?.attachment || null), ge = A(() => z.value?.tsundere || null), Be = A(() => z.value?.yandere || null), F = A(() => z.value?.personadyn || null), Ri = A(() => {
+    const M = A(() => ae.value.cognition || null), _t = A(() => M.value?.last_control || null), V = A(() => M.value?.wave1 || null), m = A(() => M.value?.wave2 || null), T = A(() => M.value?.wave3 || null), y = A(() => M.value?.wave4a || null), ee = A(() => M.value?.wave4b || null), X = A(() => M.value?.persona || null), $ = A(() => M.value?.attachment || null), ge = A(() => M.value?.tsundere || null), Be = A(() => M.value?.yandere || null), F = A(() => M.value?.personadyn || null), Ri = A(() => {
       const h = F.value?.big5;
       return h ? ["o_open", "c_conscientious", "e_extravert", "a_agreeable", "n_neurotic"].map((l) => Le(h[l], 2)).join(" · ") : "—";
-    }), Di = A(() => {
+    }), Vi = A(() => {
       const h = F.value?.hexaco;
       return h ? ["h_honesty", "hex_e", "hex_x", "hex_a", "hex_c", "hex_o"].map((l) => Le(h[l], 2)).join(" · ") : "—";
     });
@@ -7916,10 +7908,10 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
     const hi = A(() => Zt(F.value?.desires, 3)), dn = A(() => Zt(F.value?.emotions, 3)), hn = A(() => {
       const h = F.value?.learning?.theta_drift;
       return h ? Object.values(h).reduce((u, l) => u + Math.abs(l || 0), 0) : 0;
-    }), ct = A(() => m.value?.episode || null), Vi = (h) => {
+    }), ct = A(() => m.value?.episode || null), Di = (h) => {
       const u = { euthymic: "life.companion.episode.euthymic", subthreshold: "life.companion.episode.subthreshold", episode: "life.companion.episode.episode" };
       return u[h] ? a(u[h]) : "—";
-    }, ye = A(() => z.value?.life || null), vt = G(!1), pi = G("start"), Jt = G(!0);
+    }, ye = A(() => M.value?.life || null), vt = G(!1), pi = G("start"), Jt = G(!0);
     function pn() {
       const h = ye.value?.born_at;
       if (!h) return "—";
@@ -7959,7 +7951,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
       { labelKey: "life.companion.preset.yandereSecluded", fields: { cog_affect_enabled: !0, cog_affect_profile: "depression", cog_attachment_enabled: !0, cog_attachment_type: re("life.companion.attach.secluded") } },
       { labelKey: "life.companion.preset.yandereDependent", fields: { cog_affect_enabled: !0, cog_attachment_enabled: !0, cog_attachment_type: re("life.companion.attach.dependent") } },
       { labelKey: "life.companion.preset.yandereDelusional", fields: { cog_affect_enabled: !0, cog_affect_profile: "depression", cog_attachment_enabled: !0, cog_attachment_type: re("life.companion.attach.delusional") } }
-    ], Fi = A(() => z.value?.wave2?.somatic_channels || null), vn = (h) => {
+    ], Fi = A(() => M.value?.wave2?.somatic_channels || null), vn = (h) => {
       const u = { fatigue: "channel.fatigue", pain: "channel.pain", cardiorespiratory: "channel.cardiorespiratory", gastrointestinal: "channel.gastrointestinal", dizziness: "channel.dizziness", sleep: "channel.sleep" };
       return u[h] ? a(`life.companion.${u[h]}`) : h;
     }, gn = (h) => Math.max(0.02, Math.min(1, Number(h))).toFixed(3), yn = A(() => {
@@ -7988,16 +7980,16 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
       return u ? l ? "life.companion.quadrant.excited" : "life.companion.quadrant.serene" : l ? "life.companion.quadrant.tense" : "life.companion.quadrant.gloomy";
     }), xn = (h) => h <= -$o ? "lo" : h >= $o ? "hi" : "mid";
     function le(h, u, l, O) {
-      const E = Number(l);
-      if (!isFinite(E)) return null;
-      const W = ei(E / O.max), ue = O.signed ? xn(E) : W < 0.34 ? "lo" : W < 0.67 ? "mid" : "hi", ke = {
+      const z = Number(l);
+      if (!isFinite(z)) return null;
+      const W = ei(z / O.max), ue = O.signed ? xn(z) : W < 0.34 ? "lo" : W < 0.67 ? "mid" : "hi", ke = {
         label: u,
-        value: E,
+        value: z,
         max: O.max,
         kind: O.kind,
         signed: !!O.signed,
         effect: a(`life.companion.effect.${h}`),
-        display: Le(E, 2),
+        display: Le(z, 2),
         alias: a(`life.companion.alias.${h}`),
         state: a(`life.companion.gw.${h}.${ue}`),
         stateTone: "mid"
@@ -8064,16 +8056,16 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
       { value: "off", label: a("life.companion.worldDensity.off") },
       { value: "texture", label: a("life.companion.worldDensity.texture") },
       { value: "full", label: a("life.companion.worldDensity.full") }
-    ]), yi = G("fictional"), ii = G(""), bi = G(""), Pt = G(""), wi = G(""), xi = G(""), ki = G(""), Pi = G(""), ot = G(!1), Dt = G(!1), ni = A(() => [
+    ]), yi = G("fictional"), ii = G(""), bi = G(""), Pt = G(""), wi = G(""), xi = G(""), ki = G(""), Pi = G(""), ot = G(!1), Vt = G(!1), ni = A(() => [
       { value: "fictional", label: a("life.companion.worldFictional.fictional") },
       { value: "real", label: a("life.companion.worldFictional.real") }
-    ]), at = A(() => ae.value.worldview || null), te = A(() => at.value?.map || { locations: [], edges: [], actors: [], width: 1e3, height: 700, title: "" }), oi = A(() => at.value?.actor_locations || {}), se = ["home", "work", "shop", "food", "park", "transit", "other"], be = { home: "life.companion.kind.home", work: "life.companion.kind.work", shop: "life.companion.kind.shop", food: "life.companion.kind.food", park: "life.companion.kind.park", transit: "life.companion.kind.transit", other: "life.companion.kind.other" }, ai = { home: "#e07a5f", work: "#5b8def", shop: "#e0a23d", food: "#57a773", park: "#3faead", transit: "#8b6fd6", other: "#8a94a6" }, Vt = A(() => se.filter((h) => (te.value.locations || []).some((u) => (u.kind || "other") === h)));
+    ]), at = A(() => ae.value.worldview || null), te = A(() => at.value?.map || { locations: [], edges: [], actors: [], width: 1e3, height: 700, title: "" }), oi = A(() => at.value?.actor_locations || {}), se = ["home", "work", "shop", "food", "park", "transit", "other"], be = { home: "life.companion.kind.home", work: "life.companion.kind.work", shop: "life.companion.kind.shop", food: "life.companion.kind.food", park: "life.companion.kind.park", transit: "life.companion.kind.transit", other: "life.companion.kind.other" }, ai = { home: "#e07a5f", work: "#5b8def", shop: "#e0a23d", food: "#57a773", park: "#3faead", transit: "#8b6fd6", other: "#8a94a6" }, Dt = A(() => se.filter((h) => (te.value.locations || []).some((u) => (u.kind || "other") === h)));
     function Ce(h) {
       const u = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
       return String(h ?? "").replace(/[&<>"']/g, (l) => u[l]);
     }
     const $t = G(null), j = G(!1);
-    let q = null, V = null, Ut = "";
+    let q = null, D = null, Ut = "";
     const We = ["#2b4250", "#33495a", "#2f4a44", "#3a4258", "#463f4f", "#3d4a3a", "#4a4436", "#39485c"], Tn = ["#dfe4ea", "#d6dce4", "#e6eaf0", "#cfd7e0"];
     let gt = "";
     const qe = G("city"), _e = {};
@@ -8084,8 +8076,8 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
       gt = gt === h ? "" : h;
       for (const [u, l] of Object.entries(_e)) {
         const O = u === gt;
-        for (const { layer: E, base: W } of l)
-          E.setStyle && E.setStyle({ ...W, weight: (W.weight || 2) + (O ? 3.5 : 0), opacity: O ? 1 : W.opacity ?? 1 }), O && E.bringToFront && E.bringToFront();
+        for (const { layer: z, base: W } of l)
+          z.setStyle && z.setStyle({ ...W, weight: (W.weight || 2) + (O ? 3.5 : 0), opacity: O ? 1 : W.opacity ?? 1 }), O && z.bringToFront && z.bringToFront();
       }
     }
     function si() {
@@ -8112,14 +8104,14 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
     function Ti(h) {
       const u = [], l = [];
       for (const O of h) {
-        const E = String(O.text).length * 13 + 20, W = 22;
-        u.some((ke) => Math.abs(ke.x - O.x) < (ke.w + E) / 2 && Math.abs(ke.y - O.y) < (ke.h + W) / 2) || (u.push({ x: O.x, y: O.y, w: E, h: W }), l.push(O));
+        const z = String(O.text).length * 13 + 20, W = 22;
+        u.some((ke) => Math.abs(ke.x - O.x) < (ke.w + z) / 2 && Math.abs(ke.y - O.y) < (ke.h + W) / 2) || (u.push({ x: O.x, y: O.y, w: z, h: W }), l.push(O));
       }
       return l;
     }
     function Si() {
       const h = te.value.kind === "real" ? "real" : "fictional";
-      if (q && Ut !== h && (q.remove(), q = null, V = null), !(q || !$t.value)) {
+      if (q && Ut !== h && (q.remove(), q = null, D = null), !(q || !$t.value)) {
         if (h === "real") {
           j.value = !1, q = R.map($t.value, { zoomControl: !0, attributionControl: !0 }).setView([35, 105], 5);
           const u = R.tileLayer(Np, { subdomains: ["1", "2", "3", "4"], maxZoom: 19, minZoom: 3, attribution: a("life.companion.map.attribution") });
@@ -8132,62 +8124,62 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
           j.value = !1;
           const { w: u, h: l } = yt();
           q = R.map($t.value, { crs: R.CRS.Simple, zoomControl: !0, attributionControl: !1, minZoom: -3, maxZoom: 3 }).setView([l / 2, u / 2], -1.5);
-          for (const [E, W] of [["pWater", 350], ["pParks", 360], ["pBlocks", 370], ["pRoads", 380], ["pMetro", 400], ["pBus", 410], ["pLabels", 620]])
-            q.createPane(E), q.getPane(E).style.zIndex = String(W);
+          for (const [z, W] of [["pWater", 350], ["pParks", 360], ["pBlocks", 370], ["pRoads", 380], ["pMetro", 400], ["pBus", 410], ["pLabels", 620]])
+            q.createPane(z), q.getPane(z).style.zIndex = String(W);
           const O = () => q.getContainer().classList.toggle("wm-zoom-low", q.getZoom() < 0);
           q.on("zoomend", O), setTimeout(O, 0);
         }
-        Ut = h, V = R.layerGroup().addTo(q);
+        Ut = h, D = R.layerGroup().addTo(q);
       }
     }
     function Ci(h = !1) {
-      if (!q || !V) return;
-      V.clearLayers();
-      for (const E of Object.keys(_e)) delete _e[E];
+      if (!q || !D) return;
+      D.clearLayers();
+      for (const z of Object.keys(_e)) delete _e[z];
       gt = "";
       const u = te.value.locations || [];
       if (!u.length) return;
       const l = Ut !== "real", O = {};
-      for (const E of u) O[E.id] = E;
+      for (const z of u) O[z.id] = z;
       if (l) {
-        const { w: E, h: W } = yt(), ue = (k) => k.map((ce) => Ne(ce[0], ce[1])), ke = te.value.nation;
+        const { w: z, h: W } = yt(), ue = (k) => k.map((ce) => Ne(ce[0], ce[1])), ke = te.value.nation;
         if (qe.value === "nation" && ke) {
-          R.rectangle([[0, 0], [W, E]], { pane: "pWater", stroke: !1, fillColor: "#d9e6f0", fillOpacity: 1 }).addTo(V), R.polygon(ue(ke.land), { pane: "pWater", color: "#8fbfe6", weight: 1.5, fillColor: "#f4efe1", fillOpacity: 1 }).addTo(V), (ke.provinces || []).forEach((k, ce) => {
-            R.polygon(ue(k.points), { pane: "pParks", color: "#c9b98f", weight: 1, fillColor: ce % 2 ? "#ece2c8" : "#e4d7b4", fillOpacity: 0.55 }).addTo(V), R.marker(ue([k.label])[0], { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#8a7a5c") }).addTo(V);
-          }), (ke.routes || []).forEach((k) => R.polyline(ue(k.points), { pane: "pRoads", color: "#b98a4a", weight: 2.5, dashArray: "2 7" }).addTo(V)), (ke.cities || []).forEach((k) => {
+          R.rectangle([[0, 0], [W, z]], { pane: "pWater", stroke: !1, fillColor: "#d9e6f0", fillOpacity: 1 }).addTo(D), R.polygon(ue(ke.land), { pane: "pWater", color: "#8fbfe6", weight: 1.5, fillColor: "#f4efe1", fillOpacity: 1 }).addTo(D), (ke.provinces || []).forEach((k, ce) => {
+            R.polygon(ue(k.points), { pane: "pParks", color: "#c9b98f", weight: 1, fillColor: ce % 2 ? "#ece2c8" : "#e4d7b4", fillOpacity: 0.55 }).addTo(D), R.marker(ue([k.label])[0], { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#8a7a5c") }).addTo(D);
+          }), (ke.routes || []).forEach((k) => R.polyline(ue(k.points), { pane: "pRoads", color: "#b98a4a", weight: 2.5, dashArray: "2 7" }).addTo(D)), (ke.cities || []).forEach((k) => {
             const ce = Ne(k.x, k.y);
-            R.circleMarker(ce, { pane: "pLabels", radius: k.capital ? 9 : 6, color: "#ffffff", weight: 2, fillColor: k.capital ? "#d64545" : "#3a6ea5", fillOpacity: 1 }).bindPopup(Ce(k.name)).addTo(V), R.marker(ce, { pane: "pLabels", interactive: !1, icon: Ye(k.name, k.capital ? "#d64545" : "#3a6ea5") }).addTo(V);
-          }), q.fitBounds([[0, 0], [W, E]], { padding: [6, 6] });
+            R.circleMarker(ce, { pane: "pLabels", radius: k.capital ? 9 : 6, color: "#ffffff", weight: 2, fillColor: k.capital ? "#d64545" : "#3a6ea5", fillOpacity: 1 }).bindPopup(Ce(k.name)).addTo(D), R.marker(ce, { pane: "pLabels", interactive: !1, icon: Ye(k.name, k.capital ? "#d64545" : "#3a6ea5") }).addTo(D);
+          }), q.fitBounds([[0, 0], [W, z]], { padding: [6, 6] });
           return;
         }
-        R.rectangle([[0, 0], [W, E]], { pane: "pWater", stroke: !1, fillColor: "#eef1f4", fillOpacity: 1 }).addTo(V), (te.value.compounds || []).forEach((k) => {
-          R.polygon(ue(k.points), { pane: "pParks", color: "#c9b98f", weight: 1.2, dashArray: "7 5", fillColor: "#f3ead0", fillOpacity: 0.5 }).addTo(V), R.marker(ue(k.points)[0], { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#a9884a") }).addTo(V);
+        R.rectangle([[0, 0], [W, z]], { pane: "pWater", stroke: !1, fillColor: "#eef1f4", fillOpacity: 1 }).addTo(D), (te.value.compounds || []).forEach((k) => {
+          R.polygon(ue(k.points), { pane: "pParks", color: "#c9b98f", weight: 1.2, dashArray: "7 5", fillColor: "#f3ead0", fillOpacity: 0.5 }).addTo(D), R.marker(ue(k.points)[0], { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#a9884a") }).addTo(D);
         }), (te.value.lakes || []).forEach((k) => {
-          R.polygon(ue(k.points), { pane: "pWater", color: "#8fbfe6", weight: 1.5, fillColor: "#bcd9f0", fillOpacity: 1 }).addTo(V), k.name && k.name !== "" && R.marker(Ne(k.label[0], k.label[1]), { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#3d7fb5") }).addTo(V);
+          R.polygon(ue(k.points), { pane: "pWater", color: "#8fbfe6", weight: 1.5, fillColor: "#bcd9f0", fillOpacity: 1 }).addTo(D), k.name && k.name !== "" && R.marker(Ne(k.label[0], k.label[1]), { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#3d7fb5") }).addTo(D);
         }), (te.value.rivers || []).forEach((k) => {
-          R.polyline(ue(k.points), { pane: "pWater", color: "#8fbfe6", weight: 16, lineCap: "round", lineJoin: "round" }).addTo(V), R.polyline(ue(k.points), { pane: "pWater", color: "#bcd9f0", weight: 11, lineCap: "round", lineJoin: "round" }).addTo(V), k.name && k.name !== "" && R.marker(ue(k.points)[Math.floor(k.points.length / 2)], { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#3d7fb5") }).addTo(V);
+          R.polyline(ue(k.points), { pane: "pWater", color: "#8fbfe6", weight: 16, lineCap: "round", lineJoin: "round" }).addTo(D), R.polyline(ue(k.points), { pane: "pWater", color: "#bcd9f0", weight: 11, lineCap: "round", lineJoin: "round" }).addTo(D), k.name && k.name !== "" && R.marker(ue(k.points)[Math.floor(k.points.length / 2)], { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#3d7fb5") }).addTo(D);
         }), (te.value.parks || []).forEach((k) => {
-          R.polygon(ue(k.points), { pane: "pParks", color: "#a9d3a0", weight: 1, fillColor: "#c9e6c4", fillOpacity: 1 }).addTo(V), (k.trees || []).forEach((ce) => R.circleMarker(Ne(ce[0], ce[1]), { pane: "pParks", radius: 2.6, stroke: !1, fillColor: "#82bd79", fillOpacity: 1 }).addTo(V)), k.name && k.name !== re("life.companion.val.park") && R.marker(ue(k.points)[0], { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#5a9e52") }).addTo(V);
+          R.polygon(ue(k.points), { pane: "pParks", color: "#a9d3a0", weight: 1, fillColor: "#c9e6c4", fillOpacity: 1 }).addTo(D), (k.trees || []).forEach((ce) => R.circleMarker(Ne(ce[0], ce[1]), { pane: "pParks", radius: 2.6, stroke: !1, fillColor: "#82bd79", fillOpacity: 1 }).addTo(D)), k.name && k.name !== re("life.companion.val.park") && R.marker(ue(k.points)[0], { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#5a9e52") }).addTo(D);
         });
         const ft = [];
         (te.value.blocks || []).forEach((k) => {
           const ce = ue(k.points);
-          if (R.polygon(ce.map((ve) => [ve[0] - 3, ve[1] + 3]), { pane: "pBlocks", stroke: !1, fillColor: "#5b6b7a", fillOpacity: 0.16 }).addTo(V), R.polygon(ce, { pane: "pBlocks", color: "#b9c3cd", weight: 1, fillColor: Tn[(k.shade || 0) % Tn.length], fillOpacity: 1 }).addTo(V), k.tower) {
+          if (R.polygon(ce.map((ve) => [ve[0] - 3, ve[1] + 3]), { pane: "pBlocks", stroke: !1, fillColor: "#5b6b7a", fillOpacity: 0.16 }).addTo(D), R.polygon(ce, { pane: "pBlocks", color: "#b9c3cd", weight: 1, fillColor: Tn[(k.shade || 0) % Tn.length], fillOpacity: 1 }).addTo(D), k.tower) {
             const ve = ce.reduce((ze, Ee) => ze + Ee[0], 0) / ce.length, Me = ce.reduce((ze, Ee) => ze + Ee[1], 0) / ce.length;
             R.polygon(
               ce.map((ze) => [ve + (ze[0] - ve) * 0.5, Me + (ze[1] - Me) * 0.5]),
               { pane: "pBlocks", color: "#aab4c0", weight: 1, fillColor: "#eef2f6", fillOpacity: 1 }
-            ).addTo(V);
+            ).addTo(D);
           }
           if (k.name) {
             const ve = k.points.reduce((ze, Ee) => ze + Ee[0], 0) / k.points.length, Me = k.points.reduce((ze, Ee) => ze + Ee[1], 0) / k.points.length;
             ft.push({ x: ve, y: Me, text: k.name, color: k.tower ? "#6b5b8a" : "#7a8794" });
           }
         }), (te.value.named_buildings || []).forEach((k) => {
-          R.circleMarker(Ne(k.x, k.y), { pane: "pLabels", radius: 4, color: "#ffffff", weight: 1.5, fillColor: "#8a5a2b", fillOpacity: 1 }).addTo(V), R.marker(Ne(k.x, k.y), { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#8a5a2b") }).addTo(V);
+          R.circleMarker(Ne(k.x, k.y), { pane: "pLabels", radius: 4, color: "#ffffff", weight: 1.5, fillColor: "#8a5a2b", fillOpacity: 1 }).addTo(D), R.marker(Ne(k.x, k.y), { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#8a5a2b") }).addTo(D);
         });
         for (const k of Ti(ft))
-          R.marker(Ne(k.x, k.y), { pane: "pLabels", interactive: !1, icon: Li(k.text, k.color) }).addTo(V);
+          R.marker(Ne(k.x, k.y), { pane: "pLabels", interactive: !1, icon: Li(k.text, k.color) }).addTo(D);
         const tn = {
           highway: { casing: 13, fill: 6.5, color: "#f08c2e" },
           arterial: { casing: 10, fill: 4.5, color: "#f7cf8a" },
@@ -8195,72 +8187,72 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
         };
         (te.value.streets || []).forEach((k) => {
           const ce = tn[k.kind] || tn.street, ve = ue(k.points);
-          R.polyline(ve, { pane: "pRoads", color: "#ffffff", weight: ce.casing, lineCap: "round", lineJoin: "round" }).addTo(V), R.polyline(ve, { pane: "pRoads", color: ce.color, weight: ce.fill, lineCap: "round", lineJoin: "round" }).addTo(V);
+          R.polyline(ve, { pane: "pRoads", color: "#ffffff", weight: ce.casing, lineCap: "round", lineJoin: "round" }).addTo(D), R.polyline(ve, { pane: "pRoads", color: ce.color, weight: ce.fill, lineCap: "round", lineJoin: "round" }).addTo(D);
         }), (te.value.roads || []).forEach((k, ce) => {
           if (!k.name) return;
           const ve = ue(k.points), Me = "road:" + ce;
-          R.polyline(ve, { pane: "pRoads", color: "#ffffff", weight: 11, lineCap: "round", lineJoin: "round" }).addTo(V);
+          R.polyline(ve, { pane: "pRoads", color: "#ffffff", weight: 11, lineCap: "round", lineJoin: "round" }).addTo(D);
           const ze = { pane: "pRoads", color: "#f6c56b", weight: 5, opacity: 1, lineCap: "round", lineJoin: "round" };
-          pt(Me, R.polyline(ve, ze).on("click", () => Ke(Me)).addTo(V), ze), R.marker(ve[Math.floor(ve.length / 2)], { pane: "pLabels", interactive: !0, icon: Ye(k.name, "#9a8358") }).on("click", () => Ke(Me)).addTo(V);
+          pt(Me, R.polyline(ve, ze).on("click", () => Ke(Me)).addTo(D), ze), R.marker(ve[Math.floor(ve.length / 2)], { pane: "pLabels", interactive: !0, icon: Ye(k.name, "#9a8358") }).on("click", () => Ke(Me)).addTo(D);
         }), (te.value.districts || []).forEach((k, ce) => {
-          R.circle(Ne(k.x, k.y), { pane: "pRoads", radius: k.r || 200, color: "#93a2b0", weight: 1, dashArray: "4 7", fillColor: We[ce % We.length], fillOpacity: 0.08 }).addTo(V), R.marker(Ne(k.x, k.y), { pane: "pLabels", interactive: !1, icon: R.divIcon({ className: "wm-district", html: `<span class="wm-district-inner">${Ce(k.name)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] }) }).addTo(V);
+          R.circle(Ne(k.x, k.y), { pane: "pRoads", radius: k.r || 200, color: "#93a2b0", weight: 1, dashArray: "4 7", fillColor: We[ce % We.length], fillOpacity: 0.08 }).addTo(D), R.marker(Ne(k.x, k.y), { pane: "pLabels", interactive: !1, icon: R.divIcon({ className: "wm-district", html: `<span class="wm-district-inner">${Ce(k.name)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] }) }).addTo(D);
         });
         const nn = [];
         (te.value.metro || []).forEach((k, ce) => {
           const ve = ue(k.points), Me = "metro:" + ce;
-          R.polyline(ve, { pane: "pMetro", color: "#ffffff", weight: 8, lineCap: "round", lineJoin: "round" }).addTo(V);
+          R.polyline(ve, { pane: "pMetro", color: "#ffffff", weight: 8, lineCap: "round", lineJoin: "round" }).addTo(D);
           const ze = { pane: "pMetro", color: k.color, weight: 4.5, opacity: 0.92, lineCap: "round", lineJoin: "round" };
-          pt(Me, R.polyline(ve, ze).on("click", () => Ke(Me)).addTo(V), ze), (k.stations || []).forEach((Ee) => {
-            R.circleMarker(Ne(Ee.x, Ee.y), { pane: "pMetro", radius: 5, color: "#ffffff", weight: 2.5, fillColor: k.color, fillOpacity: 1 }).bindPopup(Ce(Ee.name || k.name)).on("click", () => Ke(Me)).addTo(V), Ee.name && nn.push({ x: Ee.x, y: Ee.y, text: Ee.name, color: k.color });
-          }), R.marker(ve[Math.floor(ve.length / 2)], { pane: "pLabels", interactive: !0, icon: Ye(k.name, k.color) }).on("click", () => Ke(Me)).addTo(V);
+          pt(Me, R.polyline(ve, ze).on("click", () => Ke(Me)).addTo(D), ze), (k.stations || []).forEach((Ee) => {
+            R.circleMarker(Ne(Ee.x, Ee.y), { pane: "pMetro", radius: 5, color: "#ffffff", weight: 2.5, fillColor: k.color, fillOpacity: 1 }).bindPopup(Ce(Ee.name || k.name)).on("click", () => Ke(Me)).addTo(D), Ee.name && nn.push({ x: Ee.x, y: Ee.y, text: Ee.name, color: k.color });
+          }), R.marker(ve[Math.floor(ve.length / 2)], { pane: "pLabels", interactive: !0, icon: Ye(k.name, k.color) }).on("click", () => Ke(Me)).addTo(D);
         }), (te.value.bus || []).forEach((k, ce) => {
           const ve = ue(k.points), Me = "bus:" + ce, ze = { pane: "pBus", color: k.color, weight: 3, opacity: 0.95, dashArray: "7 7", lineCap: "round" };
-          pt(Me, R.polyline(ve, ze).on("click", () => Ke(Me)).addTo(V), ze), (k.stops || []).forEach((Ee) => R.circleMarker(Ne(Ee.x, Ee.y), { pane: "pBus", radius: 3.2, color: "#ffffff", weight: 1.5, fillColor: k.color, fillOpacity: 1 }).bindPopup(Ce(Ee.name || k.name)).on("click", () => Ke(Me)).addTo(V)), R.marker(ve[Math.floor(ve.length / 2)], { pane: "pLabels", interactive: !0, icon: Ye(k.name, k.color) }).on("click", () => Ke(Me)).addTo(V);
+          pt(Me, R.polyline(ve, ze).on("click", () => Ke(Me)).addTo(D), ze), (k.stops || []).forEach((Ee) => R.circleMarker(Ne(Ee.x, Ee.y), { pane: "pBus", radius: 3.2, color: "#ffffff", weight: 1.5, fillColor: k.color, fillOpacity: 1 }).bindPopup(Ce(Ee.name || k.name)).on("click", () => Ke(Me)).addTo(D)), R.marker(ve[Math.floor(ve.length / 2)], { pane: "pLabels", interactive: !0, icon: Ye(k.name, k.color) }).on("click", () => Ke(Me)).addTo(D);
         });
         for (const k of Ti(nn))
-          R.marker(Ne(k.x, k.y), { pane: "pLabels", interactive: !1, icon: qi(k.text, k.color) }).addTo(V);
+          R.marker(Ne(k.x, k.y), { pane: "pLabels", interactive: !1, icon: qi(k.text, k.color) }).addTo(D);
       } else
-        for (const E of te.value.edges || []) {
-          const W = O[E[0]], ue = O[E[1]];
-          W?.lat != null && ue?.lat != null && R.polyline([[W.lat, W.lng], [ue.lat, ue.lng]], { color: "#5b8def", weight: 3, opacity: 0.55, dashArray: "2 8", lineCap: "round" }).addTo(V);
+        for (const z of te.value.edges || []) {
+          const W = O[z[0]], ue = O[z[1]];
+          W?.lat != null && ue?.lat != null && R.polyline([[W.lat, W.lng], [ue.lat, ue.lng]], { color: "#5b8def", weight: 3, opacity: 0.55, dashArray: "2 8", lineCap: "round" }).addTo(D);
         }
-      for (const E of u) {
-        const W = ai[E.kind] || ai.other, ue = l ? Ne(E.x, E.y) : E.lat != null ? [E.lat, E.lng] : null;
+      for (const z of u) {
+        const W = ai[z.kind] || ai.other, ue = l ? Ne(z.x, z.y) : z.lat != null ? [z.lat, z.lng] : null;
         if (!ue) continue;
         const ke = R.divIcon({
           className: "wm-pin-holder",
-          html: `<span class="wm-pin" style="--c:${W}"></span><span class="wm-pin-label">${Ce(E.name)}</span>`,
+          html: `<span class="wm-pin" style="--c:${W}"></span><span class="wm-pin-label">${Ce(z.name)}</span>`,
           iconSize: [0, 0],
           iconAnchor: [0, 0]
         });
-        R.marker(ue, { icon: ke }).bindPopup(`<b>${Ce(E.name)}</b>${E.desc ? "<br>" + Ce(E.desc) : ""}`).addTo(V);
+        R.marker(ue, { icon: ke }).bindPopup(`<b>${Ce(z.name)}</b>${z.desc ? "<br>" + Ce(z.desc) : ""}`).addTo(D);
       }
-      for (const E of te.value.actors || []) {
-        const W = O[oi.value[E.id] || E.location];
+      for (const z of te.value.actors || []) {
+        const W = O[oi.value[z.id] || z.location];
         if (!W) continue;
         const ue = l ? Ne(W.x, W.y) : W.lat != null ? [W.lat, W.lng] : null;
         if (!ue) continue;
         const ke = R.divIcon({
           className: "wm-actor-holder",
-          html: `<span class="wm-actor-badge">${Ce((E.name || "?").slice(0, 1))}</span><span class="wm-actor-name">${Ce(E.name)}</span>`,
+          html: `<span class="wm-actor-badge">${Ce((z.name || "?").slice(0, 1))}</span><span class="wm-actor-name">${Ce(z.name)}</span>`,
           iconSize: [0, 0],
           iconAnchor: [0, 0]
         });
-        R.marker(ue, { icon: ke }).bindPopup(`${Ce(E.name)} · ${Ce(W.name)}`).addTo(V);
+        R.marker(ue, { icon: ke }).bindPopup(`${Ce(z.name)} · ${Ce(W.name)}`).addTo(D);
       }
       if (!h)
         if (l) {
-          const { w: E, h: W } = yt();
-          q.fitBounds([[0, 0], [W, E]], { padding: [0, 0] });
+          const { w: z, h: W } = yt();
+          q.fitBounds([[0, 0], [W, z]], { padding: [0, 0] });
         } else {
-          const E = u.filter((W) => W.lat != null).map((W) => [W.lat, W.lng]);
-          E.length > 1 ? q.fitBounds(E, { padding: [56, 56], maxZoom: 15 }) : E.length === 1 && q.setView(E[0], 14);
+          const z = u.filter((W) => W.lat != null).map((W) => [W.lat, W.lng]);
+          z.length > 1 ? q.fitBounds(z, { padding: [56, 56], maxZoom: 15 }) : z.length === 1 && q.setView(z[0], 14);
         }
     }
     ui([Ae, () => ae.value.worldview], async () => {
       Ae.value === "world" && (await Hn(), Si(), Ci(), q && setTimeout(() => q.invalidateSize(), 80));
     }), Zo(() => {
-      q && (q.remove(), q = null, V = null);
+      q && (q.remove(), q = null, D = null);
     });
     function Ki() {
       w.value = { ...Ue() }, gi.value = String(ae.value.settings?.world_density || "off"), yi.value = String(ae.value.settings?.world_fictional || "fictional"), ii.value = String(ae.value.settings?.world_country || ""), bi.value = String(ae.value.settings?.world_city || ""), Pt.value = String(ae.value.settings?.world_district || ""), wi.value = String(ae.value.settings?.world_premise || ""), xi.value = String(ae.value.settings?.persona_text || ""), ki.value = String(ae.value.settings?.world_actors || ""), Pi.value = String(ae.value.settings?.world_places || "");
@@ -8340,11 +8332,11 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
         confirmLabel: a("life.companion.reset.confirm"),
         danger: !0
       }))) {
-        Dt.value = !0;
+        Vt.value = !0;
         try {
           await xe("reset_person", {}), B(a("life.companion.flash.personReset")), await Xe();
         } finally {
-          Dt.value = !1;
+          Vt.value = !1;
         }
       }
     }
@@ -8436,8 +8428,6 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
           tsundere: b.value.tsundere || {},
           personadyn: {
             ...b.value.personadyn || {},
-            // The owner may override the archetype's implied gender/social script
-            // after analysis; the backend applies it as the persona's G group.
             gender: b.value.personadynGender || w.cog_personadyn_gender || re("life.companion.pdGender.unspecified")
           }
         })) return;
@@ -8445,8 +8435,8 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
         if (O?.setPersona)
           O.setPersona({ ...ie.value }), O.saveConfig?.();
         else {
-          const E = JSON.parse(localStorage.getItem("0kay_config") || "{}");
-          E.persona = { ...E.persona || {}, ...ie.value }, localStorage.setItem("0kay_config", JSON.stringify(E));
+          const z = JSON.parse(localStorage.getItem("0kay_config") || "{}");
+          z.persona = { ...z.persona || {}, ...ie.value }, localStorage.setItem("0kay_config", JSON.stringify(z));
         }
         B(a("life.companion.flash.personaSaved"));
       } finally {
@@ -8461,7 +8451,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
     async function Ei() {
       if (document.visibilityState === "visible")
         try {
-          ae.value = await Do("/api/life/companion"), zi.value = (/* @__PURE__ */ new Date()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          ae.value = await Vo("/api/life/companion"), zi.value = (/* @__PURE__ */ new Date()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         } catch {
         }
     }
@@ -8483,8 +8473,8 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
       },
       [
         n("header", Rs, [
-          n("div", Ds, [
-            n("div", Vs, [
+          n("div", Vs, [
+            n("div", Ds, [
               u[100] || (u[100] = n(
                 "p",
                 { class: "eyebrow" },
@@ -8545,23 +8535,23 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
             n(
               "span",
               {
-                class: Y(["pill", { bad: z.value && !z.value.enabled }])
+                class: Y(["pill", { bad: M.value && !M.value.enabled }])
               },
-              r(a("life.companion.cognitionCore")) + " " + r(z.value?.available === !1 ? a("life.companion.status.unavailable") : z.value?.enabled ? a("life.companion.status.running") : a("life.companion.status.stopped")),
+              r(a("life.companion.cognitionCore")) + " " + r(M.value?.available === !1 ? a("life.companion.status.unavailable") : M.value?.enabled ? a("life.companion.status.running") : a("life.companion.status.stopped")),
               3
               /* TEXT, CLASS */
             ),
             n(
               "span",
               js,
-              r(a("life.companion.state.decidedTurns", { n: D.value?.turns ?? 0 })),
+              r(a("life.companion.state.decidedTurns", { n: V.value?.turns ?? 0 })),
               1
               /* TEXT */
             ),
             n(
               "span",
               qs,
-              r(a("life.companion.state.engrams", { n: D.value?.engrams ?? 0 })),
+              r(a("life.companion.state.engrams", { n: V.value?.engrams ?? 0 })),
               1
               /* TEXT */
             ),
@@ -8580,14 +8570,14 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
           r(Fe.value),
           1
           /* TEXT */
-        )) : S("v-if", !0),
+        )) : E("v-if", !0),
         K.value ? (_(), v(
           "p",
           Js,
           r(K.value),
           1
           /* TEXT */
-        )) : S("v-if", !0),
+        )) : E("v-if", !0),
         n("nav", {
           class: "tabs",
           "aria-label": a("life.companion.view")
@@ -8624,7 +8614,6 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
             /* STABLE_FRAGMENT */
           ))
         ], 8, Xs),
-        S(" 02 人设（原设置页 → 人设，移到陪伴） "),
         P(n(
           "section",
           tr,
@@ -8679,7 +8668,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     512
                     /* NEED_PATCH */
                   ), [
-                    [M, ie.value.name]
+                    [C, ie.value.name]
                   ])
                 ]),
                 n("label", null, [
@@ -8690,7 +8679,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     1
                     /* TEXT */
                   ),
-                  Oe(De(Ve), {
+                  Oe(Ve(De), {
                     modelValue: ie.value.gender,
                     "onUpdate:modelValue": u[2] || (u[2] = (l) => ie.value.gender = l),
                     options: bt.value,
@@ -8715,7 +8704,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     512
                     /* NEED_PATCH */
                   ), [
-                    [M, ie.value.avatar]
+                    [C, ie.value.avatar]
                   ])
                 ]),
                 n("label", null, [
@@ -8737,7 +8726,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     512
                     /* NEED_PATCH */
                   ), [
-                    [M, ie.value.birthDate]
+                    [C, ie.value.birthDate]
                   ])
                 ])
               ]),
@@ -8760,7 +8749,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   512
                   /* NEED_PATCH */
                 ), [
-                  [M, ie.value.description]
+                  [C, ie.value.description]
                 ])
               ]),
               n("label", cr, [
@@ -8782,7 +8771,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   512
                   /* NEED_PATCH */
                 ), [
-                  [M, ie.value.personality]
+                  [C, ie.value.personality]
                 ])
               ]),
               n("label", dr, [
@@ -8804,7 +8793,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   512
                   /* NEED_PATCH */
                 ), [
-                  [M, ie.value.greeting]
+                  [C, ie.value.greeting]
                 ])
               ]),
               n("label", hr, [
@@ -8826,7 +8815,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   512
                   /* NEED_PATCH */
                 ), [
-                  [M, ie.value.customPrompt]
+                  [C, ie.value.customPrompt]
                 ])
               ]),
               n(
@@ -8861,7 +8850,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     1
                     /* TEXT */
                   ),
-                  Oe(De(Ve), {
+                  Oe(Ve(De), {
                     modelValue: b.value.gender,
                     "onUpdate:modelValue": u[9] || (u[9] = (l) => b.value.gender = l),
                     options: bt.value,
@@ -8876,7 +8865,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     1
                     /* TEXT */
                   ),
-                  Oe(De(Ve), {
+                  Oe(Ve(De), {
                     modelValue: b.value.character.key,
                     "onUpdate:modelValue": u[10] || (u[10] = (l) => b.value.character.key = l),
                     options: Jn.value,
@@ -8891,7 +8880,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     1
                     /* TEXT */
                   ),
-                  Oe(De(Ve), {
+                  Oe(Ve(De), {
                     modelValue: b.value.relationship.key,
                     "onUpdate:modelValue": u[11] || (u[11] = (l) => b.value.relationship.key = l),
                     options: Mn.value,
@@ -8942,7 +8931,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   ],
                   64
                   /* STABLE_FRAGMENT */
-                )) : S("v-if", !0)
+                )) : E("v-if", !0)
               ]),
               b.value.character?.expression || b.value.expression ? (_(), v(
                 "p",
@@ -8950,7 +8939,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 r(a("life.companion.persona.speakingStyle", { style: b.value.character?.expression || b.value.expression })),
                 1
                 /* TEXT */
-              )) : S("v-if", !0),
+              )) : E("v-if", !0),
               n(
                 "h4",
                 null,
@@ -8982,7 +8971,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      M,
+                      C,
                       b.value.traits.threat_baseline,
                       void 0,
                       { number: !0 }
@@ -9012,7 +9001,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      M,
+                      C,
                       b.value.traits.reward_baseline,
                       void 0,
                       { number: !0 }
@@ -9042,7 +9031,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      M,
+                      C,
                       b.value.traits.catastrophizing,
                       void 0,
                       { number: !0 }
@@ -9057,7 +9046,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     1
                     /* TEXT */
                   ),
-                  Oe(De(Ve), {
+                  Oe(Ve(De), {
                     modelValue: b.value.traits.erq_profile,
                     "onUpdate:modelValue": u[15] || (u[15] = (l) => b.value.traits.erq_profile = l),
                     options: $e.value,
@@ -9086,7 +9075,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      M,
+                      C,
                       b.value.traits.sleep_hour,
                       void 0,
                       { number: !0 }
@@ -9125,7 +9114,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      M,
+                      C,
                       b.value.traits.extraversion,
                       void 0,
                       { number: !0 }
@@ -9155,7 +9144,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      M,
+                      C,
                       b.value.traits.agreeableness,
                       void 0,
                       { number: !0 }
@@ -9185,7 +9174,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      M,
+                      C,
                       b.value.traits.conscientiousness,
                       void 0,
                       { number: !0 }
@@ -9215,7 +9204,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      M,
+                      C,
                       b.value.traits.openness,
                       void 0,
                       { number: !0 }
@@ -9245,7 +9234,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      M,
+                      C,
                       b.value.traits.attach_anxiety,
                       void 0,
                       { number: !0 }
@@ -9275,7 +9264,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      M,
+                      C,
                       b.value.traits.attach_avoidance,
                       void 0,
                       { number: !0 }
@@ -9315,7 +9304,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         b.value.traits.expressiveness,
                         void 0,
                         { number: !0 }
@@ -9345,7 +9334,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         b.value.traits.initiative,
                         void 0,
                         { number: !0 }
@@ -9375,7 +9364,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         b.value.traits.humor,
                         void 0,
                         { number: !0 }
@@ -9405,7 +9394,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         b.value.traits.warmth,
                         void 0,
                         { number: !0 }
@@ -9435,7 +9424,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         b.value.traits.formality,
                         void 0,
                         { number: !0 }
@@ -9465,7 +9454,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         b.value.traits.assertiveness,
                         void 0,
                         { number: !0 }
@@ -9523,7 +9512,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          M,
+                          C,
                           b.value.attachment.initial.X,
                           void 0,
                           { number: !0 }
@@ -9553,7 +9542,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          M,
+                          C,
                           b.value.attachment.initial.S,
                           void 0,
                           { number: !0 }
@@ -9627,7 +9616,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          M,
+                          C,
                           b.value.tsundere.initial.A,
                           void 0,
                           { number: !0 }
@@ -9657,7 +9646,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          M,
+                          C,
                           b.value.tsundere.initial.T,
                           void 0,
                           { number: !0 }
@@ -9687,7 +9676,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          M,
+                          C,
                           b.value.tsundere.initial.Y,
                           void 0,
                           { number: !0 }
@@ -9761,7 +9750,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          M,
+                          C,
                           b.value.personadyn.initial.A,
                           void 0,
                           { number: !0 }
@@ -9791,7 +9780,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          M,
+                          C,
                           b.value.personadyn.initial.X,
                           void 0,
                           { number: !0 }
@@ -9821,7 +9810,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          M,
+                          C,
                           b.value.personadyn.initial.O,
                           void 0,
                           { number: !0 }
@@ -9851,7 +9840,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          M,
+                          C,
                           b.value.personadyn.initial.Tr,
                           void 0,
                           { number: !0 }
@@ -9881,7 +9870,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          M,
+                          C,
                           b.value.personadyn.initial.K,
                           void 0,
                           { number: !0 }
@@ -9896,7 +9885,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         1
                         /* TEXT */
                       ),
-                      Oe(De(Ve), {
+                      Oe(Ve(De), {
                         modelValue: b.value.personadynGender,
                         "onUpdate:modelValue": u[39] || (u[39] = (l) => b.value.personadynGender = l),
                         options: It.value,
@@ -9921,14 +9910,13 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 1
                 /* TEXT */
               ))
-            ])) : S("v-if", !0)
+            ])) : E("v-if", !0)
           ],
           512
           /* NEED_PATCH */
         ), [
           [un, Ae.value === "persona"]
         ]),
-        S(" 01 认知 "),
         P(n(
           "section",
           Br,
@@ -9955,10 +9943,10 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   class: "btn filled sm",
                   disabled: Lt.value,
                   onClick: H
-                }, r(Lt.value ? a("life.companion.saving") : a("life.companion.saveSettings")), 9, Dr)
+                }, r(Lt.value ? a("life.companion.saving") : a("life.companion.saveSettings")), 9, Vr)
               ])
             ]),
-            n("article", Vr, [
+            n("article", Dr, [
               n("h3", null, [
                 N(
                   r(a("life.companion.life.title")) + " ",
@@ -10079,21 +10067,21 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 r(a("life.companion.life.currentThought", { text: ye.value.last_thought })),
                 1
                 /* TEXT */
-              )) : S("v-if", !0),
+              )) : E("v-if", !0),
               ye.value?.focus ? (_(), v(
                 "p",
                 Kr,
                 r(a("life.companion.life.focus", { text: ye.value.focus })),
                 1
                 /* TEXT */
-              )) : S("v-if", !0),
+              )) : E("v-if", !0),
               ye.value?.active_goal ? (_(), v(
                 "p",
                 Yr,
                 r(a("life.companion.life.goal", { text: ye.value.active_goal })),
                 1
                 /* TEXT */
-              )) : S("v-if", !0),
+              )) : E("v-if", !0),
               n("div", Jr, [
                 n("label", Xr, [
                   P(n(
@@ -10140,9 +10128,9 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 n(
                   "span",
                   {
-                    class: Y(["count-pill", { ok: z.value?.enabled }])
+                    class: Y(["count-pill", { ok: M.value?.enabled }])
                   },
-                  r(z.value?.enabled ? a("life.companion.status.running") : a("life.companion.status.stopped")),
+                  r(M.value?.enabled ? a("life.companion.status.running") : a("life.companion.status.stopped")),
                   3
                   /* TEXT, CLASS */
                 ),
@@ -10152,13 +10140,12 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   r(a("life.companion.realtime.updatedAt", { time: zi.value })),
                   1
                   /* TEXT */
-                )) : S("v-if", !0)
+                )) : E("v-if", !0)
               ]),
-              z.value ? (_(), v(
+              M.value ? (_(), v(
                 Q,
                 { key: 1 },
                 [
-                  S(" 她现在: Russell circumplex + the moment's emotion/body gauges. "),
                   n(
                     "div",
                     ol,
@@ -10269,7 +10256,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         1
                         /* TEXT */
                       )
-                    ], 8, rl)) : S("v-if", !0),
+                    ], 8, rl)) : E("v-if", !0),
                     n("div", _l, [
                       n(
                         "p",
@@ -10440,7 +10427,6 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       ))
                     ])
                   ]),
-                  S(" 情绪与身体 (第二波 slow physiology) "),
                   n(
                     "div",
                     Ol,
@@ -10479,7 +10465,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                               /* TEXT */
                             )
                           ]),
-                          n("span", Dl, [
+                          n("span", Vl, [
                             n(
                               "b",
                               {
@@ -10518,7 +10504,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         ),
                         n(
                           "span",
-                          Vl,
+                          Dl,
                           r(l.effect),
                           1
                           /* TEXT */
@@ -10571,9 +10557,8 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       r(a("life.companion.realtime.somaticChronicity", { value: Le(m.value?.somatic_chronicity) })),
                       1
                       /* TEXT */
-                    )) : S("v-if", !0)
-                  ])) : S("v-if", !0),
-                  S(" 社会认知 "),
+                    )) : E("v-if", !0)
+                  ])) : E("v-if", !0),
                   y.value || ee.value ? (_(), v(
                     Q,
                     { key: 1 },
@@ -10684,8 +10669,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     ],
                     64
                     /* STABLE_FRAGMENT */
-                  )) : S("v-if", !0),
-                  S(" 依恋 "),
+                  )) : E("v-if", !0),
                   $.value?.enabled ? (_(), v(
                     Q,
                     { key: 2 },
@@ -10812,8 +10796,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     ],
                     64
                     /* STABLE_FRAGMENT */
-                  )) : S("v-if", !0),
-                  S(" 傲娇 "),
+                  )) : E("v-if", !0),
                   ge.value?.enabled ? (_(), v(
                     Q,
                     { key: 3 },
@@ -10926,8 +10909,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     ],
                     64
                     /* STABLE_FRAGMENT */
-                  )) : S("v-if", !0),
-                  S(" 病娇 "),
+                  )) : E("v-if", !0),
                   Be.value?.enabled ? (_(), v(
                     Q,
                     { key: 4 },
@@ -11034,7 +11016,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                             ),
                             n(
                               "span",
-                              Du,
+                              Vu,
                               r(l.effect),
                               1
                               /* TEXT */
@@ -11047,15 +11029,14 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     ],
                     64
                     /* STABLE_FRAGMENT */
-                  )) : S("v-if", !0),
-                  S(" 人格动力 "),
+                  )) : E("v-if", !0),
                   F.value?.enabled ? (_(), v(
                     Q,
                     { key: 5 },
                     [
                       n(
                         "div",
-                        Vu,
+                        Du,
                         r(a("life.companion.realtime.section.pd")),
                         1
                         /* TEXT */
@@ -11088,14 +11069,14 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                           r(F.value.gender),
                           1
                           /* TEXT */
-                        )) : S("v-if", !0),
+                        )) : E("v-if", !0),
                         F.value.clinical ? (_(), v(
                           "span",
                           Gu,
                           r(a("life.companion.simulationMode")),
                           1
                           /* TEXT */
-                        )) : S("v-if", !0)
+                        )) : E("v-if", !0)
                       ]),
                       n("div", ju, [
                         (_(!0), v(
@@ -11194,7 +11175,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                               1
                               /* TEXT */
                             )
-                          ])) : S("v-if", !0),
+                          ])) : E("v-if", !0),
                           F.value.big5 ? (_(), v("div", nc, [
                             u[105] || (u[105] = n(
                               "span",
@@ -11210,7 +11191,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                               1
                               /* TEXT */
                             )
-                          ])) : S("v-if", !0),
+                          ])) : E("v-if", !0),
                           F.value.hexaco ? (_(), v("div", oc, [
                             u[106] || (u[106] = n(
                               "span",
@@ -11222,11 +11203,11 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                             n(
                               "strong",
                               null,
-                              r(Di.value),
+                              r(Vi.value),
                               1
                               /* TEXT */
                             )
-                          ])) : S("v-if", !0),
+                          ])) : E("v-if", !0),
                           F.value.mbti ? (_(), v("div", ac, [
                             u[107] || (u[107] = n(
                               "span",
@@ -11242,7 +11223,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                               1
                               /* TEXT */
                             )
-                          ])) : S("v-if", !0),
+                          ])) : E("v-if", !0),
                           F.value.theta_dim ? (_(), v("div", sc, [
                             n(
                               "span",
@@ -11258,7 +11239,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                               1
                               /* TEXT */
                             )
-                          ])) : S("v-if", !0),
+                          ])) : E("v-if", !0),
                           hi.value.length ? (_(), v("div", rc, [
                             n(
                               "span",
@@ -11274,7 +11255,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                               1
                               /* TEXT */
                             )
-                          ])) : S("v-if", !0),
+                          ])) : E("v-if", !0),
                           dn.value.length ? (_(), v("div", lc, [
                             n(
                               "span",
@@ -11290,7 +11271,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                               1
                               /* TEXT */
                             )
-                          ])) : S("v-if", !0),
+                          ])) : E("v-if", !0),
                           F.value.learning?.enabled ? (_(), v("div", uc, [
                             n(
                               "span",
@@ -11306,14 +11287,13 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                               1
                               /* TEXT */
                             )
-                          ])) : S("v-if", !0)
+                          ])) : E("v-if", !0)
                         ])
                       ])
                     ],
                     64
                     /* STABLE_FRAGMENT */
-                  )) : S("v-if", !0),
-                  S(" 内核原始读数 "),
+                  )) : E("v-if", !0),
                   n("details", cc, [
                     n(
                       "summary",
@@ -11398,7 +11378,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         n(
                           "strong",
                           null,
-                          r(D.value?.turns ?? 0),
+                          r(V.value?.turns ?? 0),
                           1
                           /* TEXT */
                         )
@@ -11414,7 +11394,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         n(
                           "strong",
                           null,
-                          r(D.value?.engrams ?? 0),
+                          r(V.value?.engrams ?? 0),
                           1
                           /* TEXT */
                         )
@@ -11430,7 +11410,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         n(
                           "strong",
                           null,
-                          r(Le(D.value?.reliability)),
+                          r(Le(V.value?.reliability)),
                           1
                           /* TEXT */
                         )
@@ -11482,7 +11462,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                             n(
                               "strong",
                               null,
-                              r(Vi(ct.value.state)),
+                              r(Di(ct.value.state)),
                               1
                               /* TEXT */
                             )
@@ -11534,11 +11514,11 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                               1
                               /* TEXT */
                             )
-                          ])) : S("v-if", !0)
+                          ])) : E("v-if", !0)
                         ],
                         64
                         /* STABLE_FRAGMENT */
-                      )) : S("v-if", !0)
+                      )) : E("v-if", !0)
                     ])
                   ])
                 ],
@@ -11557,35 +11537,35 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 r(a("life.companion.realtime.episodeHint")),
                 1
                 /* TEXT */
-              )) : S("v-if", !0),
+              )) : E("v-if", !0),
               $.value?.enabled ? (_(), v(
                 "p",
                 Tc,
                 r(a("life.companion.realtime.attachmentHint", { label: $.value.label, severity: Le($.value.severity, 2), band: $.value.band, safety: $.value.safe_mode ? a("life.companion.realtime.safetyOnEmotion") : a("life.companion.realtime.safetyOff") })),
                 1
                 /* TEXT */
-              )) : S("v-if", !0),
+              )) : E("v-if", !0),
               ge.value?.enabled ? (_(), v(
                 "p",
                 Sc,
                 r(a("life.companion.realtime.tsundereHint", { label: ge.value.label || ge.value.type, affection: Le(ge.value.affection, 2), expression: Le(ge.value.expression, 2), fixation: Le(ge.value.fixation, 2), band: ge.value.band, safety: ge.value.safe_mode ? a("life.companion.realtime.safetyOnFeeling") : a("life.companion.realtime.safetyOff") })),
                 1
                 /* TEXT */
-              )) : S("v-if", !0),
+              )) : E("v-if", !0),
               F.value?.enabled ? (_(), v(
                 "p",
                 Cc,
                 r(a("life.companion.realtime.personadynHint", { label: F.value.label || F.value.type, family: F.value.family || "—", theta: F.value.theta_dim, mode: F.value.mode_label || F.value.mode, pressure: Le(F.value.pressure, 2), band: F.value.band, gender: F.value.gender || re("life.companion.pdGender.unspecified"), learning: F.value.learning?.enabled ? a("life.companion.realtime.learningOnline") : "", safety: F.value.safe_mode ? a("life.companion.realtime.safetyOnFeeling") : a("life.companion.realtime.safetyOff") })),
                 1
                 /* TEXT */
-              )) : S("v-if", !0),
+              )) : E("v-if", !0),
               X.value?.applied ? (_(), v(
                 "p",
                 Mc,
                 r(a("life.companion.realtime.personaApplied", { source: X.value.source === "llm" ? a("life.companion.realtime.personaSourceLlm") : a("life.companion.realtime.personaSourceLocal"), evidence: yn.value || "—" })),
                 1
                 /* TEXT */
-              )) : S("v-if", !0)
+              )) : E("v-if", !0)
             ]),
             n("article", zc, [
               n(
@@ -11731,7 +11711,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 /* TEXT */
               )
             ]),
-            n("article", Dc, [
+            n("article", Vc, [
               n(
                 "h3",
                 null,
@@ -11741,7 +11721,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
               ),
               n(
                 "p",
-                Vc,
+                Dc,
                 r(a("life.companion.presets.hint")),
                 1
                 /* TEXT */
@@ -11793,7 +11773,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         w.value.cog_plan_depth,
                         void 0,
                         { number: !0 }
@@ -11822,7 +11802,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         w.value.cog_wm_capacity,
                         void 0,
                         { number: !0 }
@@ -11852,7 +11832,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         w.value.cog_tau,
                         void 0,
                         { number: !0 }
@@ -11882,7 +11862,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         w.value.cog_gamma,
                         void 0,
                         { number: !0 }
@@ -11912,7 +11892,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         w.value.cog_alpha_habit,
                         void 0,
                         { number: !0 }
@@ -11942,7 +11922,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         w.value.cog_alpha_mf,
                         void 0,
                         { number: !0 }
@@ -11972,7 +11952,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         w.value.cog_theta_pe,
                         void 0,
                         { number: !0 }
@@ -12002,7 +11982,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         w.value.cog_theta_n,
                         void 0,
                         { number: !0 }
@@ -12031,7 +12011,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         w.value.cog_prospection_horizon,
                         void 0,
                         { number: !0 }
@@ -12164,7 +12144,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       1
                       /* TEXT */
                     ),
-                    Oe(De(Ve), {
+                    Oe(Ve(De), {
                       modelValue: w.value.cog_affect_profile,
                       "onUpdate:modelValue": u[62] || (u[62] = (l) => w.value.cog_affect_profile = l),
                       options: $e.value,
@@ -12194,7 +12174,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         w.value.cog_affect_vagal,
                         void 0,
                         { number: !0 }
@@ -12224,7 +12204,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         w.value.cog_affect_threat,
                         void 0,
                         { number: !0 }
@@ -12254,7 +12234,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         w.value.cog_affect_reward,
                         void 0,
                         { number: !0 }
@@ -12343,7 +12323,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       1
                       /* TEXT */
                     ),
-                    Oe(De(Ve), {
+                    Oe(Ve(De), {
                       modelValue: w.value.cog_language_framing,
                       "onUpdate:modelValue": u[69] || (u[69] = (l) => w.value.cog_language_framing = l),
                       options: Se.value,
@@ -12373,7 +12353,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         w.value.cog_language_boundary,
                         void 0,
                         { number: !0 }
@@ -12435,7 +12415,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         w.value.cog_social_empathy,
                         void 0,
                         { number: !0 }
@@ -12450,7 +12430,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       1
                       /* TEXT */
                     ),
-                    Oe(De(Ve), {
+                    Oe(Ve(De), {
                       modelValue: je.value,
                       "onUpdate:modelValue": u[73] || (u[73] = (l) => je.value = l),
                       options: Bt.value,
@@ -12512,7 +12492,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         w.value.cog_selfhood_discount,
                         void 0,
                         { number: !0 }
@@ -12542,7 +12522,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        M,
+                        C,
                         w.value.cog_selfhood_detail,
                         void 0,
                         { number: !0 }
@@ -12617,7 +12597,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       1
                       /* TEXT */
                     ),
-                    Oe(De(Ve), {
+                    Oe(Ve(De), {
                       modelValue: w.value.cog_attachment_type,
                       "onUpdate:modelValue": u[79] || (u[79] = (l) => w.value.cog_attachment_type = l),
                       options: qt.value,
@@ -12678,7 +12658,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       1
                       /* TEXT */
                     ),
-                    Oe(De(Ve), {
+                    Oe(Ve(De), {
                       modelValue: w.value.cog_tsundere_type,
                       "onUpdate:modelValue": u[81] || (u[81] = (l) => w.value.cog_tsundere_type = l),
                       options: At.value,
@@ -12739,7 +12719,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       1
                       /* TEXT */
                     ),
-                    Oe(De(Ve), {
+                    Oe(Ve(De), {
                       modelValue: w.value.cog_yandere_type,
                       "onUpdate:modelValue": u[83] || (u[83] = (l) => w.value.cog_yandere_type = l),
                       options: Kt.value,
@@ -12800,7 +12780,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       1
                       /* TEXT */
                     ),
-                    Oe(De(Ve), {
+                    Oe(Ve(De), {
                       modelValue: w.value.cog_personadyn_type,
                       "onUpdate:modelValue": u[85] || (u[85] = (l) => w.value.cog_personadyn_type = l),
                       options: ci.value,
@@ -12815,7 +12795,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       1
                       /* TEXT */
                     ),
-                    Oe(De(Ve), {
+                    Oe(Ve(De), {
                       modelValue: w.value.cog_personadyn_gender,
                       "onUpdate:modelValue": u[86] || (u[86] = (l) => w.value.cog_personadyn_gender = l),
                       options: It.value,
@@ -12917,7 +12897,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* TEXT */
                     )
                   ]),
-                  n("label", Dd, [
+                  n("label", Vd, [
                     P(n(
                       "input",
                       {
@@ -12947,10 +12927,9 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
         ), [
           [un, Ae.value === "cognition"]
         ]),
-        S(" 02 世界 "),
         P(n(
           "section",
-          Vd,
+          Dd,
           [
             n("div", $d, [
               n("div", null, [
@@ -12999,7 +12978,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     1
                     /* TEXT */
                   ),
-                  Oe(De(Ve), {
+                  Oe(Ve(De), {
                     modelValue: gi.value,
                     "onUpdate:modelValue": u[91] || (u[91] = (l) => gi.value = l),
                     options: Yn.value,
@@ -13044,7 +13023,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   rows: "4",
                   placeholder: a("life.companion.world.personaPlaceholder")
                 }, null, 8, Jd), [
-                  [M, xi.value]
+                  [C, xi.value]
                 ])
               ])
             ]),
@@ -13072,7 +13051,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     1
                     /* TEXT */
                   ),
-                  Oe(De(Ve), {
+                  Oe(Ve(De), {
                     modelValue: yi.value,
                     "onUpdate:modelValue": u[93] || (u[93] = (l) => yi.value = l),
                     options: ni.value,
@@ -13092,7 +13071,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     class: "field",
                     placeholder: a("life.companion.world.countryPlaceholder")
                   }, null, 8, th), [
-                    [M, ii.value]
+                    [C, ii.value]
                   ])
                 ]),
                 n("label", null, [
@@ -13108,7 +13087,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     class: "field",
                     placeholder: a("life.companion.world.cityPlaceholder")
                   }, null, 8, ih), [
-                    [M, bi.value]
+                    [C, bi.value]
                   ])
                 ]),
                 n("label", null, [
@@ -13124,7 +13103,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     class: "field",
                     placeholder: a("life.companion.world.districtPlaceholder")
                   }, null, 8, nh), [
-                    [M, Pt.value]
+                    [C, Pt.value]
                   ])
                 ])
               ]),
@@ -13142,7 +13121,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   rows: "3",
                   placeholder: a("life.companion.world.premisePlaceholder")
                 }, null, 8, sh), [
-                  [M, wi.value]
+                  [C, wi.value]
                 ])
               ]),
               n("label", rh, [
@@ -13159,7 +13138,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   rows: "4",
                   placeholder: a("life.companion.world.actorsPlaceholder")
                 }, null, 8, uh), [
-                  [M, ki.value]
+                  [C, ki.value]
                 ])
               ]),
               n("label", ch, [
@@ -13176,7 +13155,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   rows: "2",
                   placeholder: a("life.companion.world.placesPlaceholder")
                 }, null, 8, hh), [
-                  [M, Pi.value]
+                  [C, Pi.value]
                 ])
               ]),
               n("div", ph, [
@@ -13223,7 +13202,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   r(at.value.fictional ? a("life.companion.worldFictional.fictional") : a("life.companion.worldFictional.real")) + " · " + r([at.value.country, at.value.city, at.value.district].filter(Boolean).join(" / ") || a("life.companion.world.unnamed")),
                   1
                   /* TEXT */
-                )) : S("v-if", !0)
+                )) : E("v-if", !0)
               ]),
               at.value?.premise ? (_(), v(
                 "p",
@@ -13231,7 +13210,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 r(at.value.premise),
                 1
                 /* TEXT */
-              )) : S("v-if", !0),
+              )) : E("v-if", !0),
               n("div", xh, [
                 n(
                   "div",
@@ -13250,7 +13229,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   r(a("life.companion.world.offline")),
                   1
                   /* TEXT */
-                )) : S("v-if", !0),
+                )) : E("v-if", !0),
                 te.value.locations.length ? (_(), v(
                   Q,
                   { key: 1 },
@@ -13266,7 +13245,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       r(qe.value === "city" ? a("life.companion.world.nationView") : a("life.companion.world.cityView")),
                       1
                       /* TEXT */
-                    )) : S("v-if", !0),
+                    )) : E("v-if", !0),
                     n(
                       "button",
                       {
@@ -13286,13 +13265,13 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         -1
                         /* CACHED */
                       )
-                    ])])) : S("v-if", !0)
+                    ])])) : E("v-if", !0)
                   ],
                   64
                   /* STABLE_FRAGMENT */
-                )) : S("v-if", !0)
+                )) : E("v-if", !0)
               ]),
-              te.value.locations.length ? S("v-if", !0) : (_(), v(
+              te.value.locations.length ? E("v-if", !0) : (_(), v(
                 "p",
                 Lh,
                 r(a("life.companion.world.noMap")),
@@ -13303,7 +13282,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 (_(!0), v(
                   Q,
                   null,
-                  Te(Vt.value, (l) => (_(), v("span", { key: l }, [
+                  Te(Dt.value, (l) => (_(), v("span", { key: l }, [
                     n(
                       "i",
                       {
@@ -13441,8 +13420,8 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   ],
                   64
                   /* STABLE_FRAGMENT */
-                )) : S("v-if", !0)
-              ])) : S("v-if", !0),
+                )) : E("v-if", !0)
+              ])) : E("v-if", !0),
               te.value.locations.length && te.value.kind !== "real" && qe.value === "city" ? (_(), v("div", Sh, [
                 (te.value.metro || []).length ? (_(), v("div", Ch, [
                   n(
@@ -13471,7 +13450,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         n(
                           "span",
                           null,
-                          r((l.stations || []).map((E) => E.name).filter(Boolean).join(" · ")),
+                          r((l.stations || []).map((z) => z.name).filter(Boolean).join(" · ")),
                           1
                           /* TEXT */
                         )
@@ -13480,7 +13459,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* KEYED_FRAGMENT */
                     ))
                   ])
-                ])) : S("v-if", !0),
+                ])) : E("v-if", !0),
                 (te.value.bus || []).length ? (_(), v("div", Mh, [
                   n(
                     "h4",
@@ -13508,7 +13487,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         n(
                           "span",
                           null,
-                          r((l.stops || []).map((E) => E.name).filter(Boolean).join(" · ")),
+                          r((l.stops || []).map((z) => z.name).filter(Boolean).join(" · ")),
                           1
                           /* TEXT */
                         )
@@ -13517,8 +13496,8 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* KEYED_FRAGMENT */
                     ))
                   ])
-                ])) : S("v-if", !0)
-              ])) : S("v-if", !0)
+                ])) : E("v-if", !0)
+              ])) : E("v-if", !0)
             ]),
             n("article", zh, [
               n("div", Eh, [
@@ -13547,7 +13526,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   r(a("life.companion.world.clearTitle")),
                   1
                   /* TEXT */
-                )) : S("v-if", !0)
+                )) : E("v-if", !0)
               ]),
               n("ol", Ah, [
                 (_(!0), v(
@@ -13574,7 +13553,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   128
                   /* KEYED_FRAGMENT */
                 )),
-                Xt.value.length ? S("v-if", !0) : (_(), v(
+                Xt.value.length ? E("v-if", !0) : (_(), v(
                   "li",
                   Bh,
                   r(a("life.companion.world.noEvents")),
@@ -13589,14 +13568,10 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
         ), [
           [un, Ae.value === "world"]
         ]),
-        S(" 03 状态 "),
-        S(" 04 消息平台（只读概览；完整增删改在「设置 → 消息平台」） "),
         P(n(
           "section",
           Zh,
           [
-            S(` The full messaging-platform CRUD (accounts) lives here now; it used to\r
-           be a separate Settings tab. `),
             Oe(Ns)
           ],
           512
@@ -13619,14 +13594,14 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 ),
                 n(
                   "p",
-                  Dh,
+                  Vh,
                   r(a("life.companion.state.desc")),
                   1
                   /* TEXT */
                 )
               ])
             ]),
-            n("article", Vh, [
+            n("article", Dh, [
               n("h3", null, [
                 N(
                   r(a("life.companion.state.relationships")) + " ",
@@ -13688,11 +13663,11 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         (_(), v(
                           Q,
                           null,
-                          Te(_i, (O, E) => n(
+                          Te(_i, (O, z) => n(
                             "span",
                             {
                               key: O,
-                              class: Y(["rel-seg", { done: E < Gi(l.stage), cur: E === Gi(l.stage) }])
+                              class: Y(["rel-seg", { done: z < Gi(l.stage), cur: z === Gi(l.stage) }])
                             },
                             null,
                             2
@@ -13781,12 +13756,12 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         1
                         /* TEXT */
                       )
-                    ])) : S("v-if", !0)
+                    ])) : E("v-if", !0)
                   ]))),
                   128
                   /* KEYED_FRAGMENT */
                 )),
-                mi.value.length ? S("v-if", !0) : (_(), v(
+                mi.value.length ? E("v-if", !0) : (_(), v(
                   "li",
                   sp,
                   r(a("life.companion.state.noRelationships")),
@@ -13842,7 +13817,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   128
                   /* KEYED_FRAGMENT */
                 )),
-                Qt.value.length ? S("v-if", !0) : (_(), v(
+                Qt.value.length ? E("v-if", !0) : (_(), v(
                   "li",
                   hp,
                   r(a("life.companion.state.noCommitments")),
@@ -13906,7 +13881,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     128
                     /* KEYED_FRAGMENT */
                   )),
-                  Hi.value.length ? S("v-if", !0) : (_(), v(
+                  Hi.value.length ? E("v-if", !0) : (_(), v(
                     "li",
                     bp,
                     r(a("life.companion.state.noUserModel")),
@@ -13968,7 +13943,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     128
                     /* KEYED_FRAGMENT */
                   )),
-                  bn.value.length ? S("v-if", !0) : (_(), v(
+                  bn.value.length ? E("v-if", !0) : (_(), v(
                     "li",
                     Sp,
                     r(a("life.companion.state.noValues")),
@@ -14031,9 +14006,9 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
               n("div", Bp, [
                 n("button", {
                   class: "btn danger",
-                  disabled: Dt.value,
+                  disabled: Vt.value,
                   onClick: Tt
-                }, r(Dt.value ? a("life.companion.danger.resetting") : a("life.companion.danger.reset")), 9, Zp)
+                }, r(Vt.value ? a("life.companion.danger.resetting") : a("life.companion.danger.reset")), 9, Zp)
               ])
             ])
           ])
@@ -14043,14 +14018,14 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
       /* NEED_PATCH */
     ));
   }
-}), Dp = (me, g) => {
+}), Vp = (me, g) => {
   const a = me.__vccOpts || me;
   for (const [re, Z] of g)
     a[re] = Z;
   return a;
-}, Fp = /* @__PURE__ */ Dp(Rp, [["__scopeId", "data-v-7d345f44"]]);
+}, Fp = /* @__PURE__ */ Vp(Rp, [["__scopeId", "data-v-4443f246"]]);
 export {
   Fp as default
 };
 
-;(()=>{if(typeof document!=='undefined'&&!document.getElementById('life-plugin-style')){const s=document.createElement('style');s.id='life-plugin-style';s.textContent=".leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}.leaflet-container{overflow:hidden}.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow{-webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-user-drag:none}.leaflet-tile::selection{background:transparent}.leaflet-safari .leaflet-tile{image-rendering:-webkit-optimize-contrast}.leaflet-safari .leaflet-tile-container{width:1600px;height:1600px;-webkit-transform-origin:0 0}.leaflet-marker-icon,.leaflet-marker-shadow{display:block}.leaflet-container .leaflet-overlay-pane svg{max-width:none!important;max-height:none!important}.leaflet-container .leaflet-marker-pane img,.leaflet-container .leaflet-shadow-pane img,.leaflet-container .leaflet-tile-pane img,.leaflet-container img.leaflet-image-layer,.leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important;width:auto;padding:0}.leaflet-container img.leaflet-tile{mix-blend-mode:plus-lighter}.leaflet-container.leaflet-touch-zoom{-ms-touch-action:pan-x pan-y;touch-action:pan-x pan-y}.leaflet-container.leaflet-touch-drag{-ms-touch-action:pinch-zoom;touch-action:none;touch-action:pinch-zoom}.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom{-ms-touch-action:none;touch-action:none}.leaflet-container{-webkit-tap-highlight-color:transparent}.leaflet-container a{-webkit-tap-highlight-color:rgba(51,181,229,.4)}.leaflet-tile{filter:inherit;visibility:hidden}.leaflet-tile-loaded{visibility:inherit}.leaflet-zoom-box{width:0;height:0;-moz-box-sizing:border-box;box-sizing:border-box;z-index:800}.leaflet-overlay-pane svg{-moz-user-select:none}.leaflet-pane{z-index:400}.leaflet-tile-pane{z-index:200}.leaflet-overlay-pane{z-index:400}.leaflet-shadow-pane{z-index:500}.leaflet-marker-pane{z-index:600}.leaflet-tooltip-pane{z-index:650}.leaflet-popup-pane{z-index:700}.leaflet-map-pane canvas{z-index:100}.leaflet-map-pane svg{z-index:200}.leaflet-vml-shape{width:1px;height:1px}.lvml{behavior:url(#default#VML);display:inline-block;position:absolute}.leaflet-control{position:relative;z-index:800;pointer-events:visiblePainted;pointer-events:auto}.leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}.leaflet-top{top:0}.leaflet-right{right:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}.leaflet-control{float:left;clear:both}.leaflet-right .leaflet-control{float:right}.leaflet-top .leaflet-control{margin-top:10px}.leaflet-bottom .leaflet-control{margin-bottom:10px}.leaflet-left .leaflet-control{margin-left:10px}.leaflet-right .leaflet-control{margin-right:10px}.leaflet-fade-anim .leaflet-popup{opacity:0;-webkit-transition:opacity .2s linear;-moz-transition:opacity .2s linear;transition:opacity .2s linear}.leaflet-fade-anim .leaflet-map-pane .leaflet-popup{opacity:1}.leaflet-zoom-animated{-webkit-transform-origin:0 0;-ms-transform-origin:0 0;transform-origin:0 0}svg.leaflet-zoom-animated{will-change:transform}.leaflet-zoom-anim .leaflet-zoom-animated{-webkit-transition:-webkit-transform .25s cubic-bezier(0,0,.25,1);-moz-transition:-moz-transform .25s cubic-bezier(0,0,.25,1);transition:transform .25s cubic-bezier(0,0,.25,1)}.leaflet-zoom-anim .leaflet-tile,.leaflet-pan-anim .leaflet-tile{-webkit-transition:none;-moz-transition:none;transition:none}.leaflet-zoom-anim .leaflet-zoom-hide{visibility:hidden}.leaflet-interactive{cursor:pointer}.leaflet-grab{cursor:-webkit-grab;cursor:-moz-grab;cursor:grab}.leaflet-crosshair,.leaflet-crosshair .leaflet-interactive{cursor:crosshair}.leaflet-popup-pane,.leaflet-control{cursor:auto}.leaflet-dragging .leaflet-grab,.leaflet-dragging .leaflet-grab .leaflet-interactive,.leaflet-dragging .leaflet-marker-draggable{cursor:move;cursor:-webkit-grabbing;cursor:-moz-grabbing;cursor:grabbing}.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-image-layer,.leaflet-pane>svg path,.leaflet-tile-container{pointer-events:none}.leaflet-marker-icon.leaflet-interactive,.leaflet-image-layer.leaflet-interactive,.leaflet-pane>svg path.leaflet-interactive,svg.leaflet-image-layer.leaflet-interactive path{pointer-events:visiblePainted;pointer-events:auto}.leaflet-container{background:#ddd;outline-offset:1px}.leaflet-container a{color:#0078a8}.leaflet-zoom-box{border:2px dotted #38f;background:#ffffff80}.leaflet-container{font-family:Helvetica Neue,Arial,Helvetica,sans-serif;font-size:12px;font-size:.75rem;line-height:1.5}.leaflet-bar{box-shadow:0 1px 5px #000000a6;border-radius:4px}.leaflet-bar a{background-color:#fff;border-bottom:1px solid #ccc;width:26px;height:26px;line-height:26px;display:block;text-align:center;text-decoration:none;color:#000}.leaflet-bar a,.leaflet-control-layers-toggle{background-position:50% 50%;background-repeat:no-repeat;display:block}.leaflet-bar a:hover,.leaflet-bar a:focus{background-color:#f4f4f4}.leaflet-bar a:first-child{border-top-left-radius:4px;border-top-right-radius:4px}.leaflet-bar a:last-child{border-bottom-left-radius:4px;border-bottom-right-radius:4px;border-bottom:none}.leaflet-bar a.leaflet-disabled{cursor:default;background-color:#f4f4f4;color:#bbb}.leaflet-touch .leaflet-bar a{width:30px;height:30px;line-height:30px}.leaflet-touch .leaflet-bar a:first-child{border-top-left-radius:2px;border-top-right-radius:2px}.leaflet-touch .leaflet-bar a:last-child{border-bottom-left-radius:2px;border-bottom-right-radius:2px}.leaflet-control-zoom-in,.leaflet-control-zoom-out{font:700 18px Lucida Console,Monaco,monospace;text-indent:1px}.leaflet-touch .leaflet-control-zoom-in,.leaflet-touch .leaflet-control-zoom-out{font-size:22px}.leaflet-control-layers{box-shadow:0 1px 5px #0006;background:#fff;border-radius:5px}.leaflet-control-layers-toggle{background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAQAAAADQ4RFAAACf0lEQVR4AY1UM3gkARTePdvdoTxXKc+qTl3aU5U6b2Kbkz3Gtq3Zw6ziLGNPzrYx7946Tr6/ee/XeCQ4D3ykPtL5tHno4n0d/h3+xfuWHGLX81cn7r0iTNzjr7LrlxCqPtkbTQEHeqOrTy4Yyt3VCi/IOB0v7rVC7q45Q3Gr5K6jt+3Gl5nCoDD4MtO+j96Wu8atmhGqcNGHObuf8OM/x3AMx38+4Z2sPqzCxRFK2aF2e5Jol56XTLyggAMTL56XOMoS1W4pOyjUcGGQdZxU6qRh7B9Zp+PfpOFlqt0zyDZckPi1ttmIp03jX8gyJ8a/PG2yutpS/Vol7peZIbZcKBAEEheEIAgFbDkz5H6Zrkm2hVWGiXKiF4Ycw0RWKdtC16Q7qe3X4iOMxruonzegJzWaXFrU9utOSsLUmrc0YjeWYjCW4PDMADElpJSSQ0vQvA1Tm6/JlKnqFs1EGyZiFCqnRZTEJJJiKRYzVYzJck2Rm6P4iH+cmSY0YzimYa8l0EtTODFWhcMIMVqdsI2uiTvKmTisIDHJ3od5GILVhBCarCfVRmo4uTjkhrhzkiBV7SsaqS+TzrzM1qpGGUFt28pIySQHR6h7F6KSwGWm97ay+Z+ZqMcEjEWebE7wxCSQwpkhJqoZA5ivCdZDjJepuJ9IQjGGUmuXJdBFUygxVqVsxFsLMbDe8ZbDYVCGKxs+W080max1hFCarCfV+C1KATwcnvE9gRRuMP2prdbWGowm1KB1y+zwMMENkM755cJ2yPDtqhTI6ED1M/82yIDtC/4j4BijjeObflpO9I9MwXTCsSX8jWAFeHr05WoLTJ5G8IQVS/7vwR6ohirYM7f6HzYpogfS3R2OAAAAAElFTkSuQmCC);width:36px;height:36px}.leaflet-retina .leaflet-control-layers-toggle{background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADQAAAA0CAQAAABvcdNgAAAEsklEQVR4AWL4TydIhpZK1kpWOlg0w3ZXP6D2soBtG42jeI6ZmQTHzAxiTbSJsYLjO9HhP+WOmcuhciVnmHVQcJnp7DFvScowZorad/+V/fVzMdMT2g9Cv9guXGv/7pYOrXh2U+RRR3dSd9JRx6bIFc/ekqHI29JC6pJ5ZEh1yWkhkbcFeSjxgx3L2m1cb1C7bceyxA+CNjT/Ifff+/kDk2u/w/33/IeCMOSaWZ4glosqT3DNnNZQ7Cs58/3Ce5HL78iZH/vKVIaYlqzfdLu8Vi7dnvUbEza5Idt36tquZFldl6N5Z/POLof0XLK61mZCmJSWjVF9tEjUluu74IUXvgttuVIHE7YxSkaYhJZam7yiM9Pv82JYfl9nptxZaxMJE4YSPty+vF0+Y2up9d3wwijfjZbabqm/3bZ9ecKHsiGmRflnn1MW4pjHf9oLufyn2z3y1D6n8g8TZhxyzipLNPnAUpsOiuWimg52psrTZYnOWYNDTMuWBWa0tJb4rgq1UvmutpaYEbZlwU3CLJm/ayYjHW5/h7xWLn9Hh1vepDkyf7dE7MtT5LR4e7yYpHrkhOUpEfssBLq2pPhAqoSWKUkk7EDqkmK6RrCEzqDjhNDWNE+XSMvkJRDWlZTmCW0l0PHQGRZY5t1L83kT0Y3l2SItk5JAWHl2dCOBm+fPu3fo5/3v61RMCO9Jx2EEYYhb0rmNQMX/vm7gqOEJLcXTGw3CAuRNeyaPWwjR8PRqKQ1PDA/dpv+on9Shox52WFnx0KY8onHayrJzm87i5h9xGw/tfkev0jGsQizqezUKjk12hBMKJ4kbCqGPVNXudyyrShovGw5CgxsRICxF6aRmSjlBnHRzg7Gx8fKqEubI2rahQYdR1YgDIRQO7JvQyD52hoIQx0mxa0ODtW2Iozn1le2iIRdzwWewedyZzewidueOGqlsn1MvcnQpuVwLGG3/IR1hIKxCjelIDZ8ldqWz25jWAsnldEnK0Zxro19TGVb2ffIZEsIO89EIEDvKMPrzmBOQcKQ+rroye6NgRRxqR4U8EAkz0CL6uSGOm6KQCdWjvjRiSP1BPalCRS5iQYiEIvxuBMJEWgzSoHADcVMuN7IuqqTeyUPq22qFimFtxDyBBJEwNyt6TM88blFHao/6tWWhuuOM4SAK4EI4QmFHA+SEyWlp4EQoJ13cYGzMu7yszEIBOm2rVmHUNqwAIQabISNMRstmdhNWcFLsSm+0tjJH1MdRxO5Nx0WDMhCtgD6OKgZeljJqJKc9po8juskR9XN0Y1lZ3mWjLR9JCO1jRDMd0fpYC2VnvjBSEFg7wBENc0R9HFlb0xvF1+TBEpF68d+DHR6IOWVv2BECtxo46hOFUBd/APU57WIoEwJhIi2CdpyZX0m93BZicktMj1AS9dClteUFAUNUIEygRZCtik5zSxI9MubTBH1GOiHsiLJ3OCoSZkILa9PxiN0EbvhsAo8tdAf9Seepd36lGWHmtNANTv5Jd0z4QYyeo/UEJqxKRpg5LZx6btLPsOaEmdMyxYdlc8LMaJnikDlhclqmPiQnTEpLUIZEwkRagjYkEibQErwhkTAKCLQEbUgkzJQWc/0PstHHcfEdQ+UAAAAASUVORK5CYII=);background-size:26px 26px}.leaflet-touch .leaflet-control-layers-toggle{width:44px;height:44px}.leaflet-control-layers .leaflet-control-layers-list,.leaflet-control-layers-expanded .leaflet-control-layers-toggle{display:none}.leaflet-control-layers-expanded .leaflet-control-layers-list{display:block;position:relative}.leaflet-control-layers-expanded{padding:6px 10px 6px 6px;color:#333;background:#fff}.leaflet-control-layers-scrollbar{overflow-y:scroll;overflow-x:hidden;padding-right:5px}.leaflet-control-layers-selector{margin-top:2px;position:relative;top:1px}.leaflet-control-layers label{display:block;font-size:13px;font-size:1.08333em}.leaflet-control-layers-separator{height:0;border-top:1px solid #ddd;margin:5px -10px 5px -6px}.leaflet-default-icon-path{background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAApCAYAAADAk4LOAAAFgUlEQVR4Aa1XA5BjWRTN2oW17d3YaZtr2962HUzbDNpjszW24mRt28p47v7zq/bXZtrp/lWnXr337j3nPCe85NcypgSFdugCpW5YoDAMRaIMqRi6aKq5E3YqDQO3qAwjVWrD8Ncq/RBpykd8oZUb/kaJutow8r1aP9II0WmLKLIsJyv1w/kqw9Ch2MYdB++12Onxee/QMwvf4/Dk/Lfp/i4nxTXtOoQ4pW5Aj7wpici1A9erdAN2OH64x8OSP9j3Ft3b7aWkTg/Fm91siTra0f9on5sQr9INejH6CUUUpavjFNq1B+Oadhxmnfa8RfEmN8VNAsQhPqF55xHkMzz3jSmChWU6f7/XZKNH+9+hBLOHYozuKQPxyMPUKkrX/K0uWnfFaJGS1QPRtZsOPtr3NsW0uyh6NNCOkU3Yz+bXbT3I8G3xE5EXLXtCXbbqwCO9zPQYPRTZ5vIDXD7U+w7rFDEoUUf7ibHIR4y6bLVPXrz8JVZEql13trxwue/uDivd3fkWRbS6/IA2bID4uk0UpF1N8qLlbBlXs4Ee7HLTfV1j54APvODnSfOWBqtKVvjgLKzF5YdEk5ewRkGlK0i33Eofffc7HT56jD7/6U+qH3Cx7SBLNntH5YIPvODnyfIXZYRVDPqgHtLs5ABHD3YzLuespb7t79FY34DjMwrVrcTuwlT55YMPvOBnRrJ4VXTdNnYug5ucHLBjEpt30701A3Ts+HEa73u6dT3FNWwflY86eMHPk+Yu+i6pzUpRrW7SNDg5JHR4KapmM5Wv2E8Tfcb1HoqqHMHU+uWDD7zg54mz5/2BSnizi9T1Dg4QQXLToGNCkb6tb1NU+QAlGr1++eADrzhn/u8Q2YZhQVlZ5+CAOtqfbhmaUCS1ezNFVm2imDbPmPng5wmz+gwh+oHDce0eUtQ6OGDIyR0uUhUsoO3vfDmmgOezH0mZN59x7MBi++WDL1g/eEiU3avlidO671bkLfwbw5XV2P8Pzo0ydy4t2/0eu33xYSOMOD8hTf4CrBtGMSoXfPLchX+J0ruSePw3LZeK0juPJbYzrhkH0io7B3k164hiGvawhOKMLkrQLyVpZg8rHFW7E2uHOL888IBPlNZ1FPzstSJM694fWr6RwpvcJK60+0HCILTBzZLFNdtAzJaohze60T8qBzyh5ZuOg5e7uwQppofEmf2++DYvmySqGBuKaicF1blQjhuHdvCIMvp8whTTfZzI7RldpwtSzL+F1+wkdZ2TBOW2gIF88PBTzD/gpeREAMEbxnJcaJHNHrpzji0gQCS6hdkEeYt9DF/2qPcEC8RM28Hwmr3sdNyht00byAut2k3gufWNtgtOEOFGUwcXWNDbdNbpgBGxEvKkOQsxivJx33iow0Vw5S6SVTrpVq11ysA2Rp7gTfPfktc6zhtXBBC+adRLshf6sG2RfHPZ5EAc4sVZ83yCN00Fk/4kggu40ZTvIEm5g24qtU4KjBrx/BTTH8ifVASAG7gKrnWxJDcU7x8X6Ecczhm3o6YicvsLXWfh3Ch1W0k8x0nXF+0fFxgt4phz8QvypiwCCFKMqXCnqXExjq10beH+UUA7+nG6mdG/Pu0f3LgFcGrl2s0kNNjpmoJ9o4B29CMO8dMT4Q5ox8uitF6fqsrJOr8qnwNbRzv6hSnG5wP+64C7h9lp30hKNtKdWjtdkbuPA19nJ7Tz3zR/ibgARbhb4AlhavcBebmTHcFl2fvYEnW0ox9xMxKBS8btJ+KiEbq9zA4RthQXDhPa0T9TEe69gWupwc6uBUphquXgf+/FrIjweHQS4/pduMe5ERUMHUd9xv8ZR98CxkS4F2n3EUrUZ10EYNw7BWm9x1GiPssi3GgiGRDKWRYZfXlON+dfNbM+GgIwYdwAAAAASUVORK5CYII=)}.leaflet-container .leaflet-control-attribution{background:#fff;background:#fffc;margin:0}.leaflet-control-attribution,.leaflet-control-scale-line{padding:0 5px;color:#333;line-height:1.4}.leaflet-control-attribution a{text-decoration:none}.leaflet-control-attribution a:hover,.leaflet-control-attribution a:focus{text-decoration:underline}.leaflet-attribution-flag{display:inline!important;vertical-align:baseline!important;width:1em;height:.6669em}.leaflet-left .leaflet-control-scale{margin-left:5px}.leaflet-bottom .leaflet-control-scale{margin-bottom:5px}.leaflet-control-scale-line{border:2px solid #777;border-top:none;line-height:1.1;padding:2px 5px 1px;white-space:nowrap;-moz-box-sizing:border-box;box-sizing:border-box;background:#fffc;text-shadow:1px 1px #fff}.leaflet-control-scale-line:not(:first-child){border-top:2px solid #777;border-bottom:none;margin-top:-2px}.leaflet-control-scale-line:not(:first-child):not(:last-child){border-bottom:2px solid #777}.leaflet-touch .leaflet-control-attribution,.leaflet-touch .leaflet-control-layers,.leaflet-touch .leaflet-bar{box-shadow:none}.leaflet-touch .leaflet-control-layers,.leaflet-touch .leaflet-bar{border:2px solid rgba(0,0,0,.2);background-clip:padding-box}.leaflet-popup{position:absolute;text-align:center;margin-bottom:20px}.leaflet-popup-content-wrapper{padding:1px;text-align:left;border-radius:12px}.leaflet-popup-content{margin:13px 24px 13px 20px;line-height:1.3;font-size:13px;font-size:1.08333em;min-height:1px}.leaflet-popup-content p{margin:1.3em 0}.leaflet-popup-tip-container{width:40px;height:20px;position:absolute;left:50%;margin-top:-1px;margin-left:-20px;overflow:hidden;pointer-events:none}.leaflet-popup-tip{width:17px;height:17px;padding:1px;margin:-10px auto 0;pointer-events:auto;-webkit-transform:rotate(45deg);-moz-transform:rotate(45deg);-ms-transform:rotate(45deg);transform:rotate(45deg)}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#fff;color:#333;box-shadow:0 3px 14px #0006}.leaflet-container a.leaflet-popup-close-button{position:absolute;top:0;right:0;border:none;text-align:center;width:24px;height:24px;font:16px/24px Tahoma,Verdana,sans-serif;color:#757575;text-decoration:none;background:transparent}.leaflet-container a.leaflet-popup-close-button:hover,.leaflet-container a.leaflet-popup-close-button:focus{color:#585858}.leaflet-popup-scrolled{overflow:auto}.leaflet-oldie .leaflet-popup-content-wrapper{-ms-zoom:1}.leaflet-oldie .leaflet-popup-tip{width:24px;margin:0 auto;-ms-filter:\"progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)\";filter:progid:DXImageTransform.Microsoft.Matrix(M11=.70710678,M12=.70710678,M21=-.70710678,M22=.70710678)}.leaflet-oldie .leaflet-control-zoom,.leaflet-oldie .leaflet-control-layers,.leaflet-oldie .leaflet-popup-content-wrapper,.leaflet-oldie .leaflet-popup-tip{border:1px solid #999}.leaflet-div-icon{background:#fff;border:1px solid #666}.leaflet-tooltip{position:absolute;padding:6px;background-color:#fff;border:1px solid #fff;border-radius:3px;color:#222;white-space:nowrap;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;pointer-events:none;box-shadow:0 1px 3px #0006}.leaflet-tooltip.leaflet-interactive{cursor:pointer;pointer-events:auto}.leaflet-tooltip-top:before,.leaflet-tooltip-bottom:before,.leaflet-tooltip-left:before,.leaflet-tooltip-right:before{position:absolute;pointer-events:none;border:6px solid transparent;background:transparent;content:\"\"}.leaflet-tooltip-bottom{margin-top:6px}.leaflet-tooltip-top{margin-top:-6px}.leaflet-tooltip-bottom:before,.leaflet-tooltip-top:before{left:50%;margin-left:-6px}.leaflet-tooltip-top:before{bottom:0;margin-bottom:-12px;border-top-color:#fff}.leaflet-tooltip-bottom:before{top:0;margin-top:-12px;margin-left:-6px;border-bottom-color:#fff}.leaflet-tooltip-left{margin-left:-6px}.leaflet-tooltip-right{margin-left:6px}.leaflet-tooltip-left:before,.leaflet-tooltip-right:before{top:50%;margin-top:-6px}.leaflet-tooltip-left:before{right:0;margin-right:-12px;border-left-color:#fff}.leaflet-tooltip-right:before{left:0;margin-left:-12px;border-right-color:#fff}@media print{.leaflet-control{-webkit-print-color-adjust:exact;print-color-adjust:exact}}.world-field[data-v-7d345f44]{display:block;margin:10px 0}.world-label[data-v-7d345f44]{display:block;font-size:12px;font-weight:600;color:var(--md-on-surface-variant);margin-bottom:4px}.world-text[data-v-7d345f44]{width:100%;min-height:64px;padding:10px 14px;border:1px solid var(--md-outline-variant);border-radius:var(--r-sm);background:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;font-size:13px;line-height:1.5;resize:vertical;outline:none}.world-text[data-v-7d345f44]:focus{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 14%,transparent)}.world-actions[data-v-7d345f44]{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}.wm-head[data-v-7d345f44]{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}.wm-place[data-v-7d345f44]{font-size:12px;color:var(--md-on-surface-variant)}.wm-premise[data-v-7d345f44]{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:2px 0 8px}.wm-map-wrap[data-v-7d345f44]{position:relative;margin-top:8px}.world-map-leaflet[data-v-7d345f44]{height:clamp(460px,72vh,820px);border-radius:16px;overflow:hidden;border:1px solid var(--md-outline-variant);background:#e8edf2}.world-map-leaflet.is-empty[data-v-7d345f44]{display:none}.wm-reset[data-v-7d345f44]{position:absolute;top:10px;right:10px;z-index:var(--z-overlay,2000);border:1px solid var(--md-outline-variant);background:#fffffff0;color:#33404c;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 4px #0000002e}.wm-reset[data-v-7d345f44]:hover{background:#fff}.wm-compass[data-v-7d345f44]{position:absolute;left:12px;bottom:12px;z-index:var(--z-overlay,2000);width:38px;height:38px;border-radius:50%;background:#ffffffeb;border:1px solid #b9c3cd;box-shadow:0 1px 4px #0000002e;display:grid;place-items:center}.wm-compass i[data-v-7d345f44]{font-style:normal;font-size:12px;font-weight:800;color:#d64545;position:relative}.wm-compass i[data-v-7d345f44]:before{content:\"\";position:absolute;left:50%;top:-9px;transform:translate(-50%);border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:9px solid #33404c}.wm-scope[data-v-7d345f44]{position:absolute;bottom:12px;right:12px;z-index:var(--z-overlay,2000);border:1px solid var(--md-outline-variant);background:#fffffff0;color:#33404c;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 4px #0000002e}.wm-scope[data-v-7d345f44]:hover{background:#fff}.wm-offline[data-v-7d345f44]{position:absolute;left:50%;bottom:12px;transform:translate(-50%);z-index:var(--z-overlay,2000);background:#d1495bf0;color:#fff;font-size:12px;font-weight:600;padding:5px 12px;border-radius:10px;box-shadow:0 1px 4px #00000040}.wm-routes[data-v-7d345f44]{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:18px;margin-top:14px}.wm-routes h4[data-v-7d345f44]{margin:0 0 6px;font-size:13px;font-weight:800}.wm-routes ul[data-v-7d345f44]{list-style:none;margin:0;padding:0}.wm-routes li[data-v-7d345f44]{display:flex;gap:10px;padding:4px 0;border-bottom:1px dashed color-mix(in srgb,var(--md-outline-variant) 70%,transparent);font-size:12.5px}.wm-routes b[data-v-7d345f44]{flex:0 0 88px}.wm-routes span[data-v-7d345f44]{color:var(--md-on-surface-variant);line-height:1.5}.wm-legend[data-v-7d345f44]{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:12px;color:var(--md-on-surface-variant)}.wm-legend span[data-v-7d345f44]{display:inline-flex;align-items:center;gap:6px}.wm-legend i[data-v-7d345f44]{width:12px;height:12px;border-radius:50%;display:inline-block;border:1.5px solid rgba(255,255,255,.7)}.wm-legend i.k-home[data-v-7d345f44]{background:#e07a5f}.wm-legend i.k-work[data-v-7d345f44]{background:#5b8def}.wm-legend i.k-shop[data-v-7d345f44]{background:#e0a23d}.wm-legend i.k-food[data-v-7d345f44]{background:#57a773}.wm-legend i.k-park[data-v-7d345f44]{background:#3faead}.wm-legend i.k-transit[data-v-7d345f44]{background:#8b6fd6}.wm-legend i.k-other[data-v-7d345f44]{background:#8a94a6}.wm-legend i.k-actor[data-v-7d345f44]{background:#fff;border-color:#d1495b;box-shadow:inset 0 0 0 3px #d1495b}.wm-legend i.k-metro[data-v-7d345f44]{background:#d64545}.wm-legend i.k-bus[data-v-7d345f44]{background:#e08a2e}.wm-legend i.k-park2[data-v-7d345f44]{background:#9bd08f}.wm-legend i.k-water[data-v-7d345f44]{background:#8fbfe6}.wm-legend i.k-hw[data-v-7d345f44]{background:#f08c2e}.wm-legend i.k-arterial[data-v-7d345f44]{background:#f7cf8a}.wm-legend i.k-street[data-v-7d345f44]{background:#fff;border-color:#b9c3cd}.pfield[data-v-7d345f44]{display:flex;flex-direction:column;gap:4px;margin-top:10px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}#app .pcp .pfield textarea.field[data-v-7d345f44]{height:auto;min-height:70px;padding:10px 12px;resize:vertical;line-height:1.5}.cog-metric[data-v-7d345f44]{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:var(--r-sm);background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant)}.cog-metric span[data-v-7d345f44]{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant)}.cog-metric strong[data-v-7d345f44]{font-size:16px;font-weight:800;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cog-metric.warn[data-v-7d345f44]{border-color:var(--md-error,#b3261e);background:color-mix(in srgb,var(--md-error,#b3261e) 8%,transparent)}.cog-metric.warn span[data-v-7d345f44],.cog-metric.warn strong[data-v-7d345f44]{color:var(--md-error,#b3261e)}.som-channels[data-v-7d345f44]{margin-top:10px;display:flex;flex-direction:column;gap:6px}.som-chan[data-v-7d345f44]{display:grid;grid-template-columns:minmax(52px,88px) minmax(0,1fr) 48px;align-items:center;gap:10px}.som-chan-name[data-v-7d345f44]{font-size:12px;font-weight:600;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.som-chan-bar[data-v-7d345f44]{display:block;height:8px;border-radius:999px;background:var(--md-surface-container);overflow:hidden}.som-chan-bar i[data-v-7d345f44]{display:block;width:100%;height:100%;border-radius:999px;background:var(--md-primary);transform-origin:left;transition:transform var(--duration-medium) var(--ease-out);will-change:transform}.som-chan-val[data-v-7d345f44]{font-size:12px;font-weight:700;text-align:right;color:var(--md-on-surface-variant)}.at-a-glance[data-v-7d345f44]{display:grid;grid-template-columns:190px minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start;margin:8px 0 4px}@media(max-width:900px){.at-a-glance[data-v-7d345f44]{grid-template-columns:1fr 1fr}}@media(max-width:620px){.at-a-glance[data-v-7d345f44]{grid-template-columns:1fr}}.mood-plot-wrap[data-v-7d345f44]{position:relative;width:190px;padding:26px 22px 40px;background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 60%,transparent);border-radius:var(--r-md);box-sizing:border-box}.mood-plot[data-v-7d345f44]{display:block;width:100%}.plot-frame[data-v-7d345f44]{fill:var(--md-surface-container-lowest);stroke:var(--md-outline-variant)}.plot-grid[data-v-7d345f44]{stroke:var(--md-outline-variant);stroke-width:1;stroke-dasharray:3 4}.plot-dot[data-v-7d345f44]{fill:var(--md-primary)}.plot-halo[data-v-7d345f44]{fill:var(--md-primary);opacity:.22}.plot-label[data-v-7d345f44]{position:absolute;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant);pointer-events:none}.plot-n[data-v-7d345f44]{top:6px;left:50%;transform:translate(-50%)}.plot-s[data-v-7d345f44]{bottom:26px;left:50%;transform:translate(-50%)}.plot-w[data-v-7d345f44]{left:8px;top:50%;transform:translateY(-58%)}.plot-e[data-v-7d345f44]{right:8px;top:50%;transform:translateY(-58%)}.plot-quadrant[data-v-7d345f44]{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:12px;font-weight:800;color:var(--md-primary)}.glance-col[data-v-7d345f44]{display:flex;flex-direction:column;gap:8px;min-width:0}.glance-title[data-v-7d345f44]{display:flex;align-items:center;gap:8px;margin:0;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--md-on-surface-variant)}.gauge-grid[data-v-7d345f44]{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin:8px 0}.gauge[data-v-7d345f44]{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border-radius:var(--r-sm);background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);min-width:0}.gauge-head[data-v-7d345f44]{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.gauge-name[data-v-7d345f44]{font-size:12px;font-weight:700;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.gauge-alias[data-v-7d345f44]{font-style:normal;font-weight:500;font-size:11px;color:var(--md-on-surface-variant);opacity:.8;margin-left:6px}.gauge-val[data-v-7d345f44]{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.gauge-state[data-v-7d345f44]{font-weight:800;margin-right:2px}.gauge-state.good[data-v-7d345f44]{color:var(--md-success)}.gauge-state.mid[data-v-7d345f44]{color:var(--md-primary)}.gauge-state.bad[data-v-7d345f44]{color:var(--md-error)}.gauge-bar[data-v-7d345f44]{position:relative;display:block;height:8px;border-radius:999px;background:var(--md-surface-container-highest);overflow:visible}.gauge-bar.signed[data-v-7d345f44]:before{content:\"\";position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;border-radius:1px;background:var(--md-outline-variant)}.gauge-fill[data-v-7d345f44]{position:absolute;top:0;bottom:0;border-radius:999px;transition:width .35s var(--ease-out,.25s ease),left .35s var(--ease-out,.25s ease)}.gauge-fill.good[data-v-7d345f44]{background:var(--md-success)}.gauge-fill.mid[data-v-7d345f44]{background:var(--md-primary)}.gauge-fill.bad[data-v-7d345f44]{background:var(--md-error)}.gauge-effect[data-v-7d345f44]{font-size:11px;line-height:1.45;color:var(--md-on-surface-variant)}.chip-row[data-v-7d345f44]{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.chip.warn[data-v-7d345f44]{background:var(--md-error-container);color:var(--md-on-error-container)}.rel-card[data-v-7d345f44]{display:flex;flex-direction:column;gap:10px}.rel-head[data-v-7d345f44]{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}.rel-track-row[data-v-7d345f44]{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}.rel-track-label[data-v-7d345f44],.rel-stage-name[data-v-7d345f44]{font-size:11px;font-weight:800;letter-spacing:.04em;color:var(--md-on-surface-variant);white-space:nowrap}.rel-stage-name[data-v-7d345f44]{color:var(--md-primary)}.rel-track[data-v-7d345f44]{display:flex;gap:3px;height:10px;border-radius:999px;overflow:hidden;background:var(--md-surface-container-highest)}.rel-seg[data-v-7d345f44]{flex:1 1 0;background:color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}.rel-seg.done[data-v-7d345f44]{background:color-mix(in srgb,var(--md-primary) 45%,transparent)}.rel-seg.cur[data-v-7d345f44]{background:var(--md-primary)}.rel-mode[data-v-7d345f44]{display:flex;flex-direction:column;gap:4px;align-items:flex-start}.value-row[data-v-7d345f44]{display:grid;grid-template-columns:minmax(72px,140px) minmax(0,1fr) 44px;gap:10px;align-items:center}.value-name[data-v-7d345f44]{font-size:13px;font-weight:700;overflow-wrap:anywhere}.value-bar[data-v-7d345f44]{position:relative;display:block;height:8px;border-radius:999px;background:var(--md-surface-container-highest)}.value-bar[data-v-7d345f44]:before{content:\"\";position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;border-radius:1px;background:var(--md-outline-variant)}.value-bar i[data-v-7d345f44]{position:absolute;top:0;bottom:0;border-radius:999px;transition:width .35s var(--ease-out,.25s ease),left .35s var(--ease-out,.25s ease)}.value-bar i.good[data-v-7d345f44]{background:var(--md-success)}.value-bar i.bad[data-v-7d345f44]{background:var(--md-error)}.value-num[data-v-7d345f44]{font-size:12px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;color:var(--md-on-surface-variant)}.chip[data-v-7d345f44]{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:700;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.chip.muted[data-v-7d345f44]{background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-weight:500}.chip.ok[data-v-7d345f44]{background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e)}#app .pcp .cog-metric[data-v-7d345f44]{background:var(--md-surface-container)}.sync-pill[data-v-7d345f44]{font-weight:500;opacity:.85}html[data-theme=dark] #app .pcp .world-map-leaflet{background:#10151c}html[data-theme=dark] #app .pcp .wm-reset,html[data-theme=dark] #app .pcp .wm-scope{background:color-mix(in srgb,var(--md-surface-container-high) 94%,transparent);color:var(--md-on-surface)}html[data-theme=dark] #app .pcp .wm-reset:hover,html[data-theme=dark] #app .pcp .wm-scope:hover{background:var(--md-surface-container-highest)}html[data-theme=dark] #app .pcp .wm-compass{background:color-mix(in srgb,var(--md-surface-container-high) 92%,transparent);border-color:var(--md-outline-variant)}html[data-theme=dark] .wm-district-inner{color:#aeb9c4;text-shadow:none}html[data-theme=dark] .wm-station .wm-route-inner{background:#1a2230;color:#d7dee6}html[data-theme=dark] .leaflet-container{background:#10151c}.wm-pin-holder,.wm-actor-holder{background:none;border:none}.wm-pin{position:absolute;left:0;top:0;width:16px;height:16px;border-radius:50%;background:var(--c,#8a94a6);border:3px solid #fff;box-shadow:0 2px 6px #00000073;transform:translate(-50%,-50%)}.wm-pin:after{content:\"\";position:absolute;left:50%;top:100%;width:2px;height:8px;background:#fff;transform:translate(-50%);opacity:.7}.wm-pin-label{position:absolute;left:12px;top:-9px;white-space:nowrap;background:#12141ad1;color:#fff;font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px;pointer-events:none}.wm-actor-badge{position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:#fff;color:#d1495b;border:3px solid #d1495b;font-size:14px;font-weight:800;line-height:1;display:grid;place-items:center;transform:translate(-50%,-50%);box-shadow:0 2px 6px #00000080;z-index:600}.wm-actor-name{position:absolute;left:0;top:20px;white-space:nowrap;background:#d1495b;color:#fff;font-size:11px;font-weight:700;padding:1px 7px;border-radius:9px;transform:translate(-50%)}.wm-district{background:none;border:none}.wm-district-inner{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;font-size:12px;font-weight:800;letter-spacing:.2em;color:#5c6b78;text-shadow:0 1px 0 rgba(255,255,255,.9);pointer-events:none}.wm-route{background:none;border:none}.wm-route-inner{position:absolute;left:0;top:0;transform:translate(-50%,-50%);background:var(--c,#333);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;box-shadow:0 1px 3px #00000059;pointer-events:none}.wm-zoom-low .wm-minor{display:none}.wm-station .wm-route-inner{background:#fff;color:#33404c;border:1.5px solid var(--c,#888);border-radius:6px;font-size:9px;font-weight:700;padding:1px 5px}.leaflet-container{font-family:inherit;background:#e8edf2;border-radius:16px}.leaflet-container a{color:#2f6fed}.leaflet-popup-content{font-size:13px;line-height:1.5}\n";document.head.appendChild(s)}})();
+;(()=>{if(typeof document!=='undefined'&&!document.getElementById('life-plugin-style')){const s=document.createElement('style');s.id='life-plugin-style';s.textContent=".leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}.leaflet-container{overflow:hidden}.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow{-webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-user-drag:none}.leaflet-tile::selection{background:transparent}.leaflet-safari .leaflet-tile{image-rendering:-webkit-optimize-contrast}.leaflet-safari .leaflet-tile-container{width:1600px;height:1600px;-webkit-transform-origin:0 0}.leaflet-marker-icon,.leaflet-marker-shadow{display:block}.leaflet-container .leaflet-overlay-pane svg{max-width:none!important;max-height:none!important}.leaflet-container .leaflet-marker-pane img,.leaflet-container .leaflet-shadow-pane img,.leaflet-container .leaflet-tile-pane img,.leaflet-container img.leaflet-image-layer,.leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important;width:auto;padding:0}.leaflet-container img.leaflet-tile{mix-blend-mode:plus-lighter}.leaflet-container.leaflet-touch-zoom{-ms-touch-action:pan-x pan-y;touch-action:pan-x pan-y}.leaflet-container.leaflet-touch-drag{-ms-touch-action:pinch-zoom;touch-action:none;touch-action:pinch-zoom}.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom{-ms-touch-action:none;touch-action:none}.leaflet-container{-webkit-tap-highlight-color:transparent}.leaflet-container a{-webkit-tap-highlight-color:rgba(51,181,229,.4)}.leaflet-tile{filter:inherit;visibility:hidden}.leaflet-tile-loaded{visibility:inherit}.leaflet-zoom-box{width:0;height:0;-moz-box-sizing:border-box;box-sizing:border-box;z-index:800}.leaflet-overlay-pane svg{-moz-user-select:none}.leaflet-pane{z-index:400}.leaflet-tile-pane{z-index:200}.leaflet-overlay-pane{z-index:400}.leaflet-shadow-pane{z-index:500}.leaflet-marker-pane{z-index:600}.leaflet-tooltip-pane{z-index:650}.leaflet-popup-pane{z-index:700}.leaflet-map-pane canvas{z-index:100}.leaflet-map-pane svg{z-index:200}.leaflet-vml-shape{width:1px;height:1px}.lvml{behavior:url(#default#VML);display:inline-block;position:absolute}.leaflet-control{position:relative;z-index:800;pointer-events:visiblePainted;pointer-events:auto}.leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}.leaflet-top{top:0}.leaflet-right{right:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}.leaflet-control{float:left;clear:both}.leaflet-right .leaflet-control{float:right}.leaflet-top .leaflet-control{margin-top:10px}.leaflet-bottom .leaflet-control{margin-bottom:10px}.leaflet-left .leaflet-control{margin-left:10px}.leaflet-right .leaflet-control{margin-right:10px}.leaflet-fade-anim .leaflet-popup{opacity:0;-webkit-transition:opacity .2s linear;-moz-transition:opacity .2s linear;transition:opacity .2s linear}.leaflet-fade-anim .leaflet-map-pane .leaflet-popup{opacity:1}.leaflet-zoom-animated{-webkit-transform-origin:0 0;-ms-transform-origin:0 0;transform-origin:0 0}svg.leaflet-zoom-animated{will-change:transform}.leaflet-zoom-anim .leaflet-zoom-animated{-webkit-transition:-webkit-transform .25s cubic-bezier(0,0,.25,1);-moz-transition:-moz-transform .25s cubic-bezier(0,0,.25,1);transition:transform .25s cubic-bezier(0,0,.25,1)}.leaflet-zoom-anim .leaflet-tile,.leaflet-pan-anim .leaflet-tile{-webkit-transition:none;-moz-transition:none;transition:none}.leaflet-zoom-anim .leaflet-zoom-hide{visibility:hidden}.leaflet-interactive{cursor:pointer}.leaflet-grab{cursor:-webkit-grab;cursor:-moz-grab;cursor:grab}.leaflet-crosshair,.leaflet-crosshair .leaflet-interactive{cursor:crosshair}.leaflet-popup-pane,.leaflet-control{cursor:auto}.leaflet-dragging .leaflet-grab,.leaflet-dragging .leaflet-grab .leaflet-interactive,.leaflet-dragging .leaflet-marker-draggable{cursor:move;cursor:-webkit-grabbing;cursor:-moz-grabbing;cursor:grabbing}.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-image-layer,.leaflet-pane>svg path,.leaflet-tile-container{pointer-events:none}.leaflet-marker-icon.leaflet-interactive,.leaflet-image-layer.leaflet-interactive,.leaflet-pane>svg path.leaflet-interactive,svg.leaflet-image-layer.leaflet-interactive path{pointer-events:visiblePainted;pointer-events:auto}.leaflet-container{background:#ddd;outline-offset:1px}.leaflet-container a{color:#0078a8}.leaflet-zoom-box{border:2px dotted #38f;background:#ffffff80}.leaflet-container{font-family:Helvetica Neue,Arial,Helvetica,sans-serif;font-size:12px;font-size:.75rem;line-height:1.5}.leaflet-bar{box-shadow:0 1px 5px #000000a6;border-radius:4px}.leaflet-bar a{background-color:#fff;border-bottom:1px solid #ccc;width:26px;height:26px;line-height:26px;display:block;text-align:center;text-decoration:none;color:#000}.leaflet-bar a,.leaflet-control-layers-toggle{background-position:50% 50%;background-repeat:no-repeat;display:block}.leaflet-bar a:hover,.leaflet-bar a:focus{background-color:#f4f4f4}.leaflet-bar a:first-child{border-top-left-radius:4px;border-top-right-radius:4px}.leaflet-bar a:last-child{border-bottom-left-radius:4px;border-bottom-right-radius:4px;border-bottom:none}.leaflet-bar a.leaflet-disabled{cursor:default;background-color:#f4f4f4;color:#bbb}.leaflet-touch .leaflet-bar a{width:30px;height:30px;line-height:30px}.leaflet-touch .leaflet-bar a:first-child{border-top-left-radius:2px;border-top-right-radius:2px}.leaflet-touch .leaflet-bar a:last-child{border-bottom-left-radius:2px;border-bottom-right-radius:2px}.leaflet-control-zoom-in,.leaflet-control-zoom-out{font:700 18px Lucida Console,Monaco,monospace;text-indent:1px}.leaflet-touch .leaflet-control-zoom-in,.leaflet-touch .leaflet-control-zoom-out{font-size:22px}.leaflet-control-layers{box-shadow:0 1px 5px #0006;background:#fff;border-radius:5px}.leaflet-control-layers-toggle{background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAQAAAADQ4RFAAACf0lEQVR4AY1UM3gkARTePdvdoTxXKc+qTl3aU5U6b2Kbkz3Gtq3Zw6ziLGNPzrYx7946Tr6/ee/XeCQ4D3ykPtL5tHno4n0d/h3+xfuWHGLX81cn7r0iTNzjr7LrlxCqPtkbTQEHeqOrTy4Yyt3VCi/IOB0v7rVC7q45Q3Gr5K6jt+3Gl5nCoDD4MtO+j96Wu8atmhGqcNGHObuf8OM/x3AMx38+4Z2sPqzCxRFK2aF2e5Jol56XTLyggAMTL56XOMoS1W4pOyjUcGGQdZxU6qRh7B9Zp+PfpOFlqt0zyDZckPi1ttmIp03jX8gyJ8a/PG2yutpS/Vol7peZIbZcKBAEEheEIAgFbDkz5H6Zrkm2hVWGiXKiF4Ycw0RWKdtC16Q7qe3X4iOMxruonzegJzWaXFrU9utOSsLUmrc0YjeWYjCW4PDMADElpJSSQ0vQvA1Tm6/JlKnqFs1EGyZiFCqnRZTEJJJiKRYzVYzJck2Rm6P4iH+cmSY0YzimYa8l0EtTODFWhcMIMVqdsI2uiTvKmTisIDHJ3od5GILVhBCarCfVRmo4uTjkhrhzkiBV7SsaqS+TzrzM1qpGGUFt28pIySQHR6h7F6KSwGWm97ay+Z+ZqMcEjEWebE7wxCSQwpkhJqoZA5ivCdZDjJepuJ9IQjGGUmuXJdBFUygxVqVsxFsLMbDe8ZbDYVCGKxs+W080max1hFCarCfV+C1KATwcnvE9gRRuMP2prdbWGowm1KB1y+zwMMENkM755cJ2yPDtqhTI6ED1M/82yIDtC/4j4BijjeObflpO9I9MwXTCsSX8jWAFeHr05WoLTJ5G8IQVS/7vwR6ohirYM7f6HzYpogfS3R2OAAAAAElFTkSuQmCC);width:36px;height:36px}.leaflet-retina .leaflet-control-layers-toggle{background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADQAAAA0CAQAAABvcdNgAAAEsklEQVR4AWL4TydIhpZK1kpWOlg0w3ZXP6D2soBtG42jeI6ZmQTHzAxiTbSJsYLjO9HhP+WOmcuhciVnmHVQcJnp7DFvScowZorad/+V/fVzMdMT2g9Cv9guXGv/7pYOrXh2U+RRR3dSd9JRx6bIFc/ekqHI29JC6pJ5ZEh1yWkhkbcFeSjxgx3L2m1cb1C7bceyxA+CNjT/Ifff+/kDk2u/w/33/IeCMOSaWZ4glosqT3DNnNZQ7Cs58/3Ce5HL78iZH/vKVIaYlqzfdLu8Vi7dnvUbEza5Idt36tquZFldl6N5Z/POLof0XLK61mZCmJSWjVF9tEjUluu74IUXvgttuVIHE7YxSkaYhJZam7yiM9Pv82JYfl9nptxZaxMJE4YSPty+vF0+Y2up9d3wwijfjZbabqm/3bZ9ecKHsiGmRflnn1MW4pjHf9oLufyn2z3y1D6n8g8TZhxyzipLNPnAUpsOiuWimg52psrTZYnOWYNDTMuWBWa0tJb4rgq1UvmutpaYEbZlwU3CLJm/ayYjHW5/h7xWLn9Hh1vepDkyf7dE7MtT5LR4e7yYpHrkhOUpEfssBLq2pPhAqoSWKUkk7EDqkmK6RrCEzqDjhNDWNE+XSMvkJRDWlZTmCW0l0PHQGRZY5t1L83kT0Y3l2SItk5JAWHl2dCOBm+fPu3fo5/3v61RMCO9Jx2EEYYhb0rmNQMX/vm7gqOEJLcXTGw3CAuRNeyaPWwjR8PRqKQ1PDA/dpv+on9Shox52WFnx0KY8onHayrJzm87i5h9xGw/tfkev0jGsQizqezUKjk12hBMKJ4kbCqGPVNXudyyrShovGw5CgxsRICxF6aRmSjlBnHRzg7Gx8fKqEubI2rahQYdR1YgDIRQO7JvQyD52hoIQx0mxa0ODtW2Iozn1le2iIRdzwWewedyZzewidueOGqlsn1MvcnQpuVwLGG3/IR1hIKxCjelIDZ8ldqWz25jWAsnldEnK0Zxro19TGVb2ffIZEsIO89EIEDvKMPrzmBOQcKQ+rroye6NgRRxqR4U8EAkz0CL6uSGOm6KQCdWjvjRiSP1BPalCRS5iQYiEIvxuBMJEWgzSoHADcVMuN7IuqqTeyUPq22qFimFtxDyBBJEwNyt6TM88blFHao/6tWWhuuOM4SAK4EI4QmFHA+SEyWlp4EQoJ13cYGzMu7yszEIBOm2rVmHUNqwAIQabISNMRstmdhNWcFLsSm+0tjJH1MdRxO5Nx0WDMhCtgD6OKgZeljJqJKc9po8juskR9XN0Y1lZ3mWjLR9JCO1jRDMd0fpYC2VnvjBSEFg7wBENc0R9HFlb0xvF1+TBEpF68d+DHR6IOWVv2BECtxo46hOFUBd/APU57WIoEwJhIi2CdpyZX0m93BZicktMj1AS9dClteUFAUNUIEygRZCtik5zSxI9MubTBH1GOiHsiLJ3OCoSZkILa9PxiN0EbvhsAo8tdAf9Seepd36lGWHmtNANTv5Jd0z4QYyeo/UEJqxKRpg5LZx6btLPsOaEmdMyxYdlc8LMaJnikDlhclqmPiQnTEpLUIZEwkRagjYkEibQErwhkTAKCLQEbUgkzJQWc/0PstHHcfEdQ+UAAAAASUVORK5CYII=);background-size:26px 26px}.leaflet-touch .leaflet-control-layers-toggle{width:44px;height:44px}.leaflet-control-layers .leaflet-control-layers-list,.leaflet-control-layers-expanded .leaflet-control-layers-toggle{display:none}.leaflet-control-layers-expanded .leaflet-control-layers-list{display:block;position:relative}.leaflet-control-layers-expanded{padding:6px 10px 6px 6px;color:#333;background:#fff}.leaflet-control-layers-scrollbar{overflow-y:scroll;overflow-x:hidden;padding-right:5px}.leaflet-control-layers-selector{margin-top:2px;position:relative;top:1px}.leaflet-control-layers label{display:block;font-size:13px;font-size:1.08333em}.leaflet-control-layers-separator{height:0;border-top:1px solid #ddd;margin:5px -10px 5px -6px}.leaflet-default-icon-path{background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAApCAYAAADAk4LOAAAFgUlEQVR4Aa1XA5BjWRTN2oW17d3YaZtr2962HUzbDNpjszW24mRt28p47v7zq/bXZtrp/lWnXr337j3nPCe85NcypgSFdugCpW5YoDAMRaIMqRi6aKq5E3YqDQO3qAwjVWrD8Ncq/RBpykd8oZUb/kaJutow8r1aP9II0WmLKLIsJyv1w/kqw9Ch2MYdB++12Onxee/QMwvf4/Dk/Lfp/i4nxTXtOoQ4pW5Aj7wpici1A9erdAN2OH64x8OSP9j3Ft3b7aWkTg/Fm91siTra0f9on5sQr9INejH6CUUUpavjFNq1B+Oadhxmnfa8RfEmN8VNAsQhPqF55xHkMzz3jSmChWU6f7/XZKNH+9+hBLOHYozuKQPxyMPUKkrX/K0uWnfFaJGS1QPRtZsOPtr3NsW0uyh6NNCOkU3Yz+bXbT3I8G3xE5EXLXtCXbbqwCO9zPQYPRTZ5vIDXD7U+w7rFDEoUUf7ibHIR4y6bLVPXrz8JVZEql13trxwue/uDivd3fkWRbS6/IA2bID4uk0UpF1N8qLlbBlXs4Ee7HLTfV1j54APvODnSfOWBqtKVvjgLKzF5YdEk5ewRkGlK0i33Eofffc7HT56jD7/6U+qH3Cx7SBLNntH5YIPvODnyfIXZYRVDPqgHtLs5ABHD3YzLuespb7t79FY34DjMwrVrcTuwlT55YMPvOBnRrJ4VXTdNnYug5ucHLBjEpt30701A3Ts+HEa73u6dT3FNWwflY86eMHPk+Yu+i6pzUpRrW7SNDg5JHR4KapmM5Wv2E8Tfcb1HoqqHMHU+uWDD7zg54mz5/2BSnizi9T1Dg4QQXLToGNCkb6tb1NU+QAlGr1++eADrzhn/u8Q2YZhQVlZ5+CAOtqfbhmaUCS1ezNFVm2imDbPmPng5wmz+gwh+oHDce0eUtQ6OGDIyR0uUhUsoO3vfDmmgOezH0mZN59x7MBi++WDL1g/eEiU3avlidO671bkLfwbw5XV2P8Pzo0ydy4t2/0eu33xYSOMOD8hTf4CrBtGMSoXfPLchX+J0ruSePw3LZeK0juPJbYzrhkH0io7B3k164hiGvawhOKMLkrQLyVpZg8rHFW7E2uHOL888IBPlNZ1FPzstSJM694fWr6RwpvcJK60+0HCILTBzZLFNdtAzJaohze60T8qBzyh5ZuOg5e7uwQppofEmf2++DYvmySqGBuKaicF1blQjhuHdvCIMvp8whTTfZzI7RldpwtSzL+F1+wkdZ2TBOW2gIF88PBTzD/gpeREAMEbxnJcaJHNHrpzji0gQCS6hdkEeYt9DF/2qPcEC8RM28Hwmr3sdNyht00byAut2k3gufWNtgtOEOFGUwcXWNDbdNbpgBGxEvKkOQsxivJx33iow0Vw5S6SVTrpVq11ysA2Rp7gTfPfktc6zhtXBBC+adRLshf6sG2RfHPZ5EAc4sVZ83yCN00Fk/4kggu40ZTvIEm5g24qtU4KjBrx/BTTH8ifVASAG7gKrnWxJDcU7x8X6Ecczhm3o6YicvsLXWfh3Ch1W0k8x0nXF+0fFxgt4phz8QvypiwCCFKMqXCnqXExjq10beH+UUA7+nG6mdG/Pu0f3LgFcGrl2s0kNNjpmoJ9o4B29CMO8dMT4Q5ox8uitF6fqsrJOr8qnwNbRzv6hSnG5wP+64C7h9lp30hKNtKdWjtdkbuPA19nJ7Tz3zR/ibgARbhb4AlhavcBebmTHcFl2fvYEnW0ox9xMxKBS8btJ+KiEbq9zA4RthQXDhPa0T9TEe69gWupwc6uBUphquXgf+/FrIjweHQS4/pduMe5ERUMHUd9xv8ZR98CxkS4F2n3EUrUZ10EYNw7BWm9x1GiPssi3GgiGRDKWRYZfXlON+dfNbM+GgIwYdwAAAAASUVORK5CYII=)}.leaflet-container .leaflet-control-attribution{background:#fff;background:#fffc;margin:0}.leaflet-control-attribution,.leaflet-control-scale-line{padding:0 5px;color:#333;line-height:1.4}.leaflet-control-attribution a{text-decoration:none}.leaflet-control-attribution a:hover,.leaflet-control-attribution a:focus{text-decoration:underline}.leaflet-attribution-flag{display:inline!important;vertical-align:baseline!important;width:1em;height:.6669em}.leaflet-left .leaflet-control-scale{margin-left:5px}.leaflet-bottom .leaflet-control-scale{margin-bottom:5px}.leaflet-control-scale-line{border:2px solid #777;border-top:none;line-height:1.1;padding:2px 5px 1px;white-space:nowrap;-moz-box-sizing:border-box;box-sizing:border-box;background:#fffc;text-shadow:1px 1px #fff}.leaflet-control-scale-line:not(:first-child){border-top:2px solid #777;border-bottom:none;margin-top:-2px}.leaflet-control-scale-line:not(:first-child):not(:last-child){border-bottom:2px solid #777}.leaflet-touch .leaflet-control-attribution,.leaflet-touch .leaflet-control-layers,.leaflet-touch .leaflet-bar{box-shadow:none}.leaflet-touch .leaflet-control-layers,.leaflet-touch .leaflet-bar{border:2px solid rgba(0,0,0,.2);background-clip:padding-box}.leaflet-popup{position:absolute;text-align:center;margin-bottom:20px}.leaflet-popup-content-wrapper{padding:1px;text-align:left;border-radius:12px}.leaflet-popup-content{margin:13px 24px 13px 20px;line-height:1.3;font-size:13px;font-size:1.08333em;min-height:1px}.leaflet-popup-content p{margin:1.3em 0}.leaflet-popup-tip-container{width:40px;height:20px;position:absolute;left:50%;margin-top:-1px;margin-left:-20px;overflow:hidden;pointer-events:none}.leaflet-popup-tip{width:17px;height:17px;padding:1px;margin:-10px auto 0;pointer-events:auto;-webkit-transform:rotate(45deg);-moz-transform:rotate(45deg);-ms-transform:rotate(45deg);transform:rotate(45deg)}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#fff;color:#333;box-shadow:0 3px 14px #0006}.leaflet-container a.leaflet-popup-close-button{position:absolute;top:0;right:0;border:none;text-align:center;width:24px;height:24px;font:16px/24px Tahoma,Verdana,sans-serif;color:#757575;text-decoration:none;background:transparent}.leaflet-container a.leaflet-popup-close-button:hover,.leaflet-container a.leaflet-popup-close-button:focus{color:#585858}.leaflet-popup-scrolled{overflow:auto}.leaflet-oldie .leaflet-popup-content-wrapper{-ms-zoom:1}.leaflet-oldie .leaflet-popup-tip{width:24px;margin:0 auto;-ms-filter:\"progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)\";filter:progid:DXImageTransform.Microsoft.Matrix(M11=.70710678,M12=.70710678,M21=-.70710678,M22=.70710678)}.leaflet-oldie .leaflet-control-zoom,.leaflet-oldie .leaflet-control-layers,.leaflet-oldie .leaflet-popup-content-wrapper,.leaflet-oldie .leaflet-popup-tip{border:1px solid #999}.leaflet-div-icon{background:#fff;border:1px solid #666}.leaflet-tooltip{position:absolute;padding:6px;background-color:#fff;border:1px solid #fff;border-radius:3px;color:#222;white-space:nowrap;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;pointer-events:none;box-shadow:0 1px 3px #0006}.leaflet-tooltip.leaflet-interactive{cursor:pointer;pointer-events:auto}.leaflet-tooltip-top:before,.leaflet-tooltip-bottom:before,.leaflet-tooltip-left:before,.leaflet-tooltip-right:before{position:absolute;pointer-events:none;border:6px solid transparent;background:transparent;content:\"\"}.leaflet-tooltip-bottom{margin-top:6px}.leaflet-tooltip-top{margin-top:-6px}.leaflet-tooltip-bottom:before,.leaflet-tooltip-top:before{left:50%;margin-left:-6px}.leaflet-tooltip-top:before{bottom:0;margin-bottom:-12px;border-top-color:#fff}.leaflet-tooltip-bottom:before{top:0;margin-top:-12px;margin-left:-6px;border-bottom-color:#fff}.leaflet-tooltip-left{margin-left:-6px}.leaflet-tooltip-right{margin-left:6px}.leaflet-tooltip-left:before,.leaflet-tooltip-right:before{top:50%;margin-top:-6px}.leaflet-tooltip-left:before{right:0;margin-right:-12px;border-left-color:#fff}.leaflet-tooltip-right:before{left:0;margin-left:-12px;border-right-color:#fff}@media print{.leaflet-control{-webkit-print-color-adjust:exact;print-color-adjust:exact}}.world-field[data-v-4443f246]{display:block;margin:10px 0}.world-label[data-v-4443f246]{display:block;font-size:12px;font-weight:600;color:var(--md-on-surface-variant);margin-bottom:4px}.world-text[data-v-4443f246]{width:100%;min-height:64px;padding:10px 14px;border:1px solid var(--md-outline-variant);border-radius:var(--r-sm);background:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;font-size:13px;line-height:1.5;resize:vertical;outline:none}.world-text[data-v-4443f246]:focus{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 14%,transparent)}.world-actions[data-v-4443f246]{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}.wm-head[data-v-4443f246]{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}.wm-place[data-v-4443f246]{font-size:12px;color:var(--md-on-surface-variant)}.wm-premise[data-v-4443f246]{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:2px 0 8px}.wm-map-wrap[data-v-4443f246]{position:relative;margin-top:8px}.world-map-leaflet[data-v-4443f246]{height:clamp(460px,72vh,820px);border-radius:16px;overflow:hidden;border:1px solid var(--md-outline-variant);background:#e8edf2}.world-map-leaflet.is-empty[data-v-4443f246]{display:none}.wm-reset[data-v-4443f246]{position:absolute;top:10px;right:10px;z-index:var(--z-overlay,2000);border:1px solid var(--md-outline-variant);background:#fffffff0;color:#33404c;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 4px #0000002e}.wm-reset[data-v-4443f246]:hover{background:#fff}.wm-compass[data-v-4443f246]{position:absolute;left:12px;bottom:12px;z-index:var(--z-overlay,2000);width:38px;height:38px;border-radius:50%;background:#ffffffeb;border:1px solid #b9c3cd;box-shadow:0 1px 4px #0000002e;display:grid;place-items:center}.wm-compass i[data-v-4443f246]{font-style:normal;font-size:12px;font-weight:800;color:#d64545;position:relative}.wm-compass i[data-v-4443f246]:before{content:\"\";position:absolute;left:50%;top:-9px;transform:translate(-50%);border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:9px solid #33404c}.wm-scope[data-v-4443f246]{position:absolute;bottom:12px;right:12px;z-index:var(--z-overlay,2000);border:1px solid var(--md-outline-variant);background:#fffffff0;color:#33404c;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 4px #0000002e}.wm-scope[data-v-4443f246]:hover{background:#fff}.wm-offline[data-v-4443f246]{position:absolute;left:50%;bottom:12px;transform:translate(-50%);z-index:var(--z-overlay,2000);background:#d1495bf0;color:#fff;font-size:12px;font-weight:600;padding:5px 12px;border-radius:10px;box-shadow:0 1px 4px #00000040}.wm-routes[data-v-4443f246]{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:18px;margin-top:14px}.wm-routes h4[data-v-4443f246]{margin:0 0 6px;font-size:13px;font-weight:800}.wm-routes ul[data-v-4443f246]{list-style:none;margin:0;padding:0}.wm-routes li[data-v-4443f246]{display:flex;gap:10px;padding:4px 0;border-bottom:1px dashed color-mix(in srgb,var(--md-outline-variant) 70%,transparent);font-size:12.5px}.wm-routes b[data-v-4443f246]{flex:0 0 88px}.wm-routes span[data-v-4443f246]{color:var(--md-on-surface-variant);line-height:1.5}.wm-legend[data-v-4443f246]{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:12px;color:var(--md-on-surface-variant)}.wm-legend span[data-v-4443f246]{display:inline-flex;align-items:center;gap:6px}.wm-legend i[data-v-4443f246]{width:12px;height:12px;border-radius:50%;display:inline-block;border:1.5px solid rgba(255,255,255,.7)}.wm-legend i.k-home[data-v-4443f246]{background:#e07a5f}.wm-legend i.k-work[data-v-4443f246]{background:#5b8def}.wm-legend i.k-shop[data-v-4443f246]{background:#e0a23d}.wm-legend i.k-food[data-v-4443f246]{background:#57a773}.wm-legend i.k-park[data-v-4443f246]{background:#3faead}.wm-legend i.k-transit[data-v-4443f246]{background:#8b6fd6}.wm-legend i.k-other[data-v-4443f246]{background:#8a94a6}.wm-legend i.k-actor[data-v-4443f246]{background:#fff;border-color:#d1495b;box-shadow:inset 0 0 0 3px #d1495b}.wm-legend i.k-metro[data-v-4443f246]{background:#d64545}.wm-legend i.k-bus[data-v-4443f246]{background:#e08a2e}.wm-legend i.k-park2[data-v-4443f246]{background:#9bd08f}.wm-legend i.k-water[data-v-4443f246]{background:#8fbfe6}.wm-legend i.k-hw[data-v-4443f246]{background:#f08c2e}.wm-legend i.k-arterial[data-v-4443f246]{background:#f7cf8a}.wm-legend i.k-street[data-v-4443f246]{background:#fff;border-color:#b9c3cd}.pfield[data-v-4443f246]{display:flex;flex-direction:column;gap:4px;margin-top:10px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}#app .pcp .pfield textarea.field[data-v-4443f246]{height:auto;min-height:70px;padding:10px 12px;resize:vertical;line-height:1.5}.cog-metric[data-v-4443f246]{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:var(--r-sm);background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant)}.cog-metric span[data-v-4443f246]{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant)}.cog-metric strong[data-v-4443f246]{font-size:16px;font-weight:800;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cog-metric.warn[data-v-4443f246]{border-color:var(--md-error,#b3261e);background:color-mix(in srgb,var(--md-error,#b3261e) 8%,transparent)}.cog-metric.warn span[data-v-4443f246],.cog-metric.warn strong[data-v-4443f246]{color:var(--md-error,#b3261e)}.som-channels[data-v-4443f246]{margin-top:10px;display:flex;flex-direction:column;gap:6px}.som-chan[data-v-4443f246]{display:grid;grid-template-columns:minmax(52px,88px) minmax(0,1fr) 48px;align-items:center;gap:10px}.som-chan-name[data-v-4443f246]{font-size:12px;font-weight:600;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.som-chan-bar[data-v-4443f246]{display:block;height:8px;border-radius:999px;background:var(--md-surface-container);overflow:hidden}.som-chan-bar i[data-v-4443f246]{display:block;width:100%;height:100%;border-radius:999px;background:var(--md-primary);transform-origin:left;transition:transform var(--duration-medium) var(--ease-out);will-change:transform}.som-chan-val[data-v-4443f246]{font-size:12px;font-weight:700;text-align:right;color:var(--md-on-surface-variant)}.at-a-glance[data-v-4443f246]{display:grid;grid-template-columns:190px minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start;margin:8px 0 4px}@media(max-width:900px){.at-a-glance[data-v-4443f246]{grid-template-columns:1fr 1fr}}@media(max-width:620px){.at-a-glance[data-v-4443f246]{grid-template-columns:1fr}}.mood-plot-wrap[data-v-4443f246]{position:relative;width:190px;padding:26px 22px 40px;background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 60%,transparent);border-radius:var(--r-md);box-sizing:border-box}.mood-plot[data-v-4443f246]{display:block;width:100%}.plot-frame[data-v-4443f246]{fill:var(--md-surface-container-lowest);stroke:var(--md-outline-variant)}.plot-grid[data-v-4443f246]{stroke:var(--md-outline-variant);stroke-width:1;stroke-dasharray:3 4}.plot-dot[data-v-4443f246]{fill:var(--md-primary)}.plot-halo[data-v-4443f246]{fill:var(--md-primary);opacity:.22}.plot-label[data-v-4443f246]{position:absolute;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant);pointer-events:none}.plot-n[data-v-4443f246]{top:6px;left:50%;transform:translate(-50%)}.plot-s[data-v-4443f246]{bottom:26px;left:50%;transform:translate(-50%)}.plot-w[data-v-4443f246]{left:8px;top:50%;transform:translateY(-58%)}.plot-e[data-v-4443f246]{right:8px;top:50%;transform:translateY(-58%)}.plot-quadrant[data-v-4443f246]{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:12px;font-weight:800;color:var(--md-primary)}.glance-col[data-v-4443f246]{display:flex;flex-direction:column;gap:8px;min-width:0}.glance-title[data-v-4443f246]{display:flex;align-items:center;gap:8px;margin:0;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--md-on-surface-variant)}.gauge-grid[data-v-4443f246]{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin:8px 0}.gauge[data-v-4443f246]{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border-radius:var(--r-sm);background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);min-width:0}.gauge-head[data-v-4443f246]{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.gauge-name[data-v-4443f246]{font-size:12px;font-weight:700;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.gauge-alias[data-v-4443f246]{font-style:normal;font-weight:500;font-size:11px;color:var(--md-on-surface-variant);opacity:.8;margin-left:6px}.gauge-val[data-v-4443f246]{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.gauge-state[data-v-4443f246]{font-weight:800;margin-right:2px}.gauge-state.good[data-v-4443f246]{color:var(--md-success)}.gauge-state.mid[data-v-4443f246]{color:var(--md-primary)}.gauge-state.bad[data-v-4443f246]{color:var(--md-error)}.gauge-bar[data-v-4443f246]{position:relative;display:block;height:8px;border-radius:999px;background:var(--md-surface-container-highest);overflow:visible}.gauge-bar.signed[data-v-4443f246]:before{content:\"\";position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;border-radius:1px;background:var(--md-outline-variant)}.gauge-fill[data-v-4443f246]{position:absolute;top:0;bottom:0;border-radius:999px;transition:width .35s var(--ease-out,.25s ease),left .35s var(--ease-out,.25s ease)}.gauge-fill.good[data-v-4443f246]{background:var(--md-success)}.gauge-fill.mid[data-v-4443f246]{background:var(--md-primary)}.gauge-fill.bad[data-v-4443f246]{background:var(--md-error)}.gauge-effect[data-v-4443f246]{font-size:11px;line-height:1.45;color:var(--md-on-surface-variant)}.chip-row[data-v-4443f246]{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.chip.warn[data-v-4443f246]{background:var(--md-error-container);color:var(--md-on-error-container)}.rel-card[data-v-4443f246]{display:flex;flex-direction:column;gap:10px}.rel-head[data-v-4443f246]{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}.rel-track-row[data-v-4443f246]{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}.rel-track-label[data-v-4443f246],.rel-stage-name[data-v-4443f246]{font-size:11px;font-weight:800;letter-spacing:.04em;color:var(--md-on-surface-variant);white-space:nowrap}.rel-stage-name[data-v-4443f246]{color:var(--md-primary)}.rel-track[data-v-4443f246]{display:flex;gap:3px;height:10px;border-radius:999px;overflow:hidden;background:var(--md-surface-container-highest)}.rel-seg[data-v-4443f246]{flex:1 1 0;background:color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}.rel-seg.done[data-v-4443f246]{background:color-mix(in srgb,var(--md-primary) 45%,transparent)}.rel-seg.cur[data-v-4443f246]{background:var(--md-primary)}.rel-mode[data-v-4443f246]{display:flex;flex-direction:column;gap:4px;align-items:flex-start}.value-row[data-v-4443f246]{display:grid;grid-template-columns:minmax(72px,140px) minmax(0,1fr) 44px;gap:10px;align-items:center}.value-name[data-v-4443f246]{font-size:13px;font-weight:700;overflow-wrap:anywhere}.value-bar[data-v-4443f246]{position:relative;display:block;height:8px;border-radius:999px;background:var(--md-surface-container-highest)}.value-bar[data-v-4443f246]:before{content:\"\";position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;border-radius:1px;background:var(--md-outline-variant)}.value-bar i[data-v-4443f246]{position:absolute;top:0;bottom:0;border-radius:999px;transition:width .35s var(--ease-out,.25s ease),left .35s var(--ease-out,.25s ease)}.value-bar i.good[data-v-4443f246]{background:var(--md-success)}.value-bar i.bad[data-v-4443f246]{background:var(--md-error)}.value-num[data-v-4443f246]{font-size:12px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;color:var(--md-on-surface-variant)}.chip[data-v-4443f246]{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:700;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.chip.muted[data-v-4443f246]{background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-weight:500}.chip.ok[data-v-4443f246]{background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e)}#app .pcp .cog-metric[data-v-4443f246]{background:var(--md-surface-container)}.sync-pill[data-v-4443f246]{font-weight:500;opacity:.85}html[data-theme=dark] #app .pcp .world-map-leaflet{background:#10151c}html[data-theme=dark] #app .pcp .wm-reset,html[data-theme=dark] #app .pcp .wm-scope{background:color-mix(in srgb,var(--md-surface-container-high) 94%,transparent);color:var(--md-on-surface)}html[data-theme=dark] #app .pcp .wm-reset:hover,html[data-theme=dark] #app .pcp .wm-scope:hover{background:var(--md-surface-container-highest)}html[data-theme=dark] #app .pcp .wm-compass{background:color-mix(in srgb,var(--md-surface-container-high) 92%,transparent);border-color:var(--md-outline-variant)}html[data-theme=dark] .wm-district-inner{color:#aeb9c4;text-shadow:none}html[data-theme=dark] .wm-station .wm-route-inner{background:#1a2230;color:#d7dee6}html[data-theme=dark] .leaflet-container{background:#10151c}.wm-pin-holder,.wm-actor-holder{background:none;border:none}.wm-pin{position:absolute;left:0;top:0;width:16px;height:16px;border-radius:50%;background:var(--c,#8a94a6);border:3px solid #fff;box-shadow:0 2px 6px #00000073;transform:translate(-50%,-50%)}.wm-pin:after{content:\"\";position:absolute;left:50%;top:100%;width:2px;height:8px;background:#fff;transform:translate(-50%);opacity:.7}.wm-pin-label{position:absolute;left:12px;top:-9px;white-space:nowrap;background:#12141ad1;color:#fff;font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px;pointer-events:none}.wm-actor-badge{position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:#fff;color:#d1495b;border:3px solid #d1495b;font-size:14px;font-weight:800;line-height:1;display:grid;place-items:center;transform:translate(-50%,-50%);box-shadow:0 2px 6px #00000080;z-index:600}.wm-actor-name{position:absolute;left:0;top:20px;white-space:nowrap;background:#d1495b;color:#fff;font-size:11px;font-weight:700;padding:1px 7px;border-radius:9px;transform:translate(-50%)}.wm-district{background:none;border:none}.wm-district-inner{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;font-size:12px;font-weight:800;letter-spacing:.2em;color:#5c6b78;text-shadow:0 1px 0 rgba(255,255,255,.9);pointer-events:none}.wm-route{background:none;border:none}.wm-route-inner{position:absolute;left:0;top:0;transform:translate(-50%,-50%);background:var(--c,#333);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;box-shadow:0 1px 3px #00000059;pointer-events:none}.wm-zoom-low .wm-minor{display:none}.wm-station .wm-route-inner{background:#fff;color:#33404c;border:1.5px solid var(--c,#888);border-radius:6px;font-size:9px;font-weight:700;padding:1px 5px}.leaflet-container{font-family:inherit;background:#e8edf2;border-radius:16px}.leaflet-container a{color:#2f6fed}.leaflet-popup-content{font-size:13px;line-height:1.5}\n";document.head.appendChild(s)}})();

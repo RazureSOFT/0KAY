@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// Live syntax-highlighted code editor: a transparent <textarea> overlaid on a
-// highlighted <pre>. Both share identical font metrics and padding; the textarea
-// owns scrolling and the backdrop follows it, so the text and colors stay in
-// lockstep as you type.
 import { nextTick, onUnmounted, ref, watch } from 'vue'
 import HighlightedCode from './HighlightedCode.vue'
 
@@ -12,10 +8,6 @@ const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 const textarea = ref<HTMLTextAreaElement | null>(null)
 const backdrop = ref<HTMLElement | null>(null)
 
-// Highlighting is O(n) over the whole buffer, so feeding the raw model value
-// re-highlighted on every keystroke. The textarea itself is uncontrolled-fast
-// (its own value updates instantly); the backdrop trails typing by a short
-// debounce instead. Real value stays exact for save/dirty tracking.
 const highlightSource = ref(props.modelValue)
 let highlightTimer: ReturnType<typeof setTimeout> | null = null
 watch(() => props.modelValue, (value) => {
@@ -36,7 +28,6 @@ function onScroll() {
   back.scrollLeft = input.scrollLeft
 }
 
-// Tab indents instead of moving focus (two spaces), matching the code view.
 function onKeydown(event: KeyboardEvent) {
   if (event.key !== 'Tab') return
   event.preventDefault()
@@ -73,10 +64,7 @@ defineExpose({ focus })
 </template>
 
 <style scoped>
-/* The host styles `#app :is(input, select, textarea)` with a high-specificity
-   rule (four :not()s) that sets an opaque background — which would hide the
-   highlight layer behind the transparent text and make the editor look blank.
-   `!important` is the reliable way past it here. */
+
 #app .code-editor{position:relative;flex:1;min-height:0;overflow:hidden;background-color:var(--md-surface-container-lowest)}
 #app .code-editor-backdrop{position:absolute;inset:0;overflow:hidden;pointer-events:none;user-select:none}
 #app .code-editor-input{

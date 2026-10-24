@@ -1,12 +1,5 @@
 import { nextTick, watch, type Ref } from 'vue'
 
-/**
- * Focus management for modal dialogs: move focus in on open, keep Tab cycling
- * inside the dialog, and restore the previously focused element on close.
- *
- * Mirrors the ConfirmDialog behaviour so every `role="dialog"` /
- * `role="alertdialog"` shell is usable from the keyboard and screen readers.
- */
 export function useFocusTrap(
   isOpen: () => boolean,
   container: Ref<HTMLElement | null>,

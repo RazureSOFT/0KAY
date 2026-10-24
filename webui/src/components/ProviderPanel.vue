@@ -145,8 +145,6 @@ function startEdit(p: ProviderConfig) {
     format: p.format || '',
     model_types: { ...(p.model_types || {}) },
   }
-  // The catalog is redacted (api_key blank, api_key_masked present): remember a
-  // key already exists so the blank field can be explained and preserved.
   editHasStoredKey.value = !!((p as unknown as { api_key_masked?: string }).api_key_masked)
   editorError.value = ''
   editorProbe.value = { state: 'idle' }
@@ -197,16 +195,16 @@ async function remove(p: ProviderConfig) {
     danger: true,
   })
   if (!ok) return
-  try { await store.remove(p.id) } catch { /* surfaced by store */ }
+  try { await store.remove(p.id) } catch { }
 }
 
 async function toggleEnabled(p: ProviderConfig) {
-  try { await store.upsert({ ...p, enabled: !p.enabled }) } catch { /* ignore */ }
+  try { await store.upsert({ ...p, enabled: !p.enabled }) } catch { }
 }
 
 async function makeDefault(p: ProviderConfig) {
   const model = p.default_model || enabledModels(p)[0] || p.models[0] || ''
-  try { await store.setDefaults(p.id, model) } catch { /* ignore */ }
+  try { await store.setDefaults(p.id, model) } catch { }
 }
 
 async function testEditor() {
@@ -245,14 +243,6 @@ function setDefaultModel(model: string) {
   p.disabled_models = (p.disabled_models || []).filter(m => m !== model)
 }
 
-/**
- * Manual model entry.
- *
- * The list used to be fillable only by "fetch models", i.e. by probing the
- * provider's /models route. Gateways, proxies and self-hosted servers that do
- * not implement it therefore could not be configured at all — and `save()`
- * requires at least one model, so the editor deadlocked.
- */
 const newModel = ref('')
 const addModelError = ref('')
 function addModel() {
@@ -266,7 +256,6 @@ function addModel() {
     return
   }
   p.models = [...p.models, name]
-  // A freshly typed model is meant to be usable, so it starts enabled.
   p.disabled_models = (p.disabled_models || []).filter(m => m !== name)
   if (!p.default_model) p.default_model = name
   newModel.value = ''
@@ -277,15 +266,11 @@ function removeModel(model: string) {
   if (!p) return
   p.models = p.models.filter(m => m !== model)
   p.disabled_models = (p.disabled_models || []).filter(m => m !== model)
-  // Drop the per-model type tag too, otherwise it resurrects when the same name
-  // is added back with a different role.
   if (p.model_types) {
     const types = { ...p.model_types }
     delete types[model]
     p.model_types = types
   }
-  // `save()` silently rewrites an unknown default, so resolve it here where the
-  // user can see which model became the default.
   if (p.default_model === model) p.default_model = enabledModels(p)[0] || p.models[0] || ''
 }
 
@@ -324,8 +309,7 @@ const providerTypeOptions = computed(() =>
 
 <template>
   <div class="content-card provider-panel">
-    <!-- ─────────────── Editor sub-page ─────────────── -->
-    <template v-if="view === 'edit' && edit">
+        <template v-if="view === 'edit' && edit">
       <div class="pp-editor-head">
         <button class="pp-back" type="button" @click="backToList" :aria-label="t('settings.back')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -343,8 +327,7 @@ const providerTypeOptions = computed(() =>
         </span>
       </div>
 
-      <!-- Basics -->
-      <section class="pp-section">
+            <section class="pp-section">
         <h3 class="pp-section-title">{{ t('settings.providerSectionBasic') }}</h3>
         <div class="pp-grid">
           <div class="field">
@@ -381,8 +364,7 @@ const providerTypeOptions = computed(() =>
         </div>
       </section>
 
-      <!-- Credentials -->
-      <section class="pp-section">
+            <section class="pp-section">
         <div class="pp-section-head">
           <h3 class="pp-section-title">{{ t('settings.providerSectionAuth') }}</h3>
           <button class="btn btn-tonal sm" type="button" :disabled="editorProbe.state === 'checking'" @click="testEditor">
@@ -410,8 +392,7 @@ const providerTypeOptions = computed(() =>
         </div>
       </section>
 
-      <!-- Models -->
-      <section class="pp-section">
+            <section class="pp-section">
         <div class="pp-section-head">
           <h3 class="pp-section-title">{{ t('settings.providerSectionModels') }} <span class="pp-count">{{ enabledCount }}/{{ edit.models.length }}</span></h3>
           <button class="btn btn-tonal sm" type="button" :disabled="editorProbe.state === 'checking'" @click="testEditor">
@@ -431,9 +412,7 @@ const providerTypeOptions = computed(() =>
           <button class="pp-mini" type="button" @click="selectAll(false)">{{ t('settings.clearSelection') }}</button>
         </div>
 
-        <!-- Manual entry: the only way to configure a provider whose /models
-             route is missing or incomplete. -->
-        <div class="pp-add-model">
+                <div class="pp-add-model">
           <input
             v-model="newModel"
             class="input"
@@ -483,8 +462,7 @@ const providerTypeOptions = computed(() =>
       </div>
     </template>
 
-    <!-- ─────────────── List ─────────────── -->
-    <template v-else>
+        <template v-else>
       <div class="pp-list-head">
         <div>
           <h2>{{ t('settings.tabs.provider') }}</h2>
@@ -552,7 +530,6 @@ const providerTypeOptions = computed(() =>
 <style scoped>
 .provider-panel { display: flex; flex-direction: column; gap: 18px; }
 
-/* Editor */
 .pp-editor-head { display: flex; align-items: center; gap: 14px; }
 .pp-back {
   flex: none; width: 40px; height: 40px; border-radius: 12px;
@@ -596,14 +573,12 @@ const providerTypeOptions = computed(() =>
 .pp-search { flex: 1; min-width: 160px; }
 .pp-mini { height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--md-outline-variant); background: var(--md-surface-container-low); color: var(--md-on-surface-variant); font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .pp-mini:hover { border-color: var(--md-primary); color: var(--md-primary); }
-/* Manual model entry: a plain row above the list so it reads as "add to this
-   list" rather than as another bulk action. */
+
 .pp-add-model { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .pp-add-model .input { flex: 1; min-width: 0; }
 .pp-add-model .btn { flex: none; white-space: nowrap; }
 .pp-add-error { color: var(--md-error); }
-/* A per-row delete. It is a <button>, so `#app button { min-height: 36px }`
-   would inflate it into a 30x36 blob — theme.css carries the compact exception. */
+
 .pp-remove { flex: none; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--md-on-surface-variant); font-size: 17px; line-height: 1; cursor: pointer; }
 .pp-remove:hover { background: color-mix(in srgb, var(--md-error) 14%, transparent); color: var(--md-error); }
 
@@ -622,7 +597,6 @@ const providerTypeOptions = computed(() =>
 .pp-error { color: var(--md-error); margin: 0; }
 .pp-editor-actions { display: flex; gap: 10px; }
 
-/* List */
 .pp-list-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .pp-list-head h2 { margin: 0; font-size: 19px; font-weight: 700; }
 .pp-list-head .card-desc { margin: 3px 0 0; }
@@ -659,8 +633,6 @@ const providerTypeOptions = computed(() =>
 .pp-chip.more, .pp-chip.empty { background: transparent; border: 1px dashed var(--md-outline-variant); }
 
 .pp-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
-/* `.btn.sm` / `.btn.xs` shapes live in styles/settings.css so every panel
-   agrees on one height (they used to drift between 34/30, 34/30 and 32/28). */
 
 .pp-empty { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 40px 16px; color: var(--md-on-surface-variant); border: 1px dashed var(--md-outline-variant); border-radius: 18px; }
 

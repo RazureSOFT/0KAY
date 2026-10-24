@@ -170,8 +170,7 @@ function useCustomModels() {
 <template>
   <div class="wizard-overlay">
     <div class="wizard-sheet">
-      <!-- Step rail -->
-      <aside class="wizard-rail">
+            <aside class="wizard-rail">
         <div class="rail-brand">
           <span class="brand-mark">0K</span>
           <div class="brand-text">
@@ -206,8 +205,7 @@ function useCustomModels() {
         </div>
       </aside>
 
-      <!-- Body -->
-      <section class="wizard-body">
+            <section class="wizard-body">
         <header class="body-head">
           <span class="eyebrow">{{ t('wizard.title') }} · {{ wizard.currentStep }}/{{ wizard.totalSteps }}</span>
           <h1>{{ stepTitle(wizard.currentStep) }}</h1>
@@ -215,8 +213,7 @@ function useCustomModels() {
         </header>
 
         <div class="wizard-scroll">
-          <!-- Step 1: Language -->
-          <div v-if="wizard.currentStep === 1" class="pane">
+                    <div v-if="wizard.currentStep === 1" class="pane">
             <div class="lang-grid">
               <button
                 v-for="option in LOCALES"
@@ -237,8 +234,7 @@ function useCustomModels() {
             <p class="lead">{{ t('wizard.languageHint') }}</p>
           </div>
 
-          <!-- Step 2: Welcome -->
-          <div v-if="wizard.currentStep === 2" class="pane">
+                    <div v-if="wizard.currentStep === 2" class="pane">
             <div class="feature-grid">
               <div class="feature">
                 <span class="feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M7 18a4 4 0 0 1 .7-7.94A5.5 5.5 0 0 1 18 11.5a3.5 3.5 0 0 1-.5 6.5z" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
@@ -256,8 +252,7 @@ function useCustomModels() {
             <p class="lead">{{ t('wizard.welcomeDesc') }}</p>
           </div>
 
-          <!-- Step 3: Provider -->
-          <div v-if="wizard.currentStep === 3" class="pane">
+                    <div v-if="wizard.currentStep === 3" class="pane">
             <div class="pv-grid">
               <button
                 v-for="p in PROVIDERS"
@@ -281,8 +276,7 @@ function useCustomModels() {
             </div>
           </div>
 
-          <!-- Step 4: API -->
-          <div v-if="wizard.currentStep === 4" class="pane">
+                    <div v-if="wizard.currentStep === 4" class="pane">
             <div class="field">
               <label>{{ t('wizard.apiKey') }}</label>
               <input type="password" v-model="wizard.apiKey" :placeholder="t('wizard.apiKeyPlaceholder')" class="wiz-input" />
@@ -306,8 +300,7 @@ function useCustomModels() {
             <div v-if="error" class="alert">{{ error }}</div>
           </div>
 
-          <!-- Step 5: Models -->
-          <div v-if="wizard.currentStep === 5" class="pane">
+                    <div v-if="wizard.currentStep === 5" class="pane">
             <div v-if="wizard.fetchedModels.length > 0" class="model-list">
               <label v-for="model in wizard.fetchedModels" :key="model" class="model-item" :class="{ chosen: wizard.selectedModels.includes(model) }">
                 <input type="checkbox" :checked="wizard.selectedModels.includes(model)" @change="toggleModel(model)" />
@@ -328,8 +321,7 @@ function useCustomModels() {
             </div>
           </div>
 
-          <!-- Step 6: Persona -->
-          <div v-if="wizard.currentStep === 6" class="pane">
+                    <div v-if="wizard.currentStep === 6" class="pane">
             <div class="form-row">
               <div class="field">
                 <label>{{ t('wizard.name') }} *</label>
@@ -358,8 +350,7 @@ function useCustomModels() {
             </div>
           </div>
 
-          <!-- Step 7: Live2D -->
-          <div v-if="wizard.currentStep === 7" class="pane">
+                    <div v-if="wizard.currentStep === 7" class="pane">
             <label class="switch-row">
               <span class="switch-text">
                 <b>{{ t('wizard.enableLive2d') }}</b>
@@ -403,8 +394,7 @@ function useCustomModels() {
             </div>
           </div>
 
-          <!-- Step 8: Complete -->
-          <div v-if="wizard.currentStep === 8" class="pane complete">
+                    <div v-if="wizard.currentStep === 8" class="pane complete">
             <div class="complete-emblem">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
@@ -449,8 +439,7 @@ function useCustomModels() {
         <footer class="wizard-footer">
           <button class="btn btn-tonal" @click="wizard.prevStep()" :disabled="wizard.currentStep === 1">{{ t('wizard.back') }}</button>
           <div class="footer-right">
-            <!-- A greyed Next with no explanation is a dead end; name the blocker. -->
-            <p v-if="!wizard.canProceed && wizard.blockedHint" class="blocked-hint" role="status">{{ t(wizard.blockedHint) }}</p>
+                        <p v-if="!wizard.canProceed && wizard.blockedHint" class="blocked-hint" role="status">{{ t(wizard.blockedHint) }}</p>
             <button v-if="wizard.currentStep < 8" class="btn btn-primary" @click="wizard.nextStep()" :disabled="!wizard.canProceed">{{ t('wizard.next') }}</button>
             <button v-else class="btn btn-primary" :disabled="savingPin" @click="finish">{{ t('wizard.startChatting') }}</button>
           </div>
@@ -487,7 +476,6 @@ function useCustomModels() {
   animation: sheet-in 380ms var(--ease-spring, cubic-bezier(.22,1.3,.36,1)) both;
 }
 
-/* Rail */
 #app .wizard-rail {
   display: flex;
   flex-direction: column;
@@ -568,7 +556,6 @@ function useCustomModels() {
 #app .rail-progress .track { height: 6px; margin-top: 6px; border-radius: 999px; background: var(--md-surface-container-highest); overflow: hidden; }
 #app .rail-progress .fill { height: 100%; width: 100%; transform-origin: left; border-radius: 999px; background: var(--md-primary); transition: transform var(--duration-long) var(--ease-spring); }
 
-/* Body */
 #app .wizard-body { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--md-surface); }
 #app .body-head { padding: 28px 32px 16px; }
 #app .body-head .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--md-primary); }
@@ -578,7 +565,6 @@ function useCustomModels() {
 #app .wizard-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 32px 20px; }
 #app .pane { display: flex; flex-direction: column; gap: 16px; animation: pane-in 260ms var(--ease-spring, ease) both; }
 
-/* Language */
 #app .lang-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 #app .lang-card {
   position: relative;
@@ -603,14 +589,12 @@ function useCustomModels() {
 #app .lang-check { position: absolute; top: 12px; right: 12px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--md-primary); color: var(--md-on-primary); opacity: 0; transform: scale(0.6); transition: opacity 180ms, transform 260ms var(--ease-spring, ease); }
 #app .lang-card.selected .lang-check { opacity: 1; transform: scale(1); }
 
-/* Welcome */
 #app .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 #app .feature { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 20px; background: var(--md-surface-container-low); border: 1px solid var(--md-outline-variant); }
 #app .feature-icon { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; background: var(--md-primary-container); color: var(--md-on-primary-container); }
 #app .feature b { font-size: 14px; font-weight: 600; line-height: 1.4; }
 #app .lead { margin: 0; color: var(--md-on-surface-variant); font-size: 14px; line-height: 1.6; }
 
-/* Provider */
 #app .pv-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 #app .pv-card {
   position: relative;
@@ -638,7 +622,6 @@ function useCustomModels() {
 #app .pv-check { position: absolute; top: 12px; right: 12px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--md-primary); color: var(--md-on-primary); opacity: 0; transform: scale(0.6); transition: opacity 180ms, transform 260ms var(--ease-spring, ease); }
 #app .pv-card.selected .pv-check { opacity: 1; transform: scale(1); }
 
-/* Fields */
 #app .field { display: flex; flex-direction: column; }
 #app .field > label { font-size: 13px; font-weight: 600; color: var(--md-on-surface-variant); margin-bottom: 7px; }
 #app .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -662,7 +645,6 @@ function useCustomModels() {
 #app .helper-text a { color: var(--md-primary); }
 #app .alert { padding: 12px 14px; border-radius: 14px; background: var(--md-error-container); color: var(--md-on-error-container); font-size: 13px; }
 
-/* Models */
 #app .model-list { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; padding-right: 2px; }
 #app .model-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: var(--md-surface-container-low); border: 1px solid var(--md-outline-variant); cursor: pointer; transition: border-color 160ms, background-color 160ms; }
 #app .model-item:hover { border-color: var(--md-outline); }
@@ -674,7 +656,6 @@ function useCustomModels() {
 #app .custom-models { padding: 16px; border-radius: 16px; background: var(--md-surface-container-low); border: 1px solid var(--md-outline-variant); display: flex; flex-direction: column; gap: 12px; }
 #app .custom-models p { margin: 0; color: var(--md-on-surface-variant); font-size: 13px; }
 
-/* Live2D switch + dropzone */
 #app .switch-row { display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 18px; background: var(--md-surface-container-low); border: 1px solid var(--md-outline-variant); cursor: pointer; }
 #app .switch-text { display: flex; flex-direction: column; gap: 2px; flex: 1; }
 #app .switch-text b { font-size: 14px; }
@@ -690,7 +671,6 @@ function useCustomModels() {
 #app .hidden-input { display: none; }
 #app .file-name { color: var(--md-primary); font-weight: 600; }
 
-/* Complete */
 #app .complete { align-items: center; text-align: center; }
 #app .complete-emblem { width: 76px; height: 76px; border-radius: 26px 26px 26px 8px; display: grid; place-items: center; background: var(--md-success-container); color: #0d1f06; animation: emblem-in 500ms var(--ease-spring, ease) both; }
 #app .summary { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 8px; }
@@ -698,7 +678,6 @@ function useCustomModels() {
 #app .summary-row .label { color: var(--md-on-surface-variant); font-size: 13px; }
 #app .summary-row .value { font-weight: 650; font-size: 14px; }
 
-/* Footer */
 #app .wizard-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 32px; border-top: 1px solid var(--md-outline-variant); background: var(--md-surface); }
 #app .wizard-footer .btn-primary { background: var(--md-primary); color: var(--md-on-primary); }
 .footer-right { display: flex; align-items: center; gap: 14px; min-width: 0; }

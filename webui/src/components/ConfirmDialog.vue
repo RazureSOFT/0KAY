@@ -20,12 +20,7 @@ const cancelLabel = computed(() => confirmState.value?.options.cancelLabel || t(
 </script>
 
 <template>
-  <!--
-    Scrim, focus trap, Escape handling and focus restore now live in ModalShell.
-    ConfirmDialog keeps only its content, which is why the panel width and the
-    header/body styling below are unchanged.
-  -->
-  <ModalShell
+    <ModalShell
     :open="!!confirmState"
     :title="title"
     panel-class="confirm-dialog"
@@ -70,8 +65,7 @@ const cancelLabel = computed(() => confirmState.value?.options.cancelLabel || t(
 </template>
 
 <style>
-/* Scoped to the shared shell: the shell owns .modal-panel's geometry, this only
-   widens the reading measure and restyles the interior. */
+
 .confirm-dialog {
   width: min(680px, 100%);
   background: var(--md-surface-container-high, var(--md-surface, #fff));

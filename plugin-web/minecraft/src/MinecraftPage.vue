@@ -4,8 +4,6 @@ import { i18n, useConfirm } from '@0kay/host'
 
 const t = (key, named) => i18n.global.t(key, named ?? {})
 
-// Core proxies to the plugin service and injects its token, so the panel talks
-// to Core same-origin with the owner session and never handles the secret.
 const API = '/api/plugins/minecraft/proxy'
 const status = ref(null)
 const world = ref({ waypoints: [], skills: [] })
@@ -14,16 +12,11 @@ const showConnect = ref(false)
 const form = ref({ edition: 'java', host: '', port: '', username: '', password: '' })
 let timer = null
 
-// Two error classes: connection problems (poll fetch threw / 5xx) vs action
-// failures (unknown skill, bad args, per-action timeout). Each gets its own
-// banner copy and styling; action success gets a transient toast instead.
 const connError = ref('')
 const actionError = ref('')
 const toast = ref('')
 let toastTimer = null
 
-// Per-action busy state, keyed by action (plus args identity) so parallel
-// actions each light up only their own button.
 const busyActions = reactive(new Set())
 const anyBusy = computed(() => busyActions.size > 0)
 function busyKey(action, args) {
@@ -31,16 +24,14 @@ function busyKey(action, args) {
 }
 function actBusy(action, args) { return busyActions.has(busyKey(action, args)) }
 
-// Host confirm dialog when the bridge provides it; two-step button otherwise.
 let hostConfirm = null
 try {
   const c = useConfirm()
   if (c && typeof c.confirm === 'function') hostConfirm = c.confirm
-} catch { /* older host bridge without useConfirm */ }
+} catch { }
 const armedDisconnect = ref(false)
 let armTimer = null
 
-// Read-only action log: one entry per act(), newest first, capped at 50.
 const actionLog = ref([])
 let logId = 0
 function pushLog(action, ok, detail) {
@@ -53,8 +44,6 @@ const connected = computed(() => !!bot.value?.connected)
 const autopilot = computed(() => status.value?.autopilot || { running: false })
 const playerName = computed(() => bot.value?.username || '')
 
-// Raw `bot.state` enums are English; map known ones through i18n and fall back
-// to the raw value for anything new.
 const STATE_KEYS = {
   idle: 'minecraft.stateIdle',
   connecting: 'minecraft.stateConnecting',
@@ -84,8 +73,6 @@ function slot(s) { return itemBySlot.value[s] || null }
 const hotbar = computed(() => Array.from({ length: 9 }, (_, i) => ({ slot: 36 + i, item: slot(36 + i) })))
 const backpack = computed(() => Array.from({ length: 27 }, (_, i) => ({ slot: 9 + i, item: slot(9 + i) })))
 
-// Slots whose contents changed since the previous poll flash once (600ms) so
-// pickups and drops are noticeable without watching the whole grid.
 const flashSlots = ref({})
 let prevInv = null
 let flashTimer = null
@@ -134,7 +121,7 @@ async function fetchWorld() {
   try {
     const res = await fetch(`${API}/world`, { signal: AbortSignal.timeout(6000) })
     if (res.ok) world.value = await res.json()
-  } catch { /* keep previous world snapshot */ }
+  } catch { }
 }
 
 async function act(action, args = {}) {
@@ -153,7 +140,6 @@ async function act(action, args = {}) {
     })
     const data = await res.json().catch(() => ({}))
     if (res.status >= 500) {
-      // Service-side trouble: same class as a poll failure.
       connError.value = t('minecraft.unreachable', { error: `HTTP ${res.status}` })
       pushLog(action, false, `HTTP ${res.status}`)
       return
@@ -174,7 +160,6 @@ async function act(action, args = {}) {
       actionError.value = msg
       pushLog(action, false, msg)
     } else {
-      // fetch() itself threw (network down): connection-class error.
       const msg = e?.message || 'unreachable'
       connError.value = t('minecraft.unreachable', { error: msg })
       pushLog(action, false, msg)
@@ -210,7 +195,6 @@ async function disconnect() {
     if (ok) await act('disconnect')
     return
   }
-  // Two-step fallback: first click arms the button, second click within 3s fires.
   if (!armedDisconnect.value) {
     armedDisconnect.value = true
     clearTimeout(armTimer)
@@ -396,7 +380,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 </template>
 
 <style scoped>
-/* Minecraft plugin — Material 3 Expressive. #app prefixes out-rank theme.css. */
+
 #app .mc{
   padding:clamp(18px,2.4vw,30px);max-width:1120px;margin:0 auto;
   color:var(--md-on-surface);font-family:var(--font-family);
@@ -404,7 +388,6 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc h1,#app .mc h2{margin:0;letter-spacing:-.01em}
 #app .mc h2{font-size:15px;font-weight:750;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 
-/* Hero header */
 #app .mc .mc-head{
   display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
   margin-bottom:18px;padding:20px 22px;border-radius:28px;
@@ -437,7 +420,6 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 }
 #app .mc .mc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 
-/* Success toast (auto-dismisses after 3s) */
 #app .mc .toast{
   margin:0 0 14px;padding:11px 16px;border-radius:16px;font-size:13px;font-weight:700;
   background:var(--md-success-container);color:var(--md-on-success-container);box-shadow:var(--shadow-1);
@@ -445,7 +427,6 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .toast-enter-active,#app .mc .toast-leave-active{transition:opacity var(--duration-short,180ms) ease,transform var(--duration-short,180ms) var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}
 #app .mc .toast-enter-from,#app .mc .toast-leave-to{opacity:0;transform:translateY(-6px)}
 
-/* Buttons */
 #app .mc .btn{
   min-height:44px;padding:0 16px;border:1px solid transparent;border-radius:999px;
   font:700 13px/1 inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;
@@ -462,7 +443,6 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .btn.danger{background:var(--md-error-container);color:var(--md-on-error-container)}
 #app .mc .btn.danger.armed{background:var(--md-error);color:var(--md-on-error)}
 
-/* Inline action spinner */
 #app .mc .spinner{
   width:14px;height:14px;flex-shrink:0;border-radius:50%;
   border:2px solid color-mix(in srgb,currentColor 30%,transparent);border-top-color:currentColor;
@@ -470,9 +450,6 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 }
 @keyframes mc-spin{to{transform:rotate(360deg)}}
 
-/* Inputs. `.url` used to be grouped in here and given `width:238px`, but no
-   element in the template ever carries that class (the connect form uses
-   `.connect input/select`), so the rules were dead and are removed. */
 #app .mc .connect input,
 #app .mc .connect select{
   height:44px;padding:0 14px;border:1px solid transparent;border-radius:14px;
@@ -484,7 +461,6 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
   box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent);
 }
 
-/* Cards */
 #app .mc .card{
   background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);
   border-radius:24px;padding:18px 20px;margin-bottom:16px;box-shadow:var(--shadow-1);
@@ -500,7 +476,6 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .connect-grid label.wide{grid-column:1/-1}
 #app .mc .connect .actions{display:flex;justify-content:flex-end;margin-top:14px}
 
-/* Connect form fold: grid-rows 0fr→1fr expansion (200ms height + fade) */
 #app .mc .fold{
   display:grid;grid-template-rows:1fr;margin-bottom:16px;
   transition:grid-template-rows 200ms ease,opacity 200ms ease;
@@ -509,7 +484,6 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .fold-enter-from,#app .mc .fold-leave-to{grid-template-rows:0fr;opacity:0}
 #app .mc .fold-enter-active,#app .mc .fold-leave-active{transition:grid-template-rows 200ms ease,opacity 200ms ease}
 
-/* Dashboard entrance: fade via <Transition>, staggered card rise inside */
 #app .mc .dash-leave-active{transition:opacity var(--duration-short,180ms) ease}
 #app .mc .dash-leave-to{opacity:0}
 #app .mc .dash > section{animation:mc-rise 320ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1)) both}
@@ -522,12 +496,10 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .grid .card:nth-child(3){animation-delay:80ms}
 @keyframes mc-rise{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
 
-/* Definition lists */
 #app .mc dl{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:0;font-size:13px}
 #app .mc dt{color:var(--md-on-surface-variant)}
 #app .mc dd{margin:0;overflow-wrap:anywhere}
 
-/* Bars */
 #app .mc .bar-row{display:flex;align-items:center;gap:12px;margin:10px 0;font-size:13px}
 #app .mc .bar-label{min-width:36px;white-space:nowrap;color:var(--md-on-surface-variant);flex-shrink:0}
 #app .mc .bar{flex:1;height:12px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}
@@ -536,19 +508,17 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .bar i.food{background:linear-gradient(90deg,var(--md-warning),color-mix(in srgb,var(--md-warning) 55%,var(--md-surface-container-lowest)))}
 #app .mc .bar-num{width:54px;text-align:right;color:var(--md-on-surface-variant);flex-shrink:0}
 
-/* Lists */
 #app .mc .list{list-style:none;margin:0;padding:0;font-size:13px;display:flex;flex-direction:column;gap:2px;position:relative}
 #app .mc .list li{display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}
 #app .mc .list li:last-child{border-bottom:none}
 #app .mc .list li .btn{margin-left:auto}
 #app .mc .list li span.muted,#app .mc .list li .chip{margin-left:auto}
 #app .mc .list li b + span.muted{flex:1;min-width:0}
-/* TransitionGroup: entering/leaving rows fade+slide, siblings glide via .list-move */
+
 #app .mc .list-move,#app .mc .list-enter-active,#app .mc .list-leave-active{transition:opacity 200ms ease,transform 260ms var(--ease-spring,cubic-bezier(.22,1.3,.36,1))}
 #app .mc .list-enter-from,#app .mc .list-leave-to{opacity:0;transform:translateY(-4px)}
 #app .mc .list-leave-active{position:absolute;width:auto;min-width:60%}
 
-/* Chips */
 #app .mc .chip{
   display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:700;
   background:var(--md-secondary-container);color:var(--md-on-secondary-container);flex-shrink:0;
@@ -560,7 +530,6 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .err.small{font-size:12px;margin:8px 0 0;background:transparent;padding:0}
 #app .mc .pad{padding:8px 0}
 
-/* Action log */
 #app .mc .log-card .log-empty{font-size:13px;margin:0}
 #app .mc .log{
   list-style:none;margin:0;padding:0;max-height:220px;overflow-y:auto;font-size:12.5px;
@@ -574,7 +543,6 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 #app .mc .log .log-detail{color:var(--md-on-surface-variant);overflow-wrap:anywhere;min-width:0}
 #app .mc .log li.fail .log-detail{color:var(--md-error)}
 
-/* Inventory */
 #app .mc .inv-wrap{overflow-x:auto}
 #app .mc .inv{display:grid;grid-template-columns:repeat(9,1fr);gap:8px}
 #app .mc .inv.hotbar{margin-bottom:10px}
@@ -589,7 +557,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 }
 #app .mc .cell .it{font-size:11px;line-height:1.1;text-align:center;word-break:break-word}
 #app .mc .cell .it b{display:block;font-size:11px;color:var(--md-primary);font-weight:800}
-/* One-shot highlight when a slot's contents changed since the last poll */
+
 #app .mc .cell.flash{animation:mc-cell-flash 600ms ease-out}
 @keyframes mc-cell-flash{
   0%{outline:2px solid var(--md-primary);outline-offset:1px;background:color-mix(in srgb,var(--md-primary) 22%,var(--md-surface-container-high))}
@@ -598,8 +566,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
 @media(max-width:640px){
   #app .mc .mc-actions{width:100%}
-  /* Keep the 9-column slot mapping on mobile: shrink cells (~30px min) and let
-     the wrapper scroll horizontally rather than reflowing the grid. */
+  
   #app .mc .inv{grid-template-columns:repeat(9,minmax(30px,1fr));min-width:min(100%,306px)}
   #app .mc .cell{border-radius:10px;padding:2px}
   #app .mc .cell .it{font-size:9px}

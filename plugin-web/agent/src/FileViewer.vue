@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// Renders a file according to its type: code/markdown-source use the live
-// highlighter editor; markdown renders; PDF uses the browser's PDF viewer over a
-// blob URL; docx/pptx are rendered by docx-preview / pptx-preview; images show
-// inline.
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { i18n } from '@0kay/host'
 import CodeEditor from './CodeEditor.vue'
@@ -29,7 +25,6 @@ const pptxHost = ref<HTMLElement | null>(null)
 const sheetGrid = ref<HTMLElement | null>(null)
 const pdfUrl = ref('')
 const dataUrl = ref('')
-// Blob URL for an HTML page preview (sandboxed iframe; never same-origin).
 const htmlUrl = ref('')
 const renderError = ref('')
 const rendering = ref(false)
@@ -71,10 +66,8 @@ function clearAssets() {
   if (pptxHost.value) pptxHost.value.innerHTML = ''
 }
 
-// --- spreadsheets (xlsx/xls/ods via SheetJS) ---
 async function renderSheet() {
   sheetHtml.value = DOMPurify.sanitize(sheets[activeSheet.value] || '')
-  // Generated cells are truncated by CSS; expose the full text on hover.
   await nextTick()
   const grid = sheetGrid.value
   if (!grid) return
@@ -85,8 +78,6 @@ async function renderSheet() {
 }
 function selectSheet(index: number) { activeSheet.value = index; renderSheet() }
 
-// Monotonic token so a slow render for a previous file can't write into the
-// next one (or into a closed panel).
 let renderToken = 0
 async function render() {
   const token = ++renderToken
@@ -94,9 +85,6 @@ async function render() {
   renderError.value = ''
   const bytes = props.bytes
   if (!bytes || !bytes.length) return
-  // TS types BlobPart/previewer input as ArrayBuffer-backed, while a Uint8Array
-  // may sit on a SharedArrayBuffer. Copying into a plain ArrayBuffer keeps the
-  // bytes identical and the types honest.
   const view = new Uint8Array(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer)
   rendering.value = true
   try {
@@ -119,8 +107,6 @@ async function render() {
       const host = docxHost.value
       if (host) await renderAsync(new Blob([view]), host, undefined, { inWrapper: true, ignoreWidth: true, breakPages: true, renderHeaders: true, renderFooters: true })
     } else if (props.view === 'html') {
-      // Self-contained page (the `diagram` tool writes one). The iframe is
-      // sandboxed, so the page cannot touch the host document.
       if (htmlUrl.value) URL.revokeObjectURL(htmlUrl.value)
       htmlUrl.value = URL.createObjectURL(new Blob([view], { type: 'text/html;charset=utf-8' }))
     } else if (props.view === 'pptx') {
@@ -162,8 +148,7 @@ onBeforeUnmount(() => { renderToken++; clearAssets() })
     <div v-else-if="view === 'pptx'" ref="pptxHost" class="fv-scroll fv-pptx" />
     <div v-else-if="view === 'text'" class="fv-scroll fv-text"><pre class="fv-plain">{{ text || t('agent.file.noText') }}</pre></div>
     <div v-else class="fv-msg">{{ rendering ? t('agent.file.rendering') : t('agent.file.cannotPreview') }}</div>
-    <!-- Fade the loading overlay out so it does not hard-cut to the content. -->
-    <Transition name="fv-fade">
+        <Transition name="fv-fade">
       <div v-if="rendering" class="fv-loading"><span class="fv-spin" aria-hidden="true"></span>{{ t('agent.file.rendering') }}</div>
     </Transition>
     <div v-if="renderError" class="fv-error">{{ renderError }}</div>

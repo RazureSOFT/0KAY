@@ -10,8 +10,6 @@ export interface UIPatchOp {
   anchor?: string
   position?: 'before' | 'after' | string
   id?: string
-  /** Owning plugin. Core includes it on every op; the shell uses it to know
-   *  which plugins have a UI worth fetching string resources for. */
   plugin?: string
   item?: Record<string, any> | null
 }
@@ -28,7 +26,6 @@ export interface NavItem {
   icon?: string
   order?: number
   badge?: number | string | null
-  /** Dotted path into life store, e.g. "life.onlineAgents" */
   badgeFrom?: string
 }
 
@@ -37,9 +34,7 @@ export interface RouterPatchItem {
   path: string
   name: string
   component?: string
-  /** ESM entry served by Core, e.g. /api/plugins/{name}/ui/index.js */
   module?: string
-  /** Owning plugin name (optional; useful for module URL building). */
   plugin?: string
   src?: string
   title?: string
@@ -51,35 +46,24 @@ export interface StatusAxis {
   label?: string
   labelKey?: string
   color?: string
-  /** unit: 0..1 · remap01: (v+1)/2 for valence-style -1..1 */
   scale?: 'unit' | 'remap01'
 }
 
-/**
- * StatusPanel section — fully declarative.
- * kinds: mood | bar | bars | count | list | tasks | memory | connection | kv
- */
 export interface StatusSection {
   id: string
   title?: string
   titleKey?: string
   kind: string
   order?: number
-  /** bar: life path for percent */
   bind?: string
-  /** count primary path */
   countBind?: string
-  /** count secondary/total path */
   totalBind?: string
-  /** list/tasks array path */
   listBind?: string
   empty?: string
   emptyKey?: string
   axes?: StatusAxis[]
-  /** memory: GET endpoint */
   endpoint?: string
   pollMs?: number
-  /** kv literal */
   value?: string
   valueKey?: string
 }
@@ -103,23 +87,17 @@ export interface SettingsTabItem {
   labelKey?: string
   description?: string
   descriptionKey?: string
-  /** Map to an existing builtin pane template */
   component?: string
-  /** Plugin ESM entry served by Core, rendered as the tab body (native pane). */
   module?: string
-  /** Owning plugin name (optional; used for module attribution). */
   plugin?: string
   fields?: SettingsField[]
   loadApi?: string
   saveApi?: string
 }
 
-/** ChatPage slot — region + builtin component (patch like editing one line). */
 export interface ChatSlotItem {
   id: string
-  /** stage = left column (Live2D + status); chat = right conversation column */
   region: 'stage' | 'chat' | string
-  /** live2d | status | chat | iframe | note */
   component?: string
   order?: number
   enabled?: boolean
@@ -128,38 +106,22 @@ export interface ChatSlotItem {
   titleKey?: string
 }
 
-/** Startup module a plugin loads globally (API compatibility shims, etc). */
 export interface BootstrapItem {
   id: string
-  /** ESM entry served by Core, e.g. /api/plugins/compat/ui/index.js */
   module?: string
   plugin?: string
 }
 
-/** Built-in sidebar items. Chat/对话 is registered by life.patch; Agent by agent.patch. */
 export const BUILTIN_NAV: NavItem[] = [
   { id: 'plugins', to: '/plugins', labelKey: 'nav.plugins', icon: 'plugins', order: 30 },
-  // The console sits next to settings: it is the page you open when something is
-  // already wrong, so it belongs with the other diagnostic surfaces rather than
-  // buried under plugins.
   { id: 'console', to: '/console', labelKey: 'nav.console', icon: 'console', order: 90 },
   { id: 'settings', to: '/settings', labelKey: 'nav.settings', icon: 'settings', order: 100 },
 ]
 
-/**
- * Built-in StatusPanel anchors. LIFE widgets are NOT hardcoded here —
- * they arrive via life.patch (kind: mood/bar/bars/count/tasks/memory).
- * Only the platform connection strip remains as a stable anchor.
- */
 export const BUILTIN_STATUS: StatusSection[] = [
   { id: 'connection', kind: 'connection', titleKey: 'status.connection', order: 90 },
 ]
 
-/**
- * Built-in settings tabs (shell only; plugins/patches replace ownership).
- * `persona` is intentionally absent: editing the persona now lives on the LIFE
- * companion page (which shares the same wizard persona via __0KAY_HOST__).
- */
 export const BUILTIN_SETTINGS: SettingsTabItem[] = [
   { id: 'general', icon: 'globe', order: 10 },
   { id: 'provider', icon: 'cloud', order: 20, component: 'provider' },
@@ -172,11 +134,6 @@ export const BUILTIN_SETTINGS: SettingsTabItem[] = [
   { id: 'about', icon: 'info', order: 110 },
 ]
 
-/**
- * L.I.F.E owns every chat surface. Keeping this empty is intentional: when
- * Core disables the life plugin it filters life.patch, removing the dialogue,
- * stage, and memory/status sidebar together instead of leaving a stale shell.
- */
 export const BUILTIN_CHAT: ChatSlotItem[] = []
 
 function insertSorted<T extends { id: string; order?: number }>(
@@ -294,18 +251,15 @@ export const useUIPatchesStore = defineStore('uiPatches', () => {
     return out
   })
 
-  /** Full StatusPanel list: builtin anchors + patch sections. */
   const statusSections = computed<StatusSection[]>(() =>
     applyListOps(BUILTIN_STATUS, opsFor('status'), (ex, incoming) => ({
       ...ex,
       ...incoming,
       id: incoming.id,
-      // keep axes when replace omits them
       axes: incoming.axes ?? (ex as StatusSection).axes,
     })),
   )
 
-  /** Legacy alias for simple kv appends. */
   const statusItems = computed(() =>
     statusSections.value.filter((s) => s.kind === 'kv' || s.kind === 'count'),
   )
@@ -319,11 +273,6 @@ export const useUIPatchesStore = defineStore('uiPatches', () => {
     })),
   )
 
-  /**
-   * Bootstrap modules: patches with target "bootstrap" whose ESM entry the host
-   * imports once at startup. Used by plugins that must patch global behaviour
-   * (for example an API compatibility layer).
-   */
   const bootstrapItems = computed<BootstrapItem[]>(() => {
     const out: BootstrapItem[] = []
     for (const op of opsFor('bootstrap')) {
@@ -342,21 +291,14 @@ export const useUIPatchesStore = defineStore('uiPatches', () => {
     return settingsTabs.value.find((t) => t.id === id)
   }
 
-  /**
-   * Theme patches (target "theme"): design-token overrides plus raw CSS a
-   * plugin contributes to replace or layer over the Material 3 Expressive
-   * palette. `applyThemePatches()` renders them into <head> in this order.
-   */
   const themePatches = computed<ThemePatchItem[]>(() => applyListOps<ThemePatchItem>([], opsFor('theme')))
 
-  /** Settings ids removed by patches (may target plugin-only sections). */
   const removedSettingsIds = computed(() =>
     patches.value
       .filter((p) => p.target === 'settings' && p.op === 'remove' && p.id)
       .map((p) => p.id!),
   )
 
-  /** ChatPage slots: builtin layout + chat patches. */
   const chatSlots = computed<ChatSlotItem[]>(() =>
     applyListOps(BUILTIN_CHAT, opsFor('chat'), (ex, incoming) => ({
       ...ex,
@@ -369,7 +311,6 @@ export const useUIPatchesStore = defineStore('uiPatches', () => {
     return chatSlots.value.filter((s) => s.region === region)
   }
 
-  /** Patch-only tabs that declare their own fields (not a builtin component pane). */
   const patchFieldTabs = computed(() =>
     settingsTabs.value.filter((t) => t.fields && t.fields.length > 0 && !isBuiltinSettingsId(t.id)),
   )
@@ -378,21 +319,10 @@ export const useUIPatchesStore = defineStore('uiPatches', () => {
     return BUILTIN_SETTINGS.some((b) => b.id === id)
   }
 
-  /** Whether a builtin id still exists after removes/replaces. */
   function hasSettingsTab(id: string): boolean {
     return settingsTabs.value.some((t) => t.id === id)
   }
 
-  /**
-   * Plugin names that contribute UI, so the shell knows whose string resources
-   * to fetch.
-   *
-   * Two sources, unioned on purpose. A patch file's `plugin` field is
-   * author-supplied and has been shipped empty (skillsguishow declared
-   * `"plugin": ""`), which silently cost that plugin every one of its strings.
-   * The module URL, by contrast, is the path Core actually serves the bundle
-   * from, so a plugin whose patch omits its own name is still picked up.
-   */
   const pluginNames = computed<string[]>(() => {
     const names = new Set<string>()
     for (const op of patches.value) {

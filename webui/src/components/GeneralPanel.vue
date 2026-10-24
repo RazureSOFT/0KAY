@@ -15,9 +15,7 @@ function changeLanguage(code: string) {
 
 <template>
   <div class="content-card">
-    <!-- h2 first: a heading outline that starts with an h3 (from PairingPanel)
-         before any h2 reads as a broken document to assistive tech. -->
-    <h2>{{ t('settings.tabs.general') }}</h2>
+        <h2>{{ t('settings.tabs.general') }}</h2>
     <p class="card-desc">{{ t('settings.generalDesc') }}</p>
 
     <div class="field">

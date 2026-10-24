@@ -5,18 +5,11 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 const form = reactive<Record<string, any>>({
   screen_watch: false, computer_use: false, report_agent_host: '',
-  // Fail closed: mail approval defaults ON so an unloaded/failed settings read
-  // cannot silently persist an auto-approve state.
   mail_require_approval: true, mail_auto_approve_all: false,
   mcp_enabled: true, onebot_enabled: false, onebot_ws_url: 'ws://127.0.0.1:6700', onebot_http_url: 'http://127.0.0.1:6700', onebot_access_token: '', onebot_trigger_keywords: '',
   onebot_observe_group: true, proactive_daily_limit: 3, proactive_target_limit: 1,
   think_model: '', output_model: '',
-  // 「喊一声唤醒」: the nickname is the wake word. It lives here so the persona's
-  // name has one home; the chat page reads it and does the actual listening.
   wake_enabled: false, wake_nickname: '', asr_language: 'zh',
-  // Which media the character is allowed to choose on its own. Voice and selfie
-  // are on by default because both degrade gracefully (no TTS backend → the text
-  // still arrives); a call is a mode change, so it stays opt-in.
   voice_reply_enabled: true, selfie_enabled: true, call_enabled: false,
 })
 const state = ref('')
@@ -155,7 +148,6 @@ onMounted(load)
 <style scoped>
 .life-settings { --ls-spring: var(--ease-spring); padding: 4px; }
 
-/* ---------- Expressive hero ---------- */
 .ls-hero {
   position: relative;
   overflow: hidden;
@@ -208,7 +200,6 @@ onMounted(load)
 #app .ls-save:disabled { opacity: .55; cursor: not-allowed; }
 .ls-save-ic { font-size: 16px; }
 
-/* ---------- Cards ---------- */
 .ls-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .ls-card {
   position: relative;
@@ -251,7 +242,6 @@ onMounted(load)
 .ls-label { margin: 4px 0 -4px; font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--md-on-surface-variant); }
 .ls-empty { font-size: 13px; color: var(--md-on-surface-variant); padding: 8px 2px; }
 
-/* ---------- Filled fields ---------- */
 .ls-field { display: flex; flex-direction: column; gap: 6px; }
 .ls-field > span { font-size: 12px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--md-on-surface-variant); }
 #app .ls-field input {
@@ -269,7 +259,6 @@ onMounted(load)
 }
 #app .ls-field input:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 2px; }
 
-/* ---------- Switches (check-in-thumb) ---------- */
 #app .ls-switch {
   display: flex; align-items: center; gap: 14px; padding: 14px 16px;
   border: 1px solid color-mix(in srgb, var(--md-outline-variant) 60%, transparent);
@@ -307,7 +296,6 @@ onMounted(load)
 .ls-switch input:checked + .ls-track { background: var(--md-primary); border-color: var(--md-primary); }
 .ls-switch input:checked + .ls-track::after { transform: translateY(-50%) translateX(22px) scale(1.2); background: var(--md-on-primary); color: var(--md-primary); }
 
-/* ---------- Model pickers ---------- */
 .ls-models { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .ls-model {
   position: relative;
@@ -334,16 +322,12 @@ onMounted(load)
   background: var(--md-primary); color: var(--md-on-primary);
   font-size: 12px; font-weight: 900;
 }
-/* Restated under `#app` so they survive the platform's
- * `#app button { border-radius: 18px }` (1,0,1), which beat this file's scoped
- * rules (0,2,0) and silently flattened the selected card's clipped corner — the
- * shape that signals "this one is chosen" never rendered. */
+
 #app .ls-model { border-radius: 20px; }
 #app .ls-model.selected { border-radius: 20px 20px 20px 8px; }
 .ls-model b { font-size: 13px; word-break: break-all; }
 .ls-model span { font-size: 12px; color: var(--md-on-surface-variant); }
 
-/* Explanatory line under a card (currently the wake card's backend note). */
 .ls-hint {
   margin: 12px 0 0;
   font-size: 12.5px;

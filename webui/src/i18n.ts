@@ -4,7 +4,6 @@ import ja from './locales/ja.json'
 import zh from './locales/zh.json'
 import zhHant from './locales/zh-Hant.json'
 
-/** Languages offered in the UI. `zh` is Simplified, `zh-Hant` Traditional. */
 export const LOCALES = [
   { code: 'en', label: 'English', english: 'English' },
   { code: 'ja', label: '日本語', english: 'Japanese' },
@@ -15,7 +14,6 @@ export const LOCALES = [
 const CODES: string[] = LOCALES.map((locale) => locale.code)
 type LocaleCode = (typeof LOCALES)[number]['code']
 
-/** Resolve the initial locale from storage, then the browser, then English. */
 function detectLocale(): string {
   const saved = localStorage.getItem('0kay_lang')
   if (saved && CODES.includes(saved)) return saved

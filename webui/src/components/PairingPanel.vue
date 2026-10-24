@@ -20,11 +20,6 @@ const error = ref('')
 const revoking = ref('')
 let timer: ReturnType<typeof setInterval> | undefined
 
-/**
- * Re-reads both lists. `refresh` runs on a 3s poll, so a failing call must not
- * clear the list it already has — a Core restart would otherwise blank the panel
- * and look like the devices disappeared.
- */
 async function refresh() {
   try {
     const response = await fetch('/api/pairing/pending')
@@ -36,9 +31,7 @@ async function refresh() {
   try {
     const response = await fetch('/api/pairing/devices')
     if (response.ok) devices.value = (await response.json()).devices || []
-    // An older Core may not expose the device list at all; keep what we have.
   } catch {
-    /* ignored on purpose */
   }
 }
 
@@ -58,7 +51,6 @@ async function decide(request: PairingRequest, allow: boolean) {
 
 async function disconnect(device: { id: string; name?: string }) {
   if (revoking.value) return
-  // Revoking cuts the device's session; confirm before doing it.
   const ok = await confirm({
     title: t('pairing.disconnect'),
     message: t('pairing.disconnectConfirm', { name: device.name || device.id }),
@@ -133,10 +125,7 @@ onUnmounted(() => clearInterval(timer))
 </template>
 
 <style scoped>
-/* Layout only. The buttons take their look from the design-system variants
-   (btn / btn-primary / btn-ghost / btn-danger-tonal) instead of local style:
-   this panel previously used `class="danger"`, which no stylesheet defines, and
-   tried to fake it with `border-color` on a button whose base border is `none`. */
+
 .pairing-panel { margin: 24px 0; padding: 20px; background: var(--md-surface-container-low); border-radius: 12px; }
 .pairing-panel p { margin: 12px 0; color: var(--md-on-surface-variant); }
 .pairing-panel .pairing-error { color: var(--md-error); }
@@ -145,7 +134,6 @@ code { font-size: 24px; letter-spacing: 4px; }
 h4 { margin: 18px 0 0; }
 .pairing-list { position: relative; }
 
-/* Device/request rows join and leave with a fade instead of popping. */
 .pair-enter-active, .pair-leave-active { transition: opacity var(--duration-medium) var(--ease-out), transform var(--duration-medium) var(--ease-out); }
 .pair-enter-from, .pair-leave-to { opacity: 0; transform: translateY(4px); }
 .pair-leave-active { position: absolute; width: 100%; }

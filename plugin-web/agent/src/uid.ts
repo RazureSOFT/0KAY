@@ -1,4 +1,3 @@
-// crypto.randomUUID is unavailable on insecure origins (LAN HTTP).
 export function uid(prefix = ''): string {
   const core =
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'

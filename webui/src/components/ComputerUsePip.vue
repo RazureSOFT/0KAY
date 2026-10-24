@@ -44,10 +44,10 @@ function connect() {
   try {
     const es = new EventSource('/api/tasks/events')
     es.addEventListener('tasks', (event: MessageEvent) => {
-      try { applyDelta(JSON.parse(event.data)) } catch { /* ignore malformed frame */ }
+      try { applyDelta(JSON.parse(event.data)) } catch { }
     })
     source = es
-  } catch { /* EventSource unavailable */ }
+  } catch { }
 }
 
 function onStart() {
@@ -59,7 +59,6 @@ function onStart() {
 function onStop() {
   if (!visible.value || dismissed.value) return
   clearTimeout(hideTimer)
-  // Keep the window briefly after the last action so short tool steps do not flicker.
   hideTimer = setTimeout(() => { if (!active.value && !dismissed.value) visible.value = false }, 4000)
 }
 
@@ -147,7 +146,7 @@ function persist() {
   try {
     if (position.value) localStorage.setItem('0kay.web.computeruse.pos', JSON.stringify(position.value))
     localStorage.setItem('0kay.web.computeruse.size', JSON.stringify(size.value))
-  } catch { /* storage disabled */ }
+  } catch { }
 }
 
 const style = computed<Record<string, string>>(() => {
@@ -163,7 +162,7 @@ onMounted(() => {
     if (savedPosition) position.value = JSON.parse(savedPosition)
     const savedSize = localStorage.getItem('0kay.web.computeruse.size')
     if (savedSize) size.value = JSON.parse(savedSize)
-  } catch { /* storage disabled */ }
+  } catch { }
   connect()
   statusTimer = setInterval(() => { if (visible.value) void refreshStatus() }, 15000)
 })

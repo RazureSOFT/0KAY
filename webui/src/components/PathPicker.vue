@@ -1,24 +1,10 @@
 <script setup lang="ts">
-/**
- * In-app directory picker for `dir` settings fields.
- *
- * Settings used to be "type the absolute path into a text box", which is a trap
- * on Windows (`D:\Genie` vs `D:/Genie` vs a typo'd drive) and impossible to
- * verify before saving. The backend that can list directories already exists —
- * the agent's `workspace_browse` tool, exposed as `GET /api/agent/workspace` —
- * and so does a native dialog (`GET /api/agent/pick-folder`), so this component
- * only has to be the UI for them. Nothing here writes to disk.
- *
- * Both endpoints go through the agent, so an offline executor shows a hint and
- * leaves the text box editable rather than pretending the folder is empty.
- */
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ModalShell from './ModalShell.vue'
 
 const props = defineProps<{
   open: boolean
-  /** Starting directory; falls back to the executor's cwd when empty. */
   initial?: string
   title?: string
 }>()
@@ -35,11 +21,6 @@ const error = ref('')
 const typed = ref('')
 const nativeBusy = ref(false)
 
-/**
- * Where the last browse session ended. An empty field (e.g. the ONNX model
- * directory, which lives inside the install directory) should open next to what
- * the user just picked instead of dropping them at the executor's cwd.
- */
 let lastBrowsed = ''
 
 async function load(target: string) {
@@ -49,7 +30,6 @@ async function load(target: string) {
     const res = await fetch(`/api/agent/workspace?path=${encodeURIComponent(target || '')}`)
     if (!res.ok) {
       const body: { error?: string } = await res.json().catch(() => ({}))
-      // Keep the previous listing: a bad path must not wipe the panel.
       error.value = body?.error || `HTTP ${res.status}`
       return
     }
@@ -96,15 +76,12 @@ function goUp() {
   if (parent.value && parent.value !== cwd.value) void load(parent.value)
 }
 
-/** OS dialog on the executor host: the only way to pick a path on another drive
- *  without navigating to it, and the familiar affordance for most users. */
 async function nativePick() {
   if (nativeBusy.value) return
   nativeBusy.value = true
   error.value = ''
   try {
     const res = await fetch(`/api/agent/pick-folder?title=${encodeURIComponent(props.title || t('settings.pathPickTitle'))}`)
-    // Cancel is a 400 with no message — that is not an error worth showing.
     if (res.ok) {
       const data: { path?: string } = await res.json().catch(() => ({}))
       if (data?.path) { emit('pick', String(data.path)); close() }

@@ -25,7 +25,6 @@ const error = ref('')
 const newPin = ref('')
 const confirmPin = ref('')
 
-/** Every routable page: sidebar entries plus pages registered by patches. */
 const pages = computed<{ path: string; label: string }[]>(() => {
   const out: { path: string; label: string }[] = []
   const seen = new Set<string>()
@@ -222,8 +221,6 @@ async function onRemovePin() {
 <style scoped>
 .security-panel { max-width: 920px; }
 
-/* Uniform card stack: the switches reuse the global .toggle-label card, so
-   every section below shares the same border/radius/surface tokens. */
 .sec-stack {
   display: flex;
   flex-direction: column;
@@ -263,9 +260,6 @@ async function onRemovePin() {
 
 .sec-card > .helper-text { margin: 2px 0 12px; }
 
-/* Each PIN group sits in its own tinted inset, so the new-PIN and confirm
-   boxes never share a row or overlap. Scoped names avoid the wizard's
-   #app .pin-row rules entirely. */
 .sec-pin-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -295,7 +289,6 @@ async function onRemovePin() {
   margin-top: 18px;
 }
 
-/* Page scope: light rows inside the card instead of nested cards. */
 .page-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));

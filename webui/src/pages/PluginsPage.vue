@@ -78,8 +78,6 @@ const readme = ref('')
 const readmeLoading = ref(false)
 const readmeError = ref('')
 const readmeCache = new Map<string, string>()
-// Monotonic token so a slow README fetch for plugin A cannot overwrite the
-// README of plugin B opened right after it.
 let readmeToken = 0
 
 const healthyCount = computed(() => plugins.value.filter((p) => p.runtime && isHealthy(p)).length)
@@ -128,8 +126,6 @@ async function loadReadme(p: PluginRow) {
   readme.value = ''
   try {
     let text = ''
-    // raw.githubusercontent.com is not API rate limited; HEAD follows the
-    // repository's default branch.
     for (const file of README_FILES) {
       const res = await fetch(`https://raw.githubusercontent.com/${slug}/HEAD/${file}`)
       if (token !== readmeToken) return
@@ -167,9 +163,6 @@ function isHealthy(p: PluginRow) {
 }
 
 async function fetchPlugins(background = false) {
-  // Background polling must not flip loading or clear error: it made the
-  // Refresh button flash "Refreshing" every 5s and silently wiped an error
-  // banner the user was still reading.
   if (!background) {
     loading.value = true
     error.value = ''
@@ -255,13 +248,9 @@ async function togglePlugin(p: PluginRow) {
       body: JSON.stringify({ enabled: enable }),
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    // Re-fetch patches too: the owner filter in /api/ui/patches changes with the
-    // switch, and main.ts re-applies ops (nav/routes/theme) on every store change.
     await Promise.all([fetchPlugins(), sections.fetchSections(), uiPatches.fetchPatches()])
   } catch (e: any) {
     error.value = e.message || t('plugins.actionFailed')
-    // The banner sits at the top of a long list; the switch the user just
-    // flipped is mid-page. Say it where they are looking, too.
     toast(e.message || t('plugins.actionFailed'), 'error')
   } finally {
     toggling.value = ''
@@ -573,7 +562,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* Plugins page — Material 3 Expressive. #app prefixes out-rank the host layer. */
+
 .plugins-page {
   height: 100%;
   overflow-y: auto;
@@ -690,11 +679,7 @@ onUnmounted(() => {
 .plugin-switch.busy { opacity: .6; cursor: wait; }
 .plugin-switch-label { white-space: nowrap; }
 
-  /* Shape only. Setting background/color here out-specifies the design system's
-     bare .btn-* variants (0,1,0), which is why this page used to carry its own
-     copy of .btn-tonal and .btn-danger: they had to be re-declared at matching
-     specificity just to survive. Colour belongs to the variant, so the variant
-     classes now come from theme.css and are not restated here. */
+  
   #app .plugins-page .btn {
     height: 46px; padding: 0 22px; border: 1px solid transparent; border-radius: 999px;
     font-weight: 700; font-size: 14px;
@@ -710,7 +695,6 @@ onUnmounted(() => {
 .empty-state p { margin: 0; font-size: 15px; font-weight: 600; color: var(--md-on-surface); }
 .empty-state .hint { font-size: 13px; margin-top: 8px; font-weight: 400; opacity: .8; }
 
-/* Plugin detail dialog (teleported to body). */
 .pd-scrim {
   position: fixed; inset: 0; z-index: var(--z-modal);
   background: var(--md-scrim); backdrop-filter: blur(6px);

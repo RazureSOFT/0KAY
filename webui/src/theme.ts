@@ -1,25 +1,5 @@
-/**
- * Declarative theme patches (patch target: "theme").
- *
- * A plugin replaces or layers over the host Material 3 Expressive palette
- * without shipping JavaScript: it contributes design tokens (`--md-*` maps)
- * and/or raw CSS, and the host renders both into <head> in patch order.
- *
- * Cascade rules the renderer guarantees:
- *   - one <style id="0kay-theme-patch-{id}"> per item, one <link> per cssUrl
- *   - elements are kept in patch order (`order` ascending) in <head>
- *   - light tokens compile to `html:root { … }`
- *   - dark tokens compile to `html:root[data-theme="dark"] { … }` at (0,2,1):
- *     an imperatively injected sheet (`html[data-theme="dark"]` from the
- *     darkmode bootstrap, (0,1,1)) must lose on specificity alone — it may be
- *     appended after us, so document order is not something we can rely on.
- */
-
-/** Per-scheme token maps. Unset schemes inherit the host palette. */
 export interface ThemeTokens {
-  /** Applied while `html[data-theme]` is absent or anything but `dark`. */
   light?: Record<string, string>
-  /** Applied while `html[data-theme="dark"]` (set by a darkmode plugin). */
   dark?: Record<string, string>
 }
 
@@ -27,18 +7,14 @@ export interface ThemePatchItem {
   id: string
   plugin?: string
   order?: number
-  /** Either a flat `{"--md-primary": "#6750A4"}` map (both schemes) or `{light, dark}`. */
   tokens?: Record<string, string> | ThemeTokens
-  /** Raw CSS appended after the token declarations. */
   css?: string
-  /** Stylesheet URL served by Core, e.g. `/api/plugins/{name}/ui/theme.css`. */
   cssUrl?: string
 }
 
 export const THEME_STYLE_PREFIX = '0kay-theme-patch-'
 export const THEME_LINK_PREFIX = '0kay-theme-patch-css-'
 
-/** Minimal DOM surface so the renderer is testable without jsdom. */
 export interface ThemeDocument {
   createElement(tag: string): any
   head?: {
@@ -59,19 +35,16 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
 
-/** Custom property names we are willing to emit (`--name` only). */
 function isCustomProperty(key: string): boolean {
   return /^--[A-Za-z0-9_-]+$/.test(key)
 }
 
-/** Token values that would break out of a declaration block are dropped. */
 function isSafeValue(value: unknown): boolean {
   if (typeof value === 'number' && Number.isFinite(value)) return true
   if (typeof value !== 'string') return false
   return !/[;{}]/.test(value)
 }
 
-/** Split a patch item's `tokens` into `{light, dark}` declaration maps. */
 export function resolveTokenSets(
   tokens: ThemePatchItem['tokens'],
 ): { light: Record<string, string>; dark: Record<string, string> } {
@@ -103,7 +76,6 @@ function declarationBlock(decls: Record<string, string>): string {
   return body ? `{\n${body}\n}` : ''
 }
 
-/** Compile one theme item into the CSS text its <style> element holds. */
 export function buildThemeCSS(item: ThemePatchItem | null | undefined): string {
   if (!item) return ''
   const { light, dark } = resolveTokenSets(item.tokens)
@@ -117,7 +89,6 @@ export function buildThemeCSS(item: ThemePatchItem | null | undefined): string {
   return parts.join('\n')
 }
 
-/** Stable `order`-ascending ordering (missing order sorts last). */
 export function sortThemePatches(items: ThemePatchItem[]): ThemePatchItem[] {
   return items
     .filter((i) => i && typeof i.id === 'string' && i.id.length > 0)
@@ -129,7 +100,6 @@ function slug(id: string): string {
   return id.replace(/[^A-Za-z0-9_-]/g, '-')
 }
 
-/** `<style>`/`<link>` nodes currently owned by this module, keyed by element id. */
 const mounted = new Map<string, ThemeNode>()
 let lastOrder: string[] = []
 
@@ -138,11 +108,6 @@ function defaultDocument(): ThemeDocument | undefined {
   return document as unknown as ThemeDocument
 }
 
-/**
- * Render the active theme patches into <head>, pruning anything whose item was
- * removed. Safe to call on every patch refresh: unchanged items are left alone
- * and the DOM is only reordered when the effective order changed.
- */
 export function applyThemePatches(items: ThemePatchItem[], doc?: ThemeDocument): void {
   const d = doc ?? defaultDocument()
   if (!d || !d.head) return
@@ -191,9 +156,6 @@ export function applyThemePatches(items: ThemePatchItem[], doc?: ThemeDocument):
 
   const changed =
     wanted.length !== lastOrder.length || wanted.some((id, i) => lastOrder[i] !== id)
-  // Declarative patches outrank imperatively injected sheets: if some script
-  // (the darkmode bootstrap, say) appended to <head> after us, move ours back
-  // to the end so `order` keeps meaning what it says.
   const overtaken = isOvertaken(d, wanted)
   if (changed || overtaken) {
     for (const id of wanted) {
@@ -212,7 +174,6 @@ function isOvertaken(d: ThemeDocument, wanted: string[]): boolean {
   return !wanted.includes(String(last.id ?? ''))
 }
 
-/** Drop every node this module created (used by tests / hot reload). */
 export function resetThemePatches(): void {
   for (const node of Array.from(mounted.values())) node.remove?.()
   mounted.clear()

@@ -84,8 +84,7 @@ onUnmounted(()=>{document.removeEventListener('pointerdown',outside,true);window
  </div>
 </template>
 <style>
-/* Global select — Material 3 Expressive. Menu is teleported to <body>, so its
-   rules stay unwrapped while the trigger is scoped under #app. */
+
 #app .app-select{min-width:0;position:relative;font-size:inherit}
 #app .app-select.input{padding:0;border:0;min-height:0;background:transparent}
 #app .app-select-trigger{

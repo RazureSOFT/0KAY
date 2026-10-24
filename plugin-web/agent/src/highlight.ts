@@ -1,4 +1,3 @@
-// Shared highlight.js setup for read-only code views and the live code editor.
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
 import typescript from 'highlight.js/lib/languages/typescript'
@@ -37,8 +36,6 @@ const languages: Record<string, any> = {
 }
 for (const [name, definition] of Object.entries(languages)) hljs.registerLanguage(name, definition)
 
-// Extension → registered language. Kept small on purpose; anything unknown
-// falls back to highlight.js auto-detection.
 const EXT: Record<string, string> = {
   js: 'javascript', jsx: 'javascript', mjs: 'javascript', cjs: 'javascript',
   ts: 'typescript', tsx: 'typescript', mts: 'typescript', cts: 'typescript',
@@ -67,7 +64,6 @@ export function escapeHtml(text: string): string {
   return text.replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[char] as string)
 }
 
-// Long files are shown without highlighting to keep the editor responsive.
 const MAX_HIGHLIGHT = 300_000
 export function highlightCode(code: string, path?: string): string {
   const value = code ?? ''
@@ -80,9 +76,6 @@ export function highlightCode(code: string, path?: string): string {
   } catch { return escapeHtml(value) }
 }
 
-// Fence info-strings use language names (`typescript`, `golang`, `c++`) while
-// files use extensions, so both need their own alias table before falling back
-// to auto-detection.
 const FENCE_ALIAS: Record<string, string> = {
   javascript: 'javascript', node: 'javascript', typescript: 'typescript',
   python: 'python', golang: 'go', shell: 'bash', console: 'bash', terminal: 'bash',

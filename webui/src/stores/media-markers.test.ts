@@ -1,10 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { parseMedia } from './media-markers'
 
-// These three strings are the contract with life/src/life/media.py. A typo on
-// either side is a silent no-op: the character thinks it sent a photo and the
-// user sees nothing.
-
 describe('parseMedia', () => {
   test('reads a voice tag and removes it from the text', () => {
     const { media, cleaned } = parseMedia('今天想你了[[voice]]')
@@ -38,7 +34,6 @@ describe('parseMedia', () => {
     const text = '普通的一句话 [[motion:Idle:0]]'
     const { media, cleaned } = parseMedia(text)
     expect(media).toEqual({})
-    // Live2D tags belong to a different parser and must survive this one.
     expect(cleaned).toBe(text)
   })
 

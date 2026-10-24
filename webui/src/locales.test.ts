@@ -4,16 +4,8 @@ import ja from './locales/ja.json'
 import zh from './locales/zh.json'
 import zhHant from './locales/zh-Hant.json'
 
-/**
- * The four locales are supposed to be line-for-line parallel. Nothing enforces
- * that today: a key added to `en` and forgotten in `ja` renders as the raw key at
- * runtime, which is exactly the class of bug that is invisible in review and
- * annoying in use. These tests fail on the first missing or extra key.
- */
-
 const LOCALES = { en, zh, ja, 'zh-Hant': zhHant } as Record<string, any>
 
-/** Every leaf key path in an object, dotted. */
 function keyPaths(value: any, prefix = ''): string[] {
   if (value === null || typeof value !== 'object') return [prefix]
   return Object.entries(value).flatMap(([key, child]) =>
@@ -37,7 +29,6 @@ describe('locale parity', () => {
     })
 
     it(`${code} has no empty or untranslated-looking values`, () => {
-      // A value that is literally the key path means the lookup failed.
       const offenders: string[] = []
       const walk = (value: any, prefix = '') => {
         if (value === null || typeof value !== 'object') {
@@ -56,7 +47,6 @@ describe('locale parity', () => {
   }
 
   it('ships the console keys the page asks for', () => {
-    // Guards the ConsolePage <-> locale contract without parsing the template.
     for (const [code, locale] of Object.entries(LOCALES)) {
       expect(locale.nav.console, `${code}.nav.console`).toBeTruthy()
       for (const key of [

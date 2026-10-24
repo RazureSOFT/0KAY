@@ -7,7 +7,6 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   autofocus?: boolean
   invalid?: boolean
-  /** id of an external error element to associate via aria-describedby. */
   errorId?: string
 }>(), { modelValue: '', length: 6, disabled: false, autofocus: false, invalid: false, errorId: '' })
 
@@ -47,8 +46,6 @@ function onKeydown(index: number, event: KeyboardEvent) {
 }
 
 function onPaste(index: number, event: ClipboardEvent) {
-  // maxlength=1 truncates a pasted code in the browser before any input event,
-  // so "paste the 6-digit code" must be handled here explicitly.
   const digits = (event.clipboardData?.getData('text') || '').replace(/\D/g, '')
   if (!digits) return
   event.preventDefault()

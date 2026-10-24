@@ -1,16 +1,4 @@
 <script setup lang="ts">
-/**
- * Connection QR pairing panel.
- *
- * Shows a QR code the 0KAY Android app can scan to connect. The advertised
- * host/port/TLS can be overridden here (e.g. when Core is exposed through FRP
- * or another reverse proxy) without changing Core's networking. Token/PIN are
- * optional: leave them empty for a trusted-LAN (CORE_TRUSTED_NETWORKS) setup.
- *
- * The default host is the machine's LAN IPv4, read from Core's read-only
- * `addresses` hint on /api/auth/session, so a phone on the same network can
- * scan and connect with no manual typing. Editing the host pins it.
- */
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import qrcodegen from '../vendor/qrcodegen'
@@ -35,7 +23,6 @@ function loadSaved(): Saved {
   }
 }
 
-/** Prefer classic private ranges, then anything else, keeping the first seen. */
 function pickLan(addresses: string[]): string {
   const rank = (ip: string) => {
     if (/^192\.168\./.test(ip)) return 0
@@ -51,13 +38,9 @@ const saved = loadSaved()
 const hostOverride = !!saved.hostOverride
 const host = ref(saved.hostOverride && saved.host ? saved.host : location.hostname)
 const hostEdited = ref(hostOverride)
-// The WebUI (Vite :3000 in dev) is not where the phone talks to: the API lives
-// on Core. Default to Core's HTTP port; only a standard TLS origin keeps its port.
 const defaultPort = location.protocol === 'https:' ? location.port || '443' : '8080'
 const port = ref(saved.port ?? defaultPort)
 const tls = ref(saved.tls ?? location.protocol === 'https:')
-// Token / PIN are secrets and are never persisted or pre-filled; the user
-// re-enters them each time (or leaves them blank for a trusted LAN).
 const token = ref('')
 const pin = ref('')
 const name = ref(saved.name ?? '0KAY')
@@ -77,7 +60,6 @@ onMounted(async () => {
       if (!hostEdited.value && lan) host.value = lan
     }
   } catch {
-    /* offline */
   }
 })
 
@@ -130,7 +112,6 @@ async function copyLink() {
     copied.value = true
     setTimeout(() => (copied.value = false), 1500)
   } catch {
-    /* clipboard may be unavailable */
   }
 }
 </script>
@@ -217,18 +198,12 @@ async function copyLink() {
 <style scoped>
 .connection-grid {
   display: grid;
-  /* Both tracks must be shrinkable. The old `minmax(280px, 1fr) auto` refused
-     to go below 280px + 264px, and `.content-card { overflow: hidden }`
-     (settings.css) clipped the QR instead of scrolling — the code became
-     unscannable on any viewport where the content column is under ~570px,
-     which is every laptop width between 801px and ~1100px. */
+  
   grid-template-columns: minmax(0, 1fr) minmax(0, 264px);
   gap: 24px;
   align-items: start;
 }
-/* Stack well before the settings sidebar collapses (settings.css: 800px):
-   between 801px and ~1000px the content column is only ~470-640px wide, so a
-   dedicated QR column would squeeze the form under 200px. */
+
 @media (max-width: 1000px) {
   .connection-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -247,8 +222,7 @@ async function copyLink() {
   background: #fff;
   border-radius: 8px;
   padding: 6px;
-  /* The SVG carries width/height="264" attributes for intrinsic sizing; the
-     viewBox keeps the aspect ratio when the column is narrower. */
+  
   width: 100%;
   max-width: 264px;
   height: auto;
@@ -260,8 +234,7 @@ async function copyLink() {
   opacity: 0.7;
   text-align: center;
 }
-/* A long hostname / IPv6 literal / core id has no break opportunity of its own
-   and would push the card wider than its column. */
+
 .helper-text {
   overflow-wrap: anywhere;
 }

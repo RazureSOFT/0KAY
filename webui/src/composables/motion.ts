@@ -1,4 +1,3 @@
-/** Shared state-layer feedback; delegated so dynamically loaded UI patches work. */
 export function installInteractionMotion() {
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
   function press(event: PointerEvent) {

@@ -16,8 +16,6 @@ const trigger=ref<HTMLButtonElement|null>(null)
 const panel=ref<HTMLElement|null>(null)
 const searchInput=ref<HTMLInputElement|null>(null)
 const list=ref<HTMLElement|null>(null)
-// Roving cursor over the filtered list. Kept in step with `filtered` so the
-// arrow keys move a real selection rather than silently doing nothing.
 const active=ref(-1)
 const id=uid('mtp')
 
@@ -48,10 +46,6 @@ async function toggle(){
   if(opened.value){close();return}
   opened.value=true;query.value='';active.value=Math.max(0,filtered.value.findIndex(o=>o.id===props.modelId))
   emit('open');layout();await nextTick()
-  // The panel is Teleport-ed to <body>, so without this the tab order walks the
-  // rest of the page before reaching it: the role="dialog" is never focused, its
-  // @keydown.esc never fires, and the search box is effectively keyboard-
-  // unreachable. ThinkingSlider's own non-inline branch already does this.
   searchInput.value?.focus();reveal()
 }
 function pick(id:string){emit('update:modelId',id);close()}
@@ -60,7 +54,6 @@ async function keydown(event:KeyboardEvent){
   if(event.key==='Tab'){close(false);return}
   if(event.key==='Escape'){if(opened.value){event.preventDefault();close()}return}
   if(!['ArrowDown','ArrowUp','Home','End','Enter'].includes(event.key))return
-  // Arrow keys inside the search field belong to text editing.
   if(event.target===searchInput.value&&event.key!=='Enter'&&event.key!=='Escape')return
   event.preventDefault()
   if(!filtered.value.length)return
@@ -73,11 +66,7 @@ async function keydown(event:KeyboardEvent){
 }
 function outside(event:PointerEvent){const target=event.target as Node;if(!trigger.value?.contains(target)&&!panel.value?.contains(target))opened.value=false}
 function scroll(event:Event){if(opened.value&&(!(event.target instanceof Node)||!panel.value?.contains(event.target)))layout()}
-// Narrowing the list resets the cursor to the first row instead of leaving it
-// pointing past the end, where ArrowUp would appear dead.
 watch(filtered,()=>{if(opened.value)active.value=filtered.value.length?0:-1})
-// A run starting flips `disabled` while the popover is open; leaving it open
-// would let the user keep changing the model mid-run.
 watch(()=>props.disabled,value=>{if(value)close(false)})
 onMounted(()=>{document.addEventListener('pointerdown',outside,true);window.addEventListener('resize',layout);window.addEventListener('scroll',scroll,true)})
 onUnmounted(()=>{document.removeEventListener('pointerdown',outside,true);window.removeEventListener('resize',layout);window.removeEventListener('scroll',scroll,true)})
@@ -98,9 +87,7 @@ onUnmounted(()=>{document.removeEventListener('pointerdown',outside,true);window
      <div class="mtp-divider" />
      <input ref="searchInput" v-model="query" class="mtp-search" type="search" :placeholder="t('agent.page.modelSearch')" :aria-label="t('agent.page.modelSearch')" />
      <div ref="list" class="mtp-list" role="listbox" :aria-label="t('agent.page.model')">
-      <!-- A div, not a button: role="option" must not be an interactive
-           descendant, and the listbox owns focus via aria-activedescendant. -->
-      <div v-for="(option,index) in filtered" :id="`${id}-${index}`" :key="option.id" class="mtp-option" :class="{sel:option.id===modelId,active:active===index}" role="option" :aria-selected="option.id===modelId" :data-index="index" @pointermove="active=index" @click="choose(index)">
+            <div v-for="(option,index) in filtered" :id="`${id}-${index}`" :key="option.id" class="mtp-option" :class="{sel:option.id===modelId,active:active===index}" role="option" :aria-selected="option.id===modelId" :data-index="index" @pointermove="active=index" @click="choose(index)">
        <span class="mtp-option-label">{{ option.label }}</span>
        <span v-if="option.id===modelId" class="mtp-check" aria-hidden="true">✓</span>
       </div>
@@ -114,11 +101,7 @@ onUnmounted(()=>{document.removeEventListener('pointerdown',outside,true);window
 <style scoped>
 .mtp{min-width:130px;flex:1;display:flex;flex-direction:column;gap:5px}
 .mtp-caption{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--md-on-surface-variant)}
-/* Match the options bar exactly. The real control size comes from
-   `#app .workspace .execution-options ...` (1,3,0): 52px / radius 16 /
-   surface-container-high / 13px. The trigger is a <button>, so `#app button`
-   (1,0,1) also beats a plain scoped `.mtp-trigger` (0,2,0);
-   `#app .execution-options ...` (1,2,1) wins it back. */
+
 #app .execution-options .mtp-trigger{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:0 14px 0 16px;border:1px solid transparent;border-radius:16px;background:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;font-size:13px;font-weight:600;text-align:left;text-transform:none;letter-spacing:0.1px;cursor:pointer;box-shadow:none;transition:background-color var(--duration-short) var(--ease-out),border-color var(--duration-short) var(--ease-out),box-shadow var(--duration-medium) var(--ease-out)}
 #app .execution-options .mtp-trigger:hover:not(:disabled){background:var(--md-surface-container-highest)}
 #app .execution-options .mtp-trigger[aria-expanded="true"],#app .execution-options .mtp-trigger:focus-visible{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent);outline:none}
@@ -146,9 +129,6 @@ onUnmounted(()=>{document.removeEventListener('pointerdown',outside,true);window
 .mtp-menu-enter-from,.mtp-menu-leave-to{opacity:0;transform:translateY(-6px)}
 @media (prefers-reduced-motion: reduce){.mtp-menu-enter-active,.mtp-menu-leave-active{transition-duration:1ms}.mtp-menu-enter-from,.mtp-menu-leave-to{transform:none}}
 
-/* Compact: a pill in the composer footer, level with the icon toggles. It keeps
-   the model name and the effort badge visible so the merged control still says
-   what it is at a glance. */
 .mtp.compact{min-width:0;flex:none;flex-direction:row;align-items:center}
 #app .composer-footer .mtp-trigger{position:relative;display:inline-flex;align-items:center;gap:7px;width:auto;max-width:260px;min-height:0;height:30px;padding:0 8px 0 11px;border:1px solid transparent;border-radius:999px;background:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;box-shadow:none;transition:background-color 160ms var(--ease-out),border-color 160ms var(--ease-out)}
 #app .composer-footer .mtp-trigger:hover:not(:disabled){background:var(--md-secondary-container)}

@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readSSE, SSEError, streamSSE, type SSEvent } from './api'
 
-/**
- * Minimal Response stand-in. The repo has no DOM environment (no jsdom), and
- * readSSE only needs `ok`, `status` and a `body.getReader()`, so a hand-rolled
- * double keeps the test in plain node.
- */
 function fakeResponse(chunks: string[], init: { ok?: boolean; status?: number } = {}) {
   const encoder = new TextEncoder()
   let i = 0
@@ -48,15 +43,11 @@ describe('readSSE', () => {
   })
 
   it('reassembles a frame split across chunks', async () => {
-    // The chunk boundary lands mid-frame, which is the normal case for a stream.
     const seen = await collect(['event: chunk\ndata: {"val', 'ue":"x"}\n\n'])
     expect(seen).toHaveLength(1)
     expect(JSON.parse(seen[0].data)).toEqual({ value: 'x' })
   })
 
-  // This is the regression the old ad-hoc parser in chat.ts had: it matched
-  // /^data:\s*(.+)$/m, whose `.` stops at the newline, so any frame carrying a
-  // real newline in its payload was silently dropped on JSON.parse failure.
   it('joins multi-line data payloads instead of truncating them', async () => {
     const payload = JSON.stringify({ message: 'line one\nline two' })
     const seen = await collect([`event: log\ndata: ${payload}\n\n`])
@@ -82,7 +73,6 @@ describe('readSSE', () => {
   })
 
   it('strips only the single leading space after the colon', async () => {
-    // Two spaces means the value genuinely starts with one space.
     const seen = await collect(['event: log\ndata:  padded\n\n'])
     expect(seen[0].data).toBe(' padded')
   })

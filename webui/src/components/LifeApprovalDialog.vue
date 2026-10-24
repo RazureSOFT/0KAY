@@ -30,7 +30,7 @@ async function poll() {
     if (!res.ok) return
     const body = await res.json().catch(() => ({}))
     items.value = Array.isArray(body.approvals) ? body.approvals : []
-  } catch { /* keep pending on transient errors */ }
+  } catch { }
 }
 
 async function decide(item: Approval, allow: boolean) {
@@ -41,12 +41,9 @@ async function decide(item: Approval, allow: boolean) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'approval_resolve', payload: { id: item.id, allow } }),
     })
-    // Only drop the row once Core confirms; otherwise leave it for a retry.
     if (!res.ok) throw new Error(String(res.status))
     items.value = items.value.filter((a) => a.id !== item.id)
   } catch {
-    // Keep the request pending so the user can retry — but say so; a silent
-    // failure here reads as "sent" when nothing reached Core.
     decideError.value = t('lifeApproval.decideFailed')
   } finally { busy.value = false }
 }
@@ -125,7 +122,7 @@ onUnmounted(() => { if (timer) window.clearInterval(timer) })
 .la-allow { background: var(--md-primary); color: var(--md-on-primary); box-shadow: 0 8px 20px color-mix(in srgb, var(--md-primary) 30%, transparent); }
 @keyframes la-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes la-pop { from { opacity: 0; transform: translateY(18px) scale(.94); } to { opacity: 1; transform: none; } }
-/* Exit mirrors the entry; without it the dialog pops out of existence. */
+
 .la-leave-active { transition: opacity var(--duration-short, 140ms) var(--ease-emphasized-accel, ease-in); }
 .la-leave-active .la-dialog { animation: la-drop var(--duration-short, 140ms) var(--ease-emphasized-accel, ease-in) both; }
 .la-leave-to { opacity: 0; }

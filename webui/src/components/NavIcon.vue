@@ -1,22 +1,8 @@
 <script setup lang="ts">
-/**
- * Nav icon, resolved from an icon key.
- *
- * This replaces a 90-line v-if/v-else-if chain of inline <svg> inside App.vue.
- * Two things were wrong with that: adding an icon meant editing the template's
- * markup (so the `console` entry could not just declare `icon: 'console'`), and
- * every icon was matched on `item.icon === 'x' || item.id === 'x'`, so an id
- * could silently pick up the wrong glyph.
- *
- * Icons are a data table now: one entry per name, no template branching, and an
- * explicit fallback. Paths are stroke-based on a 24x24 grid so they inherit
- * `currentColor` and stay legible in both themes.
- */
 import { computed } from 'vue'
 
 const props = withDefaults(defineProps<{ name?: string; size?: number }>(), { size: 22 })
 
-/** name -> inner SVG markup. */
 const ICONS: Record<string, string> = {
   chat: '<path d="M4 6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H9l-5 4V6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
   agents:
@@ -37,8 +23,6 @@ const ICONS: Record<string, string> = {
   search:
     '<circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="2"/>' +
     '<path d="M16 16l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
-  // The console icon: a terminal prompt, which reads as "diagnostics" at a glance
-  // and is distinguishable from the chat bubble at 22px.
   console:
     '<rect x="3" y="4" width="18" height="16" rx="3" stroke="currentColor" stroke-width="2"/>' +
     '<path d="M7 9.5l3 2.5-3 2.5M12.5 15H17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -47,7 +31,6 @@ const ICONS: Record<string, string> = {
     '<path d="M4 8l8 4 8-4M12 12v8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
 }
 
-/** Fallback glyph for an unknown key: a neutral rounded square. */
 const FALLBACK =
   '<rect x="5" y="5" width="14" height="14" rx="3" stroke="currentColor" stroke-width="2"/>' +
   '<circle cx="12" cy="12" r="2" fill="currentColor"/>'
@@ -56,9 +39,7 @@ const markup = computed(() => ICONS[props.name || ''] ?? FALLBACK)
 </script>
 
 <template>
-  <!-- Decorative: the adjacent label already names the destination, so the SVG
-       is hidden from assistive tech rather than announced twice. -->
-  <svg
+    <svg
     :width="size"
     :height="size"
     viewBox="0 0 24 24"

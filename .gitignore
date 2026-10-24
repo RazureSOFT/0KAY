@@ -132,3 +132,6 @@ life/life-review-report.md
 # Prebuilt UI bundle of the local-only deepseek-web plugin (its own repository:
 # razureink/0KAY-deepseek-web). Core loads it from disk when the plugin runs.
 /core/data/plugin-ui/deepseek-web/
+
+# Self-iteration worktrees created by the agent.
+/.evolve/

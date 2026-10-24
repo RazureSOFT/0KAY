@@ -49,8 +49,6 @@ function onPaste(event: ClipboardEvent) {
   void addFiles(files)
 }
 
-// Drag and drop. Counting enter/leave pairs is the only reliable way to know the
-// pointer left the zone: dragleave also fires when moving onto a child element.
 const dragDepth = ref(0)
 const dropping = computed(() => dragDepth.value > 0)
 function hasFiles(event: DragEvent): boolean {
@@ -78,20 +76,15 @@ async function onDropFiles(event: DragEvent) {
   if (!files.length || busy.value || session.value?.state === 'archived') return
   await addFiles(files)
 }
-// Narrow screens used to hide the tool dock entirely (browser/tree/terminal
-// unreachable); it now collapses to its toggle instead, collapsed by default
-// when there is no saved choice.
 const dockOpen = ref((() => {
-  try { const saved = localStorage.getItem('0kay.agent.dock.open'); if (saved === '1' || saved === '0') return saved === '1' } catch { /* storage unavailable */ }
+  try { const saved = localStorage.getItem('0kay.agent.dock.open'); if (saved === '1' || saved === '0') return saved === '1' } catch { }
   return (window.innerWidth || 1280) > 800
 })())
 function toggleDock() {
   dockOpen.value = !dockOpen.value
-  try { localStorage.setItem('0kay.agent.dock.open', dockOpen.value ? '1' : '0') } catch { /* storage unavailable */ }
+  try { localStorage.setItem('0kay.agent.dock.open', dockOpen.value ? '1' : '0') } catch { }
 }
 function dismissError() { error.value = ''; store.error = '' }
-// Auto-grow the composer with its content, capped so it never swallows the
-// transcript (min-height lives in CSS).
 const composerArea = ref<HTMLTextAreaElement | null>(null)
 function autosizeComposer() {
   const el = composerArea.value
@@ -103,16 +96,10 @@ watch(draft, () => void nextTick(autosizeComposer))
 onMounted(autosizeComposer)
 const search = ref('')
 const source = ref('all')
-// Task kind (Plan/Agent/Work) with a second-level sub-kind that only the
-// Agent kind exposes (general/code/explore/research/science). agentMode is
-// what the backend receives as agent_type: 'plan' and 'work' activate their
-//同名 skills, sub-kinds map to the existing skill-named types.
 const taskKind = ref<'plan' | 'agent' | 'work'>('agent')
 const agentSubKind = ref('general')
 const duetMode = ref<'on' | 'off'>('off')
 const agentMode = computed(() => (taskKind.value === 'agent' ? agentSubKind.value : taskKind.value))
-// Mode switches. Plan / Agent / Work are product names and stay English in every
-// locale; only the one-line description is translated.
 const kindChoices = computed(() => [
   { value: 'plan' as const, label: 'Plan', tag: t('agent.page.kindPlanTag'), desc: t('agent.page.kindPlanDesc') },
   { value: 'agent' as const, label: 'Agent', tag: t('agent.page.kindAgentTag'), desc: t('agent.page.kindAgentDesc') },
@@ -159,12 +146,10 @@ let browserExecutor = ''
 let hostFetching = false
 const followLatest = ref(true)
 function rememberEditor(id = selectedId.value) {
-  try { localStorage.setItem(`0kay.agent.editor:${id}`, JSON.stringify({draft:draft.value,mode:agentMode.value,kind:taskKind.value,duet:duetMode.value,...options()})) } catch { /* storage unavailable */ }
+  try { localStorage.setItem(`0kay.agent.editor:${id}`, JSON.stringify({draft:draft.value,mode:agentMode.value,kind:taskKind.value,duet:duetMode.value,...options()})) } catch { }
 }
 function closeBrowser() { browseRequest++;browserOpen.value=false;browserBusy.value=false;workspacePick.value=false }
 function onEscape(event: KeyboardEvent) {if(event.key==='Escape' && browserOpen.value) closeBrowser()}
-// Slash menu: typing "/" offers the agent's skills (the agent resolves
-// "/<skill> <request>") plus built-in commands.
 const skills = ref<Array<{ name: string; description: string; tags?: string[]; source?: string }>>([])
 let skillsLoaded = false
 async function fetchSkills() {
@@ -199,8 +184,6 @@ const slashOpen = computed(() => !slashSuppressed.value && slashItems.value.leng
 const slashIndex = ref(0)
 watch(slashItems, () => { slashIndex.value = 0 })
 watch(slashQuery, query => { slashSuppressed.value = false; if (query !== null) void fetchSkills() })
-// The composer column clips its overflow, so the menu is teleported to <body>
-// and positioned above the input from its bounding rect.
 const composerInput = ref<HTMLElement | null>(null)
 const slashMenuStyle = ref<Record<string, string>>({})
 function positionSlashMenu() {
@@ -283,7 +266,6 @@ async function compact() {
   finally {busy.value=false;compacting.value=false}
 }
 const ringStyle=(value:number)=>({background:`conic-gradient(from -90deg, var(--md-primary) ${Math.max(0,Math.min(100,value))}%, var(--md-outline-variant) 0)`})
-// Ease a number toward its target so the rings sweep instead of snapping.
 function useTween(source: () => number, duration = 700) {
   const out = ref(0)
   let raf = 0, from = 0, to = 0, start = 0
@@ -303,9 +285,6 @@ const cpuDisplay = useTween(() => Number(hostUsage.value?.cpu_percent) || 0)
 const memDisplay = useTween(() => Number(hostUsage.value?.memory_percent) || 0)
 const executor = computed(() => executorId.value ? store.agents.find(agent => agent.plugin_id === executorId.value) : store.agents.find(agent => store.isHealthy(agent)))
 const gib = (bytes?: number) => bytes === undefined ? '—' : `${(bytes / 1024 ** 3).toFixed(1)} GiB`
-// Live browser-automation status from the selected executor (see Agent browser tool).
-// The extra fields are optional because a not-yet-started browser reports none of
-// them, and the template reads them defensively.
 const browserStatus = ref<{ enabled: boolean; available: boolean; running: boolean; url: string; title: string; tabs: number; canGoBack?: boolean; canGoForward?: boolean; viewportWidth?: number; viewportHeight?: number; error?: string } | null>(null)
 let browserTimer: ReturnType<typeof setInterval> | null = null
 let browserFetching = false
@@ -339,8 +318,6 @@ const browserTooltip = computed(() => {
   if (b.url) parts.push(b.url)
   return parts.join(' · ')
 })
-// ZCode-style live viewport: a smooth MJPEG stream (CDP screencast) plus a
-// toolbar that drives the page (back/forward/reload/goto).
 const browserViewOpen = ref(false)
 const browserStreamSrc = ref('')
 let browserViewTimer: ReturnType<typeof setInterval> | null = null
@@ -357,7 +334,7 @@ async function fetchBrowserTabs() {
     const body = { action: 'tabs', ...(executor.value?.plugin_id ? { executor_id: executor.value.plugin_id } : {}) }
     const res = await fetch('/api/agent/browser/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(10000) })
     if (res.ok) { const data = await res.json(); browserTabs.value = data.tabs || [] }
-  } catch { /* keep the last list */ }
+  } catch { }
 }
 function browserNewTab() { void postBrowserAction({ action: 'newtab' }); window.setTimeout(() => void fetchBrowserTabs(), 500) }
 function browserActivateTab(id: string) { void postBrowserAction({ action: 'activate', id }) }
@@ -402,14 +379,13 @@ function browserGoto() {
   if (!url) return
   void postBrowserAction({ action: 'goto', url: /^https?:\/\//i.test(url) ? url : `https://${url}` })
 }
-// --- floating window geometry (drag + resize, persisted) ---
 const clampv = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 function loadBrowserPos() {
-  try { const p = JSON.parse(localStorage.getItem('0kay.agent.browser.pos') || ''); if (p && Number.isFinite(p.x)) return { x: p.x, y: p.y } } catch { /* default */ }
+  try { const p = JSON.parse(localStorage.getItem('0kay.agent.browser.pos') || ''); if (p && Number.isFinite(p.x)) return { x: p.x, y: p.y } } catch { }
   return { x: Math.max(16, (window.innerWidth || 1280) - 560), y: Math.max(16, (window.innerHeight || 800) - 520) }
 }
 function loadBrowserSize() {
-  try { const s = JSON.parse(localStorage.getItem('0kay.agent.browser.size') || ''); if (s && Number.isFinite(s.w)) return { w: s.w, h: s.h } } catch { /* default */ }
+  try { const s = JSON.parse(localStorage.getItem('0kay.agent.browser.size') || ''); if (s && Number.isFinite(s.w)) return { w: s.w, h: s.h } } catch { }
   return { w: 520, h: 420 }
 }
 const browserPos = ref(loadBrowserPos())
@@ -427,7 +403,7 @@ function onDragMove(event: PointerEvent) {
   if (!dragState) return
   browserPos.value = { x: clampv(event.clientX - dragState.dx, 0, window.innerWidth - 120), y: clampv(event.clientY - dragState.dy, 0, window.innerHeight - 48) }
 }
-function onDragEnd() { dragState = null; window.removeEventListener('pointermove', onDragMove); window.removeEventListener('pointerup', onDragEnd); try { localStorage.setItem('0kay.agent.browser.pos', JSON.stringify(browserPos.value)) } catch { /* ignore */ } }
+function onDragEnd() { dragState = null; window.removeEventListener('pointermove', onDragMove); window.removeEventListener('pointerup', onDragEnd); try { localStorage.setItem('0kay.agent.browser.pos', JSON.stringify(browserPos.value)) } catch { } }
 function onResizeDown(event: PointerEvent) {
   event.preventDefault(); event.stopPropagation()
   resizeState = { sx: event.clientX, sy: event.clientY, w: browserSize.value.w, h: browserSize.value.h }
@@ -438,12 +414,11 @@ function onResizeMove(event: PointerEvent) {
   if (!resizeState) return
   browserSize.value = { w: clampv(resizeState.w + (event.clientX - resizeState.sx), 340, 1600), h: clampv(resizeState.h + (event.clientY - resizeState.sy), 260, 1000) }
 }
-function onResizeEnd() { resizeState = null; window.removeEventListener('pointermove', onResizeMove); window.removeEventListener('pointerup', onResizeEnd); try { localStorage.setItem('0kay.agent.browser.size', JSON.stringify(browserSize.value)) } catch { /* ignore */ } }
-// --- manual interaction: map streamed-image pixels to page CSS px, forward via CDP ---
+function onResizeEnd() { resizeState = null; window.removeEventListener('pointermove', onResizeMove); window.removeEventListener('pointerup', onResizeEnd); try { localStorage.setItem('0kay.agent.browser.size', JSON.stringify(browserSize.value)) } catch { } }
 const browserImg = ref<HTMLImageElement | null>(null)
 function sendBrowserInput(payload: Record<string, any>) {
   const body = { ...payload, ...(executor.value?.plugin_id ? { executor_id: executor.value.plugin_id } : {}) }
-  void fetch('/api/agent/browser/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) }).catch(() => { /* input is best-effort */ })
+  void fetch('/api/agent/browser/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) }).catch(() => { })
 }
 function pageCoords(event: PointerEvent | WheelEvent) {
   const rect = browserImg.value?.getBoundingClientRect()
@@ -465,7 +440,7 @@ function onViewDown(event: PointerEvent) {
 function onViewMove(event: PointerEvent) {
   if (!viewDown) return
   const now = performance.now()
-  if (now - lastMoveAt < 32) return // coalesce drag moves (~30/s) to cut round trips
+  if (now - lastMoveAt < 32) return
   lastMoveAt = now
   const p = pageCoords(event)
   sendBrowserInput({ action: 'mouse', type: 'move', x: p.x, y: p.y, buttons: 1 })
@@ -482,41 +457,33 @@ function onViewWheel(event: WheelEvent) {
   sendBrowserInput({ action: 'wheel', x: p.x, y: p.y, deltaX: event.deltaX, deltaY: event.deltaY })
 }
 function onViewKey(event: KeyboardEvent) {
-  // Never swallow Escape or modifier combos: they must keep working for the
-  // surrounding page (close panels, browser shortcuts, screen-reader
-  // navigation), otherwise the viewport becomes a keyboard trap.
   if (event.key === 'Escape' || event.ctrlKey || event.altKey || event.metaKey) return
   const key = event.key
   if (key.length === 1 && !event.ctrlKey && !event.metaKey) sendBrowserInput({ action: 'type', text: key })
   else if (key !== 'Shift' && key !== 'Control' && key !== 'Alt' && key !== 'Meta') sendBrowserInput({ action: 'press', key: key === ' ' ? 'space' : key })
   event.preventDefault()
 }
-// --- generic floating-window geometry (drag + resize, persisted) ---
 function makeWindowHandlers(posRef: any, sizeRef: any, posKey: string, sizeKey: string) {
   let drag: { dx: number; dy: number } | null = null
   let rs: { sx: number; sy: number; w: number; h: number } | null = null
   const onMove = (e: PointerEvent) => { if (drag) posRef.value = { x: clampv(e.clientX - drag.dx, 0, window.innerWidth - 120), y: clampv(e.clientY - drag.dy, 0, window.innerHeight - 48) } }
-  const onUp = () => { drag = null; window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); try { localStorage.setItem(posKey, JSON.stringify(posRef.value)) } catch { /* ignore */ } }
+  const onUp = () => { drag = null; window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); try { localStorage.setItem(posKey, JSON.stringify(posRef.value)) } catch { } }
   const onResizeMove = (e: PointerEvent) => { if (rs) sizeRef.value = { w: clampv(rs.w + (e.clientX - rs.sx), 320, 1600), h: clampv(rs.h + (e.clientY - rs.sy), 240, 1000) } }
-  const onResizeUp = () => { rs = null; window.removeEventListener('pointermove', onResizeMove); window.removeEventListener('pointerup', onResizeUp); try { localStorage.setItem(sizeKey, JSON.stringify(sizeRef.value)) } catch { /* ignore */ } }
+  const onResizeUp = () => { rs = null; window.removeEventListener('pointermove', onResizeMove); window.removeEventListener('pointerup', onResizeUp); try { localStorage.setItem(sizeKey, JSON.stringify(sizeRef.value)) } catch { } }
   return {
     down: (e: PointerEvent) => { if ((e.target as HTMLElement).closest('button,input,form,a')) return; drag = { dx: e.clientX - posRef.value.x, dy: e.clientY - posRef.value.y }; window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp) },
     rdown: (e: PointerEvent) => { e.preventDefault(); e.stopPropagation(); rs = { sx: e.clientX, sy: e.clientY, w: sizeRef.value.w, h: sizeRef.value.h }; window.addEventListener('pointermove', onResizeMove); window.addEventListener('pointerup', onResizeUp) },
   }
 }
-// --- git panel ---
-// The panel owns its own state; the page only decides which directory to show.
 const gitOpen = ref(false)
 const gitRoot = computed(() => (workdir.value.trim() || executor.value?.host?.workdir || ''))
 
-// --- project tree window ---
 interface TreeRow { name: string; path: string; dir: boolean; depth: number; expanded: boolean; loading: boolean }
 const treeOpen = ref(false)
 const treeRows = ref<TreeRow[]>([])
 const treeLoading = ref(false)
 const treeError = ref('')
 const treeRootPath = ref('')
-// --- file editor window (opened when the agent writes/edits a file) ---
 interface FileData { path: string; content: string; totalLines: number }
 const fileOpen = ref(false)
 const fileData = ref<FileData | null>(null)
@@ -526,7 +493,6 @@ const fileDraft = ref('')
 const fileSaving = ref(false)
 const fileNotice = ref('')
 const fileDirty = computed(() => !!fileData.value && fileDraft.value !== fileData.value.content)
-// How the file window renders a given file.
 type FileView = 'code' | 'markdown' | 'pdf' | 'docx' | 'pptx' | 'spreadsheet' | 'legacy' | 'text' | 'image' | 'html' | 'unsupported'
 const FILE_VIEW: Record<string, FileView> = {
   md: 'markdown', markdown: 'markdown', mdown: 'markdown', mkd: 'markdown',
@@ -534,7 +500,6 @@ const FILE_VIEW: Record<string, FileView> = {
   xlsx: 'spreadsheet', xls: 'spreadsheet', xlsm: 'spreadsheet', xlsb: 'spreadsheet', ods: 'spreadsheet',
   png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image', svg: 'image', bmp: 'image', avif: 'image', ico: 'image',
   doc: 'legacy', dot: 'legacy', wps: 'legacy', ppt: 'legacy', pot: 'legacy', pps: 'legacy',
-  // Self-contained pages (the `diagram` tool writes one) render in a sandboxed frame.
   html: 'html', htm: 'html',
 }
 const FILE_MIME: Record<string, string> = {
@@ -570,18 +535,10 @@ const filePanelStyle = computed(() => ({ translate: `${filePos.value.x}px ${file
 let fileRequest = 0
 async function openFilePreview(path: string, opts: { confirmDiscard?: boolean; auto?: boolean } = {}) {
   if (!path) return
-  // A pending auto-close belongs to the previous panel; never let it fire on
-  // this one. `autoOpened` is only re-armed once the open really happens, so a
-  // skipped auto-open (unsaved edits) can never arm a close for someone else's
-  // file.
   if (autoCloseTimer) { clearTimeout(autoCloseTimer); autoCloseTimer = null }
   autoOpened = false
-  // Following a different file: the previous follow is stale. Same file keeps
-  // following (a reload mid-write should not freeze the preview again).
   if (followPath.value && followPath.value !== path) stopFileFollow()
   if (fileDirty.value) {
-    // Never clobber unsaved edits silently. Auto-open just skips; a manual open
-    // or reload asks first.
     if (!opts.confirmDiscard) return
     const same = fileData.value?.path === path
     const ok = await confirm({
@@ -593,8 +550,6 @@ async function openFilePreview(path: string, opts: { confirmDiscard?: boolean; a
   }
   const view = viewForFile(path)
   const request = ++fileRequest
-  // The panel is really being loaded for `path` now: remember whether we opened
-  // it (transient → closes itself) or the user did (stays until closed).
   autoOpened = !!opts.auto
   fileOpen.value = true
   fileLoading.value = true
@@ -607,8 +562,6 @@ async function openFilePreview(path: string, opts: { confirmDiscard?: boolean; a
   mdSource.value = false
   try {
     if (view === 'legacy') {
-      // Prefer converting to PDF (full layout) via LibreOffice; fall back to
-      // plain-text extraction when the executor has no converter.
       const converted = await fetch(`/api/agent/file/convert?${treeQuery({ path, target: 'pdf' })}`, { signal: AbortSignal.timeout(170000) })
       if (converted.ok) {
         const data = await converted.json()
@@ -657,35 +610,15 @@ async function openFilePreview(path: string, opts: { confirmDiscard?: boolean; a
     fileDraft.value = ''
   } finally { if (request === fileRequest) fileLoading.value = false }
 }
-// --- live follow: keep the preview in sync while the agent streams into a file ---
-/**
- * The `write` tool truncates the target and appends in chunks over a couple of
- * seconds so an observer can watch it grow (agent/src/tools/stream_write.ts).
- * Opening the preview once, when the step starts, therefore showed the first
- * few lines and then looked frozen: the file kept growing on disk while the
- * panel stayed on its snapshot. Poll the same read endpoint while the owning
- * step is running, stop the moment it settles, and never touch a buffer the
- * user has started editing.
- */
 const followPath = ref('')
 const followTask = ref('')
 const fileFollowing = computed(() => !!followPath.value && fileOpen.value && !fileDirty.value)
 const FOLLOW_INTERVAL_MS = 320
-// Safety net: a step whose terminal event never arrives must not poll forever.
 const FOLLOW_MAX_MS = 30_000
 let followTimer: ReturnType<typeof setInterval> | null = null
 let followStartedAt = 0
 let followBusy = false
 
-// --- auto-close: a preview that opened by itself gets out of the way ---
-/**
- * The panel pops up unasked to show a `write`, so it must not sit there for the
- * rest of the session. Once the write settles it lingers for a beat (enough to
- * read the last line) and then closes. Any sign of life from the user — a
- * click, a wheel, a keystroke, an edit — cancels it and the panel stays until
- * it is closed by hand, which is also what happens to every panel the user
- * opened themselves.
- */
 const AUTO_CLOSE_MS = 1_600
 let autoCloseTimer: ReturnType<typeof setTimeout> | null = null
 let autoOpened = false
@@ -708,11 +641,8 @@ function scheduleAutoClose() {
 function editorInput(): HTMLTextAreaElement | null {
   return document.querySelector('.file-panel .code-editor-input') as HTMLTextAreaElement | null
 }
-/** Apply a live snapshot without moving the reader's scroll position. */
 function applyLiveText(text: string) {
   if (!fileData.value) return
-  // A write creates the file a moment after the panel opens; the first read can
-  // fail with "not found" and must not keep the viewer hidden.
   fileError.value = ''
   const input = editorInput()
   const scrollTop = input?.scrollTop ?? 0
@@ -722,7 +652,6 @@ function applyLiveText(text: string) {
   void nextTick(() => {
     const next = editorInput()
     if (!next) return
-    // Someone watching a write wants the newest line, not the first one.
     next.scrollTop = pinned ? next.scrollHeight : scrollTop
   })
 }
@@ -732,8 +661,6 @@ async function readFileSnapshot(path: string): Promise<string | null> {
     if (!res.ok) return null
     const data = await res.json()
     const text = typeof data.content === 'string' ? data.content : ''
-    // A read can land inside a multi-byte sequence and end in U+FFFD; the next
-    // poll replaces it, so drop it instead of flashing a replacement glyph.
     return text.endsWith('\uFFFD') ? text.slice(0, -1) : text
   } catch { return null }
 }
@@ -750,7 +677,6 @@ function stopFileFollow() {
   followPath.value = ''
   followTask.value = ''
 }
-/** Last snapshot after the step settled: the file is exact at that point. */
 async function settleFileFollow() {
   const path = followPath.value
   const live = !!path && fileOpen.value && fileData.value?.path === path && !fileDirty.value && !fileSaving.value
@@ -766,9 +692,7 @@ async function pollFollowedFile() {
   if (!path) return
   if (Date.now() - followStartedAt > FOLLOW_MAX_MS) { void settleFileFollow(); return }
   if (!fileOpen.value) { stopFileFollow(); return }
-  // The user took over the buffer or saved over it: stop silently.
   if (fileDirty.value || fileSaving.value) { stopFileFollow(); return }
-  // The initial read is still in flight — the next tick will see its result.
   if (!fileData.value || fileLoading.value) return
   if (fileData.value.path !== path) { stopFileFollow(); return }
   if (!(fileView.value === 'code' || fileView.value === 'markdown')) return
@@ -813,7 +737,6 @@ async function closeFilePanel() {
   fileOpen.value = false
 }
 
-// --- terminal console: pick an executor and run shell commands on it ---
 interface TermLine { kind: 'cmd' | 'out' | 'err' | 'note'; text: string }
 const termOpen = ref(false)
 const termPos = ref(loadBrowserPosKey('0kay.agent.term.pos') || { x: Math.max(16, (window.innerWidth || 1280) - 700), y: Math.max(16, (window.innerHeight || 800) - 540) })
@@ -849,8 +772,6 @@ function termChangeExecutor(id: string) {
   termPush('note', t('agent.page.switchedTo', { target: `${agent?.host?.hostname || id}${termCwd.value ? ' · ' + termCwd.value : ''}` }))
   void termScroll()
 }
-// Resolve a cd target against the current directory without a shell round-trip,
-// so the working directory persists between commands.
 function joinPath(base: string, rel: string): string {
   const win = /^[a-zA-Z]:[\\/]|\\\\/.test(base) || base.includes('\\')
   const isAbsolute = win ? /^([a-zA-Z]:[\\/]|\\\\)/.test(rel) : rel.startsWith('/')
@@ -923,14 +844,13 @@ const treeHandlers = makeWindowHandlers(treePos, treeSize, '0kay.agent.tree.pos'
 const onTreeDown = treeHandlers.down
 const onTreeResizeDown = treeHandlers.rdown
 const treePanelStyle = computed(() => ({ translate: `${treePos.value.x}px ${treePos.value.y}px`, width: `${treeSize.value.w}px`, height: `${treeSize.value.h}px` }))
-function loadBrowserPosKey(key: string) { try { const p = JSON.parse(localStorage.getItem(key) || ''); if (p && Number.isFinite(p.x)) return { x: p.x, y: p.y } } catch { /* default */ } return null }
-function loadBrowserSizeKey(key: string) { try { const s = JSON.parse(localStorage.getItem(key) || ''); if (s && Number.isFinite(s.w)) return { w: s.w, h: s.h } } catch { /* default */ } return null }
+function loadBrowserPosKey(key: string) { try { const p = JSON.parse(localStorage.getItem(key) || ''); if (p && Number.isFinite(p.x)) return { x: p.x, y: p.y } } catch { } return null }
+function loadBrowserSizeKey(key: string) { try { const s = JSON.parse(localStorage.getItem(key) || ''); if (s && Number.isFinite(s.w)) return { w: s.w, h: s.h } } catch { } return null }
 function treeQuery(extra: Record<string, string>) {
   const p = new URLSearchParams(extra)
   if (executor.value?.plugin_id) p.set('executor_id', executor.value.plugin_id)
   return p.toString()
 }
-// Icon tint for the project tree, grouped by broad file category.
 const FILE_KINDS: Record<string, string> = {
   code: 'ts,tsx,js,jsx,mjs,cjs,vue,py,go,rs,java,c,cpp,cc,cxx,h,hpp,cs,rb,php,swift,kt,kts,lua,sh,bash,zsh,ps1',
   data: 'json,jsonc,yaml,yml,toml,ini,xml,csv,sql',
@@ -959,8 +879,6 @@ async function treeReload(dirPath = '') {
   finally { treeLoading.value = false }
 }
 let treeRefreshTimer: ReturnType<typeof setTimeout> | null = null
-// The agent writes files under the workspace; reflect them without making the
-// user close and reopen the tree.
 function refreshTreeSoon() {
   if (!treeOpen.value) return
   if (treeRefreshTimer) clearTimeout(treeRefreshTimer)
@@ -985,10 +903,7 @@ async function treeToggle(row: TreeRow) {
   finally { row.loading = false }
 }
 function treePreview(row: TreeRow) { void openFilePreview(row.path, { confirmDiscard: true }) }
-// The tree must follow the selected workspace; otherwise it falls back to the
-// executor's process cwd, which is why it did not show the chosen project.
 watch([workdir, executorId], () => { if (treeOpen.value) void treeReload(treeRootPathFor()) })
-// --- usage window ---
 const usageOpen = ref(false)
 const usagePos = ref(loadBrowserPosKey('0kay.agent.usage.pos') || { x: Math.max(16, (window.innerWidth || 1280) - 336), y: 64 })
 const usageSize = ref(loadBrowserSizeKey('0kay.agent.usage.size') || { w: 300, h: 300 })
@@ -997,7 +912,6 @@ const onUsageDown = usageHandlers.down
 const onUsageResizeDown = usageHandlers.rdown
 const usagePanelStyle = computed(() => ({ translate: `${usagePos.value.x}px ${usagePos.value.y}px`, width: `${usageSize.value.w}px`, height: `${usageSize.value.h}px` }))
 function toggleUsage() { usageOpen.value = !usageOpen.value; if (usageOpen.value) void fetchContextUsage() }
-// --- host window ---
 const hostPos = ref(loadBrowserPosKey('0kay.agent.host.pos') || { x: Math.max(16, (window.innerWidth || 1280) - 336), y: 392 })
 const hostSize = ref(loadBrowserSizeKey('0kay.agent.host.size') || { w: 360, h: 360 })
 const hostHandlers = makeWindowHandlers(hostPos, hostSize, '0kay.agent.host.pos', '0kay.agent.host.size')
@@ -1013,7 +927,6 @@ function loadOptions() {
     minimalMode.value=saved.minimal_mode?'on':'off'
     duetMode.value=(saved.duet_mode==='1'||saved.duet===true||saved.duet==='on')?'on':'off'
     draft.value=saved.draft || ''
-    // Legacy editors stored the flat agent_type in `mode`; derive kind+sub.
     if (saved.kind === 'plan' || saved.kind === 'work' || saved.kind === 'agent') { taskKind.value = saved.kind; agentSubKind.value = saved.kind === 'agent' ? (saved.mode || 'general') : agentSubKind.value }
     else if (saved.mode === 'plan' || saved.mode === 'work') { taskKind.value = saved.mode }
     else { taskKind.value = 'agent'; agentSubKind.value = saved.mode || 'general' }
@@ -1026,7 +939,6 @@ function modelLabel(model: { id: string; provider: string; provider_id?: string;
     || model.provider_id || model.provider
   return `${name}/${model.id}`
 }
-/** Shape the merged model + effort picker expects. */
 const modelOptions = computed(() => models.value.map(model => ({ id: model.id, label: modelLabel(model) })))
 async function fetchModels() {
   try {
@@ -1039,13 +951,10 @@ async function fetchModels() {
     if (response.ok) {
       const providers: any[] = (await response.json()).providers || []
       const names: Record<string, string> = {}
-      // Key by provider id, not provider type: several providers can share a
-      // type (e.g. three "custom" endpoints), and keying by type made the last
-      // name win for every one of them.
       for (const provider of providers) if (provider.name && provider.id) names[provider.id] = provider.name
       providerNames.value = names
     }
-  } catch { /* provider names are optional */ }
+  } catch { }
 }
 function options() { const level=intensity.value===0?'off':intensity.value<35?'low':intensity.value<62.5?'medium':intensity.value<87.5?'high':'max';return { executor_id: executorId.value, workdir: workdir.value.trim(), thinking_intensity: level, model_id: modelId.value, permission_mode:permissionMode.value, minimal_mode: minimalMode.value==='on', duet_mode: duetMode.value==='on'?'1':'0', language:locale.value } }
 const busy = ref(false)
@@ -1061,10 +970,6 @@ const sessions = computed(() => store.sessions.filter(item =>
   (source.value === 'all' || (source.value === 'life' ? isLife(item) : !isLife(item))) &&
   (item.prompt || '').toLowerCase().includes(search.value.toLowerCase())))
 
-// --- dsh-style workspaces: sessions grouped under registered directories ---
-// `sessions` is what the grouped view renders; the raw rows from Core carry the
-// timestamps. Both shapes reach the same helpers, so everything but the key is
-// optional.
 interface WorkspaceRow { id: string; title: string; path: string; createdAt?: string; updatedAt?: string; sessionIds?: string[]; sessions?: TaskRow[]; exists?: boolean }
 const workspaces = ref<WorkspaceRow[]>([])
 const collapsed = ref<Set<string>>(new Set(JSON.parse(localStorage.getItem('0kay.agent.ws.collapsed') || '[]')))
@@ -1078,7 +983,7 @@ async function fetchWorkspaces() {
     if (!response.ok) return
     const data = await response.json()
     workspaces.value = Array.isArray(data?.workspaces) ? data.workspaces : []
-  } catch { /* offline */ }
+  } catch { }
 }
 async function workspaceAction(action: string, payload: Record<string, unknown> = {}) {
   const response = await fetch('/api/agent/workspaces', {
@@ -1124,8 +1029,6 @@ async function createIn(workspaceId: string) {
   if (workspace) { workdir.value = workspace.path; executorId.value = executor.value?.plugin_id || executorId.value }
   await create()
 }
-// In-page rename modal (native window.prompt cannot be styled and blocks the
-// whole UI thread, so it was replaced; Enter confirms, Esc cancels).
 const renameOpen = ref(false)
 const renameValue = ref('')
 const renameTarget = ref<WorkspaceRow | null>(null)
@@ -1155,8 +1058,6 @@ async function deleteWorkspace(workspace: WorkspaceRow) {
   try { await workspaceAction('delete', { id: workspace.id }) } catch (e: any) { error.value = e.message }
 }
 let dragWorkspace = ''
-// Track the hovered group so dragover can outline the drop target and the
-// source group can dim itself via `.drag-source`.
 const dragOverId = ref('')
 function onGroupDragStart(id: string) { dragWorkspace = id }
 function onGroupDragOver(id: string) { if (dragWorkspace && dragWorkspace !== id) dragOverId.value = id }
@@ -1171,7 +1072,6 @@ async function onGroupDrop(targetId: string) {
 let workspaceTimer: ReturnType<typeof setInterval> | null = null
 watch([executor, () => store.sessions.length], () => void fetchWorkspaces())
 
-// --- debounced content search (title matches are instant; content adds snippets) ---
 const contentMatches = ref<Array<{ session_id: string; title: string; snippet: string }>>([])
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 watch(search, (value) => {
@@ -1184,7 +1084,7 @@ watch(search, (value) => {
       if (!response.ok) return
       const data = await response.json()
       contentMatches.value = Array.isArray(data?.matches) ? data.matches : []
-    } catch { /* offline */ }
+    } catch { }
   }, 250)
 })
 const searchResults = computed(() => {
@@ -1199,7 +1099,6 @@ const searchResults = computed(() => {
 })
 const snippetFor = (id?: string) => contentMatches.value.find(match => match.session_id === id)?.snippet || ''
 
-// --- session fork / cross-workspace move ---
 async function forkSession(item: TaskRow) {
   if (!item.session_id || busy.value) return
   busy.value = true; error.value = ''
@@ -1219,17 +1118,11 @@ async function moveSessionTo(item: TaskRow, workspaceId: string) {
 function onMoveChange(item: TaskRow, event: Event) { const value = (event.target as HTMLSelectElement).value; if (value) void moveSessionTo(item, value) }
 const turns = computed(() => store.tasks.filter(item => item.kind === 'agent' && item.session_id === selectedId.value)
   .sort((a,b) => (a.started_at || '').localeCompare(b.started_at || '') || a.task_id.localeCompare(b.task_id)))
-// Turns load async per session; while that fetch is in flight the transcript
-// shows a skeleton instead of flashing the welcome screen before the rows land.
 const turnsLoading = computed(() => !!selectedId.value && store.turnsPending[selectedId.value] === true && !turns.value.length)
 
-// --- message actions: edit + copy ---
 const editingId = ref('')
 const editDraft = ref('')
 const editArea = ref<HTMLTextAreaElement | null>(null)
-// Turns replaced by an edit. Core has no per-turn update, so an edit is a new
-// turn; the original row is hidden here and the set is remembered per session —
-// otherwise a reload would show both the old and the corrected message.
 const superseded = ref<Set<string>>(new Set())
 const supersededKey = (id: string) => `0kay.agent.superseded:${id}`
 function loadSuperseded(id: string) {
@@ -1240,14 +1133,9 @@ function markSuperseded(taskId: string) {
   const next = new Set(superseded.value)
   next.add(taskId)
   superseded.value = next
-  try { localStorage.setItem(supersededKey(selectedId.value), JSON.stringify([...next])) } catch { /* storage unavailable */ }
+  try { localStorage.setItem(supersededKey(selectedId.value), JSON.stringify([...next])) } catch { }
 }
 const visibleTurns = computed(() => turns.value.filter(turn => !superseded.value.has(turn.task_id)))
-/**
- * Only the newest turn is editable. Re-sending an older one would append its
- * correction to the end of the transcript, which reads as a different message
- * entirely.
- */
 function canEdit(turn: TaskRow): boolean {
   if (busy.value || active.value || session.value?.state === 'archived') return false
   const last = visibleTurns.value[visibleTurns.value.length - 1]
@@ -1265,8 +1153,6 @@ function cancelEdit() { editingId.value = ''; editDraft.value = '' }
 async function submitEdit(turn: TaskRow) {
   const text = editDraft.value.trim()
   if (!text || busy.value) return
-  // Keep the files the message was sent with: editing a typo should not silently
-  // drop the attachment.
   const files = turn.attachments?.length
     ? turn.attachments.map(file => ({ name: file.name, url: file.url, mime: file.mime || 'application/octet-stream', size: file.size ?? 0 }))
     : undefined
@@ -1276,34 +1162,25 @@ async function submitEdit(turn: TaskRow) {
 }
 const toast = ref('')
 let toastTimer: ReturnType<typeof setTimeout> | null = null
-/** Short-lived confirmation, rendered outside the message subtree. */
 function showToast(text: string) {
   toast.value = text
   if (toastTimer) clearTimeout(toastTimer)
   toastTimer = setTimeout(() => { toast.value = '' }, 1600)
 }
 
-/**
- * Copy a message.
- *
- * The confirmation is a toast rather than the button's own label: the message
- * list re-renders on every task poll, and that render owns the label text, so
- * anything written into it (reactive or not) is replaced within a second.
- */
 async function copyMessage(text?: string) {
   const value = (text || '').trim()
   if (!value) return
   try {
     await navigator.clipboard.writeText(value)
   } catch {
-    // The clipboard API needs a secure context; keep a fallback for http://LAN.
     const area = document.createElement('textarea')
     area.value = value
     area.style.position = 'fixed'
     area.style.opacity = '0'
     document.body.appendChild(area)
     area.select()
-    try { document.execCommand('copy') } catch { /* nothing else to try */ }
+    try { document.execCommand('copy') } catch { }
     area.remove()
   }
   showToast(t('agent.page.copied'))
@@ -1321,21 +1198,18 @@ const todos = computed<Array<{ content: string; status: string }>>(() => {
   return list.filter((item: any) => item && typeof item.content === 'string' && item.status !== 'cancelled')
 })
 const todoDone = computed(() => todos.value.filter(item => item.status === 'completed').length)
-// A finished todo list has served its purpose: collapse it automatically, and
-// re-open when a new unfinished list arrives.
 const todoOpen = ref(true)
 watch([todos, todoDone], () => {
   todoOpen.value = !(todos.value.length > 0 && todoDone.value === todos.value.length)
 })
 
-// Context usage indicator (hollow ring + hover breakdown).
 const contextUsage = ref<{ tokens?: number; window?: number; breakdown?: Record<string, number> } | null>(null)
 async function fetchContextUsage() {
   if (!selectedId.value) { contextUsage.value = null; return }
   try {
     const response = await fetch(`/api/agent/context?session_id=${encodeURIComponent(selectedId.value)}&model_id=${encodeURIComponent(modelId.value)}`)
     if (response.ok) contextUsage.value = await response.json()
-  } catch { /* offline */ }
+  } catch { }
 }
 let ctxTimer: ReturnType<typeof setTimeout> | null = null
 function scheduleContextUsage() { if (ctxTimer) clearTimeout(ctxTimer); ctxTimer = setTimeout(() => void fetchContextUsage(), 800) }
@@ -1355,8 +1229,6 @@ const contextSummary = computed(() => {
   const done = store.tasks.filter(item => item.kind === 'compact' && item.session_id === selectedId.value && item.state === 'done' && (item.result || '').trim())
   return done.length ? done.reduce((latest, item) => (item.started_at || '') >= (latest.started_at || '') ? item : latest) : null
 })
-// Fill arc for the usage ring (tokens / context window). Null = the backend
-// gave no window size, so the ring stays the hollow track it always was.
 const CTX_RING_RADIUS = 8
 const CTX_RING_CIRCUMFERENCE = 2 * Math.PI * CTX_RING_RADIUS
 const contextRatio = computed(() => {
@@ -1374,11 +1246,6 @@ const contextRingColor = computed(() => {
 const stateName = (value: string) => ({ pending: t('agent.page.statePending'), running: t('agent.page.stateRunning'), done: t('agent.page.stateDone'), failed: t('agent.page.stateFailed'), cancelled: t('agent.page.stateCancelled') })[value] || value
 const time = (value?: string) => value ? new Date(value).toLocaleString() : ''
 
-// A finished turn's steps collapse behind a one-line summary.
-//
-// The icon and the label follow turn.state. They used to be a hardcoded "✓ 已完成",
-// so a cancelled or failed turn still claimed to have completed — the user saw
-// "已停止" and "✓ 已完成" side by side for the same turn.
 const turnFinished = (turn: TaskRow) => ['done', 'failed', 'cancelled'].includes(turn.state)
 const turnStateIcon = (state: string) => ({ done: '✓', cancelled: '⊘', failed: '✕' } as Record<string, string>)[state] || '•'
 function turnDuration(turn: TaskRow): string {
@@ -1392,8 +1259,6 @@ function turnDuration(turn: TaskRow): string {
   return seconds ? `${minutes}m ${seconds}s` : `${minutes}m`
 }
 
-// Agent prose names directories as often as files, and a directory carries no
-// extension. Route those to the project tree; the file viewer cannot open them.
 function looksLikeDirectory(path: string): boolean {
   return /[\\/]$/.test(path) || !/\.[A-Za-z0-9]{1,10}$/.test(path)
 }
@@ -1406,13 +1271,11 @@ async function openPath(path: string) {
   }
   await openFilePreview(path, { confirmDiscard: true })
 }
-// The model that actually produced a think step, from mocr's report (a fallback
-// model may differ from the requested one).
 function modelInfo(step: TaskRow) {
   let actual = '', requested = '', reason = ''
   try {
     if (step.args) { const parsed = JSON.parse(step.args); actual = String(parsed.model || ''); requested = String(parsed.requested || ''); reason = String(parsed.fallback || '') }
-  } catch { /* args is not model metadata */ }
+  } catch { }
   return { actual, requested, reason, fellBack: !!actual && !!requested && actual !== requested }
 }
 function modelAnnotation(step: TaskRow): string {
@@ -1442,7 +1305,7 @@ function subFinal(step: TaskRow | null): string {
     const parsed = JSON.parse(text)
     if (typeof parsed === 'string') text = parsed
     else if (parsed && typeof parsed.result === 'string') text = parsed.result
-  } catch { /* plain-text result */ }
+  } catch { }
   if (!text.trim()) return ''
   if (childSteps(step).some(child => child.kind === 'think' && (child.result || '').trim() === text.trim())) return ''
   return text
@@ -1461,42 +1324,16 @@ function stepLabel(step: TaskRow) {
   return step.kind || t('agent.page.step')
 }
 function subChildCount(step: TaskRow) { return childSteps(step).length }
-/**
- * The step that already carries the turn's final answer, if any.
- *
- * Matching by content alone is not enough: several narration steps can hold the
- * same one-word result, and picking the wrong one both hides a step and renders
- * the answer twice. Take the LAST match by position, which is the reply the
- * turn actually ended on.
- */
 function finalAnswerStepId(turn: TaskRow): string {
   const answer = (turn.result || '').trim()
   if (!answer) return ''
   const matches = steps(turn).filter(step => step.kind === 'think' && (step.result || '').trim() === answer)
   return matches.length ? matches[matches.length - 1].task_id : ''
 }
-/**
- * The turn's work log — every step except the final answer.
- *
- * Folding only the "think" steps before the last tool call used to fold the
- * narration (0–1 characters each) while leaving 20+ tool cards expanded: a
- * 45-step turn still filled the screen and the fold looked broken. The whole
- * log is folded instead, and the answer stays outside so a finished turn reads
- * as one summary line plus the reply.
- */
 function workSteps(turn: TaskRow): TaskRow[] {
   const answerId = finalAnswerStepId(turn)
   return steps(turn).filter(step => step.task_id !== answerId)
 }
-/**
- * The turn's deliverables, as declared by the `report_artifacts` tool.
- *
- * The model is told to call that tool once, right before its final answer, with
- * every file the turn produced. Reading it back out of the step log is what
- * turns "here is a wall of tool calls" into a list the user can click. Later
- * declarations win over earlier ones, so a re-run that overwrites a file shows
- * the final description rather than the first one.
- */
 function turnArtifacts(turn: TaskRow): Array<{ path: string; description: string }> {
   const found = new Map<string, { path: string; description: string }>()
   for (const step of steps(turn)) {
@@ -1555,13 +1392,10 @@ async function send(override?: string, overrideAttachments?: Array<{ name: strin
       localStorage.setItem(`0kay.agent.editor:${id}`,JSON.stringify({...requestOptions,draft:message,mode:modeForTask,kind:taskKind.value,duet:duetMode.value}))
       selectedId.value=id;localStorage.setItem('0kay.agent.selected',id)
     }
-    // The session list stays usable while sending, so pin the target: the user
-    // may switch sessions between the awaits above.
     const target = selectedId.value
     rememberEditor(target)
     if (hasAttachments) requestOptions.attachments = outgoing.map(item => ({ ...item }))
     await store.sendTask(target, message, modeForTask, requestOptions)
-    // An edited message must not clear what the user is drafting in the composer.
     if (override === undefined) {
       draft.value = ''
       attachments.value = []
@@ -1590,14 +1424,6 @@ async function stopAll() {
   if (failed) error.value = failed.reason?.message || String(failed.reason)
 }
 async function scrollBottom() { await nextTick(); if(followLatest.value) transcript.value?.scrollTo({top:transcript.value.scrollHeight,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}) }
-/**
- * Explicit "back to bottom" — must not rely on smooth scrolling.
- *
- * The store re-renders on every task delta, which interrupts the animation, so
- * clicking used to look like nothing happened. `instant` lands in one frame, and
- * the rAF pass re-pins after that render (a collapsed fold can also shrink the
- * content under the cursor).
- */
 async function jumpToLatest() {
   followLatest.value = true
   await nextTick()
@@ -1608,13 +1434,8 @@ async function jumpToLatest() {
   requestAnimationFrame(() => element.scrollTo({ top: element.scrollHeight, behavior: 'instant' as ScrollBehavior }))
 }
 
-// --- auto-open windows while the agent works in the selected session ---
-// Browser tool use pops the live viewport; write/edit/apply_patch pops the file
-// preview. Existing steps are seeded on load/switch so nothing opens retroactively.
 const handledSteps = new Set<string>()
 let seededSession = ''
-// Wall-clock when the current session was seeded: steps older than this are
-// history the user just navigated to, not live work, so never auto-open for them.
 let seededAt = 0
 function parseStepJson(raw?: string): any { if (!raw) return null; try { return JSON.parse(raw) } catch { return null } }
 function absolutePath(value: string): string {
@@ -1641,7 +1462,6 @@ function ensureBrowserView() {
   if (!browserViewOpen.value) toggleBrowserView()
   else { void fetchBrowserStatus(); void fetchBrowserTabs(); refreshBrowserStream() }
 }
-/** `write` publishes content while it runs; every other tool lands atomically. */
 function streamsWhileRunning(tool: string, args: any): boolean {
   return tool === 'write' && args?.stream !== false
 }
@@ -1654,19 +1474,14 @@ function considerStep(step: TaskRow) {
     handledSteps.add(step.task_id)
     return
   }
-  // File-producing tools: open the artifact for the user as soon as it exists.
   if (['write', 'edit', 'apply_patch', 'document', 'slides', 'research'].includes(tool)) {
     const path = editedPaths(step).map(absolutePath).find(Boolean)
     const settled = ['done', 'failed', 'cancelled'].includes(step.state)
     const live = streamsWhileRunning(tool, parseStepJson(step.args))
-    // Atomic tools only have something to show once they finish; a streaming
-    // write is worth opening immediately *and* following until it settles.
     if (path && (settled || live)) {
       handledSteps.add(step.task_id)
       void openFilePreview(path, { auto: true })
       if (live && !settled) startFileFollow(path, step.task_id)
-      // A write that was already finished by the time its row showed up still
-      // gets the transient treatment, just without the streaming.
       else if (tool === 'write') scheduleAutoClose()
     } else if (settled) handledSteps.add(step.task_id)
     refreshTreeSoon()
@@ -1686,18 +1501,14 @@ watch([selectedId, () => store.tasks.map(item => `${item.task_id}:${item.session
   }
   for (const step of store.tasks) {
     if (step.kind !== 'tool' || step.session_id !== sid || handledSteps.has(step.task_id)) continue
-    // Older turns loaded on demand must not retroactively pop windows.
     if (Date.parse(step.started_at || '') <= seededAt) { handledSteps.add(step.task_id); continue }
     considerStep(step)
   }
-  // A followed write finished (or vanished): take the final snapshot and stop.
   if (followTask.value) {
     const owner = store.tasks.find(item => item.task_id === followTask.value)
     if (!owner || ['done', 'failed', 'cancelled'].includes(owner.state)) void settleFileFollow()
   }
 })
-// A store reset (Core restart) clears the client cache; re-seed so the refreshed
-// rows are treated as history rather than live work.
 watch(() => store.resetToken, () => { seededSession = ''; handledSteps.clear(); stopFileFollow(); cancelAutoClose() })
 watch(() => store.tasks.filter(item=>item.session_id===selectedId.value).map(item => `${item.task_id}:${item.state}:${item.result?.length}`).join('|'), scrollBottom)
 watch(() => store.tasks.filter(item => item.session_id === selectedId.value).map(item => `${item.task_id}:${item.state}:${item.result?.length}`).join('|'), scheduleContextUsage)
@@ -1709,8 +1520,6 @@ watch(selectedId, loadOptions)
 watch(executorId,()=>{hostUsage.value=null;workdir.value='';closeBrowser();fetchHost();void fetchBrowserStatus()},{flush:'sync'})
 watch(hostOpen,fetchHost)
 watch(selectedId,()=>{compactNotice.value=''})
-// Load the selected session's turns on demand, and re-load whenever the store
-// resets (Core restart / new SSE cursor) because that clears the client cache.
 watch([selectedId, () => store.resetToken], ([id]) => { if (id) void store.ensureSessionTurns(id) }, { immediate: true })
 onMounted(() => { syncLocale(); store.connect(); loadOptions(); fetchModels();void fetchWorkspaces();hostTimer=setInterval(fetchHost,5000);workspaceTimer=setInterval(()=>{if(!document.hidden)void fetchWorkspaces()},5000);void fetchBrowserStatus();browserTimer=setInterval(fetchBrowserStatus,5000);window.addEventListener('keydown',onEscape);loadSuperseded(selectedId.value) })
 onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrowser();store.disconnect();if(hostTimer) clearInterval(hostTimer);if(workspaceTimer) clearInterval(workspaceTimer);if(browserTimer) clearInterval(browserTimer);if(browserViewTimer) clearInterval(browserViewTimer);if(browserStreamRetry) clearTimeout(browserStreamRetry);window.removeEventListener('keydown',onEscape)})
@@ -1850,9 +1659,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
         <button v-if="store.hasOlderTurns(selectedId)" class="load-earlier" type="button" @click="store.olderSessionTurns(selectedId)">{{ t('agent.page.loadEarlier') }}</button>
         <article v-for="turn in visibleTurns" :key="turn.task_id" class="turn">
           <div class="bubble user" :class="{ editing: editingId === turn.task_id }"><div class="message-head"><b>{{ isLife(turn) ? 'LIFE' : t('agent.page.you') }}</b><time>{{ time(turn.started_at) }}</time></div>
-            <!-- Edit mode replaces the text in place: an edited message becomes a
-                 new turn, so the composer draft is left untouched. -->
-            <template v-if="editingId === turn.task_id">
+                        <template v-if="editingId === turn.task_id">
               <textarea ref="editArea" v-model="editDraft" class="bubble-edit" rows="3" :aria-label="t('agent.page.edit')" @keydown.esc.prevent="cancelEdit" @keydown.ctrl.enter.prevent="submitEdit(turn)" @keydown.meta.enter.prevent="submitEdit(turn)" />
               <div class="bubble-edit-actions">
                 <button type="button" class="bubble-action" @click="cancelEdit">{{ t('agent.page.cancel') }}</button>
@@ -1861,10 +1668,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
             </template>
             <template v-else>
               <div class="message-text">{{ turn.prompt?.replace(/^\[thinking_intensity=\w+\]\s*/, '') }}</div>
-              <!-- The files this turn was sent with. Core returns them with the row,
-                   so the reference survives a reload instead of living only in the
-                   composer's pending list. -->
-              <div v-if="turn.attachments?.length" class="bubble-files">
+                            <div v-if="turn.attachments?.length" class="bubble-files">
                 <a v-for="(file, index) in turn.attachments" :key="`${file.url}-${index}`" class="bubble-file" :href="file.url" target="_blank" rel="noopener" :title="file.name">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16.5 6.5 8.9 14.1a2.5 2.5 0 0 0 3.5 3.5l7.6-7.6a4.5 4.5 0 0 0-6.4-6.4l-8.3 8.3a6.5 6.5 0 0 0 9.2 9.2l5.6-5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   <span class="bubble-file-name">{{ file.name }}</span>
@@ -2011,18 +1815,14 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
             <span class="connection-hint"><span v-if="active?.kind === 'compact'" class="tree-spin small" aria-hidden="true" /><i v-else :class="{online:store.onlineCount>0}" />{{ active?.kind === 'compact' ? t('agent.page.compacting') : store.onlineCount ? t('agent.page.executorOnline') : t('agent.page.executorOffline') }}</span>
           </div>
           <div class="footer-actions">
-            <!-- Mode: three one-word switches. Plan / Agent / Work are product
-                 names, so they stay in English in every locale. -->
-            <div class="mode-switch" role="group" :aria-label="t('agent.page.taskKind')">
+                        <div class="mode-switch" role="group" :aria-label="t('agent.page.taskKind')">
               <button v-for="choice in kindChoices" :key="choice.value" type="button" class="mode-btn" :class="{ active: taskKind === choice.value }" :disabled="busy" :aria-pressed="taskKind === choice.value" :aria-label="choice.label" @click="taskKind = choice.value">
                 {{ choice.label }}
                 <span class="hint"><b>{{ choice.label }} · {{ choice.tag }}</b><i>{{ choice.desc }}</i></span>
               </button>
             </div>
             <span class="footer-sep" aria-hidden="true" />
-            <!-- Small toggles: each one is a single boolean, so a switch beats a
-                 two-item select that hides its current value behind a click. -->
-            <button type="button" class="ct" :class="{ on: permissionMode === 'full_access' }" :disabled="!!active || busy" :aria-pressed="permissionMode === 'full_access'" :aria-label="t('agent.page.permissions')" @click="permissionMode = permissionMode === 'full_access' ? 'normal' : 'full_access'">
+                        <button type="button" class="ct" :class="{ on: permissionMode === 'full_access' }" :disabled="!!active || busy" :aria-pressed="permissionMode === 'full_access'" :aria-label="t('agent.page.permissions')" @click="permissionMode = permissionMode === 'full_access' ? 'normal' : 'full_access'">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l7 3v5.5c0 4.3-2.9 7.6-7 9.5-4.1-1.9-7-5.2-7-9.5V6l7-3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path v-if="permissionMode === 'full_access'" d="M9 12l2.2 2.2L15.5 10" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
               <span class="hint right"><b>{{ t('agent.page.permissions') }} · {{ permissionMode === 'full_access' ? t('agent.page.permFullAccess') : t('agent.page.permNormal') }}</b><i>{{ t('agent.page.tipPermission') }}</i></span>
             </button>
@@ -2049,9 +1849,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
       </form>
     </section>
     <div v-if="browserOpen" class="directory-backdrop" @click.self="closeBrowser"><section class="directory-dialog" role="dialog" aria-modal="true" :aria-label="t('agent.page.selectWorkspaceDirAria')" tabindex="-1"><header><h2>{{ t('agent.page.directoryTitle', { name: executor?.host?.hostname || t('agent.page.executor') }) }}</h2><button @click="closeBrowser">{{ t('agent.page.close') }}</button></header><div class="directory-roots"><button v-for="root in directory.roots" :key="root" :disabled="browserBusy" @click="browse(root)">{{ root }}</button><button :disabled="browserBusy" @click="browse(executor?.host?.workdir || '')">{{ t('agent.page.defaultDirectory') }}</button></div><code>{{ directory.path }}</code><form class="new-folder" @submit.prevent="createFolder"><input v-model="folderName" :placeholder="t('agent.page.newFolderName')" :aria-label="t('agent.page.newFolderName')" :disabled="browserBusy"/><button :disabled="browserBusy || !folderName.trim() || !directory.path">{{ t('agent.page.createFolder') }}</button></form><p v-if="browserError" class="error">{{ browserError }}</p><p v-if="browserBusy">{{ t('agent.page.readingDirectory') }}</p><div v-else class="directory-list"><button v-if="directory.parent!==directory.path" @click="browse(directory.parent)">{{ t('agent.page.parentDirectory') }}</button><button v-for="folder in directory.directories" :key="folder.path" @click="browse(folder.path)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ folder.name }}</button><p v-if="!directory.directories.length" class="muted">{{ t('agent.page.noSubdirectories') }}</p></div><footer><button :disabled="browserBusy || !!browserError || !directory.path" @click="selectDirectory">{{ t('agent.page.selectCurrentDirectory') }}</button></footer></section></div>
-    <!-- Workspace rename: an in-page modal (Enter confirms, Esc cancels) so the
-         flow can be styled and does not block on native window.prompt. -->
-    <div v-if="renameOpen" class="directory-backdrop" @click.self="cancelRename">
+        <div v-if="renameOpen" class="directory-backdrop" @click.self="cancelRename">
       <section class="directory-dialog rename-dialog" role="dialog" aria-modal="true" :aria-label="t('agent.page.rename')" @keydown="onRenameKey">
         <h2>{{ t('agent.page.rename') }}</h2>
         <input ref="renameInput" v-model="renameValue" :placeholder="t('agent.page.workspaceName')" :aria-label="t('agent.page.workspaceName')" @keydown.enter.prevent="confirmRename" />
@@ -2270,7 +2068,6 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
 <style scoped>
 .workspace{--code-font:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,'SFMono-Regular',Menlo,monospace;display:flex;height:100%;min-height:0;background:var(--md-surface);color:var(--md-on-surface)}
 
-/* ---- baseline controls ---- */
 button,input,textarea,select{font:inherit;color:inherit;border:1px solid var(--md-outline-variant);border-radius:9px;background:var(--md-surface-container-lowest);padding:9px 12px}
 button{cursor:pointer;transition:background .15s,box-shadow .15s,filter .15s}
 button:disabled{opacity:.45;cursor:default}
@@ -2278,7 +2075,6 @@ button:hover:not(:disabled){background:var(--md-secondary-container);box-shadow:
 input:focus,textarea:focus,select:focus{outline:none;border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 12%,transparent)}
 input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 
-/* ---- sessions sidebar ---- */
 .sessions{width:284px;flex-shrink:0;border-right:1px solid var(--md-outline-variant);padding:20px 16px;display:flex;flex-direction:column;gap:14px;background:var(--md-surface-container-low)}
 .sessions header{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .sessions h1{font-size:22px;font-weight:650;letter-spacing:-.01em;margin:0}
@@ -2290,7 +2086,6 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .connection i{width:8px;height:8px;border-radius:50%;background:var(--md-outline);box-shadow:0 0 0 3px var(--md-surface-container-high)}
 .connection i.online{background:var(--md-success);box-shadow:0 0 0 3px var(--md-success-container)}
 
-/* segmented filter */
 .filter-bar{display:flex;gap:3px;padding:4px;border-radius:999px;background:var(--md-surface-container-high)}
 .filter-bar button{flex:1;font-size:12px;font-weight:500;padding:7px 4px;border:0;border-radius:999px;background:transparent;color:var(--md-on-surface-variant);box-shadow:none}
 .filter-bar button:hover:not(:disabled){background:transparent;color:var(--md-on-surface)}
@@ -2303,15 +2098,13 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .session-card.selected{background:var(--md-secondary-container);border-color:transparent;border-radius:12px 12px 12px 4px}
 .session-card.selected:hover{background:var(--md-secondary-container)}
 .session-card strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;font-weight:600;font-size:14px}
-/* The snippet/time line is a flex item in a column; a long unbroken token
-   (path, hash, URL) would otherwise widen the card past the sidebar. */
+
 .session-card small{min-width:0;overflow-wrap:anywhere}
 .origin,small,.sessions .muted{font-size:12px;color:var(--md-on-surface-variant)}
 .origin{font-weight:600;letter-spacing:.02em}
 .ledger-button{text-align:left;border-radius:10px;background:var(--md-surface-container-lowest);font-size:13px;font-weight:550}
 .ledger-button.chosen{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 
-/* ---- ledger ---- */
 .ledger{flex:1;overflow-y:auto;padding:var(--space-xl)}
 .ledger>header{margin-bottom:8px}
 .ledger>header h2{font-size:18px;font-weight:650}
@@ -2324,7 +2117,6 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .ledger-entry summary{cursor:pointer;color:var(--md-on-surface-variant)}
 .ledger-entry pre{margin:8px 0 0;max-height:300px}
 
-/* ---- conversation ---- */
 .conversation{display:flex;flex:1;min-width:0;flex-direction:column;min-height:0}
 .conversation-header{display:flex;align-items:flex-start;gap:14px}
 .conversation-header>div:first-child{flex:1;min-width:0}
@@ -2339,7 +2131,7 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .browser-status.on{color:var(--md-success);background:color-mix(in srgb,var(--md-success) 14%,transparent)}
 .browser-status.on i{background:var(--md-success)}
 .browser-status.off{opacity:.7}
-/* ---- shared button system ---- */
+
 .icon-btn{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;background:var(--md-surface-container-lowest);color:var(--md-on-surface-variant);flex-shrink:0;transition:background-color 160ms,transform 160ms var(--ease-emphasized-decel)}
 .icon-btn:hover:not(:disabled){background:var(--md-secondary-container)}
 .icon-btn.active{background:color-mix(in srgb,var(--md-primary) 16%,transparent);color:var(--md-primary)}
@@ -2348,11 +2140,7 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .chip-btn{height:30px;padding:0 12px;display:inline-flex;align-items:center;gap:6px;border-radius:999px;font-size:12.5px;font-weight:600;flex-shrink:0;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);transition:background-color 160ms,transform 160ms var(--ease-emphasized-decel)}
 .chip-btn:hover:not(:disabled){background:var(--md-secondary-container)}
 .chip-btn.active{background:color-mix(in srgb,var(--md-primary) 18%,transparent);color:var(--md-primary)}
-/* ---- composer control row ----
-   Everything under the textarea is one compact row: mode switches, then icon
-   toggles. Sizes are declared through `#app .workspace …` so the host's
-   `#app button { min-height:36px; border-radius:18px }` cannot inflate a 30px
-   icon into a 30x36 pill. */
+
 .footer-sep{width:1px;height:18px;background:var(--md-outline-variant);flex:none;margin:0 2px}
 .mode-switch{display:inline-flex;align-items:center;gap:2px;padding:2px;border-radius:999px;background:var(--md-surface-container-high);flex:none}
 #app .workspace .mode-switch .mode-btn{position:relative;min-height:0;height:26px;padding:0 11px;border:0;border-radius:999px;background:transparent;color:var(--md-on-surface-variant);font-size:12.5px;font-weight:650;letter-spacing:.01em;cursor:pointer;transition:background-color 150ms,color 150ms}
@@ -2363,22 +2151,16 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 #app .workspace .ct:hover:not(:disabled){background:var(--md-surface-container-high);color:var(--md-on-surface)}
 #app .workspace .ct.on{background:color-mix(in srgb,var(--md-primary) 16%,transparent);color:var(--md-primary);border-color:color-mix(in srgb,var(--md-primary) 35%,transparent)}
 #app .workspace .ct:disabled{opacity:.4;cursor:not-allowed}
-/* Instant tooltips: the feature name on the first line, a one-line description
-   on the second. Deliberately not the `title` attribute — the native tooltip
-   waits about a second, cannot be styled, and shows nothing on touch.
-   These rules live in the unscoped block at the bottom of this file: the merged
-   model picker is a child component, and scoped CSS does not reach it. *//* Press feedback: scale reads as "pressed" better than the global translateY(1px). */
+
 #app .workspace :is(.icon-btn,.chip-btn,.attach-fly,.send-fly):active:not(:disabled){transform:scale(.97)}
 #app .workspace :is(.icon-btn,.chip-btn):focus-visible,
 .browser-toolbar button:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}
 
-/* ---- conversation header layout ---- */
 .conversation-header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .conversation-heading{flex:1;min-width:180px}
 .conversation-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .session-actions{display:flex;gap:6px;flex-shrink:0}
 
-/* ---- composer footer layout ---- */
 .composer-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .footer-status{display:flex;align-items:center;gap:12px;min-width:0}
 .footer-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -2421,10 +2203,9 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
   background:repeating-linear-gradient(135deg,transparent 0 3px,var(--md-on-surface-variant) 3px 4px)}
 .browser-resize:hover{opacity:.85}
 
-/* ---- right dock ---- */
 .dock{width:58px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 0;border-radius:28px;background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}
 .dock-btn{position:relative;width:42px;height:42px;display:grid;place-items:center;border:0;border-radius:14px;background:transparent;color:var(--md-on-surface-variant);transition:background-color 160ms,color 160ms,transform 160ms var(--ease-emphasized-decel)}
-/* The collapse toggle only exists on narrow screens (see media query below). */
+
 .dock-toggle{display:none}
 .dock-btn:hover:not(:disabled){background:var(--md-secondary-container);color:var(--md-on-surface)}
 .dock-btn:active:not(:disabled){transform:scale(.94)}
@@ -2433,15 +2214,13 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .dock-btn:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}
 .dock-dot{position:absolute;right:6px;top:6px;width:8px;height:8px;border-radius:50%;background:var(--md-outline)}
 .dock-dot.on{background:var(--md-success)}
-/* Narrow screens: the dock collapses to its toggle (default collapsed) so the
-   browser/tree/terminal stay reachable instead of being hidden outright. */
+
 @media(max-width:800px){
   .dock-toggle{display:grid}
   .dock:not(.open) .dock-btn:not(.dock-toggle){display:none}
   .dock:not(.open){gap:0}
 }
 
-/* ---- project tree window ---- */
 .tree-title{flex:1;min-width:0;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tree-crumb{display:flex;align-items:center;gap:7px;padding:7px 12px;background:var(--md-surface-container-low);color:var(--md-on-surface-variant);border-bottom:1px solid var(--md-outline-variant);flex-shrink:0}
 .tree-crumb svg{flex:none;opacity:.8}
@@ -2477,9 +2256,9 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .tree-icon.archive{color:#7c8598}
 @media (prefers-reduced-motion: reduce){.tree-chev{transition-duration:1ms}.tree-spin{animation-duration:1.6s}}
 .tree-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* ---- file preview window ---- */
+
 .file-dirty{width:8px;height:8px;border-radius:50%;background:var(--md-primary);flex-shrink:0}
-/* "Writing…" chip shown while the preview follows a live `write`. */
+
 .file-live{display:inline-flex;align-items:center;gap:5px;flex:none;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:650;color:var(--md-primary);background:color-mix(in srgb,var(--md-primary) 14%,transparent);white-space:nowrap}
 .file-live-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:file-live-pulse 1s ease-in-out infinite}
 @keyframes file-live-pulse{0%,100%{opacity:1}50%{opacity:.25}}
@@ -2490,7 +2269,6 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .file-saved{color:var(--md-success,#3ba55c);font-weight:650}
 .file-unsaved{color:#B88412;font-weight:650}
 
-/* ---- terminal window ---- */
 .term-exec{flex:0 1 208px;min-width:112px}
 .term-exec :deep(.app-select-trigger){min-height:30px;height:30px;border-radius:9px;font-size:12px;padding:0 6px 0 12px;background:var(--md-surface-container)}
 .term-exec :deep(.app-select-chevron){width:20px;height:20px}
@@ -2512,14 +2290,12 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .term-input button:active:not(:disabled){transform:scale(.97)}
 .term-input button:disabled{opacity:.45}
 
-/* ---- usage window ---- */
 .usage-body{flex:1;min-height:0;overflow:auto;padding:14px 16px}
 .usage-big{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
 .usage-big b{font-size:28px;font-weight:800;color:var(--md-primary);line-height:1;font-variant-numeric:tabular-nums}
 .usage-big span{font-size:12px;color:var(--md-on-surface-variant)}
 .usage-body .ctx-row{padding:7px 0}
 
-/* ---- host window ---- */
 .host-body{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:14px;padding:16px;background:var(--md-surface-container-lowest)}
 .host-head{display:flex;align-items:center;gap:10px}
 .host-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;font-weight:750}
@@ -2543,13 +2319,10 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .error{background:var(--md-error-container);color:var(--md-on-error-container);padding:11px 16px;border-radius:12px;margin:8px 0;font-size:13px;overflow-wrap:anywhere}
 
 .transcript{flex:1;overflow-y:auto;padding:26px 28px;min-height:0}
-/* Back-to-bottom pill. Sticky *inside* the transcript so it sits on the bottom
-   edge of the log — a fixed `bottom:148px` guessed the composer height and
-   covered the input once the composer grew a line. `#app .workspace` (1,2,0)
-   beats `#app button`'s 36px floor and 18px radius, which had inflated it. */
+
 #app .workspace .jump-latest{position:sticky;bottom:0;z-index:var(--z-popover,5000);display:flex;align-items:center;gap:6px;width:max-content;margin:8px auto 0;min-height:0;height:30px;padding:0 13px;border:1px solid var(--md-outline-variant);border-radius:999px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);font-size:12.5px;font-weight:600;line-height:1;cursor:pointer;box-shadow:0 6px 20px #1624401f}
 #app .workspace .jump-latest:hover{background:var(--md-surface-container-high)}
-/* Copy confirmation. Sits above the composer, next to the jump pill. */
+
 .copy-toast{position:sticky;bottom:44px;z-index:var(--z-popover,5000);display:flex;width:max-content;margin:0 auto;padding:6px 13px;border-radius:999px;background:var(--md-inverse-surface,#1f242b);color:var(--md-inverse-on-surface,#f4f6fb);font-size:12px;font-weight:600;box-shadow:0 8px 22px #0b12203d;pointer-events:none}
 .toast-enter-active,.toast-leave-active{transition:opacity 120ms var(--ease-out)}
 .toast-enter-from,.toast-leave-to{opacity:0}
@@ -2562,29 +2335,25 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .welcome h2{color:var(--md-on-surface);font-size:24px;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}
 .welcome p{margin:6px 0;font-size:14px}
 
-/* ---- turns skeleton (shown while a session's history loads) ---- */
 .turns-skeleton{max-width:920px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
 .turns-skeleton .skeleton-row{display:flex}
 .turns-skeleton .skeleton-row.right{justify-content:flex-end}
-/* Shimmer reuses the `sheen` keyframes shared with the running caret sheen. */
+
 .skeleton-bar{display:block;height:56px;background:linear-gradient(100deg,var(--md-surface-container-high) 40%,var(--md-surface-container-highest) 50%,var(--md-surface-container-high) 60%);background-size:280% 100%;animation:sheen 1.4s linear infinite}
 .skeleton-bar.user{width:min(62%,340px);border-radius:16px 16px 4px 16px}
 .skeleton-bar.agent{width:min(84%,560px);border-radius:16px 16px 16px 4px}
 .skeleton-bar.short{width:min(38%,220px)}
 .skeleton-bar.long{width:min(88%,640px);height:88px}
 
-/* ---- main transcript ↔ subagent view swap ---- */
 .view-swap-enter-active,.view-swap-leave-active{transition:opacity 200ms var(--ease-emphasized),transform 200ms var(--ease-emphasized)}
 .view-swap-enter-from{opacity:0;transform:translateY(8px)}
 .view-swap-leave-to{opacity:0;transform:translateY(-8px)}
 
-/* ---- top error bar with dismiss ---- */
 .error-bar{display:flex;align-items:flex-start;gap:10px}
 .error-bar .error-text{flex:1;min-width:0}
 .error-bar .error-close{flex:none;width:22px;height:22px;display:inline-grid;place-items:center;border:0;border-radius:50%;background:transparent;color:inherit;padding:0}
 .error-bar .error-close:hover:not(:disabled){background:color-mix(in srgb,currentColor 14%,transparent);box-shadow:none}
 
-/* ---- message bubbles ---- */
 .load-earlier{display:block;margin:0 auto 22px;padding:8px 16px;border:1px solid var(--md-outline-variant);border-radius:999px;background:var(--md-surface-container-low);color:var(--md-on-surface-variant);font-size:13px;cursor:pointer;transition:background 150ms var(--ease-emphasized-decel),color 150ms var(--ease-emphasized-decel)}
 .load-earlier:hover{background:var(--md-surface-container);color:var(--md-on-surface)}
 .turn{max-width:920px;margin:0 auto 30px;display:flex;flex-direction:column;gap:10px}
@@ -2597,23 +2366,19 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .bubble .message-head span{margin-left:auto}
 .bubble.user .message-head{margin-bottom:7px;opacity:.85}
 .message-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;font-size:14px}
-/* Attachment references inside a sent message: one chip per file, click opens
-   the uploaded copy in a new tab. */
+
 .bubble-files{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
 .bubble-file{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:5px 9px;border-radius:9px;background:color-mix(in srgb,var(--md-on-primary-container) 10%,transparent);color:inherit;font-size:12px;font-weight:600;text-decoration:none;line-height:1.3;transition:background-color 140ms}
 .bubble-file:hover{background:color-mix(in srgb,var(--md-on-primary-container) 18%,transparent)}
 .bubble-file svg{flex:none;opacity:.75}
 .bubble-file-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
 .bubble-file small{flex:none;font-size:10.5px;font-weight:500;opacity:.7;font-variant-numeric:tabular-nums}
-/* Per-message actions under the bubble. Hidden until the turn is hovered so a
-   long transcript stays quiet; always visible on touch, where there is no hover. */
+
 .turn-actions{display:flex;gap:4px;margin:6px 2px 0;opacity:0;transition:opacity 120ms var(--ease-out)}
 .turn:hover .turn-actions,.turn:focus-within .turn-actions{opacity:1}
 .turn-actions.end{justify-content:flex-end}
 @media (hover:none){.turn-actions{opacity:1}}
-/* Deliverable list under a finished turn. Chips, not a table: they wrap, they
-   stay clickable at any width, and the description truncates instead of
-   pushing the layout around. */
+
 .turn-artifacts{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 2px 2px}
 .turn-artifacts-title{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--md-on-surface-variant)}
 #app .workspace .artifact-chip{display:inline-flex;align-items:center;gap:6px;max-width:min(320px,100%);min-height:0;height:28px;padding:0 10px;border:1px solid var(--md-outline-variant);border-radius:999px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);cursor:pointer;transition:background-color 140ms,border-color 140ms}
@@ -2627,18 +2392,17 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 #app .workspace .bubble-action.primary{background:var(--md-primary);color:var(--md-on-primary,#fff)}
 #app .workspace .bubble-action.copied{color:var(--md-success,#1a9e63);opacity:1;cursor:default}
 #app .workspace .bubble-action.primary:hover:not(:disabled){background:var(--md-primary);filter:brightness(1.06)}
-/* Edit mode: the bubble widens so a long prompt is editable without scrolling. */
+
 .bubble.user.editing{width:82%}
 .bubble-edit{width:100%;resize:vertical;min-height:66px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--md-on-primary-container) 26%,transparent);border-radius:10px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);font:inherit;font-size:14px;line-height:1.6}
 .bubble-edit:focus{outline:2px solid var(--md-primary);outline-offset:1px}
 .bubble-edit-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:6px}
-/* Drop target feedback while dragging files over the chat. */
+
 .composer.dropping{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}
 .drop-veil{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;gap:9px;border-radius:inherit;background:color-mix(in srgb,var(--md-primary) 10%,var(--md-surface-container-lowest));color:var(--md-primary);font-size:13px;font-weight:700;pointer-events:none}
 .bubble.agent :deep(p){margin:.4em 0}
 .bubble.agent :deep(pre){max-height:420px}
 
-/* agent speech / markdown inside response */
 .agent-speech{margin:6px 0;padding:2px 0;line-height:1.7}
 .model-annotation{display:block;font-size:12px;opacity:.7;margin-bottom:4px;font-family:var(--code-font);overflow-wrap:anywhere}
 .model-annotation.fallback{opacity:1;color:var(--md-error)}
@@ -2653,10 +2417,8 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .agent-speech :deep(code){font-family:var(--code-font)}
 .agent-speech :deep(ul,.agent-speech :deep(ol)){padding-left:20px;margin:.4em 0}
 
-/* ---- steps ---- */
 .steps{display:flex;flex-direction:column;gap:8px;margin:12px 0 14px}
-/* Collapsed step summary: one line that states what actually happened, so a
-   finished turn does not push its reply off-screen. */
+
 .turn-collapse{margin:10px 0 4px;border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-low)}
 .turn-collapse>summary{display:flex;align-items:center;gap:7px;padding:9px 12px;cursor:pointer;font-size:12.5px;color:var(--md-on-surface-variant);list-style:none}
 .turn-collapse>summary::-webkit-details-marker{display:none}
@@ -2678,7 +2440,6 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .steps details pre{margin:10px 0 0;font-family:var(--code-font);font-size:13px;white-space:pre-wrap;max-height:400px}
 pre{max-height:450px;overflow:auto;font-family:var(--code-font)}
 
-/* ---- subagent card ---- */
 .subagent-card{border:1px solid var(--md-outline-variant);border-radius:12px;background:var(--md-surface-container-lowest);overflow:hidden;box-shadow:var(--shadow-1)}
 button.subagent-card-head{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:0;border-radius:0;background:transparent;padding:11px 14px;font-size:13px}
 button.subagent-card-head:hover:not(:disabled){background:var(--md-secondary-container);box-shadow:none}
@@ -2690,7 +2451,6 @@ button.subagent-card-head>strong{font-weight:700}
 .subagent-card-error{margin:0 10px 10px;padding:8px 12px;font-size:12px}
 .subagent-card.nested{margin:6px 0;box-shadow:none}
 
-/* ---- sub view ---- */
 .sub-view{max-width:900px;margin:0 auto}
 .sub-view-header{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--md-outline-variant)}
 .sub-view-header button{flex-shrink:0;border-radius:9px;font-size:13px;font-weight:550;background:var(--md-surface-container-lowest)}
@@ -2699,7 +2459,6 @@ button.subagent-card-head>strong{font-weight:700}
 .sub-view-header>span{margin-left:auto;font-weight:650;font-size:12px}
 .sub-view-body{min-height:120px}
 
-/* ---- todo panel ---- */
 .todo-panel{padding:12px 16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);background:var(--md-surface-container-low);max-height:170px;overflow:auto;opacity:1;transform:none;transition:opacity 200ms var(--ease-emphasized-decel),transform 200ms var(--ease-emphasized-decel)}
 @starting-style{.todo-panel{opacity:0;transform:translateY(6px)}}
 .todo-panel>header{display:flex;align-items:center;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant);text-transform:uppercase}
@@ -2714,19 +2473,16 @@ button.subagent-card-head>strong{font-weight:700}
 .todo-panel li.completed{opacity:.6}
 .todo-panel li.completed .todo-text{text-decoration:line-through}
 .todo-panel li.in_progress .todo-text{font-weight:650}
-/* `li` is a row flex container, so the text needs an explicit shrink floor and
-   a break opportunity for long paths / URLs. */
+
 .todo-text{min-width:0;overflow-wrap:anywhere}
 .todo-mark{flex:none;width:16px;text-align:center;color:var(--md-primary);transition:color .2s,transform .2s}
 .todo-panel li.completed .todo-mark{color:var(--md-success,#3ba55c)}
 .composer .todo-panel{border-radius:28px 28px 0 0}
 
-/* ---- context usage ring ---- */
 .ctx-usage{position:relative;display:inline-flex;align-items:center;gap:6px;flex:none;outline:none;order:99;margin-left:6px;cursor:default}
 .ctx-ring{width:20px;height:20px;flex:none}
 .ctx-track{fill:none;stroke:var(--md-outline-variant);stroke-width:2.2}
-/* Usage arc: dasharray is bound from tokens/window; rotated so it starts at 12
-   o'clock. No window data = no arc (stays the hollow track). */
+
 .ctx-arc{fill:none;stroke-width:2.2;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dasharray var(--duration-long) var(--ease-emphasized),stroke var(--duration-medium) var(--ease-out)}
 .ctx-value{font-size:11px;color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums}
 .ctx-tip{position:absolute;bottom:calc(100% + 12px);left:0;right:auto;transform-origin:bottom left;transform:translateY(4px) scale(.97);z-index:var(--z-popover);width:max-content;min-width:216px;max-width:280px;padding:12px 14px;border-radius:14px;background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);box-shadow:var(--shadow-3);color:var(--md-on-surface);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 160ms var(--ease-emphasized-decel),transform 160ms var(--ease-emphasized-decel),visibility 160ms;font-size:12px;text-align:left}
@@ -2738,17 +2494,13 @@ button.subagent-card-head>strong{font-weight:700}
 .ctx-row{display:flex;justify-content:space-between;gap:16px;padding:4px 0;border-top:1px solid color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}
 .ctx-row span:last-child{font-weight:650;color:var(--md-primary)}
 
-/* ---- composer ---- */
 .composer{position:relative;flex-shrink:0;margin:0 20px 18px;border:1px solid var(--md-outline-variant);border-radius:18px;background:var(--md-surface-container-lowest);overflow:visible;box-shadow:var(--shadow-1)}
 .composer-input{position:relative}
-/* Reserve the full actions gutter. `.composer-actions` holds up to three 42px
-   buttons (attach + send/stop + stop-all) with 8px gaps, pinned 10px from the
-   right edge: 10 + 3*42 + 2*8 = 152px, +8px breathing = 160px. The old 124px
-   only covered two buttons, so the third overlaid the draft text. */
+
 .composer-input textarea{font-size:14px;width:100%;display:block;min-height:96px;max-height:120px;padding:15px 160px 15px 16px;line-height:1.6;resize:none;border:0;border-radius:0;background:transparent}
 .composer-input textarea:focus{box-shadow:none;border:0}
 .slash-menu{position:fixed;z-index:var(--z-popover);background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:14px;box-shadow:var(--shadow-3);padding:6px;max-height:min(320px,42vh);overflow:auto}
-/* Same pattern as ThinkingSlider's popover menu (short rise-in). */
+
 .slash-menu-enter-active,.slash-menu-leave-active{transition:opacity 130ms,transform 130ms}
 .slash-menu-enter-from,.slash-menu-leave-to{opacity:0;transform:translateY(4px)}
 .slash-item{display:flex;align-items:baseline;gap:10px;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:var(--md-on-surface);cursor:pointer}
@@ -2762,9 +2514,7 @@ button.subagent-card-head>strong{font-weight:700}
 .attach-fly:hover:not(:disabled){filter:brightness(1.05)}
 .attach-fly:disabled{opacity:.5;cursor:default}
 .attach-chip{display:inline-flex;align-items:center;gap:6px;max-width:220px;font-size:12px;padding:4px 6px 4px 10px;border-radius:999px;background:var(--md-surface-container);border:1px solid var(--md-outline-variant);overflow:hidden}
-/* `text-overflow` is a block-container feature. On the inline-flex chip itself
-   it was silently ignored and long file names were hard-clipped mid-glyph; the
-   inner span is what actually ellipsises. */
+
 .attach-chip-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .attach-chip button{border:0;background:transparent;cursor:pointer;font-size:14px;line-height:1;padding:0 4px;color:var(--md-on-surface-variant)}
 .attach-chip button:hover{color:var(--md-error)}
@@ -2777,10 +2527,7 @@ button.subagent-card-head>strong{font-weight:700}
 .compact-notice{display:flex;align-items:center;gap:8px;font-size:12px;padding:10px 16px;color:var(--md-primary);background:var(--md-primary-container);border-radius:10px;margin:10px 16px 0}
 .compact-notice.running{animation:soft-pulse 1.4s var(--ease-emphasized) infinite}
 @media (prefers-reduced-motion: reduce){.compact-notice.running{animation:none}.compact-notice .tree-spin{animation-duration:1.6s}}
-/* Collapsible options bar. Was `grid-template-rows:0fr`, which still reserved
-   the row's min-content height (25px of dead space above the textarea) because
-   a grid track cannot shrink below its item's minimum. max-height is boring and
-   actually reaches zero. */
+
 .options-collapse{max-height:0;overflow:hidden;opacity:0;transition:max-height var(--duration-medium) var(--ease-emphasized),opacity 140ms var(--ease-out)}
 .options-collapse.open{max-height:220px;opacity:1}
 .options-toggle{display:inline-flex;align-items:center;gap:6px;transition:background-color .18s,color .18s}
@@ -2792,18 +2539,11 @@ button.subagent-card-head>strong{font-weight:700}
 .composer footer{display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap;border-top:1px solid var(--md-outline-variant)}
 .composer-footer .mode-field :deep(.app-select-trigger){min-height:30px;font-size:12.5px;border-radius:999px;background:var(--md-surface-container-high);border-color:transparent}
 
-/* ---- host panel / rings ----
-   The host window is styled by `.host-window` / `.host-body` / `.host-details`
-   above; a `.host-panel*` block used to sit here and never matched anything
-   (the template renders `class="host-window"`). Removed rather than renamed:
-   its `margin` would have shifted the fixed-position window off its inline
-   left/top. */
 .usage-rings{display:flex;align-items:center;gap:24px;padding:14px 0;flex-wrap:wrap}
 .usage-metric{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px}
 .usage-ring{width:88px;height:88px;border-radius:50%;display:grid;place-items:center}
 .usage-ring b{width:68px;height:68px;border-radius:50%;background:var(--md-surface-container-lowest);display:grid;place-items:center;font-size:15px;font-weight:650;box-shadow:var(--shadow-1)}
 
-/* ---- directory dialog ---- */
 .new-folder{display:flex;gap:8px}.new-folder input{flex:1;min-width:0}
 .directory-backdrop{position:fixed;inset:0;background:var(--md-scrim);z-index:var(--z-modal);display:grid;place-items:center;padding:20px}
 .directory-dialog{position:relative;z-index:var(--z-modal);background:var(--md-surface);border:1px solid var(--md-outline-variant);border-radius:20px;padding:22px;width:min(680px,100%);display:flex;flex-direction:column;gap:14px;max-height:85vh;box-shadow:var(--shadow-4);outline:none}
@@ -2817,7 +2557,7 @@ button.subagent-card-head>strong{font-weight:700}
 .directory-dialog code{overflow-wrap:anywhere;font-size:12px;background:var(--md-surface-container);padding:8px 10px;border-radius:8px}
 .directory-dialog>footer{display:flex;justify-content:flex-end}
 .directory-dialog>footer button{background:var(--md-primary);color:var(--md-on-primary,#fff);border-color:transparent;font-weight:600}
-/* Rename modal: narrower than the directory picker, panel-toned surface. */
+
 #app .workspace .rename-dialog{width:min(420px,100%);background:var(--md-surface-container)}
 #app .workspace .rename-dialog>h2{margin:0;font-size:16px;font-weight:650}
 #app .workspace .rename-dialog>footer{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
@@ -2829,15 +2569,8 @@ button.subagent-card-head>strong{font-weight:700}
 .permission-request pre{max-height:160px;overflow:auto}
 .permission-request>div{display:flex;justify-content:flex-end;gap:8px}
 
-/* ============ Material 3 Expressive polish ============ */
 #app .workspace{gap:12px;padding-left:6px;background:var(--md-surface-container)}
 
-/* The host's `#app button{min-height:36px}` (theme.css) is (1,0,1) and beats
-   every scoped rule in this file (0,2,0), which inflated each compact icon
-   control here — 22x22 → 22x36, 24x24 → 24x36, 28x28 → 28x36. These (1,3,0)
-   selectors win the declared boxes back. The `::before` hit areas on
-   `.row-actions` / `.ws-actions` / `.ws-toggle` keep the touch targets at 44px,
-   so nothing gets harder to tap. */
 #app .workspace :is(.row-actions, .ws-actions, .browser-toolbar, .term-input) button,
 #app .workspace :is(.ws-toggle, .icon-btn, .chip-btn, .session-actions button, .order-toggle button) { min-height: 0; }
 #app .workspace .sessions{
@@ -2882,7 +2615,6 @@ button.subagent-card-head>strong{font-weight:700}
 #app .workspace .ledger-button.chosen{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent}
 #app .workspace .ledger-entry{border-radius:20px;border-color:color-mix(in srgb,var(--md-outline-variant) 45%,transparent);background:var(--md-surface-container-lowest);box-shadow:var(--shadow-1)}
 
-/* conversation column */
 #app .workspace .conversation{background:var(--md-surface);border-radius:30px;overflow:hidden;box-shadow:var(--shadow-1)}
 #app .workspace .conversation-header{
   padding:20px 26px 16px;border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 50%,transparent);
@@ -2926,7 +2658,6 @@ button.subagent-card-head>strong{font-weight:700}
 #app .workspace .sub-view-header button{border-radius:999px;background:var(--md-surface-container-high);border-color:transparent;font-weight:650}
 #app .workspace .agent-speech :deep(pre){border-radius:16px;background:var(--md-surface-container);border-color:color-mix(in srgb,var(--md-outline-variant) 40%,transparent)}
 
-/* composer */
 #app .workspace .composer{
   position:relative;z-index:5;
   margin:0 22px 20px;border-radius:28px;overflow:visible;
@@ -2958,22 +2689,19 @@ button.subagent-card-head>strong{font-weight:700}
 #app .workspace .composer footer{border-top:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);padding:12px 16px}
 #app .workspace .composer footer>button{border-radius:999px;min-height:36px;padding-inline:15px;background:var(--md-surface-container-high);border-color:transparent}
 
-/* host panel + rings */
 #app .workspace .usage-ring b{background:var(--md-surface-container-lowest)}
 #app .workspace .directory-dialog{border-radius:32px;border-color:transparent;box-shadow:var(--shadow-4);background:var(--md-surface-container-low)}
 #app .workspace .directory-list button{background:var(--md-surface-container-lowest);border-color:transparent;border-radius:16px;min-height:46px}
 #app .workspace .directory-list button:hover:not(:disabled){background:var(--md-secondary-container)}
 #app .workspace .directory-roots button{background:var(--md-surface-container-high);border-color:transparent}
 
-/* ---- responsive ---- */
-/* ---- motion (restrained) ---- */
 @keyframes caret-blink{0%,100%{opacity:1}50%{opacity:.2}}
 @keyframes soft-pulse{0%,100%{opacity:1}50%{opacity:.5}}
-/* Turns enter via interruptible transitions (@starting-style), not keyframes. */
+
 .turn{opacity:1;transform:none;transition:opacity 220ms var(--ease-emphasized-decel),transform 220ms var(--ease-emphasized-decel)}
 @starting-style{.turn{opacity:0;transform:translateY(10px)}}
 #app .workspace .agent-speech .running{animation:caret-blink 1s steps(1,end) infinite;color:var(--md-primary)}
-/* ---- motion: messages/steps ease in (staggered), running state breathes ---- */
+
 .turn .bubble,
 .turn .steps > *,
 .turn .agent-speech,
@@ -3034,17 +2762,6 @@ button.subagent-card-head>strong{font-weight:700}
   .ctx-arc{transition:none}
 }
 
-/* Narrow-screen rules MUST repeat the `#app .workspace` prefix.
- * The M3 polish layer above declares `#app .workspace .sessions{width:296px}`,
- * `… .transcript{padding:28px 30px}` etc. at (1,2,0). A bare `.sessions` in a
- * media query compiles to `.sessions[data-v-x]` (0,2,0) and therefore loses
- * regardless of source order — which is why the sidebar stayed 296px and the
- * padding never shrank on phones. */
-
-/* Short windows: the composer used to keep its 96px textarea (plus a 2-row
-   footer once the icon row wrapped), which left the conversation about 180px
-   tall on a 569px-high window. Sizes now follow the available height, and the
-   footer stays on one row a bit longer. */
 @media (max-height:760px){
   #app .workspace .composer{margin:0 16px 10px;border-radius:16px}
   #app .workspace .composer-input textarea{min-height:52px;max-height:72px;padding:10px 150px 10px 14px;font-size:13.5px}
@@ -3068,7 +2785,7 @@ button.subagent-card-head>strong{font-weight:700}
 
 @media(max-width:800px){#app .workspace .sessions{width:214px;padding:12px 10px}#app .workspace .transcript{padding:14px}#app .workspace .composer{margin:0 12px 12px}#app .workspace .connection-hint{display:none}#app .workspace .conversation-header{padding:14px 16px}#app .workspace .welcome{margin:30px auto 0}#app .workspace .turn{margin-bottom:22px}}
 @media(max-width:560px){#app .workspace{flex-direction:column}#app .workspace .sessions{width:100%;max-height:230px;border-right:0;border-bottom:1px solid var(--md-outline-variant)}#app .workspace .sessions>input,#app .workspace .filter-bar,#app .workspace .connection{display:none}#app .workspace .session-list{display:flex;gap:6px;overflow-x:auto}#app .workspace .session-card{min-width:160px;width:160px;margin-bottom:0}#app .workspace .ledger-button{padding:5px;font-size:12px}}
-/* ---- sidebar order toggle + session row actions ---- */
+
 .sidebar-toggles{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .order-toggle{display:inline-flex;padding:2px;border-radius:999px;background:var(--md-surface-container-high)}
 .order-toggle button{border:0;background:transparent;border-radius:999px;padding:4px 9px;font-size:11.5px;font-weight:600;color:var(--md-on-surface-variant);cursor:pointer}
@@ -3077,12 +2794,7 @@ button.subagent-card-head>strong{font-weight:700}
 .session-row .row-actions{position:absolute;top:6px;right:6px;display:none;align-items:center;gap:8px}
 .session-row:hover .row-actions,
 .session-row:focus-within .row-actions{display:inline-flex}
-/* Touch has no hover, so an always-visible absolute overlay sat permanently on
-   top of the `.origin` label. On a 160px card (the ≤560px horizontal scroller)
-   the actions are ~110px wide, which covered essentially the whole row. Reveal
-   them on the selected row instead — the same "act on what you tapped" pattern
-   as iOS swipe actions — and reserve their width on that row's first line so
-   the label ellipsises rather than sliding underneath. */
+
 @media (hover: none){
   .session-row .row-actions{display:none}
   .session-row.selected .row-actions{display:inline-flex}
@@ -3094,9 +2806,8 @@ button.subagent-card-head>strong{font-weight:700}
 .row-actions select{max-width:78px;height:24px;border:0;border-radius:7px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-size:12px}
 .session-row.selected .session-card{background:var(--md-secondary-container);border-color:transparent;border-radius:12px 12px 12px 4px}
 
-/* ---- workspace groups (dsh-style) ---- */
 .ws-group{margin:0 0 10px;border:1px solid var(--md-outline-variant);border-radius:12px;overflow:hidden;background:var(--md-surface-container-lowest);display:grid;grid-template-rows:auto 1fr;transition:grid-template-rows var(--duration-medium) var(--ease-emphasized)}
-/* Drag-to-reorder feedback: source dims, hovered drop target gets an outline. */
+
 .ws-group.drag-source{opacity:.45}
 .ws-group.drag-over{outline:2px dashed var(--md-primary);outline-offset:-2px}
 .ws-group.collapsed{opacity:.92;grid-template-rows:auto 0fr}
@@ -3125,21 +2836,16 @@ button.subagent-card-head>strong{font-weight:700}
 .ws-add:hover:not(:disabled){border-color:var(--md-primary);color:var(--md-primary)}
 </style>
 <style>
-/* Instant tooltips for the composer control row. Unscoped on purpose: the merged
-   model picker is a child component and scoped rules do not reach into it.
-   No transition-delay — the tip is there the moment the pointer lands. */
+
 .hint{position:absolute;bottom:calc(100% + 9px);left:0;z-index:var(--z-popover,5000);display:flex;flex-direction:column;gap:3px;min-width:190px;max-width:270px;padding:9px 11px;border-radius:11px;background:var(--md-inverse-surface,#1f242b);color:var(--md-inverse-on-surface,#f4f6fb);text-align:left;font-size:11.5px;font-weight:500;line-height:1.45;letter-spacing:0;text-transform:none;white-space:normal;opacity:0;visibility:hidden;pointer-events:none;box-shadow:0 10px 26px #0b12204d;transition:opacity 70ms var(--ease-out)}
 .hint b{font-size:12px;font-weight:700}
 .hint i{font-style:normal;opacity:.78}
 .hint.right{left:auto;right:0}
-/* The dock is a vertical strip on the right edge, so its tips open to the left. */
+
 .hint.left{left:auto;right:calc(100% + 10px);top:50%;bottom:auto;transform:translateY(-50%)}
 .mode-btn:hover .hint,.mode-btn:focus-visible .hint,.ct:hover .hint,.ct:focus-visible .hint,.dock-btn:hover .hint,.dock-btn:focus-visible .hint,#app .workspace .mtp-trigger:hover .hint,#app .workspace .mtp-trigger:focus-visible .hint{opacity:1;visibility:visible}
 @media (prefers-reduced-motion: reduce){.hint{transition:none}}
-/* Dark palette swaps ride on the host's html[data-theme] toggle, not the OS
-   setting (the darkmode plugin flips data-theme; a media query would disagree
-   with a manual light/dark choice). Scoped styles cannot express an html-level
-   selector, so these live unscoped under #app like the host's own overrides. */
+
 html[data-theme="dark"] #app .tree-icon.dir{color:#e5bd6a}
 html[data-theme="dark"] #app .tree-icon.code{color:#9aa8ff}
 html[data-theme="dark"] #app .tree-icon.data{color:#4dd4c4}

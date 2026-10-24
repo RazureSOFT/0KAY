@@ -2,7 +2,6 @@ import { useI18n } from 'vue-i18n'
 import { useUIPatchesStore } from '../stores/uiPatches'
 import { useSettingsSectionsStore } from '../stores/settingsSections'
 
-/** Shared settings tab/section metadata helpers (used by SettingsPage and panels). */
 export function useSettingsMeta() {
   const { t } = useI18n()
   const uiPatches = useUIPatchesStore()

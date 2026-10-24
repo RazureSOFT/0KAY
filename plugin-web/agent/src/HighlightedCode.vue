@@ -8,8 +8,7 @@ const html = computed(() => highlightCode(props.code, props.path))
 <template><pre class="hl-code"><code class="hljs" v-html="html" /></pre></template>
 
 <style scoped>
-/* Metrics here must stay identical to CodeEditor's textarea (no italic/bold)
-   so the highlighted backdrop lines up with the editable text. */
+
 .hl-code{margin:0;padding:12px 14px;font-family:var(--code-font,ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,'SFMono-Regular',Menlo,monospace);font-size:12px;line-height:1.6;white-space:pre;tab-size:2;color:var(--md-on-surface)}
 .hl-code code{font:inherit;background:none;padding:0}
 .hl-code :deep(.hljs-comment),.hl-code :deep(.hljs-quote){color:#6a737d}
@@ -22,10 +21,7 @@ const html = computed(() => highlightCode(props.code, props.path))
 .hl-code :deep(.hljs-type),.hl-code :deep(.hljs-class .hljs-title),.hl-code :deep(.hljs-params){color:#005cc5}
 </style>
 <style>
-/* Dark token colors ride on the host's html[data-theme] toggle rather than the
-   OS media query (a manual light/dark choice in Settings must be honored).
-   Unscoped because scoped styles cannot express an html-level selector; the
-   #app prefix keeps the rules from leaking. */
+
 html[data-theme="dark"] #app .hl-code .hljs-comment,html[data-theme="dark"] #app .hl-code .hljs-quote{color:#8b949e}
 html[data-theme="dark"] #app .hl-code .hljs-keyword,html[data-theme="dark"] #app .hl-code .hljs-selector-tag,html[data-theme="dark"] #app .hl-code .hljs-doctag,html[data-theme="dark"] #app .hl-code .hljs-formula{color:#ff7b72}
 html[data-theme="dark"] #app .hl-code .hljs-string,html[data-theme="dark"] #app .hl-code .hljs-regexp,html[data-theme="dark"] #app .hl-code .hljs-addition{color:#a5d6ff}

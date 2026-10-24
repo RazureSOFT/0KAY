@@ -20,12 +20,6 @@ export interface LifeState {
   healthyPlugins?: number
 }
 
-/**
- * Platform + persona state. Sole source is Core's `/api/state`
- * (Core merges registry agents/plugins with Life emotion via gRPC).
- * Do not treat WS/life stream payloads as authoritative — they only
- * trigger a Core refresh.
- */
 export const useLifeStore = defineStore('life', () => {
   const emotion = ref<EmotionState>({
     valence: 0.0,
@@ -84,10 +78,8 @@ export const useLifeStore = defineStore('life', () => {
     source.value = 'none'
   }
 
-  /** Always pull platform state from Core. */
   async function fetchState() {
     try {
-      // Prefer /api/state (platform aggregate); fall back to legacy path.
       let response = await fetch('/api/state')
       if (response.status === 404) {
         response = await fetch('/api/life/state')
@@ -134,10 +126,6 @@ export const useLifeStore = defineStore('life', () => {
     }
   }
 
-  /**
-   * Life/stream hint only — never write emotion into the store.
-   * Always re-read from Core so state is not "life's private copy".
-   */
   function updateFromMessage(_data: any) {
     void fetchState()
   }

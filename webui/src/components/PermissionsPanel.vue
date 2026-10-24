@@ -20,7 +20,7 @@ async function loadPermissions() {
         report_agent_host: data.report_agent_host || '',
       }
     }
-  } catch { /* offline */ }
+  } catch { }
 }
 
 async function savePermissions() {

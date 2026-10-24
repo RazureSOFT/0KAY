@@ -1,41 +1,11 @@
 import { ref } from 'vue'
 
-/**
- * 「喊一声唤醒」— wake-word listening for the LIFE chat.
- *
- * The companion is only reachable by typing unless something is listening, and
- * a wake word is the smallest useful version of that: the browser records short
- * chunks, transcribes them, and looks for the nickname the user configured in
- * Settings → L.I.F.E. On a hit it says hello and records one follow-up
- * utterance, which is sent as a normal chat message — so everything downstream
- * (THINK, memory, TTS) is unchanged.
- *
- * Transcription goes through Core's unified `/api/asr` (see docs/asr.md), which
- * means the engine is a plugin decision and this file never learns which one is
- * installed. When no ASR backend is configured it falls back to the browser's
- * own `SpeechRecognition` (Chrome/Edge); when neither exists the caller is told
- * to configure one instead of silently listening to nothing.
- *
- * Design notes:
- *   - Chunked recording, not a streaming socket: `/api/asr` is one POST per
- *     utterance, so the wake loop is "record 2.6s → transcribe → repeat". That
- *     costs a little latency at the boundary but needs no protocol support from
- *     plugins, which is the whole point of the unified endpoint.
- *   - The mic stays open between chunks (one permission prompt, no click-clack
- *     of a device opening every few seconds).
- *   - `setWakeMuted(true)` while the companion is speaking: otherwise the mic
- *     transcribes the TTS output and wakes itself.
- */
-
 export type WakeStatus = 'off' | 'listening' | 'woken' | 'capturing' | 'error'
 export type WakeEngine = 'core' | 'browser' | ''
-/** Why listening could not start; the caller maps these to translated copy. */
 export type WakeFailure = 'no-nickname' | 'no-engine' | 'mic-denied' | 'error'
 
 export interface WakeConfig {
-  /** Names that wake the companion (already split on commas by the caller). */
   nicknames: string[]
-  /** Language hint for the recogniser, e.g. `zh`. */
   language: string
   onWake: (heard: string) => void
   onUtterance: (text: string) => void
@@ -45,19 +15,12 @@ export interface WakeConfig {
 
 export const wakeStatus = ref<WakeStatus>('off')
 export const wakeEngine = ref<WakeEngine>('')
-/** Last transcript, for the status chip ("听到了：…"). */
 export const wakeHeard = ref('')
 
-/** Length of one listening chunk. Short enough to feel responsive, long enough
- *  for a whole "美玖" to fit inside a single request. */
 const CHUNK_MS = 2_600
-/** A follow-up command is bounded: the user gets one breath, not a monologue. */
 const FOLLOW_MAX_MS = 9_000
-/** End the follow-up after this much silence *following* speech. */
 const SILENCE_MS = 850
-/** Below this RMS the chunk is silence. Tuned on a laptop mic with AGC on. */
 const SILENCE_RMS = 0.012
-/** Above this RMS we have definitely heard a voice, so silence can end it. */
 const SPEECH_RMS = 0.02
 
 let config: WakeConfig | null = null
@@ -66,13 +29,11 @@ let audioCtx: AudioContext | null = null
 let stopped = true
 let muted = false
 let recognition: any = null
-/** 'wake' looks for the nickname, 'capture' collects the command after it. */
 let browserPhase: 'wake' | 'capture' = 'wake'
 let browserBuffer = ''
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
-/** Strip spacing and punctuation so "美玖，" and "美 玖" both match "美玖". */
 function normalize(value: string): string {
   return value
     .toLowerCase()
@@ -89,7 +50,6 @@ function matchNickname(text: string, nicknames: string[]): boolean {
   })
 }
 
-/** First MediaRecorder container the browser will actually produce. */
 function pickMime(): string {
   const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']
   if (typeof MediaRecorder === 'undefined') return ''
@@ -117,15 +77,12 @@ async function transcribe(blob: Blob): Promise<{ text: string; configured: boole
   form.append('audio', blob, `chunk.${ext}`)
   if (config?.language) form.append('language', config.language)
   const res = await fetch('/api/asr', { method: 'POST', body: form })
-  // 503 is "no backend configured" — distinct from a backend that failed, so the
-  // loop can switch engines instead of retrying forever.
   if (res.status === 503) return { text: '', configured: false }
   if (!res.ok) throw new Error(await res.text())
   const data = await res.json()
   return { text: String(data.text || ''), configured: true }
 }
 
-/** RMS of the live mic, used only to find the end of an utterance. */
 function analyser(streamRef: MediaStream): { read: () => number; close: () => void } {
   const Ctor = window.AudioContext || (window as any).webkitAudioContext
   audioCtx = new Ctor()
@@ -142,25 +99,13 @@ function analyser(streamRef: MediaStream): { read: () => number; close: () => vo
       return Math.sqrt(sum / buffer.length)
     },
     close() {
-      try { source.disconnect() } catch { /* already gone */ }
-      try { audioCtx?.close() } catch { /* already gone */ }
+      try { source.disconnect() } catch { }
+      try { audioCtx?.close() } catch { }
       audioCtx = null
     },
   }
 }
 
-/**
- * Record one chunk.
- *
- * With `stopOnSilence` the recording ends once speech has been heard and then
- * stops, which is what makes the follow-up utterance feel like it ends when the
- * user stops talking rather than at an arbitrary timeout.
- *
- * The recording is returned as a handle, not a promise, because the wake loop
- * overlaps it with transcription: Soniox needs ~3s for a 2.6s chunk, and if the
- * mic were closed for those 3s the nickname would land in the gap half the time.
- * `cancel()` abandons a chunk (waking up, or muting while the companion speaks).
- */
 interface Recording {
   blob: Promise<Blob | null>
   cancel: () => void
@@ -190,7 +135,7 @@ function startRecording(maxMs: number, stopOnSilence = false): Recording {
       if (meter) meter.close()
       clearTimeout(cap)
       clearInterval(poll)
-      try { if (recorder.state !== 'inactive') recorder.stop() } catch { /* already stopped */ }
+      try { if (recorder.state !== 'inactive') recorder.stop() } catch { }
     }
     cancel = finish
     const cap = setTimeout(finish, maxMs)
@@ -219,7 +164,6 @@ function startRecording(maxMs: number, stopOnSilence = false): Recording {
   return { blob, cancel: () => cancel() }
 }
 
-/** Two rising notes: "I heard you, go ahead". Short enough to not cover speech. */
 function chime(): void {
   try {
     const Ctor = window.AudioContext || (window as any).webkitAudioContext
@@ -237,8 +181,8 @@ function chime(): void {
       osc.start(now + index * 0.09)
       osc.stop(now + index * 0.09 + 0.15)
     }
-    setTimeout(() => { try { void ctx.close() } catch { /* already gone */ } }, 600)
-  } catch { /* no audio output: the visual status is enough */ }
+    setTimeout(() => { try { void ctx.close() } catch { } }, 600)
+  } catch { }
 }
 
 async function wakeUp(heard: string): Promise<void> {
@@ -257,19 +201,11 @@ async function wakeUp(heard: string): Promise<void> {
         wakeHeard.value = text
         config?.onUtterance(text)
       }
-    } catch { /* a dropped follow-up must not kill the listener */ }
+    } catch { }
   }
   if (!stopped && wakeEngine.value === 'core') wakeStatus.value = 'listening'
 }
 
-/**
- * The wake loop.
- *
- * Recording and transcription overlap: the next chunk starts the moment the
- * previous one is handed to `/api/asr`, so a nickname spoken while the previous
- * chunk is still being recognised is not lost. Every exit path cancels the
- * in-flight chunk so the mic is never left recording after a stop.
- */
 async function coreLoop(): Promise<void> {
   let current: Recording | null = startRecording(CHUNK_MS)
   try {
@@ -283,9 +219,7 @@ async function coreLoop(): Promise<void> {
       if (!current) current = startRecording(CHUNK_MS)
       const blob = await current.blob
       if (stopped || wakeEngine.value !== 'core') return
-      // Start the next chunk before the network round-trip, not after it.
       current = startRecording(CHUNK_MS)
-      // ~1 KB is the smallest chunk that can hold a spoken word in opus.
       if (!blob || blob.size < 1_200) continue
       let result: { text: string; configured: boolean }
       try {
@@ -294,8 +228,6 @@ async function coreLoop(): Promise<void> {
         continue
       }
       if (!result.configured) {
-        // The backend disappeared mid-session (plugin stopped): fall back rather
-        // than spinning on 503s.
         wakeEngine.value = ''
         startBrowserLoop()
         return
@@ -305,7 +237,6 @@ async function coreLoop(): Promise<void> {
       wakeHeard.value = text
       config?.onHeard?.(text)
       if (config && matchNickname(text, config.nicknames)) {
-        // The follow-up utterance needs the mic to itself.
         current?.cancel()
         current = null
         await wakeUp(text)
@@ -354,7 +285,6 @@ function startBrowserLoop(): void {
     }
     browserBuffer = `${browserBuffer}${final}`.trim()
   }
-  // Recognition ends by itself after a pause; that is the end of the utterance.
   rec.onend = () => {
     if (stopped) return
     if (browserPhase === 'capture' && browserBuffer) {
@@ -363,7 +293,7 @@ function startBrowserLoop(): void {
       browserPhase = 'wake'
       wakeStatus.value = 'listening'
     }
-    try { rec.start() } catch { /* restart races are harmless */ }
+    try { rec.start() } catch { }
   }
   rec.onerror = (event: any) => {
     if (event?.error === 'not-allowed' || event?.error === 'service-not-allowed') { fail('mic-denied'); return }
@@ -384,7 +314,6 @@ function fail(reason: WakeFailure, detail?: string): void {
   config?.onError?.(reason, detail)
 }
 
-/** Start listening. Resolves once an engine is running (or the failure is reported). */
 export async function startWakeWord(next: WakeConfig): Promise<void> {
   stopWakeWord()
   config = next
@@ -414,7 +343,7 @@ export async function startWakeWord(next: WakeConfig): Promise<void> {
 }
 
 function releaseStream(): void {
-  try { stream?.getTracks().forEach((track) => track.stop()) } catch { /* already gone */ }
+  try { stream?.getTracks().forEach((track) => track.stop()) } catch { }
   stream = null
 }
 
@@ -427,7 +356,7 @@ export function stopWakeWord(): void {
     rec.onend = null
     rec.onresult = null
     rec.onerror = null
-    try { rec.stop() } catch { /* already stopped */ }
+    try { rec.stop() } catch { }
   }
   browserPhase = 'wake'
   browserBuffer = ''
@@ -435,7 +364,84 @@ export function stopWakeWord(): void {
   if (wakeStatus.value !== 'error') wakeStatus.value = 'off'
 }
 
-/** Mute the listener (the companion is speaking; do not transcribe ourselves). */
 export function setWakeMuted(value: boolean): void {
   muted = value
+}
+
+export type CallStatus = 'off' | 'dialing' | 'live' | 'ended'
+export type CallEndReason = 'hangup' | 'silence' | 'error'
+
+export interface CallConfig {
+  language: string
+  onUtterance: (text: string) => void
+  onPeerSpeaking?: (speaking: boolean) => void
+  onEnd?: (reason: CallEndReason) => void
+}
+
+export const callStatus = ref<CallStatus>('off')
+
+const CALL_MAX_MS = 20_000
+const CALL_IDLE_MS = 90_000
+
+let callConfig: CallConfig | null = null
+let callMuted = false
+let lastSpeechAt = 0
+
+// a call is the wake loop with the wake word removed: mic open, every utterance
+// sent, replies spoken. mute while the peer talks or it transcribes itself.
+export function setCallMuted(value: boolean): void {
+  callMuted = value
+}
+
+export async function startCall(next: CallConfig): Promise<void> {
+  stopWakeWord()
+  endCall('hangup')
+  callConfig = next
+  callMuted = false
+  callStatus.value = 'dialing'
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
+  } catch {
+    callStatus.value = 'off'
+    next.onEnd?.('error')
+    return
+  }
+  if (!callConfig) { releaseStream(); return }
+  lastSpeechAt = Date.now()
+  callStatus.value = 'live'
+  void callLoop()
+}
+
+export function endCall(reason: CallEndReason = 'hangup'): void {
+  const active = callStatus.value !== 'off'
+  const config = callConfig
+  callConfig = null
+  callMuted = false
+  callStatus.value = 'off'
+  if (!active) return
+  releaseStream()
+  config?.onEnd?.(reason)
+}
+
+async function callLoop(): Promise<void> {
+  while (callConfig && callStatus.value === 'live') {
+    if (callMuted) { await sleep(200); continue }
+    if (Date.now() - lastSpeechAt > CALL_IDLE_MS) { endCall('silence'); return }
+    const recording = startRecording(CALL_MAX_MS, true)
+    const blob = await recording.blob
+    if (!callConfig || callStatus.value !== 'live') { recording.cancel(); return }
+    if (callMuted || !blob || blob.size < 1_200) continue
+    lastSpeechAt = Date.now()
+    let text = ''
+    try {
+      const result = await transcribe(blob)
+      if (!result.configured) { endCall('error'); return }
+      text = result.text.trim()
+    } catch {
+      continue
+    }
+    if (!text || !callConfig || callStatus.value !== 'live') continue
+    lastSpeechAt = Date.now()
+    callConfig.onUtterance(text)
+  }
 }

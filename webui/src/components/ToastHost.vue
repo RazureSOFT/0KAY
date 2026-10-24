@@ -1,9 +1,4 @@
 <script setup lang="ts">
-/**
- * Renders the shared toast queue (see composables/toast.ts). Teleported so it
- * sits above every dialog; the region is one polite live area, so screen
- * readers hear toasts without them stealing focus.
- */
 import { useToasts, dismissToast } from '../composables/toast'
 
 const toasts = useToasts()

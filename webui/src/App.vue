@@ -50,7 +50,6 @@ function navLabel(item: { labelKey?: string; label?: string; id: string }) {
   return item.label || item.id
 }
 
-/** Resolve badgeFrom e.g. "life.onlineAgents" */
 function navBadge(item: { badgeFrom?: string; badge?: number | string | null; id: string }): number | string | null {
   if (item.badgeFrom?.startsWith('life.')) {
     const key = item.badgeFrom.slice(5) as keyof typeof life
@@ -75,7 +74,6 @@ function onNav(item: { to?: string; href?: string; external?: boolean }) {
 }
 
 function isActive(item: { id: string; to?: string }) {
-  // Exact path match for any nav target (including "/" for chat).
   if (item.to) {
     if (item.to === '/') return route.path === '/' || route.name === 'chat'
     return route.path === item.to || route.name === item.id
@@ -83,11 +81,6 @@ function isActive(item: { id: string; to?: string }) {
   return route.name === item.id
 }
 
-// --- per-page PIN guard ----------------------------------------------------
-// Purely a WebUI convenience: routes ticked in 设置 › 安全 challenge on entry.
-// Core does not trust this scope — sensitive actions always re-check the PIN —
-// so this guard only decides when to prompt before a page is usable. The
-// challenge fires once per tab; pinUnlocked stays true afterwards.
 watch(
   () => [
     route.path,
@@ -98,7 +91,6 @@ watch(
   ],
   () => {
     if (pinUnlocked.value || pinRequired.value) return
-    // Never stack the prompt on top of the wizard, the login or the PIN setup.
     if (!wizard.isCompleted || pinSetupRequired.value || authRequired.value) return
     if (pageRequiresPin(route.path)) requirePagePin()
   },
@@ -130,7 +122,6 @@ function onWizardComplete() {
   router.replace('/')
 }
 
-// --- pairing / PIN login overlay ------------------------------------------
 const authToken = ref('')
 const authBusy = ref(false)
 const authError = ref('')
@@ -161,7 +152,6 @@ async function onAuthSubmit() {
   try {
     await submitLogin(credential)
     authToken.value = ''
-    // The cookie is set now, so live channels can connect.
     if (wizard.isCompleted) {
       if (!life.isConnected) life.connect()
       if (!chat.isConnected) chat.connect()
@@ -175,10 +165,6 @@ async function onAuthSubmit() {
   }
 }
 
-/**
- * A configured + enabled PIN is a real gate, not a convenience prompt: Core
- * rejects browser callers without a session, so there is nothing to "skip".
- */
 const pinGate = computed(() => pinConfigured.value && pinEnabled.value)
 
 function onAuthCancel() {
@@ -187,7 +173,6 @@ function onAuthCancel() {
   cancelLogin()
 }
 
-// --- sensitive-action PIN prompt ------------------------------------------
 const pinInput = ref('')
 const pinError = ref('')
 const pinInvalid = ref(false)
@@ -216,7 +201,6 @@ function onPinCancel() {
   cancelPin()
 }
 
-// --- first-run / upgrade PIN setup ----------------------------------------
 const setupPin = ref('')
 const setupConfirm = ref('')
 const setupError = ref('')
@@ -252,8 +236,7 @@ async function onSetupSubmit() {
 <template>
   <ToastHost />
   <Teleport to="body">
-    <!-- First run / upgrade: choose a 6-digit access PIN -->
-    <Transition name="auth">
+        <Transition name="auth">
     <div
       v-if="pinSetupRequired && !authRequired"
       class="auth-scrim"
@@ -389,8 +372,7 @@ async function onSetupSubmit() {
     </header>
 
     <div class="app-body">
-      <!-- @ui-ext:nav — items come from BUILTIN_NAV + /api/ui/patches -->
-      <nav class="nav-rail" aria-label="main">
+            <nav class="nav-rail" aria-label="main">
         <component
           :is="item.to && !item.external && !item.href ? 'router-link' : 'button'"
           v-for="item in ui.navItems"
@@ -422,18 +404,7 @@ async function onSetupSubmit() {
 </template>
 
 <style scoped>
-/* ---------------------------------------------------------------------------
- * The app chrome is owned by styles/theme.css.
- *
- * Every `#app .app-header` / `.nav-rail` / `.nav-item` / `.app-main` rule there
- * is an ID selector — (1,1,0) or higher — and always beats a scoped rule in
- * this file (0,2,0). Only the declarations theme.css does NOT set are kept
- * below. The rest (heights, padding, gaps, radii, backgrounds, borders, font
- * sizes, and the whole nav-indicator box) used to sit here carrying *different*
- * values from the ones that actually rendered — header 64px here vs 76px there,
- * rail 88px vs 100px — which made this block actively misleading to anyone
- * editing it. Change the chrome in styles/theme.css.
- * ------------------------------------------------------------------------- */
+
 .app-shell {
   display: flex;
   flex-direction: column;
@@ -445,8 +416,7 @@ async function onSetupSubmit() {
   align-items: center;
   justify-content: space-between;
   z-index: 10;
-  /* Chrome is not content: keep the brand + controls out of any select-all /
-     drag selection so copying a chat can never drag "0kay" and nav labels in. */
+  
   user-select: none;
 }
 
@@ -481,11 +451,6 @@ async function onSetupSubmit() {
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--md-success) 20%, transparent);
 }
 
-/* Box (44x44, radius 18, surface background) comes from `#app .icon-btn` in
-   theme.css. `.icon-btn.active` is deliberately NOT kept here: the platform
-   rule's `background` is (1,1,0) and beat this block's `.icon-btn.active`
-   (0,3,0), so the settings button never painted its active surface. That state
-   now lives in theme.css, where it can win. */
 .icon-btn {
   padding: 0 12px;
   border: none;
@@ -529,14 +494,10 @@ async function onSetupSubmit() {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  /* Nav labels are chrome, not chat: exclude them from selection entirely. */
+  
   user-select: none;
 }
 
-/* Layout only. Width, padding, gap, radius, font-size and the active pill
-   (`.nav-item::before`) all come from theme.css, which out-ranks this block —
-   the values here used to disagree with the rendered ones (rail 88px vs 100px,
-   item padding 12px 4px vs 9px 6px). */
 .nav-item {
   position: relative;
   display: flex;
@@ -587,9 +548,6 @@ async function onSetupSubmit() {
   overflow: hidden;
 }
 
-/* Mobile: the rail becomes a bottom bar. Its width, padding, item box and the
-   active pill all come from the `max-width: 720px` block in theme.css — only
-   the direction, overflow and the badge offset are ours. */
 @media (max-width: 720px) {
   .app-body {
     flex-direction: column-reverse;
@@ -617,15 +575,12 @@ async function onSetupSubmit() {
   backdrop-filter: blur(6px);
 }
 
-/* Auth gate enters with the shared dialog rise; leaves accelerate out so the
-   hand-off to the app shell never feels like a flash cut. */
 .auth-enter-active { transition: opacity var(--duration-medium, 220ms) var(--ease-out, ease-out); }
 .auth-leave-active { transition: opacity var(--duration-short, 140ms) var(--ease-emphasized-accel, ease-in); }
 .auth-enter-from,
 .auth-leave-to { opacity: 0; }
 .auth-enter-active .auth-dialog { animation: dialog-arrive var(--duration-long, 360ms) var(--ease-spring, ease-out) both; }
 
-/* Wizard -> shell swap: the wizard shrinks away, the shell fades in. */
 .shell-enter-active { transition: opacity var(--duration-medium, 220ms) var(--ease-out, ease-out); }
 .shell-leave-active { transition: opacity var(--duration-short, 140ms) var(--ease-emphasized-accel, ease-in), transform var(--duration-short, 140ms) var(--ease-emphasized-accel, ease-in); }
 .shell-enter-from { opacity: 0; }
@@ -644,8 +599,7 @@ async function onSetupSubmit() {
 }
 
 .auth-mark {
-  /* Same handwritten mark as the header brand, via a mask so the strokes
-     follow the dialog's on-surface color. */
+  
   display: inline-block;
   width: 28px;
   height: 28px;

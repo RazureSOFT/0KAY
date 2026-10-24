@@ -5,15 +5,10 @@ import DOMPurify from 'dompurify'
 import { escapeHtml, highlightFence } from './highlight'
 const props = defineProps<{ content: string }>()
 
-// An odd number of fence markers means the last block is still streaming in;
-// half-received code would re-highlight (and jump) on every token, so those
-// blocks fall back to plain escaped text until the closing fence arrives.
 function fencesClosed(source: string): boolean {
   const markers = source.match(/^[ \t]*(```|~~~)/gm)
   return !markers || markers.length % 2 === 0
 }
-// `marked.parse` below is synchronous, so this flag is read inside the renderer
-// without any reentrancy between parses.
 let streaming = false
 marked.use({
   breaks: true,
@@ -46,8 +41,7 @@ const html = computed(() => {
 .markdown-content :deep(a){color:var(--md-primary);text-decoration:underline}
 .markdown-content :deep(img){max-width:100%}
 .markdown-content :deep(h1),.markdown-content :deep(h2),.markdown-content :deep(h3){margin:16px 0 8px}
-/* Fenced code now renders through the shared highlighter (src/highlight.ts);
-   token colors mirror HighlightedCode's palette for this scope. */
+
 .markdown-content :deep(.hljs-comment),.markdown-content :deep(.hljs-quote){color:#6a737d}
 .markdown-content :deep(.hljs-keyword),.markdown-content :deep(.hljs-selector-tag),.markdown-content :deep(.hljs-doctag),.markdown-content :deep(.hljs-formula){color:#d73a49}
 .markdown-content :deep(.hljs-string),.markdown-content :deep(.hljs-regexp),.markdown-content :deep(.hljs-addition){color:#032f62}
@@ -58,10 +52,7 @@ const html = computed(() => {
 .markdown-content :deep(.hljs-type),.markdown-content :deep(.hljs-class .hljs-title),.markdown-content :deep(.hljs-params){color:#005cc5}
 </style>
 <style>
-/* Dark token colors ride on the host's html[data-theme] toggle rather than the
-   OS media query (a manual light/dark choice in Settings must be honored).
-   Unscoped because scoped styles cannot express an html-level selector; the
-   .markdown-content prefix keeps the rules from leaking elsewhere. */
+
 html[data-theme="dark"] .markdown-content .hljs-comment,html[data-theme="dark"] .markdown-content .hljs-quote{color:#8b949e}
 html[data-theme="dark"] .markdown-content .hljs-keyword,html[data-theme="dark"] .markdown-content .hljs-selector-tag,html[data-theme="dark"] .markdown-content .hljs-doctag,html[data-theme="dark"] .markdown-content .hljs-formula{color:#ff7b72}
 html[data-theme="dark"] .markdown-content .hljs-string,html[data-theme="dark"] .markdown-content .hljs-regexp,html[data-theme="dark"] .markdown-content .hljs-addition{color:#a5d6ff}

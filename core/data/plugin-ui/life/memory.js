@@ -1,7 +1,7 @@
-import { defineComponent as Te, ref as c, computed as w, watch as j, onMounted as Se, openBlock as r, createElementBlock as l, createElementVNode as e, toDisplayString as s, createCommentVNode as m, normalizeStyle as A, Fragment as T, renderList as S, normalizeClass as $, createVNode as V, Transition as ze, withCtx as pe, withDirectives as P, vModelText as B, unref as ae, TransitionGroup as Le, withModifiers as Ne } from "vue";
+import { defineComponent as Te, ref as d, computed as w, watch as j, onMounted as Se, openBlock as r, createElementBlock as l, createElementVNode as e, toDisplayString as s, createCommentVNode as v, normalizeStyle as V, Fragment as T, renderList as S, normalizeClass as $, createVNode as A, Transition as ze, withCtx as pe, withDirectives as P, vModelText as H, unref as ae, TransitionGroup as Le, withModifiers as Ne } from "vue";
 import { useConfirm as Re, AppSelect as oe, i18n as je } from "@0kay/host";
-const Ae = 3200;
-function Ve(_) {
+const Ve = 3200;
+function Ae(_) {
   const o = `.${_}`;
   return `
 ${o}{
@@ -151,23 +151,23 @@ function Pe(_, o) {
   const t = document.createElement("style");
   t.id = _, t.textContent = o, document.head.appendChild(t);
 }
-const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class: "subtitle" }, Ie = { class: "header-actions" }, Oe = ["disabled"], Fe = ["disabled"], Ee = {
+const He = { class: "memory-page" }, Be = { class: "page-header" }, Ue = { class: "subtitle" }, Fe = { class: "header-actions" }, Ie = ["disabled"], Oe = ["disabled"], Ee = {
   key: 0,
   class: "banner err"
 }, De = {
   key: 1,
   class: "banner ok"
-}, Ye = { class: "stat-grid" }, qe = { class: "stat-card" }, Je = { class: "stat-head" }, We = { class: "stat-label" }, Ke = { class: "stat-value" }, Ge = { class: "stat-hint" }, Qe = { class: "stat-card" }, Xe = { class: "stat-head" }, Ze = { class: "stat-label" }, et = { class: "stat-value" }, tt = { class: "stat-hint" }, at = { class: "stat-card" }, ot = { class: "stat-head" }, st = { class: "stat-label" }, it = { class: "stat-value" }, nt = { class: "stat-hint" }, rt = { class: "stat-card" }, lt = { class: "stat-head" }, dt = { class: "stat-label" }, ct = { class: "stat-value" }, mt = { class: "stat-hint" }, pt = {
+}, Ye = { class: "stat-grid" }, qe = { class: "stat-card" }, Je = { class: "stat-head" }, We = { class: "stat-label" }, Ke = { class: "stat-value" }, Ge = { class: "stat-hint" }, Qe = { class: "stat-card" }, Xe = { class: "stat-head" }, Ze = { class: "stat-label" }, et = { class: "stat-value" }, tt = { class: "stat-hint" }, at = { class: "stat-card" }, ot = { class: "stat-head" }, st = { class: "stat-label" }, it = { class: "stat-value" }, nt = { class: "stat-hint" }, rt = { class: "stat-card" }, lt = { class: "stat-head" }, ct = { class: "stat-label" }, dt = { class: "stat-value" }, mt = { class: "stat-hint" }, pt = {
   key: 2,
   class: "card",
   style: { "margin-top": "16px" }
 }, ut = { class: "card-head" }, ft = { class: "card-title" }, ht = { class: "chip muted" }, vt = { class: "dynamics-grid" }, gt = { style: { display: "flex", "align-items": "center", gap: "10px", margin: "6px 0" } }, yt = { style: { width: "48px", "font-size": "12px" } }, bt = { class: "dyn-track" }, _t = { style: { display: "flex", "align-items": "center", gap: "10px", margin: "6px 0" } }, xt = { style: { width: "48px", "font-size": "12px" } }, wt = { class: "dyn-track" }, kt = { class: "hint" }, $t = { class: "hint" }, Ct = { class: "dyn-hist" }, Mt = ["title"], Tt = { class: "hint" }, St = ["aria-label"], zt = ["points"], Lt = { class: "tabs" }, Nt = {
   key: "memories",
   class: "tab-body"
-}, Rt = { class: "card toolbar" }, jt = { class: "search-field" }, At = ["placeholder", "aria-label"], Vt = { class: "fld" }, Pt = { class: "fld" }, Bt = { class: "chip muted" }, Ht = { class: "memory-list" }, Ut = { class: "card-top" }, It = {
+}, Rt = { class: "card toolbar" }, jt = { class: "search-field" }, Vt = ["placeholder", "aria-label"], At = { class: "fld" }, Pt = { class: "fld" }, Ht = { class: "chip muted" }, Bt = { class: "memory-list" }, Ut = { class: "card-top" }, Ft = {
   key: 0,
   class: "chip muted"
-}, Ot = { class: "chip muted" }, Ft = ["title", "aria-label", "onClick"], Et = { class: "memory-content" }, Dt = {
+}, It = { class: "chip muted" }, Ot = ["title", "aria-label", "onClick"], Et = { class: "memory-content" }, Dt = {
   key: 0,
   class: "tags"
 }, Yt = { class: "memory-foot" }, qt = ["title"], Jt = { class: "meter-bar" }, Wt = ["title"], Kt = { class: "meter-bar" }, Gt = { class: "meter-text" }, Qt = { class: "detail-clip" }, Xt = { class: "card-actions" }, Zt = ["onClick"], ea = ["onClick"], ta = ["onClick"], aa = ["onClick"], oa = {
@@ -176,10 +176,10 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
 }, sa = { class: "hint" }, ia = {
   key: 0,
   class: "pager"
-}, na = ["disabled"], ra = { class: "chip muted" }, la = ["disabled"], da = {
+}, na = ["disabled"], ra = { class: "chip muted" }, la = ["disabled"], ca = {
   key: "notes",
   class: "tab-body"
-}, ca = { class: "grid-notes" }, ma = { class: "card" }, pa = { class: "card-head" }, ua = { class: "card-title" }, fa = ["placeholder", "aria-label"], ha = ["placeholder", "aria-label"], va = ["placeholder", "aria-label"], ga = ["disabled"], ya = { class: "card" }, ba = { class: "card-head" }, _a = { class: "card-title" }, xa = { class: "chip muted" }, wa = { class: "search-field mini" }, ka = ["placeholder", "aria-label"], $a = { class: "note-list" }, Ca = { class: "note-main" }, Ma = { class: "item-meta" }, Ta = {
+}, da = { class: "grid-notes" }, ma = { class: "card" }, pa = { class: "card-head" }, ua = { class: "card-title" }, fa = ["placeholder", "aria-label"], ha = ["placeholder", "aria-label"], va = ["placeholder", "aria-label"], ga = ["disabled"], ya = { class: "card" }, ba = { class: "card-head" }, _a = { class: "card-title" }, xa = { class: "chip muted" }, wa = { class: "search-field mini" }, ka = ["placeholder", "aria-label"], $a = { class: "note-list" }, Ca = { class: "note-main" }, Ma = { class: "item-meta" }, Ta = {
   key: 0,
   class: "chip muted"
 }, Sa = { class: "note-actions" }, za = ["onClick"], La = ["aria-label", "onClick"], Na = {
@@ -188,10 +188,10 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
 }, Ra = {
   key: 0,
   class: "card reader"
-}, ja = { class: "card-head" }, Aa = { class: "card-title" }, Va = { class: "pager" }, Pa = ["disabled"], Ba = { class: "chip muted" }, Ha = ["disabled"], Ua = {
+}, ja = { class: "card-head" }, Va = { class: "card-title" }, Aa = { class: "pager" }, Pa = ["disabled"], Ha = { class: "chip muted" }, Ba = ["disabled"], Ua = {
   key: "reflections",
   class: "tab-body"
-}, Ia = { class: "card toolbar" }, Oa = { class: "fld" }, Fa = { class: "chip muted" }, Ea = { class: "reflection-list" }, Da = { class: "card-head" }, Ya = { class: "card-title" }, qa = {
+}, Fa = { class: "card toolbar" }, Ia = { class: "fld" }, Oa = { class: "chip muted" }, Ea = { class: "reflection-list" }, Da = { class: "card-head" }, Ya = { class: "card-title" }, qa = {
   key: 0,
   class: "chip muted"
 }, Ja = { class: "item-meta" }, Wa = { class: "quote" }, Ka = { class: "quote" }, Ga = {
@@ -200,14 +200,14 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
 }, Qa = ["onClick"], Xa = ["onClick"], Za = {
   key: 0,
   class: "empty-state"
-}, eo = { class: "hint" }, to = { class: "danger-zone" }, ao = { class: "danger-copy" }, oo = { class: "hint" }, so = ["disabled"], H = 30, io = 4, no = /* @__PURE__ */ Te({
+}, eo = { class: "hint" }, to = { class: "danger-zone" }, ao = { class: "danger-copy" }, oo = { class: "hint" }, so = ["disabled"], B = 30, io = 4, no = /* @__PURE__ */ Te({
   __name: "MemoryPage",
   setup(_) {
-    const { confirm: o } = Re(), t = (n, i) => je.global.t(n, i ?? {}), g = c("memories"), C = c(""), U = c(""), I = c("recent"), x = c(0), O = c([]), W = c(0), z = c({ working: 0, shortTerm: { total: 0 }, longTerm: 0, avgStrength: 0 }), u = c(null), se = w(() => Math.max(1, u.value?.tiers?.short_term || 0, u.value?.tiers?.long_term || 0)), ue = w(() => Math.max(1, ...u.value?.strength_histogram || [1])), ie = w(() => (u.value?.decay_curve || []).map((i) => `${(i.day / 90 * 200).toFixed(1)},${(60 - i.strength * 60).toFixed(1)}`).join(" "));
+    const { confirm: o } = Re(), t = (n, i) => je.global.t(n, i ?? {}), g = d("memories"), C = d(""), U = d(""), F = d("recent"), x = d(0), I = d([]), W = d(0), z = d({ working: 0, shortTerm: { total: 0 }, longTerm: 0, avgStrength: 0 }), p = d(null), se = w(() => Math.max(1, p.value?.tiers?.short_term || 0, p.value?.tiers?.long_term || 0)), ue = w(() => Math.max(1, ...p.value?.strength_histogram || [1])), ie = w(() => (p.value?.decay_curve || []).map((i) => `${(i.day / 90 * 200).toFixed(1)},${(60 - i.strength * 60).toFixed(1)}`).join(" "));
     function K(n, i) {
       return `${Math.round((n || 0) / Math.max(1, i) * 100)}%`;
     }
-    const y = c(!1), p = c(""), L = c(""), N = c(""), F = c([]), E = c(""), h = c({ title: "", content: "", tags: "" }), v = c(null), D = c([]), Y = c("proposed"), q = w(() => Math.max(1, Math.ceil(W.value / H))), G = w(() => Math.floor(x.value / H) + 1);
+    const y = d(!1), m = d(""), L = d(""), N = d(""), O = d([]), E = d(""), f = d({ title: "", content: "", tags: "" }), h = d(null), D = d([]), Y = d("proposed"), q = w(() => Math.max(1, Math.ceil(W.value / B))), G = w(() => Math.floor(x.value / B) + 1);
     function M(n) {
       return `${Math.round(Math.max(0, Math.min(1, n || 0)) * 100)}%`;
     }
@@ -222,9 +222,9 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
     function R(n) {
       L.value = n, setTimeout(() => {
         L.value === n && (L.value = "");
-      }, Ae);
+      }, Ve);
     }
-    async function f(n, i) {
+    async function u(n, i) {
       const a = await fetch("/api/life/companion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -245,39 +245,39 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
     }
     async function ne() {
       try {
-        u.value = await f("memory_dashboard", {});
+        p.value = await u("memory_dashboard", {});
       } catch {
       }
     }
     async function b() {
-      y.value = !0, p.value = "";
+      y.value = !0, m.value = "";
       try {
-        const n = await f("memory_page", { tier: U.value, query: C.value.trim(), limit: H, offset: x.value, sort: I.value });
-        O.value = n.items || [], W.value = n.total || 0;
+        const n = await u("memory_page", { tier: U.value, query: C.value.trim(), limit: B, offset: x.value, sort: F.value });
+        I.value = n.items || [], W.value = n.total || 0;
       } catch (n) {
-        p.value = n?.message || t("life.memory.errorReadMemories");
+        m.value = n?.message || t("life.memory.errorReadMemories");
       } finally {
         y.value = !1;
       }
     }
     async function J() {
-      y.value = !0, p.value = "";
+      y.value = !0, m.value = "";
       try {
-        const n = await f("memory_note_list", { query: E.value.trim(), limit: 60 });
-        F.value = n.notes || [];
+        const n = await u("memory_note_list", { query: E.value.trim(), limit: 60 });
+        O.value = n.notes || [];
       } catch (n) {
-        p.value = n?.message || t("life.memory.errorReadNotes");
+        m.value = n?.message || t("life.memory.errorReadNotes");
       } finally {
         y.value = !1;
       }
     }
     async function X() {
-      y.value = !0, p.value = "";
+      y.value = !0, m.value = "";
       try {
-        const n = await f("memory_reflection_list", { status: Y.value, limit: 80 });
+        const n = await u("memory_reflection_list", { status: Y.value, limit: 80 });
         D.value = n.reflections || [];
       } catch (n) {
-        p.value = n?.message || t("life.memory.errorReadReflections");
+        m.value = n?.message || t("life.memory.errorReadReflections");
       } finally {
         y.value = !1;
       }
@@ -287,35 +287,35 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
     }
     async function he(n) {
       try {
-        await f("memory_reinforce", { ids: [n.id] }), R(t("life.memory.toastReinforced")), await b();
+        await u("memory_reinforce", { ids: [n.id] }), R(t("life.memory.toastReinforced")), await b();
       } catch (i) {
-        p.value = i?.message || t("life.memory.errorReinforce");
+        m.value = i?.message || t("life.memory.errorReinforce");
       }
     }
     async function le(n, i) {
       try {
-        await f("memory_importance", { id: n.id, delta: i }), await b();
+        await u("memory_importance", { id: n.id, delta: i }), await b();
       } catch (a) {
-        p.value = a?.message || t("life.memory.errorAdjust");
+        m.value = a?.message || t("life.memory.errorAdjust");
       }
     }
     async function ve() {
       try {
-        const n = await f("memory_export", {}), i = new Blob([JSON.stringify(n, null, 2)], { type: "application/json" }), a = URL.createObjectURL(i), d = document.createElement("a");
-        d.href = a, d.download = `0kay-memory-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`, d.click(), URL.revokeObjectURL(a), R(t("life.memory.toastExported"));
+        const n = await u("memory_export", {}), i = new Blob([JSON.stringify(n, null, 2)], { type: "application/json" }), a = URL.createObjectURL(i), c = document.createElement("a");
+        c.href = a, c.download = `0kay-memory-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`, c.click(), URL.revokeObjectURL(a), R(t("life.memory.toastExported"));
       } catch (n) {
-        p.value = n?.message || t("life.memory.errorExport");
+        m.value = n?.message || t("life.memory.errorExport");
       }
     }
-    const de = c(null);
+    const ce = d(null);
     async function ge(n) {
       const i = n.target, a = i.files?.[0];
       if (a)
         try {
-          const d = JSON.parse(await a.text()), me = await f("memory_import", { snapshot: d });
+          const c = JSON.parse(await a.text()), me = await u("memory_import", { snapshot: c });
           R(t("life.memory.toastImported", { added: me.imported || 0, skipped: me.skipped || 0 })), await b(), await k();
-        } catch (d) {
-          p.value = d?.message || t("life.memory.errorImport");
+        } catch (c) {
+          m.value = c?.message || t("life.memory.errorImport");
         } finally {
           i.value = "";
         }
@@ -328,9 +328,9 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
         danger: !0
       }))
         try {
-          await f("delete_memory", { id: n.id }), await b(), await k();
+          await u("delete_memory", { id: n.id }), await b(), await k();
         } catch (a) {
-          p.value = a?.message || t("life.memory.errorDelete");
+          m.value = a?.message || t("life.memory.errorDelete");
         }
     }
     async function be() {
@@ -346,64 +346,64 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
         danger: !0
       })))
         try {
-          await f("clear_all_memory", {}), await b(), await k();
+          await u("clear_all_memory", {}), await b(), await k();
         } catch (a) {
-          p.value = a?.message || t("life.memory.errorClear");
+          m.value = a?.message || t("life.memory.errorClear");
         }
     }
     async function _e() {
-      if (!(!h.value.content.trim() && !h.value.title.trim()))
+      if (!(!f.value.content.trim() && !f.value.title.trim()))
         try {
-          await f("memory_note_create", {
-            title: h.value.title,
-            content: h.value.content,
-            tags: h.value.tags.split(",").map((n) => n.trim()).filter(Boolean)
-          }), h.value = { title: "", content: "", tags: "" }, R(t("life.memory.toastNoteSaved")), await J();
+          await u("memory_note_create", {
+            title: f.value.title,
+            content: f.value.content,
+            tags: f.value.tags.split(",").map((n) => n.trim()).filter(Boolean)
+          }), f.value = { title: "", content: "", tags: "" }, R(t("life.memory.toastNoteSaved")), await J();
         } catch (n) {
-          p.value = n?.message || t("life.memory.errorSaveNote");
+          m.value = n?.message || t("life.memory.errorSaveNote");
         }
     }
     async function Z(n, i = 1) {
       try {
-        const a = await f("memory_note_read", { note_id: n.note_id, offset: i, limit: 400 });
-        v.value = { ...a, offset: a.offset || i };
+        const a = await u("memory_note_read", { note_id: n.note_id, offset: i, limit: 400 });
+        h.value = { ...a, offset: a.offset || i };
       } catch (a) {
-        p.value = a?.message || t("life.memory.errorReadNote");
+        m.value = a?.message || t("life.memory.errorReadNote");
       }
     }
     async function xe(n) {
       if (await o({ title: t("life.memory.deleteNoteTitle"), message: t("life.memory.deleteNoteMessage", { id: n.note_id }), confirmLabel: t("life.memory.delete"), danger: !0 }))
         try {
-          await f("memory_note_delete", { note_id: n.note_id }), v.value?.note_id === n.note_id && (v.value = null), await J();
+          await u("memory_note_delete", { note_id: n.note_id }), h.value?.note_id === n.note_id && (h.value = null), await J();
         } catch (a) {
-          p.value = a?.message || t("life.memory.errorDeleteNote");
+          m.value = a?.message || t("life.memory.errorDeleteNote");
         }
     }
-    async function ce(n, i) {
+    async function de(n, i) {
       try {
-        await f("memory_reflection_review", { id: n.id, accept: i }), await X(), await k();
+        await u("memory_reflection_review", { id: n.id, accept: i }), await X(), await k();
       } catch (a) {
-        p.value = a?.message || t("life.memory.errorReview");
+        m.value = a?.message || t("life.memory.errorReview");
       }
     }
     async function we() {
       try {
-        const n = await f("memory_maintenance", {});
+        const n = await u("memory_maintenance", {});
         R(t("life.memory.toastMaintained", { count: n.consolidated ?? 0 })), await b(), await k();
       } catch (n) {
-        p.value = n?.message || t("life.memory.errorMaintain");
+        m.value = n?.message || t("life.memory.errorMaintain");
       }
     }
     let ee = null, te = null;
     j(C, () => {
       x.value = 0, ee && clearTimeout(ee), ee = setTimeout(b, 250);
-    }), j([U, I], () => {
+    }), j([U, F], () => {
       x.value = 0, b();
     }), j(E, () => {
       te && clearTimeout(te), te = setTimeout(J, 250);
     }), j(Y, X), j(g, re), Se(async () => {
       await b(), await k(), await ne();
-    }), Pe("life-plugin-memory-style", Ve("memory-page"));
+    }), Pe("life-plugin-memory-style", Ae("memory-page"));
     const ke = w(() => [
       { value: "", label: t("life.memory.all") },
       { value: "short_term", label: t("life.memory.shortTerm") },
@@ -424,8 +424,8 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
       return (n.preview || "").split(`
 `).map((a) => a.trim()).find(Boolean) || t("life.memory.emptyNotePreview");
     }
-    return (n, i) => (r(), l("main", Be, [
-      e("header", He, [
+    return (n, i) => (r(), l("main", He, [
+      e("header", Be, [
         e("div", null, [
           i[17] || (i[17] = e(
             "p",
@@ -449,35 +449,33 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
             /* TEXT */
           )
         ]),
-        e("div", Ie, [
+        e("div", Fe, [
           e("button", {
             class: "btn tonic",
             disabled: y.value,
             onClick: we
-          }, s(t("life.memory.maintain")), 9, Oe),
+          }, s(t("life.memory.maintain")), 9, Ie),
           e("button", {
             class: "btn tonic",
             disabled: y.value,
             onClick: re
-          }, s(y.value ? t("life.memory.loading") : t("life.memory.refresh")), 9, Fe)
+          }, s(y.value ? t("life.memory.loading") : t("life.memory.refresh")), 9, Oe)
         ])
       ]),
-      m(` Banners live at the top of the page: at the bottom they scrolled out of
-         view exactly when an action (delete/clear) reported its result. `),
-      p.value ? (r(), l(
+      m.value ? (r(), l(
         "p",
         Ee,
-        s(p.value),
+        s(m.value),
         1
         /* TEXT */
-      )) : m("v-if", !0),
+      )) : v("v-if", !0),
       L.value ? (r(), l(
         "p",
         De,
         s(L.value),
         1
         /* TEXT */
-      )) : m("v-if", !0),
+      )) : v("v-if", !0),
       e("section", Ye, [
         e("article", qe, [
           e("div", Je, [
@@ -669,7 +667,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
             )),
             e(
               "span",
-              dt,
+              ct,
               s(t("life.memory.avgStrength")),
               1
               /* TEXT */
@@ -677,7 +675,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
           ]),
           e(
             "strong",
-            ct,
+            dt,
             s(M(z.value.avgStrength)),
             1
             /* TEXT */
@@ -691,7 +689,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
           )
         ])
       ]),
-      u.value ? (r(), l("section", pt, [
+      p.value ? (r(), l("section", pt, [
         e("div", ut, [
           e(
             "h2",
@@ -703,7 +701,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
           e(
             "span",
             ht,
-            "RRF k=" + s(u.value.rrf_k),
+            "RRF k=" + s(p.value.rrf_k),
             1
             /* TEXT */
           )
@@ -723,7 +721,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                   "i",
                   {
                     class: "dyn-bar",
-                    style: A({ width: K(u.value.tiers.short_term, se.value) })
+                    style: V({ width: K(p.value.tiers.short_term, se.value) })
                   },
                   null,
                   4
@@ -733,7 +731,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
               e(
                 "b",
                 null,
-                s(u.value.tiers.short_term),
+                s(p.value.tiers.short_term),
                 1
                 /* TEXT */
               )
@@ -751,7 +749,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                   "i",
                   {
                     class: "dyn-bar",
-                    style: A({ width: K(u.value.tiers.long_term, se.value) })
+                    style: V({ width: K(p.value.tiers.long_term, se.value) })
                   },
                   null,
                   4
@@ -761,7 +759,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
               e(
                 "b",
                 null,
-                s(u.value.tiers.long_term),
+                s(p.value.tiers.long_term),
                 1
                 /* TEXT */
               )
@@ -769,7 +767,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
             e(
               "p",
               kt,
-              s(t("life.memory.dynamicsSummary", { avg: M(u.value.avg_strength), low: u.value.low_strength, semantic: u.value.types?.semantic || 0, episode: u.value.types?.episode || 0 })),
+              s(t("life.memory.dynamicsSummary", { avg: M(p.value.avg_strength), low: p.value.low_strength, semantic: p.value.types?.semantic || 0, episode: p.value.types?.episode || 0 })),
               1
               /* TEXT */
             )
@@ -786,10 +784,10 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
               (r(!0), l(
                 T,
                 null,
-                S(u.value.strength_histogram, (a, d) => (r(), l("i", {
-                  key: d,
-                  title: `${d / 10}~${(d + 1) / 10}: ${a}`,
-                  style: A({ height: K(a, ue.value) })
+                S(p.value.strength_histogram, (a, c) => (r(), l("i", {
+                  key: c,
+                  title: `${c / 10}~${(c + 1) / 10}: ${a}`,
+                  style: V({ height: K(a, ue.value) })
                 }, null, 12, Mt))),
                 128
                 /* KEYED_FRAGMENT */
@@ -809,9 +807,6 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
               class: "dyn-curve",
               "aria-label": t("life.memory.decayCurveLabel")
             }, [
-              m(` pathLength=1 normalizes the stroke so dashoffset 1→0 is a draw-in
-                 animation regardless of the polyline's point count; re-keying on
-                 the points replays it when the dashboard refreshes. `),
               (r(), l("polyline", {
                 key: ie.value,
                 class: "decay-line",
@@ -824,7 +819,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
             ], 8, St))
           ])
         ])
-      ])) : m("v-if", !0),
+      ])) : v("v-if", !0),
       e("nav", Lt, [
         e(
           "button",
@@ -857,9 +852,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
           /* TEXT, CLASS */
         )
       ]),
-      m(` One keyed element per tab so the Transition can cross-fade them
-         (mode="out-in" keeps both lists from fighting over the grid layout). `),
-      V(ze, {
+      A(ze, {
         name: "tab-fade",
         mode: "out-in"
       }, {
@@ -899,11 +892,11 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                   "onUpdate:modelValue": i[3] || (i[3] = (a) => C.value = a),
                   placeholder: t("life.memory.searchMemories"),
                   "aria-label": t("life.memory.searchMemoriesLabel")
-                }, null, 8, At), [
-                  [B, C.value]
+                }, null, 8, Vt), [
+                  [H, C.value]
                 ])
               ]),
-              e("label", Vt, [
+              e("label", At, [
                 e(
                   "span",
                   null,
@@ -911,7 +904,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                   1
                   /* TEXT */
                 ),
-                V(ae(oe), {
+                A(ae(oe), {
                   modelValue: U.value,
                   "onUpdate:modelValue": i[4] || (i[4] = (a) => U.value = a),
                   options: ke.value,
@@ -926,16 +919,16 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                   1
                   /* TEXT */
                 ),
-                V(ae(oe), {
-                  modelValue: I.value,
-                  "onUpdate:modelValue": i[5] || (i[5] = (a) => I.value = a),
+                A(ae(oe), {
+                  modelValue: F.value,
+                  "onUpdate:modelValue": i[5] || (i[5] = (a) => F.value = a),
                   options: $e.value,
                   "aria-label": t("life.memory.sortLabel")
                 }, null, 8, ["modelValue", "options", "aria-label"])
               ]),
               e(
                 "span",
-                Bt,
+                Ht,
                 s(t("life.memory.totalPages", { total: W.value, page: G.value, pages: q.value })),
                 1
                 /* TEXT */
@@ -954,7 +947,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                 "button",
                 {
                   class: "btn tonic sm",
-                  onClick: i[6] || (i[6] = (a) => de.value?.click())
+                  onClick: i[6] || (i[6] = (a) => ce.value?.click())
                 },
                 s(t("life.memory.import")),
                 1
@@ -964,7 +957,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                 "input",
                 {
                   ref_key: "importInput",
-                  ref: de,
+                  ref: ce,
                   type: "file",
                   accept: "application/json,.json",
                   class: "hidden-input",
@@ -975,13 +968,13 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                 /* NEED_HYDRATION, NEED_PATCH */
               )
             ]),
-            e("section", Ht, [
-              V(Le, { name: "memory-card" }, {
+            e("section", Bt, [
+              A(Le, { name: "memory-card" }, {
                 default: pe(() => [
                   (r(!0), l(
                     T,
                     null,
-                    S(O.value, (a) => (r(), l(
+                    S(I.value, (a) => (r(), l(
                       "article",
                       {
                         key: a.id,
@@ -1000,14 +993,14 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                           ),
                           a.scope && a.scope !== "public" ? (r(), l(
                             "span",
-                            It,
+                            Ft,
                             s(a.scope),
                             1
                             /* TEXT */
-                          )) : m("v-if", !0),
+                          )) : v("v-if", !0),
                           e(
                             "span",
-                            Ot,
+                            It,
                             s(a.memory_type || "knowledge"),
                             1
                             /* TEXT */
@@ -1016,7 +1009,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                             class: "btn-icon danger",
                             title: t("life.memory.deleteMemory"),
                             "aria-label": t("life.memory.deleteMemory"),
-                            onClick: (d) => ye(a)
+                            onClick: (c) => ye(a)
                           }, [...i[23] || (i[23] = [
                             e(
                               "svg",
@@ -1039,7 +1032,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                               -1
                               /* CACHED */
                             )
-                          ])], 8, Ft)
+                          ])], 8, Ot)
                         ]),
                         e(
                           "p",
@@ -1052,17 +1045,17 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                           (r(!0), l(
                             T,
                             null,
-                            S(a.tags, (d) => (r(), l(
+                            S(a.tags, (c) => (r(), l(
                               "span",
-                              { key: d },
-                              "#" + s(d),
+                              { key: c },
+                              "#" + s(c),
                               1
                               /* TEXT */
                             ))),
                             128
                             /* KEYED_FRAGMENT */
                           ))
-                        ])) : m("v-if", !0),
+                        ])) : v("v-if", !0),
                         e("footer", Yt, [
                           e("div", {
                             class: "meter",
@@ -1079,7 +1072,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                               e(
                                 "i",
                                 {
-                                  style: A({ "--v": M(a.importance) }),
+                                  style: V({ "--v": M(a.importance) }),
                                   class: "fill-primary"
                                 },
                                 null,
@@ -1110,7 +1103,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                               e(
                                 "i",
                                 {
-                                  style: A({ "--v": M(a.strength) }),
+                                  style: V({ "--v": M(a.strength) }),
                                   class: "fill-secondary"
                                 },
                                 null,
@@ -1134,8 +1127,6 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                             /* TEXT */
                           )
                         ]),
-                        m(` Always mounted; grid-template-rows 0fr→1fr animates expand/collapse
-               instead of the v-if hard cut. `),
                         e(
                           "div",
                           {
@@ -1219,19 +1210,19 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                         e("div", Xt, [
                           e("button", {
                             class: "btn sm tonic",
-                            onClick: (d) => N.value = N.value === a.id ? "" : a.id
+                            onClick: (c) => N.value = N.value === a.id ? "" : a.id
                           }, s(N.value === a.id ? t("life.memory.collapse") : t("life.memory.details")), 9, Zt),
                           e("button", {
                             class: "btn sm tonic",
-                            onClick: (d) => le(a, 0.1)
+                            onClick: (c) => le(a, 0.1)
                           }, s(t("life.memory.importanceUp")), 9, ea),
                           e("button", {
                             class: "btn sm tonic",
-                            onClick: (d) => le(a, -0.1)
+                            onClick: (c) => le(a, -0.1)
                           }, s(t("life.memory.importanceDown")), 9, ta),
                           e("button", {
                             class: "btn sm tonic",
-                            onClick: (d) => he(a)
+                            onClick: (c) => he(a)
                           }, s(t("life.memory.reinforce")), 9, aa)
                         ])
                       ],
@@ -1245,8 +1236,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                 _: 1
                 /* STABLE */
               }),
-              m(" Shimmer skeleton while the first page loads, instead of an empty flash. "),
-              y.value && !O.value.length ? (r(), l(
+              y.value && !I.value.length ? (r(), l(
                 T,
                 { key: 0 },
                 S(io, (a) => e("article", {
@@ -1285,8 +1275,8 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                 ])])),
                 64
                 /* STABLE_FRAGMENT */
-              )) : m("v-if", !0),
-              !y.value && !O.value.length ? (r(), l("div", oa, [
+              )) : v("v-if", !0),
+              !y.value && !I.value.length ? (r(), l("div", oa, [
                 e(
                   "p",
                   null,
@@ -1301,14 +1291,14 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                   1
                   /* TEXT */
                 )
-              ])) : m("v-if", !0)
+              ])) : v("v-if", !0)
             ]),
             q.value > 1 ? (r(), l("div", ia, [
               e("button", {
                 class: "btn sm tonic",
                 disabled: x.value === 0,
                 onClick: i[7] || (i[7] = (a) => {
-                  x.value = Math.max(0, x.value - H), b();
+                  x.value = Math.max(0, x.value - B), b();
                 })
               }, s(t("life.memory.prevPage")), 9, na),
               e(
@@ -1322,12 +1312,12 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                 class: "btn sm tonic",
                 disabled: G.value >= q.value,
                 onClick: i[8] || (i[8] = (a) => {
-                  x.value += H, b();
+                  x.value += B, b();
                 })
               }, s(t("life.memory.nextPage")), 9, la)
-            ])) : m("v-if", !0)
-          ])) : g.value === "notes" ? (r(), l("div", da, [
-            e("section", ca, [
+            ])) : v("v-if", !0)
+          ])) : g.value === "notes" ? (r(), l("div", ca, [
+            e("section", da, [
               e("article", ma, [
                 e("div", pa, [
                   e(
@@ -1346,33 +1336,33 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                   },
                   [
                     P(e("input", {
-                      "onUpdate:modelValue": i[9] || (i[9] = (a) => h.value.title = a),
+                      "onUpdate:modelValue": i[9] || (i[9] = (a) => f.value.title = a),
                       class: "field",
                       placeholder: t("life.memory.noteTitle"),
                       "aria-label": t("life.memory.noteTitleLabel")
                     }, null, 8, fa), [
-                      [B, h.value.title]
+                      [H, f.value.title]
                     ]),
                     P(e("input", {
-                      "onUpdate:modelValue": i[10] || (i[10] = (a) => h.value.tags = a),
+                      "onUpdate:modelValue": i[10] || (i[10] = (a) => f.value.tags = a),
                       class: "field",
                       placeholder: t("life.memory.noteTags"),
                       "aria-label": t("life.memory.noteTagsLabel")
                     }, null, 8, ha), [
-                      [B, h.value.tags]
+                      [H, f.value.tags]
                     ]),
                     P(e("textarea", {
-                      "onUpdate:modelValue": i[11] || (i[11] = (a) => h.value.content = a),
+                      "onUpdate:modelValue": i[11] || (i[11] = (a) => f.value.content = a),
                       class: "field area",
                       placeholder: t("life.memory.noteContent"),
                       "aria-label": t("life.memory.noteContentLabel")
                     }, null, 8, va), [
-                      [B, h.value.content]
+                      [H, f.value.content]
                     ]),
                     e("button", {
                       class: "btn filled",
                       type: "submit",
-                      disabled: !h.value.content.trim() && !h.value.title.trim()
+                      disabled: !f.value.content.trim() && !f.value.title.trim()
                     }, s(t("life.memory.saveNote")), 9, ga)
                   ],
                   32
@@ -1391,7 +1381,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                   e(
                     "span",
                     xa,
-                    s(F.value.length),
+                    s(O.value.length),
                     1
                     /* TEXT */
                   )
@@ -1402,14 +1392,14 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                     placeholder: t("life.memory.searchNotes"),
                     "aria-label": t("life.memory.searchNotesLabel")
                   }, null, 8, ka), [
-                    [B, E.value]
+                    [H, E.value]
                   ])
                 ]),
                 e("ul", $a, [
                   (r(!0), l(
                     T,
                     null,
-                    S(F.value, (a) => (r(), l("li", {
+                    S(O.value, (a) => (r(), l("li", {
                       key: a.note_id,
                       class: "note-item"
                     }, [
@@ -1434,24 +1424,24 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                           s(t("life.memory.scopePrefix")) + s(a.scope),
                           1
                           /* TEXT */
-                        )) : m("v-if", !0)
+                        )) : v("v-if", !0)
                       ]),
                       e("div", Sa, [
                         e("button", {
                           class: "btn sm tonic",
-                          onClick: (d) => Z(a)
+                          onClick: (c) => Z(a)
                         }, s(t("life.memory.read")), 9, za),
                         e("button", {
                           class: "btn sm danger",
                           "aria-label": t("life.memory.deleteNoteTitle") + " " + a.note_id,
-                          onClick: (d) => xe(a)
+                          onClick: (c) => xe(a)
                         }, s(t("life.memory.delete")), 9, La)
                       ])
                     ]))),
                     128
                     /* KEYED_FRAGMENT */
                   )),
-                  F.value.length ? m("v-if", !0) : (r(), l(
+                  O.value.length ? v("v-if", !0) : (r(), l(
                     "li",
                     Na,
                     s(t("life.memory.emptyNotes")),
@@ -1461,12 +1451,12 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                 ])
               ])
             ]),
-            v.value ? (r(), l("section", Ra, [
+            h.value ? (r(), l("section", Ra, [
               e("div", ja, [
                 e(
                   "h2",
-                  Aa,
-                  s(v.value.note_id),
+                  Va,
+                  s(h.value.note_id),
                   1
                   /* TEXT */
                 ),
@@ -1474,7 +1464,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                   "button",
                   {
                     class: "btn sm tonic",
-                    onClick: i[13] || (i[13] = (a) => v.value = null)
+                    onClick: i[13] || (i[13] = (a) => h.value = null)
                   },
                   s(t("life.memory.close")),
                   1
@@ -1484,33 +1474,33 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
               e(
                 "pre",
                 null,
-                s(v.value.content),
+                s(h.value.content),
                 1
                 /* TEXT */
               ),
-              e("div", Va, [
+              e("div", Aa, [
                 e("button", {
                   class: "btn sm tonic",
-                  disabled: v.value.offset <= 1,
-                  onClick: i[14] || (i[14] = (a) => Z({ note_id: v.value.note_id }, Math.max(1, v.value.offset - 400)))
+                  disabled: h.value.offset <= 1,
+                  onClick: i[14] || (i[14] = (a) => Z({ note_id: h.value.note_id }, Math.max(1, h.value.offset - 400)))
                 }, s(t("life.memory.prevChunk")), 9, Pa),
                 e(
                   "span",
-                  Ba,
-                  s(t("life.memory.lines", { count: v.value.total_lines })),
+                  Ha,
+                  s(t("life.memory.lines", { count: h.value.total_lines })),
                   1
                   /* TEXT */
                 ),
                 e("button", {
                   class: "btn sm tonic",
-                  disabled: !v.value.has_more,
-                  onClick: i[15] || (i[15] = (a) => Z({ note_id: v.value.note_id }, v.value.offset + 400))
-                }, s(t("life.memory.nextChunk")), 9, Ha)
+                  disabled: !h.value.has_more,
+                  onClick: i[15] || (i[15] = (a) => Z({ note_id: h.value.note_id }, h.value.offset + 400))
+                }, s(t("life.memory.nextChunk")), 9, Ba)
               ])
-            ])) : m("v-if", !0)
+            ])) : v("v-if", !0)
           ])) : (r(), l("div", Ua, [
-            e("section", Ia, [
-              e("label", Oa, [
+            e("section", Fa, [
+              e("label", Ia, [
                 e(
                   "span",
                   null,
@@ -1518,7 +1508,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                   1
                   /* TEXT */
                 ),
-                V(ae(oe), {
+                A(ae(oe), {
                   modelValue: Y.value,
                   "onUpdate:modelValue": i[16] || (i[16] = (a) => Y.value = a),
                   options: Ce.value,
@@ -1527,7 +1517,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
               ]),
               e(
                 "span",
-                Fa,
+                Oa,
                 s(t("life.memory.reflectionCount", { count: D.value.length })),
                 1
                 /* TEXT */
@@ -1564,7 +1554,7 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                       s(t("life.memory.scopePrefix")) + s(a.scope),
                       1
                       /* TEXT */
-                    )) : m("v-if", !0)
+                    )) : v("v-if", !0)
                   ]),
                   e(
                     "p",
@@ -1599,18 +1589,18 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
                   a.status === "proposed" ? (r(), l("div", Ga, [
                     e("button", {
                       class: "btn sm filled",
-                      onClick: (d) => ce(a, !0)
+                      onClick: (c) => de(a, !0)
                     }, s(t("life.memory.acceptAsMemory")), 9, Qa),
                     e("button", {
                       class: "btn sm danger",
-                      onClick: (d) => ce(a, !1)
+                      onClick: (c) => de(a, !1)
                     }, s(t("life.memory.reject")), 9, Xa)
-                  ])) : m("v-if", !0)
+                  ])) : v("v-if", !0)
                 ]))),
                 128
                 /* KEYED_FRAGMENT */
               )),
-              D.value.length ? m("v-if", !0) : (r(), l("div", Za, [
+              D.value.length ? v("v-if", !0) : (r(), l("div", Za, [
                 e(
                   "p",
                   null,
@@ -1632,8 +1622,6 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
         _: 1
         /* STABLE */
       }),
-      m(` Irreversible actions live in their own danger zone at the very bottom,
-         away from the everyday header actions, with a second confirm step. `),
       e("section", to, [
         e("div", ao, [
           e(
@@ -1664,9 +1652,9 @@ const Be = { class: "memory-page" }, He = { class: "page-header" }, Ue = { class
   for (const [g, C] of o)
     t[g] = C;
   return t;
-}, mo = /* @__PURE__ */ ro(no, [["__scopeId", "data-v-e12fa355"]]);
+}, mo = /* @__PURE__ */ ro(no, [["__scopeId", "data-v-8bd3e90a"]]);
 export {
   mo as default
 };
 
-;(()=>{if(typeof document!=='undefined'&&!document.getElementById('life-plugin-style')){const s=document.createElement('style');s.id='life-plugin-style';s.textContent=".page-header[data-v-e12fa355]{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);margin-bottom:var(--space-xl);flex-wrap:wrap}.page-header h1[data-v-e12fa355]{margin:0;font-size:clamp(24px,2.8vw,34px);font-weight:800;letter-spacing:-.02em}.subtitle[data-v-e12fa355]{margin:6px 0 0;max-width:640px;color:var(--md-on-surface-variant);font-size:14px;line-height:1.55}.header-actions[data-v-e12fa355]{display:flex;gap:var(--space-sm);padding-top:20px;flex-shrink:0;flex-wrap:wrap}.stat-grid[data-v-e12fa355]{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:var(--space-lg);margin-bottom:var(--space-lg)}.stat-card[data-v-e12fa355]{background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:var(--r-lg);padding:var(--space-lg);box-shadow:var(--shadow-1);display:flex;flex-direction:column;gap:8px;transition:transform .28s var(--ease-spring),box-shadow .28s}@media(hover:hover)and (pointer:fine){.stat-card[data-v-e12fa355]:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}}.stat-head[data-v-e12fa355]{display:flex;align-items:center;gap:10px}.stat-label[data-v-e12fa355]{font-size:13px;font-weight:600;color:var(--md-on-surface-variant)}.stat-value[data-v-e12fa355]{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.1}.stat-hint[data-v-e12fa355]{font-size:12px;color:var(--md-on-surface-variant);opacity:.85}.icon-badge[data-v-e12fa355]{width:44px;height:44px;border-radius:16px 16px 16px 6px;display:grid;place-items:center;flex-shrink:0}.tone-1[data-v-e12fa355]{background:var(--md-primary-container);color:var(--md-on-primary-container)}.tone-2[data-v-e12fa355]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.tone-3[data-v-e12fa355]{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#4a2230)}.tone-4[data-v-e12fa355]{background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e)}.card-head[data-v-e12fa355]{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.card-title[data-v-e12fa355]{margin:0;font-size:16px;font-weight:650}.toolbar[data-v-e12fa355]{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:var(--space-lg);padding:var(--space-md)}.search-field[data-v-e12fa355]{display:flex;align-items:center;gap:10px;flex:1;min-width:220px;height:52px;padding:0 14px;border-radius:16px;background:var(--md-surface-container-high)}.search-icon[data-v-e12fa355]{color:var(--md-on-surface-variant);flex-shrink:0}.search-field input[data-v-e12fa355]{flex:1;min-width:0;border:0;background:transparent;outline:none;color:var(--md-on-surface);font-size:14px}.search-field input[data-v-e12fa355]:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}.search-field.mini[data-v-e12fa355]{height:auto;padding:10px 12px;margin-bottom:12px}#app .memory-page .field.area[data-v-e12fa355]{height:auto;min-height:120px;padding:12px 14px;resize:vertical;line-height:1.6}.chip[data-v-e12fa355]{height:26px;padding:0 11px;border-radius:999px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);flex-shrink:0}.chip.muted[data-v-e12fa355]{background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-weight:500}.tier-short[data-v-e12fa355]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.tier-long[data-v-e12fa355]{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#4a2230)}.chip-ok[data-v-e12fa355]{background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e)}.chip-warn[data-v-e12fa355]{background:var(--md-warning-container);color:var(--md-on-warning-container)}.memory-list[data-v-e12fa355]{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:var(--space-lg)}.memory-card[data-v-e12fa355]{background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:var(--r-lg);padding:var(--space-lg);box-shadow:var(--shadow-1);display:flex;flex-direction:column;gap:12px;transition:transform .26s var(--ease-spring),box-shadow .22s,border-color .2s}@media(hover:hover)and (pointer:fine){.memory-card[data-v-e12fa355]:hover{transform:translateY(-2px);box-shadow:var(--shadow-2);border-color:color-mix(in srgb,var(--md-primary) 30%,var(--md-outline-variant))}}.memory-card-enter-active[data-v-e12fa355]{transition:opacity .2s var(--ease-emphasized-decel),transform .2s var(--ease-emphasized-decel)}.memory-card-leave-active[data-v-e12fa355]{transition:opacity .16s var(--ease-emphasized-accel),transform .16s var(--ease-emphasized-accel)}.memory-card-enter-from[data-v-e12fa355]{opacity:0;transform:translateY(6px) scale(.98)}.memory-card-leave-to[data-v-e12fa355]{opacity:0;transform:scale(.98)}.memory-card-move[data-v-e12fa355]{transition:transform .26s var(--ease-emphasized)}@media(prefers-reduced-motion:reduce){.memory-card-enter-active[data-v-e12fa355],.memory-card-leave-active[data-v-e12fa355],.memory-card-move[data-v-e12fa355]{transition-duration:1ms}.memory-card-enter-from[data-v-e12fa355],.memory-card-leave-to[data-v-e12fa355],.stat-card[data-v-e12fa355]:hover,.memory-card[data-v-e12fa355]:hover{transform:none}}.card-top[data-v-e12fa355]{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.btn-icon[data-v-e12fa355]{position:relative;width:30px;height:30px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--md-on-surface-variant);display:grid;place-items:center;cursor:pointer;margin-left:auto}#app .memory-page .btn-icon[data-v-e12fa355]{min-height:0}.btn-icon[data-v-e12fa355]:after{content:\"\";position:absolute;top:50%;left:50%;width:44px;height:44px;transform:translate(-50%,-50%)}.btn-icon.danger[data-v-e12fa355]:hover{background:var(--md-error-container);color:var(--md-error)}.memory-content[data-v-e12fa355]{margin:0;line-height:1.65;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}.tags[data-v-e12fa355]{display:flex;gap:6px;flex-wrap:wrap}.tags span[data-v-e12fa355]{font-size:12px;font-weight:500;color:var(--md-on-primary-container);background:var(--md-primary-container);padding:3px 8px;border-radius:999px}.memory-foot[data-v-e12fa355]{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--md-outline-variant)}.meter[data-v-e12fa355]{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--md-on-surface-variant)}.meter-bar[data-v-e12fa355]{width:56px;height:5px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}.meter-bar i[data-v-e12fa355]{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(var(--v,0%));border-radius:999px;transition:transform .3s var(--ease-out,ease)}.fill-primary[data-v-e12fa355]{background:var(--md-primary)}.fill-secondary[data-v-e12fa355]{background:var(--md-secondary,#536255)}.meter-text[data-v-e12fa355]{margin-left:auto;font-size:12px;color:var(--md-on-surface-variant)}.detail[data-v-e12fa355]{display:grid;grid-template-rows:0fr;transition:grid-template-rows .24s var(--ease-out,ease)}.detail.open[data-v-e12fa355]{grid-template-rows:1fr}.detail-clip[data-v-e12fa355]{overflow:hidden;min-height:0;border-top:0 solid transparent}.detail-clip dl[data-v-e12fa355]{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0;font-size:12px;padding-top:10px}.detail.open .detail-clip[data-v-e12fa355]{border-top-width:1px;border-top-style:solid;border-top-color:var(--md-outline-variant)}.detail dt[data-v-e12fa355]{color:var(--md-on-surface-variant);font-weight:600}.detail dd[data-v-e12fa355]{margin:3px 0 0;overflow-wrap:anywhere}.detail code[data-v-e12fa355]{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.card-actions[data-v-e12fa355]{display:flex;gap:8px;justify-content:flex-end}.hidden-input[data-v-e12fa355]{display:none}.empty-state[data-v-e12fa355]{padding:56px 24px;text-align:center;background:var(--md-surface-container);border:1px dashed var(--md-outline-variant);border-radius:var(--r-lg);color:var(--md-on-surface-variant)}.empty-state p[data-v-e12fa355]{margin:0;font-size:15px;font-weight:600;color:var(--md-on-surface)}.empty-state .hint[data-v-e12fa355]{margin-top:8px;font-size:13px;font-weight:400;opacity:.85}.pager[data-v-e12fa355]{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:var(--space-lg)}.grid-notes[data-v-e12fa355]{display:grid;grid-template-columns:minmax(0,340px) 1fr;gap:var(--space-lg)}.stack-form[data-v-e12fa355]{display:flex;flex-direction:column;gap:10px}.note-list[data-v-e12fa355],.reflection-list[data-v-e12fa355]{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}.note-item[data-v-e12fa355]{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);border-radius:16px;background:var(--md-surface-container-low)}.note-main[data-v-e12fa355]{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.note-main strong[data-v-e12fa355]{font-size:14px;font-weight:600;overflow-wrap:anywhere}.item-meta[data-v-e12fa355]{font-size:12px;color:var(--md-on-surface-variant);line-height:1.5;overflow-wrap:anywhere}.note-actions[data-v-e12fa355]{display:flex;gap:6px;flex-shrink:0}.list-empty[data-v-e12fa355]{padding:14px;text-align:center;font-size:13px;color:var(--md-on-surface-variant);background:var(--md-surface-container);border-radius:12px;border:1px dashed var(--md-outline-variant)}.reader[data-v-e12fa355]{margin-top:var(--space-lg)}.reader pre[data-v-e12fa355]{margin:0;max-height:460px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.7;white-space:pre-wrap;background:var(--md-surface-container);padding:14px 16px;border-radius:12px}.reflection .card-title[data-v-e12fa355]{font-size:14px;font-weight:600}.reflection details[data-v-e12fa355]{margin-top:6px}.reflection summary[data-v-e12fa355]{cursor:pointer;font-size:12px;color:var(--md-on-surface-variant)}.quote[data-v-e12fa355]{margin:8px 0 0;font-size:13px;line-height:1.6;background:var(--md-surface-container);padding:8px 12px;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere}@media(prefers-reduced-motion:reduce){.meter-bar i[data-v-e12fa355]{transition:none}}.tab-body[data-v-e12fa355]{min-width:0}.tab-fade-enter-active[data-v-e12fa355]{transition:opacity .2s var(--ease-emphasized-decel)}.tab-fade-leave-active[data-v-e12fa355]{transition:opacity .14s var(--ease-emphasized-accel)}.tab-fade-enter-from[data-v-e12fa355],.tab-fade-leave-to[data-v-e12fa355]{opacity:0}@media(prefers-reduced-motion:reduce){.tab-fade-enter-active[data-v-e12fa355],.tab-fade-leave-active[data-v-e12fa355]{transition-duration:1ms}}.dynamics-grid[data-v-e12fa355]{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:18px;align-items:end}@media(max-width:900px){.dynamics-grid[data-v-e12fa355]{grid-template-columns:1fr}}.dyn-track[data-v-e12fa355]{flex:1;height:10px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}.dyn-bar[data-v-e12fa355]{display:block;height:100%;border-radius:999px;background:var(--md-primary);transition:width .5s var(--ease-out,ease)}.dyn-hist[data-v-e12fa355]{display:flex;align-items:flex-end;gap:3px;height:60px}.dyn-hist i[data-v-e12fa355]{flex:1;background:var(--md-primary);border-radius:3px 3px 0 0;transition:height .5s var(--ease-out,ease)}.dyn-curve[data-v-e12fa355]{width:100%;height:60px;color:var(--md-primary);display:block}.decay-line[data-v-e12fa355]{stroke-dasharray:1;stroke-dashoffset:1;animation:decay-draw-e12fa355 .9s var(--ease-out,ease) forwards}@keyframes decay-draw-e12fa355{to{stroke-dashoffset:0}}@media(prefers-reduced-motion:reduce){.dyn-bar[data-v-e12fa355],.dyn-hist i[data-v-e12fa355]{transition:none}.decay-line[data-v-e12fa355]{animation:none;stroke-dashoffset:0}}.skeleton-card[data-v-e12fa355]{gap:12px;pointer-events:none}.sk-line[data-v-e12fa355]{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,var(--md-surface-container-high) 25%,color-mix(in srgb,var(--md-on-surface) 8%,var(--md-surface-container-high)) 45%,var(--md-surface-container-high) 65%);background-size:200% 100%;animation:sk-shimmer-e12fa355 1.4s linear infinite}.sk-line.w30[data-v-e12fa355]{width:30%}.sk-line.w40[data-v-e12fa355]{width:40%}.sk-line.w75[data-v-e12fa355]{width:75%}.sk-line.w90[data-v-e12fa355]{width:90%}@keyframes sk-shimmer-e12fa355{0%{background-position:200% 0}to{background-position:-200% 0}}@media(prefers-reduced-motion:reduce){.sk-line[data-v-e12fa355]{animation:none}}.danger-zone[data-v-e12fa355]{display:flex;justify-content:space-between;align-items:center;gap:var(--space-lg);flex-wrap:wrap;margin-top:var(--space-xl);padding:var(--space-lg);border:1px solid color-mix(in srgb,var(--md-error,#b3261e) 45%,transparent);border-radius:var(--r-lg);background:color-mix(in srgb,var(--md-error,#b3261e) 5%,transparent)}.danger-zone h2[data-v-e12fa355]{margin:0;font-size:15px;font-weight:750;color:var(--md-error,#b3261e)}.danger-zone .hint[data-v-e12fa355]{margin:4px 0 0}.danger-copy[data-v-e12fa355]{flex:1;min-width:240px}@media(max-width:900px){.stat-grid[data-v-e12fa355]{grid-template-columns:repeat(2,1fr)}.grid-notes[data-v-e12fa355]{grid-template-columns:1fr}}@media(max-width:640px){.header-actions[data-v-e12fa355]{padding-top:0}.memory-list[data-v-e12fa355]{grid-template-columns:1fr}}\n";document.head.appendChild(s)}})();
+;(()=>{if(typeof document!=='undefined'&&!document.getElementById('life-plugin-style')){const s=document.createElement('style');s.id='life-plugin-style';s.textContent=".page-header[data-v-8bd3e90a]{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);margin-bottom:var(--space-xl);flex-wrap:wrap}.page-header h1[data-v-8bd3e90a]{margin:0;font-size:clamp(24px,2.8vw,34px);font-weight:800;letter-spacing:-.02em}.subtitle[data-v-8bd3e90a]{margin:6px 0 0;max-width:640px;color:var(--md-on-surface-variant);font-size:14px;line-height:1.55}.header-actions[data-v-8bd3e90a]{display:flex;gap:var(--space-sm);padding-top:20px;flex-shrink:0;flex-wrap:wrap}.stat-grid[data-v-8bd3e90a]{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:var(--space-lg);margin-bottom:var(--space-lg)}.stat-card[data-v-8bd3e90a]{background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:var(--r-lg);padding:var(--space-lg);box-shadow:var(--shadow-1);display:flex;flex-direction:column;gap:8px;transition:transform .28s var(--ease-spring),box-shadow .28s}@media(hover:hover)and (pointer:fine){.stat-card[data-v-8bd3e90a]:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}}.stat-head[data-v-8bd3e90a]{display:flex;align-items:center;gap:10px}.stat-label[data-v-8bd3e90a]{font-size:13px;font-weight:600;color:var(--md-on-surface-variant)}.stat-value[data-v-8bd3e90a]{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.1}.stat-hint[data-v-8bd3e90a]{font-size:12px;color:var(--md-on-surface-variant);opacity:.85}.icon-badge[data-v-8bd3e90a]{width:44px;height:44px;border-radius:16px 16px 16px 6px;display:grid;place-items:center;flex-shrink:0}.tone-1[data-v-8bd3e90a]{background:var(--md-primary-container);color:var(--md-on-primary-container)}.tone-2[data-v-8bd3e90a]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.tone-3[data-v-8bd3e90a]{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#4a2230)}.tone-4[data-v-8bd3e90a]{background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e)}.card-head[data-v-8bd3e90a]{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.card-title[data-v-8bd3e90a]{margin:0;font-size:16px;font-weight:650}.toolbar[data-v-8bd3e90a]{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:var(--space-lg);padding:var(--space-md)}.search-field[data-v-8bd3e90a]{display:flex;align-items:center;gap:10px;flex:1;min-width:220px;height:52px;padding:0 14px;border-radius:16px;background:var(--md-surface-container-high)}.search-icon[data-v-8bd3e90a]{color:var(--md-on-surface-variant);flex-shrink:0}.search-field input[data-v-8bd3e90a]{flex:1;min-width:0;border:0;background:transparent;outline:none;color:var(--md-on-surface);font-size:14px}.search-field input[data-v-8bd3e90a]:focus-visible{outline:3px solid var(--md-primary);outline-offset:2px}.search-field.mini[data-v-8bd3e90a]{height:auto;padding:10px 12px;margin-bottom:12px}#app .memory-page .field.area[data-v-8bd3e90a]{height:auto;min-height:120px;padding:12px 14px;resize:vertical;line-height:1.6}.chip[data-v-8bd3e90a]{height:26px;padding:0 11px;border-radius:999px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);flex-shrink:0}.chip.muted[data-v-8bd3e90a]{background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-weight:500}.tier-short[data-v-8bd3e90a]{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.tier-long[data-v-8bd3e90a]{background:var(--md-tertiary-container);color:var(--md-on-tertiary-container,#4a2230)}.chip-ok[data-v-8bd3e90a]{background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e)}.chip-warn[data-v-8bd3e90a]{background:var(--md-warning-container);color:var(--md-on-warning-container)}.memory-list[data-v-8bd3e90a]{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:var(--space-lg)}.memory-card[data-v-8bd3e90a]{background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:var(--r-lg);padding:var(--space-lg);box-shadow:var(--shadow-1);display:flex;flex-direction:column;gap:12px;transition:transform .26s var(--ease-spring),box-shadow .22s,border-color .2s}@media(hover:hover)and (pointer:fine){.memory-card[data-v-8bd3e90a]:hover{transform:translateY(-2px);box-shadow:var(--shadow-2);border-color:color-mix(in srgb,var(--md-primary) 30%,var(--md-outline-variant))}}.memory-card-enter-active[data-v-8bd3e90a]{transition:opacity .2s var(--ease-emphasized-decel),transform .2s var(--ease-emphasized-decel)}.memory-card-leave-active[data-v-8bd3e90a]{transition:opacity .16s var(--ease-emphasized-accel),transform .16s var(--ease-emphasized-accel)}.memory-card-enter-from[data-v-8bd3e90a]{opacity:0;transform:translateY(6px) scale(.98)}.memory-card-leave-to[data-v-8bd3e90a]{opacity:0;transform:scale(.98)}.memory-card-move[data-v-8bd3e90a]{transition:transform .26s var(--ease-emphasized)}@media(prefers-reduced-motion:reduce){.memory-card-enter-active[data-v-8bd3e90a],.memory-card-leave-active[data-v-8bd3e90a],.memory-card-move[data-v-8bd3e90a]{transition-duration:1ms}.memory-card-enter-from[data-v-8bd3e90a],.memory-card-leave-to[data-v-8bd3e90a],.stat-card[data-v-8bd3e90a]:hover,.memory-card[data-v-8bd3e90a]:hover{transform:none}}.card-top[data-v-8bd3e90a]{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.btn-icon[data-v-8bd3e90a]{position:relative;width:30px;height:30px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--md-on-surface-variant);display:grid;place-items:center;cursor:pointer;margin-left:auto}#app .memory-page .btn-icon[data-v-8bd3e90a]{min-height:0}.btn-icon[data-v-8bd3e90a]:after{content:\"\";position:absolute;top:50%;left:50%;width:44px;height:44px;transform:translate(-50%,-50%)}.btn-icon.danger[data-v-8bd3e90a]:hover{background:var(--md-error-container);color:var(--md-error)}.memory-content[data-v-8bd3e90a]{margin:0;line-height:1.65;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}.tags[data-v-8bd3e90a]{display:flex;gap:6px;flex-wrap:wrap}.tags span[data-v-8bd3e90a]{font-size:12px;font-weight:500;color:var(--md-on-primary-container);background:var(--md-primary-container);padding:3px 8px;border-radius:999px}.memory-foot[data-v-8bd3e90a]{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--md-outline-variant)}.meter[data-v-8bd3e90a]{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--md-on-surface-variant)}.meter-bar[data-v-8bd3e90a]{width:56px;height:5px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}.meter-bar i[data-v-8bd3e90a]{display:block;height:100%;width:100%;transform-origin:left;transform:scaleX(var(--v,0%));border-radius:999px;transition:transform .3s var(--ease-out,ease)}.fill-primary[data-v-8bd3e90a]{background:var(--md-primary)}.fill-secondary[data-v-8bd3e90a]{background:var(--md-secondary,#536255)}.meter-text[data-v-8bd3e90a]{margin-left:auto;font-size:12px;color:var(--md-on-surface-variant)}.detail[data-v-8bd3e90a]{display:grid;grid-template-rows:0fr;transition:grid-template-rows .24s var(--ease-out,ease)}.detail.open[data-v-8bd3e90a]{grid-template-rows:1fr}.detail-clip[data-v-8bd3e90a]{overflow:hidden;min-height:0;border-top:0 solid transparent}.detail-clip dl[data-v-8bd3e90a]{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0;font-size:12px;padding-top:10px}.detail.open .detail-clip[data-v-8bd3e90a]{border-top-width:1px;border-top-style:solid;border-top-color:var(--md-outline-variant)}.detail dt[data-v-8bd3e90a]{color:var(--md-on-surface-variant);font-weight:600}.detail dd[data-v-8bd3e90a]{margin:3px 0 0;overflow-wrap:anywhere}.detail code[data-v-8bd3e90a]{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.card-actions[data-v-8bd3e90a]{display:flex;gap:8px;justify-content:flex-end}.hidden-input[data-v-8bd3e90a]{display:none}.empty-state[data-v-8bd3e90a]{padding:56px 24px;text-align:center;background:var(--md-surface-container);border:1px dashed var(--md-outline-variant);border-radius:var(--r-lg);color:var(--md-on-surface-variant)}.empty-state p[data-v-8bd3e90a]{margin:0;font-size:15px;font-weight:600;color:var(--md-on-surface)}.empty-state .hint[data-v-8bd3e90a]{margin-top:8px;font-size:13px;font-weight:400;opacity:.85}.pager[data-v-8bd3e90a]{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:var(--space-lg)}.grid-notes[data-v-8bd3e90a]{display:grid;grid-template-columns:minmax(0,340px) 1fr;gap:var(--space-lg)}.stack-form[data-v-8bd3e90a]{display:flex;flex-direction:column;gap:10px}.note-list[data-v-8bd3e90a],.reflection-list[data-v-8bd3e90a]{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}.note-item[data-v-8bd3e90a]{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);border-radius:16px;background:var(--md-surface-container-low)}.note-main[data-v-8bd3e90a]{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.note-main strong[data-v-8bd3e90a]{font-size:14px;font-weight:600;overflow-wrap:anywhere}.item-meta[data-v-8bd3e90a]{font-size:12px;color:var(--md-on-surface-variant);line-height:1.5;overflow-wrap:anywhere}.note-actions[data-v-8bd3e90a]{display:flex;gap:6px;flex-shrink:0}.list-empty[data-v-8bd3e90a]{padding:14px;text-align:center;font-size:13px;color:var(--md-on-surface-variant);background:var(--md-surface-container);border-radius:12px;border:1px dashed var(--md-outline-variant)}.reader[data-v-8bd3e90a]{margin-top:var(--space-lg)}.reader pre[data-v-8bd3e90a]{margin:0;max-height:460px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.7;white-space:pre-wrap;background:var(--md-surface-container);padding:14px 16px;border-radius:12px}.reflection .card-title[data-v-8bd3e90a]{font-size:14px;font-weight:600}.reflection details[data-v-8bd3e90a]{margin-top:6px}.reflection summary[data-v-8bd3e90a]{cursor:pointer;font-size:12px;color:var(--md-on-surface-variant)}.quote[data-v-8bd3e90a]{margin:8px 0 0;font-size:13px;line-height:1.6;background:var(--md-surface-container);padding:8px 12px;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere}@media(prefers-reduced-motion:reduce){.meter-bar i[data-v-8bd3e90a]{transition:none}}.tab-body[data-v-8bd3e90a]{min-width:0}.tab-fade-enter-active[data-v-8bd3e90a]{transition:opacity .2s var(--ease-emphasized-decel)}.tab-fade-leave-active[data-v-8bd3e90a]{transition:opacity .14s var(--ease-emphasized-accel)}.tab-fade-enter-from[data-v-8bd3e90a],.tab-fade-leave-to[data-v-8bd3e90a]{opacity:0}@media(prefers-reduced-motion:reduce){.tab-fade-enter-active[data-v-8bd3e90a],.tab-fade-leave-active[data-v-8bd3e90a]{transition-duration:1ms}}.dynamics-grid[data-v-8bd3e90a]{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:18px;align-items:end}@media(max-width:900px){.dynamics-grid[data-v-8bd3e90a]{grid-template-columns:1fr}}.dyn-track[data-v-8bd3e90a]{flex:1;height:10px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}.dyn-bar[data-v-8bd3e90a]{display:block;height:100%;border-radius:999px;background:var(--md-primary);transition:width .5s var(--ease-out,ease)}.dyn-hist[data-v-8bd3e90a]{display:flex;align-items:flex-end;gap:3px;height:60px}.dyn-hist i[data-v-8bd3e90a]{flex:1;background:var(--md-primary);border-radius:3px 3px 0 0;transition:height .5s var(--ease-out,ease)}.dyn-curve[data-v-8bd3e90a]{width:100%;height:60px;color:var(--md-primary);display:block}.decay-line[data-v-8bd3e90a]{stroke-dasharray:1;stroke-dashoffset:1;animation:decay-draw-8bd3e90a .9s var(--ease-out,ease) forwards}@keyframes decay-draw-8bd3e90a{to{stroke-dashoffset:0}}@media(prefers-reduced-motion:reduce){.dyn-bar[data-v-8bd3e90a],.dyn-hist i[data-v-8bd3e90a]{transition:none}.decay-line[data-v-8bd3e90a]{animation:none;stroke-dashoffset:0}}.skeleton-card[data-v-8bd3e90a]{gap:12px;pointer-events:none}.sk-line[data-v-8bd3e90a]{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,var(--md-surface-container-high) 25%,color-mix(in srgb,var(--md-on-surface) 8%,var(--md-surface-container-high)) 45%,var(--md-surface-container-high) 65%);background-size:200% 100%;animation:sk-shimmer-8bd3e90a 1.4s linear infinite}.sk-line.w30[data-v-8bd3e90a]{width:30%}.sk-line.w40[data-v-8bd3e90a]{width:40%}.sk-line.w75[data-v-8bd3e90a]{width:75%}.sk-line.w90[data-v-8bd3e90a]{width:90%}@keyframes sk-shimmer-8bd3e90a{0%{background-position:200% 0}to{background-position:-200% 0}}@media(prefers-reduced-motion:reduce){.sk-line[data-v-8bd3e90a]{animation:none}}.danger-zone[data-v-8bd3e90a]{display:flex;justify-content:space-between;align-items:center;gap:var(--space-lg);flex-wrap:wrap;margin-top:var(--space-xl);padding:var(--space-lg);border:1px solid color-mix(in srgb,var(--md-error,#b3261e) 45%,transparent);border-radius:var(--r-lg);background:color-mix(in srgb,var(--md-error,#b3261e) 5%,transparent)}.danger-zone h2[data-v-8bd3e90a]{margin:0;font-size:15px;font-weight:750;color:var(--md-error,#b3261e)}.danger-zone .hint[data-v-8bd3e90a]{margin:4px 0 0}.danger-copy[data-v-8bd3e90a]{flex:1;min-width:240px}@media(max-width:900px){.stat-grid[data-v-8bd3e90a]{grid-template-columns:repeat(2,1fr)}.grid-notes[data-v-8bd3e90a]{grid-template-columns:1fr}}@media(max-width:640px){.header-actions[data-v-8bd3e90a]{padding-top:0}.memory-list[data-v-8bd3e90a]{grid-template-columns:1fr}}\n";document.head.appendChild(s)}})();

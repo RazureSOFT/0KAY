@@ -2,9 +2,6 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-// The importmap maps `vue-router` to the host's shared bridge, so this is the
-// app's own router instance (not a private copy) and SPA navigation keeps the
-// shell's player/i18n state alive.
 import { useRouter } from 'vue-router'
 import { AppSelect, useConfirm, i18n } from '@0kay/host'
 import { FLASH_MS, friendlyError, injectStyle, lifeAct, lifeGet, lifeKitCss, sleep } from './kit'
@@ -12,14 +9,7 @@ import AdapterSettingsPage from './AdapterSettingsPage.vue'
 
 const { confirm } = useConfirm()
 const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {})
-//inject() must run in setup context, so grab the host router once here (it is
-// undefined when this page is rendered outside the WebUI shell).
 const router = useRouter()
-// Canonical enum value for a settings key. The L.I.F.E backend keys these enums
-// on the exact zh strings (life/src/life/cognition/persona_dynamics.py maps
-// "傲娇型"/"依赖型"/… and companion/legacy.py validates the same tuples), so the
-// persisted value is read from the zh catalog no matter the UI locale — only
-// the option *label* is localized. Do not translate the persisted value.
 const zhValue = (key: string) => (i18n.global.t as any)(key, {}, { locale: 'zh' }) as string
 const enumOptions = (keys: string[]) => keys.map((k) => ({ value: zhValue(`life.companion.${k}`), label: t(`life.companion.${k}`) }))
 const data = ref<any>({ settings: {}, cognition: null })
@@ -33,18 +23,9 @@ const navItems = [
   { key: 'adapters', i: '04', labelKey: 'life.companion.nav.adapters', icon: '✉' },
   { key: 'state', i: '05', labelKey: 'life.companion.nav.state', icon: '☺' },
 ]
-/** The standalone 消息平台 settings tab owns full adapter CRUD now; this panel
-    keeps a read-only summary and sends you there instead of duplicating it. */
 const ADAPTERS_SETTINGS_TAB = 'life_adapters'
 
 function flash(message: string) { notice.value = message; setTimeout(() => { if (notice.value === message) notice.value = '' }, FLASH_MS) }
-/** Open the standalone 消息平台 settings tab.
- *
- *  The host shell does not expose a navigation API on `@0kay/host`, but its
- *  importmap maps `vue-router` to a bridge that re-exports the app's own
- *  router, so `router.push` is a true SPA navigation (no full reload, so the
- *  chat socket and i18n state survive). location.href stays as a fallback for
- *  a context where the shell's router is not injected. */
 function openAdapterSettings() {
   if (router) { void router.push({ path: '/settings', query: { tab: ADAPTERS_SETTINGS_TAB } }); return }
   window.location.href = `/settings?tab=${ADAPTERS_SETTINGS_TAB}`
@@ -76,25 +57,17 @@ function jump(target: string) {
   const el = pageEl.value
   if (el) el.scrollTo({ top: 0, behavior }); else window.scrollTo({ top: 0, behavior })
 }
-/** Replay the kit's entrance animation on the newly shown tab panel. The five
-    panels are v-show-mounted once, so the .panel animation would otherwise only
-    play on first paint; toggling the replay class (with a reflow in between)
-    restarts it on every tab switch. */
 function replayPanel(key: string) {
   const el = pageEl.value?.querySelector<HTMLElement>(`section[data-panel="${key}"]`)
   if (!el) return
   el.classList.remove('panel-replay')
-  void el.offsetWidth // flush styles so re-adding the class restarts the animation
+  void el.offsetWidth
   el.classList.add('panel-replay')
   el.addEventListener('animationend', () => el.classList.remove('panel-replay'), { once: true })
 }
 watch(tab, (value) => { nextTick(() => replayPanel(value)) })
-// 适配器状态是实时量（是否已连接），只在进入该页时拉取，不塞进 companion 快照。
 watch(tab, (value) => { if (value === 'adapters') loadAdapters() })
 
-// --- cognition core --------------------------------------------------------
-// Mirrors CompanionSystem.SETTING_DEFAULTS on the backend.  Booleans are stored
-// as '1'/'0' strings; every other knob is numeric except the two enums.
 const COG_DEFAULTS: Record<string, string> = {
   cog_enabled: '1',
   cog_lite_mode: '0',
@@ -113,8 +86,6 @@ const COG_DEFAULTS: Record<string, string> = {
   cog_tsundere_enabled: '0', get cog_tsundere_type() { return zhValue('life.companion.tsundere.classic') },
   cog_yandere_enabled: '0', get cog_yandere_type() { return zhValue('life.companion.yandere.mode.yandere') },
   cog_personadyn_enabled: '0', get cog_personadyn_type() { return zhValue('life.companion.pdt.0') }, get cog_personadyn_gender() { return zhValue('life.companion.pdGender.unspecified') },
-  // memory & consolidation. On by default — they are what makes lived
-  // experience leave a trace; turn one off to ablate it.
   cog_memory_encode: '1', cog_sleep_replay: '1', cog_memory_reconsolidate: '1',
   cog_cls_interleave: '1',
 }
@@ -128,11 +99,7 @@ const COG_BOOL_KEYS = ['cog_enabled', 'cog_lite_mode', 'cog_modulate_affect', 'c
 const COG_TEXT_KEYS = ['cog_affect_profile', 'cog_language_framing', 'cog_attachment_type', 'cog_tsundere_type', 'cog_yandere_type', 'cog_personadyn_type', 'cog_personadyn_gender']
 const attachmentTypeOptions = computed(() => enumOptions(['attach.secluded', 'attach.dependent', 'attach.delusional', 'attach.monitoring', 'attach.selfHarm', 'attach.exclusion']))
 const tsundereTypeOptions = computed(() => enumOptions(['tsundere.classic', 'tsundere.cold', 'tsundere.gruff', 'tsundere.indulgent']))
-// The yandere circuit's four archetypes. Their canonical stored values are the
-// zh strings, so the option value is zhValue(...) like the tsundere enum.
 const yandereTypeOptions = computed(() => enumOptions(['yandere.mode.yandere', 'yandere.mode.tsundere', 'yandere.mode.neutral', 'yandere.mode.hybrid']))
-// The 18 research archetypes stay first (they are the ACG family the plugin
-// shipped with); the extended library is grouped so a long list stays usable.
 const PD_GROUP_KEYS: string[][] = [
   Array.from({ length: 18 }, (_, i) => `pdt.${i}`),
   Array.from({ length: 10 }, (_, i) => `pdt.${18 + i}`),
@@ -147,17 +114,11 @@ const PD_GROUP_KEYS: string[][] = [
 const personadynTypeGroups = computed(() => PD_GROUP_KEYS.map((keys, g) => ({ label: t(`life.companion.pdg.${g}`), keys })))
 const personadynAllTypes = computed(() => [...new Set(PD_GROUP_KEYS.flat())].map((k) => ({ value: zhValue(`life.companion.${k}`), label: t(`life.companion.${k}`) })))
 const personadynGenderOptions = computed(() => enumOptions(['pdGender.unspecified', 'pdGender.maleScript', 'pdGender.femaleScript', 'pdGender.neutral', 'pdGender.highTradMale', 'pdGender.lowTradMale', 'pdGender.highTradFemale', 'pdGender.feminist']))
-// The affect-profile / language-framing enums are persisted by their internal
-// key ('typical', 'bpd', 'weak_whorf', …), so only the label is localized here
-// (see companion.profile.* / companion.framing.* in strings.xml).
 const cogProfileOptions = computed(() => ['typical', 'depression', 'anxiety', 'bpd', 'alexithymia']
   .map((v) => ({ value: v, label: t(`life.companion.profile.${v}`) })))
 const cogFramingOptions = computed(() => ['independent', 'interchanging', 'cognitive_determinism', 'weak_whorf',
   'thinking_for_speaking', 'radical_connectionism', 'determinism']
   .map((v) => ({ value: v, label: t(`life.companion.framing.${v}`) })))
-// Selman's perspective-taking stages. The setting persists the stage *number*;
-// the label is localized (unlike the archetype enums, whose canonical values
-// are zh strings — see zhValue above).
 const STAGE_NAMES = ['egocentric', 'subjective', 'self-reflective', 'mutual', 'societal-symbolic']
 const cogStageOptions = computed(() => STAGE_NAMES.map((name, n) => ({ value: String(n), label: t(`life.companion.stage.${name}`) })))
 const cogStageValue = computed({
@@ -194,8 +155,6 @@ const attachment = computed(() => cognition.value?.attachment || null)
 const tsundere = computed(() => cognition.value?.tsundere || null)
 const yandere = computed(() => cognition.value?.yandere || null)
 const personadyn = computed(() => cognition.value?.personadyn || null)
-// Extended read-outs: the backend ships grouped dictionaries; render a compact
-// "top 3" line so the panel stays readable at a glance.
 const big5Line = computed(() => {
   const b = personadyn.value?.big5
   if (!b) return '—'
@@ -229,11 +188,8 @@ const episodeStateLabel = (value: string) => {
   return keys[value] ? t(keys[value]) : '—'
 }
 
-// --- life on/off (开始生命 / 暂停生命) -------------------------------------
 const life = computed(() => cognition.value?.life || null)
 const lifeBusy = ref(false)
-/** Which of the two actions is in flight, so the button can say "Starting…" or
-    "Pausing…" instead of a bare ellipsis. */
 const lifeBusyAction = ref<'start' | 'stop'>('start')
 const lifeGreet = ref(true)
 function lifeAgeText() {
@@ -263,7 +219,6 @@ async function stopLife() {
   } finally { lifeBusy.value = false }
 }
 
-// One-click configurations: set the relevant knobs then save.
 function applyPreset(fields: Record<string, any>, label: string) {
   Object.assign(settingsForm.value, fields)
   void saveSettings().then(() => flash(t('life.companion.flash.presetApplied', { label })))
@@ -289,7 +244,6 @@ const personaEvidenceText = computed(() => {
 })
 function fmtNum(value: any, digits = 3) { return value == null || value === '' ? '—' : Number(value).toFixed(digits) }
 
-// --- worldsim / state ------------------------------------------------------
 const worldEvents = computed(() => (data.value.timeline || []).filter((item: any) => item.topic === zhValue('life.companion.val.world')).slice(0, 30))
 const commitments = computed(() => data.value.commitments || [])
 const userModels = computed(() => data.value.user_model || [])
@@ -297,9 +251,6 @@ const valuesList = computed(() => Object.entries(data.value.values || {})
   .map(([k, v]) => ({ k, v: Number(v) })).sort((a: any, b: any) => Math.abs(b.v) - Math.abs(a.v)).slice(0, 20))
 function parseList(text: string) { try { const v = JSON.parse(text || '[]'); return Array.isArray(v) ? v : [] } catch { return [] } }
 
-// --- intuitive read-outs ("她现在") ------------------------------------------
-// The snapshot already carries the raw numbers; this block turns them into
-// gauges with a one-line "what it changes" so the panel reads at a glance.
 const emotionNow = computed<any>(() => data.value.emotion || null)
 const circadianNow = computed<any>(() => data.value.circadian || null)
 const relationships = computed<any[]>(() => data.value.relationships || [])
@@ -308,7 +259,6 @@ const moodDot = computed(() => {
   const e = emotionNow.value || {}
   const valence = Math.max(-1, Math.min(1, Number(e.valence) || 0))
   const arousal = clamp01(Number(e.arousal ?? 0.5))
-  // viewBox 0 0 120 120; the frame spans 10..110, arousal points up.
   return { x: (10 + ((valence + 1) / 2) * 100).toFixed(1), y: (110 - arousal * 100).toFixed(1) }
 })
 const russellQuadrant = computed(() => {
@@ -322,12 +272,6 @@ const russellQuadrant = computed(() => {
 type Gauge = { label: string; value: number; max: number; kind: 'good' | 'bad' | 'neutral'; signed: boolean; effect: string; display: string; alias: string; state: string; stateTone: string }
 const SIGNED_BAND = 0.15
 const signedBand = (v: number) => (v <= -SIGNED_BAND ? 'lo' : v >= SIGNED_BAND ? 'hi' : 'mid')
-/**
- * One builder per metric id: the id resolves the effect line, the
- * plain-language alias next to the term, and the 3-band state word
- * ("很沉着 / 还算稳 / 容易慌") so numbers read as words. `kind` is the
- * metric's good/bad direction (neutral = read by distance from zero).
- */
 function gg(id: string, label: string, raw: any, opts: { max: number; kind: Gauge['kind']; signed?: boolean }): Gauge | null {
   const value = Number(raw)
   if (!isFinite(value)) return null
@@ -409,9 +353,6 @@ const pdGauges = computed<Gauge[]>(() => gauges([
   gg('pdSelfControl', t('life.companion.gauge.pdSelfControl'), personadyn.value?.self_control, { max: 1, kind: 'good' }),
   gg('pdSuppression', t('life.companion.gauge.pdSuppression'), personadyn.value?.suppression, { max: 1, kind: 'bad' }),
 ]))
-// Relationship stages / interaction modes are stored as canonical zh strings
-// (see CompanionState.RELATIONSHIP_STAGES / INTERACTION_LIMITS); the label is
-// localized per UI locale, the value stays zh.
 const REL_STAGES = ['警惕', '疏离', '陌生', '认识', '熟悉', '友好', '亲近', '亲密']
 const INTERACTIONS = ['回避', '受伤', '放松', '活泼', '温暖', '亲近', '爱意']
 const stageLabel = (s: string) => (REL_STAGES.includes(s) ? t(`life.companion.relStage.${s}`) : (s || '—'))
@@ -441,7 +382,6 @@ const worldFictionalOptions = computed(() => [
   { value: 'real', label: t('life.companion.worldFictional.real') },
 ])
 
-// worldview snapshot (identity + renderable map + current actor positions)
 const worldview = computed(() => data.value.worldview || null)
 const worldMap = computed(() => worldview.value?.map || { locations: [], edges: [], actors: [], width: 1000, height: 700, title: '' })
 const actorLocations = computed(() => worldview.value?.actor_locations || {})
@@ -454,9 +394,6 @@ function escapeHtml(value: any) {
   const map: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
   return String(value ?? '').replace(/[&<>"']/g, (c) => map[c])
 }
-// --- Map (zoom/pan). Real country -> 高德 raster tiles. Fictional -> the same
-// Leaflet engine on a simple coordinate system, drawing the setting's
-// districts / water / roads / locations. -----------------------------------
 const mapEl = ref<HTMLElement | null>(null)
 const offlineHint = ref(false)
 let leafletMap: any = null
@@ -469,7 +406,6 @@ let activeRoute = ''
 const scope = ref<'city' | 'nation'>('city')
 const routeLayers: Record<string, { layer: any; base: any }[]> = {}
 function reg(id: string, layer: any, base: any) { (routeLayers[id] ||= []).push({ layer, base }) }
-/** Highlight the whole route in place — no re-render, so nothing vanishes. */
 function focusRoute(id: string) {
   activeRoute = activeRoute === id ? '' : id
   for (const [rid, entries] of Object.entries(routeLayers)) {
@@ -484,7 +420,6 @@ function resetView() { activeRoute = ''; renderMap(false) }
 function toggleScope() { scope.value = scope.value === 'city' ? 'nation' : 'city'; renderMap(false) }
 
 function mapSize() { return { w: worldMap.value.width || 1000, h: worldMap.value.height || 700 } }
-/** Canvas (x right, y down) -> Leaflet simple CRS [lat, lng] (y up). */
 function xy(x: number, y: number) { return [mapSize().h - y, x] }
 function routeLabel(text: string, color: string) {
   return L.divIcon({ className: 'wm-route', html: `<span class="wm-route-inner" style="--c:${color}">${escapeHtml(text)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] })
@@ -495,7 +430,6 @@ function minorLabel(text: string, color: string) {
 function stationLabel(text: string, color: string) {
   return L.divIcon({ className: 'wm-route wm-station', html: `<span class="wm-route-inner" style="--c:${color}">${escapeHtml(text)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] })
 }
-/** Greedy label de-clutter in canvas space: keep the first, drop overlaps. */
 function declutter(labels: any[]) {
   const kept: { x: number; y: number; w: number; h: number }[] = []
   const out: any[] = []
@@ -525,7 +459,6 @@ function ensureMap() {
     offlineHint.value = false
     const { w, h } = mapSize()
     leafletMap = L.map(mapEl.value, { crs: L.CRS.Simple, zoomControl: true, attributionControl: false, minZoom: -3, maxZoom: 3 }).setView([h / 2, w / 2], -1.5)
-    // draw order: water < parks < blocks < roads < metro < bus < labels
     for (const [name, z] of [['pWater', 350], ['pParks', 360], ['pBlocks', 370], ['pRoads', 380], ['pMetro', 400], ['pBus', 410], ['pLabels', 620]] as [string, number][]) {
       leafletMap.createPane(name)
       leafletMap.getPane(name).style.zIndex = String(z)
@@ -552,7 +485,6 @@ function renderMap(keepView = false) {
   if (fictional) {
     const { w, h } = mapSize()
     const path = (points: any[]) => points.map((p: any) => xy(p[0], p[1]))
-    // nationwide overview
     const nation = worldMap.value.nation
     if (scope.value === 'nation' && nation) {
       L.rectangle([[0, 0], [h, w]], { pane: 'pWater', stroke: false, fillColor: '#d9e6f0', fillOpacity: 1 }).addTo(markerLayer)
@@ -571,12 +503,10 @@ function renderMap(keepView = false) {
       return
     }
     L.rectangle([[0, 0], [h, w]], { pane: 'pWater', stroke: false, fillColor: '#eef1f4', fillOpacity: 1 }).addTo(markerLayer)
-    // residential compounds (小区), under the buildings
     ;(worldMap.value.compounds || []).forEach((cp: any) => {
       L.polygon(path(cp.points), { pane: 'pParks', color: '#c9b98f', weight: 1.2, dashArray: '7 5', fillColor: '#f3ead0', fillOpacity: 0.5 }).addTo(markerLayer)
       L.marker(path(cp.points)[0], { pane: 'pLabels', interactive: false, icon: routeLabel(cp.name, '#a9884a') }).addTo(markerLayer)
     })
-    // water
     ;(worldMap.value.lakes || []).forEach((lk: any) => {
       L.polygon(path(lk.points), { pane: 'pWater', color: '#8fbfe6', weight: 1.5, fillColor: '#bcd9f0', fillOpacity: 1 }).addTo(markerLayer)
       if (lk.name && lk.name !== '') L.marker(xy(lk.label[0], lk.label[1]), { pane: 'pLabels', interactive: false, icon: routeLabel(lk.name, '#3d7fb5') }).addTo(markerLayer)
@@ -586,13 +516,11 @@ function renderMap(keepView = false) {
       L.polyline(path(rv.points), { pane: 'pWater', color: '#bcd9f0', weight: 11, lineCap: 'round', lineJoin: 'round' }).addTo(markerLayer)
       if (rv.name && rv.name !== '') L.marker(path(rv.points)[Math.floor(rv.points.length / 2)], { pane: 'pLabels', interactive: false, icon: routeLabel(rv.name, '#3d7fb5') }).addTo(markerLayer)
     })
-    // parks
     ;(worldMap.value.parks || []).forEach((pk: any) => {
       L.polygon(path(pk.points), { pane: 'pParks', color: '#a9d3a0', weight: 1, fillColor: '#c9e6c4', fillOpacity: 1 }).addTo(markerLayer)
       ;(pk.trees || []).forEach((tree: any) => L.circleMarker(xy(tree[0], tree[1]), { pane: 'pParks', radius: 2.6, stroke: false, fillColor: '#82bd79', fillOpacity: 1 }).addTo(markerLayer))
       if (pk.name && pk.name !== zhValue('life.companion.val.park')) L.marker(path(pk.points)[0], { pane: 'pLabels', interactive: false, icon: routeLabel(pk.name, '#5a9e52') }).addTo(markerLayer)
     })
-    // buildings: drop shadow, footprint, and a rooftop inset for "towers"
     const buildingLabels: { x: number; y: number; text: string; color: string }[] = []
     ;(worldMap.value.blocks || []).forEach((bl: any) => {
       const pts = path(bl.points)
@@ -610,7 +538,6 @@ function renderMap(keepView = false) {
         buildingLabels.push({ x: cx, y: cy, text: bl.name, color: bl.tower ? '#6b5b8a' : '#7a8794' })
       }
     })
-    // model-named landmarks always shown; filler building names de-cluttered
     ;(worldMap.value.named_buildings || []).forEach((b: any) => {
       L.circleMarker(xy(b.x, b.y), { pane: 'pLabels', radius: 4, color: '#ffffff', weight: 1.5, fillColor: '#8a5a2b', fillOpacity: 1 }).addTo(markerLayer)
       L.marker(xy(b.x, b.y), { pane: 'pLabels', interactive: false, icon: routeLabel(b.name, '#8a5a2b') }).addTo(markerLayer)
@@ -618,7 +545,6 @@ function renderMap(keepView = false) {
     for (const label of declutter(buildingLabels)) {
       L.marker(xy(label.x, label.y), { pane: 'pLabels', interactive: false, icon: minorLabel(label.text, label.color) }).addTo(markerLayer)
     }
-    // road hierarchy: highway > arterial > street
     const STREET_STYLE: Record<string, { casing: number; fill: number; color: string }> = {
       highway: { casing: 13, fill: 6.5, color: '#f08c2e' },
       arterial: { casing: 10, fill: 4.5, color: '#f7cf8a' },
@@ -630,7 +556,6 @@ function renderMap(keepView = false) {
       L.polyline(pts, { pane: 'pRoads', color: '#ffffff', weight: style.casing, lineCap: 'round', lineJoin: 'round' }).addTo(markerLayer)
       L.polyline(pts, { pane: 'pRoads', color: style.color, weight: style.fill, lineCap: 'round', lineJoin: 'round' }).addTo(markerLayer)
     })
-    // named roads on top (clickable / highlightable)
     ;(worldMap.value.roads || []).forEach((rd: any, i: number) => {
       if (!rd.name) return
       const pts = path(rd.points)
@@ -640,12 +565,10 @@ function renderMap(keepView = false) {
       reg(rid, L.polyline(pts, base).on('click', () => focusRoute(rid)).addTo(markerLayer), base)
       L.marker(pts[Math.floor(pts.length / 2)], { pane: 'pLabels', interactive: true, icon: routeLabel(rd.name, '#9a8358') }).on('click', () => focusRoute(rid)).addTo(markerLayer)
     })
-    // districts (faint zones) + labels
     ;(worldMap.value.districts || []).forEach((d: any, i: number) => {
       L.circle(xy(d.x, d.y), { pane: 'pRoads', radius: d.r || 200, color: '#93a2b0', weight: 1, dashArray: '4 7', fillColor: DISTRICT_FILLS[i % DISTRICT_FILLS.length], fillOpacity: 0.08 }).addTo(markerLayer)
       L.marker(xy(d.x, d.y), { pane: 'pLabels', interactive: false, icon: L.divIcon({ className: 'wm-district', html: `<span class="wm-district-inner">${escapeHtml(d.name)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] }) }).addTo(markerLayer)
     })
-    // metro (click a line / station / name to highlight the whole line)
     const stationLabels: { x: number; y: number; text: string; color: string }[] = []
     ;(worldMap.value.metro || []).forEach((m: any, i: number) => {
       const pts = path(m.points)
@@ -660,7 +583,6 @@ function renderMap(keepView = false) {
       })
       L.marker(pts[Math.floor(pts.length / 2)], { pane: 'pLabels', interactive: true, icon: routeLabel(m.name, m.color) }).on('click', () => focusRoute(rid)).addTo(markerLayer)
     })
-    // bus
     ;(worldMap.value.bus || []).forEach((b: any, i: number) => {
       const pts = path(b.points)
       const rid = 'bus:' + i
@@ -670,7 +592,6 @@ function renderMap(keepView = false) {
         .bindPopup(escapeHtml(s.name || b.name)).on('click', () => focusRoute(rid)).addTo(markerLayer))
       L.marker(pts[Math.floor(pts.length / 2)], { pane: 'pLabels', interactive: true, icon: routeLabel(b.name, b.color) }).on('click', () => focusRoute(rid)).addTo(markerLayer)
     })
-    // station names, de-cluttered so they stay readable
     for (const label of declutter(stationLabels)) {
       L.marker(xy(label.x, label.y), { pane: 'pLabels', interactive: false, icon: stationLabel(label.text, label.color) }).addTo(markerLayer)
     }
@@ -741,9 +662,6 @@ function syncSettings() {
   worldActors.value = String(data.value.settings?.world_actors || '')
   worldPlaces.value = String(data.value.settings?.world_places || '')
 }
-/** Set by saveSettings while the request is in flight: the FAB and the two
-    section-head save buttons disable on it, so a slow gateway cannot stack
-    duplicate settings_set calls. */
 const saving = ref(false)
 async function saveSettings() {
   if (saving.value) return
@@ -759,9 +677,6 @@ async function saveSettings() {
   } finally { saving.value = false }
 }
 
-/* ── 消息平台适配器（只读概览） ───────────────────────────────────────────────
-   完整的多适配器增删改与配置文件路由已独立成「设置 → 消息平台」页面
-   （AdapterSettingsPage.vue）。陪伴面板只保留运行状态，避免两处实现漂移。 */
 const adapters = ref<any[]>([])
 const adapterRuntime = ref<any[]>([])
 const adapterBusy = ref(false)
@@ -840,7 +755,6 @@ async function resetPerson() {
     await load()
   } finally { personBusy.value = false }
 }
-// --- persona (moved out of Settings → 人设) --------------------------------
 type PersonaForm = { name: string; avatar: string; birthDate: string; gender: string; description: string; personality: string; greeting: string; customPrompt: string }
 const emptyPersona = (): PersonaForm => ({ name: '', avatar: '', birthDate: '', gender: '', description: '', personality: '', greeting: '', customPrompt: '' })
 const genderOptions = computed(() => [
@@ -869,8 +783,6 @@ function loadPersona() {
     personaForm.value = { ...emptyPersona(), ...(cfg.persona || {}) }
   } catch { personaForm.value = emptyPersona() }
 }
-// Analysis is required before saving: the model reads the persona into
-// parameters, the owner reviews/tunes them, and only then can it be persisted.
 const analysis = ref<any | null>(null)
 const analyzeBusy = ref(false)
 const characterSelectOptions = computed(() => [
@@ -887,23 +799,16 @@ const relationshipSelectOptions = computed(() => [
 function personaBody() {
   return { text: [personaForm.value.description, personaForm.value.personality].filter((v) => String(v || '').trim()).join('\n') }
 }
-// Editing the text invalidates the previous analysis — re-understand before save.
 watch(() => [personaForm.value.description, personaForm.value.personality, personaForm.value.customPrompt], () => { analysis.value = null })
 function relationshipOptionFor(key: string) {
   return ((analysis.value?.options?.relationship || []) as any[]).find((o) => o.key === key)
 }
-// The relationship style drives the attachment ODE: only the pathological
-// family (病娇族) may switch it on, with the archetype its option declares; a
-// healthy style (安全/焦虑/回避/...) always turns it off.  `immediate` so the
-// freshly-analysed relationship is applied without needing a manual change.
 watch(() => analysis.value?.relationship?.key, (key) => {
   const att = analysis.value?.attachment
   if (!att) return
   const opt = relationshipOptionFor(key)
   att.type = opt?.pathological ? (opt.attachment_type || '') : ''
 }, { immediate: true })
-// Give the attachment seeds a neutral default when a type is chosen but the
-// analyzed text carried no attachment keywords.
 watch(() => analysis.value?.attachment?.type, (type) => {
   const att = analysis.value?.attachment
   if (!type || !att) return
@@ -920,8 +825,6 @@ async function analyzePersona() {
     const result = await act('persona_analyze', { text: body.text, gender: personaForm.value.gender })
     if (result) {
       analysis.value = result
-      // Seed the analyser's gender/social-script pick from the backend's read,
-      // else fall back to the currently-saved setting (identity if unset).
       analysis.value.personadynGender = result.personadyn?.gender || settingsForm.cog_personadyn_gender || zhValue('life.companion.pdGender.unspecified')
       if (!personaForm.value.gender && result.gender) personaForm.value.gender = result.gender
       flash(result.source === 'llm' ? t('life.companion.flash.analyzedLlm') : t('life.companion.flash.analyzedLocal'))
@@ -933,9 +836,6 @@ async function savePersona() {
   personaBusy.value = true
   try {
     const body = personaBody()
-    // The analyser's traits carry the style axes; the owner may have changed
-    // the archetype selects afterwards, so sync them and drop the stale axes
-    // (the backend recomputes axes from the chosen archetypes).
     const traits = { ...(analysis.value.traits || {}) }
     traits.gender = analysis.value.gender || personaForm.value.gender || null
     traits.character = analysis.value.character?.key || null
@@ -949,8 +849,6 @@ async function savePersona() {
       tsundere: analysis.value.tsundere || {},
       personadyn: {
         ...(analysis.value.personadyn || {}),
-        // The owner may override the archetype's implied gender/social script
-        // after analysis; the backend applies it as the persona's G group.
         gender: analysis.value.personadynGender || settingsForm.cog_personadyn_gender || zhValue('life.companion.pdGender.unspecified'),
       },
     })
@@ -972,11 +870,6 @@ watch(tab, (value) => { if (value === 'persona') loadPersona() })
 
 onMounted(load)
 
-// --- live refresh of the 实时状态 card --------------------------------------
-// The card never refreshed on its own; poll a fresh snapshot every 12s while
-// the page is visible (paused in a hidden tab) and stamp when it updated.
-// Deliberately NOT load(): that would flip `loading` and re-sync the settings
-// form, clobbering edits the user has not saved yet.
 const stateUpdatedAt = ref('')
 let pollTimer: ReturnType<typeof setInterval> | undefined
 async function pollCompanion() {
@@ -984,12 +877,11 @@ async function pollCompanion() {
   try {
     data.value = await lifeGet('/api/life/companion')
     stateUpdatedAt.value = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  } catch { /* keep the last snapshot */ }
+  } catch { }
 }
 function onVisibilityChange() { if (document.visibilityState === 'visible') void pollCompanion() }
 onMounted(() => {
   pollTimer = setInterval(() => { void pollCompanion() }, 12000)
-  // Returning to the tab should not wait up to 12s for fresh numbers.
   document.addEventListener('visibilitychange', onVisibilityChange)
 })
 onUnmounted(() => {
@@ -997,9 +889,6 @@ onUnmounted(() => {
   document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 
-/* Install the shared design tokens once per document. A Vue <style scoped>
-   block is compiled per component, so the kit has to be injected at runtime to
-   stay literally identical to the 消息平台 settings page. */
 injectStyle('life-plugin-kit', lifeKitCss('pcp'))
 </script>
 
@@ -1036,8 +925,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
       </button>
     </nav>
 
-    <!-- 02 人设（原设置页 → 人设，移到陪伴） -->
-    <section v-show="tab === 'persona'" data-panel="persona" class="panel">
+        <section v-show="tab === 'persona'" data-panel="persona" class="panel">
       <div class="section-head"><div><h2>{{ t('life.companion.persona.title') }}</h2><p class="desc">{{ t('life.companion.persona.desc') }}</p></div>
         <div class="head-actions">
           <button class="btn tonic sm" :disabled="analyzeBusy || loading" @click="analyzePersona">{{ analyzeBusy ? t('life.companion.persona.analyzing') : t('life.companion.persona.analyze') }}</button>
@@ -1144,8 +1032,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
       </article>
     </section>
 
-    <!-- 01 认知 -->
-    <section v-show="tab === 'cognition'" data-panel="cognition" class="panel">
+        <section v-show="tab === 'cognition'" data-panel="cognition" class="panel">
       <div class="section-head"><div><h2>{{ t('life.companion.cognition.title') }}</h2><p class="desc">{{ t('life.companion.cognition.desc') }}</p></div>
         <div class="head-actions"><button class="btn filled sm" :disabled="saving" @click="saveSettings">{{ saving ? t('life.companion.saving') : t('life.companion.saveSettings') }}</button></div>
       </div>
@@ -1176,8 +1063,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
         <h3>{{ t('life.companion.realtime.title') }} <span class="count-pill" :class="{ ok: cognition?.enabled }">{{ cognition?.enabled ? t('life.companion.status.running') : t('life.companion.status.stopped') }}</span><span v-if="stateUpdatedAt" class="count-pill sync-pill">{{ t('life.companion.realtime.updatedAt', { time: stateUpdatedAt }) }}</span></h3>
         <div v-if="!cognition" class="empty">{{ t('life.companion.realtime.empty') }}</div>
         <template v-else>
-          <!-- 她现在: Russell circumplex + the moment's emotion/body gauges. -->
-          <div class="sub-label">{{ t('life.companion.realtime.atAGlance') }}</div>
+                    <div class="sub-label">{{ t('life.companion.realtime.atAGlance') }}</div>
           <p class="hint">{{ t('life.companion.realtime.atAGlanceHint') }}</p>
           <div class="at-a-glance">
             <div v-if="emotionNow" class="mood-plot-wrap" role="img" :aria-label="t(russellQuadrant)">
@@ -1212,8 +1098,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
             </div>
           </div>
 
-          <!-- 情绪与身体 (第二波 slow physiology) -->
-          <div class="sub-label">{{ t('life.companion.realtime.section.mood') }}</div>
+                    <div class="sub-label">{{ t('life.companion.realtime.section.mood') }}</div>
           <p class="hint">{{ t('life.companion.realtime.sectionSub.mood') }}</p>
           <div class="gauge-grid">
             <div v-for="g in moodGauges" :key="g.label" class="gauge" :title="g.effect">
@@ -1231,8 +1116,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
             <p v-if="Number(wave2?.somatic_chronicity) > 0.1" class="hint">{{ t('life.companion.realtime.somaticChronicity', { value: fmtNum(wave2?.somatic_chronicity) }) }}</p>
           </div>
 
-          <!-- 社会认知 -->
-          <template v-if="wave4a || wave4b">
+                    <template v-if="wave4a || wave4b">
             <div class="sub-label">{{ t('life.companion.realtime.section.social') }}</div>
             <p class="hint">{{ t('life.companion.realtime.sectionSub.social') }}</p>
             <div class="gauge-grid">
@@ -1248,8 +1132,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
             </div>
           </template>
 
-          <!-- 依恋 -->
-          <template v-if="attachment?.enabled">
+                    <template v-if="attachment?.enabled">
             <div class="sub-label">{{ t('life.companion.realtime.section.attachment') }}</div>
             <p class="hint">{{ t('life.companion.realtime.sectionSub.attachment') }}</p>
             <div class="chip-row">
@@ -1267,8 +1150,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
             </div>
           </template>
 
-          <!-- 傲娇 -->
-          <template v-if="tsundere?.enabled">
+                    <template v-if="tsundere?.enabled">
             <div class="sub-label">{{ t('life.companion.realtime.section.tsundere') }}</div>
             <p class="hint">{{ t('life.companion.realtime.sectionSub.tsundere') }}</p>
             <div class="chip-row">
@@ -1284,8 +1166,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
             </div>
           </template>
 
-          <!-- 病娇 -->
-          <template v-if="yandere?.enabled">
+                    <template v-if="yandere?.enabled">
             <div class="sub-label">{{ t('life.companion.realtime.section.yandere') }}</div>
             <p class="hint">{{ t('life.companion.realtime.sectionSub.yandere') }}</p>
             <div class="chip-row">
@@ -1302,8 +1183,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
             </div>
           </template>
 
-          <!-- 人格动力 -->
-          <template v-if="personadyn?.enabled">
+                    <template v-if="personadyn?.enabled">
             <div class="sub-label">{{ t('life.companion.realtime.section.pd') }}</div>
             <p class="hint">{{ t('life.companion.realtime.sectionSub.pd') }}</p>
             <div class="chip-row">
@@ -1334,8 +1214,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
             </details>
           </template>
 
-          <!-- 内核原始读数 -->
-          <details class="pdetails">
+                    <details class="pdetails">
             <summary>{{ t('life.companion.realtime.moreReadouts') }}</summary>
             <div class="settings-grid" style="margin-top:10px">
               <div class="cog-metric"><span>{{ t('life.companion.metric.arbitrationMode') }}</span><strong>{{ lastControl?.mode || '—' }}</strong></div>
@@ -1502,8 +1381,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
       </div>
     </section>
 
-    <!-- 02 世界 -->
-    <section v-show="tab === 'world'" data-panel="world" class="panel">
+        <section v-show="tab === 'world'" data-panel="world" class="panel">
       <div class="section-head"><div><h2>{{ t('life.companion.world.title') }}</h2><p class="desc">{{ t('life.companion.world.desc') }}</p></div>
         <div class="head-actions"><button class="btn filled sm" @click="saveSettings">{{ t('life.companion.saveSettings') }}</button></div>
       </div>
@@ -1605,12 +1483,8 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
       </article>
     </section>
 
-    <!-- 03 状态 -->
-    <!-- 04 消息平台（只读概览；完整增删改在「设置 → 消息平台」） -->
-    <section v-show="tab === 'adapters'" data-panel="adapters" class="panel">
-      <!-- The full messaging-platform CRUD (accounts) lives here now; it used to
-           be a separate Settings tab. -->
-      <AdapterSettingsPage />
+            <section v-show="tab === 'adapters'" data-panel="adapters" class="panel">
+            <AdapterSettingsPage />
     </section>
 
     <section v-show="tab === 'state'" data-panel="state" class="panel">
@@ -1698,9 +1572,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
 </template>
 
 <style scoped>
-/* Shared design tokens + component vocabulary come from kit.ts so this page
-   and the standalone 消息平台 settings page stay in lockstep. Only the
-   world-map and cognition-panel rules are page-specific. */
+
 .world-field{display:block;margin:10px 0}
 .world-label{display:block;font-size:12px;font-weight:600;color:var(--md-on-surface-variant);margin-bottom:4px}
 .world-text{width:100%;min-height:64px;padding:10px 14px;border:1px solid var(--md-outline-variant);border-radius:var(--r-sm);background:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;font-size:13px;line-height:1.5;resize:vertical;outline:none}
@@ -1746,12 +1618,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
 .wm-legend i.k-street{background:#fff;border-color:#b9c3cd}
 
 .pfield{display:flex;flex-direction:column;gap:4px;margin-top:10px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}
-/* `#app .pcp .field{height:52px}` in kit.ts is (1,2,0) and out-ranks a scoped
-   `.pfield textarea.field` (0,2,2), so `height:auto` never applied and the
-   multi-line persona fields sat at a fixed 70px (the scoped `min-height`) with
-   an inner scrollbar instead of growing with their content. Repeating the
-   `#app .pcp` prefix here wins the declaration back — the same trick
-   MemoryPage already uses for its own textareas. */
+
 #app .pcp .pfield textarea.field{height:auto;min-height:70px;padding:10px 12px;resize:vertical;line-height:1.5}
 .cog-metric{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:var(--r-sm);
   background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant)}
@@ -1760,18 +1627,13 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
 .cog-metric.warn{border-color:var(--md-error,#b3261e);background:color-mix(in srgb,var(--md-error,#b3261e) 8%,transparent)}
 .cog-metric.warn span,.cog-metric.warn strong{color:var(--md-error,#b3261e)}
 .som-channels{margin-top:10px;display:flex;flex-direction:column;gap:6px}
-/* The label track was a fixed 52px, which a longer localised channel name
-   ("Cardiorespiratory", "心血管") could not fit — it spilled over the bar. Give
-   it room to grow up to 88px and let an unbreakable word wrap inside that. */
+
 .som-chan{display:grid;grid-template-columns:minmax(52px,88px) minmax(0,1fr) 48px;align-items:center;gap:10px}
 .som-chan-name{font-size:12px;font-weight:600;color:var(--md-on-surface-variant);overflow-wrap:anywhere}
 .som-chan-bar{display:block;height:8px;border-radius:999px;background:var(--md-surface-container);overflow:hidden}
 .som-chan-bar i{display:block;width:100%;height:100%;border-radius:999px;background:var(--md-primary);transform-origin:left;transition:transform var(--duration-medium) var(--ease-out);will-change:transform}
 .som-chan-val{font-size:12px;font-weight:700;text-align:right;color:var(--md-on-surface-variant)}
 
-/* ── intuitive read-outs ────────────────────────────────────────────────────
-   Gauges carry a one-line "what it changes"; the fill color encodes whether
-   the current value is good / middling / bad for that metric's direction. */
 .at-a-glance{display:grid;grid-template-columns:190px minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start;margin:8px 0 4px}
 @media(max-width:900px){.at-a-glance{grid-template-columns:1fr 1fr}}
 @media(max-width:620px){.at-a-glance{grid-template-columns:1fr}}
@@ -1793,7 +1655,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
 .gauge{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border-radius:var(--r-sm);background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);min-width:0}
 .gauge-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .gauge-name{font-size:12px;font-weight:700;color:var(--md-on-surface-variant);overflow-wrap:anywhere}
-/* plain-language restatement riding next to the term: "迷走平静 · 有多沉着" */
+
 .gauge-alias{font-style:normal;font-weight:500;font-size:11px;color:var(--md-on-surface-variant);opacity:.8;margin-left:6px}
 .gauge-val{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
 .gauge-state{font-weight:800;margin-right:2px}
@@ -1801,7 +1663,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
 .gauge-state.mid{color:var(--md-primary)}
 .gauge-state.bad{color:var(--md-error)}
 .gauge-bar{position:relative;display:block;height:8px;border-radius:999px;background:var(--md-surface-container-highest);overflow:visible}
-/* center tick for signed (-1..1) tracks */
+
 .gauge-bar.signed::before{content:'';position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;border-radius:1px;background:var(--md-outline-variant)}
 .gauge-fill{position:absolute;top:0;bottom:0;border-radius:999px;transition:width .35s var(--ease-out,.25s ease),left .35s var(--ease-out,.25s ease)}
 .gauge-fill.good{background:var(--md-success)}
@@ -1835,14 +1697,12 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
 .chip.ok{background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e)}
 
 #app .pcp .cog-metric{background:var(--md-surface-container)}
-/* "Updated at HH:MM" stamp on the real-time card — quieter than the status pill. */
+
 .sync-pill{font-weight:500;opacity:.85}
 </style>
 
 <style>
-/* Map chrome dark variants ride on the host's html[data-theme] toggle (scoped
-   styles cannot express an html-level selector). The map canvas palette itself
-   is drawn by Leaflet and stays a light "paper map" in both themes. */
+
 html[data-theme="dark"] #app .pcp .world-map-leaflet{background:#10151c}
 html[data-theme="dark"] #app .pcp .wm-reset,
 html[data-theme="dark"] #app .pcp .wm-scope{background:color-mix(in srgb,var(--md-surface-container-high) 94%,transparent);color:var(--md-on-surface)}
@@ -1855,8 +1715,7 @@ html[data-theme="dark"] .leaflet-container{background:#10151c}
 </style>
 
 <style>
-/* Leaflet creates its markers outside Vue's scoped CSS, so these live in a
-   plain (unscoped) block. All names are prefixed to avoid collisions. */
+
 .wm-pin-holder,.wm-actor-holder{background:none;border:none}
 .wm-pin{position:absolute;left:0;top:0;width:16px;height:16px;border-radius:50%;background:var(--c,#8a94a6);
   border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);transform:translate(-50%,-50%)}
@@ -1874,9 +1733,9 @@ html[data-theme="dark"] .leaflet-container{background:#10151c}
 .wm-route{background:none;border:none}
 .wm-route-inner{position:absolute;left:0;top:0;transform:translate(-50%,-50%);background:var(--c,#333);color:#fff;
   font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.35);pointer-events:none}
-/* filler building names hide when zoomed out, to keep the map readable */
+
 .wm-zoom-low .wm-minor{display:none}
-/* metro station names: small white pills with the line colour as the border */
+
 .wm-station .wm-route-inner{background:#fff;color:#33404c;border:1.5px solid var(--c,#888);border-radius:6px;font-size:9px;font-weight:700;padding:1px 5px}
 .leaflet-container{font-family:inherit;background:#e8edf2;border-radius:16px}
 .leaflet-container a{color:#2f6fed}

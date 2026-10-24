@@ -9,16 +9,6 @@ import zhJson from './locales/zh.json'
 import zhHantJson from './locales/zh-Hant.json'
 import { flatten, nest, parseStringsXml, renderStringsXml } from '../scripts/i18n.mjs'
 
-/**
- * src/locales/*.json is a build artefact of strings.xml. Editing the JSON
- * directly still compiles and still renders, so the drift would only surface
- * when someone next regenerates and silently loses their edit. This test fails
- * instead, and reports the differing keys rather than a wall of line noise.
- *
- * The XML is the source of truth; the JSON exists so the running app stays on
- * vue-i18n with no runtime parser.
- */
-
 const PAIRS = [
   { locale: 'en', xml: en, json: enJson },
   { locale: 'zh', xml: zh, json: zhJson },
@@ -43,8 +33,6 @@ describe('strings.xml is the source of truth for the locale JSON', () => {
   }
 
   it('parses every string with its whitespace intact', () => {
-    // Several values are deliberately padded. A parser that trims would change
-    // the rendered text, so the round trip is asserted explicitly.
     const flat = flatten(enJson as Record<string, unknown>)
     expect(flat['connection.lanMode']).toBe(' · LAN mode')
 
@@ -53,8 +41,6 @@ describe('strings.xml is the source of truth for the locale JSON', () => {
   })
 
   it('round-trips values that need XML escaping', () => {
-    // Apostrophes stay literal (aapt would want \'); ampersands and angle
-    // brackets are entity-encoded. All three must survive.
     const tricky = {
       'a.apostrophe': "L.I.F.E's settings",
       'a.ampersand': 'Email (IMAP & SMTP)',
@@ -66,8 +52,6 @@ describe('strings.xml is the source of truth for the locale JSON', () => {
   })
 
   it('nests back into the shape vue-i18n expects', () => {
-    // Guards the flat <-> nested mapping: a key with dots must become an object
-    // path, not a literal dotted property name.
     const nested = nest({ 'a.b.c': 'x', 'a.b.d': 'y', plain: 'z' }) as Record<string, any>
     expect(nested.a.b).toEqual({ c: 'x', d: 'y' })
     expect(nested.plain).toBe('z')

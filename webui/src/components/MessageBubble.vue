@@ -7,8 +7,6 @@ import MarkdownContent from './MarkdownContent.vue'
 
 const props = defineProps<{
   message: Message
-  /** True while this bubble is still receiving streamed tokens; markdown renders
-   * only on the settled text, because half-received markup flickers badly. */
   streaming?: boolean
 }>()
 
@@ -22,7 +20,6 @@ const think = computed(() => {
     const parsed = JSON.parse(props.message.thinkSummary)
     if (typeof parsed.raw === 'string' && parsed.raw.trim()) return { raw: parsed.raw }
     if (typeof parsed.summary === 'string' && parsed.summary.trim()) return parsed
-    // Normalize summaries persisted by the previous non-linear THINK UI.
     const intent = parsed.intent || t('messageBubble.intentDefault')
     const strategy = parsed.strategy || t('messageBubble.strategyDefault')
     return { summary: t('messageBubble.summary', { intent, strategy }) }
@@ -84,10 +81,7 @@ const dateTimeStr = computed(() => {
         <MarkdownContent v-if="!isUser && !streaming" :content="message.content" />
         <template v-else>{{ message.content }}</template>
       </div>
-      <!-- Media the character chose for this turn: a voice message, a selfie, a call.
-           Each is a real message, not a decoration — the voice chip plays the same
-           audio the Live2D stage lip-syncs to. -->
-      <div v-if="!isUser && (message.media?.voice || message.media?.call)" class="media-row">
+            <div v-if="!isUser && (message.media?.voice || message.media?.call)" class="media-row">
         <span class="media-chip">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v18M8 7v10M16 7v10M4 10v4M20 10v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
           {{ message.media?.call ? t('chat.mediaCall') : t('chat.mediaVoice') }}
@@ -224,8 +218,7 @@ const dateTimeStr = computed(() => {
   text-decoration: none;
   overflow: hidden;
 }
-/* `text-overflow` only applies to block containers; on the inline-flex link the
-   file name was hard-clipped with no ellipsis. The inner span carries it. */
+
 .msg-file-name {
   min-width: 0;
   overflow: hidden;
@@ -250,8 +243,6 @@ const dateTimeStr = computed(() => {
   word-break: break-word;
 }
 
-/* Markdown output brings its own block structure; pre-wrap would double every
-   newline the renderer already turned into paragraphs. */
 .content-markdown {
   white-space: normal;
 }

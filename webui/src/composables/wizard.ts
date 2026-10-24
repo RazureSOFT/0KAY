@@ -7,7 +7,6 @@ export interface Provider {
   baseUrl: string
   apiKeyUrl: string
   defaultModels: string[]
-  /** Default wire protocol when this preset is selected: 'openai' | 'anthropic'. */
   format?: string
 }
 
@@ -21,9 +20,7 @@ export interface ProviderConfig {
   disabled_models?: string[]
   default_model: string
   enabled: boolean
-  /** Wire protocol override: 'openai' | 'anthropic' | '' (infer from preset). */
   format?: string
-  /** Model capability per model id: 'chat' (default), 'embedding', 'rerank', 'vision', 'tts', 'image', 'audio'. */
   model_types?: Record<string, string>
 }
 

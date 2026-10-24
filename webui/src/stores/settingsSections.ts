@@ -24,41 +24,15 @@ export interface SettingsSection {
   fields: SettingsField[]
   plugin_id?: string
   plugin_name?: string
-  /** Present only when fetched with `?values=1`. */
   values?: Record<string, unknown>
 }
 
-/**
- * Resolve a translation key, returning '' when it is not defined.
- *
- * vue-i18n renders a missing key as the key itself, so comparing against the key
- * is how "no translation" is detected and the server's literal label is kept.
- * A missing key must not blank out a section: the fields would render as empty
- * labels, which is worse than showing them in the server's language.
- */
 function tr(key?: string): string {
   if (!key) return ''
   const value = i18n.global.t(key)
   return value === key ? '' : value
 }
 
-/**
- * Localise a section registered by a service.
- *
- * Core and mocr register their settings sections over gRPC, and the protobuf
- * SettingsSection carries no key fields — only literal labels. Rather than change
- * the wire format for a presentation concern, labels are resolved here by the
- * section id and field key the server already sends:
- *
- *   settings.tabs.<id>                          section tab label
- *   settings.sections.<id>.desc                 section description
- *   settings.fields.<id>.<field>.label          field label
- *   settings.fields.<id>.<field>.help           field help
- *
- * An explicit labelKey/helpKey wins when a plugin does send one, and anything
- * unresolved keeps the server's literal. The server still owns the section; the
- * WebUI owns how it is worded, which is what makes it translatable.
- */
 function localize(rows: SettingsSection[]): SettingsSection[] {
   return rows.map((section) => ({
     ...section,
@@ -75,13 +49,8 @@ function localize(rows: SettingsSection[]): SettingsSection[] {
 }
 
 export const useSettingsSectionsStore = defineStore('settingsSections', () => {
-  // Raw rows as the server sent them; `sections` is the localised view.
   const rawSections = ref<SettingsSection[]>([])
-  // Reading the locale here makes the computed re-resolve when the language
-  // changes, so tabs already on screen update without a refetch.
   const sections = computed(() => {
-    // Referencing the locale makes this computed depend on it, so switching
-    // language re-resolves the labels already on screen without a refetch.
     void i18n.global.locale.value
     return localize(rawSections.value)
   })
@@ -91,8 +60,6 @@ export const useSettingsSectionsStore = defineStore('settingsSections', () => {
   async function fetchSections() {
     loading.value = true
     try {
-      // `?values=1` embeds each section's values so the page does not fan out
-      // into one request per section.
       const res = await fetch('/api/settings/sections?values=1')
       if (!res.ok) return
       const data = await res.json()

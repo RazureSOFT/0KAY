@@ -8,7 +8,6 @@ const { t } = useI18n()
 const props = defineProps<{ modelValue: string; options: string[] }>()
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
-/** Ordered list, highest priority first. */
 const list = computed(() => String(props.modelValue || '').split(',').map((value) => value.trim()).filter(Boolean))
 const available = computed(() => props.options.filter((id) => !list.value.includes(id)))
 

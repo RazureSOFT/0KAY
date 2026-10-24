@@ -8,9 +8,6 @@ import {
 
 describe('normalizeLocale', () => {
   it('folds Traditional Chinese variants onto the app code', () => {
-    // A plugin author following Android convention writes values-zh-rTW or
-    // values-b+zh+Hant. The app runs zh-Hant, so these must map onto it or those
-    // users fall back to English for every plugin string.
     for (const code of ['zh-Hant', 'zh-rTW', 'zh-TW', 'zh-HK', 'zh-MO']) {
       expect(normalizeLocale(code), code).toBe('zh-Hant')
     }
@@ -49,7 +46,6 @@ describe('buildLocaleBundles', () => {
   })
 
   it('ignores plugins with no strings', () => {
-    // A plugin without translations is ordinary, not an error.
     expect(buildLocaleBundles([{ name: 'silent', response: null }])).toEqual({})
     expect(buildLocaleBundles([{ name: 'empty', response: response({ en: {} }) }])).toEqual({})
   })
@@ -78,9 +74,6 @@ describe('buildLocaleBundles', () => {
   })
 
   it('strips a key prefix that repeats the namespace', () => {
-    // Keys are relative to the namespace, but a plugin author may write the full
-    // path anyway. Left alone it would double and render as a key path; both
-    // spellings must resolve to the same string.
     const bundles = buildLocaleBundles([
       {
         name: 'demo',
@@ -93,9 +86,6 @@ describe('buildLocaleBundles', () => {
   })
 
   it('nests dotted keys so vue-i18n can traverse them', () => {
-    // A strings.xml key is flat and dotted. Placed verbatim it becomes a literal
-    // key and t('demo.memory.title') finds nothing, rendering the key path in the
-    // UI — which is exactly what shipped before this was fixed.
     const bundles = buildLocaleBundles([
       {
         name: 'demo',
@@ -139,7 +129,6 @@ describe('fetchPluginStrings', () => {
   })
 
   it('returns null instead of throwing when the request fails', async () => {
-    // One plugin's failure must not stop the app booting.
     const doFetch = (() => Promise.reject(new Error('offline'))) as unknown as typeof fetch
     expect(await fetchPluginStrings('demo', doFetch)).toBeNull()
   })

@@ -1,7 +1,6 @@
 type Item = { module?: string; plugin?: string; id?: string }
 type Module = { install?: (context: Item) => unknown; default?: (context: Item) => unknown; uninstall?: () => void }
 
-/** Serialize updates, including changes arriving while an import is pending. */
 export function createBootstrapManager(load: (url: string) => Promise<Module>) {
   const active = new Map<string, (() => void) | undefined>()
   let desired: Item[] = []

@@ -1,17 +1,4 @@
 <script setup lang="ts">
-/**
- * Git panel for the current workspace.
- *
- * Talks to Core's `/api/agent/git` (see core/internal/gateway/agent_git.go):
- *   GET  ?action=status&path=…            → { root, branch, files[] }
- *   POST { path, action, files?, message? } → the same status payload
- * with `action` one of stage / unstage / discard / commit / init.
- *
- * Two failures are normal rather than exceptional and get their own affordance:
- *   not_a_repo     — the folder is not a repository yet → one-click `init`
- *   git_forbidden  — the folder is outside Core's workspace roots → offer to add
- *                    it to 设置 → 工作区 without leaving the panel
- */
 import { computed, onMounted, ref, watch } from 'vue'
 import { i18n, useConfirm } from '@0kay/host'
 import { allowWorkspaceRoot } from './workspaceRoots'
@@ -51,8 +38,6 @@ function applyStatus(payload: any) {
 function fail(payload: any, fallback: string) {
   errorCode.value = String(payload?.code || '')
   error.value = String(payload?.error || fallback)
-  // A stale list under an error banner is worse than none: "stage all" would
-  // send paths that belong to the previous workspace.
   files.value = []
   branch.value = ''
 }
@@ -182,9 +167,7 @@ watch(() => props.root, reload)
         <section v-if="unstaged.length" class="git-group">
           <header>
             <span>{{ t('agent.page.gitChanges') }}</span><small>{{ unstaged.length }}</small>
-            <!-- Bulk action in the header: with 60 changed files the button used
-                 to sit below the last row, i.e. off-screen. -->
-            <button type="button" class="git-link bulk" :disabled="busy" @click="act('stage', unstaged.map(file => file.path))">{{ t('agent.page.gitStageAll') }}</button>
+                        <button type="button" class="git-link bulk" :disabled="busy" @click="act('stage', unstaged.map(file => file.path))">{{ t('agent.page.gitStageAll') }}</button>
           </header>
           <div v-for="file in unstaged" :key="`u-${file.path}`" class="git-row">
             <span class="git-badge">{{ badge(file) }}</span>
@@ -205,8 +188,7 @@ watch(() => props.root, reload)
 </template>
 
 <style scoped>
-/* Same visual family as the tree / browser panels, but self-contained: those
-   rules live in AgentsPage's scoped block and cannot reach this component. */
+
 .git-panel{position:fixed;right:76px;top:96px;z-index:var(--z-panel,3000);width:392px;max-width:calc(100vw - 120px);max-height:min(560px,calc(100vh - 200px));display:flex;flex-direction:column;border:1px solid var(--md-outline-variant);border-radius:14px;overflow:hidden;background:var(--md-surface-container-low);box-shadow:var(--shadow-4);color:var(--md-on-surface);font-family:var(--font-family)}
 .git-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--md-outline-variant);color:var(--md-on-surface-variant)}
 .git-head strong{font-size:13px;font-weight:700;color:var(--md-on-surface)}

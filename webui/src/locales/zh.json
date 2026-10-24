@@ -110,6 +110,7 @@
     "mediaCall": "语音通话",
     "mediaSelfieDrawing": "正在拍照…",
     "callBanner": "通话中 —— 说吧，我在听",
+    "callDialing": "正在接通…",
     "callEnd": "挂断",
     "wakeCapturing": "在听，说吧…",
     "wakeFailed": "语音唤醒启动失败：{detail}",

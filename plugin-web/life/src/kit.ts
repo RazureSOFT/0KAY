@@ -1,16 +1,7 @@
-/**
- * Shared transport + design kit for every L.I.F.E plugin page.
- *
- * The companion page and the 消息平台 settings page are different Vue roots but
- * they are visually the same product: same cards, same pill buttons, same
- * field sizing. Extracting the transport helpers and the design-token block
- * keeps them in lockstep instead of drifting into two dialects.
- */
 import { i18n } from '@0kay/host'
 
 const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {})
 
-/** Turn raw gateway/gRPC dial errors into a calm, actionable message. */
 export function friendlyError(e: any): string {
   const text = String(e?.message || e || '')
   if (/connection refused|Unavailable|actively refused|dial tcp|ECONNREFUSED|LIFE is unavailable|life unavailable|502|503/i.test(text)) {
@@ -21,21 +12,8 @@ export function friendlyError(e: any): string {
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-/**
- * How long a success/error banner stays on screen, shared by every L.I.F.E
- * page so the three roots feel like one product (the adapters page already
- * shipped 3.2s — that value won, the others follow).
- */
 export const FLASH_MS = 3200
 
-/**
- * POST one ManageCompanion action to L.I.F.E through the Core gateway.
- *
- * The reverse-WebSocket listener lives inside the plugin process, so a sibling
- * page racing a LIFE restart sees a dial error rather than a clean 4xx. Three
- * attempts with a short backoff covers the usual restart window without
- * making a genuine failure feel slow.
- */
 export async function lifeAct(action: string, payload: any = {}): Promise<any> {
   let last: any = null
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -57,14 +35,12 @@ export async function lifeAct(action: string, payload: any = {}): Promise<any> {
   throw last
 }
 
-/** GET the aggregated companion snapshot (settings + cognitive state). */
 export async function lifeGet(path = '/api/life/companion'): Promise<any> {
   const r = await fetch(path)
   if (!r.ok) throw Error((await r.text()) || String(r.status))
   return r.json()
 }
 
-/** Read one Core settings section's saved values. */
 export async function readSection(id: string): Promise<Record<string, any>> {
   const r = await fetch(`/api/settings/${encodeURIComponent(id)}`)
   if (!r.ok) throw Error(String(r.status))
@@ -72,7 +48,6 @@ export async function readSection(id: string): Promise<Record<string, any>> {
   return body.values || {}
 }
 
-/** Write one Core settings section's values. */
 export async function writeSection(id: string, values: Record<string, any>): Promise<void> {
   const r = await fetch(`/api/settings/${encodeURIComponent(id)}`, {
     method: 'POST',
@@ -82,18 +57,10 @@ export async function writeSection(id: string, values: Record<string, any>): Pro
   if (!r.ok) throw Error((await r.text()) || String(r.status))
 }
 
-/** Escape a string for safe use inside a CSS selector. */
 export function cssEscape(value: string): string {
   return String(value).replace(/[^a-zA-Z0-9_-]/g, '_')
 }
 
-/**
- * Design tokens + the component vocabulary shared by the L.I.F.E plugin pages.
- *
- * Sizes follow the Material 3 Expressive scale used by the WebUI shell: 52px
- * fields, 44px buttons, 28px card radius. `rootClass` scopes every rule to the
- * page root so the two pages cannot leak styles into each other.
- */
 export function lifeKitCss(rootClass: string): string {
   const r = `.${rootClass}`
   return `
@@ -240,12 +207,6 @@ html[data-theme="dark"] ${r} .pill.bad{background:#5a2d00;color:#ffd7b0}
 `
 }
 
-/**
- * Install a stylesheet into <head> exactly once.
- *
- * Plugin entries are ESM modules with no HTML host, so the build step appends
- * the CSS to the entry chunk and this helper runs at import time.
- */
 export function injectStyle(id: string, css: string): void {
   if (typeof document === 'undefined') return
   if (document.getElementById(id)) return

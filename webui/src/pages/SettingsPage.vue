@@ -35,17 +35,11 @@ const uiPatches = useUIPatchesStore()
 const route = useRoute()
 const router = useRouter()
 
-
-// Tabs come from uiPatches (BUILTIN_SETTINGS + life.patch replace/insert/remove).
 const tabs = computed<Array<{ id: string; icon: string }>>(() => uiPatches.settingsTabs.map(t => ({
   id: t.id,
   icon: t.icon || 'chip',
 })))
 
-/**
- * Plugin sections not already covered by settings tabs or removed by a patch.
- * life.patch removes plugin section id "life" so only the patch permissions pane remains.
- */
 const pluginOnlyTabs = computed(() => {
   const seen = new Set(uiPatches.settingsTabs.map(t => t.id))
   const removed = new Set(uiPatches.removedSettingsIds)
@@ -63,7 +57,6 @@ const uploadedModels = ref<{ id: string; label: string; url: string }[]>([])
 const folderInput = ref<HTMLInputElement | null>(null)
 const uploadMsg = ref('')
 
-/** Plugin section draft values */
 const sectionDrafts = ref<Record<string, Record<string, unknown>>>({})
 const sectionMsg = ref('')
 const sectionMsgKind = ref<'ok' | 'error'>('ok')
@@ -72,7 +65,6 @@ const sectionTesting = ref(false)
 const sectionTestMsg = ref('')
 const live2dSaving = ref(false)
 
-/** Model catalog for `model` / `models` settings fields (dropdowns). */
 const availableModels = ref<string[]>([])
 const modelAutoLabel = computed(() => t('settings.modelAuto'))
 const modelOptions = computed(() => [
@@ -85,10 +77,9 @@ async function loadAvailableModels() {
     if (!res.ok) return
     const body: { models?: Array<{ id?: string }> } = await res.json()
     availableModels.value = Array.from(new Set((body.models || []).map((model) => String(model.id || '')).filter(Boolean)))
-  } catch { /* offline */ }
+  } catch { }
 }
 
-/** Run a plugin section's backend test; play the returned audio sample. */
 async function testPluginSection(id: string) {
   sectionTesting.value = true
   sectionTestMsg.value = ''
@@ -97,7 +88,7 @@ async function testPluginSection(id: string) {
     const contentType = res.headers.get('content-type') || ''
     if (res.ok && contentType.startsWith('audio')) {
       const url = URL.createObjectURL(await res.blob())
-      try { await new Audio(url).play() } catch { /* autoplay may be blocked */ }
+      try { await new Audio(url).play() } catch { }
       window.dispatchEvent(new CustomEvent('live2d-speak', { detail: { url } }))
       sectionTestMsg.value = t('settings.testSuccess')
     } else {
@@ -113,10 +104,6 @@ async function testPluginSection(id: string) {
 
 const { tabMeta, isBuiltinTab, isPluginSection, tabLabel, fieldLabel, fieldHelp, pluginSection } = useSettingsMeta()
 
-/**
- * Which `dir` field the picker is open for (empty = closed). One shared picker
- * instance keeps the modal, its Escape handling and its focus trap single-copy.
- */
 const pickerField = ref('')
 const pickerOpen = computed({
   get: () => pickerField.value !== '',
@@ -128,7 +115,6 @@ const pickerTitle = computed(() => {
 })
 const pickerInitial = computed(() => String(sectionDrafts.value[activeTab.value]?.[pickerField.value] ?? ''))
 
-/** Write the chosen directory back into the draft; saving is still explicit. */
 function applyPickedPath(path: string) {
   const key = pickerField.value
   if (!key) return
@@ -138,13 +124,11 @@ function applyPickedPath(path: string) {
   }
 }
 
-/** A patch-declared tab whose body is a plugin ESM module (native pane). */
 const moduleTab = computed(() => {
   if (isBuiltinTab(activeTab.value)) return null
   return tabMeta(activeTab.value)?.module || null
 })
 
-/** Coerce section draft values — API may send bool, "true"/"false", 0/1. */
 function sectionBool(id: string, key: string): boolean {
   const v = sectionDrafts.value[id]?.[key]
   if (typeof v === 'boolean') return v
@@ -162,7 +146,6 @@ function loadSectionDraft(id: string) {
   if (!sec) return
   const base: Record<string, unknown> = {}
   for (const f of sec.fields) {
-    // `note` fields are instructions, not settings: they have no value to send.
     if (f.type === 'note') continue
     if (f.type === 'bool') base[f.key] = f.default_value === 'true' || f.default_value === '1'
     else if (f.type === 'number') base[f.key] = Number(f.default_value || 0)
@@ -206,7 +189,7 @@ async function loadPatchFields(id: string) {
           else base[f.key] = v
         }
       }
-    } catch { /* offline */ }
+    } catch { }
   }
   sectionDrafts.value = { ...sectionDrafts.value, [id]: base }
 }
@@ -242,8 +225,6 @@ async function saveSection(id: string) {
   sectionSaving.value = true
   sectionMsg.value = ''
   try {
-    // Instruction blocks have no value; posting them back would just litter the
-    // settings file with empty strings.
     const notes = new Set((pluginSection(id)?.fields || []).filter((f) => f.type === 'note').map((f) => f.key))
     const payload = Object.fromEntries(
       Object.entries(sectionDrafts.value[id] || {}).filter(([key]) => !notes.has(key)),
@@ -357,8 +338,6 @@ onMounted(async () => {
   void loadAvailableModels()
   await sectionsStore.fetchSections()
   for (const sec of sectionsStore.sections) loadSectionDraft(sec.id)
-  // A stale/hand-typed ?tab= must not land on an arbitrary pane (it used to
-  // fall through to the danger panel via the v-else at the end of the chain).
   if (!allTabs.value.some((tab) => tab.id === activeTab.value) && !isBuiltinTab(activeTab.value)) {
     activeTab.value = 'general'
   }
@@ -373,8 +352,6 @@ function selectTab(id: string) {
 function save() {
   wizard.saveToStorage()
   if (activeTab.value === 'live2d') {
-    // Never report success when the settings write failed — the header button
-    // used to flip to "Saved" unconditionally, even on a rejected POST.
     saveLive2D()
       .then(() => {
         saved.value = true
@@ -423,28 +400,17 @@ function save() {
         >
           <span class="nav-indicator"></span>
           <span class="nav-icon" aria-hidden="true">
-            <!-- globe -->
-            <svg v-if="tab.icon === 'globe'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9S14.5 18.3 12 21c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z" stroke="currentColor" stroke-width="2"/></svg>
-            <!-- cloud -->
-            <svg v-else-if="tab.icon === 'cloud'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 9.2 4.5 4.5 0 0 0 7 18z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-            <!-- chip -->
-            <svg v-else-if="tab.icon === 'chip'" width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="6" y="6" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            <!-- person -->
-            <svg v-else-if="tab.icon === 'person'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            <!-- avatar / live2d -->
-            <svg v-else-if="tab.icon === 'avatar'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="10" r="6" stroke="currentColor" stroke-width="2"/><path d="M5 21c1.5-3 4-4.5 7-4.5S17.5 18 19 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="10" r="1" fill="currentColor"/><circle cx="14" cy="10" r="1" fill="currentColor"/></svg>
-            <!-- brightness / appearance -->
-            <svg v-else-if="tab.icon === 'brightness'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            <!-- warn -->
-            <svg v-else-if="tab.icon === 'warn'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 4l9 16H3L12 4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            <!-- info / about -->
-            <svg v-else-if="tab.icon === 'info'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 11v5M12 7.5v.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            <!-- download / updates -->
-            <svg v-else-if="tab.icon === 'download'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            <!-- shield / security -->
-            <svg v-else-if="tab.icon === 'shield'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.2-2.8 7.6-7 9-4.2-1.4-7-4.8-7-9V6l7-3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <!-- lock / permissions -->
-            <svg v-else-if="tab.icon === 'link'" width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><path d="M14 17h7M17.5 13.5v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        <svg v-if="tab.icon === 'globe'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9S14.5 18.3 12 21c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z" stroke="currentColor" stroke-width="2"/></svg>
+                        <svg v-else-if="tab.icon === 'cloud'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 9.2 4.5 4.5 0 0 0 7 18z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                        <svg v-else-if="tab.icon === 'chip'" width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="6" y="6" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        <svg v-else-if="tab.icon === 'person'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        <svg v-else-if="tab.icon === 'avatar'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="10" r="6" stroke="currentColor" stroke-width="2"/><path d="M5 21c1.5-3 4-4.5 7-4.5S17.5 18 19 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="10" r="1" fill="currentColor"/><circle cx="14" cy="10" r="1" fill="currentColor"/></svg>
+                        <svg v-else-if="tab.icon === 'brightness'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        <svg v-else-if="tab.icon === 'warn'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 4l9 16H3L12 4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        <svg v-else-if="tab.icon === 'info'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 11v5M12 7.5v.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        <svg v-else-if="tab.icon === 'download'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        <svg v-else-if="tab.icon === 'shield'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.2-2.8 7.6-7 9-4.2-1.4-7-4.8-7-9V6l7-3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <svg v-else-if="tab.icon === 'link'" width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><path d="M14 17h7M17.5 13.5v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </span>
           <span class="nav-label">{{ tabLabel(tab.id) }}</span>
@@ -453,18 +419,14 @@ function save() {
 
       <section class="settings-content">
         <Transition name="tab" mode="out-in">
-        <!-- General -->
-        <GeneralPanel v-if="activeTab === 'general'" key="general" />
+                <GeneralPanel v-if="activeTab === 'general'" key="general" />
 
-        <!-- Connection (scan-to-pair QR for the mobile app) -->
-        <ConnectionPanel v-else-if="activeTab === 'connection'" key="connection" />
+                <ConnectionPanel v-else-if="activeTab === 'connection'" key="connection" />
 
-        <!-- Provider (multi-provider) — dedicated panel -->
-        <template v-else-if="activeTab === 'provider'">
+                <template v-else-if="activeTab === 'provider'">
           <ProviderPanel />
 
-          <!-- mocr runtime knobs live under the provider section (merged) -->
-          <div
+                    <div
             v-if="pluginSection('provider')?.fields?.length"
             class="content-card provider-runtime"
           >
@@ -517,11 +479,9 @@ function save() {
           </div>
         </template>
 
-        <!-- Persona (component pane — metadata may come from life.patch) -->
-        <PersonaPanel v-else-if="activeTab === 'persona'" />
+                <PersonaPanel v-else-if="activeTab === 'persona'" />
 
-        <!-- Live2D (component pane — metadata may come from life.patch) -->
-        <div v-else-if="activeTab === 'live2d'" key="live2d" class="content-card">
+                <div v-else-if="activeTab === 'live2d'" key="live2d" class="content-card">
           <h2>{{ tabLabel('live2d') }}</h2>
           <p class="card-desc">{{ tabMeta('live2d')?.descriptionKey ? t(tabMeta('live2d')!.descriptionKey!) : t('settings.live2dDesc') }}</p>
 
@@ -606,18 +566,14 @@ function save() {
           </div>
         </div>
 
-        <!-- Security — PIN / login switches and the per-page scope -->
-        <SecurityPanel v-else-if="activeTab === 'security'" />
+                <SecurityPanel v-else-if="activeTab === 'security'" />
 
-        <!-- Permissions — shell pane; fields/labels from life.patch when present -->
-          <PermissionsPanel v-else-if="activeTab === 'permissions'" />
+                  <PermissionsPanel v-else-if="activeTab === 'permissions'" />
           <McpPanel v-else-if="activeTab === 'mcp'" />
 
-        <!-- Plugin-registered settings sections (declarative fields) -->
-        <LifeSettingsPanel v-else-if="activeTab === 'life_settings'" />
+                <LifeSettingsPanel v-else-if="activeTab === 'life_settings'" />
 
-        <!-- Plugin-registered settings sections (declarative fields) -->
-        <div
+                <div
           v-else-if="isPluginSection(activeTab) && pluginSection(activeTab)"
           :key="`section-${activeTab}`"
           class="content-card"
@@ -626,10 +582,7 @@ function save() {
           <p v-if="pluginSection(activeTab)!.description" class="card-desc">
             {{ pluginSection(activeTab)!.description }}
           </p>
-          <!-- Who provides this pane. Shown only when it adds information: the
-               plugin id is already the tab id for most sections, and a bare
-               "genietts" under the title reads like debug output. -->
-          <p
+                    <p
             v-if="pluginSection(activeTab)!.plugin_name && pluginSection(activeTab)!.plugin_name !== activeTab"
             class="helper-text"
           >
@@ -672,8 +625,7 @@ function save() {
               <p v-if="f.help" class="helper-text">{{ f.help }}</p>
             </template>
             <template v-else-if="f.type === 'note'">
-              <!-- Instructions from the plugin (markdown). No input, nothing saved. -->
-              <div class="field-note">
+                            <div class="field-note">
                 <strong v-if="f.label">{{ f.label }}</strong>
                 <MarkdownContent :content="f.help || ''" />
               </div>
@@ -725,15 +677,13 @@ function save() {
           </div>
         </div>
 
-        <!-- Patch-declared settings tab backed by a plugin ESM module (native pane) -->
-        <PluginModulePane
+                <PluginModulePane
           v-else-if="moduleTab"
           :key="moduleTab"
           :module="moduleTab || ''"
         />
 
-        <!-- Patch-declared settings tab (fields + loadApi/saveApi, not a builtin pane) -->
-        <div
+                <div
           v-else-if="!isBuiltinTab(activeTab) && tabMeta(activeTab)?.fields?.length"
           :key="`patch-${activeTab}`"
           class="content-card"
@@ -810,20 +760,16 @@ function save() {
         <AboutPanel v-else-if="activeTab === 'about'" key="about" />
         <UpdatesPanel v-else-if="activeTab === 'updates'" key="updates" />
 
-        <!-- Danger -->
-        <DangerPanel v-else-if="activeTab === 'danger'" key="danger" />
+                <DangerPanel v-else-if="activeTab === 'danger'" key="danger" />
 
-        <!-- Unknown tab: an explicit dead end, never a fall-through into the
-             reset-everything panel. -->
-        <div v-else key="unknown" class="content-card tab-unknown">
+                <div v-else key="unknown" class="content-card tab-unknown">
           <p>{{ t('settings.tabNotFound') }}</p>
         </div>
         </Transition>
       </section>
     </div>
 
-    <!-- One picker for every `dir` field on the page; `pickerField` says which. -->
-    <PathPicker
+        <PathPicker
       v-model:open="pickerOpen"
       :initial="pickerInitial"
       :title="pickerTitle"

@@ -100,6 +100,7 @@
   <string name="chat.mediaCall">音声通話</string>
   <string name="chat.mediaSelfieDrawing">写真を撮っています…</string>
   <string name="chat.callBanner">通話中 —— どうぞ、聞いています</string>
+  <string name="chat.callDialing">発信中…</string>
   <string name="chat.callEnd">切る</string>
   <string name="chat.wakeCapturing">聞いています。どうぞ…</string>
   <string name="chat.wakeFailed">音声ウェイクを開始できません：{detail}</string>

@@ -1,9 +1,9 @@
-import { defineComponent as Se, ref as c, computed as U, watch as $e, nextTick as de, onMounted as ve, onUnmounted as pe, openBlock as l, createElementBlock as r, Fragment as A, createCommentVNode as u, createElementVNode as o, normalizeClass as C, createVNode as F, Transition as W, withCtx as D, normalizeStyle as fe, unref as h, toDisplayString as s, renderList as G, createTextVNode as he, withDirectives as ze, withKeys as we, withModifiers as me, vModelText as Oe, createApp as Pe } from "vue";
+import { defineComponent as Se, ref as u, computed as U, watch as $e, nextTick as de, onMounted as ve, onUnmounted as pe, openBlock as l, createElementBlock as r, Fragment as F, createElementVNode as o, normalizeClass as E, createCommentVNode as c, createVNode as W, Transition as A, withCtx as D, normalizeStyle as fe, unref as h, toDisplayString as s, renderList as G, createTextVNode as he, withDirectives as ze, withKeys as we, withModifiers as me, vModelText as Oe, createApp as Pe } from "vue";
 import { i18n as Te } from "@0kay/host";
-const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["aria-label"], We = { class: "count" }, De = ["title"], Ve = { class: "list-body" }, qe = {
+const He = 3200, Ie = ["aria-label"], Ne = ["title"], Fe = ["title"], We = ["aria-label"], Ae = { class: "count" }, De = ["title"], Ve = { class: "list-body" }, qe = {
   key: 0,
   class: "muted pad"
-}, Be = ["onClick"], Re = ["src", "alt"], Ke = { class: "fb" }, Xe = { class: "row-main" }, Ye = { class: "row-top" }, je = { class: "row-sub" }, Je = {
+}, Be = ["onClick"], Ke = ["src", "alt"], Re = { class: "fb" }, Xe = { class: "row-main" }, Ye = { class: "row-top" }, je = { class: "row-sub" }, Je = {
   key: 0,
   class: "me"
 }, Ue = ["aria-label"], Ge = ["src", "alt"], Qe = { class: "fb" }, Ze = ["title"], et = {
@@ -31,7 +31,7 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
 }, ft = /* @__PURE__ */ Se({
   __name: "SocialWindow",
   setup(y) {
-    const i = (n, t) => Te.global.t(n, t ?? {}), f = c([]), v = c(""), w = c([]), E = c(""), M = c(!1), V = c(null), T = (n, t, e) => Math.max(t, Math.min(e, n));
+    const i = (n, t) => Te.global.t(n, t ?? {}), f = u([]), v = u(""), w = u([]), C = u(""), M = u(!1), V = u(null), T = (n, t, e) => Math.max(t, Math.min(e, n));
     function Q(n) {
       const t = window.innerWidth || 1280, e = window.innerHeight || 800, a = T(n.w, 280, Math.max(280, t - 16)), d = T(n.h, 220, Math.max(220, e - 16));
       return { w: a, h: d, x: T(n.x, 0, Math.max(0, t - 90)), y: T(n.y, 0, Math.max(0, e - 40)) };
@@ -46,7 +46,7 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
       return { x: Math.max(16, a - e.w - t.x), y: t.y, w: Math.min(e.w, a - 16), h: Math.min(e.h, d - 16) };
     }
     function Z(n, t, e) {
-      const a = c(ye(n, t, e)), d = U(() => ({ translate: `${a.value.x}px ${a.value.y}px`, width: `${a.value.w}px`, height: `${a.value.h}px` })), x = () => {
+      const a = u(ye(n, t, e)), d = U(() => ({ translate: `${a.value.x}px ${a.value.y}px`, width: `${a.value.w}px`, height: `${a.value.h}px` })), x = () => {
         try {
           localStorage.setItem(n, JSON.stringify(a.value));
         } catch {
@@ -77,7 +77,7 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
         window.addEventListener("resize", p), pe(() => window.removeEventListener("resize", p));
       }), { s: a, style: d, startDrag: Me, startResize: Le };
     }
-    const L = c(!1), _ = c(!1), { style: ge, startDrag: ee, startResize: te } = Z("0kay.life.social.list", { x: 12, y: 64 }, { w: 340, h: 460 }), { style: _e, startDrag: ne, startResize: ae } = Z("0kay.life.social.chat", { x: 344, y: 64 }, { w: 380, h: 520 }), oe = c(location.pathname === "/");
+    const L = u(!1), _ = u(!1), { style: ge, startDrag: ee, startResize: te } = Z("0kay.life.social.list", { x: 12, y: 64 }, { w: 340, h: 460 }), { style: _e, startDrag: ne, startResize: ae } = Z("0kay.life.social.chat", { x: 344, y: 64 }, { w: 380, h: 520 }), oe = u(location.pathname === "/");
     function S() {
       oe.value = location.pathname === "/";
     }
@@ -91,16 +91,16 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
         return window.dispatchEvent(new Event("0kay:location")), d;
       };
     })();
-    const $ = c(!1), g = c(!1), H = c(0), I = c(""), ie = {};
+    const $ = u(!1), g = u(!1), H = u(0), I = u(""), ie = {};
     let q = !1, B;
-    async function R(n, t = {}) {
+    async function K(n, t = {}) {
       const e = await fetch("/api/life/companion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: n, payload: t }) });
       if (!e.ok) throw new Error(await e.text());
       return e.json();
     }
     async function se() {
       try {
-        const t = (await R("chat_conversations", { limit: 100 })).conversations || [];
+        const t = (await K("chat_conversations", { limit: 100 })).conversations || [];
         f.value = t;
         let e = "";
         for (const a of t) {
@@ -113,13 +113,13 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
       } catch {
       }
     }
-    async function K() {
+    async function R() {
       if (!v.value) {
         w.value = [];
         return;
       }
       try {
-        const t = (await R("chat_messages", { conversation: v.value, limit: 200 })).messages || [], e = t.length !== w.value.length, d = w.value.length === 0 || ke();
+        const t = (await K("chat_messages", { conversation: v.value, limit: 200 })).messages || [], e = t.length !== w.value.length, d = w.value.length === 0 || ke();
         w.value = t, e && d && be();
       } catch {
       }
@@ -149,17 +149,17 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
     }
     const m = U(() => f.value.find((n) => n.conversation === v.value) || null);
     function re(n) {
-      v.value = n, w.value = [], b.value = "", K(), _.value = !0;
+      v.value = n, w.value = [], b.value = "", R(), _.value = !0;
     }
-    const b = c("");
+    const b = u("");
     async function ue() {
-      const n = E.value.trim();
+      const n = C.value.trim();
       if (!(!n || M.value || !v.value)) {
         M.value = !0;
         try {
-          const t = m.value?.adapter_id || "", e = await R("chat_send", { conversation: v.value, text: n, adapter_id: t });
+          const t = m.value?.adapter_id || "", e = await K("chat_send", { conversation: v.value, text: n, adapter_id: t });
           if (e && e.ok === !1) throw new Error(e.error || i("life.chat.sendFailed"));
-          E.value = "", b.value = "", await K();
+          C.value = "", b.value = "", await R();
         } catch (t) {
           const e = String(t?.message || "").trim() || i("life.chat.sendFailed");
           b.value = e, setTimeout(() => {
@@ -170,23 +170,22 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
         }
       }
     }
-    function Ce() {
+    function Ee() {
       $.value = !1, H.value = 0, re(I.value);
     }
-    const ce = c(null), Ee = U(() => $.value && !g.value);
-    return $e(Ee, (n) => {
+    const ce = u(null), Ce = U(() => $.value && !g.value);
+    return $e(Ce, (n) => {
       n && de(() => ce.value?.focus());
     }), ve(() => {
       se(), B = setInterval(() => {
-        se(), _.value && K();
+        se(), _.value && R();
       }, 2500), window.addEventListener("0kay:location", S), window.addEventListener("popstate", S), S();
     }), pe(() => {
       B && clearInterval(B), window.removeEventListener("0kay:location", S), window.removeEventListener("popstate", S);
     }), (n, t) => (l(), r(
-      A,
+      F,
       null,
       [
-        u(" Right dock, only on the 对话 page "),
         oe.value ? (l(), r("aside", {
           key: 0,
           class: "dock",
@@ -194,7 +193,7 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
         }, [
           o("button", {
             type: "button",
-            class: C(["dock-btn", { active: L.value }]),
+            class: E(["dock-btn", { active: L.value }]),
             title: i("life.chat.tab"),
             onClick: t[0] || (t[0] = (e) => L.value = !L.value)
           }, [...t[15] || (t[15] = [
@@ -221,7 +220,7 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
           ])], 10, Ne),
           o("button", {
             type: "button",
-            class: C(["dock-btn", { active: _.value }]),
+            class: E(["dock-btn", { active: _.value }]),
             title: i("life.chat.title"),
             onClick: t[1] || (t[1] = (e) => _.value = !_.value)
           }, [...t[16] || (t[16] = [
@@ -245,10 +244,9 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
               -1
               /* CACHED */
             )
-          ])], 10, Ae)
-        ], 8, Ie)) : u("v-if", !0),
-        u(" Conversation list panel (same lsw-fade transition as the auto dialog) "),
-        F(W, { name: "lsw-fade" }, {
+          ])], 10, Fe)
+        ], 8, Ie)) : c("v-if", !0),
+        W(A, { name: "lsw-fade" }, {
           default: D(() => [
             L.value ? (l(), r("section", {
               key: 0,
@@ -283,7 +281,7 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
                   ),
                   o(
                     "span",
-                    We,
+                    Ae,
                     s(f.value.length),
                     1
                     /* TEXT */
@@ -298,7 +296,7 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
                 /* NEED_HYDRATION */
               ),
               o("div", Ve, [
-                f.value.length ? u("v-if", !0) : (l(), r(
+                f.value.length ? c("v-if", !0) : (l(), r(
                   "p",
                   qe,
                   s(i("life.chat.noConversations")),
@@ -306,17 +304,17 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
                   /* TEXT */
                 )),
                 (l(!0), r(
-                  A,
+                  F,
                   null,
                   G(f.value, (e) => (l(), r("button", {
                     key: e.conversation,
-                    class: C(["row", { selected: e.conversation === v.value }]),
+                    class: E(["row", { selected: e.conversation === v.value }]),
                     onClick: (a) => re(e.conversation)
                   }, [
                     o(
                       "span",
                       {
-                        class: C(["avatar", e.kind])
+                        class: E(["avatar", e.kind])
                       },
                       [
                         N(e) ? (l(), r("img", {
@@ -325,10 +323,10 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
                           alt: k(e),
                           loading: "lazy",
                           onError: t[4] || (t[4] = (a) => a.target.style.display = "none")
-                        }, null, 40, Re)) : u("v-if", !0),
+                        }, null, 40, Ke)) : c("v-if", !0),
                         o(
                           "span",
-                          Ke,
+                          Re,
                           s(e.kind === "group" ? i("life.chat.groupInitial") : k(e).slice(0, 1) || "?"),
                           1
                           /* TEXT */
@@ -361,7 +359,7 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
                           s(i("life.chat.me")) + ":",
                           1
                           /* TEXT */
-                        )) : u("v-if", !0),
+                        )) : c("v-if", !0),
                         he(
                           " " + s(e.last_text || i("life.chat.mediaOnly")),
                           1
@@ -385,13 +383,12 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
                 32
                 /* NEED_HYDRATION */
               )
-            ], 12, Fe)) : u("v-if", !0)
+            ], 12, We)) : c("v-if", !0)
           ]),
           _: 1
           /* STABLE */
         }),
-        u(" Chat panel "),
-        F(W, { name: "lsw-fade" }, {
+        W(A, { name: "lsw-fade" }, {
           default: D(() => [
             _.value ? (l(), r("section", {
               key: 0,
@@ -420,7 +417,7 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
                   o(
                     "span",
                     {
-                      class: C(["avatar sm", m.value?.kind])
+                      class: E(["avatar sm", m.value?.kind])
                     },
                     [
                       N(m.value) ? (l(), r("img", {
@@ -428,7 +425,7 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
                         src: N(m.value),
                         alt: k(m.value),
                         onError: t[6] || (t[6] = (e) => e.target.style.display = "none")
-                      }, null, 40, Ge)) : u("v-if", !0),
+                      }, null, 40, Ge)) : c("v-if", !0),
                       o(
                         "span",
                         Qe,
@@ -464,7 +461,7 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
                   class: "thread"
                 },
                 [
-                  v.value ? w.value.length ? u("v-if", !0) : (l(), r(
+                  v.value ? w.value.length ? c("v-if", !0) : (l(), r(
                     "p",
                     tt,
                     s(i("life.chat.noMessages")),
@@ -478,13 +475,13 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
                     /* TEXT */
                   )),
                   (l(!0), r(
-                    A,
+                    F,
                     null,
                     G(w.value, (e) => (l(), r(
                       "div",
                       {
                         key: e.id,
-                        class: C(["msg", e.direction])
+                        class: E(["msg", e.direction])
                       },
                       [
                         o("div", nt, [
@@ -494,16 +491,16 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
                             s(e.peer_name),
                             1
                             /* TEXT */
-                          )) : u("v-if", !0),
+                          )) : c("v-if", !0),
                           e.text ? (l(), r(
                             "span",
                             ot,
                             s(e.text),
                             1
                             /* TEXT */
-                          )) : u("v-if", !0),
+                          )) : c("v-if", !0),
                           (l(!0), r(
-                            A,
+                            F,
                             null,
                             G(e.media, (a) => (l(), r(
                               "span",
@@ -544,20 +541,20 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
                   s(b.value),
                   1
                   /* TEXT */
-                )) : u("v-if", !0),
+                )) : c("v-if", !0),
                 ze(o("textarea", {
-                  "onUpdate:modelValue": t[9] || (t[9] = (e) => E.value = e),
+                  "onUpdate:modelValue": t[9] || (t[9] = (e) => C.value = e),
                   rows: "1",
                   placeholder: i("life.chat.placeholder"),
                   onKeydown: we(me(ue, ["exact", "prevent"]), ["enter"])
                 }, null, 40, rt), [
-                  [Oe, E.value]
+                  [Oe, C.value]
                 ]),
                 o("button", {
-                  disabled: M.value || !E.value.trim(),
+                  disabled: M.value || !C.value.trim(),
                   onClick: ue
                 }, s(M.value ? i("life.chat.sending") : i("life.chat.send")), 9, ut)
-              ])) : u("v-if", !0),
+              ])) : c("v-if", !0),
               o(
                 "div",
                 {
@@ -569,13 +566,12 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
                 32
                 /* NEED_HYDRATION */
               )
-            ], 12, Ue)) : u("v-if", !0)
+            ], 12, Ue)) : c("v-if", !0)
           ]),
           _: 1
           /* STABLE */
         }),
-        u(" Auto dialog, styled like the agent inbox "),
-        F(W, { name: "lsw-fade" }, {
+        W(A, { name: "lsw-fade" }, {
           default: D(() => [
             $.value && !g.value ? (l(), r(
               "div",
@@ -641,7 +637,7 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
                       "button",
                       {
                         class: "lsw-primary",
-                        onClick: Ce
+                        onClick: Ee
                       },
                       s(i("life.chat.open")),
                       1
@@ -652,12 +648,12 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
               ],
               32
               /* NEED_HYDRATION */
-            )) : u("v-if", !0)
+            )) : c("v-if", !0)
           ]),
           _: 1
           /* STABLE */
         }),
-        F(W, { name: "lsw-fab" }, {
+        W(A, { name: "lsw-fab" }, {
           default: D(() => [
             $.value && g.value ? (l(), r("button", {
               key: 0,
@@ -675,8 +671,8 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
                 s(H.value),
                 1
                 /* TEXT */
-              )) : u("v-if", !0)
-            ])) : u("v-if", !0)
+              )) : c("v-if", !0)
+            ])) : c("v-if", !0)
           ]),
           _: 1
           /* STABLE */
@@ -691,7 +687,7 @@ const He = 3200, Ie = ["aria-label"], Ne = ["title"], Ae = ["title"], Fe = ["ari
   for (const [v, w] of i)
     f[v] = w;
   return f;
-}, wt = /* @__PURE__ */ ht(ft, [["__scopeId", "data-v-3d757c40"]]);
+}, wt = /* @__PURE__ */ ht(ft, [["__scopeId", "data-v-5506380f"]]);
 function gt() {
   const y = document.createElement("div");
   y.id = "0kay-life-social-window", document.body.appendChild(y);
@@ -709,4 +705,4 @@ export {
   gt as install
 };
 
-;(()=>{if(typeof document!=='undefined'&&!document.getElementById('life-plugin-style')){const s=document.createElement('style');s.id='life-plugin-style';s.textContent=".muted[data-v-3d757c40]{color:var(--md-on-surface-variant);font-size:13px}.pad[data-v-3d757c40]{padding:14px}.dock[data-v-3d757c40]{position:fixed;right:16px;top:76px;z-index:var(--z-panel, 3000);display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 8px;border-radius:28px;background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}.dock-btn[data-v-3d757c40]{position:relative;width:42px;height:42px;display:grid;place-items:center;border:0;border-radius:14px;background:transparent;color:var(--md-on-surface-variant);cursor:pointer;transition:background-color .16s,color .16s,transform .16s var(--ease-emphasized-decel)}.dock-btn[data-v-3d757c40]:hover{background:var(--md-secondary-container);color:var(--md-on-surface);transform:translateY(-1px)}.dock-btn[data-v-3d757c40]:active{transform:scale(.94)}.dock-btn.active[data-v-3d757c40]{background:color-mix(in srgb,var(--md-primary) 18%,transparent);color:var(--md-primary)}.dock-btn[data-v-3d757c40]:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}.panel[data-v-3d757c40]{position:fixed;left:0;top:0;z-index:var(--z-panel, 3000);display:flex;flex-direction:column;border:1px solid var(--md-outline-variant);border-radius:14px;overflow:hidden;background:var(--md-surface-container-low);box-shadow:var(--shadow-4);color:var(--md-on-surface)}.toolbar[data-v-3d757c40]{display:flex;align-items:center;gap:6px;padding:7px 9px;background:var(--md-surface-container-high);color:var(--md-on-surface);cursor:grab;touch-action:none;user-select:none;flex:0 0 auto}.toolbar[data-v-3d757c40]:active{cursor:grabbing}.toolbar .grab[data-v-3d757c40]{font-size:13px;line-height:1;color:var(--md-on-surface-variant);padding:0 2px;cursor:grab}.toolbar strong[data-v-3d757c40]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;font-weight:650}.toolbar .count[data-v-3d757c40]{flex:none;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);font-size:11.5px;font-weight:700}.toolbar button[data-v-3d757c40]{width:28px;height:28px;padding:0;display:inline-grid;place-items:center;border:0;border-radius:8px;font-size:13px;line-height:1;color:var(--md-on-surface-variant);background:transparent;cursor:pointer;flex-shrink:0}#app .toolbar button[data-v-3d757c40]{min-height:0}.toolbar button[data-v-3d757c40]:hover{background:var(--md-surface-container-highest)}.list-body[data-v-3d757c40]{flex:1;min-height:0;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:2px}.row[data-v-3d757c40]{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:0;background:transparent;color:inherit;font:inherit;padding:8px 9px;border-radius:12px;cursor:pointer}.row[data-v-3d757c40]:hover{background:var(--md-surface-container-high)}.row.selected[data-v-3d757c40]{background:var(--md-primary-container);color:var(--md-on-primary-container)}.row-main[data-v-3d757c40]{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}.row-top[data-v-3d757c40]{display:flex;justify-content:space-between;gap:8px}.row-top strong[data-v-3d757c40]{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}.row-top small[data-v-3d757c40]{font-size:11px;opacity:.6;flex:0 0 auto}.row-sub[data-v-3d757c40]{font-size:12px;opacity:.75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.me[data-v-3d757c40]{color:var(--md-primary);font-weight:700}.row.selected .me[data-v-3d757c40]{color:inherit;opacity:.85}.avatar[data-v-3d757c40]{position:relative;width:38px;height:38px;flex:0 0 38px;border-radius:50%;overflow:hidden;background:var(--md-primary);color:var(--md-on-primary, #fff);display:flex;align-items:center;justify-content:center;font-weight:800}.avatar.group[data-v-3d757c40]{border-radius:12px}.avatar.sm[data-v-3d757c40]{width:26px;height:26px;flex-basis:26px}.avatar img[data-v-3d757c40]{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.fb[data-v-3d757c40]{font-size:14px}.thread[data-v-3d757c40]{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:0}.msg[data-v-3d757c40]{display:flex;opacity:1;transform:none;transition:opacity var(--duration-medium) var(--ease-emphasized-decel),transform var(--duration-medium) var(--ease-emphasized-decel)}@starting-style{.msg[data-v-3d757c40]{opacity:0;transform:translateY(4px)}}.msg.out[data-v-3d757c40]{justify-content:flex-end}.bubble[data-v-3d757c40]{max-width:82%;background:var(--md-surface-container-low);border-radius:8px 24px 24px;padding:8px 12px;display:flex;flex-direction:column;gap:3px;box-shadow:var(--shadow-1)}.msg.out .bubble[data-v-3d757c40]{background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:24px 24px 8px}.sender[data-v-3d757c40]{font-size:11px;font-weight:700;opacity:.75}.text[data-v-3d757c40]{white-space:pre-wrap;word-break:break-word;font-size:13px}.chip[data-v-3d757c40]{align-self:flex-start;font-size:11px;padding:1px 8px;border-radius:999px;background:color-mix(in srgb,currentColor 16%,transparent)}.time[data-v-3d757c40]{align-self:flex-end;font-size:10px;opacity:.6}.composer[data-v-3d757c40]{display:flex;gap:8px;padding:8px 10px;border-top:1px solid var(--md-outline-variant);align-items:flex-end;flex:0 0 auto;flex-wrap:wrap}.send-error[data-v-3d757c40]{flex:1 0 100%;margin:0;padding:6px 10px;border-radius:8px;background:var(--md-error-container);color:var(--md-on-error-container);font-size:12px;overflow-wrap:anywhere}.composer textarea[data-v-3d757c40]{flex:1;resize:none;min-height:38px;max-height:110px;padding:9px 12px;border-radius:12px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;outline:none}.composer textarea[data-v-3d757c40]:focus{border-color:var(--md-primary)}.composer button[data-v-3d757c40]{height:38px;padding:0 16px;border:0;border-radius:12px;background:var(--md-primary);color:var(--md-on-primary, #fff);font-weight:700;cursor:pointer}.composer button[data-v-3d757c40]:disabled{opacity:.5;cursor:not-allowed}.resize[data-v-3d757c40]{position:absolute;right:1px;bottom:1px;width:16px;height:16px;cursor:nwse-resize;touch-action:none;opacity:.5;background:repeating-linear-gradient(135deg,transparent 0 3px,var(--md-on-surface-variant) 3px 4px)}.resize[data-v-3d757c40]:hover{opacity:.85}.lsw-scrim[data-v-3d757c40]{position:fixed;inset:0;z-index:var(--z-modal, 4000);background:var(--md-scrim, color-mix(in srgb, #18132d 42%, transparent));backdrop-filter:blur(6px);display:grid;place-items:center;padding:20px}.lsw-dialog[data-v-3d757c40]{width:min(560px,100%);max-height:85vh;overflow:auto;border-radius:28px;background:var(--md-surface);color:var(--md-on-surface);padding:28px;box-shadow:0 24px 70px #18132d33;outline:none}.lsw-dialog header[data-v-3d757c40]{display:flex;justify-content:space-between;align-items:center;gap:16px}.lsw-eyebrow[data-v-3d757c40]{font-size:12px;letter-spacing:2px;color:var(--md-primary);font-weight:700}.lsw-dialog h2[data-v-3d757c40]{font-size:24px;margin:8px 0}.lsw-meta[data-v-3d757c40]{font-size:12px;color:var(--md-on-surface-variant);overflow-wrap:anywhere;margin:0}.lsw-body[data-v-3d757c40]{margin:16px 0;white-space:pre-wrap;overflow-wrap:anywhere}.lsw-dialog button[data-v-3d757c40]{border:0;border-radius:999px;padding:12px 20px;font:inherit;cursor:pointer;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.lsw-dialog .lsw-primary[data-v-3d757c40]{background:var(--md-primary);color:var(--md-on-primary, #fff)}.lsw-dialog footer[data-v-3d757c40]{display:flex;justify-content:flex-end;gap:12px;margin-top:20px}.lsw-fab[data-v-3d757c40]{position:fixed;right:24px;bottom:24px;z-index:var(--z-toast, 6000);display:inline-flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:12px 20px;background:var(--md-primary);color:var(--md-on-primary, #fff);font:inherit;font-weight:700;cursor:pointer;box-shadow:var(--shadow-3)}.lsw-badge[data-v-3d757c40]{background:var(--md-error);color:var(--md-on-error, #fff);border-radius:999px;padding:0 8px;font-size:12px}.lsw-fade-enter-active[data-v-3d757c40]{transition:opacity .24s var(--ease-emphasized-decel),transform .24s var(--ease-emphasized-decel)}.lsw-fade-leave-active[data-v-3d757c40]{transition:opacity .14s var(--ease-emphasized-accel),transform .14s var(--ease-emphasized-accel)}.lsw-fade-enter-from[data-v-3d757c40],.lsw-fade-leave-to[data-v-3d757c40]{opacity:0;transform:translateY(-6px) scale(.99)}.lsw-fab-enter-active[data-v-3d757c40]{transition:opacity .2s var(--ease-emphasized-decel),transform .2s var(--ease-emphasized-decel)}.lsw-fab-leave-active[data-v-3d757c40]{transition:opacity .14s var(--ease-emphasized-accel),transform .14s var(--ease-emphasized-accel)}.lsw-fab-enter-from[data-v-3d757c40],.lsw-fab-leave-to[data-v-3d757c40]{opacity:0;transform:translateY(12px) scale(.9)}@media(prefers-reduced-motion:reduce){.lsw-fade-enter-active[data-v-3d757c40],.lsw-fade-leave-active[data-v-3d757c40],.lsw-fab-enter-active[data-v-3d757c40],.lsw-fab-leave-active[data-v-3d757c40]{transition-duration:1ms}.msg[data-v-3d757c40]{transition:none}}\n";document.head.appendChild(s)}})();
+;(()=>{if(typeof document!=='undefined'&&!document.getElementById('life-plugin-style')){const s=document.createElement('style');s.id='life-plugin-style';s.textContent=".muted[data-v-5506380f]{color:var(--md-on-surface-variant);font-size:13px}.pad[data-v-5506380f]{padding:14px}.dock[data-v-5506380f]{position:fixed;right:16px;top:76px;z-index:var(--z-panel, 3000);display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 8px;border-radius:28px;background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}.dock-btn[data-v-5506380f]{position:relative;width:42px;height:42px;display:grid;place-items:center;border:0;border-radius:14px;background:transparent;color:var(--md-on-surface-variant);cursor:pointer;transition:background-color .16s,color .16s,transform .16s var(--ease-emphasized-decel)}.dock-btn[data-v-5506380f]:hover{background:var(--md-secondary-container);color:var(--md-on-surface);transform:translateY(-1px)}.dock-btn[data-v-5506380f]:active{transform:scale(.94)}.dock-btn.active[data-v-5506380f]{background:color-mix(in srgb,var(--md-primary) 18%,transparent);color:var(--md-primary)}.dock-btn[data-v-5506380f]:focus-visible{outline:2px solid var(--md-primary);outline-offset:2px}.panel[data-v-5506380f]{position:fixed;left:0;top:0;z-index:var(--z-panel, 3000);display:flex;flex-direction:column;border:1px solid var(--md-outline-variant);border-radius:14px;overflow:hidden;background:var(--md-surface-container-low);box-shadow:var(--shadow-4);color:var(--md-on-surface)}.toolbar[data-v-5506380f]{display:flex;align-items:center;gap:6px;padding:7px 9px;background:var(--md-surface-container-high);color:var(--md-on-surface);cursor:grab;touch-action:none;user-select:none;flex:0 0 auto}.toolbar[data-v-5506380f]:active{cursor:grabbing}.toolbar .grab[data-v-5506380f]{font-size:13px;line-height:1;color:var(--md-on-surface-variant);padding:0 2px;cursor:grab}.toolbar strong[data-v-5506380f]{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;font-weight:650}.toolbar .count[data-v-5506380f]{flex:none;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);font-size:11.5px;font-weight:700}.toolbar button[data-v-5506380f]{width:28px;height:28px;padding:0;display:inline-grid;place-items:center;border:0;border-radius:8px;font-size:13px;line-height:1;color:var(--md-on-surface-variant);background:transparent;cursor:pointer;flex-shrink:0}#app .toolbar button[data-v-5506380f]{min-height:0}.toolbar button[data-v-5506380f]:hover{background:var(--md-surface-container-highest)}.list-body[data-v-5506380f]{flex:1;min-height:0;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:2px}.row[data-v-5506380f]{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:0;background:transparent;color:inherit;font:inherit;padding:8px 9px;border-radius:12px;cursor:pointer}.row[data-v-5506380f]:hover{background:var(--md-surface-container-high)}.row.selected[data-v-5506380f]{background:var(--md-primary-container);color:var(--md-on-primary-container)}.row-main[data-v-5506380f]{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}.row-top[data-v-5506380f]{display:flex;justify-content:space-between;gap:8px}.row-top strong[data-v-5506380f]{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}.row-top small[data-v-5506380f]{font-size:11px;opacity:.6;flex:0 0 auto}.row-sub[data-v-5506380f]{font-size:12px;opacity:.75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.me[data-v-5506380f]{color:var(--md-primary);font-weight:700}.row.selected .me[data-v-5506380f]{color:inherit;opacity:.85}.avatar[data-v-5506380f]{position:relative;width:38px;height:38px;flex:0 0 38px;border-radius:50%;overflow:hidden;background:var(--md-primary);color:var(--md-on-primary, #fff);display:flex;align-items:center;justify-content:center;font-weight:800}.avatar.group[data-v-5506380f]{border-radius:12px}.avatar.sm[data-v-5506380f]{width:26px;height:26px;flex-basis:26px}.avatar img[data-v-5506380f]{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.fb[data-v-5506380f]{font-size:14px}.thread[data-v-5506380f]{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:0}.msg[data-v-5506380f]{display:flex;opacity:1;transform:none;transition:opacity var(--duration-medium) var(--ease-emphasized-decel),transform var(--duration-medium) var(--ease-emphasized-decel)}@starting-style{.msg[data-v-5506380f]{opacity:0;transform:translateY(4px)}}.msg.out[data-v-5506380f]{justify-content:flex-end}.bubble[data-v-5506380f]{max-width:82%;background:var(--md-surface-container-low);border-radius:8px 24px 24px;padding:8px 12px;display:flex;flex-direction:column;gap:3px;box-shadow:var(--shadow-1)}.msg.out .bubble[data-v-5506380f]{background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:24px 24px 8px}.sender[data-v-5506380f]{font-size:11px;font-weight:700;opacity:.75}.text[data-v-5506380f]{white-space:pre-wrap;word-break:break-word;font-size:13px}.chip[data-v-5506380f]{align-self:flex-start;font-size:11px;padding:1px 8px;border-radius:999px;background:color-mix(in srgb,currentColor 16%,transparent)}.time[data-v-5506380f]{align-self:flex-end;font-size:10px;opacity:.6}.composer[data-v-5506380f]{display:flex;gap:8px;padding:8px 10px;border-top:1px solid var(--md-outline-variant);align-items:flex-end;flex:0 0 auto;flex-wrap:wrap}.send-error[data-v-5506380f]{flex:1 0 100%;margin:0;padding:6px 10px;border-radius:8px;background:var(--md-error-container);color:var(--md-on-error-container);font-size:12px;overflow-wrap:anywhere}.composer textarea[data-v-5506380f]{flex:1;resize:none;min-height:38px;max-height:110px;padding:9px 12px;border-radius:12px;border:1px solid var(--md-outline-variant);background:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;outline:none}.composer textarea[data-v-5506380f]:focus{border-color:var(--md-primary)}.composer button[data-v-5506380f]{height:38px;padding:0 16px;border:0;border-radius:12px;background:var(--md-primary);color:var(--md-on-primary, #fff);font-weight:700;cursor:pointer}.composer button[data-v-5506380f]:disabled{opacity:.5;cursor:not-allowed}.resize[data-v-5506380f]{position:absolute;right:1px;bottom:1px;width:16px;height:16px;cursor:nwse-resize;touch-action:none;opacity:.5;background:repeating-linear-gradient(135deg,transparent 0 3px,var(--md-on-surface-variant) 3px 4px)}.resize[data-v-5506380f]:hover{opacity:.85}.lsw-scrim[data-v-5506380f]{position:fixed;inset:0;z-index:var(--z-modal, 4000);background:var(--md-scrim, color-mix(in srgb, #18132d 42%, transparent));backdrop-filter:blur(6px);display:grid;place-items:center;padding:20px}.lsw-dialog[data-v-5506380f]{width:min(560px,100%);max-height:85vh;overflow:auto;border-radius:28px;background:var(--md-surface);color:var(--md-on-surface);padding:28px;box-shadow:0 24px 70px #18132d33;outline:none}.lsw-dialog header[data-v-5506380f]{display:flex;justify-content:space-between;align-items:center;gap:16px}.lsw-eyebrow[data-v-5506380f]{font-size:12px;letter-spacing:2px;color:var(--md-primary);font-weight:700}.lsw-dialog h2[data-v-5506380f]{font-size:24px;margin:8px 0}.lsw-meta[data-v-5506380f]{font-size:12px;color:var(--md-on-surface-variant);overflow-wrap:anywhere;margin:0}.lsw-body[data-v-5506380f]{margin:16px 0;white-space:pre-wrap;overflow-wrap:anywhere}.lsw-dialog button[data-v-5506380f]{border:0;border-radius:999px;padding:12px 20px;font:inherit;cursor:pointer;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.lsw-dialog .lsw-primary[data-v-5506380f]{background:var(--md-primary);color:var(--md-on-primary, #fff)}.lsw-dialog footer[data-v-5506380f]{display:flex;justify-content:flex-end;gap:12px;margin-top:20px}.lsw-fab[data-v-5506380f]{position:fixed;right:24px;bottom:24px;z-index:var(--z-toast, 6000);display:inline-flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:12px 20px;background:var(--md-primary);color:var(--md-on-primary, #fff);font:inherit;font-weight:700;cursor:pointer;box-shadow:var(--shadow-3)}.lsw-badge[data-v-5506380f]{background:var(--md-error);color:var(--md-on-error, #fff);border-radius:999px;padding:0 8px;font-size:12px}.lsw-fade-enter-active[data-v-5506380f]{transition:opacity .24s var(--ease-emphasized-decel),transform .24s var(--ease-emphasized-decel)}.lsw-fade-leave-active[data-v-5506380f]{transition:opacity .14s var(--ease-emphasized-accel),transform .14s var(--ease-emphasized-accel)}.lsw-fade-enter-from[data-v-5506380f],.lsw-fade-leave-to[data-v-5506380f]{opacity:0;transform:translateY(-6px) scale(.99)}.lsw-fab-enter-active[data-v-5506380f]{transition:opacity .2s var(--ease-emphasized-decel),transform .2s var(--ease-emphasized-decel)}.lsw-fab-leave-active[data-v-5506380f]{transition:opacity .14s var(--ease-emphasized-accel),transform .14s var(--ease-emphasized-accel)}.lsw-fab-enter-from[data-v-5506380f],.lsw-fab-leave-to[data-v-5506380f]{opacity:0;transform:translateY(12px) scale(.9)}@media(prefers-reduced-motion:reduce){.lsw-fade-enter-active[data-v-5506380f],.lsw-fade-leave-active[data-v-5506380f],.lsw-fab-enter-active[data-v-5506380f],.lsw-fab-leave-active[data-v-5506380f]{transition-duration:1ms}.msg[data-v-5506380f]{transition:none}}\n";document.head.appendChild(s)}})();

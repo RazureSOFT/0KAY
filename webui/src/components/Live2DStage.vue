@@ -23,7 +23,6 @@ const moodLabel = computed(() => {
   if (!m) return ''
   const key = `emotion.${m}`
   const s = t(key)
-  // Unknown mood ids fall back to the raw value instead of a raw key path.
   return s === key ? m : s
 })
 const accent = computed(() => life.emotionColor)
@@ -42,7 +41,6 @@ async function loadModelList() {
   }
 }
 
-// Draggable reset control: the user places it where it feels right; we remember.
 const RESET_POS_KEY = '0kay.web.live2d.resetbtn'
 const resetBtnEl = ref<HTMLElement | null>(null)
 const resetPos = ref<{ x: number; y: number } | null>(loadResetPos())
@@ -55,7 +53,7 @@ function loadResetPos(): { x: number; y: number } | null {
   try {
     const raw = localStorage.getItem(RESET_POS_KEY)
     if (raw) { const p = JSON.parse(raw); if (typeof p?.x === 'number' && typeof p?.y === 'number') return p }
-  } catch { /* ignore */ }
+  } catch { }
   return null
 }
 const resetStyle = computed(() => resetPos.value
@@ -67,7 +65,7 @@ function onResetPointerDown(e: PointerEvent) {
   resetStart = { x: e.clientX, y: e.clientY }
   const rect = resetBtnEl.value?.getBoundingClientRect()
   resetOrigin = { x: rect?.left ?? 0, y: rect?.top ?? 0 }
-  try { resetBtnEl.value?.setPointerCapture(e.pointerId) } catch { /* ignore */ }
+  try { resetBtnEl.value?.setPointerCapture(e.pointerId) } catch { }
 }
 function onResetPointerMove(e: PointerEvent) {
   if (!resetDragging.value || !stageEl.value) return
@@ -83,8 +81,8 @@ function onResetPointerMove(e: PointerEvent) {
 function onResetPointerUp(e: PointerEvent) {
   if (!resetDragging.value) return
   resetDragging.value = false
-  try { resetBtnEl.value?.releasePointerCapture(e.pointerId) } catch { /* ignore */ }
-  if (resetMoved) { try { localStorage.setItem(RESET_POS_KEY, JSON.stringify(resetPos.value)) } catch { /* ignore */ } }
+  try { resetBtnEl.value?.releasePointerCapture(e.pointerId) } catch { }
+  if (resetMoved) { try { localStorage.setItem(RESET_POS_KEY, JSON.stringify(resetPos.value)) } catch { } }
 }
 function onResetClick() {
   if (resetMoved) { resetMoved = false; return }
@@ -102,10 +100,7 @@ let dragging = false
 let dragPointerId: number | null = null
 let dragOffset = { x: 0, y: 0 }
 
-// --- lip sync: drive the mouth while speech plays (audio RMS, or text-timed fallback) ---
 let audioEl: HTMLAudioElement | null = null
-// The blob URL currently assigned to audioEl. TTS audio arrives as a per-reply
-// object URL, so the stage owns it and revokes the previous one on replacement.
 let audioObjectUrl: string | null = null
 let audioCtx: AudioContext | null = null
 let analyser: AnalyserNode | null = null
@@ -125,12 +120,10 @@ function setMouth(value: number) {
     try {
       if (typeof core.setParameterValueById === 'function') core.setParameterValueById(id, v)
       else if (typeof core.setParamFloat === 'function') core.setParamFloat(id, v)
-    } catch { /* model lacks the parameter */ }
+    } catch { }
   }
 }
 
-// Prefer the parameter the model declares for lip sync (e.g. mao_pro uses ParamA).
-// In pixi-live2d-display, settings.groups is an ARRAY of { Name, Ids }.
 function detectMouthParams(model: any) {
   const found: string[] = []
   try {
@@ -141,7 +134,7 @@ function detectMouthParams(model: any) {
       ids = lip?.Ids
     }
     if (Array.isArray(ids)) for (const id of ids) if (typeof id === 'string' && id) found.push(id)
-  } catch { /* ignore */ }
+  } catch { }
   mouthParams = found.length ? found : ['ParamMouthOpenY']
 }
 
@@ -176,10 +169,8 @@ async function speak(url: string, text = '') {
       audioEl.crossOrigin = 'anonymous'
       audioEl.addEventListener('ended', () => { mouthMode = 'off'; mouthSmoothed = 0; setMouth(0) })
     }
-    // Revoke the blob URL we are about to replace: one is minted per spoken
-    // reply, so without this every reply leaks a blob for the page's lifetime.
     if (audioObjectUrl && audioObjectUrl !== url) {
-      try { URL.revokeObjectURL(audioObjectUrl) } catch { /* ignore */ }
+      try { URL.revokeObjectURL(audioObjectUrl) } catch { }
     }
     audioObjectUrl = url
     audioEl.src = url
@@ -201,7 +192,6 @@ async function speak(url: string, text = '') {
   } catch { if (text) speakText(text); else mouthMode = 'off' }
 }
 
-// Text-driven fallback: move the mouth per character when there is no audio.
 function speakText(text: string) {
   const chars = Array.from(String(text || '')).filter((c) => /\S/.test(c))
   if (!chars.length) return
@@ -215,7 +205,7 @@ function stopSpeaking() {
   mouthMode = 'off'
   mouthSmoothed = 0
   setMouth(0)
-  try { audioEl?.pause() } catch { /* ignore */ }
+  try { audioEl?.pause() } catch { }
 }
 
 function onLive2DSpeak(event: Event) {
@@ -224,7 +214,6 @@ function onLive2DSpeak(event: Event) {
   else if (detail.text) speakText(detail.text)
 }
 
-// --- motions & expressions (AI / autonomy can drive these) ---
 let motionGroups: Record<string, number> = {}
 let expressionNames: string[] = []
 let autonomyTimer = 0
@@ -239,9 +228,9 @@ function detectCapabilities(model: any) {
     for (const [key, value] of Object.entries(motions)) motionGroups[key] = Array.isArray(value) ? (value as unknown[]).length : 0
     const defs = mm?.expressionManager?.definitions || settings?.expressions || []
     expressionNames = (defs as Array<{ Name?: string; name?: string }>).map((e) => e?.Name || e?.name).filter((n): n is string => !!n)
-  } catch { /* ignore */ }
-  try { console.info('[live2d] motions', motionGroups, 'expressions', expressionNames) } catch { /* ignore */ }
-  try { (window as unknown as Record<string, unknown>).__0KAY_LIVE2D_CAPS__ = { motions: motionGroups, expressions: expressionNames } } catch { /* ignore */ }
+  } catch { }
+  try { console.info('[live2d] motions', motionGroups, 'expressions', expressionNames) } catch { }
+  try { (window as unknown as Record<string, unknown>).__0KAY_LIVE2D_CAPS__ = { motions: motionGroups, expressions: expressionNames } } catch { }
 }
 
 function playMotion(group?: string, index?: number) {
@@ -256,7 +245,7 @@ function playMotion(group?: string, index?: number) {
     if (typeof live2dModel.motion === 'function' && named) { live2dModel.motion(target, index); return }
     if (index == null) { mm?.startRandomMotion?.(target); return }
     mm?.startMotion?.(target, index)
-  } catch { /* ignore */ }
+  } catch { }
 }
 
 function playExpression(name?: string) {
@@ -267,7 +256,7 @@ function playExpression(name?: string) {
     const em = live2dModel.internalModel?.motionManager?.expressionManager
     if (em?.setExpression) { em.setExpression(target); return }
     live2dModel.expression?.(target)
-  } catch { /* ignore */ }
+  } catch { }
 }
 
 function startAutonomy() {
@@ -311,7 +300,7 @@ function loadSavedTransform(): { x: number; y: number; scale: number } | null {
     if (!raw) return null
     const p = JSON.parse(raw)
     if (typeof p?.x === 'number' && typeof p?.y === 'number' && typeof p?.scale === 'number') return p
-  } catch { /* ignore */ }
+  } catch { }
   return null
 }
 
@@ -324,7 +313,7 @@ function saveTransform(immediate = false) {
         y: Math.round(live2dModel.y * 100) / 100,
         scale: Math.round(live2dModel.scale.x * 10000) / 10000,
       }))
-    } catch { /* ignore */ }
+    } catch { }
   }
   if (immediate) {
     if (transformSaveTimer) { clearTimeout(transformSaveTimer); transformSaveTimer = 0 }
@@ -348,7 +337,7 @@ function disposeModel() {
     try {
       if (pixiApp?.stage) pixiApp.stage.removeChild(live2dModel)
       live2dModel.destroy?.()
-    } catch { /* ignore */ }
+    } catch { }
     live2dModel = null
   }
 }
@@ -366,9 +355,8 @@ function disposeApp() {
   }
   if (pixiApp) {
     try {
-      // keep the <canvas> element — Vue owns it
       pixiApp.destroy(false, { children: true, texture: false, baseTexture: false })
-    } catch { /* ignore */ }
+    } catch { }
     pixiApp = null
   }
 }
@@ -395,7 +383,6 @@ function defaultFit(model: any = live2dModel) {
     model.scale.set(scale, scale)
   }
   model.position.set(w * 0.5, h * 0.55)
-  // Align using screen-space bounds so origin/anchor quirks can't push the model off-view.
   try {
     const b = model.getBounds?.()
     if (b && b.width > 0 && b.height > 0) {
@@ -416,7 +403,7 @@ function defaultFit(model: any = live2dModel) {
         }
       }
     }
-  } catch { /* ignore */ }
+  } catch { }
   return true
 }
 
@@ -433,7 +420,6 @@ function clampPosition() {
   const w = pixiApp.screen.width
   const h = pixiApp.screen.height
   const { hw, hh } = modelHalfSize()
-  // Keep at least ~30% of the model inside the viewport.
   const allowX = Math.min(hw * 0.7, w * 0.5)
   const allowY = Math.min(hh * 0.7, h * 0.5)
   const minX = allowX - hw
@@ -478,14 +464,11 @@ function applyFocusFromGlobal(globalX: number, globalY: number) {
   const focus = internal?.focusController
   if (!focus || typeof focus.focus !== 'function' || !pixiApp) return
 
-  // Stage-normalized target: works anywhere on the viewport with magnitude.
   const sw = pixiApp.screen.width || 1
   const sh = pixiApp.screen.height || 1
   let rawX = (globalX / sw) * 2 - 1
   let rawY = (globalY / sh) * 2 - 1
 
-  // Blend with model-space when pointer maps cleanly onto the model,
-  // so gaze tracks the face more precisely when hovering near it.
   const local = toModelPoint(globalX, globalY)
   if (local && internal.originalWidth && internal.originalHeight) {
     const mx = normalizeAxis(local.x, 0, internal.originalWidth)
@@ -525,7 +508,6 @@ function onStagePointerMove(e: PointerEvent) {
 function onStagePointerDown(e: PointerEvent) {
   if (!live2dModel || !pixiApp || !stageEl.value) return
   if (e.button !== 0 && e.pointerType === 'mouse') return
-  // Never hijack clicks on floating controls (e.g. the reset button).
   if ((e.target as Element | null)?.closest?.('.stage-reset')) return
   const rect = stageEl.value.getBoundingClientRect()
   if (!rect.width || !rect.height) return
@@ -534,7 +516,7 @@ function onStagePointerDown(e: PointerEvent) {
   dragging = true
   dragPointerId = e.pointerId
   dragOffset = { x: live2dModel.x - gx, y: live2dModel.y - gy }
-  try { stageEl.value.setPointerCapture(e.pointerId) } catch { /* ignore */ }
+  try { stageEl.value.setPointerCapture(e.pointerId) } catch { }
   if (stageEl.value) stageEl.value.style.cursor = 'grabbing'
 }
 
@@ -543,7 +525,7 @@ function endDrag(e?: PointerEvent) {
   if (e && dragPointerId !== null && e.pointerId !== dragPointerId) return
   dragging = false
   if (stageEl.value) {
-    try { if (dragPointerId !== null) stageEl.value.releasePointerCapture(dragPointerId) } catch { /* ignore */ }
+    try { if (dragPointerId !== null) stageEl.value.releasePointerCapture(dragPointerId) } catch { }
     stageEl.value.style.cursor = 'grab'
   }
   dragPointerId = null
@@ -552,8 +534,6 @@ function endDrag(e?: PointerEvent) {
 
 function onStageWheel(e: WheelEvent) {
   if (!live2dModel || loadState.value !== 'ok') return
-  // Plain wheel belongs to the page — hovering the stage must not trap
-  // scrolling of the surrounding panel. Ctrl/Cmd+wheel is the zoom affordance.
   if (!e.ctrlKey && !e.metaKey) return
   e.preventDefault()
   const step = e.deltaY < 0 ? 1.06 : 0.94
@@ -566,16 +546,15 @@ function onStageWheel(e: WheelEvent) {
 
 function resetView() {
   if (!live2dModel || !pixiApp) return
-  try { localStorage.removeItem(transformKey()) } catch { /* ignore */ }
+  try { localStorage.removeItem(transformKey()) } catch { }
   if (transformSaveTimer) {
     clearTimeout(transformSaveTimer)
     transformSaveTimer = 0
   }
-  try { pixiApp.resize?.() } catch { /* ignore */ }
+  try { pixiApp.resize?.() } catch { }
   if (pixiApp?.stage) pixiApp.stage.hitArea = pixiApp.screen
   defaultFit()
   refreshFocusFromLastPointer()
-  // Do not re-save immediately — leave cleared so reload re-fits cleanly.
 }
 
 function bindStageInteraction() {
@@ -621,7 +600,7 @@ function initPixi() {
   }
 
   resizeObserver = new ResizeObserver(() => {
-    try { pixiApp?.resize?.() } catch { /* ignore */ }
+    try { pixiApp?.resize?.() } catch { }
     if (pixiApp?.stage) pixiApp.stage.hitArea = pixiApp.screen
     if (live2dModel) {
       const saved = loadSavedTransform()
@@ -677,7 +656,7 @@ async function loadModel() {
   try {
     const model = await window.PIXI.live2d.Live2DModel.from(url, { autoInteract: false })
     if (token !== loadToken) {
-      try { model.destroy?.() } catch { /* ignore */ }
+      try { model.destroy?.() } catch { }
       return
     }
     live2dModel = model
@@ -685,13 +664,12 @@ async function loadModel() {
     model.anchor?.set?.(0.5, 0.5)
     pixiApp.stage.addChild(model)
     fitModel()
-    try { model.internalModel?.on?.('beforeModelUpdate', onBeforeModelUpdate) } catch { /* optional */ }
+    try { model.internalModel?.on?.('beforeModelUpdate', onBeforeModelUpdate) } catch { }
     detectMouthParams(model)
     detectCapabilities(model)
     loadState.value = 'ok'
     refreshFocusFromLastPointer()
 
-    // Idle by default, then let the character act on its own.
     playMotion('Idle')
     startAutonomy()
   } catch (e: any) {
@@ -702,7 +680,6 @@ async function loadModel() {
   }
 }
 
-// gentle idle mouth/blink already handled by cubism; keep stage alive via mood accent CSS
 function scheduleReload() {
   if (!enabled.value) {
     disposeApp()
@@ -720,7 +697,7 @@ onMounted(async () => {
   try {
     const response=await fetch('/api/settings/live2d')
     if(response.ok) {const {values}=await response.json();if(values && typeof values.enabled==='boolean')wizard.live2d.enabled=values.enabled;if(values && typeof values.model_url==='string')wizard.live2d.modelUrl=values.model_url}
-  } catch { /* retain local configuration when LIFE is unavailable */ }
+  } catch { }
   await loadModelList()
   if (enabled.value) loadModel()
   else loadState.value = 'disabled'
@@ -732,8 +709,8 @@ onUnmounted(() => {
   window.removeEventListener('live2d-motion',onLive2DMotion as EventListener)
   stopAutonomy()
   stopSpeaking()
-  if (audioObjectUrl) { try { URL.revokeObjectURL(audioObjectUrl) } catch { /* ignore */ } audioObjectUrl = null }
-  try { audioCtx?.close() } catch { /* ignore */ }
+  if (audioObjectUrl) { try { URL.revokeObjectURL(audioObjectUrl) } catch { } audioObjectUrl = null }
+  try { audioCtx?.close() } catch { }
   audioCtx = null
   loadToken++
   cancelAnimationFrame(rafId)
@@ -745,9 +722,6 @@ watch(modelUrl, () => {
   if (enabled.value) loadModel()
 })
 
-// Emotion -> expression/motion. The index mapping is a best-effort default;
-// AI code can also drive the model explicitly via the `live2d-motion` event
-// or `window.__0KAY_LIVE2D__.motion(group, index)` / `.expression(name)`.
 const MOOD_EXPRESSION: Record<string, number> = { happy: 2, sad: 4, irritated: 6, neutral: 0, drowsy: 0, exhausted: 0, sleeping: 0 }
 watch(mood, (value) => {
   if (!live2dModel || mouthMode !== 'off' || !expressionNames.length) return
@@ -798,8 +772,7 @@ watch(mood, (value) => {
 </template>
 
 <style scoped>
-/* Register --mood as a real color so the emotion gradient cross-fades instead
-   of snapping when the mood changes. */
+
 @property --mood {
   syntax: '<color>';
   inherits: true;
@@ -821,12 +794,11 @@ watch(mood, (value) => {
   flex: 1;
   min-height: 260px;
   overflow: hidden;
-  /* pan-y: vertical touch gestures scroll the page; horizontal drag still
-     reaches the pointer handlers. The stage must not trap page scrolling. */
+  
   touch-action: pan-y;
   cursor: grab;
   user-select: none;
-  /* Registered as a color above, so mood changes cross-fade. */
+  
   transition: --mood var(--duration-long, 360ms) var(--ease-out, ease-out);
   background:
     radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--mood, #6750A4) 22%, transparent), transparent 55%),
@@ -870,7 +842,6 @@ watch(mood, (value) => {
   pointer-events: none;
 }
 
-/* Translucent reset control floating over the stage (appears only when live). */
 .stage-reset {
   position: absolute;
   top: 10px;

@@ -13,8 +13,6 @@ const resetting = ref(false)
 
 async function resetAll() {
   if (resetting.value) return
-  // The most destructive control in the app; every other destructive path
-  // already goes through the shared confirm, this one just never had it.
   const ok = await confirm({
     title: t('settings.reset'),
     message: t('settings.resetConfirmMsg'),
