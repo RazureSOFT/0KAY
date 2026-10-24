@@ -120,6 +120,12 @@ npm --prefix webui run dev   # WebUI on :3000
 Then open the WebUI and, in Settings, add a provider and your model API key.
 Health check: `GET http://127.0.0.1:8080/health`.
 
+Core only trusts loopback origins on an allowlisted port, so a dev WebUI on
+Vite's :3000 gets `403 origin_not_allowed` for every POST (`/api/run` included)
+while GETs look fine — same-origin GETs send no `Origin` header at all. Put
+`WEBUI_PORT=3000` in `.env` when running the UI that way. Serving the built UI
+from Core needs nothing: it is the same origin.
+
 ### Security
 
 Loopback by default; override with `CORE_BIND_HOST`, `AGENT_BIND_HOST`,
