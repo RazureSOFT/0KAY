@@ -78,6 +78,7 @@ type LocalCore interface {
 	ListTasks() []map[string]interface{}
 	SessionTasks(string) []map[string]interface{}
 	SessionTasksPage(string, string, int) ([]map[string]interface{}, bool, string)
+	SessionEvents(string, int) []map[string]interface{}
 	TaskDelta(string) map[string]interface{}
 	RecordTask(server.TaskEvent) error
 	CreateAgentSession(string) (string, error)
@@ -324,6 +325,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("POST /api/agent/sessions/fork", g.handleAgentSessionsFork)
 	mux.HandleFunc("GET /api/agent/sessions/search", g.handleAgentSessionsSearch)
 	mux.HandleFunc("GET /api/agent/sessions/{session_id}/turns", g.handleAgentSessionTurns)
+	mux.HandleFunc("GET /api/agent/sessions/{session_id}/events", g.handleAgentSessionEvents)
 	mux.HandleFunc("GET /api/agent/pick-folder", g.handleAgentPickFolder)
 	mux.HandleFunc("/api/agent/approvals", g.handleAgentApprovals)
 	mux.HandleFunc("/api/agent/questions", g.handleAgentApprovals)

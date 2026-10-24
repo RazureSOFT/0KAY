@@ -85,6 +85,29 @@ func (g *Gateway) handleAgentSessionItem(w http.ResponseWriter, r *http.Request)
 	}
 }
 
+func (g *Gateway) handleAgentSessionEvents(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
+	if g.localCore == nil {
+		unavailable(w, "core not ready")
+		return
+	}
+	sessionID := r.PathValue("session_id")
+	if sessionID == "" {
+		badRequest(w, "session_id required")
+		return
+	}
+	after := 0
+	if raw := strings.TrimSpace(r.URL.Query().Get("after")); raw != "" {
+		if value, err := strconv.Atoi(raw); err == nil && value > 0 {
+			after = value
+		}
+	}
+	events := g.localCore.SessionEvents(sessionID, after)
+	writeJSON(w, http.StatusOK, map[string]interface{}{"events": events, "count": len(events)})
+}
+
 func (g *Gateway) handleAgentSessionTurns(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return

@@ -58,6 +58,7 @@ type CoreServiceServer struct {
 	taskDirty        map[string]struct{}
 	lastJournalSync  time.Time
 
+	sessionLog      *SessionLog
 	sessionMu       sync.RWMutex
 	sessions        map[string][]*corev1.ChatMessage
 	sessionActivity map[string]time.Time
@@ -347,6 +348,7 @@ func NewCoreServiceServer(reg *registry.Registry, dataDir ...string) *CoreServic
 		tasks:            tasks,
 		taskHistoryPath:  taskPath,
 		sessions:         make(map[string][]*corev1.ChatMessage),
+		sessionLog:       NewSessionLog(filepath.Join(root, "sessions")),
 		usage:            NewUsageStore(usagePath),
 		mocrAddr:         mocrAddr,
 		dispatchActivity: make(map[string]time.Time),
@@ -740,8 +742,24 @@ func (s *CoreServiceServer) SessionMessages(sessionID string) []*corev1.ChatMess
 		return nil
 	}
 	s.sessionMu.RLock()
-	defer s.sessionMu.RUnlock()
-	return append([]*corev1.ChatMessage{}, s.sessions[sessionID]...)
+	cached := s.sessions[sessionID]
+	s.sessionMu.RUnlock()
+	if len(cached) > 0 {
+		return append([]*corev1.ChatMessage{}, cached...)
+	}
+	// Cold session (a restart, or an evicted one): rebuild from the log so the
+	// conversation survives a deploy instead of starting over.
+	restored := s.sessionLog.Read(sessionID, 200)
+	if len(restored) == 0 {
+		return nil
+	}
+	s.sessionMu.Lock()
+	if len(s.sessions[sessionID]) == 0 {
+		s.sessions[sessionID] = restored
+	}
+	value := append([]*corev1.ChatMessage{}, s.sessions[sessionID]...)
+	s.sessionMu.Unlock()
+	return value
 }
 
 const maxChatSessions = 500
@@ -761,6 +779,26 @@ func (s *CoreServiceServer) appendSession(sessionID string, msgs ...*corev1.Chat
 	}
 	s.sessionActivity[sessionID] = time.Now()
 	s.evictIdleSessionsLocked()
+	// Persist after the in-memory append: the map is the hot path, the log is
+	// the record. A write failure costs history, not the reply.
+	_ = s.sessionLog.Append(sessionID, msgs...)
+}
+
+// SessionEvents exposes the append-only log for replay and audit. The map shape
+// keeps the gateway from importing this package just for a struct.
+func (s *CoreServiceServer) SessionEvents(sessionID string, after int) []map[string]interface{} {
+	events := s.sessionLog.Events(sessionID, after)
+	out := make([]map[string]interface{}, 0, len(events))
+	for _, event := range events {
+		out = append(out, map[string]interface{}{
+			"seq":     event.Seq,
+			"at":      event.At,
+			"kind":    event.Kind,
+			"role":    event.Role,
+			"message": json.RawMessage(event.Message),
+		})
+	}
+	return out
 }
 
 func (s *CoreServiceServer) evictIdleSessionsLocked() {
