@@ -602,9 +602,6 @@ export const useChatStore = defineStore('chat', () => {
 
   return {
     messages,
-    // Exposed so panels can read the recon graph for this conversation: the agent
-    // keys its state by session id, and a different one reads an empty graph.
-    sessionId,
     isConnected,
     isTyping,
     unread,

@@ -448,23 +448,6 @@
       "name": "xAI (Grok)"
     }
   },
-  "recon": {
-    "title": "偵察圖",
-    "open": "開啟偵察圖",
-    "close": "回到對話",
-    "empty": "還沒有記錄。讓 agent 用 recon_graph 登記資產，或跑一次 deep_scan。",
-    "coverage": "覆蓋率",
-    "tested": "已測",
-    "assets": "資產",
-    "intents": "待探索方向",
-    "findings": "發現",
-    "noFindings": "暫無發現",
-    "noIntents": "沒有待辦方向",
-    "refresh": "重新整理",
-    "loading": "載入中",
-    "more": "…還有 {n} 條",
-    "untested": "未測"
-  },
   "security": {
     "changePin": "修改 PIN",
     "desc": "PIN 與登入驗證的開關，以及哪些頁面進入時需要驗證。",

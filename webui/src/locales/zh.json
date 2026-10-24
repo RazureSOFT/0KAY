@@ -448,23 +448,6 @@
       "name": "xAI (Grok)"
     }
   },
-  "recon": {
-    "title": "侦察图",
-    "open": "打开侦察图",
-    "close": "回到对话",
-    "empty": "还没有记录。让 agent 用 recon_graph 登记资产，或跑一次 deep_scan。",
-    "coverage": "覆盖率",
-    "tested": "已测",
-    "assets": "资产",
-    "intents": "待探索方向",
-    "findings": "发现",
-    "noFindings": "暂无发现",
-    "noIntents": "没有待办方向",
-    "refresh": "刷新",
-    "loading": "加载中",
-    "more": "…还有 {n} 条",
-    "untested": "未测"
-  },
   "security": {
     "changePin": "修改 PIN",
     "desc": "PIN 与登录验证的开关，以及哪些页面进入时需要验证。",

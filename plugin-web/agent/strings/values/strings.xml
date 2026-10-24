@@ -82,6 +82,7 @@
   <string name="page.tipTree">Browse the workspace files</string>
   <string name="page.tipGit">Changed files: stage, discard, commit</string>
   <string name="page.tipTerm">Run commands in the workspace</string>
+  <string name="page.tipRecon">Assets, directions, findings, coverage</string>
   <string name="page.tipUsage">How much context this session has used</string>
   <string name="page.tipHost">CPU, memory and disk of the executor</string>
   <string name="page.tipSettings">Executor, workspace and agent sub-type</string>
@@ -193,6 +194,17 @@
   <string name="page.readingDirectory">Reading directory…</string>
   <string name="page.reasoning">Reasoning</string>
   <string name="page.recent">Recent</string>
+  <string name="page.reconTitle">Recon graph</string>
+  <string name="page.reconLoading">Loading…</string>
+  <string name="page.reconCoverage">Coverage</string>
+  <string name="page.reconTested">tested</string>
+  <string name="page.reconAssets">Assets</string>
+  <string name="page.reconIntents">Open intents</string>
+  <string name="page.reconFindings">Findings</string>
+  <string name="page.reconEmpty">Nothing tracked yet. Ask the Agent to record assets with recon_graph, or run deep_scan.</string>
+  <string name="page.reconNoIntents">No open directions</string>
+  <string name="page.reconNoFindings">No findings yet</string>
+  <string name="page.reconMore">…and {n} more</string>
   <string name="page.refresh">Refresh</string>
   <string name="page.reload">Reload</string>
   <string name="page.reloadLoseChanges">Reloading will lose unsaved changes.</string>

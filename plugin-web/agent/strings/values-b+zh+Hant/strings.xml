@@ -82,6 +82,7 @@
   <string name="page.tipTree">瀏覽工作區檔案</string>
   <string name="page.tipGit">變更檔案：暫存、丟棄、提交</string>
   <string name="page.tipTerm">在工作區執行命令</string>
+  <string name="page.tipRecon">資產、方向、發現與覆蓋率</string>
   <string name="page.tipUsage">本會話已用掉多少上下文</string>
   <string name="page.tipHost">執行器的 CPU、記憶體與磁碟</string>
   <string name="page.tipSettings">執行器、工作區與 Agent 子類型</string>
@@ -193,6 +194,17 @@
   <string name="page.readingDirectory">正在讀取目錄…</string>
   <string name="page.reasoning">思維鏈</string>
   <string name="page.recent">最近</string>
+  <string name="page.reconTitle">偵察圖</string>
+  <string name="page.reconLoading">載入中…</string>
+  <string name="page.reconCoverage">覆蓋率</string>
+  <string name="page.reconTested">已測</string>
+  <string name="page.reconAssets">資產</string>
+  <string name="page.reconIntents">待探索方向</string>
+  <string name="page.reconFindings">發現</string>
+  <string name="page.reconEmpty">還沒有記錄。讓 Agent 用 recon_graph 登記資產，或跑一次 deep_scan。</string>
+  <string name="page.reconNoIntents">沒有待辦方向</string>
+  <string name="page.reconNoFindings">暫無發現</string>
+  <string name="page.reconMore">…還有 {n} 條</string>
   <string name="page.refresh">重新整理</string>
   <string name="page.reload">重新載入</string>
   <string name="page.reloadLoseChanges">重新載入會遺失未儲存的修改。</string>

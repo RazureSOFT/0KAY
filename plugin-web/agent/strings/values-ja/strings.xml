@@ -82,6 +82,7 @@
   <string name="page.tipTree">ワークスペースのファイルを閲覧</string>
   <string name="page.tipGit">変更ファイルのステージ・破棄・コミット</string>
   <string name="page.tipTerm">ワークスペースでコマンド実行</string>
+  <string name="page.tipRecon">資産・方向・検出・カバレッジ</string>
   <string name="page.tipUsage">このセッションのコンテキスト使用量</string>
   <string name="page.tipHost">実行ホストの CPU・メモリ・ディスク</string>
   <string name="page.tipSettings">実行ホスト・ワークスペース・サブタイプ</string>
@@ -193,6 +194,17 @@
   <string name="page.readingDirectory">ディレクトリを読み込み中…</string>
   <string name="page.reasoning">推論</string>
   <string name="page.recent">最近</string>
+  <string name="page.reconTitle">偵察グラフ</string>
+  <string name="page.reconLoading">読み込み中…</string>
+  <string name="page.reconCoverage">カバレッジ</string>
+  <string name="page.reconTested">検証済み</string>
+  <string name="page.reconAssets">資産</string>
+  <string name="page.reconIntents">未探索の方向</string>
+  <string name="page.reconFindings">検出</string>
+  <string name="page.reconEmpty">まだ記録がありません。Agent に recon_graph で資産を登録させるか、deep_scan を実行してください。</string>
+  <string name="page.reconNoIntents">未処理の方向はありません</string>
+  <string name="page.reconNoFindings">検出はまだありません</string>
+  <string name="page.reconMore">…ほか {n} 件</string>
   <string name="page.refresh">更新</string>
   <string name="page.reload">再読み込み</string>
   <string name="page.reloadLoseChanges">再読み込みすると未保存の変更が失われます。</string>

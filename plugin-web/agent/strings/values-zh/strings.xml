@@ -82,6 +82,7 @@
   <string name="page.tipTree">浏览工作区文件</string>
   <string name="page.tipGit">变更文件：暂存、丢弃、提交</string>
   <string name="page.tipTerm">在工作区执行命令</string>
+  <string name="page.tipRecon">资产、方向、发现与覆盖率</string>
   <string name="page.tipUsage">本会话已用掉多少上下文</string>
   <string name="page.tipHost">执行器的 CPU、内存与磁盘</string>
   <string name="page.tipSettings">执行器、工作区与 Agent 子类型</string>
@@ -193,6 +194,17 @@
   <string name="page.readingDirectory">正在读取目录…</string>
   <string name="page.reasoning">思维链</string>
   <string name="page.recent">最近</string>
+  <string name="page.reconTitle">侦察图</string>
+  <string name="page.reconLoading">加载中…</string>
+  <string name="page.reconCoverage">覆盖率</string>
+  <string name="page.reconTested">已测</string>
+  <string name="page.reconAssets">资产</string>
+  <string name="page.reconIntents">待探索方向</string>
+  <string name="page.reconFindings">发现</string>
+  <string name="page.reconEmpty">还没有记录。让 Agent 用 recon_graph 登记资产，或跑一次 deep_scan。</string>
+  <string name="page.reconNoIntents">没有待办方向</string>
+  <string name="page.reconNoFindings">暂无发现</string>
+  <string name="page.reconMore">…还有 {n} 条</string>
   <string name="page.refresh">刷新</string>
   <string name="page.reload">重新加载</string>
   <string name="page.reloadLoseChanges">重新加载会丢失未保存的修改。</string>

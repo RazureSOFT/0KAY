@@ -448,23 +448,6 @@
       "name": "xAI (Grok)"
     }
   },
-  "recon": {
-    "title": "偵察グラフ",
-    "open": "偵察グラフを開く",
-    "close": "チャットに戻る",
-    "empty": "まだ記録がありません。agent に recon_graph で資産を登録させるか、deep_scan を実行してください。",
-    "coverage": "カバレッジ",
-    "tested": "検証済み",
-    "assets": "資産",
-    "intents": "未探索の方向",
-    "findings": "検出",
-    "noFindings": "検出はまだありません",
-    "noIntents": "未処理の方向はありません",
-    "refresh": "更新",
-    "loading": "読み込み中",
-    "more": "…ほか {n} 件",
-    "untested": "未検証"
-  },
   "security": {
     "changePin": "PIN を変更",
     "desc": "PIN とサインインのスイッチ、および PIN を要求するページの設定。",

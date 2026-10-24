@@ -287,6 +287,7 @@ const executor = computed(() => executorId.value ? store.agents.find(agent => ag
 const gib = (bytes?: number) => bytes === undefined ? '—' : `${(bytes / 1024 ** 3).toFixed(1)} GiB`
 const browserStatus = ref<{ enabled: boolean; available: boolean; running: boolean; url: string; title: string; tabs: number; canGoBack?: boolean; canGoForward?: boolean; viewportWidth?: number; viewportHeight?: number; error?: string } | null>(null)
 let browserTimer: ReturnType<typeof setInterval> | null = null
+const workspaceError = ref('')
 let browserFetching = false
 async function fetchBrowserStatus() {
   if (browserFetching) return
@@ -772,6 +773,11 @@ function termChangeExecutor(id: string) {
   termPush('note', t('agent.page.switchedTo', { target: `${agent?.host?.hostname || id}${termCwd.value ? ' · ' + termCwd.value : ''}` }))
   void termScroll()
 }
+function safeUrl(value: unknown): string {
+  const text = String(value ?? '').trim()
+  return /^https?:\/\//i.test(text) ? text : ''
+}
+
 function joinPath(base: string, rel: string): string {
   const win = /^[a-zA-Z]:[\\/]|\\\\/.test(base) || base.includes('\\')
   const isAbsolute = win ? /^([a-zA-Z]:[\\/]|\\\\)/.test(rel) : rel.startsWith('/')
@@ -784,6 +790,9 @@ function joinPath(base: string, rel: string): string {
   }
   const out = stack.join(win ? '\\' : '/')
   if (!win) return out.startsWith('/') ? out : '/' + out
+  // A UNC base (\\server\share) lost its leading slashes to the empty-part
+  // filter, turning server shares into local paths.
+  if (/^\\\\/.test(combined)) return `\\\\${out}`
   return out
 }
 async function termRun() {
@@ -912,6 +921,81 @@ const onUsageDown = usageHandlers.down
 const onUsageResizeDown = usageHandlers.rdown
 const usagePanelStyle = computed(() => ({ translate: `${usagePos.value.x}px ${usagePos.value.y}px`, width: `${usageSize.value.w}px`, height: `${usageSize.value.h}px` }))
 function toggleUsage() { usageOpen.value = !usageOpen.value; if (usageOpen.value) void fetchContextUsage() }
+
+// ---- recon panel -----------------------------------------------------------
+// The ARTEX view for the session you are in: what the target IS, what has been
+// TRIED, and how much of it is covered. It reads the same recon_graph the model
+// writes to (keyed by session), so the panel cannot disagree with the agent.
+const reconOpen = ref(false)
+// Clear of the dock (58px + margin): a panel that covers the button you open it
+// with is a panel you have to move before you can close it.
+const reconPos = ref(loadBrowserPosKey('0kay.agent.recon.pos') || { x: Math.max(16, (window.innerWidth || 1280) - 468), y: 64 })
+const reconSize = ref(loadBrowserSizeKey('0kay.agent.recon.size') || { w: 360, h: 460 })
+const reconHandlers = makeWindowHandlers(reconPos, reconSize, '0kay.agent.recon.pos', '0kay.agent.recon.size')
+const onReconDown = reconHandlers.down
+const onReconResizeDown = reconHandlers.rdown
+const reconPanelStyle = computed(() => ({ translate: `${reconPos.value.x}px ${reconPos.value.y}px`, width: `${reconSize.value.w}px`, height: `${reconSize.value.h}px` }))
+
+interface ReconAsset { id: string; kind: string; key: string }
+interface ReconNode { id: string; kind: string; text: string; status: string; assetIds: string[]; derivedFrom: string[] }
+const reconAssets = ref<ReconAsset[]>([])
+const reconNodes = ref<ReconNode[]>([])
+const reconCoverage = ref({ total: 0, tested: 0 })
+const reconLoading = ref(false)
+const reconError = ref('')
+
+async function fetchRecon() {
+  if (!selectedId.value) { reconAssets.value = []; reconNodes.value = []; reconCoverage.value = { total: 0, tested: 0 }; return }
+  const response = await fetch('/api/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tool: 'recon_graph', args: JSON.stringify({ action: 'export' }), session_id: selectedId.value }),
+  })
+  const data = await response.json()
+  if (!data?.success) throw new Error(data?.error || 'recon_graph export failed')
+  const payload = typeof data.result === 'string' ? JSON.parse(data.result) : data.result
+  reconAssets.value = Array.isArray(payload?.assets) ? payload.assets : []
+  reconNodes.value = Array.isArray(payload?.nodes) ? payload.nodes : []
+  reconCoverage.value = { total: Number(payload?.coverage?.total) || 0, tested: Number(payload?.coverage?.tested) || 0 }
+}
+
+async function loadRecon() {
+  reconLoading.value = true
+  reconError.value = ''
+  try { await fetchRecon() }
+  catch (e: any) {
+    reconError.value = e?.message || String(e)
+    reconAssets.value = []; reconNodes.value = []; reconCoverage.value = { total: 0, tested: 0 }
+  }
+  finally { reconLoading.value = false }
+}
+
+function toggleRecon() { reconOpen.value = !reconOpen.value; if (reconOpen.value) void loadRecon() }
+
+// Poll while open — a scan is the one time this panel matters, and a graph you
+// have to refresh by hand is a report, not a view. Failures keep the last read.
+let reconTimer: ReturnType<typeof setInterval> | null = null
+watch(reconOpen, (open) => {
+  if (reconTimer) { clearInterval(reconTimer); reconTimer = null }
+  if (!open) return
+  reconTimer = setInterval(() => {
+    if (document.visibilityState === 'visible' && !reconLoading.value) void fetchRecon().catch(() => {})
+  }, 4000)
+})
+watch(selectedId, () => { if (reconOpen.value) void loadRecon() })
+
+const RECON_LIMIT = 12
+const reconByKind = computed(() => {
+  const counts = new Map<string, number>()
+  for (const asset of reconAssets.value) counts.set(asset.kind, (counts.get(asset.kind) || 0) + 1)
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])
+})
+const reconFindings = computed(() => reconNodes.value.filter((node) => node.kind === 'finding'))
+const reconIntents = computed(() => reconNodes.value.filter((node) => node.kind === 'intent' && node.status === 'open'))
+const reconPercent = computed(() => reconCoverage.value.total ? Math.round((reconCoverage.value.tested / reconCoverage.value.total) * 100) : 0)
+const reconEmpty = computed(() => !reconLoading.value && !reconAssets.value.length && !reconNodes.value.length)
+function reconTextOf(id: string) { return reconNodes.value.find((node) => node.id === id)?.text || '' }
+function reconOriginOf(finding: ReconNode) { return finding.derivedFrom.map(reconTextOf).find(Boolean) || '' }
 const hostPos = ref(loadBrowserPosKey('0kay.agent.host.pos') || { x: Math.max(16, (window.innerWidth || 1280) - 336), y: 392 })
 const hostSize = ref(loadBrowserSizeKey('0kay.agent.host.size') || { w: 360, h: 360 })
 const hostHandlers = makeWindowHandlers(hostPos, hostSize, '0kay.agent.host.pos', '0kay.agent.host.size')
@@ -983,7 +1067,10 @@ async function fetchWorkspaces() {
     if (!response.ok) return
     const data = await response.json()
     workspaces.value = Array.isArray(data?.workspaces) ? data.workspaces : []
-  } catch { }
+  } catch (e) {
+    // An empty list from a failed fetch reads as "no workspaces"; say so once.
+    if (!workspaces.value.length) workspaceError.value = String((e as Error)?.message || e)
+  }
 }
 async function workspaceAction(action: string, payload: Record<string, unknown> = {}) {
   const response = await fetch('/api/agent/workspaces', {
@@ -1521,8 +1608,8 @@ watch(executorId,()=>{hostUsage.value=null;workdir.value='';closeBrowser();fetch
 watch(hostOpen,fetchHost)
 watch(selectedId,()=>{compactNotice.value=''})
 watch([selectedId, () => store.resetToken], ([id]) => { if (id) void store.ensureSessionTurns(id) }, { immediate: true })
-onMounted(() => { syncLocale(); store.connect(); loadOptions(); fetchModels();void fetchWorkspaces();hostTimer=setInterval(fetchHost,5000);workspaceTimer=setInterval(()=>{if(!document.hidden)void fetchWorkspaces()},5000);void fetchBrowserStatus();browserTimer=setInterval(fetchBrowserStatus,5000);window.addEventListener('keydown',onEscape);loadSuperseded(selectedId.value) })
-onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrowser();store.disconnect();if(hostTimer) clearInterval(hostTimer);if(workspaceTimer) clearInterval(workspaceTimer);if(browserTimer) clearInterval(browserTimer);if(browserViewTimer) clearInterval(browserViewTimer);if(browserStreamRetry) clearTimeout(browserStreamRetry);window.removeEventListener('keydown',onEscape)})
+onMounted(() => { syncLocale(); store.connect(); loadOptions(); fetchModels();void fetchWorkspaces();hostTimer=setInterval(fetchHost,5000);workspaceTimer=setInterval(()=>{if(!document.hidden)void fetchWorkspaces()},5000);void fetchBrowserStatus();browserTimer=setInterval(()=>{if(!document.hidden)void fetchBrowserStatus()},5000);window.addEventListener('keydown',onEscape);loadSuperseded(selectedId.value) })
+onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrowser();store.disconnect();if(hostTimer) clearInterval(hostTimer);if(workspaceTimer) clearInterval(workspaceTimer);if(browserTimer) clearInterval(browserTimer);if(browserViewTimer) clearInterval(browserViewTimer);if(browserStreamRetry) clearTimeout(browserStreamRetry);if(treeRefreshTimer) clearTimeout(treeRefreshTimer);if(searchTimer) clearTimeout(searchTimer);if(toastTimer) clearTimeout(toastTimer);if(ctxTimer) clearTimeout(ctxTimer);window.removeEventListener('keydown',onEscape)})
 </script>
 
 <template>
@@ -1601,6 +1688,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
 
           <button v-if="executor" class="ws-add" :disabled="busy" @click="addWorkspace()">+ {{ t('agent.page.addWorkspace') }}</button>
           <p v-if="!sessions.length && !workspaces.length" class="muted">{{ t('agent.page.noSessionsHint') }}</p>
+          <p v-if="workspaceError" class="muted" role="alert">{{ workspaceError }}</p>
         </template>
       </div>
     </aside>
@@ -1669,7 +1757,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
             <template v-else>
               <div class="message-text">{{ turn.prompt?.replace(/^\[thinking_intensity=\w+\]\s*/, '') }}</div>
                             <div v-if="turn.attachments?.length" class="bubble-files">
-                <a v-for="(file, index) in turn.attachments" :key="`${file.url}-${index}`" class="bubble-file" :href="file.url" target="_blank" rel="noopener" :title="file.name">
+                <a v-for="(file, index) in turn.attachments" :key="`${file.url}-${index}`" class="bubble-file" :href="safeUrl(file.url) || undefined" target="_blank" rel="noopener" :title="file.name">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16.5 6.5 8.9 14.1a2.5 2.5 0 0 0 3.5 3.5l7.6-7.6a4.5 4.5 0 0 0-6.4-6.4l-8.3 8.3a6.5 6.5 0 0 0 9.2 9.2l5.6-5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   <span class="bubble-file-name">{{ file.name }}</span>
                   <small v-if="file.size">{{ humanSize(file.size) }}</small>
@@ -1882,6 +1970,10 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M7.5 9l3 3-3 3M13 15h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="hint left"><b>{{ t('agent.page.terminal') }}</b><i>{{ t('agent.page.tipTerm') }}</i></span>
       </button>
+      <button type="button" class="dock-btn" :class="{active:reconOpen}" :title="t('agent.page.reconTitle')" @click="toggleRecon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="5" r="2.3" stroke="currentColor" stroke-width="1.7"/><circle cx="5.5" cy="17.5" r="2.3" stroke="currentColor" stroke-width="1.7"/><circle cx="18.5" cy="17.5" r="2.3" stroke="currentColor" stroke-width="1.7"/><path d="M10.7 7.2 6.8 15.3M13.3 7.2l3.9 8.1M7.8 17.5h8.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <span class="hint left"><b>{{ t('agent.page.reconTitle') }}</b><i>{{ t('agent.page.tipRecon') }}</i></span>
+      </button>
       <button type="button" class="dock-btn" :class="{active:usageOpen}" :title="t('agent.page.contextUsage')" @click="toggleUsage">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="hint left"><b>{{ t('agent.page.contextUsage') }}</b><i>{{ t('agent.page.tipUsage') }}</i></span>
@@ -1973,6 +2065,57 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
         <p v-if="!ctxRows.length" class="tree-msg">{{ t('agent.page.noData') }}</p>
       </div>
       <span class="browser-resize" :title="t('agent.page.resize')" @pointerdown="onUsageResizeDown"></span>
+    </section>
+    </Transition>
+
+    <Transition name="browser-panel">
+    <section v-if="reconOpen" class="recon-panel" :style="reconPanelStyle">
+      <div class="browser-toolbar" @pointerdown="onReconDown">
+        <span class="browser-grab" aria-hidden="true">⠿</span>
+        <strong class="tree-title">{{ t('agent.page.reconTitle') }}</strong>
+        <button type="button" :title="t('agent.page.refresh')" @click="loadRecon()">⟳</button>
+        <button type="button" :title="t('agent.page.close')" @click="reconOpen=false">✕</button>
+      </div>
+      <div class="recon-body">
+        <p v-if="reconError" class="recon-error">{{ reconError }}</p>
+        <p v-else-if="reconLoading" class="tree-msg">{{ t('agent.page.reconLoading') }}</p>
+        <template v-else>
+          <div v-if="reconCoverage.total" class="recon-coverage">
+            <div class="recon-coverage-line">
+              <span>{{ t('agent.page.reconCoverage') }}</span>
+              <span><b>{{ reconCoverage.tested }}</b> / {{ reconCoverage.total }} <em>{{ t('agent.page.reconTested') }}</em></span>
+            </div>
+            <div class="recon-bar" role="progressbar" :aria-valuenow="reconPercent" aria-valuemin="0" aria-valuemax="100"><span :style="{ width: reconPercent + '%' }"></span></div>
+          </div>
+          <p v-if="reconEmpty" class="tree-msg">{{ t('agent.page.reconEmpty') }}</p>
+          <template v-else>
+            <section v-if="reconByKind.length" class="recon-block">
+              <h4>{{ t('agent.page.reconAssets') }}</h4>
+              <div class="recon-chips"><span v-for="[kind, count] in reconByKind" :key="kind" class="recon-chip">{{ kind }} <b>{{ count }}</b></span></div>
+            </section>
+            <section class="recon-block">
+              <h4>{{ t('agent.page.reconIntents') }} <b>{{ reconIntents.length }}</b></h4>
+              <p v-if="!reconIntents.length" class="tree-msg">{{ t('agent.page.reconNoIntents') }}</p>
+              <ul v-else class="recon-items">
+                <li v-for="intent in reconIntents.slice(0, RECON_LIMIT)" :key="intent.id" class="recon-item"><i class="recon-dot" />{{ intent.text }}</li>
+              </ul>
+              <p v-if="reconIntents.length > RECON_LIMIT" class="recon-more">{{ t('agent.page.reconMore', { n: reconIntents.length - RECON_LIMIT }) }}</p>
+            </section>
+            <section class="recon-block">
+              <h4>{{ t('agent.page.reconFindings') }} <b>{{ reconFindings.length }}</b></h4>
+              <p v-if="!reconFindings.length" class="tree-msg">{{ t('agent.page.reconNoFindings') }}</p>
+              <ul v-else class="recon-items">
+                <li v-for="finding in reconFindings.slice(0, RECON_LIMIT)" :key="finding.id" class="recon-item finding">
+                  <i class="recon-dot" />
+                  <div><p>{{ finding.text }}</p><small v-if="reconOriginOf(finding)">← {{ reconOriginOf(finding) }}</small></div>
+                </li>
+              </ul>
+              <p v-if="reconFindings.length > RECON_LIMIT" class="recon-more">{{ t('agent.page.reconMore', { n: reconFindings.length - RECON_LIMIT }) }}</p>
+            </section>
+          </template>
+        </template>
+      </div>
+      <span class="browser-resize" :title="t('agent.page.resize')" @pointerdown="onReconResizeDown"></span>
     </section>
     </Transition>
 
@@ -2167,7 +2310,7 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .connection-hint{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--md-on-surface-variant);white-space:nowrap}
 .connection-hint i{width:8px;height:8px;border-radius:50%;background:var(--md-outline)}
 .connection-hint i.online{background:var(--md-success)}
-.browser-panel,.tree-panel,.usage-panel,.host-window,.file-panel,.term-panel{position:fixed;left:0;top:0;z-index:var(--z-panel, 3000);display:flex;flex-direction:column;border:1px solid var(--md-outline-variant);border-radius:14px;overflow:hidden;background:var(--md-surface-container-low);box-shadow:var(--shadow-4)}
+.browser-panel,.tree-panel,.usage-panel,.host-window,.file-panel,.term-panel,.recon-panel{position:fixed;left:0;top:0;z-index:var(--z-panel, 3000);display:flex;flex-direction:column;border:1px solid var(--md-outline-variant);border-radius:14px;overflow:hidden;background:var(--md-surface-container-low);box-shadow:var(--shadow-4)}
 .browser-panel-enter-active{transition:opacity 240ms var(--ease-emphasized-decel),transform 240ms var(--ease-emphasized-decel)}
 .browser-panel-leave-active{transition:opacity 140ms var(--ease-emphasized-accel),transform 140ms var(--ease-emphasized-accel)}
 .browser-panel-enter-from,.browser-panel-leave-to{opacity:0;transform:translateY(-6px) scale(.99)}
@@ -2291,6 +2434,25 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .term-input button:disabled{opacity:.45}
 
 .usage-body{flex:1;min-height:0;overflow:auto;padding:14px 16px}
+.recon-body{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:14px;padding:14px 16px 20px;background:var(--md-surface-container-lowest)}
+.recon-coverage-line{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:12px;color:var(--md-on-surface-variant)}
+.recon-coverage-line b{font-size:15px;font-weight:750;color:var(--md-on-surface);font-variant-numeric:tabular-nums}
+.recon-coverage-line em{font-style:normal}
+.recon-bar{margin-top:6px;height:6px;border-radius:999px;background:var(--md-surface-container-high);overflow:hidden}
+.recon-bar span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--md-primary),var(--md-tertiary));transition:width .3s ease}
+.recon-block h4{display:flex;align-items:center;gap:6px;margin:0 0 8px;font-size:12px;font-weight:700;color:var(--md-on-surface-variant)}
+.recon-block h4 b{font-weight:700;opacity:.7}
+.recon-chips{display:flex;flex-wrap:wrap;gap:6px}
+.recon-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);font-size:11px}
+.recon-chip b{font-weight:750}
+.recon-items{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.recon-item{display:flex;gap:8px;font-size:12px;line-height:1.45;color:var(--md-on-surface-variant)}
+.recon-item p{margin:0;color:var(--md-on-surface)}
+.recon-item small{display:block;margin-top:2px;font-size:11px;color:var(--md-on-surface-variant);opacity:.85}
+.recon-dot{flex:none;width:6px;height:6px;margin-top:6px;border-radius:50%;background:var(--md-outline-variant)}
+.recon-item.finding .recon-dot{background:var(--md-warning)}
+.recon-more{margin:6px 0 0;padding-left:14px;font-size:11px;color:var(--md-on-surface-variant);opacity:.85}
+.recon-error{margin:0;font-size:12px;color:var(--md-error)}
 .usage-big{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
 .usage-big b{font-size:28px;font-weight:800;color:var(--md-primary);line-height:1;font-variant-numeric:tabular-nums}
 .usage-big span{font-size:12px;color:var(--md-on-surface-variant)}

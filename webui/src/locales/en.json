@@ -448,23 +448,6 @@
       "name": "xAI (Grok)"
     }
   },
-  "recon": {
-    "title": "Recon",
-    "open": "Show the recon graph",
-    "close": "Back to chat",
-    "empty": "Nothing tracked yet. Ask the agent to record assets with recon_graph, or run deep_scan.",
-    "coverage": "Coverage",
-    "tested": "tested",
-    "assets": "Assets",
-    "intents": "Open intents",
-    "findings": "Findings",
-    "noFindings": "No findings yet",
-    "noIntents": "No open directions",
-    "refresh": "Refresh",
-    "loading": "Loading",
-    "more": "…and {n} more",
-    "untested": "untested"
-  },
   "security": {
     "changePin": "Change PIN",
     "desc": "Switches for the PIN and the sign-in gate, plus which pages ask for the PIN.",
