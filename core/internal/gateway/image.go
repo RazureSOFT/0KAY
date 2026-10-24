@@ -15,7 +15,7 @@ import (
 	"0kay/core/internal/netguard"
 )
 
-// same table as tts and asr: one endpoint, whatever backend you point at it.
+// same table as tts and asr: one endpoint, whatever the fuck you point at it.
 var imageSections = []string{"image", "draw", "sd-webui", "comfyui-openai"}
 
 const (

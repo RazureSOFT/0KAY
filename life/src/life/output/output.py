@@ -96,8 +96,8 @@ class OutputStage:
             persona_context=persona_context,
             user_message=user_message,
         )
-        # 追加而不是塞进模板：空串时提示词逐字节不变，别让没用多模态的人
-        # 白白多付一份 token。
+        # 追加而不是塞进模板：空串时提示词逐字节不变。没用多模态的人不该为
+        # 这份 hint 白付 token。
         if media_block:
             prompt += "\n\n" + media_block
         return prompt

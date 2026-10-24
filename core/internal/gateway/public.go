@@ -161,8 +161,8 @@ func (r *statusRecorder) Push(target string, opts *http.PushOptions) error {
 	return http.ErrNotSupported
 }
 
-// these never finish on their own. an hour-long "slow request" tells
-// nobody shit, so they get a span and no log line.
+// these never finish on their own. an hour-long "slow request" tells nobody
+// a fucking thing, so they get a span and no log line.
 var streamPaths = []string{"/api/life/chat", "/api/tasks/events", "/api/chat"}
 
 func isStreamPath(path string) bool {

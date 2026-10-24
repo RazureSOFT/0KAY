@@ -200,7 +200,8 @@ def _parse_md_skill(stem: str, text: str) -> tuple[str, str, str]:
     return name, description, content
 
 
-# 行首锚定。正文里随手写一句 "enabled: false" 不该把整个技能关掉。
+# 行首锚定。正文里随手写一句 "enabled: false" 就把整个技能关掉？
+# 那纯属活见鬼。
 _DISABLED = {"false", "0", "no", "off", "disabled"}
 
 

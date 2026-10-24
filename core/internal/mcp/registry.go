@@ -140,8 +140,8 @@ func (r *Registry) Call(ctx context.Context, server Server, tool string, args ma
 	return result, nil
 }
 
-// a dead connection is worse than none: every later call waits out a
-// timeout instead of starting a fresh server.
+// a dead connection is worse than none. every call after it just sits there
+// waiting out a timeout, so fuck it — drop it and start a fresh server.
 func (r *Registry) drop(id string) {
 	r.mu.Lock()
 	existing, ok := r.entries[id]

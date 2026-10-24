@@ -32,8 +32,9 @@ type stdioClient struct {
 	stdin  io.WriteCloser
 	stdout *bufio.Reader
 
-	// answers come back out of order and notifications interleave, so a
-	// naive write-then-read deadlocks the moment two calls overlap.
+	// answers come back out of order and notifications interleave. a naive
+	// write-then-read deadlocks the instant two calls overlap, and debugging a
+	// deadlock in a child process is a fucking nightmare.
 	mu      sync.Mutex
 	nextID  int
 	pending map[int]chan rpcReply
