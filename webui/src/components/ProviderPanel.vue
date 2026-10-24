@@ -602,9 +602,14 @@ const providerTypeOptions = computed(() =>
 .pp-list-head .card-desc { margin: 3px 0 0; }
 .pp-list-actions { display: flex; gap: 8px; }
 
-.pp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+/* min(340px, 100%) so the track can never be wider than the column it sits in;
+   a bare 340px track made every card overflow a phone screen and get clipped. */
+.pp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 14px; }
 .pp-card {
   display: flex; flex-direction: column; gap: 12px; padding: 16px;
+  /* Without this the card's min-content width (a long base URL, a row of model
+     chips) wins over the grid track and the card renders wider than the screen. */
+  min-width: 0;
   border: 1px solid var(--md-outline-variant); border-radius: 18px;
   background: var(--md-surface-container-low);
   transition: border-color var(--duration-medium) var(--ease-out), transform var(--duration-medium) var(--ease-out), box-shadow var(--duration-medium) var(--ease-out);

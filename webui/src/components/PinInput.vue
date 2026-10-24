@@ -103,9 +103,19 @@ onMounted(() => { if (props.autofocus) focusAt(0) })
 
 <style scoped>
 .pin-boxes { display: grid; gap: 10px; }
+
+/* Six boxes plus the theme's input padding still overflow a 360px screen. */
+@media (max-width: 520px) {
+  .pin-boxes { gap: 6px; }
+  .pin-box { padding: 0; font-size: 20px; border-radius: 10px; }
+}
 .pin-boxes.invalid { animation: pin-shake 0.32s; }
 .pin-box {
   width: 100%;
+  /* An input's intrinsic width is ~170px, and a grid item's automatic minimum
+     is its min-content — so six boxes refused to shrink below 50px each and the
+     row overflowed a phone. */
+  min-width: 0;
   aspect-ratio: 1 / 1.12;
   border: 1.5px solid var(--md-outline-variant);
   border-radius: 14px;

@@ -646,8 +646,12 @@ body > :not(#app):not(script):not(style):not(link)
 @media (max-width: 720px) {
   #app .app-body { padding: 0; gap: 0; }
   #app .app-main { border-radius: 24px 24px 0 0; }
-  #app .nav-rail { width: 100%; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); gap: 2px; overflow-y: hidden; background: var(--md-surface-container); }
-  #app .nav-item { min-height: 58px; min-width: 60px; padding: 7px 4px; font-size: 12px; }
+  #app .nav-rail { width: 100%; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); gap: 2px; overflow: hidden; background: var(--md-surface-container); }
+  /* Ten destinations in a phone-width bar. Fixed 60px each pushed the last
+     four (插件市场 / 用量 / 控制台 / 设置) off-screen behind a horizontal
+     scroll nobody discovers, so the settings page was unreachable on a phone.
+     Let them share the width instead. */
+  #app .nav-item { min-height: 58px; min-width: 0; flex: 1 1 0; padding: 7px 2px; font-size: 12px; }
   #app .nav-item::before { top: 2px; width: 52px; height: 32px; }
   #app .brand-mark { width: 26px; height: 26px; }
   #app .conversation-header { padding: 16px; flex-wrap: wrap; }
@@ -655,6 +659,19 @@ body > :not(#app):not(script):not(style):not(link)
   #app .execution-options label { min-width: 100px; }
   #app .host-panel { margin-inline: 12px; }
   #app .composer { border-radius: 24px; }
+}
+
+@media (max-width: 520px) {
+  /* Six PIN boxes plus the theme's input padding overflow a 360px screen. The
+     component's own scoped rule loses to `#app :is(input, ...)`, so the
+     exception lives here where it can win. */
+  #app .pin-boxes { gap: 6px; }
+  #app .pin-box { padding: 0; font-size: 20px; border-radius: 10px; }
+  /* Icons only. The label is on the button's title and the icon set is
+     distinct; a readable label at 38px per item is not possible. */
+  #app .nav-label { display: none; }
+  #app .nav-item { min-height: 46px; padding: 6px 2px; }
+  #app .nav-item::before { top: 1px; width: 38px; height: 34px; }
 }
 
 /* ============ Reduced motion ============

@@ -227,6 +227,8 @@
   margin-top: 8px;
   font-size: 13px;
   line-height: 1.55;
+  /* Model ids and URLs are single tokens with no break opportunity. */
+  overflow-wrap: anywhere;
   color: var(--md-on-surface-variant);
 }
 
@@ -731,13 +733,24 @@
 
 @media (max-width: 800px) {
   .settings-page .settings-layout { grid-template-columns: 1fr; }
+  /* One scrolling row of labelled pills, not a wrap of twenty bare icons. The
+     old rule hid every label below 800px, which turned the section list into
+     an unreadable icon grid — the one place a label matters most. */
   #app .settings-page .settings-nav {
-    flex-direction: row; flex-wrap: wrap; position: static;
+    flex-direction: row; flex-wrap: nowrap; position: static;
+    overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain;
+    scrollbar-width: none;
     border-radius: var(--radius-lg);
   }
-  #app .settings-page .nav-item { min-height: 46px; padding: 0 14px; border-radius: 999px; }
-  #app .settings-page .nav-label { display: none; }
+  #app .settings-page .settings-nav::-webkit-scrollbar { display: none; }
+  #app .settings-page .nav-item { flex: 0 0 auto; min-height: 40px; padding: 0 12px; border-radius: 999px; }
+  #app .settings-page .nav-label { display: inline; white-space: nowrap; }
   .field-row { grid-template-columns: 1fr; }
+  /* Four language pills at 24px of side padding each do not fit a phone: the
+     last one (繁體中文) was clipped by the field box. Wrap instead of clipping. */
+  .segmented { display: flex; flex-wrap: wrap; width: 100%; border-radius: 20px; }
+  /* Two per row: three-then-one leaves an orphan pill and reads like a bug. */
+  .seg { flex: 1 1 40%; min-height: 38px; padding: 0 10px; }
 }
 
 /* ============ Settings tab transition + save feedback (SettingsPage) ============ */
