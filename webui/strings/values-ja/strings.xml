@@ -64,6 +64,7 @@
   <string name="auth.usePin">PIN を使用</string>
   <string name="auth.useToken">トークンを使用</string>
   <string name="chat.attachFile">ファイルを添付</string>
+  <string name="chat.openChat">チャットを開く</string>
   <string name="chat.attachImage">画像を添付</string>
   <string name="chat.clear">会話を消去</string>
   <string name="chat.clearConfirm">会話をすべて消去しますか？元に戻せません。</string>
@@ -146,6 +147,7 @@
   <string name="connection.token">API トークン（任意）</string>
   <string name="connection.tokenPlaceholder">空欄なら信頼済み LAN を使用</string>
   <string name="connection.useTls">TLS を使用 (https / wss)</string>
+  <string name="console.title">コンソール</string>
   <string name="console.clear">クリア</string>
   <string name="console.clearConfirm">ログとトレースをすべて消去しますか？</string>
   <string name="console.connecting">接続中</string>
@@ -325,6 +327,7 @@
   <string name="patch.openSettings">設定を開く</string>
   <string name="patch.renderFailed">ページの描画に失敗しました</string>
   <string name="patch.retry">再試行</string>
+  <string name="pluginPane.loading">プラグインモジュールを読み込み中…</string>
   <string name="plugins.actionFailed">操作に失敗しました</string>
   <string name="plugins.builtinFullPerms">組み込みプラグイン · 権限と外部通信はすべて許可済み</string>
   <string name="plugins.callsCore">Core API の呼び出し</string>
@@ -378,6 +381,21 @@
   <string name="providers.openai.name">OpenAI</string>
   <string name="providers.xai.description">Grok 4.1、Grok 4、Grok 3 Mini</string>
   <string name="providers.xai.name">xAI (Grok)</string>
+  <string name="recon.title">偵察グラフ</string>
+  <string name="recon.open">偵察グラフを開く</string>
+  <string name="recon.close">チャットに戻る</string>
+  <string name="recon.empty">まだ記録がありません。agent に recon_graph で資産を登録させるか、deep_scan を実行してください。</string>
+  <string name="recon.coverage">カバレッジ</string>
+  <string name="recon.tested">検証済み</string>
+  <string name="recon.assets">資産</string>
+  <string name="recon.intents">未探索の方向</string>
+  <string name="recon.findings">検出</string>
+  <string name="recon.noFindings">検出はまだありません</string>
+  <string name="recon.noIntents">未処理の方向はありません</string>
+  <string name="recon.refresh">更新</string>
+  <string name="recon.loading">読み込み中</string>
+  <string name="recon.more">…ほか {n} 件</string>
+  <string name="recon.untested">未検証</string>
   <string name="security.changePin">PIN を変更</string>
   <string name="security.desc">PIN とサインインのスイッチ、および PIN を要求するページの設定。</string>
   <string name="security.loginSwitch">サインインゲート</string>
@@ -602,6 +620,7 @@
   <string name="status.mentalEnergy">精神力</string>
   <string name="status.mood">気分</string>
   <string name="status.noActiveTasks">実行中タスクなし</string>
+  <string name="status.noSections">ステータスセクションがありません（life プラグインを有効にしてください）</string>
   <string name="status.onlineAgents">エージェント</string>
   <string name="status.running">実行中</string>
   <string name="status.searchEngine">検索エンジン</string>

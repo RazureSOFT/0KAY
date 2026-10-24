@@ -97,6 +97,8 @@ export const useChatStore = defineStore('chat', () => {
   let notificationTimer: ReturnType<typeof setInterval> | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   let intentionalClose = false
+  let reconnectDelay = 1000
+  let lastTtsUrl: string | null = null
 
   const lastMessage = computed(() =>
     messages.value.length > 0 ? messages.value[messages.value.length - 1] : null
@@ -110,7 +112,15 @@ export const useChatStore = defineStore('chat', () => {
     try {
       localStorage.setItem(HISTORY_KEY, JSON.stringify({
         summary: contextSummary.value,
-        messages: messages.value.map((message) => ({ ...message, timestamp: message.timestamp.toISOString() })),
+        messages: messages.value.map((message) => {
+          const plain: Record<string, unknown> = { ...message, timestamp: message.timestamp.toISOString() }
+          // blob: URLs are only valid inside this document; persisted, they
+          // render as broken images after a reload.
+          for (const key of Object.keys(plain)) {
+            if (typeof plain[key] === 'string' && (plain[key] as string).startsWith('blob:')) delete plain[key]
+          }
+          return plain
+        }),
       }))
     } catch { }
   }
@@ -121,7 +131,13 @@ export const useChatStore = defineStore('chat', () => {
       contextSummary.value = typeof stored.summary === 'string' ? stored.summary : ''
       if (Array.isArray(stored.messages)) {
         messages.value = stored.messages.map((message: any) => ({ ...message, timestamp: new Date(message.timestamp || Date.now()) }))
-        messageIdCounter = messages.value.length
+        // Restored messages keep their original ids (msg_7..msg_12); seeding
+        // the counter from length alone would mint a duplicate msg_7 after a
+        // compact trimmed the list.
+        messageIdCounter = messages.value.reduce((max, message) => {
+          const numeric = Number(String(message.id || '').match(/^msg_(\d+)$/)?.[1] ?? 0)
+          return Math.max(max, numeric)
+        }, 0)
       }
     } catch { }
   }
@@ -137,13 +153,16 @@ export const useChatStore = defineStore('chat', () => {
     ws = new WebSocket(wsUrl)
     if (!notificationTimer) {
       notificationTimer = setInterval(async () => {
+        if (document.hidden) return
         try {
           const response = await fetch('/api/life/notifications')
           if (!response.ok) return
           const body = await response.json()
+          // Pull only broadcast notifications and our own session's: ACKing
+          // every webui:* notification here starves other tabs and devices.
           const incoming = (body.notifications || []).filter((notification: any) => {
             const target = String(notification.session_id || '')
-            return !target || target.startsWith('webui:') || target === sessionId.value
+            return !target || target === 'all' || target === sessionId.value
           })
           if (!incoming.length) return
           const lifeStore = useLifeStore()
@@ -169,6 +188,7 @@ export const useChatStore = defineStore('chat', () => {
 
     ws.onopen = () => {
       isConnected.value = true
+      reconnectDelay = 1000
       console.log('WebSocket connected')
     }
 
@@ -177,7 +197,9 @@ export const useChatStore = defineStore('chat', () => {
       console.log('WebSocket disconnected')
       if (intentionalClose) return
       if (reconnectTimer) clearTimeout(reconnectTimer)
-      reconnectTimer = setTimeout(connect, 3000)
+      // A fixed 3s retry hammers a Core that is down; back off to 30s.
+      reconnectTimer = setTimeout(connect, reconnectDelay)
+      reconnectDelay = Math.min(reconnectDelay * 2, 30000)
     }
 
     ws.onmessage = (event) => {
@@ -524,6 +546,10 @@ export const useChatStore = defineStore('chat', () => {
       if (!res.ok) { speakTextOnly(); return }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
+      // Live2DStage revokes on its next swap, but it is not always mounted;
+      // without this every spoken line leaks one blob forever.
+      if (lastTtsUrl && lastTtsUrl !== url) URL.revokeObjectURL(lastTtsUrl)
+      lastTtsUrl = url
       window.dispatchEvent(new CustomEvent('live2d-speak', { detail: { url, text } }))
     } catch { speakTextOnly() }
   }
@@ -544,8 +570,8 @@ export const useChatStore = defineStore('chat', () => {
 
   function clearMessages() {
     abortActiveSse()
-    // bump the epoch before clearing. the aborted stream still resolves, and
-    // without this it cheerfully recreates the bubble you just deleted. fuck that.
+    // Bump the epoch before clearing: the aborted stream still resolves, and
+    // without this it recreates the bubble that was just deleted.
     streamEpoch++
     messages.value = []
     seenL2DMarkers.clear()
@@ -576,6 +602,9 @@ export const useChatStore = defineStore('chat', () => {
 
   return {
     messages,
+    // Exposed so panels can read the recon graph for this conversation: the agent
+    // keys its state by session id, and a different one reads an empty graph.
+    sessionId,
     isConnected,
     isTyping,
     unread,

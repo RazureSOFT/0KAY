@@ -74,6 +74,7 @@
   },
   "chat": {
     "attachFile": "上传文件",
+    "openChat": "打开对话",
     "attachImage": "上传图片",
     "clear": "清除对话",
     "clearConfirm": "清空整个会话？此操作无法撤销。",
@@ -166,6 +167,7 @@
     "useTls": "使用 TLS (https / wss)"
   },
   "console": {
+    "title": "控制台",
     "clear": "清空",
     "clearConfirm": "清空全部日志和追踪？",
     "connecting": "连接中",
@@ -374,6 +376,9 @@
     "renderFailed": "页面渲染失败",
     "retry": "重试"
   },
+  "pluginPane": {
+    "loading": "正在加载插件模块…"
+  },
   "plugins": {
     "actionFailed": "操作失败",
     "builtinFullPerms": "内置插件 · 权限与出网已全部放行",
@@ -442,6 +447,23 @@
       "description": "Grok 4.1、Grok 4、Grok 3 Mini",
       "name": "xAI (Grok)"
     }
+  },
+  "recon": {
+    "title": "侦察图",
+    "open": "打开侦察图",
+    "close": "回到对话",
+    "empty": "还没有记录。让 agent 用 recon_graph 登记资产，或跑一次 deep_scan。",
+    "coverage": "覆盖率",
+    "tested": "已测",
+    "assets": "资产",
+    "intents": "待探索方向",
+    "findings": "发现",
+    "noFindings": "暂无发现",
+    "noIntents": "没有待办方向",
+    "refresh": "刷新",
+    "loading": "加载中",
+    "more": "…还有 {n} 条",
+    "untested": "未测"
   },
   "security": {
     "changePin": "修改 PIN",
@@ -704,6 +726,7 @@
     "mentalEnergy": "精神能量",
     "mood": "心情",
     "noActiveTasks": "暂无活跃任务",
+    "noSections": "暂无状态分区（请启用 life 插件）",
     "onlineAgents": "Agent",
     "running": "运行中",
     "searchEngine": "搜索引擎",

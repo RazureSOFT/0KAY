@@ -64,6 +64,7 @@
   <string name="auth.usePin">Use PIN</string>
   <string name="auth.useToken">Use a token</string>
   <string name="chat.attachFile">Attach file</string>
+  <string name="chat.openChat">Open chat</string>
   <string name="chat.attachImage">Attach image</string>
   <string name="chat.clear">Clear chat</string>
   <string name="chat.clearConfirm">Delete the whole conversation? This cannot be undone.</string>
@@ -146,6 +147,7 @@
   <string name="connection.token">API token (optional)</string>
   <string name="connection.tokenPlaceholder">Leave empty to trust the LAN</string>
   <string name="connection.useTls">Use TLS (https / wss)</string>
+  <string name="console.title">Console</string>
   <string name="console.clear">Clear</string>
   <string name="console.clearConfirm">Clear all logs and traces?</string>
   <string name="console.connecting">Connecting</string>
@@ -325,6 +327,7 @@
   <string name="patch.openSettings">Open settings</string>
   <string name="patch.renderFailed">This page failed to render</string>
   <string name="patch.retry">Retry</string>
+  <string name="pluginPane.loading">Loading plugin module…</string>
   <string name="plugins.actionFailed">Action failed</string>
   <string name="plugins.builtinFullPerms">Built-in plugin · all permissions and egress allowed</string>
   <string name="plugins.callsCore">Calls Core API</string>
@@ -378,6 +381,21 @@
   <string name="providers.openai.name">OpenAI</string>
   <string name="providers.xai.description">Grok 4.1, Grok 4, Grok 3 Mini</string>
   <string name="providers.xai.name">xAI (Grok)</string>
+  <string name="recon.title">Recon</string>
+  <string name="recon.open">Show the recon graph</string>
+  <string name="recon.close">Back to chat</string>
+  <string name="recon.empty">Nothing tracked yet. Ask the agent to record assets with recon_graph, or run deep_scan.</string>
+  <string name="recon.coverage">Coverage</string>
+  <string name="recon.tested">tested</string>
+  <string name="recon.assets">Assets</string>
+  <string name="recon.intents">Open intents</string>
+  <string name="recon.findings">Findings</string>
+  <string name="recon.noFindings">No findings yet</string>
+  <string name="recon.noIntents">No open directions</string>
+  <string name="recon.refresh">Refresh</string>
+  <string name="recon.loading">Loading</string>
+  <string name="recon.more">…and {n} more</string>
+  <string name="recon.untested">untested</string>
   <string name="security.changePin">Change PIN</string>
   <string name="security.desc">Switches for the PIN and the sign-in gate, plus which pages ask for the PIN.</string>
   <string name="security.loginSwitch">Sign-in gate</string>
@@ -602,6 +620,7 @@
   <string name="status.mentalEnergy">Mental Energy</string>
   <string name="status.mood">Mood</string>
   <string name="status.noActiveTasks">No active tasks</string>
+  <string name="status.noSections">No status sections yet (enable the life plugin)</string>
   <string name="status.onlineAgents">Agents</string>
   <string name="status.running">Running</string>
   <string name="status.searchEngine">Search engine</string>

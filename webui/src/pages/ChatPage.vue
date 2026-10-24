@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ChatPanel from '../components/ChatPanel.vue'
+import ReconPanel from '../components/ReconPanel.vue'
 import StatusPanel from '../components/StatusPanel.vue'
 import Live2DStage from '../components/Live2DStage.vue'
 import { useUIPatchesStore } from '../stores/uiPatches'
@@ -10,12 +11,10 @@ import { useChatStore } from '../stores/chat'
 const { t } = useI18n()
 const ui = useUIPatchesStore()
 const chat = useChatStore()
-const showStatus = ref(false)
 const isMobile = ref(false)
 
 const stageSlots = computed(() => ui.chatRegion('stage'))
 const chatSlots = computed(() => ui.chatRegion('chat'))
-const hasStatus = computed(() => stageSlots.value.some((s) => s.component === 'status'))
 const hasChat = computed(() => chatSlots.value.some((s) => s.component === 'chat'))
 
 const RATIO_KEY = '0kay.web.chat_panel_width_ratio'
@@ -83,9 +82,9 @@ function checkMobile() {
   const wasMobile = isMobile.value
   isMobile.value = window.innerWidth <= 960
   if (!isMobile.value) {
-    showStatus.value = true
+    chatOpen.value = true
   } else if (!wasMobile) {
-    showStatus.value = false
+    chatOpen.value = false
   }
 }
 
@@ -107,8 +106,20 @@ onUnmounted(() => {
   document.body.style.userSelect = ''
 })
 
-function toggleStatus() {
-  showStatus.value = !showStatus.value
+// On mobile the chat column lives off-screen; this toggles the chat drawer
+// (the status panel is always visible in the stage column), so the control is
+// named and iconed as chat, not status.
+const chatOpen = ref(false)
+function toggleChat() {
+  chatOpen.value = !chatOpen.value
+}
+
+// The recon panel takes over the chat column rather than opening beside it: the
+// column is the only place wide enough on a laptop, and a drawer over the
+// conversation hides the thing you are reasoning about.
+const reconOpen = ref(false)
+function toggleRecon() {
+  reconOpen.value = !reconOpen.value
 }
 </script>
 
@@ -128,6 +139,7 @@ function toggleStatus() {
           class="slot-frame"
           :src="slot.src"
           :title="slot.title || slot.id"
+          sandbox="allow-scripts allow-forms allow-popups"
         />
         <div v-else class="slot-note" :data-chat-slot="slot.id">
           {{ slot.titleKey ? t(slot.titleKey) : slot.title || slot.id }}
@@ -148,34 +160,57 @@ function toggleStatus() {
       @keydown="onResizerKeydown"
     ></div>
 
-        <div
+    <div
       v-if="hasChat"
       class="chat-column"
-      :class="{ open: showStatus || !isMobile }"
+      :class="{ open: chatOpen || !isMobile }"
     >
-      <template v-for="slot in chatSlots" :key="slot.id">
-        <ChatPanel v-if="slot.component === 'chat'" />
-        <iframe
-          v-else-if="slot.component === 'iframe' && slot.src"
-          class="slot-frame fill"
-          :src="slot.src"
-          :title="slot.title || slot.id"
-        />
-        <div v-else class="slot-note" :data-chat-slot="slot.id">
-          {{ slot.titleKey ? t(slot.titleKey) : slot.title || slot.id }}
-        </div>
-      </template>
+      <!-- Hidden while the panel is up: the panel carries its own close button,
+           and at this width the two would sit on top of each other. -->
+      <button
+        v-if="!reconOpen"
+        type="button"
+        class="recon-toggle"
+        :title="t('recon.open')"
+        :aria-label="t('recon.open')"
+        @click="toggleRecon"
+      >
+        <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+          <circle cx="12" cy="5" r="2.4" fill="none" stroke="currentColor" stroke-width="1.7" />
+          <circle cx="5.5" cy="17" r="2.4" fill="none" stroke="currentColor" stroke-width="1.7" />
+          <circle cx="18.5" cy="17" r="2.4" fill="none" stroke="currentColor" stroke-width="1.7" />
+          <path d="M10.6 7.1 6.9 14.8M13.4 7.1l3.7 7.7M8 17h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+        </svg>
+      </button>
+
+      <ReconPanel v-if="reconOpen" @close="reconOpen = false" />
+      <div v-else class="chat-slots">
+        <template v-for="slot in chatSlots" :key="slot.id">
+          <ChatPanel v-if="slot.component === 'chat'" />
+          <iframe
+            v-else-if="slot.component === 'iframe' && slot.src"
+            class="slot-frame fill"
+            :src="slot.src"
+            :title="slot.title || slot.id"
+            sandbox="allow-scripts allow-forms allow-popups"
+          />
+          <div v-else class="slot-note" :data-chat-slot="slot.id">
+            {{ slot.titleKey ? t(slot.titleKey) : slot.title || slot.id }}
+          </div>
+        </template>
+      </div>
     </div>
 
     <button
-      v-if="isMobile && hasStatus"
+      v-if="isMobile && hasChat"
       class="status-fab"
-      :title="t('app.status')"
-      @click="toggleStatus"
+      :title="t('chat.openChat')"
+      :aria-label="t('chat.openChat')"
+      @click="toggleChat"
     >
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-        <circle cx="12" cy="12" r="3" fill="currentColor"/>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M21 12a8 8 0 0 1-8 8H5l-2 2V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M8.5 11h7M8.5 14h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </button>
   </div>
@@ -261,6 +296,43 @@ function toggleStatus() {
   flex-direction: column;
   border-left: 1px solid var(--md-outline-variant);
   background: var(--md-surface-container-low);
+  position: relative;
+}
+
+/* The slot children used to be direct flex children of .chat-column; the wrapper
+   has to disappear from layout so nothing shifts. */
+.chat-slots {
+  display: contents;
+}
+
+/* `#app button` (1,0,1) outranks a scoped class (0,2,0): it forced
+   position:relative, min-height:36px and an 18px radius, which dropped this
+   button into normal flow as a 36px circle. The id prefix is what wins it back. */
+#app .recon-toggle {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 9px;
+  background: var(--md-surface-container-high, rgba(255, 255, 255, 0.9));
+  color: var(--md-on-surface-variant);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+#app .recon-toggle:hover {
+  color: var(--md-primary);
+  border-color: var(--md-primary);
+}
+#app .recon-toggle:focus-visible {
+  outline: 2px solid var(--md-primary);
+  outline-offset: 2px;
 }
 
 .status-fab {

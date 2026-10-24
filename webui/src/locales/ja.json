@@ -74,6 +74,7 @@
   },
   "chat": {
     "attachFile": "ファイルを添付",
+    "openChat": "チャットを開く",
     "attachImage": "画像を添付",
     "clear": "会話を消去",
     "clearConfirm": "会話をすべて消去しますか？元に戻せません。",
@@ -166,6 +167,7 @@
     "useTls": "TLS を使用 (https / wss)"
   },
   "console": {
+    "title": "コンソール",
     "clear": "クリア",
     "clearConfirm": "ログとトレースをすべて消去しますか？",
     "connecting": "接続中",
@@ -374,6 +376,9 @@
     "renderFailed": "ページの描画に失敗しました",
     "retry": "再試行"
   },
+  "pluginPane": {
+    "loading": "プラグインモジュールを読み込み中…"
+  },
   "plugins": {
     "actionFailed": "操作に失敗しました",
     "builtinFullPerms": "組み込みプラグイン · 権限と外部通信はすべて許可済み",
@@ -442,6 +447,23 @@
       "description": "Grok 4.1、Grok 4、Grok 3 Mini",
       "name": "xAI (Grok)"
     }
+  },
+  "recon": {
+    "title": "偵察グラフ",
+    "open": "偵察グラフを開く",
+    "close": "チャットに戻る",
+    "empty": "まだ記録がありません。agent に recon_graph で資産を登録させるか、deep_scan を実行してください。",
+    "coverage": "カバレッジ",
+    "tested": "検証済み",
+    "assets": "資産",
+    "intents": "未探索の方向",
+    "findings": "検出",
+    "noFindings": "検出はまだありません",
+    "noIntents": "未処理の方向はありません",
+    "refresh": "更新",
+    "loading": "読み込み中",
+    "more": "…ほか {n} 件",
+    "untested": "未検証"
   },
   "security": {
     "changePin": "PIN を変更",
@@ -704,6 +726,7 @@
     "mentalEnergy": "精神力",
     "mood": "気分",
     "noActiveTasks": "実行中タスクなし",
+    "noSections": "ステータスセクションがありません（life プラグインを有効にしてください）",
     "onlineAgents": "エージェント",
     "running": "実行中",
     "searchEngine": "検索エンジン",

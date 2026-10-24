@@ -74,6 +74,7 @@
   },
   "chat": {
     "attachFile": "上傳檔案",
+    "openChat": "開啟對話",
     "attachImage": "上傳圖片",
     "clear": "清除對話",
     "clearConfirm": "清空整個會話？此操作無法復原。",
@@ -166,6 +167,7 @@
     "useTls": "使用 TLS (https / wss)"
   },
   "console": {
+    "title": "控制台",
     "clear": "清除",
     "clearConfirm": "清空全部日誌與追蹤？",
     "connecting": "連線中",
@@ -374,6 +376,9 @@
     "renderFailed": "頁面渲染失敗",
     "retry": "重試"
   },
+  "pluginPane": {
+    "loading": "正在載入外掛模組…"
+  },
   "plugins": {
     "actionFailed": "操作失敗",
     "builtinFullPerms": "內建外掛 · 權限與對外連線已全部放行",
@@ -442,6 +447,23 @@
       "description": "Grok 4.1、Grok 4、Grok 3 Mini",
       "name": "xAI (Grok)"
     }
+  },
+  "recon": {
+    "title": "偵察圖",
+    "open": "開啟偵察圖",
+    "close": "回到對話",
+    "empty": "還沒有記錄。讓 agent 用 recon_graph 登記資產，或跑一次 deep_scan。",
+    "coverage": "覆蓋率",
+    "tested": "已測",
+    "assets": "資產",
+    "intents": "待探索方向",
+    "findings": "發現",
+    "noFindings": "暫無發現",
+    "noIntents": "沒有待辦方向",
+    "refresh": "重新整理",
+    "loading": "載入中",
+    "more": "…還有 {n} 條",
+    "untested": "未測"
   },
   "security": {
     "changePin": "修改 PIN",
@@ -704,6 +726,7 @@
     "mentalEnergy": "精神能量",
     "mood": "心情",
     "noActiveTasks": "暫無活躍任務",
+    "noSections": "暫無狀態分區（請啟用 life 外掛）",
     "onlineAgents": "Agent",
     "running": "執行中",
     "searchEngine": "搜尋引擎",

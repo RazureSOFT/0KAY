@@ -74,6 +74,7 @@
   },
   "chat": {
     "attachFile": "Attach file",
+    "openChat": "Open chat",
     "attachImage": "Attach image",
     "clear": "Clear chat",
     "clearConfirm": "Delete the whole conversation? This cannot be undone.",
@@ -166,6 +167,7 @@
     "useTls": "Use TLS (https / wss)"
   },
   "console": {
+    "title": "Console",
     "clear": "Clear",
     "clearConfirm": "Clear all logs and traces?",
     "connecting": "Connecting",
@@ -374,6 +376,9 @@
     "renderFailed": "This page failed to render",
     "retry": "Retry"
   },
+  "pluginPane": {
+    "loading": "Loading plugin module…"
+  },
   "plugins": {
     "actionFailed": "Action failed",
     "builtinFullPerms": "Built-in plugin · all permissions and egress allowed",
@@ -442,6 +447,23 @@
       "description": "Grok 4.1, Grok 4, Grok 3 Mini",
       "name": "xAI (Grok)"
     }
+  },
+  "recon": {
+    "title": "Recon",
+    "open": "Show the recon graph",
+    "close": "Back to chat",
+    "empty": "Nothing tracked yet. Ask the agent to record assets with recon_graph, or run deep_scan.",
+    "coverage": "Coverage",
+    "tested": "tested",
+    "assets": "Assets",
+    "intents": "Open intents",
+    "findings": "Findings",
+    "noFindings": "No findings yet",
+    "noIntents": "No open directions",
+    "refresh": "Refresh",
+    "loading": "Loading",
+    "more": "…and {n} more",
+    "untested": "untested"
   },
   "security": {
     "changePin": "Change PIN",
@@ -704,6 +726,7 @@
     "mentalEnergy": "Mental Energy",
     "mood": "Mood",
     "noActiveTasks": "No active tasks",
+    "noSections": "No status sections yet (enable the life plugin)",
     "onlineAgents": "Agents",
     "running": "Running",
     "searchEngine": "Search engine",
