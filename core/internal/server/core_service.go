@@ -1146,25 +1146,34 @@ func (s *CoreServiceServer) RunDirect(ctx context.Context, req *corev1.RunDirect
 		}, nil
 	}
 
-	conn, err := s.dialCached(agents[0].Address)
-	if err != nil {
-		return nil, status.Errorf(codes.Unavailable, "connect agent: %v", err)
+	// Try every healthy agent, not just the first one. A dead instance keeps its
+	// "healthy" flag until the heartbeat expires (a minute, by default), and
+	// returning on the first dial error means one crashed agent takes the whole
+	// tool surface down with it.
+	//
+	// A tool that runs and fails is a result, not a transport error: that answer
+	// comes back to the caller and the loop stops there.
+	var lastErr error
+	for _, agent := range agents {
+		if agent.Address == "" {
+			continue
+		}
+		conn, err := s.dialCached(agent.Address)
+		if err != nil {
+			lastErr = fmt.Errorf("connect %s: %w", agent.Address, err)
+			continue
+		}
+		resp, err := agentv1.NewAgentServiceClient(conn).RunDirect(
+			pairing.CallbackContext(ctx, agent.Address),
+			&agentv1.RunDirectRequest{Tool: req.Tool, Args: req.Args, SessionId: req.SessionId},
+		)
+		if err != nil {
+			lastErr = fmt.Errorf("agent %s: %w", agent.Address, err)
+			continue
+		}
+		return &corev1.RunDirectResponse{Success: resp.Success, Result: resp.Result, Error: resp.Error}, nil
 	}
-
-	client := agentv1.NewAgentServiceClient(conn)
-	resp, err := client.RunDirect(pairing.CallbackContext(ctx, agents[0].Address), &agentv1.RunDirectRequest{
-		Tool:      req.Tool,
-		Args:      req.Args,
-		SessionId: req.SessionId,
-	})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "agent run: %v", err)
-	}
-	return &corev1.RunDirectResponse{
-		Success: resp.Success,
-		Result:  resp.Result,
-		Error:   resp.Error,
-	}, nil
+	return nil, status.Errorf(codes.Unavailable, "every agent failed: %v", lastErr)
 }
 
 func (s *CoreServiceServer) Egress(ctx context.Context, req *corev1.EgressRequest) (*corev1.EgressResponse, error) {
