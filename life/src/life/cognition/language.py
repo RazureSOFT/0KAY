@@ -1,40 +1,3 @@
-"""Language circuits - acquisition and the language-thought interface (wave 3).
-
-Wave 1 (``circuits.py``) covered decision-making, social cognition, consciousness
-and control.  Wave 2 (``affect.py``) covered the body, affect and its pathology.
-This wave covers **how language is acquired from a stream, and how language
-relates to thought** - the part of the literature that constrains how a persona
-should *learn from* and *be shaped by* the language it is addressed in.
-
-As always: each class implements the *computational claim*, not the biology, and
-every circuit is gated by a flag on :class:`LanguageConfig` so it can be ablated.
-
-===========================  ==================================================
-Paper                        Circuit / mechanism
-===========================  ==================================================
-17 - Zhao et al.,            :class:`WordSegmenter` - words are carved out of a
-Interspeech 2024             continuous stream by **predictive probabilistic
-                             statistics**: track transitional probabilities,
-                             predict the next unit, and let the prediction error
-                             mark the boundary. Two stages: bottom-up
-                             segmentation, then top-down prediction from the
-                             words already learned.
-18 - Cai et al.,             :class:`StructuralLearner` - adjacent *and*
-PLOS Biology 2024            **non-adjacent** dependency learning, with
-                             **functional reorganization**: the same ability is
-                             supported first by a broad, general substrate and
-                             later by a selective, specialised one.
-19 - Zenodo 8139192 (2023)   :class:`LinguisticFraming` - the language-thought
-                             interface as a *bottleneck* of obligatory
-                             categories; strength interpolates the whole
-                             theoretical spectrum.
-20 - Birjandi & Sabah,       :class:`LinguisticFraming` (same class, the debate's
-BRAIN 2012                   positions become named coupling modes: Independent
-                             Theory, Sapir-Whorf, Cognitive Determinism,
-                             Interchanging Roles, Radical Connectionism,
-                             Thinking for Speaking)
-===========================  ==================================================
-"""
 from __future__ import annotations
 
 import math
@@ -58,12 +21,6 @@ def _entropy(probabilities) -> float:
 
 
 def tokenize(text: str, unit: str = "auto") -> list[str]:
-    """Split text into the units the segmenter treats as syllables.
-
-    CJK characters are already syllable-sized, so ``"char"`` is right for them;
-    Latin words are split with a rough onset/nucleus/coda rule.  ``"auto"``
-    picks per run of script, which is what a bilingual persona needs.
-    """
     text = str(text or "")
     if unit == "char":
         return [ch for ch in text if not ch.isspace()]
@@ -78,24 +35,7 @@ def tokenize(text: str, unit: str = "auto") -> list[str]:
     return units
 
 
-# ==========================================================================
-# 17. Predictive probabilistic statistics in word segmentation
-# ==========================================================================
 class WordSegmenter:
-    """Carve words out of a continuous stream with transitional probabilities.
-
-    Zhao et al. (Interspeech 2024) had listeners hear streams of novel
-    tri-syllable words versus random syllables.  The middle temporal gyrus did
-    the *initial* segmentation; the anterior temporal lobe did the *top-down
-    prediction* from already-established word structures.  So segmentation is
-    two-staged and predictive: you track ``P(syllable | previous syllable)``,
-    predict the next unit, and the **prediction error marks the boundary**.
-
-    Concretely, within a word the transitional probability is high; across a
-    word boundary it dips.  A boundary score is therefore ``1 - TP`` computed
-    *before* the pair is counted (predict, then update) - that ordering is what
-    makes it predictive rather than retrospective.
-    """
 
     def __init__(self, min_observations: int = 1, boundary_threshold: float = 0.6,
                  max_lexicon: int = 2000, max_pairs: int = 20000):
@@ -109,33 +49,22 @@ class WordSegmenter:
         self.boundary_history: deque[float] = deque(maxlen=500)
         self.units_seen = 0
 
-    # -- transitional probability -----------------------------------------
     def transition(self, previous: str, current: str) -> float:
-        """``P(current | previous)`` from the counts accumulated so far."""
         total = self.out_counts.get(previous, 0.0)
         if total <= 0:
             return 0.0
         return self.pair_counts.get((previous, current), 0.0) / total
 
     def predict(self, previous: str) -> dict[str, float]:
-        """Distribution over the next unit given the previous one."""
         total = self.out_counts.get(previous, 0.0)
         if total <= 0:
             return {}
         return {b: count / total for (a, b), count in self.pair_counts.items() if a == previous}
 
     def prediction_error(self, previous: str, actual: str) -> float:
-        """``1 - P(actual | previous)``; high at word boundaries."""
         return 1.0 - self.transition(previous, actual)
 
-    # -- online segmentation ----------------------------------------------
     def observe(self, units) -> list[float]:
-        """Feed a stream of units; return a boundary score after each position.
-
-        The score at position *i* is computed from counts that exclude the pair
-        ``(i-1, i)`` itself, so the first time a pair is seen the score is 1.0
-        (a novel transition is a boundary until proven otherwise).
-        """
         units = list(units)
         scores: list[float] = []
         run: list[str] = []
@@ -154,7 +83,6 @@ class WordSegmenter:
                 run = [unit]
             else:
                 run.append(unit)
-            # update *after* scoring - predict first, then learn
             self.pair_counts[(previous, unit)] += 1.0
             self.out_counts[previous] += 1.0
         self._trim()
@@ -162,7 +90,6 @@ class WordSegmenter:
         return scores
 
     def _trim(self) -> None:
-        """Bound the transition tables (they are otherwise unbounded dicts)."""
         if len(self.pair_counts) > self.max_pairs:
             keep = sorted(self.pair_counts.items(), key=lambda kv: kv[1], reverse=True)[:self.max_pairs]
             self.pair_counts = defaultdict(float, dict(keep))
@@ -180,7 +107,6 @@ class WordSegmenter:
             self.lexicon.pop(weakest, None)
 
     def segment(self, units) -> list[str]:
-        """Return the current best segmentation of a stream, without learning."""
         units = list(units)
         words, run = [], []
         for index, unit in enumerate(units):
@@ -196,7 +122,6 @@ class WordSegmenter:
         return [w for w in words if w]
 
     def words(self, limit: int = 20) -> list[tuple[str, float]]:
-        """The lexicon, strongest first."""
         return sorted(self.lexicon.items(), key=lambda kv: kv[1], reverse=True)[:limit]
 
     @property
@@ -222,23 +147,7 @@ class WordSegmenter:
         return segmenter
 
 
-# ==========================================================================
-# 18. Artificial grammar learning and its functional reorganization
-# ==========================================================================
 class StructuralLearner:
-    """Learn adjacent *and* non-adjacent dependencies; reorganize with experience.
-
-    Cai et al. (PLOS Biology 2024) showed neonates already detect **non-adjacent
-    dependencies** (``A _ B`` with a variable element between), and that the
-    supporting substrate **reorganizes** across the first half year: neonates
-    rely on a broad, general left-prefrontal mechanism, while 6-7 month olds
-    recruit specialised left fronto-temporo-parietal language areas.
-
-    Computationally the interesting claims are (a) the relation being learned is
-    *non-adjacent*, so a plain bigram model is insufficient, and (b) the same
-    ability is served by a **broad then selective** substrate - early learning
-    generalises widely, later learning is sharply tuned.
-    """
 
     def __init__(self, experience: float = 0.0, general_rate: float = 0.5,
                  specialized_rate: float = 0.15, max_pairs: int = 20000, max_units: int = 8000):
@@ -253,14 +162,8 @@ class StructuralLearner:
         self.out_non_adjacent: dict[str, float] = defaultdict(float)
         self.observations = 0
 
-    # -- substrate ---------------------------------------------------------
     @property
     def specialization(self) -> float:
-        """How selective the current substrate is, in [0, 1].
-
-        Grows with experience on a saturating curve: at birth the substrate is
-        broad (low selectivity), by ~6 months it is sharply tuned.
-        """
         return 1.0 - math.exp(-self.experience / 120.0)
 
     @property
@@ -269,13 +172,10 @@ class StructuralLearner:
         return {"general": 1.0 - specialized, "specialized": specialized}
 
     def reorganize(self, steps: int = 1) -> float:
-        """Advance development; returns the new specialization index."""
         self.experience += float(steps)
         return self.specialization
 
-    # -- learning ----------------------------------------------------------
     def observe(self, units) -> None:
-        """Count adjacent pairs and gap-1 non-adjacent pairs."""
         units = list(units)
         for index in range(len(units) - 1):
             a, b = units[index], units[index + 1]
@@ -290,7 +190,6 @@ class StructuralLearner:
         self._trim()
 
     def _trim(self) -> None:
-        """Bound the dependency and outgoing-count tables."""
         for name, cap in (("adjacent", self.max_pairs), ("non_adjacent", self.max_pairs),
                           ("out_adjacent", self.max_units), ("out_non_adjacent", self.max_units)):
             table = getattr(self, name)
@@ -307,12 +206,6 @@ class StructuralLearner:
         return self.non_adjacent.get((a, b), 0.0) / total if total > 0 else 0.0
 
     def conforms(self, units) -> float:
-        """Score how grammatical a sequence is under the current substrate.
-
-        The general substrate reads local transitions (broad); the specialised
-        one reads the non-adjacent relation (selective).  The mix *is* the
-        functional reorganization.
-        """
         units = list(units)
         if len(units) < 2:
             return 0.0
@@ -326,7 +219,6 @@ class StructuralLearner:
         return _clamp(weights["general"] * adjacent + weights["specialized"] * non_adjacent)
 
     def detect_violation(self, units) -> float:
-        """1 = clearly ungrammatical, 0 = clearly grammatical."""
         return _clamp(1.0 - self.conforms(units))
 
     def to_dict(self) -> dict:
@@ -351,39 +243,18 @@ class StructuralLearner:
         return learner
 
 
-# ==========================================================================
-# 19/20. The language-thought interface
-# ==========================================================================
-# The named positions from Birjandi & Sabah's review, mapped to a coupling
-# strength.  0 = thought is entirely independent of language; 1 = language
-# fully determines the categories thought may use.
 FRAMING_MODES = {
-    "independent": 0.0,             # Chomsky: separate modules
-    "interchanging": 0.2,           # Vygotsky: separate then merge (inner speech)
-    "cognitive_determinism": 0.25,  # Piaget: thought precedes language
-    "weak_whorf": 0.4,              # Sapir-Whorf, weak form
-    "thinking_for_speaking": 0.6,   # Slobin: online encoding bias
-    "radical_connectionism": 0.75,  # O'Brien & Opie: language scaffolds thought
-    "determinism": 1.0,             # Sapir-Whorf, strong form
+    "independent": 0.0,
+    "interchanging": 0.2,
+    "cognitive_determinism": 0.25,
+    "weak_whorf": 0.4,
+    "thinking_for_speaking": 0.6,
+    "radical_connectionism": 0.75,
+    "determinism": 1.0,
 }
 
 
 class LinguisticFraming:
-    """The language-thought interface as a bottleneck of obligatory categories.
-
-    Papers 19 and 20 both circle the same question - does language come before
-    thought, or thought before language - and paper 20 lays out the whole
-    spectrum of answers.  The one computation that can represent *all* of them
-    is a **bottleneck**: a language forces certain categories to be marked
-    (obligatory distinctions), so whatever passes through is quantised onto
-    those categories.  A single coupling strength interpolates from "thought is
-    untouched" (Chomsky) to "thought is only the categories the language
-    supplies" (strong Whorf).
-
-    ``thinking_for_speaking`` is the interesting middle case: the bias is
-    applied *online*, at the moment of encoding for expression, so it shapes the
-    framing of a message without permanently overwriting the underlying concept.
-    """
 
     def __init__(self, mode: str = "weak_whorf", categories: dict | None = None):
         self.mode = mode if mode in FRAMING_MODES else "weak_whorf"
@@ -392,7 +263,6 @@ class LinguisticFraming:
 
     @property
     def coupling(self) -> float:
-        """How strongly language constrains thought, in [0, 1]."""
         return FRAMING_MODES.get(self.mode, 0.4)
 
     def set_mode(self, mode: str) -> None:
@@ -400,18 +270,12 @@ class LinguisticFraming:
             self.mode = mode
 
     def nearest_category(self, dimension: str, value: float) -> float | None:
-        """The language's closest obligatory category for this value."""
         prototypes = self.categories.get(dimension)
         if not prototypes:
             return None
         return min(prototypes, key=lambda p: abs(p - value))
 
     def frame(self, concept: dict, coupling: float | None = None) -> dict:
-        """Quantise a concept onto the language's categories.
-
-        With coupling 0 the concept passes through unchanged; with coupling 1 it
-        is snapped entirely onto the nearest obligatory category.
-        """
         weight = self.coupling if coupling is None else _clamp(coupling)
         framed = {}
         for dimension, value in (concept or {}).items():
@@ -424,16 +288,9 @@ class LinguisticFraming:
         return framed
 
     def encode_for_speech(self, thought: dict, coupling: float | None = None) -> dict:
-        """Thinking-for-Speaking: the *online* encoding bias, not a permanent shift.
-
-        The underlying thought is untouched; only the version handed to
-        expression is reframed - which is exactly Slobin's claim, and the reason
-        this is separable from :meth:`frame`.
-        """
         return self.frame(thought, coupling=coupling)
 
     def distortion(self, concept: dict) -> float:
-        """Mean absolute shift the language imposes on a concept, in [0, 1]."""
         framed = self.frame(concept)
         if not framed:
             return 0.0
@@ -441,7 +298,6 @@ class LinguisticFraming:
 
     @property
     def whorf_index(self) -> float:
-        """A single number for "how Whorfian is the current setting"."""
         return self.coupling
 
     def to_dict(self) -> dict:
@@ -453,12 +309,8 @@ class LinguisticFraming:
                    categories={k: list(v) for k, v in (data.get("categories") or {}).items()})
 
 
-# ==========================================================================
-# CONFIG + FAÇADE
-# ==========================================================================
 @dataclass
 class LanguageConfig:
-    """Ablation switches for the language circuits (EASE-style modularity)."""
 
     enabled: bool = True
     use_segmenter: bool = True
@@ -487,13 +339,6 @@ class LanguageConfig:
 
 
 class LanguageSystem:
-    """Composes the acquisition + framing circuits behind one façade.
-
-    ``observe_text`` pushes a message in (segmenting it and updating the
-    structural learner); ``frame`` runs a concept through the language's
-    obligatory categories; ``context`` returns the read-out the engine folds
-    into the prompt.  With ``config.enabled = False`` every method is a no-op.
-    """
 
     def __init__(self, config: LanguageConfig | None = None):
         self.config = config or LanguageConfig()
@@ -502,14 +347,12 @@ class LanguageSystem:
         self.framing = LinguisticFraming(mode=self.config.framing_mode)
 
     def reconfigure(self, config: LanguageConfig) -> None:
-        """Apply a new config in place, preserving the learned lexicon/grammar."""
         self.config = config
         self.framing.mode = (config.framing_mode if config.framing_mode in FRAMING_MODES
                              else "weak_whorf")
         self.segmenter.boundary_threshold = config.boundary_threshold
 
     def observe_text(self, text: str) -> dict:
-        """Learn from one incoming message."""
         if not self.config.enabled:
             return {}
         units = tokenize(text)
@@ -540,7 +383,6 @@ class LanguageSystem:
         return self.structure.conforms(tokenize(text))
 
     def context(self) -> dict:
-        """Read-out for the prompt and the state snapshot."""
         if not self.config.enabled:
             return {"enabled": False, "lexicon_size": 0, "top_words": [], "specialization": 0.0,
                     "whorf_index": 0.0, "mean_boundary_error": 0.0}

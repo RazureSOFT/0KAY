@@ -1,10 +1,3 @@
-"""Environment awareness: configured timezone, location, weather and holidays.
-
-Network access is optional and fails soft. A missing provider, key or network
-never blocks the companion; the environment block simply degrades to whatever is
-known locally.
-"""
-
 from __future__ import annotations
 
 import json
@@ -35,7 +28,6 @@ FIXED_HOLIDAYS = {
     "12-25": "圣诞节",
 }
 
-# Minimal WMO weather-code mapping (open-meteo).
 WMO_CODES = {
     0: "晴", 1: "大致晴朗", 2: "局部多云", 3: "阴", 45: "有雾", 48: "雾凇",
     51: "小毛毛雨", 53: "毛毛雨", 55: "浓毛毛雨", 56: "冻毛毛雨", 57: "浓冻毛毛雨",
@@ -54,7 +46,6 @@ def _float(value: Any, default: float = 0.0) -> float:
 
 
 class EnvironmentSystem:
-    """Locally-known environment with an optional cached weather fetch."""
 
     def __init__(self, data_dir: str, settings_getter: Callable[[], dict] | None = None):
         self.data_dir = Path(data_dir)
@@ -63,7 +54,6 @@ class EnvironmentSystem:
         self._weather_cache: dict[str, Any] = {}
         self._loaded = False
 
-    # -- settings ---------------------------------------------------------
     def _settings(self) -> dict:
         try:
             return dict(self.settings_getter() or {})
@@ -95,7 +85,6 @@ class EnvironmentSystem:
     def fetch_enabled(self) -> bool:
         return str(self._settings().get("enable_environment_fetch", "0")) == "1"
 
-    # -- holidays ---------------------------------------------------------
     def holiday_on(self, day: date) -> str:
         return FIXED_HOLIDAYS.get(day.strftime("%m-%d"), "")
 
@@ -108,7 +97,6 @@ class EnvironmentSystem:
                 return {"title": name, "in_days": offset, "occurs_on": target.isoformat()}
         return None
 
-    # -- weather ----------------------------------------------------------
     def _load_cache(self) -> None:
         if self._loaded:
             return
@@ -123,7 +111,6 @@ class EnvironmentSystem:
         return dict(self._weather_cache) if isinstance(self._weather_cache, dict) else {}
 
     async def weather(self, force: bool = False) -> dict[str, Any]:
-        """Return cached weather, refreshing it when enabled and stale."""
         self._load_cache()
         ttl = max(5, int(_float(self._settings().get("weather_cache_minutes"), 60))) * 60
         fresh = time.time() - float(self._weather_cache.get("fetched_at") or 0) < ttl
@@ -184,7 +171,6 @@ class EnvironmentSystem:
             parts.append(f"{temperature}℃")
         return " ".join(part for part in parts if part).strip()
 
-    # -- aggregate --------------------------------------------------------
     def env_context(self) -> dict[str, Any]:
         now = self.now()
         weather = self.cached_weather()

@@ -1,9 +1,3 @@
-"""The yandere affect-dynamics circuit wired into LIFE: opt-in, persona-driven,
-prompt-reaching, persistent, with the structural safety guard.
-
-These mirror `tests/test_tsundere.py::TsundereWiring` for the ported
-`yandere_engine` circuit (柳・米澤 2023).
-"""
 import sys
 import tempfile
 import unittest
@@ -55,7 +49,6 @@ class YandereWiring(unittest.TestCase):
         self.assertIn("情感急变基调", text)
 
     def test_real_feedback_reaches_the_circuit(self):
-        """A message that mentions someone else raises jealousy in the engine path."""
         self.engine._enable_yandere_from_persona("病娇")
         before = self.engine.yandere.jealousy()
         self.engine._awaiting_feedback["s1"] = {
@@ -69,7 +62,7 @@ class YandereWiring(unittest.TestCase):
         self.engine._enable_yandere_from_persona("病娇")
         system = self.engine.yandere
         system.dynamics.primary().affection = 0.9
-        system.dynamics.v = -0.7  # deep in the YAMI region
+        system.dynamics.v = -0.7
         self.assertGreaterEqual(system.fixation(), 0.70)
         guard = system.guard()
         self.assertIn("不得说出", guard)

@@ -1,9 +1,3 @@
-"""Prompt section orchestration: compose prompt fragments deterministically.
-
-A prompt is a tree of labelled sections. Rendering can emit either the bodies
-only (for models that dislike structure) or labelled blocks (for traceability).
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field

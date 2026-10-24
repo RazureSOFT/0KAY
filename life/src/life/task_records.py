@@ -1,4 +1,3 @@
-"""Core-owned task ledger; keep a durable outbox when Core is unavailable."""
 import asyncio
 from contextvars import ContextVar
 import json
@@ -14,14 +13,10 @@ log = get_logger("task_records")
 
 task_context = ContextVar("life_task_context", default={})
 
-# Statuses that will never succeed on retry: drop them (after logging) instead
-# of letting a permanent failure wedge the whole outbox forever.
 _PERMANENT_FAILURES = (400, 401, 403, 404, 413, 422)
 
 
 class TaskRecorder:
-    #: Hard ceiling on the durable outbox so a long Core outage cannot grow it
-    #: without bound (the oldest events are dropped first).
     MAX_OUTBOX = 2000
 
     def __init__(self, data_dir):
@@ -65,17 +60,10 @@ class TaskRecorder:
         self._schedule_flush()
 
     def _schedule_flush(self) -> None:
-        """Drain the outbox in the background instead of on the caller's hot path.
-
-        `record` used to ``await self.flush()`` inline, so every tool call waited
-        on a ``timeout=2`` POST (up to +4s per turn for start+finish).  The flush
-        now runs as a held background task (so it cannot be GC'd); the server also
-        flushes periodically.
-        """
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
-            return  # no running loop — the periodic flush will drain it
+            return
         if self._flush_task is not None and not self._flush_task.done():
             return
         self._flush_task = loop.create_task(self.flush())

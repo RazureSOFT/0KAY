@@ -1,16 +1,3 @@
-"""S5: runtime integration for the world simulation.
-
-The local policy proposes an event, the ledger executes it, the renderer turns it
-into text (offline: template text; with an LLM: 2-3 sentences validated with the
-diary ``quality_issues`` pattern), and consumption feeds the result into the
-timeline, mood, episodic memory (theta gate) and proactive candidates.
-
-The world is built from the owner's **worldview** when one is configured (a
-free-text premise plus an optional actor/place roster); otherwise the stock
-assets shipped in ``life/world/`` are used unchanged.
-
-Default is **shadow/texture**: nothing user-facing until ``world_density=full``.
-"""
 from __future__ import annotations
 
 import json
@@ -36,18 +23,10 @@ def _load_policy(models_dir: str, tiers: list[str], base_rates: list[float]):
     path = Path(models_dir) / "world_policy.json"
     if path.exists():
         return WorldPolicy.load(path)
-    # Derive the width from the feature builder rather than hardcoding 65:
-    # build_features() returns 68, so a hardcoded 65 crashed the first matmul
-    # on any install without a shipped world_policy.json.
     return WorldPolicy(tiers, len(build_features({})), base_rates=base_rates)
 
 
 def build_worldview(settings: dict | None, world_dir: str = "world", seed: int = 0):
-    """Cast + templates for the given settings.
-
-    Returns ``(cast, templates, premise, used_worldview)``. With no worldview set
-    the shipped assets are loaded unchanged.
-    """
     settings = settings or {}
     premise = str(settings.get("world_premise") or "").strip()
     actors = parse_actors_text(str(settings.get("world_actors") or ""))
@@ -55,7 +34,7 @@ def build_worldview(settings: dict | None, world_dir: str = "world", seed: int =
     if not (premise or actors or places):
         cast, templates = _load_world(world_dir)
         return cast, templates, "", False
-    from world import generate_assets  # offline asset generator, importable as `world`
+    from world import generate_assets
     cast = generate_assets.build_cast(None, random.Random(seed), actors=actors or None,
                                       places=places or None, premise=premise)
     templates = generate_assets.build_templates(random.Random(seed), places=cast["places"])
@@ -93,7 +72,6 @@ class WorldRuntime:
             data = json.loads(self.path.read_text(encoding="utf-8"))
         except (FileNotFoundError, ValueError):
             return
-        # A changed worldview must not inherit the previous world's actors.
         if data.get("world_key") not in (None, self.world_key):
             return
         for key in ("state", "ledger", "obligations", "due_echoes"):
@@ -114,7 +92,6 @@ class WorldRuntime:
         temporary.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
         temporary.replace(self.path)
 
-    # ------------------------------------------------------------------ render
     def _template(self, template_id: str):
         for template in self.templates:
             if template["template_id"] == template_id:
@@ -135,14 +112,12 @@ class WorldRuntime:
         bound = self.sim.state["actors"].get(event["bindings"].get("actor"), {}).get("name")
         if bound and bound not in text:
             problems.append("bound actor missing from render")
-        # Reuse the diary质检 idea: no actor name outside the cast may appear.
         for token in set(text.replace("，", " ").replace("。", " ").split()):
             if 2 <= len(token) <= 4 and token.endswith(("先生", "女士")):
                 if token not in names:
                     problems.append(f"unknown person {token}")
         return problems
 
-    # ------------------------------------------------------------- map / place
     def _home_of(self, actor_id: str) -> str:
         for actor in self.world_map.get("actors", []):
             if actor.get("id") == actor_id:
@@ -150,7 +125,6 @@ class WorldRuntime:
         return ""
 
     def _move_actor(self, actor_id: str) -> None:
-        """Walk an actor one road along, so the map shows where they are now."""
         locations = self.world_map.get("locations") or []
         if not locations or not actor_id:
             return
@@ -165,14 +139,7 @@ class WorldRuntime:
     def map_state(self) -> dict:
         return {"map": self.world_map, "actor_locations": dict(self.actor_locations)}
 
-    # -------------------------------------------------------------------- tick
     def _sync_somatic(self, engine) -> None:
-        """Feed the real agent's somatic read-out into the world state.
-
-        The fictional world then *conditions its events* on the agent's
-        somatization (feature_schema_version 2); a no-op when the gateway is
-        off or the engine has no affect core.
-        """
         if engine is None:
             return
         try:
@@ -186,18 +153,14 @@ class WorldRuntime:
         except Exception as _exc:
             logger.debug("suppressed error: %s", _exc)
 
-    #: The cast are not just scenery: they are people the character knows, who
-    #: miss it, get angry at it, and can be reached out to.  Below are the
-    #: thresholds that make their social life real (and bounded).
     BEAT_MIN_DAYS = 1.5
     UPSET_AFFINITY = 0.32
-    BEAT_COOLDOWN_STEPS = 4  # ~one world day between nudges from the same person
+    BEAT_COOLDOWN_STEPS = 4
 
     def _actor_name(self, actor_id: str) -> str:
         return str((self.sim.state.get("actors", {}).get(actor_id) or {}).get("name") or actor_id)
 
     def actor_roster(self) -> list[dict]:
-        """Every cast member with the relationship state the sim already keeps."""
         out = []
         for actor_id, actor in self.sim.state.get("actors", {}).items():
             out.append({"id": actor_id, "name": actor.get("name", actor_id),
@@ -209,7 +172,6 @@ class WorldRuntime:
         return out
 
     def pending_actor_contacts(self) -> list[dict]:
-        """Who is owed contact, most urgent first (upset before merely missing)."""
         items = []
         for actor_id, actor in self.sim.state.get("actors", {}).items():
             affinity = float(actor.get("affinity", 0.5))
@@ -223,7 +185,6 @@ class WorldRuntime:
         return items
 
     def _due_actor_beat(self):
-        """Pick one actor to make a bid for contact this tick, or ``None``."""
         due = []
         for actor_id, actor in self.sim.state.get("actors", {}).items():
             last = float(actor.get("last_beat_step", -99))
@@ -256,7 +217,6 @@ class WorldRuntime:
             actor["tension"] = min(1.0, float(actor.get("tension", 0.0)) + 0.1)
 
     def life_contacts(self, actor_id: str) -> dict:
-        """The character reaches out (or answers): repairs the bond, resets the clock."""
         actor = self.sim.state.get("actors", {}).get(actor_id)
         if not actor:
             return {"success": False, "error": "unknown actor"}
@@ -269,7 +229,6 @@ class WorldRuntime:
                 "repaired": repaired, "affinity": round(float(actor["affinity"]), 3)}
 
     def decay_actors(self) -> int:
-        """Long silence cools an actor's affinity (the cost of neglecting them)."""
         changed = 0
         for actor in self.sim.state.get("actors", {}).values():
             if float(actor.get("last_contact_days", 0.0)) >= 3.0:
@@ -294,8 +253,6 @@ class WorldRuntime:
             if engine is not None:
                 self._consume(engine, event, text, density)
             result = {"event": event, "text": text, "problems": problems}
-        # The cast act on their own: someone who misses the character (or is
-        # angry at it) makes a bid for contact, independent of the environment.
         self.decay_actors()
         beat = self._due_actor_beat()
         if beat is not None:
@@ -332,7 +289,7 @@ class WorldRuntime:
         except Exception:
             return fallback
         if self.validate(text, event):
-            return fallback  # one rewrite attempt failed -> keep the safe template
+            return fallback
         return text
 
     def _consume(self, engine, event: dict, text: str, density: str) -> None:
@@ -352,8 +309,6 @@ class WorldRuntime:
                                                novelty=0.6, tags=["world"], scope="public")
             except Exception as _exc:
                 logger.debug("suppressed error: %s", _exc)
-        # Only the more interesting beats become something LIFE may bring up on
-        # its own; routine trivia stays in the timeline and never nags the user.
         if density == "full" and (intensity >= 2 or event.get("tier") in ("shareable", "upset")):
             try:
                 engine.companion.create_proactive_candidate("user:owner", "world_event", text[:200])

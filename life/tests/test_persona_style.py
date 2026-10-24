@@ -1,8 +1,3 @@
-"""Character archetypes + relationship styles: the many-kinds style layer.
-
-Not every persona is a yandere: the personality dimension and the (healthy and
-pathological) relationship dimension are independent, and only the
-pathological family may switch the attachment ODE on."""
 import asyncio
 import sys
 import tempfile
@@ -35,7 +30,6 @@ class StyleLexicon(unittest.TestCase):
         self.assertTrue(classify_relationship("她是病娇，离不开我")["pathological"])
 
     def test_pathological_marker_wins_over_shared_word(self):
-        # "依赖" is a healthy anxious word, but "病娇" must still win.
         result = classify_relationship("病娇，而且很依赖")
         self.assertTrue(result["pathological"])
         self.assertEqual(result["key"], "依存型")
@@ -48,7 +42,6 @@ class StyleLexicon(unittest.TestCase):
         self.assertEqual(detect_gender("她是个女孩，很温柔"), "female")
         self.assertEqual(detect_gender("他是个高冷的少年"), "male")
         self.assertEqual(detect_gender("神秘的存在"), "")
-        # An explicit owner choice overrides the pronoun guess.
         self.assertEqual(parse_persona("她是个女孩", gender_hint="male").gender, "male")
 
 
@@ -93,7 +86,6 @@ class EngineStyleWiring(unittest.TestCase):
         self.assertEqual(result["character"]["key"], "傲娇")
         self.assertEqual(result["relationship"]["key"], "焦虑型")
         self.assertFalse(result["relationship"]["pathological"])
-        # A healthy style must never pre-select an attachment archetype.
         self.assertEqual(result["attachment"]["type"], "")
         self.assertTrue(result["options"]["character"])
         self.assertTrue(result["options"]["relationship"])
@@ -102,8 +94,6 @@ class EngineStyleWiring(unittest.TestCase):
         result = asyncio.run(self.engine.persona_analyze("她占有欲很强，爱吃醋"))
         self.assertEqual(result["gender"], "female")
         self.assertTrue(result["relationship"]["pathological"])
-        # The attachment archetype is the one the relationship style declares,
-        # not an independent guess.
         self.assertEqual(result["attachment"]["type"],
                          result["relationship"]["attachment_type"])
         self.assertEqual(result["attachment"]["type"], "独占型")

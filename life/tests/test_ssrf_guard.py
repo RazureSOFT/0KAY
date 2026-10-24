@@ -12,7 +12,7 @@ from life.tools.tools import RuntimeToolConfig, _assert_public_http_url, assert_
 
 LOOPBACK = "127.0.0.1"
 PRIVATE = "10.0.0.5"
-LINK_LOCAL = "169.254.169.254"  # cloud metadata endpoint
+LINK_LOCAL = "169.254.169.254"
 PUBLIC = "93.184.216.34"
 
 
@@ -28,7 +28,6 @@ class HostGuard(unittest.TestCase):
                 self.assertIn("non-public", str(ctx.exception))
 
     def test_unresolvable_host_still_blocked_with_exemption(self):
-        # The opt-out only skips the private-address rule, not validation.
         with patch.dict(os.environ, {"LIFE_TEST_ALLOW_PRIVATE": "1"}):
             with self.assertRaises(ValueError):
                 assert_public_host("no-such-host.invalid", 0, "LIFE_TEST_ALLOW_PRIVATE")

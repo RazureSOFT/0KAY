@@ -1,8 +1,3 @@
-"""Tests for the somatization gateway (psychological -> bodily).
-
-Each test asserts the *computational claim* of one paper (or small group), and
-every pathway is ablated at least once to prove the knob actually switches.
-"""
 import sys
 import unittest
 from pathlib import Path
@@ -24,7 +19,6 @@ def observe(system: SomaticSymptomSystem, **overrides) -> dict:
 
 
 class TestPerceptionGateway(unittest.TestCase):
-    """Interoceptive bias amplifies symptom perception (PLOS ONE 2022)."""
 
     def test_bias_amplifies_perceived_intensity(self):
         low = SomaticSymptomSystem()
@@ -41,14 +35,13 @@ class TestPerceptionGateway(unittest.TestCase):
 
     def test_threshold_gates_reporting(self):
         system = SomaticSymptomSystem()
-        system.report_threshold = 1.1          # nothing can be reported
+        system.report_threshold = 1.1
         out = observe(system, bias=0.6)
         self.assertEqual(out["report_count"], 0)
         self.assertEqual(out["burden"], 0.0)
 
 
 class TestAnxietyRoute(unittest.TestCase):
-    """Anxiety drives the autonomic channels (Mind-Body Interactions, 2016)."""
 
     def test_anxiety_labile_channels_lead(self):
         calm = SomaticSymptomSystem(comorbidity_gain=0.0)
@@ -73,7 +66,6 @@ class TestAnxietyRoute(unittest.TestCase):
 
 
 class TestDepressionRoute(unittest.TestCase):
-    """Depression generates symptoms even without peripheral signal (MDD 2026)."""
 
     def test_negative_mood_generates_symptoms(self):
         system = SomaticSymptomSystem()
@@ -102,7 +94,6 @@ class TestDepressionRoute(unittest.TestCase):
 
 
 class TestComorbidity(unittest.TestCase):
-    """Comorbid anxiety x depression is super-additive (LMIC 2013 / meta 2003)."""
 
     def test_interaction_multiplier(self):
         alone = SomaticSymptomSystem()
@@ -127,7 +118,6 @@ class TestComorbidity(unittest.TestCase):
 
 
 class TestViciousCircle(unittest.TestCase):
-    """Symptom reports -> health anxiety -> more reports (health-anxiety loop)."""
 
     def test_pathological_escalates_typical_stays_low(self):
         pathological = SomaticSymptomSystem(catastrophizing=0.85)
@@ -150,7 +140,6 @@ class TestViciousCircle(unittest.TestCase):
 
 
 class TestSpeechAndNorms(unittest.TestCase):
-    """SSSC-style speech markers and PCNtoolkit-style deviation scores."""
 
     def test_index_suppresses_emotion_words_boosts_body_words(self):
         system = SomaticSymptomSystem()
@@ -171,7 +160,6 @@ class TestSpeechAndNorms(unittest.TestCase):
 
 
 class TestInterventions(unittest.TestCase):
-    """Reappraisal + accuracy training close the bias (CBT / biofeedback)."""
 
     def test_reappraisal_lowers_catastrophizing(self):
         system = SomaticSymptomSystem(catastrophizing=0.8)
@@ -194,7 +182,6 @@ class TestInterventions(unittest.TestCase):
 
 
 class TestAffectIntegration(unittest.TestCase):
-    """The gateway composes into AffectSystem behind use_somatic (default off)."""
 
     def test_default_config_leaves_somatic_off(self):
         system = AffectSystem(AffectConfig())
@@ -230,7 +217,6 @@ class TestAffectIntegration(unittest.TestCase):
 
 
 class TestSensitisation(unittest.TestCase):
-    """Repeated reports sensitise a channel - the acute -> chronic trajectory."""
 
     ZERO = {name: 0.0 for name in SYMPTOM_CHANNELS}
 
@@ -240,16 +226,16 @@ class TestSensitisation(unittest.TestCase):
         for _ in range(40):
             observe(system, **{"signals": loud, "bias": 0.0, "accuracy": 1.0,
                                "threat": 0.0, "mood": 0.0, "rumination": 0.0})
-        mild = dict(self.ZERO, cardiorespiratory=0.42)   # below the base threshold
+        mild = dict(self.ZERO, cardiorespiratory=0.42)
         naive = SomaticSymptomSystem(comorbidity_gain=0.0)
         naive.health_anxiety = 0.0
-        system.health_anxiety = 0.0                      # isolate the threshold effect
+        system.health_anxiety = 0.0
         out_naive = observe(naive, **{"signals": mild, "bias": 0.0, "accuracy": 1.0,
                                       "threat": 0.0, "mood": 0.0, "rumination": 0.0})
         out_sensitised = observe(system, **{"signals": mild, "bias": 0.0, "accuracy": 1.0,
                                             "threat": 0.0, "mood": 0.0, "rumination": 0.0})
         self.assertGreater(system.sensitivity["cardiorespiratory"], 0.3)
-        self.assertEqual(out_naive["report_count"], 0)   # naive stays silent
+        self.assertEqual(out_naive["report_count"], 0)
         self.assertGreater(out_sensitised["report_count"], 0)
 
     def test_sensitisation_is_state_and_decays_slowly(self):
@@ -287,11 +273,8 @@ class TestReassuranceTrap(unittest.TestCase):
         def run(with_reassurance):
             system = SomaticSymptomSystem(comorbidity_gain=0.0, anxiety_sensitivity=1.3)
             if with_reassurance:
-                # three comforting replies leave a learned pull behind
                 for _ in range(3):
                     system.apply_reassurance()
-            # equalise the level so the comparison isolates the *multiplier*
-            # effect, not the immediate relief
             system.health_anxiety = 0.5
             for _ in range(4):
                 observe(system, bias=0.2, threat=0.2, mood=-0.2)

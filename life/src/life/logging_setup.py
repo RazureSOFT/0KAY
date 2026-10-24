@@ -1,9 +1,3 @@
-"""File + console logging for the LIFE service.
-
-Launchers often discard the child process stdout/stderr, so a rotating file log
-under the data dir is the only reliable way to diagnose a startup crash.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -16,14 +10,6 @@ _LOGGER_NAME = "life"
 
 
 def _force_utf8_streams() -> None:
-    """Make console output UTF-8 even when the launcher's locale is not.
-
-    Core redirects the plugin's stdout/stderr into ``run.err.log``. On Windows
-    the inherited stdio encoding is the ANSI codepage, so any non-ASCII text
-    (Chinese user input, persona names) lands in the log as mojibake such as
-    ``¿ªÊ¼ÉúÃü``. Reconfiguring both streams once at startup is cheaper and
-    more reliable than rewriting every log call site.
-    """
     for name in ("stdout", "stderr"):
         stream = getattr(sys, name, None)
         reconfigure = getattr(stream, "reconfigure", None)
@@ -32,7 +18,7 @@ def _force_utf8_streams() -> None:
         try:
             reconfigure(encoding="utf-8", errors="backslashreplace")
         except (ValueError, OSError):
-            pass  # already detached / replaced by a test harness
+            pass
 
 
 def setup_logging(data_dir: str) -> logging.Logger:
@@ -40,8 +26,6 @@ def setup_logging(data_dir: str) -> logging.Logger:
     logger = logging.getLogger(_LOGGER_NAME)
     target = Path(os.path.abspath(os.path.join(str(data_dir), "life.log")))
     if logger.handlers:
-        # A second call with a *different* data dir must not keep writing to the
-        # first file, so only short-circuit when the file target is unchanged.
         file_handlers = [h for h in logger.handlers if isinstance(h, RotatingFileHandler)]
         if file_handlers and all(Path(os.path.abspath(h.baseFilename)) == target for h in file_handlers):
             return logger
@@ -54,7 +38,6 @@ def setup_logging(data_dir: str) -> logging.Logger:
     logger.setLevel(logging.INFO)
     formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
 
-    # Reuse an existing console handler on a re-init so it is not duplicated.
     if not any(isinstance(h, logging.StreamHandler) and not isinstance(h, RotatingFileHandler)
                for h in logger.handlers):
         stream = logging.StreamHandler(sys.stderr)
@@ -68,7 +51,7 @@ def setup_logging(data_dir: str) -> logging.Logger:
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
     except OSError:
-        pass  # read-only data dir: console logging still works
+        pass
     return logger
 
 

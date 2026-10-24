@@ -1,11 +1,10 @@
-"""S0 gate: the worldsim spec schema is valid and the shared feature builder agrees."""
 import sys
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]          # life/
-sys.path.insert(0, str(ROOT))                        # import `world`
-sys.path.insert(0, str(ROOT / "src"))                # import `life`
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "src"))
 
 from world import gates  # noqa: E402
 from life.worldsim.features import build_features, feature_names  # noqa: E402
@@ -49,7 +48,7 @@ class SpecGate(unittest.TestCase):
     def test_build_features_handles_empty_state(self):
         vector = build_features({})
         self.assertEqual(len(vector), len(feature_names()))
-        self.assertTrue(all(v == v for v in vector))  # no NaN
+        self.assertTrue(all(v == v for v in vector))
 
     def test_invariants_are_documented(self):
         spec = gates.load_spec()
@@ -62,14 +61,12 @@ class SpecGate(unittest.TestCase):
         self.assertIsNone(CompanionSystem.validate_setting("world_density", "loud"))
 
     def test_worldview_settings_registered(self):
-        """The panel's worldview box maps to real, validated text settings."""
         for key in ("world_premise", "world_actors", "world_places", "world_country",
                     "world_city", "world_district"):
             self.assertIn(key, CompanionSystem.SETTING_DEFAULTS, key)
             self.assertIn(key, CompanionSystem.CONFIG_SCHEMA, key)
             self.assertIsNotNone(CompanionSystem.validate_setting(key, "一段设定"))
         self.assertEqual(CompanionSystem.SETTING_DEFAULTS["world_premise"], "")
-        # Choice + JSON fields: the map must round-trip through validate_setting.
         for key, value in (("world_fictional", "fictional"), ("world_fictional", "real"),
                            ("world_map", '{"locations": []}')):
             self.assertIsNotNone(CompanionSystem.validate_setting(key, value), f"{key}={value}")

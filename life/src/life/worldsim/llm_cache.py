@@ -1,8 +1,3 @@
-"""sha256 prompt cache for offline (teacher/asset) LLM calls.
-
-Every offline call is keyed by ``sha256(model + "\\n" + prompt)`` so an
-interrupted/repeated run never pays twice.  Values are the raw text response.
-"""
 from __future__ import annotations
 
 import hashlib
@@ -45,7 +40,6 @@ class LLMCache:
 
 
 async def cached_generate(cache: LLMCache, generate, prompt: str, *, model: str = "", **kwargs):
-    """Call ``generate`` through the cache.  ``generate`` is an async callable."""
     cached = cache.get(prompt, model)
     if cached is not None:
         return cached

@@ -1,10 +1,3 @@
-"""The resident, interruptible thinking process.
-
-Pins the architectural gap: between runs nothing thought about the character's
-own goals, and a message could not cut into an in-flight run.  These tests drive
-the thinker with a fake model (no network) and assert the state persists, the
-mind resumes, and an interrupt parks the thought instead of losing it.
-"""
 import asyncio
 import json
 import sys
@@ -64,7 +57,6 @@ class ResidentThinkerTests(unittest.TestCase):
         self.assertTrue(asyncio.run(self.resident._think_once()))
         self.assertEqual(self.resident.state.last_thought, "我有点想他了")
         self.assertEqual(self.resident.state.focus, "想想今天要做什么")
-        # Persisted, and readable back as the character's own voice.
         self.assertEqual(self.engine.companion.latest_self_statement(), "我有点想他了")
         self.assertTrue(self.resident.state_path.exists())
 
@@ -110,10 +102,6 @@ class ResidentThinkerTests(unittest.TestCase):
                 return True
             self.resident._think_once = fake_once
             self.assertTrue(self.resident.start())
-            # The tick now also runs the body clock, which touches real SQLite
-            # files before the first thought. On a loaded machine that can eat
-            # the whole window, so wait on the observable outcome instead of
-            # guessing a sleep duration (this test was the suite's one flaky).
             for _ in range(200):
                 if calls:
                     break
@@ -136,8 +124,6 @@ class ResidentThinkerTests(unittest.TestCase):
         self.assertFalse(thinker.start())
 
     def test_autonomous_time_can_now_use_self_set_goals(self):
-        # The prompt already told the character to use these, but the allow-list
-        # rejected them, so the capability was dead.
         for name in ("goal_add", "goal_log", "goal_list"):
             self.assertIn(name, self.engine.AUTONOMY_TOOLS)
 

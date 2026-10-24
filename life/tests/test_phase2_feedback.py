@@ -1,9 +1,3 @@
-"""Phase 2: the learning reward comes from the user's real reaction.
-
-The arbiter credits a turn only when the user's next message arrives, and the
-reward is a function of whether / how fast / how long / how positively they
-replied and whether they recalled - never the bot's own reply length.
-"""
 import os
 import tempfile
 import unittest
@@ -55,7 +49,6 @@ class Phase2Feedback(unittest.TestCase):
         turn = _turn()
         self.engine._cognition_arbitrate("你好", turn, "", {})
         self.engine._record_awaiting(turn, "我在呢")
-        # A brand-new session with no parked turn must not learn anything.
         other = _turn(session_id="s2", user_id="u2")
         self.engine._receive_feedback(other, "在吗")
         self.assertEqual(self.engine.cognition.turns, 0)

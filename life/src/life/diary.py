@@ -1,11 +1,3 @@
-"""Grounded daily diary & dream generation.
-
-Mirrors the reference companion's ``dreaming.py`` discipline: every durable fact
-carries a level so that a plan or a simulation can never be narrated as a lived
-experience. Output is validated for grounding/quality/duplication and rewritten
-at most once before it is persisted.
-"""
-
 from __future__ import annotations
 
 import re
@@ -44,9 +36,6 @@ def _clean(text: Any, limit: int = 4000) -> str:
     return value[:limit]
 
 
-# --------------------------------------------------------------------------
-# Evidence ledger
-# --------------------------------------------------------------------------
 def build_ledger(
     *,
     agenda: list[dict[str, Any]],
@@ -56,7 +45,6 @@ def build_ledger(
     emotion_phrase: str,
     day: str,
 ) -> tuple[str, list[dict[str, str]]]:
-    """Return (rendered ledger, entries) with a level on every fact."""
     entries: list[dict[str, str]] = []
     for item in agenda or []:
         title = str(item.get("title") or "").strip()
@@ -81,9 +69,6 @@ def build_ledger(
     return "\n".join(lines), entries
 
 
-# --------------------------------------------------------------------------
-# Quality / duplication
-# --------------------------------------------------------------------------
 def journal_similarity(body: str, recent_texts: list[str]) -> float:
     current = _compact(body)
     if len(current) < 8:
@@ -103,7 +88,6 @@ def _bigrams(text: str) -> set[str]:
 
 
 def planned_written_as_done(body: str, entries: list[dict[str, str]]) -> bool:
-    """True if a planned item is asserted as completed (verb/object near a done-marker)."""
     for entry in entries:
         if entry.get("level") != "planned":
             continue
@@ -148,9 +132,6 @@ def quality_issues(
     return issues
 
 
-# --------------------------------------------------------------------------
-# Journal
-# --------------------------------------------------------------------------
 def journal_prompt(
     *,
     day: str,
@@ -220,9 +201,6 @@ async def generate_journal(
     return body
 
 
-# --------------------------------------------------------------------------
-# Dream
-# --------------------------------------------------------------------------
 DREAM_THEMES = {
     "温柔日常": "梦像从白天的普通片段里渗出来，柔软、安静、带一点生活气。",
     "奇幻": "现实里的东西轻轻偏离常理，带一点不合逻辑的发光或变形。",
@@ -269,8 +247,6 @@ async def generate_dream(
     )))
     if not body:
         return ""
-    # Dreams are abstract by design, so only block obvious ground-truth leakage
-    # and near-duplicates rather than enforcing the diary's factual ledger.
     if any(marker in body for marker in INTERNAL_MARKERS) or journal_similarity(body, recent_texts) >= 0.7:
         revised = _clean(await complete(dream_prompt(
             theme_name=theme_name, theme_hint=theme_hint, context_text=context_text,

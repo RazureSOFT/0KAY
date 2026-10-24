@@ -1,5 +1,3 @@
-"""Emotion system for L.I.F.E - Multi-dimensional emotional state."""
-
 from dataclasses import dataclass, field
 from datetime import datetime
 import json
@@ -9,15 +7,13 @@ from . import lexicon
 
 @dataclass
 class EmotionState:
-    """Multi-dimensional emotional state."""
-    valence: float = 0.0      # -1.0 to 1.0 (pleasure)
-    arousal: float = 0.5      # 0.0 to 1.0 (activation)
-    connection: float = 0.5   # 0.0 to 1.0 (social bonding)
-    irritation: float = 0.0   # 0.0 to 1.0 (annoyance)
+    valence: float = 0.0
+    arousal: float = 0.5
+    connection: float = 0.5
+    irritation: float = 0.0
     last_updated: datetime = field(default_factory=datetime.now)
 
     def apply_delta(self, delta: dict) -> None:
-        """Apply emotion delta to current state."""
         self.valence = max(-1.0, min(1.0, self.valence + delta.get("valence", 0.0)))
         self.arousal = max(0.0, min(1.0, self.arousal + delta.get("arousal", 0.0)))
         self.connection = max(0.0, min(1.0, self.connection + delta.get("connection", 0.0)))
@@ -25,12 +21,6 @@ class EmotionState:
         self.last_updated = datetime.now()
 
     def decay(self, seconds: float) -> None:
-        """Apply natural decay to emotions over time.
-
-        The rate is clamped per signal: with the raw ``0.001 * seconds`` a long
-        gap (e.g. overnight) made ``1 - rate`` negative and *flipped* the sign of
-        mood.  Irritability still fades fastest, arousal slowest.
-        """
         seconds = max(0.0, float(seconds))
         rate = min(0.5, 0.001 * seconds)
         self.valence *= (1.0 - rate)
@@ -56,12 +46,10 @@ class EmotionState:
 
 
 class EmotionEngine:
-    """Manages emotional state transitions."""
 
     def __init__(self, initial_state: EmotionState | None = None):
         self.state = initial_state or EmotionState()
 
-    # Lightweight intent routing shared by emotion and the unfinished-topic tracker.
     INTENT_RULES = (
         ("请求", ("帮我", "能不能", "可以吗", "麻烦", "替我", "请帮", "帮忙")),
         ("情绪", ("难过", "开心", "生气", "很累", "好累", "烦", "害怕", "焦虑", "孤独", "想你", "喜欢你", "讨厌", "郁闷", "崩溃", "委屈")),
@@ -78,10 +66,6 @@ class EmotionEngine:
         return "闲聊"
 
     def on_user_message(self, message: str) -> dict:
-        """Calculate emotion delta from user message (English + Chinese cues)."""
-        # Coerce like `classify_intent` does: the caller may pass None or a
-        # structured message (image/forward), which previously raised
-        # AttributeError on `.lower()`.
         message = str(message or "")
         delta = {"valence": 0.0, "arousal": 0.0, "connection": 0.0, "irritation": 0.0}
 
@@ -90,35 +74,28 @@ class EmotionEngine:
         delta["connection"] += 0.05 * hits["positive"]
         delta["valence"] -= 0.1 * hits["negative"]
         delta["irritation"] += 0.1 * hits["negative"]
-        # A refusal / rebuff is felt as *rejection*: valence down and a knotted
-        # connection, not neutral.  This is the cue that used to be missed.
         if hits["rejection"]:
             delta["valence"] -= 0.15 * min(2, hits["rejection"])
             delta["connection"] -= 0.12 * min(2, hits["rejection"])
             delta["irritation"] += 0.08 * min(2, hits["rejection"])
-        # "别走 / 留下来" — reassurance re-opens the bond even amid tension.
         if hits["reassurance"]:
             delta["connection"] += 0.08 * hits["reassurance"]
             delta["valence"] += 0.05 * hits["reassurance"]
 
-        # Increase arousal with longer messages
         delta["arousal"] += min(0.1, len(message) / 1000)
 
         return delta
 
     def on_task_completed(self, success: bool) -> dict:
-        """Calculate emotion delta from task completion."""
         if success:
             return {"valence": 0.1, "arousal": -0.05}
         else:
             return {"valence": -0.1, "irritation": 0.05}
 
     def on_forced_wake(self) -> dict:
-        """Calculate emotion delta from forced wake during sleep."""
         return {"irritation": 0.3, "arousal": 0.2}
 
     def get_emotional_prompt_context(self) -> str:
-        """Get emotional state as prompt context for THINK stage."""
         state = self.state
         if state.irritation > 0.7:
             return "You are feeling quite irritated. Your responses may be shorter and more direct."

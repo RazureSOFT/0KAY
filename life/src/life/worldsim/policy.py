@@ -1,8 +1,3 @@
-"""Backwards-compatible re-export of :mod:`world.policy`.
-
-See :mod:`life.worldsim.features` for why the implementation lives in ``world``
-now (breaking the ``world`` <-> ``life.worldsim`` import cycle).
-"""
 from __future__ import annotations
 
 from world.policy import (  # noqa: F401

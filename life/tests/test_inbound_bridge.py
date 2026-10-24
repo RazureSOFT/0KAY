@@ -1,10 +1,3 @@
-"""Tests for the inbound event → conversation-turn bridge.
-
-The bridge is where transport-independent behaviour lives, so these tests use a
-stub engine rather than a real one: what matters is that the *decisions* are
-right (wake rules, media captioning, chunking, noticing a recall), not that a
-model produced a good sentence.
-"""
 import asyncio
 import sys
 import unittest
@@ -31,7 +24,6 @@ class _FakeRuntime:
 
 
 class _FakeEngine:
-    """A minimal stand-in for LifeEngine: only the four bridge hooks."""
 
     def __init__(self, reply="", chunks=None, should_reply=True):
         self.turns: list = []
@@ -117,7 +109,6 @@ class GroupWakeRuleTests(unittest.TestCase):
         self.assertEqual(engine.turns, [])
 
     def test_group_observation_happens_even_when_the_bot_stays_quiet(self):
-        """Not replying must still teach LIFE about the group."""
         engine = _FakeEngine(should_reply=False)
         bridge = InboundBridge(engine, _instance())
         data = {"post_type": "message", "self_id": 100, "group_id": 5, "user_id": 9,
@@ -173,8 +164,6 @@ class SendingTests(unittest.TestCase):
                             "user_id": 9, "message": "hi"}, None))
         sent = engine.adapter_runtime.sent[0]
         self.assertEqual(sent["group_id"], 5)
-        # Exactly one target: a group reply must not also carry user_id, or a
-        # transport keying on it would answer privately instead of in the group.
         self.assertNotIn("user_id", sent)
 
     def test_a_private_reply_is_addressed_to_the_user(self):
@@ -233,7 +222,6 @@ class MediaAndNoticeTests(unittest.TestCase):
 
 class ResilienceTests(unittest.TestCase):
     def test_a_failing_turn_does_not_propagate(self):
-        """One bad turn must not tear down the WebSocket and drop the queue."""
 
         class Exploding(_FakeEngine):
             def process_message(self, **kwargs):
@@ -256,16 +244,9 @@ class ResilienceTests(unittest.TestCase):
         self.assertEqual(len(engine.adapter_runtime.sent), 1)
 
     def test_an_engine_without_the_hooks_still_works(self):
-        """An engine that never grew the adapter hooks must degrade, not crash.
-
-        The bridge reaches for its collaborators with ``getattr`` precisely so a
-        partial implementation (or an older engine) keeps working over the parts
-        it does support. A private message needs none of the four hooks.
-        """
         engine = _FakeEngine(reply="hi back")
         for name in ("on_group_observe", "should_reply_in_group", "on_recall",
                      "describe_media_ref"):
-            # Shadow the bound methods per-instance so the lookup really misses.
             setattr(engine, name, None)
         bridge = InboundBridge(engine, _instance())
         _run(bridge.handle({"post_type": "message", "self_id": 1,
@@ -274,7 +255,6 @@ class ResilienceTests(unittest.TestCase):
         self.assertEqual(len(engine.adapter_runtime.sent), 1)
 
     def test_a_group_message_without_the_should_reply_hook_stays_silent(self):
-        """Fail closed: an absent gate must not turn every group message into a reply."""
         engine = _FakeEngine()
         engine.should_reply_in_group = None
         bridge = InboundBridge(engine, _instance())

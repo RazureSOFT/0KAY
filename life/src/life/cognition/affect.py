@@ -1,63 +1,3 @@
-"""Affective, interoceptive and clinical circuits - the *second wave* of papers.
-
-Wave 1 (``circuits.py``) mapped 15 papers about decision-making, social
-cognition, consciousness and control onto the multi-system model.  This module
-does the same for the second batch, which is about **the body, affect and its
-pathology** plus the **LLM social-simulation** literature that constrains how an
-artificial persona should be built.
-
-Each class implements the *computational claim* of one paper (or a small group),
-not its biology.  Every docstring names the paper and the finding it encodes.
-Every circuit is gated by a flag on :class:`AffectConfig`, so it can be ablated
-in isolation - the whole point of a "mechanism layer".
-
-============================  =================================================
-Paper                         Circuit / mechanism
-============================  =================================================
-physio - orexin / layer 6b    :class:`ArousalGain` - a wake-promoting gain that
-                              scales cognitive throughput; orexin tone falls
-                              with sleep debt, brainstem chemosensation
-                              (VLM astrocytes, CO2) adds arousal
-physio - baroreflex / vagus   :class:`VagalTone` - vagal tone indexes prefrontal
-                              inhibitory control over affect; high tone = fast
-                              recovery, low tone = chronic arousal
-physio - diurnal cortisol     :class:`HPAxis` - slow cortisol with a diurnal
-                              rhythm, stressor reactivity and cumulative
-                              allostatic load
-physio - interoception/insula :class:`InteroceptiveChannel` - interoceptive
-                              *accuracy* and *awareness* are dissociable; the
-                              precision (inverse variance) weights the PE
-physio - cytokine/sickness    :class:`NeuroImmune` - cytokines drive sickness
-                              behaviour (fatigue, withdrawal, anhedonia); vagal
-                              tone is anti-inflammatory
-psych - emotion regulation    :class:`EmotionRegulator` - reappraisal vs
-                              suppression, a transdiagnostic difficulty profile,
-                              and emotion *dynamics* (instability, inertia)
-psych - rumination / DMN      :class:`MoodAttractor` - depression as a deep
-                              negative attractor that rumination keeps deepening
-psych - anhedonia             :class:`RewardAvailability` - blunted reward
-                              responsiveness scales the effective reward
-psych - anxiety circuits      :class:`ThreatBias` - over-generalised threat
-                              reading of ambiguous cues, amplified by load
-psych - attachment/loneliness :class:`AttachmentTemplate` - anxious/avoidant
-                              working models and perceived social isolation
-psych - active inference      :class:`PrecisionController` - precision-weighted
-                              arbitration between prior and sensory evidence
-LLM - Sentipolis              :class:`PADState` - continuous
-                              Pleasure-Arousal-Dominance, dual-speed dynamics,
-                              emotion-memory coupling
-LLM - desire-driven           :class:`DesireSystem` - an explicit desire
-                              generation stage between state and objective
-LLM - belief-behaviour        :class:`BeliefBehaviorMonitor` - the gap between
-                              a stated belief and the executed behaviour
-psych - somatization          :class:`SomaticSymptomSystem` - the
-                              psychological -> bodily gateway: interoceptive
-                              bias, catastrophizing, the anxiety/depression
-                              routes and the health-anxiety vicious circle
-LLM - EASE / SimBench         :class:`AffectConfig` ablation switches + the
-                              ``ablate`` helper - modular, reproducible design
-============================  =================================================
-"""
 from __future__ import annotations
 
 import math
@@ -88,19 +28,7 @@ def _stdev(values) -> float:
     return math.sqrt(sum((v - mean) ** 2 for v in values) / (len(values) - 1))
 
 
-# ==========================================================================
-# PHYSIOLOGY
-# ==========================================================================
 class InteroceptiveChannel:
-    """Interoceptive accuracy and awareness are dissociable (insula papers).
-
-    Interoception is not one signal.  *Accuracy* is how well the body signal is
-    tracked; *awareness* is the subjective belief about it.  Anxiety is the
-    signature of high awareness with low accuracy (a confident misreading of the
-    body); depression of blunted accuracy.  The channel emits a prediction error
-    and, following active-inference accounts, a **precision** (inverse variance)
-    that weights how much that error should move belief.
-    """
 
     def __init__(self, learning_rate: float = 0.3, window: int = 50,
                  awareness_gain: float = 1.0):
@@ -110,7 +38,6 @@ class InteroceptiveChannel:
         self.awareness_gain = awareness_gain
 
     def observe(self, actual: float) -> float:
-        """Feed one bodily reading; return the interoceptive prediction error."""
         error = float(actual) - self.prediction
         self.prediction += self.learning_rate * error
         self.errors.append(error)
@@ -118,7 +45,6 @@ class InteroceptiveChannel:
 
     @property
     def precision(self) -> float:
-        """Inverse variance of recent errors, in [0, 1]."""
         if len(self.errors) < 2:
             return 0.5
         variance = sum(e * e for e in self.errors) / len(self.errors)
@@ -126,7 +52,6 @@ class InteroceptiveChannel:
 
     @property
     def accuracy(self) -> float:
-        """1 when the body is tracked well, 0 when it is all surprise."""
         if not self.errors:
             return 0.5
         mean_abs = sum(abs(e) for e in self.errors) / len(self.errors)
@@ -134,12 +59,10 @@ class InteroceptiveChannel:
 
     @property
     def awareness(self) -> float:
-        """Subjective confidence, decoupled from accuracy by ``awareness_gain``."""
         return _clamp(self.accuracy * self.awareness_gain)
 
     @property
     def bias(self) -> float:
-        """Positive = anxious misattribution (aware but inaccurate)."""
         return self.awareness - self.accuracy
 
     def to_dict(self) -> dict:
@@ -149,8 +72,6 @@ class InteroceptiveChannel:
 
     @classmethod
     def from_dict(cls, data: dict) -> "InteroceptiveChannel":
-        # Read the saved window back: hardcoding maxlen=50 silently reset a
-        # runtime-configured window on every reload.
         try:
             window = max(1, int(data.get("window") or 50))
         except (TypeError, ValueError):
@@ -164,15 +85,6 @@ class InteroceptiveChannel:
 
 
 class VagalTone:
-    """Vagal tone indexes prefrontal inhibitory control over affect.
-
-    The neurovisceral-integration model (Thayer & Lane) treats high-frequency
-    heart-rate variability as a peripheral readout of the prefrontal brake on
-    subcortical arousal.  High tone means a stressor is *inhibited* quickly and
-    arousal returns to baseline; low tone means arousal lingers.  Cholinergic
-    vagal signalling is also the anti-inflammatory reflex, so tone damps
-    :class:`NeuroImmune` too.
-    """
 
     def __init__(self, tone: float = 0.6, recovery: float = 0.5,
                  stress_sensitivity: float = 0.4, baseline: float = 0.7):
@@ -182,17 +94,10 @@ class VagalTone:
         self.baseline = baseline
 
     def stress(self, load: float) -> float:
-        """A stressor withdraws the brake; return the new tone."""
         self.tone = _clamp(self.tone - self.stress_sensitivity * max(0.0, float(load)))
         return self.tone
 
     def rest(self, seconds: float, resting: bool = True) -> float:
-        """Exponential recovery toward the personal baseline (or 1 while asleep).
-
-        ``recovery`` is a per-hour time constant, so a tick of a few minutes
-        moves the tone only slightly - otherwise a single tick would snap the
-        tone to target and every stressor would be erased instantly.
-        """
         target = 1.0 if resting else self.baseline
         fraction = 1.0 - math.exp(-self.recovery * max(0.0, seconds) / 3600.0)
         self.tone += (target - self.tone) * _clamp(fraction)
@@ -201,12 +106,10 @@ class VagalTone:
 
     @property
     def capacity(self) -> float:
-        """Regulatory capacity = the tone itself."""
         return self.tone
 
     @property
     def recovery_rate(self) -> float:
-        """How fast arousal decays after a stressor."""
         return 0.2 + 0.8 * self.tone
 
     def to_dict(self) -> dict:
@@ -222,13 +125,6 @@ class VagalTone:
 
 
 class HPAxis:
-    """Slow cortisol: diurnal rhythm, stressor reactivity, allostatic load.
-
-    Cortisol peaks shortly after waking and declines through the day, spikes in
-    response to a stressor, and decays over hours.  Repeated activation leaves a
-    residue - *allostatic load* (McEwen) - that progressively degrades the
-    regulatory capacity of :class:`VagalTone`.
-    """
 
     def __init__(self, baseline: float = 0.4, amplitude: float = 0.3,
                  peak_hour: float = 8.0, decay_half_life_h: float = 1.5,
@@ -246,25 +142,15 @@ class HPAxis:
         self.peak_seen = baseline
 
     def diurnal(self, hour: float) -> float:
-        """Expected cortisol for a given hour (peak just after waking)."""
         phase = 2.0 * math.pi * (hour - self.peak_hour) / 24.0
         return max(0.0, self.baseline + self.amplitude * math.cos(phase))
 
     def react(self, stressor: float) -> float:
-        """A stressor raises cortisol above the diurnal set point."""
         self.cortisol += self.reactivity * max(0.0, float(stressor))
         self.peak_seen = max(self.peak_seen, self.cortisol)
         return self.cortisol
 
     def tick(self, seconds: float, hour: float, sleeping: bool = False) -> float:
-        """Decay toward the diurnal set point and accumulate allostatic load.
-
-        Allostatic load is a slow accumulator, but it must also *recover*: with
-        only the ``abs(excess)`` term it ratcheted monotonically to 1.0 within
-        weeks and permanently biased threat appraisal, somatic pain and
-        ``extra_need`` -- locking the persona into chronic anxiety regardless of
-        what actually happened.  Recovery is faster during sleep.
-        """
         target = self.diurnal(hour)
         half_lives = max(0.0, seconds) / 3600.0 / max(EPS, self.decay_half_life_h)
         fraction = 1.0 - 0.5 ** half_lives
@@ -297,13 +183,6 @@ class HPAxis:
 
 
 class ArousalGain:
-    """A wake-promoting gain that scales cognitive throughput.
-
-    Orexin/hypocretin neurons and cortical layer 6b set an arousal gain; loss of
-    orexin produces unstable wakefulness.  Brainstem (ventrolateral medulla)
-    astrocytes chemosense CO2 and add arousal drive.  Sleep debt lowers the gain.
-    The output multiplies working-memory capacity rather than changing values.
-    """
 
     def __init__(self, orexin: float = 0.7, sleep_debt: float = 0.0,
                  chemosensitivity: float = 0.5):
@@ -312,7 +191,6 @@ class ArousalGain:
         self.chemosensitivity = chemosensitivity
 
     def tick(self, seconds: float, sleeping: bool) -> float:
-        """Orexin falls while awake, recovers in sleep; sleep debt tracks it."""
         hours = max(0.0, seconds) / 3600.0
         if sleeping:
             self.orexin = _clamp(self.orexin + hours * 0.25)
@@ -323,11 +201,9 @@ class ArousalGain:
         return self.orexin
 
     def chemosensation(self, co2: float) -> float:
-        """Brainstem CO2 sensing adds arousal (paper: VLM astrocytes / breathing)."""
         return _clamp(self.chemosensitivity * max(0.0, float(co2)))
 
     def gain(self, co2: float = 0.0) -> float:
-        """Cognitive gain in [0, 1]."""
         return _clamp(self.orexin * (1.0 - 0.5 * self.sleep_debt) + self.chemosensation(co2))
 
     def to_dict(self) -> dict:
@@ -340,14 +216,6 @@ class ArousalGain:
 
 
 class NeuroImmune:
-    """Cytokines drive sickness behaviour; vagal tone is anti-inflammatory.
-
-    Peripheral inflammation signals the brain and produces the sickness
-    syndrome - fatigue, low mood, social withdrawal and anhedonia.  The
-    cholinergic anti-inflammatory reflex means vagal tone (see
-    :class:`VagalTone`) actively damps it.  Chronic inflammation therefore looks
-    like a treatment-resistant depression.
-    """
 
     def __init__(self, inflammation: float = 0.0, decay: float = 0.08,
                  sickness_gain: float = 1.0):
@@ -356,12 +224,10 @@ class NeuroImmune:
         self.sickness_gain = sickness_gain
 
     def challenge(self, load: float) -> float:
-        """An immune challenge raises inflammation."""
         self.inflammation = _clamp(self.inflammation + max(0.0, float(load)))
         return self.inflammation
 
     def tick(self, seconds: float, vagal_tone: float) -> float:
-        """Inflammation decays over hours; vagal tone accelerates the decay."""
         rate = self.decay * (1.0 + vagal_tone)
         self.inflammation = _clamp(self.inflammation - rate * max(0.0, seconds) / 3600.0)
         return self.inflammation
@@ -372,12 +238,10 @@ class NeuroImmune:
 
     @property
     def withdrawal(self) -> float:
-        """Social withdrawal / reduced social drive."""
         return _clamp(0.8 * self.sickness_gain * self.inflammation)
 
     @property
     def mood_drag(self) -> float:
-        """Negative pull on valence."""
         return _clamp(0.6 * self.sickness_gain * self.inflammation)
 
     def to_dict(self) -> dict:
@@ -388,10 +252,6 @@ class NeuroImmune:
         return cls(inflammation=float(data.get("inflammation", 0.0)))
 
 
-# ==========================================================================
-# PSYCHIATRY / PSYCHOLOGY
-# ==========================================================================
-# Six difficulty dimensions from the emotion-regulation-difficulties literature.
 ERQ_PROFILES = {
     "typical":     {"nonaccept": 0.20, "goals": 0.25, "impulse": 0.25, "awareness": 0.20, "strategies": 0.30, "clarity": 0.20},
     "depression":  {"nonaccept": 0.55, "goals": 0.60, "impulse": 0.45, "awareness": 0.50, "strategies": 0.70, "clarity": 0.55},
@@ -402,16 +262,6 @@ ERQ_PROFILES = {
 
 
 class EmotionRegulator:
-    """Regulation *strategies*, a transdiagnostic difficulty profile, and dynamics.
-
-    Emotion regulation is a transdiagnostic treatment construct: the same
-    difficulties (non-acceptance, goal interference, impulsivity, lack of
-    awareness, limited strategies, poor clarity) appear across anxiety,
-    depression and personality pathology, and the choice of strategy matters -
-    antecedent **reappraisal** is adaptive, response-focused **suppression** is
-    not.  Emotion also has *dynamics*: instability (how variable affect is) and
-    inertia (how strongly it autocorrelates).
-    """
 
     def __init__(self, reappraisal_skill: float = 0.6, suppression_skill: float = 0.4,
                  profile: str = "typical"):
@@ -424,28 +274,20 @@ class EmotionRegulator:
 
     @property
     def difficulty(self) -> float:
-        """Mean across the six difficulty dimensions, in [0, 1]."""
         return sum(self.profile.values()) / len(self.profile)
 
     def efficacy(self, strategy: str) -> float:
-        """How well a strategy works for this profile (difficulty hurts)."""
         skill = self.reappraisal_skill if strategy == "reappraisal" else self.suppression_skill
         return _clamp(skill * (1.0 - 0.7 * self.difficulty))
 
     def regulate(self, delta: dict, strategy: str = "reappraisal") -> dict:
-        """Return a *regulated* copy of an emotion delta.
-
-        Reappraisal reinterprets the antecedent, so it reduces valence and
-        arousal together.  Suppression only hides the expression: valence is
-        damped but arousal and irritation *rise* (the well-documented cost).
-        """
         power = self.efficacy(strategy)
         out = dict(delta)
         if strategy == "reappraisal":
             for key in ("valence", "arousal", "irritation"):
                 if key in out:
                     out[key] = out[key] * (1.0 - power)
-        else:  # suppression
+        else:
             for key in ("valence",):
                 if key in out:
                     out[key] = out[key] * (1.0 - 0.5 * power)
@@ -459,12 +301,10 @@ class EmotionRegulator:
 
     @property
     def instability(self) -> float:
-        """Variability of recent affect (0 = flat)."""
         return _clamp(_stdev(self.history))
 
     @property
     def inertia(self) -> float:
-        """Lag-1 autocorrelation of affect (1 = stuck, 0 = noisy)."""
         values = list(self.history)
         if len(values) < 4:
             return 0.0
@@ -495,14 +335,6 @@ class EmotionRegulator:
 
 
 class MoodAttractor:
-    """Depression as a deep negative attractor that rumination keeps deepening.
-
-    Depressive rumination is repetitive self-referential negative thought that
-    couples to the default-mode network.  The useful computation is a *double
-    well*: mood sits in one of two basins and resists displacement; rumination
-    deepens the negative well, so recovery needs proportionally more positive
-    input.  This yields the characteristic inertia of depressed mood.
-    """
 
     def __init__(self, mood: float = 0.0, attractor: float = 0.0,
                  rumination: float = 0.0, depth: float = 0.4):
@@ -513,23 +345,10 @@ class MoodAttractor:
 
     def tick(self, delta: float, rumination_input: float = 0.0, pull: float = 0.3,
              seconds: float = 0.0) -> float:
-        """Update mood; rumination deepens and shifts the negative attractor.
-
-        Event terms (``delta``, ``rumination_input``) are per call; the slow
-        terms are per *time*: rumination fades at 0.12/h, basin depth heals at
-        0.02/h, and the attractor's restoration force acts continuously (a
-        ~8h time constant at depth 0.4).  ``seconds=0`` (message-driven
-        calls) never ages the state on its own - only the clock does.
-        """
         hours = max(0.0, float(seconds)) / 3600.0
-        # Ruminative content arrives with events and fades on the clock.
         self.rumination = _clamp(self.rumination + 0.5 * max(0.0, rumination_input) - 0.12 * hours)
-        # Only ruminative *events* deepen the basin and shift the attractor -
-        # keying these to the standing rumination made every no-op message
-        # deepen the depression basin while nothing was actually happening.
         self.attractor = _clamp(self.attractor - 0.15 * max(0.0, rumination_input), -1.0, 0.5)
         self.depth = _clamp(self.depth + 0.05 * max(0.0, rumination_input) - 0.02 * hours)
-        # restore force toward the attractor, scaled by basin depth and elapsed time
         self.mood += delta + pull * self.depth * (self.attractor - self.mood) * min(1.0, 2.0 * hours)
         self.mood = max(-1.0, min(1.0, self.mood))
         return self.mood
@@ -540,7 +359,6 @@ class MoodAttractor:
 
     @property
     def pull(self) -> float:
-        """Downward force currently exerted on mood."""
         return _clamp(self.depth * max(0.0, -self.attractor))
 
     def to_dict(self) -> dict:
@@ -554,13 +372,6 @@ class MoodAttractor:
 
 
 class RewardAvailability:
-    """Anhedonia: blunted reward responsiveness, dissociable from mood.
-
-    Anhedonia is a reduction in *wanting* (incentive salience) and *liking*
-    (hedonic impact) that can occur with normal mood.  Computationally the clean
-    move is to scale the **effective reward** that reaches the value systems, so
-    a blunted agent learns flatter value gradients without any change to mood.
-    """
 
     def __init__(self, availability: float = 1.0, inertia: float = 0.9):
         self.availability = _clamp(availability)
@@ -569,7 +380,6 @@ class RewardAvailability:
         self.liking = _clamp(availability)
 
     def observe(self, reward: float) -> float:
-        """Availability drifts slowly toward recently experienced reward."""
         target = _clamp(0.5 + 0.5 * float(reward))
         self.availability = _clamp(self.inertia * self.availability + (1.0 - self.inertia) * target)
         self.wanting = _clamp(0.7 * self.wanting + 0.3 * self.availability)
@@ -591,19 +401,6 @@ class RewardAvailability:
 
 
 class DepressiveEpisode:
-    """The *course* of depression on top of its dynamics: onset, remission, relapse.
-
-    The circuits above supply the dynamics (a deep mood attractor, anhedonia,
-    allostatic load, sickness behaviour).  This turns their read-out into the
-    thing a clinician would actually name - the character can be *in* an
-    episode, *recovering* from one, or *relapse* - instead of "mood is a bit
-    low today".  Severity is a weighted index of the observable state, amplified
-    by the persona's **vulnerability** (high threat baseline / low reward
-    baseline): the diathesis x stress interaction.
-
-    Thresholds are deliberately coarse, and every transition needs to be
-    sustained, so a single bad day never counts as an episode.
-    """
 
     EUTHYMIC = "euthymic"
     SUBTHRESHOLD = "subthreshold"
@@ -615,10 +412,6 @@ class DepressiveEpisode:
         self.onset_threshold = float(onset)
         self.remission_threshold = float(remission)
         self.sustain = max(1, int(sustain))
-        # A transition needs ``sustain`` consecutive assessments *spanning* at
-        # least this much clock time: assessments fire per message as well as
-        # per clock tick, so a burst of messages in one conversation must not
-        # count as "sustained".
         self.min_sustained_hours = max(0.0, float(min_sustained_hours))
         self.state = self.EUTHYMIC
         self.severity = 0.0
@@ -634,7 +427,6 @@ class DepressiveEpisode:
 
     def assess(self, *, mood: float, anhedonia: float, allostatic_load: float, rumination: float,
                fatigue: float, sleep_debt: float, vagal_tone: float, vulnerability: float = 0.5) -> float:
-        """Score the current observable state into a [0, 1] severity index."""
         low_mood = _clamp(-float(mood))
         anhed = _clamp(1.0 - float(anhedonia))
         load = _clamp(allostatic_load)
@@ -644,12 +436,10 @@ class DepressiveEpisode:
         low_vagal = _clamp(1.0 - float(vagal_tone))
         raw = (0.30 * low_mood + 0.18 * anhed + 0.16 * load + 0.12 * rum
                + 0.10 * fat + 0.06 * sleep + 0.08 * low_vagal)
-        # vulnerability amplifies (high-neuroticism persona deepens faster)
         self.severity = round(_clamp(raw * (0.7 + 0.6 * _clamp(vulnerability))), 4)
         return self.severity
 
     def update(self, dt_seconds: float = 0.0) -> str:
-        """Advance the course one assessment; returns the (possibly new) state."""
         self.clock_seconds += max(0.0, float(dt_seconds))
         span_ok = (self.min_sustained_hours <= 0.0 or
                    (self.clock_seconds - (self._low_since if self._low_since is not None
@@ -729,14 +519,6 @@ class DepressiveEpisode:
 
 
 class ThreatBias:
-    """Anxiety: over-generalised threat reading, amplified by load.
-
-    Pathological anxiety is not just more fear - it is a shift in the
-    interpretation of *ambiguous* cues toward threat, with over-generalisation to
-    cues that resemble the threat.  Allostatic load and inflammation amplify it;
-    vagal tone damps it.  That gives a single knob whose position reproduces the
-    anxious phenotype without changing the world.
-    """
 
     def __init__(self, bias: float = 0.2, generalisation: float = 0.2):
         self.bias = _clamp(bias)
@@ -744,7 +526,6 @@ class ThreatBias:
 
     def interpret(self, ambiguity: float, load: float = 0.0, inflammation: float = 0.0,
                   vagal_tone: float = 0.6) -> float:
-        """Return the threat value read into a cue of given ambiguity, in [0, 1]."""
         raw = self.bias + self.generalisation * _clamp(ambiguity)
         raw += 0.3 * _clamp(load) + 0.3 * _clamp(inflammation)
         raw -= 0.4 * _clamp(vagal_tone)
@@ -752,7 +533,6 @@ class ThreatBias:
 
     @property
     def ambiguity_shift(self) -> float:
-        """How far a fully ambiguous cue is pushed toward threat."""
         return self.interpret(1.0) - self.interpret(0.0)
 
     def to_dict(self) -> dict:
@@ -765,13 +545,6 @@ class ThreatBias:
 
 
 class AttachmentTemplate:
-    """Anxious/avoidant working models and *perceived* social isolation.
-
-    Attachment style is an internal working model with two axes - anxiety about
-    abandonment and avoidance of closeness.  Loneliness is the *perceived* gap
-    between desired and actual connection, which is why it tracks inflammation
-    and mortality independently of objective network size.
-    """
 
     def __init__(self, anxiety: float = 0.3, avoidance: float = 0.3,
                  desired: float = 0.7):
@@ -781,9 +554,7 @@ class AttachmentTemplate:
         self.perceived = 0.5
 
     def observe(self, quality: float) -> None:
-        """Update the working model from an interaction's quality (0..1)."""
         self.perceived = _clamp(0.8 * self.perceived + 0.2 * _clamp(quality))
-        # a poor interaction with an anxious model raises anxiety
         if quality < 0.4:
             self.anxiety = _clamp(self.anxiety + 0.05 * (1.0 - quality))
         else:
@@ -795,7 +566,6 @@ class AttachmentTemplate:
 
     @property
     def loneliness(self) -> float:
-        """Perceived isolation = gap between desired and perceived connection."""
         return _clamp(self.desired - self.perceived)
 
     def to_dict(self) -> dict:
@@ -811,33 +581,21 @@ class AttachmentTemplate:
 
 
 class PrecisionController:
-    """Active inference: precision-weighted arbitration of prior vs evidence.
-
-    Under active inference, belief updating is gated by *precision* - the
-    inverse variance of each source.  Low sensory precision (or inflated prior
-    precision) produces the rigid, delusion-like updating seen in
-    psychopathology; balanced precision produces flexible updating.  This is the
-    "Predict-to-Control" claim: control is the minimisation of precision-weighted
-    prediction error.
-    """
 
     def __init__(self, prior_precision: float = 0.5, sensory_precision: float = 0.5):
         self.prior_precision = _clamp(prior_precision)
         self.sensory_precision = _clamp(sensory_precision)
 
     def blend(self, prior: float, evidence: float) -> float:
-        """Precision-weighted posterior between prior and sensory evidence."""
         total = self.prior_precision + self.sensory_precision + EPS
         return (self.prior_precision * prior + self.sensory_precision * evidence) / total
 
     def free_energy(self, prior: float, evidence: float) -> float:
-        """Precision-weighted prediction error (a proxy for free energy)."""
         error = prior - evidence
         return 0.5 * (self.sensory_precision * error * error)
 
     @property
     def rigidity(self) -> float:
-        """1 = ignores evidence entirely, 0 = ignores the prior."""
         total = self.prior_precision + self.sensory_precision + EPS
         return self.prior_precision / total
 
@@ -850,18 +608,7 @@ class PrecisionController:
                    sensory_precision=float(data.get("sensory_precision", 0.5)))
 
 
-# ==========================================================================
-# LLM SOCIAL SIMULATION
-# ==========================================================================
 class PADState:
-    """Continuous Pleasure-Arousal-Dominance with dual-speed dynamics.
-
-    Sentipolis argues that treating emotion as a transient cue causes "emotional
-    amnesia"; the fix is a continuous PAD representation with **two time
-    constants** (a fast reaction and a slow mood) and an explicit
-    **emotion-memory coupling** so affective state biases what is recalled.  This
-    class implements exactly those three claims.
-    """
 
     def __init__(self, fast_rate: float = 0.5, slow_rate: float = 0.05,
                  w_fast: float = 0.6, w_slow: float = 0.4):
@@ -869,11 +616,10 @@ class PADState:
         self.slow_rate = slow_rate
         self.w_fast = w_fast
         self.w_slow = w_slow
-        self.fast = [0.0, 0.5, 0.5]   # pleasure, arousal, dominance
+        self.fast = [0.0, 0.5, 0.5]
         self.slow = [0.0, 0.5, 0.5]
 
     def observe(self, delta: dict) -> list[float]:
-        """Update both speeds; return the blended PAD vector."""
         target = [
             _clamp(self.fast[0] + delta.get("pleasure", delta.get("valence", 0.0)), -1.0, 1.0),
             _clamp(self.fast[1] + delta.get("arousal", 0.0)),
@@ -885,12 +631,6 @@ class PADState:
         return self.blend
 
     def decay(self, seconds: float) -> None:
-        """Homeostatic leak toward the neutral baseline (0, 0.5, 0.5).
-
-        Without it the PAD is a leak-free integrator: any run of same-sign
-        deltas saturates it and nothing pulls it back.  The fast component
-        relaxes over ~0.5h, the slow (non-amnesic) mood over ~24h.
-        """
         hours = max(0.0, float(seconds)) / 3600.0
         if hours <= 0.0:
             return
@@ -918,11 +658,9 @@ class PADState:
         return self.blend[2]
 
     def retrieval_bias(self) -> float:
-        """Emotion-memory coupling: positive affect favours positive recall."""
         return _clamp(0.5 + 0.5 * self.pleasure)
 
     def persistence(self) -> float:
-        """How much of the state is the slow (non-amnesic) component."""
         return self.w_slow
 
     def to_dict(self) -> dict:
@@ -939,15 +677,6 @@ class PADState:
 
 
 class DesireSystem:
-    """An explicit *desire generation* stage between state and objective.
-
-    The desire-driven framework inserts desire generation between state
-    evolution and objective optimisation: the agent first forms drives
-    (affiliation, achievement, rest, safety, curiosity) from its state and
-    emotion, then optimises objectives against those drives.  Making the desire
-    layer explicit is what lets an agent behave congruently with its emotional
-    state instead of jumping straight from state to action.
-    """
 
     DESIRES = ("affiliation", "achievement", "rest", "safety", "curiosity")
 
@@ -956,7 +685,6 @@ class DesireSystem:
         self.satisfaction = 0.5
 
     def generate(self, state: dict) -> dict:
-        """Derive drive intensities from a state/emotion snapshot."""
         valence = float(state.get("valence", 0.0))
         arousal = float(state.get("arousal", 0.5))
         connection = float(state.get("connection", 0.5))
@@ -970,12 +698,10 @@ class DesireSystem:
         return dict(self.drives)
 
     def objective_weights(self) -> dict:
-        """Normalise drives into objective weights (sum to 1)."""
         total = sum(self.drives.values()) + EPS
         return {name: value / total for name, value in self.drives.items()}
 
     def satisfy(self, name: str, amount: float = 0.3) -> float:
-        """Reduce a drive; raise overall satisfaction."""
         if name in self.drives:
             self.drives[name] = _clamp(self.drives[name] - amount)
             self.satisfaction = _clamp(0.7 * self.satisfaction + 0.3 * (1.0 - self.drives[name]))
@@ -998,14 +724,6 @@ class DesireSystem:
 
 
 class BeliefBehaviorMonitor:
-    """The gap between a stated belief and the executed behaviour.
-
-    Role-playing agents frequently fail to "practice what they preach": their
-    elicited beliefs do not predict their simulated behaviour.  Rather than
-    trusting the belief, this monitor records stated beliefs and observed
-    behaviours and reports a **consistency** score, so the system can detect its
-    own drift instead of assuming coherence.
-    """
 
     def __init__(self, window: int = 100):
         self.beliefs: deque[tuple[str, float]] = deque(maxlen=window)
@@ -1018,7 +736,6 @@ class BeliefBehaviorMonitor:
         self.behaviours.append((str(key), float(value)))
 
     def consistency(self) -> float:
-        """Fraction of matched belief/behaviour pairs that agree in sign."""
         behaviour_map = dict(self.behaviours)
         pairs = [(v, behaviour_map[k]) for k, v in self.beliefs if k in behaviour_map]
         if not pairs:
@@ -1027,7 +744,6 @@ class BeliefBehaviorMonitor:
         return agree / len(pairs)
 
     def drift(self) -> float:
-        """1 - consistency, i.e. how much stated belief fails to predict action."""
         return 1.0 - self.consistency()
 
     def to_dict(self) -> dict:
@@ -1042,17 +758,8 @@ class BeliefBehaviorMonitor:
         return obj
 
 
-# ==========================================================================
-# CONFIG + FAÇADE
-# ==========================================================================
 @dataclass
 class AffectConfig:
-    """Ablation switches for every circuit above (EASE-style modularity).
-
-    Each flag turns one circuit on or off so its contribution can be isolated -
-    the property the EASE / SimBench papers argue simulations need to be
-    scientifically useful.
-    """
 
     enabled: bool = True
     use_interoception: bool = True
@@ -1069,20 +776,12 @@ class AffectConfig:
     use_pad: bool = True
     use_desire: bool = True
     use_belief_monitor: bool = True
-    # clinical course (onset/remission/relapse) on top of the mood dynamics
     use_episode: bool = True
-    # somatization (psychological -> bodily gateway); opt-in, default off so
-    # the pre-existing behaviour is bit-for-bit preserved until enabled
     use_somatic: bool = False
-    # phenotype knobs
     erq_profile: str = "typical"
     baseline_vagal: float = 0.6
     threat_baseline: float = 0.2
     reward_baseline: float = 1.0
-    # interoceptive awareness gain: >1 makes the persona "aware but
-    # inaccurate" (awareness > accuracy), which is what gives
-    # InteroceptiveChannel.bias a positive value for the somatization
-    # amplifier.  1.0 (default) keeps bias structurally at zero.
     awareness_gain: float = 1.0
 
     def to_dict(self) -> dict:
@@ -1097,7 +796,6 @@ class AffectConfig:
         return config
 
     def ablate(self, **flags) -> "AffectConfig":
-        """Return a copy with the named circuits switched off (EASE helper)."""
         clone = AffectConfig.from_dict(self.to_dict())
         for key, value in flags.items():
             if hasattr(clone, key):
@@ -1106,14 +804,6 @@ class AffectConfig:
 
 
 class AffectSystem:
-    """Composes every affective/physiological circuit behind one façade.
-
-    ``observe_message`` and ``observe_outcome`` push events in; ``tick``
-    advances the slow systems; ``context`` returns the affective read-out that
-    the engine folds into the prompt and into the control arbiter.  With
-    ``config.enabled = False`` every method is a no-op, so the pre-existing
-    behaviour is bit-for-bit preserved.
-    """
 
     def __init__(self, config: AffectConfig | None = None):
         self.config = config or AffectConfig()
@@ -1135,7 +825,6 @@ class AffectSystem:
         self.episode = DepressiveEpisode()
 
     def _vulnerability(self) -> float:
-        """Diathesis: a high threat / low reward baseline deepens faster."""
         threat = _clamp(float(getattr(self.config, "threat_baseline", 0.2)))
         reward = _clamp(float(getattr(self.config, "reward_baseline", 1.0)) / 2.0)
         return _clamp(0.5 * threat + 0.5 * (1.0 - reward))
@@ -1151,29 +840,14 @@ class AffectSystem:
         self.episode.update(dt_seconds)
 
     def reconfigure(self, config: AffectConfig) -> None:
-        """Apply a new config **in place**, preserving accumulated state.
-
-        The ``enabled`` / ``use_*`` gates are read on every call, so swapping
-        ``self.config`` takes effect immediately.  A few knobs were baked into a
-        circuit at construction, so they are re-derived here too.  The
-        *baselines* only seed a circuit's initial value - re-imposing them would
-        erase live physiological state, so they apply from the next start.
-        """
         self.config = config
         self.regulator.profile_name = config.erq_profile
         self.regulator.profile = dict(ERQ_PROFILES.get(config.erq_profile,
                                                        ERQ_PROFILES["typical"]))
 
-    # ---- event ingestion -------------------------------------------------
     def observe_message(self, message: str, intent: str = "", emotion_delta: dict | None = None,
                         body: float = 0.5, ambiguity: float = 0.3,
                         strategy: str = "reappraisal") -> dict:
-        """Run the fast affective circuits for one incoming message.
-
-        ``strategy`` selects the regulation style (``"reappraisal"`` or
-        ``"suppression"``); the caller - not the sign of the delta - decides,
-        because strategy choice is a trait, not a reaction.
-        """
         if not self.config.enabled:
             return {}
         delta = dict(emotion_delta or {})
@@ -1195,9 +869,6 @@ class AffectSystem:
         else:
             threat = 0.0
         if self.config.use_somatic:
-            # The somatic gateway runs *after* the raw threat read so the
-            # vicious circle can close: health anxiety biases threat upward,
-            # and the symptom burden drags mood (both only when enabled).
             somatic = self.somatic.observe(
                 signals={"cardiorespiratory": body,
                          "fatigue": max(self.immune.fatigue if self.config.use_neuroimmune else 0.0,
@@ -1219,7 +890,6 @@ class AffectSystem:
                 "connection": float(delta.get("connection", 0.0)), "threat": threat,
                 "energy": 100.0 * self.arousal.orexin})
         if self.config.use_attachment:
-            # The interaction's felt quality updates the relationship working model.
             quality = _clamp(0.5 + float(delta.get("connection", 0.0)) + 0.5 * float(delta.get("valence", 0.0)))
             self.attachment.observe(quality)
         self._assess_episode()
@@ -1240,7 +910,6 @@ class AffectSystem:
 
     def tick(self, seconds: float, hour: float = 12.0, sleeping: bool = False,
              fatigue: float = 0.0) -> None:
-        """Advance the slow systems: arousal, vagal, HPA, mood, immune."""
         if not self.config.enabled:
             return
         if self.config.use_arousal_gain:
@@ -1252,9 +921,6 @@ class AffectSystem:
         if self.config.use_neuroimmune:
             self.immune.tick(seconds, self.vagal.tone if self.config.use_vagal else 0.5)
         if self.config.use_mood_attractor:
-            # a low tone + high load exert a slow downward pull even with no
-            # event; scaled by real elapsed time (per-hour rates), never per
-            # tick, so the loop interval cannot change mood dynamics.
             hours = max(0.0, seconds) / 3600.0
             drag = -(0.05 * self.hpa.allostatic_load + 0.025 * (1.0 - self.vagal.tone)) * hours
             self.mood.tick(drag, seconds=seconds)
@@ -1262,21 +928,12 @@ class AffectSystem:
             self.pad.decay(seconds)
         if self.config.use_somatic:
             self.somatic.tick(seconds)
-        # Ascending interoception: the body pushes on the mind.
-        #
-        # `somatic` models the *descending* limb (distress presenting as bodily
-        # symptoms), but nothing carried the other direction - hunger,
-        # exhaustion and ill health only ever changed the wording of a reply.
-        # A tired or hurting body drags mood down on its own, scaled by real
-        # elapsed hours so the loop cadence cannot change the dynamics.
         if fatigue > 0.0 and self.config.use_mood_attractor:
             hours = max(0.0, seconds) / 3600.0
             self.mood.tick(-(0.06 * _clamp(fatigue)) * hours, seconds=seconds)
         self._assess_episode(seconds)
 
-    # ---- read-out --------------------------------------------------------
     def context(self) -> dict:
-        """Affective read-out for the prompt and the control arbiter."""
         if not self.config.enabled:
             return {"enabled": False, "extra_need": 0.0, "reliability_scale": 1.0,
                     "capacity_scale": 1.0, "prompt": ""}
@@ -1285,8 +942,6 @@ class AffectSystem:
                                         inflammation=self.immune.inflammation,
                                         vagal_tone=self.vagal.tone)
                   if self.config.use_threat_bias else 0.0)
-        # More threat + a deeper negative mood raise the demand for control;
-        # a blunted arousal gain and low vagal tone lower reliability/capacity.
         extra_need = _clamp(0.5 * threat + 0.4 * max(0.0, -self.mood.mood) + 0.3 * self.immune.withdrawal)
         reliability_scale = _clamp(0.4 + 0.6 * arousal_gain)
         capacity_scale = _clamp(0.3 + 0.7 * arousal_gain) * _clamp(0.5 + 0.5 * self.vagal.tone)
@@ -1333,7 +988,6 @@ class AffectSystem:
                 notes.append("你刚从一段低落里缓过来，还在慢慢恢复，别一下子用力过猛。")
         return " ".join(notes)
 
-    # ---- persistence -----------------------------------------------------
     def to_dict(self) -> dict:
         return {
             "config": self.config.to_dict(),

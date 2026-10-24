@@ -1,7 +1,3 @@
-"""Tests for the circuits derived from the 15 follow-up papers.
-
-Each test asserts the *computational claim* of one paper, not its biology.
-"""
 import math
 import random
 import sys
@@ -42,13 +38,11 @@ def train(task, model, rounds=200, steps=4):
 
 
 class Paper1Thalamus(unittest.TestCase):
-    """MD arbitrates model-free vs model-based; CogLinks gives the update rule."""
 
     def test_hebbian_gate_matches_the_paper_formula(self):
         for x in (0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0):
             expected = max(0.0, (1 - math.exp(4 - 4 * x)) / (1 + math.exp(4 - 4 * x)))
             self.assertAlmostEqual(hebbian_gate(x), expected, places=10)
-        # It is a threshold nonlinearity: silent until x passes 1, then rising.
         self.assertEqual(hebbian_gate(0.0), 0.0)
         self.assertEqual(hebbian_gate(0.5), 0.0)
         self.assertEqual(hebbian_gate(1.0), 0.0)
@@ -57,13 +51,11 @@ class Paper1Thalamus(unittest.TestCase):
 
     def test_model_based_overwrites_faster_than_model_free(self):
         arbiter = CogLinksArbiter()
-        # lateral MD (dorsal PFC) drives the model-based mode; medial the model-free
         lateral_mb, medial_mf = arbiter.md_signals(need=1.0)
         self.assertGreater(lateral_mb, medial_mf)
         fast = arbiter.update_rate("ctx", lateral_mb)
         slow = arbiter.update_rate("ctx", medial_mf)
         self.assertGreater(fast, slow)
-        # Same starting point, same context: MB toggles further than MF.
         mb = CogLinksArbiter(); mb.update_strategy("c", [0.0, 1.0], lateral_mb)
         mf = CogLinksArbiter(); mf.update_strategy("c", [0.0, 1.0], medial_mf)
         self.assertGreater(mb.strategy["c"][1], mf.strategy["c"][1])
@@ -75,7 +67,7 @@ class Paper1Thalamus(unittest.TestCase):
             arbiter.update_strategy("c", [1.0, 0.0], 1.0)
         later = arbiter.update_rate("c", 1.0)
         self.assertLess(later, first)
-        self.assertGreaterEqual(later, arbiter.floor)  # the paper's max{0.1, ...}
+        self.assertGreaterEqual(later, arbiter.floor)
 
     def test_context_inference_failure_lowers_the_gate(self):
         good = CogLinksArbiter()
@@ -88,7 +80,6 @@ class Paper1Thalamus(unittest.TestCase):
 
 
 class Paper5Cerebellum(unittest.TestCase):
-    """Cerebellar output is needed for PE coding, not for learning itself."""
 
     def test_forward_model_converges_and_reliability_rises(self):
         predictor = CerebellarPredictor()
@@ -105,16 +96,13 @@ class Paper5Cerebellum(unittest.TestCase):
         ablated.config.use_cerebellum = False
         train(task, intact, rounds=30)
         train(task, ablated, rounds=30)
-        # Behaviour (and TD learning) survives the lesion ...
         self.assertTrue(any(value != 0.0 for value in ablated.Q_mf[0]))
         self.assertGreater(max(ablated.habit_distribution(0)), 0.5)
-        # ... but the cerebellar PE coder never runs.
         self.assertTrue(intact.cerebellum.predictions)
         self.assertFalse(ablated.cerebellum.predictions)
 
 
 class Paper3OFC(unittest.TestCase):
-    """OFC is a cognitive map: similar states are close, unseen states generalise."""
 
     def test_similarity_and_generalisation(self):
         value_map = OFCValueMap(3, n_features=3)
@@ -124,7 +112,6 @@ class Paper3OFC(unittest.TestCase):
         self.assertGreater(value_map.similarity(0, 1), value_map.similarity(0, 2))
         self.assertEqual(value_map.similarity(0, 0), 1.0)
         inferred = value_map.generalise(2, {0: [1.0, 0.0], 1: [1.0, 0.0]})
-        # A state with no neighbours close enough returns nothing rather than noise.
         self.assertEqual(inferred, [])
         inferred_near = value_map.generalise(2, {0: [1.0, 0.0]})
         self.assertEqual(inferred_near, [])
@@ -140,16 +127,13 @@ class Paper3OFC(unittest.TestCase):
             model.learn(source, 0, source)
             near_values = model.engram_values(near)
             far_values = model.engram_values(far)
-            self.assertGreater(sum(near_values), 0.0)   # generalised from a similar context
-            self.assertEqual(sum(far_values), 0.0)      # a dissimilar context does not inherit
+            self.assertGreater(sum(near_values), 0.0)
+            self.assertEqual(sum(far_values), 0.0)
 
 
 class Paper4Prospection(unittest.TestCase):
-    """PFC constructs abstract future value; framing and retrospection matter."""
 
     def test_horizon_and_framing(self):
-        # A four-state chain with the reward only at the far end: looking further
-        # ahead is the only way to see it.
         n_states = 4
 
         def transition(state, action):
@@ -160,19 +144,12 @@ class Paper4Prospection(unittest.TestCase):
 
         short = Prospection(horizon=1).values(0, transition, reward, 1)
         long = Prospection(horizon=3).values(0, transition, reward, 1)
-        self.assertEqual(short[0], 0.0)          # one step cannot see the reward
-        self.assertGreater(long[0], 0.0)         # three steps can
+        self.assertEqual(short[0], 0.0)
+        self.assertGreater(long[0], 0.0)
         framed = Prospection(horizon=3).values(0, transition, reward, 1, framing=2.0)
         self.assertAlmostEqual(framed[0], 2.0 * long[0], places=6)
 
     def test_retrospection_is_telemetry_only(self):
-        """Retrospection is tracked, but must not change the value vector.
-
-        A uniform scalar added to every action dies in the z-score fusion, so
-        adding it to ``values()`` could never influence a decision - only
-        mislead tuning.  The values must therefore be invariant while the
-        scalar itself still accumulates for telemetry.
-        """
         task = ToyTask()
         model = task.model()
         model.N[(0, 0)] = {1: 5.0}
@@ -186,7 +163,6 @@ class Paper4Prospection(unittest.TestCase):
 
 
 class Paper6to8Social(unittest.TestCase):
-    """Basis functions over interaction types, split ToM, pragmatics."""
 
     def setUp(self):
         self.coder = SocialCoder()
@@ -215,7 +191,6 @@ class Paper6to8Social(unittest.TestCase):
         indirect = self.coder.encode("能不能帮我倒杯水，方便的话")
         self.assertGreater(indirect.indirectness, direct.indirectness)
         self.assertEqual(indirect.function, "request")
-        # An indirect request needs more control than a plain statement.
         self.assertGreater(SocialCoder.control_demand(indirect),
                            SocialCoder.control_demand(self.coder.encode("今天天气不错")))
 
@@ -229,7 +204,6 @@ class Paper6to8Social(unittest.TestCase):
 
 
 class Paper9and10Consciousness(unittest.TestCase):
-    """All-or-none, report-invariant ignition over five integrated circuits."""
 
     def test_ignition_is_all_or_none(self):
         workspace = GlobalWorkspace(threshold=0.5)
@@ -246,7 +220,6 @@ class Paper9and10Consciousness(unittest.TestCase):
     def test_tonic_component_is_sustained(self):
         workspace = GlobalWorkspace(threshold=0.5)
         first = workspace.ignite({name: 0.9 for name in CIRCUITS})
-        # A single high sample does not immediately reach the sustained level.
         self.assertLess(first.tonic, 0.9)
         for _ in range(20):
             sustained = workspace.ignite({name: 0.9 for name in CIRCUITS})
@@ -267,7 +240,6 @@ class Paper9and10Consciousness(unittest.TestCase):
 
 
 class Paper13SelfModel(unittest.TestCase):
-    """Self-related thought tracks the episodic store, past and future."""
 
     def test_self_thought_degrades_without_episodic_memory(self):
         model = SelfModel()
@@ -286,7 +258,6 @@ class Paper13SelfModel(unittest.TestCase):
 
 
 class Paper11Groups(unittest.TestCase):
-    """Identification lifts individual and collective performance, bridged."""
 
     def test_identification_raises_all_three_quantities(self):
         coupling = GroupCoupling()
@@ -300,7 +271,6 @@ class Paper11Groups(unittest.TestCase):
 
 
 class Paper14Flexibility(unittest.TestCase):
-    """Set-shifting carries a switch cost; profiles are transdiagnostic."""
 
     def test_switch_cost_only_when_the_set_changes(self):
         flex = Flexibility(flexibility=0.5)
@@ -322,7 +292,6 @@ class Paper14Flexibility(unittest.TestCase):
 
 
 class Paper2and15Distributed(unittest.TestCase):
-    """Computations are local and uneven; the choice is distributed and later."""
 
     def test_local_computations_vs_distributed_choice(self):
         distributions = {
@@ -333,11 +302,8 @@ class Paper2and15Distributed(unittest.TestCase):
             "E": [0.3, 0.7],
         }
         readout = DistributedEvidence.read(distributions)
-        # Local computations differ per module (uneven) ...
         self.assertNotEqual(readout.computations["H"], readout.computations["WM"])
-        # A peaked module is "certain" locally, a flat one is not.
         self.assertLess(readout.computations["H"], readout.computations["WM"])
-        # ... while the choice is an aggregate, and a split choice coalesces later.
         self.assertAlmostEqual(readout.choice, 0.6, places=6)
         self.assertAlmostEqual(readout.latency, 0.4, places=6)
         self.assertGreater(readout.breadth, 0.0)
@@ -351,7 +317,6 @@ class Paper2and15Distributed(unittest.TestCase):
 
 
 class Integration(unittest.TestCase):
-    """The circuits have to change model behaviour, not just exist."""
 
     def test_limbic_bias_strengthens_replay(self):
         task = ToyTask()
@@ -405,7 +370,6 @@ class Integration(unittest.TestCase):
             self.assertLess(index, N_STATES)
 
     def test_ofc_embedding_survives_a_reload(self):
-        """A reload must not truncate the 16-factor LIFE embedding (paper 3)."""
         with tempfile.TemporaryDirectory() as directory:
             engine = CognitionEngine(directory)
             width = engine.model.ofc.n_features

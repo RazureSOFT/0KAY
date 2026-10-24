@@ -1,4 +1,3 @@
-"""Outbound transports: validate the address that is actually connected to."""
 from __future__ import annotations
 
 import asyncio
@@ -21,7 +20,6 @@ def resolved_address(host: str, port: int, allow_env: str = "") -> str:
 
 
 class PublicHTTPTransport(httpx.AsyncBaseTransport):
-    """No ambient proxies; keep HTTP Host and TLS SNI while dialing a pinned IP."""
 
     def __init__(self, allow_env: str = ""):
         self.allow_env = allow_env

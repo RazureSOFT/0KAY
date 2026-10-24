@@ -1,14 +1,3 @@
-"""Tests for the parameterised persona-dynamics circuit (θ / D / x / f / g / T).
-
-Mirrors the research results the port must preserve:
-
-* normal is a stable attractor (disturbances relax back to baseline);
-* tsundere is the "high affection x high suppression" filter;
-* yandere is the possessive/anxious/low-trust/low-control positive feedback;
-* tsundere -> yandere is a threshold phase transition (and effectively
-  irreversible thanks to sensitisation hysteresis + the mode-behaviour lock);
-* safety: off by default, byte-for-byte inert when off, guard() at the top.
-"""
 from __future__ import annotations
 
 import tempfile
@@ -39,16 +28,13 @@ class PersonaDynamicsModel(unittest.TestCase):
         self.assertIn("O", DES)
 
     def test_normal_is_a_stable_attractor(self):
-        """Under threats that lock in the yandere archetype, normal relaxes."""
         events = {}
         for centre in (100, 200, 300):
             for day in range(centre - 2, centre + 3):
                 events[day] = [("threat", 1.0)]
         hist = _sim("正常/安全型", days=400, events=events)
         self.assertEqual(set(hist["mode"]), {"normal"})
-        # peak possessiveness never crosses the yandere threshold
         self.assertLess(max(hist["O"]), THRESH["O_c"])
-        # and self-control relaxes back up
         self.assertGreater(hist["K"][-1], 0.7)
 
     def test_yandere_is_a_positive_feedback_lock(self):
@@ -64,7 +50,6 @@ class PersonaDynamicsModel(unittest.TestCase):
         self.assertLess(hist["Tr"][-1], 0.2)
 
     def test_same_input_different_fate(self):
-        """The paper's headline: identical threats, opposite outcomes."""
         events = {}
         for centre in (100, 200, 300):
             for day in range(centre - 2, centre + 3):
@@ -75,22 +60,18 @@ class PersonaDynamicsModel(unittest.TestCase):
         self.assertIn("yandere", yandere["mode"])
 
     def test_tsundere_is_a_suppression_filter(self):
-        """Affection accumulates while the mask (S) is eroded by courtship."""
         events = {day: [("quality_time", 1.0)] for day in range(0, 160, 6)}
         hist = _sim("傲娇型", days=400, events=events)
         self.assertIn("tsundere", hist["mode"])
-        # suppression starts high and is eroded by accumulating affection
         self.assertGreater(hist["S"][0], 0.5)
         self.assertLess(hist["S"][-1], 0.2)
         self.assertGreater(hist["A"][-1], 0.7)
 
     def test_expression_delay_exists(self):
-        """The tsundere archetype has the '嘴快于心' expression delay."""
         self.assertEqual(TYPES["傲娇型"].expr_delay, 8)
         self.assertEqual(TYPES["正常/安全型"].expr_delay, 0)
 
     def test_expression_is_gain_scaled(self):
-        """Kuudere's expression gain is far below 1 (a flat affect)."""
         self.assertLess(TYPES["三无/高冷型"].expr_gain, 0.5)
         flat = PersonaDynamics("三无/高冷型")
         flat.step()
@@ -99,30 +80,26 @@ class PersonaDynamicsModel(unittest.TestCase):
         self.assertLess(flat.E, loud.E)
 
     def test_possessiveness_drives_the_mode_not_libido(self):
-        """Yandere is defined by O/X/K/Tr, not by the libido L."""
         d = PersonaDynamics("病娇型")
-        # crank libido to the ceiling without touching O/X/K/Tr
         d.D["L"] = 1.0
         for _ in range(3):
             d.step()
-        # the mode is driven by O/X/K/Tr, so it should not be forced to yandere
-        # merely by L; yandere requires the four conditions.
         self.assertIn(d.mode, ("normal", "tsundere", "yandere"))
 
     def test_mode_needs_all_four_conditions(self):
         d = PersonaDynamics("正常/安全型")
         d.D["O"] = 1.0
         d.X = 1.0
-        d.K = 0.0          # three conditions met...
-        d.Tr = 0.9         # ...but trust is high
+        d.K = 0.0
+        d.Tr = 0.9
         self.assertEqual(d.raw_mode(), "normal")
-        d.Tr = 0.1         # now all four
+        d.Tr = 0.1
         self.assertEqual(d.raw_mode(), "yandere")
 
     def test_tsundere_mode_requires_low_expression(self):
         d = PersonaDynamics("傲娇型")
         d.A, d.S, d.E = 0.9, 0.9, 0.9
-        self.assertEqual(d.raw_mode(), "normal")   # E too high
+        self.assertEqual(d.raw_mode(), "normal")
         d.E = 0.1
         self.assertEqual(d.raw_mode(), "tsundere")
 
@@ -141,8 +118,6 @@ class PersonaDynamicsModel(unittest.TestCase):
         d = PersonaDynamics("病娇型")
         d.mode = "yandere"
         d.D["O"], d.X, d.K, d.Tr = 0.55, 0.45, 0.45, 0.45
-        # all four are *below* the normal thresholds...
-        # O_c-0.12=0.50, X_c-0.20=0.40, K_c+0.08=0.48, Tr_c+0.10=0.50
         self.assertEqual(d.raw_mode(), "yandere")
 
     def test_safety_layer_boundary(self):
@@ -217,7 +192,6 @@ class PersonaDynamicsSafety(unittest.TestCase):
         self.assertTrue(by_key["intimate"].needs_consent)
 
     def test_no_action_carries_real_harm(self):
-        """The action space only holds abstract psychological-control labels."""
         for a in ACTIONS:
             self.assertNotIn("伤害", a.zh)
             self.assertNotIn("暴力", a.zh)

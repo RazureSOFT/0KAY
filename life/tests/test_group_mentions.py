@@ -1,5 +1,3 @@
-"""Group "@displayname" resolves to the stable user_id the rest of the system
-keys on, so a typed name becomes relationship data instead of dead text."""
 import sys
 import tempfile
 import unittest

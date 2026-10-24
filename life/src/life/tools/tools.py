@@ -1,5 +1,3 @@
-"""Tools for L.I.F.E - Improved implementations."""
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -15,19 +13,11 @@ from ..network import PublicHTTPTransport
 
 
 def _env_flag(name: str) -> bool:
-    """True when the named environment variable is an explicit opt-in."""
     import os
     return str(os.getenv(name, "")).strip().lower() in ("1", "true", "yes", "on")
 
 
 def assert_public_host(host: str, port: int = 0, allow_env: str = "") -> str:
-    """SSRF guard for a bare host target: reject hosts resolving to private IPs.
-
-    ``allow_env`` names an environment variable that opts the caller out of the
-    check (e.g. for a self-hosted service on the LAN). The opt-out only skips
-    the *private-address* rule; an unresolvable host is still an error, so the
-    exemption cannot be used to disable validation wholesale.
-    """
     host = str(host or "").strip()
     if not host:
         raise ValueError("host is required")
@@ -35,8 +25,6 @@ def assert_public_host(host: str, port: int = 0, allow_env: str = "") -> str:
         infos = socket.getaddrinfo(host, int(port or 0), proto=socket.IPPROTO_TCP)
     except socket.gaierror as error:
         raise ValueError(f"cannot resolve host: {error}") from error
-    # The opt-out skips only the private-address rule; a host that does not
-    # resolve is still rejected, so the exemption cannot disable validation.
     if allow_env and _env_flag(allow_env):
         return host
     for info in infos:
@@ -47,12 +35,6 @@ def assert_public_host(host: str, port: int = 0, allow_env: str = "") -> str:
 
 
 def _assert_public_http_url(url: str, allow_env: str = "") -> str:
-    """SSRF guard: allow only http(s) URLs whose host resolves to a public IP.
-
-    Returns the URL unchanged when it is safe to fetch, otherwise raises
-    ``ValueError``.  Callers that follow redirects must re-validate every hop,
-    because a public URL can 302 into the private network.
-    """
     parts = urlsplit(str(url or "").strip())
     if parts.scheme not in ("http", "https"):
         raise ValueError("only http/https URLs are allowed")
@@ -66,7 +48,6 @@ def _assert_public_http_url(url: str, allow_env: str = "") -> str:
 
 @dataclass
 class ToolResult:
-    """Result from a tool call."""
     success: bool
     data: Any
     error: Optional[str] = None
@@ -74,28 +55,18 @@ class ToolResult:
 
 @dataclass
 class RuntimeToolConfig:
-    """Mutable LIFE tool permissions/settings loaded from Core."""
     computer_use: bool = False
     mail_require_approval: bool = True
     mail_auto_approve_all: bool = False
     mcp_enabled: bool = True
     onebot_enabled: bool = False
     onebot_sender: Any = None
-    #: Multi-instance message-platform runtime (see ``adapters.platforms``).
-    #: Preferred over ``onebot_sender`` when present: it can address a specific
-    #: bot account instead of "whichever connection happens to be first".
     adapter_runtime: Any = None
     minecraft_enabled: bool = False
     minecraft_url: str = "http://127.0.0.1:8765"
 
 
-# Mail (getmail/sendmail) is no longer implemented in L.I.F.E itself. It is
-# provided by the built-in mail server in 0kay-mcp and reached through the MCP
-# tool; see GetMailTool / SendMailTool below.
-
-
 class Tool(ABC):
-    """Base class for tools."""
 
     @property
     @abstractmethod
@@ -123,7 +94,6 @@ class Tool(ABC):
 
 
 async def _call_mail_mcp(core_client, tool: str, args: dict) -> ToolResult:
-    """Delegate a mail tool call to the built-in mail server in 0kay-mcp."""
     if core_client is None:
         return ToolResult(False, None, "Core client is unavailable")
     try:
@@ -145,7 +115,6 @@ async def _call_mail_mcp(core_client, tool: str, args: dict) -> ToolResult:
 
 
 class GetMailTool(Tool):
-    """Fetch inbox mail via the built-in 0kay-mcp mail server."""
 
     def __init__(self, core_client, config: RuntimeToolConfig):
         self.core_client = core_client
@@ -175,7 +144,6 @@ class GetMailTool(Tool):
 
 
 class SendMailTool(Tool):
-    """Send mail via the built-in 0kay-mcp mail server."""
 
     def __init__(self, core_client, config: RuntimeToolConfig):
         self.core_client = core_client
@@ -206,7 +174,6 @@ class SendMailTool(Tool):
 
 
 class SearchTool(Tool):
-    """Tool for web search via env-configured endpoint (SearXNG / DuckDuckGo)."""
 
     @property
     def name(self) -> str:
@@ -229,7 +196,6 @@ class SearchTool(Tool):
 
         from life.http_auth import auth_headers
 
-        # Search is a built-in Core capability now (no standalone SearXNG service).
         base = (os.environ.get("CORE_HTTP_ADDR") or os.environ.get("CORE_HTTP") or "http://127.0.0.1:8080").rstrip("/")
         limit = max(1, int(num_results))
         try:
@@ -252,7 +218,6 @@ class SearchTool(Tool):
 
 
 class UseAgentTool(Tool):
-    """Tool to dispatch tasks to Agent asynchronously via Core."""
 
     def __init__(self, core_client=None):
         self.core_client = core_client
@@ -291,7 +256,6 @@ class UseAgentTool(Tool):
             meta["difficulty_hint"] = difficulty_hint
             meta["require_thinking"] = bool(require_thinking or difficulty_hint >= 0.75)
 
-        # Dispatch via Core.UseAgent (real gRPC call when core_client is set)
         if self.core_client is not None:
             resp = await asyncio.to_thread(self.core_client.use_agent,
                 task_id=task_id,
@@ -318,7 +282,6 @@ class UseAgentTool(Tool):
         return ToolResult(False, None, "Core is unavailable; task was not dispatched")
 
 class WebBrowseTool(Tool):
-    """Tool to fetch and parse web pages."""
 
     @property
     def name(self) -> str:
@@ -345,8 +308,6 @@ class WebBrowseTool(Tool):
         except (TypeError, ValueError):
             limit = 5000
 
-        # Redirects are followed manually so every hop is re-validated against
-        # the SSRF guard (a public URL must not be able to 302 into 127.0.0.1).
         current = url
         try:
             async with httpx.AsyncClient(follow_redirects=False, timeout=30, transport=PublicHTTPTransport()) as client:
@@ -374,7 +335,6 @@ class WebBrowseTool(Tool):
 
 
 class ComputerUseTool(Tool):
-    """Route computer control to the selected Agent host, never the LIFE host."""
 
     def __init__(self, core_client, config: RuntimeToolConfig):
         self.core_client = core_client
@@ -410,7 +370,6 @@ class ComputerUseTool(Tool):
 
 
 class McpTool(Tool):
-    """Delegate external MCP calls to the Agent-host 0kay-mcp gateway."""
 
     def __init__(self, core_client, config: RuntimeToolConfig):
         self.core_client = core_client
@@ -445,7 +404,6 @@ class McpTool(Tool):
 
 
 class PluginTool(Tool):
-    """A tool contributed by a plugin; execution is routed through Core."""
 
     def __init__(self, definition: dict):
         self.definition = definition or {}
@@ -486,7 +444,6 @@ class PluginTool(Tool):
 
 
 class SendOneBotTool(Tool):
-    """Allow THINK to send a deliberate proactive message on any platform."""
     def __init__(self, config: RuntimeToolConfig, companion=None):
         self.config = config
         self.companion = companion
@@ -547,9 +504,6 @@ class SendOneBotTool(Tool):
                         return ToolResult(False, None, f"找不到适配器 {instance}（用 adapter_status 查询）")
                     if not server.connected:
                         return ToolResult(False, None, f"适配器 {instance} 没有已连接的客户端")
-                    # Send through the chosen server directly rather than letting
-                    # `resolve` pick: with several bots, "which account spoke" is
-                    # exactly what the caller is trying to control.
                     action = "send_group_msg" if group_id else "send_private_msg"
                     params = {"message": [{"type": "text", "data": {"text": str(message)}}]}
                     params["group_id" if group_id else "user_id"] = int(group_id or user_id)
@@ -565,13 +519,6 @@ class SendOneBotTool(Tool):
 
 
 class AdapterStatusTool(Tool):
-    """Report which message-platform bots are configured and connected.
-
-    Without this the character cannot reason about its own channels: it would
-    either guess an `instance` id or assume a single bot, and a wrong target
-    fails silently from the user's point of view (the message just never
-    arrives).
-    """
 
     def __init__(self, config: RuntimeToolConfig):
         self.config = config
@@ -600,7 +547,6 @@ class AdapterStatusTool(Tool):
 
 
 class MinecraftTool(Tool):
-    """Connect a Minecraft bot to the user's server and play alongside people."""
 
     def __init__(self, config: RuntimeToolConfig):
         self.config = config
@@ -694,13 +640,6 @@ class AgendaTool(Tool):
 
 
 class GoalAddTool(Tool):
-    """Let the character invent a goal of its own.
-
-    ``add_goal`` used to be reachable only from the dashboard, so every goal was
-    written *for* the character.  Self-authored goals are capped (and marked
-    ``kind="self"``) so it cannot accumulate an unbounded backlog of intentions
-    it never acts on.
-    """
 
     MAX_SELF_GOALS = 3
 
@@ -742,12 +681,6 @@ class GoalAddTool(Tool):
 
 
 class GoalListTool(Tool):
-    """Let the character see its own self-authored goals.
-
-    ``personal_goals`` already reaches the THINK prompt as context, but without
-    this tool the model had no way to inspect or advance them, so they were
-    decorative.  Progress is never moved automatically.
-    """
 
     def __init__(self, companion): self.companion = companion
 
@@ -772,7 +705,6 @@ class GoalListTool(Tool):
 
 
 class GoalLogTool(Tool):
-    """Advance one of LIFE's own goals by recording real, completed evidence."""
 
     def __init__(self, companion): self.companion = companion
 
@@ -918,13 +850,6 @@ class NoteReadTool(Tool):
 
 
 class WorldTool(Tool):
-    """Keep up with the people in the character's own (fictional) world.
-
-    The cast are not scenery: they miss the character, get angry when neglected,
-    and can be reached out to.  This tool lets the character act on those bids
-    for contact; nothing here is surfaced to the user, which is the point - it
-    is a social life of its own.
-    """
 
     def __init__(self, world_action=None):
         self.world_action = world_action
@@ -958,7 +883,6 @@ class WorldTool(Tool):
 
 
 class ToolRegistry:
-    """Registry of available tools."""
 
     def __init__(self):
         self.tools: dict[str, Tool] = {}
@@ -973,13 +897,6 @@ class ToolRegistry:
         return self.tools.get(name)
 
     def needs_approval(self, name: str, kwargs: dict) -> bool:
-        """Whether this call must pass the approval gate.
-
-        Besides the directly-named approval tools, a mail call routed through
-        the generic ``mcp`` tool must hit the same gate, otherwise the typed
-        ``getmail``/``sendmail`` approval could be bypassed with
-        ``mcp(action='call', server='mail', ...)``.
-        """
         if name in self.approval_tools:
             return True
         if name == "mcp" and str(kwargs.get("action") or "") == "call":
@@ -1021,7 +938,6 @@ class ToolRegistry:
 
 
 def create_default_registry(core_client=None, config: RuntimeToolConfig | None = None, memory=None, companion=None, world_action=None) -> ToolRegistry:
-    """Create a ToolRegistry with default tools."""
     registry = ToolRegistry()
     config = config or RuntimeToolConfig()
     registry.register(WorldTool(world_action))

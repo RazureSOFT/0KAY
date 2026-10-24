@@ -1,16 +1,3 @@
-"""The "personhood" wiring: partners, wants, and costs.
-
-These pin the three things the audit found missing, all of which are invisible
-unless something actually feeds them:
-
-1. **Partners.**  ``SocialTies`` (reciprocity / evaluation / coaching) and
-   ``NarrativeIdentity`` had no writers at all, so ``friends`` was permanently
-   empty and ``anchor_strength`` was permanently 0.  The person on the other side
-   of the conversation is the partner.
-2. **Wants.**  ``add_goal`` was reachable only from the dashboard, so every goal
-   was written *for* the character.
-3. **Costs.**  Nothing made silence or a broken promise cost anything.
-"""
 import asyncio
 import json
 import sys
@@ -58,7 +45,6 @@ class PartnerWiring(unittest.TestCase):
         self.assertGreater(ties["warm"], ties["cold"])
 
     def test_reciprocal_evaluation_is_recorded(self):
-        """`received_evaluation` is what makes a tie reciprocal, not one-sided."""
         self._exchange("u1", "谢谢你")
         self.assertTrue(self.engine.social.ties.evaluations.get("__from__u1"))
 
@@ -163,7 +149,6 @@ class CostWiring(unittest.TestCase):
 
 
 class IrreversibilityTests(unittest.TestCase):
-    """Withdrawing something is one of the few acts that cannot be undone."""
 
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -186,7 +171,6 @@ class IrreversibilityTests(unittest.TestCase):
         self.assertNotIn("怕黑", row["content"])
 
     def test_withdrawal_scrubs_the_backups(self):
-        """Backups are what used to make a deletion recoverable."""
         fact = self.memory.remember("用户说过他很怕黑", memory_type="fact")
         self.memory.daily_backup()
         self.assertTrue(self.memory.delete_fact(fact.id, "test"))
@@ -201,7 +185,6 @@ class IrreversibilityTests(unittest.TestCase):
         self.assertNotIn(fact.id, [str(x["id"]) for x in self.memory.export_snapshot()["facts"]])
 
     def test_the_audit_row_survives_without_the_content(self):
-        """It can know something was taken back, not what it said."""
         fact = self.memory.remember("用户说过他很怕黑", memory_type="fact")
         self.memory.delete_fact(fact.id, "test")
         with self.memory._connect() as db:
@@ -210,7 +193,6 @@ class IrreversibilityTests(unittest.TestCase):
 
 
 class PersonResetTests(unittest.TestCase):
-    """`reset_person` is the one deliberate escape hatch."""
 
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -261,11 +243,6 @@ if __name__ == "__main__":
 
 
 class OwnerOpacityTests(unittest.TestCase):
-    """A3 信息不对称性: dashboard edits shape the character but stay invisible to it.
-
-    The character may experience the *effect* of an owner override (affinity
-    moved) but must never learn the *cause* ("the owner rewrote my affinity").
-    """
 
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -280,7 +257,6 @@ class OwnerOpacityTests(unittest.TestCase):
 
     def test_owner_event_is_tagged_in_the_ledger(self):
         self.companion.apply_relationship_event("u1", "k1", "dashboard", "webui", 0.1, "owner")
-        # The character is not allowed to believe an owner-forced edit.
         self.assertEqual(self.companion.relationship_beliefs("u1"), [])
 
     def test_partner_event_is_believed(self):
@@ -293,7 +269,6 @@ class OwnerOpacityTests(unittest.TestCase):
         self.companion.apply_relationship_event("u1", "k1", "dashboard", "webui", 0.1, "owner")
         self.companion.set_settings({"owner_opacity": "0"})
         self.assertFalse(self.companion.owner_override_opaque())
-        # With opacity off, the owner edit is visible to the self.
         self.assertEqual(len(self.companion.relationship_beliefs("u1")), 1)
 
     def test_owner_edit_does_not_write_a_self_narrative(self):
@@ -303,7 +278,6 @@ class OwnerOpacityTests(unittest.TestCase):
 
 
 class ContinuityTests(unittest.TestCase):
-    """A4 连续性: the character carries its inner life across ticks, not blank."""
 
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -342,14 +316,7 @@ class ContinuityTests(unittest.TestCase):
         self.assertNotIn("你最近的状态脉络", prompt)
 
 
-
 class FirstPersonWiring(unittest.TestCase):
-    """A2 第一人称: the character authors its own state line, not the engine.
-
-    Pins that (1) the companion persists and returns the character's own voice,
-    (2) the engine actually writes that line from its wave read-outs, and (3) the
-    THINK prompt injects it as a first-person statement the model must not echo.
-    """
 
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -383,7 +350,6 @@ class FirstPersonWiring(unittest.TestCase):
         self.assertEqual(self.companion.latest_self_statement(24), "")
 
     def test_the_engine_authors_from_its_own_waves(self):
-        """Not the engine narrating — the character writes it (persisted + read back)."""
         self.engine.mocr = SimpleNamespace(generate=self._fake_generate)
         text = asyncio.run(self.engine._author_self_statement(reason="test"))
         self.assertEqual(text, "今天有点想找人说话，又怕自己太黏。")
@@ -410,12 +376,6 @@ class FirstPersonWiring(unittest.TestCase):
 
 
 class CognitionSubsystemWiring(unittest.TestCase):
-    """B-series: the 8 cognition subsystems that were instantiated but never fed.
-
-    Each test pins that a real engine event actually moves the subsystem's state
-    - not that the class exists.  If a future refactor drops a call site, the
-    assertion fails instead of the subsystem silently going dead again.
-    """
 
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -427,17 +387,12 @@ class CognitionSubsystemWiring(unittest.TestCase):
         self.directory.cleanup()
 
     def test_per_turn_feeds_primacy_learning_temporal_and_role_model(self):
-        # a warm partner so role-model identification has someone to attach to
         self.engine.social.ties.interact("bob", 0.9)
         self.engine.social.ties.interact("bob", 0.9)
         self.engine._feed_cognition_subsystems(self.turn, "谢谢你今天陪我", {})
-        # affective primacy: appraisal ran (affect is no longer the init 0.0)
         self.assertNotEqual(self.engine.selfhood.primacy.affect, 0.0)
-        # temporal discounting: perceived time advanced one turn
         self.assertGreater(self.engine.selfhood.temporal.turn, 0)
-        # social learning: one direct experience recorded
         self.assertGreater(self.engine.social.learning.experience_seen, 0)
-        # role-model learning: identified with + observed the warm partner
         self.assertIn("bob", self.engine.social.role_model.exemplar_weight)
         self.assertIn("bob", self.engine.social.role_model.exemplars)
 
@@ -452,7 +407,6 @@ class CognitionSubsystemWiring(unittest.TestCase):
         self.assertEqual(self.engine.social.learning.experience_seen, before_seen)
 
     def test_feedback_feeds_motivation_meta_and_primacy(self):
-        # positive feedback: a preference is recorded and meta-awareness rises
         self.engine._observe_partner("u1", {"sentiment": 1}, 5.0)
         self.engine._awaiting_feedback["s1"] = _awaiting("u1")
         self.engine._receive_feedback(self.turn, "谢谢你，真棒")
@@ -461,7 +415,6 @@ class CognitionSubsystemWiring(unittest.TestCase):
         self.assertNotEqual(self.engine.selfhood.primacy.affect, 0.0)
 
     def test_negative_feedback_blunts_anticipation(self):
-        # punishment reduces reward anticipation (the anhedonia result)
         self.engine._observe_partner("u1", {"sentiment": -1}, 5.0)
         self.engine._awaiting_feedback["s1"] = _awaiting("u1")
         before = self.engine.social.motivation.anticipation
@@ -473,15 +426,11 @@ class CognitionSubsystemWiring(unittest.TestCase):
         before_meta = self.engine.selfhood.meta.meta_awareness
         before_stance = self.engine.social.role_model.stance
         self.engine._consolidate_cognition(neglect=5.0)
-        # patience is learned from cadence: long silence pulls k toward target
         self.assertNotEqual(self.engine.selfhood.temporal.k, before_k)
-        # daily self-reflection raises meta-awareness
         self.assertGreater(self.engine.selfhood.meta.meta_awareness, before_meta)
-        # moral stance drifts toward the identified exemplars
         self.assertNotEqual(self.engine.social.role_model.stance, before_stance)
 
     def test_arbitrate_drives_the_subsystems(self):
-        # proves the call site (not just the method) is wired into a real turn
         self.engine.cognition.control = (
             lambda *a, **k: SimpleNamespace(state={}, action_index=0, to_dict=lambda: {}))
         self.engine.social.ties.interact("bob", 0.9)
@@ -492,8 +441,6 @@ class CognitionSubsystemWiring(unittest.TestCase):
         self.assertIn("bob", self.engine.social.role_model.exemplar_weight)
 
     def test_persona_detail_is_grounded_by_self_statement(self):
-        # A2 wiring: every first-person line the character authors becomes a
-        # grounded persona detail.  (mocr.generate is mocked so no model call.)
         async def _fake_generate(*args, **kwargs):
             yield "今天有点想被人记得。"
 

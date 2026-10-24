@@ -1,13 +1,3 @@
-"""Memory dynamics aligned with the CLS / reconsolidation / sleep literature.
-
-- McClelland 1995: slow cortical learning + a real forgetting curve; interleaved
-  replay (no catastrophic interference).
-- Kumaran 2016: goal/importance-weighted replay; schema-consistent info is
-  learned fast.
-- Nader & Hardt 2009: reconsolidation only after retrieval opened a labile window,
-  and an overturned trace is superseded (not left retrievable).
-- Rasch & Born 2013: an SWS transfer phase then an REM stabilisation phase.
-"""
 import os
 import sys
 import tempfile
@@ -66,7 +56,7 @@ class MemoryDynamics(unittest.TestCase):
                       metadata={"memory_type": "semantic", "shared_terms": sorted(tokens)[:3]})
         self.ms.remember("在便利店买咖啡 A", tags=["生活"], memory_type="episode", strength=0.6)
         self.ms.remember("在便利店买咖啡 B", tags=["生活"], memory_type="episode", strength=0.6)
-        created = self.ms.extract_semantics(min_cluster=3)  # 2 members would normally be too few
+        created = self.ms.extract_semantics(min_cluster=3)
         self.assertEqual(len(created), 1, "schema-consistent cluster should be learned fast")
 
     def test_interleaved_replay_round_robins_groups(self):

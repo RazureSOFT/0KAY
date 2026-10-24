@@ -1,28 +1,3 @@
-"""L.I.F.E <-> model adapter.
-
-The paper's model is a tabular MDP.  To let a persona agent use it we need a
-bounded state space and a small, meaningful action set:
-
-* **state** = discretised decision context (intent x relationship role x urgency
-  x whether memory fired x asleep-or-awake), capped at 216 cells;
-* **action** = the response *strategy* the agent commits to (brief reply, warm
-  reply, clarifying question, multi-step plan, tool use, defer).
-
-The arbiter then answers "how much brain to spend" and the fused distribution
-answers "what to do", while the language model only renders the chosen strategy
-in character.
-
-The follow-up papers add four context channels on top of that core:
-
-* a **social reading** (interaction basis, cognitive/affective theory of mind,
-  indirectness and communicative function) that raises the control demand and
-  the stakes of an indirect speech act (papers 6-8);
-* an **OFC cognitive-map embedding** so episodic retrieval generalises across
-  similar contexts instead of matching them by identity (paper 3);
-* **group identification**, which scales the DLPFC-OFC bridge (paper 11);
-* the **self model**, driven by how much episodic-autobiographical memory the
-  agent actually holds (paper 13).
-"""
 from __future__ import annotations
 
 import json
@@ -35,7 +10,6 @@ from pathlib import Path
 from .circuits import SocialCoder, SocialReading
 from .model import CognitionConfig, Decision, MultiSystemModel
 
-# Response strategies (actions).
 LIFE_ACTIONS: tuple[str, ...] = ("reply_brief", "reply_warm", "ask_clarify", "plan", "tool", "defer")
 
 ACTION_GUIDANCE: dict[str, str] = {
@@ -53,9 +27,7 @@ _URGENCY_BUCKETS = 3
 _MEMORY_BUCKETS = 2
 _SLEEP_BUCKETS = 2
 
-# The full discretised state space (6 x 3 x 3 x 2 x 2).
 N_STATES = (len(_INTENTS) * len(_ROLES) * _URGENCY_BUCKETS * _MEMORY_BUCKETS * _SLEEP_BUCKETS)
-# Feature width of the OFC cognitive map (paper 3): one slot per factor value.
 N_FEATURES = len(_INTENTS) + len(_ROLES) + _URGENCY_BUCKETS + _MEMORY_BUCKETS + _SLEEP_BUCKETS
 
 
@@ -67,11 +39,6 @@ def _index(value, options: tuple[str, ...], default: int = 0) -> int:
 
 
 def context_factors(context: dict) -> tuple[int, int, int, int, int]:
-    """Discretise a live context into ``(intent, role, urgency, memory, sleep)``.
-
-    Every other function in this module derives from these five factors, so the
-    state index, the OFC embedding and the habit table always agree.
-    """
     context = context or {}
     intent = _index(str(context.get("intent") or "闲聊"), _INTENTS, len(_INTENTS) - 1)
     role = _index(str(context.get("role") or "other"), _ROLES, len(_ROLES) - 1)
@@ -95,16 +62,10 @@ def _cached_state_index(context_tuple: tuple) -> int:
 
 
 def state_index(context: dict) -> int:
-    """Fold a live decision context into one of the model's 216 states.
-
-    ``context`` keys (all optional): ``intent``, ``role``, ``urgency`` (0..1),
-    ``memory_hits`` (int), ``sleeping`` (bool).
-    """
     return _cached_state_index(_hashable_context(context or {}))
 
 
 def _features_from_factors(intent: int, role: int, urgency: int, memory: int, sleeping: int) -> list[float]:
-    """One-hot factor vector - the shared core of the OFC embedding."""
     vector = [0.0] * N_FEATURES
     offset = 0
     for index, width in ((intent, len(_INTENTS)), (role, len(_ROLES)),
@@ -118,25 +79,14 @@ def _features_from_factors(intent: int, role: int, urgency: int, memory: int, sl
 @lru_cache(maxsize=512)
 def _cached_context_features(context_tuple: tuple) -> tuple[float, ...]:
     context = dict(context_tuple)
-    # Cache an immutable tuple: returning the cached list let any caller mutate
-    # it in place and poison the cache for every other context.
     return tuple(_features_from_factors(*context_factors(context)))
 
 
 def context_features(context: dict) -> list[float]:
-    """One-hot factor embedding used as the OFC cognitive map (paper 3).
-
-    Paper 3's claim is that OFC holds an *abstract, generalisable* map rather
-    than a table of individual values.  A one-hot over the five context factors
-    gives exactly that: two contexts that agree on four of five factors have a
-    cosine similarity of 0.8, so value and episodic retrieval transfer between
-    them, while contexts that agree on nothing are orthogonal.
-    """
     return list(_cached_context_features(_hashable_context(context or {})))
 
 
 def state_factors(index: int) -> tuple[int, int, int, int, int]:
-    """Inverse of :func:`state_index` - a state index back to its five factors."""
     index = int(index) % N_STATES
     sleeping = index % _SLEEP_BUCKETS
     index //= _SLEEP_BUCKETS
@@ -151,23 +101,11 @@ def state_factors(index: int) -> tuple[int, int, int, int, int]:
 
 
 def state_features(index: int) -> list[float]:
-    """OFC embedding of a *state index*.
-
-    This is the ``feature_fn`` hook handed to :class:`MultiSystemModel`, so the
-    cognitive map is derived from the state space itself and never has to be
-    persisted or kept in sync by hand.
-    """
     return _features_from_factors(*state_factors(index))
 
 
 def reward_from_signals(valence_delta: float = 0.0, task_success: float = 0.0, task_failure: float = 0.0,
                         user_engagement: float = 0.0, friction: float = 0.0) -> float:
-    """Reward bound to *outcomes*, not actions: how the interaction actually went.
-
-    Clamped to [-1.5, 2.5] so a single wild signal cannot blow up the TD
-    target (Q would scale as r/(1-gamma) otherwise); the z-score fusion is
-    scale-invariant, this only keeps the value tables human-readable.
-    """
     raw = float(0.5 + 2.0 * valence_delta + 1.0 * task_success - 1.0 * task_failure
                 + 0.5 * user_engagement - 1.0 * friction)
     return max(-1.5, min(2.5, raw))
@@ -175,7 +113,6 @@ def reward_from_signals(valence_delta: float = 0.0, task_success: float = 0.0, t
 
 @dataclass
 class ControlOutcome:
-    """What the engine consumes after an arbitration cycle."""
 
     mode: str
     action: str
@@ -189,18 +126,17 @@ class ControlOutcome:
     state: int = 0
     plan_depth: int = 1
     allow_tools: bool = True
-    # --- circuits from the follow-up papers ---
-    confidence: float = 0.0        # papers 4/15: metacognitive confidence
-    gate: float = 1.0              # paper 1: MD gate on the model-based system
-    eta: float = 0.0               # paper 1: strategy overwrite rate
-    extra_need: float = 0.0        # paper 8: demand contributed by pragmatics
-    social_demand: float = 0.0     # paper 8: same value, explicit name
-    social: dict = field(default_factory=dict)      # papers 6-8
-    ignition: dict = field(default_factory=dict)    # papers 9/10
-    distributed: dict = field(default_factory=dict)  # paper 2
-    group: dict = field(default_factory=dict)       # paper 11
-    self_thought: float = 1.0                       # paper 13
-    self_microstate: str = "C"                      # paper 13
+    confidence: float = 0.0
+    gate: float = 1.0
+    eta: float = 0.0
+    extra_need: float = 0.0
+    social_demand: float = 0.0
+    social: dict = field(default_factory=dict)
+    ignition: dict = field(default_factory=dict)
+    distributed: dict = field(default_factory=dict)
+    group: dict = field(default_factory=dict)
+    self_thought: float = 1.0
+    self_microstate: str = "C"
 
     def to_dict(self) -> dict:
         return {"mode": self.mode, "action": self.action, "need": round(self.need, 4),
@@ -216,16 +152,12 @@ class ControlOutcome:
 
 
 class CognitionEngine:
-    """Stateful wrapper: arbitrate per turn, learn from real outcomes, replay on sleep."""
 
     def __init__(self, data_dir: str = "./data/life", config: CognitionConfig | None = None):
         self.data_dir = Path(data_dir) / "cognition"
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.path = self.data_dir / "cognition.json"
         self.config = config or CognitionConfig()
-        # Paper 3: the model is given the factor embedding of every state, so the
-        # OFC value map generalises across similar contexts instead of matching
-        # them by identity.
         self.model = MultiSystemModel(N_STATES, len(LIFE_ACTIONS), self.config, feature_fn=state_features)
         self.social = SocialCoder()
         self.turns = 0
@@ -234,52 +166,26 @@ class CognitionEngine:
         self.load()
 
     def reconfigure(self, config: CognitionConfig) -> None:
-        """Apply a new config **in place**.
-
-        ``MultiSystemModel`` was handed a *reference* to this object, so the
-        fields must be updated in place - rebinding ``self.config`` would leave
-        the model pointing at the stale instance.  Learned value tables, habit
-        strengths and the engram store are untouched; only tunables change.
-        """
         for key, value in vars(config).items():
             if hasattr(self.config, key):
                 setattr(self.config, key, value)
-        # `wm` and `prospection` snapshot their size at construction, so a live
-        # change must rebuild them - otherwise the dashboard sliders silently do
-        # nothing until the process restarts.
         self.model.wm = deque(self.model.wm, maxlen=max(1, int(self.config.wm_capacity)))
         if getattr(self.model, "prospection", None) is not None:
             self.model.prospection.horizon = max(1, int(self.config.prospection_horizon))
 
-    # ------------------------------------------------------------------ decide
     def social_reading(self, message: str) -> SocialReading:
-        """Read a message through the social circuits (papers 6-8)."""
         reading = self.social.encode(message or "")
         self._last_reading = reading
         return reading
 
     def identify_group(self, group_id: str, strength: float) -> None:
-        """Record how strongly the agent identifies with a group (paper 11)."""
         self.model.groups.identify(group_id, strength)
 
     def control(self, context: dict, fatigue: float = 0.0, load: float = 0.0,
                 stakes: float = 1.0, explore: bool = False, group_id: str = "",
                 message: str = "", social: SocialReading | None = None,
                 affect_need: float = 0.0) -> ControlOutcome:
-        """Arbitrate one turn.
-
-        ``message`` (or a pre-computed ``social`` reading) adds the social and
-        pragmatic demand of papers 6-8: an indirect speech act costs more to
-        misread, so it both raises the stakes and adds control demand that the
-        value tables alone cannot express.
-
-        ``affect_need`` adds the demand contributed by the affective system
-        (threat bias, negative-mood pull, sickness withdrawal) - the body and
-        its pathologies make control more urgent, not less.
-        """
         state = state_index(context)
-        # Paper 3: publish the context embedding so episodic retrieval and the
-        # OFC map generalise across similar contexts.
         self.model.ofc.set_features(state, context_features(context))
         text = message or str((context or {}).get("message") or "")
         reading = social if social is not None else (self.social_reading(text) if text else None)
@@ -306,17 +212,10 @@ class CognitionEngine:
 
     def observe(self, session_id: str, context: dict, next_context: dict, reward: float,
                 action_index: int | None = None, done: bool = False) -> dict:
-        """Learn from a completed turn: the previous arbitration is credited with
-        the *outcome* it produced."""
         pending = self._pending.get(session_id or "")
         if pending is None:
             state = state_index(context)
             if action_index is None:
-                # Nothing was arbitrated for this session.  Pick the habit-
-                # preferred action directly instead of running a full decide():
-                # decide() commits to flexibility, ignites the workspace and
-                # updates metacognition, so crediting a *fabricated* decision
-                # polluted that state.
                 habit = self.model.H[state]
                 action_index = max(range(len(habit)), key=lambda index: habit[index])
         else:
@@ -330,27 +229,19 @@ class CognitionEngine:
         return result
 
     def remember_decision(self, session_id: str, outcome: ControlOutcome) -> None:
-        # A turn cancelled before `observe` would otherwise leak its entry, so the
-        # map is bounded (evicting the oldest pending turn is harmless - it merely
-        # loses the credit for an abandoned arbitration).
         if len(self._pending) >= 512:
             self._pending.pop(next(iter(self._pending)), None)
         self._pending[session_id or ""] = {"state": outcome.state, "action": outcome.action_index}
 
-    # ------------------------------------------------------------------- sleep
     def sleep_replay(self, steps: int = 120, goal_states: set[int] | None = None) -> dict:
-        """Offline replay.  ``goal_states`` biases it toward the cues that matter
-        now (Kumaran 2016 - goal-dependent weighting of experience statistics)."""
         return self.model.sleep_replay(steps, goal_states)
 
     def reconsolidate_recent(self, reward_new: float, next_cue: int) -> list[str]:
-        """Reconsolidate the freshest traces against a newly observed outcome."""
         results = []
         for engram in self.model.engrams[-3:]:
             results.append(self.model.reconsolidate(engram, reward_new, next_cue))
         return results
 
-    # -------------------------------------------------------------- inspection
     def stats(self) -> dict:
         model = self.model
         return {
@@ -363,7 +254,6 @@ class CognitionEngine:
             "working_memory": len(model.wm),
             "observed_pairs": sum(1 for s in range(model.n_states) for a in range(model.n_actions)
                                   if model.visits[s][a] > 0),
-            # --- circuit telemetry (papers 1-15) ---
             "context_inference": round(model.coglinks.context_inference, 4),
             "strategy_contexts": len(model.coglinks.strategy),
             "strategy_overwrites": model.coglinks.switches,
@@ -379,7 +269,6 @@ class CognitionEngine:
     def last_decision(self) -> dict:
         return {"pending": dict(self._pending)} if self._pending else {}
 
-    # ------------------------------------------------------------ persistence
     def save(self) -> None:
         payload = self.model.to_dict()
         payload["turns"] = self.turns
@@ -394,6 +283,4 @@ class CognitionEngine:
             return
         self.model = MultiSystemModel.from_dict(data, feature_fn=state_features)
         self.turns = int(data.get("turns", 0))
-        # `from_dict` builds a fresh config object; adopt it so later
-        # `reconfigure` mutates the same object the model actually reads.
         self.config = self.model.config

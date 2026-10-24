@@ -1,31 +1,3 @@
-"""Persona -> trait parameters: turning a free-text 人设 into model data.
-
-The agent's persona is written as free text ("她体弱多病，容易焦虑，经常
-心慌失眠").  The cognition core, however, is driven by *numbers* - threat
-baselines, catastrophizing traits, ERQ profiles, somatic gains.  This module
-is the bridge: it reads the persona text and produces a
-:class:`PersonaTraits` - a validated, clamped set of overrides for
-:class:`~life.cognition.affect.AffectConfig`,
-:class:`~life.cognition.somatic.SomaticSymptomSystem` (optionally the circadian
-sleep hour) and the reciprocity trait space in
-:mod:`~life.cognition.relating`, so a persona that *says* "anxious and sickly"
-makes the model *behave* anxious and sickly.
-
-Two tiers of "understanding", mirroring the worldsim asset pipeline:
-
-* **Lexicon (default, deterministic, zero LLM)** - a Chinese keyword lexicon
-  maps persona phrases to bounded trait deltas; the character/relationship
-  lexicons in :mod:`~life.cognition.persona_style` add the style layer.  Same
-  input always yields the same traits; safe to run on every settings change.
-* **LLM refinement (optional, offline)** - ``refine_persona_with_llm`` asks a
-  model to emit the same JSON schema, validates/clamps every field, and merges
-  the valid ones over the lexicon baseline.  Any error falls back to the
-  lexicon result.  Follows the worldsim hard constraint: LLM calls happen
-  offline behind a sha256 cache, never in the runtime loop.
-
-Unmentioned dimensions stay ``None`` and leave the runtime defaults untouched
-- a persona only *moves* the traits it actually describes.
-"""
 from __future__ import annotations
 
 import json
@@ -44,10 +16,6 @@ from .persona_style import (
 )
 from .somatic import SomaticSymptomSystem
 
-# ---------------------------------------------------------------------------
-# The lexicon: dimension -> (keywords, trait deltas).  Every delta is a small,
-# bounded nudge; nothing here can push a trait outside its documented range.
-# ---------------------------------------------------------------------------
 LEXICON: dict[str, dict] = {
     "positive_affect": {
         "keywords": ("开朗", "乐观", "阳光", "积极", "活泼", "爱笑", "快乐",
@@ -76,14 +44,12 @@ LEXICON: dict[str, dict] = {
         "deltas": {"catastrophizing": +0.2, "depression_gain": +0.15},
     },
     "somatic_prone": {
-        # constitution-level markers: the persona *is* the sickly body
         "keywords": ("体弱", "多病", "虚弱", "体质差", "常生病", "药罐子", "大病初愈",
                      "frail", "sickly", "weak constitution", "often ill", "poor health"),
         "deltas": {"use_somatic": True, "report_threshold": -0.10,
                    "bias_gain": +0.2, "catastrophizing": +0.05},
     },
     "somatic_markers": {
-        # symptom-level markers: the persona complains about specific bodies
         "keywords": ("心慌", "心悸", "头晕", "肠胃不好", "胃疼", "头疼", "失眠",
                      "睡不好", "浑身没劲", "乏力", "喘不上气",
                      "palpitations", "dizzy", "insomnia", "headache", "stomach ache",
@@ -116,18 +82,14 @@ LEXICON: dict[str, dict] = {
     },
 }
 
-# 2+ matches on these dimensions additionally pin the ERQ profile, because a
-# casually-written word should not silently swap the regulation style.
 PROFILE_PIN_DIMENSIONS = {"depressive": "depression", "anxious": "anxiety",
                           "impulsive": "bpd", "alexithymic": "alexithymia"}
 
-# Numeric ranges for validation / clamping (erq_profile validated by membership).
 RANGES = {
     "threat_baseline": (0.0, 1.0), "reward_baseline": (0.0, 2.0),
     "baseline_vagal": (0.0, 1.0), "catastrophizing": (0.0, 1.0),
     "bias_gain": (0.0, 2.0), "anxiety_gain": (0.0, 2.0),
     "depression_gain": (0.0, 2.0), "report_threshold": (0.0, 1.0),
-    # -- personality / style dimensions (all 0-1) --
     "extraversion": (0.0, 1.0), "agreeableness": (0.0, 1.0),
     "conscientiousness": (0.0, 1.0), "openness": (0.0, 1.0),
     "attach_anxiety": (0.0, 1.0), "attach_avoidance": (0.0, 1.0),
@@ -136,8 +98,6 @@ RANGES = {
     "formality": (0.0, 1.0), "assertiveness": (0.0, 1.0),
 }
 
-# Defaults used to re-base lexicon *deltas* before clamping.  A delta lexicon
-# adds a nudge on top of the module default, so each field needs its neutral.
 DEFAULTS = {"threat_baseline": 0.2, "reward_baseline": 1.0, "baseline_vagal": 0.6,
             "catastrophizing": 0.20, "bias_gain": 0.8, "anxiety_gain": 1.0,
             "depression_gain": 0.5, "report_threshold": 0.45,
@@ -148,16 +108,12 @@ DEFAULTS = {"threat_baseline": 0.2, "reward_baseline": 1.0, "baseline_vagal": 0.
 
 TRAIT_FIELDS = tuple(RANGES) + ("erq_profile", "use_somatic", "sleep_hour")
 
-#: Allowed gender values; "" / unknown leaves it undecided.
 GENDERS = ("female", "male", "other")
 _FEMALE_WORDS = ("她", "女生", "女孩", "少女", "姐姐", "妹妹", "妈妈", "母亲",
                  "女儿", "太太", "老婆", "女友", "女朋友", "女王", "御姐", "f", "female", "girl", "woman")
 _MALE_WORDS = ("他", "男生", "男孩", "少年", "哥哥", "弟弟", "爸爸", "父亲",
                "儿子", "先生", "老公", "男友", "男朋友", "少年", "m", "male", "boy", "man")
 
-# How the personality fields fold onto relating's behavioural axes: (field, axis,
-# weight), applied as (value - 0.5) * weight.  This is what keeps the extra
-# knobs from being decorative - they genuinely shape the self trait vector.
 FIELD_AXES = (
     ("warmth", "warmth", 1.0),
     ("formality", "formality", 1.0),
@@ -185,7 +141,6 @@ def _clamp(value: float, low: float, high: float) -> float:
 
 @dataclass
 class PersonaTraits:
-    """Validated persona-derived overrides; ``None`` = leave default alone."""
 
     threat_baseline: float | None = None
     reward_baseline: float | None = None
@@ -195,7 +150,6 @@ class PersonaTraits:
     anxiety_gain: float | None = None
     depression_gain: float | None = None
     report_threshold: float | None = None
-    # -- personality / style dimensions --
     extraversion: float | None = None
     agreeableness: float | None = None
     conscientiousness: float | None = None
@@ -211,7 +165,6 @@ class PersonaTraits:
     erq_profile: str | None = None
     use_somatic: bool | None = None
     sleep_hour: int | None = None
-    # -- style layer --
     gender: str | None = None
     character: str | None = None
     relationship: str | None = None
@@ -223,16 +176,10 @@ class PersonaTraits:
 
     @property
     def present(self) -> bool:
-        """True when at least one trait override was derived."""
         return (any(getattr(self, name) is not None for name in TRAIT_FIELDS)
                 or bool(self.character) or bool(self.relationship))
 
     def axis_vector(self, base: float = 0.5) -> dict[str, float]:
-        """Relating trait axes in [0, 1] implied by this persona.
-
-        Combines the character/relationship lexicon deltas with the explicit
-        personality fields; unmentioned axes stay at ``base`` (neutral).
-        """
         axes = {axis: base for axis in AXES}
         for axis, delta in (self.axes or {}).items():
             if axis in axes:
@@ -245,15 +192,6 @@ class PersonaTraits:
 
     def apply(self, affect_config, somatic: SomaticSymptomSystem | None = None,
               circadian=None) -> dict:
-        """Write the affect/somatic/circadian traits into the live objects.
-
-        ``affect_config`` is the *candidate* AffectConfig the engine is about
-        to install (so ``use_somatic`` participates in the switch), while
-        ``somatic`` is the live SomaticSymptomSystem whose trainable traits
-        persist across reconfigures.  ``circadian`` optionally receives the
-        persona sleep hour.  (The personality/style fields are consumed by
-        :meth:`axis_vector`, not here.)
-        """
         changed: dict[str, float] = {}
         for name in ("threat_baseline", "reward_baseline", "baseline_vagal"):
             value = getattr(self, name)
@@ -318,11 +256,6 @@ class PersonaTraits:
 
 
 def detect_gender(text: str) -> str:
-    """Best-effort gender from pronouns/角色词; "" when ambiguous.
-
-    Chinese 他/她 are the strongest signal, then gendered role words.  A tie
-    (both used, or neither) stays undecided so the owner can pick.
-    """
     body = str(text or "")
     female = sum(1 for word in _FEMALE_WORDS if word in body)
     male = sum(1 for word in _MALE_WORDS if word in body)
@@ -334,18 +267,12 @@ def detect_gender(text: str) -> str:
 
 
 def _add_style_deltas(deltas: dict[str, float], spec: dict) -> None:
-    """Fold a character/relationship spec's numeric ``traits`` into ``deltas``."""
     for name, delta in (spec.get("traits") or {}).items():
         if name in RANGES:
             deltas[name] = deltas.get(name, 0.0) + float(delta)
 
 
 def parse_persona(text: str, gender_hint: str = "") -> PersonaTraits:
-    """Deterministic lexicon pass: persona text -> trait overrides.
-
-    ``gender_hint`` is an explicit owner choice ("female"/"male"/"other") that
-    overrides the pronoun/role-word detection when valid.
-    """
     traits = PersonaTraits()
     text = str(text or "")
     hint = str(gender_hint or "").strip().lower()
@@ -357,8 +284,6 @@ def parse_persona(text: str, gender_hint: str = "") -> PersonaTraits:
         detected = detect_gender(text)
         if detected:
             traits.gender = detected
-    # numeric dimensions accumulate pure deltas; explicit values (the
-    # relationship anxiety/avoidance pair) are final and skip the re-basing.
     deltas: dict[str, float] = {}
     explicit: set[str] = set()
     for dimension, spec in LEXICON.items():
@@ -375,14 +300,11 @@ def parse_persona(text: str, gender_hint: str = "") -> PersonaTraits:
                 traits.erq_profile = str(delta)
             elif name in RANGES:
                 deltas[name] = deltas.get(name, 0.0) + float(delta)
-    # character archetype: style deltas + expression note
     character = classify_character(text)
     if character["key"]:
         traits.character = character["key"]
         traits.evidence["character"] = character["evidence"]
         _add_style_deltas(deltas, character_spec(character["key"]))
-    # relationship/attachment style: explicit anxiety/avoidance pair (a value,
-    # not a delta) plus affect nudges; healthy styles never set the ODE type.
     relationship = classify_relationship(text)
     if relationship["key"]:
         traits.relationship = relationship["key"]
@@ -395,14 +317,10 @@ def parse_persona(text: str, gender_hint: str = "") -> PersonaTraits:
         if spec.get("attach_avoidance") is not None:
             traits.attach_avoidance = float(spec["attach_avoidance"])
             explicit.add("attach_avoidance")
-    # style axes: character + relationship lexicon deltas
     traits.axes = style_axes(traits.character or "", traits.relationship or "")
-    # profile pinning: strong evidence (2+ matches) swaps the ERQ style
     for dimension, profile in PROFILE_PIN_DIMENSIONS.items():
         if len(traits.evidence.get(dimension, ())) >= 2 and traits.erq_profile is None:
             traits.erq_profile = profile
-    # clamp every numeric trait into its documented range.  Delta fields are
-    # re-based onto their module default first; explicit fields are clamped as-is.
     for name, value in deltas.items():
         if name in explicit:
             continue
@@ -414,9 +332,6 @@ def parse_persona(text: str, gender_hint: str = "") -> PersonaTraits:
     return traits
 
 
-# ---------------------------------------------------------------------------
-# Optional offline LLM refinement (world/generate_assets.py pattern)
-# ---------------------------------------------------------------------------
 def _build_contract() -> str:
     chars = "、".join(f"{key}({spec['label']})" for key, spec in CHARACTER_TYPES.items())
     rels = "、".join(f"{key}({spec['label']})" for key, spec in RELATIONSHIP_TYPES.items())
@@ -458,12 +373,6 @@ PERSONA_JSON_CONTRACT = _build_contract()
 
 
 def _extract_json_object(raw: str) -> str | None:
-    """Pull the outermost JSON object out of an LLM reply.
-
-    Models love to wrap JSON in prose or ```json fences; the braces scan is
-    deliberately forgiving because the result is validated field-by-field
-    afterwards anyway.
-    """
     text = str(raw or "").strip()
     if text.startswith("```"):
         first_newline = text.find("\n")
@@ -492,12 +401,6 @@ def _clean_axes(raw) -> dict[str, float]:
 
 
 def merge_persona_llm_json(baseline: PersonaTraits, raw: str) -> PersonaTraits | None:
-    """Validate an LLM reply against the trait schema and merge it.
-
-    Every field is checked independently: out-of-range numbers are clamped,
-    unknown profiles/archetypes/values are skipped, and the lexicon baseline
-    fills any gap.  Returns ``None`` when the reply contains no usable JSON.
-    """
     try:
         data = json.loads(_extract_json_object(raw) or "")
         if not isinstance(data, dict):
@@ -526,7 +429,6 @@ def merge_persona_llm_json(baseline: PersonaTraits, raw: str) -> PersonaTraits |
                 merged.__setattr__(name, _clamp(value, low, high))
             except (TypeError, ValueError):
                 pass
-    # style layer: only accept keys that exist in the taxonomies
     if data.get("gender") in GENDERS:
         merged.gender = str(data["gender"])
     if data.get("character") in CHARACTER_TYPES:
@@ -545,9 +447,6 @@ def merge_persona_llm_json(baseline: PersonaTraits, raw: str) -> PersonaTraits |
     if axes:
         merged.axes = axes
     elif merged.character or merged.relationship:
-        # The caller changed an archetype without supplying axes (the companion
-        # UI does this): recompute the relating axes so they follow the pick
-        # instead of staying on the raw-text parse.
         merged.axes = style_axes(merged.character or "", merged.relationship or "")
     if data.get("confidence") is not None:
         try:
@@ -565,14 +464,6 @@ def merge_persona_llm_json(baseline: PersonaTraits, raw: str) -> PersonaTraits |
 
 def refine_persona_with_llm(text: str, llm, model: str = "",
                             cache=None) -> PersonaTraits:
-    """Offline refinement: ask an LLM for the trait JSON, validate, merge.
-
-    ``llm(prompt) -> str`` is a synchronous callable (offline use only, per
-    the worldsim constraint); ``cache`` is an optional
-    :class:`life.worldsim.llm_cache.LLMCache`.  Any failure - network, JSON,
-    validation - falls back to the deterministic lexicon result, so this can
-    never produce a worse persona than the lexicon alone.
-    """
     baseline = parse_persona(text)
     if not str(text or "").strip() or llm is None:
         return baseline
@@ -590,7 +481,6 @@ def refine_persona_with_llm(text: str, llm, model: str = "",
 
 
 def persona_summary(traits: PersonaTraits | None) -> dict:
-    """Compact read-out for the dashboard / status endpoint."""
     if traits is None or not traits.present:
         return {"applied": False}
     data = traits.to_dict()

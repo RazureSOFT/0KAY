@@ -1,4 +1,3 @@
-"""开始生命 / 暂停生命: one click ignites the character's autonomous life."""
 import asyncio
 import json
 import sys
@@ -32,7 +31,6 @@ class StartLifeTests(unittest.TestCase):
     def test_life_is_off_until_started(self):
         self.assertFalse(self.engine.life_is_alive())
         self.assertFalse(self.engine.life_status()["resident_running"])
-        # The dashboard read-out carries the life status.
         self.assertIn("life", self.engine.cognition_status())
 
     def test_start_life_ignites_cognition_resident_and_proactive(self):
@@ -43,7 +41,6 @@ class StartLifeTests(unittest.TestCase):
             self.assertTrue(status["resident_enabled"])
             self.assertTrue(status["cognition_enabled"])
             self.assertTrue(status["proactive_enabled"])
-            # The very first autonomous thought already happened.
             self.assertGreaterEqual(status["ticks"], 1)
             self.assertEqual(status["last_thought"], "我醒过来了")
             self.assertTrue(status["focus"])

@@ -1,10 +1,3 @@
-"""The tsundere <-> yandere circuit: a three-variable ODE (affection /
-tsundere-expression / fixation) driven by real interaction signals, opt-in,
-with a structural safety layer.
-
-Ported from `research/tsundere-yandere/model.py`; these tests reproduce the
-reference note's five scenarios against the LIFE façade.
-"""
 import sys
 import tempfile
 import unittest
@@ -24,7 +17,6 @@ from life.engine import LifeEngine
 
 
 def _simulate(system, days, dt=0.1, **observe):
-    """Advance `days` in dt steps, re-applying one interaction each step."""
     steps = int(round(days / dt))
     for _ in range(steps):
         if observe:
@@ -46,7 +38,6 @@ class TsundereDynamicsTests(unittest.TestCase):
         self.assertEqual(regime(0.7), "病娇")
 
     def test_scenario_1_stable_tsundere(self):
-        """Steady kindness + light coldness stays a stable tsundere."""
         system = TsundereSystem(enabled=True)
         _simulate(system, 40, valence=0.4, sentiment=0.2, latency_seconds=600)
         self.assertGreater(system.affection(), 0.7)
@@ -55,7 +46,6 @@ class TsundereDynamicsTests(unittest.TestCase):
         self.assertEqual(system.band(), "傲娇")
 
     def test_scenario_2_blackening_under_rejection(self):
-        """Courtship then withdrawal + rejection -> the character blackens."""
         system = TsundereSystem(enabled=True)
         _simulate(system, 8, valence=0.8, sentiment=1.0, latency_seconds=5)
         self.assertGreater(system.affection(), 0.7)
@@ -65,7 +55,6 @@ class TsundereDynamicsTests(unittest.TestCase):
         self.assertEqual(system.band(), "病娇")
 
     def test_scenario_3_reversibility(self):
-        """Steady kindness after a blackening drives the fixation back down."""
         system = TsundereSystem(enabled=True)
         _simulate(system, 8, valence=0.8, sentiment=1.0, latency_seconds=5)
         _simulate(system, 30, valence=-0.5, sentiment=-1.0,
@@ -77,26 +66,22 @@ class TsundereDynamicsTests(unittest.TestCase):
         self.assertEqual(system.band(), "傲娇")
 
     def test_affection_without_rejection_does_not_blacken(self):
-        """The core coupling is affection x rejection: warmth alone is safe."""
         system = TsundereSystem(enabled=True)
         _simulate(system, 40, valence=1.0, sentiment=1.0, latency_seconds=5)
         self.assertLess(system.fixation(), 0.10)
         self.assertGreater(system.affection(), 0.8)
 
     def test_rejection_without_affection_merely_distances(self):
-        """Coldness before any attachment must not breed fixation."""
         system = TsundereSystem(enabled=True)
         system.observe_interaction(valence=-1.0, sentiment=-1.0,
                                    latency_seconds=20000, mentions_other=True)
         for _ in range(200):
-            # force coldness with the affection driven low
             system.kindness = 0.0
             system.rejection = 1.0
             system.tick(0.1)
         self.assertLess(system.fixation(), 0.30)
 
     def test_expression_is_suppressed_after_blackening(self):
-        """After blackening the '傲' collapses: no more prickly denial."""
         system = TsundereSystem(enabled=True)
         system.dynamics.state.update({"A": 0.95, "T": 0.8, "Y": 0.0})
         t_before = system.expression()
@@ -116,8 +101,6 @@ class TsundereDynamicsTests(unittest.TestCase):
     def test_mood_and_load_widen_perceived_rejection(self):
         calm = TsundereSystem(enabled=True)
         low = TsundereSystem(enabled=True)
-        # The background tick keeps the interoceptive reading current; the next
-        # observed exchange is then *perceived* through it.
         calm.tick(0.1, mood=0.0, load=0.0)
         low.tick(0.1, mood=-0.8, load=0.8)
         for system in (calm, low):
@@ -130,10 +113,6 @@ class TsundereDynamicsTests(unittest.TestCase):
         self.assertGreaterEqual(system.fixation(), 0.85)
         guard = system.guard()
         self.assertTrue(guard)
-        # The directive is a *private* one (it is injected into the output
-        # prompt), so it is worded to describe the constraint without naming
-        # it — "安全" is deliberately absent, or the character would start
-        # talking about safety in its own voice.
         self.assertIn("自伤", guard)
         self.assertIn("不得说出", guard)
         self.assertNotIn("安全", guard)
@@ -170,7 +149,6 @@ class TsundereDynamicsTests(unittest.TestCase):
 
 class TsundereDynamicsArchetypeTests(unittest.TestCase):
     def test_archetypes_diverge(self):
-        """Same drives, different archetypes -> different fixation."""
         tame = TsundereDynamics("迁就傲娇")
         fiery = TsundereDynamics("暴躁傲娇")
         for _ in range(200):

@@ -1,4 +1,3 @@
-"""S6 gate: shadow logging + guarded weekly update with rollback."""
 import json
 import sys
 import tempfile

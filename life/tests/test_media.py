@@ -49,8 +49,6 @@ if __name__ == "__main__":
 
 
 def test_media_capability_block_is_empty_when_everything_is_off():
-    # The prompt must stay byte-for-byte unchanged for users who never asked for
-    # media, otherwise the persona drifts for no visible reason.
     assert media.media_capability_block({}) == "" or "[[voice]]" in media.media_capability_block({})
     off = media.media_capability_block({
         "voice_reply_enabled": "false",
@@ -70,14 +68,12 @@ def test_media_capability_block_lists_only_what_is_enabled():
     assert "[[call]]" in with_call
     assert "语音通话" in with_call
 
-    # Defaults: voice + selfie on, call off — a fresh install gets the two safe ones.
     defaults = media.media_capability_block({})
     assert "[[voice]]" in defaults and "[[selfie:" in defaults
     assert "[[call]]" not in defaults
 
 
 def test_media_tags_are_the_ones_the_webui_parses():
-    # The WebUI regexes are the contract; a typo here means a silent no-op.
     assert media.VOICE_TAG == "[[voice]]"
     assert media.CALL_TAG == "[[call]]"
     assert media.SELFIE_TAG.format("x") == "[[selfie:x]]"

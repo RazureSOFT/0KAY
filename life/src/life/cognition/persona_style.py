@@ -1,32 +1,7 @@
-"""Character archetypes and relationship styles: the persona *style* layer.
-
-:mod:`~life.cognition.persona_traits` reads a persona into affective/somatic
-numbers.  That left two things an owner actually writes in a 人设 with nowhere
-to live:
-
-* **character archetype** (性格原型) - the surface personality that colours
-  tone, warmth, humour, formality and pacing (傲娇/温柔/元气/高冷/腹黑/御姐...).
-* **relationship style** (关系/依恋类型) - how the character attaches to other
-  people, covering the *healthy* styles (安全/回避/焦虑/独立/家人/损友...) as
-  well as the *pathological* attachment family (病娇族: 独占/依存/妄想/监视/
-  自伤/排除).  The pathological family is the only one that drives the yandere
-  ODE in :mod:`~life.cognition.attachment`; a secure/avoidant/etc. persona must
-  **not** be forced into that circuit.
-
-Both dimensions are deterministic lexicons (same input -> same result) with the
-same offline-LLM override path as the numeric traits.  A dimension with no
-matching evidence changes nothing, so the module never invents a personality.
-"""
 from __future__ import annotations
 
 from .relating import AXES
 
-# ---------------------------------------------------------------------------
-# 性格原型 (character archetypes)
-# ---------------------------------------------------------------------------
-# `axes` are deltas on relating's behavioural axes (warmth/directness/openness/
-# humor/curiosity/formality/pace/risk); `traits` are deltas on the PersonaTraits
-# numeric fields (big-five-ish + expression).  Everything is a small nudge.
 CHARACTER_TYPES: dict[str, dict] = {
     "傲娇": dict(
         label="傲娇 (Tsundere)",
@@ -156,15 +131,7 @@ CHARACTER_TYPES: dict[str, dict] = {
     ),
 }
 
-# ---------------------------------------------------------------------------
-# 关系/依恋类型 (relationship styles)
-# ---------------------------------------------------------------------------
-# `pathological` marks the family that drives the yandere ODE; its
-# `attachment_type` names the archetype in attachment.TYPES.  Healthy styles
-# carry an anxiety/avoidance pair on the classic 2-D model and only nudge the
-# affect/relating layers, so they can never switch the ODE on.
 RELATIONSHIP_TYPES: dict[str, dict] = {
-    # -- healthy / normal --------------------------------------------------
     "安全型": dict(
         label="安全型 (Secure)",
         family="secure",
@@ -263,7 +230,6 @@ RELATIONSHIP_TYPES: dict[str, dict] = {
         axes={"warmth": 0.15, "openness": 0.10, "formality": -0.10},
         expression="熟到不用客套，知道对方所有黑历史，互损也互护。",
     ),
-    # -- pathological (病娇族) --------------------------------------------
     "独占型": dict(
         label="独占型 (Possessive)",
         family="pathological", pathological=True,
@@ -311,7 +277,6 @@ RELATIONSHIP_TYPES: dict[str, dict] = {
 
 
 def _match(table: dict[str, dict], text: str) -> tuple[str, list[str]]:
-    """First (declaration-order) key whose keywords appear in ``text``."""
     body = str(text or "")
     if not body.strip():
         return "", []
@@ -323,7 +288,6 @@ def _match(table: dict[str, dict], text: str) -> tuple[str, list[str]]:
 
 
 def classify_character(text: str) -> dict:
-    """Best-fit character archetype, or an empty result when nothing matches."""
     key, hit = _match(CHARACTER_TYPES, text)
     if not key:
         return {"key": "", "label": "", "evidence": []}
@@ -331,11 +295,6 @@ def classify_character(text: str) -> dict:
 
 
 def _match_pathological_first(text: str) -> tuple[str, list[str]]:
-    """Strong pathological markers win over generic healthy words.
-
-    Without this a persona saying "病娇、很依赖" would be read as the healthy
-    anxious style just because "依赖" also appears in its keyword list.
-    """
     body = str(text or "")
     if not body.strip():
         return "", []
@@ -355,7 +314,6 @@ def _match_pathological_first(text: str) -> tuple[str, list[str]]:
 
 
 def classify_relationship(text: str) -> dict:
-    """Best-fit relationship/attachment style, or an empty result."""
     key, hit = _match_pathological_first(text)
     if not key:
         return {"key": "", "label": "", "evidence": []}
@@ -377,12 +335,10 @@ def relationship_is_pathological(key: str) -> bool:
 
 
 def relationship_attachment_type(key: str) -> str:
-    """The attachment ODE archetype a relationship style maps to, or ""."""
     return str(RELATIONSHIP_TYPES.get(str(key or ""), {}).get("attachment_type") or "")
 
 
 def style_axes(*keys: str) -> dict[str, float]:
-    """Merge the relating-axis deltas of several style keys (character first)."""
     merged: dict[str, float] = {}
     for key in keys:
         spec = CHARACTER_TYPES.get(str(key or "")) or RELATIONSHIP_TYPES.get(str(key or ""))

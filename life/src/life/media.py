@@ -1,9 +1,3 @@
-"""Multimodal message handling for OneBot (images/GIF/quotes/forwards/voice).
-
-Parsing and description are pure and testable. Outbound media (TTS, poke, QQ
-status) is optional and fail-soft: a missing endpoint never breaks a reply.
-"""
-
 from __future__ import annotations
 
 import os
@@ -17,7 +11,7 @@ logger = get_logger("media")
 
 CQ_PATTERN = re.compile(r"\[CQ:([a-zA-Z_]+)((?:,[^\]]*)*)\]")
 
-MAX_TTS_BYTES = 16 * 1024 * 1024  # 16 MiB ceiling on a TTS response
+MAX_TTS_BYTES = 16 * 1024 * 1024
 
 
 def _parse_cq_params(raw: str) -> dict:
@@ -30,7 +24,6 @@ def _parse_cq_params(raw: str) -> dict:
 
 
 def parse_segments(message: Any) -> list[dict]:
-    """Normalize a OneBot message (CQ string or segment list) into segments."""
     if isinstance(message, list):
         out: list[dict] = []
         for seg in message:
@@ -57,7 +50,6 @@ def plain_text(message: Any) -> str:
 
 
 def describe_segments(message: Any, vision: Callable[[str], str] | None = None) -> str:
-    """Render segments as text so a text-only model can still reason about media."""
     parts: list[str] = []
     for seg in parse_segments(message):
         kind = seg["type"]
@@ -93,7 +85,6 @@ def describe_segments(message: Any, vision: Callable[[str], str] | None = None) 
 
 
 class MediaPipeline:
-    """Optional outbound media backends (TTS), fail-soft and disabled by default."""
 
     def __init__(self, settings_getter: Callable[[], dict] | None = None):
         self.settings_getter = settings_getter or (lambda: {})
@@ -110,13 +101,6 @@ class MediaPipeline:
         return {host.strip().lower() for host in raw.split(",") if host.strip()}
 
     async def synthesize(self, text: str) -> bytes | None:
-        """Return audio bytes from the configured TTS endpoint, or None on any failure.
-
-        The endpoint comes from user settings / environment, so it is treated as
-        an outbound-request target: only http(s) is allowed, an optional
-        ``TTS_ALLOWED_HOSTS`` allow-list can pin the host, and the response is
-        size-capped so a rogue endpoint cannot exhaust memory.
-        """
         endpoint = self.tts_endpoint()
         if not endpoint or not str(text or "").strip():
             return None
@@ -124,9 +108,6 @@ class MediaPipeline:
         if parsed.scheme not in ("http", "https"):
             logger.warning("TTS endpoint rejected (unsupported scheme): %s", endpoint)
             return None
-        # The endpoint is owner-configured but writable over an unauthenticated
-        # channel, so it gets the same private-address rule as every other
-        # outbound fetch; `LIFE_ALLOW_PRIVATE_TTS=1` opts a LAN TTS server back in.
         from .tools.tools import _assert_public_http_url
         try:
             _assert_public_http_url(endpoint, "LIFE_ALLOW_PRIVATE_TTS")
@@ -161,17 +142,9 @@ class MediaPipeline:
 
 
 def recall_note(notice_type: str, user_id: Any, operator_id: Any = None, message_id: Any = None) -> str:
-    """A short, honest note for a recalled message (no invented content)."""
     kind = "群" if notice_type == "group_recall" else "私聊"
     return f"[{kind}撤回] 用户 {user_id} 撤回了一条消息（id={message_id}）"
 
-
-# ── 多模态输出：告诉角色它能选什么 ────────────────────────────────────────────
-#
-# The three media actions live behind settings because a prompt that advertises
-# an action the front end cannot perform is worse than one that never mentions
-# it: the model emits the tag, the WebUI ignores it, and the character looks like
-# it is talking to itself. So the block is built from the enabled switches only.
 
 VOICE_TAG = "[[voice]]"
 SELFIE_TAG = "[[selfie:{}]]"
@@ -186,11 +159,6 @@ MEDIA_HINT = (
 
 
 def media_capability_block(values: dict | None = None) -> str:
-    """Build the prompt block that tells the character which media it may use.
-
-    Returns an empty string when everything is off, so the OUTPUT prompt stays
-    byte-for-byte what it was for users who never asked for media.
-    """
     values = values or {}
     lines: list[str] = []
     if str(values.get("voice_reply_enabled", "true")).lower() not in ("false", "0", "no"):

@@ -1,12 +1,10 @@
-"""S1 gate: generated assets are valid, distributed as specified, and the LLM
-cache is content-addressed."""
 import json
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]          # life/
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
@@ -53,11 +51,6 @@ class AssetGate(unittest.TestCase):
             self.assertEqual(cache.stats()["hits"], 1)
 
     def test_typed_pools_prevent_nonsense_pairings(self):
-        """Regression: patterns only draw nouns that fit their verb.
-
-        The old unconstrained cartesian product produced "买了球赛" / "尝到了花" /
-        "碰到了雨伞"; those must never come back.
-        """
         for template in self.templates:
             text = template["text"]
             if "尝到了" in text:
@@ -70,7 +63,6 @@ class AssetGate(unittest.TestCase):
                 self.assertFalse(any(p + "那家卖" in text for p in ("家", "阳台", "公园", "地铁站")), text)
 
     def test_worldview_overrides_build_a_valid_world(self):
-        """A user premise/actor/place roster replaces the stock world, still 300."""
         from life.worldsim.assets import parse_actors_text, parse_places_text
         self.assertEqual(parse_actors_text("小满|朋友\n阿杰 | 同事\n妈妈"),
                          [("小满", "friend"), ("阿杰", "colleague"), ("妈妈", "friend")])
@@ -94,11 +86,9 @@ class AssetGate(unittest.TestCase):
         ledger = {"last_times": {}, "daily_relation": 0.0, "drama_budget": 1.0}
         first = ledger_rules.apply_event(ledger, {"template_id": "t1", "intensity": 2}, 100.0)
         self.assertTrue(first["applied"])
-        ledger["last_times"]["t1"] = first["mark_time"]  # caller persists the ledger
-        # Same template inside the cooldown is refused.
+        ledger["last_times"]["t1"] = first["mark_time"]
         again = ledger_rules.apply_event(ledger, {"template_id": "t1", "intensity": 2}, 101.0)
         self.assertFalse(again["applied"])
-        # High-intensity event is refused once the drama budget is spent.
         broke = ledger_rules.apply_event({"last_times": {}, "daily_relation": 0.0, "drama_budget": 0.0},
                                          {"template_id": "t9", "intensity": 4}, 200.0)
         self.assertFalse(broke["applied"])

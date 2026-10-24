@@ -1,11 +1,3 @@
-"""Mail tools now delegate to the built-in 0kay-mcp mail server.
-
-These tests pin the delegation payload, the mcp_enabled kill-switch and the
-approval scope (mail reached through the generic `mcp` tool must still be
-gated), all of which were introduced when the SMTP/IMAP implementation left
-L.I.F.E.
-"""
-
 import asyncio
 import sys
 import unittest
@@ -40,7 +32,6 @@ class MailMcpDelegation(unittest.TestCase):
         self.assertEqual(payload["server"], "mail")
         self.assertEqual(payload["tool"], "getmail")
         self.assertEqual(payload["args"], {"limit": 3, "unread_only": True})
-        # The agent wraps the mail result; life unwraps the inner object.
         self.assertEqual(result.data, {"emails": [], "total": 0})
 
     def test_sendmail_calls_mcp_server_mail(self):

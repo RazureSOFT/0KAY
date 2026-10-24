@@ -1,26 +1,3 @@
-"""Markdown -> HTML -> docx publishing pipeline.
-
-Renders a paper from Markdown into (a) a styled HTML review document and (b) a
-Word document with a real title block, sectioned headings, justified body text,
-centred figures with numbered captions and three-line tables.
-
-Design notes
-------------
-* The HTML is parsed with the tolerant stdlib :class:`html.parser.HTMLParser`
-  rather than an XML parser.  Model-authored Markdown routinely carries a stray
-  ``&`` or ``<``; an XML parse error used to collapse the whole document into a
-  single plain-text paragraph (losing every figure and all layout).
-* Layout is author-controllable from the Markdown alone:
-    - a leading ``---`` YAML-ish front-matter block (``title``, ``authors``,
-      ``affiliation``, ``abstract``, ``keywords``);
-    - figures ``![caption](path){width=60%}`` (also px/in/cm);
-    - consecutive figure lines with no blank line between them form one row
-      (``![a](1.png)`` + ``![b](2.png)`` → 图1(a)/(b) side by side; widths are
-      honoured, missing ones share the remaining row equally);
-    - three-line (booktabs) tables.
-  Relative image paths resolve against the Markdown file's directory, the
-  output directory and the current directory, in that order.
-"""
 from __future__ import annotations
 
 import re
@@ -28,10 +5,8 @@ from html import escape
 from html.parser import HTMLParser
 from pathlib import Path
 
-# --- front matter -------------------------------------------------------------
 
 def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
-    """Split a leading ``---`` metadata block from the Markdown body."""
     raw = str(text or "").replace("\r\n", "\n").replace("\r", "\n")
     lines = raw.split("\n")
     start = 0
@@ -55,8 +30,6 @@ def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
     return meta, "\n".join(lines[end + 1:])
 
 
-# --- tolerant HTML tree -------------------------------------------------------
-
 _VOID = {"br", "hr", "img", "meta", "link", "input", "col", "area", "base",
          "source", "track", "wbr"}
 
@@ -72,7 +45,6 @@ class _Node:
 
 
 class _TreeBuilder(HTMLParser):
-    """Build a simple element tree; tolerant of unescaped ``&``/``<`` and HTML entities."""
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -117,8 +89,6 @@ def _first(node: _Node, tag: str) -> _Node | None:
     return next(_walk(node, tag), None)
 
 
-# --- markdown -> html ---------------------------------------------------------
-
 _IMG_INLINE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)(?:\{([^}]*)\})?")
 _LINK_INLINE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
@@ -140,13 +110,10 @@ def _image_attrs(attrs: str) -> str:
     return f' data-width="{match.group(1)}{match.group(2) or ""}"' if match else ""
 
 
-# --- figure groups ------------------------------------------------------------
-
-_TEXT_WIDTH_CM = 16.2  # A4 width minus the 2.4cm side margins
+_TEXT_WIDTH_CM = 16.2
 
 
 def _width_fraction(attrs: str) -> float | None:
-    """Interpret a figure ``{width=...}`` spec as a fraction of the text width."""
     match = re.search(r"width\s*=\s*([0-9.]+)\s*(%|px|in|cm)?", attrs or "")
     if not match:
         return None
@@ -162,11 +129,6 @@ def _width_fraction(attrs: str) -> float | None:
 
 
 def _group_fractions(attrs_list: list[str]) -> list[float]:
-    """Split the text width among the figures of one row.
-
-    Explicit widths are honoured; figures without one share the remaining width
-    equally, and an overflow is scaled back so the row always fits the page.
-    """
     count = max(1, len(attrs_list))
     fracs = [_width_fraction(attrs) for attrs in attrs_list]
     if all(frac is None for frac in fracs):
@@ -238,7 +200,6 @@ def _title_block(meta: dict[str, str]) -> str:
 
 def markdown_to_html(markdown_text: str, *, title: str = "", css: str = "",
                      meta: dict[str, str] | None = None) -> str:
-    """Convert a Markdown document into a styled, well-formed HTML document."""
     if meta is None:
         meta, markdown_text = parse_front_matter(markdown_text)
     if title and not meta.get("title"):
@@ -250,7 +211,6 @@ def markdown_to_html(markdown_text: str, *, title: str = "", css: str = "",
     if header:
         parts.append(header)
 
-    # Drop a leading `# <title>` that merely repeats the front-matter title.
     doc_title = str(meta.get("title") or "").strip()
     for position, line in enumerate(lines):
         if not line.strip():
@@ -324,7 +284,6 @@ def markdown_to_html(markdown_text: str, *, title: str = "", css: str = "",
 
         image = re.match(r"^!\[([^\]]*)\]\(([^)]+)\)(?:\{([^}]*)\})?\s*$", stripped)
         if image:
-            # Consecutive figure lines (no blank line between) share one row.
             group: list[re.Match] = []
             while index < total:
                 member = re.match(r"^!\[([^\]]*)\]\(([^)]+)\)(?:\{([^}]*)\})?\s*$",
@@ -379,8 +338,6 @@ def _document(body: str, title: str, css: str) -> str:
         head.append(f"<style>{style}</style>")
     return f"<!DOCTYPE html><html><head>{''.join(head)}</head><body>{body}</body></html>"
 
-
-# --- html -> docx -------------------------------------------------------------
 
 _ACADEMIC_CSS = """
 :root { --ink:#1b2430; --muted:#5b6b7a; --rule:#c9d2dc; --accent:#3a6ea5; }
@@ -439,7 +396,6 @@ def _set_east_asian(style_or_run, family: str) -> None:
 
 
 def _strip_style_border(style) -> None:
-    """Drop a decorative paragraph border the template's Title style may carry."""
     from docx.oxml.ns import qn
 
     p_pr = style.element.find(qn("w:pPr"))
@@ -450,7 +406,6 @@ def _strip_style_border(style) -> None:
 
 
 def _add_page_number(section) -> None:
-    """Centred ``PAGE`` field in the footer."""
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
@@ -465,7 +420,7 @@ def _add_page_number(section) -> None:
     run = OxmlElement("w:r")
     r_pr = OxmlElement("w:rPr")
     size = OxmlElement("w:sz")
-    size.set(qn("w:val"), "18")  # 9pt
+    size.set(qn("w:val"), "18")
     r_pr.append(size)
     run.append(r_pr)
     text = OxmlElement("w:t")
@@ -496,7 +451,6 @@ def _style_document(document) -> None:
     normal.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     _set_east_asian(normal, "宋体")
 
-    # The bundled template's headings are Word-blue; papers need ink-black ones.
     for name, size in (("Title", 17), ("Heading 1", 15), ("Heading 2", 13),
                        ("Heading 3", 11.5), ("Heading 4", 10.5)):
         try:
@@ -551,7 +505,6 @@ def _node_text(node: _Node) -> str:
 
 
 def _add_link(paragraph, node: _Node, *, bold=False, italic=False) -> None:
-    """Render ``<a>`` as a real hyperlink; unknown schemes degrade to plain text."""
     href = str(node.attrs.get("href") or "").strip()
     text = _node_text(node)
     if not text:
@@ -593,7 +546,6 @@ def _add_link(paragraph, node: _Node, *, bold=False, italic=False) -> None:
 
 
 def _add_inline_image(paragraph, node: _Node) -> None:
-    """Inline ``<img>`` inside a paragraph; block figures go through _emit_image."""
     src = str(node.attrs.get("src") or "")
     run = paragraph.add_run()
     resolved = _resolve_image(src, _INLINE_BASE_DIRS)
@@ -606,7 +558,6 @@ def _add_inline_image(paragraph, node: _Node) -> None:
         run.text = f"[图片无法插入：{src}]"
 
 
-# Base dirs for resolving inline images; html_to_docx pins these for one render pass.
 _INLINE_BASE_DIRS: tuple = ()
 
 
@@ -660,7 +611,6 @@ def _emit_image(document, node: _Node, base_dirs) -> None:
 
 
 def _set_first_line_indent(paragraph) -> None:
-    """Two-character first-line indent (CJK convention; font-relative in Word)."""
     from docx.oxml.ns import qn
     from docx.shared import Pt
 
@@ -671,7 +621,6 @@ def _set_first_line_indent(paragraph) -> None:
 
 
 def _emit_figure_group(document, node: _Node, base_dirs) -> None:
-    """Render a fig-group as a borderless table so the images share one row."""
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Cm, Pt
 
@@ -694,7 +643,7 @@ def _emit_figure_group(document, node: _Node, base_dirs) -> None:
         fractions = [fraction / total for fraction in fractions]
 
     table = document.add_table(rows=1, cols=count)
-    table.alignment = 1  # centered
+    table.alignment = 1
     table.autofit = False
     for position, item in enumerate(items):
         image = _first(item, "img")
@@ -711,7 +660,6 @@ def _emit_figure_group(document, node: _Node, base_dirs) -> None:
                 paragraph.add_run(f"[缺失图片：{src}]")
             else:
                 try:
-                    # The default cell margins act as the gutter between images.
                     paragraph.add_run().add_picture(
                         str(resolved), width=Cm(fractions[position] * _TEXT_WIDTH_CM - 0.4))
                 except Exception:
@@ -723,7 +671,6 @@ def _emit_figure_group(document, node: _Node, base_dirs) -> None:
             for run in paragraph.runs:
                 run.font.size = Pt(9.5)
     _no_borders(table)
-    # A spacer keeps the group table from touching a following table.
     spacer = document.add_paragraph()
     spacer.paragraph_format.space_after = Pt(0)
     spacer.paragraph_format.line_spacing = 1.0
@@ -793,7 +740,7 @@ def _emit_table(document, node: _Node) -> None:
         document.paragraphs[-1].paragraph_format.keep_with_next = True
     cells = [cell for cell in rows[0].children if cell.tag in ("th", "td")]
     table = document.add_table(rows=len(rows), cols=max(1, len(cells)))
-    table.alignment = 1  # center
+    table.alignment = 1
     for row_index, row in enumerate(rows):
         cells = [cell for cell in row.children if cell.tag in ("th", "td")]
         for column, cell in enumerate(cells):
@@ -920,7 +867,6 @@ def _emit_block(document, node: _Node, *, base_dirs=()) -> None:
 
 
 def html_to_docx(html: str, path, *, title: str = "", base_dirs=()):
-    """Export HTML (as produced by :func:`markdown_to_html`) to a Word document."""
     global _INLINE_BASE_DIRS
 
     from docx import Document
@@ -943,17 +889,11 @@ def html_to_docx(html: str, path, *, title: str = "", base_dirs=()):
 
 
 def safe_stem(name: object, default: str = "paper") -> str:
-    """Sanitise a caller-supplied filename stem so it cannot escape the output dir.
-
-    ``stem``/``name`` come from a JSON spec that a model can author, so
-    ``"../../etc/passwd"`` must not turn into a path traversal.
-    """
     stem = re.sub(r"[^\w.\-]+", "_", str(name or "")).strip("._-") or default
     return stem[:80]
 
 
 def _try_pdf(docx_path: Path) -> Path | None:
-    """Best-effort docx -> pdf via a local LibreOffice, if present."""
     import shutil
     import subprocess
 
@@ -985,7 +925,6 @@ def _try_pdf(docx_path: Path) -> Path | None:
 def build_paper(markdown_text: str, out_dir, *, title: str = "", stem: str = "paper",
                 css: str = "", base_dirs=None, meta: dict[str, str] | None = None,
                 pdf: bool = False) -> dict:
-    """Write ``<out_dir>/<stem>.html`` and ``<stem>.docx`` (and ``.pdf`` if asked)."""
     directory = Path(out_dir)
     directory.mkdir(parents=True, exist_ok=True)
     stem = safe_stem(stem)
@@ -1004,7 +943,6 @@ def build_paper(markdown_text: str, out_dir, *, title: str = "", stem: str = "pa
     html = markdown_to_html(body, title=str(merged.get("title") or title), css=css, meta=merged)
     html_path = directory / f"{stem}.html"
     html_path.write_text(html, encoding="utf-8")
-    # The title block is already part of the HTML, so do not add a second title.
     docx_path = html_to_docx(html, directory / f"{stem}.docx", base_dirs=search_dirs)
 
     result = {"html": html_path, "docx": docx_path}

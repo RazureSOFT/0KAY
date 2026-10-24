@@ -1,12 +1,3 @@
-"""Run an experiment and record its stdout, result and metadata to disk.
-
-A thin, dependency-free wrapper so every experiment produces the same run
-folder layout::
-
-    runs/<timestamp>-<name>/meta.json
-    runs/<timestamp>-<name>/stdout.txt
-    runs/<timestamp>-<name>/result.json
-"""
 from __future__ import annotations
 
 import contextlib
@@ -47,7 +38,6 @@ def _jsonable(value):
 
 def run_experiment(name: str, fn: Callable[[], object], *, out_dir="runs",
                    params: dict | None = None, capture_stdout: bool = True) -> RunResult:
-    """Call ``fn()``, capture its stdout/result, and persist a run folder."""
     safe = re.sub(r"[^\w.-]+", "_", str(name or "run")).strip("_") or "run"
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir = Path(out_dir) / f"{stamp}-{safe}"

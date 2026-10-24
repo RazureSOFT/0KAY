@@ -1,8 +1,3 @@
-"""Tests for the selfhood circuits (wave 4b).
-
-Each test asserts the *computational claim* of one paper, and every circuit is
-ablated at least once.
-"""
 import json
 import sys
 import unittest
@@ -23,7 +18,6 @@ from life.cognition.selfhood import (
 
 
 class TestTemporalDiscounting(unittest.TestCase):
-    """Papers 16/17/18: hyperbolic discounting, risk-time coupling, deadlines."""
 
     def test_immediate_reward_is_not_discounted(self):
         temporal = TemporalDiscounting(k=0.5)
@@ -34,7 +28,6 @@ class TestTemporalDiscounting(unittest.TestCase):
         self.assertGreater(temporal.value(100.0, 1.0), temporal.value(100.0, 10.0))
 
     def test_hyperbolic_shape_beats_exponential(self):
-        # hyperbolic: doubling the delay less-than-halves the value
         temporal = TemporalDiscounting(k=0.2)
         v1, v2 = temporal.value(100.0, 5.0), temporal.value(100.0, 10.0)
         self.assertGreater(v2, v1 / 2.0)
@@ -66,7 +59,6 @@ class TestTemporalDiscounting(unittest.TestCase):
 
 
 class TestNarrativeIdentity(unittest.TestCase):
-    """Papers 25/26: redemptive tone and a persistent identity anchor."""
 
     def test_redemption_bias_turns_negative_events_into_growth(self):
         narrative = NarrativeIdentity(redemption_bias=0.8)
@@ -105,7 +97,6 @@ class TestNarrativeIdentity(unittest.TestCase):
 
 
 class TestCognitiveLoad(unittest.TestCase):
-    """Papers 27/28/29: five attention states and load traces."""
 
     def test_overload_needs_entropy_and_a_secondary_trace(self):
         load = CognitiveLoad()
@@ -141,7 +132,6 @@ class TestCognitiveLoad(unittest.TestCase):
 
 
 class TestMetaAwareness(unittest.TestCase):
-    """Papers 30/31/32: a step-level lens, self-alignment, emergent recursion."""
 
     def test_a_good_lens_rewards_confidence_with_low_perplexity(self):
         meta = MetaAwareness(lens_quality=1.0)
@@ -172,7 +162,7 @@ class TestMetaAwareness(unittest.TestCase):
         self.assertGreater(emerged, 1)
         for turn in range(6, 20):
             meta.probe(turn)
-        self.assertEqual(meta.recursion_depth, emerged)   # stabilised
+        self.assertEqual(meta.recursion_depth, emerged)
 
     def test_reliability_combines_awareness_and_lens(self):
         strong = MetaAwareness(lens_quality=0.9, meta_awareness=0.9).reliability
@@ -181,7 +171,6 @@ class TestMetaAwareness(unittest.TestCase):
 
 
 class TestPersonaDetail(unittest.TestCase):
-    """Papers 9/10/11: the detail scaling law, identity breadth, censorship."""
 
     def test_fidelity_follows_a_saturating_scaling_law(self):
         persona = PersonaDetail(detail_scale=20.0)
@@ -222,7 +211,6 @@ class TestPersonaDetail(unittest.TestCase):
 
 
 class TestAffectivePrimacy(unittest.TestCase):
-    """Papers 5/6/7/8: affect first, affect costs, and re-entry."""
 
     def test_appraisal_sets_affect_and_costs_resource(self):
         primacy = AffectivePrimacy(affect_cost=0.2)
@@ -289,8 +277,6 @@ class TestSelfhoodSystem(unittest.TestCase):
         self.assertAlmostEqual(restored.temporal.k, system.temporal.k, places=6)
 
     def test_json_round_trip_is_identical(self):
-        # The real restart path is to_dict -> JSON -> from_dict, which retypes
-        # keys and scalars; the in-memory round-trip above does not.
         system = SelfhoodSystem()
         system.narrative.add_memory("e", valence=-0.5)
         system.load.observe(0.9, kv_miss=0.8)

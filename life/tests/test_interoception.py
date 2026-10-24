@@ -1,14 +1,3 @@
-"""The body must be able to push on the mind (ascending interoception).
-
-`cognition/somatic.py` models the *descending* limb — psychological distress
-presenting as bodily symptoms. Nothing carried the other direction: hunger,
-exhaustion and ill health were tracked by `circadian` but only ever changed the
-wording of a reply and the reply delay. `affect.tick()` even declared a
-`fatigue` parameter and never read it.
-
-These tests pin the ascending limb: the composed signal, and that a tired body
-drags mood down more than a rested one over the same elapsed time.
-"""
 import sys
 import types
 import unittest
@@ -22,7 +11,6 @@ from life.engine.legacy import LifeEngine  # noqa: E402
 class InteroceptiveFatigue(unittest.TestCase):
     @staticmethod
     def _engine(energy: float = 100.0, hunger: float = 0.0, health: float = 100.0):
-        # Built without __init__: that would open databases and clients.
         engine = LifeEngine.__new__(LifeEngine)
         engine.circadian = types.SimpleNamespace(state=types.SimpleNamespace(
             mental_energy=energy, hunger=hunger, health=health))
@@ -63,7 +51,6 @@ class AscendingFatigueDrive(unittest.TestCase):
         self.assertLess(severe, mild)
 
     def test_zero_fatigue_changes_nothing(self):
-        """Backwards compatibility: callers that omit it are unaffected."""
         affect = AffectSystem(AffectConfig())
         affect.tick(3600.0, hour=12.0, sleeping=False)
         self.assertAlmostEqual(affect.mood.mood, self._mood_after(0.0))

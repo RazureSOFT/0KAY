@@ -1,4 +1,3 @@
-"""Async model transport; resolve fresh credentials for the requested model."""
 import os
 import json
 import grpc
@@ -9,14 +8,10 @@ from mocr.v1 import mocr_pb2, mocr_pb2_grpc
 
 from .http_auth import auth_headers, require_auth_headers
 
-# Hard ceiling for an attachment download so a hostile/large file cannot
-# exhaust plugin memory (the response used to be buffered without limit).
 MAX_ATTACHMENT_BYTES = 64 * 1024 * 1024
 
 
 def estimate_tokens(text: str) -> int:
-    """Deterministic fallback when a provider reports no usage numbers:
-    roughly 4 ASCII chars per token, one token per non-ASCII (CJK) char."""
     plain = str(text or "")
     if not plain:
         return 0
@@ -41,8 +36,6 @@ class MocrClient:
         self.recorder = None
 
     async def connect(self):
-        # Serialize so concurrent callers cannot close each other's fresh channel;
-        # close any previous channel first so a reconnect does not leak it.
         async with self._connect_lock:
             if self._channel is not None:
                 try:
@@ -56,20 +49,12 @@ class MocrClient:
             self._stub = mocr_pb2_grpc.MocrServiceStub(channel)
 
     async def _http_client(self):
-        # Guarded so two concurrent first callers cannot each build a client
-        # (leaking one); `close` clears `_http` under the same lock.
         async with self._connect_lock:
             if self._http is None:
                 self._http = httpx.AsyncClient(timeout=5)
             return self._http
 
     async def fetch_file(self, url: str, timeout: float = 30.0) -> bytes:
-        """Download an uploaded attachment from Core by its /api/files URL.
-
-        Absolute URLs are accepted only when they point at the Core origin, so a
-        model-supplied URL cannot reuse the plugin's Bearer token as an SSRF
-        primitive against an arbitrary third party.
-        """
         if not url:
             raise ValueError("empty attachment url")
         raw = str(url).strip()
@@ -80,7 +65,6 @@ class MocrClient:
         else:
             target = f"{self.core_http}{raw}"
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as http:
-            # Fail closed: never issue a Core file request with no credentials.
             async with http.stream("GET", target, headers=require_auth_headers()) as response:
                 response.raise_for_status()
                 buffer = bytearray()
@@ -104,12 +88,6 @@ class MocrClient:
                 self._stub = None
 
     async def describe_image(self, model_id, image_base64, mime="image/jpeg", prompt="", max_tokens=1024, timeout=90.0) -> str:
-        """Describe an image with a vision-capable model.
-
-        Resolves credentials per request like text generation, so it works with
-        OpenAI-compatible and Anthropic-format providers. Used for screen
-        observation (a downscaled screenshot from the Agent host).
-        """
         client = await self._http_client()
         response = await client.get(f"{self.core_http}/api/providers/credentials", headers=auth_headers())
         response.raise_for_status()
@@ -156,9 +134,6 @@ class MocrClient:
             return str(content or "").strip()
 
     async def generate(self, model_id, messages, system_prompt="", thinking=False, max_tokens=1024, temperature=None, usage=None):
-        """Stream text chunks; when ``usage`` is a dict it is filled with the
-        final ``prompt_tokens``/``completion_tokens`` reported by the provider
-        (or a deterministic estimate when none is reported)."""
         record = await self.recorder.start("think" if thinking else "output", messages[-1]["content"] if messages else model_id) if self.recorder else None
         result = ""
         try:
@@ -182,7 +157,6 @@ class MocrClient:
 
     @staticmethod
     def _wire_message(message):
-        """Build a proto Message, including multimodal content_parts when present."""
         wire = mocr_pb2.Message(role=str(message.get("role") or "user"), content=str(message.get("content") or ""))
         for part in message.get("parts") or []:
             wire.content_parts.add(
@@ -197,9 +171,6 @@ class MocrClient:
         if not self._stub:
             await self.connect()
         client = await self._http_client()
-        # Credentials are resolved per request: GET /api/providers is redacted,
-        # so the secret-bearing catalog comes from /api/providers/credentials.
-        # Re-reading every time keeps provider edits effective immediately.
         response = await client.get(f"{self.core_http}/api/providers/credentials", headers=auth_headers())
         response.raise_for_status()
         data = response.json()
@@ -241,7 +212,6 @@ class MocrClient:
                 if response.chunk:
                     yield response.chunk
                 if usage is not None and response.usage:
-                    # The mocr server reports usage on the final (done) response.
                     usage["prompt_tokens"] = int(response.usage.prompt_tokens)
                     usage["completion_tokens"] = int(response.usage.completion_tokens)
                 if response.done:

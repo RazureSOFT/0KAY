@@ -1,13 +1,3 @@
-"""Verification tests for the ported yandere affect-dynamics circuit.
-
-These are the research engine's falsifiable inferences (``yandere_engine/
-tests/test_engine.py``), re-expressed against the LIFE port. Each test maps to
-one claim of 柳・米澤 (2023):
-
-* C1 急変   — affection-gated superlinear reaction gain
-* C2 過剰   — superlinear expression intensity
-* C3 円環   — circumplex state + hysteretic NORMAL/DERE/YAMI machine
-"""
 from __future__ import annotations
 
 import sys
@@ -33,7 +23,6 @@ from life.cognition.yandere import (
 
 
 def warm_love(agent: YandereDynamics, praises: int = 6) -> None:
-    """Accumulate affection past the gate (praise +0.05 each, start 0.15)."""
     for _ in range(praises):
         agent.perceive(Event("praise"))
 
@@ -42,7 +31,7 @@ class TestVocabulary(unittest.TestCase):
     def test_unknown_event_raises(self):
         agent = YandereDynamics()
         with self.assertRaises(ValueError):
-            agent.perceive(Event("hug"))  # not in the vocabulary
+            agent.perceive(Event("hug"))
 
     def test_clamped_state_never_explodes(self):
         agent = YandereDynamics()
@@ -58,14 +47,12 @@ class TestVocabulary(unittest.TestCase):
 
 
 class TestCoreClaims(unittest.TestCase):
-    """The paper's definition: abrupt flips + excessive expression from affection."""
 
     def test_love_is_a_precondition_of_yami(self):
-        """The same coldness does not blacken a heart that is not attached."""
         cold = [Event("ignore"), Event("contact_rival", weight=1.5),
                 Event("ignore"), Event("contact_rival", weight=1.5)]
         detached = YandereDynamics()
-        detached.run(cold)  # affection stays at the initial 0.15
+        detached.run(cold)
         self.assertNotEqual(detached.mode, "yami")
 
         attached = YandereDynamics()
@@ -74,7 +61,6 @@ class TestCoreClaims(unittest.TestCase):
         self.assertEqual(attached.mode, "yami")
 
     def test_sudden_flip(self):
-        """One or two heavy negatives flip the highest happiness into YAMI."""
         agent = YandereDynamics()
         warm_love(agent)
         self.assertEqual(agent.mode, "dere")
@@ -84,18 +70,16 @@ class TestCoreClaims(unittest.TestCase):
         self.assertLessEqual(agent.v, -0.25)
 
     def test_excessive_love_expression_is_superlinear(self):
-        """The same praise yields a superlinearly larger expression when in love."""
         shallow = YandereDynamics()
-        i_shallow = shallow.perceive(Event("chat")).intensity  # A = 0.18
+        i_shallow = shallow.perceive(Event("chat")).intensity
 
         deep = YandereDynamics()
-        warm_love(deep, praises=15)  # A ~ 0.9
+        warm_love(deep, praises=15)
         i_deep = deep.perceive(Event("chat")).intensity
 
         self.assertGreater(i_deep, 2.5 * i_shallow)
 
     def test_hysteresis_no_snap_back(self):
-        """Two praises do not immediately restore DERE (the hysteresis exists)."""
         agent = YandereDynamics()
         warm_love(agent)
         agent.run([Event("contact_rival", weight=1.5), Event("contact_rival", weight=1.5)])
@@ -105,7 +89,6 @@ class TestCoreClaims(unittest.TestCase):
         self.assertEqual(agent.mode, "yami")
 
     def test_recovery_needs_apology_and_positive_event(self):
-        """Repair needs (1) jealousy-lowering apology and (2) a positive event."""
         agent = YandereDynamics()
         warm_love(agent)
         agent.run([Event("contact_rival", weight=1.5), Event("contact_rival", weight=1.5)])
@@ -116,13 +99,11 @@ class TestCoreClaims(unittest.TestCase):
 
 class TestTsundereContrast(unittest.TestCase):
     def test_early_praise_is_deflected(self):
-        """Tsundere deflects praise while affection is immature (the façade)."""
         agent = YandereDynamics("傲娇")
         rec = agent.perceive(Event("praise"))
         self.assertLess(rec.valence, 0.0)
 
     def test_late_bloom_dere(self):
-        """Past the gate the same praise finally lands (the gap)."""
         agent = YandereDynamics("傲娇")
         for _ in range(12):
             rec = agent.perceive(Event("praise"))
@@ -138,7 +119,6 @@ class TestProfilesContrast(unittest.TestCase):
         self.assertNotEqual(agent.mode, "yami")
 
     def test_determinism(self):
-        """Same script -> identical trajectory (no hidden RNG)."""
         script = [Event(k) for k in
                   ["chat", "praise", "gift", "ignore", "mention_other", "apologize", "praise"]]
         a1 = YandereDynamics()
@@ -147,7 +127,6 @@ class TestProfilesContrast(unittest.TestCase):
         self.assertEqual(sig(a1.run(script)), sig(a2.run(script)))
 
     def test_profile_parameters_change_outcome(self):
-        """Same stream: the yandere falls to YAMI, the neutral one does not."""
         script = [Event(k) for k in
                   ["praise"] * 6 + ["contact_rival", "contact_rival", "ignore"]]
         yan = YandereDynamics("病娇")
@@ -170,7 +149,6 @@ class TestTraitsBridge(unittest.TestCase):
         self.assertGreater(yandere_signature_score(YANDERE_SIGNATURE), 0.95)
 
     def test_signature_traits_reach_yami(self):
-        """[2] -> [17] -> [1]: the trait signature derives the behavioural one."""
         profile = traits_to_profile(YANDERE_SIGNATURE)
         agent = YandereDynamics("病娇", params={
             "k_excess": profile.k_excess,

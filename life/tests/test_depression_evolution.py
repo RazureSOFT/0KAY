@@ -1,5 +1,3 @@
-"""The course of depression: does it onset, remit, relapse - and does it evolve
-on the clock, not only when someone is talking."""
 import asyncio
 import sys
 import tempfile

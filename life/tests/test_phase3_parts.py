@@ -1,4 +1,3 @@
-"""Phase 3 core: commitment ledger, structured user model, slow values layer."""
 import asyncio
 import os
 import tempfile
@@ -27,7 +26,6 @@ class Phase3Parts(unittest.TestCase):
         self.companion.add_commitment("u1", "明天提醒你交材料")
         open_items = self.companion.list_commitments("u1", "open")
         self.assertEqual(len(open_items), 1)
-        # Duplicates are not re-added.
         self.companion.add_commitment("u1", "明天提醒你交材料")
         self.assertEqual(len(self.companion.list_commitments("u1", "open")), 1)
         resolved = self.companion.resolve_commitments("u1", ["交材料"])

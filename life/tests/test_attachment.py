@@ -1,5 +1,3 @@
-"""The pathological-attachment ("yandere") circuit: it evolves from real
-interaction signals, is opt-in, and has a structural safety layer."""
 import sys
 import tempfile
 import unittest
@@ -65,9 +63,6 @@ class AttachmentDynamicsTests(unittest.TestCase):
         self.assertGreaterEqual(system.severity(), 0.85)
         guard = system.guard()
         self.assertTrue(guard)
-        # This directive is injected into the output prompt, so it is worded to
-        # constrain behaviour without naming the concept: "安全" is deliberately
-        # absent, or the character would narrate safety in its own voice.
         self.assertIn("自伤", guard)
         self.assertIn("不得说出", guard)
         self.assertNotIn("安全", guard)

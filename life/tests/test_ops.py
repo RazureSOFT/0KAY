@@ -75,8 +75,6 @@ class DailyReviewAndMedia(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as directory:
             engine = LifeEngine(directory)
             result = await engine.send_media("tts", "user:1", {"text": "hi"})
-            # Fail closed: no connected platform means no send, and the reason
-            # must be generic now that "OneBot" is one platform among several.
             self.assertFalse(result["ok"])
             self.assertIn("adapter", result["reason"])
 
@@ -92,19 +90,17 @@ class DailyReviewAndMedia(unittest.IsolatedAsyncioTestCase):
 
             engine._call_minecraft = fake_minecraft
 
-            # Disabled: nothing runs, action is audited as blocked.
             ran = await engine._run_autonomy_actions([{"tool": "minecraft", "arguments": {"action": "autopilot_start"}}])
             self.assertEqual(ran, 0)
             self.assertEqual(calls, [])
 
             engine.tool_config.minecraft_enabled = True
             ran = await engine._run_autonomy_actions([
-                {"tool": "minecraft", "arguments": {"action": "nope"}},    # unknown action
+                {"tool": "minecraft", "arguments": {"action": "nope"}},
                 {"tool": "minecraft", "arguments": {"action": "autopilot_start"}},
             ])
             self.assertEqual(ran, 1)
             self.assertEqual(calls, [{"action": "autopilot_start"}])
-            # Unknown tools are ignored even when minecraft is enabled.
             ran = await engine._run_autonomy_actions([{"tool": "shell", "arguments": {"action": "rm"}}])
             self.assertEqual(ran, 0)
             self.assertEqual(len(calls), 1)
@@ -144,7 +140,6 @@ class DailyReviewAndMedia(unittest.IsolatedAsyncioTestCase):
 
 
 class PersonReset(unittest.TestCase):
-    """`reset_person_data` must complete even when one table cannot be cleared."""
 
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -158,7 +153,6 @@ class PersonReset(unittest.TestCase):
         from contextlib import contextmanager
 
         class _FailFirstDelete:
-            """Delegates to the real connection, failing the first DELETE."""
 
             def __init__(self, conn):
                 self._conn = conn

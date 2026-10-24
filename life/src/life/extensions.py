@@ -1,10 +1,3 @@
-"""Optional extension registry with fail-closed availability.
-
-Extensions never pretend to be connected: an unknown, ambiguous, incomplete or
-unprobed extension is reported unavailable, and calls against it raise instead of
-silently degrading into a fake success.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass

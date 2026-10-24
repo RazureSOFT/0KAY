@@ -1,5 +1,3 @@
-"""Circadian rhythm system for L.I.F.E - Mental energy and sleep/wake cycles."""
-
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import json
@@ -9,10 +7,9 @@ from ..timeutil import to_local_naive
 
 @dataclass
 class CircadianState:
-    """Mental energy and circadian state."""
-    mental_energy: float = 100.0  # 0-100
-    hunger: float = 20.0  # 0 full .. 100 starving
-    health: float = 100.0  # 0-100
+    mental_energy: float = 100.0
+    hunger: float = 20.0
+    health: float = 100.0
     is_sleeping: bool = False
     sleep_start: datetime | None = None
     last_tick: datetime = None
@@ -24,14 +21,11 @@ class CircadianState:
 
 
 class CircadianSystem:
-    """Manages mental energy and sleep/wake cycles."""
 
-    # Energy drain rates
     BASE_DRAIN_PER_HOUR = 2.0
     TASK_DRAIN_MULTIPLIER = 1.5
     SLEEP_RECOVERY_PER_HOUR = 25.0
 
-    # Thresholds
     DROWSY_THRESHOLD = 50.0
     SLEEP_THRESHOLD = 20.0
     MAX_ENERGY = 100.0
@@ -45,7 +39,6 @@ class CircadianSystem:
         self._wake_day = datetime.now().date().isoformat()
 
     def observe_interaction(self, now=None):
-        """Learn a quiet eight-hour window; one hourly sample per day, bounded drift."""
         now = now or datetime.now()
         day = now.date().isoformat()
         hours = self.activity_days.setdefault(day, [])
@@ -67,7 +60,6 @@ class CircadianSystem:
         return (now.hour-self.sleep_hour)%24 < 8
 
     def tick(self, seconds: float) -> None:
-        """Update mental energy based on time elapsed."""
         if self.state.last_tick is None:
             self.state.last_tick = datetime.now()
             return
@@ -79,7 +71,6 @@ class CircadianSystem:
             self.state.wake_count_today = 0
             self._wake_day = now.date().isoformat()
 
-        # Life continuity: hunger rises with time; health follows hunger and rest.
         hunger_rate = 0.6 if self.state.is_sleeping else 4.0
         self.state.hunger = min(100.0, self.state.hunger + (elapsed / 3600) * hunger_rate)
         if self.state.hunger >= 80:
@@ -88,55 +79,45 @@ class CircadianSystem:
             self.state.health = min(100.0, self.state.health + (elapsed / 3600) * (1.0 if self.state.is_sleeping else 0.4))
 
         if self.state.is_sleeping:
-            # Recover energy while sleeping
             recovery = (elapsed / 3600) * self.SLEEP_RECOVERY_PER_HOUR
             self.state.mental_energy = min(self.MAX_ENERGY, self.state.mental_energy + recovery)
 
-            # Check if fully rested
             if not self.in_sleep_window(now) and self.state.mental_energy >= self.DROWSY_THRESHOLD:
                 self.state.is_sleeping = False
                 self.state.sleep_start = None
         else:
-            # Drain energy while awake
             drain = (elapsed / 3600) * self.BASE_DRAIN_PER_HOUR
             self.state.mental_energy = max(0, self.state.mental_energy - drain)
 
-            # Check if should sleep
             idle = self.last_interaction is None or (now-self.last_interaction).total_seconds() > 1800
             if self.state.mental_energy <= self.SLEEP_THRESHOLD or (self.in_sleep_window(now) and idle):
                 self.start_sleep()
 
     def start_sleep(self) -> None:
-        """Enter sleep state."""
         self.state.is_sleeping = True
         self.state.sleep_start = datetime.now()
 
     def eat(self, amount: float = 40.0) -> dict:
-        """Reduce hunger (a meal/rest activity)."""
         self.state.hunger = max(0.0, self.state.hunger - max(0.0, float(amount)))
         return {"hunger": round(self.state.hunger, 1), "health": round(self.state.health, 1)}
 
     def force_wake(self) -> bool:
-        """Force wake from sleep. Returns True if was sleeping."""
         if self.state.is_sleeping:
             self.state.is_sleeping = False
             self.state.sleep_start = None
             self.state.wake_count_today += 1
-            # Forced wake leaves residual fatigue + tracks dissatisfaction window
             self.state.mental_energy = max(0.0, self.state.mental_energy - 5.0)
             self._last_forced_wake_at = datetime.now()
             return True
         return False
 
     def was_forced_wake_recently(self, minutes: float = 30.0) -> bool:
-        """True if force_wake happened within the last N minutes (dissatisfaction window)."""
         ts = getattr(self, "_last_forced_wake_at", None)
         if not ts:
             return False
         return (datetime.now() - ts).total_seconds() <= minutes * 60
 
     def dissatisfaction_level(self) -> float:
-        """0..1 irritation pressure after forced wake / low energy."""
         level = 0.0
         if self.was_forced_wake_recently():
             level += 0.6
@@ -147,29 +128,24 @@ class CircadianSystem:
         return min(1.0, level)
 
     def task_completed(self, duration_seconds: float) -> None:
-        """Apply extra drain from Agent task."""
         drain = (duration_seconds / 3600) * self.BASE_DRAIN_PER_HOUR * self.TASK_DRAIN_MULTIPLIER
         self.state.mental_energy = max(0, self.state.mental_energy - drain)
 
     def is_drowsy(self) -> bool:
-        """Check if mental energy is below drowsy threshold."""
         return self.state.mental_energy < self.DROWSY_THRESHOLD
 
     def should_auto_sleep(self) -> bool:
-        """Check if should automatically sleep."""
         idle = self.last_interaction is None or (datetime.now()-self.last_interaction).total_seconds() > 1800
         return not self.state.is_sleeping and (self.state.mental_energy <= self.SLEEP_THRESHOLD or (self.in_sleep_window() and idle))
 
     def get_response_delay(self) -> float:
-        """Get response delay multiplier based on energy."""
         if self.state.mental_energy < 20:
-            return 3.0  # Very slow when exhausted
+            return 3.0
         elif self.state.mental_energy < 50:
-            return 2.0  # Slower when drowsy
-        return 1.0  # Normal speed
+            return 2.0
+        return 1.0
 
     def get_prompt_context(self) -> str:
-        """Get circadian state as prompt context."""
         notes = []
         if self.state.hunger >= 75:
             notes.append("你有点饿了，可能会提到想吃东西。")
@@ -220,7 +196,6 @@ class CircadianSystem:
         if data.get('last_interaction'): self.last_interaction = to_local_naive(datetime.fromisoformat(data['last_interaction']))
 
     def save(self, path: str) -> None:
-        """Save state to file."""
         from pathlib import Path
 
         target = Path(path)
@@ -229,7 +204,6 @@ class CircadianSystem:
         temporary.replace(target)
 
     def load(self, path: str) -> None:
-        """Load state from file."""
         try:
             with open(path, "r") as f:
                 data = json.load(f)

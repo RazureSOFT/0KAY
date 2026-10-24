@@ -1,5 +1,3 @@
-"""Local token/usage ledger plus optional provider balance snapshots."""
-
 from __future__ import annotations
 
 import json
@@ -8,8 +6,6 @@ from pathlib import Path
 
 
 class UsageLedger:
-    #: Rolling window of daily buckets kept in ``usage.json``; older days are
-    #: dropped so the ledger cannot grow without bound.
     MAX_DAYS = 400
 
     def __init__(self, data_dir: str):
@@ -45,8 +41,6 @@ class UsageLedger:
         daily["requests"] += 1
         daily["input"] += int(input_tokens or 0)
         daily["output"] += int(output_tokens or 0)
-        # ISO dates sort lexicographically == chronologically, so the oldest
-        # buckets are the first entries.
         if len(by_day) > self.MAX_DAYS:
             for stale in sorted(by_day)[: len(by_day) - self.MAX_DAYS]:
                 by_day.pop(stale, None)

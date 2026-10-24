@@ -1,14 +1,3 @@
-"""Incremental BM25 index updates.
-
-Task #24 (engineering debt): single-doc writes used to force a *full* BM25
-rebuild of the whole corpus (`rebuild_index`) on every store/delete/prune.
-That is the per-turn hot path.  These tests pin the new incremental behaviour:
-
-- `store` / `remember` upsert one doc and persist (no full rebuild).
-- `delete_fact` / `delete_note` / `_prune_episodes` drop one doc (no full rebuild).
-- search ranking after incremental ops is identical to a from-scratch rebuild.
-- the on-disk index survives a reload.
-"""
 import os
 import sys
 import tempfile
@@ -25,7 +14,6 @@ class IncrementalIndex(unittest.TestCase):
         self.ms = MemorySystem(os.path.join(self.dir.name, "memory"))
 
     def tearDown(self):
-        # Keep teardown explicit if connection ownership changes in the future.
         try:
             self.ms.close()
         except Exception:
@@ -64,11 +52,9 @@ class IncrementalIndex(unittest.TestCase):
         calls = self._spy_rebuild()
         for _ in range(3):
             self.ms.remember_episode("一条会被裁剪掉的旧 episodic 痕迹", prediction_error=1.0, novelty=1.0)
-        # Push the episode cap to 0 so pruning drops every episodic trace.
         self.ms._episode_cap = 0
         pruned = self.ms._prune_episodes()
         self.assertGreater(pruned, 0)
-        # The dropped episodes must be unsearchable now.
         self.assertEqual([h["id"] for h in self.ms.search("旧 episodic", top_k=20)], [])
         self.assertEqual(calls["n"], 0, "prune must not trigger a full rebuild")
 
@@ -95,15 +81,10 @@ class IncrementalIndex(unittest.TestCase):
         for tag, txt in texts:
             self.ms.remember(txt, tags=[tag])
         incremental = [h["id"] for h in self.ms.search("咖啡", top_k=10)]
-        # Reference: a fresh instance that always does a from-scratch rebuild.
         fresh = MemorySystem(os.path.join(self.dir.name, "memory"))
         fresh.rebuild_index()
         full = [h["id"] for h in fresh.search("咖啡", top_k=10)]
         fresh.close()
-        # Membership (and BM25 scores) must be identical.  Tie-breaking order
-        # between equal-scored docs depends on dict insertion order, which is
-        # call-order for incremental vs created_at for a full rebuild, so we
-        # compare as sets / sorted permutations rather than exact ordering.
         self.assertEqual(set(incremental), set(full), "incremental and full rebuild must return the same docs")
         self.assertEqual(sorted(incremental), sorted(full), "incremental ranking must be a permutation of full rebuild")
 

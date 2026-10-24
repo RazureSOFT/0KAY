@@ -1,5 +1,3 @@
-"""S5 gate: the world runs at runtime without an LLM, is off by default, and
-feeds the timeline/mood/memory when enabled."""
 import asyncio
 import os
 import sys
@@ -46,7 +44,7 @@ class RuntimeGate(unittest.TestCase):
         self.assertEqual(self.runtime.validate(text, event), [])
 
     def test_runtime_runs_without_llm(self):
-        result = self.runtime.tick(self.engine, "full")  # full also needs no LLM
+        result = self.runtime.tick(self.engine, "full")
         self.assertTrue(result is None or "event" in result)
 
 

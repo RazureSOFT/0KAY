@@ -1,9 +1,3 @@
-"""Reciprocity: the shared trait space and the rupture/repair state machine.
-
-These pin the two things the audit found missing: ``describe(partner)`` /
-``homophily`` had no writer (always 0.5), and a relationship could only be
-updated additively - it could never break and recover.
-"""
 import sys
 import tempfile
 import unittest
@@ -129,7 +123,6 @@ class RelatingWiring(unittest.TestCase):
             "sent_at": (datetime.now() - timedelta(seconds=seconds_ago)).isoformat(),
             "user_id": user_id, "context": {}, "control": {}, "valence": 0.0,
             "response": "hi", "tool_success": 0.0, "tool_failure": 0.0}
-        # `_receive_feedback` pops and credits using the *next* user message.
         self.turn.user_id = user_id
         self.engine._receive_feedback(self.turn, message)
         return feedback

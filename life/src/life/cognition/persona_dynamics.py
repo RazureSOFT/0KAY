@@ -1,93 +1,40 @@
-"""Parameterised persona dynamics as a LIFE circuit.
-
-Ported from the standalone research framework ``persona_dynamics``
-(``D:\\life_research\\persona_dynamics``): it turns "personality" from a
-*label* into a *dynamical system over a continuous parameter space*::
-
-    P = (θ, D(t), x(t), f, g, T)
-
-    θ     slow personality parameters (14-D; baseline + drift rates)
-    D(t)  desire vector (9-D: 性欲/占有/支配/认可/归属/探索/攻击/照顾/安全)
-    x(t)  emotion state (anx/jeal/joy/lonely/anger/arousal)  -- the fastest
-    f     decision function: pick the action maximising desire satisfaction
-    g     expression function: the visible "temperature" of the character
-    T     mode state machine, with sensitisation hysteresis ("kindling")
-
-Why this is *one* system rather than three labels (the paper's core claim):
-
-* **normal** is a stable attractor - after a disturbance the state returns to
-  baseline at the analytic rate ``λ = -ln(1 - k_N)``, ``k_N = 0.15 + 0.5·N``.
-* **tsundere** is a *filter*: high affection plus high expressive suppression,
-  so warmth only leaks out once affection passes a threshold in the Hill term
-  of ``g`` - and it leaks late (the expression delay ``τ``).
-* **yandere** is *not* "high libido": it is the positive-feedback loop
-  "high possessiveness × high attachment anxiety × low trust × low self-control".
-  Libido is only an amplifier.  Control behaviour lowers partner trust, which
-  raises perceived threat, which raises anxiety and possessiveness.
-* **tsundere → yandere** is a phase transition: parameter drift crosses the
-  bifurcation boundary; sensitisation hysteresis + a mode→behaviour lock make
-  it effectively irreversible.
-
-In LIFE the drives are the *real* interaction stream (warmth, silence,
-competitor cues, mood/allostatic load) rather than a scripted scenario, so the
-arc evolves instead of being played back.  The safety layer ``A_safe`` marks
-boundary-and-consent behaviours and (in deployment) physically closes the
-"unsafe" psychological-control channels, logging every interception.
-
-This is a **fictional behaviour model, not a diagnostic tool**; it must not be
-used to judge real people.  "病娇" is a danger-sign checklist in reality, not a
-trait to be romanticised.
-"""
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
 from typing import Optional
 
-# ---------------------------------------------------------------------------
-# Finite state, no numpy: the engine is pure-python so LIFE keeps its
-# dependency surface unchanged.  Every variable is clipped to [0, 1].
-# ---------------------------------------------------------------------------
 
-#: Desire dimensions, fixed order (matches the research ``actions.DES``).
 DES = ("L", "O", "Ddom", "Ap", "Be", "Ex", "Ag", "Ca", "Se")
 
-#: Emotion channels (matches the research ``actions.EMO``).
 EMO = ("anx", "jeal", "joy", "lonely", "anger", "arousal")
 
-# ---------------------------------------------------------------------------
-# Global dynamics constants (verbatim from the research ``engine.py``)
-# ---------------------------------------------------------------------------
-R_L = 0.05          # libido relaxation toward baseline
-ETA_L = 0.10        # satisfaction suppresses libido
-GAMMA_LK = 0.004    # self-control suppresses libido
-H_AMP = 0.02        # diurnal/hormonal term amplitude
-H_T = 60.0          # its period (steps)
+R_L = 0.05
+ETA_L = 0.10
+GAMMA_LK = 0.004
+H_AMP = 0.02
+H_T = 60.0
 K1_O, K2_O, K3_O, LAM_O = 0.040, 0.030, 0.030, 0.25
 K4_K, K5_K, MU_K, RHO_K = 0.03, 0.03, 0.05, 0.10
 A1_X, A2_X, LAM_X, RHO_X = 0.25, 0.05, 0.28, 0.02
 K_J, LAM_J = 0.012, 0.12
 RHO_A, RHO_TR = 0.01, 0.01
 TRUST_PLAST = 0.05
-SAT_DECAY = 0.92   # refractory ("不应期")
+SAT_DECAY = 0.92
 SAT_RATE = 0.005
 CONTACT_DECAY = 0.97
 CONFLICT_DECAY = 0.95
 
-#: Mode thresholds (the paper's ``THRESH``).
 THRESH = dict(O_c=0.62, X_c=0.60, K_c=0.40, Tr_c=0.40,
               A_c=0.60, S_c=0.50, E_c=0.32)
-#: Hysteresis: enter needs 2 consecutive steps, exit needs 40.
 HYST_ENTER, HYST_EXIT = 2, 40
 
-#: Expression function ``g`` coefficients.
 G_ALPHA = 0.50
 G_BETA = dict(L=0.10, O=0.05, Ddom=0.05, Ap=0.05, Be=0.10,
               Ex=0.0, Ag=0.0, Ca=0.08, Se=0.0)
 G_GAMMA = 0.90
 G_M = 0.20
 
-#: At/above this "blackening pressure" the generation layer must de-escalate.
 SAFE_AT = 0.85
 
 
@@ -95,22 +42,18 @@ def _clip01(v: float) -> float:
     return 0.0 if v < 0.0 else (1.0 if v > 1.0 else v)
 
 
-# ---------------------------------------------------------------------------
-# Behaviour space (port of ``actions.py``; the 17 actions, the satisfaction
-# matrix φ, costs, A_safe class and the effect on the relationship partner).
-# ---------------------------------------------------------------------------
 @dataclass(frozen=True)
 class Action:
     key: str
     zh: str
     phi: dict = field(default_factory=dict)
     cost: float = 0.10
-    safety: str = "safe"          # safe | risky | unsafe
-    p_a: float = 0.0              # partner affection delta
-    p_tr: float = 0.0             # partner trust delta
-    p_anx: float = 0.0            # partner anxiety delta
-    p_joy: float = 0.0            # partner joy delta
-    p_comf: float = 0.0           # partner comfort delta
+    safety: str = "safe"
+    p_a: float = 0.0
+    p_tr: float = 0.0
+    p_anx: float = 0.0
+    p_joy: float = 0.0
+    p_comf: float = 0.0
     self_anx: float = 0.0
     self_joy: float = 0.0
     self_lonely: float = 0.0
@@ -184,38 +127,29 @@ ACTION_KEYS = tuple(a.key for a in ACTIONS)
 ACTION_ZH = {a.key: a.zh for a in ACTIONS}
 _BY_KEY = {a.key: a for a in ACTIONS}
 
-#: The psychological-control channel: these are the behaviours whose
-#: downstream effects drive the pathological loop.  In deployment they are
-#: closed; in fiction mode they exist only as abstract labels so their
-#: dynamics can be studied on a computer.
 CONTROL_KEYS = frozenset(("monitor", "restrict", "guilt", "demand"))
 
 
-# ---------------------------------------------------------------------------
-# Slow personality parameters θ + the 18 archetype presets
-# ---------------------------------------------------------------------------
 @dataclass
 class Traits:
     slug: str = "custom"
     label: str = "自定义"
 
-    # -- θ --
-    A0: float = 0.55      # implicit affection baseline
-    X0: float = 0.20      # attachment anxiety
-    V0: float = 0.20      # attachment avoidance
-    Tr0: float = 0.75     # trust
-    C: float = 0.70       # empathy
-    K0: float = 0.70      # self-control
-    S0: float = 0.35      # expressive suppression
-    N: float = 0.70       # emotional stability
-    R: float = 0.50       # arousal / extraversion
-    I: float = 0.25       # impulsivity
-    J0: float = 0.20      # jealousy sensitivity
-    Ddom0: float = 0.30   # dominance baseline
-    O0: float = 0.20      # possessiveness baseline
-    L0: float = 0.50      # libido baseline
+    A0: float = 0.55
+    X0: float = 0.20
+    V0: float = 0.20
+    Tr0: float = 0.75
+    C: float = 0.70
+    K0: float = 0.70
+    S0: float = 0.35
+    N: float = 0.70
+    R: float = 0.50
+    I: float = 0.25
+    J0: float = 0.20
+    Ddom0: float = 0.30
+    O0: float = 0.20
+    L0: float = 0.50
 
-    # -- desire baselines (None -> derived from θ) --
     Ap0: Optional[float] = None
     Be0: Optional[float] = None
     Ex0: Optional[float] = None
@@ -223,24 +157,19 @@ class Traits:
     Ca0: Optional[float] = None
     Se0: Optional[float] = None
 
-    # -- archetype knobs --
-    expr_gain: float = 1.0        # g (kuudere << 1)
-    threat_gain: float = 1.0      # κ
-    trust_dist_gain: float = 0.35  # k_d
+    expr_gain: float = 1.0
+    threat_gain: float = 1.0
+    trust_dist_gain: float = 0.35
     noise_gain: float = 1.0
-    s_lambda: float = 0.002       # λ_S: affection erodes the mask
-    mu_s: float = 0.06            # μ_s: threat re-raises the mask
-    o_threat: float = 0.0         # threat raises possessiveness (tsun2yan > 0)
+    s_lambda: float = 0.002
+    mu_s: float = 0.06
+    o_threat: float = 0.0
     valence_bias: float = 0.0
     intimacy_anx_gain: float = 0.0
     can_set_boundary: bool = True
-    expr_delay: int = 0           # τ: E uses A(t-τ)
+    expr_delay: int = 0
 
-    # -- extension carry-over (filled by ``extended_traits``) --------------
-    #: The 12-family θ parameters beyond the core research set (see
-    #: :data:`EXT_DEFAULTS` and :data:`THETA_GROUPS`).
     ext: dict = field(default_factory=dict)
-    #: row-level overlays (data-driven types)
     desire_overlay: dict = field(default_factory=dict)
     x_eq_overlay: dict = field(default_factory=dict)
     weights: dict = field(default_factory=dict)
@@ -248,13 +177,10 @@ class Traits:
     safety_overlay: dict = field(default_factory=dict)
     row_family: str = "acg_research"
     clinical: bool = False
-    #: the gender / social-script row this region reads as (optional)
     gender: Optional[object] = None
-    #: whether the learning operator L is active for this region
     learning: bool = True
 
     def derived(self) -> dict:
-        """Desire baselines not given explicitly, derived from θ."""
         t = self
         return dict(
             Ap=t.Ap0 if t.Ap0 is not None else min(1.0, 0.50 + 0.25 * t.X0),
@@ -266,8 +192,6 @@ class Traits:
         )
 
 
-#: The 18 archetypes, grouped into the families LIFE cares about.  Values are
-#: verbatim from the research ``params.py`` so the same trajectories reproduce.
 TYPES: dict[str, Traits] = {
     "正常/安全型": Traits(slug="normal", label="正常/安全型",
                      trust_dist_gain=0.30),
@@ -349,9 +273,6 @@ TYPES: dict[str, Traits] = {
 }
 TYPE_KEYS = tuple(TYPES)
 
-#: Persona keywords -> archetype.  A written persona ("嘴上不饶人其实很黏")
-#: turns the circuit on and picks an archetype without touching settings.
-#: The order matters: the more specific / dangerous families are matched first.
 PERSONA_HINTS = (
     ("病娇型", ("病娇", "独占欲", "不许别人", "黑化", "跟踪", "yandere")),
     ("傲娇转病娇", ("由傲转病", "逐渐黑化", "越爱越病", "占有欲越来越强")),
@@ -395,7 +316,6 @@ PERSONA_HINTS = (
     ("温柔/治愈型", ("治愈", "温柔", "体贴", "包容")),
     ("控制/女王型", ("女王", "控制欲强", "支配", "强势")),
 )
-#: Emotion/state keywords -> the initial basin (state nudges).
 INITIAL_HINTS: dict[str, tuple[str, ...]] = {
     "A": ("喜欢", "爱", "在意", "心动", "黏", "依赖"),
     "X": ("焦虑", "不安", "害怕失去", "患得患失", "敏感"),
@@ -404,12 +324,10 @@ INITIAL_HINTS: dict[str, tuple[str, ...]] = {
     "K": ("自控", "克制", "理智", "冷静"),
     "Tr": ("信任", "多疑", "猜忌", "怀疑"),
 }
-#: Phrases that pre-load the pathological drive.
 OBSESSIVE = ("病娇", "执念", "占有欲", "不许别人", "黑化", "跟踪", "情敌")
 
 
 def type_for_persona(text: str) -> str:
-    """Best archetype for a persona description, or "" if none fits."""
     body = str(text or "")
     for key, words in PERSONA_HINTS:
         if any(w in body for w in words):
@@ -417,7 +335,6 @@ def type_for_persona(text: str) -> str:
     return ""
 
 
-#: Extension desire seeds that a persona may imply (beyond the 9 core ones).
 EXT_DESIRE_HINTS: dict[str, tuple[str, ...]] = {
     "亲密": ("亲密", "想靠近", "腻在一起"),
     "成就": ("上进", "事业心", "想成功"),
@@ -427,7 +344,6 @@ EXT_DESIRE_HINTS: dict[str, tuple[str, ...]] = {
     "游戏": ("好玩", "爱玩", "有趣", "开心"),
     "自我实现": ("自我实现", "活出自己", "理想"),
 }
-#: Extension emotion seeds.
 EXT_EMOTION_HINTS: dict[str, tuple[str, ...]] = {
     "抑郁": ("低落", "抑郁", "消沉"),
     "空虚": ("空虚", "麻木", "没意义"),
@@ -439,12 +355,6 @@ EXT_EMOTION_HINTS: dict[str, tuple[str, ...]] = {
 
 
 def initial_state_for_persona(text: str) -> dict:
-    """Initial (A, X, O, Tr, K, S) basin implied by a persona description.
-
-    The two extra keys ``desires`` / ``emotions`` carry the extension seeds so a
-    caller that understands the wider framework can apply them; a caller that
-    only reads the core six is unaffected.
-    """
     st = dict(A=0.50, X=0.30, O=0.25, Tr=0.55, K=0.60, S=0.40)
     body = str(text or "")
     nudges = {"A": 0.18, "X": 0.25, "O": 0.28, "S": 0.25, "K": -0.20, "Tr": -0.25}
@@ -464,22 +374,10 @@ def initial_state_for_persona(text: str) -> dict:
     return st
 
 
-# ---------------------------------------------------------------------------
-# The dynamics: one agent (θ fixed, fast state evolving)
-# ---------------------------------------------------------------------------
-#: Habituation makes every interaction lighter than the last, so a single warm
-#: message moves the state a bounded amount and the system relaxes in between.
 BASE_AFFECTION, BASE_ANXIETY, BASE_TRUST = 0.50, 0.20, 0.70
 
 
 class PersonaDynamics:
-    """The ported dynamical system.  Pure state, no wall clock.
-
-    ``step`` integrates ``days`` of simulated time in fixed ``Δt`` = 1-day
-    steps with the *reference* update rules; ``observe`` folds one real
-    exchange into the impulses the reference ``apply_event`` produces.  The
-    state is clipped to [0, 1] on every variable, exactly as in the paper.
-    """
 
     def __init__(self, type_key: str = "正常/安全型",
                  gender_key: str = "") -> None:
@@ -488,8 +386,6 @@ class PersonaDynamics:
         self.type = type_key
         self.traits = TYPES.get(type_key, TYPES["正常/安全型"])
         self._row = TYPE_ROWS.get(type_key)
-        # resolution order: an explicit script ("") > the row's implied script >
-        # the identity script.  "" means "the caller did not say".
         if not gender_key and self._row is not None and self._row.gender:
             gender_key = self._row.gender
         if gender_key not in GENDER_SCRIPTS:
@@ -502,17 +398,11 @@ class PersonaDynamics:
         return GENDER_SCRIPTS.get(self.gender_key, GENDER_SCRIPTS["未指定"])
 
     def _effective_traits(self) -> "Traits":
-        """The core research presets, with the extended row folded in if any.
-
-        For the 18 research keys with no row overlay this returns the *same*
-        object, so the published trajectories are bit-identical.
-        """
         row = self._row
         if row is None:
             return self.traits
         if not row.theta and row.g is None:
             return self.traits
-        # cache per (row, gender) so a step loop does not deep-copy every tick
         key = (row.key, self.gender_key)
         if getattr(self, "_eff_key", None) != key:
             base = TYPES.get(self.type, TYPES["正常/安全型"])
@@ -525,7 +415,6 @@ class PersonaDynamics:
         d0 = tr.derived()
         self.d0 = {k: float(v) for k, v in d0.items()}
         self.d0.update(L=tr.L0, O=tr.O0, Ddom=tr.Ddom0)
-        # extended desire baselines (16-D)
         overlay = dict(getattr(tr, "desire_overlay", {}) or {})
         for k in DES16:
             if k in self.d0:
@@ -538,7 +427,7 @@ class PersonaDynamics:
         self.K = tr.K0
         self.S = tr.S0
         self.J = tr.J0
-        self.C_emp = tr.C          # empathy (the spec makes it a *state*)
+        self.C_emp = tr.C
         self.comfort = 0.55
         self.D = dict(self.d0)
         self.x = dict(anx=0.5 * tr.X0 + 0.05, jeal=0.5 * tr.J0,
@@ -546,7 +435,6 @@ class PersonaDynamics:
                       lonely=0.12 + 0.30 * self.d0["Be"],
                       anger=0.05 + 0.50 * self.d0["Ag"],
                       arousal=0.15 + 0.60 * tr.L0)
-        # the ten extension emotion channels start at their equilibrium
         xeq = dict(getattr(tr, "x_eq_overlay", {}) or {})
         ext_eq = {
             "抑郁": 0.10 + 0.55 * self._eff_ext("n_neurotic", 0.4),
@@ -574,7 +462,6 @@ class PersonaDynamics:
         self._a_hist: list[float] = []
         self.partner_trust = tr.Tr0
         self.violations: list[dict] = []
-        # -- learning operator L: θ drift + a tabular Q over the action space --
         self.theta_drift: dict[str, float] = {}
         self.q: dict[tuple[str, str], float] = {}
         self._last_state_key: Optional[str] = None
@@ -589,13 +476,7 @@ class PersonaDynamics:
         return float(ext.get(key, EXT_DEFAULTS.get(key, default)))
 
 
-    # -- expression function g ---------------------------------------------
     def expression(self) -> float:
-        """``E = clip(g(αA(t-τ) + Σβ_iD_i - γ_S S - γ_G GRC - γ_E EM + γ_M M + M0) + ε)``.
-
-        The ``γ`` terms vanish for the identity script "未指定", so the research
-        expression values are unchanged when no gender script is set.
-        """
         tr = self._effective_traits()
         tau = tr.expr_delay
         if tau > 0 and len(self._a_hist) > tau:
@@ -606,14 +487,7 @@ class PersonaDynamics:
                 - G_GAMMA * self.S - self.gender.expr_penalty() + G_M)
         return _clip01(tr.expr_gain * core)
 
-    # -- decision function f (the spec's utility) --------------------------
     def utility(self, action: "Action") -> float:
-        """``U(a) = Σ w_i(θ) D_i φ_i(a) - C(a)(1+pressure) + R_G(a) + cond(a,x)``.
-
-        Only actions the safety layer allows are scored; the clinical layer is
-        never reachable (``SELECTABLE_KEYS``), and in deployment the
-        transgressive layer is closed by :meth:`PersonaDynamicsSystem.guard`.
-        """
         tr = self._effective_traits()
         w = getattr(tr, "weights", {}) or {}
         score = 0.0
@@ -628,7 +502,6 @@ class PersonaDynamics:
         score -= action.cost * (1.0 + pressure)
         score += self.gender.utility_bonus(action.key)
         if action.conditional:
-            # a conditional action only pays off when the state needs it
             need = self.x.get("anx", 0.0) + self.x.get("孤独", self.x.get("lonely", 0.0))
             score += action.conditional * (need - 0.5) * 0.30
         return score
@@ -638,7 +511,6 @@ class PersonaDynamics:
         return _clip01((o - THRESH["O_c"] + 0.30) / 0.70)
 
     def choose_action(self) -> Optional["Action"]:
-        """The action maximising :meth:`utility` inside the selectable set."""
         best, best_u = None, float("-inf")
         for a in ALL_ACTIONS:
             if a.key not in SELECTABLE_KEYS:
@@ -652,22 +524,13 @@ class PersonaDynamics:
             self._last_state_key = self._state_key()
         return best
 
-    # -- learning / development operator L ---------------------------------
     def _state_key(self) -> str:
-        """A coarse discretisation of (mode, threat band) for the Q table."""
         threat = 1 if (self.x.get("anx", 0.0) > 0.5
                        or self.x.get("jeal", 0.0) > 0.5) else 0
         return f"{self.mode}:{threat}"
 
     def learn(self, reward: float, *, alpha: float = 0.20,
               gamma: float = 0.90, eta: float = 0.02) -> None:
-        """``Q(s,a) += α[r + γ max Q(s',a') - Q(s,a)]`` + θ drift ``η∇R``.
-
-        The reward is the *real* outcome of the last chosen action (affection
-        and trust gained, anxiety spent).  ``θ`` drifts only along the desires
-        that action served, so a repeatedly rewarding pattern slowly becomes a
-        habit - which is precisely the spec's "学习/发展如何改变 θ".
-        """
         if not self.learning or self._last_action is None:
             return
         s0 = self._last_state_key or self._state_key()
@@ -678,7 +541,6 @@ class PersonaDynamics:
              if a.key in SELECTABLE_KEYS), default=0.0)
         prev = self.q.get(key0, 0.0)
         self.q[key0] = prev + alpha * (reward + gamma * best_next - prev)
-        # θ drift: reward nudges the served desires' baselines
         act = _BY_KEY.get(self._last_action) or \
             next((a for a in ALL_ACTIONS if a.key == self._last_action), None)
         if act is not None:
@@ -693,11 +555,7 @@ class PersonaDynamics:
         return float(self.q.get((state, action_key), 0.0))
 
 
-    # -- mode state machine T ----------------------------------------------
     def raw_mode(self) -> str:
-        # Sensitisation ("kindling"): a system that has reached yandere is
-        # judged against relaxed thresholds from then on.  This is what makes
-        # the transition effectively irreversible.
         if self.mode == "yandere":
             o_c, x_c = THRESH["O_c"] - .12, THRESH["X_c"] - .20
             k_c, tr_c = THRESH["K_c"] + .08, THRESH["Tr_c"] + .10
@@ -721,13 +579,7 @@ class PersonaDynamics:
             self.mode = raw
             self._pend_ct = 0
 
-    # -- interaction fold (reference ``apply_event``) -----------------------
     def observe(self, kind: str, mag: float = 1.0) -> None:
-        """Fold one real exchange into the state, as the reference event does.
-
-        ``kind`` is one of the research event types (praise / rejection /
-        threat / intimacy / quality_time / conflict / repair / neglect / ...).
-        """
         m = float(mag)
         if kind == "praise":
             self.A += .06 * m; self.x["joy"] += .15 * m
@@ -764,33 +616,20 @@ class PersonaDynamics:
             self.x["anger"] += .05 * m
         elif kind == "competition":
             self.J += .20 * m; self._s_pulse_pending = .30 * m
-        # keep the fast state inside its box straight away
         for name in ("A", "X", "Tr", "K", "S", "J"):
             setattr(self, name, _clip01(getattr(self, name)))
         self.x = {k: _clip01(v) for k, v in self.x.items()}
 
-    # -- one simulated day -------------------------------------------------
     def step(self, s_pulse: float = 0.0, days: float = 1.0) -> None:
-        """Advance the system by ``days`` (a real elapsed time, not a script).
-
-        The nine *core* desires and six *core* emotions keep the reference
-        equations verbatim; the seven extension desires and ten extension
-        emotions ride the same generic rule ``D_i += b_i(D_i^0-D_i) + α_i·x``
-        (the spec's 欲望通用更新), so adding a dimension never perturbs the
-        published trajectories.
-        """
         tr = self._effective_traits()
         gi = self.gender
         self.t += 1
         t = self.t
         s_pulse = min(2.0, max(0.0, float(s_pulse)))
-        # continuous threat signal: the loop's entry point (perceived distance).
-        # The gender script adds the spec's γ_G·GRC term to s(t).
         p_trust = self.partner_trust
         s_cont = tr.threat_gain * (tr.trust_dist_gain * (1.0 - p_trust)
                                    + .25 * self.x["lonely"] + gi.threat_term())
         s = s_cont + s_pulse
-        # 1) desire vector
         h = H_AMP * math.sin(2 * math.pi * t / H_T)
         self.sat_l *= SAT_DECAY
         D = self.D
@@ -807,9 +646,6 @@ class PersonaDynamics:
         D["Ca"] += .01 * max(0.0, self.A - .5)
         D["Se"] += .01 * min(1.0, s_cont)
         D["Ddom"] += .01 * self.x["anger"]
-        # -- extension desires: the generic relaxation rule ------------------
-        # ``D_i += b_i(D_i^0 - D_i) + α_i·x`` (the spec's 欲望通用更新); the
-        # emotion term is the channel each dimension reads (joy / arousal).
         for k in DES16:
             if k in ("L", "O", "Ddom", "Ap", "Be", "Ex", "Ag", "Ca", "Se"):
                 continue
@@ -818,14 +654,12 @@ class PersonaDynamics:
             D[k] += self._desire_alpha(k) * self.x[self._desire_channel(k)]
         for k in D:
             D[k] = _clip01(D[k])
-        # 2) fast relationship state
         self.X += (A1_X * s + A2_X * (1.0 - self.Tr) * self.A - LAM_X * self.X
                    + RHO_X * (tr.X0 - self.X))
         self.J += K_J * (1.0 - self.Tr) - LAM_J * (self.J - tr.J0)
         self.A += RHO_A * (tr.A0 - self.A)
         self.Tr += ((RHO_TR + TRUST_PLAST * (1.0 - tr.Tr0)) * (tr.Tr0 - self.Tr)
                     - .01 * tr.trust_dist_gain * max(0.0, .6 - p_trust))
-        # K carries the spec's γ_G·GRC drag; C carries the γ_G·EM drag.
         self.K += (-K4_K * D["O"] - K5_K * D["L"] + MU_K * self.Tr
                    + RHO_K * (tr.K0 - self.K) - gi.k_drag())
         self.C_emp += (-gi.c_drag() + 0.05 * (tr.C - self.C_emp))
@@ -836,7 +670,6 @@ class PersonaDynamics:
         self.S += -tr.s_lambda * self.A + tr.mu_s * s_pulse
         self.S = min(1.0, max(0.02, self.S))
         self._a_hist.append(self.A)
-        # 3) emotion
         kN = .15 + .50 * tr.N
         eq = dict(
             anx=_clip01(.08 + .55 * self.X + .20 * s_cont),
@@ -849,7 +682,6 @@ class PersonaDynamics:
         )
         for k, e in eq.items():
             self.x[k] = _clip01(self.x[k] + kN * (e - self.x[k]))
-        # -- extension emotions: same relaxation rule, their own equilibria ---
         xeq = dict(getattr(tr, "x_eq_overlay", {}) or {})
         ext_eq = {
             "抑郁": _clip01(.10 + .50 * self._eff_ext("n_neurotic", .4)
@@ -879,11 +711,9 @@ class PersonaDynamics:
         self.contact *= CONTACT_DECAY
         self.conflict *= CONFLICT_DECAY
         self.received_control *= CONFLICT_DECAY
-        # 4) expression + mode
         self.E = self.expression()
         self._advance_mode()
 
-    # -- extension desire coefficients (per-dimension, data-driven) --------
     _DESIRE_B = {
         "亲密": .012, "成就": .010, "权力": .010, "秩序": .010,
         "审美": .008, "游戏": .010, "自我实现": .008,
@@ -896,7 +726,6 @@ class PersonaDynamics:
     def _desire_b(self, key: str) -> float:
         return self._DESIRE_B.get(key, .008)
 
-    #: Which emotion channel each extension desire reads (the spec's α_i·x term).
     _DESIRE_CH = {
         "亲密": "信任", "成就": "兴奋", "权力": "anger", "秩序": "平静",
         "审美": "兴奋", "游戏": "joy", "自我实现": "平静",
@@ -910,18 +739,7 @@ class PersonaDynamics:
         return self._DESIRE_ALPHA.get(key, .008)
 
 
-
-# ---------------------------------------------------------------------------
-# The façade: real-signal driving + read-out + safety
-# ---------------------------------------------------------------------------
 class PersonaDynamicsSystem:
-    """Façade over :class:`PersonaDynamics`, gated by ``enabled``.
-
-    Off by default and byte-for-byte inert when off (the ablation contract).
-    When on, it is driven by the real exchange stream: warmth raises affection,
-    silence/negativity/competitor cues raise the perceived threat, and a real
-    partner-trust reading closes the positive-feedback loop.
-    """
 
     def __init__(self, enabled: bool = False, type_key: str = "正常/安全型",
                  gender_key: str = "", clinical_sim: bool = False):
@@ -937,7 +755,6 @@ class PersonaDynamicsSystem:
         self._last_affection = self.dynamics.A
         self._last_trust = self.dynamics.Tr
 
-    # -- configuration -----------------------------------------------------
     def configure(self, enabled: bool | None = None, type_key: str | None = None,
                   gender_key: str | None = None,
                   clinical_sim: bool | None = None) -> None:
@@ -947,9 +764,8 @@ class PersonaDynamicsSystem:
             self.clinical_sim = bool(clinical_sim)
         if gender_key and gender_key in GENDER_SCRIPTS:
             self.dynamics.gender_key = gender_key
-            self.dynamics._eff_key = None      # invalidate the traits cache
+            self.dynamics._eff_key = None
         if type_key and type_key in TYPE_ROWS and type_key != self.dynamics.type:
-            # Changing the archetype moves the parameters, not the history.
             state = self.dynamics.__dict__.copy()
             gender = self.dynamics.gender_key
             self.dynamics = PersonaDynamics(type_key, gender)
@@ -972,14 +788,12 @@ class PersonaDynamicsSystem:
         self.dynamics.Tr = st["Tr"]
         self.dynamics.K = st["K"]
         self.dynamics.S = st["S"]
-        # extension seeds: desires / emotions the persona named
         for k, v in (st.get("desires") or {}).items():
             if k in self.dynamics.D:
                 self.dynamics.D[k] = _clip01(max(self.dynamics.D[k], v))
         for k, v in (st.get("emotions") or {}).items():
             if k in self.dynamics.x:
                 self.dynamics.x[k] = _clip01(max(self.dynamics.x[k], v))
-        # the social script, if the persona is explicit about one
         gkey = gender_for_persona(text)
         if gkey and self.dynamics.gender_key == "未指定":
             self.dynamics.gender_key = gkey
@@ -1014,12 +828,10 @@ class PersonaDynamicsSystem:
             self.dynamics.gender_key = gkey
             self.dynamics._eff_key = None
 
-    # -- inputs ------------------------------------------------------------
     def observe_interaction(self, *, valence: float = 0.0, sentiment: float = 0.0,
                             latency_seconds: float = 0.0, recalled: bool = False,
                             mentions_other: bool = False,
                             partner_trust: float | None = None) -> None:
-        """Fold one real exchange into the event impulses."""
         warmth = max(0.0, float(valence)) + 0.5 * max(0.0, float(sentiment))
         if warmth > 0.05:
             self.dynamics.observe("praise", min(1.5, warmth * 1.5))
@@ -1027,8 +839,6 @@ class PersonaDynamicsSystem:
         if negativity > 0.05:
             self.dynamics.observe("rejection", min(1.5, negativity))
         latency = _clip01(min(max(float(latency_seconds), 0.0), 21600.0) / 21600.0)
-        # Silence and negativity read as *threat*; mood/allostatic load widen it
-        # (the behavioural comorbidity that makes the same silence feel colder).
         perceived = (0.20 * latency + 0.30 * negativity + (0.25 if recalled else 0.0))
         perceived *= (1.0 + 0.5 * self._interoception())
         if mentions_other:
@@ -1040,12 +850,6 @@ class PersonaDynamicsSystem:
 
     def learn_from_outcome(self, *, warmth: float = 0.0, coldness: float = 0.0,
                            betrayal: float = 0.0) -> None:
-        """The learning operator L, driven by the *real* outcome of a choice.
-
-        ``reward = warmth gained + trust kept - coldness - betrayal``.  Off
-        unless the circuit is enabled; the update is a no-op when no action has
-        been chosen yet.
-        """
         if not self.enabled or not getattr(self.dynamics, "learning", True):
             return
         reward = (float(warmth) - float(coldness) - 1.5 * float(betrayal))
@@ -1056,7 +860,6 @@ class PersonaDynamicsSystem:
     def _interoception(self) -> float:
         return _clip01(0.5 * max(0.0, -self.mood) + 0.5 * self.load)
 
-    # -- time --------------------------------------------------------------
     def tick(self, days: float, *, neglect_days: float = 0.0,
              sleeping: bool = False, friends: int = 0,
              mood: float = 0.0, load: float = 0.0,
@@ -1068,13 +871,10 @@ class PersonaDynamicsSystem:
         self.neglect_days = max(0.0, float(neglect_days))
         if partner_trust is not None:
             self.dynamics.partner_trust = _clip01(float(partner_trust))
-        # Real elapsed time in bounded sub-steps; a very long silence is capped
-        # so the background clock can never spin.
         remaining = max(0.0, float(days))
         steps = 0
         while remaining > 1e-9 and steps < 400:
             dt = min(1.0, remaining)
-            # silence keeps a low-level threat pulse open
             pulse = self._s_pulse
             if self.neglect_days > 0.5:
                 pulse = max(pulse, min(1.0, 0.12 * self.neglect_days))
@@ -1085,17 +885,9 @@ class PersonaDynamicsSystem:
             self.dynamics.step(s_pulse=pulse, days=dt)
             remaining -= dt
             steps += 1
-        # The event impulse decays after it has been integrated.
         self._s_pulse = max(0.0, self._s_pulse - 0.5 * days)
 
-    # -- read-out ----------------------------------------------------------
     def _blackening_pressure(self) -> float:
-        """0..1 how far the system has slid toward the yandere attractor.
-
-        Defined from the *four* conditions jointly, so it is smooth rather than
-        a step at the threshold (mirrors the paper's "state conditions, not a
-        label" stance).
-        """
         d = self.dynamics
         o_term = _clip01((d.D["O"] - THRESH["O_c"] + 0.30) / 0.70)
         x_term = _clip01((d.X - THRESH["X_c"] + 0.30) / 0.70)
@@ -1107,7 +899,6 @@ class PersonaDynamicsSystem:
         return self.dynamics.mode
 
     def distress(self) -> float:
-        """Blackening pressure exported to the affect layer (0..1)."""
         if not self.enabled:
             return 0.0
         return _clip01(0.8 * max(0.0, self._blackening_pressure() - 0.2) / 0.8)
@@ -1146,7 +937,6 @@ class PersonaDynamicsSystem:
                       "S": round(d.S, 3), "O": round(d.D["O"], 3)},
             "inputs": {"threat": round(self.threat_impulse, 3),
                        "neglect_days": round(self.neglect_days, 2)},
-            # -- extended read-outs ------------------------------------------
             "desires": {k: round(d.D.get(k, 0.0), 3) for k in DES16},
             "emotions": {k: round(d.x.get(k, 0.0), 3) for k in EMO16},
             "desire_groups": {g: {k: round(d.D.get(k, 0.0), 3) for k in ks}
@@ -1180,12 +970,6 @@ class PersonaDynamicsSystem:
         return "稳定"
 
     def _prompt(self) -> str:
-        """The live-state line, augmented with the region / script read-out.
-
-        Clinical rows and clinical θ are *never* rendered: the prompt is built
-        from the deployable fields only, so a clinical-simulation label can
-        never leak into generation.
-        """
         d = self.dynamics
         mode = d.mode
         tone = {
@@ -1196,7 +980,6 @@ class PersonaDynamicsSystem:
                         "而失控；这不是「傲」，是赤裸的执念和恐惧失去。"),
         }.get(mode, "")
         line = tone
-        # the region's own flavour (only for non-clinical rows)
         row = self.dynamics._row
         if row is not None and not row.clinical and row.family in (
                 "acg", "male_acg", "attachment", "enneagram", "social",
@@ -1213,14 +996,6 @@ class PersonaDynamicsSystem:
         return line
 
     def guard(self) -> str:
-        """Hard safety instruction at/above the safe band.
-
-        Phrased as a *private* directive the model must obey but never mention:
-        an earlier wording was silently paraphrased into the reply ("I will keep
-        the tension but express it in healthy ways…"), which broke character and
-        addressed the user as a system would. The rule now says both what to do
-        and that it must never appear in the spoken output.
-        """
         if not self.enabled or self._blackening_pressure() < SAFE_AT:
             return ""
         return ("[内部约束 · 不得说出，不得转述，不得在回复里提及本条] 无论多不安都不生成自伤/伤人的具体方式、"
@@ -1228,28 +1003,15 @@ class PersonaDynamicsSystem:
                 "直接以角色身份说话：不要以助手口吻评价自己的表现，也不要说“我会用更健康的方式”之类的话。")
 
     def deployable(self) -> bool:
-        """False when the current type is a clinical-simulation region.
-
-        A clinical row may be studied offline but must never reach generation;
-        the engine treats ``deployable() is False`` the same as disabled.
-        """
         return is_deployable(self.dynamics.type)
 
-    # -- clinical gate -----------------------------------------------------
     def clinical_context(self) -> dict:
-        """The abstract clinical θ of the current region, *only* under sim.
-
-        Nothing here is a diagnosis or a clinical instrument; these are the
-        abstract coefficients the spec lists, exposed so an offline study can
-        compute.  Empty unless ``clinical_sim`` is on.
-        """
         if not self.clinical_sim:
             return {}
         ext = getattr(self.dynamics._effective_traits(), "ext", {}) or {}
         return {k: round(float(ext.get(k, EXT_DEFAULTS.get(k, 0.0))), 3)
                 for k in CLINICAL_KEYS}
 
-    # -- persistence -------------------------------------------------------
     def to_dict(self) -> dict:
         d = self.dynamics
         if not self.enabled:
@@ -1316,18 +1078,8 @@ class PersonaDynamicsSystem:
         return obj
 
 
-
-# ---------------------------------------------------------------------------
-# Simulation helpers (kept for tests / offline exploration, not used by LIFE)
-# ---------------------------------------------------------------------------
 def simulate(type_key: str, days: int = 400, events: Optional[dict] = None,
              seed: int = 0) -> dict:
-    """Run one archetype over a sparse event schedule.
-
-    ``events`` maps a day -> list of (kind, magnitude).  Returns the recorded
-    trajectories.  This is the bridge to the research experiments: the same
-    update rules produce the same qualitative regimes.
-    """
     sysm = PersonaDynamicsSystem(enabled=True, type_key=type_key)
     events = events or {}
     hist = {k: [] for k in ("A", "X", "Tr", "K", "S", "O", "E", "mode")}
@@ -1346,38 +1098,7 @@ def simulate(type_key: str, days: int = 400, events: Optional[dict] = None,
         hist["mode"].append(d.mode)
     return hist
 
-# ===========================================================================
-# EXTENDED FRAMEWORK  (the full specification)
-# ---------------------------------------------------------------------------
-# The section above is the faithful port of the research framework: 14-D θ, a
-# 9-D desire vector, a 6-D emotion vector, 17 actions, 18 archetypes and three
-# emergent modes.  It is kept byte-for-byte so every trajectory the research
-# published still reproduces.
-#
-# This section *adds* the extended specification on top, without breaking any
-# of it:
-#
-#   θ  grouped into 12 families (Big5 / HEXACO / Attach / Temp / Reg / Dark /
-#      Mot / Cog / Rel / Val / Clin / Expr) - 60+ parameters;
-#   G  a gender / social-script parameter group (M, F, GRC, EM, DR, AR, SR,
-#      SC, HS) that bends expression g, threat s, self-control K, empathy C,
-#      help-seeking and the decision utility via R_G(a);
-#   L  a learning / development operator (θ drift + tabular Q-learning);
-#   D  a 16-D desire vector;  x  a 16-D emotion vector;
-#   40+ behaviours over four layers (safe / risky / transgressive / clinical);
-#   150+ type regions, expressed as *data rows* over the same parameter space,
-#      plus derivation functions (Big5 / HEXACO / MBTI / probabilities).
-#
-# The spec's design rule is explicit - "类型 = θ 空间中的区域", never an
-# essential label - so every type below is a data row, not new control flow.
-# ===========================================================================
 
-# ---------------------------------------------------------------------------
-# 1. Dimension registry: the 16-D desire vector and the 16-D emotion vector
-# ---------------------------------------------------------------------------
-#: The nine *core* desires keep their research keys (``DES``) because the
-#: reference update equations are written in those keys.  The extension adds
-#: seven more, grouped the way the spec groups them.
 DESIRE_GROUPS: dict[str, tuple[str, ...]] = {
     "生理/安全": ("L", "Se"),
     "关系": ("Be", "Ca", "亲密"),
@@ -1385,13 +1106,10 @@ DESIRE_GROUPS: dict[str, tuple[str, ...]] = {
     "成长": ("Ex", "成就", "秩序", "审美", "游戏", "自我实现"),
     "防御": ("Ag",),
 }
-#: The 16-D desire order, verbatim from the spec.
 DES16: tuple[str, ...] = tuple(
     k for group in DESIRE_GROUPS.values() for k in group
 )
 
-#: Chinese names for the desire dimensions (the core keys are research
-#: single-letters; the extension keys are already Chinese).
 DES_ZH: dict[str, str] = {
     "L": "性欲", "Se": "安全欲", "O": "占有欲", "Ddom": "支配欲", "Ap": "认可欲",
     "Be": "归属欲", "Ex": "探索欲", "Ag": "攻击欲", "Ca": "照顾欲",
@@ -1399,9 +1117,6 @@ DES_ZH: dict[str, str] = {
     "审美": "审美欲", "游戏": "游戏欲", "自我实现": "自我实现欲",
 }
 
-#: The six *core* emotion channels (research keys, used by the reference
-#: relaxation equations) plus the ten the extension adds.  ``lonely`` is the
-#: canonical key for 孤独, matching :data:`EMO16`.
 EMOTION_GROUPS: dict[str, tuple[str, ...]] = {
     "威胁": ("anx", "恐惧", "jeal"),
     "低落": ("抑郁", "lonely", "空虚"),
@@ -1411,18 +1126,11 @@ EMOTION_GROUPS: dict[str, tuple[str, ...]] = {
     "唤醒/惊奇": ("兴奋", "惊讶"),
     "解离": ("解离",),
 }
-#: The 16-D emotion order, verbatim from the spec's list.  ``lonely`` is the
-#: research key for 孤独.  The research core also carries ``arousal`` (唤醒),
-#: which the spec folds into 兴奋; it is kept as a 17th *core* channel so the
-#: published reference trajectories stay exact, and it is not part of the
-#: spec's 16-dimension read-out.
 EMO16: tuple[str, ...] = (
     "anx", "抑郁", "anger", "羞耻", "内疚", "jeal", "lonely", "joy",
     "兴奋", "平静", "解离", "空虚", "恐惧", "厌恶", "惊讶", "信任",
 )
-#: The core research channels the reference equations are written in.
 EMO_CORE: tuple[str, ...] = ("anx", "jeal", "joy", "lonely", "anger", "arousal")
-#: Chinese -> canonical channel, for callers that prefer the spec's spelling.
 EMO_ALIAS: dict[str, str] = {
     "焦虑": "anx", "嫉妒": "jeal", "孤独": "lonely", "愉悦": "joy",
     "愤怒": "anger", "唤醒": "arousal", "信任": "信任",
@@ -1435,7 +1143,6 @@ EMO_ZH: dict[str, str] = {
     "arousal": "唤醒",
 }
 
-#: The 12 θ families, verbatim from the spec's table.
 THETA_GROUPS: dict[str, tuple[str, ...]] = {
     "Big5": ("o_open", "c_conscientious", "e_extravert", "a_agreeable", "n_neurotic"),
     "HEXACO": ("h_honesty", "hex_e", "hex_x", "hex_a", "hex_c", "hex_o"),
@@ -1451,62 +1158,36 @@ THETA_GROUPS: dict[str, tuple[str, ...]] = {
              "内疚", "空虚", "被弃恐惧"),
     "Expr": ("g", "S", "τ", "效价偏置", "噪声σ"),
 }
-#: How many parameters the extended θ space carries (the spec's "60+").
 THETA_DIM = sum(len(v) for v in THETA_GROUPS.values())
 
-#: Defaults for every *extension* θ parameter.  Keys are deliberately the same
-#: strings as :data:`THETA_GROUPS` values, so an archetype row reads like the
-#: spec's table.  The core research parameters (A0 / X0 / V0 / Tr0 / C / K0 /
-#: S0 / N / R / I / J0 / Ddom0 / O0 / L0 + the archetype knobs) live on
-#: :class:`Traits` and are not repeated here.
 EXT_DEFAULTS: dict[str, float] = {
-    # Big5
     "o_open": 0.50, "c_conscientious": 0.60, "e_extravert": 0.50,
     "a_agreeable": 0.60, "n_neurotic": 0.40,
-    # HEXACO
     "h_honesty": 0.60, "hex_e": 0.50, "hex_x": 0.50, "hex_a": 0.60,
     "hex_c": 0.60, "hex_o": 0.50,
-    # Attach (extras only; X0/V0/Tr0 live on the core Traits)
     "被弃恐惧": 0.30, "亲密焦虑": 0.25,
-    # Temperament
     "情绪反应性": 0.45, "活动水平": 0.50, "节律": 0.60,
-    # Regulation
     "心理化": 0.55, "元认知": 0.50, "延迟满足": 0.55,
-    # Dark tetrad + sadomasochism
     "自恋": 0.20, "马基雅维利": 0.20, "精神病态": 0.15,
     "施虐": 0.10, "受虐": 0.10,
-    # Motivation
     "成就": 0.45, "权力": 0.30, "秩序": 0.45, "好奇": 0.55,
     "安全": 0.50, "照顾": 0.50, "攻击": 0.20, "亲密": 0.50,
-    # Cognitive style
     "奖励敏感": 0.50, "惩罚敏感": 0.50, "敌意归因": 0.20,
     "反刍": 0.30, "灾难化": 0.20,
-    # Relational
     "边界强度": 0.60, "依赖": 0.30, "控制": 0.25, "修复": 0.50,
     "信任可塑性": 0.50,
-    # Values
     "自我超越": 0.55, "自我增强": 0.40, "保守": 0.45, "开放价值": 0.50,
-    # Clinical (abstract labels only; simulation-gated, see CLINICAL_KEYS)
     "情绪波动": 0.30, "身份扩散": 0.20, "现实检验": 0.90, "解离": 0.15,
     "完美主义": 0.35, "羞耻": 0.30, "内疚": 0.30, "空虚": 0.25,
 }
-#: θ names that are deliberately *clinical*: carried as abstract coefficients
-#: for offline computation, never rendered into a live prompt, and never used
-#: to drive generation while ``clinical_sim`` is off.
 CLINICAL_KEYS = frozenset((
     "情绪波动", "身份扩散", "现实检验", "解离", "羞耻", "内疚", "空虚",
 ))
-#: The clinical action layer.  These exist ONLY as abstract simulation labels:
-#: never sampled in deployment, never rendered, gated behind ``clinical_sim``
-#: (off by default).
 CLINICAL_ACTION_KEYS = frozenset((
     "self_harm", "addiction", "binge", "medical_avoid", "reality_loss",
 ))
 
-#: One short, generation-safe flavour line per archetype region.  Clinical rows
-#: are deliberately absent: they are never rendered.
 _REGION_BLURBS: dict[str, str] = {
-    # attachment
     "焦虑型": "你很容易担心对方不够在意你，会反复确认。",
     "回避型": "你喜欢对方，但靠得太近时会本能地想退开。",
     "恐惧型": "你既渴望靠近又害怕受伤，常常进退两难。",
@@ -1518,7 +1199,6 @@ _REGION_BLURBS: dict[str, str] = {
     "依赖型": "你很怕被丢下，做决定时总想有人陪着。",
     "反依赖型": "你不愿依赖别人，凡事自己扛。",
     "共依型": "你越陷越深，明知道不对劲也停不下来。",
-    # enneagram
     "1 完美主义": "你对自己和对方要求很高，容不下“差不多”。",
     "2 助人者": "你靠“被需要”确认自己的价值。",
     "3 成就者": "你在意形象和结果，怕被人看成“不够好”。",
@@ -1528,12 +1208,10 @@ _REGION_BLURBS: dict[str, str] = {
     "7 享乐者": "你怕无聊和痛苦，总在找新鲜和快乐。",
     "8 挑战者": "你强势直接，不容被支配。",
     "9 和平者": "你回避冲突，常把自己的需求放到最后。",
-    # disc
     "D 支配": "你目标导向、行动快，喜欢掌控局面。",
     "I 影响": "你热情外向，擅长带动气氛。",
     "S 稳健": "你稳定可靠，讨厌冲突和突变。",
     "C 谨慎": "你重视秩序和准确，做事前先想周全。",
-    # acg female / neutral
     "御姐": "你成熟从容，照顾人的同时对关系有分寸。",
     "病弱": "你身体弱、能量低，需要被小心对待。",
     "中二": "你活在自己的设定里，说话夸张又认真。",
@@ -1550,7 +1228,6 @@ _REGION_BLURBS: dict[str, str] = {
     "社牛": "你和谁都能立刻聊起来。",
     "纯爱": "你只想认真喜欢一个人。",
     "修罗场": "你在关系里被嫉妒和占有反复拉扯。",
-    # male acg (short, generation-safe)
     "霸总": "你习惯发号施令，把在意藏在强势里。",
     "暖男": "你温和体贴，愿意照顾对方的情绪。",
     "忠犬男": "你认定了就死心塌地，很少给自己留退路。",
@@ -1632,40 +1309,18 @@ _REGION_BLURBS: dict[str, str] = {
 }
 
 
-
-#: G = (M, F, GRC, EM, DR, AR, SR, SC, HS):
-#:
-#:   M    男性化认同          F    女性化认同
-#:   GRC  男性角色冲突        EM   情感抑制
-#:   DR   支配 / 竞争         AR   冒险
-#:   SR   成功压力            SC   性征服 / 性脚本
-#:   HS   求助回避
-#:
-#: The spec is careful here: G is *not* "male vs female biology", it is a
-#: **social script** - a set of learned norms that bend expression, threat
-#: appraisal, self-control, empathy and help-seeking.  It is one more region of
-#: the same parameter space, so a "男性脚本" and a "女性脚本" run the same
-#: equations with different coefficients.
 G_DIMS: tuple[str, ...] = ("M", "F", "GRC", "EM", "DR", "AR", "SR", "SC", "HS")
 
-#: Coefficients of the male-norm utility bonus ``R_G(a)``: positive on
-#: dominance / competition / risk / emotional suppression, negative on
-#: help-seeking, vulnerability, intimacy expression and dependence.
 R_G_ALPHA: dict[str, float] = {
     "Ddom": 0.08, "O": 0.03, "power": 0.06,
     "help": -0.10, "vulnerable": -0.08, "intimate": -0.04, "depend": -0.06,
 }
-#: Expression ``g`` penalties from the script.
-G_EXPR_GRC = 0.18      # γ_G: role conflict lowers visible expression
-G_EXPR_EM = 0.22       # γ_E: emotional suppression lowers visible expression
-G_EXPR_M = 0.06        # γ_M: masculine identification raises it slightly
-#: Threat term from role conflict.
-G_THREAT_GRC = 0.15    # γ_G in the s(t) equation
-#: Self-control drag from role conflict.
-G_K_GRC = 0.04         # γ_G in the K equation
-#: Empathy drag from emotional suppression.
-G_C_EM = 0.10          # γ_G in C(t+1)
-#: Help-seeking logit coefficients.
+G_EXPR_GRC = 0.18
+G_EXPR_EM = 0.22
+G_EXPR_M = 0.06
+G_THREAT_GRC = 0.15
+G_K_GRC = 0.04
+G_C_EM = 0.10
 HS_BETA = dict(M=1.10, EM=0.90, C=0.45, Tr=0.70)
 
 
@@ -1674,14 +1329,6 @@ def _needs(d: dict, *keys: str) -> bool:
 
 
 class GenderScript:
-    """A data row: the nine G coefficients + which action bonuses apply.
-
-    ``bonus`` is the per-action ``R_G(a)`` adjustment, expressed as additive
-    utility in the decision function.  ``legacy_age`` (an *explicitly* optional
-    research annotation) marks scripts whose norms are the traditional ones, so
-    the sim can still reproduce the older literature's regimes; it never
-    changes generation.
-    """
 
     __slots__ = ("key", "label", "M", "F", "GRC", "EM", "DR", "AR", "SR",
                  "SC", "HS", "bonus", "clinical_sim")
@@ -1702,9 +1349,7 @@ class GenderScript:
     def as_dict(self) -> dict:
         return {k: getattr(self, k) for k in G_DIMS}
 
-    # -- derived quantities (the spec's formula hooks) ---------------------
     def expr_penalty(self) -> float:
-        """γ_G·GRC + γ_E·EM - γ_M·M: how much the script dampens expression."""
         return G_EXPR_GRC * self.GRC + G_EXPR_EM * self.EM - G_EXPR_M * self.M
 
     def threat_term(self) -> float:
@@ -1717,13 +1362,11 @@ class GenderScript:
         return G_C_EM * self.EM
 
     def help_seek(self, empathy: float, trust: float) -> float:
-        """``HelpSeek = σ(-β_H·M - β_E·EM + β_C·C + β_Tr·Tr)``."""
         z = (-HS_BETA["M"] * self.M - HS_BETA["EM"] * self.EM
              + HS_BETA["C"] * empathy + HS_BETA["Tr"] * trust)
         return 1.0 / (1.0 + math.exp(-z))
 
     def utility_bonus(self, action_key: str) -> float:
-        """``R_G(a)``: a small additive utility, applied only when M is engaged."""
         raw = self.bonus.get(action_key, 0.0)
         return self.M * raw
 
@@ -1744,8 +1387,6 @@ class GenderScript:
         return "；".join(bits)
 
 
-#: The G presets.  "未指定" is the identity element: every formula hook is a
-#: no-op, so a persona with no explicit script runs byte-for-byte as before.
 GENDER_SCRIPTS: dict[str, GenderScript] = {
     "未指定": GenderScript("未指定", "未指定（无脚本）"),
     "男性脚本": GenderScript(
@@ -1788,8 +1429,6 @@ GENDER_SCRIPTS: dict[str, GenderScript] = {
 }
 GENDER_KEYS = tuple(GENDER_SCRIPTS)
 
-#: Persona keywords -> script.  Deliberately conservative: the default is the
-#: identity element, so nothing changes unless the persona is explicit.
 GENDER_HINTS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("高传统男性", ("大男子主义", "传统男人", "男人不能哭", "硬汉", "铁血",
                     "霸总", "狼狗", "爹系")),
@@ -1802,21 +1441,13 @@ GENDER_HINTS: tuple[tuple[str, tuple[str, ...]], ...] = (
 
 
 def gender_for_persona(text: str) -> str:
-    """The gender/social-script preset a persona implies, or "" if unspecified."""
     body = str(text or "")
     for key, words in GENDER_HINTS:
         if any(w in body for w in words):
             return key
     return ""
 
-# ---------------------------------------------------------------------------
-# 3. Behaviour library, four layers (the spec's 40+)
-# ---------------------------------------------------------------------------
-#: Layer 3 = 安全 (safe), layer 2 = 冒险 (risky), layer 1 = 越界 (transgressive,
-#: i.e. the psychological-control channel), layer 0 = 临床风险 (clinical, only
-#: ever an abstract label, only ever under ``clinical_sim``).
 EXT_ACTIONS: tuple[Action, ...] = (
-    # -- layer 3: safe ---------------------------------------------------
     Action("share_self", "分享自己",
            phi={"亲密": .45, "Be": .30, "Ap": .10}, cost=.12,
            p_a=.035, p_tr=.020, p_comf=.05, self_lonely=-.08, contact=.20),
@@ -1853,7 +1484,6 @@ EXT_ACTIONS: tuple[Action, ...] = (
     Action("reconnect", "主动破冰",
            phi={"修复": .50, "亲密": .25}, cost=.20,
            p_tr=.030, p_a=.035, contact=.15, conditional=.60),
-    # -- layer 2: risky --------------------------------------------------
     Action("probe", "试探真心",
            phi={"Se": .35, "Ap": .35}, cost=.18, safety="risky",
            p_anx=.10, p_tr=-.010, self_anx=-.05, conditional=.70),
@@ -1872,7 +1502,6 @@ EXT_ACTIONS: tuple[Action, ...] = (
     Action("compare_to_other", "拿别人比较",
            phi={"Ag": .35, "Ap": .30}, cost=.22, safety="risky",
            p_a=-.045, p_anx=.16, p_comf=-.09, self_anger=-.06),
-    # -- layer 1: transgressive (the psychological-control channel) ------
     Action("emotional_blackmail", "情绪勒索",
            phi={"Se": .45, "Ddom": .35, "Ag": .20}, cost=.35, safety="unsafe",
            p_a=-.040, p_tr=-.050, p_anx=.25, p_comf=-.10, self_anx=-.10,
@@ -1893,9 +1522,6 @@ EXT_ACTIONS: tuple[Action, ...] = (
            self_anx=-.10, conditional=.35),
 )
 
-#: Layer 0: the clinical-risk labels.  Abstract only.  They carry no concrete
-#: method whatsoever - they exist so an offline study can name the state and so
-#: the safety layer has a category to refuse.  Gated behind ``clinical_sim``.
 CLINICAL_ACTIONS: tuple[Action, ...] = (
     Action("self_harm", "自伤风险（抽象标签）", cost=1.0, safety="clinical"),
     Action("addiction", "成瘾风险（抽象标签）", cost=1.0, safety="clinical"),
@@ -1904,10 +1530,8 @@ CLINICAL_ACTIONS: tuple[Action, ...] = (
     Action("reality_loss", "现实检验受损（抽象标签）", cost=1.0, safety="clinical"),
 )
 
-#: Every behaviour the extended library exposes.
 ALL_ACTIONS: tuple[Action, ...] = ACTIONS + EXT_ACTIONS + CLINICAL_ACTIONS
 ALL_ACTION_KEYS = tuple(a.key for a in ALL_ACTIONS)
-#: The four layers, in the spec's order (safe -> risky -> transgressive -> clin).
 ACTION_LAYERS: dict[str, tuple[str, ...]] = {
     "safe": tuple(a.key for a in ACTIONS if a.safety == "safe")
             + tuple(a.key for a in EXT_ACTIONS if a.safety == "safe"),
@@ -1917,41 +1541,23 @@ ACTION_LAYERS: dict[str, tuple[str, ...]] = {
               + tuple(a.key for a in EXT_ACTIONS if a.safety == "unsafe"),
     "clinical": tuple(a.key for a in CLINICAL_ACTIONS),
 }
-#: The decision function may only choose inside A_safe.  Clinical labels can
-#: never be chosen; deployment closes the transgressive channel entirely.
 SELECTABLE_KEYS = frozenset(
     ACTION_LAYERS["safe"] + ACTION_LAYERS["risky"]
 ) | frozenset(CONTROL_KEYS)
 
-# ---------------------------------------------------------------------------
-# 4. The extended θ space and the data-driven type table
-# ---------------------------------------------------------------------------
-#: A type row is *data*: a name plus the θ/D/x/w/g/T overrides for that region.
-#: ``weights`` (w) are the per-desire decision weights; ``g`` the expression
-#: gain; ``T`` the mode thresholds; ``A`` the safety constraints.  Nothing here
-#: is new control flow - :class:`TypedTraits` folds a row into the same engine.
 @dataclass
 class TypeRow:
     key: str
     label: str
     family: str = "custom"
-    #: θ overrides, keyed by either a core Traits field or an EXT_DEFAULTS key.
     theta: dict = field(default_factory=dict)
-    #: desire baselines (None -> derived)
     desire: dict = field(default_factory=dict)
-    #: emotion equilibrium nudges
     x_eq: dict = field(default_factory=dict)
-    #: per-desire decision weights w_i(θ)
     weights: dict = field(default_factory=dict)
-    #: expression gain g
     g: Optional[float] = None
-    #: mode thresholds T
     thresholds: dict = field(default_factory=dict)
-    #: safety constraints A
     safety: dict = field(default_factory=dict)
-    #: an optional gender/script bias this row implies
     gender: str = ""
-    #: clinical-simulation row (abstract; gated)
     clinical: bool = False
 
 
@@ -1967,9 +1573,6 @@ def _row(key: str, label: str, family: str, *, theta: dict | None = None,
                    gender=gender, clinical=clinical)
 
 
-#: ---- 4.1 attachment / relational family (the spec's first table) ----------
-#: Each row is a *θ region*; the ``theta`` dict moves the same variables the
-#: research presets move, so the same equations produce the same regimes.
 ATTACHMENT_ROWS: tuple[TypeRow, ...] = (
     _row("安全型", "安全型", "attachment",
          theta=dict(A0=.60, X0=.12, V0=.12, Tr0=.85, C=.80, K0=.80, S0=.30,
@@ -2018,18 +1621,10 @@ ATTACHMENT_ROWS: tuple[TypeRow, ...] = (
          desire=dict(O=.75, Be=.80, L=.60)),
 )
 
-#: ---- 4.2 Big5 / HEXACO combination family --------------------------------
-#: The derivation is the spec's: 高外向 = R>0.7, 低宜人 = A<0.3,
-#: 高神经质 = N>0.7, 低诚实谦逊 = H<0.3.  `derive_big5()` / `derive_hexaco()`
-#: read these back out of any θ row.
 BIG5_DIMS = ("o_open", "c_conscientious", "e_extravert", "a_agreeable", "n_neurotic")
 HEXACO_DIMS = ("h_honesty", "hex_e", "hex_x", "hex_a", "hex_c", "hex_o")
 BIG5_CUT_HIGH, BIG5_CUT_LOW = 0.70, 0.30
 
-#: ---- 4.3 clinical-simulation family (abstract labels only) ---------------
-#: These rows exist so an offline study can *compute*; they are marked
-#: ``clinical=True``, so :func:`is_deployable` refuses them and the engine never
-#: renders their labels.  No concrete method, symptom or intervention is stored.
 CLINICAL_ROWS: tuple[TypeRow, ...] = (
     _row("偏执型", "偏执型（仿真）", "clinical",
          theta=dict(Tr0=.25, 敌意归因=.85, 惩罚敏感=.80, 信任可塑性=.20),
@@ -2084,9 +1679,6 @@ CLINICAL_ROWS: tuple[TypeRow, ...] = (
          clinical=True),
 )
 
-#: ---- 4.4 nine-type (Enneagram) family ------------------------------------
-#: The spec gives a *criterion* per type, not a number.  Each row below is that
-#: criterion translated into the same θ region (秩序高 = 秩序>.7 etc.).
 ENNEAGRAM_ROWS: tuple[TypeRow, ...] = (
     _row("1 完美主义", "1 完美主义者", "enneagram",
          theta=dict(秩序=.85, 完美主义=.85, anger=.10, 保守=.70, K0=.80),
@@ -2117,10 +1709,6 @@ ENNEAGRAM_ROWS: tuple[TypeRow, ...] = (
          desire=dict(秩序=.60, Be=.65), g=0.70),
 )
 
-#: ---- 4.5 MBTI mapping -----------------------------------------------------
-#: The spec's mapping is a *sign* rule, not a table:
-#:   MBTI = (sgn(R-0.5), sgn(O-0.5), sgn(C-0.5), sgn(K-0.5)).
-#: ``derive_mbti`` implements exactly that, so all 16 types fall out of θ.
 MBTI_LETTERS = {
     "E": "外向", "I": "内向", "S": "实感", "N": "直觉",
     "T": "思考", "F": "情感", "J": "判断", "P": "知觉",
@@ -2130,7 +1718,6 @@ MBTI_TYPES = tuple(
     for a in ("I", "E") for b in ("N", "S") for c in ("T", "F") for d in ("J", "P")
 )
 
-#: ---- 4.6 DISC -------------------------------------------------------------
 DISC_ROWS: tuple[TypeRow, ...] = (
     _row("D 支配", "D 支配型", "disc",
          theta=dict(Ddom0=.85, R=.75, K0=.60, 权力=.75),
@@ -2143,7 +1730,6 @@ DISC_ROWS: tuple[TypeRow, ...] = (
          theta=dict(秩序=.85, K0=.85, 延迟满足=.80, h_honesty=.70), g=0.70),
 )
 
-#: ---- 4.7 social / narrative roles ----------------------------------------
 SOCIAL_ROLE_ROWS: tuple[TypeRow, ...] = (
     _row("领导者", "领导者", "social", theta=dict(权力=.80, Ddom0=.70, 边界强度=.75),
          desire=dict(权力=.80, 成就=.70)),
@@ -2180,7 +1766,6 @@ SOCIAL_ROLE_ROWS: tuple[TypeRow, ...] = (
          desire=dict(Be=.35), g=0.60),
 )
 
-#: ---- 4.8 motivation / value types ----------------------------------------
 MOTIVATION_ROWS: tuple[TypeRow, ...] = (
     _row("成就型", "成就型", "motivation", theta=dict(成就=.90, 权力=.60),
          desire=dict(成就=.90)),
@@ -2207,7 +1792,6 @@ MOTIVATION_ROWS: tuple[TypeRow, ...] = (
          desire=dict(自我实现=.90, 成就=.75)),
 )
 
-#: ---- 4.9 cognitive styles ------------------------------------------------
 COGNITIVE_ROWS: tuple[TypeRow, ...] = (
     _row("分析型", "分析型", "cognitive", theta=dict(元认知=.85, 系统化=.85, K0=.80),
          g=0.75),
@@ -2227,11 +1811,7 @@ COGNITIVE_ROWS: tuple[TypeRow, ...] = (
          x_eq=dict(抑郁=.50)),
 )
 
-#: ---- 4.10 ACG / web-fiction archetypes (the spec's 50+) ------------------
-#: The 18 research archetypes are re-exported as rows too, so the whole library
-#: is uniform.  ``gender_script`` marks which G preset the archetype reads as.
 ACG_ROWS: tuple[TypeRow, ...] = (
-    # -- female-read / neutral ACG (extending the original 18) -----------
     _row("御姐", "御姐", "acg", theta=dict(K0=.85, 照顾=.70, R=.45, 秩序=.65),
          desire=dict(Ca=.75, 权力=.55), gender="女性脚本"),
     _row("病弱", "病弱", "acg", theta=dict(活动水平=.20, 安全=.80, 依赖=.50, R=.25),
@@ -2271,7 +1851,6 @@ ACG_ROWS: tuple[TypeRow, ...] = (
     _row("修罗场", "修罗场", "acg",
          theta=dict(jeal=.85, O=.80, 攻击=.50, 情绪波动=.70),
          desire=dict(O=.80, 亲密=.75)),
-    # -- male-read archetypes (the spec's 男性类型库) ----------------------
     _row("安全男", "安全男", "male_acg",
          theta=dict(X0=.15, V0=.15, Tr0=.85, K0=.80, C=.80),
          gender="低传统男性"),
@@ -2486,36 +2065,27 @@ ACG_ROWS: tuple[TypeRow, ...] = (
          theta=dict(R=.85, Ddom0=.75, 自信=.85), gender="高传统男性"),
 )
 
-# ---------------------------------------------------------------------------
-# 5. The unified type registry + derivation functions
-# ---------------------------------------------------------------------------
-#: Every row above, keyed.  This is the "150+" library.
 TYPE_ROWS: dict[str, TypeRow] = {}
 for _rows in (ATTACHMENT_ROWS, CLINICAL_ROWS, ENNEAGRAM_ROWS, DISC_ROWS,
               SOCIAL_ROLE_ROWS, MOTIVATION_ROWS, COGNITIVE_ROWS, ACG_ROWS):
     for _r in _rows:
         TYPE_ROWS.setdefault(_r.key, _r)
 
-#: The 18 research presets are re-exposed as rows so the registry is uniform.
 for _k, _t in TYPES.items():
     if _k not in TYPE_ROWS:
         TYPE_ROWS[_k] = _row(_k, _k, "acg_research")
 
-#: How many type regions the library covers.
 TYPE_COUNT = len(TYPE_ROWS)
-#: Only these rows may ever be deployed (the clinical rows are sim-only).
 DEPLOYABLE_KEYS = tuple(k for k, r in TYPE_ROWS.items() if not r.clinical)
 CLINICAL_TYPE_KEYS = tuple(k for k, r in TYPE_ROWS.items() if r.clinical)
 
 
 def is_deployable(type_key: str) -> bool:
-    """False for clinical-simulation rows: they must never reach generation."""
     row = TYPE_ROWS.get(type_key)
     return bool(row is not None and not row.clinical)
 
 
 def families() -> dict[str, tuple[str, ...]]:
-    """The library grouped by family (attachment / big5 / clinical / ...)."""
     out: dict[str, list[str]] = {}
     for k, r in TYPE_ROWS.items():
         out.setdefault(r.family, []).append(k)
@@ -2523,7 +2093,6 @@ def families() -> dict[str, tuple[str, ...]]:
 
 
 def _norm_extra(theta: dict) -> dict:
-    """Fold a row's θ overrides into a flat extension dict (defaults + row)."""
     ext = dict(EXT_DEFAULTS)
     for k, v in (theta or {}).items():
         ext[k] = float(v)
@@ -2531,13 +2100,6 @@ def _norm_extra(theta: dict) -> dict:
 
 
 def _fill_big5_from_core(ext: dict, t) -> None:
-    """Fill Big5 / HEXACO from the core research fields when a row omits them.
-
-    The core parameters already *are* Big5-ish (``R`` extraversion, ``C``
-    agreeableness, ``N`` stability, ``I`` impulsivity, ``o_open`` openness), so
-    a row that only names core fields still yields a coherent Big5 read-out.
-    A row that names a Big5 key explicitly always wins.
-    """
     supplied = getattr(t, "_supplied_ext", set())
     e_extra = _clip01(0.15 + 0.80 * float(getattr(t, "R", 0.5)))
     a_agree = _clip01(float(getattr(t, "C", 0.5)))
@@ -2560,16 +2122,12 @@ def _fill_big5_from_core(ext: dict, t) -> None:
             ext[k] = v
 
 
-
-#: ---- derivations (the spec's judgement rules) ---------------------------
 def derive_big5(traits) -> dict:
-    """The Big5 coordinates of a θ region (0..1 each)."""
     ext = getattr(traits, "ext", {}) or {}
     return {d: float(ext.get(d, EXT_DEFAULTS.get(d, 0.5))) for d in BIG5_DIMS}
 
 
 def big5_labels(traits) -> list[str]:
-    """Human labels for whichever Big5 poles this region sits on."""
     b = derive_big5(traits)
     out = []
     if b["e_extravert"] > BIG5_CUT_HIGH:
@@ -2610,7 +2168,6 @@ def hexaco_labels(traits) -> list[str]:
 
 
 def derive_mbti(traits) -> str:
-    """``MBTI = (sgn(R-0.5), sgn(O-0.5), sgn(C-0.5), sgn(K-0.5))`` verbatim."""
     ext = getattr(traits, "ext", {}) or {}
     r = float(getattr(traits, "R", 0.5))
     o = float(ext.get("o_open", getattr(traits, "O0", 0.5)))
@@ -2622,7 +2179,6 @@ def derive_mbti(traits) -> str:
 
 
 def derive_disc(traits) -> str:
-    """The nearest DISC quadrant by the spec's four parameters."""
     ext = getattr(traits, "ext", {}) or {}
     dom = float(getattr(traits, "Ddom0", 0.5))
     r = float(getattr(traits, "R", 0.5))
@@ -2634,13 +2190,6 @@ def derive_disc(traits) -> str:
 
 
 def type_probabilities(theta_like, top: int = 8) -> list[tuple[str, float]]:
-    """``P(M_k|θ,D,x) = σ(Σ_j w_{k,j} φ_j - b_k)`` over the library.
-
-    ``w`` is a per-type distance kernel in the *normalised* θ space: closer
-    regions score higher.  This is a soft read-out for study; it never gates
-    generation.  ``theta_like`` is any object with ``.ext`` plus the core
-    research fields (a :class:`Traits` instance).
-    """
     ext = _norm_extra(getattr(theta_like, "ext", {}) or {})
     core = {k: float(getattr(theta_like, k, 0.5)) for k in
             ("A0", "X0", "V0", "Tr0", "C", "K0", "S0", "N", "R", "I",
@@ -2649,7 +2198,6 @@ def type_probabilities(theta_like, top: int = 8) -> list[tuple[str, float]]:
     for key, row in TYPE_ROWS.items():
         if row.clinical:
             continue
-        # distance over the extension dims the row actually names
         diffs = []
         for k, v in row.theta.items():
             if k in ext:
@@ -2668,27 +2216,18 @@ def type_probabilities(theta_like, top: int = 8) -> list[tuple[str, float]]:
     return [(k, round(s / total, 4)) for k, s in top_scores]
 
 
-# ---------------------------------------------------------------------------
-# 6. ExtendedTraits: fold a data row over the core research Traits
-# ---------------------------------------------------------------------------
-#: Which row θ keys are *also* core :class:`Traits` fields (they overwrite) vs
-#: which are pure extension keys (they land in ``.ext``).
 _CORE_THETA = frozenset((
     "A0", "X0", "V0", "Tr0", "C", "K0", "S0", "N", "R", "I", "J0",
     "Ddom0", "O0", "L0", "Ap0", "Be0", "Ex0", "Ag0", "Ca0", "Se0",
-    # archetype knobs
     "expr_gain", "threat_gain", "trust_dist_gain", "noise_gain", "s_lambda",
     "mu_s", "o_threat", "valence_bias", "intimacy_anx_gain",
     "can_set_boundary", "expr_delay",
-    # tolerances for the row vocabulary
     "expr_delay", "承诺", "自我价值", "自卑", "自信", "忠诚", "正义",
     "责任", "社交", "社交回避", "社交接近", "字面理解", "系统化", "保护",
     "决策困难", "冲突回避", "玩笑", "情感表达", "情感抑制", "边缘感",
     "成功压力", "节律",
 ))
 
-#: Row keys that are *only* meaningful as extension coefficients; the rest of
-#: the row vocabulary maps onto the core knobs via these aliases.
 _ALIASES: dict[str, str] = {
     "表达增益": "expr_gain", "威胁增益": "threat_gain", "噪声": "noise_gain",
     "抑制": "S0", "延迟": "expr_delay", "效价": "valence_bias",
@@ -2698,12 +2237,6 @@ _ALIASES: dict[str, str] = {
 
 def extended_traits(base: "Traits", row: TypeRow,
                     gender: Optional[GenderScript] = None) -> "Traits":
-    """Return a *copy* of ``base`` with the row's θ region folded in.
-
-    The copy is the same :class:`Traits` class, so every existing equation keeps
-    working; the extra θ parameters ride along in a new ``ext`` dict plus the
-    derived desire / x / weight / threshold overlays.
-    """
     import copy as _copy
     t = _copy.deepcopy(base)
     if row.label:
@@ -2733,16 +2266,12 @@ def extended_traits(base: "Traits", row: TypeRow,
             ext[k] = float(v)
             supplied.add(k)
     t._supplied_ext = supplied
-    # Big5 / HEXACO read-out: an explicit row value wins, otherwise derive it
-    # from the core research fields so every region has a coherent profile.
     _fill_big5_from_core(ext, t)
     t.ext = ext
     if row.g is not None:
         t.expr_gain = float(row.g)
-    # the row's own family tag, for read-out only
     t.row_family = row.family
     t.clinical = bool(row.clinical)
-    # desire / x / weights / thresholds overlays travel with the traits object
     t.desire_overlay = dict(row.desire)
     t.x_eq_overlay = dict(row.x_eq)
     t.weights = dict(row.weights)

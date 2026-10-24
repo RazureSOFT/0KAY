@@ -1,14 +1,3 @@
-"""Turn an inbound OneBot event into a LIFE conversation turn.
-
-This is the piece the old outbound adapter did inside its WebSocket read loop,
-extracted so it is transport-independent: it works the same whether the event
-arrived over the reverse-WebSocket server, an HTTP callback, or a test harness.
-
-The decision logic is deliberately unchanged from the outbound adapter — group
-wake rules (mention / keyword / continuing topic), vision captioning, chunked
-sending — because that behaviour is what users tuned their bots around. What is
-new is that the *transport* is a parameter rather than ``self``.
-"""
 from __future__ import annotations
 
 import asyncio
@@ -21,12 +10,10 @@ from .onebot import OneBotMessage
 
 logger = get_logger("adapters.inbound")
 
-#: Ceiling on one outbound text segment, matching QQ's practical limit.
 MAX_SEGMENT_CHARS = 2000
 
 
 class InboundBridge:
-    """Bridges platform events into ``engine.process_message`` and back out."""
 
     def __init__(self, engine, instance):
         self.engine = engine
@@ -53,7 +40,6 @@ class InboundBridge:
         return any(name and name in text for name in names)
 
     async def handle(self, data: dict, server) -> None:
-        """Handle one event. Never raises: the socket must survive a bad turn."""
         try:
             post_type = data.get("post_type")
             if post_type == "notice":
@@ -126,7 +112,6 @@ class InboundBridge:
                 await self._emit(msg, event, server)
 
     async def _should_reply(self, data: dict, msg: OneBotMessage, content: str) -> bool:
-        """Group wake rules: mention, keyword, or a topic LIFE is already in."""
         keywords = tuple(str(k).lower() for k in (self.instance.trigger_keywords or []) if str(k).strip())
         if msg.is_group:
             mentioned = self._is_mentioned(data, msg)
@@ -145,7 +130,6 @@ class InboundBridge:
         return True
 
     async def _describe(self, msg: OneBotMessage, server) -> str:
-        """Render segments, captioning images when a vision handler is wired."""
         describe = getattr(self.engine, "describe_media_ref", None)
         if describe is None or not msg.has_media:
             return msg.description
@@ -178,11 +162,8 @@ class InboundBridge:
                     await asyncio.sleep(self.instance.message_delay)
 
     async def _send(self, msg: OneBotMessage, text: str, server) -> None:
-        """Send text back through the instance that received the message."""
         if not str(text or "").strip():
             return
-        # Target exactly one of the two: passing both is ambiguous, and a
-        # transport that keys on user_id would answer a group message privately.
         target = ({"group_id": int(msg.group_id)} if msg.is_group
                   else {"user_id": int(msg.user_id)})
         for start in range(0, len(text), MAX_SEGMENT_CHARS):

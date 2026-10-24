@@ -1,13 +1,3 @@
-"""Phase 1 "path audit": the dead state -> behaviour links are now wired.
-
-Each test pins one connection that previously existed only as telemetry:
-- emotions decay between turns (and a long gap cannot flip their sign);
-- circadian energy changes the reply-speed multiplier;
-- soul channels survive a restart;
-- learned expressions actually reach the prompt;
-- personal goals reach the planning context;
-- ``reply_deceleration`` actually gates proactive outreach.
-"""
 import asyncio
 import os
 import tempfile
@@ -35,12 +25,11 @@ class Phase1Wiring(unittest.TestCase):
 
     def test_emotion_decay_is_safe_for_long_gaps(self):
         state = EmotionState(valence=0.8, arousal=0.9, irritation=0.9)
-        state.decay(24 * 3600)  # a full day
+        state.decay(24 * 3600)
         self.assertGreaterEqual(state.valence, 0.0)
         self.assertLessEqual(state.valence, 1.0)
         self.assertGreaterEqual(state.arousal, 0.0)
         self.assertGreaterEqual(state.irritation, 0.0)
-        # Irritability must fade faster than mood.
         self.assertLess(state.irritation / 0.9, state.valence / 0.8)
 
     def test_response_delay_scales_with_energy(self):
@@ -74,7 +63,6 @@ class Phase1Wiring(unittest.TestCase):
 
     def test_reply_deceleration_setting_gates_outreach(self):
         target = "user:u_decel"
-        # Simulate an unanswered-outreach pause by writing the state directly.
         with self.engine.companion.db() as db:
             db.execute("INSERT OR REPLACE INTO outreach_state(target,consecutive_unanswered,last_sent,paused_until) VALUES(?,?,?,?)",
                        (target, 3, datetime.now().isoformat(), (datetime.now() + timedelta(hours=1)).isoformat()))
@@ -82,8 +70,6 @@ class Phase1Wiring(unittest.TestCase):
         allowed, reason = self.engine.companion.can_proactively_send(target)
         self.assertFalse(allowed)
         self.assertIn("paused", reason)
-        # Turning the setting off removes the pause (deceleration is opt-out).
-        # Neutralise quiet hours so this test does not depend on the wall clock.
         self.engine.companion.set_settings({"reply_deceleration": "0", "quiet_start": "0", "quiet_end": "0"})
         allowed_off, _ = self.engine.companion.can_proactively_send(target)
         self.assertTrue(allowed_off)

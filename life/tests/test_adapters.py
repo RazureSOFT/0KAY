@@ -1,16 +1,3 @@
-"""Tests for the multi-instance message-platform layer.
-
-Two things are actually load-bearing here and neither is obvious from reading
-the code:
-
-* LIFE is the **server** of the reverse WebSocket. A NapCat client dials in, so
-  the tests connect as a *client* and prove an event comes out the other end.
-* Several bots must coexist. Registry CRUD, port allocation and session routing
-  are what make that true; without them the second bot silently takes the first
-  one's port and one of them never receives anything.
-
-Run: ``pytest tests/test_adapters.py -q``
-"""
 import asyncio
 import json
 import sys
@@ -48,8 +35,6 @@ class RegistryCRUDTests(unittest.TestCase):
         instance_id = result["instance"]["id"]
         self.assertTrue(instance_id.startswith("adp_"))
 
-        # A fresh registry over the same directory must see the row: the point of
-        # persistence is surviving a restart.
         reopened = AdapterRegistry(self._dir.name)
         self.assertEqual(len(reopened.instances), 1)
         self.assertEqual(reopened.instances[0].id, instance_id)
@@ -98,7 +83,6 @@ class RegistryCRUDTests(unittest.TestCase):
         self.assertTrue(self.registry.get(instance_id).enabled)
         self.assertTrue(self.registry.delete(instance_id)["ok"])
         self.assertIsNone(self.registry.get(instance_id))
-        # Deleting something that is gone is an error, not a crash.
         self.assertFalse(self.registry.delete(instance_id)["ok"])
 
     def test_unknown_platform_is_rejected_not_stored(self):
@@ -107,7 +91,6 @@ class RegistryCRUDTests(unittest.TestCase):
         self.assertIn("未知的消息平台类别", result["error"])
 
     def test_a_deliberately_cleared_host_is_rejected_not_defaulted(self):
-        """Clearing 主机 must be an error, not a silent 0.0.0.0 listener."""
         result = self.registry.upsert({"name": "x", "platform": "aiocqhttp", "ws_host": ""})
         self.assertFalse(result["ok"])
         self.assertIn("主机不能为空", result["error"])
@@ -128,11 +111,6 @@ class RegistryCRUDTests(unittest.TestCase):
             self.assertFalse(result["ok"], bad)
 
     def test_port_zero_or_blank_means_auto_assign(self):
-        """A form that has not been filled in yet sends 0 — that must not fail.
-
-        Rejecting 0 would make "add a bot" fail on the very first click, so 0 and
-        "" are treated as "pick a free port"; only real garbage is an error.
-        """
         for blank in (0, "0", "", None):
             registry = AdapterRegistry(self._dir.name)
             registry.instances = []
@@ -184,7 +162,6 @@ class SessionRoutingTests(unittest.TestCase):
         self.assertFalse(SessionRoute(pattern="qq_group_*", config_id="x").matches("qq_9"))
 
     def test_a_bad_regex_does_not_raise(self):
-        # A user-typed pattern must never take the routing table down.
         self.assertFalse(SessionRoute(pattern="/[unclosed/", config_id="x").matches("qq_1"))
 
     def test_routes_survive_a_reopen(self):
@@ -193,12 +170,6 @@ class SessionRoutingTests(unittest.TestCase):
         self.assertEqual(reopened.config_for_session("qq_1"), "solo")
 
     def test_pattern_aliases_are_accepted(self):
-        """Callers say "session" as often as "pattern"; both must mean the same thing.
-
-        Regression guard: a rule stored from the ``session`` key used to be
-        coerced to the ``*`` wildcard, which -- because rules are first-match-wins
-        -- silently pinned every conversation to that one config.
-        """
         for alias in ("session", "session_id", "session_pattern", "match", "source"):
             with self.subTest(alias=alias):
                 registry = AdapterRegistry(tempfile.mkdtemp())
@@ -209,14 +180,8 @@ class SessionRoutingTests(unittest.TestCase):
                 self.assertEqual(registry.config_for_session("qq_7"), "default")
 
     def test_a_rule_without_a_pattern_is_dropped_not_wildcarded(self):
-        """A malformed row must not become a catch-all.
-
-        Turning it into ``*`` would swallow every later rule and route all
-        traffic to one persona -- a silent, system-wide misroute. Dropping it
-        degrades to the documented default instead.
-        """
         result = self.registry.set_routes([
-            {"config_id": "group"},                              # no pattern at all
+            {"config_id": "group"},
             {"pattern": "qq_777", "config_id": "vip"},
         ])
         self.assertEqual([r.to_dict() for r in self.registry.routes],
@@ -231,10 +196,9 @@ class SessionRoutingTests(unittest.TestCase):
         self.assertEqual(result.get("skipped"), 1)
 
     def test_a_malformed_stored_row_is_ignored_on_load(self):
-        """Rows already on disk from a bad write must not poison the table."""
         self.registry.set_routes([{"pattern": "qq_1", "config_id": "solo"}])
         raw = json.loads((Path(self._dir.name) / "adapters.json").read_text(encoding="utf-8"))
-        raw["routes"].insert(0, {"config_id": "bogus"})  # simulate a legacy/corrupt row
+        raw["routes"].insert(0, {"config_id": "bogus"})
         (Path(self._dir.name) / "adapters.json").write_text(
             json.dumps(raw, ensure_ascii=False), encoding="utf-8")
         reopened = AdapterRegistry(self._dir.name)
@@ -244,7 +208,6 @@ class SessionRoutingTests(unittest.TestCase):
 
 
 class ReverseWebSocketTests(unittest.TestCase):
-    """LIFE listens; the platform client dials in. That is the whole contract."""
 
     def setUp(self):
         self._dir = tempfile.TemporaryDirectory()
@@ -340,7 +303,6 @@ class ReverseWebSocketTests(unittest.TestCase):
         _run(scenario())
 
     def test_outbound_call_correlates_on_echo(self):
-        """Sending when NapCat exposes no HTTP port: an action frame awaits its echo."""
 
         async def scenario():
             from websockets.asyncio.client import connect
@@ -408,7 +370,6 @@ class ReverseWebSocketTests(unittest.TestCase):
         _run(scenario())
 
     def test_sync_is_idempotent(self):
-        """Called every 10s from the background loop: it must not thrash."""
 
         async def scenario():
             instance = AdapterInstance(name="t", ws_host="127.0.0.1",
@@ -480,9 +441,6 @@ class RuntimeStatusTests(unittest.TestCase):
         self.assertNotIn("swordfish", blob)
 
     def test_registry_list_and_status_never_emit_credentials(self):
-        # `to_dict()` carries the raw tokens for the owner panel's own save
-        # round-trip; every *read* path the dashboard or diagnostics use must go
-        # through `public_dict()` instead.
         registry = AdapterRegistry(self._dir.name)
         registry.upsert({"name": "t", "ws_token": "hunter2", "access_token": "swordfish"})
         listed = json.dumps(registry.list(), ensure_ascii=False)

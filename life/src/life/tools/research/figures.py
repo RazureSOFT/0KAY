@@ -1,9 +1,3 @@
-"""Publication figures with a CJK-capable font.
-
-Every function builds a figure, saves it as PNG (300 dpi by default) and returns
-the output ``Path``.  Call :func:`use_chinese_font` once (it is idempotent) and
-matplotlib labels render Chinese instead of tofu boxes.
-"""
 from __future__ import annotations
 
 import os
@@ -15,7 +9,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib import font_manager  # noqa: E402
 
-# Packaged/windows font files, tried in order, then any installed CJK family.
 _FONT_FILES = (
     r"C:\Windows\Fonts\msyh.ttc",
     r"C:\Windows\Fonts\msyh.ttf",
@@ -33,7 +26,6 @@ _font_ready = False
 
 
 def use_chinese_font() -> str:
-    """Make matplotlib render CJK; returns the resolved family ("" if none)."""
     global _font_ready
     if _font_ready:
         return plt.rcParams.get("font.sans-serif", ["DejaVu Sans"])[0]
@@ -79,7 +71,6 @@ def _fig(ax_size):
 def line(x, series=None, *, title="", xlabel="", ylabel="", path="figure.png",
          labels=None, width=6.4, height=4.0, dpi=300, grid=True, marker="o",
          transparent=False) -> Path:
-    """Line chart. ``series`` is ``{name: [y, ...]}`` (or a single list of y)."""
     fig, ax = _fig((width, height))
     series = series if isinstance(series, dict) else {"": series}
     for index, (name, values) in enumerate(series.items()):
@@ -97,7 +88,6 @@ def line(x, series=None, *, title="", xlabel="", ylabel="", path="figure.png",
 def bar(labels, values, *, title="", xlabel="", ylabel="", path="figure.png",
         width=6.4, height=4.0, dpi=300, color=None, horizontal=False,
         value_fmt="{:.3g}", transparent=False) -> Path:
-    """Bar chart, optionally with the value printed at each bar."""
     fig, ax = _fig((width, height))
     positions = range(len(labels))
     draw = ax.barh if horizontal else ax.bar
@@ -123,7 +113,6 @@ def bar(labels, values, *, title="", xlabel="", ylabel="", path="figure.png",
 def grouped_bar(labels, groups, *, title="", xlabel="", ylabel="",
                 path="figure.png", width=7.2, height=4.0, dpi=300,
                 transparent=False) -> Path:
-    """Side-by-side bars. ``groups`` is ``{name: [value per label]}``."""
     import numpy as np
 
     fig, ax = _fig((width, height))
@@ -146,7 +135,6 @@ def grouped_bar(labels, groups, *, title="", xlabel="", ylabel="",
 def scatter(x, y, *, title="", xlabel="", ylabel="", path="figure.png",
             width=6.4, height=4.0, dpi=300, labels=None, trend=False,
             transparent=False) -> Path:
-    """Scatter plot with optional point labels and a linear trend line."""
     fig, ax = _fig((width, height))
     ax.scatter(x, y, s=28, color=_PALETTE[0], alpha=0.85, edgecolors="white")
     if labels:
@@ -168,7 +156,6 @@ def scatter(x, y, *, title="", xlabel="", ylabel="", path="figure.png",
 def heatmap(matrix, *, row_labels=None, col_labels=None, title="",
             path="figure.png", width=6.0, height=5.0, dpi=300,
             cmap="YlGnBu", annotate=True, transparent=False) -> Path:
-    """Heatmap of a 2-D ``matrix`` with an optional colorbar and annotations."""
     import numpy as np
 
     values = np.asarray(matrix, dtype=float)

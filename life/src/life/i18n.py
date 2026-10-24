@@ -1,5 +1,3 @@
-"""Minimal localization for user-facing LIFE strings (zh-CN / en-US)."""
-
 from __future__ import annotations
 
 DEFAULT_LOCALE = "zh-CN"

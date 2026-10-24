@@ -1,25 +1,14 @@
-"""Guard: every action the companion panel calls must exist on the server.
-
-This is a cheap contract test that catches a renamed/removed action before a
-user clicks a button that silently no-ops.
-"""
-
 import re
 import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC = REPO_ROOT / "plugin-web" / "life" / "src"
-# Every page that drives ManageCompanion. The adapters settings page is a
-# separate Vue root, so scanning only CompanionPage would let it rot silently.
 PANELS = [SRC / "CompanionPage.vue", SRC / "AdapterSettingsPage.vue"]
 SERVER = Path(__file__).resolve().parents[1] / "src" / "life" / "grpc" / "server.py"
 
-# Actions the panel invokes through dynamic helpers and so are not literal regex hits.
 DYNAMIC = {"journal", "dream"}
 
-# Actions dispatched through the shared lifeAct() helper in kit.ts rather than a
-# local act()/query() wrapper; collected from the pages directly.
 ACTION_CALL = re.compile(r"(?:act|query|lifeAct)\('([a-z_0-9]+)'")
 
 
@@ -43,22 +32,15 @@ class PanelActionContract(unittest.TestCase):
                 )
 
     def test_panels_referenced_by_ui_patch_are_scanned(self):
-        """A new plugin page must be added to PANELS, not silently skipped.
-
-        Derived from life.patch so adding a settings tab without extending the
-        contract test fails here instead of shipping an unscanned page.
-        """
         patch = REPO_ROOT / "core" / "data" / "ui" / "life.patch"
         if not patch.exists():
             self.skipTest("life.patch not present")
         modules = re.findall(r'"module":\s*"([^"]+)"', patch.read_text(encoding="utf-8"))
         entries = {m.rsplit("/", 1)[-1].split("?")[0] for m in modules if "/ui/" in m}
-        # Entry bundle → Vue root that compiles to it.
         ENTRY_TO_PANEL = {
             "companion.js": "CompanionPage.vue",
             "adapters.js": "AdapterSettingsPage.vue",
         }
-        # Read-only pages that never dispatch an action are allowed to be absent.
         READ_ONLY = {"memory.js"}
         covered = set(ENTRY_TO_PANEL) | READ_ONLY
         uncovered = entries - covered

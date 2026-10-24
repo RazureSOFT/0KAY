@@ -1,10 +1,3 @@
-"""Tests for the multi-system cognition core.
-
-These reproduce the paper's headline results on the two-action / three-state toy
-task: devaluation is immediate and depends on the model-based system, reversal is
-gradual, replay is priority-driven, encoding is selective and control degrades
-with load and fatigue.
-"""
 import random
 import sys
 import tempfile
@@ -17,7 +10,6 @@ from life.cognition.space import LIFE_ACTIONS, reward_from_signals, state_index
 
 
 def train(task: ToyTask, model: MultiSystemModel, rounds: int = 400, steps: int = 4, epsilon: float = 0.1):
-    """Run the model's own policy (with epsilon exploration) over the task."""
     for _ in range(rounds):
         state = 0
         for _ in range(steps):
@@ -36,18 +28,13 @@ class DevaluationReversal(unittest.TestCase):
         task = ToyTask()
         model = task.model(rng=random.Random(0))
         train(task, model)
-        # Trained: everything prefers A (action 0).
         self.assertEqual(preference(model.habit_distribution(0)), 0)
         self.assertEqual(preference(model.model_based_values()[0]), 0)
-        # Devalue the good outcome: one write, no new experience.
         task.devalue_good()
         model.set_outcome_value(1, 0.0)
-        # Planning revalues instantly ...
         self.assertEqual(preference(model.model_based_values()[0]), 1)
-        # ... habit does not budge, and model-free value has no new experience.
         self.assertEqual(preference(model.habit_distribution(0)), 0)
         self.assertEqual(preference(model.Q_mf[0]), 0)
-        # The full model turns the behaviour around.
         decision = model.decide(0, stakes=1.0)
         self.assertEqual(decision.mode, "FULL")
         self.assertGreater(decision.probabilities[1], decision.probabilities[0])
@@ -58,12 +45,9 @@ class DevaluationReversal(unittest.TestCase):
         train(task, model)
         before = list(model.model_based_values()[0])
         task.reverse()
-        # Immediately after reversal the transition model still reflects the old
-        # world, so planning is unchanged and behaviour has not moved yet.
         after = list(model.model_based_values()[0])
         self.assertAlmostEqual(before[0], after[0], places=6)
         self.assertEqual(model.decide(0, stakes=1.0).action, 0)
-        # Relearning over the new world eventually flips the slow system too.
         train(task, model, rounds=400)
         self.assertEqual(preference(model.habit_distribution(0)), 1)
         self.assertEqual(model.decide(0, stakes=1.0).action, 1)
@@ -74,7 +58,6 @@ class DevaluationReversal(unittest.TestCase):
         train(task, model)
         task.devalue_good()
         model.set_outcome_value(1, 0.0)
-        # Remove the model-based system by restricting the arbiter to AUTO/WM.
         from life.cognition import model as model_module
         original = dict(model_module.MODE_MODULES)
         try:
@@ -86,7 +69,6 @@ class DevaluationReversal(unittest.TestCase):
         finally:
             model_module.MODE_MODULES.clear()
             model_module.MODE_MODULES.update(original)
-        # Without MB every remaining subsystem still points at the old action.
         self.assertGreater(decision.probabilities[0], decision.probabilities[1])
 
 
@@ -94,13 +76,12 @@ class LearningMechanisms(unittest.TestCase):
     def test_replay_priority_follows_prediction_error(self):
         task = ToyTask()
         model = task.model(rng=random.Random(3))
-        train(task, model, rounds=15)  # deliberately undertrained
+        train(task, model, rounds=15)
         priorities = [model.replay_priority(e) for e in model.engrams]
         self.assertTrue(priorities)
         top = sorted(model.engrams, key=lambda e: model.replay_priority(e), reverse=True)[:3]
         top_pe = [abs(e.prediction_error) for e in top]
         all_pe = sorted((abs(e.prediction_error) for e in model.engrams), reverse=True)
-        # The three most-replayed traces are among the highest-error traces.
         self.assertGreaterEqual(min(top_pe), all_pe[min(5, len(all_pe) - 1)])
 
     def test_sleep_replay_updates_model_free_value(self):
@@ -117,8 +98,6 @@ class LearningMechanisms(unittest.TestCase):
         task = ToyTask()
         model = task.model(rng=random.Random(5))
         train(task, model, rounds=400)
-        # Far fewer traces than experiences: most steps are neither surprising
-        # nor novel once the task is learned.
         self.assertLess(len(model.engrams), 400 * 4)
         self.assertGreater(len(model.engrams), 0)
 
@@ -138,14 +117,13 @@ class ControlArbitration(unittest.TestCase):
         model = task.model(rng=random.Random(7))
         train(task, model)
         task.devalue_good()
-        model.set_outcome_value(1, 0.0)  # create habit-vs-model conflict
+        model.set_outcome_value(1, 0.0)
         fresh = model.decide(0, stakes=1.0, fatigue=0.0, load=0.0)
         loaded = model.decide(0, stakes=1.0, fatigue=0.0, load=0.9)
         tired = model.decide(0, stakes=1.0, fatigue=0.8, load=0.0)
         self.assertEqual(fresh.mode, "FULL")
         self.assertEqual(loaded.mode, "AUTO")
         self.assertEqual(tired.mode, "AUTO")
-        # Capacity collapses as load rises.
         self.assertLess(loaded.capacity, fresh.capacity)
 
     def test_plan_is_dominated_by_full(self):
@@ -159,7 +137,6 @@ class ControlArbitration(unittest.TestCase):
             for load in (0.0, 0.25, 0.5):
                 for fatigue in (0.0, 0.4):
                     chosen.add(model.decide(0, stakes=stakes, load=load, fatigue=fatigue).mode)
-        # The nominal four modes collapse to three: PLAN is never selected.
         self.assertNotIn("PLAN", chosen)
 
 
@@ -199,7 +176,6 @@ class PersistenceAndAdapter(unittest.TestCase):
 
 
 class EngramMemory(unittest.TestCase):
-    """The durable memory store now encodes selectively and reconsolidates."""
 
     def test_selective_encoding(self):
         from life.memory.memory import MemorySystem
@@ -224,8 +200,6 @@ class EngramMemory(unittest.TestCase):
         from life.memory.memory import MemorySystem
         with tempfile.TemporaryDirectory() as directory:
             memory = MemorySystem(directory)
-            # Nader & Hardt 2009: a trace has to be *reactivated* before it can
-            # be re-written, so each branch is reached through a real retrieval.
             stable = memory.remember("稳定的事实", strength=0.5)
             memory.reactivate(stable.id)
             self.assertEqual(memory.reconsolidate(stable.id, 0.5)["branch"], "strengthen")
@@ -241,7 +215,6 @@ class EngramMemory(unittest.TestCase):
 
 
 class ThinkIntegration(unittest.TestCase):
-    """The arbiter's decision must reach the planner prompt."""
 
     def test_think_prompt_surfaces_control_mode(self):
         from life.think.think import ThinkStage

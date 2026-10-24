@@ -1,5 +1,3 @@
-"""gRPC server for L.I.F.E plugin - Complete implementation."""
-
 import asyncio
 import json
 import os
@@ -10,7 +8,6 @@ from datetime import date
 import grpc
 from grpc import aio
 
-# Add gen/python to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'gen', 'python'))
 
 from life.v1 import life_pb2
@@ -26,31 +23,20 @@ log = get_logger("grpc.server")
 
 
 class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
-    """Implementation of LifeService gRPC service."""
 
     def __init__(self, mocr_address: str = None):
         self.engine = LifeEngine(mocr_address=mocr_address)
         self._sessions: dict[str, asyncio.Task] = {}
         self._sync_task: asyncio.Task | None = None
-        # Hold references to fire-and-forget tasks; a bare create_task() result
-        # can be garbage-collected mid-flight and silently cancelled.
         self._autonomy_tasks: set = set()
-        # A full autonomy cycle can outlast the idle-check cadence; guard against
-        # stacking overlapping cycles (duplicate proactives/ticks).
         self._autonomy_running = False
-        # Core settings/credential health. A missing or expired enrollment key
-        # makes Core answer 401 forever; retrying silently just leaves the plugin
-        # running on stale defaults, so count failures and surface them loudly.
         self._settings_auth_failures = 0
         self._settings_unreachable_failures = 0
         self._settings_degraded = False
         self._settings_last_error = ""
 
     async def start_background_tasks(self):
-        """Start background loops (heartbeat + agent sync + message adapters)."""
         self._sync_task = asyncio.create_task(self._background_loop())
-        # The resident thinker is the one long-lived process that thinks between
-        # runs; it owns its own cadence and is stopped by `engine.close()`.
         try:
             if self.engine.life_is_alive():
                 if self.engine.resident.start():
@@ -61,14 +47,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             log.warning("could not start resident thinker: %s", e)
 
     async def _sync_adapters(self):
-        """Start/stop reverse-WebSocket servers so they match the registry.
-
-        This replaces the old single outbound OneBot connect loop. LIFE is the
-        *server* now: each enabled instance listens on its own host:port and a
-        platform client (NapCat / aiocqhttp) dials in. Reconciliation is
-        idempotent, so calling it on every poll is cheap and picks up a settings
-        change (enable/disable, port move) without a restart.
-        """
         try:
             result = await self.engine.sync_adapters()
         except Exception as error:
@@ -80,10 +58,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             log.warning("some adapters could not bind: %s", result["failed"])
         return result
 
-    # An expired/missing enrollment token is a configuration fault, not a
-    # transient one: no amount of retrying fixes it, and the plugin must not
-    # quietly keep serving on stale defaults. Escalate once, then repeat at a
-    # low cadence instead of spamming every 10s poll.
     _SETTINGS_AUTH_ESCALATE_AFTER = 3
     _SETTINGS_AUTH_REPEAT_EVERY = 30
 
@@ -110,7 +84,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
     def _note_settings_unreachable(self, error: object) -> None:
         self._settings_unreachable_failures += 1
         self._settings_last_error = str(error)
-        # Transient: Core may simply not be up yet. One line, then stay quiet.
         if self._settings_unreachable_failures == 1 or (
             self._settings_unreachable_failures % self._SETTINGS_AUTH_REPEAT_EVERY
         ) == 0:
@@ -125,7 +98,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
         self._settings_last_error = ""
 
     def settings_health(self) -> dict:
-        """Diagnostics for tests/panels: is Core configuration actually working?"""
         return {
             "degraded": self._settings_degraded,
             "auth_failures": self._settings_auth_failures,
@@ -155,7 +127,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 self._note_settings_unreachable(f"HTTP {status}")
             return {}
         except (httpx.ConnectError, httpx.TimeoutException, httpx.ConnectTimeout) as error:
-            # Core down or not listening: transient, self-healing on restart.
             self._note_settings_unreachable(error)
             return {}
         except Exception as error:
@@ -163,22 +134,18 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             return {}
 
     async def _background_loop(self):
-        """Heartbeat to Core + sync online agents every 10s."""
         core = self.engine.core
 
-        # Initial register (retry a few times)
         for attempt in range(10):
             if await asyncio.to_thread(core.register):
                 break
             if core.registration_blocked:
-                # Credential fault: retrying cannot fix it and only delays start.
                 log.error(
                     "starting without Core integration: %s", core.registration_error
                 )
                 break
             await asyncio.sleep(2)
 
-        # Initial agent sync
         count = await asyncio.to_thread(self.engine.sync_agents)
         log.info("Online agents: %s", count)
         await self._refresh_settings()
@@ -187,31 +154,21 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
         while True:
             await asyncio.sleep(10)
             try:
-                # Heartbeat
                 active = len(self.engine.active_tasks)
                 ok = await asyncio.to_thread(core.heartbeat, active_tasks=active)
                 if not ok and core.plugin_id is None:
-                    # Lost registration, try again
                     await asyncio.to_thread(core.register)
 
-                # Sync agents
                 count = await asyncio.to_thread(self.engine.sync_agents)
                 await self._refresh_settings()
                 await self.engine.poll_minecraft()
                 await self.engine.learn_from_minecraft()
                 await self.engine.task_records.flush()
                 self.engine.circadian.tick(0)
-                # Advance the slow physiology on the clock too: the character's
-                # mood/HPA/allostatic load must evolve while it is alone, not
-                # only when a message arrives.
                 await asyncio.to_thread(self.engine._tick_affect)
-                # Persist at most once a minute: the full state write is safe
-                # to defer and 6x fewer rewrites of the same JSON.
                 if time.monotonic() - getattr(self, "_last_state_save", 0.0) >= 60.0:
                     self._last_state_save = time.monotonic()
                     await asyncio.to_thread(self.engine._save_state)
-                # Daily maintenance is intentionally local and bounded: compact
-                # memories, rebuild indexes, and retain seven JSON snapshots.
                 today = date.today().isoformat()
                 if getattr(self, "_maintenance_day", "") != today:
                     result = await asyncio.to_thread(self.engine.memory.maintenance)
@@ -219,21 +176,16 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                                             "daily_memory_maintenance", json.dumps(result, ensure_ascii=False))
                     self._maintenance_day = today
                 await asyncio.to_thread(self.engine.memory.process_reflection_queue)
-                # Reconcile the message-platform servers with the adapter
-                # registry: an enable/disable or port change from the settings
-                # panel takes effect within one poll, without a restart.
                 await self._sync_adapters()
             except Exception as e:
                 log.warning("background loop error: %s", e)
 
     async def _refresh_settings(self):
-        """Poll the Core-owned settings document; Core remains the secret store."""
         values = await self._life_settings()
         if values:
             self.engine.apply_tool_settings(values)
 
     async def OnTaskCompleted(self, request, context):
-        """Handle task completion callback from Core."""
         state_name = plugin_pb2.TaskState.Name(request.state)
 
         response_text = await self.engine.on_task_completed(
@@ -249,7 +201,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
         )
 
     async def OnUserMessage(self, request, context):
-        """Handle user message with streaming response."""
         try:
             async for event in self.engine.process_message(
                 session_id=request.session_id,
@@ -259,19 +210,13 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 persona=json.loads(request.persona_json) if request.persona_json else None,
                 history=json.loads(request.history_json) if request.history_json else None,
             ):
-                # grpc.aio ServicerContext versions differ: some expose
-                # is_active(), others only cancelled(). Keep streaming until
-                # the client explicitly cancels in either case.
                 active = context.is_active() if hasattr(context, "is_active") else not context.cancelled()
                 if not active:
                     break
 
-                # raw_chunk is internal model streaming. WebUI receives only
-                # the final OUTPUT chunks, otherwise each reply is duplicated.
                 if event.get("type") == "raw_chunk":
                     continue
 
-                # Build emotion state
                 emotion_data = event.get("emotion_state", {})
                 emotion_state = life_pb2.EmotionState(
                     valence=emotion_data.get("valence", 0.0),
@@ -294,12 +239,10 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             context.set_details(f"Error processing message: {str(e)}")
 
     async def OnScheduledEvent(self, request, context):
-        """Handle scheduled events."""
         event_type = request.event_type
 
         if event_type == life_pb2.SCHEDULED_EVENT_TYPE_CIRCADIAN_TICK:
             self.engine.circadian.tick(3600)
-            # Active memory reinforcement on circadian cadence
             try:
                 reinforced = await asyncio.to_thread(self.engine.memory.periodic_reinforce)
                 if reinforced:
@@ -307,7 +250,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             except Exception as e:
                 log.warning("memory reinforce error: %s", e)
         elif event_type == life_pb2.SCHEDULED_EVENT_TYPE_MEMORY_CONSOLIDATION:
-            # One night of sleep: SWS (forget + structural transfer) then REM (stabilise).
             try:
                 await asyncio.to_thread(self.engine.memory.sleep_cycle)
             except Exception as e:
@@ -315,8 +257,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
         elif event_type == life_pb2.SCHEDULED_EVENT_TYPE_IDLE_CHECK:
             if self.engine.circadian.should_auto_sleep():
                 self.engine.circadian.start_sleep()
-            # Autonomy cycle: deliver due proactive candidates, then plan new ones.
-            # Skip if a previous cycle is still running so ticks cannot stack.
             if self._autonomy_running:
                 log.debug("autonomy cycle already running; skipping this idle check")
             else:
@@ -339,9 +279,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                         log.warning("autonomy cycle error: %s", e)
 
                 def _cycle_done(task):
-                    # Cleared via the done callback (not a coroutine `finally`) so
-                    # the guard also resets when the task is cancelled before its
-                    # first step.
                     self._autonomy_tasks.discard(task)
                     self._autonomy_running = False
 
@@ -354,13 +291,11 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                     self._autonomy_running = False
                     log.warning("could not start autonomy cycle: %s", e)
 
-        # Save state after events (off the event loop: it is a full JSON rewrite)
         await asyncio.to_thread(self.engine._save_state)
 
         return life_pb2.OnScheduledEventResponse(acknowledged=True)
 
     async def GetMemories(self, request, context):
-        """Return memory items + stats for the WebUI sidebar."""
         try:
             limit = request.limit if request.limit and request.limit > 0 else 50
             items = await asyncio.to_thread(self.engine.list_memories, limit, request.query or "")
@@ -392,7 +327,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             raise
 
     async def GetState(self, request, context):
-        """Return emotion/energy/permissions for the WebUI."""
         try:
             state = await asyncio.to_thread(self.engine.get_state)
             emotion = state.get("emotion", {})
@@ -419,7 +353,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             raise
 
     async def SetPermissions(self, request, context):
-        """Update screen_watch / computer_use / host report (default OFF)."""
         try:
             await asyncio.to_thread(
                 self.engine.set_permissions,
@@ -440,13 +373,8 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             snapshot["circadian"] = {key: rhythm[key] for key in ("sleep_hour", "wake_hour", "observed_days", "is_sleeping", "mental_energy", "hunger", "health")}
             snapshot["emotion"] = self.engine.emotion.state.to_dict()
             snapshot["policy"] = await asyncio.to_thread(self.engine.companion.get_policy)
-            # Live cognition read-out (arbiter mode, per-wave state).  This is
-            # read-only telemetry for the dashboard; it is produced from the
-            # already-live systems, never recomputed from stored settings.
             snapshot["cognition"] = await asyncio.to_thread(self.engine.cognition_status)
-            # The fictional world's identity + renderable map + actor positions.
             snapshot["worldview"] = await self.engine.worldview_snapshot()
-            # Known conversations the panel can target directly (session:<id>).
             snapshot["conversations"] = list(self.engine._histories.keys())[-20:]
             return life_pb2.GetCompanionResponse(json=json.dumps(snapshot, ensure_ascii=False))
         except Exception as e:
@@ -485,9 +413,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 self.engine.acknowledge_notifications(str(payload.get('session_id') or ''),payload.get('ids') or [])
                 result={'ok':True}
             elif action == "memory_page":
-                # Fail closed: the default is public-only. An admin browse has to
-                # ask for "*" explicitly (the gRPC channel is authenticated, so
-                # that is a deliberate act, not a default).
                 result = await asyncio.to_thread(self.engine.memory.page_facts, payload.get("tier",""), payload.get("query",""), int(payload.get("limit",50)), int(payload.get("offset",0)), payload.get("sort","recent"), payload.get("scope",""))
             elif action == "memory_dashboard":
                 result = await asyncio.to_thread(self.engine.memory.dashboard)
@@ -529,7 +454,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                                         None if quiet_end in (None,"") else int(quiet_end))
                 result = {"ok": True, "daily_limit": daily, "per_target_limit": per_target}
             elif action == "relationship_adjust":
-                # A3 信息不对称性：面板强加的修改带 by="owner" 来源，对角色自己不可见。
                 result = await asyncio.to_thread(self.engine.companion.apply_relationship_event, payload.get("user_id",""), payload.get("event_key",""), payload.get("reason","dashboard"), payload.get("channel","webui"), float(payload.get("delta",0)), "owner")
             elif action in ("journal_generate", "dream_generate"):
                 kind = "journal" if action == "journal_generate" else "dream"
@@ -675,20 +599,15 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await asyncio.to_thread(self.engine.companion.get_settings)
             elif action == "settings_set":
                 result = await asyncio.to_thread(self.engine.companion.set_settings, payload.get("settings") or payload)
-                # Cognition knobs must take effect on the live systems, not only
-                # after a restart: reconfigure in place (learned state survives).
                 await asyncio.to_thread(self.engine.apply_cognition_settings)
             elif action == "persona_analyze":
-                # Interpret the persona into parameters for review/tuning (no save).
                 result = await self.engine.persona_analyze(
                     str(payload.get("text") or ""), str(payload.get("gender") or ""))
             elif action == "persona_apply":
-                # Save the reviewed persona plus its tuned parameters.
                 result = await asyncio.to_thread(self.engine.persona_apply, payload)
             elif action == "life_status":
                 result = self.engine.life_status()
             elif action == "life_start":
-                # 一键点燃自主生命：认知 + 主动行为 + 常驻思考，并立刻想第一件事。
                 result = await self.engine.start_life(
                     bool(payload.get("greet")),
                     str(payload.get("session_id") or payload.get("target") or ""))
@@ -743,14 +662,11 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await asyncio.to_thread(self.engine.companion.upsert_world_knowledge, payload.get("kind","worldview"), payload.get("title",""), payload.get("content",""), payload.get("tags",""), payload.get("id",""))
             elif action == "world_delete":
                 result = await asyncio.to_thread(self.engine.companion.delete_world_knowledge, payload.get("id",""))
-            # --- message-platform adapters (multi-instance, AstrBot-style) ---
             elif action == "adapter_list":
                 result = {"instances": self.engine.adapters.list(),
                           "runtime": self.engine.adapter_status()}
             elif action == "adapter_upsert":
                 result = await asyncio.to_thread(self.engine.upsert_adapter, payload.get("instance") or payload)
-                # Apply immediately: the person pressed 保存, so the bot should be
-                # listening (or stop listening) before they close the dialog.
                 if result.get("ok"):
                     result["sync"] = await self._sync_adapters()
             elif action == "adapter_delete":
@@ -767,8 +683,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
             elif action == "adapter_status":
                 result = {"instances": self.engine.adapter_status()}
             elif action == "adapter_platforms":
-                # The platform picker: every category the UI may offer, flagged
-                # with whether this build can actually drive it.
                 from ..adapters.platforms import IMPLEMENTED_PLATFORMS, KNOWN_PLATFORMS
                 result = {"platforms": [
                     {"id": name, "implemented": name in IMPLEMENTED_PLATFORMS}
@@ -779,7 +693,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 result = await self.engine.adapter_routes_apply(
                     payload.get("routes") or [], str(payload.get("default_config_id") or ""))
             elif action == "session_config":
-                # Which persona config a given conversation resolves to right now.
                 session_id = str(payload.get("session_id") or "")
                 result = {"session_id": session_id,
                           "config_id": self.engine._config_id_for_session(session_id)}
@@ -787,8 +700,6 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
                 return life_pb2.ManageCompanionResponse(ok=False, error=f"unknown action: {action}")
             return life_pb2.ManageCompanionResponse(ok=True, json=json.dumps(result, ensure_ascii=False))
         except Exception as e:
-            # Log the detail, return a generic message: internal paths/protocol
-            # details should not flow to the dashboard.
             log.warning("ManageCompanion action failed: %s", e)
             return life_pb2.ManageCompanionResponse(ok=False, error="internal error")
 
@@ -809,15 +720,11 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
 
 
 async def serve(mocr_address: str = None):
-    """Start the L.I.F.E gRPC server."""
     data_dir = os.environ.get("LIFE_DATA_DIR", "./data/life")
     log = setup_logging(data_dir)
     port = os.environ.get("LIFE_GRPC_PORT", "50053")
     log.info("starting LIFE gRPC server on :%s (data_dir=%s)", port, data_dir)
 
-    # The bind host and the auth mode are decided before the server object
-    # exists: a non-loopback bind without authentication must never get as far
-    # as listening.
     bind_host = (os.getenv("LIFE_BIND_HOST", "127.0.0.1") or "127.0.0.1").strip()
     loopback = bind_host in ("127.0.0.1", "localhost", "::1")
     if not loopback and os.getenv("LIFE_ALLOW_REMOTE_BIND", "").strip().lower() not in ("1", "true", "yes", "on"):
@@ -847,7 +754,6 @@ async def serve(mocr_address: str = None):
         raise
     life_pb2_grpc.add_LifeServiceServicer_to_server(servicer, server)
 
-    # Set life address on core client so Core can call us back
     core = get_core_client()
     core.life_address = os.getenv("LIFE_ADDRESS", f"localhost:{port}")
 
@@ -856,7 +762,6 @@ async def serve(mocr_address: str = None):
     log.info("LIFE gRPC listening on %s:%s (core=%s, mocr=%s, auth=%s)",
              bind_host, port, core.address, mocr_address, auth_mode)
 
-    # Start background tasks (register with Core, heartbeat, sync agents)
     try:
         await servicer.start_background_tasks()
     except Exception:
@@ -870,14 +775,10 @@ async def serve(mocr_address: str = None):
             if task:
                 task.cancel()
         pending = [t for t in (servicer._sync_task,) if t]
-        # In-flight autonomy cycles are fire-and-forget; cancel and await them so
-        # shutdown does not race a half-finished tick.
         for task in list(servicer._autonomy_tasks):
             task.cancel()
         pending.extend(list(servicer._autonomy_tasks))
         await asyncio.gather(*pending, return_exceptions=True)
-        # Release the reverse-WebSocket listeners before the data stores close,
-        # so a client cannot be mid-turn against a half-closed database.
         try:
             await servicer.engine.adapter_runtime.stop_all()
         except Exception as error:

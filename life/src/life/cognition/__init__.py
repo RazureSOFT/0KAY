@@ -1,5 +1,3 @@
-"""Multi-system cognition core (habit / control / memory) for L.I.F.E."""
-
 from .model import (
     CognitionConfig,
     Decision,
@@ -211,7 +209,6 @@ __all__ = [
     "hebbian_gate",
     "reward_from_signals",
     "state_index",
-    # --- second wave: affective / interoceptive / clinical circuits ---
     "ERQ_PROFILES",
     "AffectConfig",
     "AffectSystem",
@@ -230,10 +227,8 @@ __all__ = [
     "RewardAvailability",
     "ThreatBias",
     "VagalTone",
-    # --- somatization: the psychological -> bodily gateway ---
     "SYMPTOM_CHANNELS",
     "SomaticSymptomSystem",
-    # --- persona -> trait parameters (人设 → 模型数据) ---
     "GENDERS",
     "PERSONA_JSON_CONTRACT",
     "PersonaTraits",
@@ -242,7 +237,6 @@ __all__ = [
     "parse_persona",
     "persona_summary",
     "refine_persona_with_llm",
-    # --- persona style: character archetypes + relationship styles ---
     "CHARACTER_TYPES",
     "RELATIONSHIP_TYPES",
     "character_options",
@@ -253,7 +247,6 @@ __all__ = [
     "relationship_is_pathological",
     "relationship_options",
     "relationship_spec",
-    # --- third wave: language acquisition + the language-thought interface ---
     "FRAMING_MODES",
     "LanguageConfig",
     "LanguageSystem",
@@ -261,7 +254,6 @@ __all__ = [
     "StructuralLearner",
     "WordSegmenter",
     "tokenize",
-    # --- fourth wave: social learning / ties / prosocial alignment ---
     "SELMAN_STAGES",
     "IntrinsicMotivation",
     "PerspectiveTaking",
@@ -271,7 +263,6 @@ __all__ = [
     "SocialLearning",
     "SocialSystem",
     "SocialTies",
-    # --- fourth wave: selfhood, time, load and metacognition ---
     "ATTENTION_STATES",
     "AffectivePrimacy",
     "CognitiveLoad",
@@ -281,13 +272,11 @@ __all__ = [
     "SelfhoodConfig",
     "SelfhoodSystem",
     "TemporalDiscounting",
-    # --- reciprocity: shared trait space + rupture/repair ---
     "AXES",
     "RepairModel",
     "RelatingSystem",
     "TraitModel",
     "signals_from_message",
-    # --- pathological attachment (the "yandere" model) ---
     "ATTACHMENT_ACTIONS",
     "ATTACHMENT_TYPES",
     "AttachmentDynamics",
@@ -295,7 +284,6 @@ __all__ = [
     "attachment_severity_band",
     "attachment_type_for_persona",
     "initial_state_for_persona",
-    # --- tsundere <-> yandere emotional dynamics ---
     "TSUNDERE_BANDS",
     "TSUNDERE_TYPES",
     "TsundereDynamics",
@@ -303,7 +291,6 @@ __all__ = [
     "tsundere_initial_state_for_persona",
     "tsundere_regime",
     "tsundere_type_for_persona",
-    # --- parameterised persona dynamics (θ / D / x / f / g / T / G / L) ---
     "PERSONA_ACTIONS",
     "PERSONA_ACTION_LAYERS",
     "PERSONA_ALL_ACTIONS",

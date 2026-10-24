@@ -1,4 +1,3 @@
-"""Worldview + map: fictional nations are drawn, real countries use coordinates."""
 import json
 import sys
 import unittest
@@ -14,7 +13,6 @@ from life.worldsim.worldview import (  # noqa: E402
 
 class FictionMapTest(unittest.TestCase):
     def test_fictional_world_draws_from_the_setting(self):
-        """No real basemap: districts + water + roads composed from the setting."""
         world = normalize_worldview(
             {"fictional": True, "country": "中国", "city": "星月城",
              "districts": [{"name": "老城区", "x": 260, "y": 340, "r": 180},
@@ -36,7 +34,6 @@ class FictionMapTest(unittest.TestCase):
         self.assertEqual(world["actors"][0]["location"], world_map["locations"][0]["id"])
 
     def test_named_infrastructure_resolves_from_place_names(self):
-        """Roads / metro / bus reference places by name; we resolve coordinates."""
         world = normalize_worldview({
             "fictional": True, "country": "中国", "city": "星月城",
             "places": [{"name": "龙井小区14栋", "kind": "home", "x": 200, "y": 300},
@@ -49,7 +46,7 @@ class FictionMapTest(unittest.TestCase):
                                                     {"name": "学校", "at": "星月二高"}]}],
         }, {})["map"]
         road = next(r for r in world["roads"] if r["name"] == "白鹭路")
-        self.assertGreaterEqual(len(road["points"]), 3)  # resolved from/to + a bend
+        self.assertGreaterEqual(len(road["points"]), 3)
         self.assertEqual([s["name"] for s in world["metro"][0]["stations"]], ["小区站", "二高站"])
         for station in world["metro"][0]["stations"]:
             self.assertIsInstance(station["x"], (int, float))
@@ -70,9 +67,9 @@ class FictionMapTest(unittest.TestCase):
                 {"fictional": True, "country": "曦国", "city": "临海城",
                  "places": [{"name": "A", "x": 10, "y": 10}, {"name": "B", "x": 900, "y": 600}]}, {})["map"]
         world = build()
-        self.assertTrue(world["districts"])   # default districts, so the map is never empty
+        self.assertTrue(world["districts"])
         self.assertTrue(world["lakes"] and world["rivers"])
-        self.assertTrue(world["metro"] and world["bus"] and world["blocks"])  # deterministic fabric
+        self.assertTrue(world["metro"] and world["bus"] and world["blocks"])
         self.assertEqual(world["districts"], build()["districts"])
 
     def test_build_map_uses_a_stored_input(self):
@@ -87,7 +84,6 @@ class FictionMapTest(unittest.TestCase):
         self.assertEqual(built["kind"], "fictional")
 
     def test_fictional_map_exports_edges_for_actor_movement(self):
-        """The runtime moves actors along ``edges``; a fictional city must have them."""
         world_map = normalize_worldview(
             {"fictional": True, "country": "曦国", "city": "临海城",
              "places": [{"name": "A", "x": 100, "y": 100}, {"name": "B", "x": 500, "y": 300},
@@ -99,7 +95,6 @@ class FictionMapTest(unittest.TestCase):
             self.assertIn(b, ids)
 
     def test_transit_colour_is_validated(self):
-        """A model-supplied colour lands in an inline style, so only hex passes."""
         from life.worldsim.citymap import _METRO_COLORS
         world_map = normalize_worldview(
             {"fictional": True, "country": "曦国", "city": "临海城",
@@ -113,10 +108,9 @@ class FictionMapTest(unittest.TestCase):
         first = build_map(settings)
         second = build_map(settings)
         self.assertEqual(first, second)
-        self.assertIsNot(first, second)  # callers may mutate their copy freely
+        self.assertIsNot(first, second)
 
     def test_stored_built_map_is_migrated_not_rewarped(self):
-        """A built payload (has ``blocks``) is migrated, never re-warped as input."""
         built = normalize_worldview(
             {"fictional": True, "country": "曦国", "city": "临海城",
              "places": [{"name": "A", "x": 100, "y": 100}, {"name": "B", "x": 500, "y": 300},

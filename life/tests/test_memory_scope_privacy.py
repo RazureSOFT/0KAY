@@ -1,4 +1,3 @@
-"""Privacy/scope + hygiene fixes for the memory system (review H2/H3/H4/H5/M2/M4/M6/M7/M8)."""
 import os
 import sys
 import tempfile
@@ -17,7 +16,6 @@ class MemoryScopePrivacy(unittest.TestCase):
         self.assertEqual(self.ms.reinforce_facts(fact_ids=[secret.id]), [])
         with self.assertRaises(PermissionError):
             self.ms.adjust_importance(secret.id, 0)
-        # The internal credential retrieval contract is preserved.
         self.assertTrue(self.ms.recall("fake audit password", scope="credential"))
 
     def setUp(self):
@@ -27,7 +25,6 @@ class MemoryScopePrivacy(unittest.TestCase):
     def tearDown(self):
         self.dir.cleanup()
 
-    # H3 -----------------------------------------------------------------
     def test_page_facts_empty_scope_is_public_only(self):
         public = self.ms.remember("公开的事实内容", tags=["a"], memory_type="fact", strength=0.6)
         self.ms.remember("私密会话里的内容", tags=["a"], memory_type="fact", strength=0.6, scope="session:s1")
@@ -41,7 +38,6 @@ class MemoryScopePrivacy(unittest.TestCase):
         items = self.ms.page_facts(scope="session:1")["items"]
         self.assertEqual(items, [], "session:1 must not match session:10 by substring")
 
-    # H4 -----------------------------------------------------------------
     def test_accepted_reflection_preserves_scope(self):
         self.ms.enqueue_reflection("s1", "我喜欢猫", "好呀")
         self.ms.process_reflection_queue()
@@ -53,17 +49,15 @@ class MemoryScopePrivacy(unittest.TestCase):
         self.assertTrue(created)
         self.assertEqual(created[0].metadata.get("scope"), "session:s1")
 
-    # H5 -----------------------------------------------------------------
     def test_note_scope_is_enforced_by_default(self):
         note = self.ms.create_note("秘密", "只有 s1 能看到的内容", scope="session:s1")
         with self.assertRaises(PermissionError):
-            self.ms.read_note(note["note_id"])  # empty scope == public only
+            self.ms.read_note(note["note_id"])
         with self.assertRaises(PermissionError):
             self.ms.read_note(note["note_id"], scope="session:s2")
         content = self.ms.read_note(note["note_id"], scope="session:s1")
         self.assertIn("只有 s1", content["content"])
 
-    # H2 -----------------------------------------------------------------
     def test_reflection_queue_is_bounded(self):
         for index in range(20):
             self.ms.enqueue_reflection("s1", f"第 {index} 条", "ok")
@@ -72,7 +66,6 @@ class MemoryScopePrivacy(unittest.TestCase):
         remaining = self.ms.list_reflections(limit=100)
         self.assertLessEqual(len(remaining), 5)
 
-    # M2 -----------------------------------------------------------------
     def test_snapshot_round_trip_keeps_tags_and_notes(self):
         fact = self.ms.remember("导出导入测试事实", tags=["导出一", "导入二"], memory_type="fact", strength=0.6)
         note = self.ms.create_note("便签", "便签正文内容", scope="public")
@@ -85,23 +78,19 @@ class MemoryScopePrivacy(unittest.TestCase):
         self.assertTrue(Path(self.ms.notes_dir / f"{note['note_id']}.md").is_file())
         self.assertTrue(any(n["note_id"] == note["note_id"] for n in self.ms.list_notes()))
 
-    # M4 -----------------------------------------------------------------
     def test_tantivy_fallback_keeps_in_scope_hits(self):
         public = self.ms.remember("本地检索应当命中的独特词语", tags=["q"], memory_type="fact", strength=0.7)
         self.ms.rebuild_index()
-        # Tantivy returns only an out-of-scope id: the local in-scope BM25 must survive.
         self.ms._tantivy_search = lambda query, limit: [("not-in-scope", 9.0)]
         hits = self.ms.search("独特词语", top_k=5, scope="")
         self.assertTrue(any(hit["id"] == public.id for hit in hits))
 
-    # M6 -----------------------------------------------------------------
     def test_source_kind_column_follows_metadata(self):
         memory = self.ms.store("由工具写入的内容", metadata={"memory_type": "fact", "scope": "public", "source_kind": "tool"})
         with self.ms._connect() as db:
             stored = db.execute("SELECT source_kind FROM memory_facts WHERE id=?", (memory.id,)).fetchone()[0]
         self.assertEqual(stored, "tool")
 
-    # M8 -----------------------------------------------------------------
     def test_lability_window_reads_live_config(self):
         memory = self.ms.remember("可重新巩固的记忆", tags=["x"], memory_type="episode", strength=1.0)
         config = CognitionConfig()
@@ -114,7 +103,6 @@ class MemoryScopePrivacy(unittest.TestCase):
 
 
 class CredentialScopeIsWriteOnly(unittest.TestCase):
-    """H-02: a generated server password must never come back out of a read API."""
 
     SECRET = "Minecraft server mc.example.com 登录密码：hunter2"
 
@@ -135,7 +123,6 @@ class CredentialScopeIsWriteOnly(unittest.TestCase):
         self.assertFalse(any(self.SECRET in c for c in contents))
 
     def test_page_facts_hides_credentials_even_for_admin_scope(self):
-        # "*" is the admin browse; it must still not render a password.
         ids = {item["id"] for item in self.ms.page_facts(scope="*")["items"]}
         self.assertNotIn(self.credential.id, ids)
         ids_public = {item["id"] for item in self.ms.page_facts(scope="")["items"]}
@@ -150,8 +137,6 @@ class CredentialScopeIsWriteOnly(unittest.TestCase):
         self.assertFalse(any(self.SECRET in item["content"] for item in results))
 
     def test_explicit_credential_scope_still_serves_the_login_lookup(self):
-        # The Minecraft join flow reads the password back through recall(); that
-        # path must keep working or servers become unreachable.
         hits = self.ms.recall("Minecraft server mc.example.com login password 登录密码",
                               top_k=5, scope="credential")
         self.assertTrue(any(self.SECRET in hit.content for hit in hits))
@@ -162,7 +147,6 @@ class CredentialScopeIsWriteOnly(unittest.TestCase):
 
 
 class ImportKeepsRealZeros(unittest.TestCase):
-    """`value or 0.5` turned a stored 0.0 importance/strength back into 0.5."""
 
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()

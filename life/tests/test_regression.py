@@ -207,7 +207,6 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result.success)
         candidates = self.engine.companion.snapshot()["calendar_candidates"]
         self.assertEqual(candidates[0]["title"], "散步")
-        # Agenda is confirmed immediately: no manual confirmation step.
         self.assertEqual(candidates[0]["status"], "confirmed")
         events = self.engine.companion.agenda_for_day("2026-09-27")
         self.assertTrue(any(event["title"] == "散步" for event in events))
@@ -226,10 +225,6 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         for task in list(self.engine._background_tasks):
             await task
-        # Close the engine before removing the directory. Without this the
-        # stores are never released, and Windows refuses to rmdir a tree whose
-        # handles are still open ("WinError 145 目录不是空的") — an intermittent
-        # teardown failure that has nothing to do with what the test asserts.
         try:
             await self.engine.close()
         except Exception:
@@ -240,9 +235,6 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
         requests = []
         class Model:
             async def generate(self, model_id, messages, system_prompt="", thinking=False, **kwargs):
-                # Only capture the THINK planning passes. The engine's internal
-                # self-statement reflection (thinking=False) runs during a turn and
-                # must not pollute this conversation-flow capture.
                 if thinking:
                     requests.append((thinking, list(messages), system_prompt))
                 await asyncio.sleep(0)
@@ -282,8 +274,6 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.engine.on_task_completed("t", "TASK_STATE_DONE", "again"), "")
         self.engine.active_tasks["f"] = {"session_id": "a"}
         self.assertIn("actual error", await self.engine.on_task_completed("f", "TASK_STATE_FAILED", "", "actual error"))
-        # A graceful restart flushes the debounced snapshot (engine.close does
-        # this); model that here before reopening the same data dir.
         self.engine.flush_state()
         restarted = LifeEngine(self.directory.name)
         self.assertEqual(len(restarted.get_notifications("a")), 1)
@@ -332,15 +322,9 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
         systems = []
         class Model:
             def __init__(self):
-                # Instance state: a class attribute would be shared by any
-                # second model built in the same test.
                 self.turns = 0
 
             async def generate(self, model_id, messages, system_prompt="", thinking=False, **kwargs):
-                # Only capture the THINK planning passes. The engine also runs an
-                # internal self-statement reflection (thinking=False) during a turn;
-                # that is the character's own monologue, not the conversation flow
-                # this test asserts on, so it must not shift `systems` indices.
                 if thinking:
                     systems.append(system_prompt)
                 if thinking:
@@ -422,25 +406,6 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ConcurrentSQLiteTests(unittest.TestCase):
-    """Regression: per-call connection churn raised
-    ``sqlite3.OperationalError: attempt to write a readonly database``.
-
-    ``CompanionSystem.db()`` and ``MemorySystem._connect()`` each open a fresh
-    connection per call and close it again, and callers reach them from
-    arbitrary worker threads (the engine wraps most companion/memory work in
-    ``asyncio.to_thread``).  Both stores used to run in WAL mode, where SQLite
-    deletes the ``-wal``/``-shm`` sidecars when the *last* connection closes, so
-    a connection opening concurrently with that teardown could fail its first
-    write with ``SQLITE_READONLY`` (code 8) on Windows.  That was a race rather
-    than a lock timeout, so ``busy_timeout`` did not help.  The stores now run
-    in ``journal_mode=PERSIST`` (which reuses one rollback journal in place and
-    never tears sidecars down under a concurrent opener) *and* serialize access
-    with an RLock.
-
-    These tests pin the serialization contract -- a second caller must not be
-    able to open the database while the first still holds it -- which is
-    deterministic, unlike probing for the intermittent write error itself.
-    """
 
     def _assert_serialized(self, open_database) -> None:
         inside = threading.Event()
@@ -464,7 +429,6 @@ class ConcurrentSQLiteTests(unittest.TestCase):
         holder.start(); waiter.start()
         self.assertTrue(inside.wait(10), "first caller never entered")
         self.assertTrue(attempting.wait(10), "second caller never attempted")
-        # The second caller must stay blocked for as long as the first holds on.
         self.assertFalse(entered_concurrently.wait(0.5), "database allowed concurrent access")
         release.set()
         holder.join(10); waiter.join(10)
@@ -481,15 +445,6 @@ class ConcurrentSQLiteTests(unittest.TestCase):
             self._assert_serialized(memory._connect)
 
     def test_stores_do_not_run_in_wal(self):
-        """The stores must stay off WAL.
-
-        Both open a fresh connection per call and close it again.  A WAL
-        database deletes its ``-wal``/``-shm`` sidecars on every
-        last-connection close, so that pattern churns two files per operation —
-        visible on Windows as thousands of ``.db-wal``/``.db-shm`` entries in
-        the Recycle Bin.  ``journal_mode=PERSIST`` reuses one rollback journal
-        in place instead, so pin the mode and the absence of sidecars.
-        """
         with tempfile.TemporaryDirectory() as directory:
             companion = CompanionSystem(directory)
             with companion.db() as db:
@@ -503,19 +458,15 @@ class ConcurrentSQLiteTests(unittest.TestCase):
                 self.assertEqual(str(db.execute("PRAGMA journal_mode").fetchone()[0]).lower(), "persist")
             memory.close()
             memory_dir = os.path.join(directory, "memory")
-            # A normal close must delete nothing: the reused journal may stay,
-            # but a WAL sidecar never may (that is the churn being pinned here).
             sidecars = [n for n in os.listdir(memory_dir) if n.endswith(("-wal", "-shm"))]
             self.assertEqual(sidecars, [], "close() must not leave WAL sidecars")
             self.assertTrue(os.path.exists(os.path.join(memory_dir, "memory_center.db")))
-            # release_index=True is the temp-dir path: it does drop the projection.
             memory.close(release_index=True)
             self.assertFalse(os.path.isdir(os.path.join(memory_dir, "tantivy_memory")))
 
 
 class WorldPackageImportTests(unittest.TestCase):
     def test_worldview_loads_with_only_src_on_pythonpath_from_other_cwd(self):
-        """Match Core's PYTHONPATH=life/src outside the plugin working directory."""
         root = Path(__file__).resolve().parents[1]
         env = os.environ.copy()
         env["PYTHONPATH"] = str(root / "src")

@@ -1,13 +1,3 @@
-"""Shared pytest bootstrap for the LIFE suite.
-
-Every test file used to repeat the same four-line ``sys.path`` preamble before
-importing ``life.*`` (and ``life.v1`` from the generated protobuf package).
-Doing it once here keeps that in one place, so new tests can import directly.
-
-The suite itself is written with ``unittest.TestCase`` (async cases wrap their
-coroutine in ``asyncio.run``), so most fixtures are unnecessary — the one below
-exists for tests that prefer the pytest style.
-"""
 import sys
 import tempfile
 from pathlib import Path
@@ -25,6 +15,5 @@ for _candidate in (ROOT / "src", ROOT.parent / "gen" / "python"):
 
 @pytest.fixture
 def temp_data_dir():
-    """An empty, auto-removed data directory for a MemorySystem/CompanionSystem."""
     with tempfile.TemporaryDirectory() as directory:
         yield directory

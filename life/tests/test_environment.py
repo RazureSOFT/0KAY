@@ -21,8 +21,6 @@ class EnvironmentTests(unittest.TestCase):
     def test_fixed_holidays_and_upcoming(self):
         self.assertEqual(self.env.holiday_on(date(2026, 10, 1)), "国庆节")
         self.assertEqual(self.env.holiday_on(date(2026, 9, 26)), "")
-        # upcoming_holiday is relative to "now", so pin the clock: otherwise the
-        # assertion only holds for a few calendar days around the holiday.
         self.env.now = lambda: datetime(2026, 9, 26, 12, 0)
         upcoming = self.env.upcoming_holiday(10)
         self.assertIsNotNone(upcoming)

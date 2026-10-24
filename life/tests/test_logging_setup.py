@@ -1,10 +1,3 @@
-"""`setup_logging` must be safe to call twice and must force UTF-8 console output.
-
-A launcher that discards stdio relies on the rotating file handler being the
-only durable log, so a second initialisation with a different data dir must move
-the file target rather than keep writing to the first one.  The console
-reconfigure is what keeps non-ASCII text readable under a non-UTF-8 locale.
-"""
 import logging
 import os
 import sys

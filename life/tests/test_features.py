@@ -39,7 +39,7 @@ class TopicsAndPortrait(unittest.TestCase):
 
     def test_open_topics_roundtrip(self):
         self.companion.record_open_topics("u1", ["周末要不要看电影", "还没交的报告"])
-        self.companion.record_open_topics("u1", ["周末要不要看电影"])  # dedup
+        self.companion.record_open_topics("u1", ["周末要不要看电影"])
         self.assertEqual(len(self.companion.list_open_topics("u1")), 2)
         self.companion.resolve_open_topics("u1", ["周末要不要看电影"])
         self.assertEqual(self.companion.list_open_topics("u1"), ["还没交的报告"])

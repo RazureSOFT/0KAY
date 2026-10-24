@@ -1,22 +1,3 @@
-"""A resident, interruptible thinking process.
-
-The old design was purely reactive: a turn ran once and exited, and the
-"autonomous loop" was a one-shot task spawned by a 20-minute timer.  Between two
-runs nothing thought about the character's own goals, and a new message could
-not cut into a run - it merely interleaved with it on the event loop.
-
-:class:`ResidentThinker` fixes that with a single long-lived task that owns a
-small, persisted mental state (focus, goal stack, scratchpad).  It wakes on its
-own cadence *or* when an external event (a user message) arrives, thinks one
-bounded step, and persists what it was doing - so it resumes the same train of
-thought across ticks and across restarts.  A user message raises an interrupt
-flag: the step checks it between awaits, parks the half-formed thought, and the
-next tick picks it back up.  A user's actual turn therefore always takes
-priority, but the character does not lose what it was thinking about.
-
-Everything here is dependency-light and driven through ``engine`` hooks, so it
-can be tested with a fake model and a short interval.
-"""
 from __future__ import annotations
 
 import asyncio
@@ -27,8 +8,6 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-#: Bounded autobiography of the mind: enough to resume a train of thought,
-#: not an unbounded log.
 SCRATCHPAD_LIMIT = 12
 
 
@@ -37,7 +16,6 @@ def _now() -> str:
 
 
 def _load_json_object(raw: str) -> dict:
-    """Forgiving JSON-object extraction (models like fences and prose)."""
     text = str(raw or "").strip()
     if text.startswith("```"):
         newline = text.find("\n")
@@ -56,7 +34,6 @@ def _load_json_object(raw: str) -> dict:
 
 
 class MentalState:
-    """The intrinsic state that survives between runs and restarts."""
 
     def __init__(self):
         self.focus: str = ""
@@ -99,16 +76,10 @@ class MentalState:
 
 
 class ResidentThinker:
-    """One long-lived task that thinks in the background, interruptibly."""
 
     DEFAULT_INTERVAL = 180.0
-    #: A user message pauses thinking for this long so a live conversation is
-    #: never competing with inner monologue for the model.
     USER_COOLDOWN = 90.0
-    #: Per-tick token ceiling: inner thoughts are short by design.
     MAX_TOKENS = 240
-    #: Fallback cadence for writing engine state after a body-clock tick. See
-    #: :meth:`_maybe_persist_body`.
     BODY_SAVE_INTERVAL = 300.0
 
     def __init__(self, engine, interval_seconds: float | None = None,
@@ -128,18 +99,12 @@ class ResidentThinker:
         self._interrupted = False
         self._last_user_at: datetime | None = None
         self._idle_streak = 0
-        # Serialize thinking so an on-demand `think_now` cannot interleave with
-        # the long-lived `_run` tick (both mutate `state` and persist it).
         self._think_lock = asyncio.Lock()
         self._save_lock = threading.Lock()
-        # Fallback persistence for the body clock: the gRPC loop saves engine
-        # state every minute, but a LIFE instance not driven through gRPC would
-        # otherwise advance physiology that is never written back.
         self._last_body_save = 0.0
         self._body_ticks = 0
         self._load()
 
-    # -- lifecycle ---------------------------------------------------------
     def start(self) -> bool:
         if not self.enabled or self._task is not None:
             return False
@@ -164,27 +129,15 @@ class ResidentThinker:
         return self._task is not None and not self._task.done()
 
     async def think_now(self) -> bool:
-        """Run one thinking step immediately (used by the 开始生命 button).
-
-        Safe to call while the loop is running: both run on the same event loop
-        and the step is cooperative, so this is just an extra, on-demand tick.
-        """
         return await self._think_once()
 
-    # -- interruption ------------------------------------------------------
     def notify_user_message(self, session_id: str = "", user_id: str = "", message: str = "") -> None:
-        """An external message arrived: interrupt inner thought, defer to it."""
         self._last_user_at = datetime.now()
         self._interrupted = True
         self._idle_streak = 0
         self._wake.set()
 
     def notify_world_event(self) -> None:
-        """Something happened in the character's own world: wake, but do not yield.
-
-        Unlike a user message this must not pause thought (there is no reply to
-        give) - it is material for the next step, so it only nudges the loop.
-        """
         self._idle_streak = 0
         self._wake.set()
 
@@ -193,7 +146,6 @@ class ResidentThinker:
             return False
         return (datetime.now() - self._last_user_at).total_seconds() < self.USER_COOLDOWN
 
-    # -- the loop ----------------------------------------------------------
     async def _run(self) -> None:
         while not self._stopping:
             try:
@@ -203,12 +155,8 @@ class ResidentThinker:
             self._wake.clear()
             if self._stopping:
                 break
-            # The body keeps its own time: mood, HPA axis and allostatic load
-            # advance on this loop even when no thought is produced (asleep,
-            # budget exhausted, or cognition switched off).
             await self._tick_body_clock()
             if self._interrupted:
-                # Consume the interrupt: the user's turn has priority this tick.
                 self._interrupted = False
                 self.state.interruptions += 1
                 self._save()
@@ -223,16 +171,6 @@ class ResidentThinker:
                 self._log("resident tick failed: %s", error)
 
     async def _tick_body_clock(self) -> None:
-        """Advance the slow physiology from the resident loop itself.
-
-        ``LifeEngine._tick_affect`` was written to be driven by *both* a
-        conversation turn and a background clock, but the only background
-        caller was Core's gRPC loop. Any LIFE instance not driven through gRPC
-        (embedded use, tests, or Core being down) therefore froze the body
-        between messages - the exact opposite of "it also changes while you are
-        silent". Owning that clock here makes the behaviour depend on LIFE
-        itself rather than on whoever happens to be hosting it.
-        """
         engine = getattr(self, "engine", None)
         tick = getattr(engine, "_tick_affect", None)
         if engine is None or tick is None or getattr(engine, "affect", None) is None:
@@ -248,12 +186,6 @@ class ResidentThinker:
         self._maybe_persist_body()
 
     def _maybe_persist_body(self) -> None:
-        """Write engine state back occasionally so the body clock is not lost.
-
-        Deliberately slower than the gRPC loop's once-a-minute save: that loop
-        is the normal owner of persistence, and this only has to cover the case
-        where nothing else is saving.
-        """
         now = time.monotonic()
         if self._last_body_save and (now - self._last_body_save) < self.BODY_SAVE_INTERVAL:
             return
@@ -278,7 +210,6 @@ class ResidentThinker:
         return self._budget_ok()
 
     def _budget_ok(self) -> bool:
-        """Respect the user's daily token budget: thinking is not free."""
         try:
             limit = int(float(self.engine.companion.get_settings().get("daily_token_limit", "0") or 0))
             if limit <= 0:
@@ -298,14 +229,6 @@ class ResidentThinker:
             return False
 
     def _effective_interval(self) -> float:
-        """Momentum, not a metronome: think sooner when something is live.
-
-        A goal, an unfinished thread or someone in the character's own world
-        waiting on it shortens the gap; a settled, empty mind lengthens it (and a
-        run of empty thoughts backs off further).  This is the practical version
-        of "always thinking" within a bounded token budget - it cannot be a
-        literally continuous stream, so cadence tracks salience instead.
-        """
         active = bool(self.state.focus or self.state.pending)
         if not active:
             try:
@@ -316,18 +239,12 @@ class ResidentThinker:
             active = self._has_world_contacts()
         factor = 0.5 if active else 1.5
         factor *= min(3.0, 1.0 + 0.5 * getattr(self, "_idle_streak", 0))
-        # A sane floor to avoid busy-looping, but never above the configured
-        # cadence (a caller that asks for a tiny interval gets it).
         floor = min(float(self.interval), 20.0)
         return max(floor, float(self.interval) * factor)
 
-    # -- one bounded step --------------------------------------------------
     async def _think_once(self) -> bool:
         async with self._think_lock:
             thought, focus, goal_logs, goal_adds = await self._generate()
-            # Interruption may have landed while the model was generating: keep
-            # the half-formed thought for next time instead of applying side
-            # effects.
             if self._interrupted:
                 self.state.pending = thought or self.state.pending
                 self._save()
@@ -336,8 +253,6 @@ class ResidentThinker:
             self.state.pending = ""
             self.state.ticks += 1
             self.state.last_tick = _now()
-            # A run of thoughts that produce nothing backs the cadence off, so an
-            # idle mind does not keep paying for empty output.
             self._idle_streak = 0 if thought else min(6, getattr(self, "_idle_streak", 0) + 1)
             self._save()
             return True
@@ -403,9 +318,7 @@ class ResidentThinker:
                 except Exception as error:  # pragma: no cover - defensive
                     self._log("resident goal_log failed: %s", error)
 
-    # -- prompt surface ----------------------------------------------------
     def context_block(self) -> str:
-        """A compact line for the chat/autonomy prompt: what I am thinking about."""
         parts = []
         if self.state.focus:
             parts.append(f"你最近一直在想：{self.state.focus}")
@@ -439,7 +352,6 @@ class ResidentThinker:
                 bits.append(f"你已经 {neglect:.1f} 天没和任何人真正说过话了")
         except Exception:
             pass
-        # Its own world's people - read-only, and never triggers a world build.
         try:
             runtime = getattr(engine, "_worldsim", None)
             if runtime is not None:
@@ -451,7 +363,6 @@ class ResidentThinker:
         bits.append(f"当前情绪：{engine._emotion_phrase()}")
         return "；".join(bits)
 
-    # -- persistence -------------------------------------------------------
     def _load(self) -> None:
         try:
             data = json.loads(self.state_path.read_text(encoding="utf-8"))
@@ -460,9 +371,6 @@ class ResidentThinker:
         self.state = MentalState.from_dict(data)
 
     def _save(self) -> None:
-        # A per-process temp name avoids two writers racing on the same `.tmp`
-        # (which caused spurious Windows os.replace PermissionError), and the
-        # lock serializes the write+replace pair.
         with self._save_lock:
             try:
                 self.state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -473,7 +381,6 @@ class ResidentThinker:
                 self._log("resident state save failed: %s", error)
 
     def reset(self) -> None:
-        """Wipe the mind (used by the whole-person reset)."""
         self.state = MentalState()
         try:
             self.state_path.unlink(missing_ok=True)

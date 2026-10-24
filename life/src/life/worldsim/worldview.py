@@ -1,16 +1,3 @@
-"""Precise worldview + a renderable map.
-
-The owner (optionally with the model's help) specifies where the world is —
-country / city / district, real or fictional — a premise, a cast and a set of
-places.  A *map* places those locations on a 1000x700 canvas with coordinates
-and roads (edges), and gives every actor a home location, so the dashboard can
-render where everyone is.
-
-The model proposes a worldview; this module normalises it into the canonical
-shape (clamping coordinates, dropping unknown fields) so nothing downstream has
-to trust the LLM's formatting.  When the model is unavailable the same shape is
-built deterministically from the settings, so the panel always has a map.
-"""
 from __future__ import annotations
 
 import copy
@@ -28,13 +15,9 @@ KINDS = ("home", "work", "shop", "food", "park", "transit", "other")
 MAX_LOCATIONS = 14
 MAX_ACTORS = 10
 
-# Approximate geographic spread of the abstract canvas around the map centre
-# (~9 km), so a fictional city still renders as a walkable neighbourhood.
 LAT_SPAN = 0.08
 LNG_SPAN = 0.10
 
-# Real tile basemaps need a real centre. Known cities/countries get their true
-# coordinates; anything else defaults to a southern-China city backdrop.
 CITY_CENTERS = {
     "北京": (39.90, 116.40), "上海": (31.23, 121.47), "广州": (23.13, 113.26),
     "深圳": (22.54, 114.06), "杭州": (30.25, 120.16), "成都": (30.57, 104.07),
@@ -47,7 +30,7 @@ COUNTRY_CENTERS = {
     "美国": (39.8, -98.6, 4), "英国": (54.0, -2.0, 5), "法国": (46.6, 2.2, 5),
     "德国": (51.2, 10.4, 5), "澳大利亚": (-25.0, 133.8, 4),
 }
-DEFAULT_CENTER = {"lat": 30.25, "lng": 120.16, "zoom": 13}  # Hangzhou backdrop
+DEFAULT_CENTER = {"lat": 30.25, "lng": 120.16, "zoom": 13}
 
 
 def _float(value, default: float) -> float:
@@ -91,7 +74,6 @@ def _clampf(value: float, low: float, high: float) -> float:
 
 
 def extract_json(text: str) -> dict:
-    """Pull the first JSON object out of a model reply (handles ``` fences)."""
     body = str(text or "")
     if "```" in body:
         parts = body.split("```")
@@ -120,20 +102,18 @@ def _default_pools():
 
 
 def _layout_on_ring(count: int) -> list[tuple[int, int]]:
-    """Deterministic organic scatter (golden-angle), more map-like than a ring."""
     if count <= 1:
         return [(WIDTH // 2, HEIGHT // 2)]
     points = []
     for index in range(count):
         radius = math.sqrt((index + 0.5) / count)
-        angle = index * 2.399963229728653  # golden angle
+        angle = index * 2.399963229728653
         points.append((int(WIDTH / 2 + math.cos(angle) * radius * WIDTH * 0.38),
                        int(HEIGHT / 2 + math.sin(angle) * radius * HEIGHT * 0.40)))
     return points
 
 
 def _spread(locations: list[dict], min_dist: int = 140, iterations: int = 120) -> None:
-    """Push nodes apart so no two labels/nodes pile up (deterministic)."""
     count = len(locations)
     if count < 2:
         return
@@ -184,7 +164,7 @@ def _normalize_locations(raw_places, default_places) -> list[dict]:
             "lat": entry.get("lat"), "lng": entry.get("lng"),
             "desc": str(entry.get("desc") or "")[:120],
         })
-    if len(locations) < 3:  # only pad an under-specified world, never a full one
+    if len(locations) < 3:
         for name in default_places:
             if len(locations) >= MAX_LOCATIONS or len(locations) >= 6:
                 break
@@ -193,7 +173,6 @@ def _normalize_locations(raw_places, default_places) -> list[dict]:
                 seen.add(name)
                 locations.append({"id": f"l{len(locations)}", "name": name[:24], "kind": "other",
                                   "x": -1, "y": -1, "lat": None, "lng": None, "desc": ""})
-    # Fill any missing coordinates deterministically on a ring.
     ring = _layout_on_ring(len(locations))
     for index, location in enumerate(locations):
         if location["x"] < 0 or location["y"] < 0:
@@ -214,8 +193,6 @@ def _normalize_edges(raw_edges, locations) -> list[list[str]]:
         if a and b and a != b and [a, b] not in edges and [b, a] not in edges:
             edges.append([a, b])
     if not edges and len(locations) > 1:
-        # Guarantee a connected, plausible road network: walk to the nearest
-        # unvisited node instead of chaining in list order.
         positions = {loc["id"]: (loc["x"], loc["y"]) for loc in locations}
         ids = [loc["id"] for loc in locations]
         visited = {ids[0]}
@@ -252,7 +229,6 @@ def _normalize_actors(raw_actors, locations):
 
 
 def normalize_worldview(data: dict, settings: dict | None = None) -> dict:
-    """Canonical worldview from a model/panel dict, defaulting to the settings."""
     settings = settings or {}
     data = data if isinstance(data, dict) else {}
     default_places, default_names = _default_pools()
@@ -284,8 +260,6 @@ def normalize_worldview(data: dict, settings: dict | None = None) -> dict:
     title = str(data.get("map_title") or city or "世界地图").strip()[:40]
 
     if fictional:
-        # A fictional city has no real basemap: draw it from the setting
-        # (districts + water + the story's places).
         region_names = data.get("regions")
         if isinstance(region_names, list):
             region_names = [str(r.get("name") if isinstance(r, dict) else r) for r in region_names]
@@ -321,8 +295,6 @@ def normalize_worldview(data: dict, settings: dict | None = None) -> dict:
         "country": country,
         "city": city,
         "district": district,
-        # The premise carries the owner's full setting; keep it long enough for a
-        # detailed worldbuilding document instead of truncating to a blurb.
         "premise": str(data.get("premise") or settings.get("world_premise") or "").strip()[:4000],
         "actors": actors,
         "places": locations,
@@ -331,7 +303,6 @@ def normalize_worldview(data: dict, settings: dict | None = None) -> dict:
 
 
 def _migrate_legacy(built: dict) -> dict:
-    """Old built-map payload → current input format (names only, no coordinates)."""
     locations = built.get("locations") or []
     id_to_name = {loc.get("id"): loc.get("name") for loc in locations}
     metro = []
@@ -361,9 +332,6 @@ def _migrate_legacy(built: dict) -> dict:
 
 _STORED_KEYS = ("districts", "water", "roads", "metro", "bus", "parks", "compounds",
                 "buildings", "cities", "regions", "places", "actors", "edges", "center")
-# Keys that only a *built* map carries (the model's raw input never has them).
-# Used to tell a stored built payload from a stored raw input, because both share
-# keys like ``roads`` — treating a built payload as input would warp it twice.
 _BUILT_MARKERS = ("lakes", "rivers", "blocks", "streets", "named_buildings", "nation")
 
 _MAP_CACHE_LIMIT = 8
@@ -378,12 +346,6 @@ def _settings_key(settings: dict) -> str:
 
 
 def build_map(settings: dict | None) -> dict:
-    """The map for the current settings, memoised per settings (built once per diff).
-
-    Rebuilding the procedural city is expensive and ``worldview_snapshot`` runs on
-    every panel poll, so identical settings reuse the previous result.  A copy is
-    returned so callers cannot mutate the cache.
-    """
     settings = settings or {}
     key = _settings_key(settings)
     cached = _MAP_CACHE.get(key)
@@ -397,15 +359,11 @@ def build_map(settings: dict | None) -> dict:
 
 
 def _build_map(settings: dict) -> dict:
-    """The map for the current settings (stored map if valid, else synthesized)."""
     stored = settings.get("world_map")
     data: dict = {}
     if stored:
         try:
             parsed = json.loads(stored) if isinstance(stored, str) else stored
-            # A built payload is migrated to the input format (names kept,
-            # coordinates dropped) so its already-warped geometry is not warped a
-            # second time; only the raw input format is rebuilt as-is.
             if isinstance(parsed, dict):
                 if any(parsed.get(key) for key in _BUILT_MARKERS):
                     data = _migrate_legacy(parsed)
@@ -421,8 +379,6 @@ def _build_map(settings: dict) -> dict:
     fictional = kind == "fictional" or (
         kind != "real" and str(settings.get("world_fictional", "fictional")) != "real")
     regions = data.get("regions")
-    # The stored payload is the model's raw *input* (unwarped); the map is rebuilt
-    # from it, so geometry is warped exactly once and never accumulates.
     world = normalize_worldview(
         {"fictional": fictional,
          "country": settings.get("world_country"), "city": settings.get("world_city"),
@@ -440,17 +396,11 @@ def _build_map(settings: dict) -> dict:
 
 
 def input_for_storage(data: dict) -> dict:
-    """The model's raw map *input*, persisted so the map is rebuilt deterministically.
-
-    Storing the raw input (not the built geometry) means the map is warped exactly
-    once per build and never accumulates duplicate roads on reload.
-    """
     data = data if isinstance(data, dict) else {}
     return {key: data.get(key) for key in _STORED_KEYS if data.get(key) is not None}
 
 
 def map_revision(settings: dict | None) -> str:
-    """Stable signature of the stored map, used to rebuild the runtime."""
     map_payload = build_map(settings)
     blob = json.dumps(map_payload, ensure_ascii=False, sort_keys=True)
     return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:12]

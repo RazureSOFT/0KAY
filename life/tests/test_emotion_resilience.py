@@ -1,13 +1,3 @@
-"""Resilience tests for persisted emotion state and the state-file loader.
-
-Both were single points of failure with no self-heal path:
-  - `_load_state` only caught FileNotFoundError, and it is called unguarded from
-    LifeEngine.__init__, so one truncated byte in state.json propagated through
-    serve() and the kernel refused to start.
-  - `EmotionState.from_dict` did no coercion, so a string or None on the dataclass
-    made every later emotion operation raise TypeError.
-"""
-
 import json
 import tempfile
 import unittest
@@ -33,15 +23,12 @@ class EmotionStateFromDict(unittest.TestCase):
         self.assertEqual(state.irritation, 0.0)
 
     def test_strings_are_coerced(self):
-        # A hand-edited state file. Before the coercion this installed "0.4" and
-        # then every decay() raised TypeError: can't multiply sequence by non-int.
         state = EmotionState.from_dict(
             {"valence": "0.4", "arousal": "0.7", "connection": None, "irritation": "x"})
         self.assertAlmostEqual(state.valence, 0.4)
         self.assertAlmostEqual(state.arousal, 0.7)
         self.assertAlmostEqual(state.connection, 0.5)
         self.assertAlmostEqual(state.irritation, 0.0)
-        # The whole point: the object is usable afterwards.
         state.decay(60)
         state.apply_delta({"valence": 0.1, "arousal": 0.05})
 
@@ -61,9 +48,6 @@ class EmotionStateFromDict(unittest.TestCase):
 
 class EmotionDecay(unittest.TestCase):
     def test_axes_return_toward_their_neutral_not_toward_zero(self):
-        # arousal and connection have neutral 0.5. Pure multiplicative decay
-        # pinned them at 0.0 after an idle gap, so the character woke permanently
-        # drowsy and disconnected and never came back to baseline.
         state = EmotionState(valence=0.0, arousal=0.5, connection=0.5, irritation=0.0)
         state.decay(6 * 3600)
         self.assertAlmostEqual(state.arousal, 0.5, places=3)
@@ -115,7 +99,6 @@ class ApplyDelta(unittest.TestCase):
 
 
 class StateFileRecovery(unittest.TestCase):
-    """The loader must survive every way state.json can be wrong."""
 
     def _engine(self, state_text):
         from life.engine import legacy
@@ -139,11 +122,11 @@ class StateFileRecovery(unittest.TestCase):
 
     def test_truncated_json_does_not_raise(self):
         engine = self._engine('{"emotion": {"valence": 0.1')
-        engine._load_state()  # used to raise JSONDecodeError out of __init__
+        engine._load_state()
 
     def test_json_null_does_not_raise(self):
         engine = self._engine("null")
-        engine._load_state()  # parsed fine, then failed on `"emotion" in data`
+        engine._load_state()
 
     def test_json_array_does_not_raise(self):
         engine = self._engine("[1, 2, 3]")
@@ -163,27 +146,16 @@ class StateFileRecovery(unittest.TestCase):
         engine._load_state()
 
     def test_non_utf8_bytes_do_not_raise(self):
-        # Written as BYTES on purpose. The previous version wrote
-        # "\x00\x01\x02 not utf-8 either" with encoding="utf-8", which is valid
-        # UTF-8 and therefore never exercised the decode failure — while the
-        # loader caught only OSError and UnicodeDecodeError is a ValueError.
         engine = self._engine_bytes(b'{"emotion": "\xff\xfe\x00"}')
         engine._load_state()
 
     def test_non_dict_emotion_block_is_ignored(self):
-        # A hand-mangled `"emotion": "nonsense"` used to reach from_dict and then
-        # `.get()` on a str, raising AttributeError. Reaching the subsystem code
-        # after that point requires stubbing most of LifeEngine, which is what
-        # pushed an earlier version of this test to assert on inspect.getsource
-        # instead — which passed if the guard string appeared in a comment.
         engine = self._engine(json.dumps({"emotion": "nonsense"}))
         engine.emotion = _StubEmotion()
         engine.circadian = _FakeCircadian()
         engine.soul = _FakeSoul()
         engine.affect = None
         engine._load_state()
-        # Survived, and left the default state untouched rather than installing
-        # the garbage value.
         self.assertAlmostEqual(engine.emotion.state.valence, 0.0)
         self.assertAlmostEqual(engine.emotion.state.arousal, 0.5)
 

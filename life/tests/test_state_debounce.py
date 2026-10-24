@@ -1,5 +1,3 @@
-"""state.json writes are coalesced: a burst inside the debounce window becomes
-one atomic snapshot, and flush_state()/close() force it out."""
 import sys
 import tempfile
 import time

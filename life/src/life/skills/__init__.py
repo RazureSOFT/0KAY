@@ -1,9 +1,3 @@
-"""L.I.F.E skill system — persona-owned procedures (separate from Agent skills).
-
-Skills are named prompt packages that guide THINK/OUTPUT behavior.
-Loaded from builtins + optional LIFE_SKILLS_DIR (*.md files).
-"""
-
 from __future__ import annotations
 
 import os
@@ -15,13 +9,13 @@ from typing import Optional
 
 @dataclass
 class Skill:
-    """A named skill / procedure for L.I.F.E."""
 
     name: str
     description: str
     content: str
     tags: list[str] = field(default_factory=list)
     source: str = "builtin"
+    enabled: bool = True
 
     def to_schema(self) -> dict:
         return {
@@ -34,7 +28,6 @@ class Skill:
         return f"### Skill: {self.name}\n{self.description}\n\n{self.content.strip()}"
 
 
-# Built-in LIFE skills (persona behavior, not tools)
 _BUILTIN: list[Skill] = [
     Skill(
         name="empathy",
@@ -84,7 +77,6 @@ _BUILTIN: list[Skill] = [
 
 
 class SkillRegistry:
-    """Registry of L.I.F.E skills (independent from ToolRegistry)."""
 
     def __init__(self) -> None:
         self._skills: dict[str, Skill] = {}
@@ -94,13 +86,11 @@ class SkillRegistry:
         if env_dir:
             self.load_dir(env_dir)
         else:
-            # Package default: life/skills/*.md (src/life/skills → ../../../skills)
             here = Path(__file__).resolve()
             self.load_dir(str(here.parents[3] / "skills"))
             self.load_dir(str(here.parents[2] / "skills"))
 
     def load_dir(self, directory: str) -> int:
-        """Load *.md skills from a directory. Returns count loaded."""
         if not directory:
             return 0
         root = Path(directory)
@@ -119,6 +109,7 @@ class SkillRegistry:
                 content=content,
                 tags=_extract_tags(text),
                 source=str(path),
+                enabled=_extract_enabled(text),
             )
             loaded += 1
         return loaded
@@ -135,12 +126,13 @@ class SkillRegistry:
     def list_schemas(self) -> list[dict]:
         return [s.to_schema() for s in self.list()]
 
-    def match(self, text: str) -> Optional[Skill]:
-        """Pick the best skill for a user message (tag/name keyword hit)."""
+    def match(self, text: str, enabled_only: bool = False) -> Optional[Skill]:
         lowered = (text or "").lower()
         best: Optional[Skill] = None
         best_score = 0
         for s in self.list():
+            if enabled_only and not s.enabled:
+                continue
             score = 0
             if s.name and s.name in lowered:
                 score += 3
@@ -156,14 +148,13 @@ class SkillRegistry:
         return best if best_score >= 2 else None
 
     def context_block(self, text: str = "", limit: int = 3) -> str:
-        """Human-readable skill list + best match block for THINK prompt."""
-        schemas = self.list_schemas()
+        schemas = [s.to_schema() for s in self.list() if s.enabled]
         if not schemas:
             return "No skills loaded."
         lines = ["Available LIFE skills (invoke via skill_call when useful):"]
         for s in schemas[: max(1, limit * 2)]:
             lines.append(f"- {s['name']}: {s['description']}")
-        match = self.match(text) if text else None
+        match = self.match(text, enabled_only=True) if text else None
         if match:
             lines.append("")
             lines.append(match.to_prompt_block())
@@ -171,51 +162,52 @@ class SkillRegistry:
 
     def get_content(self, name: str) -> str:
         s = self.get(name)
-        return s.to_prompt_block() if s else f"Skill '{name}' not found."
+        return s.to_prompt_block() if s else ""
 
 
 def _parse_md_skill(stem: str, text: str) -> tuple[str, str, str]:
-    """Parse SKILL.md-style front matter: # name, first prose paragraph = description."""
     name = stem
-    description = ""
-    content = text.strip()
     lines = text.splitlines()
+    body = lines
     if lines and lines[0].startswith("# "):
         name = lines[0][2:].strip() or stem
-        rest = lines[1:]
-        # first non-empty prose paragraph after heading (skip tags: / metadata lines)
-        para: list[str] = []
-        for line in rest:
-            if not line.strip():
-                if para:
-                    break
-                continue
-            if line.startswith("#"):
-                break
-            if re.match(r"^tags:\s*", line.strip(), flags=re.I):
-                continue
-            para.append(line.strip())
-        description = " ".join(para).strip()
-        if description:
-            # drop description paragraph (and tags) from content body start
-            body_start = 0
-            seen_para = False
-            for i, line in enumerate(lines[1:], start=1):
-                if not line.strip():
-                    if seen_para:
-                        body_start = i
-                        break
-                    continue
-                if line.startswith("#"):
-                    body_start = i
-                    break
-                if re.match(r"^tags:\s*", line.strip(), flags=re.I) and not seen_para:
-                    continue
-                seen_para = True
-            content = "\n".join(lines[body_start:]).strip() or text.strip()
+        body = lines[1:]
+
+    start = 0
+    while start < len(body):
+        stripped = body[start].strip()
+        if not stripped or re.match(r"^tags:\s*", stripped, flags=re.I):
+            start += 1
+            continue
+        break
+
+    desc_lines: list[str] = []
+    index = start
+    while index < len(body):
+        stripped = body[index].strip()
+        if not stripped or stripped.startswith("#"):
+            break
+        desc_lines.append(stripped)
+        index += 1
+    description = " ".join(desc_lines).strip()
+
+    rest = body[index:] if desc_lines else body[start:]
+    kept = [line for line in rest if not re.match(r"^\s*tags:\s*", line, flags=re.I)]
+    content = "\n".join(kept).strip()
+
     if not description:
         description = f"Life skill: {name}"
     return name, description, content
+
+
+_DISABLED = {"false", "0", "no", "off", "disabled"}
+
+
+def _extract_enabled(text: str) -> bool:
+    m = re.search(r"^enabled:\s*(\S+)\s*$", text, flags=re.M | re.I)
+    if not m:
+        return True
+    return m.group(1).strip().lower() not in _DISABLED
 
 
 def _extract_tags(text: str) -> list[str]:

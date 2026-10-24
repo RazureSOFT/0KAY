@@ -1,11 +1,3 @@
-"""CLI: ``python -m life.tools.research <command>``.
-
-Commands:
-    paper      <markdown.md> -o <dir> [--title T] [--stem S]
-    table      <spec.json>   -o <dir>   # {"header":[...],"rows":[[...]],"caption":""}
-    plot       <spec.json>   -o <dir>   # {"kind":"line","path":"f.png", ...}
-    experiment <spec.json>   -o <dir>   # {"script":"exp.py","name":...,"params":{...}}
-"""
 from __future__ import annotations
 
 import argparse
@@ -17,19 +9,10 @@ from pathlib import Path
 
 
 def _exec_allowed() -> bool:
-    """Whether the ``experiment`` command may execute a script at all.
-
-    ``experiment`` is a deliberate code-execution surface, and nothing in
-    ``src/life`` imports ``tools.research`` — as far as the persona engine is
-    concerned it is dead weight that happens to be able to run arbitrary Python
-    from a model-authored spec. That combination is not worth shipping always-on,
-    so execution now needs an explicit opt-in.
-    """
     return os.getenv("LIFE_RESEARCH_ALLOW_EXEC", "").strip().lower() in ("1", "true", "yes", "on")
 
 
 def _exec_roots() -> list:
-    """Directories an experiment script may live in."""
     roots = []
     configured = os.getenv("LIFE_RESEARCH_DIR", "").strip()
     if configured:
@@ -80,7 +63,6 @@ def _cmd_table(args) -> int:
     spec = json.loads(Path(args.spec).read_text(encoding="utf-8-sig"))
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    # The spec is model-authored: sanitise the stem so it cannot escape `out`.
     stem = safe_stem(spec.get("stem", "table"), "table")
     header, rows = spec.get("header", []), spec.get("rows", [])
     caption = spec.get("caption", "")
@@ -104,9 +86,6 @@ def _cmd_plot(args) -> int:
     builder = getattr(figures, kind, None)
     if builder is None or kind not in ("line", "bar", "grouped_bar", "scatter", "heatmap"):
         raise SystemExit(f"unknown figure kind: {kind}")
-    # Confine the output path to the requested directory: the spec (and thus the
-    # path) is model-authored, so a relative "../x" or an absolute path outside
-    # `out` must be rejected rather than written.
     raw_path = str(spec.pop("path", "") or "")
     candidate = Path(raw_path) if raw_path else Path(f"{kind}.png")
     if not candidate.is_absolute():
@@ -121,13 +100,6 @@ def _cmd_plot(args) -> int:
 
 
 def _load_module(script: Path):
-    """Import an experiment script by path.
-
-    Security note: this *executes* the referenced Python file, so the
-    ``experiment`` command is a code-execution surface by design.  It is meant to
-    be driven with trusted, local specs only — do not feed it a spec authored by
-    an untrusted model or user without review.
-    """
     spec = importlib.util.spec_from_file_location(f"research_{script.stem}", script)
     if spec is None or spec.loader is None:
         raise SystemExit(f"cannot import {script}")

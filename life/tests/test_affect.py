@@ -1,8 +1,3 @@
-"""Tests for the affective / interoceptive / clinical circuits (second wave).
-
-Each test asserts the *computational claim* of one paper (or small group), and
-every circuit is ablated at least once to prove the switch actually switches.
-"""
 import json
 import sys
 import unittest
@@ -30,16 +25,12 @@ from life.cognition.affect import (
 )
 
 
-# --------------------------------------------------------------------------
-# Physiology
-# --------------------------------------------------------------------------
 class TestInteroception(unittest.TestCase):
-    """Interoceptive accuracy and awareness are dissociable; precision weights the PE."""
 
     def test_accuracy_rises_when_the_body_is_predictable(self):
         channel = InteroceptiveChannel()
         for _ in range(60):
-            channel.observe(0.5)          # perfectly predictable body
+            channel.observe(0.5)
         self.assertGreater(channel.accuracy, 0.9)
         self.assertGreater(channel.precision, 0.9)
 
@@ -47,8 +38,8 @@ class TestInteroception(unittest.TestCase):
         predictable = InteroceptiveChannel()
         noisy = InteroceptiveChannel()
         for i in range(60):
-            predictable.observe(0.5)                    # perfectly predictable
-            noisy.observe(0.1 if i % 2 else 0.9)        # unpredictable
+            predictable.observe(0.5)
+            noisy.observe(0.1 if i % 2 else 0.9)
         self.assertLess(noisy.accuracy, predictable.accuracy)
         self.assertLess(noisy.precision, predictable.precision)
 
@@ -56,7 +47,6 @@ class TestInteroception(unittest.TestCase):
         channel = InteroceptiveChannel(awareness_gain=2.0)
         for i in range(60):
             channel.observe(0.1 if i % 2 else 0.9)
-        # confident but inaccurate -> positive bias, the anxiety signature
         self.assertGreater(channel.awareness, channel.accuracy)
         self.assertGreater(channel.bias, 0.0)
 
@@ -67,7 +57,6 @@ class TestInteroception(unittest.TestCase):
 
 
 class TestVagalTone(unittest.TestCase):
-    """Vagal tone indexes the prefrontal brake on affect."""
 
     def test_stressor_withdraws_the_brake(self):
         tone = VagalTone(tone=0.8)
@@ -77,12 +66,10 @@ class TestVagalTone(unittest.TestCase):
     def test_rest_restores_toward_one(self):
         tone = VagalTone(tone=0.3)
         for _ in range(6):
-            tone.rest(3600)          # six hours of rest
+            tone.rest(3600)
         self.assertGreater(tone.tone, 0.5)
 
     def test_a_short_tick_does_not_snap_to_target(self):
-        # Guards the time constant: a single minute must barely move the tone,
-        # otherwise one tick would erase any stressor instantly.
         tone = VagalTone(tone=0.3)
         tone.rest(60)
         self.assertLess(tone.tone, 0.4)
@@ -91,7 +78,7 @@ class TestVagalTone(unittest.TestCase):
         tone = VagalTone(tone=0.6)
         for _ in range(12):
             tone.stress(0.8)
-            tone.rest(3600)          # an hour of non-resting recovery each turn
+            tone.rest(3600)
         self.assertLess(tone.tone, 0.6)
 
     def test_high_tone_recovers_faster(self):
@@ -105,7 +92,6 @@ class TestVagalTone(unittest.TestCase):
 
 
 class TestHPAxis(unittest.TestCase):
-    """Cortisol: diurnal rhythm, reactivity, allostatic load."""
 
     def test_diurnal_peak_is_after_waking(self):
         axis = HPAxis()
@@ -136,7 +122,6 @@ class TestHPAxis(unittest.TestCase):
 
 
 class TestArousalGain(unittest.TestCase):
-    """Orexin / layer 6b wake-promoting gain + brainstem chemosensation."""
 
     def test_orexin_falls_awake_and_recovers_in_sleep(self):
         gain = ArousalGain(orexin=0.8)
@@ -156,7 +141,6 @@ class TestArousalGain(unittest.TestCase):
 
 
 class TestNeuroImmune(unittest.TestCase):
-    """Cytokines drive sickness behaviour; vagal tone is anti-inflammatory."""
 
     def test_challenge_produces_sickness_behaviour(self):
         immune = NeuroImmune()
@@ -182,11 +166,7 @@ class TestNeuroImmune(unittest.TestCase):
         self.assertGreater(immune.inflammation, 0.1)
 
 
-# --------------------------------------------------------------------------
-# Psychiatry / psychology
-# --------------------------------------------------------------------------
 class TestEmotionRegulation(unittest.TestCase):
-    """Strategy choice, transdiagnostic difficulty, and emotion dynamics."""
 
     def test_reappraisal_reduces_valence_and_arousal(self):
         reg = EmotionRegulator(reappraisal_skill=0.8, profile="typical")
@@ -197,7 +177,7 @@ class TestEmotionRegulation(unittest.TestCase):
     def test_suppression_hides_expression_but_raises_arousal(self):
         reg = EmotionRegulator(suppression_skill=0.2, profile="typical")
         out = reg.regulate({"valence": -0.5, "arousal": 0.5, "irritation": 0.0}, "suppression")
-        self.assertGreater(out["arousal"], 0.5)      # the documented cost
+        self.assertGreater(out["arousal"], 0.5)
         self.assertGreater(out["irritation"], 0.0)
 
     def test_clinical_profile_is_less_efficacious_than_typical(self):
@@ -216,13 +196,12 @@ class TestEmotionRegulation(unittest.TestCase):
             noisy.observe(0.5 if i % 2 else -0.5)
         sticky = EmotionRegulator()
         for i in range(30):
-            sticky.observe(-0.5 + 0.01 * i)          # slow drift
+            sticky.observe(-0.5 + 0.01 * i)
         self.assertGreater(noisy.instability, sticky.instability)
         self.assertGreater(sticky.inertia, noisy.inertia)
 
 
 class TestMoodAttractor(unittest.TestCase):
-    """Depression as a deep negative attractor that rumination deepens."""
 
     def test_rumination_deepens_and_shifts_the_attractor_negative(self):
         mood = MoodAttractor()
@@ -232,11 +211,6 @@ class TestMoodAttractor(unittest.TestCase):
         self.assertGreater(mood.basin_depth, 0.4)
 
     def test_negative_attractor_pulls_mood_down(self):
-        """The attractor pulls over *clock time*, not per message event.
-
-        A message-driven tick (seconds=0) never ages the state on its own -
-        the pull is a slow continuous force the background clock advances.
-        """
         mood = MoodAttractor()
         for _ in range(10):
             mood.tick(0.0, rumination_input=1.0)
@@ -246,7 +220,6 @@ class TestMoodAttractor(unittest.TestCase):
         self.assertLess(mood.mood, before)
 
     def test_message_events_do_not_age_the_slow_terms(self):
-        """Idle-while-chatting must not heal rumination/depth: only the clock does."""
         mood = MoodAttractor()
         for _ in range(10):
             mood.tick(0.0, rumination_input=1.0)
@@ -266,7 +239,6 @@ class TestMoodAttractor(unittest.TestCase):
 
 
 class TestRewardAvailability(unittest.TestCase):
-    """Anhedonia blunts the effective reward without changing mood."""
 
     def test_blunted_availability_scales_the_reward(self):
         reward = RewardAvailability(availability=0.2)
@@ -286,7 +258,6 @@ class TestRewardAvailability(unittest.TestCase):
 
 
 class TestThreatBias(unittest.TestCase):
-    """Anxiety: over-generalised threat reading, amplified by load."""
 
     def test_ambiguity_raises_threat(self):
         bias = ThreatBias(bias=0.2, generalisation=0.4)
@@ -307,7 +278,6 @@ class TestThreatBias(unittest.TestCase):
 
 
 class TestAttachment(unittest.TestCase):
-    """Anxious/avoidant working models and perceived social isolation."""
 
     def test_poor_interaction_raises_anxiety(self):
         template = AttachmentTemplate(anxiety=0.2)
@@ -327,7 +297,6 @@ class TestAttachment(unittest.TestCase):
 
 
 class TestPrecision(unittest.TestCase):
-    """Active inference: precision-weighted prior/evidence arbitration."""
 
     def test_high_prior_precision_ignores_evidence(self):
         rigid = PrecisionController(prior_precision=0.95, sensory_precision=0.05)
@@ -343,11 +312,7 @@ class TestPrecision(unittest.TestCase):
         self.assertGreater(controller.free_energy(1.0, 0.0), controller.free_energy(0.6, 0.4))
 
 
-# --------------------------------------------------------------------------
-# LLM social simulation
-# --------------------------------------------------------------------------
 class TestPAD(unittest.TestCase):
-    """Sentipolis: continuous PAD, dual-speed dynamics, emotion-memory coupling."""
 
     def test_fast_component_reacts_faster_than_slow(self):
         pad = PADState(fast_rate=0.8, slow_rate=0.02)
@@ -357,7 +322,7 @@ class TestPAD(unittest.TestCase):
     def test_state_is_persistent_not_amnesic(self):
         pad = PADState(w_fast=0.5, w_slow=0.5)
         pad.observe({"pleasure": 1.0})
-        self.assertGreater(pad.slow[0], 0.0)          # slow trace survived one step
+        self.assertGreater(pad.slow[0], 0.0)
         self.assertGreater(pad.persistence(), 0.0)
 
     def test_emotion_biases_memory_retrieval(self):
@@ -371,7 +336,6 @@ class TestPAD(unittest.TestCase):
 
 
 class TestDesire(unittest.TestCase):
-    """An explicit desire-generation stage between state and objective."""
 
     def test_generate_returns_all_drives(self):
         desire = DesireSystem()
@@ -397,7 +361,6 @@ class TestDesire(unittest.TestCase):
 
 
 class TestBeliefBehaviorMonitor(unittest.TestCase):
-    """Belief-behaviour consistency is measured, not assumed."""
 
     def test_consistent_agent_scores_one(self):
         monitor = BeliefBehaviorMonitor()
@@ -417,9 +380,6 @@ class TestBeliefBehaviorMonitor(unittest.TestCase):
         self.assertEqual(BeliefBehaviorMonitor().consistency(), 1.0)
 
 
-# --------------------------------------------------------------------------
-# Façade: wiring, ablation and persistence
-# --------------------------------------------------------------------------
 class TestAffectSystem(unittest.TestCase):
     def test_disabled_system_is_a_noop(self):
         system = AffectSystem(AffectConfig(enabled=False))
@@ -460,7 +420,7 @@ class TestAffectSystem(unittest.TestCase):
     def test_ablation_helper_returns_an_isolated_copy(self):
         base = AffectConfig()
         ablated = base.ablate(use_vagal=False, use_hpa=False)
-        self.assertTrue(base.use_vagal)          # original untouched
+        self.assertTrue(base.use_vagal)
         self.assertFalse(ablated.use_vagal)
         self.assertFalse(ablated.use_hpa)
 
@@ -470,7 +430,7 @@ class TestAffectSystem(unittest.TestCase):
             system.observe_outcome(True, reward=1.0, stressor=1.0)
             for _ in range(4):
                 system.tick(1800, hour=12)
-        self.assertGreater(system.hpa.allostatic_load, 0.0)   # HPA still ran
+        self.assertGreater(system.hpa.allostatic_load, 0.0)
 
     def test_allostatic_load_and_need_rise_under_chronic_stress(self):
         system = AffectSystem()
@@ -496,9 +456,6 @@ class TestAffectSystem(unittest.TestCase):
         self.assertEqual(restored.pad.blend, system.pad.blend)
 
     def test_json_round_trip_is_identical(self):
-        # The real restart path is to_dict -> JSON -> from_dict.  JSON coerces
-        # dict keys to strings and may retype scalars, so a snapshot that only
-        # survives an in-memory round-trip can still drift across a restart.
         system = AffectSystem()
         system.observe_message("谢谢", emotion_delta={"valence": 0.5})
         system.observe_outcome(True, reward=1.0, stressor=0.8)

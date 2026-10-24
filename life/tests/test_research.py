@@ -1,4 +1,3 @@
-"""Research toolkit: figures, tables, paper pipeline and experiment runs."""
 import base64
 import json
 import os
@@ -71,7 +70,6 @@ class PaperTest(unittest.TestCase):
 
 
 class PaperLayoutTest(unittest.TestCase):
-    """Layout regressions: figure rows, indents, heading colours, links, footer."""
 
     PNG_1PX = base64.b64decode(
         "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAAAAADhZOFXAAAAI0lEQVR4nGNggAERKGDQgAIGGyh"
@@ -82,12 +80,10 @@ class PaperLayoutTest(unittest.TestCase):
         self.assertIn('class="fig-group"', html)
         self.assertIn("图 1(a)", html)
         self.assertIn("图 1(b)", html)
-        # 30% explicit + equal share of the rest fills the row.
         self.assertIn('data-frac="0.3000"', html)
         self.assertIn('data-frac="0.7000"', html)
         html = markdown_to_html("![甲](a.png)\n![乙](b.png)\n![丙](c.png)\n")
         self.assertEqual(html.count('data-frac="0.3333"'), 3)
-        # A blank line breaks the group: separate numbered figures again.
         html = markdown_to_html("![甲](a.png)\n\n![乙](b.png)\n")
         self.assertNotIn('class="fig-group"', html)
         self.assertIn("图 1", html)
@@ -199,7 +195,6 @@ class CliTest(unittest.TestCase):
             self.assertEqual(result, {"seed": 3, "accuracy": 0.9})
 
     def test_experiment_command_refuses_without_opt_in(self):
-        """Executing a model-authored script must not be on by default."""
         from life.tools.research.__main__ import main
 
         with tempfile.TemporaryDirectory() as tmp:

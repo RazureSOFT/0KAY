@@ -1,5 +1,3 @@
-"""Persona analysis + tuning: the model reads the persona into parameters, the
-owner reviews/tunes them, and only then are they persisted (and applied)."""
 import asyncio
 import sys
 import tempfile
@@ -24,7 +22,6 @@ class PersonaAnalysis(unittest.TestCase):
         self.assertIn("traits", result)
         self.assertEqual(result["attachment"]["type"], "独占型")
         self.assertIn("X", result["attachment"]["initial"])
-        # Analysing must not persist anything.
         self.assertEqual(self.engine.companion.get_settings().get("persona_text"), "")
         self.assertFalse(self.engine._attachment_enabled)
 
@@ -34,11 +31,9 @@ class PersonaAnalysis(unittest.TestCase):
             "traits": {"threat_baseline": 0.9, "reward_baseline": 0.4, "erq_profile": "depression"},
             "attachment": {"type": "独占型", "initial": {"X": 0.8, "S": 0.1}},
         })
-        # Persisted...
         settings = self.engine.companion.get_settings()
         self.assertEqual(settings.get("persona_text"), "她占有欲很强")
         self.assertIn("独占型", settings.get("attachment_override"))
-        # ...and applied to the live systems (clamped to valid ranges).
         self.assertAlmostEqual(self.engine.affect.config.threat_baseline, 0.9, places=6)
         self.assertEqual(self.engine.affect.config.erq_profile, "depression")
         self.assertTrue(self.engine._attachment_enabled)
@@ -52,10 +47,8 @@ class PersonaAnalysis(unittest.TestCase):
             "traits": {"threat_baseline": 0.9},
             "attachment": {"type": "独占型", "initial": {"X": 0.8}},
         })
-        # A different persona object arrives with the next chat message.
         asyncio.run(self.engine.apply_persona_object_async(
             {"description": "普通、阳光的女孩", "personality": "开朗"}))
-        # The tuned value still wins over the raw parse of the new text.
         self.assertAlmostEqual(self.engine.affect.config.threat_baseline, 0.9, places=6)
 
     def test_attachment_settings_are_settable(self):

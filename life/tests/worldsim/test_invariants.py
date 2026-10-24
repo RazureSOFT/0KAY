@@ -1,7 +1,3 @@
-"""S2 gate: the prior simulator obeys the world invariant set.
-
-Also pins hard constraint #3: an untrained policy is *exactly* the rule prior.
-"""
 import sys
 import unittest
 from collections import Counter
@@ -49,7 +45,6 @@ class Invariants(unittest.TestCase):
     def test_open_obligations_are_echoed_within_window(self):
         for engine in self.sims.values():
             for obligation in engine.obligations:
-                # Any obligation whose due time has passed must already be echoed.
                 self.assertGreater(obligation["due_hours"], engine.now_hours)
                 self.assertLessEqual(obligation["due_hours"] - obligation["created_hours"],
                                      gates.THRESHOLDS["obligation_echo_days"] * 24 + 1e-6)

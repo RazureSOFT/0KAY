@@ -1,4 +1,3 @@
-"""Tests for Core HTTP authorization headers."""
 from life.http_auth import auth_headers
 
 

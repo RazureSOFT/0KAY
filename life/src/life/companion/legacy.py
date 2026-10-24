@@ -1,9 +1,3 @@
-"""LIFE companion domains backed by a SQLite source of truth.
-
-This is deliberately organized around durable domain records rather than a
-single JSON blob: relationship accounts/ledgers, calendar candidates/events,
-proactive candidates/receipts, group scene observations, journals, and audit.
-"""
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -23,10 +17,6 @@ from ..timeutil import now_utc, parse_utc
 
 logger = get_logger("companion")
 
-# The cognition subsystems own the authoritative enums of emotion-regulation
-# profiles and linguistic framing modes.  Import them so the settings layer
-# cannot silently drift from what the circuits actually accept; fall back to
-# literals if the cognition core is unavailable.
 try:
     from ..cognition.affect import ERQ_PROFILES as _ERQ_PROFILES
 except Exception:  # pragma: no cover - cognition core is optional
@@ -56,20 +46,6 @@ class CompanionSystem:
         root = Path(data_dir) / "companion"
         root.mkdir(parents=True, exist_ok=True)
         self.path = root / "companion.db"
-        # Serialize access to the database file.
-        #
-        # `db()` opens a *fresh* connection per call and closes it again, and
-        # callers reach it from arbitrary worker threads (the engine wraps most
-        # companion work in `asyncio.to_thread`).  The store runs in
-        # `journal_mode=PERSIST`, which reuses one rollback journal in place:
-        # there is no `-wal`/`-shm` teardown for a concurrent opener to race
-        # against (that race — `SQLITE_READONLY` on Windows — is exactly why the
-        # mode moved off WAL) and no per-call sidecar churn.
-        #
-        # Companion traffic is low-frequency (relationship events, journals,
-        # audits), so serializing it costs nothing measurable.  A re-entrant
-        # lock keeps nested `db()` blocks legal.
-        # See tests/test_regression.py::EngineTests.
         self._lock = threading.RLock()
         self._init()
 
@@ -79,11 +55,6 @@ class CompanionSystem:
             conn = sqlite3.connect(self.path, timeout=10.0)
             conn.row_factory = sqlite3.Row
             try:
-                # PERSIST, not WAL: WAL deletes its ``-wal``/``-shm`` sidecars on
-                # every last-connection close, which both churns two files per
-                # call (Windows Recycle-Bin litter) and is the source of the
-                # SQLITE_READONLY race described above.  PERSIST reuses a single
-                # rollback journal in place — same atomicity, no sidecar churn.
                 conn.execute("PRAGMA journal_mode=PERSIST")
                 yield conn
                 conn.commit()
@@ -147,17 +118,12 @@ class CompanionSystem:
                 db.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", (key,value))
             self._migrate(db)
 
-    # Bump when a column is added to an existing table so `_migrate` re-runs on
-    # already-initialised databases (a bare ALTER would otherwise be skipped by
-    # the `current >= DB_SCHEMA_VERSION` guard).  v2: relationship_ledger.by.
     DB_SCHEMA_VERSION = 2
 
     def _migrate(self, db) -> None:
-        """Versioned schema migration; CREATE TABLE IF NOT EXISTS covers new tables."""
         current = int(db.execute("PRAGMA user_version").fetchone()[0] or 0)
         if current >= self.DB_SCHEMA_VERSION:
             return
-        # Hot-path indexes for the dashboard's filtered reads.
         db.executescript("""
         CREATE INDEX IF NOT EXISTS idx_journal_kind_day ON journal_entries(kind, created_at);
         CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_events(created_at);
@@ -166,22 +132,17 @@ class CompanionSystem:
         CREATE INDEX IF NOT EXISTS idx_ledger_user ON relationship_ledger(user_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_topics_open ON unfinished_topics(user_id, status);
         """)
-        # A3 信息不对称性：区分"对话对象造成的事件"与"主人从面板强加的修改"。
         try:
             db.execute("ALTER TABLE relationship_ledger ADD COLUMN by TEXT NOT NULL DEFAULT 'event'")
         except sqlite3.OperationalError:
-            pass  # column already exists on upgraded installs
+            pass
         db.execute(f"PRAGMA user_version={int(self.DB_SCHEMA_VERSION)}")
 
     def backup(self, keep: int = 7) -> dict[str,Any]:
-        """Consistent copy of the companion DB; prunes to the newest `keep` files."""
         backups = self.path.parent / "backups"
         backups.mkdir(parents=True, exist_ok=True)
         target = backups / f"companion-{datetime.now().strftime('%Y%m%d-%H%M%S')}.db"
         try:
-            # Uses its own connections (sqlite3 backup API), so it must take the
-            # same lock `db()` uses: an unguarded open here races the WAL
-            # teardown described in `__init__` and can surface as SQLITE_READONLY.
             with self._lock:
                 source = sqlite3.connect(self.path, timeout=10.0)
                 destination = sqlite3.connect(target)
@@ -205,8 +166,6 @@ class CompanionSystem:
             if self._setting(db, "last_backup_date", "") == today:
                 return {"skipped": "done"}
         result = self.backup(keep=keep)
-        # Stamp the day only when a backup file was actually produced: a
-        # failed backup that still got stamped would not retry until tomorrow.
         if result.get("backup"):
             with self.db() as db:
                 db.execute("INSERT INTO settings(key,value) VALUES('last_backup_date',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (today,))
@@ -242,9 +201,6 @@ class CompanionSystem:
     def audit(self, kind: str, detail: str, target: str = "", outcome: str = "ok", trace_id: str = "") -> None:
         with self.db() as db: db.execute("INSERT INTO audit_events VALUES(?,?,?,?,?,?,?)", (new_id("audit"), trace_id, kind, target, outcome, detail[:4000], now()))
 
-    # Retention for the append-only tables.  None of these had any policy, so a
-    # long-running install grew them without bound (and `expires_at` was written
-    # but never enforced).
     AUDIT_RETENTION_DAYS = 30
     LEDGER_RETENTION_DAYS = 90
     AUDIT_CAP = 20000
@@ -252,7 +208,6 @@ class CompanionSystem:
     SELF_STATEMENT_CAP = 240
 
     def maintenance(self) -> dict[str,Any]:
-        """Prune append-only tables (audit / relationship ledger / group observations)."""
         now_iso = datetime.now().isoformat()
         audit_cutoff = (datetime.now() - timedelta(days=self.AUDIT_RETENTION_DAYS)).isoformat()
         ledger_cutoff = (datetime.now() - timedelta(days=self.LEDGER_RETENTION_DAYS)).isoformat()
@@ -260,7 +215,6 @@ class CompanionSystem:
         with self.db() as db:
             removed["audit_expired"] = db.execute(
                 "DELETE FROM audit_events WHERE created_at < ?", (audit_cutoff,)).rowcount
-            # Cap regardless of age so an event burst cannot blow the table up.
             removed["audit_capped"] = db.execute(
                 "DELETE FROM audit_events WHERE id IN (SELECT id FROM audit_events ORDER BY created_at DESC LIMIT -1 OFFSET ?)",
                 (self.AUDIT_CAP,)).rowcount
@@ -273,24 +227,14 @@ class CompanionSystem:
                 "DELETE FROM group_observations WHERE expires_at IS NOT NULL AND expires_at < ?", (now_iso,)).rowcount
             removed["activity_observations"] = db.execute(
                 "DELETE FROM activity_observations WHERE expires_at IS NOT NULL AND expires_at < ?", (now_iso,)).rowcount
-            # Cap the character's own voice log so it cannot grow without bound.
             removed["self_statements_capped"] = db.execute(
                 "DELETE FROM self_statements WHERE id NOT IN (SELECT id FROM self_statements ORDER BY created_at DESC LIMIT ?)",
                 (self.SELF_STATEMENT_CAP,)).rowcount
         return removed
 
-    #: Tables that hold the *owner's configuration* rather than the character's
-    #: accumulated life.  Everything else is wiped by `reset_person_data`, so a
-    #: newly added person-scoped table is covered by default.
     KEEP_ON_PERSON_RESET = ("settings", "group_registry", "calendar_rules", "calendar_exceptions")
 
     def reset_person_data(self) -> dict[str,Any]:
-        """Wipe everything the character accumulated; keep the owner's config.
-
-        Individual deletions are irreversible by design.  This is the single
-        deliberate exception — the "start over" escape hatch — so the owner is
-        never trapped with a character they want to rebuild from scratch.
-        """
         with self.db() as db:
             tables = [row[0] for row in db.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall()]
@@ -312,34 +256,15 @@ class CompanionSystem:
         row = db.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
         return row[0] if row else default
 
-    # Relationship domain -------------------------------------------------
     def relationship(self, user_id: str) -> dict[str, Any]:
         with self.db() as db:
             db.execute("INSERT OR IGNORE INTO relationship_accounts(user_id) VALUES(?)", (user_id,))
             return dict(db.execute("SELECT * FROM relationship_accounts WHERE user_id=?", (user_id,)).fetchone())
 
-    #: Total |delta| a single user's relationship may absorb per calendar day.
-    #: Ordinary sentiment nudges are capped by it; see ``exempt``.
     DAILY_DELTA_BUDGET = 0.30
 
     def apply_relationship_event(self, user_id: str, event_key: str, reason: str, channel: str, delta: float,
                                  by: str = "event", exempt: bool = False) -> dict[str,Any]:
-        """Record a relationship event.
-
-        ``by`` is provenance for A3 信息不对称性: ``"event"`` = caused by the
-        conversation partner (the character may form a belief from it), ``"owner"``
-        = forced from the dashboard (the character experiences the *effect* on
-        affinity but must never learn the *cause* — it stays opaque to the self).
-
-        ``exempt`` marks an event that must register even after the day's budget
-        is spent. A broken promise or a rupture left unrepaired is exactly the
-        kind of thing that is supposed to cost the relationship; letting the cap
-        swallow it means the character never actually pays.
-
-        Returns the account plus ``suppressed`` (True when the budget rejected
-        the change) and ``requested_delta``, so callers can distinguish "applied"
-        from "discarded" instead of reading a silently unchanged affinity.
-        """
         with self.db() as db:
             db.execute("INSERT OR IGNORE INTO relationship_accounts(user_id) VALUES(?)", (user_id,))
             if db.execute("SELECT 1 FROM relationship_ledger WHERE user_id=? AND event_key=?", (user_id,event_key)).fetchone():
@@ -356,14 +281,11 @@ class CompanionSystem:
             else:
                 delta = 0.0
                 suppressed = True
-                # Previously this was dropped with no trace at all, so a day of
-                # heavy interaction silently stopped affecting the relationship.
                 self._audit_tx(db, "relationship_budget_exhausted",
                                f"{reason}:{requested:+.3f} dropped (used {used:.3f})", user_id)
             account = dict(db.execute("SELECT * FROM relationship_accounts WHERE user_id=?", (user_id,)).fetchone())
             score = max(-1.0,min(1.0,float(account["affinity"])+delta))
             old = account["stage"]
-            # Eight-stage climb; hysteresis avoids flicker when grazing a threshold.
             stage = self._hysteresis(old, score)
             db.execute("UPDATE relationship_accounts SET affinity=?, stage=?, last_seen=?, revision=revision+1 WHERE user_id=?", (score,stage,now(),user_id))
             db.execute("INSERT INTO relationship_ledger VALUES(?,?,?,?,?,?,?,?)",
@@ -377,16 +299,11 @@ class CompanionSystem:
         lower = message.lower()
         delta = .03 if any(x in lower for x in ("谢谢","喜欢","好棒","thanks","love")) else -.04 if any(x in lower for x in ("讨厌","滚","hate","stupid")) else .003
         self.note_outreach_reply(user_id)
-        # Deterministic digest: `hash()` is salted per process, so the same
-        # message produced a different event_key after a restart and the
-        # UNIQUE(user_id,event_key) dedup failed.
         stamp = datetime.now().strftime("%Y%m%d%H%M")
         digest = hashlib.sha1(f"{user_id}|{message}|{stamp}".encode("utf-8")).hexdigest()
         return self.apply_relationship_event(user_id, f"message:{digest}", "message_sentiment", "group" if is_group else "private", delta)
 
-    # Calendar / continuity domain ---------------------------------------
     def add_agenda(self, title: str, when: str = "", detail: str = "", kind: str = "persona_soft_activity", auto_confirm: bool = True) -> dict[str,Any]:
-        """Add an agenda item. Confirmed immediately by default — no manual step."""
         title = (title or "").strip()[:160]
         if not title:
             return {"status": "ignored"}
@@ -408,9 +325,6 @@ class CompanionSystem:
         with self.db() as db:
             row = db.execute("SELECT * FROM calendar_candidates WHERE id=?", (candidate_id,)).fetchone()
             if not row: return {"updated":False}
-            # Idempotent: `add_agenda(auto_confirm=True)` (the default, used by
-            # the agenda_add tool) already inserted the calendar_events row, so a
-            # later confirm of the same candidate must not create a duplicate.
             if row["status"] == "confirmed":
                 existing = db.execute("SELECT id FROM calendar_events WHERE candidate_id=? AND status!='cancelled' ORDER BY created_at DESC LIMIT 1", (candidate_id,)).fetchone()
                 return {"updated":False,"event_id":existing["id"] if existing else None,"status":"confirmed","reason":"already_confirmed"}
@@ -424,7 +338,6 @@ class CompanionSystem:
             self._audit_tx(db, "calendar_reject", row["title"], candidate_id)
             return {"updated":True,"status":status}
 
-    # Proactive domain ----------------------------------------------------
     def create_proactive_candidate(self, target: str, motive: str, content: str, preferred_at: str = "") -> dict[str,Any]:
         signature = f"{motive}:{content.strip().lower()[:160]}"
         candidate = {"id":new_id("proactive"),"target":target,"motive":motive,"content":content[:2000],"status":"candidate","signature":signature,"created_at":now()}
@@ -432,8 +345,6 @@ class CompanionSystem:
             existing = db.execute("SELECT * FROM proactive_candidates WHERE target=? AND signature=?", (target,signature)).fetchone()
             if existing: return dict(existing)
             start = datetime.now()
-            # `preferred_at` may be a model/tool-supplied string; a malformed
-            # value must not abort candidate creation.
             try:
                 best = datetime.fromisoformat(preferred_at) if preferred_at else start
             except (TypeError, ValueError):
@@ -442,7 +353,6 @@ class CompanionSystem:
         self.audit("proactive_candidate", motive, candidate["id"])
         return candidate
 
-    # Per-stage daily outreach caps for private targets (min with the configured limit).
     STAGE_TARGET_LIMITS = {"亲近": 3, "温暖": 2, "熟悉": 1, "疏离": 1, "受伤": 0}
     SETTING_DEFAULTS = {"proactive_daily_limit": "3", "proactive_target_limit": "1", "quiet_start": "23", "quiet_end": "8",
                         "idle_minutes": "30", "min_interval_minutes": "5", "check_interval_seconds": "600", "burst_max": "2",
@@ -451,108 +361,45 @@ class CompanionSystem:
                         "secondary_stage_cap": "友好", "enable_exclusive_bond": "1",
                         "affinity_decay_per_day": "0.02", "affinity_decay_after_days": "3",
                         "reply_deceleration": "1",
-                        # Keys exposed by CONFIG_SCHEMA must also exist here: a key
-                        # that is in the schema but missing from SETTING_DEFAULTS
-                        # is silently un-settable, because `validate_setting`
-                        # rejects anything not present in the defaults.
                         "locale": "zh-CN", "model_routes": "{}",
                         "env_timezone": "Asia/Shanghai", "env_city": "", "env_latitude": "", "env_longitude": "",
                         "enable_environment_fetch": "0", "weather_cache_minutes": "60",
                         "enable_content_fetch": "0", "news_feeds": "", "content_items_per_feed": "3",
                         "tts_endpoint": "", "proactive_tts": "0",
-                        # --- worldsim (fictional life world) ------------------
-                        # off/texture/full; default off so nothing changes until
-                        # the user opts in (hard constraint: no behavioural drift).
                         "world_density": "off",
-                        # The owner's worldview. Empty = the stock cast/places/
-                        # templates shipped in life/world/. When set, the runtime
-                        # rebuilds the world from these instead (see
-                        # world/generate_assets.py + worldsim/runtime.py).
-                        #   fictional/country/city/district: where the world is
-                        #   premise: free text (设定/背景)
-                        #   actors:  one per line, "名字" or "名字|关系"
-                        #   places:  newline/comma separated
-                        #   map:     JSON map (locations + roads + actor homes)
                         "world_fictional": "fictional", "world_country": "", "world_city": "",
                         "world_district": "", "world_premise": "", "world_actors": "",
                         "world_places": "", "world_map": "{}",
-                        # --- cognition core -----------------------------------
-                        # Every circuit is opt-in and ablatable: a `0` here must
-                        # reproduce the pre-cognition behaviour exactly.  The
-                        # `cog_modulate_*` switches are separate from the
-                        # `cog_*_enabled` ones on purpose - a wave can keep
-                        # tracking state (so the dashboard shows it) while its
-                        # prompt modulation stays off.
                         "cog_enabled": "1",
-                        # Token-saver: "1" collapses the two-stage THINK/OUTPUT
-                        # prompts into a single minimal directive and skips the
-                        # heavy per-turn context injections.  Off by default so
-                        # behaviour is byte-identical until switched on.
                         "cog_lite_mode": "0",
                         "cog_modulate_affect": "1", "cog_modulate_language": "1",
                         "cog_modulate_social": "1", "cog_modulate_selfhood": "1",
-                        # wave 1: habit / model-based / memory arbitration
                         "cog_plan_depth": "2", "cog_wm_capacity": "5", "cog_tau": "0.4",
                         "cog_gamma": "0.9", "cog_alpha_habit": "0.08", "cog_alpha_mf": "0.2",
                         "cog_theta_pe": "0.25", "cog_theta_n": "0.35", "cog_prospection_horizon": "4",
                         "cog_use_cerebellum": "1", "cog_use_thalamic_gate": "1",
                         "cog_use_ofc_map": "1", "cog_use_prospection": "1", "cog_use_limbic_bias": "1",
-                        # wave 2: affect / interoception
                         "cog_affect_enabled": "1", "cog_affect_profile": "typical",
                         "cog_affect_vagal": "0.6", "cog_affect_threat": "0.2", "cog_affect_reward": "1",
-                        # somatization gateway.  "1" forces it on; "0" (default)
-                        # means auto - on only when the parsed persona text
-                        # carries somatic-prone markers (see persona_traits).
                         "cog_affect_somatic": "0",
-                        # persona trait understanding: "1" (default) lets the
-                        # agent's own model re-read a *changed* persona into
-                        # trait JSON (validated + clamped, lexicon fallback);
-                        # "0" keeps the deterministic keyword lexicon only.
                         "cog_affect_persona_llm": "1",
-                        # The agent's free-text 人设.  Parsed offline by
-                        # life.cognition.persona_traits into trait overrides
-                        # (threat/reward baselines, ERQ profile, somatic
-                        # gains, sleep hour) on every settings apply.
                         "persona_text": "",
-                        # wave 3: language acquisition + framing
                         "cog_language_enabled": "1", "cog_language_framing": "weak_whorf",
                         "cog_language_boundary": "0.6",
-                        # wave 4a: social learning / ties / prosocial alignment
                         "cog_social_enabled": "1", "cog_social_empathy": "0.4", "cog_social_stage": "2",
-                        # wave 4b: selfhood, time, load, metacognition
                         "cog_selfhood_enabled": "1", "cog_selfhood_discount": "0.1",
                         "cog_selfhood_detail": "20",
-                        # memory & consolidation.  These mutate *durable* state
-                        # (the engram store, the model-free value table), so they
-                        # are exactly the switches that decide whether the
-                        # character actually learns from experience: encode writes
-                        # the episodic trace, sleep_replay replays it,
-                        # reconsolidate revisits it against the day's outcome, and
-                        # cls_interleave extracts durable semantics from it.
-                        # They default ON -- with them off the personality is
-                        # frozen at its persona and lived experience leaves no
-                        # trace.  Set any of them to 0 to reproduce the
-                        # pre-cognition behaviour (the ablation contract holds).
                         "cog_memory_encode": "1", "cog_sleep_replay": "1",
                         "cog_memory_reconsolidate": "1", "cog_cls_interleave": "1",
-                        # wave 4c: pathological attachment (opt-in, off by default)
                         "cog_attachment_enabled": "0", "cog_attachment_type": "依存型",
-                        # wave 4d: tsundere <-> yandere emotional dynamics (opt-in)
                         "cog_tsundere_enabled": "0", "cog_tsundere_type": "经典傲娇",
-                        # wave 4e: parameterised persona dynamics (opt-in)
                         "cog_personadyn_enabled": "0", "cog_personadyn_type": "正常/安全型",
                         "cog_personadyn_gender": "未指定",
-                        # Tuned persona parameters saved from the companion persona
-                        # page (LLM/lexicon analysis reviewed by the owner).  When
-                        # set they override the raw parse of `persona_text`.
                         "persona_traits_override": "{}", "attachment_override": "{}",
                         "tsundere_override": "{}", "personadyn_override": "{}",
-                        # A3 信息不对称性：主人从面板改的亲密度/记忆重要性，对"角色自己"
-                        # 是不可见的（角色体验到结果，但不知道是主人改的）。默认开启。
                         "owner_opacity": "1"}
 
     SCHEMA_VERSION = 2
-    # key -> (kind, spec). kind: int/float/bool/choice/json/text
     CONFIG_SCHEMA = {
         "proactive_daily_limit": ("int", (0, 50)), "proactive_target_limit": ("int", (0, 20)),
         "quiet_start": ("int", (0, 23)), "quiet_end": ("int", (0, 23)),
@@ -575,7 +422,6 @@ class CompanionSystem:
         "world_country": ("text", None), "world_city": ("text", None), "world_district": ("text", None),
         "world_premise": ("longtext", None), "world_actors": ("longtext", None),
         "world_places": ("longtext", None), "world_map": ("longtext", None),
-        # --- cognition core ---------------------------------------------------
         "cog_enabled": ("bool", None),
         "cog_lite_mode": ("bool", None),
         "cog_modulate_affect": ("bool", None), "cog_modulate_language": ("bool", None),
@@ -599,7 +445,6 @@ class CompanionSystem:
         "cog_social_stage": ("int", (0, 4)),
         "cog_selfhood_enabled": ("bool", None), "cog_selfhood_discount": ("float", (0.0, 1.0)),
         "cog_selfhood_detail": ("float", (1.0, 50.0)),
-        # memory & consolidation (durable-state mutations; opt-in)
         "cog_memory_encode": ("bool", None), "cog_sleep_replay": ("bool", None),
         "cog_memory_reconsolidate": ("bool", None), "cog_cls_interleave": ("bool", None),
         "cog_attachment_enabled": ("bool", None), "cog_attachment_type": ("choice", None),
@@ -611,8 +456,6 @@ class CompanionSystem:
         "owner_opacity": ("bool", None),
     }
     LOCALE_CHOICES = ("zh-CN", "en-US")
-    # Per-key enumerations for the "choice" kind.  Anything not listed falls back
-    # to LOCALE_CHOICES (or STAGE_ORDER for the *_stage_cap keys).
     CHOICE_SETS = {"cog_affect_profile": tuple(_ERQ_PROFILES),
                    "cog_language_framing": tuple(_FRAMING_MODES),
                    "cog_attachment_type": ("独占型", "依存型", "妄想型", "监视型", "自伤型", "排除型"),
@@ -630,7 +473,6 @@ class CompanionSystem:
 
     @classmethod
     def validate_setting(cls, key: str, value: Any) -> str | None:
-        """Coerce a setting to its canonical string, or None if invalid/unknown."""
         if key not in cls.SETTING_DEFAULTS:
             return None
         kind, spec = cls.CONFIG_SCHEMA.get(key, ("text", None))
@@ -658,15 +500,11 @@ class CompanionSystem:
                 json.loads(str(value))
                 return str(value)
             if kind == "longtext":
-                # Free-form world fields (premise / map) can legitimately exceed
-                # the 2000-char cap on ordinary text settings.
                 return str(value)[:60000]
             return str(value)[:2000]
         except (TypeError, ValueError):
             return None
 
-    # Relationship: eight ordinary stages (index order = monotonic climb) plus
-    # an exclusive bond reserved for the owner. Interaction is decided separately.
     RELATIONSHIP_STAGES = (
         ("警惕", -0.5), ("疏离", -0.2), ("陌生", 0.1), ("认识", 0.3),
         ("熟悉", 0.5), ("友好", 0.68), ("亲近", 0.85), ("亲密", 1.01),
@@ -688,7 +526,7 @@ class CompanionSystem:
             old_index, target_index = cls.STAGE_ORDER.index(old), cls.STAGE_ORDER.index(target)
             if (target_index < old_index and old_index > 0
                     and score > cls.RELATIONSHIP_STAGES[old_index - 1][1] - 0.06):
-                return old  # dropping requires clearing the band, not grazing it
+                return old
         return target
 
     def _id_set(self, key: str) -> set[str]:
@@ -730,13 +568,6 @@ class CompanionSystem:
         return tones.get(interaction, "语气自然友好。")
 
     def relationship_expression(self, user_id: str, valence: float = 0.0, arousal: float = 0.5, irritation: float = 0.0) -> dict[str, Any]:
-        """Unified expression decision: stage (capped by role) + interaction + outreach cap.
-
-        ``valence`` is on [-1, 1] with 0.0 = neutral (see ``EmotionState``); the
-        thresholds are centred on 0.  They used to be written for a [0, 1] scale,
-        so any mildly-positive mood was misread as "受伤" (which caps outreach at
-        0) and neutral was misread as low.
-        """
         account = self.relationship(user_id)
         role = self.user_role(user_id)
         settings = self.get_settings()
@@ -769,7 +600,6 @@ class CompanionSystem:
         }
 
     def decay_relationships(self) -> dict[str, Any]:
-        """Natural cooling: positive affinity drifts toward 0 for quiet accounts, once per day."""
         today = date.today().isoformat()
         with self.db() as db:
             if self._setting(db, "affinity_decay_date", "") == today:
@@ -792,7 +622,6 @@ class CompanionSystem:
             self._audit_tx(db, "relationship_decay", f"decayed={decayed}", "", "ok")
         return {"decayed": decayed}
 
-    # Unfinished topics / light portrait / outreach deceleration -----------
     def record_open_topics(self, user_id: str, topics: list[str]) -> int:
         user_id = str(user_id or "").strip()
         if not user_id:
@@ -849,9 +678,6 @@ class CompanionSystem:
             row = db.execute("SELECT * FROM user_portraits WHERE user_id=?", (str(user_id or ""),)).fetchone()
         return dict(row) if row else {"user_id": str(user_id or ""), "summary": "", "traits": "", "updated_at": ""}
 
-    # Commitment ledger ------------------------------------------------------
-    # Promises ("明天提醒你", "下次一起") only build trust if they are tracked;
-    # they are surfaced back into the prompt and again when topics overlap.
     def add_commitment(self, user_id: str, text: str, due_hint: str = "") -> dict[str,Any]:
         user_id = str(user_id or "").strip()
         body = str(text or "").strip()[:200]
@@ -892,12 +718,6 @@ class CompanionSystem:
         return resolved
 
     def expire_commitments(self, max_age_days: float = 7.0, limit: int = 20) -> list[dict[str,Any]]:
-        """Mark long-overdue open commitments as ``broken`` and return them.
-
-        A promise with no consequence is not a promise.  Nothing used to move an
-        open commitment out of ``open`` except the model claiming it was
-        fulfilled, so breaking one was free.
-        """
         cutoff = (datetime.now() - timedelta(days=max(0.0, float(max_age_days)))).isoformat()
         with self.db() as db:
             rows = [dict(r) for r in db.execute(
@@ -909,16 +729,7 @@ class CompanionSystem:
                 self._audit_tx(db, "commitment_broken", str(row["text"])[:60], row["id"], "broken")
         return rows
 
-    # First-person self-statement (A2 第一人称) ------------------------------
     def record_self_statement(self, text: str, reason: str = "tick") -> int:
-        """Persist a first-person state line the character authored about itself.
-
-        The engine does not narrate *how the character feels* — the character
-        writes that line itself (see ``LifeEngine._author_self_statement``).  This
-        table is the character's own voice log, read back on the next turn so it
-        genuinely "remembers how it was feeling".  It is person-scoped, so
-        ``reset_person_data`` clears it (it is not in ``KEEP_ON_PERSON_RESET``).
-        """
         text = str(text or "").strip()
         if len(text) < 2 or len(text) > 120:
             return 0
@@ -928,7 +739,6 @@ class CompanionSystem:
         return 1
 
     def latest_self_statement(self, max_age_hours: float = 24.0) -> str:
-        """Return the most recent self-statement, or "" if none within ``max_age_hours``."""
         cutoff = (datetime.now() - timedelta(hours=max(0.0, float(max_age_hours)))).isoformat()
         with self.db() as db:
             row = db.execute(
@@ -938,14 +748,6 @@ class CompanionSystem:
 
     def inner_thread_context(self, max_items: int = 3, max_age_hours: float = 6.0,
                               exclude_latest: bool = False) -> str:
-        """A4 continuity bridge: the character's recent first-person states.
-
-        Read back on every turn so the character carries its inner life across
-        ticks instead of starting blank each time.  Returns the last ``max_items``
-        statements (oldest-first) as a ``；``-joined string, or "" when none.
-        ``exclude_latest`` drops the most recent line so it is not repeated when
-        the same turn already shows it as ``self_statement``.
-        """
         max_items = max(1, min(int(max_items), 12))
         cutoff = (datetime.now() - timedelta(hours=max(0.0, float(max_age_hours)))).isoformat()
         with self.db() as db:
@@ -958,15 +760,9 @@ class CompanionSystem:
         return "；".join(items[-max_items:])
 
     def owner_override_opaque(self) -> bool:
-        """A3: whether dashboard edits are hidden from the character's self-knowledge."""
         return str(self.get_settings().get("owner_opacity", "1")) == "1"
 
     def relationship_beliefs(self, user_id: str) -> list[dict[str,Any]]:
-        """Events the character is allowed to *believe* shaped its relationship.
-
-        Owner-forced dashboard edits (``by='owner'``) are excluded when opacity is
-        on, so the character never forms "the user rewrote my affinity" knowledge.
-        """
         with self.db() as db:
             query = ("SELECT * FROM relationship_ledger WHERE user_id=? "
                      "ORDER BY created_at DESC LIMIT 50")
@@ -975,7 +771,6 @@ class CompanionSystem:
             rows = [r for r in rows if str(r.get("by") or "event") != "owner"]
         return rows
 
-    # Structured user model --------------------------------------------------
     def _user_model(self, user_id: str) -> dict[str,Any]:
         return {"user_id": str(user_id or ""), "preferences": [], "taboos": [], "concerns": []}
 
@@ -1018,8 +813,6 @@ class CompanionSystem:
                 model[key] = []
         return model
 
-    # Slow values layer ------------------------------------------------------
-    # A gradually-drifting profile of what matters, nudged by reflection.
     def get_values(self) -> dict[str,float]:
         with self.db() as db:
             row = db.execute("SELECT data FROM values_profile WHERE id=1").fetchone()
@@ -1044,7 +837,6 @@ class CompanionSystem:
                        (json.dumps(values, ensure_ascii=False), now()))
         return values
 
-    # Self timeline / goal logs / skill growth -----------------------------
     def timeline_add(self, topic: str, summary: str, detail: str = "") -> dict[str,Any]:
         topic, summary = str(topic or "").strip()[:40], str(summary or "").strip()[:200]
         if not topic or not summary:
@@ -1089,7 +881,6 @@ class CompanionSystem:
             return [dict(r) for r in db.execute("SELECT * FROM bot_timeline ORDER BY created_at DESC LIMIT ?", (size,)).fetchall()]
 
     def clear_timeline(self, topic: str = "") -> dict[str,Any]:
-        """Delete timeline entries (one topic, or all) — used by 一键清除."""
         with self.db() as db:
             if topic:
                 cursor = db.execute("DELETE FROM bot_timeline WHERE topic=?", (topic,))
@@ -1133,7 +924,6 @@ class CompanionSystem:
         return {"updated": True, "name": name, "level": level}
 
     def note_outreach_reply(self, user_id: str) -> None:
-        """A reply resets the unanswered streak for that user target."""
         target = f"user:{str(user_id or '').strip()}"
         if target == "user:":
             return
@@ -1162,12 +952,6 @@ class CompanionSystem:
         return paused_until is not None and paused_until > now_utc()
 
     def can_proactively_send(self, target: str, ignore_quiet: bool = False) -> tuple[bool,str]:
-        """Whether outreach to ``target`` is allowed now.
-
-        ``ignore_quiet`` skips the quiet-hours check: callers that are only
-        *queuing* a candidate for a later ``preferred_at`` should pass it, since
-        the delivery step re-checks quiet hours anyway.
-        """
         expression = self.relationship_expression(target.split(":",1)[1]) if target.startswith("user:") else None
         with self.db() as db:
             deceleration = str(self._setting(db, "reply_deceleration", "1")) == "1"
@@ -1179,10 +963,6 @@ class CompanionSystem:
                 cap = int(expression.get("proactive_limit", 1))
                 if cap <= 0:
                     return False, f"interaction {expression['interaction']} blocks outreach"
-                # `per_target == 0` means "no per-target outreach" (disabled), so
-                # keep it 0 and let the `per >= per_target` check below ban it.
-                # Previously it fell back to `cap`, which *enabled* outreach for
-                # anyone who set the limit to 0 intending to switch it off.
                 per_target = min(per_target, cap) if per_target > 0 else 0
             today = date.today().isoformat()
             sent = db.execute("SELECT COUNT(*) FROM proactive_receipts WHERE phase='delivered' AND created_at LIKE ?", (f"{today}%",)).fetchone()[0]
@@ -1230,11 +1010,6 @@ class CompanionSystem:
             }
 
     def clear_world_traces(self) -> dict[str,Any]:
-        """Drop side effects produced by worldsim events (proactive candidates).
-
-        Used by 一键清除 so "重置世界状态" actually removes what the world left
-        behind, not just the timeline rows.
-        """
         with self.db() as db:
             cursor = db.execute("DELETE FROM proactive_candidates WHERE motive='world_event'")
             removed = cursor.rowcount
@@ -1262,7 +1037,6 @@ class CompanionSystem:
         self.audit("proactive_delivery", content[:200], candidate_id)
         return {"delivered": True, "id": candidate_id}
 
-    # Important dates (life continuity) ----------------------------------
     def add_important_date(self, title: str, date_text: str, repeat_yearly: bool = True, note: str = "") -> dict[str,Any]:
         title = (title or "").strip()[:120]
         date_text = (date_text or "").strip()[:32]
@@ -1330,12 +1104,6 @@ class CompanionSystem:
             return {"updated":True,"item":after}
 
     def advance_agenda(self, now_dt: datetime | None = None) -> dict[str,Any]:
-        """LIFE's own reading of its day: activities whose time has passed count as done.
-
-        Mirrors private_companion's reconciliation idea - a soft activity does not
-        need a human to tick it off; once its start time is behind us LIFE treats
-        it as something it has lived through.
-        """
         current = now_dt or datetime.now()
         completed = 0
         with self.db() as db:
@@ -1358,7 +1126,6 @@ class CompanionSystem:
         return {"completed": completed}
 
     def calendar_month(self, month: str = "") -> dict[str,Any]:
-        """Events and pending candidates for a YYYY-MM month, with simple conflict detection."""
         try:
             anchor = datetime.strptime(month, "%Y-%m") if month else datetime.now()
         except ValueError:
@@ -1380,7 +1147,6 @@ class CompanionSystem:
                      for key, items in buckets.items() if len(items) > 1]
         return {"month": f"{start.year:04d}-{start.month:02d}", "start": lo, "end": hi, "events": events, "candidates": candidates, "conflicts": conflicts}
 
-    # Goals / food / word cloud (life workspace) --------------------------
     def add_goal(self, title: str, detail: str = "", kind: str = "growth") -> dict[str,Any]:
         title = (title or "").strip()[:160]
         if not title:
@@ -1438,10 +1204,8 @@ class CompanionSystem:
         with self.db() as db:
             return [dict(r) for r in db.execute("SELECT topic, SUM(score) AS score FROM group_topics GROUP BY topic ORDER BY score DESC LIMIT ?", (max(1, min(int(limit), 200)),)).fetchall()]
 
-    # Group scene domain --------------------------------------------------
     @staticmethod
     def group_terms(message: str) -> list[str]:
-        """CJK n-grams + alnum words for slang/thread tracking (no segmenter available)."""
         text = str(message or "")
         terms: list[str] = []
         for run in re.findall(r"[\u4e00-\u9fff]+", text):
@@ -1463,18 +1227,11 @@ class CompanionSystem:
         return max(-1.0, min(1.0, (positive - negative) / (positive + negative)))
 
     def observe_group(self, group_id: str, user_id: str, message: str, name: str = "") -> None:
-        # The engine passes "qq_group_123" while the OneBot adapter passes "123";
-        # both must resolve to the same key or one group's stats split in two and
-        # the interest-wake notification can never find its channel.  Only the
-        # "qq_group_<digits>" form is canonicalised -- opaque ids like "g1" are
-        # left untouched.
         canonical = re.fullmatch(r"(?:qq_group_)?(\d+)", str(group_id or "").strip())
         if canonical:
             group_id = canonical.group(1)
         if self.group_policy(group_id) == "blacklist":
             return
-        # Remember the sender's display name against their stable id, so a later
-        # "@小明" in chat can be resolved to the same person.
         if str(name or "").strip() and user_id:
             self.remember_group_member(group_id, user_id, name)
         sentiment = self.group_sentiment(message)
@@ -1488,7 +1245,6 @@ class CompanionSystem:
                 db.execute("INSERT INTO group_topics(group_id,topic,score,updated_at) VALUES(?,?,1,?) ON CONFLICT(group_id,topic) DO UPDATE SET score=score+1,updated_at=excluded.updated_at",(group_id,token,now()))
                 db.execute("INSERT INTO group_threads VALUES(?,?,?,1,'active',?,?) ON CONFLICT(group_id,topic) DO UPDATE SET score=score+1,status='active',updated_at=excluded.updated_at",
                            (new_id("thread"), group_id, token, now(), now()))
-            # Social graph: consecutive speakers are linked as talking to each other.
             previous = db.execute("SELECT user_id FROM group_observations WHERE group_id=? ORDER BY created_at DESC LIMIT 1 OFFSET 1", (group_id,)).fetchone()
             if previous and str(previous["user_id"]) != str(user_id) and user_id:
                 exists = db.execute(
@@ -1497,9 +1253,6 @@ class CompanionSystem:
                 if not exists:
                     db.execute("INSERT INTO social_edges VALUES(?,?,?,?,?,?)",
                                (new_id("edge"), previous["user_id"], user_id, "group_interaction", "auto", now()))
-                # Weighted in-group relation: how often these two actually take
-                # turns next to each other, so the character can tell a close
-                # pair from two strangers who happened to speak once.
                 a, b = sorted((str(previous["user_id"]), str(user_id)))
                 db.execute(
                     "INSERT INTO group_edges(group_id,user_a,user_b,weight,interactions,last_at) VALUES(?,?,?,?,1,?) "
@@ -1529,7 +1282,6 @@ class CompanionSystem:
                        (group_id, user_id, name, now()))
 
     def resolve_group_mentions(self, group_id: str, text: str, limit: int = 8) -> list[dict[str,Any]]:
-        """Member display names appearing in ``text`` (name -> stable user_id)."""
         group_id, body = str(group_id or "").strip(), str(text or "")
         if not (group_id and body):
             return []
@@ -1546,11 +1298,6 @@ class CompanionSystem:
         return found
 
     def annotate_group_mentions(self, group_id: str, text: str, limit: int = 8) -> str:
-        """Append the name->id mapping for any known member named in the message.
-
-        Lets "@小明" (a display name people type) reach the model as the same
-        stable identity the relationship/feedback machinery already uses.
-        """
         found = self.resolve_group_mentions(group_id, text, limit)
         if not found:
             return str(text or "")
@@ -1558,12 +1305,6 @@ class CompanionSystem:
         return f"{text}\n（群成员对应：{mapping}）"
 
     def group_relations(self, group_id: str, limit: int = 10, min_weight: float = 0.3) -> list[dict[str,Any]]:
-        """Who habitually talks with whom inside this group.
-
-        ``group_edges`` accumulates a weight per interacting pair (consecutive
-        speakers), so a pair that keeps taking turns next to each other rises
-        above ``min_weight`` while a one-off adjacency does not.
-        """
         group_id = str(group_id or "").strip()
         size = max(1, min(int(limit), 50))
         with self.db() as db:
@@ -1574,7 +1315,6 @@ class CompanionSystem:
         return [dict(row) for row in rows]
 
     def group_relation_context(self, group_id: str, limit: int = 4) -> str:
-        """One compact line for the prompt: the group's habitual pairs, or ""."""
         pairs = self.group_relations(group_id, limit=limit)
         if not pairs:
             return ""
@@ -1582,7 +1322,6 @@ class CompanionSystem:
         return "群里常一起说话的人：" + "、".join(parts) + "。"
 
     def note_group_bot_spoke(self, group_id: str, topic_text: str = "") -> None:
-        """Remember that LIFE just spoke in a group, and about what (for continuation)."""
         group_id = str(group_id or "").strip()
         if not group_id:
             return
@@ -1593,7 +1332,6 @@ class CompanionSystem:
                        (group_id, now(), topic))
 
     def group_should_continue(self, group_id: str, message: str, window_minutes: int = 6) -> bool:
-        """Natural continuation: still on a topic LIFE recently spoke about."""
         group_id = str(group_id or "").strip()
         if not group_id:
             return False
@@ -1609,7 +1347,6 @@ class CompanionSystem:
         return bool(previous & current)
 
     def group_interest_match(self, group_id: str, interests: list[str]) -> list[str]:
-        """Active threads matching LIFE's own interests (world/skills keywords)."""
         wanted = [str(item).strip().lower() for item in (interests or []) if str(item).strip()]
         if not wanted:
             return []
@@ -1622,7 +1359,6 @@ class CompanionSystem:
         if mentioned: return True
         return any(word.lower() in message.lower() for word in keywords if word)
 
-    # Group registry / slang / member safety -------------------------------
     POLICIES = ("whitelist", "observe", "blacklist")
 
     def group_policy(self, group_id: str) -> str:
@@ -1701,7 +1437,6 @@ class CompanionSystem:
             self._audit_tx(db, "group_member_flag", f"{user_id}={flag}", group_id)
         return {"group_id": group_id, "user_id": user_id, "flag": flag}
 
-    # Learning: skills / expressions / social graph -----------------------
     def add_skill(self, name: str, category: str = "general", level: int = 1, keywords: str = "", aliases: str = "", note: str = "") -> dict[str,Any]:
         name = (name or "").strip()[:80]
         if not name:
@@ -1804,15 +1539,7 @@ class CompanionSystem:
             cursor = db.execute("DELETE FROM social_edges WHERE id=?", (edge_id,))
             return {"deleted": bool(cursor.rowcount), "id": edge_id}
 
-    # Configuration / diagnostics ------------------------------------------
     def stored_settings(self) -> dict[str,str]:
-        """Only what the user actually saved - no defaults merged in.
-
-        The engine needs this to implement saved-setting > environment variable
-        > built-in default precedence: once defaults are merged, an unset key is
-        indistinguishable from one deliberately set to its default value, so the
-        environment tier could never win.
-        """
         with self.db() as db:
             return {r["key"]: r["value"] for r in db.execute("SELECT key,value FROM settings").fetchall()}
 
@@ -1903,7 +1630,6 @@ class CompanionSystem:
                           "quiet_from": "quiet_start", "quiet_to": "quiet_end"}
 
     def migrate_config(self, snapshot: dict[str,Any]) -> dict[str,Any]:
-        """Normalize an imported snapshot to the current schema (idempotent)."""
         if not isinstance(snapshot, dict):
             raise ValueError("config snapshot must be an object")
         snapshot = dict(snapshot)
@@ -1934,7 +1660,6 @@ class CompanionSystem:
     )
 
     def export_all(self) -> dict[str,Any]:
-        """Full companion export: config + relationships + topics + timeline + journals."""
         snapshot = self.export_config()
         with self.db() as db:
             for key, table, _cols in self.FULL_TABLES:
@@ -1943,7 +1668,6 @@ class CompanionSystem:
         return snapshot
 
     def import_all(self, snapshot: dict[str,Any]) -> dict[str,Any]:
-        """Merge a full export. Existing rows win (INSERT OR IGNORE)."""
         if not isinstance(snapshot, dict):
             raise ValueError("import payload must be an object")
         self.import_config(snapshot)
@@ -1999,7 +1723,6 @@ class CompanionSystem:
         ]
         return {"checks": checks, "counts": counts, "generated_at": now()}
 
-    # World knowledge / reference / wardrobe (text) ------------------------
     WORLD_KINDS = ("persona", "worldview", "style", "background", "wardrobe", "reference")
 
     def upsert_world_knowledge(self, kind: str, title: str, content: str, tags: str = "", knowledge_id: str = "") -> dict[str,Any]:
@@ -2036,7 +1759,6 @@ class CompanionSystem:
         return "\n".join(f"- [{row['kind']}] {row['title']}：{row['content']}" for row in rows)
 
     def journal_page(self, day: str = "") -> dict[str,Any]:
-        """Read a day as one diary page, including entries outside snapshot limits."""
         day = date.fromisoformat(day).isoformat() if day else date.today().isoformat()
         with self.db() as db:
             entries = db.execute(
@@ -2057,7 +1779,6 @@ class CompanionSystem:
         return entry
 
     def has_journal_for(self, day: str, kind: str = "journal") -> bool:
-        """True if a journal of this kind already exists for the calendar day."""
         if not day:
             return False
         with self.db() as db:
@@ -2070,7 +1791,6 @@ class CompanionSystem:
                 "SELECT content, created_at FROM journal_entries WHERE kind=? ORDER BY created_at DESC LIMIT ?", (kind, max(1, int(limit)))).fetchall()]
 
     def agenda_for_day(self, day: str) -> list[dict[str,Any]]:
-        """All agenda events that started on a given YYYY-MM-DD (including past days)."""
         if not day:
             return []
         with self.db() as db:
@@ -2078,7 +1798,6 @@ class CompanionSystem:
                 "SELECT * FROM calendar_events WHERE substr(replace(start_at,'T',' '),1,10)=? ORDER BY start_at", (day,)).fetchall()]
 
     def clear_journal(self, kind: str = "") -> dict[str,Any]:
-        """Remove journal/dream entries (kind filter optional)."""
         with self.db() as db:
             if kind in ("journal", "dream"):
                 cursor = db.execute("DELETE FROM journal_entries WHERE kind=?", (kind,))
@@ -2093,12 +1812,10 @@ class CompanionSystem:
         with self.db() as db:
             rows=lambda q,args=():[dict(row) for row in db.execute(q,args).fetchall()]
             groups={row["group_id"]:{"mood":row["mood"],"topics":rows("SELECT topic,score FROM group_topics WHERE group_id=? ORDER BY score DESC LIMIT 12",(row["group_id"],)),"threads":rows("SELECT topic,score,status FROM group_threads WHERE group_id=? AND status='active' ORDER BY score DESC LIMIT 12",(row["group_id"],)),"messages":rows("SELECT user_id,content,created_at FROM group_observations WHERE group_id=? ORDER BY created_at DESC LIMIT 20",(row["group_id"],))} for row in db.execute("SELECT * FROM group_scenes").fetchall()}
-            # Only today and upcoming events: yesterday's schedule is not shown or reused.
             agenda=rows("SELECT * FROM calendar_events WHERE start_at='' OR substr(replace(start_at,'T',' '),1,10)>=? ORDER BY start_at='' DESC, start_at ASC",(today,))
             return {"relationships":rows("SELECT * FROM relationship_accounts ORDER BY last_seen DESC"),"relationship_ledger":rows("SELECT * FROM relationship_ledger ORDER BY created_at DESC LIMIT 200"),"agenda":agenda,"calendar_candidates":rows("SELECT * FROM calendar_candidates ORDER BY created_at DESC"),"journal":rows("SELECT * FROM journal_entries WHERE kind='journal' ORDER BY created_at DESC LIMIT 50"),"dreams":rows("SELECT * FROM journal_entries WHERE kind='dream' ORDER BY created_at DESC LIMIT 50"),"audit":rows("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT 200"),"groups":groups,"persona_evolution":rows("SELECT * FROM persona_evolution WHERE status='confirmed' ORDER BY updated_at DESC"),"proactive":{"candidates":rows("SELECT * FROM proactive_candidates ORDER BY updated_at DESC LIMIT 100"),"receipts":rows("SELECT * FROM proactive_receipts ORDER BY created_at DESC LIMIT 100")},"important_dates":rows("SELECT * FROM important_dates ORDER BY date_text"),"goals":rows("SELECT * FROM personal_goals ORDER BY updated_at DESC"),"food":rows("SELECT * FROM food_menu ORDER BY created_at DESC"),"word_cloud":rows("SELECT topic, SUM(score) AS score FROM group_topics GROUP BY topic ORDER BY score DESC LIMIT 60"),"skills":rows("SELECT * FROM skills ORDER BY level DESC, updated_at DESC"),"expressions":rows("SELECT * FROM expressions ORDER BY created_at DESC LIMIT 300"),"social_nodes":rows("SELECT * FROM social_nodes ORDER BY updated_at DESC"),"social_edges":rows("SELECT * FROM social_edges ORDER BY created_at DESC"),"settings":{r["key"]: r["value"] for r in db.execute("SELECT key,value FROM settings").fetchall()},"world":rows("SELECT * FROM world_knowledge ORDER BY kind, updated_at DESC"),"timeline":rows("SELECT * FROM bot_timeline ORDER BY created_at DESC LIMIT 100"),"open_topics":rows("SELECT * FROM unfinished_topics WHERE status='open' ORDER BY updated_at DESC LIMIT 100"),"portraits":rows("SELECT * FROM user_portraits ORDER BY updated_at DESC"),"reviews":rows("SELECT * FROM daily_reviews ORDER BY date DESC LIMIT 14"),"commitments":rows("SELECT * FROM commitments WHERE status='open' ORDER BY created_at DESC LIMIT 50"),"user_model":rows("SELECT * FROM user_model ORDER BY updated_at DESC LIMIT 50"),"values":self.get_values()}
 
     def user_detail(self, user_id: str, limit: int = 100) -> dict[str,Any]:
-        """One user's whole companionship record: relationship, proactive, audit."""
         user_id = (user_id or "").strip()
         if not user_id:
             raise ValueError("user_id is required")

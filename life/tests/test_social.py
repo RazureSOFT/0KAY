@@ -1,8 +1,3 @@
-"""Tests for the social circuits (wave 4a).
-
-Each test asserts the *computational claim* of one paper, and every circuit is
-ablated at least once.
-"""
 import json
 import sys
 import unittest
@@ -23,7 +18,6 @@ from life.cognition.social import (
 
 
 class TestSocialLearning(unittest.TestCase):
-    """Paper 19: language guidance and experience combine by Bayesian inference."""
 
     def test_prior_is_uniform_and_uncertain(self):
         learner = SocialLearning(hypotheses=[0, 1, 2, 3])
@@ -59,7 +53,6 @@ class TestSocialLearning(unittest.TestCase):
 
 
 class TestRoleModelLearning(unittest.TestCase):
-    """Paper 20: exemplar-driven moral learning via identity-driven conformity."""
 
     def test_identification_pulls_stance_toward_the_exemplar(self):
         model = RoleModelLearning(stance=0.5, identification=1.0)
@@ -90,7 +83,6 @@ class TestRoleModelLearning(unittest.TestCase):
 
 
 class TestSocialTies(unittest.TestCase):
-    """Paper 21: ties emerge from interaction, evaluation and coaching."""
 
     def test_repeated_interaction_builds_a_tie(self):
         ties = SocialTies()
@@ -135,7 +127,6 @@ class TestSocialTies(unittest.TestCase):
 
 
 class TestProsocialAlignment(unittest.TestCase):
-    """Papers 1-3: altruism from empathising and self-imagination."""
 
     def test_infer_state_reads_intent_emotion_and_need(self):
         align = ProsocialAlignment()
@@ -154,7 +145,6 @@ class TestProsocialAlignment(unittest.TestCase):
         for align in (selfish, altruistic):
             align.infer_state({"need": 1.0})
             align.self_imagine({"sensitivity": 1.0}, {"severity": 1.0})
-        # high empathy pulls the objective off one's own utility toward the other's
         self.assertGreater(selfish.align(1.0, 0.0), altruistic.align(1.0, 0.0))
 
     def test_moral_check_flags_an_exploitative_action(self):
@@ -164,7 +154,6 @@ class TestProsocialAlignment(unittest.TestCase):
 
 
 class TestPerspectiveTaking(unittest.TestCase):
-    """Papers 12/14/15: Selman stages and deliberate downplaying."""
 
     def test_below_stage_two_fails_false_belief(self):
         for stage in (0, 1):
@@ -196,7 +185,6 @@ class TestPerspectiveTaking(unittest.TestCase):
 
 
 class TestIntrinsicMotivation(unittest.TestCase):
-    """Papers 22/23/24: intrinsic reward, the ego, and anhedonic effort choice."""
 
     TASKS = {"easy_low": {"reward": 0.3, "effort": 0.1},
              "hard_high": {"reward": 1.0, "effort": 0.5}}
@@ -218,8 +206,6 @@ class TestIntrinsicMotivation(unittest.TestCase):
         self.assertEqual(motive.choose_task(self.TASKS), "hard_high")
 
     def test_blunted_anticipation_flips_to_low_effort_low_reward(self):
-        # the paper's headline: perturbing reward anticipation makes the agent
-        # prefer low-effort/low-reward options - not a capability loss.
         motive = IntrinsicMotivation(anticipation=1.0)
         motive.blunt(0.8)
         self.assertEqual(motive.choose_task(self.TASKS), "easy_low")
@@ -257,15 +243,6 @@ class TestSocialSystem(unittest.TestCase):
 
 
 class TestPersistenceThroughJSON(unittest.TestCase):
-    """The real restart path is ``to_dict`` -> JSON -> ``from_dict``.
-
-    JSON only allows string object keys, so an integer hypothesis id such as
-    ``2`` is written as ``"2"``.  The in-memory round-trip test above never
-    exercises this, which is exactly how a bug slipped through: a reloaded
-    learner used to carry *string* hypothesis ids, so every later call with an
-    int id (the whole public API) silently created a second key and dropped the
-    evidence - advice received after a restart was quietly ignored.
-    """
 
     def test_hypothesis_ids_survive_a_json_round_trip(self):
         learner = SocialLearning(hypotheses=[0, 1, 2, 3])

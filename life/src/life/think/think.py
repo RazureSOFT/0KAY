@@ -1,5 +1,3 @@
-"""THINK stage for L.I.F.E - Internal reasoning and planning."""
-
 import json
 from dataclasses import dataclass, field
 from typing import Optional
@@ -7,7 +5,6 @@ from typing import Optional
 
 @dataclass
 class ThinkResult:
-    """Output from THINK stage."""
     emotion_delta: dict
     memory_query: str
     intent: str
@@ -17,15 +14,9 @@ class ThinkResult:
     skill_call: Optional[dict] = None
     output_guidance: str = ""
     linear_steps: list[str] = field(default_factory=list)
-    # In-character intention chosen first (persona-consistent): what this
-    # character would feel/want to do before any task planning.
     character_intent: str = ""
-    # Hidden Live2D action tags for the WebUI stage, e.g. "[[motion:Idle:0]]".
     stage_actions: str = ""
-    # Proactive-mode only: the exact words to send the user, or empty to stay silent.
     proactive_message: str = ""
-    # Proactive-mode only: how long to wait before sending (0 = now is a good
-    # moment). Lets the model decide *when*, not just *what*.
     proactive_after_minutes: int = 0
 
     def to_json(self) -> str:
@@ -143,18 +134,10 @@ Output ONLY the JSON object, no other text."""
 
 
 class ThinkStage:
-    """THINK stage - Internal reasoning like human inner monologue."""
 
-    # Strategies that ask for deliberate planning, and the low-effort
-    # alternatives that explicitly do not.  The cognition core's arbiter picks
-    # one of the four control modes (AUTO / WM / PLAN / FULL); the planner is
-    # told about it so the prompt cannot quietly escalate into planning the
-    # arbiter decided against.
     PLANNING_STRATEGIES = frozenset({"plan", "planning", "规划", "计划", "schedule"})
     BRIEF_STRATEGIES = frozenset({"reply_brief", "brief", "简短", "reply", "chat"})
 
-    # What each arbitrated mode means mechanically, so the prompt reflects the
-    # multi-system model instead of naming a mode the model cannot interpret.
     MODE_MEANING = {
         "AUTO": "习惯主导（H 习惯系统）：沿既有习惯直接回应，最省力，不展开推理。",
         "WM": "工作记忆主导（WM）：只需在当前上下文里保留少量信息，不必长期规划。",
@@ -167,15 +150,6 @@ class ThinkStage:
 
     @classmethod
     def control_context(cls, control_mode: str = "", strategy: str = "") -> str:
-        """Render the arbiter's decision as a prompt directive.
-
-        Returns an empty string when the cognition core produced no decision, so
-        the prompt is byte-for-byte what it was before the core existed.
-
-        ``planning`` is on when the strategy asks for it, or when the arbiter
-        chose a planning-capable mode and the strategy did not explicitly ask
-        for a brief reply.
-        """
         mode = (control_mode or "").strip().upper()
         chosen = (strategy or "").strip().lower()
         if not mode and not chosen:
@@ -192,16 +166,6 @@ class ThinkStage:
     @classmethod
     def cognition_context(cls, *, affect=None, language=None, social=None, selfhood=None,
                           modulate=None) -> str:
-        """Render the cognition waves' read-out as a compact prompt block.
-
-        Each wave is included only when its ``cog_modulate_*`` switch is on, so a
-        wave can keep tracking state (and show up on the dashboard) without
-        reaching the prompt.  Returns ``""`` when nothing is enabled, which keeps
-        the prompt byte-for-byte identical to the pre-cognition build.
-
-        The block describes *how to be*, never *what to say*: the model is told
-        not to recite it.
-        """
         modulate = modulate or {}
         lines: list[str] = []
 
@@ -272,15 +236,9 @@ class ThinkStage:
         self_statement: str = "",
         inner_thread: str = "",
     ) -> str:
-        """Build the THINK prompt."""
-        # A2 第一人称: the character's own voice.  Engine-authored clinical state
-        # (cognition_context) stays as a safety net, but the *narration* of how it
-        # feels is the character's own first-person line, read back from storage.
         if self_statement:
             block = ("我自己刚写下的状态（这是我自己的第一人称陈述，自然地带入，"
                      "不要复述、不要解释）：\n" + self_statement)
-            # A4 连续性: carry the recent inner life across ticks so the character
-            # does not start blank each turn.  Experiences continuity, not a reset.
             if inner_thread:
                 block += "\n（你最近的状态脉络：" + inner_thread + "）"
             block += "\n\n"
@@ -302,9 +260,7 @@ class ThinkStage:
         )
 
     def parse_response(self, response: str) -> ThinkResult:
-        """Parse THINK stage JSON response."""
         try:
-            # Try to extract JSON from response
             if "```json" in response:
                 response = response.split("```json")[1].split("```")[0]
             elif "```" in response:

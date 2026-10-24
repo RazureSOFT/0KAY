@@ -1,10 +1,3 @@
-"""Outgoing Core calls must attribute themselves.
-
-Core authenticates loopback implicitly, but a non-loopback Core requires a
-paired/shared token and every plugin call should carry its identity.  These
-tests pin that the service token / plugin name ride every steady-state call
-(heartbeat, agent query/dispatch, direct tool run, cancel), not just Register.
-"""
 import os
 import sys
 import unittest

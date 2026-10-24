@@ -1,8 +1,3 @@
-"""Tests for the language circuits (wave 3: acquisition + language-thought).
-
-Each test asserts the *computational claim* of one paper, and every circuit is
-ablated at least once to prove the switch switches.
-"""
 import json
 import random
 import sys
@@ -20,9 +15,6 @@ from life.cognition.language import (
     tokenize,
 )
 
-# A three-word artificial language.  Words are concatenated in varying order, so
-# transitions *inside* a word are deterministic (TP = 1) while transitions
-# *across* a boundary are spread over several successors (TP < 1).
 WORDS = [list("ab"), list("cd"), list("ef")]
 
 
@@ -38,7 +30,6 @@ def build_stream(passes=6, seed=0):
 
 
 def positional_flags(stream):
-    """True at each word-initial position (word-initial units are disjoint)."""
     firsts = {word[0] for word in WORDS}
     return [unit in firsts for unit in stream]
 
@@ -59,12 +50,10 @@ class TestTokenizer(unittest.TestCase):
 
 
 class TestWordSegmenter(unittest.TestCase):
-    """Paper 17: predictive probabilistic statistics carve words from a stream."""
 
     def test_novel_transition_scores_as_a_boundary(self):
         segmenter = WordSegmenter()
         scores = segmenter.observe(list("abcdef"))
-        # every pair is novel the first time it is seen -> all boundaries
         self.assertTrue(all(s >= 0.99 for s in scores[1:]))
 
     def test_transitional_probability_is_learned(self):
@@ -81,8 +70,8 @@ class TestWordSegmenter(unittest.TestCase):
     def test_boundaries_dip_inside_words_not_between_them(self):
         segmenter = WordSegmenter(boundary_threshold=0.5)
         stream = build_stream(passes=8)
-        scores = segmenter.observe(stream)          # train
-        scores = segmenter.observe(stream)          # score the trained model
+        scores = segmenter.observe(stream)
+        scores = segmenter.observe(stream)
         flags = positional_flags(stream)
         internal = [scores[i] for i in range(1, len(scores)) if not flags[i]]
         initial = [scores[i] for i in range(1, len(scores)) if flags[i]]
@@ -118,7 +107,6 @@ class TestWordSegmenter(unittest.TestCase):
 
 
 class TestStructuralLearner(unittest.TestCase):
-    """Paper 18: non-adjacent dependencies + functional reorganization."""
 
     GRAMMAR = (["a", "x1", "b"], ["a", "x2", "b"], ["c", "x1", "d"], ["c", "x2", "d"])
 
@@ -135,7 +123,6 @@ class TestStructuralLearner(unittest.TestCase):
 
     def test_learns_non_adjacent_dependencies(self):
         learner = self._trained()
-        # a is always followed by b with one variable element in between
         self.assertGreater(learner.non_adjacent_strength("a", "b"), 0.5)
         self.assertEqual(learner.non_adjacent_strength("a", "d"), 0.0)
 
@@ -158,10 +145,6 @@ class TestStructuralLearner(unittest.TestCase):
                            learner.conforms(["a", "x1", "d"]))
 
     def test_functional_reorganization_changes_what_conforms(self):
-        # "a x1 d" is adjacency-legal (a->x1 and x1->d were both seen) but
-        # non-adjacent-illegal (a never pairs with d).  The general substrate
-        # accepts it; the specialised one rejects it - that IS the paper's
-        # reorganization claim.
         learner = self._trained()
         violation = ["a", "x1", "d"]
         learner.experience = 0.0
@@ -173,7 +156,6 @@ class TestStructuralLearner(unittest.TestCase):
 
 
 class TestLinguisticFraming(unittest.TestCase):
-    """Papers 19/20: the language-thought bottleneck across the debate's positions."""
 
     CATEGORIES = {"brightness": [0.0, 1.0], "size": [0.0, 1.0]}
 
@@ -198,8 +180,8 @@ class TestLinguisticFraming(unittest.TestCase):
         framing = LinguisticFraming(mode="thinking_for_speaking", categories=self.CATEGORIES)
         thought = {"brightness": 0.35}
         encoded = framing.encode_for_speech(thought)
-        self.assertEqual(thought["brightness"], 0.35)     # original intact
-        self.assertNotEqual(encoded["brightness"], 0.35)  # encoding was biased
+        self.assertEqual(thought["brightness"], 0.35)
+        self.assertNotEqual(encoded["brightness"], 0.35)
 
     def test_distortion_grows_with_coupling(self):
         concept = {"brightness": 0.35}
@@ -268,8 +250,6 @@ class TestLanguageSystem(unittest.TestCase):
         self.assertEqual(restored.framing.mode, system.framing.mode)
 
     def test_json_round_trip_is_identical(self):
-        # The real restart path is to_dict -> JSON -> from_dict, which retypes
-        # keys and scalars; the in-memory round-trip above does not.
         system = LanguageSystem()
         system.observe_text("你好世界你好世界")
         system.observe_text("你好吗世界")

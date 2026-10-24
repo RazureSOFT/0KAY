@@ -1,22 +1,3 @@
-"""Tests for the *extended* persona-dynamics framework.
-
-The base suite (``test_persona_dynamics.py``) pins the research port: 14-D θ,
-9-D D, 6-D x, 18 archetypes and three emergent modes.  This suite pins the
-extension:
-
-* θ grouped into 12 families (Big5 / HEXACO / ... / Expr) with 60+ parameters;
-* a 16-D desire vector and a 16-D emotion vector;
-* 40+ behaviours over four layers, with the clinical layer never selectable;
-* 150+ type regions defined as *data rows*, plus derivations
-  (Big5 / HEXACO / MBTI / DISC / type probabilities);
-* the gender / social-script group G and its formula hooks;
-* the learning / development operator L (theta drift + tabular Q);
-* the clinical-simulation gate: abstract labels only, never rendered, never
-  deployed.
-
-Every claim below is a property of the *data table* rather than of new control
-flow, which is the spec's "类型 = θ 空间中的区域" rule.
-"""
 from __future__ import annotations
 
 import tempfile
@@ -45,7 +26,6 @@ class ExtendedDimensions(unittest.TestCase):
     def test_desire_vector_is_sixteen_dimensional(self):
         self.assertEqual(len(DES16), 16)
         self.assertEqual(len(set(DES16)), 16)
-        # every desire belongs to exactly one group
         grouped = [k for ks in DESIRE_GROUPS.values() for k in ks]
         self.assertEqual(set(grouped), set(DES16))
 
@@ -121,7 +101,6 @@ class ExtendedTypeLibrary(unittest.TestCase):
             self.assertTrue(is_deployable(key), key)
 
     def test_every_deployable_row_runs_bounded(self):
-        """The whole library must be safe to integrate, not just a sample."""
         for key in DEPLOYABLE_KEYS:
             d = PersonaDynamics(key)
             for _ in range(25):
@@ -134,7 +113,6 @@ class ExtendedTypeLibrary(unittest.TestCase):
                 self.assertLessEqual(v, 1.0, key)
 
     def test_rows_are_data_not_code(self):
-        """A row is a plain parameter record; nothing executable in it."""
         for row in TYPE_ROWS.values():
             self.assertIsInstance(row.theta, dict)
             self.assertTrue(all(isinstance(v, (int, float))
@@ -142,7 +120,6 @@ class ExtendedTypeLibrary(unittest.TestCase):
             self.assertNotIn("lambda", row.label)
 
     def test_a_new_type_can_be_added_without_touching_the_engine(self):
-        """The spec's "generate any new type": name + θ/D/x/w/g/T/A."""
         from life.cognition.persona_dynamics import TypeRow, _row
         row = _row("测试新类型", "测试新类型", "acg",
                    theta=dict(R=.9, K0=.3, 攻击=.7),
@@ -167,7 +144,6 @@ class TypeDerivations(unittest.TestCase):
         self.assertEqual(set(h), set(HEXACO_DIMS))
 
     def test_mbti_matches_the_sign_rule(self):
-        """MBTI = (sgn(R-.5), sgn(O-.5), sgn(C-.5), sgn(K-.5))."""
         d = PersonaDynamics("霸总")
         tr = d._effective_traits()
         mbti = derive_mbti(tr)
@@ -185,12 +161,6 @@ class TypeDerivations(unittest.TestCase):
                           ("D 支配", "I 影响", "S 稳健", "C 谨慎"))
 
     def test_probabilities_rank_the_own_region_near_the_top(self):
-        """A region should score highly for itself.
-
-        Near-duplicate regions (焦虑型 / 焦虑男, 硬汉 / 硬汉男) legitimately
-        trade places, so the claim is "top-3", not "exactly first" - which is
-        itself the point of a soft read-out over a continuous space.
-        """
         for key in ("霸总", "硬汉", "舔狗", "御姐", "焦虑型"):
             d = PersonaDynamics(key)
             probs = type_probabilities(d._effective_traits(), top=3)
@@ -216,7 +186,6 @@ class GenderScripts(unittest.TestCase):
         self.assertEqual(g.utility_bonus("help"), 0.0)
 
     def test_identity_script_leaves_the_research_values_untouched(self):
-        """With no script, expression must equal the base port's value."""
         plain = PersonaDynamics("傲娇型", gender_key="未指定")
         base = PersonaDynamics("傲娇型")
         for _ in range(15):
@@ -252,7 +221,6 @@ class GenderScripts(unittest.TestCase):
         self.assertEqual(gender_for_persona("一位普通的图书管理员"), "")
 
     def test_script_bends_the_threat_signal(self):
-        """γ_G·GRC raises the perceived threat for a high-conflict script."""
         hi = PersonaDynamics("硬汉")
         none = PersonaDynamics("正常/安全型", gender_key="未指定")
         self.assertGreater(hi.gender.threat_term(),
@@ -328,7 +296,6 @@ class ClinicalGate(unittest.TestCase):
         self.assertEqual(set(restored.clinical_context()), set(CLINICAL_KEYS))
 
     def test_a_clinical_label_never_reaches_the_prompt(self):
-        """The prompt is built from deployable fields only."""
         s = PersonaDynamicsSystem(enabled=True, type_key="边缘")
         s.configure(clinical_sim=True)
         ctx = s.context()
@@ -364,7 +331,6 @@ class ExtendedReadout(unittest.TestCase):
         self.assertEqual(st["type"], "霸总")
 
     def test_gender_round_trips_through_the_settings_surface(self):
-        """A script chosen via persona_apply must survive a restart."""
         self.engine.persona_apply({
             "text": "霸总、说一不二",
             "personadyn": {"type": "霸总", "gender": "女性主义"},

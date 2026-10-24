@@ -1,11 +1,8 @@
-"""Three-line (booktabs) tables for papers: HTML, LaTeX and docx."""
 from __future__ import annotations
 
 from html import escape
 from pathlib import Path
 
-# LaTeX special characters.  `\` must be substituted as a whole token, which the
-# per-character map below does naturally (the replacement is emitted verbatim).
 _LATEX_SPECIAL = {
     "\\": r"\textbackslash{}",
     "&": r"\&", "%": r"\%", "$": r"\$", "#": r"\#",
@@ -15,11 +12,6 @@ _LATEX_SPECIAL = {
 
 
 def _latex_escape(value: object) -> str:
-    """Escape LaTeX special characters in cell/caption text.
-
-    The HTML path already uses ``escape``; the LaTeX path did not, so ``&``,
-    ``%``, ``_`` etc. in cell text would break compilation — or inject commands.
-    """
     return "".join(_LATEX_SPECIAL.get(char, char) for char in str(value))
 
 
@@ -32,7 +24,6 @@ def _normalize(header, rows):
 
 
 def table_to_html(header, rows, *, caption: str = "", path=None) -> str:
-    """A three-line table (top/mid/bottom rules only) as an HTML string."""
     header, rows = _normalize(header, rows)
     head = "".join(f"<th>{escape(cell)}</th>" for cell in header)
     body = "".join(
@@ -53,7 +44,6 @@ def table_to_html(header, rows, *, caption: str = "", path=None) -> str:
 
 def table_to_latex(header, rows, *, caption: str = "", label: str = "",
                    path=None) -> str:
-    """A ``booktabs`` table (requires ``\\usepackage{booktabs}``)."""
     header, rows = _normalize(header, rows)
     columns = "l" * max(1, len(header))
     lines = [
@@ -85,11 +75,6 @@ def table_to_latex(header, rows, *, caption: str = "", label: str = "",
 
 
 def table_to_docx(header, rows, *, caption: str = "", path=None):
-    """Append a three-line table to a ``python-docx`` document, or return one.
-
-    With ``path`` the document is saved and the ``Path`` is returned; without it
-    the ``docx`` object is returned so the caller can add more content.
-    """
     from docx import Document
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 

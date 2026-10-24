@@ -1,9 +1,3 @@
-"""Tests for persona -> trait parameters (人设 → 模型数据).
-
-The lexicon path must be deterministic and bounded; the LLM refinement path
-must never produce a worse result than the lexicon; the engine chain must
-apply (and un-apply) the traits on settings changes.
-"""
 import asyncio
 import sys
 import tempfile
@@ -43,7 +37,7 @@ class TestLexicon(unittest.TestCase):
     def test_anxious_words_raise_threat_above_default(self):
         traits = parse_persona("他很容易焦虑，紧张，总感不安")
         self.assertIsNotNone(traits.threat_baseline)
-        self.assertGreater(traits.threat_baseline, 0.2)   # affect default
+        self.assertGreater(traits.threat_baseline, 0.2)
         self.assertLessEqual(traits.threat_baseline, 1.0)
 
     def test_depressive_words_lower_reward(self):
@@ -82,8 +76,8 @@ class TestApply(unittest.TestCase):
         changed = traits.apply(config, somatic)
         self.assertTrue(config.use_somatic)
         self.assertIn("somatic_catastrophizing", changed)
-        self.assertAlmostEqual(config.threat_baseline, 0.2)     # untouched
-        self.assertAlmostEqual(somatic.anxiety_gain, 1.0)       # untouched
+        self.assertAlmostEqual(config.threat_baseline, 0.2)
+        self.assertAlmostEqual(somatic.anxiety_gain, 1.0)
 
     def test_apply_writes_circadian_sleep_hour(self):
         class FakeCircadian:
@@ -119,7 +113,7 @@ class TestLLMRefinement(unittest.TestCase):
         self.assertAlmostEqual(traits.threat_baseline, 0.9)
         self.assertEqual(traits.erq_profile, "anxiety")
         self.assertEqual(traits.sleep_hour, 2)
-        self.assertTrue(traits.use_somatic)          # lexicon baseline kept
+        self.assertTrue(traits.use_somatic)
 
     def test_invalid_json_falls_back_to_lexicon(self):
         traits = refine_persona_with_llm(PERSONA, lambda prompt: "这不是JSON")
@@ -152,7 +146,7 @@ class TestLLMRefinement(unittest.TestCase):
             cache = LLMCache(directory)
             first = refine_persona_with_llm(PERSONA, llm, cache=cache)
             second = refine_persona_with_llm(PERSONA, llm, cache=cache)
-        self.assertEqual(len(calls), 1)              # second call served by cache
+        self.assertEqual(len(calls), 1)
         self.assertAlmostEqual(first.threat_baseline, second.threat_baseline)
 
     def test_summary_shape(self):
@@ -164,7 +158,6 @@ class TestLLMRefinement(unittest.TestCase):
 
 
 class TestWebUIPersonaChain(unittest.TestCase):
-    """The WebUI persona object (gRPC persona_json) -> trait data chain."""
 
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -186,8 +179,6 @@ class TestWebUIPersonaChain(unittest.TestCase):
     def test_same_persona_is_a_fast_path(self):
         persona = {"description": "她体弱多病，经常心慌失眠", "personality": ""}
         self.engine.apply_persona_object(persona)
-        # a runtime intervention lowers catastrophizing; an unchanged persona
-        # must NOT re-apply (which would reset the trait)
         self.engine.affect.somatic.apply_intervention("reappraisal")
         lowered = self.engine.affect.somatic.catastrophizing
         self.engine.apply_persona_object(persona)
@@ -214,10 +205,8 @@ class TestWebUIPersonaChain(unittest.TestCase):
         persona = {"description": "她很容易焦虑，紧张", "personality": ""}
         self.engine.apply_persona_object(persona)
         self.assertGreater(self.engine.affect.config.threat_baseline, 0.2)
-        # re-applying settings resets the threat baseline to the setting...
         self.engine.apply_cognition_settings()
         self.assertAlmostEqual(self.engine.affect.config.threat_baseline, 0.1)
-        # ...and the next persona message re-layers the override on top
         self.engine.apply_persona_object(persona)
         self.assertGreater(self.engine.affect.config.threat_baseline, 0.2)
 
@@ -228,7 +217,6 @@ class TestWebUIPersonaChain(unittest.TestCase):
 
 
 class TestPersonaLLMRefinementChain(unittest.TestCase):
-    """The agent's own model re-reads a changed persona into trait JSON."""
 
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -262,9 +250,9 @@ class TestPersonaLLMRefinementChain(unittest.TestCase):
         self.assertAlmostEqual(summary["traits"]["threat_baseline"], 0.9)
         self.assertEqual(summary["traits"]["erq_profile"], "anxiety")
         self.assertEqual(self.engine.circadian.sleep_hour, 2)
-        self.assertTrue(self.engine.affect.config.use_somatic)   # lexicon baseline kept
+        self.assertTrue(self.engine.affect.config.use_somatic)
         self.assertEqual(len(self.engine.mocr.calls), 1)
-        self.assertIn(PERSONA, self.engine.mocr.calls[0][1])     # prompt carries the persona
+        self.assertIn(PERSONA, self.engine.mocr.calls[0][1])
 
     def test_same_persona_calls_the_model_once(self):
         self.engine.mocr = self._fake_mocr(reply="{}")
@@ -342,7 +330,6 @@ class TestEngineChain(unittest.TestCase):
 
 
 class TestPersonaDiskCache(unittest.TestCase):
-    """LLM trait results persist by persona digest: restarts never re-pay."""
 
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -371,8 +358,6 @@ class TestPersonaDiskCache(unittest.TestCase):
         asyncio_run(self.engine.apply_persona_object_async(persona))
         cache_path = Path(self.engine.data_dir) / "persona_traits_cache.json"
         self.assertTrue(cache_path.exists())
-        # a settings change invalidates the digest; the cached result is
-        # re-applied without calling the model again
         self.engine.apply_cognition_settings()
         summary = asyncio_run(self.engine.apply_persona_object_async(persona))
         self.assertEqual(len(self.engine.mocr.calls), 1)
@@ -385,7 +370,7 @@ class TestPersonaDiskCache(unittest.TestCase):
         self.assertTrue(traits.use_somatic)
         self.assertIn("anxious", traits.evidence)
         self.assertGreater(traits.threat_baseline, 0.2)
-        self.assertGreater(traits.reward_baseline, 1.0)   # cheerful side
+        self.assertGreater(traits.reward_baseline, 1.0)
 
 
 if __name__ == "__main__":

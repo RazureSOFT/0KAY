@@ -1,5 +1,3 @@
-"""OneBot v11 adapter for QQ messaging."""
-
 import asyncio
 import base64
 import json
@@ -18,22 +16,17 @@ logger = get_logger("onebot")
 
 
 def _redact_url(url: str) -> str:
-    """Host+path only: query strings may carry an access token."""
     from urllib.parse import urlsplit
 
     parts = urlsplit(str(url or ""))
     return f"{parts.scheme}://{parts.netloc}{parts.path}" if parts.netloc else "(unset)"
 
-#: Ceiling on an image we will hand to the vision model (the OneBot server
-#: resolves the bytes; this bounds what we then base64 into memory).
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 
-#: Ceiling on a voice clip sent as a base64 CQ record segment.
 MAX_RECORD_BYTES = 4 * 1024 * 1024
 
 
 def _image_mime(blob: bytes) -> str:
-    """Magic-byte sniffing; "" when the bytes are not a supported image."""
     if blob[:8] == b"\x89PNG\r\n\x1a\n":
         return "image/png"
     if blob[:3] == b"\xff\xd8\xff":
@@ -48,12 +41,6 @@ def _image_mime(blob: bytes) -> str:
 
 
 def _cq_escape(value: object) -> str:
-    """Escape a value for safe use inside a CQ code parameter.
-
-    OneBot v11 requires ``&`` ``[`` ``]`` ``,`` inside a CQ code parameter to be
-    escaped; without this a model-supplied image URL or TTS text containing ``]``
-    could close the CQ code early and inject another one.
-    """
     return (str(value)
             .replace("&", "&#38;")
             .replace("[", "&#91;")
@@ -63,25 +50,21 @@ def _cq_escape(value: object) -> str:
 
 @dataclass
 class OneBotConfig:
-    """OneBot adapter configuration."""
     websocket_url: str = "ws://localhost:8080"
     http_url: str = "http://localhost:8080"
     access_token: str = ""
-    message_delay: float = 0.5  # Delay between messages (simulates typing)
-    chunk_delay: float = 0.3    # Delay between message chunks
+    message_delay: float = 0.5
+    chunk_delay: float = 0.3
     trigger_keywords: tuple[str, ...] = ()
     bot_names: tuple[str, ...] = ()
     observe_group: bool = True
     observer: Callable | None = None
     recall_handler: Callable | None = None
     should_reply: Callable | None = None
-    #: ``async (ref: str) -> str`` — caption an inbound image so a text-only
-    #: model can still reason about it.  Wired by the server to the vision model.
     vision_handler: Callable | None = None
 
 
 class OneBotMessage:
-    """OneBot message representation."""
 
     def __init__(self, data: dict):
         self.raw = data
@@ -108,7 +91,6 @@ class OneBotMessage:
 
 
 class OneBotAdapter:
-    """OneBot v11 adapter for QQ."""
 
     def __init__(self, config: OneBotConfig, message_handler: Callable):
         self.config = config
@@ -118,7 +100,6 @@ class OneBotAdapter:
         self._http_client: Optional[httpx.AsyncClient] = None
 
     async def start(self):
-        """Start the OneBot adapter."""
         self._running = True
         self._http_client = httpx.AsyncClient(
             base_url=self.config.http_url,
@@ -136,18 +117,12 @@ class OneBotAdapter:
                 logger.warning("OneBot WebSocket error: %s", e)
             if not self._running:
                 break
-            # A *clean* return also means the socket closed (e.g. the server
-            # rejects a duplicate connection and closes immediately), so the
-            # sleep must run on every iteration — otherwise this is a hot
-            # reconnect loop.  Reset the backoff after a stable connection,
-            # otherwise grow it so a rejecting server is not hammered.
             if time.monotonic() - started >= 10.0:
                 backoff = 1.0
             await asyncio.sleep(backoff)
             backoff = min(backoff * 2, 60.0)
 
     async def _connect_websocket(self):
-        """Connect to OneBot WebSocket."""
         headers = {}
         if self.config.access_token:
             headers["Authorization"] = f"Bearer {self.config.access_token}"
@@ -164,9 +139,6 @@ class OneBotAdapter:
                     data = json.loads(raw_msg)
                 except json.JSONDecodeError:
                     continue
-                # One failing event must not tear down the whole WebSocket and
-                # silently drop every event queued behind it (a single QQ API
-                # rejection or a 300s model timeout used to do exactly that).
                 try:
                     await self._handle_event(data)
                 except Exception as error:
@@ -185,7 +157,6 @@ class OneBotAdapter:
         return False
 
     async def _handle_notice(self, data: dict):
-        """Handle recall and other notices; only records an honest short note."""
         notice_type = str(data.get("notice_type") or "")
         if notice_type not in ("group_recall", "friend_recall"):
             return
@@ -202,7 +173,6 @@ class OneBotAdapter:
                 logger.warning("recall handler error: %s", error)
 
     async def _handle_event(self, data: dict):
-        """Handle OneBot event."""
         post_type = data.get("post_type")
         if post_type == "notice":
             await self._handle_notice(data)
@@ -211,15 +181,11 @@ class OneBotAdapter:
             return
 
         msg = OneBotMessage(data)
-        # Caption inbound images with the vision model when it is wired, so the
-        # picture's content reaches a text-only model instead of a bare placeholder.
         content = (await self._describe(msg)) or msg.text
         if msg.is_group and self.config.observe_group and self.config.observer:
             await self.config.observer(str(msg.group_id), str(msg.user_id), content, msg.sender_name)
         keywords = tuple(k.lower() for k in self.config.trigger_keywords if k.strip())
         if msg.is_group:
-            # Group chats: mention/keyword wakes; otherwise allow a natural continuation
-            # of a topic LIFE recently spoke about (via the should_reply callback).
             mentioned = self._is_mentioned(data, msg)
             keyword_hit = bool(keywords) and any(keyword in content.lower() for keyword in keywords)
             allowed = mentioned or keyword_hit
@@ -233,7 +199,6 @@ class OneBotAdapter:
         elif keywords and not any(keyword in content.lower() for keyword in keywords):
             return
 
-        # Process message and get response (supports sync/async iterators)
         response_iterator = self.message_handler(
             session_id=f"qq_group_{msg.group_id}" if msg.is_group else f"qq_{msg.user_id}",
             user_id=str(msg.user_id),
@@ -241,7 +206,6 @@ class OneBotAdapter:
             adapter_type="onebot_group" if msg.is_group else "onebot",
         )
 
-        # Send response with delay — QQ 分条发送 via OutputResult chunks
         buffered = ""
         if hasattr(response_iterator, "__aiter__"):
             async for event in response_iterator:
@@ -270,7 +234,6 @@ class OneBotAdapter:
                 )
                 await asyncio.sleep(self.config.chunk_delay)
         elif etype == "done":
-            # Final flush with full chunks if provided
             for part in event.get("chunks") or []:
                 if part:
                     await self._send_message(
@@ -286,15 +249,10 @@ class OneBotAdapter:
         group_id: Optional[int],
         message: str,
     ):
-        """Send message via OneBot HTTP API."""
         if not self._http_client:
             raise RuntimeError("OneBot is not connected")
 
         endpoint = "send_group_msg" if group_id else "send_private_msg"
-        # Send as a text *segment* rather than a raw string.  The string form is
-        # parsed for CQ codes, so model output — which any chat participant can
-        # steer via prompt injection — could smuggle in [CQ:at,qq=all], images,
-        # etc.  The segment form is never CQ-parsed.
         payload = {"message": [{"type": "text", "data": {"text": str(message)}}]}
         if group_id:
             payload["group_id"] = group_id
@@ -311,7 +269,6 @@ class OneBotAdapter:
             raise
 
     async def send_group_notice(self, group_id: int, content: str):
-        """Send group notice."""
         if not self._http_client:
             return
 
@@ -334,14 +291,6 @@ class OneBotAdapter:
         return data.get("data") or {}
 
     async def fetch_image_base64(self, ref: str) -> tuple[str, str]:
-        """Resolve a CQ image reference to ``(base64, mime)`` via the OneBot server.
-
-        OneBot's ``get_image`` returns either a base64 payload or a local path;
-        the OneBot server performs any download itself, so LIFE never fetches a
-        model/user-supplied URL directly (no SSRF surface).  A remote URL handed
-        back by the server is refused for the same reason.  Returns ``("", "")``
-        when the image is missing, too large, or not a supported format.
-        """
         if not str(ref or "").strip():
             return "", ""
         data = await self._call("get_image", {"file": str(ref)})
@@ -357,7 +306,6 @@ class OneBotAdapter:
         if raw.startswith("base64://"):
             return raw[len("base64://"):], "image/png"
         if raw.startswith(("http://", "https://")):
-            # The server could not resolve it locally; do not fetch it ourselves.
             return "", ""
         path = Path(raw)
         try:
@@ -372,13 +320,6 @@ class OneBotAdapter:
         return base64.b64encode(blob).decode(), mime
 
     async def _describe(self, msg: "OneBotMessage") -> str:
-        """Render a message's segments, captioning images when vision is wired.
-
-        Captions are resolved asynchronously *first* (OneBot `get_image` + the
-        vision model are both async), then rendered through the sync
-        `describe_segments`, so a text-only model still receives the picture's
-        content instead of a bare ``[图片：url]`` placeholder.
-        """
         if not self.config.vision_handler or not msg.has_media:
             return msg.description
         captions: dict[str, str] = {}
@@ -398,18 +339,15 @@ class OneBotAdapter:
         return media.describe_segments(msg.message, vision=lambda ref: captions.get(str(ref), ""))
 
     async def send_poke(self, user_id: int, group_id: int | None = None):
-        """戳一戳 (poke)."""
         payload = {"user_id": int(user_id)}
         if group_id:
             payload["group_id"] = int(group_id)
         return await self._call("group_poke" if group_id else "friend_poke", payload)
 
     async def set_status(self, status: int = 0, battery: int = 100):
-        """Sync the bot's QQ online status/battery."""
         return await self._call("set_online_status", {"status": int(status), "ext_status": 0, "battery_status": int(battery)})
 
     async def send_tts(self, text: str, user_id: int | None = None, group_id: int | None = None):
-        """Send a voice message via CQ TTS."""
         if not str(text or "").strip():
             raise ValueError("text is required")
         payload = {"message": f"[CQ:tts,text={_cq_escape(str(text)[:300])}]"}
@@ -420,11 +358,6 @@ class OneBotAdapter:
         return await self._call("send_private_msg", payload)
 
     async def send_record(self, audio: bytes, user_id: int | None = None, group_id: int | None = None):
-        """Send a voice message from raw audio bytes (self-hosted TTS output).
-
-        OneBot's own CQ TTS only synthesises *text*; this is the counterpart used
-        when a `tts_endpoint` is configured and LIFE produced the audio itself.
-        """
         if not audio:
             raise ValueError("audio is required")
         if len(audio) > MAX_RECORD_BYTES:
@@ -437,7 +370,6 @@ class OneBotAdapter:
         return await self._call("send_private_msg", payload)
 
     async def send_image(self, file: str, user_id: int | None = None, group_id: int | None = None):
-        """Send an image by file path/URL via CQ code."""
         payload = {"message": f"[CQ:image,file={_cq_escape(file)}]"}
         if group_id:
             payload["group_id"] = int(group_id)
@@ -446,7 +378,6 @@ class OneBotAdapter:
         return await self._call("send_private_msg", payload)
 
     async def send_message(self, message: str, user_id: int | None = None, group_id: int | None = None):
-        """Send a proactive private or group message through OneBot HTTP."""
         if not message:
             raise ValueError("message is required")
         if not user_id and not group_id:
@@ -454,7 +385,6 @@ class OneBotAdapter:
         await self._send_message(user_id=int(user_id or 0), group_id=int(group_id) if group_id else None, message=message)
 
     async def stop(self):
-        """Stop the adapter."""
         self._running = False
         if self._ws:
             await self._ws.close()
@@ -463,24 +393,20 @@ class OneBotAdapter:
 
 
 class OneBotManager:
-    """Manages multiple OneBot connections."""
 
     def __init__(self, message_handler: Callable):
         self.message_handler = message_handler
         self.adapters: dict[str, OneBotAdapter] = {}
 
     def add_adapter(self, name: str, config: OneBotConfig):
-        """Add a new OneBot adapter."""
         adapter = OneBotAdapter(config, self.message_handler)
         self.adapters[name] = adapter
 
     async def start_all(self):
-        """Start all adapters."""
         tasks = [adapter.start() for adapter in self.adapters.values()]
         await asyncio.gather(*tasks)
 
     async def stop_all(self):
-        """Stop all adapters."""
         for adapter in self.adapters.values():
             await adapter.stop()
 

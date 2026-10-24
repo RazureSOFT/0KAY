@@ -1,10 +1,3 @@
-"""Regression tests for the chat-quality batch:
-
-- rejection lexicon (a rebuff must read as rejection, not warmth),
-- page-chrome stripping (a select-all paste must not become the message),
-- history-as-hint (a stale client history must not erase server memory),
-- lite/token-saver mode (off by default; on, it compresses the prompts).
-"""
 import unittest
 
 from life.emotion import lexicon
@@ -29,7 +22,6 @@ class RejectionLexiconTests(unittest.TestCase):
         self.assertGreater(lexicon.scan("我想你了")["polarity"], 0)
 
     def test_reassurance_softens_a_refusal(self):
-        # "别走，留下来" contains 别 but the reassurance wins.
         self.assertGreater(lexicon.scan("别走，留下来")["polarity"], 0)
 
     def test_emotion_engine_drops_valence_on_refusal(self):
@@ -65,8 +57,6 @@ class PageChromeTests(unittest.TestCase):
 
 class HistoryAsHintTests(unittest.TestCase):
     def test_client_history_cannot_shrink_server_memory(self):
-        # A session that already has 4 turns must not lose them because the UI
-        # later sends an empty history (tab switch / rebuild).
         previous = [
             {"role": "user", "content": "一"},
             {"role": "assistant", "content": "二"},
@@ -122,19 +112,12 @@ class LiteModeTests(unittest.TestCase):
 
 
 class SafetyGuardVoiceTests(unittest.TestCase):
-    """The safety guard must be obeyed silently, never spoken.
-
-    Regression: an earlier guard wording was paraphrased into the reply as
-    "我会保留依恋与占有欲的张力，但用紧紧拥抱… 这样既安全又能延续情感深度，
-    你觉得可以吗？" — the assistant talking about itself, out of character.
-    """
 
     def test_all_guards_are_marked_private(self):
         from life.cognition.persona_dynamics import PersonaDynamicsSystem
         from life.cognition.attachment import AttachmentSystem
         from life.cognition.tsundere import TsundereSystem
 
-        # The literal used by every guard() implementation.
         marker = "不得说出"
         for module in ("persona_dynamics.py", "attachment.py", "tsundere.py"):
             import pathlib

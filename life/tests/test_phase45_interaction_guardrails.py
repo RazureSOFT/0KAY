@@ -1,11 +1,3 @@
-"""Phase 4 (interaction realism) + Phase 5 (guardrails / consistency).
-
-- posture: tired/sleepy/irritated turns become brief; urgent ones stay full;
-- the LLM can only *evidence* emotion, it cannot drive it (delta is clamped);
-- emotion cannot spiral (irritation/valence are clamped);
-- the prompt has an injection budget;
-- a tiny persona-consistency regression set (same input -> same state).
-"""
 import os
 import tempfile
 import unittest
@@ -64,7 +56,6 @@ class Phase45(unittest.TestCase):
         self.assertTrue(budgeted.endswith("TAIL"))
 
     def test_persona_consistency_same_input_same_state(self):
-        # Two fresh engines must classify/emote identically for the same input.
         other = LifeEngine(tempfile.mkdtemp())
         try:
             a = self.engine.emotion.on_user_message("我今天好累，烦死了")

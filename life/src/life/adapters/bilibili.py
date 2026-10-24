@@ -1,17 +1,3 @@
-"""Bilibili account integration (unofficial web API).
-
-Bilibili is not a standard bot protocol like OneBot: authentication is a login
-Cookie (SESSDATA / bili_jct / DedeUserID), and there is no push channel, so
-private messages, @/reply/like notifications and the follow feed must be polled.
-
-This module owns the *account store* and a stateless HTTP client bound to one
-account's cookies. A runtime (separate) polls it and writes the traffic into the
-same transcript (`chatlog.db`) the social sidebar reads, so Bilibili chats show
-up next to QQ ones.
-
-Endpoints are the community-reversed ones; Bilibili's WBI signature is applied
-to the endpoints that require it.
-"""
 from __future__ import annotations
 
 import hashlib
@@ -40,7 +26,6 @@ QR_GEN = "https://passport.bilibili.com/x/passport-login/web/qrcode/generate"
 QR_POLL = "https://passport.bilibili.com/x/passport-login/web/qrcode/poll"
 NAV = "https://api.bilibili.com/x/web-interface/nav"
 
-# WBI mixin key permutation table (fixed, from the web player).
 MIXIN_KEY_ENC_TAB = [
     46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
     33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40,
@@ -58,7 +43,6 @@ def new_account_id() -> str:
 
 
 def parse_cookie_string(raw: str) -> dict:
-    """Turn a `name=value; name2=value2` header into a dict."""
     out: dict[str, str] = {}
     for part in str(raw or "").split(";"):
         if "=" not in part:
@@ -71,7 +55,6 @@ def parse_cookie_string(raw: str) -> dict:
 
 
 def cookies_from_response(response: httpx.Response) -> dict:
-    """Merge every Set-Cookie the login handshake returned."""
     jar: dict[str, str] = {}
     for value in response.headers.get_list("set-cookie"):
         first = value.split(";", 1)[0]
@@ -82,7 +65,6 @@ def cookies_from_response(response: httpx.Response) -> dict:
 
 
 def wbi_sign(params: dict, img_key: str, sub_key: str) -> dict:
-    """Append wts + w_rid (WBI) to a params dict, mutating and returning it."""
     combined = img_key + sub_key
     mixin = "".join(combined[i] for i in MIXIN_KEY_ENC_TAB if i < len(combined))[:32]
     params = dict(params)
@@ -95,7 +77,6 @@ def wbi_sign(params: dict, img_key: str, sub_key: str) -> dict:
 
 @dataclass
 class BilibiliAccount:
-    """One logged-in Bilibili account (its cookies)."""
 
     id: str = field(default_factory=new_account_id)
     name: str = ""
@@ -122,7 +103,6 @@ class BilibiliAccount:
         return asdict(self)
 
     def public_dict(self) -> dict:
-        """Redacted view for the UI: never leaks the cookies."""
         return {"id": self.id, "name": self.name, "enabled": self.enabled,
                 "uid": self.uid, "uname": self.uname,
                 "has_cookie": bool(self.sessdata), "created_at": self.created_at}
@@ -140,7 +120,6 @@ class BilibiliAccount:
 
 
 class BilibiliStore:
-    """Load/save the Bilibili accounts (data_dir/bilibili.json)."""
 
     def __init__(self, data_dir: str):
         self.path = Path(data_dir) / "bilibili.json"
@@ -176,7 +155,6 @@ class BilibiliStore:
         account_id = str(payload.get("id") or "")
         existing = self.get(account_id) if account_id else None
         merged = dict(existing.to_dict()) if existing else {}
-        # A blank cookie on edit must not wipe the stored one.
         if existing is not None and not str(payload.get("sessdata") or "").strip():
             payload.pop("sessdata", None)
             payload.pop("bili_jct", None)
@@ -208,9 +186,7 @@ class BilibiliStore:
         return {"ok": True}
 
 
-# --- HTTP client (stateless; bound to one account's cookies) ---------------
 class BilibiliClient:
-    """Thin wrapper over the reverse-engineered web endpoints."""
 
     def __init__(self, cookies: dict, timeout: float = 15.0):
         self.cookies = dict(cookies or {})
@@ -290,7 +266,6 @@ async def qr_generate() -> dict:
 
 
 async def qr_poll(qrcode_key: str) -> dict:
-    """Poll the login QR. Returns {status, cookies}. status: pending|scanned|ok|expired."""
     async with httpx.AsyncClient(headers={"User-Agent": UA}, timeout=15) as c:
         resp = await c.get(QR_POLL, params={"qrcode_key": qrcode_key})
         data = resp.json().get("data") or {}

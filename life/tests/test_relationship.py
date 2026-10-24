@@ -32,7 +32,6 @@ class RelationshipExpression(unittest.TestCase):
         self.assertEqual(self.companion.stage_for_score(-0.8), "警惕")
         self.assertEqual(self.companion.stage_for_score(0.0), "陌生")
         self.assertEqual(self.companion.stage_for_score(0.95), "亲密")
-        # A small dip below the band keeps the earned stage; a real drop releases it.
         self.assertEqual(self.companion._hysteresis("亲近", 0.80), "亲近")
         self.assertEqual(self.companion._hysteresis("亲近", 0.60), "友好")
 

@@ -28,7 +28,6 @@ class _Aborted(Exception):
 
 
 class _Context:
-    """Minimal ServicerContext double: `abort` ends the call like aio's does."""
 
     def __init__(self):
         self.code = None
@@ -52,7 +51,6 @@ class _Details:
         self._metadata = metadata
 
     def invocation_metadata(self):
-        # The cython implementation exposes this method, not `.metadata`.
         return self._metadata
 
 
@@ -78,7 +76,6 @@ class ModeParsing(unittest.TestCase):
         self.assertEqual(resolve_mode(""), "auto")
 
     def test_typo_fails_closed(self):
-        # A misspelled security switch must not disable authentication.
         self.assertEqual(resolve_mode("ture"), "on")
         self.assertEqual(resolve_mode("yes-ish"), "on")
 
@@ -138,7 +135,6 @@ class InterceptorUnit(unittest.TestCase):
         with self.assertRaises(_Aborted) as ctx:
             asyncio.run(handler.unary_unary(b"{}", context))
         self.assertEqual(ctx.exception.code, grpc.StatusCode.UNAUTHENTICATED)
-        # The servicer must never see the rejected call.
         self.assertEqual(seen, [])
 
     def test_on_mode_with_wrong_token_denies(self):
@@ -163,7 +159,6 @@ class InterceptorUnit(unittest.TestCase):
         self.assertEqual(asyncio.run(handler.unary_unary(b"{}", _Context())), "reached")
 
     def test_auto_mode_waits_for_credentials_on_loopback(self):
-        # Outbound registration proceeds while inbound business calls stay closed.
         interceptor = LifeAuthInterceptor(mode="auto")
         handler = asyncio.run(self._run(interceptor, [], _unary_handler(lambda *_: "reached")))
         with self.assertRaises(_Aborted):
@@ -224,7 +219,6 @@ class _Servicer(life_pb2_grpc.LifeServiceServicer):
 
 
 async def _round_trip(token: str | None) -> tuple[str, int]:
-    """Start a real server with the interceptor and call it once."""
     interceptor = LifeAuthInterceptor(mode="on")
     server = grpc.aio.server(interceptors=[interceptor])
     servicer = _Servicer()

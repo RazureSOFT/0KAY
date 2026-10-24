@@ -1,5 +1,3 @@
-"""Core client for L.I.F.E - register, heartbeat, query agents, dispatch tasks."""
-
 import asyncio
 import os
 import sys
@@ -14,7 +12,6 @@ from .logging_setup import get_logger
 
 log = get_logger("core_client")
 
-# Add gen/python to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'gen', 'python'))
 
 from core.v1 import core_pb2, core_pb2_grpc
@@ -22,7 +19,6 @@ from plugin.v1 import plugin_pb2
 
 
 def _manifest_version(fallback: str = "0.1.2") -> str:
-    """Read the plugin version from manifest.json in the working directory."""
     try:
         manifest = os.path.join(os.path.dirname(__file__), '..', '..', 'manifest.json')
         with open(manifest, encoding="utf-8") as handle:
@@ -32,7 +28,6 @@ def _manifest_version(fallback: str = "0.1.2") -> str:
 
 
 def _manifest_permissions():
-    """Read the declarative `permissions` block from manifest.json."""
     try:
         manifest = os.path.join(os.path.dirname(__file__), '..', '..', 'manifest.json')
         with open(manifest, encoding="utf-8") as handle:
@@ -51,7 +46,6 @@ def _manifest_permissions():
 
 
 class CoreClient:
-    """gRPC client for talking to 0kay Core (PluginService + CoreService)."""
 
     def __init__(
         self,
@@ -67,27 +61,15 @@ class CoreClient:
         self._core_stub: Optional[core_pb2_grpc.CoreServiceStub] = None
         self.plugin_id: Optional[str] = None
         self._connected = False
-        # Reentrant lock over channel/registration state: connect runs on
-        # to_thread workers (sync and async paths) while heartbeats and task
-        # callbacks read/mutate `plugin_id` from other threads.
         self._lock = threading.RLock()
-        # Registration health. A missing/revoked enrollment key makes Core answer
-        # PERMISSION_DENIED forever; that is a configuration fault, not a
-        # transient one, so retrying every heartbeat only floods the log. Mark it
-        # and back off, but keep a slow retry so a fixed token is picked up.
         self.registration_blocked = False
         self.registration_error = ""
         self.registration_failures = 0
         self._register_blocked_at = 0.0
 
     def _connect_once(self) -> None:
-        """Open the channel and build the stubs; raises on failure.
-
-        Shared by the sync and async entry points so the two cannot drift.
-        """
         with self._lock:
             self._channel = grpc.insecure_channel(self.address)
-            # Wait briefly for channel to be ready
             grpc.channel_ready_future(self._channel).result(timeout=3)
             self._plugin_stub = core_pb2_grpc.PluginServiceStub(self._channel)
             self._core_stub = core_pb2_grpc.CoreServiceStub(self._channel)
@@ -103,20 +85,6 @@ class CoreClient:
                 self._channel = None
 
     def connect(self, attempts: int = 3) -> bool:
-        """Open channel and create stubs, retrying with bounded backoff.
-
-        Core may be restarting (this plugin re-registers on heartbeat failure),
-        so a single failed attempt must not permanently mark us disconnected.
-        Bounded so a down Core cannot stall a caller indefinitely.
-
-        Security note: this uses ``grpc.insecure_channel``, so the registration
-        token and prompts travel in plaintext.  It is therefore only safe when
-        ``CORE_ADDRESS`` points at a loopback/local Core; do not point it at a
-        remote host without adding TLS (``secure_channel`` + Core's CA).
-
-        Blocking: async callers must use :meth:`connect_async`, which offloads
-        the ready-wait and awaits the backoff instead of sleeping on the loop.
-        """
         attempts = max(1, int(attempts))
         last_error: Optional[Exception] = None
         for attempt in range(1, attempts + 1):
@@ -135,13 +103,6 @@ class CoreClient:
         return False
 
     async def connect_async(self, attempts: int = 3) -> bool:
-        """Async counterpart to :meth:`connect`.
-
-        ``connect`` blocks (``channel_ready_future(...).result`` and
-        ``time.sleep``), so calling it from async startup code stalls the event
-        loop.  This variant runs the ready-wait in a worker thread and awaits the
-        backoff, keeping the loop free.
-        """
         attempts = max(1, int(attempts))
         last_error: Optional[Exception] = None
         for attempt in range(1, attempts + 1):
@@ -172,16 +133,6 @@ class CoreClient:
 
     @staticmethod
     def _outgoing_metadata():
-        """Attribute an outgoing call the way Core's own credentials do.
-
-        Core authenticates loopback implicitly, but a non-loopback Core requires
-        a paired-device / API token, and every plugin call should carry its
-        identity.  Prefer the paired/shared token when configured (that is what
-        Core's ``authorize`` accepts); otherwise present the service token Core
-        issued at registration (``authorization: Bearer``), plus the plugin name
-        header the HTTP path already uses.  Returns ``None`` when there is
-        nothing to present, so an unconfigured loopback install is unchanged.
-        """
         from .identity import get_identity
         name, service_token = get_identity()
         shared = (os.getenv("CORE_PAIR_TOKEN") or os.getenv("CORE_API_TOKEN") or "").strip()
@@ -193,9 +144,7 @@ class CoreClient:
             pairs.append(("x-0kay-plugin", name))
         return tuple(pairs) or None
 
-    # Core's wording for "your enrollment credential is not accepted".
     _AUTH_ERROR_MARKERS = ("permission_denied", "enrollment key", "unauthenticated")
-    # How long to stay quiet after an auth rejection before trying once more.
     REGISTER_AUTH_BACKOFF_SECONDS = 300.0
 
     @classmethod
@@ -219,7 +168,6 @@ class CoreClient:
             self.plugin_id = None
 
     def registration_health(self) -> dict:
-        """Diagnostics for tests/panels: is registration actually working?"""
         return {
             "registered": self.plugin_id is not None,
             "blocked": self.registration_blocked,
@@ -228,15 +176,13 @@ class CoreClient:
         }
 
     def register(self) -> bool:
-        """Register L.I.F.E as a persona plugin with Core."""
         if self.registration_blocked:
             if time.monotonic() - self._register_blocked_at < self.REGISTER_AUTH_BACKOFF_SECONDS:
-                return False  # credential fault; do not hammer Core every 10s
+                return False
         if not self._connected and not self.connect():
             return False
 
         try:
-            # Declare Life settings section for the WebUI Settings page
             from plugin.v1 import plugin_pb2 as _pb
             info = plugin_pb2.PluginInfo(
                 name="life",
@@ -296,8 +242,6 @@ class CoreClient:
                             default_value="",
                             help="心跳中附带主机名、CPU、内存等信息",
                         ),
-                        # Mail credentials/endpoints live in the 0kay-mcp `mail`
-                        # server config (Settings → MCP), not in L.I.F.E.
                         _pb.SettingsField(
                             key="mail_require_approval",
                             type="bool",
@@ -319,11 +263,6 @@ class CoreClient:
                             default_value="true",
                             help="允许 THINK 调用 Agent 主机上的 0kay-mcp",
                         ),
-                        # OneBot is now multi-instance and LIFE is the *server*:
-                        # bots are added in the L.I.F.E adapter panel (CRUD over
-                        # `adapters.json`), not by filling in a single set of
-                        # connection fields here. Only the shared trigger
-                        # defaults and a master switch remain as settings.
                         _pb.SettingsField(
                             key="onebot_enabled",
                             type="bool",
@@ -387,10 +326,6 @@ class CoreClient:
                             default_value="http://127.0.0.1:8765",
                             help="0kay-minecraft 机器人服务地址（默认本机 8765）",
                         ),
-                        # 「喊一声唤醒」: the WebUI chat page owns the microphone
-                        # (a plugin cannot reach it), so these are read by the
-                        # browser and only *stored* here — one place to configure
-                        # the persona's name, shared with the rest of L.I.F.E.
                         _pb.SettingsField(
                             key="wake_enabled",
                             type="bool",
@@ -412,11 +347,6 @@ class CoreClient:
                             default_value="zh",
                             help="传给 /api/asr 的语言提示（zh / ja / en，留空为自动检测）",
                         ),
-                        # ── 多模态输出 ──────────────────────────────────────
-                        # Which of the three media actions the character is even
-                        # told it can take. The prompt only mentions what is on,
-                        # so switching one off cannot make the model emit a tag
-                        # the WebUI would then have to ignore.
                         _pb.SettingsField(
                             key="voice_reply_enabled",
                             type="bool",
@@ -480,7 +410,6 @@ class CoreClient:
             return False
 
     def heartbeat(self, active_tasks: int = 0) -> bool:
-        """Send heartbeat to Core."""
         with self._lock:
             plugin_id = self.plugin_id
         if not self._connected or not plugin_id:
@@ -494,17 +423,11 @@ class CoreClient:
             )
             resp = self._plugin_stub.Heartbeat(request, timeout=3, metadata=self._outgoing_metadata())
             if not resp.ok:
-                # An explicit rejection from Core is definitive invalidation.
                 with self._lock:
                     self.plugin_id = None
                 return False
             return True
         except grpc.RpcError as e:
-            # A single dropped heartbeat used to wipe the registration, so a
-            # Core restart turned one transport hiccup into a re-register
-            # storm. Only a definitive NOT_FOUND ("plugin not found") says the
-            # registration is really gone; transient transport errors keep it
-            # and the next tick simply retries.
             if e.code() == grpc.StatusCode.NOT_FOUND:
                 with self._lock:
                     self.plugin_id = None
@@ -516,7 +439,6 @@ class CoreClient:
             return False
 
     def list_agents(self, include_unhealthy: bool = False) -> dict:
-        """Query Core for online agents. Returns {agents: [...], online_count: N}."""
         if not self._connected and not self.connect():
             return {"agents": [], "online_count": 0}
 
@@ -552,7 +474,6 @@ class CoreClient:
         caller_id: str = "",
         metadata: dict = None,
     ) -> dict:
-        """Dispatch a task to an Agent via Core. Returns {accepted, task_id, message}."""
         if not self._connected and not self.connect():
             return {"accepted": False, "task_id": task_id, "message": "core unavailable"}
 
@@ -594,7 +515,6 @@ class CoreClient:
             return {"success": False, "error": str(error)}
 
     def cancel_agent(self, task_id: str, caller_id: str = "") -> dict:
-        """Cancel a running agent task."""
         if not self._connected and not self.connect():
             return {"success": False, "message": "core unavailable"}
 
@@ -609,12 +529,10 @@ class CoreClient:
             return {"success": False, "message": str(e)}
 
 
-# Module-level singleton
 _core_client: Optional[CoreClient] = None
 
 
 def get_core_client() -> CoreClient:
-    """Get or create the singleton CoreClient."""
     global _core_client
     if _core_client is None:
         _core_client = CoreClient()

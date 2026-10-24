@@ -1,17 +1,13 @@
-"""OUTPUT stage for L.I.F.E - Natural language expression."""
-
 from dataclasses import dataclass
 
 
 @dataclass
 class OutputResult:
-    """Final output from OUTPUT stage."""
     text: str
     chunks: list[str]
 
     @classmethod
     def from_text(cls, text: str, max_chunk_size: int = 100) -> "OutputResult":
-        """Split text into chunks for messaging platforms."""
         limit = max(1, int(max_chunk_size))
         chunks: list[str] = []
         current = ""
@@ -23,8 +19,6 @@ class OutputResult:
                 current = ""
 
         for line in text.split("\n"):
-            # A single line longer than the limit must still be split, otherwise
-            # the chunk ceiling is silently ignored for wall-of-text replies.
             while len(line) > limit:
                 _flush()
                 chunks.append(line[:limit].strip())
@@ -84,7 +78,6 @@ Response:"""
 
 
 class OutputStage:
-    """OUTPUT stage - Natural language expression without reasoning."""
 
     def __init__(self):
         self.prompt_template = OUTPUT_PROMPT_TEMPLATE
@@ -97,13 +90,6 @@ class OutputStage:
         persona_context: str = "No custom persona is configured.",
         media_block: str = "",
     ) -> str:
-        """Build the OUTPUT prompt.
-
-        ``media_block`` is the optional "you may also send voice / a selfie / a
-        call" hint built from the LIFE media settings. It is appended rather than
-        interpolated into the template so an empty value leaves the prompt
-        byte-for-byte unchanged for users who never enabled any of it.
-        """
         prompt = self.prompt_template.format(
             think_guidance=think_guidance,
             emotion_context=emotion_context,
@@ -115,5 +101,4 @@ class OutputStage:
         return prompt
 
     def process_response(self, response: str) -> OutputResult:
-        """Process the OUTPUT stage response."""
         return OutputResult.from_text(response)

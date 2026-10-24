@@ -1,14 +1,3 @@
-"""A missing/expired Core credential must be loud, and must stop retrying.
-
-Two faults in `run.err.log` shared the same shape: Core answered
-`PERMISSION_DENIED: first-party plugin requires a dedicated enrollment key` and
-`/api/settings/life` returned 401, yet the plugin logged one warning and kept
-serving on stale defaults forever — re-registering (and re-polling) every 10s
-against a credential that retrying cannot fix.
-
-These tests pin the new behaviour: a credential fault is classified as such,
-escalated to `error`, backed off, and kept visible through a health accessor.
-"""
 import asyncio
 import sys
 import types
@@ -27,7 +16,6 @@ from life.grpc.server import LifeServiceServicer  # noqa: E402
 _AUTH_ERROR = "PERMISSION_DENIED: first-party plugin requires a dedicated enrollment key"
 
 
-# --- CoreClient.register ------------------------------------------------
 class _RaisingStub:
     def __init__(self, error: Exception):
         self.error = error
@@ -56,7 +44,7 @@ class _RejectStub:
 class RegistrationFuse(unittest.TestCase):
     def _client(self) -> CoreClient:
         client = CoreClient()
-        client._connected = True  # skip the real channel
+        client._connected = True
         return client
 
     def test_classifies_credential_faults(self):
@@ -72,7 +60,6 @@ class RegistrationFuse(unittest.TestCase):
         with mock.patch("life.identity.set_identity"):
             self.assertFalse(client.register())
             self.assertTrue(client.registration_blocked)
-            # Second attempt must short-circuit instead of hammering Core.
             self.assertFalse(client.register())
         self.assertEqual(stub.calls, 1)
 
@@ -86,7 +73,7 @@ class RegistrationFuse(unittest.TestCase):
     def test_success_clears_the_block(self):
         client = self._client()
         client._mark_registration_blocked(_AUTH_ERROR)
-        client._register_blocked_at = 0.0  # backoff window already elapsed
+        client._register_blocked_at = 0.0
         client._plugin_stub = _OkStub()
         with mock.patch("life.identity.set_identity"):
             self.assertTrue(client.register())
@@ -94,7 +81,6 @@ class RegistrationFuse(unittest.TestCase):
         self.assertEqual(client.registration_health()["error"], "")
 
 
-# --- LifeServiceServicer._life_settings --------------------------------
 class _FakeResponse:
     def __init__(self, status_code: int, payload=None):
         self.status_code = status_code
@@ -128,7 +114,6 @@ class _FakeClient:
 
 class SettingsFuse(unittest.TestCase):
     def _servicer(self) -> LifeServiceServicer:
-        # Built without __init__: that would construct a whole LifeEngine.
         svc = LifeServiceServicer.__new__(LifeServiceServicer)
         svc._settings_auth_failures = 0
         svc._settings_unreachable_failures = 0

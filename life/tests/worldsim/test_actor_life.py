@@ -1,5 +1,3 @@
-"""The fictional cast are real "others": they miss the character, get angry,
-and can be reached out to - a social life the user does not see."""
 import os
 import sys
 import tempfile
@@ -65,10 +63,8 @@ class ActorLife(unittest.TestCase):
         state["last_contact_days"] = 5.0
         state["affinity"] = 0.1
         self.engine._on_world_actor_beat(actor_id, state["name"], "有人在想你", "upset")
-        # It lands in the character's own timeline and relationship state...
         self.assertTrue(self.engine.companion.timeline_list(topic="世界"))
         self.assertIn(f"world:{actor_id}", self.engine.relating.repair.unresolved())
-        # ...but never as a user-facing notification.
         self.assertEqual(self.engine.get_notifications(""), [])
 
     def test_a_reachable_actor_enters_the_observation_context(self):
