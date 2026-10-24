@@ -247,6 +247,8 @@ class LongTermMemory:
         self.relations: list[tuple[str, str, str]] = []
         self._file = f"{db_path}/memories.json"
         self._relations_file = f"{db_path}/relations.json"
+        self._dirty = False
+        self._last_save = 0.0
         self._ensure_dir()
         self._load()
 
@@ -287,10 +289,21 @@ class LongTermMemory:
             temporary = Path(path).with_suffix(".tmp")
             temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
             os.replace(temporary, path)
+        self._dirty = False
+        self._last_save = time.monotonic()
 
     def store(self, memory: Memory) -> None:
         self.memories.append(memory)
-        self._save()
+        # Same throttle policy as ShortTermMemory: each store used to rewrite
+        # both JSON files in full, which made every remembered fact an O(n)
+        # disk write on a long-running companion.
+        self._dirty = True
+        if time.monotonic() - self._last_save >= 60.0:
+            self._save()
+
+    def flush(self) -> None:
+        if self._dirty:
+            self._save()
 
     def recall(self, query: str, top_k: int = 5) -> list[Memory]:
         scored = []
@@ -1173,7 +1186,13 @@ class MemorySystem:
                 break
         return notes
 
-    def _persist_index(self) -> None:
+    def _persist_index(self, force: bool = False) -> None:
+        # The index file is a warm-start cache (search rebuilds it when dirty);
+        # throttling persistence removes the per-remember O(n) index rewrite.
+        now = time.monotonic()
+        if not force and now - getattr(self, "_index_persisted_at", 0.0) < 60.0:
+            return
+        self._index_persisted_at = now
         slim = dict(self._index)
         slim["documents"] = {memory_id: {key: value for key, value in doc.items()
                                          if key not in ("vector", "embedding")}
@@ -1194,6 +1213,11 @@ class MemorySystem:
         if cached is not None and cached[0] == memory.content:
             return cached[1]
         tokens = frozenset(self._tokens(memory.content))
+        if len(self._token_cache) > 8192:
+            # Tokenization cache is an optimization; bound it rather than
+            # growing one entry per memory forever.
+            for stale in list(self._token_cache)[: len(self._token_cache) - 8192]:
+                self._token_cache.pop(stale, None)
         self._token_cache[memory.id] = (memory.content, tokens)
         return tokens
 
@@ -1225,7 +1249,7 @@ class MemorySystem:
                 df[token] = df.get(token, 0) + 1
             documents[memory.id] = {"tokens": tf, "length": len(tokens) or 1, "vector": self._vector(memory.content), "tier": "long_term" if memory.id in long_term_ids else "short_term"}
         self._index = {"documents": documents, "avgdl": sum(doc["length"] for doc in documents.values()) / max(1, len(documents)), "df": df, "updated_at": datetime.now().isoformat()}
-        self._persist_index()
+        self._persist_index(force=True)
         tantivy_detail = self._rebuild_tantivy_projection()
         self._index_dirty = False
         self._tantivy_dirty = False
@@ -1325,6 +1349,22 @@ class MemorySystem:
     def _rebuild_tantivy_projection(self) -> dict:
         if tantivy is None:
             return {"available": False, "reason": "tantivy package unavailable"}
+        # A previous process that was killed mid-commit leaves segment files the
+        # new writer cannot open (Windows reports it as PermissionDenied on a file
+        # it is about to create). Wiping the directory and trying once more is
+        # cheaper than losing the whole plugin to a stale lock, and if it still
+        # fails the memory system runs on SQLite alone rather than not at all.
+        for attempt in (1, 2):
+            try:
+                return self._write_tantivy_projection()
+            except Exception as error:  # noqa: BLE001 - any failure here is recoverable
+                logger.warning("tantivy rebuild attempt %d failed: %s", attempt, error)
+                if attempt == 2:
+                    return {"available": False, "reason": f"tantivy rebuild failed: {error}"}
+                shutil.rmtree(self.tantivy_dir, ignore_errors=True)
+                time.sleep(0.2)
+
+    def _write_tantivy_projection(self) -> dict:
         self.tantivy_dir.parent.mkdir(parents=True, exist_ok=True)
         self.tantivy_dir.mkdir(parents=True, exist_ok=True)
         index = tantivy.Index(_tantivy_schema(), path=str(self.tantivy_dir))
@@ -1422,11 +1462,22 @@ class MemorySystem:
             logger.warning("Tantivy search failed: %s", error)
             return []
 
+    @staticmethod
+    def _redact_for_backup(memory: "Memory") -> dict:
+        item = memory.to_dict()
+        # Credential-scope memories are secrets (game passwords, tokens); the
+        # recall path already hides them, and backups must not reintroduce a
+        # plaintext copy on disk.
+        if str((memory.metadata or {}).get("scope") or "") == "credential":
+            item["content"] = "[redacted credential]"
+            item["metadata"] = {**(memory.metadata or {}), "redacted": True}
+        return item
+
     def daily_backup(self) -> str:
         today = datetime.now().strftime("%Y%m%d")
         target = self.backup_dir / f"memory-{today}.json"
         if not target.exists():
-            payload = {"created_at": datetime.now().isoformat(), "short_term": [m.to_dict() for m in self.short_term.memories], "long_term": [m.to_dict() for m in self.long_term.memories], "index": self._index}
+            payload = {"created_at": datetime.now().isoformat(), "short_term": [self._redact_for_backup(m) for m in self.short_term.memories], "long_term": [self._redact_for_backup(m) for m in self.long_term.memories], "index": self._index}
             target.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         for stale in sorted(self.backup_dir.glob("memory-*.json"))[:-7]: stale.unlink(missing_ok=True)
         return str(target)

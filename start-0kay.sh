@@ -138,6 +138,15 @@ cmd_start() {
   log "WebUI: http://127.0.0.1:3000/   (loopback is trusted, no token/PIN needed locally)"
 }
 
+# A plugin that could not bind its port stays alive without listening, so the port
+# sweep below misses it. It then keeps heartbeating with a registration Core no
+# longer honours, and the roster shows "token mismatch" until someone kills it by
+# hand. Matching the command line catches those.
+kill_stragglers() {
+  local pattern='life\.main|npm run dev|src/server\.mjs|cmd/mocr'
+  powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { \$_.CommandLine -match '$pattern' -and \$_.CommandLine -notmatch 'start-0kay' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force -ErrorAction SilentlyContinue }" >/dev/null 2>&1 || true
+}
+
 cmd_stop() {
   log "stopping 0KAY stack ..."
   if [[ -f "$PIDFILE" ]]; then
@@ -150,6 +159,7 @@ cmd_stop() {
   # Sweep by port so orphaned children (e.g. vite/tsx node procs left behind by
   # a killed npm parent) are also cleaned up.
   for p in "${PORTS[@]}"; do kill_port "$p"; done
+  kill_stragglers
   sleep 2
   local still=0
   for p in "${PORTS[@]}"; do

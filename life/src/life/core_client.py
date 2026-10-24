@@ -431,6 +431,20 @@ class CoreClient:
             if e.code() == grpc.StatusCode.NOT_FOUND:
                 with self._lock:
                     self.plugin_id = None
+            elif e.code() == grpc.StatusCode.PERMISSION_DENIED:
+                # Core stopped honouring the token we registered with — it came up
+                # with a different plugin store, or the enrollment key rotated.
+                # Heartbeating into that wall forever is how the roster sits at
+                # "token mismatch" for hours; drop the identity and register again.
+                with self._lock:
+                    self.plugin_id = None
+                    self._connected = False
+                try:
+                    from .identity import set_identity
+                    set_identity("", "")
+                except Exception:  # noqa: BLE001 - best effort
+                    pass
+                log.warning("Heartbeat rejected (%s); dropping identity to re-register", e.details() or e.code())
             else:
                 log.warning("Heartbeat failed: %s", e)
             return False
