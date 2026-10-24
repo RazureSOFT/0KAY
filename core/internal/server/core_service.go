@@ -175,6 +175,12 @@ type UsageRecord struct {
 	PromptTokens     int32     `json:"prompt_tokens"`
 	CompletionTokens int32     `json:"completion_tokens"`
 	TotalTokens      int32     `json:"total_tokens"`
+	// CachedTokens is the part of PromptTokens the provider served from its
+	// prompt cache. Without it a long session cannot tell a cheap turn from an
+	// expensive one: the same 30k-token prefix costs a fraction on a cache hit.
+	CachedTokens int32 `json:"cached_tokens,omitempty"`
+	// CostUSD is what the turn actually cost, when the provider reports it.
+	CostUSD float64 `json:"cost_usd,omitempty"`
 }
 
 // UsageStore accumulates usage totals (in-memory + optional JSONL).
@@ -275,12 +281,16 @@ func (u *UsageStore) Snapshot() map[string]interface{} {
 	byModel := map[string]*byKey{}
 	byDay := map[string]*byKey{}
 	var totalPrompt, totalCompletion, total int32
+	var totalCached int32
+	var totalCost float64
 	sessions := map[string]struct{}{}
 
 	for _, r := range u.records {
 		totalPrompt += r.PromptTokens
 		totalCompletion += r.CompletionTokens
 		total += r.TotalTokens
+		totalCached += r.CachedTokens
+		totalCost += r.CostUSD
 		if r.SessionID != "" {
 			sessions[r.SessionID] = struct{}{}
 		}
@@ -306,10 +316,20 @@ func (u *UsageStore) Snapshot() map[string]interface{} {
 		byDay[day].Count++
 	}
 
+	// A hit ratio over prompt tokens is the number worth watching: it says how
+	// much of what we send is being re-read from cache rather than billed fresh.
+	var hitRatio float64
+	if totalPrompt > 0 {
+		hitRatio = float64(totalCached) / float64(totalPrompt)
+	}
+
 	return map[string]interface{}{
 		"total_prompt_tokens":     totalPrompt,
 		"total_completion_tokens": totalCompletion,
 		"total_tokens":            total,
+		"total_cached_tokens":     totalCached,
+		"cache_hit_ratio":         hitRatio,
+		"total_cost_usd":          totalCost,
 		"request_count":           len(u.records),
 		"session_count":           len(sessions),
 		"by_model":                byModel,
@@ -1871,10 +1891,27 @@ func redactTaskResult(raw string) string {
 		return raw
 	}
 	redacted := taskBlobPattern.ReplaceAllString(raw, `${1}[omitted]${2}`)
-	if len(redacted) > limit {
+	if len(redacted) <= limit {
+		return redacted
+	}
+	// Still too big after the blobs are gone: keep a readable prefix instead of
+	// throwing the content away. The task list needs enough to recognise the row
+	// — a bare byte count told the user nothing about what the task produced.
+	preview := redacted
+	const previewCap = 2_500
+	if len(preview) > previewCap {
+		preview = preview[:previewCap]
+		// Never cut a rune in half; the JSON encoder would emit a replacement
+		// character and the preview would end in garbage.
+		for len(preview) > 0 && !utf8.ValidString(preview) {
+			preview = preview[:len(preview)-1]
+		}
+	}
+	encoded, err := json.Marshal(map[string]any{"truncated": true, "bytes": len(raw), "preview": preview})
+	if err != nil {
 		return fmt.Sprintf(`{"truncated":true,"bytes":%d}`, len(raw))
 	}
-	return redacted
+	return string(encoded)
 }
 
 // taskListLimit caps how many (non-session) task rows the gateway API returns,

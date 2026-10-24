@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"0kay/core/internal/pairing"
+	"0kay/obs"
 )
 
 // Public wraps the authenticated handler chain with the browser-facing guards.
@@ -191,11 +193,55 @@ func (r *statusRecorder) Push(target string, opts *http.PushOptions) error {
 	return http.ErrNotSupported
 }
 
+// streamPaths are long-lived responses. Their duration is the length of the
+// stream, not the cost of serving a request, so they get a span marked `stream`
+// and no access-log line — otherwise the console fills with hour-long "slow
+// requests" that are simply someone leaving a tab open.
+var streamPaths = []string{"/api/life/chat", "/api/tasks/events", "/api/chat"}
+
+func isStreamPath(path string) bool {
+	for _, prefix := range streamPaths {
+		if path == prefix || strings.HasPrefix(path, prefix+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// logMiddleware is the HTTP observability seam: one span per request, its trace
+// id echoed as the request id, and an access-log line for everything that is not
+// a stream.
+//
+// The trace id is the request id on purpose. Two identifiers for one request
+// meant the console could not answer "what happened to this call?" — the span
+// was filed under one and the response header carried the other.
 func logMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		started := time.Now()
+		inbound := strings.TrimSpace(r.Header.Get(RequestIDHeader))
+		ctx, span := obs.StartWithID(r.Context(), inbound, r.Method+" "+r.URL.Path, "http")
+		span.Attr("method", r.Method)
+		span.Attr("path", r.URL.Path)
+		stream := isStreamPath(r.URL.Path)
+		if stream {
+			span.Attr("stream", "true")
+		}
+		traceID := inbound
+		if traceID == "" {
+			traceID = span.TraceID()
+		}
+		w.Header().Set(RequestIDHeader, traceID)
+
 		recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
-		next.ServeHTTP(recorder, r)
-		log.Printf("%s %s %d %s", r.Method, r.URL.Path, recorder.status, time.Since(started).Round(time.Millisecond))
+		next.ServeHTTP(recorder, r.WithContext(ctx))
+
+		elapsed := time.Since(started)
+		if recorder.status >= 400 {
+			span.Fail(fmt.Errorf("status %d", recorder.status))
+		}
+		span.End()
+		if !stream {
+			log.Printf("%s %s %d %s", r.Method, r.URL.Path, recorder.status, elapsed.Round(time.Millisecond))
+		}
 	})
 }
