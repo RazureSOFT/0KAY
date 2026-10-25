@@ -28,7 +28,16 @@ class HostGuard(unittest.TestCase):
                 self.assertIn("non-public", str(ctx.exception))
 
     def test_unresolvable_host_still_blocked_with_exemption(self):
-        with patch.dict(os.environ, {"LIFE_TEST_ALLOW_PRIVATE": "1"}):
+        import socket
+
+        def unresolved(host, *args, **kwargs):
+            if host == "no-such-host.invalid":
+                raise socket.gaierror(-2, "Name or service not known")
+            return socket.getaddrinfo(host, *args, **kwargs)
+
+        # Live DNS can hijack .invalid into an answer (captive resolvers), so
+        # the unresolvable case is simulated instead of hoped for.
+        with patch.dict(os.environ, {"LIFE_TEST_ALLOW_PRIVATE": "1"}),                 patch("life.network.socket.getaddrinfo", side_effect=unresolved):
             with self.assertRaises(ValueError):
                 assert_public_host("no-such-host.invalid", 0, "LIFE_TEST_ALLOW_PRIVATE")
 

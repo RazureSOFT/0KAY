@@ -13,9 +13,11 @@ COPY gen/python/ ./gen/python/
 # Copy L.I.F.E source
 COPY life/ ./life/
 
-# Install Python dependencies
+# Install the package (non-editable): an editable install leaves a .pth
+# pointing at /app/life/src, so the runtime image only worked because the
+# source happened to be copied to the same path.
 WORKDIR /app/life
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir .
 
 # Runtime
 FROM python:3.12-slim

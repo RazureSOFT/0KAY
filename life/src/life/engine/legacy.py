@@ -836,9 +836,15 @@ class LifeEngine:
             self._persona_llm_cache_data = cache
         return cache
 
+    PERSONA_CACHE_CAP = 16
+
     def _persona_llm_cache_store(self, digest: str, traits) -> None:
         cache = self._persona_llm_cache_load()
         cache[digest] = traits.to_dict()
+        # Bound the cache: one entry per persona digest grows forever on a
+        # long-running companion that keeps refining personas.
+        while len(cache) > self.PERSONA_CACHE_CAP:
+            cache.pop(next(iter(cache)))
         self._persona_llm_cache_data = cache
         try:
             target = Path(self.data_dir) / "persona_traits_cache.json"
@@ -1167,6 +1173,9 @@ class LifeEngine:
         if not isinstance(items, list):
             return cleaned, []
         parts = []
+        # Per-file limits are enforced in the client; without a total budget
+        # ten near-64MB files would still buffer ~640MB in one message.
+        remaining_budget = 64 * 1024 * 1024
         for item in items[:10]:
             if not isinstance(item, dict):
                 continue
@@ -1175,11 +1184,15 @@ class LifeEngine:
             mime = str(item.get("mime") or "")
             if not url:
                 continue
+            if remaining_budget <= 0:
+                parts.append({"type": "text", "text": f"[附件 {name}] 跳过：本条消息附件总量超过 64MB"})
+                continue
             try:
                 data = await self.mocr.fetch_file(url)
             except Exception as error:
                 parts.append({"type": "text", "text": f"[附件 {name}] 无法读取：{error}"})
                 continue
+            remaining_budget -= len(data)
             if _attachment_is_image(name, mime):
                 media = mime or "image/png"
                 parts.append({"type": "image", "imageUrl": f"data:{media};base64,{base64.b64encode(data).decode()}", "mime": media})
@@ -1960,6 +1973,11 @@ class LifeEngine:
             stats["recalled"] = int(stats.get("recalled", 0)) + 1
         if latency is not None:
             stats["last_latency_s"] = round(latency, 1)
+        if len(self._feedback_stats) > 1000:
+            # Very-long-running companions meet more users than anyone will
+            # scroll; drop the least recently updated to bound memory.
+            for stale in sorted(self._feedback_stats, key=lambda k: self._feedback_stats[k].get("last_decay", ""))[: len(self._feedback_stats) - 1000]:
+                self._feedback_stats.pop(stale, None)
         now = datetime.now()
         stats["last_feedback"] = now.isoformat()
         stats["last_decay"] = now.isoformat()
@@ -3865,7 +3883,12 @@ class LifeEngine:
     AUTONOMY_TOOLS = ("computeruse", "search", "web_browse", "minecraft", "agenda_add", "journal",
                       "goal_add", "goal_log", "goal_list",
                       "world")
-    AUTONOMY_COMPUTERUSE_ACTIONS = ("screenshot", "listwindows", "move", "click", "type", "key")
+    # Read-only observation only. The autonomy loop feeds untrusted content
+    # (group chats, arbitrary-sender mail, web summaries) into the prompt, so
+    # letting it click/type/key would let an injected message drive the user's
+    # desktop. Interactive actions must go through the user-driven path with
+    # its approval gate.
+    AUTONOMY_COMPUTERUSE_ACTIONS = ("screenshot", "listwindows")
 
     async def _autonomy_think_loop(self, observations: str) -> tuple[str, list[str], int]:
         try:
@@ -4390,7 +4413,15 @@ class LifeEngine:
             except Exception as _exc:
                 logger.debug("suppressed error: %s", _exc)
             return False, "超时未确认"
-        self._approvals.pop(approval_id, None)
+        except asyncio.CancelledError:
+            # A cancelled wait (session cancel, client disconnect) must not
+            # leave the entry behind: list_approvals would keep showing it and
+            # resolve_approval would set an event nobody awaits.
+            self._approvals.pop(approval_id, None)
+            raise
+        finally:
+            # Covers the normal-return path; pop is idempotent.
+            self._approvals.pop(approval_id, None)
         allowed = bool(entry.get("allowed"))
         try:
             await asyncio.to_thread(self.companion.audit, "mail_approval", tool, "", "allowed" if allowed else "denied")

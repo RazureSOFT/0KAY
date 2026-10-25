@@ -35,6 +35,7 @@ class MocrClient:
         self._connect_lock = asyncio.Lock()
         self.recorder = None
 
+
     async def connect(self):
         async with self._connect_lock:
             if self._channel is not None:

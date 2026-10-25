@@ -137,10 +137,13 @@ class LifeAuthInterceptor(ServerInterceptor):
         return self.mode != "off"
 
     def _required(self, tokens: list[str]) -> bool:
+        # "auto" deliberately fails closed like "on": once the interceptor is
+        # installed, requests without valid credentials are refused even on a
+        # loopback bind with no tokens configured (test_auto_mode_waits_for_
+        # credentials_on_loopback). To run without authentication, set the
+        # mode to "off" explicitly.
         if self.mode == "off":
             return False
-        if self.mode == "on" or self.require_without_tokens:
-            return True
         return True
 
     def _warn_once(self, message: str) -> None:

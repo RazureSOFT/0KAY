@@ -237,6 +237,9 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
         except Exception as e:
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"Error processing message: {str(e)}")
+            # Without the raise the stream just ends and the status set above
+            # never reaches the client.
+            raise
 
     async def OnScheduledEvent(self, request, context):
         event_type = request.event_type
@@ -716,7 +719,11 @@ class LifeServiceServicer(life_pb2_grpc.LifeServiceServicer):
 
     async def GetNotifications(self, request, context):
         items = self.engine.get_notifications(request.session_id or "")
-        return life_pb2.GetNotificationsResponse(notifications=[life_pb2.LifeNotification(**item) for item in items])
+        # state.json may carry keys the proto does not know (older/newer
+        # builds); unknown kwargs would TypeError the whole RPC.
+        known = {f.name for f in life_pb2.LifeNotification.DESCRIPTOR.fields}
+        notifications = [life_pb2.LifeNotification(**{k: v for k, v in item.items() if k in known}) for item in items]
+        return life_pb2.GetNotificationsResponse(notifications=notifications)
 
 
 async def serve(mocr_address: str = None):
@@ -730,7 +737,7 @@ async def serve(mocr_address: str = None):
     if not loopback and os.getenv("LIFE_ALLOW_REMOTE_BIND", "").strip().lower() not in ("1", "true", "yes", "on"):
         log.warning(
             "LIFE_BIND_HOST=%s is non-loopback but LIFE_ALLOW_REMOTE_BIND is not set; "
-            "binding to 127.0.0.1 instead (this gRPC endpoint has no authentication)", bind_host)
+            "binding to 127.0.0.1 instead (remote binds require token authentication; set CORE_API_TOKEN / LIFE_API_TOKEN to enable)", bind_host)
         bind_host = "127.0.0.1"
         loopback = True
 

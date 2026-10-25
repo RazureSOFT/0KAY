@@ -395,6 +395,7 @@ class CompanionSystem:
                         "cog_tsundere_enabled": "0", "cog_tsundere_type": "经典傲娇",
                         "cog_personadyn_enabled": "0", "cog_personadyn_type": "正常/安全型",
                         "cog_personadyn_gender": "未指定",
+                        "cog_yandere_enabled": "0", "cog_yandere_type": "病娇",
                         "persona_traits_override": "{}", "attachment_override": "{}",
                         "tsundere_override": "{}", "personadyn_override": "{}",
                         "owner_opacity": "1"}
@@ -449,6 +450,7 @@ class CompanionSystem:
         "cog_memory_reconsolidate": ("bool", None), "cog_cls_interleave": ("bool", None),
         "cog_attachment_enabled": ("bool", None), "cog_attachment_type": ("choice", None),
         "cog_tsundere_enabled": ("bool", None), "cog_tsundere_type": ("choice", None),
+        "cog_yandere_enabled": ("bool", None), "cog_yandere_type": ("choice", None),
         "cog_personadyn_enabled": ("bool", None), "cog_personadyn_type": ("choice", None),
         "cog_personadyn_gender": ("choice", None),
         "persona_traits_override": ("json", None), "attachment_override": ("json", None),
@@ -456,10 +458,37 @@ class CompanionSystem:
         "owner_opacity": ("bool", None),
     }
     LOCALE_CHOICES = ("zh-CN", "en-US")
+    # The panel stores enum choices as locale-independent keys
+    # ("attach.dependent"); the engine consumes the zh labels that older
+    # builds also wrote directly. Key aliases resolve to the canonical label
+    # at the validation gate, so both spellings keep validating and the
+    # stored value the engine reads never changes shape.
+    ENUM_KEY_ALIASES = {
+        "cog_attachment_type": {
+            "attach.secluded": "独占型", "attach.dependent": "依存型", "attach.delusional": "妄想型",
+            "attach.monitoring": "监视型", "attach.selfHarm": "自伤型", "attach.exclusion": "排除型"},
+        "cog_tsundere_type": {
+            "tsundere.classic": "经典傲娇", "tsundere.cold": "高冷傲娇",
+            "tsundere.gruff": "暴躁傲娇", "tsundere.indulgent": "迁就傲娇"},
+        "cog_personadyn_type": {
+            "pdt.0": "正常/安全型", "pdt.1": "傲娇型", "pdt.2": "病娇型", "pdt.3": "傲娇转病娇",
+            "pdt.4": "三无/高冷型", "pdt.5": "天然呆型", "pdt.6": "温柔/治愈型", "pdt.7": "元气/活泼型",
+            "pdt.8": "腹黑型", "pdt.9": "忠犬型", "pdt.10": "依赖型", "pdt.11": "回避型",
+            "pdt.12": "控制/女王型", "pdt.13": "小恶魔型", "pdt.14": "暴躁型", "pdt.15": "理性/冷静型",
+            "pdt.16": "自卑/忧郁型", "pdt.17": "混沌/疯狂型"},
+        "cog_yandere_type": {
+            "yandere.mode.yandere": "病娇", "yandere.mode.tsundere": "傲娇",
+            "yandere.mode.neutral": "中性", "yandere.mode.hybrid": "傲娇→病娇"},
+        "cog_personadyn_gender": {
+            "pdGender.unspecified": "未指定", "pdGender.maleScript": "男性脚本", "pdGender.femaleScript": "女性脚本",
+            "pdGender.neutral": "中性", "pdGender.highTradMale": "高传统男性", "pdGender.lowTradMale": "低传统男性",
+            "pdGender.highTradFemale": "高传统女性", "pdGender.feminist": "女性主义"},
+    }
     CHOICE_SETS = {"cog_affect_profile": tuple(_ERQ_PROFILES),
                    "cog_language_framing": tuple(_FRAMING_MODES),
                    "cog_attachment_type": ("独占型", "依存型", "妄想型", "监视型", "自伤型", "排除型"),
                    "cog_tsundere_type": ("经典傲娇", "高冷傲娇", "暴躁傲娇", "迁就傲娇"),
+                   "cog_yandere_type": ("病娇", "傲娇", "中性", "傲娇→病娇"),
                    "cog_personadyn_type": ("正常/安全型", "傲娇型", "病娇型", "傲娇转病娇",
                                             "三无/高冷型", "天然呆型", "温柔/治愈型",
                                             "元气/活泼型", "腹黑型", "忠犬型", "依赖型",
@@ -495,7 +524,9 @@ class CompanionSystem:
             if kind == "choice":
                 choices = (cls.STAGE_ORDER if key.endswith("stage_cap")
                            else cls.CHOICE_SETS.get(key, cls.LOCALE_CHOICES))
-                return str(value).strip() if str(value).strip() in choices else None
+                text = str(value).strip()
+                text = cls.ENUM_KEY_ALIASES.get(key, {}).get(text, text)
+                return text if text in choices else None
             if kind == "json":
                 json.loads(str(value))
                 return str(value)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from datetime import date
 from pathlib import Path
 
@@ -11,6 +12,9 @@ class UsageLedger:
     def __init__(self, data_dir: str):
         self.path = Path(data_dir) / "usage.json"
         self._data = self._load()
+        # record() is called from both the event loop and to_thread callers;
+        # the lock keeps concurrent counters from losing updates.
+        self._lock = threading.Lock()
 
     def _load(self) -> dict:
         try:
@@ -26,6 +30,10 @@ class UsageLedger:
         temporary.replace(self.path)
 
     def record(self, model: str, input_tokens: int = 0, output_tokens: int = 0, task: str = "") -> None:
+        with self._lock:
+            self._record_locked(model, input_tokens, output_tokens, task)
+
+    def _record_locked(self, model: str, input_tokens: int = 0, output_tokens: int = 0, task: str = "") -> None:
         model = str(model or "unknown")
         by_model = self._data.setdefault("by_model", {})
         bucket = by_model.setdefault(model, {"requests": 0, "input": 0, "output": 0, "tasks": {}})

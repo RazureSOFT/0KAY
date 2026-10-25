@@ -46,7 +46,9 @@ class PanelBackendContract(unittest.TestCase):
         if not BUNDLE.exists():
             self.skipTest("panel bundle not built (run `npm run build` in plugin-web/life)")
         text = BUNDLE.read_text(encoding="utf-8")
-        for needle in ("认知内核", "cog_enabled", "cog-metric"):
+        # The bundle addresses UI text through i18n keys, not inline zh
+        # literals; assert on keys so the check survives wording changes.
+        for needle in ("companion.cognition", "cog_enabled", "cog-metric"):
             self.assertIn(needle, text, f"{needle!r} absent from built panel bundle")
 
     def test_panel_readout_keys_exist_in_status(self):

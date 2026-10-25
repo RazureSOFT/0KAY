@@ -277,7 +277,9 @@ class AdapterRegistry:
             else:
                 self.instances[self.instances.index(existing)] = instance
             self._save()
-        return {"ok": True, "instance": instance.to_dict()}
+        # public_dict keeps ws_token/access_token out of the ManageCompanion
+        # response; the plaintext values live only in the store file.
+        return {"ok": True, "instance": instance.public_dict()}
 
     def _next_free_port(self) -> int:
         used = {int(item.ws_port) for item in self.instances}

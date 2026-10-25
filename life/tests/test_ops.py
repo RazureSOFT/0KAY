@@ -106,10 +106,12 @@ class DailyReviewAndMedia(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(calls), 1)
             self.assertTrue(any(item["topic"] == "游戏" for item in engine.companion.snapshot()["timeline"]))
 
-    def test_autonomy_computeruse_allows_all_actions(self):
+    def test_autonomy_computeruse_is_read_only(self):
+        # The autonomy loop digests untrusted observations (group chat, mail),
+        # so its computeruse surface must stay observation-only.
         self.assertEqual(
             set(LifeEngine.AUTONOMY_COMPUTERUSE_ACTIONS),
-            {"screenshot", "listwindows", "move", "click", "type", "key"},
+            {"screenshot", "listwindows"},
         )
 
     async def test_attachments_become_multimodal_parts(self):
